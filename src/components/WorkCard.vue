@@ -49,45 +49,29 @@ const status = computed(function () { return statusInfo(props.work.conversion_st
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .work {
-  min-width: 0;
-  min-height: 286px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 22px 24px 20px;
   border-radius: 18px;
   background: linear-gradient(160deg, var(--surface) 0%, var(--surface) 72%, var(--cream) 100%);
 }
-.work-card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.work .rank { display: inline-flex; align-items: baseline; gap: 5px; color: var(--yellow-deep); font-size: 24px; }
-.work .rank small { color: var(--ink-35); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.work .rank { color: var(--yellow-deep); }
+.work .rank small { color: var(--ink-35); }
 .status { border: 1px solid currentColor; background: transparent; }
 .status-exact { color: #47704b; }
 .status-partial { color: var(--accent-strong); }
 .status-unsupported { color: var(--rouge); }
-.work-card-main { flex: 1; padding: 23px 0 20px; }
-.w-tags { align-items: center; margin-bottom: 12px; }
-.work-id { color: var(--ink-35); font: 800 10px var(--font-d); letter-spacing: .08em; }
-.work h3 { max-width: 19em; font-size: clamp(20px, 2vw, 26px); line-height: 1.4; }
-.stage-line { display: flex; align-items: baseline; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
-.stage-line span { flex: none; color: var(--ink-35); font-size: 11px; font-weight: 800; letter-spacing: .12em; }
-.stage-line strong { min-width: 0; color: var(--ink-60); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.work-card-foot { padding-top: 16px; border-top: 1px solid var(--line); }
-.w-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
-.w-meta span { display: grid; gap: 4px; padding: 0 12px; border-left: 1px solid var(--line); }
-.w-meta span:first-child { padding-left: 0; border-left: 0; }
-.w-meta small { color: var(--ink-35); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
-.w-meta b { font-size: 16px; }
-.work-byline { display: grid; gap: 5px; margin-top: 17px; color: var(--ink-60); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
-.go { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--accent-strong); font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.work-id { color: var(--ink-35); }
+.stage-line { border-top: 1px solid var(--line); }
+.stage-line span { color: var(--ink-35); }
+.stage-line strong { color: var(--ink-60); }
+.work-card-foot { border-top: 1px solid var(--line); }
+.w-meta span { border-left: 1px solid var(--line); }
+.w-meta span:first-child { border-left: 0; }
+.w-meta small { color: var(--ink-35); }
+.work-byline { color: var(--ink-60); }
+.go { color: var(--accent-strong); }
 .go b { transition: transform .3s var(--ease); }
-.work:hover .go b { transform: translateX(4px); }
-@media (max-width: 767px) {
-  .work { min-height: 0; padding: 18px; }
-  .work-card-main { padding-block: 18px; }
-  .work h3 { font-size: 21px; }
-}
 @media (prefers-reduced-motion: reduce) { .go b { transition: none; } }
 </style>
+<style scoped src="./workCardDesktop.css"></style>
+<style scoped src="./workCardMobile.css"></style>

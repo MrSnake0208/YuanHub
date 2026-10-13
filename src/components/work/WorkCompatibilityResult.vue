@@ -45,21 +45,20 @@ async function copyDocument() {
 </script>
 
 <style scoped>
-.state-note { padding-top: 20px; color: var(--ink-60); }
-.target-error { padding-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--rouge); }
-button { min-height: 44px; padding: 8px 13px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 12px var(--font-b); cursor: pointer; }
-.compat-summary { margin-top: 20px; padding: 18px 20px; border: 1px solid currentColor; border-radius: 14px; background: var(--surface); }
-.compat-summary > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.compat-summary span, .compat-summary p { color: var(--ink-60); font-size: 12px; }
-.compat-summary strong { font-family: var(--font-s); }
-.compat-summary p { margin-top: 8px; line-height: 1.6; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.state-note { color: var(--ink-60); }
+.target-error { color: var(--rouge); }
+button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.compat-summary { border: 1px solid currentColor; border-radius: 14px; background: var(--surface); }
+.compat-summary span, .compat-summary p { color: var(--ink-60); }
 .status-exact { color: #47704b; }
 .status-partial { color: var(--accent-strong); }
 .status-unsupported, .status-unknown { color: var(--rouge); }
-.document-viewer { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
-.document-viewer summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; }
-.document-viewer button { margin: 10px 0; }
-.document-viewer pre { max-width: 100%; max-height: 520px; overflow: auto; padding: 14px; border-radius: 10px; background: var(--paper); color: var(--ink); font: 11px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-.document-note { margin-top: 14px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
-.copy-feedback { min-height: 20px; margin-top: 10px; color: var(--accent-strong); font-size: 12px; }
+.document-viewer { border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
+.document-viewer summary { cursor: pointer; }
+.document-viewer pre { border-radius: 10px; background: var(--paper); color: var(--ink); }
+.document-note { color: var(--ink-60); }
+.copy-feedback { color: var(--accent-strong); }
 </style>
+<style scoped src="./workCompatibilityResultDesktop.css"></style>
+<style scoped src="./workCompatibilityResultMobile.css"></style>

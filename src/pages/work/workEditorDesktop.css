@@ -1,0 +1,61 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-work-editor > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.notice{
+  margin-top:30px;
+  padding:18px 24px;display:flex;gap:18px;align-items:flex-start;max-width:860px;
+}
+.notice p{min-width:0;font-size:13.5px;line-height:1.9;overflow-wrap:anywhere}
+.editor-reference { font-family: var(--font-d); }
+.editor-content { padding-block: 12px 72px; }
+.editor-state { min-height: 320px; display: grid; place-content: center; justify-items: center; gap: 12px; }
+.editor-state button, .form-actions button, .command, .add-action { min-height: 44px; padding: 9px 16px; font-weight: 800; }
+.notice { margin-bottom: 18px; padding: 14px 16px; }
+.notice.conflict { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.notice.conflict button { min-height: 44px; padding: 8px 13px; font-weight: 800; }
+.validation-list { margin-bottom: 18px; display: grid; gap: 7px; padding: 16px 20px; list-style: none; font-size: 13px; }
+.validation-list code { margin-right: 10px; }
+.validation-list button { min-height:44px;margin-right:10px;font:800 13px var(--font-b); }
+.level-load-error { grid-column:1/-1;font-size:12px; }
+.level-load-error button { min-height:44px;font-weight:800; }
+.work-form, .preview-section { display: grid; gap: 24px; }
+.editor-section, .preview-section { padding: 28px; }
+.preview-section { margin-top: 24px; }
+.section-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 14px; padding-bottom: 18px; }
+.section-head > span { width: 36px; height: 36px; display: grid; place-items: center; font: 900 12px var(--font-d); }
+.section-head h2 { font: 900 24px var(--font-s); }
+.section-head p { margin-top: 4px; font-size: 13px; }
+.section-head.with-command { grid-template-columns: auto minmax(0, 1fr) auto; }
+.field-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.field-grid .wide { grid-column: 1 / -1; }
+label, fieldset { min-width: 0; display: grid; gap: 7px; font-size: 12px; font-weight: 800; }
+input, select, textarea { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; font: 14px var(--font-b); }
+textarea { resize: vertical; line-height: 1.7; }
+.operator-fields { margin-top: 22px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.round-editor { margin-top: 18px; padding: 18px; }
+.round-editor > header { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.action-editors { margin-top: 16px; display: grid; gap: 10px; list-style: none; }
+.action-editor { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 12px; }
+.action-editor label { flex: 1 1 130px; }
+.action-order { width: 28px; height: 28px; align-self: center; display: grid; place-items: center; font: 800 11px var(--font-d); }
+.action-buttons { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.action-buttons button, .danger-link { min-height: 44px; padding: 8px 10px; }
+.add-action { margin-top: 12px; }
+.delay-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.extension-panel { margin-top: 20px; padding: 14px 16px; }
+.extension-panel summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; }
+.extension-fields { margin-top: 14px; }
+.checkbox { display: flex; align-items: center; gap: 10px; }
+.checkbox input { width: 20px; min-height: 20px; }
+.offset-field { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.offset-field legend { grid-column: 1 / -1; margin-bottom: 7px; }
+.form-actions { position: sticky; bottom: 10px; z-index: 3; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px; }
+.form-action-message { display:none; }
+.target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.target-card { min-width: 0; overflow: hidden; }
+.target-card > header { padding: 18px 20px; }
+.target-card header span { font-size: 11px; }
+.target-card h3 { margin-top: 4px; font: 900 18px var(--font-d); }
+.target-body { padding: 0 20px 20px; }
+}

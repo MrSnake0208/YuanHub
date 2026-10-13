@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：23/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：27/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -21,10 +21,10 @@
 | /calendar/suggestions（feature: activityCalendar） | pages/calendar/suggestions.vue | pages/calendar/calendarSuggestionsDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionsMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /admin/ledger | pages/ledger/admin.vue | pages/ledger/ledgerAdminDesktop.css + cart-workspaceDesktop.css + 组件Desktop.css | pages/ledger/ledgerAdminMobile.css + cart-workspaceMobile.css + 组件Mobile.css | 原账房/目录/方案/收据控制器 | verified_nonbrowser | B11：38行为/204 Node/CSS/build | 草稿/收据单实例/目录版本保持；人工UI待做 | pending |
 | /calendar/admin（feature: activityCalendar） | pages/calendar/admin.vue | pages/calendar/calendarAdminDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarAdminMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
-| /works（feature: workSystem） | pages/work/index.vue | 待拆分 | 待拆分 | pages/work/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /work/new（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /work/:id（feature: workSystem） | pages/work/detail.vue | 待拆分 | 待拆分 | pages/work/detail.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /work/:id/edit（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /works（feature: workSystem） | pages/work/index.vue | pages/work/workIndexDesktop.css + 功能组件Desktop.css | pages/work/workIndexMobile.css + 功能组件Mobile.css | 原页面/文档/兼容性控制器 | verified_nonbrowser | B12：19行为/216 Node/CSS/build | 原功能开关/有序文档保持；人工UI待做 | pending |
+| /work/new（feature: workSystem） | pages/work/editor.vue | pages/work/workEditorDesktop.css + 功能组件Desktop.css | pages/work/workEditorMobile.css + 功能组件Mobile.css | 原页面/文档/兼容性控制器 | verified_nonbrowser | B12：19行为/216 Node/CSS/build | 原功能开关/有序文档保持；人工UI待做 | pending |
+| /work/:id（feature: workSystem） | pages/work/detail.vue | pages/work/workDetailDesktop.css + 功能组件Desktop.css | pages/work/workDetailMobile.css + 功能组件Mobile.css | 原页面/文档/兼容性控制器 | verified_nonbrowser | B12：19行为/216 Node/CSS/build | 原功能开关/有序文档保持；人工UI待做 | pending |
+| /work/:id/edit（feature: workSystem） | pages/work/editor.vue | pages/work/workEditorDesktop.css + 功能组件Desktop.css | pages/work/workEditorMobile.css + 功能组件Mobile.css | 原页面/文档/兼容性控制器 | verified_nonbrowser | B12：19行为/216 Node/CSS/build | 原功能开关/有序文档保持；人工UI待做 | pending |
 | /cart | pages/tools/cart.vue | pages/tools/cartPageDesktop.css + cart-workspaceDesktop.css + 组件Desktop.css | pages/tools/cartPageMobile.css + cart-workspaceMobile.css + 组件Mobile.css | 原账房/目录/方案/收据控制器 | verified_nonbrowser | B11：38行为/204 Node/CSS/build | 草稿/收据单实例/目录版本保持；人工UI待做 | pending |
 | /inventory | pages/inventory/index.vue | pages/inventory/inventoryWorkspaceDesktop.css + components/inventory/*Desktop.css/视图 | pages/inventory/inventoryWorkspaceMobile.css + components/inventory/*Mobile.css/视图 | pages/inventory/index.vue + 原奖励控制器 | verified_nonbrowser | B02–B05：真实父级/A1/A2/259行为/CSS/build | 无阻塞；人工UI待做 | pending |
 | /operator | pages/operator/index.vue | pages/operator/operatorWorkspaceDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorWorkspaceMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
@@ -162,4 +162,11 @@
 - `node --test test/cartBudget.test.js test/ledgerCatalog.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：204/204。原viewport断言跟随真实模块样式；以PostCSS父媒体检查代替会跨文件误匹配的正则，并补实际1180px底部留白检查。
 - `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-11-*.log`。通知/日志提交补记 `a907933`；本批保存标题 `refactor(ledger): 隔离账房与方案收据双端布局`。完整路由23/43，人工UI仍pending。
 
-下一动作：作业广场、详情、新建/编辑与兼容性展示。
+## B12：作业系统四路由与真实文档展示（L1样式归属）
+
+- 列表、详情、同一新建/编辑入口及WorkCard/问题清单/兼容性结果共6个SFC接入独立双端CSS；页面1080px、内容767px，原900px内容分栏保持。所有模板/控制器逐字不变，功能封存开关、路由、权限与标准文档顺序不变。
+- 816组原局部样式投影一致；页面/卡片另外显式持有原main.css中匹配其静态类名的41条继承几何（章节、元数据与卡片排布等），当前局部覆盖仍在后；页面主区/内容宽度默认值独立持有。清理矛盾媒体块共3343字节。
+- `npx --no-install vitest run behavior/workUx.spec.js behavior/workEditorHeader.spec.js`：19/19。新增4个两端用例，标题/回合说明/等待时长/动作节点顺序与焦点、旧版原始数据展开/返回页码保持，resize零额外读取、保存、兼容性请求。
+- `node --test test/workApi.test.js test/workEditor.test.js test/workPages.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js`：216/216。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-12-*.log`。账房提交补记 `d0476c8`；本批保存标题 `refactor(work): 拆分作业文档与详情双端展示`。完整路由27/43，人工UI仍pending。
+
+下一动作：内测资格与管理容量设置。

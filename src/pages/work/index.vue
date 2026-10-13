@@ -136,29 +136,21 @@ watch(function () { return route.query.page }, function (value) {
 </script>
 
 <style scoped>
-.works-content { padding: 12px 0 8px; }
-.works-summary { margin: 0 0 12px; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
-.works-live { min-height: 300px; }
-.list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.works-state { min-height: 300px; margin-top: 28px; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 48px 24px; border: 1.5px dashed var(--line); border-radius: 22px; background: var(--surface); color: var(--ink-60); text-align: center; }
-.works-state strong { color: var(--ink); font: 900 20px var(--font-s); }
-.works-state span { max-width: 520px; font-size: 13px; line-height: 1.7; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.works-summary { color: var(--ink-60); }
+.works-state { border: 1.5px dashed var(--line); border-radius: 22px; background: var(--surface); color: var(--ink-60); }
+.works-state strong { color: var(--ink); }
 .works-state.error { border-color: rgba(166, 81, 74, .45); }
-.works-state button, .works-pagination button { min-height: 44px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 13px var(--font-b); cursor: pointer; }
-.works-state a { min-height:44px;display:inline-flex;align-items:center;padding:10px 18px;border-radius:999px;background:var(--tea);color:var(--cream);font:800 13px var(--font-b);text-decoration:none; }
-.loading-mark { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: works-spin .8s linear infinite; }
-.works-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 30px; }
-.works-pagination span { color: var(--ink-60); font: 700 12px var(--font-d); }
+.works-state button, .works-pagination button { border: 1px solid var(--line); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.works-state a {border-radius:999px;background:var(--tea);color:var(--cream);text-decoration:none; }
+.loading-mark { border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: works-spin .8s linear infinite; }
+.works-pagination span { color: var(--ink-60); }
 .works-pagination button:disabled { opacity: .45; cursor: default; }
 @keyframes works-spin { to { transform: rotate(360deg); } }
 @media (max-width: 767px) {
-  .discovery-page-header .page-header-action { width: 100%; }
-  .discovery-page-header .page-header-actions { display: grid; }
-  .list { grid-template-columns: 1fr; gap: 12px; }
-  .works-state { min-height: 240px; margin-top: 16px; border-radius: 16px; }
-  .works-pagination { justify-content: space-between; gap: 8px; }
-  .works-pagination span { text-align: center; }
-  .works-pagination button { padding-inline: 13px; }
+  .works-state { border-radius: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .loading-mark { animation: none; } }
 </style>
+<style scoped src="./workIndexDesktop.css"></style>
+<style scoped src="./workIndexMobile.css"></style>
