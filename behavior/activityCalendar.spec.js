@@ -24,6 +24,15 @@ beforeEach(() => {
   isFeatureEnabled.mockReturnValue(true); listActivityCalendar.mockResolvedValue({ items: [item()] })
 })
 
+it('日历反馈入口只携带固定板块与新建标志，不携带账号或日程数据', async () => {
+  const { wrapper } = await render('/calendar?game=如鸢&ref=private')
+  await flushPromises()
+  const link = wrapper.findAll('a').find(node => node.text() === '反馈日历问题')
+  const query = new URL(link.attributes('href'), 'https://example.test').searchParams
+  expect(Object.fromEntries(query)).toEqual({ new: '1', category: 'CALENDAR' })
+  wrapper.unmount()
+})
+
 it('访客默认读取全部游戏和服务器90天范围；双来源统一展示且历史排除', async () => {
   listActivityCalendar.mockResolvedValue({ items: [item(), item({ id: 'pool', title: '招募项', game: '代号鸢', category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL' }), item({ id: 'past', title: '已结束项', start_date: '2020-01-01', end_date: '2020-01-02' })] })
   const { wrapper } = await render()

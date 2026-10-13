@@ -17,6 +17,7 @@ import { feedbackUnreadState, markAllManagedFeedbackRead } from '../src/store/fe
 import { auth } from '../src/store/auth.js'
 import { findSimilarFeedback } from '../src/api/coCreation.js'
 import { productVersionLabel } from '../src/config/buildInfo.js'
+import { PUBLIC_TYPE_OPTIONS } from '../src/utils/feedbackPublic.js'
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -472,6 +473,56 @@ it('提交链接直接打开私人表单并预选功能建议', async () => {
   expect(form.findAll('select')[0].element.value).toBe('FEATURE')
   expect(form.text()).toContain('原始正文、附件与账号信息不会直接公开')
   expect(api.createFeedback).not.toHaveBeenCalled()
+})
+
+it.each([MyFeedback, ManagedFeedback])('个人与管理筛选均展示权威七类型及统一名称', async component => {
+  const wrapper = render(component); await flushPromises()
+  const options = wrapper.findAll('.feedback-filter select')[0].findAll('option').slice(1)
+  expect(options.map(option => ({ key: option.element.value, label: option.text() }))).toEqual(PUBLIC_TYPE_OPTIONS)
+  wrapper.unmount()
+})
+
+it.each(['FEEDBACK', 'UNKNOWN'])('公开设置安全保留历史 %s 类型，不因编辑摘要自动改类', async type => {
+  const wrapper = mount(AdminFeedbackPublishPanel, { props: { item: { id: 'rpt_legacy', type, publicConsent: true, publicTitle: '公开标题' }, dialog: true, formatDate: () => '' } })
+  const select = wrapper.findAll('select')[0]
+  expect(select.element.value).toBe(type)
+  expect(select.findAll('option').slice(1).map(option => ({ key: option.element.value, label: option.text() }))).toEqual(PUBLIC_TYPE_OPTIONS)
+  expect(wrapper.vm.hasDraft).toBe(false)
+  await wrapper.get('.feedback-primary-action').trigger('click')
+  expect(wrapper.emitted('save')[0][0].type).toBe(type)
+  wrapper.unmount()
+})
+
+it('日历深链等待动态目录后预选体验优化并可提交，正文不从链接复制', async () => {
+  const pending = deferred()
+  api.getFeedbackAccess.mockReturnValue(pending.promise)
+  useRoute().query = { new: '1', type: 'EXPERIENCE', category: 'CALENDAR', content: '私人日程不得复制' }
+  const wrapper = render(MyFeedback); await flushPromises()
+  const form = () => wrapper.get('.feedback-modal form')
+  expect(form().findAll('select')[1].element.disabled).toBe(true)
+  expect(form().get('textarea').element.value).toBe('')
+  expect(form().findAll('select')[0].findAll('option').map(option => ({ key: option.element.value, label: option.text() }))).toEqual(PUBLIC_TYPE_OPTIONS)
+  pending.resolve({ available_categories: [{ key: 'CUSTOM_CAL', label: '活动与招募日程', builtin_key: 'CALENDAR' }] }); await flushPromises()
+  expect(form().findAll('select')[0].element.value).toBe('EXPERIENCE')
+  expect(form().findAll('select')[1].element.value).toBe('CUSTOM_CAL')
+  api.createFeedback.mockResolvedValue({ ...ticket('rpt_cal'), type: 'EXPERIENCE', category: 'CUSTOM_CAL' })
+  await form().get('textarea').setValue('只提交手动输入的测试描述')
+  await form().trigger('submit'); await flushPromises()
+  expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'EXPERIENCE', category: 'CUSTOM_CAL', content: '只提交手动输入的测试描述' }))
+  wrapper.unmount()
+})
+
+it.each([
+  [{ new: '1', type: 'FEEDBACK', category: 'EXPERIENCE', area: 'OPERATOR' }, 'EXPERIENCE', 'OPERATOR'],
+  [{ new: '1', type: 'UNKNOWN', category: 'UNKNOWN' }, 'BUG', '']
+])('旧链接与未知链接安全预填 %j', async (query, type, category) => {
+  useRoute().query = query
+  const wrapper = render(MyFeedback); await flushPromises()
+  const selects = wrapper.get('.feedback-modal form').findAll('select')
+  expect(selects[0].element.value).toBe(type)
+  expect(selects[1].element.value).toBe(category)
+  expect(api.createFeedback).not.toHaveBeenCalled()
+  wrapper.unmount()
 })
 
 it('管理员工作台默认显示待接单，并可切回全部', async () => {

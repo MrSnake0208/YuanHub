@@ -1,8 +1,7 @@
 // 反馈工单接口封装（对照 BackEndV3-Share 契约）
 import { request } from './request.js'
 import { feedbackDiagnostics } from '../config/buildInfo.js'
-
-const FEEDBACK_TYPES = new Set(['BUG', 'EXPERIENCE', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER'])
+import { isFeedbackType } from '../utils/feedbackPublic.js'
 
 // 创建反馈。type 是反馈类型，category 是后端提供的反馈板块。
 // diagnostics 始终取自本次构建实际运行的前端版本，与 clientInfoConsent 无关：
@@ -11,9 +10,10 @@ export async function createFeedback(payload) {
   const rawType = String(payload.type || 'FEEDBACK').trim().toUpperCase()
   const rawCategory = String(payload.category || '').trim().toUpperCase()
   const rawArea = String(payload.area || '').trim().toUpperCase()
-  const legacyType = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory) ? rawCategory : rawType
+  const legacyType = rawType === 'FEEDBACK' && isFeedbackType(rawCategory) ? rawCategory : rawType
+  if (!isFeedbackType(legacyType) && legacyType !== 'FEEDBACK') throw new Error('请选择有效的反馈类型')
   const category = rawType === 'FEEDBACK'
-    ? (rawArea || (FEEDBACK_TYPES.has(rawCategory) ? '' : rawCategory) || 'OTHER')
+    ? (rawArea || (isFeedbackType(rawCategory) ? '' : rawCategory) || 'OTHER')
     : (rawCategory === rawType && rawArea ? rawArea : rawCategory || rawArea || 'OTHER')
   const title = payload.title ? String(payload.title).trim() : ''
   const body = {
@@ -84,7 +84,7 @@ export function normalizeFeedback(report) {
   const rawType = String(report.type || '').trim().toUpperCase()
   const rawCategory = String(report.category || '').trim().toUpperCase()
   const rawArea = String(report.area || '').trim().toUpperCase()
-  const legacyCategory = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory)
+  const legacyCategory = rawType === 'FEEDBACK' && isFeedbackType(rawCategory)
   // 后端返回已归一的 area；旧响应仍优先使用 area。
   const category = rawArea || (legacyCategory ? 'OTHER' : rawCategory) || 'OTHER'
   const type = legacyCategory ? rawCategory : rawType
@@ -402,10 +402,12 @@ export async function mergeFeedback(id, targetFeedbackId) {
 
 // 修改反馈类型；影响反馈广场的类型筛选。
 export async function updateFeedbackType(id, type) {
+  const normalized = String(type || '').trim().toUpperCase()
+  if (!isFeedbackType(normalized)) throw new Error('请选择有效的反馈类型')
   const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/type`, {
     method: 'PATCH',
     auth: true,
-    body: { type: String(type || '').toUpperCase() }
+    body: { type: normalized }
   })
   return normalizeFeedback(data)
 }

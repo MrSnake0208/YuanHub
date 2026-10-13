@@ -254,7 +254,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
-import { PUBLIC_TYPE_OPTIONS, publicStatusLabel } from '@/utils/feedbackPublic.js'
+import { PUBLIC_TYPE_OPTIONS, publicStatusLabel, publicTypeLabel as typeLabel } from '@/utils/feedbackPublic.js'
 import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
@@ -402,10 +402,6 @@ const unreadFeedbackIds = computed(() => feedbackUnreadState.ids)
 const markAllReadHint = computed(() => feedbackUnreadState.count > 0
   ? `将当前管理范围内 ${feedbackUnreadState.count} 条未读反馈全部标记为已读`
   : '当前没有未读反馈')
-
-function typeLabel(type) {
-  return feedbackTypeOptions.find(option => option.key === type)?.label || type || '其他'
-}
 
 function categoryLabel(category) {
   return categoryOptions.value.find(option => option.key === category)?.label || category || '其他模块'

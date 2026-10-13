@@ -65,6 +65,8 @@ test('normalizePublicFeedback accepts snake_case and camelCase payloads', () => 
     public_title: '公开标题',
     public_summary: '公开摘要',
     type: 'feature',
+    category: 'CALENDAR',
+    category_label: '活动日历',
     public_status: 'PLANNED',
     support_count: 7,
     supported_by_current_user: true,
@@ -75,6 +77,8 @@ test('normalizePublicFeedback accepts snake_case and camelCase payloads', () => 
   assert.equal(snake.publicTitle, '公开标题')
   assert.equal(snake.publicSummary, '公开摘要')
   assert.equal(snake.type, 'FEATURE')
+  assert.equal(snake.category, 'CALENDAR')
+  assert.equal(snake.categoryLabel, '活动日历')
   assert.equal(snake.publicStatus, 'PLANNED')
   assert.equal(snake.supportCount, 7)
   assert.equal(snake.supportedByCurrentUser, true)

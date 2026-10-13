@@ -248,20 +248,14 @@ import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
+import { PUBLIC_TYPE_OPTIONS, feedbackPrefill, isFeedbackType, publicTypeLabel as typeLabel } from '@/utils/feedbackPublic.js'
 import { dialog } from '@/utils/dialog.js'
 import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const PAGE_SIZE = 20
 const statusTabs = ['全部', '处理中', '已完成', '已驳回']
-const feedbackTypeOptions = [
-  { key: 'BUG', label: '问题报告' },
-  { key: 'FEATURE', label: '功能建议' },
-  { key: 'CONTENT', label: '内容问题' },
-  { key: 'ACCOUNT', label: '账号问题' },
-  { key: 'REPORT', label: '举报' },
-  { key: 'OTHER', label: '其他' }
-]
+const feedbackTypeOptions = PUBLIC_TYPE_OPTIONS
 const route = useRoute()
 const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
@@ -328,10 +322,6 @@ function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
 }
 
-function typeLabel(type) {
-  return feedbackTypeOptions.find(option => option.key === type)?.label || type || '其他'
-}
-
 function categoryLabel(category) {
   return categoryOptions.value.find(option => option.key === category)?.label || category || '其他模块'
 }
@@ -352,7 +342,7 @@ async function loadAccess() {
     const data = await getFeedbackAccess()
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
     if (!rawAreas.length) throw new Error('反馈板块目录为空')
-    access.value.availableAreas = rawAreas.map(option => ({ key: option.key, label: option.label }))
+    access.value.availableAreas = rawAreas.map(option => ({ key: option.key, label: option.label, builtinKey: option.builtinKey ?? option.builtin_key }))
   } catch (_) {
     access.value.availableAreas = []
     accessError.value = '反馈板块加载失败，请刷新页面重试。'
@@ -592,6 +582,10 @@ async function submitFeedback() {
   if (newFeedback.value.publicConsent && !title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
+  if (!isFeedbackType(newFeedback.value.type)) {
+    formError.value = '请选择有效的反馈类型'
+    return
+  }
   if (!categoryOptions.value.some(option => option.key === newFeedback.value.category)) {
     formError.value = '请选择有效的反馈板块'
     return
@@ -640,12 +634,17 @@ onMounted(async () => {
   if (reportId) await selectTicket(reportId)
 })
 
-watch(() => route.query.new, value => {
+watch(() => [route.query.new, route.query.type, route.query.category, route.query.area], ([value]) => {
   if (value !== '1') return
-  const type = route.query.type
-  if (feedbackTypeOptions.some(option => option.key === type)) newFeedback.value.type = type
+  Object.assign(newFeedback.value, feedbackPrefill(route.query, categoryOptions.value))
   showNewForm.value = true
 }, { immediate: true })
+
+watch(categoryOptions, options => {
+  if (route.query.new === '1' && !newFeedback.value.category) {
+    newFeedback.value.category = feedbackPrefill(route.query, options).category
+  }
+})
 
 watch(() => route.query.id, id => {
   if (!isMounted || !ready) return

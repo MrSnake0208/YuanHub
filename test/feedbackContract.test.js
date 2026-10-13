@@ -150,6 +150,28 @@ test('创建反馈发送 type/category 字段', async () => {
   })
 })
 
+test('七种类型均能按活动日历板块提交回读', async () => {
+  const types = ['BUG', 'EXPERIENCE', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER']
+  await withFetch(async (_url, options) => {
+    const body = JSON.parse(options.body)
+    assert.equal(body.category, 'CALENDAR')
+    return apiResponse({ id: 'rpt_calendar', ...body, status: 'OPEN' })
+  }, async () => {
+    for (const type of types) {
+      const result = await createFeedback({ type, category: 'CALENDAR', content: '隔离测试' })
+      assert.equal(result.type, type)
+      assert.equal(result.category, 'CALENDAR')
+    }
+  })
+})
+
+test('未知提交类型和旧值改类在请求前被拒绝', async () => {
+  await withFetch(() => assert.fail('无效类型不得发送请求'), async () => {
+    await assert.rejects(createFeedback({ type: 'UNKNOWN', category: 'CALENDAR' }), /有效的反馈类型/)
+    await assert.rejects(updateFeedbackType('rpt_calendar', 'FEEDBACK'), /有效的反馈类型/)
+  })
+})
+
 test('后端新增的反馈板块按原值提交和展示', async () => {
   let sent
   const created = await withFetch(async (_url, options) => {

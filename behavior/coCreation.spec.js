@@ -5,6 +5,8 @@ import FeedbackSupportButton from '../src/components/co-creation/FeedbackSupport
 import SimilarFeedbackList from '../src/components/co-creation/SimilarFeedbackList.vue'
 import FeedbackPlazaPage from '../src/pages/feedback/plaza.vue'
 import PublicFeedbackDetail from '../src/components/co-creation/PublicFeedbackDetail.vue'
+import PublicFeedbackCard from '../src/components/co-creation/PublicFeedbackCard.vue'
+import { PUBLIC_TYPE_OPTIONS } from '../src/utils/feedbackPublic.js'
 import ChangelogRelatedFeedback from '../src/components/changelog/ChangelogRelatedFeedback.vue'
 import * as api from '../src/api/coCreation.js'
 
@@ -51,6 +53,23 @@ beforeEach(() => {
 })
 
 describe('FeedbackPlaza', () => {
+  it('广场筛选展示统一七类型，日历板块在公开卡片与详情一致显示', async () => {
+    api.listPublicFeedback.mockResolvedValue({ items: [publicItem({ category: 'CALENDAR', categoryLabel: '活动日历' })], total: 1 })
+    const wrapper = render(FeedbackPlaza); await flushPromises()
+    const options = wrapper.findAll('.feedback-filter select')[0].findAll('option').slice(1)
+    expect(options.map(option => ({ key: option.element.value, label: option.text() }))).toEqual(PUBLIC_TYPE_OPTIONS)
+    expect(wrapper.get('.public-card-category').text()).toBe('活动日历')
+    const detail = render(PublicFeedbackDetail, { props: { item: publicItem({ category: 'CALENDAR', categoryLabel: '活动日历' }), formatDate }, global: { stubs: { PublicFeedbackManagement: true } } })
+    expect(detail.get('.public-detail-category').text()).toBe('活动日历')
+    wrapper.unmount(); detail.unmount()
+  })
+
+  it.each(PUBLIC_TYPE_OPTIONS)('公开卡片正确显示 $key 类型', ({ key, label }) => {
+    const wrapper = render(PublicFeedbackCard, { props: { item: publicItem({ type: key }), formatDate } })
+    expect(wrapper.get('.feedback-type-badge').text()).toBe(label)
+    wrapper.unmount()
+  })
+
   it('renders public cards and opens the detail dialog', async () => {
     api.listPublicFeedback.mockResolvedValue({ items: [publicItem()], total: 1, page: 1, pageSize: 12 })
     api.getPublicFeedback.mockResolvedValue(publicItem())

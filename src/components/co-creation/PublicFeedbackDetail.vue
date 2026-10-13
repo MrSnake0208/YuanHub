@@ -6,6 +6,7 @@
     <template v-else-if="item">
       <div class="public-detail-badges">
         <FeedbackTypeBadge :type="item.type" />
+        <span v-if="item.categoryLabel" class="public-detail-category">{{ item.categoryLabel }}</span>
         <FeedbackStatusBadge :status="item.publicStatus" />
       </div>
 
@@ -81,6 +82,7 @@ defineEmits(['updated', 'unpublished'])
 .public-detail-state { padding: 18px 0; color: var(--feedback-text-muted); font-size: 13px; }
 .public-detail-state.error { color: var(--feedback-danger); }
 .public-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.public-detail-category { min-width: 0; padding: 2px 9px; border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); font-size: 11px; overflow-wrap: anywhere; }
 .public-detail-title { color: var(--feedback-text); font-family: var(--font-s); font-size: 24px; font-weight: 900; line-height: 1.35; }
 .public-detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .public-detail-support-count { color: var(--feedback-text-muted); font: 12px var(--font-d); }
