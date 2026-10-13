@@ -146,7 +146,7 @@
                     :aria-pressed="activeRow?.agent_id === agent.id"
                     :class="{ 'is-selected': activeRow?.agent_id === agent.id }"
                     :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
-                    @click="add(agent.id)"
+                    @click="add(agent.id, $event)"
                   >
                     <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
                     <span class="quick-up-mark" aria-hidden="true">UP</span>
@@ -157,7 +157,7 @@
                     :aria-pressed="choosingAgent"
                     :class="{ 'is-selected': choosingAgent }"
                     :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
-                    @click="add()"
+                    @click="add('', $event)"
                   >
                     <Plus :size="17" aria-hidden="true" />
                     {{ quickUpAgents.length ? '其他密探' : '新增记录' }}
@@ -287,7 +287,7 @@
               <ol key="progress-records" ref="recordList" v-if="displayRows.length && recordView === 'progress'" class="record-feed">
                 <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row), 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
-                  <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row)" @contextmenu.prevent>
+                  <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
                     <OperatorAvatar
                       class="record-avatar"
                       :avatar="agentAvatar(selectedAgent(row))"
@@ -301,7 +301,7 @@
                     class="record-detail"
                     :disabled="busy || readOnly || recordsLoading || !!activeRow"
                     :aria-label="recordLabel(row)"
-                    @click="edit(row)"
+                    @click="edit(row, $event)"
                   >
                     <span class="record-track">
                       <span class="record-bar" :class="barClass(row)" :style="{ width: spanWidth(row) }">
@@ -322,7 +322,7 @@
               <ol key="agent-records" ref="recordList" v-else-if="displayRows.length" class="agent-record-grid" aria-label="密探视图">
                 <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="agent-record-card" :class="{ 'is-saved': isSavedRow(row) }">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
-                  <button type="button" class="agent-record-portrait record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row)" @contextmenu.prevent>
+                  <button type="button" class="agent-record-portrait record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
                     <OperatorAvatar
                       class="agent-record-avatar"
                       :avatar="agentAvatar(selectedAgent(row))"
@@ -338,7 +338,7 @@
                     class="agent-record-detail"
                     :disabled="busy || readOnly || recordsLoading || !!activeRow"
                     :aria-label="recordLabel(row)"
-                    @click="edit(row)"
+                    @click="edit(row, $event)"
                   >
                     <span class="agent-record-name">{{ selectedAgent(row)?.name || row.agent_id }}</span>
                     <span class="agent-record-flags" aria-hidden="true">
@@ -432,7 +432,7 @@ function openPosition() {
   positionOpen.value = !positionOpen.value
   if (!positionOpen.value) return
   if (props.hasMore) emit('load-all')
-  nextTick(() => { entryComposer.value?.querySelector('.position-picker select')?.focus(); scheduleEntryVisibility() })
+  nextTick(() => { focusInBody(entryComposer.value?.querySelector('.position-picker select')); scheduleEntryVisibility() })
 }
 const missingRecordIds = computed(() => {
   if (!recordsReady.value || props.hasMore || unverifiedSave.value) return []
@@ -682,7 +682,7 @@ function moveByKey(event, row) {
   ids.splice(index, 1); ids.splice(target, 0, row.event_id)
   applyDisplayOrder(ids)
   announceOrder(`${selectedAgent(row)?.name || row.agent_id}已移到第${target + 1}条，共${ids.length}条，待保存`)
-  nextTick(() => { handle?.focus(); handle?.scrollIntoView?.({ block: 'nearest' }) })
+  nextTick(() => focusInBody(handle))
 }
 function resetOrder() {
   orderIds.value = null; orderRevision.value = null
@@ -727,11 +727,11 @@ function updateKeyboardInset() {
 function ensureEntryVisible() {
   if (typeof window === 'undefined') return
   updateKeyboardInset()
-  if (!props.open || !editorBody.value || (!activeRow.value && document.activeElement !== remainingInput.value)) return
+  if (!props.open || !editorBody.value || (!entryComposer.value?.contains(document.activeElement) && document.activeElement !== remainingInput.value)) return
   const viewport = window.visualViewport
   const visibleTop = Math.max(viewport?.offsetTop || 0, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
-  const visibleBottom = (viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
-  const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement : null
+  const visibleBottom = Math.min(editorBody.value.getBoundingClientRect().bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
+  const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input, select, textarea, button') ? document.activeElement : null
   const bounds = (focusedField || entryComposer.value).getBoundingClientRect()
   const rect = { top: bounds.top, bottom: bounds.bottom, height: bounds.height }
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
@@ -777,14 +777,47 @@ function onViewportChange() {
   if (props.open) scheduleEntryVisibility()
 }
 function focusEntry(preferPulls = false) {
+  const session = editorSession
   nextTick(() => {
-    const target = preferPulls ? pullSpanInput.value : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
-    target?.focus()
+    if (!props.open || session !== editorSession || !activeRow.value) return
+    const target = preferPulls ? pullSpanInput.value || entryComposer.value?.querySelector('.composer-actions .primary') : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
+    target?.focus({ preventScroll: true })
     scheduleEntryVisibility()
   })
 }
-function add(agentId = '') {
+function focusInBody(target) {
+  if (!props.open || !target?.isConnected || target.disabled) return
+  target.focus({ preventScroll: true })
+  const body = editorBody.value, bounds = body?.getBoundingClientRect(), rect = target.getBoundingClientRect()
+  if (!bounds || !body.contains(target)) return
+  const viewport = window.visualViewport
+  const top = Math.max(bounds.top, viewport?.offsetTop || 0) + 16
+  const bottom = Math.min(bounds.bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - 16
+  const delta = rect.top < top ? rect.top - top : rect.bottom > bottom ? rect.bottom - bottom : 0
+  if (Math.abs(delta) > 1) body.scrollBy?.({ top: delta, behavior: 'auto' })
+}
+let entryReturn = null
+function rememberEntry(target, id = null) {
+  entryReturn = { target, id, top: target?.getBoundingClientRect().top, scrollTop: editorBody.value?.scrollTop || 0, handle: target?.matches('.record-handle') }
+}
+function restoreEntry(id = entryReturn?.id) {
+  const anchor = entryReturn, session = editorSession
+  entryReturn = null
+  nextTick(() => {
+    if (!props.open || session !== editorSession || activeRow.value) return
+    const row = Array.from(recordList.value?.children || []).find(node => node.dataset.eventId === id)
+    const opener = anchor?.target?.isConnected && !anchor.target.disabled ? anchor.target : null
+    const target = row?.querySelector(anchor?.handle ? '.record-handle' : '.record-detail, .agent-record-detail') || opener || panel.value?.querySelector('.add-record:not(:disabled)') || panel.value?.querySelector('.record-view-switch button')
+    if (anchor && editorBody.value) {
+      editorBody.value.scrollTop = anchor.scrollTop
+      if (row && anchor.id && anchor.top != null) editorBody.value.scrollTop += target.getBoundingClientRect().top - anchor.top
+    }
+    focusInBody(target)
+  })
+}
+function add(agentId = '', event) {
   if (props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
+  if (!activeRow.value) rememberEntry(event?.currentTarget || panel.value?.querySelector('.add-record'))
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''
@@ -808,7 +841,7 @@ function chooseOtherAgent(agentId) {
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function edit(row, event) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -820,7 +853,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { resetPosition(); activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
+function cancelEntry() { resetPosition(); activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); restoreEntry() }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''
@@ -849,11 +882,13 @@ function confirmRecord() {
     resetPosition()
     activeRow.value = null
     choosingAgent.value = false
-    nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
+    restoreEntry(row.event_id)
     return true
-  } catch (err) { error.value = err.message; nextTick(() => errorSummary.value?.focus()); return false }
+  } catch (err) { error.value = err.message; nextTick(() => focusInBody(errorSummary.value)); return false }
 }
 function remove(row) {
+  const index = displayRows.value.findIndex(item => item.event_id === row.event_id)
+  const neighbor = displayRows.value[index + 1] || displayRows.value[index - 1]
   resetPosition()
   if (orderIds.value) orderIds.value = orderIds.value.filter(id => id !== row.event_id)
   if (activeRow.value?.event_id === row.event_id) {
@@ -863,10 +898,11 @@ function remove(row) {
   }
   if (originals.has(row.event_id) && !deletedIds.value.includes(row.event_id)) deletedIds.value.push(row.event_id)
   rows.value = rows.value.filter(item => item.event_id !== row.event_id)
-  nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
+  restoreEntry(neighbor?.event_id)
 }
 watch(() => props.open, open => {
   editorSession++
+  entryReturn = null
   sortAnnouncement.value = ''
   if (!open) {
     if (guideVisible.value) dismissGuide()
@@ -916,7 +952,7 @@ onBeforeUnmount(() => {
   window.clearTimeout(pointerReleaseTimer)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
+useModalFocus(computed(() => props.open), panel, { preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
 async function submit() {
   if (dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
   if (activeRow.value) {
@@ -950,7 +986,7 @@ async function submit() {
     preservedProgress.value = props.pool.progress
     if (!requestId) requestId = crypto.randomUUID()
     emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
-  } catch (err) { error.value = err.message; await nextTick(); errorSummary.value?.focus() }
+  } catch (err) { error.value = err.message; await nextTick(); focusInBody(errorSummary.value) }
 }
 </script>
 
@@ -1418,7 +1454,7 @@ button:not(:disabled):hover {
 
 .agent-picker-cancel {
   min-width: 52px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 5px 10px;
   border-color: color-mix(in srgb, var(--tea) 24%, var(--line));
   font-size: 11px;
@@ -1452,7 +1488,7 @@ button:not(:disabled):hover {
 
 .agent-filter-options button {
   min-width: 0;
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 8px;
   border: 0;
   border-radius: 6px;
@@ -1479,8 +1515,8 @@ button:not(:disabled):hover {
 
 .agent-picker-results {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
+  grid-template-columns: repeat(auto-fill, minmax(min(64px, 100%), 1fr));
+  gap: 8px;
   max-height: min(42dvh, 340px);
   margin-top: 7px;
   overflow-y: auto;
@@ -1511,10 +1547,9 @@ button:not(:disabled):hover {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .agent-picker-empty {
@@ -1570,8 +1605,7 @@ button:not(:disabled):hover {
   overflow: hidden;
   font-size: 12px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .pull-count-field {
@@ -1626,6 +1660,7 @@ select {
 
 .composer-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin: 0;
@@ -1834,8 +1869,8 @@ select {
 
 .agent-record-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 12px 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr));
+  gap: 16px 12px;
   margin: 0;
   padding: 12px 0 0;
   border-top: 1px solid var(--line);
@@ -1855,7 +1890,7 @@ select {
   display: grid;
   width: 100%;
   min-width: 0;
-  min-height: 0;
+  min-height: 44px;
   justify-items: center;
   gap: 5px;
   padding: 6px 3px 7px;
@@ -1927,15 +1962,15 @@ select {
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .agent-record-flags {
   display: flex;
+  flex-wrap: wrap;
   min-height: 17px;
   align-items: center;
   justify-content: center;
@@ -2119,11 +2154,11 @@ summary:focus-visible,
   }
 
   .agent-filter-options.is-prof {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
   }
 
   .agent-filter-options.is-subprof {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
   }
 
   .agent-filter-options button {
@@ -2136,7 +2171,6 @@ summary:focus-visible,
   }
 
   .agent-picker-results {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
     max-height: 44dvh;
   }
 
@@ -2233,10 +2267,6 @@ summary:focus-visible,
 }
 
 @media (max-width: 360px) {
-  .agent-picker-results {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .progress-card {
     grid-template-columns: minmax(0, 1fr);
   }
