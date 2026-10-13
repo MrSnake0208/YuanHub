@@ -9,5 +9,8 @@
 defineEmits(['record', 'practice', 'close'])
 </script>
 <style scoped>
-.guide-choice{display:grid;gap:4px;padding:8px;max-width:100%;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 6px 20px rgba(73,59,44,.1)}button{min-height:44px;padding:8px 12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;cursor:pointer}button:hover{background:var(--cream)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}small{display:block;color:var(--ink-60);font-size:12px;line-height:1.6}.choice-close{color:var(--ink-60)}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.guide-choice{border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 6px 20px rgba(73,59,44,.1)}button{border:0;border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}button:hover{background:var(--cream)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}small{color:var(--ink-60)}.choice-close{color:var(--ink-60)}
 </style>
+<style scoped src="./recruitmentGuideChoiceDesktop.css"></style>
+<style scoped src="./recruitmentGuideChoiceMobile.css"></style>

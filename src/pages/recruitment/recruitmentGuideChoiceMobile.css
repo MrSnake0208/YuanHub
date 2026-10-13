@@ -1,0 +1,4 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.guide-choice{display:grid;gap:4px;padding:8px;max-width:100%}button{min-height:44px;padding:8px 12px;text-align:left;font:inherit}small{display:block;font-size:12px;line-height:1.6}
+}

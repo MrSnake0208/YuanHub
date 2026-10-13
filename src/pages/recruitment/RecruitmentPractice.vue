@@ -30,5 +30,8 @@ function showResult(payload) {
 useModalFocus(computed(() => !selected.value), panel, { initialFocus: () => panel.value?.querySelector('.pool-card'), onEscape: () => emit('close') })
 </script>
 <style scoped>
-.practice-panel{width:min(900px,100%);max-height:calc(100dvh - 24px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}h2{font:700 20px/1.5 var(--font-s)}p{font-size:13px;line-height:1.7;color:var(--ink-60)}button{flex:none;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.practice-panel{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}p{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 </style>
+<style scoped src="./recruitmentPracticeDesktop.css"></style>
+<style scoped src="./recruitmentPracticeMobile.css"></style>

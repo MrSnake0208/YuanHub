@@ -1,0 +1,4 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.guide-hint{position:relative;width:fit-content;max-width:100%;margin:10px 0 12px;padding:10px 12px;font:13px/1.6 var(--font-b);overflow-wrap:anywhere}.guide-hint::after{position:absolute;bottom:-6px;left:20px;width:10px;height:10px;transform:rotate(45deg)}p{margin:0}.guide-hint :deep(button){margin-top:8px}
+}
