@@ -98,12 +98,12 @@
                     <small>{{ materialSummary(row.calculation.xiuwei) || '无需补充修为材料' }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ operatorHuajiLabel(row) }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><input v-if="isMovieOperator(row)" class="tracker-editable tracker-number-input" type="number" :min="row.starLevel" max="5" step="1" :value="targetFor(row).starLevel" :aria-label="row.name + '的目标星级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'starLevel', $event)" /><button v-else class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + targetStarLabel(row)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ targetStarLabel(row) }}</button><button v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'star', 1, '提升至下一节点').className" :disabled="quickUpgradeState(row, 'star', 1, '提升至下一节点').disabled" :aria-label="row.name + '快捷提升化极：' + quickUpgradeState(row, 'star', 1, '提升至下一节点').label" :title="quickUpgradeState(row, 'star', 1, '提升至下一节点').title" @click="requestQuickUpgrade(row, 'star', 1)"><ChevronUp v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div>
-                      <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置目标星级与节点</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 31 ? '觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><label v-if="!isMovieOperator(row) && Number(row.rarity) !== 3">觉醒目标<select :value="targetFor(row).awakened == null ? 'unknown' : String(targetFor(row).awakened)" :aria-label="row.name + '觉醒目标'" :disabled="targetBusyIds.has(row.id)" @change="setTarget(row, 'awakened', $event)"><option value="unknown">待确认</option><option value="false">确认未觉醒</option><option value="true">确认已觉醒</option></select></label><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
+                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ operatorHuajiLabel(row) }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><input v-if="isMovieOperator(row)" class="tracker-editable tracker-number-input" type="number" :min="row.starLevel" max="5" step="1" :value="targetFor(row).starLevel" :aria-label="row.name + '的目标星级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'starLevel', $event)" /><button v-else class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + targetStarLabel(row)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ targetStarLabel(row) }}</button><button v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'star', 1, '提升至下一节点').className" :disabled="quickUpgradeState(row, 'star', 1, '提升至下一节点').disabled" :aria-label="row.name + '快捷提升化极：' + quickUpgradeState(row, 'star', 1, '提升至下一节点').label" :title="quickUpgradeState(row, 'star', 1, '提升至下一节点').title" @click="requestQuickUpgrade(row, 'star', 1)"><span v-if="operatorHuajiAction(row).kind === 'awakening'">{{ operatorHuajiAction(row).label }}</span><ChevronUp v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div>
+                      <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置成长目标：星级、节点 → 觉醒</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-if="starTargetDraft == null" value="-1" disabled>历史目标阶段待确认</option><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 'awakening' ? '五星后 · 觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><p v-if="starTargetDraft === 'awakening'" class="setting-help">觉醒材料规则未知，暂不估算成本或完成日期；等级、修为及已知化极需求仍参与排期。</p><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
                     </div>
-                    <div class="growth-track rose"><i :style="{ width: progress(operatorHuaji(row).stage, targetFor(row).huaji?.stage) + '%' }"></i></div>
+                    <div class="growth-track rose"><i :style="{ width: growthHuajiProgress(row, targetFor(row)) + '%' }"></i></div>
                     <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'star', 1)" @retry="requestQuickUpgrade(row, 'star', 1)" @execute="executeGrowthAction(row, 'star')" />
-                    <small v-if="isMovieOperator(row)" class="heart-progress-note">电影星级材料暂不支持估算，不计入耗时</small><small v-else class="heart-progress-note">心纸 {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span></small>
+                    <small v-if="row.calculation.star.awakeningUnsupported" class="heart-progress-note">{{ operatorHuaji(row).stage === 25 ? (operatorHuaji(row).awakened == null ? '已到五星，觉醒待确认' : '已到五星，觉醒待完成') : '目标包含觉醒' }} · 觉醒材料规则未知，暂不估算</small><small v-if="isMovieOperator(row)" class="heart-progress-note">电影星级材料暂不支持估算，不计入耗时</small><small v-else class="heart-progress-note">{{ row.calculation.star.unsupported ? '已知化极心纸' : '心纸' }} {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span></small>
                   </div>
                 </div>
                 <slot name="remark" :row="row" />
@@ -385,9 +385,9 @@
 </template>
 
 <script setup>
-import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel } from '../../utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported } from '../../utils/operatorHuaji.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
-import { normalizeGrowthTarget, sharedPlanCalculations } from '../../data/operatorPlanGrowth.js'
+import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
@@ -515,7 +515,7 @@ function togglePastSchedule() {
 const rosterDragId = ref('')
 const starTargetId = ref('')
 const starTargetDraft = ref(0)
-const starTargetGroup = computed(() => starGroup(starTargetDraft.value))
+const starTargetGroup = computed(() => starTargetDraft.value === 'awakening' ? 'awakening' : starTargetDraft.value == null ? -1 : starGroup(starTargetDraft.value))
 const removePromptRow = ref(null)
 const removePromptError = ref('')
 const removePromptBusy = ref(false)
@@ -550,7 +550,7 @@ function targetFor(row, plan = activePlan.value) {
   const saved = (plan?.source === 'custom' ? plan.targets[row.id] : targets.value[row.id]) || {}
   return normalizeGrowthTarget({ ...catalog, ...row }, saved)
 }
-function targetStarLabel(row) { return operatorHuajiLabel({ ...row, huaji: targetFor(row).huaji }) }
+function targetStarLabel(row) { const huaji = targetFor(row).huaji; return huaji.stage === 25 && operatorAwakeningSupported(row) ? huaji.awakened === true ? '5 星 → 觉醒' : '5 星' : operatorHuajiLabel({ ...row, huaji }) }
 function targetEliteMax(row) { return Math.max(Number(row?.elite) || 0, getMaxEliteForLevel(targetFor(row).level)) }
 function firstSubProf(row) { return Array.isArray(row?.subProf) ? row.subProf[0] : String(row?.subProf || '').split('、')[0] }
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
@@ -571,22 +571,29 @@ function profList(value) {
   return result
 }
 function profIcon(prof) { const file = PROF_ICON_FILES[String(prof || '').trim()]; return file ? (import.meta.env.BASE_URL || '/') + 'assets/prof-icons/' + file : '' }
-function starStage(value, row) { return isMovieOperator(row) ? Number(value) || 0 : starStageFromLevel(value) }
 function starLabel(value, row) { const number = Number(value) || 0; if (isMovieOperator(row)) return number > 0 ? number + ' 星' : '未拥有'; if (number <= 0) return '未拥有'; if (number >= 31) return '觉醒'; if (number >= 25) return '5星'; return Math.min(5, Math.floor((number - 1) / 6) + 1) + '⭐' + ((number - 1) % 6) }
-function starStagesFor(row) { if (isMovieOperator(row)) return Array.from({ length: 6 }, (_, value) => ({ value, label: value ? value + ' 星' : '未拥有' })).filter(stage => stage.value >= (Number(row.starLevel) || 0)); const current = starStage(row?.starLevel); return starStages.filter(stage => stage.value <= operatorHuajiMax(row) && stage.value >= (operatorHuaji(row).stage || 0) && starStage(stage.value) >= (current || 0)) }
+function starStagesFor(row) { if (isMovieOperator(row)) return Array.from({ length: 6 }, (_, value) => ({ value, label: value ? value + ' 星' : '未拥有' })).filter(stage => stage.value >= (Number(row.starLevel) || 0)); return starStages.filter(stage => stage.value <= operatorHuajiMax(row) && stage.value >= (operatorHuaji(row).stage || 0)) }
 function starGroup(value) { const number = Number(value) || 0; if (number === 0 || number === 31) return number; return Math.min(5, Math.floor((number - 1) / 6) + 1) }
-function starGroupsFor(row) { return [...new Set(starStagesFor(row).map(stage => starGroup(stage.value)))] }
+function starGroupsFor(row) { return [...new Set(starStagesFor(row).map(stage => starGroup(stage.value))), ...(operatorAwakeningSupported(row) ? ['awakening'] : [])] }
 function starNodesFor(row, group) { return starStagesFor(row).filter(stage => starGroup(stage.value) === Number(group)) }
-function setStarTargetGroup(row, event) { const stages = starNodesFor(row, Number(event.target.value)); const node = (starTargetDraft.value - 1) % 6; const matching = stages.find(stage => (stage.value - 1) % 6 === node); if (stages.length) starTargetDraft.value = (matching || stages[0]).value }
-async function openStarTarget(row, event) { if (starTargetId.value === row.id) return closeStarTarget(); starTargetTrigger = event.currentTarget; starTargetDraft.value = targetFor(row).starLevel; starTargetId.value = row.id; await nextTick(); document.getElementById('tracker-star-target-' + row.id)?.querySelector('select')?.focus() }
+function setStarTargetGroup(row, event) { if (event.target.value === 'awakening' && operatorAwakeningSupported(row)) { starTargetDraft.value = 'awakening'; return }; const stages = starNodesFor(row, Number(event.target.value)); const node = (starTargetDraft.value - 1) % 6; const matching = stages.find(stage => (stage.value - 1) % 6 === node); if (stages.length) starTargetDraft.value = (matching || stages[0]).value }
+async function openStarTarget(row, event) { if (starTargetId.value === row.id) return closeStarTarget(); starTargetTrigger = event.currentTarget; const target = targetFor(row); starTargetDraft.value = target.huaji?.awakened === true && operatorAwakeningSupported(row) ? 'awakening' : target.huaji?.stage ?? null; starTargetId.value = row.id; await nextTick(); document.getElementById('tracker-star-target-' + row.id)?.querySelector('select')?.focus() }
 function closeStarTarget(restoreFocus = false) { starTargetId.value = ''; if (restoreFocus) starTargetTrigger?.focus(); starTargetTrigger = null }
-async function saveStarTarget(row) { const saved = await setTarget(row, 'starLevel', starTargetDraft.value); if (saved && starTargetId.value === row.id) { await nextTick(); closeStarTarget(true) } }
+async function saveStarTarget(row) {
+  const draft = starTargetDraft.value
+  if (draft == null) return closeStarTarget(true)
+  const prior = targetFor(row).huaji
+  const huaji = draft === 'awakening' ? { owned: true, stage: 25, awakened: true }
+    : { owned: draft > 0, stage: draft, awakened: prior.awakened === true ? null : prior.awakened }
+  const saved = await setTarget(row, 'huaji', huaji)
+  if (saved && starTargetId.value === row.id) { await nextTick(); closeStarTarget(true) }
+}
 function dismissStarTarget(event) { if (addMenu.value && !event.target.closest('.add-wrap')) { addMenu.value = ''; pendingSpendChannel.value = '' } if (starTargetId.value && !event.target.closest('.tracker-star-anchor')) closeStarTarget(); if (goalDatePickerOpen.value && !goalDatePickerWrap.value?.contains(event.target)) closeGoalDatePicker(false) }
 function quickUpgradeState(row, field, step, readyLabel) {
   if (field === 'star' && isMovieOperator(row)) return { visible: false }
-  if (field === 'star' && (operatorHuaji(row).stage == null || operatorHuaji(row).stage >= operatorHuajiMax(row))) return { visible: true, disabled: true, icon: 'check', label: operatorHuaji(row).stage == null ? '待确认' : '已满阶', title: '化极终点或阶段待确认' }
+  if (field === 'star' && operatorHuajiAction(row).disabled) { const action = operatorHuajiAction(row); return { visible: Boolean(row.owned), disabled: true, icon: 'check', label: action.label, title: action.label } }
   const fallback = { visible: Boolean(props.quickUpgrade && row?.owned), disabled: false, className: '', icon: 'up', label: readyLabel, title: '在养成规划中查看快捷提升' }
-  if (typeof props.quickUpgradeState !== 'function') return fallback
+  if (typeof props.quickUpgradeState !== 'function') return field === 'star' && operatorHuajiAction(row).kind === 'awakening' ? { ...fallback, label: operatorHuajiAction(row).label, title: operatorHuajiAction(row).label } : fallback
   return Object.assign(fallback, props.quickUpgradeState(row, field, step, readyLabel) || {})
 }
 function requestQuickUpgrade(row, field, step) {
@@ -767,11 +774,13 @@ const exactPlannerInput = computed(() => {
     firstDay: currentDay.value.planned, manualPlans: manualPlans.value,
     dates: Array.from({ length: Math.max(0, 90 - Math.max(0, offset)) }, (_, index) => addDays(selectedDate.value, index)) }
 })
-const plannerEtaLabel = computed(() => loading.value ? '同步中' : error.value ? '库存未同步'
+const hasUnknownRequirements = computed(() => planRows.value.some(row => row.calculation.star.unsupported || row.calculation.sharedUnsupported))
+const plannerEtaLabel = computed(() => loading.value ? '同步中' : error.value ? '库存未同步' : hasUnknownRequirements.value ? '材料规则未知 · 暂不估算'
   : scheduleDifferences.value.goalsChanged ? '旧方案待更新' : scheduleTiming.value.remainingDays == null ? simulationLabel(plannerSimulation.value)
     : scheduleTiming.value.remainingDays === 0 ? (fixedSchedule.value ? '按计划应已备齐' : '材料已备齐') : formatEta(scheduleTiming.value.remainingDays))
 const plannerEtaExplanation = computed(() => {
   if (loading.value || error.value) return '等待库存同步后估算。'
+  if (hasUnknownRequirements.value) return '完整目标耗时暂不估算；日程仅安排等级、修为及已知化极材料。'
   if (scheduleDifferences.value.goalsChanged) return '清单或目标已变化，请更新日程后查看新预计耗时。'
   const date = scheduleTiming.value.completionDate
   return (date ? `预计 ${formatLongDate(date)} 备齐` : '') 
@@ -798,7 +807,7 @@ function simulationLabel(result) {
   return result.etaDays === 0 ? '材料已备齐' : formatEta(result.etaDays)
 }
 const purchaseCostLabel = computed(() => formatNumber(PURCHASE_CUMULATIVE[normalizePlannerPreferences(plannerPreferences.value).purchaseCount]) + ' 白金币')
-const aggregateMoneyLabel = computed(() => { const money = planRows.value.reduce((sum, row) => sum + Number(row.calculation.total.money || 0), 0); return `目标五铢钱需求 ${formatNumber(money)}` })
+const aggregateMoneyLabel = computed(() => { const money = planRows.value.reduce((sum, row) => sum + Number(row.calculation.total.money || 0), 0); return `${hasUnknownRequirements.value ? '已知部分' : '目标'}五铢钱需求 ${formatNumber(money)}` })
 function plannerStateTotal(state) { return Object.values(aggregatePlannerState(state || {})).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) }
 function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.png' : '' }
 function operatorIcon(row) { return row?.id ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/agents/' + encodeURIComponent(row.id) + '.png' : '' }
@@ -933,7 +942,7 @@ function heartHistorySummary(row) {
   return '近30个业务日共获得 ' + formatNumber(heartHistoryFor(row).acquired) + ' 片心纸'
 }
 function rowGapCount(row) { return row.calculation.gaps.length + (row.calculation.experienceGap > 0 ? 1 : 0) + (row.calculation.heartGap > 0 ? 1 : 0) }
-function rowProgress(row) { const level = progress(row.level, row.calculation.sharedTarget.level); const elite = progress(row.elite, row.calculation.sharedTarget.elite); const fate = progress(operatorHuaji(row).stage, targetFor(row).huaji?.stage); return Math.round((level + elite + fate) / 3) }
+function rowProgress(row) { const level = progress(row.level, row.calculation.sharedTarget.level); const elite = progress(row.elite, row.calculation.sharedTarget.elite); const fate = growthHuajiProgress(row, targetFor(row)); return Math.round((level + elite + fate) / 3) }
 function trainingGroupForSpend(spend) { const groupId = spend?.groupId || ({ feng: 'fh', dishui: 'ds', yinyang: 'yy', experience: 'experience' }[spend?.id]); return TRAINING_GROUPS.find(group => group.id === groupId) }
 
 function workspaceCopy() { return JSON.parse(JSON.stringify(workspace.value)) }
@@ -1235,7 +1244,7 @@ function readLocalTargets() { if (typeof localStorage === 'undefined' || !props.
 function cacheTargets() { if (typeof localStorage !== 'undefined' && props.accountId) try { localStorage.setItem(targetStorageKey(), JSON.stringify(targets.value)) } catch (_) {} }
 function targetErrorMessage(err, fallback) { if (err?.code === 'growth_target_revision_conflict') return '养成目标已在其他页面更新，已重新同步'; if (err?.code === 'invalid_growth_target') return '目标数值或组合不符合要求'; return err?.message || fallback }
 function applyTargetItem(id, item) { if (id && item) targets.value = { ...targets.value, [id]: normalizedTargetItem(item) } }
-async function migrateLocalTargets(targetAccount, remoteIds) { if (typeof localStorage === 'undefined' || localStorage.getItem(targetMigrationKey()) === 'done') return; const local = readLocalTargets(); for (const id of Object.keys(local).filter(item => !remoteIds.has(item))) { const saved = local[id] || {}; const body = { expected_revision: 0 }; if (saved.level != null) body.level = Number(saved.level); if (saved.elite != null) body.elite = Number(saved.elite); if (saved.starLevel != null || saved.star_level != null) body.star_level = Number(saved.starLevel != null ? saved.starLevel : saved.star_level); if (Object.keys(body).length === 1) continue; const item = await putOperatorGrowthTarget({ accountId: targetAccount, operatorId: id, target: body }); if (props.accountId !== targetAccount) return; applyTargetItem(id, item) } localStorage.setItem(targetMigrationKey(), 'done') }
+async function migrateLocalTargets(targetAccount, remoteIds) { if (typeof localStorage === 'undefined' || localStorage.getItem(targetMigrationKey()) === 'done') return; const local = readLocalTargets(); for (const id of Object.keys(local).filter(item => !remoteIds.has(item))) { const saved = local[id] || {}; const body = { expected_revision: 0 }; if (saved.level != null) body.level = Number(saved.level); if (saved.elite != null) body.elite = Number(saved.elite); if (saved.huaji || saved.starLevel != null || saved.star_level != null) { const row = { ...props.catalogEntries.find(entry => entry.id === id), ...currentMap.value[id] }; body.huaji = normalizeGrowthTarget(row, { ...saved, starLevel: saved.starLevel ?? saved.star_level }).huaji }; if (Object.keys(body).length === 1) continue; const item = await putOperatorGrowthTarget({ accountId: targetAccount, operatorId: id, target: body }); if (props.accountId !== targetAccount) return; applyTargetItem(id, item) } localStorage.setItem(targetMigrationKey(), 'done') }
 async function loadTargets() { closeStarTarget(); targets.value = {}; targetBusyIds.value = new Set(); targetError.value = ''; if (!props.isLoggedIn || !props.accountId) { targetLoadSeq += 1; targetLoading.value = false; return } const account = props.accountId; const sequence = ++targetLoadSeq; targetLoading.value = true; try { const data = await getOperatorGrowthTargets(account); if (sequence !== targetLoadSeq || props.accountId !== account) return; const mapped = {}; const remoteIds = new Set(); (Array.isArray(data?.items) ? data.items : []).forEach(item => { const id = item?.operator_id || item?.operatorId; if (id) { remoteIds.add(id); mapped[id] = normalizedTargetItem(item) } }); targets.value = mapped; await migrateLocalTargets(account, remoteIds); if (sequence === targetLoadSeq && props.accountId === account) cacheTargets() } catch (err) { if (sequence !== targetLoadSeq || props.accountId !== account) return; targets.value = readLocalTargets(); targetError.value = targetErrorMessage(err, '养成目标同步失败，当前显示本地缓存') } finally { if (sequence === targetLoadSeq && props.accountId === account) targetLoading.value = false } }
 function resetTargetInput(row, field, event) { event.target.value = targetFor(planRows.value.find(item => item.id === row.id) || row)[field] }
 async function setTarget(row, field, event) {
@@ -1245,12 +1254,12 @@ async function setTarget(row, field, event) {
   const raw = event?.target ? event.target.value : event
   if (event?.target?.validity?.badInput || raw === '') { if (event?.target) resetTargetInput(row, field, event); return false }
   const max = field === 'level' ? 100 : field === 'elite' ? 17 : isMovieOperator(row) ? 5 : operatorHuajiMax(row)
-  target[field] = field === 'awakened' ? raw === 'unknown' ? null : raw === 'true' : Math.min(max, Math.max(Number(current[field]) || 0, Math.trunc(Number(raw)) || 0))
-  if (field === 'awakened') target.huaji = { ...target.huaji, awakened: target.awakened }
+  target[field] = field === 'huaji' ? normalizeGrowthTarget({ ...row, ...current }, { ...target, huaji: raw }).huaji : Math.min(max, Math.max(Number(current[field]) || 0, Math.trunc(Number(raw)) || 0))
+  if (field === 'huaji') { target.starLevel = target.huaji.stage; target.awakened = target.huaji.awakened }
   const eliteLimit = getMaxEliteForLevel(target.level)
   if (field === 'elite' || field === 'level') target.elite = Math.max(Number(current.elite) || 0, Math.min(target.elite, eliteLimit))
   if (field === 'starLevel') target.huaji = { owned: target.starLevel > 0, stage: isMovieOperator(row) && target.starLevel > 0 ? 6 * (target.starLevel - 1) + 1 : target.starLevel, awakened: target.huaji?.awakened ?? null }
-  if (target[field] === targetFor(row)[field]) { if (event?.target) resetTargetInput(row, field, event); return true }
+  if (JSON.stringify(target[field]) === JSON.stringify(targetFor(row)[field])) { if (event?.target) resetTargetInput(row, field, event); return true }
   if (activePlan.value.source === 'custom') {
     const next = workspaceCopy(); next.plans.find(plan => plan.id === activePlan.value.id).targets[id] = target
     const saved = await commitWorkspace(next, (row.name || id) + '的目标已保存到云端')
@@ -1262,7 +1271,7 @@ async function setTarget(row, field, event) {
   targetBusyIds.value = new Set(targetBusyIds.value).add(id); targetError.value = ''
   try {
     const body = { expected_revision: Number(previous?.revision) || 0 }
-    if (field === 'starLevel' || field === 'awakened') body.huaji = { owned: target.starLevel > 0, stage: target.huaji?.stage ?? null, awakened: target.huaji?.awakened ?? null }
+    if (field === 'starLevel' || field === 'huaji') body.huaji = { ...target.huaji }
     else body[field] = target[field]
     if (field === 'level' && target.elite !== previous?.elite) body.elite = target.elite
     const item = await putOperatorGrowthTarget({ accountId: account, operatorId: id, target: body })
@@ -1519,6 +1528,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-track.rose i { background: #b88ba2; }
 .growth-quick-action { display: inline-grid; width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: none; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); cursor: pointer; }
 .growth-quick-action svg { display: block; }
+.growth-quick-action:has(span) { width: auto; height: auto; max-width: 100%; padding: 6px 8px; font: 700 12px/1.4 var(--font-b); }
+.tracker-star-anchor .progress-values { flex-wrap: wrap; justify-content: flex-end; }
+.tracker-star-anchor b { white-space: normal; overflow-wrap: anywhere; }
 .growth-quick-action:hover:not(:disabled) { border-color: var(--accent); background: var(--yellow); color: var(--ink); }
 .growth-quick-action:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .growth-quick-action.is-ready { border-color: #c9d8c5; background: #eef5ec; color: #6f846b; }
