@@ -377,81 +377,47 @@ onBeforeUnmount(function () { window.removeEventListener('beforeunload', beforeU
 </script>
 
 <style scoped>
-.editor-reference { font-family: var(--font-d); }
-.editor-content { padding-block: 12px 72px; }
-.editor-state { min-height: 320px; display: grid; place-content: center; justify-items: center; gap: 12px; border: 1px dashed var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-60); }
-.editor-state button, .form-actions button, .command, .add-action { min-height: 44px; padding: 9px 16px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font-weight: 800; cursor: pointer; }
-.notice { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink-60); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.editor-state { border: 1px dashed var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-60); }
+.editor-state button, .form-actions button, .command, .add-action { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.notice { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink-60); }
 .notice.error, .notice.conflict { border-color: rgba(166,81,74,.45); color: var(--rouge); }
-.notice.conflict { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.notice.conflict button { min-height: 44px; padding: 8px 13px; border: 1px solid var(--rouge); border-radius: 999px; background: var(--surface); color: var(--rouge); font-weight: 800; cursor: pointer; }
-.validation-list { margin-bottom: 18px; display: grid; gap: 7px; padding: 16px 20px; border: 1px solid rgba(166,81,74,.45); border-radius: 14px; background: var(--surface); list-style: none; color: var(--rouge); font-size: 13px; }
-.validation-list code { margin-right: 10px; color: var(--ink-60); }
-.validation-list button { min-height:44px;margin-right:10px;border:0;background:transparent;color:var(--rouge);font:800 13px var(--font-b);text-decoration:underline;cursor:pointer; }
+.notice.conflict button { border: 1px solid var(--rouge); border-radius: 999px; background: var(--surface); color: var(--rouge); cursor: pointer; }
+.validation-list { border: 1px solid rgba(166,81,74,.45); border-radius: 14px; background: var(--surface); color: var(--rouge); }
+.validation-list code { color: var(--ink-60); }
+.validation-list button {border:0;background:transparent;color:var(--rouge);text-decoration:underline;cursor:pointer; }
 .has-issue { border-color:var(--rouge) !important; }
 .has-issue input, .has-issue select, .has-issue textarea { border-color:var(--rouge); }
-.level-load-error { grid-column:1/-1;color:var(--rouge);font-size:12px; }
-.level-load-error button { min-height:44px;border:0;background:transparent;color:var(--rouge);font-weight:800;text-decoration:underline;cursor:pointer; }
-.work-form, .preview-section { display: grid; gap: 24px; }
-.editor-section, .preview-section { padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
-.preview-section { margin-top: 24px; }
-.section-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.section-head > span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--yellow); font: 900 12px var(--font-d); }
-.section-head h2 { font: 900 24px var(--font-s); }
-.section-head p { margin-top: 4px; color: var(--ink-60); font-size: 13px; }
-.section-head.with-command { grid-template-columns: auto minmax(0, 1fr) auto; }
-.field-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.field-grid .wide { grid-column: 1 / -1; }
-label, fieldset { min-width: 0; display: grid; gap: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800; }
-input, select, textarea { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); font: 14px var(--font-b); }
-textarea { resize: vertical; line-height: 1.7; }
+.level-load-error {color:var(--rouge); }
+.level-load-error button {border:0;background:transparent;color:var(--rouge);text-decoration:underline;cursor:pointer; }
+.editor-section, .preview-section { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.section-head { border-bottom: 1px solid var(--line); }
+.section-head > span { border-radius: 50%; background: var(--yellow); }
+.section-head p { color: var(--ink-60); }
+label, fieldset { color: var(--ink-60); }
+input, select, textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.operator-fields { margin-top: 22px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.round-editor { margin-top: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
-.round-editor > header { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; align-items: end; gap: 12px; }
-.action-editors { margin-top: 16px; display: grid; gap: 10px; list-style: none; }
-.action-editor { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.action-editor label { flex: 1 1 130px; }
-.action-order { width: 28px; height: 28px; align-self: center; display: grid; place-items: center; border-radius: 50%; background: var(--yellow); font: 800 11px var(--font-d); }
-.action-buttons { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.action-buttons button, .danger-link { min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink-60); cursor: pointer; }
+.round-editor { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
+.action-editor { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.action-order { border-radius: 50%; background: var(--yellow); }
+.action-buttons button, .danger-link { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink-60); cursor: pointer; }
 .danger-link { color: var(--rouge) !important; }
 button:disabled { opacity: .45; cursor: default; }
-.add-action { margin-top: 12px; background: var(--surface); color: var(--tea); }
-.delay-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.extension-panel { margin-top: 20px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
-.extension-panel summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; }
-.extension-fields { margin-top: 14px; }
-.checkbox { display: flex; align-items: center; gap: 10px; }
-.checkbox input { width: 20px; min-height: 20px; }
-.offset-field { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 0; }
-.offset-field legend { grid-column: 1 / -1; margin-bottom: 7px; }
-.form-actions { position: sticky; bottom: 10px; z-index: 3; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,246,.96); box-shadow: 0 8px 28px rgba(73,59,44,.12); }
+.add-action { background: var(--surface); color: var(--tea); }
+.extension-panel { border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
+.extension-panel summary { cursor: pointer; }
+.offset-field { border: 0; }
+.form-actions { border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,246,.96); box-shadow: 0 8px 28px rgba(73,59,44,.12); }
 .form-actions .secondary { background: var(--surface); color: var(--tea); }
 .form-actions .danger { border-color: var(--rouge); background: var(--surface); color: var(--rouge); }
-.form-action-message { display:none; }
-.target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.target-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
-.target-card > header { padding: 18px 20px; background: var(--cream); }
-.target-card header span { color: var(--ink-60); font-size: 11px; }
-.target-card h3 { margin-top: 4px; font: 900 18px var(--font-d); }
-.target-body { padding: 0 20px 20px; }
-@media (max-width: 900px) { .operator-fields, .delay-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .target-grid { grid-template-columns: 1fr; } }
+.target-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.target-card > header { background: var(--cream); }
+.target-card header span { color: var(--ink-60); }
 @media (max-width: 767px) {
-  .editor-content { padding-block: 12px 42px; }
-  .editor-section, .preview-section { padding: 18px 14px; border-radius: 16px; }
-  .field-grid, .operator-fields, .delay-grid { grid-template-columns: 1fr; }
-  .section-head.with-command { grid-template-columns: auto minmax(0, 1fr); }
-  .section-head.with-command .command { grid-column: 1 / -1; width: 100%; }
-  .round-editor > header { grid-template-columns: 1fr; }
-  .action-editor { align-items: stretch; }
-  .action-editor label { flex-basis: 100%; }
-  .action-buttons { width: 100%; margin-left: 0; }
-  .action-buttons button { flex: 1; }
-  .offset-field { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .form-actions { position: static; }
-  .form-action-message { display:block;flex-basis:100%;margin:0;color:var(--ink);font-size:13px;font-weight:800; }
+  .editor-section, .preview-section { border-radius: 16px; }
+  .form-action-message {color:var(--ink); }
   .form-action-message.error { color:var(--rouge); }
-  .form-actions button { flex: 1 1 42%; }
 }
 </style>
+<style scoped src="./workEditorDesktop.css"></style>
+<style scoped src="./workEditorMobile.css"></style>

@@ -1,0 +1,64 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.work{
+  display:grid;grid-template-columns:64px minmax(0,1fr) 270px;gap:26px;align-items:center;padding:24px 28px;
+}
+.work:hover{transform:translateY(-4px)}
+.work .rank{font-family:var(--font-d);font-weight:900;font-size:34px;letter-spacing:-.02em}
+.w-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tg{font-size:11.5px;font-weight:700;padding:3px 10px;letter-spacing:.05em}
+.work h3{font-size:20px;font-weight:800;letter-spacing:.01em;font-family:var(--font-s)}
+.work h3 .go{font-family:var(--font-d);font-size:12px;font-weight:800;margin-left:10px;letter-spacing:.05em}
+.w-meta{display:flex;align-items:center;gap:14px;font-size:12.5px;font-weight:600}
+.w-meta b{font-family:var(--font-d);font-weight:800;font-size:14px}
+@media (max-width:1080px){
+  .work{grid-template-columns:1fr}
+}
+.work>*{min-width:0}
+.w-meta b{font-variant-numeric:tabular-nums}
+
+@media (hover:none){
+  .work:hover{transform:none}
+}
+
+@media (max-width:767px){
+  .work{grid-template-columns:40px minmax(0,1fr);gap:12px;padding:16px}
+  .work .rank{font-size:24px;align-self:start}
+  .work h3{font-size:17px;line-height:1.5}
+  .work h3 .go{display:block;margin:5px 0 0}
+  .w-meta{width:100%;gap:8px 12px;flex-wrap:wrap}
+}
+.work {
+  min-width: 0;
+  min-height: 286px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 22px 24px 20px;
+}
+.work-card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.work .rank { display: inline-flex; align-items: baseline; gap: 5px; font-size: 24px; }
+.work .rank small { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.work-card-main { flex: 1; padding: 23px 0 20px; }
+.w-tags { align-items: center; margin-bottom: 12px; }
+.work-id { font: 800 10px var(--font-d); letter-spacing: .08em; }
+.work h3 { max-width: 19em; font-size: clamp(20px, 2vw, 26px); line-height: 1.4; }
+.stage-line { display: flex; align-items: baseline; gap: 10px; margin-top: 18px; padding-top: 14px; }
+.stage-line span { flex: none; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.stage-line strong { min-width: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.work-card-foot { padding-top: 16px; }
+.w-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.w-meta span { display: grid; gap: 4px; padding: 0 12px; }
+.w-meta span:first-child { padding-left: 0; }
+.w-meta small { font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.w-meta b { font-size: 16px; }
+.work-byline { display: grid; gap: 5px; margin-top: 17px; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.go { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.work:hover .go b { transform: translateX(4px); }
+@media (max-width: 767px) {
+  .work { min-height: 0; padding: 18px; }
+  .work-card-main { padding-block: 18px; }
+  .work h3 { font-size: 21px; }
+}
+}

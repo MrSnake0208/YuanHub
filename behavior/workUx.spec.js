@@ -191,3 +191,66 @@ it('distinguishes legacy conversion status and keeps a failed conversion warning
   expect(wrapper.get('#legacy-title').text()).toBe('旧版作业转换')
   wrapper.unmount()
 })
+
+
+it.each([390, 1440])('作业编辑在%s起步跨断点保持回合草稿、动作顺序与焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = await readyEditor()
+  try {
+    await wrapper.get('[data-work-path="$.doc.title"] input').setValue('跨布局作业草稿')
+    await wrapper.get('.round-remark input').setValue('未保存回合说明')
+    await wrapper.get('.add-action').trigger('click')
+    await wrapper.findAll('.action-editor select')[0].setValue('wait')
+    const duration = wrapper.get('[data-work-path="$.rounds[0].actions[0].duration_ms"] input')
+    await duration.setValue('1234')
+    duration.element.focus()
+    const rows = wrapper.findAll('.action-editor').map(row => row.element)
+    const reads = listLevelCatalog.mock.calls.length
+    for (const nextWidth of [767, 768, 900, 901, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('[data-work-path="$.doc.title"] input').element.value).toBe('跨布局作业草稿')
+      expect(wrapper.get('.round-remark input').element.value).toBe('未保存回合说明')
+      expect(wrapper.findAll('.action-editor').map(row => row.element)).toEqual(rows)
+      expect(duration.element.value).toBe('1234')
+      expect(document.activeElement).toBe(duration.element)
+      expect(wrapper.findAll('.work-form')).toHaveLength(1)
+    }
+    expect(listLevelCatalog).toHaveBeenCalledTimes(reads)
+    expect(work.createWork).not.toHaveBeenCalled()
+    expect(work.updateWork).not.toHaveBeenCalled()
+    expect(work.previewWorkCompatibility).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})
+
+it.each([390, 1440])('作业详情在%s起步跨断点保持技术展开与返回页码', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  routeQuery.page = '3'
+  work.getWork.mockResolvedValue({ metadata: { id: '1', title: '跨布局详情' }, source: { type: 'share', raw_content: '合成原始文档' }, work: createEmptyWorkDocument() })
+  const wrapper = render(WorkDetail, { props: { id: '1' } }); await flushPromises()
+  try {
+    const raw = wrapper.get('.raw-source').element
+    raw.open = true
+    const summary = wrapper.get('.raw-source summary').element
+    summary.focus()
+    const reads = work.getWork.mock.calls.length
+    for (const nextWidth of [767, 768, 900, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.raw-source').element).toBe(raw)
+      expect(raw.open).toBe(true)
+      expect(document.activeElement).toBe(summary)
+      expect(wrapper.getComponent('.page-header-back').vm.$attrs.to).toEqual({ path: '/works', query: { page: 3 } })
+    }
+    expect(work.getWork).toHaveBeenCalledTimes(reads)
+    expect(work.getWorkCompatibility).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})

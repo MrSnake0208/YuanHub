@@ -26,18 +26,15 @@ defineProps({
 </script>
 
 <style scoped>
-.issue-empty { margin-top: 12px; color: var(--ink-60); font-size: 13px; }
-.issue-list { margin-top: 14px; display: grid; gap: 10px; list-style: none; }
-.issue-list li { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.issue-head { display: flex; align-items: flex-start; gap: 10px; }
-.issue-head strong { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
-.severity { flex: none; padding: 3px 7px; border: 1px solid currentColor; border-radius: 6px; font: 800 10px var(--font-d); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.issue-empty { color: var(--ink-60); }
+.issue-list li { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.severity { border: 1px solid currentColor; border-radius: 6px; }
 .severity-partial { color: var(--accent-strong); }
 .severity-unsupported { color: var(--rouge); }
-dl { margin-top: 10px; display: grid; gap: 6px; }
-.issue-tech { margin-top:8px; }
-.issue-tech summary { min-height:44px;display:flex;align-items:center;color:var(--ink-60);font-size:12px;cursor:pointer; }
-dl div { min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font: 11px/1.6 var(--font-d); }
+.issue-tech summary {color:var(--ink-60);cursor:pointer; }
 dt { color: var(--ink-35); }
-dd { color: var(--ink-60); overflow-wrap: anywhere; }
+dd { color: var(--ink-60); }
 </style>
+<style scoped src="./workIssueListDesktop.css"></style>
+<style scoped src="./workIssueListMobile.css"></style>

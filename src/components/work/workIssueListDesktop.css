@@ -1,0 +1,14 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.issue-empty { margin-top: 12px; font-size: 13px; }
+.issue-list { margin-top: 14px; display: grid; gap: 10px; list-style: none; }
+.issue-list li { padding: 16px; }
+.issue-head { display: flex; align-items: flex-start; gap: 10px; }
+.issue-head strong { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.severity { flex: none; padding: 3px 7px; font: 800 10px var(--font-d); }
+dl { margin-top: 10px; display: grid; gap: 6px; }
+.issue-tech { margin-top:8px; }
+.issue-tech summary { min-height:44px;display:flex;align-items:center;font-size:12px; }
+dl div { min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font: 11px/1.6 var(--font-d); }
+dd { overflow-wrap: anywhere; }
+}
