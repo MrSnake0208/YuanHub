@@ -1,0 +1,42 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 640px) {
+.alternative-dialog { width: min(520px, calc(100% - 32px)); margin: auto; padding: 20px; }.alternative-dialog .exact-controls { margin-top: 16px; }
+
+.exact-planner { padding: 16px; }
+.exact-planner.embedded { padding: 18px; }
+.exact-comparisons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.exact-result { min-width: 0; }
+.mobile-copy, .exact-info, .exact-estimate-note { display: none; }
+.exact-result-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; }
+.exact-result-tag { flex: none; padding: 3px 7px; font-size: 12px; line-height: 1.4; }
+.exact-heading-copy { min-width: 0; }
+.exact-proof { font-size: 12px; }
+.exact-proof.optimal { font-weight: 700; }
+.exact-proof::before { display: inline-block; width: 5px; height: 5px; margin-right: 6px; vertical-align: middle; }
+.exact-result.featured { grid-column: 1 / -1; }
+.reserve-summary ul { padding-left: 18px; line-height: 1.8; }
+h4 { margin: 0; font-size: 15px; }
+.exact-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+h3 { margin: 0; font: 900 18px 'Noto Serif SC', serif; letter-spacing: .04em; }
+p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; }
+.exact-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+label { display: grid; gap: 4px; font-size: 12px; }
+.exact-seconds-select { width: 104px; }
+button { min-height: 44px; padding: 9px 12px; font: inherit; font-size: 13px; }
+button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.exact-help { font-size: 12px; }
+.exact-status, .exact-result { margin-top: 12px; padding: 12px; }
+.exact-metrics { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0; font-size: 13px; }
+.exact-metrics > div { display: flex; align-items: baseline; min-width: 0; gap: 6px; }
+.exact-metrics dt { font-size: 12px; line-height: 1.5; }
+.exact-metrics dd { margin: 0; font: 700 18px/1.2 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.exact-metrics dd small { margin-left: 4px; font: 400 12px var(--font-b); }
+.exact-metrics .exact-extra { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; flex-basis: 100%; grid-column: 1 / -1; gap: 4px 10px; padding-top: 8px; }
+.exact-extra dd { margin: 0; font-size: 18px; }
+details { margin-top: 12px; font-size: 13px; }
+summary { min-height: 44px; padding: 12px 0; }
+.exact-days { max-height: 360px; overflow-y: auto; margin: 0; padding-left: 24px; }
+.exact-days li { padding: 10px 4px; }
+small { font-size: 12px; font-weight: 400; }
+.exact-apply { margin-top: 12px; }
+}

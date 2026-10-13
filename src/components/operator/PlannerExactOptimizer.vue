@@ -143,108 +143,54 @@ onBeforeUnmount(() => runner.cancel())
 </script>
 
 <style scoped>
-.alternative-dialog { width: min(520px, calc(100% - 32px)); margin: auto; padding: 20px; border: 1px solid var(--planner-line); border-radius: 18px; background: var(--surface); color: var(--ink); }.alternative-dialog::backdrop { background: rgba(73,59,44,.5); }.alternative-dialog .exact-controls { margin-top: 16px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.alternative-dialog { border: 1px solid var(--planner-line); border-radius: 18px; background: var(--surface); color: var(--ink); }.alternative-dialog::backdrop { background: rgba(73,59,44,.5); }
 
-.exact-planner { padding: 16px; border: 1px solid var(--planner-line); border-radius: 12px; background: var(--surface); color: var(--ink); }
-.exact-planner.embedded { padding: 18px; border: 0; border-top: 1px solid var(--planner-line); border-radius: 0; background: transparent; }
-.exact-comparisons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
-.exact-result { min-width: 0; }
-.mobile-copy, .exact-info, .exact-estimate-note { display: none; }
-.exact-result-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; }
-.exact-result-tag { flex: none; padding: 3px 7px; border: 1px solid var(--planner-line); border-radius: 5px; color: var(--accent-strong); background: var(--surface); font-size: 12px; line-height: 1.4; }
-.exact-heading-copy { min-width: 0; }
-.exact-proof { color: var(--ink-60); font-size: 12px; }
-.exact-proof.optimal { color: var(--tea); font-weight: 700; }
+.exact-planner { border: 1px solid var(--planner-line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.exact-planner.embedded { border: 0; border-top: 1px solid var(--planner-line); border-radius: 0; background: transparent; }
+.exact-result-tag { border: 1px solid var(--planner-line); border-radius: 5px; color: var(--accent-strong); background: var(--surface); }
+.exact-proof { color: var(--ink-60); }
+.exact-proof.optimal { color: var(--tea); }
 .exact-proof.infeasible, .exact-error { color: var(--rouge); }
 .exact-proof.feasible, .exact-proof.pending { color: var(--accent-strong); }
-.exact-proof::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: middle; }
-.exact-result.featured { grid-column: 1 / -1; border: 1px solid var(--accent); border-left: 3px solid var(--accent); }
-.reserve-summary ul { padding-left: 18px; line-height: 1.8; }
-h4 { margin: 0; color: var(--tea); font-size: 15px; }
-.exact-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
-h3 { margin: 0; color: var(--tea); font: 900 18px 'Noto Serif SC', serif; letter-spacing: .04em; }
-p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; }
-.exact-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
-label { display: grid; gap: 4px; font-size: 12px; }
-.exact-seconds-select { width: 104px; }
-button { min-height: 44px; padding: 9px 12px; border: 1px solid var(--planner-line); border-radius: 8px; background: var(--cream); color: var(--tea); font: inherit; font-size: 13px; }
-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.exact-proof::before { content: ''; border-radius: 50%; background: currentColor; }
+.exact-result.featured { border: 1px solid var(--accent); border-left: 3px solid var(--accent); }
+h4 { color: var(--tea); }
+h3 { color: var(--tea); }
+button { border: 1px solid var(--planner-line); border-radius: 8px; background: var(--cream); color: var(--tea); }
+button { cursor: pointer; }
 button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 @media (hover: hover) and (pointer: fine) { button:hover:not(:disabled) { filter: brightness(1.1); } }
 button:disabled { opacity: .55; cursor: default; }
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
-.exact-help { font-size: 12px; }
-.exact-status, .exact-result { margin-top: 12px; padding: 12px; background: var(--cream); border-left: 3px solid var(--accent); }
-.exact-metrics { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0; font-size: 13px; }
-.exact-metrics > div { display: flex; align-items: baseline; min-width: 0; gap: 6px; }
-.exact-metrics dt { color: var(--ink-60); font-size: 12px; line-height: 1.5; }
-.exact-metrics dd { margin: 0; color: var(--tea); font: 700 18px/1.2 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.exact-metrics dd small { margin-left: 4px; font: 400 12px var(--font-b); }
-.exact-metrics .exact-extra { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; flex-basis: 100%; grid-column: 1 / -1; gap: 4px 10px; padding-top: 8px; border-top: 1px dashed var(--planner-line); }
-.exact-extra dd { margin: 0; color: var(--accent-strong); font-size: 18px; }
-details { margin-top: 12px; font-size: 13px; }
-summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
-.exact-days { max-height: 360px; overflow-y: auto; margin: 0; padding-left: 24px; }
-.exact-days li { padding: 10px 4px; border-bottom: 1px solid var(--planner-line); }
-small { font-size: 12px; font-weight: 400; }
-.exact-apply { margin-top: 12px; }
+.exact-status, .exact-result { background: var(--cream); border-left: 3px solid var(--accent); }
+.exact-metrics dt { color: var(--ink-60); }
+.exact-metrics dd { color: var(--tea); }
+.exact-metrics .exact-extra { border-top: 1px dashed var(--planner-line); }
+.exact-extra dd { color: var(--accent-strong); }
+summary { cursor: pointer; }
+.exact-days li { border-bottom: 1px solid var(--planner-line); }
 @media (max-width: 640px) {
-  .exact-planner, .exact-planner.embedded { padding: 12px; }
-  .desktop-copy, .exact-description, .exact-date-help { display: none; }
-  .mobile-copy { display: inline; }
-  .exact-heading { flex-direction: column; gap: 10px; }
-  h3 { font-size: 17px; line-height: 1.4; }
-  h4 { font: 800 15px/1.5 var(--font-s); }
-  p { font-size: 12px; line-height: 1.6; }
-  .exact-toolbar { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
-  .exact-time-limit { display: flex; align-items: center; gap: 4px; color: var(--ink-60); }
-  .exact-time-limit > span { flex: none; }
-  .exact-seconds-select { width: 84px; }
-  .exact-toolbar button { min-width: 0; padding: 8px; }
-  .exact-toolbar.has-alternatives .exact-explore { grid-column: 1 / -1; }
-  button { gap: 6px; touch-action: manipulation; }
-  button svg { flex: none; }
+  .exact-time-limit { color: var(--ink-60); }
   button:active:not(:disabled) { filter: brightness(.95); }
-  .exact-info { display: block; margin: 4px 0 0; color: var(--ink-60); }
-  .exact-info > summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; padding: 6px 0; list-style: none; font-size: 12px; }
-  .exact-info > summary::-webkit-details-marker, .exact-schedule > summary::-webkit-details-marker { display: none; }
-  .exact-info > summary > span { display: inline-flex; align-items: center; gap: 5px; }
-  .exact-info[open] > summary > span:last-child svg, .exact-schedule[open] > summary svg { transform: rotate(180deg); }
-  .exact-info > div { padding: 0 0 10px; }
-  .exact-info p { margin-top: 4px; }
-  .exact-status { margin: 0 0 8px; padding: 8px 10px; border-left-width: 2px; border-radius: 0 6px 6px 0; color: var(--ink-60); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .exact-info { color: var(--ink-60); }
+  .exact-status { border-left-width: 2px; border-radius: 0 6px 6px 0; color: var(--ink-60); }
   .exact-status.is-computing { color: var(--accent-strong); }
-  .exact-estimate-note { display: block; margin: 0 0 8px; color: var(--ink-60); font-size: 12px; }
-  .exact-proof.shared-estimate { display: none; }
-  .exact-comparisons { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .exact-result { margin: 0; padding: 10px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--surface); }
+  .exact-estimate-note { color: var(--ink-60); }
+  .exact-result { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--surface); }
   .exact-result.featured { border: 1px solid var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
   .exact-result.computing { border-color: var(--accent); }
-  .exact-result-heading { align-items: baseline; gap: 4px 8px; }
-  .exact-result-tag { padding: 2px 5px; background: var(--cream); }
-  .exact-proof, .exact-policy { margin-top: 4px; }
+  .exact-result-tag { background: var(--cream); }
   .exact-policy { color: var(--ink-60); }
-  .exact-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 0; padding: 6px 10px; border-radius: 6px; background: color-mix(in srgb, var(--paper) 48%, var(--surface)); }
-  .exact-metrics > div { display: block; }
-  .exact-metrics > div + div:not(.exact-extra) { padding-left: 10px; border-left: 1px solid var(--planner-line); }
-  .exact-metrics dd { margin-top: 3px; font-size: 20px; }
-  .exact-metrics .exact-extra dd { font-size: 18px; }
-  .exact-result-actions { display: grid; grid-template-columns: minmax(0, 1fr) 100px; align-items: start; gap: 8px; margin-top: 8px; border-top: 1px solid var(--planner-line); padding-top: 6px; }
-  .exact-schedule { grid-column: 1 / -1; grid-row: 1; margin: 0; min-width: 0; }
-  .exact-schedule > summary { display: flex; align-items: center; min-height: 44px; padding: 6px 0; list-style: none; color: var(--tea); font-size: 12px; }
-  .has-apply .exact-schedule > summary { width: calc(100% - 108px); }
-  .exact-schedule .mobile-copy { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-  .exact-schedule summary small { color: var(--ink-60); font-family: var(--font-d); }
-  .exact-apply { position: relative; grid-column: 2; grid-row: 1; width: 100%; min-height: 44px; margin: 0; padding: 8px; font-size: 12px; }
-  .reserve-summary { margin-top: 6px; border-top: 1px dashed var(--planner-line); }
-  .reserve-summary summary { padding: 10px 0; font-size: 12px; line-height: 1.6; }
-  .reserve-summary ul { padding-left: 16px; font-size: 12px; overflow-wrap: anywhere; }
-  .exact-days { max-height: 320px; padding: 0; list-style: none; overscroll-behavior-y: contain; }
-  .exact-days li { padding: 8px 0; font-size: 12px; line-height: 1.6; }
-  .exact-days li > strong { font-family: var(--font-d); font-weight: 700; }
-  .exact-days p { margin-top: 4px; }
-  .exact-days li > small { display: block; margin-top: 4px; color: var(--ink-60); }
-  .alternative-dialog { padding: 16px; border-radius: 12px; }
-  .alternative-dialog .exact-controls { display: grid; grid-template-columns: 1fr 1fr; }
+  .exact-metrics { border-radius: 6px; background: color-mix(in srgb, var(--paper) 48%, var(--surface)); }
+  .exact-metrics > div + div:not(.exact-extra) { border-left: 1px solid var(--planner-line); }
+  .exact-result-actions { border-top: 1px solid var(--planner-line); }
+  .exact-schedule > summary { color: var(--tea); }
+  .exact-schedule summary small { color: var(--ink-60); }
+  .reserve-summary { border-top: 1px dashed var(--planner-line); }
+  .exact-days li > small { color: var(--ink-60); }
+  .alternative-dialog { border-radius: 12px; }
 }
 </style>
+<style scoped src="./plannerExactOptimizerDesktop.css"></style>
+<style scoped src="./plannerExactOptimizerMobile.css"></style>

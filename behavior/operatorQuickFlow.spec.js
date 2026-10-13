@@ -9,6 +9,7 @@ import { getOperatorCatalog, listOperatorAccounts, getOperatorCurrent, importOpe
 import { useRouter } from 'vue-router'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
+import { installViewport } from '../test-support/viewport.js'
 
 const router = vi.hoisted(() => ({ push: vi.fn() }))
 const route = vi.hoisted(() => ({ query: {} }))
@@ -62,6 +63,27 @@ const render = () => {
   wrappers.add(wrapper)
   return wrapper
 }
+
+it.each([390, 1440])('快捷录入勾选及批量输入跨布局保留，resize 不保存：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = render(); document.body.append(wrapper.element)
+  await flushPromises()
+  const check = wrapper.get('.op-check')
+  await check.setValue(true)
+  const input = wrapper.findAll('.batch-bar input[type="number"]')[0]
+  await input.setValue('37')
+  input.element.focus()
+  const reads = getOperatorCurrent.mock.calls.length
+  for (const next of [640, 641, 900, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.get('.op-check').element).toBe(check.element)
+    expect(check.element.checked).toBe(true)
+    expect(input.element.value).toBe('37')
+    expect(document.activeElement).toBe(input.element)
+    expect(getOperatorCurrent).toHaveBeenCalledTimes(reads)
+    expect(importOperator).not.toHaveBeenCalled()
+  }
+})
 
 it('所有星级步骤默认1级1修为，未勾选不产生导入', async () => {
   const wrapper = render()

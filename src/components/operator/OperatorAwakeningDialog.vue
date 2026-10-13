@@ -86,15 +86,14 @@ async function save(awakened) {
 </script>
 
 <style scoped>
-.awakening-mask { display: grid; place-items: center; padding: 16px; }
-.awakening-panel { box-sizing: border-box; width: min(100%, 460px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); }
-h2 { margin: 0 0 16px; font: 900 20px/1.5 var(--font-s); }
-p { margin: 12px 0; font: 14px/1.7 var(--font-b); overflow-wrap: anywhere; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.awakening-panel { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); }
 .awakening-error { color: var(--rouge); }
-.awakening-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-button { flex: 1 1 auto; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); font: 700 14px/1.5 var(--font-b); cursor: pointer; }
+button { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); cursor: pointer; }
 button.primary { background: var(--tea); color: var(--cream); }
 button:disabled { cursor: default; opacity: .6; }
 button:focus-visible, .awakening-error:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
 button:active:not(:disabled) { opacity: .8; }
 </style>
+<style scoped src="./operatorAwakeningDialogDesktop.css"></style>
+<style scoped src="./operatorAwakeningDialogMobile.css"></style>

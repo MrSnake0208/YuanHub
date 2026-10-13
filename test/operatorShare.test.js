@@ -3,7 +3,7 @@ installBetaAccessFixture()
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { formatOperatorOddityCurrent } from '../src/utils/operatorCombatStats.js'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 import {
   createOperatorShare,
   getOperatorShare,
@@ -26,7 +26,7 @@ import {
 } from '../src/utils/operatorShare.js'
 
 function read(rel) {
-  return readFileSync(new URL('../' + rel, import.meta.url), 'utf8')
+  return readSource(new URL('../' + rel, import.meta.url), 'utf8')
 }
 
 const routes = read('src/router/routes.js')

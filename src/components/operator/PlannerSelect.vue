@@ -165,26 +165,19 @@ onBeforeUnmount(() => { close(); stopPositioning() })
 </script>
 
 <style scoped>
-.planner-select { display: inline-block; min-width: 0; max-width: 100%; width: 100%; vertical-align: middle; }
-.planner-select-trigger { display: grid; grid-template-columns: minmax(0, 1fr) 14px; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid var(--planner-line, var(--line)); border-radius: 7px; background: var(--surface); color: var(--tea); font: 600 13px/1.5 var(--font-b); text-align: left; cursor: pointer; touch-action: manipulation; }
-.planner-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.planner-select-value.placeholder { color: var(--ink-60); font-weight: 400; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.planner-select-trigger { border: 1px solid var(--planner-line, var(--line)); border-radius: 7px; background: var(--surface); color: var(--tea); cursor: pointer; }
+.planner-select-value.placeholder { color: var(--ink-60); }
 .planner-select-trigger > svg { color: var(--ink-60); }
 .planner-select-trigger[aria-expanded="true"] { border-color: var(--accent); background: var(--cream); }
-.planner-select-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
 .planner-select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .planner-select-trigger:disabled { opacity: .5; cursor: default; }
-.compact .planner-select-trigger { min-height: 32px; padding: 4px 6px; gap: 4px; font-size: 12px; }
-.numeric .planner-select-value, .planner-select-menu.numeric { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
-.planner-select-menu { position: fixed; inset: auto; box-sizing: border-box; margin: 0; padding: 5px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--planner-line, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .14); color: var(--tea); font: 400 13px/1.5 var(--font-b); text-align: left; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.planner-select-option { display: grid; grid-template-columns: minmax(0, 1fr) 15px; align-items: center; gap: 8px; min-height: 40px; padding: 8px; border-radius: 5px; cursor: pointer; }
-.planner-select-option > span { overflow-wrap: anywhere; }
-.planner-select-option[aria-selected="true"] { color: var(--accent-strong); font-weight: 700; }
+.planner-select-menu { border: 1px solid var(--planner-line, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .14); color: var(--tea); scrollbar-color: var(--line) transparent; }
+.planner-select-option { border-radius: 5px; cursor: pointer; }
+.planner-select-option[aria-selected="true"] { color: var(--accent-strong); }
 .planner-select-option.active { background: var(--cream); }
 .planner-select-option[aria-disabled="true"] { opacity: .45; cursor: default; }
 @media (hover: hover) { .planner-select-trigger:hover:not(:disabled) { border-color: var(--accent); } }
-@media (max-width: 900px) {
-  .compact .planner-select-trigger { min-height: 44px; }
-  .planner-select-option { min-height: 44px; }
-}
 </style>
+<style scoped src="./plannerSelectDesktop.css"></style>
+<style scoped src="./plannerSelectMobile.css"></style>

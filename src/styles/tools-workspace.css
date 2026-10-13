@@ -1,5 +1,5 @@
 /* Page-owned workspaces only; other segmented controls keep their own hierarchy. */
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs {
   position: static;
   inset: auto;
   z-index: auto;
@@ -21,7 +21,7 @@
 }
 .tool-workspace-tabs > .workspace-tab-list { display: flex; flex: 0 0 auto; gap: 4px; }
 .tool-workspace-tabs button svg { display: none; }
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button {
   display: inline-flex;
   flex: 0 0 auto;
   flex-direction: row;
@@ -39,26 +39,26 @@
   cursor: pointer;
   transition: none;
 }
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-selected="true"] {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-selected="true"] {
   border-bottom-color: var(--tea);
   background: color-mix(in srgb, var(--yellow) 45%, var(--surface));
   color: var(--tea);
 }
 @media (hover: hover) {
-  :is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:hover:not([aria-selected="true"]):not(:disabled) {
+  .page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:hover:not([aria-selected="true"]):not(:disabled) {
     background: var(--cream);
     color: var(--ink);
   }
 }
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:focus-visible {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:focus-visible {
   outline: 2px solid var(--tea);
   outline-offset: -3px;
 }
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:disabled {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:disabled {
   color: var(--ink-35);
   cursor: not-allowed;
 }
-:is(.page-operator, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-haspopup="dialog"] {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-haspopup="dialog"] {
   border: 1px dashed var(--line);
   font-size: 13px;
 }

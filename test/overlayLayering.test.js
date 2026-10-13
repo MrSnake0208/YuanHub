@@ -1,3 +1,4 @@
+import { readSource } from '../test-support/readSource.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -9,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 // “合并反馈”复用了全局 .modal-mask（z-index 60），于是被详情遮罩整个压住，
 // 弹窗不可见也不可交互。这里把层级刻度固化成可执行契约，避免以后再散落成魔数。
 const root = new URL('../', import.meta.url)
-const read = (path) => fs.readFileSync(new URL(path, root), 'utf8')
+const read = (path) => readSource(new URL(path, root))
 
 const mainCss = read('src/styles/main.css')
 const workspace = read('src/components/feedback/FeedbackTicketWorkspace.vue')

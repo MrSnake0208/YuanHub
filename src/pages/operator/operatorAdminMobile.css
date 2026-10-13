@@ -1,0 +1,214 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {.operator-main{margin-left:0;min-height:100vh;min-height:100dvh;min-width:0}
+.wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
+@media(max-width:767px){.wrap{width:100%;max-width:none;padding-inline:16px}}
+@media(min-width:768px) and (max-width:1080px){.wrap{padding-inline:32px}}
+.operator-main { padding-bottom: 0 }
+.catalog-content { padding-top: 12px }
+.catalog-summary { margin: 10px 0 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere }
+
+.banner { margin-top: 24px }
+
+.admin-bar { display: flex; align-items: center; gap: 14px; padding: 12px 0; flex-wrap: wrap }
+.admin-bar .sp { flex: 1 }
+.admin-bar .btn { flex: none }
+.adm-search-wrap { width: 280px; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px }
+.adm-search { min-width: 0; flex: 1; padding: 9px 0; font-size: 13px; font-family: var(--font-b) }
+.result-count { font-family: var(--font-d); font-size: 12px; font-weight: 700; white-space: nowrap }
+
+.catalog-table-wrap { margin-top: 12px; position: relative; padding: 8px 10px; overflow-x: auto; scrollbar-gutter: stable }
+.catalog-table { width: 100%; font-size: 13px; min-width: 980px }
+.catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; padding: 10px 8px; white-space: nowrap }
+.catalog-table td { padding: 10px 8px; vertical-align: middle }
+.catalog-mobile { display: none }
+
+.cell-op { min-width: 178px }
+.cell-op { display: flex; align-items: center; gap: 8px }
+.op-ph { flex: none; width: 34px; height: 34px; display: grid; place-items: center; font-family: var(--font-d); font-weight: 900; font-size: 14px }
+.op-avatar { flex: none; width: 34px; height: 34px; object-fit: cover }
+.avatar-editor { display: flex; flex-direction: column; gap: 8px }
+.avatar-editor-main { display: flex; align-items: center; gap: 16px }
+.avatar-preview { width: 72px; height: 72px; object-fit: cover }
+.avatar-placeholder { width: 72px; height: 72px; display: grid; place-items: center; font-size: 12px; text-align: center }
+.avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
+.avatar-file { display: none }
+.op-name { min-width: 0; max-width: 260px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 1px; line-height: 1.3 }
+.op-name small { font-family: var(--font-d); font-size: 10.5px }
+.op-name em { font-style: normal; font-size: 11px }
+
+.rarity { font-family: var(--font-d); font-weight: 800; white-space: nowrap }
+.cell-prof { min-width: 132px }
+.cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
+.tag-prof { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px 1px 10px; font-size: 11px; line-height: 1.2; font-weight: 800 }
+.tag-subprof { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px; font-size: 11px; line-height: 1.2; font-weight: 800 }
+.tag-station { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px; font-size: 11px; line-height: 1.2 }
+.tag-sp { display: inline-flex; align-items: center; justify-content: center; padding: 1px 8px; font-size: 11px; line-height: 1.2; font-weight: 800 }
+.cell-oddity { min-width: 124px }
+.cell-oddity span { display: block; font-weight: 800 }
+.cell-oddity small { font-family: var(--font-d); font-size: 10.5px }
+.muted { font-size: 12px }
+.cell-ver { width: 96px; max-width: 96px }
+.cell-ver code { display: block; font-family: var(--font-d); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cell-ver small { font-size: 10.5px }
+.ops-col { position: sticky; right: 0; z-index: 2; min-width: 116px; text-align: right !important; white-space: nowrap }
+.catalog-table thead .ops-col { z-index: 3 }
+.ops-btn { min-height: 44px; padding: 5px 8px; font-size: 12px; font-weight: 800; font-family: var(--font-b); margin-left: 4px }
+.editor-mask { position: fixed; inset: 0; display: grid; place-items: center; z-index: var(--z-overlay-panel); padding: 24px }
+.editor-panel { width: min(720px, 100%); max-height: 86vh; max-height: 86dvh; overflow-y: auto; padding: 24px 26px }
+.editor-head { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 14px }
+.editor-head > div { min-width: 0; overflow-wrap: anywhere }
+.editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 22px; letter-spacing: .02em }
+.editor-sub { font-size: 12px; margin-top: 4px }
+.editor-close { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 auto; display: grid; place-items: center }
+.editor-body { padding: 16px 0 4px; display: flex; flex-direction: column; gap: 16px }
+.editor-row { display: flex; flex-direction: column; gap: 10px }
+.editor-label { font-size: 12.5px; font-weight: 800; font-family: var(--font-b) }
+.fields-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px }
+.fields-2col label, .spof-input { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700 }
+.fields-2col input, .fields-2col select, .spof-input { padding: 8px 10px; font-size: 13px; font-family: var(--font-b) }
+.oddity-editor-row { align-items: start }
+.oddity-choice-field { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 800 }
+.oddity-choice-field legend { margin-bottom: 8px }
+.oddity-choice-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+.oddity-choice-grid label { display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; gap: 7px; padding: 7px 9px }
+.oddity-choice-grid input { flex: none; width: 16px; height: 16px }
+.oddity-custom-field { display: flex; flex-direction: column; gap: 5px }
+.oddity-custom-field input { min-height: 44px; padding: 8px 10px; font: 13px var(--font-b) }
+.field-error { font-size: 11.5px; font-weight: 700 }
+.oddity-schema-preview { display: grid; min-width: min(300px, 100%); flex: 1; gap: 6px }
+.oddity-schema-preview > span { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px }
+.oddity-schema-preview code { font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
+.oddity-schema-preview b { overflow: hidden; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap }
+.oddity-schema-preview em { font-size: 10.5px; font-style: normal; white-space: nowrap }
+.multi-field { min-width: 0; grid-column: 1 / -1 }
+.multi-field legend { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; font-size: 12px; font-weight: 800 }
+.multi-field legend small { flex: none; font-size: 11px; font-weight: 600 }
+.multi-pick { display: flex; flex-wrap: wrap; gap: 8px }
+.multi-pick label { min-width: 58px; min-height: 44px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 7px 11px; font-size: 13px; font-weight: 800 }
+.fields-2col .multi-pick input { flex: none; width: 16px; height: 16px; min-height: 16px; padding: 0 }
+.multi-pick .prof-option { min-width: 68px; justify-content: flex-start; padding-left: 13px }
+.games-pick { display: flex; gap: 10px }
+.games-pick label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 800 }
+.spof-input { width: 220px }
+
+.sub-editor { display: flex; flex-direction: column; gap: 8px }
+.sub-row { display: flex; gap: 8px; align-items: center }
+.sub-row input, .sub-row select { padding: 7px 10px; font-size: 12.5px; font-family: var(--font-b) }
+.sub-ot { flex: 2.2; min-width: 140px }
+.sub-sm { flex: 1; min-width: 80px }
+.sub-desp { flex: 3; min-width: 120px }
+.sub-color { flex: .8; min-width: 76px }
+.sub-del { flex: none; width: 44px; height: 44px; display: grid; place-items: center }
+.btn.mini { padding: 6px 12px; font-size: 12px; align-self: flex-start }
+.hint { font-size: 11.5px; font-weight: 600 }
+
+.editor-notice { padding: 10px 14px; font-size: 12.5px }
+.editor-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; margin-top: 8px }
+
+.btn { min-height: 44px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b) }
+
+.state { text-align: center; padding: 40px 20px; font-size: 13.5px; margin-top: 20px }
+.state-retry { min-width: 44px; min-height: 44px; margin-left: 6px; padding: 2px 6px; font: inherit; font-weight: 800 }
+
+@media (max-width: 767px) {
+  .admin-bar {
+    position: sticky;
+    top: 64px;
+    z-index: var(--z-sticky-low);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    margin: 0;
+    padding: 12px 0;
+  }
+  .admin-bar .sp { display: none }
+  .adm-search-wrap { grid-column: 1 / -1; width: 100%; min-height: 46px }
+  .adm-search { min-height: 44px; padding: 0; font-size: 16px }
+  .result-count { padding-left: 4px; font-size: 12px }
+  .admin-bar .btn { min-height: 44px; padding: 9px 14px }
+
+  .catalog-table-wrap { display: none }
+  .catalog-mobile { display: flex; flex-direction: column; gap: 10px; margin-top: 14px }
+  .mobile-entry {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .mobile-entry-head { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 12px 8px }
+  .mobile-avatar { width: 46px; height: 46px; object-fit: cover }
+  .mobile-avatar.op-ph { display: grid; place-items: center; font-size: 16px }
+  .mobile-identity { min-width: 0 }
+  .mobile-identity h2 { overflow-wrap: anywhere; font-family: var(--font-s); font-size: 17px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
+  .mobile-meta { display: flex; min-width: 0; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; line-height: 1.4 }
+  .mobile-meta code { min-width: 0; overflow: hidden; font-family: var(--font-d); font-size: inherit; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-meta span { flex: none; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 1px }
+  .mobile-badges .rarity { font-size: 12px }
+
+  .mobile-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px }
+  .mobile-foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 9px; padding: 8px 12px }
+  .mobile-data { display: grid; grid-template-columns: 42px 42px minmax(104px, 1.45fr) minmax(58px, .8fr); width: 100%; min-width: 0 }
+  .mobile-data > div { min-width: 0; padding: 0 7px }
+  .mobile-data > div:first-child { padding-left: 0 }
+  .mobile-data dt { font-size: 9.5px; font-weight: 700; line-height: 1.35 }
+  .mobile-data dd { margin-top: 1px; font-family: var(--font-d); font-size: 13px; font-weight: 800; line-height: 1.35 }
+  .mobile-version dd { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-oddity { padding-block: 0 !important }
+  .mobile-oddity dd { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap }
+
+  .mobile-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px }
+  .mobile-actions button { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation }
+  .mobile-actions .mobile-edit { width: 68px }
+
+  .state { margin-top: 14px; padding: 32px 16px }
+  .state-retry { min-height: 44px }
+
+  .editor-mask { align-items: end; padding: 0 }
+  .editor-panel { width: 100%; max-height: calc(100dvh - env(safe-area-inset-top)); padding: 0; overscroll-behavior: contain }
+  .editor-head { position: sticky; top: 0; z-index: 3; padding: 16px 16px 12px }
+  .editor-head h3 { font-size: 20px }
+  .editor-sub { padding-right: 4px; font-size: 11.5px; line-height: 1.5 }
+  .editor-body { padding: 16px; gap: 20px }
+  .editor-row { gap: 9px }
+  .editor-label { font-size: 13px }
+  .fields-2col { grid-template-columns: 1fr; gap: 12px }
+  .fields-2col label { font-size: 13px }
+  .fields-2col input,
+  .fields-2col select,
+  .spof-input { width: 100%; min-height: 44px; padding: 9px 11px; font-size: 16px }
+  .multi-field legend { margin-bottom: 8px; font-size: 13px }
+  .oddity-editor-row { flex-direction: column }
+  .oddity-choice-field, .oddity-schema-preview { width: 100%; min-width: 0 }
+  .oddity-choice-grid { grid-template-columns: 1fr 1fr }
+  .oddity-choice-grid label { min-height: 44px }
+  .oddity-custom-field input { min-height: 44px; font-size: 16px }
+  .multi-field legend small { font-size: 12px }
+  .multi-pick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+  .multi-pick label { min-width: 0; min-height: 44px; padding: 8px 5px; font-size: 13px }
+  .sub-prof-pick { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .games-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .games-pick label { min-height: 44px; justify-content: center; padding: 8px }
+  .games-pick + .editor-label { margin-left: 0 !important }
+  .avatar-editor-main { align-items: flex-start; gap: 12px }
+  .avatar-preview,
+  .avatar-placeholder { width: 72px; height: 72px; flex: none }
+  .avatar-actions { min-width: 0; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .avatar-actions .btn { width: 100%; min-height: 44px; padding: 8px }
+  .avatar-actions .btn:last-child { grid-column: 1 / -1 }
+  .hint { font-size: 12px; line-height: 1.65 }
+
+  .sub-editor { gap: 10px }
+  .sub-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; padding: 12px 56px 12px 12px }
+  .sub-row input,
+  .sub-row select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 16px }
+  .sub-row .sub-ot,
+  .sub-row .sub-desp { grid-column: 1 / -1; min-width: 0 }
+  .sub-row .sub-sm,
+  .sub-row .sub-color { min-width: 0 }
+  .sub-del { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px }
+  .btn.mini { min-height: 44px; padding: 8px 12px }
+
+  .editor-notice { font-size: 13px; line-height: 1.55 }
+  .editor-actions { position: sticky; bottom: 0; z-index: 3; display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 8px; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) }
+  .editor-actions .btn { min-height: 46px; padding-inline: 10px }
+}
+}

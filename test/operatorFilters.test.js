@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 import {
   OPERATOR_RARITY_OPTIONS,
   subProfList,
@@ -18,7 +18,7 @@ import {
   operatorStarNumber
 } from '../src/utils/operatorFilters.js'
 
-const operatorPage = readFileSync(
+const operatorPage = readSource(
   new URL('../src/pages/operator/index.vue', import.meta.url),
   'utf8'
 )
@@ -218,7 +218,7 @@ test('品质选项按品质从高到低排列且各页共用同一份', function
     '../src/components/operator/OperatorTrainingPlanPicker.vue'
   ]
   for (const page of pages) {
-    const source = readFileSync(new URL(page, import.meta.url), 'utf8')
+    const source = readSource(new URL(page, import.meta.url), 'utf8')
     assert.match(source, /OPERATOR_RARITY_OPTIONS/, page)
     // 不允许再各页内联一份顺序不一致的品质选项。
     assert.doesNotMatch(source, /const rarityOptions = \[\s*\{ value: ['"]all['"]/, page)

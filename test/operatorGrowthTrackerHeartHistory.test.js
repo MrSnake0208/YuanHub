@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 
-const source = readFileSync(new URL('../src/components/operator/OperatorGrowthTracker.vue', import.meta.url), 'utf8')
+const source = readSource(new URL('../src/components/operator/OperatorGrowthTracker.vue', import.meta.url), 'utf8')
 
 test('培养卡经验与心纸摘要使用新的简洁展示口径', () => {
   assert.match(source, /experienceEtaLabel\(row\.calculation\.experienceGap\)/)

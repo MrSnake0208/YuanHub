@@ -182,43 +182,20 @@ onBeforeUnmount(function () { requestSeq += 1; loadSeq += 1 })
 </script>
 
 <style scoped>
-.share-manager { border-top: 1px dashed var(--line); padding: 20px 24px 22px; background: var(--cream) }
-.share-manager-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 5px 12px }
-.share-description { grid-column: 1 / -1 }
-.share-manager-heading > button { white-space: nowrap; min-height: 44px; padding-inline: 12px }
-.share-manager h2 { font-family: var(--font-s); font-size: 18px; line-height: 1.3; letter-spacing: .04em; font-weight: 900 }
-.share-manager p { color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
-.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-.share-values { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 16px }
-.share-values label { display: grid; gap: 6px; min-width: 0; color: var(--ink-60); font-size: 11.5px; font-weight: 800 }
-.share-values input { width: 100%; box-sizing: border-box; min-height: 44px; min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--ink); background: var(--paper); font: 12px var(--font-d) }
-.share-actions,.share-inactive { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px }
-.share-inactive { justify-content: space-between }
-.share-button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 15px; color: var(--cream); background: var(--tea); cursor: pointer; font: 700 12.5px var(--font-b) }
-.share-button.visit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; border-color: var(--accent); color: var(--accent-strong); background: transparent }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.share-manager { border-top: 1px dashed var(--line); background: var(--cream) }
+.share-manager p { color: var(--ink-60) }
+.section-kicker { color: var(--accent-strong) }
+.share-values label { color: var(--ink-60) }
+.share-values input { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper) }
+.share-button { border: 1px solid var(--tea); border-radius: 999px; color: var(--cream); background: var(--tea); cursor: pointer }
+.share-button.visit { text-decoration: none; border-color: var(--accent); color: var(--accent-strong); background: transparent }
 .share-button.subtle { border-color: var(--line); color: var(--ink-60); background: transparent }
 .share-button.danger { border-color: rgba(166, 81, 74, .45); color: var(--rouge); background: transparent }
 .share-button:hover:not(:disabled),.share-button:focus-visible { border-color: var(--accent); outline: 2px solid transparent; box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
 .share-button:disabled { cursor: not-allowed; opacity: .5 }
-.share-state,.share-message { margin-top: 14px }
 .share-state.is-error { color: var(--rouge) }
 .share-message { color: var(--accent-strong) }
-@media (max-width: 640px) {
-  .share-manager { padding: 14px 16px }
-  .share-manager-heading { gap: 3px 8px }
-  .share-manager h2 { font-size: 17px }
-  .share-manager p { font-size: 12px; line-height: 1.5 }
-  .section-kicker { margin-bottom: 3px }
-  .share-manager-heading > button { padding: 6px 10px; font-size: 12px }
-  .share-values { margin-top: 10px; gap: 8px }
-  .share-values label { gap: 4px }
-  .share-values input { padding: 8px 10px; font-size: 16px }
-  .share-state,.share-message { margin-top: 10px }
-  .share-values { grid-template-columns: 1fr }
-  .share-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px }
-  .share-actions .share-button { padding: 7px 10px }
-  .share-inactive { gap: 8px; margin-top: 10px }
-  .share-inactive p { flex: 1 1 180px }
-  .share-inactive .share-button { flex: none }
-}
 </style>
+<style scoped src="./operatorShareManagerDesktop.css"></style>
+<style scoped src="./operatorShareManagerMobile.css"></style>

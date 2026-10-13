@@ -1,0 +1,8 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 640px) {
+.recalculate-notice { display: flex; align-items: center; gap: 16px; padding: 14px 16px; }
+p { margin: 0; font-size: 13px; line-height: 1.7; }
+p + p { margin-top: 4px; }
+button { display: flex; flex: none; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; font: inherit; font-size: 13px; }
+svg { flex: none; }
+}

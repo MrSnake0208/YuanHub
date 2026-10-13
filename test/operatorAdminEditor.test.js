@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 import { fileURLToPath } from 'node:url'
 
-const source = readFileSync(
+const source = readSource(
   fileURLToPath(new URL('../src/pages/operator/admin.vue', import.meta.url)),
   'utf8'
 )

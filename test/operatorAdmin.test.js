@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 import { fileURLToPath } from 'node:url'
 import { adminCatalogEntries, compareOperatorIdDesc, operatorIdSequence } from '../src/utils/operatorAdmin.js'
 
-const adminPage = readFileSync(fileURLToPath(new URL('../src/pages/operator/admin.vue', import.meta.url)), 'utf8')
+const adminPage = readSource(fileURLToPath(new URL('../src/pages/operator/admin.vue', import.meta.url)), 'utf8')
 
 test('adminCatalogEntries accepts supported admin response shapes', function () {
   const rows = [{ id: 'char_125_zhaoyun' }]

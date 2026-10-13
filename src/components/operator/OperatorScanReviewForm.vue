@@ -146,39 +146,20 @@ defineExpose({ focus: () => panel.value?.focus(), focusField, hasField: id => ro
 </script>
 
 <style scoped>
-.scan-review-form { color: var(--ink); outline: none; overflow-wrap: anywhere; }
-header { display: flex; align-items: flex-start; gap: 12px; }
-header > div { min-width: 0; flex: 1; }
-h2 { margin: 0; font: 900 20px var(--font-s); }
-p, li { font-size: 14px; line-height: 1.7; }
-header p { margin: 6px 0; }
-button, input, select, summary { min-height: 44px; }
-button, input, select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-button { padding: 8px 12px; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.scan-review-form { color: var(--ink); outline: none; }
+button, input, select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+button { cursor: pointer; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .primary { background: var(--tea); color: var(--cream); }
-.close { flex: none; display: grid; place-items: center; min-width: 44px; }
 a { color: var(--tea); text-decoration: underline; }
-a, button, input, select, summary { touch-action: manipulation; }
 :is(a, button, input, select, summary):focus-visible, fieldset:focus-visible, .errors:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-fieldset { min-width: 0; margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-legend { font-weight: 700; }
-legend small { margin-left: 8px; font-weight: 400; }
-.check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.check input { min-height: 0; width: 20px; height: 20px; flex: none; accent-color: var(--tea); }
-.number-field, .huaji-fields label, .loadout > label:first-child { display: grid; gap: 6px; min-width: 0; }
-input:not([type="checkbox"]), select { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; }
-.number-field { max-width: 320px; }
-.huaji-fields, .loadouts { display: grid; gap: 12px; }
-.values { margin: 4px 0; white-space: pre-line; }
+fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.check input { accent-color: var(--tea); }
 .field-error, .errors { color: var(--rouge); }
-.errors { padding: 12px; border: 1px solid var(--rouge); border-radius: 8px; }
-.reasons { padding-left: 20px; }
-.reasons a { display: inline-flex; align-items: center; min-height: 44px; margin-left: 8px; }
-.actions, .readback { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.actions { margin-bottom: 16px; }
-.technical { padding-top: 12px; border-top: 1px solid var(--line); }
-summary { display: flex; align-items: center; cursor: pointer; }
-pre { max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
-@media (min-width: 768px) { .huaji-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.errors { border: 1px solid var(--rouge); border-radius: 8px; }
+.technical { border-top: 1px solid var(--line); }
+summary { cursor: pointer; }
 </style>
+<style scoped src="./operatorScanReviewFormDesktop.css"></style>
+<style scoped src="./operatorScanReviewFormMobile.css"></style>

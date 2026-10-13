@@ -1,0 +1,47 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {
+.agent-ledger-card--share .ledger-loadouts {
+  display: contents;
+}
+.agent-ledger-card--share.agent-ledger-card--v3 :is(.share-ledger-growth-value, .ledger-combat-value) {
+  font-family: var(--font-d);
+  font-weight: 000;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-number {
+  font-weight: 900;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-prefix {
+  position: relative;
+  top: 1px;
+  font-size: .8em;
+  font-weight: 600;
+}
+.agent-ledger-card--share .ledger-destiny-marker {
+  display: none;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
+  position: relative;
+  width: 11px;
+  padding: 0 3px 0 3px;
+  font-size: 0;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span::before {
+  display: block;
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+}
+.agent-ledger-card--share:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
+  margin-top: -10px;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
+  margin-top: -6.75px;
+}
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name { max-width: 52px; overflow: hidden; }
+}

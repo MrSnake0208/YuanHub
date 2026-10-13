@@ -107,34 +107,26 @@ function toggleRange(key, event) {
 </script>
 
 <style scoped>
-.growth-filter-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px dashed var(--line); padding-top: 10px; }
-.growth-filter-presets > span { margin-right: 2px; color: var(--tea); font: 800 11px var(--font-b); }
-.growth-filter-presets button { min-height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; background: var(--surface); color: var(--tea); font: 800 11.5px var(--font-b); white-space: nowrap; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.growth-filter-presets { border-top: 1px dashed var(--line); }
+.growth-filter-presets > span { color: var(--tea); }
+.growth-filter-presets button { border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--tea); cursor: pointer; }
 .growth-filter-presets button:hover:not(.on) { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
 .growth-filter-presets button.on { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .growth-filter-presets button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-.current-growth-filter { padding-top: 4px; }
-.current-growth-filter summary { display: flex; width: fit-content; min-height: 36px; align-items: center; gap: 4px; color: var(--tea); font: 800 11px var(--font-b); cursor: pointer; }
-.current-growth-filter summary span { margin-left: 5px; color: var(--accent-strong); }
+.current-growth-filter summary { color: var(--tea); cursor: pointer; }
+.current-growth-filter summary span { color: var(--accent-strong); }
 .current-growth-filter summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
-.growth-filter-fields { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; padding-top: 10px; }
-.growth-filter-range { display: flex; flex: 1 1 200px; min-width: 0; flex-direction: column; margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px 10px; background: var(--surface); }
+.growth-filter-range { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .growth-filter-range.is-enabled { border-color: var(--accent); background: var(--cream); }
-.growth-filter-range legend { padding: 0 4px; color: var(--tea); font: 800 11px var(--font-b); }
-.growth-filter-range legend small { color: var(--ink-60); font-size: 10px; }
-.growth-filter-enable { display: inline-flex; width: fit-content; min-height: 30px; align-items: center; gap: 5px; color: var(--tea); font: 800 11px var(--font-b); cursor: pointer; }
-.growth-filter-enable input { width: 16px; height: 16px; accent-color: var(--accent); }
-.growth-filter-bounds { display: flex; align-items: center; gap: 5px; }
-.growth-filter-bounds label { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-60); font: 700 11px var(--font-b); }
-.growth-filter-bounds input { width: 63px; min-height: 34px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; background: var(--surface); color: var(--ink); font: 700 12px var(--font-d); }
+.growth-filter-range legend { color: var(--tea); }
+.growth-filter-range legend small { color: var(--ink-60); }
+.growth-filter-enable { color: var(--tea); cursor: pointer; }
+.growth-filter-enable input { accent-color: var(--accent); }
+.growth-filter-bounds label { color: var(--ink-60); }
+.growth-filter-bounds input { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
 .growth-filter-range input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; }
-.growth-filter-error { margin: 6px 0 0; color: var(--rouge); font: 700 11px var(--font-b); }
-@media (max-width: 640px) {
-  .growth-filter-presets > span { flex-basis: 100%; }
-  .growth-filter-presets button { min-height: 44px; }
-  .growth-filter-fields { display: grid; grid-template-columns: 1fr; gap: 10px; }
-  .current-growth-filter summary { min-height: 44px; }
-  .growth-filter-enable { min-height: 44px; }
-  .growth-filter-bounds input { width: 58px; min-height: 44px; }
-}
+.growth-filter-error { color: var(--rouge); }
 </style>
+<style scoped src="./operatorGrowthFiltersDesktop.css"></style>
+<style scoped src="./operatorGrowthFiltersMobile.css"></style>

@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：今日一览与库存 verified_nonbrowser（2/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：今日一览、库存与密探四入口 verified_nonbrowser（6/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -27,12 +27,12 @@
 | /work/:id/edit（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /cart | pages/tools/cart.vue | 待拆分 | 待拆分 | pages/tools/cart.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /inventory | pages/inventory/index.vue | pages/inventory/inventoryWorkspaceDesktop.css + components/inventory/*Desktop.css/视图 | pages/inventory/inventoryWorkspaceMobile.css + components/inventory/*Mobile.css/视图 | pages/inventory/index.vue + 原奖励控制器 | verified_nonbrowser | B02–B05：真实父级/A1/A2/259行为/CSS/build | 无阻塞；人工UI待做 | pending |
-| /operator | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /operator | pages/operator/index.vue | pages/operator/operatorWorkspaceDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorWorkspaceMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment（feature: recruitmentArchive） | pages/recruitment/index.vue | 待拆分 | 待拆分 | pages/recruitment/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /operator/share/:token? | pages/operator/share.vue | 待拆分 | 待拆分 | pages/operator/share.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /operator/share/:token? | pages/operator/share.vue | pages/operator/operatorShareDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorShareMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /star | pages/star/index.vue | 待拆分 | 待拆分 | pages/star/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /operator/quick | pages/operator/quick.vue | 待拆分 | 待拆分 | pages/operator/quick.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /operator/admin | pages/operator/admin.vue | 待拆分 | 待拆分 | pages/operator/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /operator/quick | pages/operator/quick.vue | pages/operator/operatorQuickDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorQuickMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
+| /operator/admin | pages/operator/admin.vue | pages/operator/operatorAdminDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorAdminMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment/admin | pages/recruitment/admin.vue | 待拆分 | 待拆分 | pages/recruitment/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /admin/recruitment-access → /manage | 无 UI | n/a | n/a | routes.js | n/a | 路由源码 | 纯跳转不计 UI | n/a |
 | /level/admin | pages/level/admin.vue | 待拆分 | 待拆分 | pages/level/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
@@ -68,7 +68,7 @@
 | /inventory 页面壳与工作区导航 | components/inventory/InventoryLayout.vue + InventoryWorkspaceTabs.vue | inventory{Layout,WorkspaceTabs}Desktop.css | inventory{Layout,WorkspaceTabs}Mobile.css | pages/inventory/index.vue | verified_nonbrowser | B04：220 行为 + CSS 编译 + build | 无阻塞；保留单一 slot 内容实例 | pending |
 | /inventory 清单/筛选/盘点/统计查询 | pages/inventory/index.vue | inventoryWorkspaceDesktop.css | inventoryWorkspaceMobile.css | pages/inventory/index.vue | verified_nonbrowser | B05：40盘点+130历史父级行为/CSS/build | 原控制器/DOM保持；待人工UI | pending |
 | /inventory 奖励/导入预览/日期弹层 | components/inventory/RewardEntryWorkspace.vue + RewardDateTimePicker.vue | reward{EntryWorkspace,DateTimePicker}Desktop.css | reward{EntryWorkspace,DateTimePicker}Mobile.css | 原两个功能组件 | verified_nonbrowser | B05：74奖励行为/父级联动/CSS/build | 唯一弹窗与日期实例；待人工UI | pending |
-| /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 实际路由 | 保持 visitedTabs 与编辑器实例 | pending |
+| /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue + components/operator/ | operatorWorkspaceDesktop.css + 功能组件Desktop.css | operatorWorkspaceMobile.css + 功能组件Mobile.css | 原控制器/visitedTabs/全部功能组件 | verified_nonbrowser | B06：真实父级编辑/追踪清单/星石状态 + 原契约 | 保持功能开关；人工UI待做 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/index.vue | 待拆分 | 待拆分 | 原控制器及 PoolEditor | pending | 实际路由 | 保护 rows/originals/orderRevision/CAS | pending |
 | /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue | 待拆分 | 待拆分 | 原控制器/订阅编辑器 | pending | 实际路由 | agenda/timeline/month 是用户选择，不随设备重置 | pending |
 | /star 嵌入内部（背包/计划/OCR） | pages/star/index.vue | 待核实源码 | 待核实源码 | 唯一 iframe 业务实例 | pending | 主站入口存在 | 定位真实源码与同步流程；禁止直接修改构建产物 | pending |
@@ -114,4 +114,13 @@
 - `node --test test/inventoryWorkspaceStyles.test.js`：3/3。`npx --no-install vitest run behavior/inventoryRecordsUx.spec.js behavior/inventoryRecordsViews.spec.js behavior/inventoryStockBaseline.spec.js behavior/rewardEntryWorkspace.spec.js`：259/259。新增4个两端用例，真实盘点数量草稿/保存状态/焦点、奖励预览/日期弹层实例与焦点跨断点不丢，resize零写入/额外读取。
 - `npm run build` 成功；`git diff --check` 通过。日志 `.test-artifacts/pc-mobile-layered/batch-05-*.log`。本批保存标题 `refactor(inventory): 完成清单盘点与奖励双端样式归属`。库存真实路由全部工程接入，整站2/43；真实运行与视觉仍pending。
 
-下一动作：密探图鉴/养成/规划/分享/快捷录入的实际展示样式隔离，保持visitedTabs与所有编辑器实例。
+## B06：密探四入口、名册卡片与真实编辑/规划工作区（L1 样式归属；局部全局选择器退出按L2复核）
+
+- `/operator`、`/operator/share/:token?`、`/operator/quick`、`/operator/admin` 的实际几何/密度均移至入口邻近的 Desktop/Mobile 文件，页壳以1080px归属。各自显式持有从 main.css 继承的主区/内容宽度与间距默认值，保留767/768px内容阈值及vh/dvh回退。
+- 筛选、分享管理、采集复核、觉醒、星石弹窗/编辑/预设、培养清单、追踪器与所有体力规划子展示分别有双端CSS；原所有模板与完整脚本逐字不变，visitedTabs/草稿/CAS/请求/清理仍为原唯一所有者。ButterflyIcon、OperatorAvatar、ShareCardStats 保留为刻意共享的图标/头像/字段契约。
+- 名册v1/v2/v3继续原层叠顺序，三代样式的几何各自拆分640px两端，公共文件仅持有外观；两真实调用页均接入。库存与密探均已退出全局工具导航选择器，星石规则保持语义等价。清除与外层归属矛盾的媒体块减少136109字节无效CSS；22个展示所有者共2992组宽度/媒体声明投影一致（在显式继承默认值加入前），不是视觉证据。
+- `npx --no-install vitest run behavior/operator*.spec.js behavior/growthPlan*.spec.js behavior/workspaceTabs.spec.js`：321/321（19文件）。新增10个两端真实编辑/快捷录入/公开筛选/追踪清单/星石弹窗用例，保留草稿、焦点、唯一实例，resize无额外读写。旧账号隔离/迟到结果/觉醒与库存联动测试全部保留。
+- 受影响Node契约182/182，新增设备样式真实引用/互斥媒体/scoped编译检查80/80，共262/262。`npm run test:static`：610文件0失败；最终样式精简及显式默认值后仅需重跑受影响CSS检查与生产构建，均成功。已有样式契约改为跟随真实style src读取，未削弱字段、层级和布局断言。源码检查和jsdom不等于浏览器验收。
+- `git diff --check` 通过；日志 `.test-artifacts/pc-mobile-layered/batch-06-*.log`。本批保存标题 `refactor(operator): 完成密探四入口与编辑规划双端布局归属`。完整路由6/43，剩余路由仍pending；API/store/router/依赖均未改动。
+
+下一动作：招募时间线/卡池/记录编辑/交换及管理员目录展示，保持PoolEditor行/排序版本与写入回执。

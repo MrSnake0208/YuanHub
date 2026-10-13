@@ -1,0 +1,52 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 640px) {
+.deadline-journey { --deadline-ease: cubic-bezier(.22, 1, .36, 1); margin-top: 20px; padding: 20px 18px 8px; min-width: 0; }
+.deadline-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h4 { margin: 0; font: 900 16px 'Noto Serif SC', serif; letter-spacing: .04em; }
+p { margin: 6px 0 0; font-size: 12px; line-height: 1.7; }
+.deadline-count { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; font-size: 12px; }
+.deadline-limit { margin-top: 12px; }
+.deadline-track { display: flex; align-items: flex-start; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin; list-style: none; margin: 0; padding: 22px 4px 18px; }
+.deadline-node { position: relative; flex: 0 0 208px; min-width: 0; scroll-snap-align: start; }
+.deadline-node:not(:last-child)::after { position: absolute; top: 67px; left: 100%; width: 16px; }
+.deadline-square { position: relative; display: grid; justify-items: center; gap: 8px; padding: 18px 12px 12px; }
+.deadline-square::before, .deadline-square::after { position: absolute; top: -6px; width: 5px; height: 13px; }
+.deadline-square::before { left: 28px; }.deadline-square::after { right: 28px; }
+.deadline-caption { font-size: 12px; letter-spacing: .08em; }
+.deadline-date { display: flex; align-items: baseline; gap: 5px; }
+.deadline-date strong { font: 600 32px/1.1 Archivo, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.deadline-date > span { font-size: 12px; }
+.deadline-state { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 25px; font-size: 12px; }
+.ready .deadline-state { padding: 0 9px; }
+.deadline-options { display: grid; gap: 8px; margin-top: 12px; }
+.deadline-chip { display: grid; gap: 8px; width: 100%; min-height: 44px; padding: 12px; text-align: left; font: inherit; touch-action: manipulation; }
+.deadline-option-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; line-height: 1.5; }
+.deadline-option-title svg { flex-shrink: 0; }
+.deadline-extra { display: flex; align-items: baseline; gap: 5px; font-size: 12px; }
+.deadline-extra b { font: 600 18px Archivo, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-variant-numeric: tabular-nums; }
+.deadline-option-note { font-size: 12px; line-height: 1.5; }
+.deadline-chip:active { transform: scale(.98); }
+.deadline-empty { padding: 0 4px; }
+@media (hover: hover) and (pointer: fine) { .deadline-chip:hover { transform: translateY(-2px); } .deadline-chip:active { transform: scale(.98); } .deadline-chip:focus-visible { transform: none; } }
+.deadline-step-enter-from { transform: translateX(10px); }
+.deadline-option-enter-from { transform: translateY(6px); }
+@media (prefers-reduced-motion: reduce) { .deadline-chip:hover, .deadline-chip:active, .deadline-step-enter-from, .deadline-option-enter-from { transform: none; } }
+@media (max-width: 640px) {
+  .deadline-journey { margin: 8px 0; padding: 12px 10px 0; }
+  .deadline-heading { gap: 6px; }
+  h4 { font-size: 15px; }
+  .deadline-heading p { margin-top: 4px; line-height: 1.5; }
+  .deadline-count { padding: 3px 7px; }
+  .deadline-limit { margin-top: 8px; line-height: 1.5; }
+  .deadline-track { gap: 10px; padding: 16px 2px 12px; }
+  .deadline-node { flex-basis: 168px; }
+  .deadline-node:not(:last-child)::after { top: 48px; width: 10px; }
+  .deadline-square { gap: 5px; padding: 12px 8px 8px; }
+  .deadline-caption { letter-spacing: .02em; }
+  .deadline-date strong { font-size: 26px; }
+  .deadline-state { min-height: 22px; gap: 4px; }
+  .deadline-options { gap: 6px; margin-top: 8px; }
+  .deadline-chip { gap: 5px; padding: 8px; }
+  .deadline-extra b { font-size: 17px; }
+}
+}
