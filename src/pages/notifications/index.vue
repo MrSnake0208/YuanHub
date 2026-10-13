@@ -371,65 +371,47 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-.notifications-main { padding-bottom: 0 }
-.notifications-workspace { padding-top: 0; }
-.page-header-description a { color: var(--accent-strong); font-weight: 800; }
-.notification-toolbar { position: static; margin-top: 0; backdrop-filter: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 0; border: 0; background: none; box-shadow: none; }
-.notification-actions { display: grid; gap: 6px; justify-items: end; }
-.notification-actions button { cursor: pointer; color: var(--tea); background: var(--surface); border-color: var(--line); white-space: nowrap; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.page-header-description a { color: var(--accent-strong); }
+.notification-toolbar { backdrop-filter: none; border: 0; background: none; box-shadow: none; }
+.notification-actions button { cursor: pointer; color: var(--tea); background: var(--surface); border-color: var(--line); }
 .notification-actions button:hover:not(:disabled) { background: var(--cream); border-color: var(--tea); }
 .notification-actions button:disabled { opacity: .45; cursor: not-allowed; }
-.notification-toolbar .sort-lb, .notification-toolbar .action-error { grid-column: 1 / -1; }
-.notification-toolbar .tabs { display: flex; width: fit-content; }
-.notification-toolbar .tabs button { min-height: 44px; white-space: nowrap; }
-@media (min-width: 700px) {
-  .notification-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .notification-toolbar .sort-lb { grid-column: auto; }
-}
-.retention-note { margin-top: 12px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
-.ntf-open-link, .empty-action { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-strong); font: 800 13px var(--font-b); text-underline-offset: 3px }
-.empty-action { padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); cursor: pointer }
-.action-error{color:var(--rouge);font-size:12px;font-weight:700;line-height:1.5}
+.retention-note { color: var(--ink-60) }
+.ntf-open-link, .empty-action { color: var(--accent-strong); text-underline-offset: 3px }
+.empty-action { border: 1px solid var(--line); border-radius: 10px; background: var(--paper); cursor: pointer }
+.action-error{color:var(--rouge)}
 
-.unread-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; background: var(--rouge); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 800; line-height: 1 }
-
-.notification-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px }
-.state { margin-top: 16px; padding: 44px 30px; color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px; text-align: center; font-size: 13px; font-weight: 700 }
+.unread-badge { background: var(--rouge); color: #fff; border-radius: 999px }
+.state { color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px }
 .state.err { color: var(--ink-60) }
-.notification-list .link { min-height: 44px; margin-left: 10px; color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; font-weight: 800; text-decoration: underline; text-underline-offset: 3px }
-.empty-state { margin-top: 16px; padding: 60px 30px; color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px }
-.empty-state strong { color: var(--ink); font-family: var(--font-s); font-size: 17px }
-.empty-state span { max-width: 460px; line-height: 1.65; font-size: 13px }
+.notification-list .link { color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.empty-state { color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px }
+.empty-state strong { color: var(--ink) }
 
-.notification-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; transition: all .3s var(--ease); align-items: start }
+.notification-item { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; transition: all .3s var(--ease) }
 .notification-item:hover { border-color: rgba(73, 59, 44, .24); box-shadow: 0 8px 20px -16px rgba(73, 59, 44, .25) }
 .notification-item.unread { background: rgba(239, 210, 142, .18); border-color: rgba(239, 210, 142, .5) }
 
-.ntf-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; font-size: 14px }
+.ntf-icon { border-radius: 12px }
 .ntf-icon.reply { background: rgba(215, 137, 53, .15); color: var(--accent-strong) }
 .ntf-icon.status { background: rgba(91, 106, 140, .12); color: var(--brand-blue) }
+.ntf-title { color: var(--ink) }
+.ntf-text { color: var(--ink-60) }
+.ntf-meta time { color: var(--ink-35) }
+.ntf-unread-dot { border-radius: 50%; background: var(--rouge) }
 
-.ntf-body { min-width: 0 }
-.ntf-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.4; overflow-wrap: anywhere }
-.notification-item.unread .ntf-title { font-weight: 900 }
-.ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink-60); white-space: pre-line; overflow-wrap: anywhere }
-.ntf-meta { margin-top: 8px; display: flex; align-items: center; gap: 8px }
-.ntf-meta time { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); font-weight: 700 }
-.ntf-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); flex: none }
-
-.ntf-read-btn { flex: none; min-height: 44px; padding: 6px 14px; color: var(--accent-strong); background: rgba(239, 210, 142, .3); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-family: var(--font-b); font-size: 12px; font-weight: 800; white-space: nowrap; transition: all .25s var(--ease); align-self: center }
+.ntf-read-btn { color: var(--accent-strong); background: rgba(239, 210, 142, .3); border: 1px solid transparent; border-radius: 8px; cursor: pointer; transition: all .25s var(--ease) }
 .ntf-read-btn:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow-deep) }
 .ntf-read-btn:disabled { opacity: .45; cursor: not-allowed }
-
-.more-row { display: flex; flex-direction:column; align-items: center; justify-content: center; gap: 8px; margin-top: 24px }
-.btn-more { background: var(--tea); color: var(--cream); border: none; border-radius: 999px; padding: 14px 38px; font-size: 14px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .3s var(--ease) }
-.btn-more:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px) }
+.btn-more { background: var(--tea); color: var(--cream); border: none; border-radius: 999px; cursor: pointer; transition: all .3s var(--ease) }
+.btn-more:hover:not(:disabled) { background: var(--accent); color: #fff }
 .btn-more:disabled { opacity: .45; cursor: default }
 
 @media (max-width: 767px) {
-  .notification-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 14px }
-  .ntf-icon { width: 40px; height: 40px; border-radius: 10px }
-  .ntf-icon svg { width: 16px; height: 16px }
-  .ntf-read-btn { grid-column: 2; justify-self: start; min-height: 44px; padding: 5px 12px; font-size: 11px }
+  .notification-item { border-radius: 14px }
+  .ntf-icon { border-radius: 10px }
 }
 </style>
+<style scoped src="./notificationsPageDesktop.css"></style>
+<style scoped src="./notificationsPageMobile.css"></style>

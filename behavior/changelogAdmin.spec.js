@@ -30,14 +30,14 @@ const deferred = () => {
   const promise = new Promise((ok, fail) => { resolve = ok; reject = fail })
   return { promise, resolve, reject }
 }
-async function render() {
+async function render(options = {}) {
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/admin/changelog', component: ChangelogAdmin },
     { path: '/away', component: { template: '<p>离开后的页面</p>' } },
     { path: '/manage', component: { template: '<p>管理工作台</p>' } }
   ] })
   await router.push('/admin/changelog'); await router.isReady()
-  const wrapper = mount({ template: '<router-view />' }, { global: {
+  const wrapper = mount({ template: '<router-view />' }, { ...options, global: {
     plugins: [router], stubs: { IslandSidebar: true, AdminBackLink: true, ChangelogContent: true }
   } })
   await flushPromises()
@@ -248,4 +248,37 @@ it('管理身份、对象修订和预览View与审核发布操作保持分层', 
   expect(wrapper.get('.preview').text()).toContain('日志A')
   expect(api.approveChangelog).not.toHaveBeenCalled()
   expect(api.withdrawChangelog).not.toHaveBeenCalled()
+})
+
+
+it.each([390, 1440])('日志编写在%s起步跨断点保持正文、选区、焦点与唯一实例', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const { wrapper, router } = await render({ attachTo: document.body })
+  try {
+    await edit(wrapper)
+    const title = titleFor(wrapper).element
+    const editor = editorFor(wrapper)
+    editor.commands.setTextSelection(3)
+    title.focus()
+    const reads = api.listAdminChangelog.mock.calls.length
+    for (const nextWidth of [640, 641, 900, 901, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(titleFor(wrapper).element).toBe(title)
+      expect(title.value).toBe('未保存标题')
+      expect(document.activeElement).toBe(title)
+      expect(editorFor(wrapper)).toBe(editor)
+      expect(editor.state.selection.from).toBe(3)
+      expect(editor.getText()).toBe('未保存正文')
+      expect(wrapper.findAllComponents(EditorContent)).toHaveLength(1)
+      expect(router.currentRoute.value.path).toBe('/admin/changelog')
+    }
+    expect(api.listAdminChangelog).toHaveBeenCalledTimes(reads)
+    expect(api.saveChangelogDraft).not.toHaveBeenCalled()
+    expect(api.submitChangelog).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

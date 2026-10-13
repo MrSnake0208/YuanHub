@@ -1,0 +1,58 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-notifications > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.notifications-main { padding-bottom: 0 }
+.notifications-workspace { padding-top: 0; }
+.page-header-description a { font-weight: 800; }
+.notification-toolbar { position: static; margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 0; }
+.notification-actions { display: grid; gap: 6px; justify-items: end; }
+.notification-actions button { white-space: nowrap; }
+.notification-toolbar .sort-lb, .notification-toolbar .action-error { grid-column: 1 / -1; }
+.notification-toolbar .tabs { display: flex; width: fit-content; }
+.notification-toolbar .tabs button { min-height: 44px; white-space: nowrap; }
+@media (min-width: 700px) {
+  .notification-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .notification-toolbar .sort-lb { grid-column: auto; }
+}
+.retention-note { margin-top: 12px; font-size: 12px; line-height: 1.6 }
+.ntf-open-link, .empty-action { min-height: 44px; display: inline-flex; align-items: center; font: 800 13px var(--font-b) }
+.empty-action { padding: 0 16px }
+.action-error{font-size:12px;font-weight:700;line-height:1.5}
+
+.unread-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; font-size: 11px; font-weight: 800; line-height: 1 }
+
+.notification-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px }
+.state { margin-top: 16px; padding: 44px 30px; text-align: center; font-size: 13px; font-weight: 700 }
+.notification-list .link { min-height: 44px; margin-left: 10px; font-weight: 800 }
+.empty-state { margin-top: 16px; padding: 60px 30px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px }
+.empty-state strong { font-family: var(--font-s); font-size: 17px }
+.empty-state span { max-width: 460px; line-height: 1.65; font-size: 13px }
+
+.notification-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; padding: 16px 20px; align-items: start }
+
+.ntf-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; font-size: 14px }
+
+.ntf-body { min-width: 0 }
+.ntf-title { font-size: 14px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere }
+.notification-item.unread .ntf-title { font-weight: 900 }
+.ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere }
+.ntf-meta { margin-top: 8px; display: flex; align-items: center; gap: 8px }
+.ntf-meta time { font-family: var(--font-d); font-size: 11px; font-weight: 700 }
+.ntf-unread-dot { width: 8px; height: 8px; flex: none }
+
+.ntf-read-btn { flex: none; min-height: 44px; padding: 6px 14px; font-family: var(--font-b); font-size: 12px; font-weight: 800; white-space: nowrap; align-self: center }
+
+.more-row { display: flex; flex-direction:column; align-items: center; justify-content: center; gap: 8px; margin-top: 24px }
+.btn-more { padding: 14px 38px; font-size: 14px; font-weight: 800; font-family: var(--font-b) }
+.btn-more:hover:not(:disabled) { transform: translateY(-2px) }
+
+@media (max-width: 767px) {
+  .notification-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px }
+  .ntf-icon { width: 40px; height: 40px }
+  .ntf-icon svg { width: 16px; height: 16px }
+  .ntf-read-btn { grid-column: 2; justify-self: start; min-height: 44px; padding: 5px 12px; font-size: 11px }
+}
+}

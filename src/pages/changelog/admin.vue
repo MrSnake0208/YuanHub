@@ -390,72 +390,55 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 </script>
 
 <style scoped>
-.page-changelog-admin { min-height: 100vh; min-height: 100dvh }
-.workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; padding-block: 12px 60px }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .entry-list,.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
-.entry-list { min-width: 0; align-self: start; overflow: hidden }
-.list-head,.panel-head,.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line) }
-.list-head strong { font-family: var(--font-s); font-size: 18px }
-.entry-button { width: 100%; display: grid; gap: 7px; padding: 14px 18px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; cursor: pointer }
+.list-head,.panel-head,.actions { border-bottom: 1px solid var(--line) }
+.entry-button { border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer }
 .entry-button:hover:not(:disabled),.entry-button.active { background: var(--paper) }
 .entry-button:disabled { cursor: default }
 .entry-button.active { box-shadow: inset 3px 0 var(--accent) }
-.entry-title { font-weight: 800; overflow-wrap: anywhere }
-.entry-button span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink-60); font-size: 11px }
-.entry-button i,.status { padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-style: normal; font-size: 11px; font-weight: 800 }
+.entry-button span:last-child { color: var(--ink-60) }
+.entry-button i,.status { border: 1px solid var(--line); border-radius: 999px; color: var(--ink) }
 .status-待审核 { border-color: var(--accent) !important; color: var(--accent) !important }
 .status-已发布 { background: var(--yellow); border-color: transparent !important }
 .status-已撤回 { color: var(--rouge) !important }
-.list-state,.empty-panel { padding: 48px 18px; color: var(--ink-60); text-align: center }
-.list-state button { display: block; margin: 10px auto 0 }
-.pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; color: var(--ink-60); font-size: 11px }
+.list-state,.empty-panel { color: var(--ink-60) }
+.pager { color: var(--ink-60) }
 .pager button { border: 0; background: transparent; color: var(--ink); cursor: pointer }
 .pager button:disabled { opacity: .4; cursor: default }
-.editor-panel { min-width: 0; align-self: start; overflow: hidden }
 .panel-head { border-bottom: 1px solid var(--line) }
-.editor-identity { min-width: 0 }
-.editor-title { margin: 0 0 6px; font: 900 20px/1.4 var(--font-s); color: var(--tea); overflow-wrap: anywhere }
-.editor-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px }
-.panel-head > .button { flex: none }
+.editor-title { color: var(--tea) }
 .panel-head small { color: var(--ink-60) }
-.fields { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; padding: 20px 20px 0 }
-.fields label { display: grid; gap: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
-.fields input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; outline: none }
+.fields label { color: var(--ink-60) }
+.fields input { border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); outline: none }
 .fields input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215,137,53,.16) }
-.editor-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px 8px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
-.editor-label > div { display: grid; gap: 3px }
-.editor-label small { font-size: 11px; font-weight: 400 }
-.preview-toggle { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font: 700 12px var(--font-b); white-space: nowrap; cursor: pointer }
+.editor-label { color: var(--ink-60) }
+.preview-toggle { border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer }
 .preview-toggle[aria-pressed=true] { background: var(--paper); border-color: var(--accent) }
-.toolbar { margin: 0; border-radius: 0; box-shadow: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-block: 1px solid var(--line); background: var(--paper) }
-.toolbar button { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
+.toolbar { border-radius: 0; box-shadow: none; border-block: 1px solid var(--line); background: var(--paper) }
+.toolbar button { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .toolbar button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
 .toolbar button:disabled { opacity: .45; cursor: default }
-.editor-surface { margin: 0 20px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
-.editor-surface :deep(.tiptap) { overflow-wrap: anywhere; min-height: 360px; padding: 18px; color: var(--ink); line-height: 1.8; outline: none }
+.editor-surface { border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+.editor-surface :deep(.tiptap) { color: var(--ink); outline: none }
 .editor-surface :deep(.tiptap:focus) { box-shadow: 0 0 0 3px rgba(215,137,53,.18) }
-.editor-surface :deep(h2),.editor-surface :deep(h3) { margin: 1.2em 0 .5em; font-family: var(--font-s) }
-.editor-surface :deep(ul),.editor-surface :deep(ol) { padding-left: 1.6em }
-.editor-surface :deep(blockquote) { padding-left: 1em; border-left: 3px solid var(--accent) }
-.editor-surface :deep(img) { max-width: 100%; height: auto; border-radius: 10px }
-.notice { margin: 14px 20px 0; padding: 10px 12px; border-radius: 8px; background: var(--paper); color: var(--ink-60) }
+.editor-surface :deep(blockquote) { border-left: 3px solid var(--accent) }
+.editor-surface :deep(img) { border-radius: 10px }
+.notice { border-radius: 8px; background: var(--paper); color: var(--ink-60) }
 .notice.error { border: 1px solid var(--rouge); color: var(--rouge) }
 .notice.rejected { border-left: 3px solid var(--accent) }
-.preview { margin: 20px; padding: 24px; border: 1px dashed var(--accent); border-radius: 12px; background: var(--paper) }
-.preview header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line) }
-.preview header span { display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px; background: var(--yellow); font-size: 11px; font-weight: 800 }
-.preview h2 { font-family: var(--font-s) }
-.actions { justify-content: flex-end; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: var(--paper) }
-.button { white-space: nowrap; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
-.button.compact { min-height: 44px; padding-inline: 12px }
+.preview { border: 1px dashed var(--accent); border-radius: 12px; background: var(--paper) }
+.preview header { border-bottom: 1px solid var(--line) }
+.preview header span { border-radius: 999px; background: var(--yellow) }
+.actions { border-bottom: 1px solid var(--line); background: var(--paper) }
+.button { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
 .button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream) }
 .button.secondary { background: var(--surface); color: var(--ink) }
 .button.danger { border-color: var(--rouge); background: var(--rouge); color: var(--cream) }
 .button.danger.ghost { background: transparent; color: var(--rouge) }
 .button:disabled { opacity: .5; cursor: default }
 .entry-button:focus-visible,.button:focus-visible,.pager button:focus-visible,.preview-toggle:focus-visible,.toolbar button:focus-visible,.list-state button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px }
-.pager button,.list-state button { min-height: 44px }
-.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; clip: rect(0,0,0,0); overflow: hidden; white-space: nowrap; border: 0 }
-@media (max-width: 900px) { .workspace { grid-template-columns: 1fr } .entry-list { max-height: 330px; overflow-y: auto } }
-@media (max-width: 640px) { .workspace { padding-block: 12px 36px; gap: 14px } .fields { grid-template-columns: 1fr } .actions .button { flex: 1 1 44% } }
+.visually-hidden { border: 0 }
 </style>
+<style scoped src="./changelogAdminDesktop.css"></style>
+<style scoped src="./changelogAdminMobile.css"></style>

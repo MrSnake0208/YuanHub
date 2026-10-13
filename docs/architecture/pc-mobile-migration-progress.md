@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：18/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：21/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -53,9 +53,9 @@
 | /feedback/admin | pages/feedback/admin.vue | feedbackAdminDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackAdminMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /admin/roles | pages/admin/roles.vue | 待拆分 | 待拆分 | pages/admin/roles.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /admin/audit | pages/admin/audit.vue | 待拆分 | 待拆分 | pages/admin/audit.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /changelog | pages/changelog/index.vue | 待拆分 | 待拆分 | pages/changelog/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /admin/changelog | pages/changelog/admin.vue | 待拆分 | 待拆分 | pages/changelog/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /notifications | pages/notifications/index.vue | 待拆分 | 待拆分 | pages/notifications/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /changelog | pages/changelog/index.vue | pages/changelog/changelogPageDesktop.css + 正文组件Desktop.css | pages/changelog/changelogPageMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
+| /admin/changelog | pages/changelog/admin.vue | pages/changelog/changelogAdminDesktop.css + 正文组件Desktop.css | pages/changelog/changelogAdminMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
+| /notifications | pages/notifications/index.vue | pages/notifications/notificationsPageDesktop.css + 正文组件Desktop.css | pages/notifications/notificationsPageMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
 | /:pathMatch(.*)* | pages/site/not-found.vue | 待拆分 | 待拆分 | pages/site/not-found.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 
 ## 子工作区
@@ -147,4 +147,11 @@
 - `npx --no-install vitest run behavior/feedback*.spec.js behavior/coCreation.spec.js`：174/174（7文件）。新增6个两端真实父级用例验证我的/管理工单回复草稿、焦点、详情实例，公开标题/摘要/发布面板保持；resize无额外读写。气泡对齐原源码断言改为分别检查两端文件，未弱化权限/附件/内部信息隔离与草稿断言。
 - `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-09-*.log`。日历提交补记 `7007932`；本批保存标题 `refactor(feedback): 拆分反馈共建与工单双端展示`。完整路由18/43，真实浏览器视觉仍pending。
 
-下一动作：通知中心、公开更新日志及更新日志管理，保留筛选、定位、编写草稿和审核状态。
+## B10：通知与更新日志三入口（L1样式归属；保留通知与编写保护回归）
+
+- 三页面、正文与关联反馈共5个展示所有者各自接入双端CSS；main/wrap空间由页面以1080px显式持有，内容组件以767px归属。模板/脚本逐字不变，未改通知状态、锚点分页、富文本或审核权限。
+- 680组源码声明投影与基线一致，删除矛盾媒体块602字节。`node --test test/changelog.test.js test/notifications.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js`：184/184。
+- `npx --no-install vitest run behavior/changelog*.spec.js behavior/notification*.spec.js`：51/51。新增6个两端真实父级用例，未读筛选、正文展开/版本锚点、编辑标题/正文/选区/焦点与唯一实例跨断点保持，resize无额外读写或定位。实例断言使用Vue内部实例，避免测试工具代理包装身份变化。通知旧链接用例仍有jsdom不支持真实导航提示。
+- `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-10-*.log`。反馈提交补记 `974a575`；本批保存标题 `refactor(changelog): 分离通知与日志双端展示`。完整路由21/43，真实UI待人工验收。
+
+下一动作：广陵账房、收据/方案弹层与公共目录管理。

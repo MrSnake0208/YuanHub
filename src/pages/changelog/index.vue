@@ -100,23 +100,19 @@ onBeforeUnmount(function () { mounted = false; requestId += 1 })
 </script>
 
 <style scoped>
-.page-changelog { min-height: 100vh; min-height: 100dvh; }
-.changelog-card { scroll-margin-top: 84px; }
-.changelog-highlights { margin-top: 18px; padding-left: 20px; color: var(--ink-60); font-size: 14px; line-height: 1.8; }
-.changelog-highlights li { margin-block: 6px; overflow-wrap: anywhere; }
-.changelog-highlights li span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.changelog-full summary { min-height: 44px; padding-top: 14px; color: var(--tea); font-size: 13px; font-weight: 800; cursor: pointer; }
-.changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }
-.changelog-card { padding: clamp(22px, 4vw, 42px); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
-.changelog-card header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.changelog-card h2 { grid-column: 1 / -1; font-family: var(--font-s); font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; font-weight: 900; }
-.version { width: fit-content; max-width: 100%; overflow-wrap: anywhere; padding: 4px 11px; background: var(--yellow); border-radius: 999px; font-family: var(--font-d); font-size: 12px; font-weight: 800; }
-.changelog-card time { white-space: nowrap; color: var(--ink-60); font-family: var(--font-d); font-size: 12px; }
-.state { min-height: 220px; display: grid; place-content: center; text-align: center; color: var(--ink-60); background: rgba(255,253,246,.7); border: 1px dashed var(--line); border-radius: 18px; }
-.state button, .load-more { min-height: 44px; margin: 12px auto 0; padding: 10px 22px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-weight: 800; cursor: pointer; }
-.inline-error { color: var(--rouge); text-align: center; }
-.anchor-status { color: var(--ink-60); font-size: 13px; text-align: center; }
-.load-more { display: block; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.changelog-highlights { color: var(--ink-60); }
+.changelog-full summary { color: var(--tea); cursor: pointer; }
+.changelog-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
+.changelog-card header { border-bottom: 1px solid var(--line); }
+.version { background: var(--yellow); border-radius: 999px; }
+.changelog-card time { color: var(--ink-60); }
+.state { color: var(--ink-60); background: rgba(255,253,246,.7); border: 1px dashed var(--line); border-radius: 18px; }
+.state button, .load-more { border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); cursor: pointer; }
+.inline-error { color: var(--rouge); }
+.anchor-status { color: var(--ink-60); }
 .load-more:disabled { opacity: .55; cursor: wait; }
 @media (max-width: 640px) { .changelog-card { border-radius: 14px; } }
 </style>
+<style scoped src="./changelogPageDesktop.css"></style>
+<style scoped src="./changelogPageMobile.css"></style>

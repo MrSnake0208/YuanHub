@@ -19,7 +19,7 @@ vi.mock('../src/store/notificationUnread.js', async () => {
 
 const first = { id: 'notice-1', title: '新回复', body: '详情', readAt: null, createdAt: '2026-09-27T00:00:00Z' }
 const second = { ...first, id: 'notice-2', title: '第二条' }
-const render = () => mount(NotificationsPage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, AccountIdDetails: true } } })
+const render = (options = {}) => mount(NotificationsPage, { ...options, global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, AccountIdDetails: true } } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -241,4 +241,33 @@ it('首次没有通知可进入我的反馈，未读为空可切回全部', asyn
   await wrapper.get('.empty-state button').trigger('click'); await flushPromises()
   expect(listNotifications).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
   expect(markAllNotificationsRead).not.toHaveBeenCalled()
+})
+
+
+it.each([390, 1440])('通知在%s起步跨断点保持未读筛选与列表焦点且不标记已读', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  try {
+    await wrapper.findAll('.tabs button')[1].trigger('click'); await flushPromises()
+    const filter = wrapper.findAll('.tabs button')[1].element
+    const item = wrapper.get('.notification-item').element
+    filter.focus()
+    const reads = listNotifications.mock.calls.length
+    for (const nextWidth of [699, 700, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.findAll('.tabs button')[1].element).toBe(filter)
+      expect(filter.getAttribute('aria-pressed')).toBe('true')
+      expect(wrapper.get('.notification-item').element).toBe(item)
+      expect(document.activeElement).toBe(filter)
+      expect(wrapper.findAll('.notification-toolbar')).toHaveLength(1)
+    }
+    expect(listNotifications).toHaveBeenCalledTimes(reads)
+    expect(markNotificationRead).not.toHaveBeenCalled()
+    expect(markAllNotificationsRead).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

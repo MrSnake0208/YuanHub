@@ -1,0 +1,13 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.changelog-body-error { padding-block: 20px; font-size: 13px; line-height: 1.8; }
+.changelog-body-error button { min-height: 44px; padding: 8px 12px; font: inherit; }
+.changelog-rich-text :deep(.tiptap) { font-size: 15px; line-height: 1.9; }
+.changelog-rich-text :deep(h2), .changelog-rich-text :deep(h3) { margin: 1.5em 0 .55em; font-family: var(--font-s); font-weight: 900; }
+.changelog-rich-text :deep(h2) { font-size: 24px; }
+.changelog-rich-text :deep(h3) { font-size: 19px; }
+.changelog-rich-text :deep(p), .changelog-rich-text :deep(ul), .changelog-rich-text :deep(ol), .changelog-rich-text :deep(blockquote) { margin: .75em 0; }
+.changelog-rich-text :deep(ul), .changelog-rich-text :deep(ol) { padding-left: 1.6em; }
+.changelog-rich-text :deep(blockquote) { padding: .3em 1em; }
+.changelog-rich-text :deep(img) { display: block; max-width: 100%; height: auto; margin: 18px auto; }
+}

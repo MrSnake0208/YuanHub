@@ -175,3 +175,36 @@ it('卸载后迟到深链响应不继续翻页或滚动', async () => {
 })
 
 afterEach(() => window.history.replaceState(null, '', '/'))
+
+
+it.each([390, 1440])('公开日志在%s起步跨断点保持锚点、展开状态和正文实例', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  window.history.replaceState(null, '', '/changelog#version-release-example')
+  const wrapper = mount(ChangelogPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
+  await flushPromises()
+  try {
+    const details = wrapper.get('.changelog-full').element
+    details.open = false
+    const summary = wrapper.get('.changelog-full summary').element
+    summary.focus()
+    const content = wrapper.getComponent(ChangelogContent).vm.$
+    const reads = listChangelog.mock.calls.length
+    const scrolls = Element.prototype.scrollIntoView.mock.calls.length
+    for (const nextWidth of [640, 641, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.changelog-full').element).toBe(details)
+      expect(details.open).toBe(false)
+      expect(document.activeElement).toBe(summary)
+      expect(wrapper.getComponent(ChangelogContent).vm.$).toBe(content)
+      expect(wrapper.findAllComponents(ChangelogContent)).toHaveLength(1)
+      expect(window.location.hash).toBe('#version-release-example')
+    }
+    expect(listChangelog).toHaveBeenCalledTimes(reads)
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(scrolls)
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})

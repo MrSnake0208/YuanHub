@@ -1,0 +1,9 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.changelog-related { margin-top: 18px; padding-top: 14px; }
+.changelog-related h3 { margin-bottom: 9px; font-size: 12px; font-weight: 900; }
+.changelog-related ul { display: grid; gap: 7px; list-style: none; }
+.changelog-related li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.changelog-related a { font-size: 13px; font-weight: 800; }
+.changelog-related span { font: 11px var(--font-d); }
+}
