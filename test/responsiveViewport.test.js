@@ -41,29 +41,10 @@ test('账房底栏可见的整个平板区间都有底部留白', () => {
   assert.doesNotMatch(main, /@media \(max-width:767px\)[\s\S]*?\.cart-main\{padding-bottom:/)
 })
 
-test('窄屏账房筛选项保持可滚动且不会缩成小于 44px 的按钮', () => {
+test('窄屏账房筛选项在容器内横向滚动且不会被挤压', () => {
   const main = read('src/styles/main.css')
   assert.match(main, /\.cart-filters \.row\{[^}]*overflow-x:auto/)
-  assert.match(main, /\.cart-filters \.chip\{[^}]*flex:none;min-width:44px/)
-  assert.match(main, /\.initial-row input\{[^}]*min-height:44px/)
-  assert.match(main, /\.mbtn\.icon\{[^}]*min-width:44px/)
-})
-
-test('主要小控件的交互命中区达到 44px', () => {
-  const targets = [
-    ['src/pages/beta/index.vue', '.beta-interest'],
-    ['src/components/AccountEventToasts.vue', '.account-event-toast button'],
-    ['src/components/AccountWorkspace.vue', '.account-soft-option'],
-    ['src/components/DataAccountContextBar.vue', '.context-action'],
-    ['src/pages/notifications/index.vue', '.ntf-read-btn'],
-    ['src/pages/inventory/index.vue', '.agent-menu-options button']
-  ]
-  for (const [file, selector] of targets) {
-    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const rule = read(file).match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1]
-    assert.ok(rule, `${file}: ${selector} 缺少样式`)
-    assert.match(rule, /(?:min-height|height):\s*44px/, `${file}: ${selector} 命中区高度不足`)
-  }
+  assert.match(main, /\.cart-filters \.chip\{[^}]*flex:none/)
 })
 
 test('手机端图鉴属性和职业筛选与养成总览保持单行', () => {

@@ -203,22 +203,31 @@ it.each(['取消', '切到B'])('删除确认后%s不写，确认包含账号与�
   expect(inventoryApi.deleteRecord).not.toHaveBeenCalled()
 })
 
-it.each(['A→B→A', '卸载'])('[P0安全不变量] %s 后迟到删除确认不得再写入', async transition => {
+it.each(['A→B→A', '卸载', '清空账号', '切换游戏', '更换登录身份', '退出登录'])('[P0安全不变量] %s 后迟到删除确认不得再写入', async transition => {
   const confirmation = pending()
   dialog.confirm.mockReturnValueOnce(confirmation.promise)
   const wrapper = render()
   await flushPromises()
   await history(wrapper).get('.record-del').trigger('click')
   if (transition === '卸载') wrapper.unmount()
+  else if (transition === '清空账号') activeAccount.set('')
+  else if (transition === '切换游戏') activeAccount.setGame('如鸢', 'acc-1')
+  else if (transition === '更换登录身份') auth.userInfo = { id: 'synthetic-other-user' }
+  else if (transition === '退出登录') auth.isLoggedIn = false
   else {
     activeAccount.set('acc-2')
     await flushPromises()
     activeAccount.set('acc-1')
     await flushPromises()
   }
+  await flushPromises()
+  const historyReads = inventoryApi.listRecords.mock.calls.length
+  const currentReads = inventoryApi.getCurrent.mock.calls.length
   confirmation.resolve(true)
   await flushPromises()
   expect(inventoryApi.deleteRecord).not.toHaveBeenCalled()
+  expect(inventoryApi.listRecords).toHaveBeenCalledTimes(historyReads)
+  expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(currentReads)
 })
 
 it('删除/恢复请求期间resize不重读、状态保留且重复按钮不双写', async () => {
