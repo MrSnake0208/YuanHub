@@ -1615,94 +1615,17 @@
             aria-labelledby="inventory-tab-records"
             tabindex="0"
             v-show="activeTab === 'records' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)" class="panel">
-            <section class="records-overview" aria-labelledby="records-overview-title">
-              <div class="records-overview-copy">
-                <span class="records-kicker">库存追踪 · 操作历史</span>
-                <h2 id="records-overview-title">浏览库存变更记录</h2>
-                <p>
-                  这里按时间查阅、筛选和追踪库存更新与奖励入账，也可删除与恢复记录。新增奖励请使用顶部「记录奖励」；本地报告可在此导入。
-                </p>
-              </div>
-              <div class="records-overview-actions">
-                <div class="records-count" aria-live="polite">
-                  <span>当前已加载</span>
-                  <strong>{{ recordsList.length }}</strong>
-                  <small>条记录</small>
-                </div>
-                <button type="button" class="btn ghost records-report-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
-                  aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'report'"
-                  @click="openRewardEntry('report', $event.currentTarget)"><Upload :size="16" aria-hidden="true" />导入本地报告</button>
-              </div>
-            </section>
-            <div class="records-head" v-reveal>
-              <span class="hint"
-                >筛选要查看的记录类型；删除单条后会自动重放剩余记录并重建库存。</span
-              >
-              <span class="sp"></span>
-              <div
-                class="records-filter"
-                role="group"
-                aria-label="操作历史类型筛选"
-              >
-                <button
-                  type="button"
-                  :aria-pressed="recordsEntityType === 'all'"
-                  :class="{ on: recordsEntityType === 'all' }"
-                  :disabled="recordsLoading"
-                  @click="setRecordsEntityType('all')"
-                >
-                  全部
-                </button>
-                <button
-                  type="button"
-                  :aria-pressed="recordsEntityType === 'item'"
-                  :class="{ on: recordsEntityType === 'item' }"
-                  :disabled="recordsLoading"
-                  @click="setRecordsEntityType('item')"
-                >
-                  道具
-                </button>
-                <button
-                  type="button"
-                  :aria-pressed="recordsEntityType === 'agent'"
-                  :class="{ on: recordsEntityType === 'agent' }"
-                  :disabled="recordsLoading"
-                  @click="setRecordsEntityType('agent')"
-                >
-                  心纸
-                </button>
-              </div>
-              <button
-                class="act-btn ghost"
-                :disabled="recordsLoading"
-                @click="loadRecords(true)"
-              >
-                刷新
-              </button>
-            </div>
-
-            <div v-for="notice in deletedRecordNotices" :key="notice.recordId" class="inventory-inline-state" role="status">
-              已删除「{{ notice.summary }}」，库存已重建。
-              <button type="button" class="link" :disabled="Boolean(recordsBusyId)" @click="onRestoreRecord(notice)">撤销删除</button>
-            </div>
-            <div v-if="recordsActionError" class="inventory-inline-state is-error" role="alert">{{ recordsActionError }}</div>
-
-            <div
-              v-if="recordsLoading && recordsList.length === 0"
-              class="state"
+            <InventoryRecordsWorkspace
+              :records-list="recordsList" :account-id="accountId"
+              :records-entity-type="recordsEntityType" :records-loading="recordsLoading"
+              :records-busy-id="recordsBusyId" :deleted-record-notices="deletedRecordNotices"
+              :records-error="recordsError" :records-action-error="recordsActionError"
+              :records-retry-reset="recordsRetryReset" :records-next-cursor="recordsNextCursor"
+              :reward-entry-disabled="rewardEntryDisabled" :reward-import-busy="rewardImportBusy"
+              :report-open="rewardEntryWorkspace?.mode === 'report'"
+              @filter="setRecordsEntityType" @load="loadRecords" @restore="onRestoreRecord"
+              @open-report="openRewardEntry('report', $event)"
             >
-              正在加载记录…
-            </div>
-            <div v-else-if="!accountId" class="state">请先创建并选择一个子账号，库存变更记录会归属到该账号。</div>
-            <div v-else-if="recordsError && recordsList.length === 0" class="state err" role="alert">
-              {{ recordsError }}
-              <button type="button" class="link" @click="loadRecords(true)">重试加载</button>
-            </div>
-            <div v-else-if="recordsList.length === 0" class="state">
-              <strong>还没有库存变更记录</strong><br />
-              更新库存、记录奖励或导入本地报告后，记录会出现在这里。请使用顶部「记录奖励」「更新库存」，或此处的「导入本地报告」。
-            </div>
-            <template v-else>
               <InventoryRecordsView
                 :records-list="recordsList" :account-id="accountId"
                 :disabled="Boolean(recordsBusyId) || recordsLoading"
@@ -1710,19 +1633,7 @@
                 :stock-effect-label="stockEffectLabel" :stamina-cost-of="staminaCostOf"
                 :delete-record="onDeleteRecord"
               />
-              <div v-if="recordsError" class="inventory-inline-state is-error" role="alert">
-                {{ recordsError }}，已加载的记录仍可查看。
-                <button type="button" class="link" :disabled="recordsLoading" @click="loadRecords(recordsRetryReset)">重试加载</button>
-              </div>
-              <button
-                v-if="recordsNextCursor && !recordsError"
-                class="load-more"
-                :disabled="recordsLoading"
-                @click="loadRecords(false)"
-              >
-                加载更多
-              </button>
-            </template>
+            </InventoryRecordsWorkspace>
           </div>
         </div>
       </section>
@@ -1780,6 +1691,7 @@ import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
+import InventoryRecordsWorkspace from '../../components/inventory/InventoryRecordsWorkspace.vue';
 import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -7102,126 +7014,6 @@ onBeforeUnmount(function () {
 }
 
 /* ---- 导入记录 ---- */
-.records-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.78fr);
-  gap: 28px;
-  align-items: center;
-  padding: 20px 22px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background:
-    linear-gradient(118deg, rgba(255, 248, 236, 0.92), rgba(255, 253, 246, 0.98));
-  box-shadow: 0 14px 34px -32px rgba(73, 59, 44, 0.48);
-}
-.records-overview-copy {
-  min-width: 0;
-}
-.records-kicker {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--accent-strong);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-}
-.records-overview h2 {
-  margin: 0;
-  color: var(--ink);
-  font-family: var(--font-s);
-  font-size: clamp(20px, 2vw, 25px);
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-.records-overview p {
-  max-width: 64ch;
-  margin: 8px 0 0;
-  color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.75;
-}
-.records-overview-actions {
-  min-width: 0;
-  display: grid;
-  gap: 12px;
-  justify-items: stretch;
-}
-.records-count {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 0;
-  color: var(--ink-60);
-  font-size: 11px;
-  font-weight: 700;
-}
-.records-count strong {
-  color: var(--ink);
-  font-family: "Archivo", var(--font-b);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-.records-count small {
-  font-size: 10px;
-}
-.records-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-  padding: 4px 0;
-}
-.records-head .hint {
-  min-width: 0;
-  flex: 1 1 320px;
-  font-size: 12.5px;
-  color: var(--ink-60);
-  font-weight: 600;
-}
-.records-head .sp {
-  flex: 1;
-}
-.records-filter {
-  display: inline-grid;
-  flex: 0 0 auto;
-  grid-template-columns: repeat(3, minmax(58px, auto));
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-}
-.records-filter button {
-  min-height: 32px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--ink-60);
-  font-family: var(--font-b);
-  font-size: 11.5px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.records-filter button.on {
-  background: var(--tea);
-  color: var(--cream);
-}
-.records-filter button:hover:not(.on):not(:disabled) {
-  color: var(--ink);
-}
-.records-filter button:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 1px;
-}
-.records-filter button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 .stock-baseline-confirmation {
   display: flex;
@@ -7251,15 +7043,6 @@ onBeforeUnmount(function () {
 }
 
 @media (min-width: 1081px) {
-  .records-overview-actions {
-    width: max-content;
-    max-width: 100%;
-    justify-self: end;
-  }
-  .records-count {
-    width: 100%;
-    justify-content: flex-start;
-  }
   .manifest-toolbar {
     position: sticky;
     top: 84px;
@@ -8065,39 +7848,6 @@ onBeforeUnmount(function () {
     justify-content: center;
     min-height: 44px;
   }
-  .records-head {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .records-overview {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-    padding: 18px 16px;
-  }
-  .records-overview-actions {
-    gap: 10px;
-  }
-  .records-count {
-    justify-content: flex-start;
-  }
-  .records-head .hint {
-    flex-basis: auto;
-  }
-  .records-head .sp {
-    display: none;
-  }
-  .records-filter {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .records-filter button {
-    min-height: 32px;
-  }
-  .records-head > .act-btn {
-    width: 100%;
-    min-height: 44px;
-    justify-content: center;
-  }
   .state {
     padding: 36px 18px;
   }
@@ -8150,7 +7900,8 @@ onBeforeUnmount(function () {
 .freshness-label { color: var(--ink-60); font-size: 12px; }
 .inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .inventory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.inventory-entry, .reward-entry, .records-report-entry { min-height: 44px; flex: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.inventory-entry,
+.reward-entry { min-height: 44px; flex: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
 .inventory-setup { margin-top: 8px; }
 .manifest-toolbar { position: static; display: flex; margin-top: 0; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-toolbar .manifest-type-switch { position: static; width: fit-content; margin: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }

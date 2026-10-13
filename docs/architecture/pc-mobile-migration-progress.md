@@ -62,7 +62,7 @@
 
 | route/workspace | 当前入口（src/） | desktop 所有者 | mobile 所有者 | 共享业务所有者 | 状态 | 验证证据 | 阻塞及下一动作 | manual_ui_status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| /inventory 操作历史 | components/inventory/InventoryRecordsView.vue | InventoryRecordsDesktopView.vue | InventoryRecordsMobileView.vue | pages/inventory/index.vue | verified_nonbrowser | B01：inventoryRecordsViews/Ux 139 项通过 | 扩展历史筛选/回执/分页展示 | pending |
+| /inventory 操作历史（概览/筛选/回执/分页/列表） | components/inventory/InventoryRecordsWorkspace.vue + InventoryRecordsView.vue | inventoryRecordsWorkspaceDesktop.css + InventoryRecordsDesktopView.vue | inventoryRecordsWorkspaceMobile.css + InventoryRecordsMobileView.vue | pages/inventory/index.vue | verified_nonbrowser | B02：141 行为 + CSS 编译 + build | 无阻塞；库存其余工作区仍 pending | pending |
 | /inventory 清单/筛选/盘点/统计/奖励 | pages/inventory/index.vue | 待拆分 | 待拆分 | pages/inventory/index.vue | pending | 真实父级模板 | 分稳定子区迁移；保护编辑草稿 | pending |
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 实际路由 | 保持 visitedTabs 与编辑器实例 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/index.vue | 待拆分 | 待拆分 | 原控制器及 PoolEditor | pending | 实际路由 | 保护 rows/originals/orderRevision/CAS | pending |
@@ -76,6 +76,14 @@
 - `npx --no-install vitest run behavior/todayComingSoon.spec.js behavior/todayLobby.spec.js behavior/todayActivitySummary.spec.js behavior/todayCalendarSubscriptions.spec.js`：87/87；新增 4 个真实父级挂载用例覆盖 390/1440 起步、767/768/981 两侧、账号草稿/确认、焦点、实例唯一和零额外读写。挂载账号管理器的测试有 router-view 缺失提示；不代表浏览器路由验收。
 - `node --test test/todayPage.test.js test/todayLayoutStyles.test.js test/todayData.test.js`：12/12；外部 CSS 实际 scoped 编译、每条设备规则都有媒体归属。库存 `behavior/inventoryRecordsViews.spec.js behavior/inventoryRecordsUx.spec.js`：139/139，A1/A2 未修改。
 - `npm run test:static`：600 文件、0 失败；`npm run build`：Vite/PWA/OCR 压缩成功，产物 `YuanHub/dist/`。本批不是最终全站构建；源码行为冻结后仅调整模板缩进和测试断言，无业务代码变化。
-- `git diff --check` 通过；API/store/router/依赖未修改。批次日志保存于父仓忽略目录 `.test-artifacts/pc-mobile-layered/batch-01-*.log`。首批精确本地提交见 main 上 `refactor(today): 接入稳定布局与独立双端展示`。
+- `git diff --check` 通过；API/store/router/依赖未修改。批次日志保存于父仓忽略目录 `.test-artifacts/pc-mobile-layered/batch-01-*.log`。首批精确本地提交 `832355a`（main，27 文件）。
 
-下一动作：拆分库存操作历史稳定展示工作区（概览/筛选/回执/分页），保留原双视图与 A2 回调；验证后继续清单、盘点、统计和奖励。
+## B02：库存操作历史完整展示工作区（L2）
+
+- 概览/筛选/回执/加载与错误/分页移入真实接入的 `InventoryRecordsWorkspace.vue`；Desktop/Mobile 以 640px 内容断点独立持有 CSS。列表继续使用原试点，父页唯一 A2 业务脚本除新增 import 外逐字不变。
+- `npx --no-install vitest run behavior/inventoryRecordsUx.spec.js behavior/inventoryRecordsViews.spec.js`：141/141；新增两端真实报告入口与唯一 RewardEntryWorkspace 连接测试，跨 640/641/768/1081 保留未解析文本草稿及焦点，无额外读写。原确认/删除/恢复/锁归属/账号往返/卸载/迟到错误不变量全通过。
+- `node --test test/inventoryRecordsWorkspaceStyles.test.js`：1/1；设备 CSS 实际 scoped 编译、媒体归属及父页专属选择器移除。迁移前后历史 CSS 在 10 个宽度的声明投影一致，含 640.5px 连续性；不代表像素验收。
+- `npm run build`：Vite/PWA/OCR 产物成功，当前 `YuanHub/dist/` 含 B01+B02；`git diff --check` 通过。A1 两个列表视图及 A2 函数未修改。日志 `.test-artifacts/pc-mobile-layered/batch-02-*.log`。
+- 本批仅历史子工作区验证完成；/inventory 全路由仍 pending，清单/盘点/统计/奖励内部尚需迁移。精确本地提交标题 `refactor(inventory): 分离历史工作区双端布局`。
+
+下一动作：拆分 ResourceBalanceReport/AcquiredPeriodReport 的真实双端样式职责，保持月历/趋势/选中日期/tooltip 等局部状态与统计父级实例稳定；之后处理库存清单与录入。
