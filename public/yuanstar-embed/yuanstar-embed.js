@@ -23941,16 +23941,22 @@ function pT(e) {
 	lT(e), Pw = e.drillDownOrigin ? { ...e.drillDownOrigin } : null, Ew && (Ew.resolution = JSON.parse(JSON.stringify(e.resolution))), Mw.clear(), e.completedOccurrenceIds.forEach((e) => Mw.add(e)), Nw.clear(), kw.clear(), Aw.clear(), jw.clear();
 }
 function mT(e, t = !0) {
-	U && (Bw.push({
+	if (U) if (Bw.push({
 		before: e,
 		after: fT(),
 		revisionAfter: U.record.revision,
-		workspaceMutation: t
-	}), Vw.length = 0);
+		workspaceMutation: t,
+		reviewView: NC
+	}), t) Vw.length = 0;
+	else for (let e = Vw.length - 1; e >= 0; e--) !Vw[e].workspaceMutation && Vw[e].reviewView === NC && Vw.splice(e, 1);
 }
 function hT(e) {
 	let t = e === "undo" ? Bw : Vw;
-	return t.length > 0 ? t[t.length - 1] ?? null : null;
+	for (let e = t.length - 1; e >= 0; e--) {
+		let n = t[e];
+		if (n.workspaceMutation || n.reviewView === NC) return n;
+	}
+	return null;
 }
 function gT(e) {
 	let t = hT(e);
@@ -25803,7 +25809,8 @@ async function yO(e) {
 					routeScrollTop: r.routeScrollTop
 				};
 			}
-			e === "undo" ? (Bw.pop(), Vw.push(n)) : (Vw.pop(), Bw.push(n)), G = "saved";
+			let i = e === "undo" ? Bw : Vw;
+			i.splice(i.indexOf(n), 1), (e === "undo" ? Vw : Bw).push(n), G = "saved";
 		} catch (e) {
 			if (!Q(t)) return;
 			G = "failed", AC = e instanceof Error ? e.message : "历史操作失败，当前数据已重新加载。";

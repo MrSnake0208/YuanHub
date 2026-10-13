@@ -468,3 +468,7 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 ### 撤销入口补充
 
 正式来源更新为 fix/star-ocr-plan-inheritance 的干净本地提交7d35b57224ecae0585e0795a85fb35aede5feb02，提交后build:embed及既有同步脚本完整12项字节/hash核验通过。左箭头与Ctrl+Z恢复历史导航时明确绑定其viewport，重做保存离开位置；右侧路线独立保留。CSS和worker未变，未手改生成物。
+
+### 跨页面纯导航历史隔离
+
+来源451d5b699da1366c85b484362acc43522db3dabd，fix/star-ocr-plan-inheritance；干净已提交源码build:embed及既有同步脚本完整12项核验通过。纯UI undo/redo只取当前页记录，真实业务数据历史仍共享；保留另一页纯导航redo，不重构业务历史。新增导航边界测试，未改提示文案。
