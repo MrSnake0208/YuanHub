@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { starCardNumber, starCardNode } from '../src/utils/operatorStarDisplay.js'
-import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax, operatorHuajiAction, operatorHuajiComplete, operatorHuajiDraft } from '../src/utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax, operatorHuajiAction, operatorHuajiComplete, operatorHuajiDraft, operatorAwakeningUpgradeSupported } from '../src/utils/operatorHuaji.js'
 
 test('旧25..30均为五星，不展示第五颗星的小节点', () => {
   for (let raw = 25; raw <= 30; raw++) {
@@ -63,4 +63,14 @@ test('草稿阶段与独立事实同步，旧31只在明确补stage时变化且�
   assert.deepEqual(operatorHuajiDraft({ rarity: 4, starLevel: 30 }, 25), operatorHuaji({ rarity: 4, starLevel: 30 }))
   assert.deepEqual(operatorHuajiDraft({ spOf: 'base', starLevel: 2, huaji: { owned: true, stage: 7, awakened: true } }, 3), { owned: true, stage: 13, awakened: true })
   assert.deepEqual(operatorHuajiDraft(history, 0), { owned: false, stage: 0, awakened: null })
+})
+
+
+test('快捷觉醒必须由后端能力明确开放，只支持普通紫金密探', () => {
+  assert.equal(operatorAwakeningUpgradeSupported({ rarity: 5 }), false)
+  assert.equal(operatorAwakeningUpgradeSupported({ rarity: 4, huajiCapabilities: { awakeningUpgradeSupported: false } }), false)
+  for (const rarity of [4, 5]) assert.equal(operatorAwakeningUpgradeSupported({ rarity, huaji_capabilities: { awakening_upgrade_supported: true } }), true)
+  for (const entry of [{ rarity: 3 }, { rarity: 5, spOf: 'base' }, { rarity: 4, huajiCapabilities: { awakeningSupported: false, awakeningUpgradeSupported: true } }]) {
+    assert.equal(operatorAwakeningUpgradeSupported({ huajiCapabilities: { awakeningUpgradeSupported: true }, ...entry }), false)
+  }
 })

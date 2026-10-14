@@ -9,6 +9,7 @@
 // 导出接口与库存一致直接返回完整交换文档（无 ApiResult 包装），故用 raw。
 import { request } from './request.js'
 import { assertOperatorStateWriteEnabled } from '../utils/operatorAnnotations.js'
+import { sha256 } from '../utils/sha256.js'
 
 const PATH = '/v1/operator'
 
@@ -151,8 +152,7 @@ export async function patchOperatorCurrent({ accountId, operatorId, game, patch 
       [stats.observed_inputs, 'equipped_star_stones_signature']
     ]) {
       if (typeof node?.[key] !== 'string' || node[key].length <= 256) continue
-      const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(node[key]))
-      node[key] = 'sha256:' + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+      node[key] = 'sha256:' + await sha256(node[key])
     }
     body = { ...patch, combat_stats: stats }
   }

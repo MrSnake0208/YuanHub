@@ -1,6 +1,18 @@
 # 五星化极到觉醒：交互与回归记录
 
-状态：开发完成后待用户主动集中回归；本文不代表最终验收。风险 L2：前端状态转换、人工校正、计划目标与需求显示；后端契约、库存、事务未修改。
+状态：本次快捷扣料觉醒实现待用户回归，风险L3；下列早期人工记录阶段为L2。
+
+## 2026-10-14 快捷扣料觉醒
+
+本次补充风险L3：增加独立upgrade维度，涉及库存事务及API契约；待用户回归与手动UI验收。下文基线描述保留早期人工记录实现的历史。
+
+普通紫/金五星未觉醒时，心纸按钮保持与星级同排，显示本密探库存/100。后端能力 `awakening_upgrade_supported=true` 时点击打开现有材料预览，列出心纸100与装金玻璃1，确认后同事务扣料、记录流水、保存 `stage25+awakened=true`；材料不足无法确认。铜钱30万仅估算，不扣库存。重复点击受执行锁保护，网络重试使用同一幂等键；版本冲突刷新预览后要求重新确认。账号/游戏切换、注销、卸载后忽略旧响应。
+
+旧后端能力缺失或false时仍打开人工校正；点击星级本身的校正和完整编辑始终不扣料。SP/隐密/阶段未知/已觉醒不提供快捷扣料。材料依据：[BWIKI干吉](https://wiki.biligame.com/yuan/干吉)、[装金玻璃](https://wiki.biligame.com/yuan/装金玻璃)及已有前后端材料表。规划汇总对觉醒目标的保守估算仍沿用原行为，本次只接通共享快捷动作。
+
+最小回归：前端 `node --test test/operatorHuaji.test.js test/operatorRequirements.test.js`、`npm run test:behavior -- behavior/operatorEntryDefaults.spec.js`；后端 `./gradlew test --tests '*OperatorUpgradeServiceTest' --tests '*OperatorRequirementRulesTest'`、`./gradlew integrationTest --tests '*OperatorSharedGrowthMongoTest'`。Mongo测试仅使用TestMongo自建可丢弃容器。
+
+人工验收：手机390px/桌面，点击普通五星心纸数量，核对两种材料，确认后显示已觉醒，库存减少100心纸与1装金玻璃；材料不足只显示缺口。真实布局、触控及运行时接口尚未验证。
 
 ## 基线与范围
 
@@ -11,7 +23,7 @@
 
 ## Review 证据与状态机
 
-`operatorHuaji.js` 统一下一动作和草稿事实，`OperatorAwakeningDialog.vue` 负责规划快捷入口的人工记录，`operatorPlanGrowth.js` 处理目标进度与已知需求。`operator/index.vue` 的卡片仅显示下一化极节点的提升按钮；规划入口保留觉醒动作分支。`OperatorGrowthTracker.vue` 用一次保存提交星级到觉醒的连续目标。
+`operatorHuaji.js` 统一下一动作和草稿事实，`OperatorAwakeningDialog.vue` 负责规划快捷入口的人工记录，`operatorPlanGrowth.js` 处理目标进度与已知需求。`operator/index.vue` 的卡片在五星前显示下一化极节点的提升按钮；普通五星未觉醒或觉醒待确认时，继续显示当前心纸库存/100（觉醒参考需求），库存加载中或读取失败显示“—/100”。点击数量打开原有星级校正面板，明确其他材料及条件待核实、仅记录游戏内状态且不扣库存；已觉醒、隐密和 SP 不显示该参考需求。规划入口保留觉醒动作分支。`OperatorGrowthTracker.vue` 用一次保存提交星级到觉醒的连续目标。
 
 | 当前状态 | 共享状态机的动作 / 显示（用于规划快捷入口） | 写入与保护 |
 | --- | --- | --- |

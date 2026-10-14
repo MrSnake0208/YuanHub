@@ -6,7 +6,7 @@
 
 普通密探 stage 1..6=一星0..5节点、7..12=二星、13..18=三星、19..24=四星、25=五星（没有第五颗星的小节点）。化极与觉醒是独立事实。隐密（catalog rarity=3）终点24、不能新确认已觉醒。SP 使用稳定 `spOf`，只允许0/1/7/13/19/25，分别表示未拥有和1..5星，不能写普通小节点；SP觉醒和材料暂未开放，升级继续422 `sp_huaji_upgrade_not_supported`。
 
-catalog `huaji_capabilities` 公开 `max_stage`、`has_nodes`、`awakening_supported`、`awakening_upgrade_supported`。最后一项当前false：普通/SP觉醒材料证据未完成核实，不能把计算器可选配置当作游戏可达或完成状态。
+catalog `huaji_capabilities` 公开 `max_stage`、`has_nodes`、`awakening_supported`、`awakening_upgrade_supported`。普通 rarity=4/5 的最后一项为true，支持独立快捷觉醒；隐密和SP为false。能力表示可调用动作，不表示已经觉醒。
 
 本体/SP仅同步level/elite；拥有、stage、awakened、命盘、奇闻和战斗形态保持独立。缺失形态的共享占位是未拥有。规划同组共享level/elite需求取最大值并只计一次；形态目标独立。
 
@@ -46,7 +46,7 @@ PATCH支持部分huaji；缺失对象/子字段保留，显式null将stage或awa
 {"expected_revision":7,"reason":"manual_correction","huaji":{"owned":true,"stage":19,"awakened":null}}
 ```
 
-该请求不扣库存。新客户端不得用31作为新huaji target。快捷化极仅到catalog终点；普通24->25消耗最后一步80心纸、展示160000五铢钱估算（沿用现行协议，钱不扣库存），不收装金玻璃；25不升26..30。觉醒扣料动作仍未开放。隐密24及SP拒绝路径不写库存、revision、升级事务或消耗流水，旧token重新校验能力。
+该请求不扣库存。新客户端不得用31作为新huaji target。快捷化极仅到catalog终点；普通24->25消耗最后一步80心纸、展示160000五铢钱估算（沿用现行协议，钱不扣库存），不收装金玻璃；25不升26..30。快捷觉醒使用独立 `dimension=awakening,target=1`，仅已拥有的普通紫/金五星且未确认已觉醒可执行；扣对应心纸100、装金玻璃1，30万五铢钱仅估算。沿用preview/execute事务、双版本和幂等，保留stage25并写入awakened=true。非法状态返回422 `awakening_not_available`。隐密24及SP拒绝路径不写库存、revision、升级事务或消耗流水，旧token重新校验能力。
 
 `growth-targets`及custom规划targets支持独立huaji；与star_level不得同时提供。旧目标仍可读取，未知阶段不伪装已达成。共享level/elite目标不复制形态目标。
 
@@ -76,4 +76,4 @@ Schema：[正式v4 JSON Schema](./schemas/operator-growth-exchange-v4.schema.jso
 
 公开结合版§6与组件支持普通已完成觉醒独立增加生命/攻击10%，加入百分比总和，固定值不变。公开版末尾“按钮能点”不作为完成证据；已解锁不等于已完成。新公式仅在stage和觉醒已确认时计算；SP规则或stage未知保留观测并提示不足计算。原Wiki白值与Cal组件口径存在差异，未在本修复中换整套白值、宣称全部面板精度验证。
 
-[BWIKI公共图鉴干吉](https://wiki.biligame.com/yuan/干吉)与[招募商店](https://wiki.biligame.com/yuan/招募商店)交叉支持普通五星25%、觉醒独立、隐密四星终点。普通觉醒表列100心纸/1素材/30万钱，但素材图片身份与完整解锁条件未充分核实，扣料动作暂不开放；SP觉醒与素材未核实。
+[BWIKI公共图鉴干吉](https://wiki.biligame.com/yuan/干吉)与[招募商店](https://wiki.biligame.com/yuan/招募商店)交叉支持普通五星25%、觉醒独立、隐密四星终点。普通觉醒表列100心纸/1素材/30万钱，与既有材料表及[装金玻璃目录](https://wiki.biligame.com/yuan/装金玻璃)交叉确认，开放普通紫/金五星快捷觉醒；不添加未经证实的等级前置条件。SP觉醒与素材仍未核实。

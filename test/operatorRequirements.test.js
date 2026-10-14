@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   calculateLevelRequirements,
   calculateStarRequirements,
+  calculateAwakeningRequirements,
   calculateXiuweiRequirements,
   mergeRequirements,
   netRequirement,
@@ -64,4 +65,13 @@ test('旧觉醒编码不再作为可购买的化极阶段', function () {
   assert.equal(result.money, 0)
   assert.deepEqual(result.items, {})
   assert.equal(result.unsupported, true)
+})
+
+
+test('觉醒独立计算100心纸和1装金玻璃，返回材料对象互不污染', () => {
+  assert.deepEqual(calculateAwakeningRequirements(), { heart: 100, money: 300000, items: { zhuangjinboli: 1 } })
+  const first = calculateAwakeningRequirements()
+  first.items.zhuangjinboli = 99
+  assert.equal(calculateAwakeningRequirements().items.zhuangjinboli, 1)
+  assert.equal(calculateStarRequirements(25, 31).unsupported, true)
 })

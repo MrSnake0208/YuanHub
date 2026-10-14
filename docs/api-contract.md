@@ -535,7 +535,7 @@ PATCH 使用乐观锁，`expected_revision` 与 `reason` 必填：
 - 普通密探 `star_level` 为 0..31；SP 密探为 0..5。
 - `disc_loadouts` 最多两套；`star_stones` 是六槽完整替换，缺失保留，空数组清空。
 - 六槽只允许 `main1..main3`、`assist1..assist3`。
-- `combat_stats.combat_input_signature` 及 `observed_inputs` 中的 `oddities_signature`、`equipped_star_stones_signature` 最多 256 字符。前端 PATCH 适配层将超长签名按 UTF-8 编码后计算 SHA-256，提交为 71 字符的 `sha256:<hex>`；短签名和本地完整配置指纹保持原样。摘要使用浏览器 Web Crypto（HTTPS 或 localhost）。
+- `combat_stats.combat_input_signature` 及 `observed_inputs` 中的 `oddities_signature`、`equipped_star_stones_signature` 最多 256 字符。前端 PATCH 适配层将超长签名按 UTF-8 编码后计算 SHA-256，提交为 71 字符的 `sha256:<hex>`；短签名和本地完整配置指纹保持原样。优先使用浏览器 Web Crypto；HTTP 局域网访问等缺少 `crypto.subtle` 的环境使用等价的 JavaScript SHA-256 实现，化极、觉醒及面板观测保存仍可正常序列化。Web Crypto 已可用但执行失败时继续报错且不发出保存请求。
 - entry 不存在时只允许 `expected_revision=0` 创建。
 - revision 冲突返回 HTTP 409 `operator_revision_conflict`。
 - `records.limit` 默认为 50，范围 1..100。
@@ -575,7 +575,9 @@ preview 请求：
 }
 ```
 
-`dimension` 只允许 `level`、`elite`、`huaji`。
+`dimension` 允许 `level`、`elite`、`huaji`、`awakening`。
+
+快捷觉醒使用 `dimension: "awakening", target: 1`，preview 的 `from/to` 为 `0/1`，并非化极阶段。仅普通 rarity=4/5、已拥有、`huaji.stage=25`、`awakened!==true` 可执行；否则返回 422 `awakening_not_available`。材料为对应 agent 心纸100、item `zhuangjinboli`1；`money_required=300000` 仅估算，不扣钱。确认执行沿用预览令牌、双版本、幂等键及同一事务，写入 `stage=25, awakened=true`。catalog 对普通紫/金密探返回 `huaji_capabilities.awakening_upgrade_supported=true`；旧后端缺失/false 时仅保留手动校正，不扣料。
 
 等级提升勾选“已突破”时，preview 与 execute 请求均传入
 `skip_breakthrough_materials: true`（省略时默认 `false`）。后端只计算并扣除经验道具，

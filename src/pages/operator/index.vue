@@ -1851,6 +1851,18 @@
                           }}</template
                         >
                       </button>
+                      <button
+                        v-else-if="operatorHuajiAction({ ...e, huaji: cardHuaji(e) }).kind === 'awakening'"
+                        class="ledger-next-action ledger-heart-stock ledger-popover-trigger"
+                        type="button"
+                        :class="operatorAwakeningUpgradeSupported(e) ? growthActionClass(e, 'star', 1) : ''"
+                        :aria-label="(operatorAwakeningUpgradeSupported(e) ? '快捷觉醒：' : '心纸库存/觉醒参考需求：') + cardAwakeningHeartLabel(e) + '，查看材料'"
+                        :title="operatorAwakeningUpgradeSupported(e) ? '查看觉醒材料并确认扣除库存' : '查看心纸库存与觉醒参考需求'"
+                        :aria-expanded="cardPopoverKey === e.id + (operatorAwakeningUpgradeSupported(e) ? ':star' : ':star-edit')"
+                        @click="operatorAwakeningUpgradeSupported(e) ? openGrowthAction(e, 'star', 1) : openCardPopover(e, 'star-edit')"
+                      >
+                        <span class="ledger-action-ratio">{{ cardAwakeningHeartLabel(e) }}</span>
+                      </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':star-edit'"
                         class="ledger-popover ledger-star-popover"
@@ -1861,6 +1873,9 @@
                             aria-hidden="true"
                           />校正星级、节点与觉醒
                         </p>
+                        <small v-if="operatorAwakeningSupported(e) && cardHuaji(e).stage === 25" class="star-awakening-hint">
+                          觉醒需 100 心纸、1 个装金玻璃。此处仅校正游戏内状态，不扣库存；快捷觉醒在材料确认后扣料。
+                        </small>
                         <div class="ledger-star-controls">
                           <select
                             :value="starDraftGroup(e)"
@@ -1983,7 +1998,7 @@
                               {{
                                 isGrowthExecuteBusy(e, "star")
                                   ? "正在提升…"
-                                  : "确认提升并扣除库存"
+                                  : isQuickAwakening(e) ? "确认觉醒并扣除库存" : "确认提升并扣除库存"
                               }}
                             </button>
                           </div>
@@ -2947,7 +2962,7 @@
 </template>
 
 <script setup>
-import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
+import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
@@ -3094,6 +3109,7 @@ import { ITEM_CATALOG } from "../../data/inventory/catalog.js";
 import {
   calculateLevelRequirements,
   calculateStarRequirements,
+  calculateAwakeningRequirements,
   calculateXiuweiRequirements,
   netRequirement,
   starStageFromLevel,
@@ -3429,6 +3445,9 @@ watch(
     cardDraftBaselines.value = {};
     growthPreviews.value = {};
     growthPreviewRequestSequences.clear();
+    growthPreviewBusyKeys.value = new Set();
+    growthExecuteBusyKeys.value = new Set();
+    growthExecutionKeys.clear();
     editing.value = false;
     editingId.value = "";
     editingOp.value = null;
@@ -5426,6 +5445,7 @@ async function loadCardMaterialStock() {
     cardMaterialLoadedAccount.value = targetAccount;
   } catch (_) {
     if (seq === cardMaterialLoadSeq) {
+      cardMaterialLoadedAccount.value = "";
       cardMaterialStock.value = {};
       cardHeartStock.value = {};
     }
@@ -5712,6 +5732,7 @@ function growthTarget(entry, field, step) {
   if (field === "level") return Math.min(100, draft.level + amount);
   if (field === "elite")
     return Math.min(getMaxEliteForLevel(draft.level), draft.elite + amount);
+  if (isQuickAwakening(entry)) return 1;
   const value = operatorHuaji(entry);
   return Math.min(operatorHuajiMax(entry), (value.stage ?? operatorHuajiMax(entry)) + 1);
 }
@@ -5919,8 +5940,12 @@ function isGrowthExecuteBusy(entry, field) {
   return growthExecuteBusyKeys.value.has(growthActionKey(entry, field));
 }
 
-function upgradeDimension(field) {
-  return field === "star" ? "huaji" : field;
+function isQuickAwakening(entry) {
+  return operatorAwakeningUpgradeSupported(entry) && operatorHuajiAction(entry).kind === "awakening";
+}
+
+function upgradeDimension(field, entry) {
+  return field === "star" ? isQuickAwakening(entry) ? "awakening" : "huaji" : field;
 }
 
 function uuid() {
@@ -5940,6 +5965,7 @@ function resetCardDraftState(id) {
 }
 
 async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
+  const contextSeq = currentContextSeq;
   ensureCardDraft(entry);
   if (cardHasDraft(entry)) {
     quickNotices.value = Object.assign({}, quickNotices.value, {
@@ -5950,7 +5976,7 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
   if (field === 'star') {
     const action = operatorHuajiAction(entry);
     if (action.disabled) return;
-    if (action.kind === 'awakening') {
+    if (action.kind === 'awakening' && !operatorAwakeningUpgradeSupported(entry)) {
       if (!auth.isLoggedIn || !accountId.value || cardSubmitStates.value[entry.id] === 'submitting') return;
       cardPopoverKey.value = '';
       awakeningId.value = entry.id;
@@ -5974,12 +6000,13 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
       accountId: accountId.value,
       game: saveGame.value,
       operatorId: entry.id,
-      dimension: upgradeDimension(field),
+      dimension: upgradeDimension(field, entry),
       target: growthTarget(entry, field, step),
       expectedOperatorRevision: Number(entry.revision) || 0,
       skipBreakthroughMaterials: skipBreakthroughMaterials,
     });
     if (
+      contextSeq !== currentContextSeq ||
       cardPopoverKey.value !== key ||
       growthPreviewRequestSequences.get(key) !== requestSequence ||
       skipBreakthroughMaterials !==
@@ -5991,12 +6018,14 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
     });
   } catch (err) {
     if (
+      contextSeq !== currentContextSeq ||
       cardPopoverKey.value !== key ||
       growthPreviewRequestSequences.get(key) !== requestSequence
     )
       return;
     if (err && err.code === "operator_state_stale" && !retriedAfterRefresh) {
       await reloadCurrent(true);
+      if (contextSeq !== currentContextSeq) return false;
       resetCardDraftState(entry.id);
       await openGrowthAction(
         currentMap.value[entry.id] || entry,
@@ -6010,7 +6039,7 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
       [key]: { data: null, error: humanErr(err, "提升预览失败") },
     });
   } finally {
-    if (growthPreviewRequestSequences.get(key) === requestSequence) {
+    if (contextSeq === currentContextSeq && growthPreviewRequestSequences.get(key) === requestSequence) {
       const next = new Set(growthPreviewBusyKeys.value);
       next.delete(key);
       growthPreviewBusyKeys.value = next;
@@ -6082,6 +6111,7 @@ function applyUpgradeOperator(entry, raw) {
 }
 
 async function executeGrowthAction(entry, field) {
+  const contextSeq = currentContextSeq;
   const key = growthActionKey(entry, field);
   const preview = growthPreviewData(entry, field);
   if (!preview || !preview.available || growthExecuteBusyKeys.value.has(key))
@@ -6108,7 +6138,7 @@ async function executeGrowthAction(entry, field) {
       accountId: accountId.value,
       game: saveGame.value,
       operatorId: entry.id,
-      dimension: upgradeDimension(field),
+      dimension: preview.dimension || upgradeDimension(field, entry),
       target: target,
       expectedOperatorRevision: operatorRevision,
       expectedInventoryRevision: inventoryRevision,
@@ -6117,6 +6147,7 @@ async function executeGrowthAction(entry, field) {
       skipBreakthroughMaterials:
         field === "level" && cardLevelBreakthrough(entry),
     });
+    if (contextSeq !== currentContextSeq) return false;
     const transactionId =
       result && (result.transaction_id || result.transactionId);
     if (transactionId) handledUpgradeTransactionIds.add(transactionId);
@@ -6127,6 +6158,7 @@ async function executeGrowthAction(entry, field) {
     showQuickNotice(entry.id, "已提升并扣除库存", 2200);
     return true;
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return false;
     const refreshable =
       err &&
       [
@@ -6141,6 +6173,7 @@ async function executeGrowthAction(entry, field) {
     );
     if (refreshable) {
       await Promise.all([reloadCurrent(true), loadCardMaterialStock()]);
+      if (contextSeq !== currentContextSeq) return false;
       resetCardDraftState(entry.id);
       await openGrowthAction(
         currentMap.value[entry.id] || entry,
@@ -6150,9 +6183,11 @@ async function executeGrowthAction(entry, field) {
     }
     return false;
   } finally {
-    const next = new Set(growthExecuteBusyKeys.value);
-    next.delete(key);
-    growthExecuteBusyKeys.value = next;
+    if (contextSeq === currentContextSeq) {
+      const next = new Set(growthExecuteBusyKeys.value);
+      next.delete(key);
+      growthExecuteBusyKeys.value = next;
+    }
   }
 }
 
@@ -6236,8 +6271,11 @@ function quickGrowthRequirementReady(entry, field, step) {
     );
   } else {
     const huaji = operatorHuaji(entry);
-    if (entry.spOf || huaji.stage == null || star >= operatorHuajiMax(entry)) return false;
-    requirement = calculateStarRequirements(star, Math.min(operatorHuajiMax(entry), star + step));
+    if (isQuickAwakening(entry)) requirement = calculateAwakeningRequirements();
+    else {
+      if (entry.spOf || huaji.stage == null || star >= operatorHuajiMax(entry)) return false;
+      requirement = calculateStarRequirements(star, Math.min(operatorHuajiMax(entry), star + step));
+    }
   }
   const itemsReady = Object.keys(requirement.items || {}).every(function (id) {
     return (Number(stock[id]) || 0) >= (Number(requirement.items[id]) || 0);
@@ -6299,12 +6337,18 @@ function growthActionLabel(entry, field, step, readyLabel) {
   return "查看材料缺口";
 }
 
+function cardAwakeningHeartLabel(entry) {
+  const ready = accountId.value && !cardMaterialLoading.value &&
+    cardMaterialLoadedAccount.value === accountId.value;
+  return (ready ? Number(cardHeartStock.value[entry.id]) || 0 : "—") + "/100";
+}
+
 function plannerQuickUpgradeState(row, field, step, readyLabel) {
   const entry = row && currentMap.value[row.id];
   if (!entry || !auth.isLoggedIn || !accountId.value || (field === "star" && entry.spOf)) {
     return { visible: false, disabled: true };
   }
-  if (field === 'star' && operatorHuajiAction(entry).kind !== 'upgrade') {
+  if (field === 'star' && operatorHuajiAction(entry).kind !== 'upgrade' && !isQuickAwakening(entry)) {
     const action = operatorHuajiAction(entry);
     return { visible: true, disabled: action.disabled || cardSubmitStates.value[entry.id] === 'submitting',
       className: action.disabled ? 'is-complete' : 'is-ready', icon: action.disabled ? 'check' : 'up', label: action.label, title: action.label };
@@ -6316,11 +6360,11 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
       : field === "elite"
         ? getMaxEliteForLevel(cardGrowthValue(entry, "level"))
         : operatorHuajiMax(entry);
-  const complete = currentValue >= max;
+  const complete = currentValue >= max && !(field === "star" && isQuickAwakening(entry));
   const fieldLabel = field === "level" ? "等级" : field === "elite" ? "修为" : "化极";
   const label = complete
     ? "已满级"
-    : growthActionLabel(entry, field, step, readyLabel);
+    : growthActionLabel(entry, field, step, field === "star" && isQuickAwakening(entry) ? "觉醒" : readyLabel);
   return {
     visible: true,
     disabled: cardSubmitStates.value[entry.id] === "submitting" || complete,
@@ -6338,6 +6382,7 @@ function plannerGrowthActionNotice(entry) {
 }
 
 function growthTargetLabel(entry, field) {
+  if (field === "star" && isQuickAwakening(entry)) return "觉醒";
   const target = growthTarget(entry, field);
   if (field === "level") return "等级 " + target;
   if (field === "elite") return "修为 " + target;
@@ -6415,6 +6460,8 @@ function growthMaterials(entry, field, step) {
       growthTarget(entry, "elite", step),
       xiuweiJob(sharedGrowthCatalog(entry).prof),
     );
+  else if (isQuickAwakening(entry))
+    requirement = calculateAwakeningRequirements();
   else
     requirement = calculateStarRequirements(
       draft.star,
@@ -8579,7 +8626,8 @@ function handleAccountEvent(message) {
     applyUpgradeOperator(entry, {
       level: dimension === "level" ? next : entry.level,
       elite: dimension === "elite" ? next : entry.elite,
-      star_level: dimension === "huaji" ? next : entry.starLevel,
+      star_level: dimension === "awakening" ? 25 : dimension === "huaji" ? next : entry.starLevel,
+      huaji: dimension === "awakening" ? { owned: true, stage: 25, awakened: true } : undefined,
       revision:
         data.operator_revision != null
           ? data.operator_revision

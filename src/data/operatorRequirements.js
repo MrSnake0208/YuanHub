@@ -152,6 +152,11 @@ export function calculateStarRequirements(currentStarLevel, targetStarLevel) {
   return result
 }
 
+export function calculateAwakeningRequirements() {
+  const { heart, money, ...items } = STAR_REQUIREMENTS[STAR_REQUIREMENTS.length - 1]
+  return { heart, money, items }
+}
+
 export function calculateXiuweiRequirements(currentElite, targetElite, job) {
   const from = numberBetween(currentElite, 0, 17)
   const to = numberBetween(targetElite, 0, 17)

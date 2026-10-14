@@ -113,7 +113,7 @@
     font-size: 11px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value.is-terminal {
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value.is-terminal:not(:has(+ .ledger-next-action)) {
     grid-column: 2 / -1;
   }
 

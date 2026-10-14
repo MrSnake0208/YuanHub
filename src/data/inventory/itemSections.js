@@ -61,7 +61,7 @@ export const GAME_BAG_ITEM_IDS = Object.freeze([
   'baijinbi'
 ])
 
-export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli'])
+export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze([])
 
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
 const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'fuchuan', 'tianjifuchuan', 'baijinbi']
@@ -167,6 +167,11 @@ export function buildItemCategorySections(entries) {
       id: 'bond-breakthrough',
       name: '羁绊突破材料',
       entries: entries.filter(function (entry) { return entry.category === '养成材料' })
+    },
+    {
+      id: 'awakening',
+      name: '觉醒材料',
+      entries: entries.filter(function (entry) { return entry.id === 'zhuangjinboli' })
     }
   ]
 

@@ -44,6 +44,12 @@ export function operatorAwakeningSupported(entry) {
     (capabilities?.awakening_supported ?? capabilities?.awakeningSupported ?? true) === true
 }
 
+export function operatorAwakeningUpgradeSupported(entry) {
+  const capabilities = entry?.huajiCapabilities || entry?.huaji_capabilities
+  return operatorAwakeningSupported(entry) &&
+    (capabilities?.awakening_upgrade_supported ?? capabilities?.awakeningUpgradeSupported) === true
+}
+
 export function operatorHuajiAction(entry) {
   const value = operatorHuaji(entry)
   if (isMovieOperator(entry)) return { kind: 'unsupported', label: 'SP 材料规则待确认', disabled: true }

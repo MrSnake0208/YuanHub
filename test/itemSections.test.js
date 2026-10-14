@@ -50,12 +50,12 @@ test('资源道具顺序不受当前库存返回顺序影响', function () {
   assert.deepEqual(sorted.map(function (item) { return item.name }), resourceNames)
 })
 
-test('追踪清单隐藏装金玻璃但展示白金币', function () {
+test('追踪清单展示装金玻璃与白金币', function () {
   const visible = visibleInventoryItems(ITEM_CATALOG)
 
-  assert.equal(visible.some(function (item) { return item.name === '装金玻璃' }), false)
+  assert.equal(visible.some(function (item) { return item.name === '装金玻璃' }), true)
   assert.equal(visible.some(function (item) { return item.name === '白金币' }), true)
-  assert.equal(visible.length, ITEM_CATALOG.length - 1)
+  assert.equal(visible.length, ITEM_CATALOG.length)
 })
 
 test('类别模式只展示资源道具和密探养成资源且不遗漏道具', function () {
@@ -63,8 +63,8 @@ test('类别模式只展示资源道具和密探养成资源且不遗漏道具',
   const flattened = sections.flatMap(function (section) { return section.entries })
 
   assert.deepEqual(sections.map(function (section) { return section.name }), ['资源道具', '密探养成资源'])
-  assert.equal(flattened.length, ITEM_CATALOG.length - 1)
-  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 1)
+  assert.equal(flattened.length, ITEM_CATALOG.length)
+  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length)
 })
 
 test('资源道具包含独立的抽卡资源二级分类', function () {
@@ -81,12 +81,12 @@ test('资源道具包含独立的抽卡资源二级分类', function () {
   assert.deepEqual(resourceSection.subsections[3].entries.map(function (item) { return item.name }), ['六韬兵书', '兵书全卷', '兵书残卷'])
 })
 
-test('密探养成资源三个子类别使用全宽行布局并保持游戏顺序', function () {
+test('密探养成资源四个子类别使用全宽行布局并保持游戏顺序', function () {
   const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
   const development = sections[1]
 
   assert.equal(development.subsectionLayout, 'rows')
-  assert.deepEqual(development.subsections.map(function (section) { return section.name }), ['修为进阶材料', '等级突破材料', '羁绊突破材料'])
+  assert.deepEqual(development.subsections.map(function (section) { return section.name }), ['修为进阶材料', '等级突破材料', '羁绊突破材料', '觉醒材料'])
   assert.deepEqual(development.subsections[0].entries.map(function (item) { return item.name }), [
     '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',
     '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒'
@@ -107,4 +107,14 @@ test('密探养成资源三个子类别使用全宽行布局并保持游戏顺�
   assert.deepEqual(development.subsections[2].entries.map(function (item) { return item.name }), [
     '怀阴金锁', '阳明金锁', '天风金锁', '火源金锁', '水心金锁', '载地金锁'
   ])
+})
+
+
+test('装金玻璃收录于觉醒材料，搜索与库存编辑都能保留它', () => {
+  const visible = visibleInventoryItems(ITEM_CATALOG)
+  const matches = visible.filter(item => item.name.includes('玻璃'))
+  assert.deepEqual(matches.map(item => item.id), ['zhuangjinboli'])
+  const awakening = buildItemCategorySections(matches)[1].subsections.find(section => section.id === 'awakening')
+  assert.deepEqual(awakening.entries.map(item => item.id), ['zhuangjinboli'])
+  assert.equal(sortStockEditItems(visible).some(item => item.id === 'zhuangjinboli'), true)
 })

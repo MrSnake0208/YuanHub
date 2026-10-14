@@ -24,58 +24,61 @@ function success(data) {
   }))
 }
 
-test('手动攻生保存将超长输入及观测签名压缩为摘要，不修改编辑草稿', async function (t) {
-  const calls = []
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
-    const body = JSON.parse(options.body)
-    calls.push({ url: String(url), options, body })
-    return success({ revision: 2, combat_stats: body.combat_stats })
-  })
-  const input = {
-    operatorName: '程普', level: 50, elite: 7, starLevel: 11,
-    huaji: { owned: true, stage: 11, awakened: null },
-    stones: Object.fromEntries(['main1', 'main2', 'main3', 'assist1', 'assist2', 'assist3'].map(type => [type, { name: '', level: 0 }])),
-    oddities: { attack: { current: 0 }, hp: { current: 0 }, special: { current: 0 } }
-  }
-  for (const values of [input, { ...input, huaji: { ...input.huaji, stage: 12 }, oddities: { ...input.oddities, attack: { current: 100 } } }]) {
-    const signature = combatInputSignature(values)
-    assert.ok(signature.length > 256)
-    const patch = {
-      expected_revision: 1, reason: 'manual_correction', level: 50, elite: 7,
-      combat_stats: {
-        manual_attack: 1985, manual_hp: 8461, source: 'manual',
-        combat_input_signature: signature,
-        observed_inputs: {
-          level: 50, elite: 7, star_level: 11, huaji: values.huaji,
-          oddities_signature: signature,
-          equipped_star_stones_signature: signature + ':stones'
-        }
-      }
-    }
-    const before = structuredClone(patch)
-    const result = await patchOperatorCurrent({ accountId: 'acc one', operatorId: 'char/1', game: '如鸢', patch })
-    const { url, options, body } = calls.at(-1)
-    assert.match(url, /\/v1\/operator\/current\/char%2F1\?account_id=acc\+one&game=/)
-    assert.equal(options.method, 'PATCH')
-    const digest = value => 'sha256:' + createHash('sha256').update(value).digest('hex')
-    assert.deepEqual(body, {
-      ...patch,
-      combat_stats: {
-        ...patch.combat_stats,
-        combat_input_signature: digest(signature),
-        observed_inputs: {
-          ...patch.combat_stats.observed_inputs,
-          oddities_signature: digest(signature),
-          equipped_star_stones_signature: digest(signature + ':stones')
-        }
-      }
+for (const cryptoAvailable of [true, false]) {
+  test(`手动攻生保存将超长输入及观测签名压缩为摘要，不修改编辑草稿（Web Crypto：${cryptoAvailable}）`, async function (t) {
+    if (!cryptoAvailable) t.mock.getter(globalThis, 'crypto', () => ({}))
+    const calls = []
+    t.mock.method(globalThis, 'fetch', async (url, options) => {
+      const body = JSON.parse(options.body)
+      calls.push({ url: String(url), options, body })
+      return success({ revision: 2, combat_stats: body.combat_stats })
     })
-    assert.equal(body.combat_stats.combat_input_signature.length, 71)
-    assert.deepEqual(result.combat_stats, body.combat_stats)
-    assert.deepEqual(patch, before)
-  }
-  assert.notEqual(calls[0].body.combat_stats.combat_input_signature, calls[1].body.combat_stats.combat_input_signature)
-})
+    const input = {
+      operatorName: '程普', level: 50, elite: 7, starLevel: 11,
+      huaji: { owned: true, stage: 11, awakened: null },
+      stones: Object.fromEntries(['main1', 'main2', 'main3', 'assist1', 'assist2', 'assist3'].map(type => [type, { name: '', level: 0 }])),
+      oddities: { attack: { current: 0 }, hp: { current: 0 }, special: { current: 0 } }
+    }
+    for (const values of [input, { ...input, huaji: { ...input.huaji, stage: 12 }, oddities: { ...input.oddities, attack: { current: 100 } } }]) {
+      const signature = combatInputSignature(values)
+      assert.ok(signature.length > 256)
+      const patch = {
+        expected_revision: 1, reason: 'manual_correction', level: 50, elite: 7, huaji: values.huaji,
+        combat_stats: {
+          manual_attack: 1985, manual_hp: 8461, source: 'manual',
+          combat_input_signature: signature,
+          observed_inputs: {
+            level: 50, elite: 7, star_level: 11, huaji: values.huaji,
+            oddities_signature: signature,
+            equipped_star_stones_signature: signature + ':stones'
+          }
+        }
+      }
+      const before = structuredClone(patch)
+      const result = await patchOperatorCurrent({ accountId: 'acc one', operatorId: 'char/1', game: '如鸢', patch })
+      const { url, options, body } = calls.at(-1)
+      assert.match(url, /\/v1\/operator\/current\/char%2F1\?account_id=acc\+one&game=/)
+      assert.equal(options.method, 'PATCH')
+      const digest = value => 'sha256:' + createHash('sha256').update(value).digest('hex')
+      assert.deepEqual(body, {
+        ...patch,
+        combat_stats: {
+          ...patch.combat_stats,
+          combat_input_signature: digest(signature),
+          observed_inputs: {
+            ...patch.combat_stats.observed_inputs,
+            oddities_signature: digest(signature),
+            equipped_star_stones_signature: digest(signature + ':stones')
+          }
+        }
+      })
+      assert.equal(body.combat_stats.combat_input_signature.length, 71)
+      assert.deepEqual(result.combat_stats, body.combat_stats)
+      assert.deepEqual(patch, before)
+    }
+    assert.notEqual(calls[0].body.combat_stats.combat_input_signature, calls[1].body.combat_stats.combat_input_signature)
+  })
+}
 
 test('短签名、清空及不含战斗属性的 PATCH 保持原有语义', async function (t) {
   const bodies = []
