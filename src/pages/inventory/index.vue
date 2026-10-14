@@ -243,27 +243,12 @@
               </div>
               <div class="manifest-bar">
                 <span class="manifest-bar-divider" aria-hidden="true"></span>
-                <div class="manifest-bar-summary">
+                <div v-if="entityType === 'agent'" class="manifest-bar-summary">
                   <div class="mf-stats">
                     <div class="mf-stat">
-                      <b class="mf-num">{{ manifestTotal }}</b
-                      ><span class="mf-k">可追踪</span>
-                    </div>
-                    <div class="mf-stat">
-                      <b class="mf-num">{{ manifestOwned }}</b
-                      ><span class="mf-k">已持有</span>
-                    </div>
-                    <div v-if="entityType === 'agent'" class="mf-stat">
                       <b class="mf-num">{{ agentVersionFavoriteCount }}</b
                       ><span class="mf-k">特别关注</span>
                     </div>
-                    <div class="mf-stat">
-                      <b class="mf-num">{{ manifestPercent }}</b
-                      ><span class="mf-k">持有率</span>
-                    </div>
-                  </div>
-                  <div class="mf-progress" title="当前追踪目录持有率">
-                    <i :style="{ '--progress': manifestProgressScale }"></i>
                   </div>
                 </div>
                 <span class="manifest-bar-spacer" aria-hidden="true"></span>
@@ -992,10 +977,7 @@
               v-reveal
             >
               <div class="acquired-query-head">
-                <div>
-                  <span class="query-eyebrow">奖励智能统计</span>
-                  <h2 id="acquired-query-title">立即解锁分析报告与趣味数据</h2>
-                </div>
+                <h2 id="acquired-query-title">统计时段</h2>
               </div>
 
               <div class="quick-range" aria-label="快捷时段">
@@ -1048,7 +1030,7 @@
                       aria-hidden="true"
                       :class="{ spin: acquiredLoading }"
                     />
-                    {{ acquiredLoading ? "正在统计" : "更新统计" }}
+                    {{ acquiredLoading ? "正在统计" : "查看统计" }}
                   </button>
                 </div>
                 <p class="range-caption">
@@ -2665,31 +2647,6 @@ const stockEditDirty = computed(function () {
     (Boolean(stockDraftError.value) || stockChangedCount.value > 0 || stockBaselineConfirmed.value);
 });
 const confirmStockDiscard = useUnsavedChanges(stockEditDirty, "库存草稿");
-const manifestTotal = computed(function () {
-  return entityType.value === "agent"
-    ? agentGameCatalogCount.value
-    : localCatalog.value.length;
-});
-const manifestOwned = computed(function () {
-  const stock = currentMap.value;
-  return localCatalog.value.filter(function (e) {
-    if (
-      entityType.value === "agent" &&
-      !agentMatchesGame(e, agentGameFilter.value)
-    )
-      return false;
-    return (stock[e.id] || 0) > 0;
-  }).length;
-});
-const manifestPercent = computed(function () {
-  if (!manifestTotal.value) return "0%";
-  return Math.round((manifestOwned.value * 100) / manifestTotal.value) + "%";
-});
-const manifestProgressScale = computed(function () {
-  if (!manifestTotal.value) return 0;
-  return manifestOwned.value / manifestTotal.value;
-});
-
 const currentAcquiredKey = computed(function () {
   return [accountId.value, rangeFrom.value, rangeTo.value].join("|");
 });
@@ -2775,7 +2732,7 @@ const acquiredActivityLabel = computed(function () {
     periodInsights.value.activeDayCount +
     "天 · " +
     periodInsights.value.rewardRecordCount +
-    "条"
+    "条奖励记录"
   );
 });
 const acquiredRangeMetaLabel = computed(function () {
