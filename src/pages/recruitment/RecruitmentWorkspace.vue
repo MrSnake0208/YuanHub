@@ -27,6 +27,16 @@
           <div class="summary" aria-label="当前账号招募摘要">
             <div class="summary-item"><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span><div><span>已知累计抽数</span><div class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></div></div></div>
             <div class="summary-item"><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span><div><span>密探记录</span><div class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></div></div></div>
+            <div class="summary-item summary-average"><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span><div><span>平均出绝密抽数</span><div class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls ?? '—' }}</strong><small class="number-unit">抽</small></div></div></div>
+            <div class="summary-item summary-permanent"><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span><div><span>绣衣天下已知抽数</span><div class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small class="number-unit">抽</small></div></div></div>
+            <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
+              <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>
+              <div><span>{{ metric.label }}</span>
+                <p v-if="metric.agents == null" class="summary-empty">—</p>
+                <p v-else-if="!metric.agents.length" class="summary-empty">暂无记录</p>
+                <ul v-else class="summary-agent-list"><li v-for="agent in metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
+              </div>
+            </div>
           </div>
           <RecruitmentTimeline ref="timeline" :guide-active="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :previews="previews.pools" @load-preview="loadPreview" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
           <div v-if="!state.archive.pools.length" class="actions"><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div>
@@ -41,7 +51,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Archive, BookOpen, CircleHelp, Gem, RotateCw } from '@lucide/vue'
+import { Archive, BookOpen, ChartNoAxesColumn, CircleHelp, Gem, Layers3, RotateCw, Shuffle, Trophy } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -65,6 +75,10 @@ const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
+const goldAgentHighlights = computed(() => [
+  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents?.slice(0, 1) },
+  { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents }
+])
 const canRecordPool = pool => {
   const directory = recruitmentPoolCatalog(pool, state.catalog || [])
   return !!pool?.snapshot.catalog_pool_id && !!directory?.enabled && !directory.hidden && !state.catalogError
@@ -167,7 +181,8 @@ async function savePool(payload) {
 .recruitment-tutorial-entry{border:0;border-radius:8px;background:transparent;color:var(--ink-60)}
 
 .archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.summary{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-icon{color:var(--accent-strong)}.summary-item>div>span,.summary-item small{color:var(--ink-60)}.summary strong{color:var(--tea)}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
-button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.error{color:var(--rouge)}@media(min-width:768px){.summary-item+.summary-item{border-left:1px solid var(--line)}}
+button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.error{color:var(--rouge)}@media(min-width:768px){.summary-item:not(:nth-child(3n+1)){border-left:1px solid var(--line)}}
+.summary-agent-list{list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary .summary-agent-list strong{font:700 15px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60)}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 </style>
 <style scoped src="./recruitmentWorkspaceDesktop.css"></style>

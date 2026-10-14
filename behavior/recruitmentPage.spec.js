@@ -44,6 +44,66 @@ beforeEach(() => {
   api.recruitmentCommand.mockResolvedValue({ archive_revision: 4 })
 })
 
+it('平均出绝密使用账号摘要，刷新和切换账号更新且不请求明细', async () => {
+  archives['acc-a'].summary.average_gold_pulls = 26.7
+  archives['acc-b'].summary.average_gold_pulls = 12
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.summary-average').text()).toContain('平均出绝密抽数')
+  expect(wrapper.get('.summary-average strong').text()).toBe('26.7')
+  archives['acc-a'].summary.average_gold_pulls = 28.5
+  await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
+  expect(wrapper.get('.summary-average strong').text()).toBe('28.5')
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(wrapper.get('.summary-average strong').text()).toBe('12')
+  expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
+  expect(api.listRecruitmentBatches).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it.each([null, undefined])('平均出绝密无有效样本或旧摘要字段缺失（%s）显示未知', async value => {
+  archives['acc-a'].summary.average_gold_pulls = value
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.summary-average strong').text()).toBe('—')
+  wrapper.unmount()
+})
+
+it('普池抽数与绝密排行抽中最多只展示一位、歪卡保留并列，并随刷新及账号切换更新', async () => {
+  Object.assign(archives['acc-a'].summary, {
+    permanent_known_total_pulls: 1234,
+    most_obtained_gold_agents: [{ agent_id: 'char-a', name: '旧名字', count: 8 }, { agent_id: 'char-b', name: '并列绝密', count: 8 }],
+    most_non_up_gold_agents: [{ agent_id: 'char-c', name: '歪卡绝密', count: 3 }, { agent_id: 'char-d', name: '并列歪卡', count: 3 }]
+  })
+  Object.assign(archives['acc-b'].summary, { permanent_known_total_pulls: 0, most_obtained_gold_agents: [], most_non_up_gold_agents: [] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.summary-permanent strong').text()).toBe((1234).toLocaleString())
+  expect(wrapper.get('.summary-most-obtained').text()).toContain('测试绝密8 次')
+  expect(wrapper.get('.summary-most-obtained').findAll('li')).toHaveLength(1)
+  expect(wrapper.get('.summary-most-obtained').text()).not.toContain('并列绝密')
+  expect(wrapper.get('.summary-most-non-up').text()).toContain('歪卡绝密3 次')
+  expect(wrapper.get('.summary-most-non-up').text()).toContain('并列歪卡3 次')
+  archives['acc-a'].summary.permanent_known_total_pulls = 1250
+  archives['acc-a'].summary.most_non_up_gold_agents[0].count = 4
+  await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
+  expect(wrapper.get('.summary-permanent strong').text()).toBe((1250).toLocaleString())
+  expect(wrapper.get('.summary-most-non-up').text()).toContain('歪卡绝密4 次')
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(wrapper.get('.summary-permanent strong').text()).toBe('0')
+  expect(wrapper.get('.summary-most-obtained').text()).toContain('暂无记录')
+  expect(wrapper.get('.summary-most-non-up').text()).toContain('暂无记录')
+  expect(wrapper.text()).not.toContain('并列绝密')
+  expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
+  expect(api.listRecruitmentBatches).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('普池抽数与绝密排行在旧后端缺少字段时显示未知', async () => {
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.summary-permanent strong').text()).toBe('—')
+  expect(wrapper.get('.summary-most-obtained').text()).toContain('—')
+  expect(wrapper.get('.summary-most-non-up').text()).toContain('—')
+  wrapper.unmount()
+})
+
 it('关闭教程保留真实卡池与出货录入表单，编辑器不会自动进入引导', async () => {
   tutorialFeature.enabled = false
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
