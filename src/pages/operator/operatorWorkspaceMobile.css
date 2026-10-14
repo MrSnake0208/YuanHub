@@ -1401,7 +1401,6 @@
   flex: none;
   display: block;
 }
-.ledger-next-action:has(.ledger-awakening-label) { min-height: 44px; max-width: 100%; white-space: normal; }
 .ledger-popover {
   position: absolute;
   z-index: var(--z-popover);
