@@ -1,26 +1,27 @@
 <template>
   <Teleport to="body">
     <div v-if="open && pool" class="modal-mask" @click.self="close">
-      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded, 'is-progress-expanded': progressExpanded }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
+      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded && !screenshotMode, 'is-progress-expanded': progressExpanded, 'is-screenshot': screenshotMode }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
         <header class="editor-header">
           <div class="editor-title">
             <span class="editor-eyebrow">{{ practice ? '练习 · 不会保存到你的账号' : '招募档案' }}</span>
             <h2 :id="editorId + '-title'">{{ poolName }}</h2>
-            <p class="pool-confirmation"><span>{{ recruitmentPoolDateLabel(poolDefinition) }}</span><span class="confirmation-separator"> · </span><span class="confirmation-hint">{{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</span></p>
+            <p class="pool-confirmation"><span>{{ recruitmentPoolDateLabel(poolDefinition) }}</span><span v-show="!screenshotMode" class="confirmation-separator"> · </span><span v-show="!screenshotMode" class="confirmation-hint">{{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</span></p>
           </div>
-          <button type="button" class="compact-progress" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" @click="toggleProgress">
+          <button v-show="!screenshotMode" type="button" class="compact-progress" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" @click="toggleProgress">
             {{ tailProgress == null ? '保底未知' : `距保底 ${40 - tailProgress} 抽` }}
           </button>
-          <button v-if="TUTORIALS_ENABLED && !guideVisible" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
+          <button v-if="TUTORIALS_ENABLED && !guideVisible && !screenshotMode" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">退出教程</button>
-          <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
+          <button v-if="screenshotMode" ref="screenshotExit" type="button" class="screenshot-exit" @click="exitScreenshot">退出截图</button>
+          <button v-show="!screenshotMode" type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
             <X :size="20" aria-hidden="true" />
           </button>
         </header>
 
         <RecruitmentGuideChoice v-if="guidePicker" @record="startGuide" @practice="openPractice" @close="guidePicker = false" />
         <form @submit.prevent="submit" @focusin="scheduleEntryVisibility" @pointerdown.capture="holdGuideHint">
-          <section class="progress-card" :class="{ 'is-saved': receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
+          <section class="progress-card" :class="{ 'is-saved': !screenshotMode && receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
             <h3 :id="editorId + '-progress'">当前保底</h3>
             <div class="progress-overview">
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
@@ -31,8 +32,8 @@
               </div>
               <div class="progress-rail" aria-hidden="true"><span :style="{ width: tailProgress == null ? '0%' : tailProgress / 40 * 100 + '%' }"></span></div>
             </div>
-            <button v-if="!guideVisible && !practice" type="button" class="progress-edit" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" :disabled="busy || !!progressError" @click="toggleProgress">{{ progressExpanded ? '收起' : readOnly ? '查看' : '编辑' }}</button>
-            <div :id="editorId + '-progress-fields'" class="remaining-guide">
+            <button v-if="!guideVisible && !practice" v-show="!screenshotMode" type="button" class="progress-edit" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" :disabled="busy || !!progressError" @click="toggleProgress">{{ progressExpanded ? '收起' : readOnly ? '查看' : '编辑' }}</button>
+            <div v-show="!screenshotMode" :id="editorId + '-progress-fields'" class="remaining-guide">
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage" />
               <div class="record-view-switch progress-label-switch" role="group" aria-label="保底进度填写方式">
                 <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label === '已抽' ? '距保底' : '已垫' }}</button>
@@ -48,9 +49,9 @@
             <p v-if="progressError" :id="editorId + '-progress-error'" class="progress-error" role="alert">{{ progressError }}</p>
           </section>
           <div ref="editorBody" class="editor-body" @scroll.passive="onEditorScroll">
-            <p v-if="readOnly && !practiceResult" data-guide-target="read-only" class="state-note">当前档案只可查看，暂不能修改。</p>
-            <p v-else-if="pool?.catalog_state === 'hidden'" data-guide-target="read-only" class="state-note">此卡池已隐藏。已有记录、统计与保底保留，可维护和导出；不能新增出货。</p>
-            <p v-else-if="!canRecord" data-guide-target="read-only" class="state-note">此卡池已停用或目录暂不可用。可以修改已有记录与保底，暂不能新增出货。</p>
+            <p v-show="!screenshotMode" v-if="readOnly && !practiceResult" data-guide-target="read-only" class="state-note">当前档案只可查看，暂不能修改。</p>
+            <p v-show="!screenshotMode" v-else-if="pool?.catalog_state === 'hidden'" data-guide-target="read-only" class="state-note">此卡池已隐藏。已有记录、统计与保底保留，可维护和导出；不能新增出货。</p>
+            <p v-show="!screenshotMode" v-else-if="!canRecord" data-guide-target="read-only" class="state-note">此卡池已停用或目录暂不可用。可以修改已有记录与保底，暂不能新增出货。</p>
 
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'read-state'" target="read-state" :message="guideMessage"><button type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
             <div data-guide-target="read-state">
@@ -95,7 +96,7 @@
               <p v-else-if="dailyMode === 'progress'">只更新游戏里当前的保底，不会新增密探记录。下方填「还差几抽保底」，不是「这次又抽了几次」。</p>
             </section>
 
-            <section class="entry-section" :aria-labelledby="editorId + '-entry'">
+            <section v-show="!screenshotMode" class="entry-section" :aria-labelledby="editorId + '-entry'">
               <div class="entry-heading">
                 <h3 :id="editorId + '-entry'">{{ activeRow && originals.has(activeRow.event_id) ? '编辑这条出货' : '记录本次出货' }}</h3>
                 <p>加入待保存草稿，核对后统一保存</p>
@@ -265,24 +266,25 @@
               <div data-guide-target="views" class="records-toolbar">
                 <div class="records-heading">
                   <h3 :id="editorId + '-records'">抽卡档案 <span>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }}</span></h3>
+                  <button v-if="!practice && !guideVisible" v-show="!screenshotMode" ref="screenshotEntry" type="button" class="screenshot-entry" :disabled="busy || !recordsReady || !!unverifiedSave || dragging" @click="enterScreenshot"><Camera :size="15" aria-hidden="true" />截图</button>
                 </div>
-                <label v-if="rows.length" class="record-search"><span class="sr-only">查找已有记录</span><Search :size="16" aria-hidden="true" /><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="查找密探" autocomplete="off"></label>
-                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
+                <label v-if="rows.length" v-show="!screenshotMode" class="record-search"><span class="sr-only">查找已有记录</span><Search :size="16" aria-hidden="true" /><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="查找密探" autocomplete="off"></label>
+                <div v-show="!screenshotMode" class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
                   <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')" aria-label="进度条视图">进度条<span class="desktop-copy">视图</span></button>
                   <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')" aria-label="密探视图">密探<span class="desktop-copy">视图</span></button>
                 </div>
               </div>
-              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status"><template v-if="sortBlocked">{{ sortBlocked }}</template><template v-else><span class="desktop-copy">拖动排序 · 点击编辑 · 触屏长按拖动 · 聚焦头像后用上下键移动</span><span class="mobile-copy">点击编辑 · 长按排序<span class="sr-only"> · 聚焦头像后用上下键移动</span></span></template>
+              <p v-if="rows.length" v-show="!screenshotMode" :id="editorId + '-sort-help'" class="sort-help" role="status"><template v-if="sortBlocked">{{ sortBlocked }}</template><template v-else><span class="desktop-copy">拖动排序 · 点击编辑 · 触屏长按拖动 · 聚焦头像后用上下键移动</span><span class="mobile-copy">点击编辑 · 长按排序<span class="sr-only"> · 聚焦头像后用上下键移动</span></span></template>
                 <button v-if="hasMore" type="button" :disabled="busy || readOnly || recordsLoading" @click="$emit('load-all')">{{ recordsLoading ? '正在读取…' : recordsError ? '重试读取全部记录' : '读取全部后排序' }}</button>
                 <button v-if="orderChanged" type="button" :disabled="busy || !!unverifiedSave || dragging" @click="resetOrder">恢复保存前顺序</button>
               </p>
               <p class="sort-announcement" aria-live="polite" aria-atomic="true">{{ sortAnnouncement }}</p>
 
               <ol key="progress-records" ref="recordList" v-if="displayRows.length && recordView === 'progress'" class="record-feed">
-                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row), 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
+                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row) && !screenshotMode, 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
-                  <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
-                    <GripVertical class="drag-grip" :size="14" aria-hidden="true" />
+                  <button type="button" class="record-handle" :disabled="screenshotMode || busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="screenshotMode ? recordLabel(row) : handleLabel(row)" :aria-describedby="screenshotMode ? undefined : editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
+                    <GripVertical v-show="!screenshotMode" class="drag-grip" :size="14" aria-hidden="true" />
                     <OperatorAvatar
                       class="record-avatar"
                       :avatar="agentAvatar(selectedAgent(row))"
@@ -294,7 +296,7 @@
                   <button
                     type="button"
                     class="record-detail"
-                    :disabled="busy || readOnly || recordsLoading || !!activeRow"
+                    :disabled="screenshotMode || busy || readOnly || recordsLoading || !!activeRow"
                     :aria-label="recordLabel(row)"
                     @click="edit(row, $event)"
                   >
@@ -305,16 +307,16 @@
                       <span v-if="row.up_status === 'non_up'" class="non-up-stamp" aria-hidden="true">歪</span>
                       <span v-if="row.batch_id" class="status-pill is-neutral">批次</span>
                       <span v-if="isChanged(row)" class="pending-mark">待保存</span>
-                      <span v-else-if="isSavedRow(row)" class="saved-mark">本笔已保存</span>
+                      <span v-else-if="isSavedRow(row) && !screenshotMode" class="saved-mark">本笔已保存</span>
                     </span>
                   </button>
                 </li>
               </ol>
 
               <ol key="agent-records" ref="recordList" v-else-if="displayRows.length" class="agent-record-grid" aria-label="密探视图">
-                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="agent-record-card" :class="{ 'is-saved': isSavedRow(row) }">
+                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="agent-record-card" :class="{ 'is-saved': isSavedRow(row) && !screenshotMode }">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
-                  <button type="button" class="agent-record-portrait record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
+                  <button type="button" class="agent-record-portrait record-handle" :disabled="screenshotMode || busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="screenshotMode ? recordLabel(row) : handleLabel(row)" :aria-describedby="screenshotMode ? undefined : editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
                     <OperatorAvatar
                       class="agent-record-avatar"
                       :avatar="agentAvatar(selectedAgent(row))"
@@ -328,7 +330,7 @@
                   <button
                     type="button"
                     class="agent-record-detail"
-                    :disabled="busy || readOnly || recordsLoading || !!activeRow"
+                    :disabled="screenshotMode || busy || readOnly || recordsLoading || !!activeRow"
                     :aria-label="recordLabel(row)"
                     @click="edit(row, $event)"
                   >
@@ -336,7 +338,7 @@
                     <span class="agent-record-flags" aria-hidden="true">
                       <span v-if="row.batch_id" class="agent-record-flag">批次</span>
                       <span v-if="isChanged(row)" class="agent-record-flag is-pending">待保存</span>
-                      <span v-else-if="isSavedRow(row)" class="agent-record-flag">本笔已保存</span>
+                      <span v-else-if="isSavedRow(row) && !screenshotMode" class="agent-record-flag">本笔已保存</span>
                     </span>
                   </button>
                 </li>
@@ -344,12 +346,12 @@
 
               <div v-else-if="initialized && !recordsLoading && !recordsError" data-guide-target="empty-records" class="records-empty">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'empty-records'" target="empty-records" :message="guideMessage" />
-                <strong>{{ recordSearch ? '没有找到这位密探的记录' : '还没有抽卡记录' }}</strong>
-                <p>{{ recordSearch ? '换个名字，或继续加载记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
+                <strong>{{ !screenshotMode && recordSearch ? '没有找到这位密探的记录' : '还没有抽卡记录' }}</strong>
+                <p v-if="!screenshotMode">{{ recordSearch ? '换个名字，或继续加载记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
               </div>
 
-              <div v-if="hasMore || (rows.length && recordView === 'agents')" class="records-tail">
-                <p v-if="rows.length && recordView === 'agents'" class="bar-legend">头像下方显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
+              <div v-if="hasMore || (rows.length && recordView === 'agents' && !screenshotMode)" class="records-tail">
+                <p v-if="rows.length && recordView === 'agents' && !screenshotMode" class="bar-legend">头像下方显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">继续加载记录</button>
               </div>
             </section>
@@ -360,7 +362,7 @@
           </div>
 
           <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-changes'" target="save-changes" :message="guideMessage" />
-          <footer data-guide-target="save-changes" v-show="(!guideVisible && !practice) || ((!dailyMode || pendingCount || readOnly) && (dailyMode !== 'progress' || recordPendingCount > 0) && (!guideVisible || !['views', 'guide-record', 'empty-records'].includes(guideStep) || pendingCount || activeRow))" :class="{ 'is-entry-active': !!activeRow }">
+          <footer data-guide-target="save-changes" v-show="!screenshotMode && ((!guideVisible && !practice) || ((!dailyMode || pendingCount || readOnly) && (dailyMode !== 'progress' || recordPendingCount > 0) && (!guideVisible || !['views', 'guide-record', 'empty-records'].includes(guideStep) || pendingCount || activeRow)))" :class="{ 'is-entry-active': !!activeRow }">
             <p class="footer-state" aria-live="polite">
               <strong v-if="pendingCount">{{ pendingCount }} 项未保存</strong>
               <span v-if="activeRow">{{ originals.has(activeRow.event_id) ? '完成单条编辑后统一保存' : '本条加入后可统一保存' }}</span>
@@ -383,7 +385,7 @@
 <script setup>
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
-import { Check, GripVertical, Minus, Plus, Search, Trash2, X } from '@lucide/vue'
+import { Camera, Check, GripVertical, Minus, Plus, Search, Trash2, X } from '@lucide/vue'
 import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
@@ -406,6 +408,8 @@ const originals = reactive(new Map())
 const orderIds = ref(null), orderRevision = ref(null)
 const entryError = ref(''), progressError = ref('')
 const progressEditing = ref(false), headerScrolled = ref(false)
+const screenshotMode = ref(false), screenshotEntry = ref(null), screenshotExit = ref(null)
+let screenshotScrollTop = 0
 const progressExpanded = computed(() => progressEditing.value || !!progressError.value || guideVisible.value || props.practice)
 async function revealProgress() {
   progressEditing.value = true
@@ -642,8 +646,27 @@ function profIcon(prof) {
 }
 function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
+async function enterScreenshot() {
+  if (props.busy || !recordsReady.value || unverifiedSave.value || dragging.value || props.practice || guideVisible.value) return
+  if (hasDraft() || activeRow.value) {
+    dialog.alert({ title: '请先处理未保存修改', message: '请先完成或取消当前录入，并保存已有修改，再进入截图模式。不会自动保存或丢弃草稿。', confirmText: '返回编辑' })
+    return
+  }
+  screenshotScrollTop = editorBody.value?.scrollTop || 0
+  screenshotMode.value = true
+  await nextTick()
+  if (editorBody.value) editorBody.value.scrollTop = 0
+  screenshotExit.value?.focus({ preventScroll: true })
+}
+async function exitScreenshot() {
+  screenshotMode.value = false
+  await nextTick()
+  if (editorBody.value) editorBody.value.scrollTop = screenshotScrollTop
+  screenshotEntry.value?.focus({ preventScroll: true })
+}
 let closePending = false, editorSession = 0
 async function close() {
+  if (screenshotMode.value) { exitScreenshot(); return }
   if (!props.open || props.busy || closePending) return
   if (!hasDraft()) { emit('close'); return }
   const session = editorSession, pool = props.pool
@@ -654,9 +677,10 @@ async function close() {
   } finally { closePending = false }
 }
 defineExpose({ startGuide, openGuide, hasDraft })
-const displayRows = computed(() => orderedRows.value.slice().reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, recordSearch.value)))
+const displayRows = computed(() => orderedRows.value.slice().reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, screenshotMode.value ? '' : recordSearch.value)))
 const recordList = ref(null), sortAnnouncement = ref('')
 const sortBlocked = computed(() => {
+  if (screenshotMode.value) return '截图模式下不能调整顺序。'
   if (props.readOnly) return '当前仅可查看记录，不能调整顺序。'
   if (props.busy) return '正在处理请求，请稍后调整顺序。'
   if (activeRow.value) return '先加入或完成当前记录，再拖动记录调整位置。'
@@ -713,7 +737,7 @@ function recordLabel(row) {
   const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
   const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
   const rank = goldOrder.value.get(row.event_id)
-  return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
+  return (screenshotMode.value ? '' : '编辑') + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
 const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0))
@@ -830,7 +854,7 @@ function restoreEntry(id = entryReturn?.id) {
   })
 }
 function add(agentId = '', event) {
-  if (props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
+  if (screenshotMode.value || props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
   if (!activeRow.value) rememberEntry(event?.currentTarget || panel.value?.querySelector('.add-record'))
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
@@ -860,7 +884,7 @@ function chooseOtherAgent(agentId) {
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row, event) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function edit(row, event) { if (screenshotMode.value || isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -906,6 +930,7 @@ function remove(row) {
 }
 watch(() => props.open, open => {
   editorSession++
+  screenshotMode.value = false
   progressEditing.value = false; headerScrolled.value = false
   entryReturn = null
   sortAnnouncement.value = ''
@@ -959,7 +984,7 @@ onBeforeUnmount(() => {
 })
 useModalFocus(computed(() => props.open), panel, { preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) choosingAgent.value ? cancelAgentPicker() : guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
 async function submit() {
-  if (dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
+  if (screenshotMode.value || dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
   if (activeRow.value) {
     if (!props.practice || !confirmRecord()) return
   }
@@ -1004,6 +1029,10 @@ async function submit() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .mobile-copy, .progress-edit, .compact-progress { display: none; }
+.screenshot-entry { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.pool-editor .screenshot-exit { border-color: transparent; background: transparent; color: var(--ink-60); }
+.is-screenshot .record-handle:disabled, .is-screenshot .record-detail:disabled, .is-screenshot .agent-record-detail:disabled { opacity: 1; cursor: default; }
+.is-screenshot .gacha-record:hover { background: transparent; }
 .pool-editor {
   border: 1px solid var(--line);
   background: var(--surface);
