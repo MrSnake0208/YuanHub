@@ -4,7 +4,7 @@
     <main id="main-content" class="share-main">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/operator">← 密探名册</router-link>
+          <router-link class="page-header-back" to="/operator"><ArrowLeft :size="16" aria-hidden="true" /> 密探名册</router-link>
           <h1 class="page-header-title">密探 BOX</h1>
           <p class="page-header-description">通过分享码查看公开养成信息，无需登录。</p>
           <p v-if="share" class="page-header-context">{{ share.game || '游戏版本未知' }} · 只读分享</p>
@@ -40,14 +40,14 @@
           </div>
 
           <div v-else-if="status === 'not-found'" class="share-state is-error" role="alert">
-            <span class="state-mark" aria-hidden="true">×</span>
+            <span class="state-mark" aria-hidden="true"><X :size="16" aria-hidden="true" /></span>
             <h2>分享码不存在或已失效</h2>
             <p>分享可能已被撤销、重新生成，或分享码输入有误。可返回输入框检查代码。</p>
             <button type="button" @click="resetInput">重新输入</button>
           </div>
 
           <div v-else-if="status === 'error'" class="share-state is-error" role="alert">
-            <span class="state-mark" aria-hidden="true">!</span>
+            <span class="state-mark" aria-hidden="true"><CircleAlert :size="16" aria-hidden="true" /></span>
             <h2>暂时无法加载</h2>
             <p>{{ loadError }}</p>
             <div class="state-actions">
@@ -92,7 +92,7 @@
             </div>
 
             <div v-else-if="!filteredEntries.length" class="share-state">
-              <span class="state-mark" aria-hidden="true">?</span>
+              <span class="state-mark" aria-hidden="true"><SearchX :size="16" aria-hidden="true" /></span>
               <h2>没有匹配的密探</h2>
               <p>当前搜索或筛选条件没有找到分享中的密探。</p>
               <button type="button" @click="clearFilters">清空条件</button>
@@ -169,7 +169,7 @@
                           <strong class="ledger-combat-value">{{ combatValue(entry, kind) }}</strong>
                           <div class="ledger-oddity" :aria-label="(kind === 'attack' ? '攻击' : '生命') + '奇闻数值'">
                             <span class="stat-icon">
-                              <ButterflyIcon class="ledger-oddity-icon" aria-hidden="true" />
+                              <Sparkles class="ledger-oddity-icon" aria-hidden="true" />
                             </span>
                             <span>{{ oddityValue(entry, kind).current }} / {{ oddityValue(entry, kind).max }}</span>
                           </div>
@@ -235,7 +235,7 @@
                           <strong>{{ stone.name || '星石' }}</strong>
                           <small>{{ stone.level || 0 }}</small>
                         </template>
-                        <span v-else aria-hidden="true">+</span>
+                        <span v-else aria-hidden="true"><Plus :size="16" aria-hidden="true" /></span>
                       </div>
                     </div>
                   </div>
@@ -274,11 +274,10 @@ function shareHuajiValue(entry) { const value = operatorHuaji({ ...entry, ...ent
 import '@/styles/page-header.css'
 import { formatOperatorOddityCurrent } from '../../utils/operatorCombatStats.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Heart, Star, Swords } from '@lucide/vue'
+import { Heart, Star, Swords, ArrowLeft, CircleAlert, SearchX, Plus, Sparkles, X } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import ButterflyIcon from '../../components/operator/ButterflyIcon.vue'
 import ShareCardStats from '../../components/operator/ShareCardStats.vue'
 import OperatorFilterDossier from '../../components/operator/OperatorFilterDossier.vue'
 import { ACTIVE_OPERATOR_LEDGER_CARD_VERSION, OPERATOR_LEDGER_CARD_VERSIONS, operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'

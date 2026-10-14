@@ -51,9 +51,9 @@
                 />
               </div>
               <nav class="works-pagination" aria-label="作业列表分页">
-                <button type="button" :disabled="page <= 1 || loading" @click="goToPage(page - 1)">← 上一页</button>
+                <button type="button" :disabled="page <= 1 || loading" @click="goToPage(page - 1)"><ArrowLeft :size="16" aria-hidden="true" /> 上一页</button>
                 <span>第 {{ page }} 页，共 {{ totalPages }} 页</span>
-                <button type="button" :disabled="!hasNext || loading" @click="goToPage(page + 1)">下一页 →</button>
+                <button type="button" :disabled="!hasNext || loading" @click="goToPage(page + 1)">下一页 <ArrowRight :size="16" aria-hidden="true" /></button>
               </nav>
             </template>
           </div>
@@ -69,6 +69,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft, ArrowRight } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import '../../styles/page-header.css'
 import { useRoute, useRouter } from 'vue-router'

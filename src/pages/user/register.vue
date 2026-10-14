@@ -1,6 +1,6 @@
 <template>
   <AuthLayout title="创建账号" sub="创建本站账号 · 注册不占用内测名额">
-    <p class="back"><router-link :to="authDestination('/login')">← 返回登录</router-link></p>
+    <p class="back"><router-link :to="authDestination('/login')"><ArrowLeft :size="16" aria-hidden="true" /> 返回登录</router-link></p>
 
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
@@ -62,6 +62,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'

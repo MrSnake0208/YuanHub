@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content">
       <header class="page-header"><div class="wrap">
-        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">开发目标管理</h1>
         <p class="page-header-description">规划开发目标、维护验收进度并关联公开反馈。</p>
       </div></header>
@@ -51,7 +51,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
-import { Plus } from '@lucide/vue'
+import { Plus, ArrowLeft } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import DevelopmentRoadmap from '@/components/co-creation/DevelopmentRoadmap.vue'
 import { DEVELOPMENT_STAGES, getAdminDevelopmentGoal, saveDevelopmentGoal } from '@/api/developmentGoals.js'

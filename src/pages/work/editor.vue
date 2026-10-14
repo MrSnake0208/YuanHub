@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" :to="savedId ? '/work/' + savedId : '/works'">← {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
+          <router-link class="page-header-back" :to="savedId ? '/work/' + savedId : '/works'"><ArrowLeft :size="16" aria-hidden="true" /> {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
           <h1 class="page-header-title">{{ savedId ? (loading || loadError ? '编辑作业' : document.doc.title || '未命名作业') : '新建作业' }}</h1>
           <p v-if="savedId && !loading && !loadError" class="page-header-description">编辑作业</p>
           <div v-if="!loading && !loadError" class="page-header-context" aria-label="作业编辑上下文">
@@ -153,6 +153,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router'
 import { createWork, deleteWork, getOwnedWork, previewWorkCompatibility, publishWork, unpublishWork, updateWork } from '@/api/work.js'

@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content">
       <header class="page-header"><div class="wrap">
-        <router-link class="page-header-back" to="/manage">← 返回管理工作台</router-link>
+        <router-link class="page-header-back" to="/manage"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">广陵账房管理</h1>
         <p class="page-header-description">维护公共数据。保存后，用户刷新账房即可读取；私人方案仍使用原快照。</p>
       </div></header>
@@ -12,7 +12,7 @@
         <template v-else>
           <nav class="ledger-actions ledger-nav" aria-label="账房管理工作区">
             <button v-for="item in workspaces" :key="item.key" type="button" :aria-pressed="workspace === item.key" :disabled="saving" @click="switchWorkspace(item.key)">{{ item.label }}</button>
-            <router-link to="/cart" target="_blank" rel="noopener">打开公开账房预览 ↗</router-link>
+            <router-link to="/cart" target="_blank" rel="noopener">打开公开账房预览 <ArrowUpRight :size="16" aria-hidden="true" /></router-link>
           </nav>
           <div v-if="error" ref="errorSummary" class="ledger-panel ledger-error" role="alert" tabindex="-1">
             <p>{{ error }}</p>
@@ -104,6 +104,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft, ArrowUpRight } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'

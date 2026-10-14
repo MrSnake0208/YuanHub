@@ -43,13 +43,13 @@
       :class="{ on: activeTab === 'records' }"
       @click="$emit('select', 'records')"
     >
-      <ListFilter :size="17" aria-hidden="true" /><span>操作历史</span>
+      <History :size="17" aria-hidden="true" /><span>操作历史</span>
     </button>
   </div>
 </template>
 
 <script setup>
-import { CalendarDays, Layers3, ListFilter } from '@lucide/vue'
+import { CalendarDays, History, Layers3 } from '@lucide/vue'
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from '../../utils/workspaceTabs.js'
 defineProps({ activeTab: { type: String, required: true } })
 defineEmits(['select'])

@@ -30,7 +30,7 @@
             </span>
           </span>
         </span>
-        <span v-if="toast.kind === 'operator' && toast.action" class="toast-stars" aria-hidden="true">{{ '★'.repeat(Math.max(1, Math.min(5, Number(toast.rarity) || 3))) }}</span>
+        <span v-if="toast.kind === 'operator' && toast.action" class="toast-stars" aria-hidden="true"><Star v-for="index in Math.max(1, Math.min(5, Number(toast.rarity) || 3))" :key="index" :size="12" /></span>
         <button type="button" aria-label="关闭通知" title="关闭" @click="dismissAccountEventToast(toast.id)"><X :size="15" aria-hidden="true" /></button>
       </div>
     </TransitionGroup>

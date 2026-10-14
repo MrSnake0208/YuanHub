@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">招募卡池管理</h1>
           <p class="page-header-description">维护公共卡池、当前 UP 与历史映射。</p>
         </div>
@@ -87,7 +87,7 @@
 
           <section v-else ref="editor" class="editor-workspace" aria-labelledby="catalog-editor-title" tabindex="-1">
             <div class="editor-topbar">
-              <button class="quiet" type="button" :disabled="saving" @click="requestCloseEditor">← 返回卡池目录</button>
+              <button class="quiet" type="button" :disabled="saving" @click="requestCloseEditor"><ArrowLeft :size="16" aria-hidden="true" /> 返回卡池目录</button>
               <div class="editor-state">
                 <span class="status-badge" :class="{ muted: form.hidden || !form.enabled }">{{ isNew ? '新建卡池' : statusLabel(form) }}</span>
                 <span v-if="dirty" class="dirty-badge">有未保存修改</span>
@@ -149,7 +149,7 @@
                     <h3 id="pool-up-title">当前 UP</h3>
                     <p class="hint">直接添加或退役名额，不需要先维护一个“UP 数量”。已绑定图鉴时，展示名称跟随图鉴。</p>
                   </div>
-                  <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot">＋ 添加 UP 名额</button>
+                  <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
                 </div>
 
                 <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。可以直接添加第一个名额。</p>
@@ -265,6 +265,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft, Plus } from '@lucide/vue'
 import { isRecruitmentOperator } from '../../utils/operatorForms.js'
 
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'

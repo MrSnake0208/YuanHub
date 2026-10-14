@@ -13,7 +13,7 @@
         <div class="star-slot-grid" :aria-label="kind.label + '槽位'">
           <article v-for="slot in kind.slots" :key="slot" class="star-loadout-slot" :class="{ replacement: replacementSlot === slot, empty: !slotEntry(slot) }" @click.stop="chooseReplacement(slot)">
             <span class="star-slot-label">{{ slotLabel(slot) }}</span>
-            <template v-if="slotEntry(slot)"><strong class="star-slot-value">{{ slotEntry(slot).name }}</strong><small class="star-slot-level">Lv{{ slotEntry(slot).level || 0 }}</small><button type="button" class="star-slot-clear" :aria-label="'卸下' + slotLabel(slot)" @click.stop="clear(slot)">×</button></template>
+            <template v-if="slotEntry(slot)"><strong class="star-slot-value">{{ slotEntry(slot).name }}</strong><small class="star-slot-level">Lv{{ slotEntry(slot).level || 0 }}</small><button type="button" class="star-slot-clear" :aria-label="'卸下' + slotLabel(slot)" @click.stop="clear(slot)"><X :size="16" aria-hidden="true" /></button></template>
             <strong v-else class="star-slot-value is-empty">未装配</strong>
             <span v-if="replacementSlot === slot" class="star-replacement-mark">替换</span>
           </article>
@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+import { X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { assignInstanceToDraft, buildStarLoadoutCandidates, canAssignStarInstance, clearDraftSlot, emptyLoadout, groupSlots, nextGroupSlot, slotKind } from '../../domain/starLoadout.js'
 import { applySessionPreset, filterStarCandidates } from '../../domain/starLoadoutUi.js'

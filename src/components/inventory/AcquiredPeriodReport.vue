@@ -97,7 +97,7 @@
         <p v-else-if="ranking.length === 0" class="ranking-state">{{ rankingEmptyText }}</p>
         <template v-else>
           <ol class="podium" aria-label="心纸获得量前三名">
-            <li v-for="agent in podium" :key="agent.id" :class="'place-' + agent.place">
+            <li v-for="agent in podium" :key="agent.id" :class="'place-' + agent.place" :aria-label="agent.name + '，第' + agent.place + '名'">
               <span class="portrait">
                 <span class="portrait-fallback" aria-hidden="true">{{ monogram(agent.name) }}</span>
                 <img :src="agentIcon(agent.id)" :alt="agent.name" width="64" height="64" loading="lazy" @load="onImageLoad" @error="onImageError" />
@@ -105,7 +105,7 @@
               </span>
               <strong>{{ agent.name }}</strong>
               <span class="podium-base" aria-hidden="true">
-                <span class="podium-medal">{{ ['🥇', '🥈', '🥉'][agent.place - 1] }}</span>
+                <span class="podium-medal"><Medal :size="20" aria-hidden="true" /><b class="podium-place">{{ agent.place }}</b></span>
               </span>
             </li>
           </ol>
@@ -157,7 +157,7 @@
           <aside v-if="luckyCoframe" class="lucky-coframe" :aria-label="formatDay(luckyCoframe.date) + '幸运同框，' + coframeTypeCount + '人'">
             <div class="coframe-head">
               <div class="coframe-heading">
-                <span class="coframe-title">✦ LUCKY BURST</span>
+                <span class="coframe-title"><Sparkles :size="14" aria-hidden="true" /> LUCKY BURST</span>
                 <small>{{ formatDay(luckyCoframe.date) }} · {{ luckyCoframe.channel }}</small>
               </div>
               <span class="coframe-count">{{ coframeTypeCount }} 人同框</span>
@@ -181,7 +181,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { CircleDollarSign, Clock3, Flame, Heart, HeartHandshake, PartyPopper, Sparkles, Users } from '@lucide/vue'
+import { CircleDollarSign, Clock3, Flame, Heart, HeartHandshake, PartyPopper, Sparkles, Users, Medal } from '@lucide/vue'
 
 const props = defineProps({
   insights: { type: Object, required: true },
@@ -408,7 +408,10 @@ function onImageError(event) {
 .podium-base { border: 1px solid var(--line); border-bottom: 0; background: var(--cream); box-shadow: inset 0 4px 0 rgba(215,137,53,.12) }
 .place-1 .podium-base { border: 2px solid var(--accent); border-bottom: 0; background: var(--yellow); box-shadow: inset 0 5px 0 rgba(255,253,246,.35) }
 .place-2 .podium-base { background: var(--paper) }
-.podium-medal { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; line-height: 1 }
+.podium-medal { position: relative; color: var(--accent); line-height: 1 }
+.podium-place { position: absolute; right: 0; bottom: 0; padding: 1px 2px; border-radius: 3px; background: var(--surface); font: 800 10px/1 var(--font-d) }
+.place-2 .podium-medal { color: var(--brand-blue) }
+.place-3 .podium-medal { color: var(--tea) }
 .podium-base small { color: var(--ink-60); font-weight: 800; line-height: 1.4 }
 .absence-contrast { border: 1px solid var(--brand-blue); background: var(--surface) }
 .absence-contrast::before { border: 1px dashed rgba(91,106,140,.28); content: ''; pointer-events: none }

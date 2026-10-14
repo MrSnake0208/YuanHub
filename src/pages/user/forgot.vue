@@ -3,7 +3,7 @@
     :title="step === 1 ? '找回密码' : '设置新密码'"
     :sub="step === 1 ? '通过邮箱验证码重置密码' : '验证成功 · 请设置新密码'"
   >
-    <p class="back"><router-link :to="authDestination('/login')">← 返回登录</router-link></p>
+    <p class="back"><router-link :to="authDestination('/login')"><ArrowLeft :size="16" aria-hidden="true" /> 返回登录</router-link></p>
 
     <!-- 步骤一：发送验证码 -->
         <form v-if="step === 1" class="auth-form" @submit.prevent="onSend" novalidate>
@@ -68,6 +68,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'

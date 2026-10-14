@@ -1,6 +1,6 @@
 <template>
   <section v-show="open" class="exchange-card" aria-labelledby="recruitment-exchange-title">
-    <div class="exchange-heading"><span class="archive-mark" aria-hidden="true">↥</span><div><h2 id="recruitment-exchange-title">导入与导出</h2><p class="hint">将招募记录整理到当前账号</p></div></div>
+    <div class="exchange-heading"><span class="archive-mark" aria-hidden="true"><ArrowLeftRight :size="16" aria-hidden="true" /></span><div><h2 id="recruitment-exchange-title">导入与导出</h2><p class="hint">将招募记录整理到当前账号</p></div></div>
     <div class="actions">
       <button ref="importButton" class="primary" type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="fileInput.value = ''; fileInput.click()">导入 JSON</button>
       <input ref="fileInput" class="file-input" type="file" aria-label="选择招募记录 JSON" accept=".json,application/json" :disabled="!canImport || loading || committing || !!submittedIntent" @change="selectFile">
@@ -13,9 +13,9 @@
     <Teleport to="body">
       <div v-if="dialogOpen" class="exchange-mask" @click.self="closeDialog">
         <section ref="panel" class="exchange-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" tabindex="-1" :aria-busy="loading || committing">
-          <header class="dialog-header"><div><p class="eyebrow">招募档案</p><h2 id="import-dialog-title">{{ success ? '导入完成' : '导入招募记录' }}</h2></div><button class="close-button" type="button" aria-label="关闭导入弹窗" :disabled="committing" @click="closeDialog">×</button></header>
+          <header class="dialog-header"><div><p class="eyebrow">招募档案</p><h2 id="import-dialog-title">{{ success ? '导入完成' : '导入招募记录' }}</h2></div><button class="close-button" type="button" aria-label="关闭导入弹窗" :disabled="committing" @click="closeDialog"><X :size="16" aria-hidden="true" /></button></header>
           <div class="dialog-body">
-            <template v-if="success"><p class="success-mark" aria-hidden="true">✓</p><h3>已导入 {{ success.events }} 条招募记录</h3><p v-if="success.other">另有 {{ success.other }} 项批次或档案信息已导入。</p><p v-if="success.duplicates">{{ success.duplicates }} 项已有内容未重复添加。</p><p v-if="success.skipped">{{ success.skipped }} 项内容未导入，已保留现有档案。</p></template>
+            <template v-if="success"><p class="success-mark" aria-hidden="true"><CircleCheck :size="32" aria-hidden="true" /></p><h3>已导入 {{ success.events }} 条招募记录</h3><p v-if="success.other">另有 {{ success.other }} 项批次或档案信息已导入。</p><p v-if="success.duplicates">{{ success.duplicates }} 项已有内容未重复添加。</p><p v-if="success.skipped">{{ success.skipped }} 项内容未导入，已保留现有档案。</p></template>
             <template v-else>
               <p class="file-caption">{{ filename }}<span>{{ game }} · 目标：{{ accountName || '当前游戏账号' }}</span></p>
               <p v-if="documentData?.source_account?.account_id && documentData.source_account.account_id !== accountId" class="hint">备份来自另一游戏账号，请确认要导入到此账号。</p>
@@ -51,6 +51,7 @@
 </template>
 
 <script setup>
+import { ArrowLeftRight, CircleCheck, X } from '@lucide/vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { computed, nextTick, onScopeDispose, reactive, ref, watch } from 'vue'
 import { commitRecruitmentImport, exportRecruitment, previewRecruitmentImport, getRecruitmentCatalog } from '../../api/recruitment.js'

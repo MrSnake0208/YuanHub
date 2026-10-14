@@ -70,7 +70,7 @@
                 <div class="ntf-body">
                   <div class="ntf-title">{{ item.title }}</div>
                   <p class="ntf-text">{{ item.body }}</p>
-                  <a v-if="notificationTarget(item)" class="ntf-open-link" :href="notificationTarget(item)" @click.stop="openNotification(item, $event)">{{ item.refType === 'BETA' ? '查看内测资格' : '查看反馈' }} →</a>
+                  <a v-if="notificationTarget(item)" class="ntf-open-link" :href="notificationTarget(item)" @click.stop="openNotification(item, $event)">{{ item.refType === 'BETA' ? '查看内测资格' : '查看反馈' }} <ArrowRight :size="16" aria-hidden="true" /></a>
                   <AccountIdDetails v-if="item.refType === 'FEEDBACK' && item.refId" :value="item.refId" label="查看关联反馈编号" />
                   <div class="ntf-meta">
                     <time>{{ formatTime(item.createdAt) }}</time>
@@ -113,7 +113,7 @@
 import '@/styles/page-header.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Bell, MessageSquare, RefreshCw } from '@lucide/vue'
+import { Bell, MessageSquare, RefreshCw, ArrowRight } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
 import { canManageAnyFeedback } from '../../utils/authPermissions.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'

@@ -9,7 +9,7 @@
       <template v-if="snapshot">
         <h4>采纳时的活动资料</h4><p>{{ snapshot.title }} · {{ snapshot.game }} · {{ calendarDisplay(snapshot).path }}</p>
         <p class="calendar-range">{{ calendarRangeLabel(snapshot) }}</p><p v-if="snapshot.description" class="calendar-description">{{ snapshot.description }}</p>
-        <a v-if="safeCalendarUrl(snapshot.source_url)" class="calendar-source-link" :href="safeCalendarUrl(snapshot.source_url)" target="_blank" rel="noopener noreferrer">采纳时的来源 ↗</a>
+        <a v-if="safeCalendarUrl(snapshot.source_url)" class="calendar-source-link" :href="safeCalendarUrl(snapshot.source_url)" target="_blank" rel="noopener noreferrer">采纳时的来源 <ArrowUpRight :size="16" aria-hidden="true" /></a>
       </template>
       <template v-if="suggestion.status === 'ACCEPTED'">
         <p role="status">{{ suggestion.current_event ? suggestion.current_event.enabled ? '已采纳，活动当前已启用。' : '已采纳，活动当前已停用。' : '已采纳，当前活动信息暂不可用。' }}</p>
@@ -19,6 +19,7 @@
   </section>
 </template>
 <script setup>
+import { ArrowUpRight } from '@lucide/vue'
 import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import { computed } from 'vue'
 import { calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'

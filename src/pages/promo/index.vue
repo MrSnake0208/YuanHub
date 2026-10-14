@@ -25,7 +25,7 @@
               私人存档、主动分享与公共资料有各自的数据边界；保存个人数据不等于向社区公开。
             </p>
             <div class="demo-notice">
-              <span class="notice-mark">◎</span>
+              <span class="notice-mark"><Info :size="16" aria-hidden="true" /></span>
               <span><strong>页面示意</strong>　图中卡片、节点与连线均为视觉演示，不代表当前统计或已确认接入。</span>
             </div>
           </div>
@@ -56,7 +56,7 @@
                 <span class="ecosystem-card-copy">
                   <strong class="ecosystem-card-name">{{ partner.name }}</strong>
                   <span class="ecosystem-card-role">{{ partner.role }}</span>
-                  <span class="ecosystem-action">{{ partner.action }}</span>
+                  <span class="ecosystem-action">{{ partner.action }} <ArrowUpRight v-if="partner.href" :size="12" aria-hidden="true" /></span>
                   <small v-if="partner.miniProgramUri" class="ecosystem-card-uri">{{ partner.miniProgramUri }}</small>
                 </span>
               </component>
@@ -71,7 +71,7 @@
             </div>
             <div class="flow-lane">
               <article class="flow-node source-node">
-                <div class="node-topline"><span class="node-icon">+</span><span class="node-type">PLAYER INPUT</span></div>
+                <div class="node-topline"><span class="node-icon"><Plus :size="16" aria-hidden="true" /></span><span class="node-type">PLAYER INPUT</span></div>
                 <h2>保存与共建</h2>
                 <p>私人存档 · 主动分享<br>公共资料 · 社区修订</p>
                 <span class="demo-label">DEMO DATA</span>
@@ -99,7 +99,7 @@
 
               <div class="output-stack">
                 <article v-for="destination in destinations" :key="destination.name" class="flow-node output-node">
-                  <span class="output-symbol" :class="destination.tone">{{ destination.symbol }}</span>
+                  <span class="output-symbol" :class="destination.tone"><component :is="destination.icon" :size="18" aria-hidden="true" /></span>
                   <div>
                     <h2>{{ destination.name }}</h2>
                     <p>{{ destination.detail }}</p>
@@ -141,7 +141,7 @@
             <div class="board-rule"></div>
             <div v-for="(item, index) in contributions" :key="item.title" class="contribution-row">
               <span class="contribution-index">0{{ index + 1 }}</span>
-              <span class="contribution-seal" :class="item.tone">{{ item.mark }}</span>
+              <span class="contribution-seal" :class="item.tone"><component :is="item.icon" :size="18" aria-hidden="true" /></span>
               <div class="contribution-body">
                 <strong>{{ item.title }}</strong>
                 <span>{{ item.detail }}</span>
@@ -185,7 +185,7 @@
             <div class="reuse-destinations">
               <article v-for="(destination, index) in destinations" :key="`reuse-${destination.name}`" class="reuse-destination">
                 <span class="reuse-number">0{{ index + 1 }}</span>
-                <span class="reuse-symbol" :class="destination.tone">{{ destination.symbol }}</span>
+                <span class="reuse-symbol" :class="destination.tone"><component :is="destination.icon" :size="18" aria-hidden="true" /></span>
                 <div>
                   <strong>{{ destination.name }}</strong>
                   <small>{{ destination.detail }}</small>
@@ -196,7 +196,7 @@
           </div>
 
           <div class="reuse-footnote">
-            <span class="footnote-mark">✦</span>
+            <span class="footnote-mark"><Sparkles :size="16" aria-hidden="true" /></span>
             <p><strong>YuanHub 是中间层。</strong> 私人存档与公共贡献分别管理；外部项目读取个人数据需要相应授权，公共资料以实际开放的接口范围为准。开启 BOX 分享是独立的主动操作。</p>
           </div>
         </div>
@@ -216,25 +216,26 @@
 </template>
 
 <script setup>
+import { ArrowUpRight, BookOpen, Clock, FilePen, Info, MessageCircle, Network, Package, Plus, Smartphone, Sparkles, Workflow } from '@lucide/vue'
 const partners = [
-  { name: 'MaaYuan', role: '联合生态入口', action: '访问官网 ↗', icon: '/icons/maa.png', href: 'https://maayuan.com/', tone: 'maa' },
-  { name: '代号鸢 BWiki', role: '联合生态入口', action: '访问资料站 ↗', icon: '/icons/bwiki.png', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5', tone: 'bwiki' },
-  { name: 'YuanAssist', role: '联合生态入口', action: '访问官网 ↗', icon: '/icons/yuanassist.png', href: 'https://www.yuanassist.space/', tone: 'yuanassist' },
+  { name: 'MaaYuan', role: '联合生态入口', action: '访问官网', icon: '/icons/maa.png', href: 'https://maayuan.com/', tone: 'maa' },
+  { name: '代号鸢 BWiki', role: '联合生态入口', action: '访问资料站', icon: '/icons/bwiki.png', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5', tone: 'bwiki' },
+  { name: 'YuanAssist', role: '联合生态入口', action: '访问官网', icon: '/icons/yuanassist.png', href: 'https://www.yuanassist.space/', tone: 'yuanassist' },
   { name: '辟雍学府', role: '联合生态入口', action: '小程序入口', miniProgramUri: '#小程序://辟雍学府/OQufna612dh0plf', icon: '/icons/piyong.png', tone: 'piyong' }
 ]
 
 const destinations = [
-  { name: '资料站', detail: '查阅与校对', symbol: '册', tone: 'brown' },
-  { name: '社区 App', detail: '随身浏览', symbol: '屏', tone: 'orange' },
-  { name: '自动化工具', detail: '辅助使用', symbol: '齿', tone: 'blue' },
-  { name: '社区项目', detail: '继续建设', symbol: '↗', tone: 'red' }
+  { name: '资料站', detail: '查阅与校对', icon: BookOpen, tone: 'brown' },
+  { name: '社区 App', detail: '随身浏览', icon: Smartphone, tone: 'orange' },
+  { name: '自动化工具', detail: '辅助使用', icon: Workflow, tone: 'blue' },
+  { name: '社区项目', detail: '继续建设', icon: Network, tone: 'red' }
 ]
 
 const contributions = [
-  { title: '密探资料', detail: '把已确认的内容整理成可查阅记录', tag: '补充', mark: '录', tone: 'yellow' },
-  { title: '材料资料', detail: '共建材料名称与公开获取说明', tag: '归档', mark: '集', tone: 'orange' },
-  { title: '社区共建', detail: '标记变化，让资料可以继续校对', tag: '追踪', mark: '时', tone: 'blue' },
-  { title: '社区反馈', detail: '用户与管理员双向接收并回应信息', tag: '双向', mark: '问', tone: 'red' }
+  { title: '密探资料', detail: '把已确认的内容整理成可查阅记录', tag: '补充', icon: FilePen, tone: 'yellow' },
+  { title: '材料资料', detail: '共建材料名称与公开获取说明', tag: '归档', icon: Package, tone: 'orange' },
+  { title: '社区共建', detail: '标记变化，让资料可以继续校对', tag: '追踪', icon: Clock, tone: 'blue' },
+  { title: '社区反馈', detail: '用户与管理员双向接收并回应信息', tag: '双向', icon: MessageCircle, tone: 'red' }
 ]
 </script>
 

@@ -64,7 +64,7 @@
             <div v-else class="empty-state">还没有游戏账号，可以新建一个。</div>
             <p v-if="localError" class="manager-message error" role="alert">{{ localError }}</p>
             <p v-if="localSuccess" class="manager-message" role="status">{{ localSuccess }}</p>
-            <router-link class="manager-settings" :to="settingsTo" @click="closePanel">账号与连接码 →</router-link>
+            <router-link class="manager-settings" :to="settingsTo" @click="closePanel">账号与连接码 <ArrowRight :size="16" aria-hidden="true" /></router-link>
           </div>
           <div v-else-if="mode === 'more'" class="more-actions" @keydown="moveFocus">
             <p class="panel-identity">{{ target.name }}<small>{{ resolvedGame(target) }}{{ target.id === activeAccount.id ? ' · 当前账号' : '' }}</small></p>
@@ -117,7 +117,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
-import { ArrowLeft, Hash, MoreHorizontal, Pencil, Plus, Trash2, Users, X } from '@lucide/vue'
+import { ArrowLeft, Hash, MoreHorizontal, Pencil, Plus, Trash2, Users, X, ArrowRight } from '@lucide/vue'
 import { createAccount, deleteAccount, updateAccount } from '../api/accounts.js'
 import { ACCOUNT_GAMES, DEFAULT_ACCOUNT_GAME, activeAccount, isAccountGame, normalizeAccountGame } from '../store/activeAccount.js'
 import { publishAccountList } from '../store/accountList.js'

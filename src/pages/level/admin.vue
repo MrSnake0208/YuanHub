@@ -5,7 +5,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">关卡管理</h1>
           <p class="page-header-description">维护公共关卡目录、分类与开放状态。</p>
         </div>
@@ -223,7 +223,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { Download, LoaderCircle, Pencil, Plus, RefreshCw, Search, Upload, X } from '@lucide/vue'
+import { Download, LoaderCircle, Pencil, Plus, RefreshCw, Search, Upload, X, ArrowLeft } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'

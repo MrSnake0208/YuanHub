@@ -15,7 +15,7 @@
         <div class="detail-state error-state">
           <strong>无效的作业链接</strong>
           <span>作业链接格式有误，请返回广场重新选择。</span>
-          <router-link to="/works">← 返回作业广场</router-link>
+          <router-link to="/works"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
         </div>
       </div>
 
@@ -23,7 +23,7 @@
         <div class="detail-state error-state">
           <strong>作业不存在、非公开或已删除</strong>
           <span>请返回作业广场选择其他公开作业。</span>
-          <router-link :to="backTarget">← 返回作业广场</router-link>
+          <router-link :to="backTarget"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
         </div>
       </div>
 
@@ -41,7 +41,7 @@
       <template v-else-if="detail">
         <header class="page-header work-detail-header">
           <div class="wrap">
-            <router-link class="page-header-back" :to="backTarget">← 返回作业广场</router-link>
+            <router-link class="page-header-back" :to="backTarget"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
             <div class="page-header-row">
               <div class="page-header-identity">
                 <h1 class="page-header-title">{{ metadata.title || '未命名作业' }}</h1>
@@ -118,7 +118,7 @@
             <div class="sec-head">
               <span class="idx">04</span><h2 id="rounds-title">回合动作</h2><span class="en">Round Actions</span>
             </div>
-            <p v-if="roundRows.length" class="round-scroll-hint">← 左右滑动查看全部密探槽位与流程 →</p>
+            <p v-if="roundRows.length" class="round-scroll-hint"><ArrowLeft :size="16" aria-hidden="true" /> 左右滑动查看全部密探槽位与流程 <ArrowRight :size="16" aria-hidden="true" /></p>
             <div v-if="roundRows.length" class="round-table-wrap" role="region" aria-label="回合动作表，可左右滚动" tabindex="0">
               <table class="round-table">
                 <thead><tr><th>回合</th><th v-for="slot in 5" :key="slot"><span>{{ slot }}号位</span><strong>{{ operators[slot - 1] || '未指定' }}</strong></th><th><span>其他</span><strong>流程 / 检查</strong></th></tr></thead>
@@ -200,6 +200,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft, ArrowRight } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import '../../styles/page-header.css'
 import { useRoute } from 'vue-router'

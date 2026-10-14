@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content">
       <header class="page-header"><div class="wrap">
-        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">活动日历管理</h1>
         <p class="page-header-description">维护公共活动日程，处理用户补充建议。</p>
       </div></header>
@@ -96,7 +96,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { ExternalLink } from '@lucide/vue'
+import { ExternalLink, ArrowLeft } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import '@/styles/page-header.css'

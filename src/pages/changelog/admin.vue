@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">更新日志管理</h1>
           <p class="page-header-description">编写、审核并发布 YuanHub 更新日志。</p>
         </div>
@@ -106,6 +106,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import IslandSidebar from '../../components/IslandSidebar.vue'

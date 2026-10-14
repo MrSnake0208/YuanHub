@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">角色管理</h1>
           <p class="page-header-description">管理平台管理员与超级管理员角色绑定。</p>
         </div>
@@ -92,7 +92,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Pencil, Plus, RefreshCw, Save, Search, X } from '@lucide/vue'
+import { Pencil, Plus, RefreshCw, Save, Search, X, ArrowLeft } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import '../../styles/page-header.css'

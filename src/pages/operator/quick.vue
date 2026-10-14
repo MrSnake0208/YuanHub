@@ -5,7 +5,7 @@
     <main id="main-content" class="quick-main">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/operator">← 返回密探名册</router-link>
+          <router-link class="page-header-back" to="/operator"><ArrowLeft :size="16" aria-hidden="true" /> 返回密探名册</router-link>
           <h1 class="page-header-title">快捷录入</h1>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
           <div class="quick-header-context">
@@ -114,7 +114,7 @@
               class="page-save"
               :class="{ err: !pageSave.ok }"
             >
-              <template v-if="pageSave.ok">✓ {{ pageSave.message }}</template>
+              <template v-if="pageSave.ok"><Check :size="16" aria-hidden="true" /> {{ pageSave.message }}</template>
               <template v-else
                 >{{ pageSave.message
                 }}<button
@@ -131,7 +131,7 @@
               v-else-if="savedByKey[currentKey]"
               class="page-save ok-static"
             >
-              {{ isStepDirty(currentKey) ? '本页有未保存修改，请核对预览后保存' : '✓ 本页已保存' }}
+              <Check v-if="!isStepDirty(currentKey)" :size="16" aria-hidden="true" /><span>{{ isStepDirty(currentKey) ? '本页有未保存修改，请核对预览后保存' : '本页已保存' }}</span>
             </div>
 
             <!-- 单页：勾选某星阶密探 + 批量修为/等级，逐页即存 -->
@@ -337,7 +337,7 @@
                         <span class="op-meta">
                           <span class="op-name">{{ op.name }}</span>
                           <span class="op-sub"
-                            >{{ op.prof }} · {{ rarityLabelMap[op.rarity] || op.rarity + "★" }}</span
+                            >{{ op.prof }} · {{ rarityLabelMap[op.rarity] || op.rarity + "星" }}</span
                           >
                         </span>
                       </label>
@@ -394,6 +394,7 @@
 </template>
 
 <script setup>
+import { ArrowLeft, Check } from '@lucide/vue'
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { publishOperatorCurrentRead } from '../../utils/operatorEvents.js'
@@ -976,7 +977,7 @@ function applyPageGrowthPreset(level, elite) {
 function starLabelForStep(s, node) {
   if (s.key === "awaken") return "觉醒";
   if (Number(s.key) === 5) return "5 星";
-  return Number(s.key) + " ⭐ · " + (node == null ? 0 : node) + "节点";
+  return Number(s.key) + " 星 · " + (node == null ? 0 : node) + "节点";
 }
 
 // —— 组装某页待导入条目（保留已有命盘 / 星石） ——

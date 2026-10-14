@@ -5,12 +5,13 @@
     <h4>{{ suggestion.original.title }}</h4>
     <p class="calendar-range">{{ calendarRangeLabel(suggestion.original) }} · Asia/Shanghai</p>
     <p v-if="suggestion.original.description" class="calendar-description">{{ suggestion.original.description }}</p>
-    <a v-if="sourceUrl" class="calendar-source-link" :href="sourceUrl" target="_blank" rel="noopener noreferrer">查看原始来源 ↗</a>
+    <a v-if="sourceUrl" class="calendar-source-link" :href="sourceUrl" target="_blank" rel="noopener noreferrer">查看原始来源 <ArrowUpRight :size="16" aria-hidden="true" /></a>
     <p class="calendar-hint">提交时间：{{ suggestionTimestamp(suggestion.created_at) }}<br>建议编号：{{ suggestion.id }}</p>
     <div v-if="suggestion.submission_note" class="calendar-private-note"><h4>私人补充说明</h4><p class="calendar-description">{{ suggestion.submission_note }}</p><p class="calendar-hint">仅提交人与审核员可见，不会自动进入公开说明。</p></div>
   </section>
 </template>
 <script setup>
+import { ArrowUpRight } from '@lucide/vue'
 import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import { computed } from 'vue'
 import { calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'

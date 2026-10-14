@@ -2,10 +2,11 @@
   <aside class="beta-notice" :class="'tone-' + copy.tone" aria-label="内测说明">
     <strong>{{ copy.title }}</strong>
     <p>注册账号不会自动获得体验资格，也不占名额；名额满了会自动进入候补。</p>
-    <router-link to="/beta">查看开放状态与参与方式 →</router-link>
+    <router-link to="/beta">查看开放状态与参与方式 <ArrowRight :size="16" aria-hidden="true" /></router-link>
   </aside>
 </template>
 <script setup>
+import { ArrowRight } from '@lucide/vue'
 import { computed, onMounted } from 'vue'
 import { beta } from '../../store/beta.js'
 import { betaStatusCopy } from '../../utils/betaAccess.js'

@@ -8,7 +8,7 @@
     </div>
     <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>
     <div class="plan-heading-actions">
-      <button v-if="activePlan" type="button" class="plan-icon" :disabled="disabled" aria-label="编辑清单" title="编辑清单" @click="openEditor(false)"><Users :size="17" aria-hidden="true" /></button>
+      <button v-if="activePlan" type="button" class="plan-icon" :disabled="disabled" aria-label="编辑清单" title="编辑清单" @click="openEditor(false)"><Pencil :size="17" aria-hidden="true" /></button>
       <button type="button" class="plan-icon" :class="{ 'plan-add-empty': !activePlan }" :disabled="disabled" :aria-label="activePlan ? '新建计划' : '添加培养清单'" :title="activePlan ? '新建计划' : '添加培养清单'" @click="openEditor(true)"><Plus :size="18" aria-hidden="true" /><span v-if="!activePlan">添加清单</span></button>
     </div>
   </div>
@@ -98,7 +98,7 @@
 <script setup>
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
+import { Check, ChevronDown, Pencil, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
