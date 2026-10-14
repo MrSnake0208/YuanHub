@@ -23,7 +23,7 @@ it.each(['代号鸢', '如鸢'])('%s的常驻池始终置顶，切换排序和�
   const original = structuredClone(pools)
   const wrapper = render({ pools })
   expect(names(wrapper)).toEqual(['绣衣天下', '新池', '旧池', '未知池'])
-  await button(wrapper, '按时间从新到旧').trigger('click')
+  await button(wrapper, '按时间').trigger('click')
   expect(names(wrapper)).toEqual(['绣衣天下', '旧池', '新池', '未知池'])
   await button(wrapper, '2026').trigger('click')
   expect(names(wrapper)).toEqual(['绣衣天下', '新池'])
@@ -78,7 +78,7 @@ it('封面按目录类型稳定配色；排序、年份、刷新、账号和状�
     expect(tone(wrapper, '蓝池')).toBe('cover-tone-rerun')
   }
   expectTones()
-  await button(wrapper, '按时间从新到旧').trigger('click')
+  await button(wrapper, '按时间').trigger('click')
   expectTones()
   expect(tone(wrapper, '旧紫池')).toBe('cover-tone-zhaoying')
   await button(wrapper, '2026').trigger('click')
@@ -115,7 +115,7 @@ it('新池在上、未知日期置后；年份与正反排序不修改原数据�
   expect(names(wrapper)).toEqual(['2026秋池', '2026春池', '2025旧池', '未注明日期'])
   await button(wrapper, '2026').trigger('click')
   expect(names(wrapper)).toEqual(['2026秋池', '2026春池']); expect(button(wrapper, '2026').attributes('aria-pressed')).toBe('true')
-  await button(wrapper, '按时间从新到旧').trigger('click'); expect(names(wrapper)).toEqual(['2026春池', '2026秋池'])
+  await button(wrapper, '按时间').trigger('click'); expect(names(wrapper)).toEqual(['2026春池', '2026秋池'])
   await button(wrapper, '全部').trigger('click'); expect(names(wrapper)).toEqual(['2025旧池', '2026春池', '2026秋池', '未注明日期'])
   await wrapper.get('.entry-label').trigger('click'); expect(wrapper.emitted('select')).toEqual([['2025旧池']])
   await button(wrapper, '日期未知').trigger('click'); expect(names(wrapper)).toEqual(['未注明日期'])
@@ -160,9 +160,9 @@ it('目录优先更新日期名字及头像，退役UP不展示；账号上下�
   const wrapper = render({ pools: [pool('pool-a', '2025-01-01')], contextVersion: 1, agents: [{ id: 'formal', name: '正式密探', avatar: '/formal.png' }], catalog: [{ pool_id: 'pool-a', name: '目录新池', start_date: '2026-08-01', up_agents: [{ id: 'slot', operator_id: 'formal', active: true }, { id: 'retired', name: '退役', active: false }] }] })
   expect(names(wrapper)).toEqual(['目录新池']); expect(wrapper.get('.pool-dates').text()).toContain('2026-08-01')
   expect(wrapper.get('.cover-agents img').attributes('src')).toContain('/formal.png'); expect(wrapper.findAll('.cover-agents .operator-avatar')).toHaveLength(1)
-  await button(wrapper, '2026').trigger('click'); await button(wrapper, '按时间从新到旧').trigger('click')
+  await button(wrapper, '2026').trigger('click'); await button(wrapper, '按时间').trigger('click')
   await wrapper.setProps({ contextVersion: 2, catalog: [], pools: [pool('另一账号池', '2025-01-01')] })
-  expect(names(wrapper)).toEqual(['另一账号池']); expect(button(wrapper, '全部').attributes('aria-pressed')).toBe('true'); expect(button(wrapper, '按时间从新到旧')).toBeDefined()
+  expect(names(wrapper)).toEqual(['另一账号池']); expect(button(wrapper, '全部').attributes('aria-pressed')).toBe('true'); expect(button(wrapper, '按时间').attributes('aria-label')).toContain('当前最新优先')
 })
 
 it('空目录仍提示维护历史，忙碌时禁止切换卡池', async () => {
