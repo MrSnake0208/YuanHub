@@ -572,6 +572,50 @@ it('4星录入允许保底未知，提交null保留未知而非编造40抽保底
   expect(wrapper.get('.gacha-record').text()).toContain('本笔已保存')
 })
 
+it.each(['距保底', '已垫'])('%s允许保底留空新增5星，未知间隔和保底均不猜值且重试沿用原请求', async mode => {
+  const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: null }, records: [], agents: [{ id: 'a', name: '甲', rarity: 5 }] })
+  await button(wrapper, mode).trigger('click')
+  expect(wrapper.get('.progress-card h3').text()).toContain('选填')
+  await register(wrapper, 'a', '')
+  await wrapper.get('form').trigger('submit')
+  const first = wrapper.emitted('save')[0][0]
+  expect(first.data).toMatchObject({ remaining_pulls: null, entries: [{ agent_id: 'a', pull_span: null }] })
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[1][0]).toEqual(first)
+  const entry = first.data.entries[0]
+  await wrapper.setProps({ recordsRevision: 4, saveReceipt: { ...first.data, revision: 4 }, records: [{ ...recruitmentEvent(entry.event_id, null), up_status: entry.up_status, agent_snapshot: { agent_id: 'a', name: '甲', rarity: 5 } }] })
+  await flushPromises()
+  expect(wrapper.get('.footer-state').text()).toContain('已保存并核对')
+  expect(wrapper.get('.progress-number strong').text()).toBe('—')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  wrapper.unmount()
+})
+
+it.each(['编辑', '删除'])('保底留空%s5星保留原进度，回读后显示真实进度且不留下伪草稿', async action => {
+  const pool = { ...recruitmentFixture().pools[0], progress: 7 }
+  const wrapper = render({ pool, agents: [{ id: 'a', name: '甲', rarity: 5 }] })
+  await button(wrapper, '已垫').trigger('click')
+  await wrapper.get('.remaining-field input').setValue('')
+  await wrapper.get('.gacha-record .record-detail').trigger('click')
+  if (action === '删除') await button(wrapper, '删除记录').trigger('click')
+  else {
+    await wrapper.get('.pull-count-field input').setValue('20')
+    await wrapper.get('.composer-actions .primary').trigger('click')
+  }
+  await wrapper.get('form').trigger('submit')
+  const submitted = wrapper.emitted('save')[0][0].data
+  expect(submitted.remaining_pulls).toBeNull()
+  expect(submitted.deleted_event_ids).toEqual(action === '删除' ? ['old'] : [])
+  const records = action === '删除' ? [] : [{ ...recruitmentEvent('old', 20), up_status: submitted.entries[0].up_status, agent_snapshot: { agent_id: 'a', name: '甲', rarity: 5 } }]
+  await wrapper.setProps({ recordsRevision: 4, saveReceipt: { ...submitted, revision: 4 }, records })
+  await flushPromises()
+  expect(wrapper.get('.footer-state').text()).toContain('已保存并核对')
+  expect(wrapper.get('.progress-number strong').text()).toBe('7')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('7')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  wrapper.unmount()
+})
+
 it.each(['UP', '其他密探'])('没有crypto.randomUUID时仍能选择%s、连续加入和稳定重试', async route => {
   vi.stubGlobal('crypto', { getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) })
   const wrapper = render({ records: [], catalog: [{ ...recruitmentCatalog().pools[0], up_agents: [{ id: 'catalog-a:up:a', name: '甲', operator_id: 'a', active: true }] }] })
