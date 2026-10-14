@@ -1,5 +1,18 @@
 # YuanStar embed 同步说明
 
+## 继承弹窗正文与尺寸（2026-10-13）
+
+- 最终来源 `fix/star-ocr-plan-inheritance`，source commit `c02aa31bd0f59f38de7aaa23f6ea494def5cbfbc`，由已提交的干净源码正式 build:embed 并通过原同步脚本更新完整 12 文件。manifest 来源与逐文件 SHA-256 一致；仅 CSS 资源字节变化，JS、worker 与识别资源保持一致。
+- 桌面正文统一 13px，20px 粗标题保持。弹窗宽度上限 640px，高度随内容伸缩并受视口约束；手机正文 14px、表单 16px 和 44px 触控区域保留。继承、取消、确认保存、匹配统计和原操作入口不变。
+
+## 三页面提示与保存状态收口（2026-10-13）
+
+- 来源分支 `fix/star-ocr-plan-inheritance`，source commit `1d7075ee9d76de00ed7cfd6e58af3566fec24f29`。已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由现有同步脚本复制完整 12 文件；来源 SHA、clean 标识和全部 SHA-256 写入 `docs/yuanstar-embed-manifest.json`。
+- 精简导入截图、背包整理、养成计划中的重复提示。数量对比使用已确认的游戏数量，核对原因保留数量/容量归属；恢复点读取失败不显示空列表；计划继承结果按实际目标状态反馈。
+- 「查看操作结果」只查询本次完成登记；「重试本次操作」复用原冻结操作 ID 和请求正文，原幂等、账号与库存保护保持有效。确认前说明更新等级、移除完成目标和按实际消耗扣减库存记录。
+- 宿主区分读取失败、可恢复的普通保存、替换/计划结果未决和本机待同步。JSON 替换沿用现有持久化保护与重新加载核对，不自动再次替换；库存保存继续保留原记录身份，未知库存保持 `null`。
+- 本轮只有本地提交与正式产物同步，未 push、创建 PR、部署或合并远端主分支。专项执行使用虚构数据与现有夹具；真实浏览器文案及本地前后端人工验收仍由用户完成。
+
 ## 本地首次突破瓶子录入修复（2026-10-12）
 
 - 来源分支 `codex/local-star-bottle-input`，source commit `854a7493e1744c4b8a4bae3e44dbd3f216ce911c`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由原正式同步脚本复制完整 12 文件；manifest 记录真实来源与逐文件 SHA-256。
@@ -446,3 +459,29 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 - `node node_modules/vitest/vitest.mjs run behavior/embedProduct.spec.js behavior/starRecoveryUx.spec.js`：16 / 16 通过。
 - `node --test test/yuanstarEmbedProvenance.test.js test/starCloudStatus.test.js test/starCaptureHostWiring.test.js`：8 / 8 通过，含 provenance 校验。
 - 两仓 `git diff --check` 通过；只提交 YuanHub 当前阶段的 8 个文件，不 push。
+
+## OCR 旧计划延后继承
+
+该阶段 embed 来自 fix/star-ocr-plan-inheritance 的已提交干净源码 928dda73193055d967373bb37b1b3402ea0897e7。OCR 先保存空计划的新背包与证据，旧计划来源保存在账号本地恢复点及待继承工作流；核对背包后进入计划视图，读取最新库存进行组级预览，确认只 CAS PATCH 计划，取消不放弃来源。支持同浏览器刷新，跨设备的云端完整旧计划提取仍未支持。
+
+正式同步脚本只允许单个 browser-vision-worker 哈希文件名替换，先拷贝并校验全部新资源，再删除该明确的旧 worker；其他资源集合变化仍拒绝。manifest 和完整产物集合对应同一源码提交。
+
+## 2026-10-13：OCR 工作区收口与精简继承弹窗
+
+当前正式来源为 fix/star-ocr-plan-inheritance 的本地源码提交 07a4b015d72f1272ee1d6b1360a10167360773a0。从干净已提交来源正式 build:embed 后，使用既有同步脚本更新完整12项并核对字节/SHA-256；worker仍为 browser-vision-worker-DebJzGkA.js。未手改生成物。
+
+修复业务快照与CAS元数据混比造成的假失败，保留权威回读与版本校验。正常 OCR 完整保存后立即切到 bag 并展开核对；持续本地失败保留草稿、单独报告恢复状态，不重复 rebuild。待继承只在危险操作时阻断，计划页才自动预览。弹窗按旧背包、新背包、旧计划、新计划精简，宽屏双列、手机单列，并与页面共用柔和下拉的实现和样式。源码详细记录见其 docs/ocr-workspace-handoff-and-inheritance-ui-review.md。
+
+## 2026-10-13：继承成功提示与名称汇总返回位置
+
+已验收阶段先在宿主本地提交为 98b495982aa64dcc9f4b26e9b89f24b5c442e3f6（正式来源 07a4b01）。本阶段正式来源为原私有修复分支 fix/star-ocr-plan-inheritance 的干净提交 0025f2f4ecb3c63cdd9630a72ce9aca0300f8c42；提交后 build:embed，再通过既有同步脚本核对完整12项字节和SHA-256。本轮生成物仅JS与manifest发生变化；CSS、worker和其余运行资源不变，没有手改生成物。
+
+两处旧计划继承成功 Toast 复用 info；名称汇总下钻来源绑定原视口，bag/plan 分别保存导航与列表/整页位置，右侧路线独立保留。无效组安全回退，账号/重建清理；只保存当前挂载内存，不新增云端或后端字段。详情见 docs/ocr-inheritance-ui-followup-review.md 及源码同名审查记录。
+
+### 撤销入口补充
+
+正式来源更新为 fix/star-ocr-plan-inheritance 的干净本地提交7d35b57224ecae0585e0795a85fb35aede5feb02，提交后build:embed及既有同步脚本完整12项字节/hash核验通过。左箭头与Ctrl+Z恢复历史导航时明确绑定其viewport，重做保存离开位置；右侧路线独立保留。CSS和worker未变，未手改生成物。
+
+### 跨页面纯导航历史隔离
+
+来源451d5b699da1366c85b484362acc43522db3dabd，fix/star-ocr-plan-inheritance；干净已提交源码build:embed及既有同步脚本完整12项核验通过。纯UI undo/redo只取当前页记录，真实业务数据历史仍共享；保留另一页纯导航redo，不重构业务历史。新增导航边界测试，未改提示文案。

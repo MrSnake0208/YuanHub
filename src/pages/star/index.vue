@@ -41,9 +41,9 @@
       <section>
         <div class="wrap">
           <div class="tool-summary" aria-label="星石概览">
-            <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
+            <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
-            <span v-if="activeTab === 'import'" class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
+            <span v-if="activeTab === 'import'" class="star-privacy-note" title="图片识别在本机完成。手动截图由浏览器读取；MaaYuan 截图从临时服务器获取。登录后同步背包数据。">本机识别</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
           </div>
@@ -144,13 +144,13 @@
           </div>
           <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionExampleModal :items="recognitionTutorialExamples[helpExampleKind] || []" @close="helpExampleKind = null" />
-          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
+          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="summary.planInheritancePending || summary.planInheritanceOpen || cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
-            {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
+            {{ accountError && !mountBusy ? '暂时无法读取当前账号的数据，请重新加载。' : '正在读取当前账号的背包…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
           </p>
           <div v-if="mountError" class="yuanstar-mount-error" role="alert">
-            星石工作区加载失败：{{ mountError }}
+            星石页面未能加载：{{ mountError }}
             <button type="button" :disabled="mountBusy" @click="mountProduct">重试加载</button>
           </div>
         </div>
@@ -226,7 +226,8 @@ const activeTab = usePersistedTab(
   "review",
   ["import", "review"],
 );
-const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
+const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢", planInheritancePending: false, planInheritanceOpen: false });
+watch(() => summary.value.planInheritancePending || summary.value.planInheritanceOpen, blocked => { if (blocked) recognitionTutorialOpen.value = false; });
 const starReviewView = ref('bag');
 const growthBottlePending = ref(false);
 function growthBottleWriter(owner) {
@@ -283,7 +284,7 @@ function replayBagTutorial() {
   openTutorial("bag");
 }
 function openTutorial(mode) {
-  if (!TUTORIALS_ENABLED || !productReady.value) return;
+  if (!TUTORIALS_ENABLED || !productReady.value || summary.value.planInheritancePending || summary.value.planInheritanceOpen) return;
   if (recognitionTutorialOpen.value || emptyBagTutorialOpen.value) dismissRecognitionTutorial();
   tutorialMode.value = mode;
   recognitionTutorialOwnerKey = tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, mode);
@@ -312,7 +313,7 @@ function dismissRecognitionTutorial() {
   emptyBagTutorialOpen.value = false;
 }
 async function checkRecognitionTutorial() {
-  if (!TUTORIALS_ENABLED) return;
+  if (!TUTORIALS_ENABLED || summary.value.planInheritancePending || summary.value.planInheritanceOpen) return;
   const sequence = ++tutorialCheckSequence;
   if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
       (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
@@ -361,16 +362,17 @@ const captureHost = createStarCaptureHost({
     if (state.type === 'retrying') {
       captureRetryBusy.value = true;
       captureTransportError.value = '';
-      captureTransportMessage.value = '识别已完成，正在清理临时截图…';
+      captureTransportMessage.value = '识别结果已保存，正在清理临时截图…';
     } else if (state.type === 'failed') {
       captureRetryBusy.value = false;
       captureNeedsRetry.value = true;
-      captureTransportError.value = '识别已完成，临时截图清理失败，可重试。';
+      captureTransportError.value = '';
+      captureTransportMessage.value = '识别结果已保存，临时截图还未清理。可以继续核对背包，稍后重试清理。';
     } else if (state.type === 'consumed') {
       captureRetryBusy.value = false;
       captureNeedsRetry.value = false;
       captureTransportError.value = '';
-      captureTransportMessage.value = '识别已完成，临时截图已清理。';
+      captureTransportMessage.value = '';
       clearCaptureRoute(state.accountId, state.captureId);
     } else if (state.type === 'superseded') {
       // 本次清理已被更新的 capture 取代：结束重试态，但不能清除新 capture 的待清理状态。
@@ -437,7 +439,7 @@ const starCloud = createStarCloudCoordinator({
   selectedHostAccount,
   onState: function (state) {
     if (state.accountId && state.accountId !== accountId.value) return;
-    cloudWriteBusy.value = !!(state.replacing || state.writer?.saving || state.writer?.pending);
+    cloudWriteBusy.value = !!(state.replacing || state.error || state.writer?.saving || state.writer?.pending);
     tutorialCloudReady.value = Boolean(state.ready);
     tutorialCloudHistory.value = Boolean(state.writer?.revision > 0 || state.writer?.generation > 0);
     const feedback = starCloudFeedback(state);
@@ -455,10 +457,11 @@ async function retryStarCloud() {
   if ((!cloudNeedsRetry.value && !cloudSyncError.value) || cloudRetryBusy.value) return;
   cloudRetryBusy.value = true;
   try {
-    if (cloudNeedsRetry.value) await starCloud.retry();
+    const state = starCloud.state();
+    if (state?.ready && !state.error) await starCloud.retry();
     else if (handle && selectedHostAccount()) await syncHostAccount();
   } catch (error) {
-    cloudSyncError.value = "星石云端同步失败，请重试。";
+    cloudSyncError.value = "云端结果尚未确认，请保留本机数据并重试核对。";
   } finally {
     cloudRetryBusy.value = false;
   }
@@ -538,8 +541,8 @@ async function importPendingCapture() {
     captureRetryBusy.value = false;
     captureTransportError.value = "";
     captureTransportMessage.value = markFailed
-      ? "三段截图已导入；本地清理状态保存失败，请检查浏览器存储后继续识别。"
-      : restored ? "已恢复本地待识别截图，等待你继续识别。" : "三段截图已导入，等待你点击“开始识别”。";
+      ? "截图已导入，但临时清理状态未保存。请保留截图并检查浏览器存储。"
+      : restored ? "已找回上次待识别的截图，可以继续识别。" : "";
     clearCaptureRoute(current.accountId, current.captureId);
   } catch (error) {
     if (!isCurrent()) { handoffStale = true; return; }
@@ -653,7 +656,7 @@ async function syncHostAccount() {
       clearCloudSyncFeedback();
       const entered = await starCloud.enter(currentHandle);
       if (!isCurrent()) return false;
-      if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+      if (host && !entered) cloudSyncError.value = "暂时无法读取云端背包，请重试加载；本机数据没有被覆盖。";
       tutorialAccountReady.value = !host || entered;
       if (host) { accountError.value = rejectedSwitchMessage; rejectedSwitchMessage = ""; }
       productReady.value = true;
@@ -760,9 +763,11 @@ async function confirmStarImport() {
     starImportPreview.value = null;
     showStarImport.value = false;
   } catch (error) {
-    if (message(error, "").startsWith("云端档案已替换")) {
+    if (error?.code === "cloud_replacement_local_pending" || error?.code === "star_rebuild_uncertain") {
       starImportPreview.value = null;
-      starExchangeError.value = message(error, "云端档案已替换，请重新加载工作区。");
+      starExchangeError.value = error?.code === "star_rebuild_uncertain"
+        ? "尚无法确认档案是否已替换，请先重新加载核对，不要重复导入。"
+        : message(error, "云端档案已替换，本机尚未同步完成，请重新加载核对。");
       return;
     }
     const status = Number(error?.status || 0);
@@ -770,7 +775,7 @@ async function confirmStarImport() {
       ? "云端数据已更新，请重新加载后重试。导入预览仍保留。"
       : status === 422
         ? "导入数据无效：" + message(error, "请检查文件内容。")
-        : "导入未完成：" + message(error, "当前数据保持不变。");
+        : message(error, "档案尚未导入，请核对文件后重试。");
   } finally {
     starExchangeBusy.value = false;
   }
@@ -813,9 +818,11 @@ async function mountProduct() {
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
-      onOcrRebuild: async function (snapshot, recoveryPointId) {
+      onApplyRecoveredPlan: function (snapshot, scope) { return starCloud.applyRecoveredPlan(snapshot, scope); },
+      getOcrRebuildScope: function () { return starCloud.ocrRebuildScope(); },
+      onOcrRebuild: async function (snapshot, recoveryPointId, scope) {
         const owner = bagTutorialOwner(), context = starContextVersion;
-        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId);
+        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId, scope);
         // Observe the existing successful OCR handoff. The tour also waits for the persisted review DOM.
         if (TUTORIALS_ENABLED && !unmounted && context === starContextVersion && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
         return result;
@@ -829,6 +836,9 @@ async function mountProduct() {
       },
       onActiveTabChange: function (tab) {
         activeTab.value = tab;
+      },
+      onReviewViewChange: function (view) {
+        starReviewView.value = view;
       },
     });
     if (unmounted) {

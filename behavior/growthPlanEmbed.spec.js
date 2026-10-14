@@ -361,7 +361,7 @@ async function inventoryRecoveryFixture() {
 it('real writer conflict exposes GET-only recovery; acceptance unlocks fields and preserves experience/route', async () => {
   const f = await inventoryRecoveryFixture(), before = await handle.getCloudBusinessSnapshot(), route = routeIds()
   change('[data-growth-bottle="jiezheping"]', '24'); await settle()
-  expect(root.querySelector('.growth-error').textContent).toContain('尝试保存：24，当前读取：10')
+  expect(root.querySelector('.growth-error').textContent).toContain('本次保存：24，当前库存：10')
   expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('10')
   expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
   expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.disabled)).toBe(true)
@@ -397,7 +397,7 @@ it('lagging baselines and failed GETs cannot offer acceptance or unlock the inpu
   const baseline = JSON.parse(f.documents[0]).records[0].effective_at
   f.setBaseline(null); root.querySelector('#growth-retry-inventory').click(); await settle()
   expect(root.querySelector('#growth-accept-inventory').disabled).toBe(true)
-  expect(root.querySelector('.growth-error').textContent).toContain('尚未证实')
+  expect(root.querySelector('.growth-error').textContent).toContain('尚未可靠确认')
   expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.value === '')).toBe(true)
   f.setBaseline(baseline); root.querySelector('#growth-retry-inventory').click(); await settle()
   expect(root.querySelector('#growth-accept-inventory').disabled).toBe(false)
@@ -521,7 +521,7 @@ it('group preview manual swaps are ephemeral; one atomic apply updates route and
   expect(toast.classList.contains('product-toast-info')).toBe(true)
   // A later validation error must replace the info tone, rather than inherit success colors.
   change('[data-growth-experience="purple"]','-1')
-  expect(root.querySelector('.product-toast').textContent).toBe('数量必须为非负整数')
+  expect(root.querySelector('.product-toast').textContent).toBe('数量请输入0或正整数')
   expect(root.querySelector('.product-toast').classList.contains('product-toast-info')).toBe(false)
   root.querySelector('#undo-workspace').click();await settle()
   expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual(before.planTargets);expect(routeIds()).toEqual(order)
