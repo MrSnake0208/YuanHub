@@ -52,7 +52,34 @@
 .cart-layout :deep(.cart-actions) { gap: 8px; }
 .cart-layout :deep(.cart-actions .btn) { flex: 1; min-width: 0; min-height: 44px; padding: 8px 8px; font-size: 13px; white-space: nowrap; }
 @media(max-width:767px) {
+  .cart-main :deep(.compact-tool-header) { padding-block: 12px 8px; }
+  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account actions'; gap: 6px 10px; }
+  .cart-main :deep(.compact-tool-heading h1) { font-size: 26px; }
+  .cart-main :deep(.compact-tool-description) { font-size: 12px; font-weight: 400; color: var(--ink-60); text-wrap: pretty; }
+  .cart-main :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; }
+  .cart-main :deep(.compact-tool-actions .tool-more) { position: static; }
+  .cart-main :deep(.tool-more-content) { max-width: min(300px, calc(100vw - 32px)); }
+  .cart-version-selector { min-height: 38px; }
+  .cart-rate-settings > summary { min-height: 36px; flex-wrap: wrap; }
+  .cart-filters { margin-block: 6px 10px; }
+  .cart-search-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cart-search, .cart-more-filters { grid-column: 1 / -1; }
+  .cart-search { width: auto; }
   .cart-sort, .cart-category { width: auto; flex: 1 1 140px; }
-  .cart-category select { flex: 1; }
+  .cart-sort, .cart-category { gap: 6px; font-size: 12px; }
+  .cart-sort select, .cart-category select { flex: 1; width: 0; min-height: 40px; padding: 6px 8px; }
+  .cart-more-filters > summary { min-height: 36px; }
+  .cart-mbar { flex-wrap: nowrap; gap: 8px; padding-block: 8px calc(8px + env(safe-area-inset-bottom)); }
+  .cart-mbar .sum { min-width: 0; }
+  .cart-mbar .sum .v { font-size: 18px; overflow-wrap: anywhere; }
+  .cart-mbar .sum.is-cart-empty .v { color: var(--ink-60); }
+  .cart-mbar .btns { flex-shrink: 0; }
+  .cart-mbar .mbtn { min-height: 40px; padding-inline: 9px; white-space: nowrap; }
+  .cart-mbar .mbtn:disabled { opacity: 1; background: var(--paper); border: 1px solid var(--line); color: var(--ink-60); box-shadow: none; }
+}
+@media(max-width:380px) {
+  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account account' 'actions actions'; }
+  .cart-main :deep(.compact-tool-actions) { justify-content: flex-start; }
+  .cart-main :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 }
 }

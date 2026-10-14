@@ -21,6 +21,14 @@ it('管理工作台作为独立页面聚合授权工具，不再将个人中心�
   wrapper.unmount()
 })
 
+it('管理员从反馈工作区进入反馈处理和权限配置', () => {
+  Object.assign(auth, { adminAccessLoaded: true, adminAccess: { permissions: ['admin:feedback_access:manage'], operatorAreas: ['OPERATOR'] } })
+  const wrapper = render()
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/feedback/admin'])
+  expect(wrapper.findAll('.workbench-tool strong').map(label => label.text())).toEqual(['待处理反馈', '反馈授权'])
+  wrapper.unmount()
+})
+
 it.each([
   ['尚未读取', {}, '正在读取管理权限'],
   ['刷新中', { adminAccessLoaded: true, adminAccessLoading: true }, '正在读取管理权限'],

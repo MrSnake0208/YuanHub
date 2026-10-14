@@ -1,7 +1,7 @@
 <template>
   <section class="calendar-timeline" aria-label="活动时间轴">
     <div class="calendar-window-heading">
-      <div><h2>{{ rangeLabel }}</h2></div>
+      <div><p class="calendar-eyebrow">五周范围 · 左右滑动查看日期</p><h2>{{ rangeLabel }}</h2></div>
       <div class="calendar-window-nav" role="group" aria-label="时间轴导航">
         <button type="button" aria-label="前五周" @click="$emit('select-date', addCalendarDays(anchorDate, -35))"><ChevronLeft :size="20" aria-hidden="true" /></button>
         <button type="button" aria-label="后五周" @click="$emit('select-date', addCalendarDays(anchorDate, 35))"><ChevronRight :size="20" aria-hidden="true" /></button>
@@ -11,7 +11,7 @@
       <p id="calendar-timeline-help" class="calendar-hint">左右滑动查看日期 · 条的起止与长度表示活动时间 · 竖线标记今天 · 点击查看详情</p>
       <button type="button" @click="dismissHelp">知道了</button>
     </div>
-    <div ref="viewport" class="calendar-timeline-scroll" role="region" aria-label="可横向滚动的五周活动时间轴" :aria-describedby="showHelp ? 'calendar-timeline-help' : undefined" tabindex="0">
+    <div ref="viewport" class="calendar-timeline-scroll" role="region" aria-label="可横向滚动的五周活动时间轴" :aria-describedby="showHelp ? 'calendar-timeline-help' : undefined" tabindex="0" @scroll.passive="syncViewport">
       <div class="calendar-timeline-canvas" :style="{ '--calendar-days': days.length }">
         <div class="calendar-timeline-axis">
           <div v-for="day in days" :key="day.date" class="calendar-axis-day" :class="{ 'is-today': day.date === today, 'is-weekend': day.weekend, 'is-anchor': day.date === anchorDate }" :aria-current="day.date === today ? 'date' : undefined">
@@ -23,12 +23,12 @@
           <h3>{{ group.label }}<span>{{ group.items.length }}</span></h3>
           <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
             <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" :aria-expanded="selectedId === entry.item.id" aria-controls="calendar-timeline-detail" @click="selectEvent(entry.item.id, $event)">
-              <span class="calendar-timeline-bar-content">
+              <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
                 <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
                 <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
                 <span v-if="entry.upAgents || entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-meta">
                   <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
-                  <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.display.label }} · {{ entry.item.game }}</span>
+                  <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
                   <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
                 </span>
               </span>
@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
@@ -55,6 +55,20 @@ const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean })
 defineEmits(['select-date'])
 const viewport = ref(null), detail = ref(null), selectedId = ref('')
+const viewportSize = ref({ left: 0, width: 0, dayWidth: 0 })
+let viewportObserver
+function syncViewport() {
+  if (!viewport.value) return
+  viewportSize.value = { left: viewport.value.scrollLeft, width: viewport.value.clientWidth, dayWidth: viewport.value.querySelector('.calendar-axis-day')?.getBoundingClientRect().width || 0 }
+}
+function barContentStyle(position) {
+  const { left, width, dayWidth } = viewportSize.value
+  if (!width || !dayWidth) return undefined
+  // 留出边框与内边距，文字宽度只使用活动条和视口的交集。
+  const start = Math.max(left + 12, (position.column - 1) * dayWidth + 16)
+  const end = Math.min(left + width - 12, (position.column - 1 + position.span) * dayWidth - 16)
+  return { maxWidth: `${Math.max(0, Math.min(360, end - start))}px` }
+}
 let selectionTrigger = null
 const helpStorageKey = 'yuanhub.activity-calendar.timeline-help-dismissed.v1'
 const showHelp = ref(true)
@@ -112,8 +126,16 @@ async function closeDetail() {
 function locate() {
   const dayWidth = viewport.value?.querySelector('.calendar-axis-day')?.getBoundingClientRect().width || 0
   if (viewport.value) viewport.value.scrollLeft = Math.max(0, (calendarDayDistance(range.value.from, props.anchorDate) + .5) * dayWidth - viewport.value.clientWidth / 3)
+  syncViewport()
 }
-onMounted(locate)
+onMounted(() => {
+  locate()
+  if (typeof ResizeObserver !== 'undefined') {
+    viewportObserver = new ResizeObserver(syncViewport)
+    viewportObserver.observe(viewport.value)
+  }
+})
+onBeforeUnmount(() => viewportObserver?.disconnect())
 watch(() => [props.anchorDate, props.locateRequest], locate, { flush: 'post' })
 watch(selectedItem, item => { if (!item) selectedId.value = '' })
 </script>

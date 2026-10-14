@@ -280,7 +280,7 @@ test('列表归一化同时支持 reporter boundary 的 snake_case 和 camelCase
   }
 })
 
-test('反馈未读状态已接入导航角标和管理详情', () => {
+test('反馈未读状态保留在全站导航和管理详情，页内导航仅含用户入口', () => {
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
   const feedbackNav = readFileSync(new URL('../src/components/feedback/FeedbackWorkspaceNav.vue', import.meta.url), 'utf8')
   const feedbackUnreadStore = readFileSync(new URL('../src/store/feedbackUnread.js', import.meta.url), 'utf8')
@@ -300,13 +300,13 @@ test('反馈未读状态已接入导航角标和管理详情', () => {
   assert.match(sidebar, /notificationUnreadState\.count/)
   assert.doesNotMatch(sidebar, /getUnreadNotificationCount/)
   assert.doesNotMatch(sidebar, /fetchUnreadCount|unreadPollTimer/)
-  assert.match(feedbackNav, /hasUnreadFeedback: \{ type: Boolean, default: false \}/)
-  assert.match(feedbackNav, /<router-link v-if="canManage"[\s\S]*<span v-if="hasUnreadFeedback" class="feedback-workspace-nav-unread" role="img" aria-label="有未读反馈"><\/span>/)
-  assert.match(feedbackPage, /:has-unread-feedback="canManageFeedback && feedbackUnreadState\.count > 0"/)
-  assert.match(managePage, /:has-unread-feedback="hasManagePermission && feedbackUnreadState\.count > 0"/)
-  assert.match(managePage, /:can-manage="hasManagePermission"/)
-  assert.match(accessPage, /<FeedbackWorkspaceNav[\s\S]*active="admin"/)
-  assert.match(accessPage, /:has-unread-feedback="canManageFeedback && feedbackUnreadState\.count > 0"/)
+  assert.match(feedbackNav, /<router-link to="\/feedback\/plaza"/)
+  assert.match(feedbackNav, /<router-link to="\/feedback"/)
+  assert.doesNotMatch(feedbackNav, /to="\/feedback\/(?:manage|admin)"/)
+  assert.doesNotMatch(feedbackNav, /hasUnreadFeedback|canManage|canConfigure/)
+  assert.match(feedbackPage, /<FeedbackWorkspaceNav active="mine"/)
+  assert.match(managePage, /<FeedbackWorkspaceNav active="manage"/)
+  assert.match(accessPage, /<FeedbackWorkspaceNav active="admin"/)
   assert.match(managePage, /feedbackUnreadStore\.refreshFeedbackUnread\(\{ force: true \}\)/)
   // 排序请求由 behavior/feedbackPages.spec.js 的 mounted tests 验证。
   assert.match(managePage, /setInterval\([\s\S]*loadFeedback\(\{ background: true \}\)/)

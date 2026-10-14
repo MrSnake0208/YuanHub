@@ -1284,18 +1284,51 @@ it('escape inside the nested merge dialog closes only the merge dialog', async (
 })
 
 
-it('首次无反馈提供提交入口，筛选无结果可以恢复全部', async () => {
+it('首次无反馈收起筛选并提供提交入口', async () => {
   api.listMyFeedback.mockResolvedValue({ items: [], total: 0 })
   const wrapper = render(MyFeedback); await flushPromises()
   expect(wrapper.get('.ticket-state.empty').text()).toContain('还没有提交过反馈')
+  expect(wrapper.find('.feedback-command-bar').exists()).toBe(false)
+  expect(wrapper.find('.feedback-filter-row').exists()).toBe(false)
+  expect(wrapper.find('.feedback-result-meta').exists()).toBe(false)
+  expect(wrapper.get('.feedback-empty-secondary').attributes('to')).toBe('/feedback/plaza')
   await wrapper.get('.ticket-state.empty button').trigger('click')
   expect(wrapper.find('.feedback-modal').exists()).toBe(true)
   await wrapper.get('[aria-label="关闭提交反馈弹窗"]').trigger('click'); await flushPromises()
+  expect(wrapper.find('.feedback-modal').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('筛选无结果保留控件并可以恢复全部反馈', async () => {
+  const wrapper = render(MyFeedback); await flushPromises()
+  api.listMyFeedback.mockResolvedValueOnce({ items: [], total: 0 })
   await wrapper.get('input[name="feedback-search"]').setValue('没有匹配')
   await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
   expect(wrapper.get('.ticket-state.empty').text()).toContain('没有找到符合条件')
+  expect(wrapper.find('.feedback-command-bar').exists()).toBe(true)
+  expect(wrapper.find('.feedback-filter-row').exists()).toBe(true)
   await wrapper.get('.ticket-state.empty button').trigger('click'); await flushPromises()
   expect(api.listMyFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ q: undefined, status: undefined, page: 1 }))
+  expect(wrapper.find('.ticket-state.empty').exists()).toBe(false)
+  expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+  wrapper.unmount()
+})
+
+it('首次加载和失败保留筛选，重试确认无反馈后才收起', async () => {
+  let rejectRequest
+  api.listMyFeedback.mockImplementationOnce(() => new Promise((resolve, reject) => { rejectRequest = reject }))
+  const wrapper = render(MyFeedback); await flushPromises()
+  expect(wrapper.find('.ticket-state[role="status"]').exists()).toBe(true)
+  expect(wrapper.find('.feedback-command-bar').exists()).toBe(true)
+  expect(wrapper.find('.ticket-state.empty').exists()).toBe(false)
+  rejectRequest(new Error('工单读取失败')); await flushPromises()
+  expect(wrapper.get('.ticket-state[role="alert"]').text()).toContain('工单读取失败')
+  expect(wrapper.find('.feedback-filter-row').exists()).toBe(true)
+  expect(wrapper.find('.ticket-state.empty').exists()).toBe(false)
+  api.listMyFeedback.mockResolvedValueOnce({ items: [], total: 0 })
+  await wrapper.get('.ticket-state[role="alert"] button').trigger('click'); await flushPromises()
+  expect(wrapper.get('.ticket-state.empty').text()).toContain('还没有提交过反馈')
+  expect(wrapper.find('.feedback-command-bar').exists()).toBe(false)
   wrapper.unmount()
 })
 

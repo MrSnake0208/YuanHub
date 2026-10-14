@@ -84,22 +84,21 @@
             <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
               <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
             </router-link>
+            <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+              <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
+              <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+            </router-link>
+            <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+              <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
+            </router-link>
           </section>
 
           <details class="mobile-more">
-            <summary class="mobile-drawer-link" :class="{ active: moreActive }" aria-controls="mobile-service-nav" :aria-label="moreLabel">
+            <summary class="mobile-drawer-link" :class="{ active: moreActive }" aria-controls="mobile-service-nav" aria-label="更多">
               <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
-              <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
               <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
             </summary>
             <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
-              <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-                <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
-                <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
-              </router-link>
-              <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-                <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
-              </router-link>
               <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
                 <Lightbulb :size="20" aria-hidden="true" /><span>大饼中心</span>
               </router-link>
@@ -185,23 +184,22 @@
       <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
         <CalendarDays :size="18" aria-hidden="true" />活动日历
       </router-link>
+      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+        <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+        <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+      </router-link>
+      <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+        <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+      </router-link>
       <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: managementActive }" :aria-current="managementActive ? 'page' : undefined">管理工作台</router-link>
     </nav>
     <div class="island-foot">
       <details ref="desktopMore" class="sidebar-more" @keydown.esc.stop.prevent="closeDesktopMore(true)" @focusout="onDesktopMoreFocusOut">
-        <summary class="sidebar-more-trigger" :class="{ active: moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" :aria-label="moreLabel">
+        <summary class="sidebar-more-trigger" :class="{ active: moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" aria-label="更多">
           <MoreHorizontal :size="18" aria-hidden="true" /><span>更多</span>
-          <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
           <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
         </summary>
         <nav id="desktop-service-nav" class="sidebar-more-panel" aria-label="YuanHub 服务">
-          <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-            <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
-            <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
-          </router-link>
-          <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-            <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
-          </router-link>
           <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
             <Lightbulb :size="18" aria-hidden="true" /><span>大饼中心</span>
           </router-link>
@@ -312,11 +310,9 @@ const router = useRouter();
 const route = useRoute();
 const managementActive = computed(() => isManagementRoute(route.path));
 const moreActive = computed(() => !managementActive.value && (
-  route.path.startsWith("/feedback") || route.path.startsWith("/co-creation") ||
+  route.path.startsWith("/co-creation") ||
   ["/beta", "/changelog", "/install"].includes(route.path)
 ));
-const moreLabel = computed(() => isLoggedIn.value && feedbackUnreadState.count > 0
-  ? `更多，${feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count} 条反馈未读` : "更多");
 const desktopMore = ref(null);
 const menuOpen = ref(false);
 const menuToggle = ref(null);
