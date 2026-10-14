@@ -55,16 +55,6 @@
 
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'read-state'" target="read-state" :message="guideMessage"><button type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
             <div data-guide-target="read-state">
-            <fieldset v-if="poolDefinition.allow_custom_up" v-show="!screenshotMode" class="wish-fields" :disabled="busy || readOnly || !canRecord || recordsLoading">
-              <legend>心愿密探</legend>
-              <p>从当前游戏的绝密密探中选择2位作为心愿密探，随本池记录一起保存；修改不会改变历史记录的 UP 判定。</p>
-              <label v-for="index in [0, 1]" :key="index">心愿密探 {{ index + 1 }}
-                <select v-model="wishAgentIds[index]">
-                  <option value="">请选择绝密密探</option>
-                  <option v-for="agent in wishOptions" :key="agent.id" :value="agent.id" :disabled="wishAgentIds[1 - index] === agent.id">{{ agent.name }}</option>
-                </select>
-              </label>
-            </fieldset>
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
             <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
             <div v-if="missingRecordIds.length" class="form-error" role="alert">
@@ -109,57 +99,61 @@
             <section v-show="!screenshotMode" class="entry-section" :aria-labelledby="editorId + '-entry'">
               <div class="entry-heading">
                 <h3 :id="editorId + '-entry'">{{ activeRow && originals.has(activeRow.event_id) ? '编辑这条出货' : '记录本次出货' }}</h3>
-                <p>加入待保存草稿，核对后统一保存</p>
+                <p>{{ poolDefinition.allow_custom_up ? '点空位选择心愿，点头像记录出货；铅笔改选，底部统一保存' : '加入待保存草稿，核对后统一保存' }}</p>
               </div>
-              <div class="entry-workflow">
+              <div class="entry-workflow" :class="{ 'is-choosing': choosingAgent }">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'agents'" target="agents" :message="guideMessage" />
-                <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" aria-label="快速登记出货">
+                <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" :aria-label="poolDefinition.allow_custom_up ? '心愿密探与快速登记出货' : '快速登记出货'">
+                  <div v-for="(agent, index) in shortcutAgents" :key="poolDefinition.allow_custom_up ? index : agent.id" class="quick-up-slot" :class="{ 'is-wish-slot': poolDefinition.allow_custom_up }">
                   <button
-                    v-for="agent in quickUpAgents"
-                    :key="agent.id"
                     type="button"
                     class="quick-up-button"
-                    :data-agent-id="agent.id"
-                    :aria-label="'快速登记 ' + agent.name + ' 的出货'"
-                    :title="'快速登记 ' + agent.name"
-                    :aria-pressed="activeRow?.agent_id === agent.id"
-                    :class="{ 'is-selected': activeRow?.agent_id === agent.id }"
-                    :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
-                    @click="add(agent.id, $event)"
+                    :data-agent-id="agent?.id"
+                    :aria-label="agent ? '快速登记 ' + agent.name + ' 的出货' : '选择心愿密探 ' + (index + 1)"
+                    :title="agent ? '快速登记 ' + agent.name : '选择心愿密探 ' + (index + 1)"
+                    :aria-pressed="agent ? activeRow?.agent_id === agent.id : undefined"
+                    :aria-expanded="!agent ? wishPickerIndex === index : undefined"
+                    :aria-controls="!agent ? editorId + '-agent-picker' : undefined"
+                    :class="{ 'is-selected': agent ? activeRow?.agent_id === agent.id : wishPickerIndex === index }"
+                    :disabled="agent ? recordEntryDisabled : wishEntryDisabled"
+                    @click="agent ? add(agent.id, $event) : openWishPicker(index, $event)"
                   >
-                    <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
-                    <span class="quick-up-mark" aria-hidden="true">UP</span>
-                    <span class="quick-up-name">{{ agent.name }}</span>
-                    <Check v-if="activeRow?.agent_id === agent.id" class="quick-up-check" :size="14" aria-hidden="true" />
+                    <OperatorAvatar v-if="agent" class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
+                    <span v-else class="other-agent-placeholder"><Plus :size="22" aria-hidden="true" /></span>
+                    <span v-if="agent" class="quick-up-mark" aria-hidden="true">UP</span>
+                    <span class="quick-up-name">{{ agent?.name || '心愿 ' + (index + 1) }}</span>
+                    <Check v-if="agent && activeRow?.agent_id === agent.id" class="quick-up-check" :size="14" aria-hidden="true" />
                   </button>
+                  <button v-if="poolDefinition.allow_custom_up && agent" type="button" class="wish-edit" :aria-label="'修改心愿密探 ' + (index + 1) + '：' + agent.name" :title="'修改心愿密探 ' + (index + 1)" :aria-expanded="wishPickerIndex === index" :aria-controls="editorId + '-agent-picker'" :disabled="wishEntryDisabled" @click="openWishPicker(index, $event)"><Pencil :size="10" aria-hidden="true" /></button>
+                  </div>
                   <button
                     type="button"
                     class="add-record"
-                    :aria-label="selectedOtherAgent ? '更换密探：' + selectedOtherAgent.name : quickUpAgents.length ? '其他密探' : '新增记录'"
-                    :aria-expanded="choosingAgent"
+                    :aria-label="selectedOtherAgent ? '更换密探：' + selectedOtherAgent.name : shortcutAgents.length ? '其他密探' : '新增记录'"
+                    :aria-expanded="choosingAgent && wishPickerIndex === null"
                     :aria-controls="editorId + '-agent-picker'"
                     :aria-pressed="!!selectedOtherAgent"
-                    :class="{ 'is-selected': choosingAgent || selectedOtherAgent }"
-                    :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
+                    :class="{ 'is-selected': choosingAgent && wishPickerIndex === null || selectedOtherAgent }"
+                    :disabled="recordEntryDisabled"
                     @click="add('', $event)"
                   >
                     <OperatorAvatar v-if="selectedOtherAgent" class="quick-up-avatar" :avatar="agentAvatar(selectedOtherAgent)" :name="selectedOtherAgent.name" :rarity="Number(selectedOtherAgent.rarity) || 5" aria-hidden="true" />
                     <span v-else class="other-agent-placeholder"><Plus :size="22" aria-hidden="true" /></span>
-                    <span class="quick-up-name">{{ selectedOtherAgent?.name || (quickUpAgents.length ? '其他密探' : '新增记录') }}</span>
+                    <span class="quick-up-name">{{ selectedOtherAgent?.name || (shortcutAgents.length ? '其他密探' : '新增记录') }}</span>
                     <Check v-if="selectedOtherAgent" class="quick-up-check" :size="14" aria-hidden="true" />
                   </button>
                 </div>
 
               <div
-                v-if="activeRow"
+                v-if="activeRow || choosingAgent"
                 ref="entryComposer"
                 class="entry-composer"
                 role="group"
-                :aria-label="activeRow && originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
+                :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : activeRow && originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
 
                 <RecruitmentGuideHint v-if="guideVisible && ['agent-search', 'agent-results'].includes(guideStep)" :target="guideStep" :message="guideMessage" />
-                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" role="group" aria-label="选择其他密探">
+                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" role="group" :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : '选择其他密探'">
                   <label data-guide-target="agent-search" class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
                     <input
@@ -172,7 +166,7 @@
                     >
                   </label>
                   <div class="agent-filter-head">
-                    <span><b>{{ filteredPickerAgents.length }}</b> / {{ options.length }} 位</span>
+                    <span><b>{{ filteredPickerAgents.length }}</b> / {{ pickerAgents.length }} 位</span>
                     <div class="agent-filter-actions">
                       <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
                       <button type="button" class="agent-picker-cancel" :disabled="busy" @click="cancelAgentPicker">取消</button>
@@ -216,7 +210,7 @@
                       class="agent-choice"
                       :data-agent-id="agent.id"
                       :aria-label="'选择 ' + agent.name"
-                      :disabled="busy || readOnly || recordsLoading"
+                      :disabled="wishPickerIndex !== null ? wishEntryDisabled || wishAgentIds[1 - wishPickerIndex] === agent.id : busy || readOnly || recordsLoading"
                       @click="chooseOtherAgent(agent.id)"
                     >
                       <OperatorAvatar class="agent-choice-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
@@ -225,7 +219,7 @@
                     <p v-if="!filteredPickerAgents.length" class="agent-picker-empty">没有符合筛选条件的密探</p>
                   </div>
                 </div>
-                <div class="compact-entry-row">
+                <div v-if="activeRow" class="compact-entry-row">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'pulls'" target="pulls" :message="guideMessage" />
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
                   <div class="composer-actions">
@@ -248,7 +242,7 @@
                 <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" title="删除记录" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)"><Trash2 :size="16" aria-hidden="true" /><span class="sr-only">删除记录</span></button>
               </div>
 
-              <div v-if="!activeRow" class="entry-placeholder" aria-label="请先选择出货密探">
+              <div v-if="!activeRow && !choosingAgent" class="entry-placeholder" aria-label="请先选择出货密探">
                 <div class="composer-actions">
                 <div class="pull-controls">
                   <div class="pull-count-field">
@@ -396,7 +390,7 @@
 import { recordBarClass, recordSpanWidth } from './recruitmentRecordPresentation.js'
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
-import { Camera, Check, GripVertical, Minus, Plus, Search, Trash2, X } from '@lucide/vue'
+import { Camera, Check, GripVertical, Minus, Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
@@ -420,6 +414,8 @@ const wishAgentIds = ref(['', '']), initialWishes = ref([])
 const wishesChanged = computed(() => JSON.stringify(wishAgentIds.value.filter(Boolean)) !== JSON.stringify(initialWishes.value))
 const editingPool = computed(() => ({ ...props.pool, wish_agent_ids: wishAgentIds.value.filter(Boolean) }))
 const wishOptions = computed(() => props.agents.filter(agent => Number(agent.rarity) === 5))
+const wishPickerIndex = ref(null)
+let wishReturn = null
 const orderIds = ref(null), orderRevision = ref(null)
 const entryError = ref(''), progressError = ref('')
 const progressEditing = ref(false), headerScrolled = ref(false)
@@ -620,6 +616,10 @@ const isFourStar = row => {
 }
 const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
+const shortcutAgents = computed(() => poolDefinition.value.allow_custom_up ? [0, 1].map(index => quickUpAgents.value.find(agent => (agent.operator_id || agent.id) === wishAgentIds.value[index]) || null) : quickUpAgents.value)
+const recordEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || props.recordsLoading || !!props.recordsError || !!unverifiedSave.value || !initialized.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id))) || (!activeRow.value && newCount.value >= 120))
+const wishEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || !props.canRecord || !recordsReady.value || !!unverifiedSave.value || !poolDefinition.value.allow_custom_up)
+const pickerAgents = computed(() => wishPickerIndex.value !== null ? wishOptions.value : options.value)
 const selectedOtherAgent = computed(() => activeRow.value?.agent_id && !quickUpAgents.value.some(agent => agent.id === activeRow.value.agent_id) ? selectedAgent(activeRow.value) : null)
 const goldOrder = computed(() => {
   const ranks = new Map()
@@ -646,12 +646,12 @@ function agentAvatar(agent) {
   return agent.avatar || agent.avatar_url || localPortraitUrl(operatorId)
 }
 const agentProfOptions = computed(() => {
-  const present = new Set(options.value.flatMap(agent => tokens(agent.prof)))
+  const present = new Set(pickerAgents.value.flatMap(agent => tokens(agent.prof)))
   return AGENT_PROFS.filter(prof => present.has(prof)).concat([...present].filter(prof => !AGENT_PROFS.includes(prof)))
 })
-const agentSubProfOptions = computed(() => deriveSubProfOptions(options.value))
+const agentSubProfOptions = computed(() => deriveSubProfOptions(pickerAgents.value))
 const filteredPickerAgents = computed(() => {
-  return options.value
+  return pickerAgents.value
     .filter(agent => matchesProfSubFilter(agent, agentProfFilter.value, agentSubProfFilter.value))
     .filter(agent => matchesOperatorSearch(agent, agentSearch.value))
     .slice()
@@ -836,7 +836,7 @@ function onViewportChange() {
 function focusEntry(preferPulls = false) {
   const session = editorSession
   nextTick(() => {
-    if (!props.open || session !== editorSession || !activeRow.value) return
+    if (!props.open || session !== editorSession || (!activeRow.value && !choosingAgent.value)) return
     const target = preferPulls ? (pullSpanInput.value?.disabled ? null : pullSpanInput.value) || entryComposer.value?.querySelector('.composer-actions .primary') : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
     target?.focus({ preventScroll: true })
     scheduleEntryVisibility()
@@ -875,6 +875,7 @@ function restoreEntry(id = entryReturn?.id) {
 function add(agentId = '', event) {
   if (screenshotMode.value || props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
   if (!activeRow.value) rememberEntry(event?.currentTarget || panel.value?.querySelector('.add-record'))
+  wishPickerIndex.value = null; wishReturn = null
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''
@@ -891,19 +892,39 @@ function add(agentId = '', event) {
   focusEntry(false)
 }
 function cancelAgentPicker() {
+  if (wishPickerIndex.value !== null) {
+    const target = wishReturn, session = editorSession
+    wishPickerIndex.value = null; wishReturn = null; choosingAgent.value = false
+    resetAgentFilters()
+    nextTick(() => { if (session === editorSession) focusInBody(target) })
+    return
+  }
   if (!activeRow.value?.agent_id) { cancelEntry(); return }
   choosingAgent.value = false
   resetAgentFilters()
   focusEntry(true)
 }
 function chooseOtherAgent(agentId) {
+  if (wishPickerIndex.value !== null) {
+    if (wishEntryDisabled.value || !wishOptions.value.some(agent => agent.id === agentId) || wishAgentIds.value[1 - wishPickerIndex.value] === agentId) return
+    wishAgentIds.value[wishPickerIndex.value] = agentId
+    cancelAgentPicker()
+    return
+  }
   if (!activeRow.value) return
   activeRow.value.agent_id = agentId
   choosingAgent.value = false
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row, event) { if (screenshotMode.value || isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function openWishPicker(index, event) {
+  if (screenshotMode.value || wishEntryDisabled.value) return
+  wishReturn = event.currentTarget
+  wishPickerIndex.value = index; choosingAgent.value = true
+  resetAgentFilters()
+  focusEntry(false)
+}
+function edit(row, event) { if (screenshotMode.value || isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; wishPickerIndex.value = null; wishReturn = null; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -915,7 +936,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { entryError.value = ''; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); restoreEntry() }
+function cancelEntry() { entryError.value = ''; activeRow.value = null; choosingAgent.value = false; wishPickerIndex.value = null; wishReturn = null; resetAgentFilters(); restoreEntry() }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''; entryError.value = ''
@@ -962,7 +983,7 @@ watch(() => props.open, open => {
   guideVisible.value = TUTORIALS_ENABLED && props.guided
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   orderIds.value = null; orderRevision.value = null
-  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; entryError.value = ''; progressError.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
+  rows.value = []; activeRow.value = null; choosingAgent.value = false; wishPickerIndex.value = null; wishReturn = null; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; entryError.value = ''; progressError.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
@@ -1056,11 +1077,7 @@ async function submit() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .mobile-copy, .progress-edit, .compact-progress { display: none; }
-.wish-fields { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
-.wish-fields p { flex-basis: 100%; margin: 0; color: var(--ink-60); line-height: 1.6; }
-.wish-fields label { display: grid; flex: 1 1 180px; min-width: 0; gap: 6px; }
-.wish-fields select { width: 100%; min-width: 0; padding: 8px; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
-.wish-fields select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wish-edit { border-color: var(--line); border-radius: 50%; color: var(--ink); background: var(--surface); }
 .screenshot-entry { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .pool-editor .screenshot-exit { border-color: transparent; background: transparent; color: var(--ink-60); }
 .is-screenshot .record-handle:disabled, .is-screenshot .record-detail:disabled, .is-screenshot .agent-record-detail:disabled { opacity: 1; cursor: default; }

@@ -74,7 +74,11 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .entry-heading h3 { font: 700 16px/1.5 var(--font-b); }
 .entry-heading p { margin-top: 3px; font-size: 12px; }
 .entry-workflow { display: grid; gap: 10px; }
+.entry-workflow.is-choosing { grid-template-columns: minmax(0, 1fr); }
 .entry-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 6px; min-width: 0; padding-block: 3px; }
+.quick-up-slot { position: relative; min-width: 0; }
+.wish-edit { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 20px; height: 20px; min-width: 0; min-height: 0; padding: 0; }
+.is-wish-slot .quick-up-check { right: auto; left: 0; }
 .quick-up-button, .add-record {
   position: relative;
   display: grid;
@@ -186,12 +190,7 @@ input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; font: inheri
 .record-drag-floating { z-index: var(--z-overlay-raised) !important; }
 
 .agent-picker {
-  position: absolute;
-  z-index: var(--z-overlay-raised);
-  top: calc(100% + 8px);
-  inset-inline: 0;
-  max-height: min(440px, 50dvh);
-  overflow-y: auto;
+  position: static;
   padding: 12px;
 }
 
@@ -259,18 +258,24 @@ input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; font: inheri
 .agent-filter-options {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 3px;
   padding: 3px;
 }
 
 .agent-filter-options button {
+  flex: 0 0 auto;
   min-width: 0;
-  min-height: 44px;
-  padding: 4px 8px;
-  font-size: 10px;
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.agent-filter-options button.on {
+  font-size: 11px;
 }
 
 .agent-filter-options button img {
@@ -285,10 +290,7 @@ input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; font: inheri
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(64px, 100%), 1fr));
   gap: 8px;
-  max-height: min(42dvh, 340px);
   margin-top: 7px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 2px 3px 4px 2px;
 }
 
@@ -352,10 +354,5 @@ footer { gap: 8px; padding-block: 10px max(10px, env(safe-area-inset-bottom)); b
 }
 @media (pointer: coarse) {
   .agent-filter-reset { min-width: 44px; min-height: 44px; }
-}
-@media (max-width: 520px) {
-  .agent-filter-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
-  .agent-filter-options button { width: 100%; padding-inline: 2px; }
-  .agent-picker-results { max-height: 35dvh; }
 }
 }
