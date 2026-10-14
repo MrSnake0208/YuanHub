@@ -41,18 +41,22 @@
             </span>
             <span class="pool-content">
               <span class="pool-name">{{ details(pool).name }}</span>
+              <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
               <span class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
               <span class="pool-metrics">
                 <span><BookOpen :size="15" aria-hidden="true" />已知抽数 <b>{{ poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知' }}</b><small>抽</small></span>
                 <span><Gem :size="15" aria-hidden="true" />绝密次数 <b>{{ goldCount(pool) ?? '未知' }}</b><small>次</small></span>
                 <span><CircleGauge :size="15" aria-hidden="true" />距保底 <b>{{ remainingPulls(pool) }}</b><small>抽</small></span>
-                <span class="average-metric">平均出金 <b>{{ average(pool)?.value ?? '—' }}</b><small>抽</small></span>
-                <span class="small-pity-metric">小保底不歪率 <b>{{ pity(pool)?.value == null ? '—' : pity(pool).value + '%' }}</b></span>
+                <span class="average-metric">平均出金 <b>{{ poolSummaries[pool.pool_id]?.average_gold_pulls ?? '—' }}</b><small>抽</small></span>
+                <span class="small-pity-metric">小保底不歪率 <b>{{ permanent(pool) || poolSummaries[pool.pool_id]?.small_pity_win_rate == null ? '—' : poolSummaries[pool.pool_id].small_pity_win_rate + '%' }}</b></span>
               </span>
               <span v-if="poolSummaries[pool.pool_id]?.four_star_count" class="metric-note">另有 {{ poolSummaries[pool.pool_id].four_star_count }} 条4星计次</span>
             </span>
-            <span class="pool-entry"><span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span><button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
-              <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)"><ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" />{{ isExpanded(pool) ? '收起明细' : '展开明细' }}</button>
+            <span class="pool-entry">
+              <span class="pool-actions">
+                <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)">{{ isExpanded(pool) ? '收起明细' : '展开明细' }}<ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
+                <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
+              </span>
             </span>
           </div>
           <RecruitmentRecordsPreview v-if="hasRecords(pool) && isExpanded(pool)" :id="previewId(pool)" :pool="pool" :catalog="catalog" :agents="agents" :entry="previews[pool.pool_id]" :view="recordView" :busy="busy" @load="more => $emit('load-preview', pool.pool_id, more)" />
@@ -67,7 +71,6 @@ import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, ref, useId, watch } from 'vue'
 import { ArrowDownWideNarrow, BookOpen, ChevronRight, ChevronDown, CircleGauge, Gem, Sprout } from '@lucide/vue'
 import RecruitmentRecordsPreview from './RecruitmentRecordsPreview.vue'
-import { knownGoldAverage, smallPityRate } from './recruitmentRecordPresentation.js'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { dateInZone } from '../../utils/businessDay.js'
@@ -80,24 +83,16 @@ const timelineId = 'recruitment-timeline-' + useId()
 const props = defineProps({ pools: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, agents: { type: Array, default: () => [] }, poolSummaries: { type: Object, default: () => ({}) }, previews: { type: Object, default: () => ({}) }, busy: Boolean, contextVersion: Number, guideActive: Boolean })
 defineEmits(['select', 'practice', 'load-preview'])
 const year = ref(''), descending = ref(true)
-const recordView = ref('agents'), collapsed = ref(new Set())
+const recordView = ref('agents'), expandedPools = ref(new Set())
 const hasRecords = pool => (props.poolSummaries[pool.pool_id]?.event_count || 0) > 0
-const isExpanded = pool => !collapsed.value.has(pool.pool_id)
+const isExpanded = pool => expandedPools.value.has(pool.pool_id)
 const previewId = pool => `${timelineId}-preview-${pool.pool_id}`
-function togglePool(pool) { if (hasRecords(pool)) { if (isExpanded(pool)) collapsed.value.add(pool.pool_id); else collapsed.value.delete(pool.pool_id) } }
+function togglePool(pool) { if (hasRecords(pool)) { if (isExpanded(pool)) expandedPools.value.delete(pool.pool_id); else expandedPools.value.add(pool.pool_id) } }
 function onSummaryClick(event, pool) { if (!event.target.closest('button, a, input, select')) togglePool(pool) }
-function setAllExpanded(expanded) { for (const pool of visiblePools.value) if (hasRecords(pool)) { if (expanded) collapsed.value.delete(pool.pool_id); else collapsed.value.add(pool.pool_id) } }
+function setAllExpanded(expanded) { for (const pool of visiblePools.value) if (hasRecords(pool)) { if (expanded) expandedPools.value.add(pool.pool_id); else expandedPools.value.delete(pool.pool_id) } }
 const goldCount = pool => {
   const summary = props.poolSummaries[pool.pool_id]
   return Number.isInteger(summary?.event_count) ? summary.event_count - (summary.four_star_count || 0) : null
-}
-function average(pool) {
-  const entry = props.previews[pool.pool_id]
-  return entry?.loaded && !entry.cursor && !entry.error && !entry.loading ? knownGoldAverage(entry.items) : null
-}
-function pity(pool) {
-  const entry = props.previews[pool.pool_id]
-  return !permanent(pool) && entry?.loaded && !entry.cursor && !entry.error && !entry.loading ? smallPityRate(entry.items) : null
 }
 const failedPortraits = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
@@ -152,11 +147,11 @@ function markPortraitFailed(src) { if (src) failedPortraits.value.add(src) }
 const cards = new Map()
 function rememberCard(id, element) { if (element) cards.set(id, element); else cards.delete(id) }
 defineExpose({ focusPool: id => cards.get(id)?.focus({ preventScroll: true }) })
-watch(() => props.contextVersion, () => { year.value = ''; descending.value = true; collapsed.value = new Set() })
+watch(() => props.contextVersion, () => { year.value = ''; descending.value = true; expandedPools.value = new Set() })
 </script>
 
 <style scoped>
-.overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--cream)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
+.overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--cream)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
 
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .timeline-heading p{color:var(--ink-60)}button{color:var(--ink);cursor:pointer}button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}button:disabled{opacity:.6;cursor:not-allowed}.sort-button{border:1px solid var(--line);background:var(--surface);border-radius:999px}.year-filters{border:1px solid var(--line);border-radius:20px;background:var(--cream)}.year-filters button{border:0;background:transparent;border-radius:999px}.year-filters button[aria-pressed=true]{background:var(--tea);color:var(--cream)}.timeline-row::before{content:'';border-left:1px solid var(--line)}.date-rail::before{content:'';border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--paper)}.pool-group{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.pool-card{border:0;border-radius:16px;background:var(--surface);transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}.pool-card:hover{border-color:var(--accent);box-shadow:0 4px 18px color-mix(in srgb,var(--tea) 8%,transparent)}.pool-cover{border-radius:10px;background:linear-gradient(115deg,var(--cover-tone),var(--cream))}.pool-cover::before{content:'';background:url(/maayuan/maayuan-pattern.webp) center/900px;opacity:.15}.cover-portrait{opacity:.68}.cover-more{border:1px solid color-mix(in srgb,var(--cream) 72%,transparent);border-radius:999px;background:color-mix(in srgb,var(--ink) 72%,transparent);color:var(--cream);box-shadow:0 2px 8px rgba(0,0,0,.12)}.cover-sprout{color:var(--accent);opacity:.2}.cover-caption{color:var(--ink)}
@@ -164,7 +159,7 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 .up-result .up-avatar{border:1px solid var(--line);border-radius:9px;background:var(--paper)}
 .up-result :deep(.up-avatar img){border-radius:8px}
 .up-count{border:1px solid var(--surface);border-radius:999px;background:var(--tea);color:var(--cream)}
-.up-count.is-muted{border-color:var(--line);background:var(--surface);color:var(--ink-60)}.pool-type{color:var(--ink-60)}.pool-dates{color:var(--ink-60)}.pool-metrics{border-top:1px solid var(--line)}.pool-metrics>span{color:var(--ink-60)}.pool-metrics b{color:var(--ink)}.pool-metrics svg{color:var(--accent-strong)}.pool-status{background:var(--cream);border:1px solid var(--line);border-radius:999px}.status-dot{border-radius:50%;background:currentColor;opacity:.65}.status-open{color:var(--accent-strong);background:color-mix(in srgb,var(--yellow) 28%,var(--surface))}.entry-label{background:var(--tea);color:var(--cream);border-radius:9px}.timeline-empty{color:var(--ink-60)}
+.up-count.is-muted{border-color:var(--line);background:var(--surface);color:var(--ink-60)}.pool-type{color:var(--ink-60)}.pool-dates{color:var(--ink-60)}.pool-metrics{border-top:1px solid var(--line)}.pool-metrics>span{color:var(--ink-60)}.pool-metrics b{color:var(--ink)}.pool-metrics svg{color:var(--accent-strong)}.pool-entry{border-top:1px solid var(--line)}.pool-status{background:var(--cream);border:1px solid var(--line);border-radius:999px}.status-dot{border-radius:50%;background:currentColor;opacity:.65}.status-open{color:var(--accent-strong);background:color-mix(in srgb,var(--yellow) 28%,var(--surface))}.entry-label{background:var(--tea);color:var(--cream);border-radius:9px}.timeline-empty{color:var(--ink-60)}
 @media(prefers-reduced-motion:reduce){.pool-card{transition:none}}
 </style>
 <style scoped src="./recruitmentTimelineDesktop.css"></style>
