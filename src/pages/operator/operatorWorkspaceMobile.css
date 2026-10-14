@@ -4210,6 +4210,24 @@
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { margin: 0; }
 .catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; }
 .catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
+@media (max-width: 767px) {
+  .page-operator :deep(.compact-tool-header) { padding-block: 12px 8px; }
+  .page-operator :deep(.compact-tool-heading h1) { font-size: 26px; }
+  .page-operator .operator-tabs.tool-workspace-tabs { width: 100%; }
+  .page-operator .tool-workspace-tabs > .workspace-tab-list { flex-grow: 1; }
+  .page-operator .operator-tabs.tool-workspace-tabs button { flex-grow: 1; min-height: 38px; padding-block: 6px; }
+  .panel:has(> .catalog-tools) { margin-top: 8px; }
+  .catalog-tools .manifest-bar > .mf-filter { gap: 8px; }
+  .catalog-tools .manifest-bar > .mf-filter button { min-height: 36px; padding-inline: 8px; }
+  .panel > .catalog-tools ~ .backpack { margin-top: 10px; }
+  .panel > .catalog-tools ~ .backpack .slot-name { margin-top: 6px; min-height: 1.45em; }
+  .panel > .catalog-tools ~ .backpack .slot-count { left: 3px; bottom: 3px; padding: 3px 4px; font-size: 11px; }
+}
+@media (min-width: 360px) and (max-width: 767px) {
+  .catalog-tools { grid-template-areas: 'search entry' 'filter more'; gap: 6px 8px; }
+  .catalog-tools:not(:has(.catalog-entry)) { grid-template-areas: 'search search' 'filter more'; }
+  .catalog-entry { padding-inline: 10px; }
+}
 @media (min-width: 768px) {
   .panel > .catalog-tools ~ .backpack { margin-inline: -17px; padding: 16px; }
   .catalog-tools { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search entry' 'filter more'; gap: 4px 16px; }

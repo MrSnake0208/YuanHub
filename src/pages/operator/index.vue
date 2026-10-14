@@ -11464,9 +11464,9 @@ onBeforeUnmount(function () {
   box-shadow: 0 2px 6px rgba(73, 59, 44, 0.28);
 }
 .slot-count.zero {
-  background: transparent;
-  border: 1.5px dashed var(--line);
-  color: var(--ink-35);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--tea);
   box-shadow: none;
 }
 .slot-name {
@@ -11549,14 +11549,18 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .slot.is-missing .slot-ic {
-  opacity: 0.55;
   border-style: dashed;
 }
-.slot.is-missing:hover .slot-ic {
+.slot.is-missing .slot-avatar,
+.slot.is-missing .slot-ph {
+  opacity: 0.65;
+}
+.slot.is-missing:hover .slot-avatar,
+.slot.is-missing:hover .slot-ph {
   opacity: 0.8;
 }
 .slot.is-missing .slot-name {
-  color: var(--ink-35);
+  color: var(--ink-60);
 }
 .slot.is-missing:hover .slot-name {
   color: var(--ink-60);
