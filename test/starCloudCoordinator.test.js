@@ -38,6 +38,41 @@ test('explicit JSON rejection leaves no uncertain rebuild lock', async () => {
   assert.equal(c.state().error,undefined);assert.equal(persistent.getItem('yuanhub.star-rebuild-pending:a'),null)
 })
 
+for (const status of [400,401,403,404,409,422]) test(`explicit OCR ${status} releases the intent and allows another attempt after reload`, async () => {
+  let rejected = true, posts = 0
+  const persistent = storage(), error = Object.assign(new Error('rebuild rejected'), { status })
+  const options = { selectedHostAccount: () => ({accountId:'a'}), storage: persistent, getState: async () => remote(),
+    rebuildState: async () => { posts++; if (rejected) throw error; return { state: { ...remote(3,6), plan_targets: {} } } } }
+  const c = createStarCloudCoordinator(options); await c.enter(handle())
+  await assert.rejects(c.rebuildOcr(local(), 'point'), e => e === error)
+  assert.equal(persistent.getItem('yuanhub.star-rebuild-pending:a'), null)
+  const remount = createStarCloudCoordinator(options); await remount.enter(handle())
+  assert.equal(remount.needsRetry(), false)
+  rejected = false; await remount.rebuildOcr(local(), 'point')
+  assert.equal(posts, 2); assert.equal(remount.state().generation, 3)
+})
+
+test('identity-changed OCR responses remain uncertain and cannot release the original command', async () => {
+  const persistent = storage()
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({accountId:'a'}), storage: persistent,
+    getState: async () => remote(), rebuildState: async () => { throw Object.assign(new Error('identity changed'), {status:401,code:'request_identity_changed'}) } })
+  await c.enter(handle()); await assert.rejects(c.rebuildOcr(local(), 'point'), e => e.code === 'star_rebuild_uncertain')
+  assert.ok(persistent.getItem('yuanhub.star-rebuild-pending:a'))
+  assert.equal(c.needsRetry(), true)
+})
+
+test('failed local rollback retains the cloud intent and blocks another OCR command', async t => {
+  const previous = globalThis.indexedDB
+  globalThis.indexedDB = { open() { const request = {}; queueMicrotask(() => { request.error = Error('storage fault'); request.onerror() }); return request } }
+  t.after(() => { if (previous === undefined) delete globalThis.indexedDB; else globalThis.indexedDB = previous })
+  let posts = 0
+  const persistent = storage(), c = createStarCloudCoordinator({ selectedHostAccount: () => ({accountId:'a'}), storage: persistent,
+    getState: async () => remote(), rebuildState: async () => { posts++; throw Object.assign(Error('rejected'), {status:422}) } })
+  await c.enter(handle()); await assert.rejects(c.rebuildOcr(local(), 'point'), /storage fault/)
+  assert.ok(persistent.getItem('yuanhub.star-rebuild-pending:a')); assert.equal(c.needsRetry(), true)
+  await assert.rejects(c.rebuildOcr(local(), 'point'), /未完成/); assert.equal(posts, 1)
+})
+
 test('lost restore response blocks repeat until authority is read', async () => {
   let posts=0;const c=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),storage:storage(),getState:async()=>remote(),
     restorePoint:async()=>{posts++;throw new TypeError('lost')} })

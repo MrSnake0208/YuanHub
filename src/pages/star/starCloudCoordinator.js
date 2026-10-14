@@ -1,8 +1,10 @@
 import { getCurrentStarState, patchCurrentStarState, rebuildStarState, listStarRecoveryPoints, restoreStarRecoveryPoint } from '../../api/starState.js'
 import { createPlannerSnapshotWriter } from '../../data/plannerSnapshotWriter.js'
+import { rollbackRejectedStarPlanIntent } from './starPlanIntentRecovery.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
 const uncertainRebuild = message => Object.assign(new Error(message), { code: 'star_rebuild_uncertain' })
+const explicitlyRejected = error => [400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed'
 const stable = value => JSON.stringify(value, (_key, item) => item && !Array.isArray(item) && typeof item === 'object'
   ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item)
 const inventoryKind = { '主星': 'main', '辅星': 'support' }
@@ -140,7 +142,7 @@ export function createStarCloudCoordinator({
       if (reason !== 'pre_ocr_rebuild') {
         try { response = await rebuildState(session.accountId, body) }
         catch (error) {
-          if ([400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed') storage.removeItem(pendingKey)
+          if (explicitlyRejected(error)) storage.removeItem(pendingKey)
           else {
             session.error = uncertainRebuild('背包替换结果尚未确认，请先重新加载核对，不要重复导入或恢复。')
             throw session.error
@@ -154,6 +156,14 @@ export function createStarCloudCoordinator({
           const saved = businessState(response?.state)
           if (!businessSame(saved, expected) || saved.revision !== expected.revision) throw new Error('云端重建回读与确认结果不一致。')
         } catch (error) {
+          if (explicitlyRejected(error)) {
+            session.error = error
+            await rollbackRejectedStarPlanIntent({ operation: 'ocr', accountId: session.accountId, snapshot, recoveryPointId,
+              scope: { generation: body.expected_generation, revision: body.expected_revision } })
+            storage.removeItem(pendingKey)
+            session.error = undefined
+            throw error
+          }
           // A lost POST response may already have committed. Read before any retry;
           // the exact generation/revision and complete snapshot fence double rebuilds.
           let raw, remote
@@ -221,6 +231,7 @@ export function createStarCloudCoordinator({
       const session = commandSession()
       if (!scope || scope.accountId !== session.accountId || scope.generation !== session.generation || scope.revision !== session.writer.state().revision) throw new Error('云端版本已变化，请重新预览。')
       session.replacing = true; emit()
+      let writeStarted = false
       try {
         const raw = await getState(session.accountId), current = businessState(raw)
         if (current.generation !== scope.generation || current.revision !== scope.revision || active !== session || selectedHostAccount()?.accountId !== session.accountId) throw new Error('云端版本或账号已变化，请重新加载。')
@@ -230,6 +241,7 @@ export function createStarCloudCoordinator({
         const pendingKey='yuanhub.star-plan-pending:' + session.accountId
         storage.setItem(pendingKey,JSON.stringify({...incoming, inventory: businessState({inventory: cloudInventory(incoming)}).inventory, revision: scope.revision+1}))
         const body = stateBody(incoming,scope.revision)
+        writeStarted = true
         const response = await patchState(session.accountId,body)
         const saved = businessState(response.state)
         if (active !== session || selectedHostAccount()?.accountId !== session.accountId || saved.generation !== scope.generation || !businessSame(saved,incoming)) throw new Error('计划保存结果尚未确认，请重新加载核对，不要重复继承。')
@@ -237,7 +249,9 @@ export function createStarCloudCoordinator({
         storage.removeItem(pendingKey)
         return productSnapshot(saved)
       } catch (error) {
-        if ([400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed') {
+        if (!writeStarted || explicitlyRejected(error)) {
+          session.error = error
+          await rollbackRejectedStarPlanIntent({ operation: 'plan', accountId: session.accountId, snapshot, scope })
           storage.removeItem('yuanhub.star-plan-pending:' + session.accountId)
         }
         session.error = storage.getItem('yuanhub.star-plan-pending:' + session.accountId)
