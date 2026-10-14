@@ -3198,6 +3198,12 @@
   .current-batch-label {
     display: none;
   }
+  .current-prof-filter.is-compact .current-batch-toggle {
+    width: auto;
+  }
+  .current-prof-filter.is-compact .current-batch-label {
+    display: inline;
+  }
   .batch-status-bar {
     align-items: stretch;
     flex-direction: column;
