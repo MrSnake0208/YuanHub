@@ -93,10 +93,11 @@ function persistSubmittedRecord(summaryValues = {}) {
       else records[accountId][index] = event
     }
     records[accountId] = records[accountId].filter(event => !data.deleted_event_ids.includes(event.event_id))
-    archives[accountId].pools.find(pool => pool.pool_id === data.pool_id).progress = 40 - data.remaining_pulls
+    const pool = archives[accountId].pools.find(pool => pool.pool_id === data.pool_id)
+    if (data.remaining_pulls != null) pool.progress = 40 - data.remaining_pulls
     archives[accountId].summary.event_count = records[accountId].length
     const poolEvents = records[accountId].filter(event => event.pool_id === data.pool_id)
-    const poolSummary = { known_total_pulls: poolEvents.filter(event => !event.batch_id).reduce((sum, event) => sum + (event.pull_span ?? 0), 0) + 40 - data.remaining_pulls, event_count: poolEvents.length, up_agent_counts: {} }
+    const poolSummary = { known_total_pulls: poolEvents.filter(event => !event.batch_id).reduce((sum, event) => sum + (event.pull_span ?? 0), 0) + (pool.progress ?? 0), event_count: poolEvents.length, up_agent_counts: {} }
     for (const event of poolEvents) if (event.up_status === 'up') poolSummary.up_agent_counts[event.agent_snapshot.agent_id] = (poolSummary.up_agent_counts[event.agent_snapshot.agent_id] || 0) + 1
     archives[accountId].pool_summaries = { ...archives[accountId].pool_summaries, [data.pool_id]: { ...poolSummary, ...summaryValues } }
     archives[accountId].archive_revision++
@@ -240,24 +241,39 @@ it('保底保存失败或回读值不同不完成，重新核对后完成且不�
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(2)
 })
 
-it('未知保底与未知间隔分开解释，加入草稿不猜保底；关闭教程保留草稿及真实字段焦点', async () => {
+it('教程允许未知保底与未知间隔直接保存，原子请求与读回均保留未知', async () => {
   firstRecordAccount(); archives['acc-a'].pools[0].progress = null
+  persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('')
   await editor(wrapper).get('.quick-up-button').trigger('click')
   await editor(wrapper).get('.unknown-pulls').trigger('click')
-  expect(editor(wrapper).get('.guide-hint').text()).toContain('暂不支持保底留空提交')
+  expect(hintTarget(wrapper)).toBe('save-record')
+  expect(editor(wrapper).text()).toContain('当前保底可选填')
   await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(editor(wrapper).text()).toContain('待保存')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
-  expect(editor(wrapper).text()).toContain('保底进度未知：草稿已保留')
-  expect(confirmed(wrapper)).toBe(false)
-  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  expect(api.recruitmentCommand.mock.calls[0][0].data).toMatchObject({ remaining_pulls: null, entries: [{ pull_span: null }] })
+  expect(confirmed(wrapper)).toBe(true)
+  expect(archives['acc-a'].pools[0].progress).toBeNull()
+  expect(editor(wrapper).get('.pull-result b').text()).toBe('未知')
+  expect(editor(wrapper).get('.remaining-field input').element.value).toBe('')
+})
+
+it('未知保底的待保存记录退出教程后保留草稿和字段焦点，不提前写入', async () => {
+  firstRecordAccount(); archives['acc-a'].pools[0].progress = null
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await editor(wrapper).get('.unknown-pulls').trigger('click')
+  await composer(wrapper).get('.composer-actions .primary').trigger('click')
   editor(wrapper).get('.remaining-field input').element.focus()
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
   expect(document.activeElement).toBe(editor(wrapper).get('.remaining-field input').element)
   expect(editor(wrapper).get('.pull-result b').text()).toBe('未知')
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('')
+  expect(editor(wrapper).text()).toContain('待保存')
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
 
 it('回访用户出货主题允许同一密探再新增，保存这笔与普通相同；同ID字段不一致不完成', async () => {

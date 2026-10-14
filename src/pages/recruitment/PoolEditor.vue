@@ -22,7 +22,7 @@
         <RecruitmentGuideChoice v-if="guidePicker" @record="startGuide" @practice="openPractice" @close="guidePicker = false" />
         <form @submit.prevent="submit" @focusin="scheduleEntryVisibility" @pointerdown.capture="holdGuideHint">
           <section class="progress-card" :class="{ 'is-saved': !screenshotMode && receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
-            <h3 :id="editorId + '-progress'">当前保底</h3>
+            <h3 :id="editorId + '-progress'">当前保底（选填）</h3>
             <div class="progress-overview">
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
               <div data-guide-target="saved-progress" class="progress-number" aria-live="polite">
@@ -39,7 +39,7 @@
                 <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label === '已抽' ? '距保底' : '已垫' }}</button>
               </div>
               <label data-guide-target="progress" class="remaining-field">
-                <span class="sr-only">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}</span>
+                <span class="sr-only">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}（选填，留空保留原进度）</span>
                 <span class="remaining-input">
                   <input ref="remainingInput" v-model="progressInput" type="number" inputmode="numeric" :min="progressLabel === '已抽' ? 1 : 0" :max="progressLabel === '已抽' ? 40 : 39" placeholder="未知" :disabled="busy || readOnly || recordsLoading" :aria-invalid="!!progressError || undefined" :aria-describedby="progressError ? editorId + '-progress-error' : undefined" @input="progressReviewed = false; progressError = ''" @blur="reviewProgress" @invalid="revealProgress">
                   <span>抽</span>
@@ -258,7 +258,7 @@
               </div>
               <p v-if="entryError" :id="editorId + '-entry-error'" class="form-error" role="alert">{{ entryError }}</p>
               <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
-              <p v-if="tailProgress == null" class="unknown-progress-note">当前保底未知：可先加入草稿；保存绝密记录前需核对游戏保底。仅 4 星计次或调整顺序可保留未知。</p>
+              <p v-if="tailProgress == null" class="unknown-progress-note">当前保底可选填：留空也能保存密探记录，保留原进度；原本未知则继续未知。</p>
             </section>
 
             <section class="records-section" :aria-labelledby="editorId + '-records'">
@@ -483,9 +483,9 @@ const observedGuideStep = computed(() => {
   if (!recordsReady.value || props.busy || props.serverError || error.value) return 'read-state'
   if (unverifiedSave.value) return 'readback'
   if (!activeRow.value && !pendingCount.value && receiptVerified.value) return props.saveReceipt.entries.length ? (displayRows.value.some(row => row.event_id === props.saveReceipt.entries[0].event_id) ? 'guide-record' : 'empty-records') : 'saved-progress'
-  if (activeRow.value?.agent_id) return !pullsReviewed.value ? 'pulls' : !progressReviewed.value ? 'progress' : 'save-record'
+  if (activeRow.value?.agent_id) return !pullsReviewed.value ? 'pulls' : !progressReviewed.value && (props.practice || remaining.value !== '') ? 'progress' : 'save-record'
   if (choosingAgent.value) return agentSearch.value.trim() && filteredPickerAgents.value.length ? 'agent-results' : 'agent-search'
-  if (recordPendingCount.value) return !progressReviewed.value ? 'progress' : 'save-changes'
+  if (recordPendingCount.value) return !progressReviewed.value && (props.practice || remaining.value !== '') ? 'progress' : 'save-changes'
   if (viewedRecords.value || props.readOnly) return viewedRecords.value ? (displayRows.value.length ? 'guide-record' : 'empty-records') : 'views'
   if (!props.canRecord && dailyMode.value !== 'progress') return 'read-only'
   if (dailyMode.value === 'record') return 'agents'
@@ -499,7 +499,7 @@ const guideMessage = computed(() => {
     case 'agent-search': return filteredPickerAgents.value.length ? '在这里输入这次出货的密探名字。' : '没有符合条件的密探，换个关键词或点「重置」筛选；不要选别人代替。'
     case 'agent-results': return '点搜索结果中实际抽到的那位密探。'
     case 'pulls': return props.practice ? '练习：示例这次是上次绝密之后第20抽出货，请自己填20；也可以选择记不清。' : '填两次绝密之间的抽数，例如上次出货后20抽又出就填20。首条只填能确认的间隔，记不清就保留未知。'
-    case 'progress': return tailProgress.value == null && !props.practice ? '当前进度未知，暂不支持保底留空提交；先核对游戏的真实保底进度，不要猜值。退出教程会保留窗口草稿。' : props.practice ? `练习：示例游戏已垫7抽，还差33抽保底；当前选择「${progressLabel.value === '已抽' ? '距保底' : '已垫'}」，请填${progressLabel.value === '已垫' ? 7 : 33}。` : `按游戏当前进度核对：${progressLabel.value === '已垫' ? '填已经抽了几次，例如7' : '填还差几抽保底，例如33'}；不是本次出货间隔。`
+    case 'progress': return props.practice ? `练习：示例游戏已垫7抽，还差33抽保底；当前选择「${progressLabel.value === '已抽' ? '距保底' : '已垫'}」，请填${progressLabel.value === '已垫' ? 7 : 33}。` : `当前保底选填，留空保留原进度；${progressLabel.value === '已垫' ? '填写时填已经抽了几次，例如7' : '填写时填还差几抽保底，例如33'}，不是本次出货间隔。`
     case 'save-record': return activeRow.value && originals.has(activeRow.value.event_id) ? '点「完成」只更新这条草稿，之后仍要保存修改。' : props.practice ? '点「查看练习结果」，只展示临时示例。' : '点「加入」把这次出货加入待保存记录，再点底部「保存修改」才会写入档案。'
     case 'save-progress': return props.practice ? '点「查看练习结果」，不会写入账号。' : '点「保存保底进度」，不会新增密探记录。'
     case 'save-changes': return '核对后点底部保存修改；完成单条编辑还没有保存到服务器。'
@@ -580,7 +580,9 @@ watch(receiptVerified, verified => {
     rows.value = props.saveReceipt.ordered_event_ids.map(id => byId.get(id)).filter(Boolean)
     orderIds.value = null; orderRevision.value = null
   }
-  initialRemaining.value = props.saveReceipt.remaining_pulls == null ? '' : typeof remaining.value === 'number' ? props.saveReceipt.remaining_pulls : String(props.saveReceipt.remaining_pulls)
+  const savedRemaining = props.saveReceipt.remaining_pulls ?? (Number.isInteger(preservedProgress.value) && preservedProgress.value >= 0 && preservedProgress.value < 40 ? 40 - preservedProgress.value : null)
+  if (props.saveReceipt.remaining_pulls == null && remaining.value === '' && savedRemaining != null) remaining.value = String(savedRemaining)
+  initialRemaining.value = savedRemaining == null ? '' : typeof remaining.value === 'number' ? savedRemaining : String(savedRemaining)
 })
 let requestId = ''
 let viewportFrame = 0
@@ -999,9 +1001,7 @@ async function submit() {
       const intended = new Set(orderIds.value)
       if (orderRevision.value !== props.recordsRevision || expected.length !== orderIds.value.length || expected.some(id => !intended.has(id))) throw new Error('档案已变化，顺序草稿已保留；请恢复保存前顺序，重新调整并核对完整记录后保存')
     }
-    const countOnly = rows.value.filter(isChanged).every(isFourStar) && deletedIds.value.every(id => props.records.find(event => event.event_id === id)?.agent_snapshot.rarity === 4)
     try {
-      if (remaining.value === '' && !countOnly) throw new Error('保底进度未知：草稿已保留，请核对游戏里的真实保底再保存，不要猜值。')
       if (remaining.value !== '' && progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
       if (remaining.value !== '') progressFromRemaining(remaining.value)
     } catch (err) {
