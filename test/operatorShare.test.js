@@ -217,7 +217,8 @@ test('公开分享路由懒加载且不要求登录', () => {
 
 test('匿名页仅读：只请求匿名数据和公共图鉴，不引入写操作', () => {
   assert.match(sharePage, /Promise\.all\(\[\s*viewOperatorShare\(token\),\s*getOperatorCatalog\(\)/)
-  assert.match(sharePage, /status\.value = err && \(err\.status === 404 \|\| err\.code === 'share_not_found'\)/)
+  assert.match(sharePage, /err && \(err\.status === 404 \|\| err\.code === 'share_not_found'\)/)
+  assert.match(sharePage, /err\?\.code === 'share_not_authorized' \? 'unauthorized'/)
   assert.match(sharePage, /status\.value = entries\.value\.length \? 'ready' : 'empty'/)
   assert.doesNotMatch(sharePage, /getOperatorCurrent|patchOperatorCurrent|importOperator|exportOperator|putOperatorAnnotation|GrowthTarget/)
   assert.doesNotMatch(sharePage, /localStorage|sessionStorage|navigator\.clipboard|method:\s*['"](?:POST|PUT|PATCH|DELETE)/)

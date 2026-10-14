@@ -190,6 +190,16 @@ export const routes = [
         }
     },
     {
+        path: '/star/share/:token?',
+        text: '星石背包分享',
+        name: 'star-share',
+        display: false,
+        module: 'tools',
+        icon: 'share-2',
+        component: () => import('/src/pages/star/share.vue'),
+        meta: { title: '星石背包分享 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
         path: '/star',
         text: '我的星石',
         name: 'star',
