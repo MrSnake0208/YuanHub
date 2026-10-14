@@ -84,7 +84,7 @@ async function saveGuidedRecord(wrapper) {
 }
 const confirmed = wrapper => editor(wrapper).get('.footer-state').text().includes('已保存并核对')
 const hintTarget = wrapper => editor(wrapper).get('.guide-hint').attributes('data-guide-for')
-function persistSubmittedRecord() {
+function persistSubmittedRecord(summaryValues = {}) {
   api.recruitmentCommand.mockImplementation(async ({ accountId, data }) => {
     for (const entry of data.entries) {
       const event = { ...recruitmentEvent(entry.event_id, entry.pull_span, data.pool_id), up_status: entry.up_status, acquired_date: entry.acquired_date, note: entry.note, agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密', rarity: 5 } }
@@ -98,7 +98,7 @@ function persistSubmittedRecord() {
     const poolEvents = records[accountId].filter(event => event.pool_id === data.pool_id)
     const poolSummary = { known_total_pulls: poolEvents.filter(event => !event.batch_id).reduce((sum, event) => sum + (event.pull_span ?? 0), 0) + 40 - data.remaining_pulls, event_count: poolEvents.length, up_agent_counts: {} }
     for (const event of poolEvents) if (event.up_status === 'up') poolSummary.up_agent_counts[event.agent_snapshot.agent_id] = (poolSummary.up_agent_counts[event.agent_snapshot.agent_id] || 0) + 1
-    archives[accountId].pool_summaries = { ...archives[accountId].pool_summaries, [data.pool_id]: poolSummary }
+    archives[accountId].pool_summaries = { ...archives[accountId].pool_summaries, [data.pool_id]: { ...poolSummary, ...summaryValues } }
     archives[accountId].archive_revision++
     return { archive_revision: archives[accountId].archive_revision }
   })
@@ -708,13 +708,13 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   const directory = recruitmentCatalog()
   directory.pools[0].up_agents = [{ id: 'slot-a', operator_id: 'char-a', name: '测试绝密' }]
   api.getRecruitmentCatalog.mockResolvedValue(directory)
-  archives['acc-a'].pool_summaries = { 'pool-a': { known_total_pulls: 65, event_count: 2, up_agent_counts: { 'slot-a': 2 } } }
+  archives['acc-a'].pool_summaries = { 'pool-a': { known_total_pulls: 65, event_count: 2, up_agent_counts: { 'slot-a': 2 }, average_gold_pulls: 24, small_pity_win_rate: 66.7 } }
   archives['acc-b'].pool_summaries = { 'pool-a': { known_total_pulls: 9, event_count: 0, up_agent_counts: { 'slot-a': 0 } } }
   archives['acc-b'].pools[0].progress = 9
   archives['acc-b'].current_pool_id = 'missing-pool'
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.up-count').text()).toBe('×2')
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '40', '—', '—'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '40', '24', '66.7%'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   const late = deferred(), pendingB = deferred()
   api.getRecruitmentArchive.mockReturnValueOnce(late.promise).mockReturnValueOnce(pendingB.promise)
@@ -1023,11 +1023,16 @@ it('主页面明细可见时读取已保存记录，草稿不泄露，保存后�
   tutorialFeature.enabled = false
   vi.stubGlobal('IntersectionObserver', class { constructor(callback) { this.callback = callback } observe() { this.callback([{ isIntersecting: true }]) } disconnect() {} })
   records['acc-a'].forEach(event => { event.agent_snapshot.rarity = 5 })
-  archives['acc-a'].pool_summaries = { 'pool-a': { known_total_pulls: 48, event_count: 2, four_star_count: 0 } }
-  persistSubmittedRecord()
+  archives['acc-a'].pool_summaries = { 'pool-a': { known_total_pulls: 48, event_count: 2, four_star_count: 0, average_gold_pulls: 24, small_pity_win_rate: 50 } }
+  persistSubmittedRecord({ average_gold_pulls: 20, small_pity_win_rate: 66.7 })
   const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.preview-record')).toHaveLength(0)
+  expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
+  expect(wrapper.get('.average-metric').text()).toContain('24')
+  await wrapper.get('.preview-toggle').trigger('click'); await flushPromises()
   expect(wrapper.findAll('.preview-record')).toHaveLength(2)
   expect(wrapper.get('.average-metric').text()).toContain('24')
+  expect(wrapper.get('.small-pity-metric b').text()).toBe('50%')
   await selectPool(wrapper)
   await addRecord(wrapper, 'char-a', '12')
   expect(wrapper.findAll('.preview-record')).toHaveLength(2)
@@ -1037,6 +1042,7 @@ it('主页面明细可见时读取已保存记录，草稿不泄露，保存后�
   expect(wrapper.findAll('.preview-record')).toHaveLength(3)
   expect(wrapper.get('.pool-metrics').text()).toContain('60')
   expect(wrapper.get('.average-metric').text()).toContain('20')
+  expect(wrapper.get('.small-pity-metric b').text()).toBe('66.7%')
   const previewIds = wrapper.findAll('.preview-record').map(item => item.attributes('data-event-id'))
   await editor(wrapper).get('.screenshot-entry').trigger('click'); await flushPromises()
   expect(editor(wrapper).classes()).toContain('is-screenshot')

@@ -141,8 +141,14 @@ it('首批只在进入视口后请求，退出卸载观察器；失败与未读�
   wrapper.unmount(); expect(disconnect).toHaveBeenCalledOnce()
 })
 
-it('默认展开有记录池，批量只影响筛选结果，独立编辑不折叠，切换视图不改顺序', async () => {
-  const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a'), pool('b', '2025'), pool('empty')], poolSummaries: { a: { event_count: 2, four_star_count: 1, known_total_pulls: 45 }, b: { event_count: 1 }, empty: { event_count: 0 } }, previews: { a: entry([event('a1', 38), event('four', null, 4)]), b: entry([event('b1', 20, 5, 'b')]) } } })
+it('默认折叠有记录池，批量只影响筛选结果，独立编辑不折叠，切换视图不改顺序', async () => {
+  const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a'), pool('b', '2025'), pool('empty')], poolSummaries: { a: { event_count: 2, four_star_count: 1, known_total_pulls: 45, average_gold_pulls: 38 }, b: { event_count: 1 }, empty: { event_count: 0 } }, previews: { a: entry([event('a1', 38), event('four', null, 4)]), b: entry([event('b1', 20, 5, 'b')]) } } })
+  expect(wrapper.findAll('.pool-preview')).toHaveLength(0)
+  expect(wrapper.findAll('.preview-toggle').every(toggle => toggle.attributes('aria-expanded') === 'false')).toBe(true)
+  expect(wrapper.emitted('load-preview')).toBeUndefined()
+  await wrapper.get('.preview-toggle').trigger('click')
+  expect(wrapper.findAll('.pool-preview')).toHaveLength(1)
+  await button(wrapper, '全部展开').trigger('click')
   expect(wrapper.findAll('.pool-preview')).toHaveLength(2)
   expect(wrapper.findAll('.preview-agents')).toHaveLength(2)
   expect(wrapper.get('.average-metric').text()).toContain('38')
@@ -159,10 +165,11 @@ it('默认展开有记录池，批量只影响筛选结果，独立编辑不折�
   expect(wrapper.emitted('select')).toHaveLength(1)
   await wrapper.setProps({ contextVersion: 2, previews: {}, poolSummaries: { a: { event_count: 1 } } })
   expect(wrapper.get('.average-metric').text()).toContain('—')
-  expect(wrapper.get('.preview-toggle').attributes('aria-expanded')).toBe('true')
+  expect(wrapper.get('.preview-toggle').attributes('aria-expanded')).toBe('false')
+  expect(wrapper.findAll('.pool-preview')).toHaveLength(0)
 })
 
-it('空池不显示大空框，未完整读取、失败和没有有效间隔不显示虚假均值', async () => {
+it('空池不显示大空框，缺少摘要时不使用部分明细冒充完整统计', async () => {
   const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a')], poolSummaries: { a: { event_count: 0, known_total_pulls: 7 } } } })
   expect(wrapper.find('.pool-preview').exists()).toBe(false)
   expect(wrapper.get('.average-metric').text()).toContain('—')
@@ -185,20 +192,29 @@ it('两页大量记录保留完整顺序与跨页金序号，视图切换不截�
   expect(wrapper.get('.preview-record').attributes('data-event-id')).toBe('119')
 })
 
-it('小保底率按首金假设计算，区分0%、无样本、分页未知和常驻不适用', async () => {
-  const items = ['up', 'non_up', 'up', 'up'].map((status, index) => ({ ...event(String(index), null), up_status: status }))
-  const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a')], poolSummaries: { a: { event_count: 4 } }, previews: { a: entry(items) } } })
-  expect(wrapper.get('.small-pity-metric b').text()).toBe('66.7%')
-  expect(wrapper.get('.small-pity-metric').attributes('title')).toBeUndefined()
-  expect(wrapper.text()).not.toContain('不含大保底')
-  await wrapper.setProps({ previews: { a: { ...entry(items), cursor: 'next' } } })
-  expect(wrapper.get('.small-pity-metric b').text()).toBe('—')
-  await wrapper.setProps({ previews: { a: entry([{ ...event('lost', 1), up_status: 'non_up' }]) } })
+it('首次渲染从摘要显示完整统计，不受明细未加载、分页、失败、折叠或视图切换影响', async () => {
+  const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a')], poolSummaries: { a: { event_count: 120, average_gold_pulls: 18.2, small_pity_win_rate: 66.7 } } }, global: { stubs: { RecruitmentRecordsPreview: true } } })
+  const expectSummary = () => {
+    expect(wrapper.get('.average-metric b').text()).toBe('18.2')
+    expect(wrapper.get('.small-pity-metric b').text()).toBe('66.7%')
+  }
+  expectSummary()
+  expect(listRecruitmentEvents).not.toHaveBeenCalled()
+  expect(wrapper.emitted('load-preview')).toBeUndefined()
+  for (const preview of [{ ...entry([event('partial', 40)]), cursor: 'next' }, { ...entry([]), error: '失败' }, { loading: true }]) {
+    await wrapper.setProps({ previews: { a: preview } }); expectSummary()
+  }
+  await button(wrapper, '全部折叠').trigger('click'); expectSummary()
+  await button(wrapper, '进度条视图').trigger('click'); expectSummary()
+  await wrapper.setProps({ poolSummaries: { a: { event_count: 121, average_gold_pulls: 19, small_pity_win_rate: 0 } } })
+  expect(wrapper.get('.average-metric b').text()).toBe('19')
   expect(wrapper.get('.small-pity-metric b').text()).toBe('0%')
-  await wrapper.setProps({ previews: { a: entry([event('unknown')]) } })
+  expect(wrapper.text()).not.toContain('不含大保底')
+  expect(wrapper.get('.small-pity-metric').attributes('title')).toBeUndefined()
+  await wrapper.setProps({ contextVersion: 2, poolSummaries: {} })
+  expect(wrapper.get('.average-metric b').text()).toBe('—')
   expect(wrapper.get('.small-pity-metric b').text()).toBe('—')
-  expect(wrapper.text()).not.toContain('UP状态未知或出金顺序不符合保底规则')
-  await wrapper.setProps({ pools: [{ ...pool('a'), snapshot: { ...pool('a').snapshot, pool_type: 'permanent' } }], previews: { a: entry(items) } })
+  await wrapper.setProps({ pools: [{ ...pool('a'), snapshot: { ...pool('a').snapshot, pool_type: 'permanent' } }], poolSummaries: { a: { small_pity_win_rate: 100 } } })
   expect(wrapper.get('.small-pity-metric b').text()).toBe('—')
-  expect(wrapper.text()).not.toContain('常驻池不统计小保底不歪率')
+  wrapper.unmount()
 })
