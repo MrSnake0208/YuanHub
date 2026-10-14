@@ -12,19 +12,14 @@
 
       <section class="feedback-content">
         <div class="wrap">
-          <FeedbackWorkspaceNav
-            active="mine"
-            :can-manage="canManageFeedback"
-            :has-unread-feedback="canManageFeedback && feedbackUnreadState.count > 0"
-            :can-configure="canConfigureFeedback"
-          />
+          <FeedbackWorkspaceNav active="mine" />
 
           <div v-if="publicNotice" class="feedback-public-notice" role="status">
             <span>{{ publicNotice }}</span>
             <button type="button" aria-label="关闭提示" title="关闭" @click="publicNotice = ''"><X :size="16" aria-hidden="true" /></button>
           </div>
 
-          <div class="feedback-command-bar">
+          <div v-if="!isInitialEmpty" class="feedback-command-bar">
             <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
               <Search :size="18" aria-hidden="true" />
               <input v-model="q" type="search" name="feedback-search" aria-label="搜索反馈" placeholder="搜索反馈内容或工单编号..." />
@@ -43,7 +38,7 @@
             </div>
           </div>
 
-          <div class="feedback-filter-row">
+          <div v-if="!isInitialEmpty" class="feedback-filter-row">
             <label class="feedback-filter">
               <span>反馈类型</span>
               <select v-model="filterType" @change="reloadFromFirstPage">
@@ -59,8 +54,8 @@
               </select>
             </label>
             <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
-            <span v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</span>
           </div>
+          <p v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</p>
 
           <FeedbackTicketWorkspace
             :items="feedbacks"
@@ -91,7 +86,7 @@
                 <p>遇到问题或有新想法？提交后可在这里查看回复。</p>
                 <div class="feedback-empty-actions">
                   <button class="feedback-primary-action" type="button" @click="showNewForm = true"><Plus :size="16" aria-hidden="true" />提交第一条反馈</button>
-                  <RouterLink class="feedback-button" to="/feedback/plaza">先看看反馈广场</RouterLink>
+                  <RouterLink class="feedback-empty-secondary" to="/feedback/plaza">先看看反馈广场 →</RouterLink>
                 </div>
               </template>
             </template>
@@ -237,14 +232,13 @@ import {
 import { findSimilarFeedback } from '@/api/coCreation.js'
 import { markFeedbackNotificationsRead } from '@/api/notifications.js'
 import { auth } from '@/store/auth.js'
-import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
+import { subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
 import {
   notificationUnreadState,
   refreshNotificationUnreadDetails,
   removeNotificationUnreadItems,
   subscribeNotificationUnread
 } from '@/store/notificationUnread.js'
-import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
@@ -260,6 +254,7 @@ const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
 const accessError = ref('')
 const loading = ref(false)
+const listLoaded = ref(false)
 const error = ref('')
 const page = ref(1)
 const totalCount = ref(0)
@@ -304,10 +299,9 @@ let stopFeedbackUnread = null
 let isMounted = false
 
 const categoryOptions = computed(() => access.value.availableAreas)
-const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
-const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 const hasFilters = computed(() => Boolean(q.value.trim() || filterType.value || filterCategory.value || filterStatus.value !== '全部'))
+const isInitialEmpty = computed(() => listLoaded.value && !loading.value && !error.value && !hasFilters.value && totalCount.value === 0 && !feedbacks.value.length)
 
 function clearFilters() {
   q.value = ''
@@ -364,6 +358,7 @@ async function loadFeedback() {
     if (requestId !== loadRequestId) return
     feedbacks.value = data.items || []
     totalCount.value = Number(data.total ?? feedbacks.value.length)
+    listLoaded.value = true
   } catch (e) {
     if (requestId === loadRequestId) error.value = e.message || '反馈加载失败'
   } finally {
@@ -669,6 +664,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .page-header-action { cursor: pointer; }
+.feedback-empty-secondary { color: var(--feedback-text-muted); text-decoration: underline; text-underline-offset: 3px; }
 
 .feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); }
 .feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); cursor: pointer; }

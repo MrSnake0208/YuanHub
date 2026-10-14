@@ -8,6 +8,7 @@
 .feedback-public-notice button { font-size: 18px; line-height: 1; }
 .feedback-modal { max-width: 620px; }
 .feedback-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; margin-top: 6px; }
+.feedback-empty-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding-inline: 10px; font-size: 13px; }
 .feedback-modal-kicker { display: block; margin-bottom: 5px; font: 800 10px var(--font-d); letter-spacing: .16em; }
 .feedback-modal .modal-head h2 { font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
 .feedback-submission-note { margin: 0 0 16px; font-size: 12px; line-height: 1.7; }

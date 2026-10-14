@@ -12,7 +12,7 @@
 
       <section class="feedback-content">
         <div class="wrap">
-          <FeedbackWorkspaceNav active="manage" :can-manage="hasManagePermission" :has-unread-feedback="hasManagePermission && feedbackUnreadState.count > 0" :can-configure="canConfigureFeedback" />
+          <FeedbackWorkspaceNav active="manage" />
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
@@ -285,7 +285,6 @@ import {
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
 import * as feedbackUnreadStore from '@/store/feedbackUnread.js'
-import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { productVersionLabel } from '@/config/buildInfo.js'
 import '@/styles/page-header.css'
@@ -383,7 +382,6 @@ let queueCountRequestId = 0
 let feedbackRefreshTimer = null
 let stopFeedbackUnread = null
 
-const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const hasManagePermission = computed(() => access.value.superAdmin || access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0)
 const statusTabs = computed(() => allStatusTabs.filter(tab => {
   if (access.value.superAdmin) return true

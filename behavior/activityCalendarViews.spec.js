@@ -360,6 +360,39 @@ it('Timeline单日与跨窗口截断，文字状态/完整名称/今天标记，
   expect(range.from).toBe('2026-09-26')
 })
 
+it('Timeline多日标题随可见条尾和视口收缩，单日标记不受影响，卸载释放观察器', async () => {
+  let resized
+  const disconnect = vi.fn()
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) { resized = callback }
+    observe() {}
+    disconnect = disconnect
+  })
+  const wrapper = mount(Timeline, { props: viewProps({ items: [event(), event({ id: 'single', start_date: today, end_date: today })] }) })
+  const scroll = wrapper.get('.calendar-timeline-scroll')
+  let width = 300
+  Object.defineProperty(scroll.element, 'clientWidth', { configurable: true, get: () => width })
+  vi.spyOn(wrapper.get('.calendar-axis-day').element, 'getBoundingClientRect').mockReturnValue({ width: 48 })
+  const content = wrapper.get('.calendar-timeline-bar:not(.is-single-day) .calendar-timeline-bar-content')
+  scroll.element.scrollLeft = 190
+  await scroll.trigger('scroll')
+  const expandedWidth = parseFloat(content.element.style.maxWidth)
+  expect(expandedWidth).toBeGreaterThan(100)
+  scroll.element.scrollLeft = 390
+  await scroll.trigger('scroll')
+  expect(parseFloat(content.element.style.maxWidth)).toBeGreaterThan(0)
+  expect(parseFloat(content.element.style.maxWidth)).toBeLessThanOrEqual(42)
+  expect(content.get('.calendar-timeline-bar-title').text()).toBe('跨月活动')
+  expect(wrapper.get('.is-single-day .calendar-timeline-bar-content').element.style.maxWidth).toBe('')
+  scroll.element.scrollLeft = 190
+  width = 100
+  resized()
+  await flushPromises()
+  expect(parseFloat(content.element.style.maxWidth)).toBeLessThan(expandedWidth)
+  wrapper.unmount()
+  expect(disconnect).toHaveBeenCalledOnce()
+})
+
 it('Timeline今天重复定位恢复内部scrollLeft而不移动页面；window导航emit日期', async () => {
   const wrapper = mount(Timeline, { props: viewProps() })
   const viewport = wrapper.get('.calendar-timeline-scroll').element
@@ -505,7 +538,7 @@ it('今日信息带空态隐藏零计数，有活动保留三类统计并能恢�
   expect(wrapper.get('time').attributes('datetime')).toBe(today)
   expect(wrapper.get('time').text()).toBe('10月3日 周六')
   expect(wrapper.get('.calendar-summary-help').attributes('open')).toBeUndefined()
-  expect(wrapper.get('.calendar-summary-help summary').text()).toBe('统计口径')
+  expect(wrapper.get('.calendar-summary-help summary').text()).toBe('公开统计口径')
   expect(wrapper.get('.calendar-summary-help .calendar-summary-scope').text()).toContain('不按时间状态或完成情况筛选，不是个人订阅数')
   expect(wrapper.text()).toContain('当前游戏、类型及招募条件下暂无公开活动')
   expect(wrapper.find('.calendar-counts').exists()).toBe(false)

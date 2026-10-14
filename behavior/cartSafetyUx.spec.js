@@ -26,12 +26,36 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', callback => callback())
 })
 
+it('全局空态隐藏规则不会隐藏空车金额，增减后摘要保持可见', async () => {
+  const style = document.createElement('style')
+  style.textContent = '.empty { display: none; }'
+  document.head.appendChild(style)
+  try {
+    const wrapper = render()
+    const summary = wrapper.get('.cart-mbar .sum')
+    expect(summary.isVisible()).toBe(true)
+    expect(summary.text()).toContain('¥0.00')
+    await addFirst(wrapper)
+    expect(summary.isVisible()).toBe(true)
+    await wrapper.get('.pkg-card .stepper button:first-child').trigger('click')
+    expect(summary.isVisible()).toBe(true)
+    expect(summary.text()).toContain('¥0.00')
+  } finally {
+    style.remove()
+  }
+})
+
 it('清空须确认；切换版本仍能看到另一版本的数量', async () => {
   const wrapper = render()
+  const receiptButton = wrapper.get('.cart-mbar .mbtn.primary')
+  expect(receiptButton.text()).toContain('清单 · 0')
   await addFirst(wrapper)
+  expect(receiptButton.text()).toContain('清单 · 1')
   expect(wrapper.get('.cart-version-hint').text()).toContain('0 件')
   await wrapper.get('.cart-version-selector').setValue('ru')
+  expect(receiptButton.text()).toContain('清单 · 0')
   await addFirst(wrapper)
+  expect(receiptButton.text()).toContain('清单 · 1')
   expect(wrapper.get('.cart-version-hint').text()).toContain('代号鸢」购物车有 1 件')
   dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.cart-actions button').trigger('click')
@@ -41,8 +65,10 @@ it('清空须确认；切换版本仍能看到另一版本的数量', async () =
   await wrapper.get('.cart-actions button').trigger('click')
   await flushPromises()
   expect(wrapper.get('.receipt-empty').exists()).toBe(true)
+  expect(receiptButton.text()).toContain('清单 · 0')
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', message: expect.stringContaining('如鸢') }))
   await wrapper.get('.cart-version-selector').setValue('daihao')
+  expect(receiptButton.text()).toContain('清单 · 1')
   expect(wrapper.get('.cart-version-selector option[value="daihao"]').text()).toContain('1 件')
 })
 

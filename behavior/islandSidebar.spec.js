@@ -74,6 +74,10 @@ it('访客没有通知/反馈私有入口，保留登录入口', async () => {
   expect(routes(wrapper)).not.toContain('/feedback')
   expect(routes(wrapper)).toContain('/feedback/plaza')
   expect(routes(wrapper)).not.toContain('/manage')
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const feedbackLinks = wrapper.findAllComponents(RouterLinkStub).filter(link => link.props('to') === '/feedback/plaza')
+  expect(feedbackLinks).toHaveLength(2)
+  for (const link of feedbackLinks) expect(link.element.closest('details')).toBeNull()
 })
 it('登录用户获得实用导航与共享未读状态，不锁死入口顺序或桌面/手机 DOM 结构', async () => {
   auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
@@ -233,7 +237,7 @@ it('常用功能保持双端一致顺序和直达，不增加分类标题或账�
   recruitmentAccess.canAccess = true
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar']
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/feedback']
   const linksIn = selector => wrapper.get(selector).findAllComponents(RouterLinkStub).map(link => link.props('to'))
   expect(linksIn('.island .nav')).toEqual(expected)
   expect(linksIn('.mobile-drawer-nav > .mobile-drawer-section')).toEqual(expected)
@@ -243,16 +247,22 @@ it('常用功能保持双端一致顺序和直达，不增加分类标题或账�
   expect(wrapper.get('.mobile-more').attributes('open')).toBeUndefined()
 })
 
-it('更多收起时保留反馈未读，双端辅助区保持账号与通知可达', async () => {
+it('反馈直达入口保留未读，更多不重复展示反馈，双端账号与通知可达', async () => {
   Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a', user_name: '测试殿下' } })
   const wrapper = render()
   feedbackUnreadState.count = 108
   notificationUnreadState.count = 2
   await flushPromises()
   await wrapper.get('.mobile-menu-button').trigger('click')
+  const feedbackLinks = wrapper.findAllComponents(RouterLinkStub).filter(link => link.props('to') === '/feedback')
+  expect(feedbackLinks).toHaveLength(2)
+  for (const link of feedbackLinks) {
+    expect(link.element.closest('details')).toBeNull()
+    expect(link.get('.more-feedback-badge').text()).toBe('99+')
+  }
   for (const selector of ['.sidebar-more > summary', '.mobile-more > summary']) {
-    expect(wrapper.get(selector).attributes('aria-label')).toBe('更多，99+ 条反馈未读')
-    expect(wrapper.get(selector).text()).toContain('99+')
+    expect(wrapper.get(selector).attributes('aria-label')).toBe('更多')
+    expect(wrapper.get(selector).find('.more-feedback-badge').exists()).toBe(false)
   }
   expect(wrapper.get('.sidebar-notifications').attributes('aria-label')).toBe('通知，2 条未读')
   expect(wrapper.get('.sidebar-utilities').text()).toContain('账号与连接码')
@@ -262,11 +272,22 @@ it('更多收起时保留反馈未读，双端辅助区保持账号与通知可�
     await detail.get('summary').trigger('click')
     expect(detail.attributes('open')).toBeDefined()
     const paths = detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    expect(paths).toEqual(['/feedback', '/co-creation', '/changelog', '/beta', '/install'])
+    expect(paths).toEqual(['/co-creation', '/changelog', '/beta', '/install'])
   }
   feedbackUnreadState.count = 0
   await flushPromises()
   expect(wrapper.findAll('.more-feedback-badge')).toHaveLength(0)
+})
+
+it.each([[false, '/feedback/plaza'], [true, '/feedback']])('反馈页只高亮独立入口，登录状态：%s', async (loggedIn, path) => {
+  if (loggedIn) Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a' } })
+  Object.assign(currentRoute, { path, fullPath: path })
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const selected = wrapper.findAllComponents(RouterLinkStub).filter(link => link.classes().includes('active'))
+  expect(selected.map(link => link.props('to'))).toEqual([path, path])
+  expect(wrapper.get('.sidebar-more > summary').classes()).not.toContain('active')
+  expect(wrapper.get('.mobile-more > summary').classes()).not.toContain('active')
 })
 
 it('桌面更多可用 Escape 关闭并恢复焦点，点击外部和路由变化也关闭', async () => {

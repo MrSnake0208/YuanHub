@@ -140,7 +140,7 @@
 
     <!-- 移动端底栏 -->
     <div class="cart-mbar">
-      <div class="sum">
+      <div class="sum" :class="{ 'is-cart-empty': cartItems.length === 0 }">
         <div class="k">合计金额</div>
         <div class="v">¥{{ totalCny.toFixed(2) }}</div>
       </div>
@@ -162,7 +162,7 @@
           <Download :size="15" /><span class="only-sm">导出</span>
         </button>
         <button class="mbtn primary" :aria-expanded="showReceipt" @click="showReceipt = true">
-          <Receipt :size="15" />清单
+          <Receipt :size="15" />清单 · {{ version === 'daihao' ? daihaoCount : ruCount }}
         </button>
       </div>
     </div>
