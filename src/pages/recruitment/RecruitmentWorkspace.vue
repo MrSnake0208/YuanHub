@@ -4,7 +4,10 @@
     <main id="main-content" class="recruitment-main" @keydown.esc="onPageEscape">
       <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
         <template v-if="enabled" #account>
+          <div class="account-controls">
           <DataAccountContextBar data-guide-target="account" compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
+            <button v-if="state.archive" class="archive-refresh" type="button" :disabled="state.loading || state.busy" @click="refresh"><RotateCw :size="15" aria-hidden="true" />刷新档案</button>
+          </div>
         </template>
         <template v-if="enabled" #actions>
           <div v-if="TUTORIALS_ENABLED" class="guide-entry-wrap"><button ref="guideEntry" type="button" class="recruitment-tutorial-entry" :aria-expanded="guidePicker" @click="openGuide"><CircleHelp :size="15" aria-hidden="true" />{{ guideActive ? '退出教程' : '使用教程' }}</button>
@@ -22,10 +25,9 @@
         <template v-if="state.archive">
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
           <div class="summary" aria-label="当前账号招募摘要">
-            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span><div><span>已知累计抽数</span><div class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></div><small v-if="state.archive.summary.has_unknown">部分出货间隔或当前进度未知；累计按已记录的抽数计算</small><small v-else>历史基准 + 记录 + 批次 + 当前进度</small></div></div>
-            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span><div><span>密探记录</span><div class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></div><small>4 星 {{ state.archive.summary.four_star_count || 0 }} 条；5 星（含照影 SP）{{ state.archive.summary.event_count - (state.archive.summary.four_star_count || 0) }} 条</small></div></div>
+            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span><div><span>已知累计抽数</span><div class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></div></div></div>
+            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span><div><span>密探记录</span><div class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></div></div></div>
           </div>
-          <div class="archive-tools"><span>记录与进度均归属当前游戏账号</span><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RotateCw :size="15" aria-hidden="true" />刷新档案</button></div>
           <RecruitmentTimeline ref="timeline" :guide-active="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :previews="previews.pools" @load-preview="loadPreview" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
           <div v-if="!state.archive.pools.length" class="actions"><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div>
         </template>
@@ -164,7 +166,7 @@ async function savePool(payload) {
 :deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:4px}
 .recruitment-tutorial-entry{border:0;border-radius:8px;background:transparent;color:var(--ink-60)}
 
-.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.summary{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-icon{color:var(--accent-strong)}.summary-item>div>span,.summary-item small{color:var(--ink-60)}.summary strong{color:var(--tea)}.archive-toggle{border:0;border-radius:6px;background:transparent}.archive-tools>span{color:var(--ink-60)}
+.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.summary{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-icon{color:var(--accent-strong)}.summary-item>div>span,.summary-item small{color:var(--ink-60)}.summary strong{color:var(--tea)}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
 button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.error{color:var(--rouge)}@media(min-width:768px){.summary-item+.summary-item{border-left:1px solid var(--line)}}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 </style>

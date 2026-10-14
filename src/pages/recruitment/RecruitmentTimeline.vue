@@ -1,21 +1,20 @@
 <template>
   <section class="pool-timeline" :aria-labelledby="timelineId">
     <div class="timeline-heading">
-      <div><h2 :id="timelineId">卡池时间线</h2><p>找到实际抽取的卡池，记一笔；直接查看统计与出货明细。</p></div>
-      <button type="button" class="sort-button" @click="descending = !descending"><ArrowDownWideNarrow :size="17" aria-hidden="true" />{{ descending ? '按时间从新到旧' : '按时间从早到晚' }}</button>
-    </div>
-    <div class="overview-tools" aria-label="卡池明细显示">
-      <div class="overview-views" role="group" aria-label="主页面明细视图">
-        <button type="button" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
-        <button type="button" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
-      </div>
-      <button type="button" :disabled="!visiblePools.some(hasRecords)" @click="setAllExpanded(true)">全部展开</button>
-      <button type="button" :disabled="!visiblePools.some(hasRecords)" @click="setAllExpanded(false)">全部折叠</button>
+      <div><h2 :id="timelineId">卡池时间线</h2></div>
     </div>
     <div v-if="years.length" class="year-filters" aria-label="卡池年份">
       <button type="button" :aria-pressed="year === ''" @click="year = ''">全部</button>
       <button v-for="item in years" :key="item" type="button" :aria-pressed="year === item" @click="year = item">{{ item }}</button>
       <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" @click="year = 'unknown'">日期未知</button>
+    </div>
+    <div class="overview-tools" aria-label="卡池明细显示">
+      <div class="overview-views" role="group" aria-label="主页面明细视图">
+        <button type="button" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条</button>
+        <button type="button" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
+      </div>
+      <button type="button" class="sort-button" :aria-label="descending ? '按时间排序，当前最新优先，点击切换最早优先' : '按时间排序，当前最早优先，点击切换最新优先'" @click="descending = !descending">按时间<ArrowDownWideNarrow v-if="descending" :size="16" aria-hidden="true" /><ArrowUpWideNarrow v-else :size="16" aria-hidden="true" /></button>
+      <button type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
     </div>
     <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先找你抽过的池子，看池名、UP 密探和日期，再点「记一笔／查看记录」。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
     <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无公共卡池，请联系管理员配置。可导入已有备份，或等待公共目录配置。</p>
@@ -69,7 +68,7 @@
 <script setup>
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, ref, useId, watch } from 'vue'
-import { ArrowDownWideNarrow, BookOpen, ChevronRight, ChevronDown, CircleGauge, Gem, Sprout } from '@lucide/vue'
+import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow, BookOpen, ChevronRight, ChevronDown, CircleGauge, Gem, Sprout } from '@lucide/vue'
 import RecruitmentRecordsPreview from './RecruitmentRecordsPreview.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
@@ -86,6 +85,7 @@ const year = ref(''), descending = ref(true)
 const recordView = ref('agents'), expandedPools = ref(new Set())
 const hasRecords = pool => (props.poolSummaries[pool.pool_id]?.event_count || 0) > 0
 const isExpanded = pool => expandedPools.value.has(pool.pool_id)
+const allExpanded = computed(() => visiblePools.value.some(hasRecords) && visiblePools.value.every(pool => !hasRecords(pool) || isExpanded(pool)))
 const previewId = pool => `${timelineId}-preview-${pool.pool_id}`
 function togglePool(pool) { if (hasRecords(pool)) { if (isExpanded(pool)) expandedPools.value.delete(pool.pool_id); else expandedPools.value.add(pool.pool_id) } }
 function onSummaryClick(event, pool) { if (!event.target.closest('button, a, input, select')) togglePool(pool) }
@@ -151,6 +151,7 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 </script>
 
 <style scoped>
+.batch-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--cream)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
 
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
