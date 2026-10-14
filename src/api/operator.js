@@ -133,15 +133,33 @@ export function getOperatorCurrent({ accountId, game } = {}) {
 // combat_stats.display_mode 记忆攻/生上次保存时的 auto/manual 选择；
 // 目标 entry 不存在时由后端以 expected_revision=0 创建；
 // expected_revision 必填，冲突时 request() 会保留 409/code 供调用方处理。
-export function patchOperatorCurrent({ accountId, operatorId, game, patch } = {}) {
+export async function patchOperatorCurrent({ accountId, operatorId, game, patch } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (game != null && game !== '') params.set('game', game)
   const qs = params.toString()
+  let body = patch
+  if (patch?.combat_stats && typeof patch.combat_stats === 'object' && !Array.isArray(patch.combat_stats)) {
+    const stats = { ...patch.combat_stats }
+    if (stats.observed_inputs && typeof stats.observed_inputs === 'object' && !Array.isArray(stats.observed_inputs)) {
+      stats.observed_inputs = { ...stats.observed_inputs }
+    }
+    // 服务端签名最多 256 字符；仅压缩请求副本，保留本地完整指纹用于草稿变化比较。
+    for (const [node, key] of [
+      [stats, 'combat_input_signature'],
+      [stats.observed_inputs, 'oddities_signature'],
+      [stats.observed_inputs, 'equipped_star_stones_signature']
+    ]) {
+      if (typeof node?.[key] !== 'string' || node[key].length <= 256) continue
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(node[key]))
+      node[key] = 'sha256:' + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+    }
+    body = { ...patch, combat_stats: stats }
+  }
   return request(PATH + '/current/' + encodeURIComponent(operatorId) + (qs ? '?' + qs : ''), {
     method: 'PATCH',
     auth: true,
-    body: patch
+    body
   })
 }
 
