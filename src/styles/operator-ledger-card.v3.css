@@ -248,6 +248,25 @@
     content: '';
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait::after {
+    background:
+      linear-gradient(90deg,
+        color-mix(in srgb, var(--surface) 92%, transparent),
+        color-mix(in srgb, var(--surface) 60%, transparent) 24%,
+        transparent 52%),
+      linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--surface) 18%, transparent));
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .share-card-stats.is-enabled::before {
+    background: transparent;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .ledger-grow-label,
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .share-card-stats :deep(.share-stats-toggle) {
+    border-radius: 3px;
+    background: var(--ledger-control-paper);
+  }
+
   .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat, .ledger-growth) {
     border: 0;
     background: transparent;
@@ -263,6 +282,10 @@
     border-bottom-color: transparent;
     background: repeating-linear-gradient(90deg, var(--ledger-input-line) 0 3px, transparent 3px 6px)
       left bottom 4px / 100% 1px no-repeat;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .share-card-stats :is(.ledger-combat-value, .ledger-oddity input) {
+    background-color: var(--ledger-control-paper);
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-grow-label {

@@ -185,6 +185,37 @@
     padding: var(--ledger-card-inset) var(--ledger-card-inset) var(--ledger-card-inset) var(--ledger-card-inset-left);
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) {
+    --ledger-growth-data-width: 136px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled.is-editable {
+    max-width: calc(var(--ledger-growth-data-width) + 52px);
+    padding-right: 52px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats :deep(.share-stats-toggle) {
+    inset: 0 0 auto auto;
+    width: 48px;
+    min-height: 24px;
+    padding: 2px 4px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats :deep(.share-stats-next) {
+    position: static;
+    flex-direction: row;
+    width: auto;
+    padding: 0;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats :deep(.share-stats-next::before) {
+    display: none;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats :deep(.share-stats-next > span) {
+    writing-mode: horizontal-tb;
+  }
+
   .agent-ledger-card--editable.agent-ledger-card--v3 > :is(.ledger-loadouts, .ledger-card-footer) {
     grid-column: 1 / -1;
   }
