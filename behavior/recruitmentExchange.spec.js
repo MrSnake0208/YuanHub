@@ -183,6 +183,9 @@ it('规范下载读取当前游戏公共目录，不含用户档案，并附最�
   await button(wrapper, '获取 AI 导入规范').trigger('click'); await flushPromises()
   const guide = JSON.parse(await capturedBlob.text())
   expect(api.getRecruitmentCatalog).toHaveBeenCalledWith('代号鸢')
+  expect(guide.instructions.join('')).toContain('可下载的UTF-8 .json文件')
+  expect(guide.instructions.join('')).toContain('粘贴 JSON')
+  expect(guide.instructions.join('')).toContain('不得声称已生成实际不存在的附件')
   expect(guide.catalog_revision).toBe('catalog-new')
   expect(guide.operators.map(item => item.id)).toEqual(['official'])
   expect(Object.keys(guide.example_document.events[0])).toEqual(['event_id', 'catalog_pool_id', 'agent_id', 'pull_span'])
@@ -269,4 +272,76 @@ it('备份中的删除标记不冒充新增招募记录', async () => {
   expect(wrapper.get('.import-summary').text()).toContain('0条新增记录')
   expect(wrapper.text()).toContain('删除标记')
   expect(wrapper.text()).toContain('另有 1 项批次或档案信息将导入')
+})
+
+async function pasteJson(wrapper, text) {
+  await button(wrapper, '粘贴 JSON').trigger('click')
+  await wrapper.get('textarea').setValue(text)
+  await wrapper.get('#recruitment-paste-form').trigger('submit')
+  await flushPromises()
+}
+it.each(['plain', 'fenced', 'unlabelled'])('粘贴%s JSON复用预览，确认前不写入', async mode => {
+  const data = recordsFixture(), json = JSON.stringify(data)
+  const text = mode === 'plain' ? '\uFEFF' + json : '```' + (mode === 'fenced' ? 'json' : '') + '\n' + json + '\n```'
+  const wrapper = render(); await pasteJson(wrapper, text)
+  expect(api.previewRecruitmentImport).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ accountId: 'acc-a', document: data }))
+  expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('粘贴的 JSON')
+  await button(wrapper, '确认按预览导入').trigger('click'); await flushPromises()
+  expect(api.commitRecruitmentImport).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc-a', document: data, previewToken: 'bound-preview' }))
+})
+it.each([
+  '这是生成的内容：\n{}', '{}\n{}', '```json\n{}\n```\n```json\n{}\n```',
+  '```json\n{}', '{"events":[...]}', '{"schema":'
+])('拒绝解释、多个JSON或截断内容并保留原文：%s', async text => {
+  const wrapper = render(); await pasteJson(wrapper, text)
+  expect(wrapper.get('textarea').element.value).toBe(text)
+  expect(wrapper.find('[role=alert]').exists()).toBe(true)
+  expect(api.previewRecruitmentImport).not.toHaveBeenCalled()
+  expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
+})
+it('粘贴也受字节上限、游戏与记录数量校验约束', async () => {
+  const wrapper = render()
+  for (const [text, message] of [
+    ['你'.repeat(Math.ceil(MAX_IMPORT_BYTES / 3) + 1), '超过 5 MiB'],
+    [JSON.stringify({ ...recordsFixture(), game: '如鸢' }), '文件游戏与当前账号不一致'],
+    [JSON.stringify({ ...recordsFixture(), events: Array(20001).fill({}) }), '超过 20,000'],
+    [JSON.stringify({ format: 'yuanhub.recruitment.ai-guide.v2' }), '规范说明文件不能直接导入']
+  ]) {
+    await pasteJson(wrapper, text)
+    expect(wrapper.text()).toContain(message)
+  }
+  expect(api.previewRecruitmentImport).not.toHaveBeenCalled()
+})
+it('修改粘贴内容清空旧预览，重新核对后只提交新内容', async () => {
+  const wrapper = render(); await pasteJson(wrapper, JSON.stringify(recordsFixture()))
+  await button(wrapper, '修改粘贴内容').trigger('click'); await flushPromises()
+  expect(wrapper.find('.preview').exists()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get('textarea').element)
+  const updated = recordsFixture(); updated.events[0].pull_span = 52
+  await wrapper.get('textarea').setValue(JSON.stringify(updated))
+  await wrapper.get('#recruitment-paste-form').trigger('submit'); await flushPromises()
+  await button(wrapper, '确认按预览导入').trigger('click'); await flushPromises()
+  expect(api.commitRecruitmentImport).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ document: updated }))
+})
+it('取消保留粘贴草稿，换账号清空草稿，迟到预览不可跨账号应用', async () => {
+  const wrapper = render(); await button(wrapper, '粘贴 JSON').trigger('click')
+  await wrapper.get('textarea').setValue(JSON.stringify(recordsFixture()))
+  await button(wrapper, '取消').trigger('click'); await button(wrapper, '继续导入').trigger('click'); await flushPromises()
+  expect(wrapper.get('textarea').element.value).toContain('yuanhub.recruitment.import.v1')
+  const late = deferred(); api.previewRecruitmentImport.mockReturnValueOnce(late.promise)
+  await wrapper.get('#recruitment-paste-form').trigger('submit'); await flushPromises()
+  await wrapper.setProps({ accountId: 'acc-b', contextVersion: 1 }); late.resolve(previewFixture()); await flushPromises()
+  expect(wrapper.find('[role=dialog]').exists()).toBe(false)
+  await button(wrapper, '粘贴 JSON').trigger('click')
+  expect(wrapper.get('textarea').element.value).toBe('')
+  expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
+})
+it('只读账号与结果未确认时禁用粘贴入口', async () => {
+  const wrapper = render({ readOnly: true })
+  expect(button(wrapper, '粘贴 JSON').element.disabled).toBe(true)
+  await wrapper.setProps({ readOnly: false }); await preview(wrapper)
+  api.commitRecruitmentImport.mockRejectedValueOnce(new Error('offline'))
+  await button(wrapper, '确认按预览导入').trigger('click'); await flushPromises()
+  expect(button(wrapper, '粘贴 JSON').element.disabled).toBe(true)
 })

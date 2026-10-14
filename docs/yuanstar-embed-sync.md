@@ -1,5 +1,10 @@
 # YuanStar embed 同步说明
 
+## 宿主明确拒绝恢复适配（2026-10-14）
+
+PR #23 合并后，仅在 YuanHub 宿主增加明确拒绝的继承标记回退，详见
+[恢复说明](./star-rejected-write-recovery.md)。生成 embed 与 manifest 保持本页记录的原来源；未修改或重建私有源仓产物。
+
 ## 继承弹窗正文与尺寸（2026-10-13）
 
 - 最终来源 `fix/star-ocr-plan-inheritance`，source commit `c02aa31bd0f59f38de7aaa23f6ea494def5cbfbc`，由已提交的干净源码正式 build:embed 并通过原同步脚本更新完整 12 文件。manifest 来源与逐文件 SHA-256 一致；仅 CSS 资源字节变化，JS、worker 与识别资源保持一致。
