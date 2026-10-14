@@ -1075,8 +1075,8 @@
                 <span>{{ currentFilterSuffix }}</span>
                 <span>{{
                   ledgerCardIsV2
-                    ? "快捷提升会真实扣除库存；卡片编辑与完整编辑不扣库存"
-                    : "快捷提升会真实扣除库存；手动校正与完整编辑不扣库存"
+                    ? "快捷提升扣库存；卡片编辑、完整编辑不扣库存"
+                    : "快捷提升扣库存；手动校正、完整编辑不扣库存"
                 }}</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
