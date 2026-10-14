@@ -2,7 +2,7 @@
   <div class="page-beta-admin"><IslandSidebar /><main id="main-content">
     <header class="page-header">
       <div class="wrap">
-        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">内测管理</h1>
         <p class="page-header-description">管理体验容量、开放状态与候补策略。</p>
       </div>
@@ -74,6 +74,7 @@
   </main></div>
 </template>
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'

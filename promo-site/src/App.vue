@@ -14,7 +14,7 @@
           <a href="#feature-preview">现在与未来</a>
         </nav>
         <a class="header-cta" href="https://beta-hub.maayuan.com">
-          加入 YuanHub 内测 <span>↗</span>
+          加入 YuanHub 内测 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-up-right" /></svg></span>
         </a>
       </div>
     </header>
@@ -35,15 +35,15 @@
               <span class="hero-game-badge">如鸢</span>
             </div>
             <div class="hero-actions">
-              <a class="primary-btn" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span>→</span></a>
-              <a class="secondary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
-              <a class="secondary-btn" href="#share">神秘代码怎么玩 <span>→</span></a>
-              <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span>＋</span></button>
+              <a class="primary-btn" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></span></a>
+              <a class="secondary-btn" href="#product">看看 YuanHub 能做什么 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-down" /></svg></span></a>
+              <a class="secondary-btn" href="#share">神秘代码怎么玩 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></span></a>
+              <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#plus" /></svg></span></button>
             </div>
             <div class="hero-trust">
-              <span><i>✓</i> MaaYuan 自动采集</span>
-              <span><i>✓</i> 一份档案串起今日 / 养成 / BOX</span>
-              <span><i>✓</i> 不默认公开 · 按权限授权</span>
+              <span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg></i> MaaYuan 自动采集</span>
+              <span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg></i> 一份档案串起今日 / 养成 / BOX</span>
+              <span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg></i> 不默认公开 · 按权限授权</span>
             </div>
           </div>
 
@@ -65,7 +65,7 @@
                 <div class="demo-workspace">
                   <div class="demo-account">
                     <div><small>当前示例档案</small><strong>主档案 · 如鸢</strong></div>
-                    <span class="account-switch">切换⌄</span>
+                    <span class="account-switch">切换<svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#chevron-down" /></svg></span>
                   </div>
                   <div class="operator-toolbar">
                     <div><small>密探养成</small><b>当前养成</b></div>
@@ -87,7 +87,7 @@
                         <b>Lv.<span class="level-number">{{ growthFor(agent).level }}</span></b>
                         <em>{{ levelComplete(growthFor(agent).level) ? '已满级' : growthStateLabel(growthFor(agent).growthState) }}</em>
                       </div>
-                      <div v-if="awakened(growthFor(agent).starLevel)" class="awakening-chip">✦ 已觉醒</div>
+                      <div v-if="awakened(growthFor(agent).starLevel)" class="awakening-chip"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#sparkles" /></svg> 已觉醒</div>
                     </article>
                   </div>
 
@@ -181,8 +181,8 @@
                   <div class="star-author-line"><span>©</span> 独立创作 · 著作权归作者 <b>Drifty Yan</b> 所有</div>
                   <div class="ocr-layout">
                     <div class="fake-shot"><span class="scan-line"></span><i></i><i></i><i></i><small>截图占位符</small></div>
-                    <div class="ocr-arrow">→</div>
-                    <div class="star-result"><article><i>✦</i><div><b>天府</b><span>攻击 · 暴击</span></div></article><article><i>✦</i><div><b>七杀</b><span>生命 · 增伤</span></div></article><article><i>✦</i><div><b>破军</b><span>攻击 · 穿透</span></div></article></div>
+                    <div class="ocr-arrow"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></div>
+                    <div class="star-result"><article><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#sparkles" /></svg></i><div><b>天府</b><span>攻击 · 暴击</span></div></article><article><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#sparkles" /></svg></i><div><b>七杀</b><span>生命 · 增伤</span></div></article><article><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#sparkles" /></svg></i><div><b>破军</b><span>攻击 · 穿透</span></div></article></div>
                   </div>
                   <!-- PLACEHOLDER: 替换为真实游戏截图 + YuanHub OCR 结果截图 -->
                 </div>
@@ -194,7 +194,7 @@
                     <div><b>MaaYuan</b><span>采集结果 → 主账号 · 如鸢</span></div>
                     <em>已授权</em>
                   </div>
-                  <div class="scope-pills"><span>✓ 上传密探</span><span>✓ 读取养成状态</span><span>✓ 上传库存</span><span>✓ 上传星石</span></div>
+                  <div class="scope-pills"><span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg> 上传密探</span><span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg> 读取养成状态</span><span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg> 上传库存</span><span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg> 上传星石</span></div>
                   <div class="token-line"><small>YuanHub 连接码</small><code>yh_live_••••••••••</code><button type="button" tabindex="-1">复制</button></div>
                 </div>
 
@@ -219,7 +219,7 @@
             <h2>无需登录，<br /><em>也能把 BOX 分享给朋友</em></h2>
             <p>为当前游戏档案生成一个神秘代码。朋友或攻略作者拿到代码后，无需登录即可查看你主动公开的客观养成信息。</p>
             <p class="share-value-line"><strong>不光 BOX 完整</strong>，等级、修为、命盘、生命、攻击数值也能无损查询。</p>
-            <div class="privacy-note"><span>🔒</span><div><b>不会一起分享</b><small>备注、特别关注、养成目标、登录信息与其他私有内容。</small></div></div>
+            <div class="privacy-note"><span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#lock-keyhole" /></svg></span><div><b>不会一起分享</b><small>备注、特别关注、养成目标、登录信息与其他私有内容。</small></div></div>
           </div>
 
           <div class="share-animation-stage">
@@ -263,7 +263,7 @@
           <div class="privacy-interaction-hint" role="note">
             <span>可交互演示</span>
             <b>点击下面的权限开关试试看</b>
-            <i aria-hidden="true">↓</i>
+            <i aria-hidden="true"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-down" /></svg></i>
           </div>
 
           <div class="permission-demo">
@@ -281,7 +281,7 @@
             </div>
             <div class="permission-result">
               <span class="panel-label">第三方实际可用</span>
-              <article v-for="scope in scopes" :key="`result-${scope.id}`" :class="{ off: !scope.enabled }"><i>{{ scope.enabled ? '✓' : '×' }}</i><div><b>{{ scope.name }}</b><small>{{ scope.enabled ? '可访问' : '无权限' }}</small></div></article>
+              <article v-for="scope in scopes" :key="`result-${scope.id}`" :class="{ off: !scope.enabled }"><i><svg v-if="scope.enabled" class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#check" /></svg><svg v-else class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#x" /></svg></i><div><b>{{ scope.name }}</b><small>{{ scope.enabled ? '可访问' : '无权限' }}</small></div></article>
             </div>
           </div>
 
@@ -372,7 +372,7 @@
             </div>
             <div class="community-author-grid">
               <article class="community-author-card">
-                <span class="community-author-mark">✦</span>
+                <span class="community-author-mark"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#sparkles" /></svg></span>
                 <div>
                   <small>独立创作 · 已加入 YuanHub</small>
                   <h4>星石识别 / 星石养成</h4>
@@ -395,7 +395,7 @@
           <details class="community-more">
             <summary>
               <span><b>想参与开发或接入项目？</b><small>展开查看参与方式、接入原则与来源要求</small></span>
-              <i aria-hidden="true">＋</i>
+              <i aria-hidden="true"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#plus" /></svg></i>
             </summary>
             <div class="community-more-body">
 
@@ -412,7 +412,7 @@
                   <li>一个人开发的小工具也欢迎来聊</li>
                 </ul>
               </div>
-              <a class="community-path-link" href="#community-principles">了解接入原则 <span>→</span></a>
+              <a class="community-path-link" href="#community-principles">了解接入原则 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></span></a>
             </article>
 
             <article class="community-path-card">
@@ -465,10 +465,10 @@
           </div>
 
           <div class="community-process" aria-label="功能接入流程">
-            <span>01 提交想法</span><i>→</i>
-            <span>02 来源检查</span><i>→</i>
-            <span>03 产品 / 技术评估</span><i>→</i>
-            <span>04 联调</span><i>→</i>
+            <span>01 提交想法</span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></i>
+            <span>02 来源检查</span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></i>
+            <span>03 产品 / 技术评估</span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></i>
+            <span>04 联调</span><i><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></i>
             <span>05 上线并保留署名</span>
           </div>
             </div>
@@ -491,7 +491,7 @@
                 <b>非官方、非商业玩家工具</b>
                 <p>第三方游戏素材与名称归原权利方所有；YuanHub 自创宣传内容按页面声明许可，独立创作继续保留作者署名与权利归属。</p>
               </div>
-              <span class="legal-summary-action">查看完整说明 <i aria-hidden="true">＋</i></span>
+              <span class="legal-summary-action">查看完整说明 <i aria-hidden="true"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#plus" /></svg></i></span>
             </summary>
             <div class="legal-card">
             <article>
@@ -557,7 +557,7 @@
             <h2>先把自己的游戏档案，<em>整理好</em></h2>
             <p>从 MaaYuan 自动同步采集结果，再查看今日一览、规划养成或分享 BOX，都由你决定。</p>
           </div>
-          <a class="final-button" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span>→</span><small>内测入口</small></a>
+          <a class="final-button" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#arrow-right" /></svg></span><small>内测入口</small></a>
         </div>
       </section>
     </main>
@@ -628,7 +628,7 @@ function huajiLabel(starLevel) {
   const value = Math.max(0, Math.trunc(Number(starLevel) || 0))
   if (value === OPERATOR_STAR_LEVEL_AWAKEN) return starCardFallback(value)
   if (value <= 0) return starCardFallback(value)
-  return `${starCardNumber(value)} ⭐ · ${starCardNode(value)} 节点`
+  return `${starCardNumber(value)} 星 · ${starCardNode(value)} 节点`
 }
 
 function levelComplete(level) {
@@ -698,6 +698,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.lucide { display: inline-block; vertical-align: middle; flex-shrink: 0; }
 .promo-page {
   --paper: #f6edd0;
   --cream: #fff8ec;
@@ -797,7 +798,7 @@ em { color: var(--accent); font-style: normal; }
 .release-disclaimer b { color: var(--tea); font: 900 13px/1.4 var(--font-s); }
 .release-disclaimer p { margin-top: 5px; color: var(--muted); font-size: 11.5px; line-height: 1.75; }
 .feature-tabs { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--line); }.feature-tabs button { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 3px; min-height: 86px; padding: 17px 18px; border: 0; border-right: 1px solid var(--soft-line); color: var(--muted); background: transparent; text-align: left; cursor: pointer; }.feature-tabs button:last-child { border-right: 0; }.feature-tabs button.active { color: var(--ink); background: var(--surface); box-shadow: inset 0 -3px var(--accent); }.feature-tabs button > span { grid-row: 1 / span 2; color: var(--accent-strong); font: 800 10px var(--font-d); }.feature-tabs b { font: 900 15px var(--font-s); }.feature-tabs small { font-size: 10px; }
-.feature-stage { display: grid; grid-template-columns: minmax(280px,.75fr) minmax(0,1.25fr); min-height: 430px; }.feature-copy-panel { padding: 46px 38px; border-right: 1px solid var(--line); }.feature-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }.feature-copy-panel h3 { margin-top: 15px; color: var(--tea); font: 900 28px/1.35 var(--font-s); }.feature-copy-panel p { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.85; }.feature-copy-panel ul { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }.feature-copy-panel li { position: relative; padding-left: 18px; font-size: 12px; }.feature-copy-panel li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }.feature-author-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,253,246,.6); font-size: 9px; line-height: 1.4; }.feature-author-badge > span { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%; color: var(--cream); background: var(--tea); font-size: 9px; }.feature-author-badge b { color: var(--ink); }
+.feature-stage { display: grid; grid-template-columns: minmax(280px,.75fr) minmax(0,1.25fr); min-height: 430px; }.feature-copy-panel { padding: 46px 38px; border-right: 1px solid var(--line); }.feature-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }.feature-copy-panel h3 { margin-top: 15px; color: var(--tea); font: 900 28px/1.35 var(--font-s); }.feature-copy-panel p { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.85; }.feature-copy-panel ul { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }.feature-copy-panel li { position: relative; padding-left: 18px; font-size: 12px; }.feature-copy-panel li::before { position: absolute; left: 0; color: var(--accent); content: ''; width: 4px; height: 4px; top: .65em; border-radius: 50%; background: currentColor; }.feature-author-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,253,246,.6); font-size: 9px; line-height: 1.4; }.feature-author-badge > span { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%; color: var(--cream); background: var(--tea); font-size: 9px; }.feature-author-badge b { color: var(--ink); }
 .feature-demo-panel { position: relative; min-width: 0; padding: 34px; background: linear-gradient(135deg,rgba(239,210,142,.18),rgba(255,253,246,.58)); }.feature-visual { height: 100%; min-height: 360px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 26px 45px -38px rgba(73,59,44,.7); }.visual-top { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }.visual-top b { font: 900 18px var(--font-s); }.visual-top span { color: var(--muted); font-size: 10px; }
 .mini-card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 18px; }.mini-op-card { display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }.mini-op-card i { grid-row: 1 / span 3; display: block; width: 44px; aspect-ratio: 1 / 1.24; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); font-style: normal; }.mini-op-card i img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }.mini-op-card b { font: 900 12px var(--font-s); }.mini-op-card span { color: var(--accent-strong); font-size: 9px; }.mini-op-card em { grid-column: 2 / span 2; color: var(--muted); font-size: 9px; line-height: 1.45; font-style: normal; }.visual-status { margin-top: 17px; color: var(--muted); font-size: 10px; }.visual-status span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
 .inventory-total { position: relative; margin-top: 24px; padding: 20px; border-radius: 14px; background: var(--cream); }.inventory-total small { display: block; color: var(--muted); }.inventory-total strong { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 900 34px var(--font-d); }.inventory-total strong span { text-decoration: line-through; opacity: .32; }.inventory-total strong i { color: var(--rouge); font: 800 12px var(--font-d); font-style: normal; animation: stockPlus 4s infinite; }.inventory-total em { display: block; margin-top: 4px; color: var(--accent-strong); font: 900 42px var(--font-d); font-style: normal; animation: stockTotal 4s infinite; }.bar-chart { height: 90px; display: flex; align-items: end; gap: 8px; margin-top: 20px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }.bar-chart i { flex: 1; border-radius: 5px 5px 0 0; background: var(--yellow-deep); transform-origin: bottom; animation: barGrow 2.8s ease-in-out infinite alternate; }.inventory-row { display: grid; grid-template-columns: 1fr auto; gap: 3px; margin-top: 13px; font-size: 10px; }.inventory-row b { color: var(--accent-strong); }.inventory-row small { grid-column: 1 / -1; color: var(--muted); }
@@ -843,7 +844,7 @@ em { color: var(--accent); font-style: normal; }
 .community-path-copy p { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .community-path-copy ul, .community-principles ul { display: grid; gap: 9px; margin: 18px 0 0; padding: 0; list-style: none; }
 .community-path-copy li, .community-principles li { position: relative; padding-left: 18px; color: var(--ink); font-size: 12px; line-height: 1.6; }
-.community-path-copy li::before, .community-principles li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }
+.community-path-copy li::before, .community-principles li::before { position: absolute; left: 0; color: var(--accent); content: ''; width: 4px; height: 4px; top: .65em; border-radius: 50%; background: currentColor; }
 .community-path-link { grid-column: 2; display: inline-flex; align-items: center; justify-content: space-between; gap: 18px; width: fit-content; margin-top: 24px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--tea); background: var(--cream); font-size: 11px; font-weight: 900; text-decoration: none; }
 a.community-path-link:hover { border-color: var(--accent); color: var(--accent-strong); }
 .community-dev-note { display: flex; align-items: center; justify-content: space-between; gap: 26px; margin-top: 18px; padding: 20px 24px; border: 1px dashed var(--line); border-radius: 18px; background: rgba(246,237,208,.3); }

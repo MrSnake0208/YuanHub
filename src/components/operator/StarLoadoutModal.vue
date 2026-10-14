@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div v-if="open" ref="overlay" class="star-loadout-overlay" tabindex="-1" @click.self="$emit('request-close')" @keydown.esc.prevent="$emit('request-close')">
       <section class="star-loadout-modal" role="dialog" aria-modal="true" aria-label="星石装配">
-        <header class="star-loadout-header"><div class="star-loadout-title-line"><h2>星石装配</h2><p>{{ targetOperator?.name || '密探' }}<span v-if="targetOperator?.prof"> · {{ targetOperator.prof }}</span><span v-if="operatorSubProf"> · {{ operatorSubProf }}</span></p></div><button type="button" class="star-loadout-close" :disabled="saving" aria-label="关闭星石装配" @click="$emit('request-close')">×</button></header>
+        <header class="star-loadout-header"><div class="star-loadout-title-line"><h2>星石装配</h2><p>{{ targetOperator?.name || '密探' }}<span v-if="targetOperator?.prof"> · {{ targetOperator.prof }}</span><span v-if="operatorSubProf"> · {{ operatorSubProf }}</span></p></div><button type="button" class="star-loadout-close" :disabled="saving" aria-label="关闭星石装配" @click="$emit('request-close')"><X :size="16" aria-hidden="true" /></button></header>
         <p v-if="error" class="star-loadout-error" role="alert">{{ error }}</p>
         <p v-else-if="saving" class="star-loadout-saving" role="status">正在保存星石装配…</p>
         <StarLoadoutEditor :target-operator="targetOperator" :inventory-entries="inventoryEntries" :draft-loadouts="draftLoadouts" :initial-slot="initialSlot" initial-replacement :operator-display-name-map="operatorDisplayNameMap" @update:draft-loadouts="$emit('update:draftLoadouts', $event)" />
@@ -12,6 +12,7 @@
 </template>
 
 <script setup>
+import { X } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import StarLoadoutEditor from './StarLoadoutEditor.vue'
 const props = defineProps({ open: Boolean, targetOperator: Object, inventoryEntries: Array, draftLoadouts: Object, initialSlot: String, saving: Boolean, error: String, operatorDisplayNameMap: Object })

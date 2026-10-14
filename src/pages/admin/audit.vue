@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">审计记录</h1>
           <p class="page-header-description">查看管理员角色、授权和管理操作的变更记录。</p>
         </div>
@@ -48,7 +48,7 @@
 <script setup>
 import { betaAuditSnapshotParts } from '../../utils/betaAccess.js'
 import { computed, onMounted, ref } from 'vue'
-import { ChevronLeft, ChevronRight, RefreshCw } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, RefreshCw, ArrowLeft } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import '../../styles/page-header.css'

@@ -4,7 +4,7 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">招募档案访问</h1>
           <p class="page-header-description">管理开放模式与有限访问名单。</p>
         </div>
@@ -70,7 +70,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Globe2, LockKeyhole, Search, Trash2, UserRoundCheck } from '@lucide/vue'
+import { Globe2, LockKeyhole, Search, Trash2, UserRoundCheck, ArrowLeft } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import '@/styles/page-header.css'
 import { getAdminRecruitmentAccess, grantRecruitmentAccess, revokeRecruitmentAccess, searchRecruitmentAccessUsers, updateRecruitmentAccessMode } from '../../api/recruitmentAccess.js'

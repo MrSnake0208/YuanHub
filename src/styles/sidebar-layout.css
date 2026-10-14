@@ -18,8 +18,6 @@ a.brand{color:inherit;text-decoration:none;cursor:pointer}
 .nav-lb{color:var(--ink-35)}
 .nav a.ext .dot{border-radius:50%;background:var(--cc,var(--line))}
 .nav a.ext .who{color:var(--ink-35)}
-.nav a.ext::after{content:'↗';color:var(--brand-blue);opacity:0;transition:opacity .3s}
-.nav a.ext:hover::after{opacity:1}
 .island-foot{border-top:1px dashed var(--line);color:var(--ink-60)}
 .island-foot a{color:var(--ink);text-decoration:none;border-bottom:1.5px solid var(--yellow)}
 .island-foot b{color:var(--ink)}

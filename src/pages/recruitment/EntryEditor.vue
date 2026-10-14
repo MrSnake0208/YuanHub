@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div v-if="open" class="modal-mask">
       <section ref="panel" class="recruitment-editor" role="dialog" aria-modal="true" aria-labelledby="entry-title" tabindex="-1">
-        <header><h2 id="entry-title">{{ event ? '修改这条记录' : '记录密探' }}</h2><button type="button" aria-label="关闭记录编辑" :disabled="busy" @click="$emit('close')">×</button></header>
+        <header><h2 id="entry-title">{{ event ? '修改这条记录' : '记录密探' }}</h2><button type="button" aria-label="关闭记录编辑" :disabled="busy" @click="$emit('close')"><X :size="16" aria-hidden="true" /></button></header>
         <form @submit.prevent="submit">
           <div class="editor-body">
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
@@ -49,6 +49,7 @@
 </template>
 
 <script setup>
+import { X } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { blankEntry, entryInput, fromWindowPositions, integer } from './rules.js'

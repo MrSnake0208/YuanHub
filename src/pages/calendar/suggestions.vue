@@ -1,7 +1,7 @@
 <template>
   <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
     <header class="calendar-header wrap">
-      <router-link class="calendar-source-link" to="/calendar">← 返回活动日历</router-link>
+      <router-link class="calendar-source-link" to="/calendar"><ArrowLeft :size="16" aria-hidden="true" /> 返回活动日历</router-link>
       <h1>我的活动建议</h1>
       <p>查看你提交的活动资料与审核结果。</p>
       <nav class="calendar-submission-nav" aria-label="活动建议"><router-link class="calendar-primary-link" to="/calendar/suggestions/new">建议补充活动</router-link></nav>
@@ -23,6 +23,7 @@
   </main></div>
 </template>
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'

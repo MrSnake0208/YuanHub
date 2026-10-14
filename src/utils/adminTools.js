@@ -1,5 +1,5 @@
 import { FEATURE_KEYS, isFeatureEnabled } from '../config/features.js'
-import { CalendarDays, BookOpen, FilePenLine, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
+import { CalendarDays, BookOpen, BookUser, FilePenLine, KeyRound, Layers3, Link2, Logs, ShieldCheck } from '@lucide/vue'
 import {
   ADMIN_PERMISSIONS,
   canManageAnyFeedback,
@@ -55,7 +55,7 @@ const ADMIN_TOOLS = Object.freeze([
     label: '公共密探图鉴',
     description: '维护全站公共密探字典和导入校验数据',
     group: 'content',
-    icon: ScanLine,
+    icon: BookUser,
     isVisible: function (access) {
       return hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE)
     }
@@ -67,7 +67,7 @@ const ADMIN_TOOLS = Object.freeze([
   },
   {
     key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',
-    description: '维护公共卡池、UP 名单和占位密探对应关系', group: 'content', icon: ScanLine,
+    description: '维护公共卡池、UP 名单和占位密探对应关系', group: 'content', icon: Layers3,
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE)
   },
   {
@@ -109,7 +109,7 @@ const ADMIN_TOOLS = Object.freeze([
     label: '审计记录',
     description: '查看角色和反馈授权的变更记录',
     group: 'platform',
-    icon: PackageOpen,
+    icon: Logs,
     isVisible: function (access) {
       return hasPermission(access, ADMIN_PERMISSIONS.AUDIT_READ)
     }

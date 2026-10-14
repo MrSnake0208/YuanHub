@@ -85,3 +85,7 @@ server {
     }
 }
 ```
+
+## 图标约定
+
+界面图标统一使用 Lucide，禁止表情符号。本页通过本地 `public/icons/lucide.svg` sprite 复用图标，SVG 来自主站已安装的 `@lucide/vue` 1.31.0；保留 `currentColor`、默认线宽 2 和装饰图标的 `aria-hidden="true"`。许可证位于 `public/lucide-LICENSE.txt`，随独立站部署。品牌和游戏素材保持原资源。

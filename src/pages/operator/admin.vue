@@ -5,7 +5,7 @@
     <main id="main-content" class="operator-main">
       <header class="page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">公共密探图鉴</h1>
           <p class="page-header-description">维护全站公共密探目录与导入校验数据。</p>
         </div>
@@ -69,7 +69,7 @@
                           <em v-if="r.alias" class="op-alias">{{ r.alias }}</em>
                         </span>
                       </td>
-                      <td><span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}★</span></td>
+                      <td><span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}星</span></td>
                       <td class="cell-prof">
                         <div class="cell-tag-flow">
                           <span v-for="p in r.prof" :key="'prof-' + p" class="tag-prof" :style="profStyle(p)">{{ p }}</span>
@@ -113,7 +113,7 @@
                       </div>
                     </div>
                     <div class="mobile-badges">
-                      <span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}★</span>
+                      <span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}星</span>
                       <span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span>
                     </div>
                   </div>
@@ -187,9 +187,9 @@
                 <label>别名 <input v-model.trim="form.alias" placeholder="搜索别名，可空" /></label>
                 <label>稀有度
                   <select v-model="form.rarity">
-                    <option :value="5">5 ★</option>
-                    <option :value="4">4 ★</option>
-                    <option :value="3">3 ★</option>
+                    <option :value="5">5 星</option>
+                    <option :value="4">4 星</option>
+                    <option :value="3">3 星</option>
                   </select>
                 </label>
                 <fieldset class="multi-field">
@@ -319,7 +319,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
+import { Pencil, Plus, Search, Trash2, X, ArrowLeft } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import '../../styles/page-header.css'

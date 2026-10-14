@@ -21,7 +21,7 @@
 
           <div v-if="publicNotice" class="feedback-public-notice" role="status">
             <span>{{ publicNotice }}</span>
-            <button type="button" aria-label="关闭提示" title="关闭" @click="publicNotice = ''">×</button>
+            <button type="button" aria-label="关闭提示" title="关闭" @click="publicNotice = ''"><X :size="16" aria-hidden="true" /></button>
           </div>
 
           <div class="feedback-command-bar">

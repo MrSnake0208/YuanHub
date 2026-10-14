@@ -33,6 +33,7 @@
   --yellow-deep:#D9A93B;
 }
 *{margin:0;padding:0;box-sizing:border-box}
+.lucide{display:inline-block;vertical-align:middle;flex-shrink:0}
 html{scroll-behavior:smooth}
 body{
   background-color:var(--paper);color:var(--ink);font-family:var(--font-b);-webkit-font-smoothing:antialiased;

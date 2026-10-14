@@ -155,7 +155,7 @@
         <div class="brand-line">
           <span>YuanHub</span><span class="beta">Beta</span>
         </div>
-        <b>鸢鸢相抱♥️</b>
+        <b>鸢鸢相抱 <Heart :size="12" aria-hidden="true" /></b>
       </div>
     </router-link>
     <nav class="nav">
@@ -266,6 +266,7 @@ import {
   UsersRound,
   UserRound,
   X,
+  Heart,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
 import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.js";

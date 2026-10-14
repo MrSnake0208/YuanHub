@@ -4,7 +4,7 @@
       <section ref="panel" class="recognition-example-panel" :class="{ 'is-info': info }" role="dialog" aria-modal="true" aria-labelledby="recognition-example-title" tabindex="-1">
         <header>
           <h2 id="recognition-example-title">{{ info?.title || current.title }}</h2>
-          <button ref="closeButton" type="button" :aria-label="info ? '关闭核对说明' : '关闭示例图片'" @click="emit('close')">×</button>
+          <button ref="closeButton" type="button" :aria-label="info ? '关闭核对说明' : '关闭示例图片'" @click="emit('close')"><X :size="16" aria-hidden="true" /></button>
         </header>
         <div v-if="info" class="recognition-example-info">
           <p>{{ info.intro }}</p>
@@ -26,6 +26,7 @@
 </template>
 
 <script setup>
+import { X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 const props = defineProps({ items: { type: Array, default: () => [] }, info: { type: Object, default: null } })

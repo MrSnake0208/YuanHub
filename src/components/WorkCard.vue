@@ -27,12 +27,13 @@
         <span>上传者 {{ work.uploader_id || '未提供' }}</span>
         <time :datetime="work.upload_time || undefined">{{ formatDate(work.upload_time) }}</time>
       </div>
-      <span class="go">查看作业 <b aria-hidden="true">→</b></span>
+      <span class="go">查看作业 <b aria-hidden="true"><ArrowRight :size="16" aria-hidden="true" /></b></span>
     </footer>
   </router-link>
 </template>
 
 <script setup>
+import { ArrowRight } from '@lucide/vue'
 import { computed } from 'vue'
 import { formatDate, formatMetric, statusInfo } from '@/utils/workDisplay.js'
 

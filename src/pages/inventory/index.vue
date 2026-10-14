@@ -630,7 +630,7 @@
                     v-if="entityType === 'agent'"
                     class="slot-tag star"
                     :class="'s' + e.rarity"
-                    >{{ e.rarity }}★ · {{ e.prof }} · {{ e.subProf }}</span
+                    >{{ e.rarity }}星 · {{ e.prof }} · {{ e.subProf }}</span
                   >
                   <div
                     class="stock-stepper"

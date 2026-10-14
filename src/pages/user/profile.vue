@@ -341,7 +341,7 @@
               :role="noticeError ? 'alert' : 'status'"
             >
               <span>{{ notice }}</span>
-              <button type="button" aria-label="关闭提示" @click="dismissNotice">×</button>
+              <button type="button" aria-label="关闭提示" @click="dismissNotice"><X :size="16" aria-hidden="true" /></button>
             </div>
             <details v-if="recentFailures.length" class="failure-history">
               <summary>最近失败记录（{{ recentFailures.length }}）</summary>

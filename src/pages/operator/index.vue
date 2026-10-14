@@ -465,7 +465,7 @@
                 aria-label="搜索密探名称、别名或 ID"
                 placeholder="搜索名称 / 别名 / ID"
               />
-              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport">＋ 录入密探</router-link>
+              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               <div class="mf-filter" role="group" aria-label="招募状态">
                 <button
                   :aria-pressed="manifestFilter === 'all'"
@@ -762,7 +762,7 @@
                   <!-- 暂时隐藏漆园蝶完成状态
                   <div v-if="oddityCompletions[e.id]" class="slot-oddity-completion">
                     <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
-                      <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].compactLabel }}
+                      <Sparkles aria-hidden="true" />{{ oddityCompletions[e.id].compactLabel }}
                     </span>
                     <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
                   </div>
@@ -930,7 +930,7 @@
               @reset="resetCurrentFilters"
             >
               <template #primary-tool>
-                <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport">＋ 录入密探</router-link>
+                <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -1261,7 +1261,7 @@
                   <!-- 暂时隐藏漆园蝶完成状态
                   <div v-if="oddityCompletions[e.id]" class="ledger-oddity-completion">
                     <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
-                      <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].label }}
+                      <Sparkles aria-hidden="true" />{{ oddityCompletions[e.id].label }}
                     </span>
                     <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
                   </div>
@@ -1376,7 +1376,7 @@
                       }}</small
                       >
                       <label class="ledger-oddity"
-                        ><ButterflyIcon class="ledger-oddity-icon" /><input
+                        ><Sparkles class="ledger-oddity-icon" aria-hidden="true" /><input
                           type="number"
                           inputmode="numeric"
                           step="1"
@@ -2216,8 +2216,8 @@
                           class="ledger-submit-spinner"
                         ></span
                         ><span v-else-if="cardSubmitStates[e.id] === 'success'"
-                          >✓</span
-                        ><span v-else>!</span>
+                          ><Check :size="16" aria-hidden="true" /></span
+                        ><span v-else><CircleAlert :size="16" aria-hidden="true" /></span>
                       </div>
                       <strong>{{
                         cardSubmitStates[e.id] === "submitting"
@@ -2984,6 +2984,8 @@ import {
   Target,
   Upload,
   X,
+  Plus,
+  Sparkles,
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
@@ -2994,7 +2996,6 @@ import TutorialEntry from "../../components/TutorialEntry.vue";
 import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
-import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorGrowthFilters from "../../components/operator/OperatorGrowthFilters.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
@@ -4527,7 +4528,7 @@ function starLabel(v, spOf) {
   if (n >= 1 && n <= 24) {
     const star = Math.floor((n - 1) / 6) + 1;
     const node = (n - 1) % 6;
-    return star + " ⭐ " + node + " 节点";
+    return star + " 星 " + node + " 节点";
   }
   return n;
 }
@@ -9321,7 +9322,7 @@ onBeforeUnmount(function () {
 }
 .rune-glyphs::before {
   color: color-mix(in srgb, #9483bf 72%, var(--surface));
-  content: "✦ 玄 ✧ 烛 ✦";
+  content: "玄 烛";
 }
 .rune-ripple-one,
 .rune-ripple-two {

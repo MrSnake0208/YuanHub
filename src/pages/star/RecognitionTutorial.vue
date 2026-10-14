@@ -15,7 +15,7 @@
         </div>
         <header>
           <div aria-live="polite"><span class="recognition-tour-count">{{ stepIndex + 1 }} / {{ steps.length }}</span><h2>{{ step.title }}</h2></div>
-          <button type="button" class="recognition-tour-close" :aria-label="`关闭${tutorialLabel}`" @click="close">×</button>
+          <button type="button" class="recognition-tour-close" :aria-label="`关闭${tutorialLabel}`" @click="close"><X :size="16" aria-hidden="true" /></button>
         </header>
         <div class="recognition-tour-details">
           <p v-for="(paragraph, index) in step.paragraphs || [step.body]" :key="index" class="recognition-tour-body">{{ paragraph }}</p>
@@ -31,6 +31,7 @@
 </template>
 
 <script setup>
+import { X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import { modalFocusState } from '../../composables/useModalFocus.js'

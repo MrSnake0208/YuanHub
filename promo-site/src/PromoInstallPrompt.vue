@@ -13,7 +13,7 @@
           aria-label="关闭添加到桌面提示，七天内不再主动显示"
           @click="closePrompt"
         >
-          ×
+          <svg class="lucide" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide.svg#x" /></svg>
         </button>
 
         <div class="promo-install-main">

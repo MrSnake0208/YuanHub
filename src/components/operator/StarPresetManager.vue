@@ -2,16 +2,16 @@
   <Teleport to="body">
     <div v-if="open" class="preset-overlay" @click.self="cancel" @keydown.esc.prevent="cancel">
       <section class="preset-modal" role="dialog" aria-modal="true" aria-label="管理星石预设">
-        <header class="preset-header"><div><p>星石装配</p><h2>管理预设</h2><span>每套 1–3 颗；主星、辅星各最多 20 套。</span></div><button type="button" :disabled="saving" aria-label="关闭预设管理" @click="cancel">×</button></header>
+        <header class="preset-header"><div><p>星石装配</p><h2>管理预设</h2><span>每套 1–3 颗；主星、辅星各最多 20 套。</span></div><button type="button" :disabled="saving" aria-label="关闭预设管理" @click="cancel"><X :size="16" aria-hidden="true" /></button></header>
         <div class="preset-columns">
           <section v-for="kind in kinds" :key="kind.id" class="preset-column">
             <h3>{{ kind.label }}</h3>
             <div v-for="item in draft[kind.id]" :key="item.id" class="preset-edit">
               <input v-model="item.name" maxlength="64" aria-label="预设名称" placeholder="预设名称" />
               <input v-model="item.namesText" :aria-label="kind.label + '星石名称'" :placeholder="kind.example" @blur="normalizeRow(item, kind.id)" @keydown.enter.prevent="normalizeRow(item, kind.id)" />
-              <button type="button" class="preset-delete" :aria-label="'删除' + (item.name || kind.label)" @click="remove(kind.id, item.id)">×</button>
+              <button type="button" class="preset-delete" :aria-label="'删除' + (item.name || kind.label)" @click="remove(kind.id, item.id)"><Trash2 :size="16" aria-hidden="true" /></button>
             </div>
-            <button type="button" class="preset-add" :disabled="draft[kind.id].length >= 20" @click="add(kind.id)">＋ 新增{{ kind.label }}</button>
+            <button type="button" class="preset-add" :disabled="draft[kind.id].length >= 20" @click="add(kind.id)"><Plus :size="16" aria-hidden="true" /> 新增{{ kind.label }}</button>
           </section>
         </div>
         <p v-if="localError || cloudError" class="preset-error" role="alert">{{ localError || cloudError }}</p>
@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+import { Plus, Trash2, X } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { canonicalPresetNames } from '../../domain/starLoadoutUi.js'
 

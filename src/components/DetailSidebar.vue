@@ -20,7 +20,7 @@
       <div class="brand-txt">YuanHub<b>通关作业</b></div>
     </div>
     <nav class="nav">
-      <router-link to="/"><span class="no">←</span>返回首页</router-link>
+      <router-link to="/"><span class="no"><ArrowLeft :size="16" aria-hidden="true" /></span>返回首页</router-link>
       <a
         v-for="item in items"
         :key="item.id"

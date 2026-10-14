@@ -45,7 +45,7 @@
             <span v-else role="status">正在准备当前账号的星石数据…</span>
             <span v-if="activeTab === 'import'" class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
-              :title="cloudSyncMessage">{{ cloudSyncMessage === '星石云端状态已保存' ? '✓ 已同步' : cloudSyncMessage }}</span>
+              :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
           </div>
           <ArchiveExchangePanel
             v-if="showArchive"
@@ -138,7 +138,7 @@
           </button>
           </div>
           <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">
-            <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
+            <button type="button" class="btn primary star-import-action" @click="setTab('import')"><Plus :size="16" aria-hidden="true" /> 导入截图</button>
             <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           </div>
           </div>
@@ -174,7 +174,7 @@ import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspac
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Archive, CircleHelp } from "@lucide/vue";
+import { Archive, CircleHelp, Check, Plus } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
