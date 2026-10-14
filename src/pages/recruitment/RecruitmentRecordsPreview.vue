@@ -12,7 +12,6 @@
         </span>
         <span v-if="view === 'agents'" class="preview-agent-details" aria-hidden="true">
           <span class="agent-pull-badge" :class="recordBarClass(row.event.pull_span, row.fourStar)">{{ row.pulls }}</span>
-          <span class="preview-name">{{ row.agent.name }}</span>
           <span v-if="row.event.batch_id" class="preview-batch">批次</span>
         </span>
         <span v-else class="preview-track" aria-hidden="true">
@@ -78,9 +77,8 @@ ol { list-style: none; margin: 0; padding: 0; }
 .agent-order-badge { position: absolute; left: -5px; top: -5px; padding: 2px 5px; font: 700 11px var(--font-d); }
 .non-up-stamp { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; font: 800 16px var(--font-s); transform: rotate(-12deg); }
 .preview-portrait .non-up-stamp { position: absolute; right: -5px; top: -5px; background: var(--surface); }
-.preview-agent-details { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px; max-width: 100%; }
-.agent-pull-badge { padding: 4px 8px; font: 700 13px var(--font-d); white-space: nowrap; }
-.preview-name { font-size: 12px; text-align: center; overflow-wrap: anywhere; line-height: 1.4; }
+.preview-agent-details { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: -10px; max-width: 100%; }
+.agent-pull-badge { padding: 3px 8px 4px; font: 700 13px/1.2 var(--font-d); white-space: nowrap; }
 .preview-batch { border: 1px solid var(--line); border-radius: 999px; padding: 3px 6px; color: var(--ink-60); font-size: 10px; flex: none; }
 .preview-progress .preview-record { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .preview-progress .preview-portrait { width: 40px; height: 40px; }
