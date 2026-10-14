@@ -2251,6 +2251,7 @@
     gap: 12px;
   }
   .acquired-query h2 {
+    margin-top: 0;
     font-size: 18px;
     line-height: 1.45;
   }
@@ -2258,14 +2259,19 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 7px;
+    margin-top: 10px;
+    padding-top: 0;
+    border-top: 0;
   }
   .quick-range button {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 6px;
   }
   .acquired-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+    margin-top: 10px;
   }
   .manifest-toolbar {
     display: contents;
@@ -2586,22 +2592,26 @@
     grid-row: 1;
   }
   .range {
-    align-items: stretch;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 10px;
   }
   .range label {
     width: 100%;
+    min-width: 0;
   }
   .range-dash {
     display: none;
   }
   .range input {
+    box-sizing: border-box;
     width: 100%;
     min-height: 44px;
     min-width: 0;
     font-size: 16px;
   }
   .acquired-submit {
+    grid-column: 1 / -1;
     width: 100%;
   }
   .range-caption {
@@ -2791,5 +2801,26 @@
   .inventory-actions { flex: 1 1 100%; }
   .inventory-actions > button { flex: 1 1 112px; }
   .manifest-toolbar .manifest-bar-summary { flex-basis: 100%; }
+  :deep(.compact-tool-header) { padding-block: 12px 8px; }
+  :deep(.compact-tool-heading h1) { font-size: 26px; }
+  .inventory-freshness { gap: 8px; padding: 4px 0 10px; margin-bottom: 6px; }
+  .inventory-freshness-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 12px; }
+  .inventory-entry, .reward-entry { min-height: 38px; padding: 6px 12px; }
+  :deep(.inventory-tabs.tool-workspace-tabs) { width: 100%; }
+  :deep(.inventory-tabs.tool-workspace-tabs button) { flex-grow: 1; min-height: 38px; padding-block: 6px; }
+  #inventory-panel-manifest { margin-top: 8px; }
+  .manifest-toolbar { gap: 6px; }
+  .manifest-toolbar .manifest-type-switch > button { min-height: 34px; padding: 4px 10px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; }
+  .manifest-toolbar .manifest-type-switch > button.on { border-bottom-color: var(--tea); background: transparent; }
+  .manifest-toolbar .manifest-bar { gap: 6px; }
+  .manifest-bar-summary .mf-stats { gap: 4px 10px; }
+  .manifest-bar-summary .mf-num, .manifest-bar-summary .mf-k { font-size: 12px; }
+  .manifest-item-tools .mf-filter { gap: 8px; }
+  .manifest-item-tools .mf-filter button { min-height: 36px; padding-inline: 8px; }
+  .backpack.manifest-items { margin-top: 10px; padding: 10px; }
+  .manifest-items .item-section:first-child { padding-top: 0; }
+  .manifest-items .subsection-columns { margin-top: 4px; }
+  .manifest-items .item-subsection { padding-block: 6px; }
+  .manifest-items .subsection-shelves .item-subsection { row-gap: 4px; }
 }
 }
