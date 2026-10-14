@@ -55,9 +55,10 @@ test('recruitment uses the shared beta gate with authenticated workspace', async
   assert.equal(typeof route.component, 'function')
 })
 
-test('operator tracking retains lazy loading and shows its persistent Bug warning', function () {
+test('operator tracking retains lazy loading and shows its persistent accuracy warning and feedback entry', function () {
   assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 3)
-  assert.match(operatorPage, /class="planning-bug-notice" role="note"><strong>测试中：存在很多 Bug。/)
+  assert.match(operatorPage, /class="planning-bug-notice" role="note"><strong>测试中：<\/strong>规划结果可能不准确，请核对后操作。/)
+  assert.match(operatorPage, /<router-link class="link" to="\/feedback">反馈问题<\/router-link>/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
   assert.match(operatorPage, /function setTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
   assert.match(operatorPage, /return import\("\.\.\/\.\.\/components\/operator\/OperatorGrowthTracker\.vue"\)/)

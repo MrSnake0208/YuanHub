@@ -2,9 +2,8 @@
   <section class="growth-tracker" :class="{ 'planner-expanded': plannerOpen }" aria-labelledby="growth-tracker-title">
     <header class="planner-heading">
       <div>
-        <span class="section-kicker">培养计划 · 体力规划</span>
-        <h2 id="growth-tracker-title">把目标总账变成每天能照着执行的安排</h2>
-        <p>按材料缺口安排每日体力；自定义日程后保存完整计划，随时回顾过去的安排。</p>
+        <h2 id="growth-tracker-title">培养计划 · 体力规划</h2>
+        <p>按材料缺口安排每日体力，保存日程后可随时回顾。</p>
       </div>
       <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
         <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />

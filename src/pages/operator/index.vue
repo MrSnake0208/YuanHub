@@ -2266,7 +2266,7 @@
             class="panel"
             :class="{ 'is-active': activeTab === 'tracking' }"
           >
-            <p class="planning-bug-notice" role="note"><strong>测试中：存在很多 Bug。</strong>规划结果可能不准确，请核对后再操作；遇到问题可前往反馈中心反馈。</p>
+            <p class="planning-bug-notice" role="note"><strong>测试中：</strong>规划结果可能不准确，请核对后操作。<router-link class="link" to="/feedback">反馈问题</router-link></p>
             <OperatorGrowthTracker
               :account-id="accountId"
               :current-entries="currentEntries"

@@ -4235,6 +4235,8 @@
 }
 @media (max-width: 640px) {
   .panel > .catalog-tools ~ .backpack .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }
+  #operator-panel-tracking { margin-top: 10px; }
+  .planning-bug-notice { margin-bottom: 10px; padding: 8px 10px; font-size: 12px; line-height: 1.6; }
   #operator-panel-current { margin-top: 8px; }
   .current-workbench-summary { margin-top: 0; padding: 0; border-bottom: 0; }
   .current-workbench-summary .current-status-summary { display: none; }
