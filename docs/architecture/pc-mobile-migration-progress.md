@@ -3,13 +3,13 @@
 ## 当前检查点
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
-- 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：42/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
-- 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
+- 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护保留，本轮真实父级测试及完整非浏览器检查已有记录；历史测试数字不作本轮证据。
+- 当前：用户于2026-10-14明确要求“跳过星石迁移”；本次42/42条UI路由 verified_nonbrowser，工程验收成立。应用43条UI路由中，/star为excluded_by_user，未计迁移完成；manual_ui_status全部pending。
+- 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。当前目标为全站工程迁移（按用户要求排除星石）。
 
 ## 真实路由覆盖
 
-分母：44 条 records，43 条 UI 路由（42 个独立入口文件，work/editor 复用），1 条纯 redirect。/today 是 / 的 alias。feature 关闭页仍计入分母，未擅自开启。
+分母：44 条 records，43 条 UI 路由（42 个独立入口文件，work/editor 复用），1 条纯 redirect。/today 是 / 的 alias。feature关闭页仍计入分母，未擅自开启。本次纳入42条UI路由（41个独立入口文件），排除/star；excluded_by_user表示用户明确排除，不等于迁移完成。
 
 | route/workspace | 当前入口（src/） | desktop 所有者 | mobile 所有者 | 共享业务所有者 | 状态 | 验证证据 | 阻塞及下一动作 | manual_ui_status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,7 +30,7 @@
 | /operator | pages/operator/index.vue | pages/operator/operatorWorkspaceDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorWorkspaceMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment（feature: recruitmentArchive） | pages/recruitment/index.vue | pages/recruitment/recruitmentRouteDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentRouteMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
 | /operator/share/:token? | pages/operator/share.vue | pages/operator/operatorShareDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorShareMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
-| /star | pages/star/index.vue | pages/star/starHostDesktop.css（仅宿主） | pages/star/starHostMobile.css（仅宿主） | 原 mountYuanStar/账号/云同步/OCR 控制器 | blocked | B17宿主及共享边界；整合门禁通过 | 内部真实源码缺失，已连接 drifty13/YuanStar-dev 返回404；未计完成 | pending |
+| /star | pages/star/index.vue | pages/star/starHostDesktop.css（仅宿主） | pages/star/starHostMobile.css（仅宿主） | 原 mountYuanStar/账号/云同步/OCR 控制器 | excluded_by_user | B17宿主及共享边界；整合门禁通过 | 用户要求跳过，保留现有宿主与生成产物；内部迁移不计完成 | pending |
 | /operator/quick | pages/operator/quick.vue | pages/operator/operatorQuickDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorQuickMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /operator/admin | pages/operator/admin.vue | pages/operator/operatorAdminDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorAdminMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment/admin | pages/recruitment/admin.vue | pages/recruitment/recruitmentAdminDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentAdminMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
@@ -71,7 +71,7 @@
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue + components/operator/ | operatorWorkspaceDesktop.css + 功能组件Desktop.css | operatorWorkspaceMobile.css + 功能组件Mobile.css | 原控制器/visitedTabs/全部功能组件 | verified_nonbrowser | B06：真实父级编辑/追踪清单/星石状态 + 原契约 | 保持功能开关；人工UI待做 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/RecruitmentWorkspace.vue + PoolEditor/EntryEditor/RecruitmentExchange/RecruitmentTimeline | 对应recruitment*Desktop.css | 对应recruitment*Mobile.css | 原控制器及 PoolEditor | verified_nonbrowser | B07：真实行编辑/预览 resize与原排序/CAS测试 | rows/originals/orderRevision/CAS逐字保留；人工UI待做 | pending |
 | /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue + components/calendar/ | calendar/public-calendarDesktop.css + 各局部Desktop.css | calendar/public-calendarMobile.css + 各局部Mobile.css | 原控制器/订阅编辑器 | verified_nonbrowser | B08：三视图/私人事项/订阅待办真实resize | agenda/timeline/month保持用户选择；人工UI待做 | pending |
-| /star 嵌入内部（背包/计划/OCR） | 外部 web/src/yuanstar-embed.ts → public/yuanstar-embed/ | 待真实源码 | 待真实源码 | 唯一 mountYuanStar DOM业务实例 | blocked | 原产物18行为/provenance通过；没有内部迁移证据 | 当前854a749源提交不可访问；已询问源码目录/可访问仓库，未改产物 | pending |
+| /star 嵌入内部（背包/计划/OCR） | 外部 web/src/yuanstar-embed.ts → public/yuanstar-embed/ | 待真实源码 | 待真实源码 | 唯一 mountYuanStar DOM业务实例 | excluded_by_user | 原产物18行为/provenance通过；没有内部迁移证据 | 用户要求跳过；历史854a749源码不可访问记录保留，本次结束调查 | pending |
 | 全站共享页头/导航/页脚/账号工作区/弹层 | components/ + styles/ | compactToolHeader/islandSidebar/accountWorkspace等Desktop.css；五组全局布局Desktop.css | 对应Mobile.css | 原组件/Teleport/焦点/订阅/未决承诺 | verified_nonbrowser | B17及完整整合门禁 | 公共图标/头像/徽标/密码与选择字段仍为刻意共享控件 | pending |
 
 ## B01：今日一览（L2，整体任务 L3）
@@ -214,3 +214,10 @@
 - 起点c13f501至该源码版本，API、store/stores、config、router、依赖清单、嵌入生成产物与manifest均无变化。根工作区 `.test-artifacts/pc-mobile-layered/completion-audit.json` 记录源码版本、验证范围和日志/构建入口SHA-256。
 - 新检查排除公开仓替代方案：已连接GitHub检索到可读的 `drifty13/YuanStar`，只有main（bfc5d70e）；当前web/package.json没有build:embed，真实嵌入入口返回404，854a749源ref也不存在。额外核对既有 `.ao/data/worktrees/yuanhub-all` 与 `Desktop/YuanHub-worktrees`，未发现入口或embed构建配置。没有以旧standalone源码替换当前嵌入业务。
 - 尚缺的是可修改、可复建当前embed的真实源码，而不是本地提交权限、浏览器授权或普通实现决策。已请求源码位置，未收到；继续保留当前可恢复版本。Goal本轮保持active，不能标COMPLETE_ENGINEERING。
+
+## 用户范围调整与最终收口（2026-10-14）
+
+- 用户明确要求“跳过星石迁移”，覆盖分母由原43条UI路由调整为42条；应用真实路由仍44 records/43 UI/42独立入口，范围内42 UI/41独立入口。/star及背包/计划/OCR内部改为excluded_by_user，保留现有实现，未被标为迁移完成。以上范围调整取代前文历史“42/43部分完成”“等待源码继续”的当前执行结论。
+- 纳入的42条实际UI路由均接回原入口并有真实双端所有者、共享业务与非浏览器证据，页面路径/别名/redirect/权限/开关保持。库存A1/A2与既有编辑、账号隔离、迟到结果、草稿和焦点不变量保留；没有依赖或框架升级。
+- 生产源码仍8786a36；本次仅更新范围和交付文档。已检查当前源码与该版本仅有架构文档差异；完整static610/repo1283/behavior2004日志、最终dist入口/service worker哈希和本地资源引用与完成性审计记录一致。末次样式收口另有行为15/静态290及完整static/repo/build证据，没有用窄检查冒充完整套件重跑。
+- 结论：COMPLETE_ENGINEERING（用户调整后的范围）；manual_ui_status=pending。源码YuanHub/src/，构建YuanHub/dist/，本地提交清单与人工验收操作见交付说明；没有push/PR/发布或服务重启。本次L0范围/文档变化无需新增行为测试或重复构建。
