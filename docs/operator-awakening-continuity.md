@@ -44,6 +44,8 @@
 
 ## 开发期验证
 
+卡片保存失败（含 409）后取消编辑，会恢复原星级与觉醒状态并清除失败浮层和重试入口，不再发送写请求。该行为由 `behavior/operatorEntryDefaults.spec.js` 回归覆盖。
+
 本次新增 `behavior/operatorAwakening.spec.js`、`behavior/operatorAwakeningPlan.spec.js`；更新 `test/operatorHuaji.test.js`、`test/operatorPlanGrowth.test.js`、`behavior/operatorEntryDefaults.spec.js`、`behavior/operatorSharePage.spec.js`。
 
 定向证据覆盖：24→25 的升级边界；true/false/null；旧31补录；SP/隐密/capabilities；人工 PATCH 正文；无升级调用；取消、防重复、网络错误、409 同步、账号/游戏切换、卸载；目标保存/重载、custom/favorites 冲突、完成徽记、进度、未知成本与共享需求。

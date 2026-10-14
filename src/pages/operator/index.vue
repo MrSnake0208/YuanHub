@@ -6536,6 +6536,7 @@ function cancelCardDraft(entry) {
   editedKeys.delete(entry.id + ":hp");
   cardCombatEditedKeys.value = editedKeys;
   cardPopoverKey.value = "";
+  clearCardSubmitState(entry);
 }
 
 function clearCardSubmitState(entry) {

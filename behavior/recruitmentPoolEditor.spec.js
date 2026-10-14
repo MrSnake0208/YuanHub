@@ -93,17 +93,18 @@ it.each(['Escape', '取消'])('改选心愿时搜索与筛选可用，%s只收�
   const pool = { ...recruitmentFixture().pools[0], wish_agent_ids: ['a', 'b'] }
   const catalog = recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true }))
   const agents = [{ id: 'a', name: '甲', rarity: 5, prof: '水' }, { id: 'b', name: '乙', rarity: 5, prof: '水' }, { id: 'c', name: '丙', rarity: 5, prof: '火' }, { id: 'four', name: '机密', rarity: 4 }]
-  const wrapper = render({ pool, catalog, agents, records: [] })
+  const mounted = render({ pool, catalog, agents, records: [] }, false)
+  const wrapper = new DOMWrapper(document.body)
   await wrapper.get('.quick-up-button[data-agent-id="a"]').trigger('click')
   await wrapper.get('.pull-count-field input').setValue('17')
   const opener = wrapper.findAll('.wish-edit')[0]
   await opener.trigger('click')
   await wrapper.get('.agent-search input').setValue('丙')
-  expect(wrapper.findAll('.agent-choice').map(agent => agent.text())).toEqual(['丙'])
+  expect(wrapper.findAll('.agent-choice').map(agent => agent.attributes('data-agent-id'))).toEqual(['c'])
   await wrapper.findAll('.agent-filter-options.is-prof button').find(button => button.text() === '水').trigger('click')
   expect(wrapper.find('.agent-choice').exists()).toBe(false)
   await wrapper.findAll('.agent-filter-options.is-prof button').find(button => button.text() === '火').trigger('click')
-  expect(wrapper.findAll('.agent-choice').map(agent => agent.text())).toEqual(['丙'])
+  expect(wrapper.findAll('.agent-choice').map(agent => agent.attributes('data-agent-id'))).toEqual(['c'])
   expect(wrapper.get('.add-record').attributes('aria-expanded')).toBe('false')
   if (action === 'Escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   else await wrapper.get('.agent-picker-cancel').trigger('click')
@@ -114,8 +115,8 @@ it.each(['Escape', '取消'])('改选心愿时搜索与筛选可用，%s只收�
   expect(wrapper.get('.pull-count-field input').element.value).toBe('17')
   await wrapper.get('.composer-actions .primary').trigger('click')
   await wrapper.get('form').trigger('submit')
-  expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ agent_id: 'a', pull_span: 17 })
-  expect(wrapper.emitted('save')[0][0].data.wish_agent_ids).toBeUndefined()
+  expect(mounted.emitted('save')[0][0].data.entries[0]).toMatchObject({ agent_id: 'a', pull_span: 17 })
+  expect(mounted.emitted('save')[0][0].data.wish_agent_ids).toBeUndefined()
 })
 
 it('心愿改选不创建出货，切换其他密探选择器后仍可录入四星且不改变心愿', async () => {
