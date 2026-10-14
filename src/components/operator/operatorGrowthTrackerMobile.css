@@ -486,4 +486,25 @@ button { touch-action: manipulation; }
 .tracker-popover-actions button,.add-button,.side-details summary { min-height:44px; }
 .tracker-dialog-close,.roster-remove { width:44px;height:44px; }
 .tracker-number-input { min-width:44px; }
+@media (max-width: 640px) {
+  .growth-tracker { margin-top: 10px; padding: 12px; }
+  .planner-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding-bottom: 12px; }
+  .planner-heading > div { display: contents; }
+  .planner-heading h2 { grid-column: 1; margin-top: 0; font-size: 20px; }
+  .planner-heading p { grid-column: 1 / -1; grid-row: 2; margin-top: 0; line-height: 1.5; }
+  .planner-refresh { grid-column: 2; grid-row: 1; width: auto; min-height: 36px; padding-inline: 8px; border-color: transparent; background: transparent; white-space: nowrap; }
+  .planner-status { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 12px; padding-top: 0; }
+  .status-main { display: contents; }
+  .status-title { grid-row: 1; }
+  .status-title :deep(.plan-heading) { flex-wrap: nowrap; gap: 8px; }
+  .status-title :deep(.plan-switcher) { flex: 1; }
+  .status-title :deep(.plan-heading-actions) { flex: none; }
+  .status-title :deep(.plan-title) { font-size: 20px; }
+  .status-metrics { grid-row: 2; }
+  .planner-status .status-metric { min-height: 84px; padding: 10px; }
+  .status-metric strong { margin-top: 6px; line-height: 1.2; }
+  .metric-explanation { margin-top: 4px; }
+  .status-actions { grid-row: 3; }
+  .status-rule { padding: 4px 0; }
+}
 }
