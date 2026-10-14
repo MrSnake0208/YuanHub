@@ -1,13 +1,16 @@
 <template>
   <Teleport to="body">
     <div v-if="open && pool" class="modal-mask" @click.self="close">
-      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
+      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded, 'is-progress-expanded': progressExpanded }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
         <header class="editor-header">
           <div class="editor-title">
             <span class="editor-eyebrow">{{ practice ? '练习 · 不会保存到你的账号' : '招募档案' }}</span>
             <h2 :id="editorId + '-title'">{{ poolName }}</h2>
-            <p class="pool-confirmation">{{ recruitmentPoolDateLabel(poolDefinition) }} · {{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</p>
+            <p class="pool-confirmation"><span>{{ recruitmentPoolDateLabel(poolDefinition) }}</span><span class="confirmation-separator"> · </span><span class="confirmation-hint">{{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</span></p>
           </div>
+          <button type="button" class="compact-progress" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" @click="toggleProgress">
+            {{ tailProgress == null ? '保底未知' : `距保底 ${40 - tailProgress} 抽` }}
+          </button>
           <button v-if="TUTORIALS_ENABLED && !guideVisible" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">退出教程</button>
           <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
@@ -28,7 +31,8 @@
               </div>
               <div class="progress-rail" aria-hidden="true"><span :style="{ width: tailProgress == null ? '0%' : tailProgress / 40 * 100 + '%' }"></span></div>
             </div>
-            <div class="remaining-guide">
+            <button v-if="!guideVisible && !practice" type="button" class="progress-edit" :aria-controls="editorId + '-progress-fields'" :aria-expanded="progressExpanded" :disabled="busy || !!progressError" @click="toggleProgress">{{ progressExpanded ? '收起' : readOnly ? '查看' : '编辑' }}</button>
+            <div :id="editorId + '-progress-fields'" class="remaining-guide">
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage" />
               <div class="record-view-switch progress-label-switch" role="group" aria-label="保底进度填写方式">
                 <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label === '已抽' ? '距保底' : '已垫' }}</button>
@@ -36,14 +40,14 @@
               <label data-guide-target="progress" class="remaining-field">
                 <span class="sr-only">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}</span>
                 <span class="remaining-input">
-                  <input ref="remainingInput" v-model="progressInput" type="number" inputmode="numeric" :min="progressLabel === '已抽' ? 1 : 0" :max="progressLabel === '已抽' ? 40 : 39" placeholder="未知" :disabled="busy || readOnly || recordsLoading" :aria-invalid="!!progressError || undefined" :aria-describedby="progressError ? editorId + '-progress-error' : undefined" @input="progressReviewed = false; progressError = ''" @blur="reviewProgress">
+                  <input ref="remainingInput" v-model="progressInput" type="number" inputmode="numeric" :min="progressLabel === '已抽' ? 1 : 0" :max="progressLabel === '已抽' ? 40 : 39" placeholder="未知" :disabled="busy || readOnly || recordsLoading" :aria-invalid="!!progressError || undefined" :aria-describedby="progressError ? editorId + '-progress-error' : undefined" @input="progressReviewed = false; progressError = ''" @blur="reviewProgress" @invalid="revealProgress">
                   <span>抽</span>
                 </span>
               </label>
             </div>
             <p v-if="progressError" :id="editorId + '-progress-error'" class="progress-error" role="alert">{{ progressError }}</p>
           </section>
-          <div ref="editorBody" class="editor-body">
+          <div ref="editorBody" class="editor-body" @scroll.passive="onEditorScroll">
             <p v-if="readOnly && !practiceResult" data-guide-target="read-only" class="state-note">当前档案只可查看，暂不能修改。</p>
             <p v-else-if="pool?.catalog_state === 'hidden'" data-guide-target="read-only" class="state-note">此卡池已隐藏。已有记录、统计与保底保留，可维护和导出；不能新增出货。</p>
             <p v-else-if="!canRecord" data-guide-target="read-only" class="state-note">此卡池已停用或目录暂不可用。可以修改已有记录与保底，暂不能新增出货。</p>
@@ -224,10 +228,10 @@
                           <button type="button" aria-label="增加本次出货抽数" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow) || Number(activeRow.pull_span) >= MAX_EVENT_PULLS" @click="stepPullSpan(1)"><Plus :size="16" aria-hidden="true" /></button>
                         </span>
                       </div>
-                      <button type="button" class="unknown-pulls" :aria-pressed="!isFourStar(activeRow) && activeRow.pull_span === ''" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow)" @click="markPullsUnknown">未知</button>
+                      <button type="button" class="unknown-pulls" :aria-pressed="!isFourStar(activeRow) && activeRow.pull_span === ''" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow)" @click="markPullsUnknown"><span class="desktop-copy">未知</span><span class="mobile-copy">抽数未知 <span aria-hidden="true">{{ activeRow.pull_span === '' ? '●' : '○' }}</span></span></button>
                     </div>
                     <button data-guide-target="save-record" type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : practice ? '查看练习结果' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || ((!!recordsError || !!unverifiedSave) && !originals.has(activeRow.event_id))" @click="practice && !originals.has(activeRow.event_id) ? submit() : confirmRecord()">{{ busy ? '处理中…' : originals.has(activeRow.event_id) ? '完成' : practice ? '查看练习结果' : '加入' }}</button>
-                    <button type="button" class="entry-cancel" title="取消当前录入" :disabled="busy" @click="cancelEntry"><X :size="16" aria-hidden="true" /><span class="sr-only">取消</span></button>
+                    <button type="button" class="entry-cancel" title="取消当前录入" :disabled="busy" @click="cancelEntry"><X class="desktop-copy" :size="16" aria-hidden="true" /><span class="sr-only">取消</span><span class="mobile-copy" aria-hidden="true">重置</span></button>
                   </div>
                 </div>
                 <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" title="删除记录" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)"><Trash2 :size="16" aria-hidden="true" /><span class="sr-only">删除记录</span></button>
@@ -244,10 +248,10 @@
                       <button type="button" aria-label="增加本次出货抽数" disabled><Plus :size="16" aria-hidden="true" /></button>
                     </span>
                   </div>
-                  <button type="button" class="unknown-pulls" disabled>未知</button>
+                  <button type="button" class="unknown-pulls" disabled><span class="desktop-copy">未知</span><span class="mobile-copy">抽数未知 ○</span></button>
                 </div>
                   <button type="button" class="primary" disabled>加入</button>
-                  <button type="button" class="entry-cancel" aria-label="取消当前录入" title="取消当前录入" disabled><X :size="16" aria-hidden="true" /></button>
+                  <button type="button" class="entry-cancel" aria-label="取消当前录入" title="取消当前录入" disabled><X class="desktop-copy" :size="16" aria-hidden="true" /><span class="mobile-copy" aria-hidden="true">重置</span></button>
                 </div>
               </div>
               </div>
@@ -264,11 +268,11 @@
                 </div>
                 <label v-if="rows.length" class="record-search"><span class="sr-only">查找已有记录</span><Search :size="16" aria-hidden="true" /><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="查找密探" autocomplete="off"></label>
                 <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
-                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
-                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')" aria-label="进度条视图">进度条<span class="desktop-copy">视图</span></button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')" aria-label="密探视图">密探<span class="desktop-copy">视图</span></button>
                 </div>
               </div>
-              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || '拖动排序 · 点击编辑 · 触屏长按拖动 · 聚焦头像后用上下键移动' }}
+              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status"><template v-if="sortBlocked">{{ sortBlocked }}</template><template v-else><span class="desktop-copy">拖动排序 · 点击编辑 · 触屏长按拖动 · 聚焦头像后用上下键移动</span><span class="mobile-copy">点击编辑 · 长按排序<span class="sr-only"> · 聚焦头像后用上下键移动</span></span></template>
                 <button v-if="hasMore" type="button" :disabled="busy || readOnly || recordsLoading" @click="$emit('load-all')">{{ recordsLoading ? '正在读取…' : recordsError ? '重试读取全部记录' : '读取全部后排序' }}</button>
                 <button v-if="orderChanged" type="button" :disabled="busy || !!unverifiedSave || dragging" @click="resetOrder">恢复保存前顺序</button>
               </p>
@@ -361,7 +365,7 @@
               <strong v-if="pendingCount">{{ pendingCount }} 项未保存</strong>
               <span v-if="activeRow">{{ originals.has(activeRow.event_id) ? '完成单条编辑后统一保存' : '本条加入后可统一保存' }}</span>
               <span v-else-if="pendingCount">仅在当前窗口，保存后写入档案</span>
-              <span v-else>{{ unverifiedSave ? '保存结果尚未确认，请重新核对' : receiptVerified ? '已保存并核对' : '修改将在保存后生效' }}</span>
+              <span v-else>{{ unverifiedSave ? '保存结果尚未确认，请重新核对' : receiptVerified ? '已保存并核对' : '暂无修改' }}</span>
             </p>
             <div class="footer-actions">
               <button type="button" :disabled="busy" @click="close">取消</button>
@@ -401,6 +405,27 @@ const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), erro
 const originals = reactive(new Map())
 const orderIds = ref(null), orderRevision = ref(null)
 const entryError = ref(''), progressError = ref('')
+const progressEditing = ref(false), headerScrolled = ref(false)
+const progressExpanded = computed(() => progressEditing.value || !!progressError.value || guideVisible.value || props.practice)
+async function revealProgress() {
+  progressEditing.value = true
+  await nextTick()
+  remainingInput.value?.focus({ preventScroll: true })
+}
+function toggleProgress() {
+  if (progressEditing.value) progressEditing.value = false
+  else revealProgress()
+}
+function onEditorScroll(event) {
+  const top = event.target.scrollTop
+  if (top <= 0) headerScrolled.value = false
+  else if (!headerScrolled.value) {
+    // 留足收起高度，避免短列表在底部因滚动位置被压回零而反复展开。
+    const headingHeight = (panel.value?.querySelector('.editor-header')?.offsetHeight || 0) + (panel.value?.querySelector('.progress-card')?.offsetHeight || 0)
+    if (top > Math.max(120, headingHeight)) headerScrolled.value = true
+  }
+}
+
 const preservedProgress = ref(null)
 const naturalRows = computed(() => {
   const byId = new Map(rows.value.map(row => [row.event_id, row]))
@@ -881,6 +906,7 @@ function remove(row) {
 }
 watch(() => props.open, open => {
   editorSession++
+  progressEditing.value = false; headerScrolled.value = false
   entryReturn = null
   sortAnnouncement.value = ''
   if (!open) {
@@ -977,6 +1003,7 @@ async function submit() {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.mobile-copy, .progress-edit, .compact-progress { display: none; }
 .pool-editor {
   border: 1px solid var(--line);
   background: var(--surface);

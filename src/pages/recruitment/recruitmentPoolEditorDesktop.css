@@ -123,6 +123,8 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .record-detail { display: flex; align-items: center; width: 100%; min-width: 0; min-height: 44px; padding: 0; text-align: left; }
 .record-track { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; width: 100%; min-width: 0; min-height: 36px; }
 .record-bar { --bar-color: var(--accent-strong); display: flex; flex: none; align-items: center; min-width: 72px; max-width: calc(100% - 48px); height: 36px; padding: 0 10px; }
+.record-track:has(> .pending-mark) { flex-wrap: nowrap; }
+.record-track:has(> .pending-mark) .record-bar { flex-shrink: 1; min-width: max-content; }
 .record-bar.bar-low { --bar-color: #367447; }
 .record-bar.bar-mid { --bar-color: var(--accent-strong); }
 .record-bar.bar-high { --bar-color: var(--rouge); }

@@ -616,13 +616,13 @@ it('普通新增保存后留在本池，继续编辑原ID并改保底，重开�
 
 it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹窗取消不写入', async () => {
   persistSubmittedRecord()
-  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await composer(wrapper).get('.entry-cancel').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
   expect(editor(wrapper).find('.record-feed .delete-record').exists()).toBe(false)
   await editRow(wrapper); await button(composer(wrapper), '删除记录').trigger('click')
   await button(editor(wrapper), '新增记录').trigger('click')
   await composer(wrapper).get('.agent-choice').trigger('click')
   await composer(wrapper).get('.pull-count-field input').setValue('12')
-  await button(composer(wrapper), '取消').trigger('click')
+  await composer(wrapper).get('.entry-cancel').trigger('click')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
   await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(1)
   expect(records['acc-a'].map(row => row.event_id)).toEqual(['B'])
