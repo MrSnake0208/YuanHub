@@ -5,9 +5,11 @@ import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
 import { getCurrentStarState } from '../src/api/starState.js'
 import { getCurrentStarLoadout, putCurrentStarLoadout } from '../src/api/starLoadout.js'
-import { listAgentFavorites } from '../src/api/inventory.js'
+import { getCurrent as getInventoryCurrent, listAgentFavorites } from '../src/api/inventory.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { auth } from '../src/store/auth.js'
+import { activeAccount } from '../src/store/activeAccount.js'
+import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { dialog } from '../src/utils/dialog.js'
 import * as features from '../src/config/features.js'
 import { installViewport } from '../test-support/viewport.js'
@@ -23,27 +25,32 @@ vi.mock('../src/api/operator.js', async importOriginal => {
 })
 vi.mock('../src/api/inventory.js', async importOriginal => {
   const actual = await importOriginal()
-  return { ...actual, listAgentFavorites: vi.fn() }
+  return { ...actual, getCurrent: vi.fn(), listAgentFavorites: vi.fn() }
 })
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
-vi.mock('../src/store/activeAccount.js', () => ({ activeAccount: {
-  id: 'acc', gameFor: () => '如鸢', set: vi.fn(), setGame: vi.fn(), syncAccounts: vi.fn(),
-} }))
-vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
+vi.mock('../src/store/activeAccount.js', async () => {
+  const { reactive } = await import('vue')
+  return { activeAccount: reactive({
+    id: 'acc', gameFor: () => '如鸢', set: vi.fn(), setGame: vi.fn(), syncAccounts: vi.fn(),
+  }) }
+})
+vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: vi.fn(() => () => {}) }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn().mockResolvedValue(true), alert: vi.fn() } }))
 
 const operator = { id: 'op', name: '测试密探', rarity: 3, games: ['如鸢'] }
 beforeEach(() => {
   vi.clearAllMocks()
   auth.isLoggedIn = true
+  activeAccount.id = 'acc'
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
   operatorApi.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: '测试账号', game: '如鸢' }])
   operatorApi.getOperatorCurrent.mockResolvedValue([])
   operatorApi.getOperatorAnnotations.mockResolvedValue({ items: [] })
   operatorApi.listOperatorScanReviews.mockResolvedValue({ items: [] })
   listAgentFavorites.mockResolvedValue({ agent_ids: [] })
+  getInventoryCurrent.mockResolvedValue([])
   getCurrentStarState.mockResolvedValue({ generation: 0, entries: [] })
   getCurrentStarLoadout.mockResolvedValue({ generation: 0, revision: 0, loadouts: {} })
   vi.spyOn(starLoadoutPresetStore, 'load').mockResolvedValue()
@@ -574,7 +581,8 @@ it.each([
   expect(row.querySelector('.ledger-grow-label').textContent).toBe('化极')
   expect(value.text()).toBe(label)
   expect(value.attributes('aria-label')).toBe('化极：' + (awakened ? '已觉醒' : '5 星'))
-  expect(row.querySelector('.ledger-next-action')).toBeNull()
+  expect(row.querySelector('.ledger-next-action:not(.ledger-heart-stock)')).toBeNull()
+  expect(row.querySelector('.ledger-heart-stock') !== null).toBe(!awakened && stage === 25)
   expect(row.textContent).not.toContain('觉醒待确认')
   await value.trigger('click')
   expect(wrapper.find('.ledger-star-popover').exists()).toBe(true)
@@ -582,6 +590,62 @@ it.each([
   expect(operatorApi.previewOperatorUpgrade).not.toHaveBeenCalled()
   expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
   expect(current.huaji).toEqual({ owned: true, stage, awakened })
+})
+
+it.each([
+  [390, null, 39], [1440, false, 120], [390, false, 0], [1440, null, 100],
+])('五星未觉醒保留本密探心纸库存与参考需求：%ipx/%s/%i', async (width, awakened, count) => {
+  installViewport(width)
+  getInventoryCurrent.mockImplementation(async ({ entityType }) => entityType === 'agent'
+    ? [{ entity_type: 'agent', entries: { op: { count }, other: { count: 999 } } }] : [])
+  const wrapper = await openCardStarEditor({ level: 100, elite: 17, starLevel: 25,
+    huaji: { owned: true, stage: 25, awakened } })
+  const stock = wrapper.get('.ledger-heart-stock')
+  expect(stock.text()).toBe(`${count}/100`)
+  expect(stock.attributes('aria-label')).toContain('心纸库存/觉醒参考需求')
+  expect(getInventoryCurrent).toHaveBeenCalledWith({ accountId: 'acc', entityType: 'agent' })
+  await wrapper.get('.ledger-huaji-value').trigger('click')
+  expect(stock.attributes('aria-expanded')).toBe('false')
+  await stock.trigger('click')
+  expect(stock.attributes('aria-expanded')).toBe('true')
+  expect(wrapper.get('.ledger-star-popover').text()).toContain('觉醒需 100 心纸')
+  expect(wrapper.get('.ledger-star-popover').text()).toContain('1 个装金玻璃')
+  expect(wrapper.get('.ledger-star-popover').text()).toContain('不扣库存')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.previewOperatorUpgrade).not.toHaveBeenCalled()
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})
+
+it.each([
+  [{ rarity: 4 }, 24, null], [{ rarity: 4 }, 25, true], [{ rarity: 4 }, null, null],
+  [{ rarity: 3 }, 24, null], [{ rarity: 5, spOf: 'base' }, 25, null],
+  [{ rarity: 4, huajiCapabilities: { awakening_supported: false } }, 25, null],
+])('心纸觉醒参考不用于低星、已觉醒、未知或不支持的密探 %#', async (catalog, stage, awakened) => {
+  const wrapper = await openCardStarEditor({ level: 100, elite: 17, starLevel: stage ?? 31,
+    huaji: { owned: true, stage, awakened } }, { ...operator, ...catalog })
+  expect(wrapper.find('.ledger-heart-stock').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.previewOperatorUpgrade).not.toHaveBeenCalled()
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})
+
+it('五星心纸加载中显示未知，库存返回后更新数量', async () => {
+  let resolve
+  const pending = new Promise(yes => { resolve = yes })
+  getInventoryCurrent.mockImplementation(({ entityType }) => entityType === 'agent' ? pending : Promise.resolve([]))
+  const wrapper = await openCardStarEditor({ level: 100, elite: 17, starLevel: 25,
+    huaji: { owned: true, stage: 25, awakened: false } })
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('—/100')
+  resolve([{ entity_type: 'agent', entries: { op: { count: 39 } } }])
+  await flushPromises()
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('39/100')
+})
+
+it('五星心纸读取失败保留未知，不显示为零库存', async () => {
+  getInventoryCurrent.mockRejectedValue(new Error('库存读取失败'))
+  const wrapper = await openCardStarEditor({ level: 100, elite: 17, starLevel: 25,
+    huaji: { owned: true, stage: 25, awakened: false } })
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('—/100')
 })
 
 it.each([false, null])('觉醒衔接：五星卡片%s通过完整编辑的星级入口记录觉醒，不预览扣库', async awakened => {
@@ -619,7 +683,8 @@ it('觉醒衔接：stage24→25沿用原扣库预览与执行，五星后不追�
   expect(operatorApi.executeOperatorUpgrade).toHaveBeenCalledTimes(1)
   expect(operatorApi.executeOperatorUpgrade.mock.lastCall[0]).toMatchObject({ dimension: 'huaji', target: 25 })
   expect(wrapper.get('.ledger-huaji-value').text()).toBe('5')
-  expect(wrapper.get('.ledger-huaji-value').element.parentElement.querySelector('.ledger-next-action')).toBeNull()
+  expect(wrapper.get('.ledger-huaji-value').element.parentElement.querySelector('.ledger-next-action:not(.ledger-heart-stock)')).toBeNull()
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('0/100')
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
@@ -727,4 +792,141 @@ it.each([500, 409])('快捷觉醒：保存失败%s保留草稿与版本，取消
   expect(wrapper.find('.ledger-card-save').exists()).toBe(false)
   expect(wrapper.find('.ledger-submit-overlay').exists()).toBe(false)
   expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledTimes(1)
+})
+
+
+it.each([null, false])('快捷扣料觉醒：五星%s预览只读，确认保留stage25并同步扣料，重复点击只执行一次', async awakened => {
+  const current = { level: 100, elite: 17, starLevel: 25, revision: 3, huaji: { owned: true, stage: 25, awakened } }
+  getInventoryCurrent.mockImplementation(async ({ entityType }) => entityType === 'agent'
+    ? [{ entity_type: 'agent', entries: { op: { count: 120 } } }]
+    : [{ entity_type: 'item', entries: { zhuangjinboli: { count: 1 } } }])
+  operatorApi.previewOperatorUpgrade.mockResolvedValueOnce({ dimension: 'awakening', available: true, from: 0, to: 1,
+    operator_revision: 3, inventory_revision: 8, preview_token: 'awake-preview', requirements: [
+      { entity_type: 'agent', id: 'op', required: 100, owned: 120, balance_after: 20 },
+      { entity_type: 'item', id: 'zhuangjinboli', required: 1, owned: 1, balance_after: 0 },
+    ] })
+  let resolve
+  operatorApi.executeOperatorUpgrade.mockImplementationOnce(() => new Promise(yes => { resolve = yes }))
+  const wrapper = await openCardStarEditor(current, { ...operator, rarity: 4, huajiCapabilities: { awakening_upgrade_supported: true } })
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('120/100')
+  await wrapper.get('.ledger-heart-stock').trigger('click'); await flushPromises()
+  expect(operatorApi.previewOperatorUpgrade).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc', dimension: 'awakening', target: 1, expectedOperatorRevision: 3 }))
+  expect(wrapper.get('.ledger-upgrade-popover').text()).toContain('觉醒')
+  expect(wrapper.get('.ledger-upgrade-popover').text()).toContain('装金玻璃')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+  const confirm = wrapper.findAll('.ledger-upgrade-popover button').find(button => button.text() === '确认觉醒并扣除库存')
+  await confirm.trigger('click')
+  await confirm.trigger('click')
+  expect(operatorApi.executeOperatorUpgrade).toHaveBeenCalledTimes(1)
+  expect(operatorApi.executeOperatorUpgrade.mock.lastCall[0]).toMatchObject({ dimension: 'awakening', target: 1, expectedOperatorRevision: 3, expectedInventoryRevision: 8, previewToken: 'awake-preview' })
+  resolve({ transaction_id: 'awake-tx', operator: { ...current, star_level: 25, revision: 4, huaji: { ...current.huaji, awakened: true } }, consumed: [
+    { entity_type: 'agent', id: 'op', balance_after: 20 }, { entity_type: 'item', id: 'zhuangjinboli', balance_after: 0 },
+  ] })
+  await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('已觉醒')
+  expect(wrapper.find('.ledger-heart-stock').exists()).toBe(false)
+  expect(wrapper.find('.ledger-upgrade-popover').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it.each(['op', 'zhuangjinboli'])('快捷扣料觉醒：%s不足时展示缺口且不能确认', async missing => {
+  const current = { level: 100, elite: 17, starLevel: 25, revision: 3, huaji: { owned: true, stage: 25, awakened: false } }
+  operatorApi.previewOperatorUpgrade.mockResolvedValueOnce({ dimension: 'awakening', available: false, from: 0, to: 1,
+    operator_revision: 3, inventory_revision: 8, preview_token: 'lack-preview', requirements: [
+      { entity_type: 'agent', id: 'op', required: 100, owned: missing === 'op' ? 99 : 100, balance_after: missing === 'op' ? -1 : 0 },
+      { entity_type: 'item', id: 'zhuangjinboli', required: 1, owned: missing === 'zhuangjinboli' ? 0 : 1, balance_after: missing === 'zhuangjinboli' ? -1 : 0 },
+    ] })
+  const wrapper = await openCardStarEditor(current, { ...operator, rarity: 5, huajiCapabilities: { awakeningUpgradeSupported: true } })
+  await wrapper.get('.ledger-heart-stock').trigger('click'); await flushPromises()
+  expect(wrapper.get('.ledger-upgrade-popover .is-lack').text()).toContain(missing === 'op' ? '心纸' : '装金玻璃')
+  expect(wrapper.findAll('.ledger-upgrade-popover button').some(button => button.text().includes('确认'))).toBe(false)
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('5')
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+
+const awakeningCurrent = () => ({ level: 100, elite: 17, starLevel: 25, revision: 3, huaji: { owned: true, stage: 25, awakened: false } })
+const awakeningPreview = () => ({ dimension: 'awakening', available: true, from: 0, to: 1, operator_revision: 3,
+  inventory_revision: 8, preview_token: 'awake-preview', requirements: [
+    { entity_type: 'agent', id: 'op', required: 100, owned: 100, balance_after: 0 },
+    { entity_type: 'item', id: 'zhuangjinboli', required: 1, owned: 1, balance_after: 0 },
+  ] })
+const awakeningCatalog = { ...operator, rarity: 4, huajiCapabilities: { awakening_upgrade_supported: true } }
+const awakeningConfirm = wrapper => wrapper.findAll('.ledger-upgrade-popover button').find(button => button.text() === '确认觉醒并扣除库存')
+
+it.each(['operator_state_stale', 'inventory_state_stale'])('快捷扣料觉醒：%s刷新预览后要求再次确认，不自动重扣', async code => {
+  const current = awakeningCurrent()
+  operatorApi.previewOperatorUpgrade.mockResolvedValue(awakeningPreview())
+  operatorApi.executeOperatorUpgrade.mockRejectedValueOnce(Object.assign(new Error('stale'), { code }))
+  const wrapper = await openCardStarEditor(current, awakeningCatalog)
+  await wrapper.get('.ledger-heart-stock').trigger('click'); await flushPromises()
+  await awakeningConfirm(wrapper).trigger('click'); await flushPromises()
+  expect(operatorApi.executeOperatorUpgrade).toHaveBeenCalledTimes(1)
+  expect(operatorApi.previewOperatorUpgrade).toHaveBeenCalledTimes(2)
+  expect(awakeningConfirm(wrapper).exists()).toBe(true)
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('5')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('快捷扣料觉醒：服务错误保留状态，重试沿用同一幂等键', async () => {
+  const current = awakeningCurrent()
+  operatorApi.previewOperatorUpgrade.mockResolvedValue(awakeningPreview())
+  operatorApi.executeOperatorUpgrade.mockRejectedValue(new Error('synthetic failure'))
+  const wrapper = await openCardStarEditor(current, awakeningCatalog)
+  await wrapper.get('.ledger-heart-stock').trigger('click'); await flushPromises()
+  await awakeningConfirm(wrapper).trigger('click'); await flushPromises()
+  await awakeningConfirm(wrapper).trigger('click'); await flushPromises()
+  expect(operatorApi.executeOperatorUpgrade.mock.calls[1][0].idempotencyKey).toBe(operatorApi.executeOperatorUpgrade.mock.calls[0][0].idempotencyKey)
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('5')
+  expect(wrapper.find('.ledger-upgrade-popover').exists()).toBe(true)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it.each(['preview', 'execute'])('快捷扣料觉醒：%s响应迟到不更新新账号', async phase => {
+  const current = awakeningCurrent()
+  let resolve
+  const pending = new Promise(yes => { resolve = yes })
+  operatorApi.previewOperatorUpgrade.mockResolvedValue(awakeningPreview())
+  if (phase === 'preview') operatorApi.previewOperatorUpgrade.mockReturnValueOnce(pending)
+  else operatorApi.executeOperatorUpgrade.mockReturnValueOnce(pending)
+  const wrapper = await openCardStarEditor(current, awakeningCatalog)
+  await wrapper.get('.ledger-heart-stock').trigger('click'); await flushPromises()
+  if (phase === 'execute') await awakeningConfirm(wrapper).trigger('click')
+  activeAccount.id = 'account-b'; await flushPromises()
+  resolve(phase === 'preview' ? awakeningPreview() : { transaction_id: 'old-account',
+    operator: { ...current, huaji: { ...current.huaji, awakened: true }, revision: 4 }, consumed: [{ entity_type: 'agent', id: 'op', balance_after: 0 }] })
+  await flushPromises()
+  expect(wrapper.find('.ledger-upgrade-popover').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('已提升并扣除库存')
+  expect(wrapper.text()).not.toContain('已觉醒')
+  expect(operatorApi.executeOperatorUpgrade).toHaveBeenCalledTimes(phase === 'execute' ? 1 : 0)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+
+it.each([24, 25])('快捷觉醒通知：同步stage%s的状态与两种库存，重复通知不写库，其他账号通知忽略', async stage => {
+  const current = { ...awakeningCurrent(), starLevel: stage, huaji: { owned: true, stage, awakened: false } }
+  getInventoryCurrent.mockImplementation(async ({ entityType }) => entityType === 'agent'
+    ? [{ entity_type: 'agent', entries: { op: { count: 120 } } }]
+    : [{ entity_type: 'item', entries: { zhuangjinboli: { count: 1 } } }])
+  const wrapper = await openCardStarEditor(current, awakeningCatalog)
+  const event = { event: 'operator-upgrade', data: { account_id: 'acc', transaction_id: 'other-tab-awake',
+    operator_id: 'op', dimension: 'awakening', from: 0, to: 1, operator_revision: 4, inventory_revision: 9,
+    consumed: [{ entity_type: 'agent', id: 'op', balance_after: 20 }, { entity_type: 'item', id: 'zhuangjinboli', balance_after: 0 }],
+  } }
+  const handler = subscribeAccountEvents.mock.calls.at(-1)[0]
+  handler({ ...event, data: { ...event.data, account_id: 'account-b' } }); await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').text()).not.toBe('已觉醒')
+  handler(event); await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('已觉醒')
+  expect(wrapper.find('.ledger-heart-stock').exists()).toBe(false)
+  handler(event); await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('已觉醒')
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  // 人工校正回五星不扣料，库存应保留事件回传余额。
+  await wrapper.get('[aria-label="快捷设置星级与觉醒"]').setValue('5')
+  expect(wrapper.get('.ledger-heart-stock').text()).toBe('20/100')
 })

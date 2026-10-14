@@ -126,3 +126,10 @@ HTTP 422（例如 `agent_game_mismatch`）属于服务端校验拒绝，等待�
 当前图鉴仍有多个同名 ID 时，TXT 继续按歧义拦截，不会随意选择第一项。JSON 携带已删除的 ID 时也会拦截，不会根据名称静默改写原始记录。
 
 网页补录的目录校验不会迁移云端旧养成或心纸库存。后端同时将库存目录中的密探改为直接读取公共图鉴；旧养成可以在「当前养成」确认后清理。发布顺序与范围见 [密探目录 ID 变更修复](./backend-operator-catalog-id-repair.md)。
+
+
+## 装金玻璃库存与觉醒材料
+
+背包道具展示并支持搜索「装金玻璃」（`zhuangjinboli`），归入「密探养成资源 → 觉醒材料」。库存为0时也出现在「全部」和「未持有」；有库存时出现在「全部」和「已持有」。可通过觉醒材料分组编辑或全量盘点填写实际数量，保存为库存快照，不当作奖励。手动补录奖励渠道也允许选择该道具，历练/派遣的原渠道限制保留。快捷觉醒复用同一个库存ID扣料。
+
+定向回归：`node --test test/itemSections.test.js test/rewardChannels.test.js`；组件回归：`npm run test:behavior -- behavior/inventoryStockBaseline.spec.js`。手机约390px/桌面1440px手动检查搜索「玻璃」、持有筛选和分组编辑；真实浏览器验收由用户执行。

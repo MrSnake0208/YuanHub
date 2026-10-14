@@ -214,7 +214,7 @@ it('失败保留确认与草稿，重复点击只发一笔，重试成功后退�
   expect(wrapper.find('.stock-editor').exists()).toBe(false)
 })
 
-it('完整基准下普通数量调整仍可保存，隐藏道具被保留，快照不转换为奖励', async () => {
+it('完整基准下普通数量调整仍可保存，未修改的装金玻璃被保留，快照不转换为奖励', async () => {
   inventoryApi.getCurrent.mockResolvedValue(fullStock('acc-a', {
     baijinbi: { count: 100 }, zhuangjinboli: { count: 15 },
   }))
@@ -732,4 +732,36 @@ it('同账号换登录身份时销毁旧奖励草稿并释放锁，迟到结果�
   expect(document.querySelector('.basket-list li')).toBeNull()
   expect(document.querySelector('.result')).toBeNull()
   wrapper.unmount()
+})
+
+
+it.each([[390, 0], [390, 3], [1440, 0], [1440, 3]])('背包搜索玻璃能找到觉醒材料并编辑数量：%ipx/库存%i', async (width, count) => {
+  installViewport(width)
+  inventoryApi.getCurrent.mockResolvedValue(fullStock('acc-a', { zhuangjinboli: { count } }))
+  const wrapper = render()
+  try {
+    await flushPromises()
+    await wrapper.get('#manifest-search').setValue('玻璃')
+    expect(wrapper.get('.backpack').text()).not.toContain('没有匹配')
+    const section = wrapper.findAll('.item-subsection').find(item => item.find('h3').text() === '觉醒材料')
+    expect(section.text()).toContain('装金玻璃')
+    expect(section.get('.slot-count').text()).toBe(String(count))
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    const filters = wrapper.findAll('.mf-filter button')
+    await filters.find(button => button.text() === (count ? '已持有' : '未持有')).trigger('click')
+    expect(wrapper.text()).toContain('装金玻璃')
+    await filters.find(button => button.text() === (count ? '未持有' : '已持有')).trigger('click')
+    expect(wrapper.text()).toContain('没有匹配')
+    await filters.find(button => button.text() === '全部').trigger('click')
+    await wrapper.get('[aria-label="编辑觉醒材料的库存"]').trigger('click')
+    const input = wrapper.get('[aria-label="装金玻璃当前库存"]')
+    expect(input.element.value).toBe(String(count))
+    await input.setValue('7')
+    await save(wrapper).trigger('click'); await flushPromises()
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({
+      account_id: 'acc-a', entity_type: 'item', record_type: 'stock_snapshot', snapshot_scope: 'listed',
+      entries: [expect.objectContaining({ id: 'zhuangjinboli', count: 7 })],
+    })
+  } finally { wrapper.unmount() }
 })

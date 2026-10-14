@@ -43,8 +43,8 @@ test('历练仅提供三种兵书与修为进阶材料', () => {
 test('其他奖励仍可选择道具或心纸，渠道预设保持完整', () => {
   assert.equal(REWARD_CHANNELS.length, 5)
   const otherItems = rewardOptionsForChannel('手动补录', entities, 'item')
-  assert.equal(otherItems.length, ITEM_CATALOG.length - 1)
-  assert.equal(otherItems.some(entry => entry.id === 'zhuangjinboli'), false)
+  assert.equal(otherItems.length, ITEM_CATALOG.length)
+  assert.equal(otherItems.some(entry => entry.id === 'zhuangjinboli'), true)
   assert.equal(rewardOptionsForChannel('手动补录', entities, 'agent').length, AGENT_CATALOG.length - 2)
 })
 test('提交前再次阻止不属于对应渠道的条目，不影响历史报告导入协议', () => {
@@ -84,4 +84,13 @@ test('电影心纸按目录关系排除，普通 ID 的 sp 后缀不影响奖励
     { entity_type: 'agent', id: 'empty', name: '普通空字段', spOf: '' },
   ]
   assert.deepEqual(rewardOptionsForChannel('派遣-寿春', catalog).map(entry => entry.id).sort(), ['empty', 'normalsp'])
+})
+
+
+test('手动补录允许装金玻璃，历练和派遣仍按原有渠道限制', () => {
+  const record = { acquisition_channel: '手动补录', entity_type: 'item', entries: [{ id: 'zhuangjinboli', count: 1 }] }
+  assert.doesNotThrow(() => validateManualRewardChannel(record, entities))
+  for (const channel of ['历练', '派遣-洛阳', '派遣-寿春']) {
+    assert.throws(() => validateManualRewardChannel({ ...record, acquisition_channel: channel }, entities), /奖励范围/)
+  }
 })
