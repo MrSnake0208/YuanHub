@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import { setImmediate as waitForTask } from 'node:timers/promises'
 import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { loadAndImportStarCapture, STAR_CAPTURE_IMPORT_SUPERSEDED_CODE } from '../src/pages/star/captureTransport.js'
@@ -211,6 +212,10 @@ describe('vendored YuanStar embed behavior', () => {
 
 describe('vendored OCR prewarming', () => {
   let sequence = 0
+  // IDB transactions use real task turns even while OCR timeout timers are fake.
+  async function settleDom(predicate) {
+    for (let turn = 0; turn < 100 && !predicate(); turn++) { await waitForTask(); await vi.advanceTimersByTimeAsync(0) }
+  }
 
   async function clockedEmbed({ stalled = false, recoverOnRetry = false, account: restoredAccount } = {}) {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -280,6 +285,7 @@ describe('vendored OCR prewarming', () => {
       for (const step of recognitionTutorialSteps) expect(embed.root.querySelector(step.target), step.id).toBeTruthy()
       // Actual product confirmation modal takes priority over guidance.
       embed.root.querySelector('[data-start-ocr]').click()
+      await settleDom(() => embed.root.querySelector('[data-confirm-start-ocr]'))
       expect(embed.root.querySelector('[role="dialog"]')).toBeTruthy()
       embed.root.querySelector('[data-cancel-ocr-confirm]').click()
       embed.handle.setActiveTab('review')
@@ -429,10 +435,12 @@ describe('vendored OCR prewarming', () => {
       // Use the product's real validation and explicit OCR confirmation flow.
       embed.root.querySelector('[data-start-ocr]').click()
       await vi.advanceTimersByTimeAsync(0)
+      await settleDom(() => embed.root.querySelector('[data-confirm-start-ocr]'))
       const confirm = embed.root.querySelector('[data-confirm-start-ocr]')
       expect(confirm).not.toBeNull()
       confirm.click()
       await vi.advanceTimersByTimeAsync(0)
+      await settleDom(() => embed.workers[1]?.requests.some(request => request.operation === 'analyzeImage'))
       expect(embed.workers).toHaveLength(2)
       expect(embed.workers[1].requests.filter(request => request.operation === 'initialize')).toHaveLength(1)
       expect(embed.workers[1].requests.some(request => request.operation === 'analyzeImage')).toBe(true)
