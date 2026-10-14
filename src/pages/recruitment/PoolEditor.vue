@@ -383,6 +383,7 @@
 </template>
 
 <script setup>
+import { recordBarClass, recordSpanWidth } from './recruitmentRecordPresentation.js'
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { Camera, Check, GripVertical, Minus, Plus, Search, Trash2, X } from '@lucide/vue'
@@ -729,8 +730,8 @@ function resetOrder() {
 
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
-const barClass = row => isFourStar(row) ? 'bar-count' : row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
-const spanWidth = row => isFourStar(row) ? '0%' : row.pull_span === '' ? '100%' : Math.min(Number(row.pull_span) / 40, 1) * 100 + '%'
+const barClass = row => recordBarClass(row.pull_span, isFourStar(row))
+const spanWidth = row => recordSpanWidth(row.pull_span, isFourStar(row))
 const isChanged = row => JSON.stringify(rowInput(row)) !== originals.get(row.event_id)
 function recordLabel(row) {
   const agent = selectedAgent(row)
@@ -1026,6 +1027,7 @@ async function submit() {
 }
 </script>
 
+<style scoped src="./recruitmentRecordColors.css"></style>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .mobile-copy, .progress-edit, .compact-progress { display: none; }
@@ -1090,22 +1092,15 @@ async function submit() {
 .drag-grip { color: var(--ink-60); }
 .record-detail { border: 0; border-radius: 7px; background: transparent; }
 .record-detail:not(:disabled):hover { background: transparent; }
-.record-bar { border-radius: 6px; color: var(--surface); background-color: var(--bar-color); background-image: repeating-linear-gradient(115deg, transparent 0 14px, rgba(255, 255, 255, .12) 14px 27px); }
 .pull-result small { color: color-mix(in srgb, var(--surface) 88%, transparent); }
 .status-pill, .pending-mark { border-radius: 999px; }
 .status-pill { border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent-strong); }
 .status-pill.is-neutral { border-color: var(--line); color: var(--ink-60); }
-.non-up-stamp { border: 2px solid var(--rouge); border-radius: 50%; color: var(--rouge); }
 .pending-mark { background: var(--yellow); color: var(--tea); }
 .saved-mark { color: var(--editor-green); }
 .gacha-record.is-sortable, .gacha-record.is-sortable .record-detail { cursor: grab; user-select: none; }
 .gacha-record:hover { background: var(--cream); }
 .agent-record-grid { border-top: 1px solid var(--line); }
-.agent-order-badge { border: 1px solid var(--accent); border-radius: 4px; background: #F5C84C; color: var(--tea-deep); }
-.agent-pull-badge { border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--tea-deep); }
-.agent-pull-badge.bar-low { color: var(--surface); }
-.agent-pull-badge.bar-high { color: var(--surface); }
-.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { color: var(--surface); }
 .agent-non-up { background: var(--surface); }
 .agent-record-detail { border-color: transparent; background: transparent; }
 .agent-record-flag { color: var(--ink-60); }

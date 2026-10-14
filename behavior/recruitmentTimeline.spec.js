@@ -13,7 +13,7 @@ const tone = (wrapper, name) => card(wrapper, name).get('.pool-cover').classes()
 
 it('焦点恢复：准备卡池入口焦点不隐式移动页面', () => {
   const wrapper = render({ pools: [pool('目标池')] })
-  const focus = vi.spyOn(wrapper.get('.pool-card').element, 'focus')
+  const focus = vi.spyOn(wrapper.get('.entry-label').element, 'focus')
   wrapper.vm.focusPool('目标池')
   expect(focus).toHaveBeenCalledWith({ preventScroll: true })
 })
@@ -31,7 +31,7 @@ it.each(['代号鸢', '如鸢'])('%s的常驻池始终置顶，切换排序和�
   expect(names(wrapper)).toEqual(['绣衣天下', '旧池'])
   await button(wrapper, '日期未知').trigger('click')
   expect(names(wrapper)).toEqual(['绣衣天下', '未知池'])
-  await wrapper.get('.pool-card').trigger('click')
+  await wrapper.get('.entry-label').trigger('click')
   expect(wrapper.emitted('select')).toEqual([['绣衣天下']])
   expect(pools).toEqual(original)
 })
@@ -90,7 +90,7 @@ it('封面按目录类型稳定配色；排序、年份、刷新、账号和状�
   expect(gold.get('.up-count').text()).toBe('×2')
   expect(gold.get('.cover-portrait').attributes('src')).toContain('char_001_yangxiu.webp')
   expect(gold.findAll('.operator-avatar')).toHaveLength(1)
-  await gold.trigger('click')
+  await gold.get('.entry-label').trigger('click')
   expect(wrapper.emitted('select')).toEqual([['金池']])
   await wrapper.setProps({ catalog: [{ ...pools[0].snapshot, pool_id: '金池', end_date: '2026-09-30' }] })
   expectTones()
@@ -109,7 +109,7 @@ it('封面按目录类型稳定配色；排序、年份、刷新、账号和状�
   expect(pools).toEqual(original)
 })
 
-it('新池在上、未知日期置后；年份与正反排序不修改原数据，整卡可选择', async () => {
+it('新池在上、未知日期置后；年份与正反排序不修改原数据，编辑入口可选择', async () => {
   const pools = [pool('未注明日期'), pool('2025旧池', '2025-12-01'), pool('2026秋池', '2026-09-01'), pool('2026春池', '2026-03-01')]
   const original = structuredClone(pools), wrapper = render({ pools })
   expect(names(wrapper)).toEqual(['2026秋池', '2026春池', '2025旧池', '未注明日期'])
@@ -117,7 +117,7 @@ it('新池在上、未知日期置后；年份与正反排序不修改原数据�
   expect(names(wrapper)).toEqual(['2026秋池', '2026春池']); expect(button(wrapper, '2026').attributes('aria-pressed')).toBe('true')
   await button(wrapper, '按时间从新到旧').trigger('click'); expect(names(wrapper)).toEqual(['2026春池', '2026秋池'])
   await button(wrapper, '全部').trigger('click'); expect(names(wrapper)).toEqual(['2025旧池', '2026春池', '2026秋池', '未注明日期'])
-  await wrapper.get('.pool-card').trigger('click'); expect(wrapper.emitted('select')).toEqual([['2025旧池']])
+  await wrapper.get('.entry-label').trigger('click'); expect(wrapper.emitted('select')).toEqual([['2025旧池']])
   await button(wrapper, '日期未知').trigger('click'); expect(names(wrapper)).toEqual(['未注明日期'])
   expect(pools).toEqual(original)
 })
@@ -130,12 +130,12 @@ it('只展示真实统计、抽卡进度和目录状态，不猜日期或收集�
   expect(find('当日池').get('.entry-label').text()).toBe('记一笔')
   expect(find('停用池').get('.entry-label').text()).toBe('查看记录')
   expect(find('当日池').get('.pool-status').text()).toBe('进行中'); expect(wrapper.text()).not.toContain('当前卡池')
-  expect(find('当日池').findAll('.pool-metrics b').map(item => item.text())).toEqual(['1,234', '9', '40'])
-  expect(find('当日池').text()).toContain('部分出货间隔或进度未知')
+  expect(find('当日池').findAll('.pool-metrics b').map(item => item.text())).toEqual(['1,234', '9', '40', '—', '—'])
+  expect(find('当日池').text()).not.toContain('部分出货间隔或进度未知')
   expect(find('已结束池').get('.pool-status').text()).toBe('已结束'); expect(find('未开始池').get('.pool-status').text()).toBe('未开始')
   expect(find('停用池').get('.pool-status').text()).toBe('已停用'); expect(find('停用池').attributes('disabled')).toBeUndefined()
   expect(find('不完整日期').get('.pool-status').text()).toBe('已启用')
-  expect(find('不完整日期').findAll('.pool-metrics b').map(item => item.text())).toEqual(['未知', '未知', '未知'])
+  expect(find('不完整日期').findAll('.pool-metrics b').map(item => item.text())).toEqual(['未知', '未知', '未知', '—', '—'])
   expect(wrapper.text()).not.toContain('收集进度')
 })
 
@@ -151,7 +151,7 @@ it.each([
   expect(wrapper.findAll('.pool-card').map(card => card.get('.pool-status').text())).toEqual(['进行中', '已结束'])
   const endedCard = wrapper.findAll('.pool-card')[1]
   expect(endedCard.attributes('aria-label')).toContain('旧池')
-  await endedCard.trigger('click')
+  await endedCard.get('.entry-label').trigger('click')
   expect(wrapper.emitted('select')).toEqual([['旧池']])
   expect(pools).toEqual(original)
 })
@@ -169,8 +169,8 @@ it('空目录仍提示维护历史，忙碌时禁止切换卡池', async () => {
   const wrapper = render({ pools: [] })
   expect(wrapper.text()).toContain('当前游戏暂无公共卡池')
   await wrapper.setProps({ pools: [pool('pool-a')], busy: true })
-  expect(wrapper.get('.pool-card').attributes('disabled')).toBeDefined()
-  await wrapper.get('.pool-card').trigger('click'); expect(wrapper.emitted('select')).toBeUndefined()
+  expect(wrapper.get('.entry-label').attributes('disabled')).toBeDefined()
+  await wrapper.get('.entry-label').trigger('click'); expect(wrapper.emitted('select')).toBeUndefined()
 })
 
 it('复用本地真实立绘，加载失败回退纸色封面', async () => {
@@ -230,7 +230,7 @@ it('隐藏池保留个人卡片摘要与进度，状态优先于缓存公开目�
   expect(wrapper.get('.pool-status').text()).toBe('已隐藏 · 历史保留')
   expect(wrapper.get('.entry-label').text()).toContain('查看记录')
   expect(wrapper.get('.pool-metrics').text()).toContain('33')
-  await wrapper.get('.pool-card').trigger('click')
+  await wrapper.get('.entry-label').trigger('click')
   expect(wrapper.emitted('select')).toEqual([['hidden']])
 })
 

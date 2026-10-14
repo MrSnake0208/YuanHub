@@ -35,7 +35,7 @@ async (page) => {
     width: innerWidth, pageWidth: document.documentElement.scrollWidth,
     bodyWidth: document.querySelector('.editor-body')?.clientWidth, bodyScrollWidth: document.querySelector('.editor-body')?.scrollWidth,
   }))
-  const card = page.locator('.pool-card').nth(12)
+  const card = page.locator('.entry-label').nth(12)
   await card.scrollIntoViewIfNeeded()
   const beforeOpen = await measure()
   await card.click()
@@ -87,9 +87,9 @@ async (page) => {
   await page.screenshot({ path: '.ux/audits/recruitment-' + stage + '-' + deleted.width + '.png' })
   const report = { stage, beforeOpen, opened, closed, beforeOffscreenClose, offscreenClosed, beforeEdit, editing, actionsVisible, cancelled, completed, deleting, deleted }
   await page.evaluate(value => { window.__recruitmentReport = value }, report)
-  if (closed.active !== 'pool-card') throw Error('Close did not restore the pool entry')
+  if (closed.active !== 'entry-label') throw Error('Close did not restore the pool entry')
   if (Math.abs(closed.windowY - beforeOpen.windowY) > 2) throw Error('Close moved the page')
-  if (Math.abs(offscreenClosed.windowY - beforeOffscreenClose.windowY) > 2 || offscreenClosed.active !== 'pool-card') throw Error('Offscreen close moved the page')
+  if (Math.abs(offscreenClosed.windowY - beforeOffscreenClose.windowY) > 2 || offscreenClosed.active !== 'entry-label') throw Error('Offscreen close moved the page')
   if (cancelled.eventId !== 'record-45' || completed.eventId !== 'record-45') throw Error('Cancel/complete lost the edited record')
   if (Math.abs(cancelled.bodyY - beforeEdit.bodyY) > 2 || Math.abs(completed.bodyY - beforeEdit.bodyY) > 2) throw Error('Cancel/complete lost the list viewport')
   if (deleted.eventId !== 'record-44') throw Error('Delete did not select the nearest surviving record')

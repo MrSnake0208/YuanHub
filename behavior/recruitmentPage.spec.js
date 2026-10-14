@@ -26,10 +26,12 @@ vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: vi.fn(
 
 let archives, records
 function render(stubs = {}) { return mount(RecruitmentPage, { attachTo: document.body, global: { provide: { [routeLocationKey]: { fullPath: '/recruitment' } }, stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RecruitmentExchange: true, Teleport: false, RouterLink: RouterLinkStub, ...stubs } } }) }
-async function selectPool(wrapper, index = 0) { await wrapper.findAll('.pool-card')[index].trigger('click'); await flushPromises() }
+async function selectPool(wrapper, index = 0) { await wrapper.findAll('.entry-label')[index].trigger('click'); await flushPromises() }
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 beforeEach(() => {
   tutorialFeature.enabled = true
+  // These tests exercise editing; preview visibility is exercised separately below.
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
   vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }
   activeAccount.set('acc-a'); activeAccount.setGame('代号鸢', 'acc-a'); activeAccount.setGame('代号鸢', 'acc-b')
   archives = { 'acc-a': recruitmentFixture(), 'acc-b': { ...recruitmentFixture('acc-b'), summary: { ...recruitmentFixture().summary, known_total_pulls: 999 } } }
@@ -85,7 +87,7 @@ const hintTarget = wrapper => editor(wrapper).get('.guide-hint').attributes('dat
 function persistSubmittedRecord() {
   api.recruitmentCommand.mockImplementation(async ({ accountId, data }) => {
     for (const entry of data.entries) {
-      const event = { ...recruitmentEvent(entry.event_id, entry.pull_span, data.pool_id), up_status: entry.up_status, acquired_date: entry.acquired_date, note: entry.note, agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密' } }
+      const event = { ...recruitmentEvent(entry.event_id, entry.pull_span, data.pool_id), up_status: entry.up_status, acquired_date: entry.acquired_date, note: entry.note, agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密', rarity: 5 } }
       const index = records[accountId].findIndex(item => item.event_id === entry.event_id)
       if (index < 0) records[accountId].push(event)
       else records[accountId][index] = event
@@ -119,7 +121,7 @@ it('UP真实选择、未知间隔确认与保底核对推进到保存；同ID读
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
   expect(hintTarget(wrapper)).toBe('agents')
   await editor(wrapper).get('.quick-up-button').trigger('click'); expect(hintTarget(wrapper)).toBe('pulls')
-  await button(editor(wrapper), '未知').trigger('click'); expect(hintTarget(wrapper)).toBe('progress')
+  await editor(wrapper).get('.unknown-pulls').trigger('click'); expect(hintTarget(wrapper)).toBe('progress')
   await editor(wrapper).get('.remaining-field input').trigger('blur'); expect(hintTarget(wrapper)).toBe('save-record')
   const reading = deferred(); api.listRecruitmentEvents.mockReturnValueOnce(reading.promise)
   await saveGuidedRecord(wrapper); expect(confirmed(wrapper)).toBe(false)
@@ -243,7 +245,7 @@ it('未知保底与未知间隔分开解释，加入草稿不猜保底；关闭�
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('')
   await editor(wrapper).get('.quick-up-button').trigger('click')
-  await button(editor(wrapper), '未知').trigger('click')
+  await editor(wrapper).get('.unknown-pulls').trigger('click')
   expect(editor(wrapper).get('.guide-hint').text()).toContain('暂不支持保底留空提交')
   await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(editor(wrapper).text()).toContain('待保存')
@@ -516,7 +518,7 @@ it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽�
   expect(editor(wrapper).get('.record-view-switch').exists()).toBe(true)
   expect(editor(wrapper).get('.records-heading h3').text()).toContain('抽卡档案')
   expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).get('.entry-placeholder input').element.disabled).toBe(true)
-  await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(new DOMWrapper(document.body).find('.pool-editor[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(new DOMWrapper(document.body).find('.pool-editor[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.entry-label').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
 it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径的属性/职业筛选', async () => {
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot-up', name: '测试UP', operator_id: 'char-a', active: true }]
@@ -712,7 +714,7 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   archives['acc-b'].current_pool_id = 'missing-pool'
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.up-count').text()).toBe('×2')
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '40'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '40', '—', '—'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   const late = deferred(), pendingB = deferred()
   api.getRecruitmentArchive.mockReturnValueOnce(late.promise).mockReturnValueOnce(pendingB.promise)
@@ -723,11 +725,11 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   expect(wrapper.get('.up-count').text()).toBe('×0')
   late.resolve(structuredClone(archives['acc-a'])); await flushPromises()
   expect(wrapper.get('.up-count').text()).toBe('×0')
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
   expect(wrapper.text()).not.toContain('当前卡池')
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
   await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   api.recruitmentCommand.mockImplementation(async () => {
     archives['acc-b'].pool_summaries['pool-a'].up_agent_counts['slot-a'] = 1
@@ -759,8 +761,8 @@ it.each(['pool-a', 'missing-pool'])('旧指针 %s 不影响已结束池B的读�
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
   const card = wrapper.findAll('.pool-card').find(item => item.get('.pool-name').text() === '已结束池B')
   expect(card.get('.pool-status').text()).toBe('已结束')
-  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['33', '1', '28'])
-  await card.trigger('click'); await flushPromises()
+  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['33', '1', '28', '—', '—'])
+  await card.get('.entry-label').trigger('click'); await flushPromises()
   expect(editor(wrapper).get('h2').text()).toBe('已结束池B')
   expect(feed(wrapper)).toHaveLength(1)
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('28')
@@ -775,10 +777,10 @@ it.each(['pool-a', 'missing-pool'])('旧指针 %s 不影响已结束池B的读�
   expect(archives['acc-a'].pools[0]).toEqual(originalPoolA)
   expect(records['acc-a'].filter(event => event.pool_id === 'pool-a')).toEqual(originalRecordsA)
   expect(records['acc-a'].filter(event => event.pool_id === 'pool-b')).toHaveLength(2)
-  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['45', '2', '33'])
+  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['45', '2', '33', '—', '—'])
   await editor(wrapper).get('.close-button').trigger('click'); await flushPromises()
-  expect(document.activeElement).toBe(card.element)
-  await card.trigger('click'); await flushPromises()
+  expect(document.activeElement).toBe(card.get('.entry-label').element)
+  await card.get('.entry-label').trigger('click'); await flushPromises()
   expect(editor(wrapper).get('h2').text()).toBe('已结束池B')
   expect(feed(wrapper)).toHaveLength(2)
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('33')
@@ -1014,4 +1016,32 @@ it('A账号全量分页迟到不阻塞B账号独立加载全部记录', async ()
   expect(editor(w).findAll('.record-detail')).toHaveLength(105)
   expect(api.recruitmentCommand).not.toHaveBeenCalled()
   w.unmount()
+})
+
+
+it('主页面明细可见时读取已保存记录，草稿不泄露，保存后摘要和明细同步且不影响截图', async () => {
+  tutorialFeature.enabled = false
+  vi.stubGlobal('IntersectionObserver', class { constructor(callback) { this.callback = callback } observe() { this.callback([{ isIntersecting: true }]) } disconnect() {} })
+  records['acc-a'].forEach(event => { event.agent_snapshot.rarity = 5 })
+  archives['acc-a'].pool_summaries = { 'pool-a': { known_total_pulls: 48, event_count: 2, four_star_count: 0 } }
+  persistSubmittedRecord()
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.preview-record')).toHaveLength(2)
+  expect(wrapper.get('.average-metric').text()).toContain('24')
+  await selectPool(wrapper)
+  await addRecord(wrapper, 'char-a', '12')
+  expect(wrapper.findAll('.preview-record')).toHaveLength(2)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(confirmed(wrapper)).toBe(true)
+  expect(wrapper.findAll('.preview-record')).toHaveLength(3)
+  expect(wrapper.get('.pool-metrics').text()).toContain('60')
+  expect(wrapper.get('.average-metric').text()).toContain('20')
+  const previewIds = wrapper.findAll('.preview-record').map(item => item.attributes('data-event-id'))
+  await editor(wrapper).get('.screenshot-entry').trigger('click'); await flushPromises()
+  expect(editor(wrapper).classes()).toContain('is-screenshot')
+  expect(wrapper.findAll('.preview-record').map(item => item.attributes('data-event-id'))).toEqual(previewIds)
+  await editor(wrapper).get('.screenshot-exit').trigger('click')
+  await editor(wrapper).get('.close-button').trigger('click'); await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get('.entry-label').element)
 })

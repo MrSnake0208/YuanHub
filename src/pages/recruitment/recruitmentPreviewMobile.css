@@ -1,0 +1,4 @@
+@media (max-width: 767px) {
+  .pool-preview { max-height: 280px; padding: 12px; }
+  .preview-agents { grid-template-columns: repeat(auto-fill, minmax(min(84px, 100%), 1fr)); }
+}

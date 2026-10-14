@@ -8,6 +8,7 @@ import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { operatorCatalogEntries } from './rules.js'
+import { useRecruitmentPreviews } from './useRecruitmentPreviews.js'
 
 export function useRecruitment() {
   const state = reactive({ accounts: [], archive: null, catalog: [], operators: [], loading: false, accountsLoading: false, busy: false, error: '', catalogError: '', notice: '', contextVersion: 0, requestVersion: 0, records: [], recordsLoading: false, recordsError: '', recordsRevision: null, recordsCursor: null })
@@ -21,6 +22,7 @@ export function useRecruitment() {
   let generation = 0, readGeneration = 0, accountsGeneration = 0, alive = true, pendingCommand = null, recordsGeneration = 0
   const capture = () => ({ generation, identity: identity.value, accountId: accountId.value })
   const matches = token => alive && token.generation === generation && token.identity === identity.value && token.accountId === accountId.value && available.value
+  const { previews, load: loadPreview } = useRecruitmentPreviews({ state, capture, matches, available })
   function reset() {
     generation++; readGeneration++; recordsGeneration++; pendingCommand = null
     Object.assign(state, { archive: null, catalog: [], operators: [], records: [], recordsLoading: false, recordsError: '', recordsRevision: null, recordsCursor: null, loading: false, busy: false, error: '', catalogError: '', notice: '', contextVersion: state.contextVersion + 1, requestVersion: state.requestVersion + 1 })
@@ -109,5 +111,5 @@ export function useRecruitment() {
   const onVisibility = () => { if (document.visibilityState === 'visible') loadAccounts() }
   document.addEventListener('visibilitychange', onVisibility)
   onScopeDispose(() => { alive = false; generation++; unsubscribe(); document.removeEventListener('visibilitychange', onVisibility) })
-  return { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts }
+  return { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts, previews, loadPreview }
 }
