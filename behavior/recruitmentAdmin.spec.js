@@ -47,6 +47,19 @@ it('管理列表常驻池优先并保留其他卡池顺序，搜索仍准确且�
   expect(api.createAdminRecruitmentPool).not.toHaveBeenCalled()
 })
 
+it('管理员可显式开启个人心愿，重新编辑保留开关且写入受版本保护', async () => {
+  api.listAdminRecruitmentCatalog.mockResolvedValue({ pools: [{ ...pool(), allow_custom_up: true }] })
+  const wrapper = render()
+  await flushPromises()
+  await button(wrapper, '管理卡池').trigger('click')
+  const toggle = wrapper.findAll('label').find(label => label.text().includes('允许自选心愿 UP')).get('input[type="checkbox"]')
+  expect(toggle.element.checked).toBe(true)
+  await toggle.setValue(false)
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(api.updateAdminRecruitmentPool).toHaveBeenCalledWith('pool-public', expect.objectContaining({ allow_custom_up: false, expected_revision: 2 }))
+})
+
 it('普通用户直接挂载管理页也不读取或写入管理员接口', async () => {
   auth.adminAccess = { permissions: [] }
   const wrapper = render()

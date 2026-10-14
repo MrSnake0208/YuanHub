@@ -12,8 +12,11 @@ export function operatorCatalogEntries(data) {
 export function recruitmentPoolCatalog(pool, catalog) {
   const snapshot = pool?.mapped_snapshot || pool?.snapshot
   const directory = catalog.find(item => item.pool_id === snapshot?.catalog_pool_id && (!item.game || item.game === snapshot.game))
-  if (pool?.catalog_state) return { ...(directory || snapshot), enabled: pool.catalog_state === 'enabled', hidden: pool.catalog_state === 'hidden' }
-  return directory
+  const definition = pool?.catalog_state ? { ...(directory || snapshot), enabled: pool.catalog_state === 'enabled', hidden: pool.catalog_state === 'hidden' } : directory
+  if (!definition?.allow_custom_up) return definition
+  const ids = pool.wish_agent_ids || []
+  const slots = ids.map(id => ({ id: definition.up_agents?.find(slot => slot.operator_id === id)?.id || id, operator_id: id, name: snapshot?.up_agents?.find(slot => slot.operator_id === id)?.name || id, active: true }))
+  return { ...definition, up_agents: slots, up_agent_ids: ids, up_agent_names: slots.map(slot => slot.name), unmapped_up_agent_names: [], up_status: ids.length === 2 ? 'verified' : 'unknown' }
 }
 export function poolAgentOptions(pool, catalog, operators) {
   const directory = recruitmentPoolCatalog(pool, catalog)

@@ -677,6 +677,26 @@ it('409重读保留草稿，核对后追加真记录；网络重试保留请求I
   expect(records['acc-a'].find(event => event.event_id === 'A').pull_span).toBe(19)
 })
 
+it('心愿草稿按账号隔离，A迟到保存不会覆盖B的心愿或显示成功', async () => {
+  records['acc-a'] = []; records['acc-b'] = []
+  archives['acc-b'].pools[0].wish_agent_ids = ['a', 'c']
+  api.getRecruitmentCatalog.mockResolvedValue({ pools: recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true })) })
+  getOperatorCatalog.mockResolvedValue({ operators: ['a', 'b', 'c'].map(id => ({ id, name: id, rarity: 5, games: ['代号鸢'] })) })
+  const saving = deferred()
+  api.recruitmentCommand.mockReturnValueOnce(saving.promise)
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  const selects = editor(wrapper).findAll('.wish-fields select')
+  await selects[0].setValue('a'); await selects[1].setValue('b')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc-a', data: expect.objectContaining({ wish_agent_ids: ['a', 'b'] }) }))
+  activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper)
+  expect(editor(wrapper).findAll('.wish-fields select').map(select => select.element.value)).toEqual(['a', 'c'])
+  saving.resolve({ archive_revision: 4 }); await flushPromises()
+  expect(editor(wrapper).findAll('.wish-fields select').map(select => select.element.value)).toEqual(['a', 'c'])
+  expect(editor(wrapper).text()).not.toContain('已保存并核对')
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+})
+
 it('A迟到读写不覆盖B记录或关闭B新弹窗，切账号清旧草稿', async () => {
   const read = deferred(); api.listRecruitmentEvents.mockImplementation(({ accountId }) => accountId === 'acc-a' ? read.promise : Promise.resolve({ items: [], next_cursor: null, archive_revision: 3 }))
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper); read.resolve({ items: records['acc-a'], next_cursor: null, archive_revision: 3 }); await flushPromises(); expect(feed(wrapper)).toHaveLength(0)
