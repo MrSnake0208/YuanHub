@@ -16,7 +16,9 @@ export function recruitmentImportGuide(game, catalog, operatorCatalog) {
   return {
     format: 'yuanhub.recruitment.ai-guide.v2', game, generated_at: new Date().toISOString(),
     instructions: [
-      '将本规范与原始资料交给AI；最终仅输出符合import_schema的JSON。本规范文件不能直接导入。',
+      '将本规范与原始资料交给AI；最终生成符合import_schema的完整JSON。本规范文件不能直接导入。',
+      '优先提供可下载的UTF-8 .json文件；若无法提供文件，将完整JSON放在一个标记为json的Markdown代码块中，方便用户复制到招募档案的「粘贴 JSON」入口。',
+      '不得拆分成多个代码块、使用省略号或混入解释文字；不得声称已生成实际不存在的附件或下载链接。输出长度不足时明确说明，不能将截断内容冒充可导入JSON。',
       '单个文件对应一个游戏，导入目标为页面当前账号。无需账号ID、快照、稀有度、创建时间、来源或排序编号；系统自动补齐。',
       '每条记录必填event_id（小写UUID）、catalog_pool_id、agent_id、pull_span。不同真实记录分别生成UUID；修订或再次导入同一记录必须保留ID。不要按名字/日期/抽数去重。',
       'catalog_pool_id用公共目录ID，不加catalog:前缀。agent_id用当前游戏图鉴ID，管理员占位也可用所属池up_agents[].id；禁止编造。复刻同名池必须按日期确认。',
