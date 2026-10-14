@@ -25,7 +25,7 @@ test('unconfirmed writes retry the same record and block another edit',async()=>
   const writer=createGrowthPlanInventoryWriter({getCurrent:async()=>({entries:{jiezhuping:{count:attempts>=2?4:0}}}),isCurrent:()=>true,createId:()=> 'retry-fixed',
     importInventory:async doc=>{documents.push(JSON.stringify(doc));if(++attempts===1) throw new TypeError('network lost');return {duplicates:1}}})
   await assert.rejects(writer.save('a','jiezhuping',4));assert.equal(writer.hasPending(),true)
-  await assert.rejects(writer.save('a','jieyangping',8),/原样重试/)
+  await assert.rejects(writer.save('a','jieyangping',8),/重试本次保存/)
   await writer.save('a','jiezhuping',4)
   assert.equal(documents[0],documents[1]);assert.equal(writer.hasPending(),false)
 })
@@ -51,9 +51,9 @@ for (const [id,name] of [['jiezhuping','解注瓶'],['jiezheping','解谪瓶'],[
     const writer=createGrowthPlanInventoryWriter({isCurrent:()=>true,
       getCurrent:async()=>({account_id:'a',entity_type:'item',entries:{...entries,[id]:{count:current}}}),
       importInventory:async document=>{writes++;assert.deepEqual(document.records[0].entries,[{id,count:8,name}]);return {accepted:1}},createId:()=> 'conflict-'+id})
-    await assert.rejects(writer.save('a',id,8),/库存与保存目标不一致.*尝试保存：8，当前读取：3/)
+    await assert.rejects(writer.save('a',id,8),/当前库存与本次保存数量不一致.*本次保存：8，当前库存：3/)
     assert.equal(writer.hasPending(),true)
-    await assert.rejects(writer.save('a',id,9),/原样重试/)
+    await assert.rejects(writer.save('a',id,9),/重试本次保存/)
     await assert.rejects(writer.save('a',id,8),/不一致/)
     assert.equal(writes,1)
     current=8
@@ -169,9 +169,9 @@ test('unconfirmed response cannot be accepted or cleared even if a retry is reje
       throw Object.assign(new Error('retry denied'), { status: 403 })
     } })
   await assert.rejects(writer.save('a', 'jiezhuping', 0), /未确认/)
-  await assert.rejects(writer.acceptCurrent('a', 'jiezhuping', 0), /不能使用/)
-  await assert.rejects(writer.read('a'), /原记录/)
-  await assert.rejects(writer.save('a', 'jiezhuping', 0), /retry denied/)
+  await assert.rejects(writer.acceptCurrent('a', 'jiezhuping', 0), /不能直接采用/)
+  await assert.rejects(writer.read('a'), /重试本次保存/)
+  await assert.rejects(writer.save('a', 'jiezhuping', 0), error => { assert.match(error.message, /结果尚未确认/); assert.match(error.cause.message, /retry denied/); return true })
   assert.equal(writer.hasPending(), true); assert.equal(writer.getPending().phase, 'unconfirmed')
   assert.equal(documents[0], documents[1])
 })
@@ -180,7 +180,7 @@ test('missing/older baseline does not authorize acceptance; fresh full baseline 
   await assert.rejects(f.writer.save('a', 'jiezheping', 10))
   for (const baseline of [null, 'invalid', '2026-10-08T00:59:59Z']) {
     f.setBaseline(baseline)
-    await assert.rejects(f.writer.read('a'), /尚未证实/)
+    await assert.rejects(f.writer.read('a'), /尚未可靠确认/)
     assert.equal(f.writer.getPending().canAccept, false)
     await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /不能使用/)
   }
@@ -196,12 +196,12 @@ test('failed or invalid refresh revokes acceptance without forgetting import con
   await assert.rejects(f.writer.save('a', 'jiezheping', 10))
   for (const status of [401,403,404,409,422,500]) {
     f.setFailure(Object.assign(new Error('GET failed'), { status }))
-    await assert.rejects(f.writer.read('a'), /GET failed/)
+    await assert.rejects(f.writer.read('a'), error => { assert.match(error.message, /已确认.*尚未读取成功/); assert.match(error.cause.message, /GET failed/); return true })
     assert.equal(f.writer.hasPending(), true); assert.equal(f.writer.getPending().phase, 'acknowledged')
     assert.equal(f.writer.getPending().canAccept, false)
   }
   f.setFailure(null); f.setCount(null)
-  await assert.rejects(f.writer.read('a'), /数量无效/)
+  await assert.rejects(f.writer.read('a'), error => { assert.match(error.message, /已确认.*尚未读取成功/); assert.match(error.cause.message, /数量无效/); return true })
   assert.equal(f.writer.hasPending(), true); assert.equal(f.documents.length, 1)
   f.setCount(10); await f.writer.read('a'); assert.equal(f.writer.hasPending(), false)
 })
@@ -209,7 +209,7 @@ test('acceptance revalidates baseline and account instead of trusting the previo
   const f = conflictFixture()
   await assert.rejects(f.writer.save('a', 'jiezheping', 10))
   f.setBaseline(null)
-  await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /尚未证实/)
+  await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /尚未可靠确认/)
   assert.equal(f.writer.hasPending(), true)
   f.switch()
   await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /账号已切换/)
@@ -283,6 +283,6 @@ test('superseded/history-only import is confirmed but requires explicit recovery
 test('null and invalid edits never become a zero stock write', async () => {
   let writes = 0
   const writer = createGrowthPlanInventoryWriter({ isCurrent: () => true, getCurrent: async () => ({ entries: {} }), importInventory: async () => { writes++ } })
-  for (const count of [null, undefined, '', -1, NaN, 1.5, '0']) await assert.rejects(writer.save('a', 'jiezhuping', count), /非负整数/)
+  for (const count of [null, undefined, '', -1, NaN, 1.5, '0']) await assert.rejects(writer.save('a', 'jiezhuping', count), /0或正整数/)
   assert.equal(writes, 0); assert.equal(writer.hasPending(), false)
 })
