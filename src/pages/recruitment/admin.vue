@@ -134,6 +134,9 @@
                   <label>卡池类型
                     <input v-model.trim="form.pool_type" maxlength="64" placeholder="如：限时 / 常驻" :disabled="saving">
                   </label>
+                  <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
+                    <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>
+                  </label>
                   <label>开始日期
                     <input v-model="form.start_date" type="date" :disabled="saving">
                   </label>
@@ -364,6 +367,7 @@ function comparableForm(value) {
     end_date: value.end_date || '',
     enabled: !!value.enabled,
     hidden: !!value.hidden,
+    allow_custom_up: !!value.allow_custom_up,
     up_agents: value.up_agents.map(slot => ({
       id: slot.id,
       name: slot.name,
@@ -491,6 +495,7 @@ function openNew() {
     end_date: '',
     enabled: true,
     hidden: false,
+    allow_custom_up: false,
     revision: 0,
     up_agents: [],
   }
@@ -506,6 +511,7 @@ function openEdit(pool) {
   form.value = {
     ...pool,
     hidden: !!pool.hidden,
+    allow_custom_up: !!pool.allow_custom_up,
     pool_type: pool.pool_type || '',
     start_date: pool.start_date || '',
     end_date: pool.end_date || '',
@@ -631,6 +637,7 @@ async function save() {
       end_date: form.value.end_date || null,
       enabled: form.value.enabled,
       hidden: form.value.hidden,
+      allow_custom_up: form.value.allow_custom_up,
       expected_revision: form.value.revision,
       up_agents: form.value.up_agents.map(slot => ({
         id: slot.id,
@@ -703,6 +710,8 @@ onScopeDispose(() => {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.fields .wish-mode > span { display: flex; align-items: center; gap: 8px; }
+.fields .wish-mode input { width: auto; flex: none; }
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.error{color:var(--rouge)}.eyebrow{color:var(--ink-60)}.hint,label small,.pool-meta,.slot-identity small,.bound-name small{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}.primary{background:var(--tea);color:var(--cream)}.quiet{background:transparent}.danger{color:var(--rouge);border-color:rgba(166,81,74,.45)}.ghost{background:transparent}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}input:not([type=radio]),select{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--cream)}.visually-hidden{border:0!important}.toolbar{border:0;border-radius:0;background:transparent;box-shadow:none}.maintenance-tools{border:1px solid var(--line);border-radius:12px;background:rgba(255,253,246,.72)}.maintenance-tools summary{cursor:pointer}.empty-state,.empty-inline{color:var(--ink-60)}.status-badge,.dirty-badge,.saved-badge{border-radius:999px}.status-badge{background:rgba(239,210,142,.42);color:var(--ink)}.status-badge.muted{background:rgba(73,59,44,.08);color:var(--ink-60)}.dirty-badge{background:rgba(215,137,53,.14);color:var(--accent)}.saved-badge{background:rgba(73,59,44,.08);color:var(--ink-60)}.up-summary-item{border:1px solid var(--line);border-radius:999px;background:var(--cream)}.up-summary :deep(.up-summary-avatar){border-radius:50%;background:var(--surface)}.up-slot-card,.history-slot{border:1px solid var(--line);border-radius:14px;background:var(--cream)}.slot-index{color:var(--accent)}.slot-identity :deep(.slot-avatar){border-radius:10px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}.bound-name{border:1px dashed var(--line);border-radius:10px;background:var(--surface)}.slot-error{color:var(--rouge)}.inline-warning{border-left:3px solid var(--accent);background:rgba(215,137,53,.08)}.history-section{border-top:1px solid var(--line)}.history-section summary{cursor:pointer}.history-slot{background:var(--surface)}
 
 .status-options{border:0}.status-option{border:1px solid var(--line);border-radius:12px;background:var(--cream);cursor:pointer}.status-option.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.editor-actions{border:1px solid var(--line);border-radius:14px;background:rgba(255,253,246,.96);box-shadow:0 10px 28px rgba(73,59,44,.12);backdrop-filter:blur(8px)}.save-state{color:var(--ink-60)}

@@ -55,6 +55,16 @@
 
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'read-state'" target="read-state" :message="guideMessage"><button type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
             <div data-guide-target="read-state">
+            <fieldset v-if="poolDefinition.allow_custom_up" v-show="!screenshotMode" class="wish-fields" :disabled="busy || readOnly || !canRecord || recordsLoading">
+              <legend>心愿密探</legend>
+              <p>从当前游戏的绝密密探中选择2位作为心愿密探，随本池记录一起保存；修改不会改变历史记录的 UP 判定。</p>
+              <label v-for="index in [0, 1]" :key="index">心愿密探 {{ index + 1 }}
+                <select v-model="wishAgentIds[index]">
+                  <option value="">请选择绝密密探</option>
+                  <option v-for="agent in wishOptions" :key="agent.id" :value="agent.id" :disabled="wishAgentIds[1 - index] === agent.id">{{ agent.name }}</option>
+                </select>
+              </label>
+            </fieldset>
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
             <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
             <div v-if="missingRecordIds.length" class="form-error" role="alert">
@@ -406,6 +416,10 @@ const editorId = 'recruitment-editor-' + useId()
 const emit = defineEmits(['close', 'save', 'load-more', 'load-all', 'retry', 'guide-dismiss', 'guide-start', 'practice'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
+const wishAgentIds = ref(['', '']), initialWishes = ref([])
+const wishesChanged = computed(() => JSON.stringify(wishAgentIds.value.filter(Boolean)) !== JSON.stringify(initialWishes.value))
+const editingPool = computed(() => ({ ...props.pool, wish_agent_ids: wishAgentIds.value.filter(Boolean) }))
+const wishOptions = computed(() => props.agents.filter(agent => Number(agent.rarity) === 5))
 const orderIds = ref(null), orderRevision = ref(null)
 const entryError = ref(''), progressError = ref('')
 const progressEditing = ref(false), headerScrolled = ref(false)
@@ -557,6 +571,7 @@ function entryMatches(event, entry) {
 }
 const receiptVerified = computed(() => {
   const receipt = props.saveReceipt
+  if (receipt?.wish_agent_ids && JSON.stringify(props.pool?.wish_agent_ids) !== JSON.stringify(receipt.wish_agent_ids)) return false
   return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === (receipt.remaining_pulls == null ? preservedProgress.value : 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at)) && (!receipt.ordered_event_ids || !props.hasMore && JSON.stringify(props.records.filter(event => !event.deleted_at).map(event => event.event_id)) === JSON.stringify(receipt.ordered_event_ids))
 })
 const unverifiedSave = computed(() => props.saveReceipt && !receiptVerified.value)
@@ -565,6 +580,7 @@ let rebasedReceipt = null
 watch(receiptVerified, verified => {
   if (!verified || props.saveReceipt === rebasedReceipt) return
   rebasedReceipt = props.saveReceipt
+  if (props.saveReceipt.wish_agent_ids) initialWishes.value = [...props.saveReceipt.wish_agent_ids]
   for (const entry of props.saveReceipt.entries) {
     const event = props.records.find(event => entryMatches(event, entry))
     const row = { ...entry, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
@@ -591,9 +607,9 @@ const KEYBOARD_INSET_THRESHOLD = 80
 const ENTRY_VISIBLE_TOP_GAP = 16
 const ENTRY_VISIBLE_BOTTOM_GAP = 24
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
-const poolDefinition = computed(() => recruitmentPoolCatalog(props.pool, props.catalog) || props.pool?.mapped_snapshot || props.pool?.snapshot)
+const poolDefinition = computed(() => recruitmentPoolCatalog(editingPool.value, props.catalog) || props.pool?.mapped_snapshot || props.pool?.snapshot)
 const options = computed(() => {
-  const values = poolAgentOptions(props.pool, props.catalog, props.agents)
+  const values = poolAgentOptions(editingPool.value, props.catalog, props.agents)
   for (const event of props.records) if (!values.some(agent => agent.id === event.agent_snapshot.agent_id)) values.push(resolveRecruitmentAgent(event, props.pool, props.catalog, props.agents))
   return values
 })
@@ -738,12 +754,12 @@ const isChanged = row => JSON.stringify(rowInput(row)) !== originals.get(row.eve
 function recordLabel(row) {
   const agent = selectedAgent(row)
   const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
-  const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
+  const status = row.up_status === 'non_up' ? '，非UP' : (row.up_status === 'up' || agent?.poolSlot && (!poolDefinition.value.allow_custom_up || !originals.has(row.event_id))) ? '，UP' : ''
   const rank = goldOrder.value.get(row.event_id)
   return (screenshotMode.value ? '' : '编辑') + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
-const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0))
+const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0) + (wishesChanged.value ? 1 : 0))
 function hasDraft() {
   if (!props.open || props.practiceResult) return false
   if (pendingCount.value) return true
@@ -950,6 +966,8 @@ watch(() => props.open, open => {
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
+  initialWishes.value = [...(props.pool?.wish_agent_ids || [])]
+  wishAgentIds.value = initialWishes.value.length ? [...initialWishes.value] : ['', '']
   nextTick(scheduleEntryVisibility)
 }, { immediate: true })
 watch([() => props.records, () => props.recordsRevision, () => props.open, () => props.recordsLoading], () => {
@@ -962,7 +980,12 @@ watch([() => props.records, () => props.recordsRevision, () => props.open, () =>
   }
   initialized.value = true
 }, { immediate: true })
-watch([rows, orderIds, activeRow, deletedIds, remaining, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
+watch(() => props.pool?.wish_agent_ids, ids => {
+  if (!props.open || wishesChanged.value) return
+  initialWishes.value = [...(ids || [])]
+  wishAgentIds.value = initialWishes.value.length ? [...initialWishes.value] : ['', '']
+}, { deep: true })
+watch([rows, orderIds, activeRow, deletedIds, remaining, wishAgentIds, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
 onMounted(() => {
   const viewport = window.visualViewport
   viewport?.addEventListener('resize', onViewportChange)
@@ -994,6 +1017,8 @@ async function submit() {
   if (!pendingCount.value) return
   error.value = ''; progressError.value = ''
   try {
+    if (wishesChanged.value && (!poolDefinition.value.allow_custom_up || !props.canRecord)) throw new Error('该卡池暂不能修改心愿密探')
+    if (wishesChanged.value && (wishAgentIds.value.length !== 2 || new Set(wishAgentIds.value).size !== 2 || wishAgentIds.value.some(id => !wishOptions.value.some(agent => agent.id === id)))) throw new Error('请选择两位不同的绝密心愿密探')
     if (missingRecordIds.value.length) throw new Error('旧记录已在其他设备删除，请先核对并移除失效草稿；其余修改仍保留')
     if (orderChanged.value) {
       if (props.hasMore || !recordsReady.value) throw new Error('请读完本池全部记录后保存顺序')
@@ -1014,7 +1039,7 @@ async function submit() {
       if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
       if (!originals.has(row.event_id)) {
         if (!props.canRecord) throw new Error('此卡池暂不能新增出货')
-        const definition = recruitmentPoolCatalog(props.pool, props.catalog) || props.pool.snapshot
+        const definition = poolDefinition.value
         input.up_status = selectedAgent(row)?.poolSlot ? 'up' : definition.up_status === 'verified' && definition.up_agent_ids?.length && !definition.unmapped_up_agent_names?.length ? 'non_up' : 'unknown'
       }
       return input
@@ -1022,7 +1047,7 @@ async function submit() {
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     preservedProgress.value = props.pool.progress
     if (!requestId) requestId = createRecruitmentId()
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(wishesChanged.value ? { wish_agent_ids: wishAgentIds.value.slice() } : {}), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
   } catch (err) { error.value = err.message; await nextTick(); focusInBody(errorSummary.value) }
 }
 </script>
@@ -1031,6 +1056,11 @@ async function submit() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .mobile-copy, .progress-edit, .compact-progress { display: none; }
+.wish-fields { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.wish-fields p { flex-basis: 100%; margin: 0; color: var(--ink-60); line-height: 1.6; }
+.wish-fields label { display: grid; flex: 1 1 180px; min-width: 0; gap: 6px; }
+.wish-fields select { width: 100%; min-width: 0; padding: 8px; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.wish-fields select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .screenshot-entry { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .pool-editor .screenshot-exit { border-color: transparent; background: transparent; color: var(--ink-60); }
 .is-screenshot .record-handle:disabled, .is-screenshot .record-detail:disabled, .is-screenshot .agent-record-detail:disabled { opacity: 1; cursor: default; }

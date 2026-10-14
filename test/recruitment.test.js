@@ -1,6 +1,21 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { progressFromRemaining, fromWindowPositions, csvCell, integer, recruitmentCsv, operatorCatalogEntries, poolAgentOptions, resolveRecruitmentAgent } from '../src/pages/recruitment/rules.js'
+import { progressFromRemaining, fromWindowPositions, csvCell, integer, recruitmentCsv, operatorCatalogEntries, poolAgentOptions, resolveRecruitmentAgent, recruitmentPoolCatalog } from '../src/pages/recruitment/rules.js'
+
+test('个人心愿覆盖公共UP且两个账号互不影响，未选时不回退管理员名单', () => {
+  const catalog = [{ pool_id: 'wish', allow_custom_up: true, up_agents: [{ id: 'wish:up:fixed', operator_id: 'fixed', active: true }] }]
+  const pool = { snapshot: { catalog_pool_id: 'wish' }, wish_agent_ids: ['a', 'b'] }
+  const operators = [{ id: 'a', name: '甲', rarity: 5 }, { id: 'b', name: '乙', rarity: 5 }, { id: 'fixed', name: '固定', rarity: 5 }]
+  assert.deepEqual(recruitmentPoolCatalog(pool, catalog).up_agent_ids, ['a', 'b'])
+  assert.deepEqual(poolAgentOptions(pool, catalog, operators).filter(agent => agent.poolSlot).map(agent => agent.id), ['a', 'b'])
+  const other = { ...pool, wish_agent_ids: [] }
+  assert.equal(recruitmentPoolCatalog(other, catalog).up_status, 'unknown')
+  assert.deepEqual(poolAgentOptions(other, catalog, operators).filter(agent => agent.poolSlot), [])
+  assert.equal(catalog[0].up_agents[0].id, 'wish:up:fixed')
+  assert.equal(recruitmentPoolCatalog(pool, [{ ...catalog[0], allow_custom_up: false }]).up_agents[0].id, 'wish:up:fixed')
+  const legacy = [{ ...catalog[0], up_agents: [{ id: 'wish:up:old-a', operator_id: 'a', name: '甲', active: false }] }]
+  assert.deepEqual(poolAgentOptions(pool, legacy, operators).filter(agent => agent.poolSlot).map(agent => agent.id), ['wish:up:old-a', 'b'])
+})
 
 test('手填剩余次数按40抽口径换算，拒绝小数和范围外数据', () => {
   assert.equal(progressFromRemaining(19), 21)

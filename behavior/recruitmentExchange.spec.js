@@ -259,6 +259,7 @@ it('仅替换备份进度也显示确认，选项变化自动重新核对', asyn
   const wrapper = render(); await file(wrapper)
   await wrapper.get('select').setValue('use_backup'); await flushPromises()
   expect(wrapper.text()).toContain('备份进度将替换现有进度')
+  expect(wrapper.text()).toContain('同时替换心愿密探')
   expect(button(wrapper, '确认按预览导入').element.disabled).toBe(true)
   await wrapper.get('input[type=checkbox]').setValue(true); await flushPromises()
   expect(api.previewRecruitmentImport).toHaveBeenLastCalledWith(expect.objectContaining({ options: { state_strategy: 'use_backup', confirm_count_change: true } }))

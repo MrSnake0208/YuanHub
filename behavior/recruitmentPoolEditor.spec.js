@@ -11,6 +11,68 @@ const render = (props, teleport = true) => mount(PoolEditor, { attachTo: documen
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
 const progressModeKey = 'yh_recruitment_progress_input_mode'
 
+it('心愿仅可选两位绝密，选择草稿用于新记录UP推导且失败不丢失，读回核对后确认保存', async () => {
+  const pool = { ...recruitmentFixture().pools[0], progress: null, wish_agent_ids: [] }
+  const catalog = recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true }))
+  const agents = [{ id: 'a', name: '甲', rarity: 5 }, { id: 'b', name: '乙', rarity: 5 }, { id: 'c', name: '丙', rarity: 5 }, { id: 'four', name: '机密', rarity: 4 }]
+  const wrapper = render({ pool, catalog, agents, records: [] })
+  const selects = wrapper.findAll('.wish-fields select')
+  expect(selects).toHaveLength(2)
+  expect(selects[0].findAll('option').map(option => option.element.value)).not.toContain('four')
+  await selects[0].setValue('a')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  expect(wrapper.text()).toContain('请选择两位不同的绝密心愿密探')
+  expect(selects[1].get('option[value="a"]').element.disabled).toBe(true)
+  await selects[1].setValue('b')
+  await wrapper.get('form').trigger('submit')
+  const saved = wrapper.emitted('save')[0][0]
+  expect(saved.data).toMatchObject({ entries: [], remaining_pulls: null, wish_agent_ids: ['a', 'b'] })
+  await wrapper.setProps({ serverError: '保存失败' })
+  expect(selects.map(select => select.element.value)).toEqual(['a', 'b'])
+  await wrapper.setProps({ serverError: '', saveReceipt: { ...saved.data, revision: 4 } })
+  expect(wrapper.get('.footer-state').text()).not.toContain('已保存并核对')
+  await wrapper.setProps({ pool: { ...pool, wish_agent_ids: ['a', 'b'] }, recordsRevision: 4 })
+  expect(wrapper.get('.footer-state').text()).toContain('已保存并核对')
+  await register(wrapper, 'a', 17)
+  await wrapper.get('form').trigger('submit')
+  const next = wrapper.emitted('save').at(-1)[0]
+  expect(next.data.entries[0]).toMatchObject({ agent_id: 'a', up_status: 'up' })
+  expect(next.data.wish_agent_ids).toBeUndefined()
+})
+
+it('其他设备更新心愿时同步未编辑选择，保留本地心愿草稿且不重新判定未知历史', async () => {
+  const pool = { ...recruitmentFixture().pools[0], wish_agent_ids: ['a', 'b'] }
+  const catalog = recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true }))
+  const agents = ['a', 'b', 'c'].map(id => ({ id, name: id, rarity: 5 }))
+  const wrapper = render({ pool, catalog, agents })
+  expect(wrapper.get('.record-detail').attributes('aria-label')).not.toContain('，UP')
+  await wrapper.setProps({ pool: { ...pool, wish_agent_ids: ['a', 'c'] } })
+  expect(wrapper.findAll('.wish-fields select').map(select => select.element.value)).toEqual(['a', 'c'])
+  await wrapper.findAll('.wish-fields select')[0].setValue('b')
+  await wrapper.setProps({ pool: { ...pool, wish_agent_ids: ['a', 'b'] }, serverError: '档案已发生变化' })
+  expect(wrapper.findAll('.wish-fields select').map(select => select.element.value)).toEqual(['b', 'c'])
+})
+
+it('已保存心愿重新打开恢复，关闭有草稿保护；普通池不显示心愿字段', async () => {
+  const pool = { ...recruitmentFixture().pools[0], wish_agent_ids: ['a', 'b'] }
+  const catalog = recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true }))
+  const agents = [{ id: 'a', name: '甲', rarity: 5 }, { id: 'b', name: '乙', rarity: 5 }, { id: 'c', name: '丙', rarity: 5 }]
+  const wrapper = render({ pool, catalog, agents, records: [] })
+  expect(wrapper.findAll('.wish-fields select').map(select => select.element.value)).toEqual(['a', 'b'])
+  await wrapper.findAll('.wish-fields select')[1].setValue('c')
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(false)
+  await wrapper.get('.close-button').trigger('click')
+  await flushPromises()
+  expect(confirm).toHaveBeenCalled()
+  expect(wrapper.emitted('close')).toBeUndefined()
+  await wrapper.setProps({ open: false })
+  await wrapper.setProps({ open: true })
+  expect(wrapper.findAll('.wish-fields select').map(select => select.element.value)).toEqual(['a', 'b'])
+  await wrapper.setProps({ catalog: recruitmentCatalog().pools })
+  expect(wrapper.find('.wish-fields').exists()).toBe(false)
+})
+
 it.each(['Escape', '取消'])('其他密探在原入口显示头像姓名，选人时保留输入行，%s只收起选择面板并保留抽数', async action => {
   const wrapper = render({ records: [], agents: [{ id: 'b', name: '乙', avatar: '/other.webp', rarity: 5 }] })
   const idleControls = wrapper.get('.composer-actions').findAll('button').length
