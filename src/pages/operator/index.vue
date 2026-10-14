@@ -1787,17 +1787,19 @@
                       </div>
                     </div>
                     <div class="ledger-growth-row">
-                      <span class="ledger-grow-label" :title="operatorHuajiLabel(e)">化极<small v-if="operatorHuaji(e).awakened === true || (operatorHuaji(e).stage === 25 && operatorAwakeningSupported(e))">{{ operatorHuaji(e).awakened === true ? '已觉醒' : operatorHuaji(e).awakened === false ? '未觉醒' : '觉醒待确认' }}</small></span>
+                      <span class="ledger-grow-label">化极</span>
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
+                        :class="{ 'is-terminal': operatorHuajiAction(e).kind !== 'upgrade' || cardGrowthValue(e, 'star') >= operatorHuajiMax(e) }"
                         type="button"
-                        :aria-label="'化极：' + operatorHuajiLabel(e)"
+                        :aria-label="'化极：' + (cardHuaji(e).awakened === true ? '已觉醒' : cardHuaji(e).stage === 25 ? '5 星' : operatorHuajiLabel({ ...e, huaji: cardHuaji(e) }))"
                         title="化极"
                         :aria-expanded="cardPopoverKey === e.id + ':star-edit'"
                         @click="openCardPopover(e, 'star-edit')"
                       >
+                        <span v-if="cardHuaji(e).awakened === true">已觉醒</span>
                         <template
-                          v-if="starCardHasIcon(cardGrowthValue(e, 'star'))"
+                          v-else-if="starCardHasIcon(cardGrowthValue(e, 'star'))"
                           ><span>{{
                             starCardNumber(cardGrowthValue(e, "star"), e.spOf)
                           }}</span
@@ -1815,20 +1817,18 @@
                         }}</template>
                       </button>
                       <button
-                        v-if="!e.spOf"
+                        v-if="!e.spOf && operatorHuajiAction(e).kind === 'upgrade' && cardGrowthValue(e, 'star') < operatorHuajiMax(e)"
                         class="ledger-next-action ledger-popover-trigger"
-                        :class="operatorHuajiAction(e).kind === 'upgrade' ? growthActionClass(e, 'star', 1) : { 'is-complete': operatorHuajiAction(e).disabled }"
+                        :class="growthActionClass(e, 'star', 1)"
                         type="button"
                         :disabled="
-                          cardSubmitStates[e.id] === 'submitting' ||
-                          operatorHuajiAction(e).disabled
+                          cardSubmitStates[e.id] === 'submitting'
                         "
                         :aria-label="'化极：' + operatorHuajiAction(e).label"
                         :title="operatorHuajiAction(e).label"
                         @click="openGrowthAction(e, 'star', 1)"
                       >
-                        <span v-if="operatorHuajiAction(e).kind !== 'upgrade'" class="ledger-awakening-label">{{ operatorHuajiAction(e).label }}</span>
-                        <template v-else-if="ledgerCardIsV2"
+                        <template v-if="ledgerCardIsV2"
                           ><span
                             v-if="!growthMaterialsReady(e, 'star', 1)"
                             class="ledger-action-ratio"
@@ -1859,11 +1859,12 @@
                           <CircleAlert
                             :size="13"
                             aria-hidden="true"
-                          />校正化极等级与节点
+                          />校正星级、节点与觉醒
                         </p>
                         <div class="ledger-star-controls">
                           <select
                             :value="starDraftGroup(e)"
+                            aria-label="快捷设置星级与觉醒"
                             @change="setStarDraftGroup(e, $event)"
                           >
                             <option v-if="operatorHuaji(e).owned && operatorHuaji(e).stage == null" value="-1" disabled>化极待确认（历史 {{ e.starLevel }}）</option>
@@ -1875,6 +1876,7 @@
                             >
                               {{ group }} 星
                             </option>
+                            <option v-if="operatorAwakeningSupported(e)" value="awakening">觉醒</option>
 </select
                           ><select
                             v-if="
@@ -5501,6 +5503,7 @@ function ensureCardDraft(entry) {
         level: Number(entry.level) || 0,
         elite: Number(entry.elite) || 0,
         star: operatorHuaji(entry).stage == null ? Number(entry.starLevel) || 0 : entry.spOf ? Math.floor((operatorHuaji(entry).stage - 1) / 6) + 1 : operatorHuaji(entry).stage,
+        awakened: operatorHuaji(entry).awakened,
         discLoadouts: normalizeCardDiscLoadouts(entry),
         starStones: normalizeCardStarStones(entry),
         remark: operatorRemark(entry),
@@ -5523,6 +5526,7 @@ function cardDraftSnapshot(entry) {
     level: Number(growth.level) || 0,
     elite: Number(growth.elite) || 0,
     star: Number(growth.star) || 0,
+    awakened: growth.awakened,
     discLoadouts: growth.discLoadouts || [],
     starStones: growth.starStones || [],
     remark: growth.remark == null ? operatorRemark(entry) : growth.remark,
@@ -5570,6 +5574,12 @@ function cardGrowthValue(entry, field) {
   const draft = ensureCardDraft(entry);
   if (!draft) return field === "star" ? entry.starLevel : entry[field];
   return draft[field];
+}
+
+function cardHuaji(entry) {
+  const draft = ensureCardDraft(entry);
+  const huaji = operatorHuajiDraft(entry, draft.star);
+  return { ...huaji, awakened: huaji.owned ? draft.awakened : null };
 }
 
 function cardHasDraft(entry) {
@@ -6064,6 +6074,7 @@ function applyUpgradeOperator(entry, raw) {
     draft.level = entry.level;
     draft.elite = entry.elite;
     draft.star = entry.starLevel;
+    draft.awakened = operatorHuaji(entry).awakened;
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, {
       [entry.id]: cardDraftSnapshot(entry),
     });
@@ -6159,6 +6170,7 @@ function setGrowthDraft(entry, field, value, closePopover) {
 function starDraftGroup(entry) {
   const value = cardGrowthValue(entry, "star");
   if (entry.spOf) return value;
+  if (operatorAwakeningSupported(entry) && cardHuaji(entry).awakened === true) return 'awakening';
   if (operatorHuaji(entry).owned && operatorHuaji(entry).stage == null && value === Number(entry.starLevel)) return -1;
   return value > 0 ? Math.floor((value - 1) / 6) + 1 : 0;
 }
@@ -6169,7 +6181,18 @@ function starDraftNode(entry) {
 }
 
 function setStarDraftGroup(entry, event) {
-  const group = Number(event && event.target ? event.target.value : 0);
+  const value = event && event.target ? event.target.value : 0;
+  const draft = ensureCardDraft(entry);
+  if (value === 'awakening') {
+    if (!operatorAwakeningSupported(entry)) return;
+    setGrowthDraft(entry, "star", 25, false);
+    draft.awakened = true;
+    return;
+  }
+  const group = Number(value);
+  if (!Number.isInteger(group) || group < 0 || group > 5 || (!entry.spOf && group === 5 && operatorHuajiMax(entry) < 25)) return;
+  if (group === 0) draft.awakened = null;
+  else if (operatorAwakeningSupported(entry)) draft.awakened = false;
   if (entry.spOf) return setGrowthDraft(entry, "star", group, false);
   if (group === 0)
     return setGrowthDraft(entry, "star", group, false);
@@ -6466,6 +6489,7 @@ function cancelCardDraft(entry) {
     baseline.star == null
       ? Number(entry.starLevel) || 0
       : Number(baseline.star) || 0;
+  draft.awakened = baseline.awakened === undefined ? operatorHuaji(entry).awakened : baseline.awakened;
   draft.discLoadouts = Array.isArray(baseline.discLoadouts)
     ? JSON.parse(JSON.stringify(baseline.discLoadouts))
     : normalizeCardDiscLoadouts(entry);
@@ -7101,18 +7125,14 @@ function cardCombatDraft(entry) {
 
 function cardCombatInput(entry) {
   const draft = cardCombatDraft(entry);
-  const growth = cardGrowthDrafts.value[entry.id] || {
-    level: Number(entry.level) || 0,
-    elite: Number(entry.elite) || 0,
-    star: Number(entry.starLevel) || 0,
-  };
+  const growth = ensureCardDraft(entry);
   return {
     operatorName: entry.name,
     spOf: entry.spOf || "",
     level: Number(growth.level) || 0,
     elite: Number(growth.elite) || 0,
     starLevel: Number(growth.star) || 0,
-    huaji: operatorHuajiDraft(entry, growth.star),
+    huaji: cardHuaji(entry),
     stones: cardCombatStones(entry),
     oddities: {
       attack: { current: draft.oddityAttack },
@@ -7420,7 +7440,7 @@ function cardPatch(entry) {
     };
   }
   const beforeHuaji = operatorHuaji(entry);
-  const afterHuaji = operatorHuajiDraft(entry, growth.star);
+  const afterHuaji = input.huaji;
   delete patch.star_level;
   if (JSON.stringify(beforeHuaji) !== JSON.stringify(afterHuaji)) {
     patch.huaji = afterHuaji;
@@ -7524,6 +7544,7 @@ function mergePatchedCurrentEntry(entry, payload) {
     growth.level = Number(normalized.level) || 0;
     growth.elite = Number(normalized.elite) || 0;
     growth.star = Number(normalized.starLevel) || 0;
+    growth.awakened = operatorHuaji(normalized).awakened;
     growth.discLoadouts = normalizeCardDiscLoadouts(normalized);
     growth.starStones = normalizeCardStarStones(normalized);
     growth.modes = Object.assign({}, stats.displayMode || {});
