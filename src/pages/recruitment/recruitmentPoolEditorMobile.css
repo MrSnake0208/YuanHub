@@ -71,7 +71,6 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .entry-section { position: relative; padding: 14px 12px; margin-bottom: 24px; border-color: color-mix(in srgb, var(--line) 65%, transparent); }
 .entry-heading { padding-right: 44px; margin-bottom: 10px; }
 .entry-heading h3 { font: 700 16px/1.5 var(--font-b); }
-.entry-heading p { margin-top: 3px; font-size: 12px; }
 .entry-workflow { display: grid; gap: 10px; }
 .entry-workflow.is-choosing { grid-template-columns: minmax(0, 1fr); }
 .entry-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 6px; min-width: 0; padding-block: 3px; }
