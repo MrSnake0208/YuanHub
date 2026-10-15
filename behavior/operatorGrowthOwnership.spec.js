@@ -105,3 +105,38 @@ it('电影目标使用直接星级，不显示普通心纸和节点，并保留�
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+it.each([
+  ['尚未录入', null, true],
+  ['历史阶段未知', 31, true],
+  ['已知且有缺口', 1, false],
+  ['已知且无缺口', 7, false],
+])('培养卡区分未知心纸需求和已知零缺口：%s', async (_label, starLevel, unknown) => {
+  plannerApi.getTrainingWorkspace.mockResolvedValue({
+    schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ['op'], excluded_operator_ids: [],
+      targets: { op: { level: 100, elite: 17, star_level: 7 } } }],
+  })
+  const wrapper = mount(Tracker, {
+    props: { accountId: 'acc', isLoggedIn: true,
+      currentEntries: starLevel == null ? [] : [{ id: 'op', level: 1, elite: 1, starLevel }],
+      catalogEntries: [{ id: 'op', name: '测试密探', rarity: 4 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  const card = wrapper.get('.growth-card')
+  const note = card.get('.heart-progress-note').text()
+  expect(card.get('.growth-progress-status').text()).toBe('目标进度')
+  if (unknown) {
+    expect(note).toBe('化极需求待确认，暂无法完整估算')
+    expect(card.find('.heart-gap-number').exists()).toBe(false)
+  } else {
+    expect(note).toContain('心纸')
+    expect(note).not.toContain('待确认')
+    const gap = Number(card.get('.heart-gap-number').text())
+    if (starLevel === 7) expect(gap).toBe(0)
+    else expect(gap).toBeGreaterThan(0)
+  }
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+})
