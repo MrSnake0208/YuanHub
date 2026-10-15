@@ -12,5 +12,5 @@
   .has-sidebar { grid-template-columns: minmax(0, 1fr) minmax(240px, 28%); }
 }
 @media (min-width: 1081px) {
-  .today-main { margin-left: 228px; }
+  .today-main { margin-left: 292px; }
 }

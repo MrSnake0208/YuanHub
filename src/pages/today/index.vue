@@ -1,6 +1,6 @@
 <template>
-  <TodayLayout :show-overview="calendarEnabled || showAccountOverview"
-    :has-sidebar="calendarEnabled && !!validAccountId">
+  <TodayLayout :show-overview="calendarEnabled || trainingEnabled || showAccountOverview"
+    :has-sidebar="(calendarEnabled || trainingEnabled) && !!validAccountId">
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
         <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
@@ -27,9 +27,10 @@
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
     </template>
     <template #overview>
-      <div v-if="calendarEnabled && validAccountId" class="today-personal">
-        <TodaySubscriptionSummary :account-id="validAccountId" :game="accountGame" reminders-target="#today-reminders" />
-        <TodayPrivateItems :account-id="validAccountId" :game="accountGame" />
+      <div v-if="(calendarEnabled || trainingEnabled) && validAccountId" class="today-personal">
+        <TodaySubscriptionSummary v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" reminders-target="#today-reminders" />
+        <TodayTrainingPlans v-if="trainingEnabled" :account-id="validAccountId" :game="accountGame" />
+        <TodayPrivateItems v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" />
       </div>
     </template>
     <template #activity>
@@ -85,6 +86,7 @@ import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
 import TodayPrivateItems from '../../components/today/TodayPrivateItems.vue'
+import TodayTrainingPlans from '../../components/today/TodayTrainingPlans.vue'
 import TodayLobby from '../../components/today/TodayLobby.vue'
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
@@ -157,6 +159,7 @@ const accountId = computed(function () { return activeAccount.id })
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const validAccountId = computed(() => accounts.value.some(account => account.id === accountId.value) ? accountId.value : '')
 const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && !accountLoading.value)
+const trainingEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.OPERATOR_GROWTH_TRACKING) && auth.isLoggedIn && !accountLoading.value)
 const calendarGame = computed(function () {
   return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
     ? accountGame.value : ''

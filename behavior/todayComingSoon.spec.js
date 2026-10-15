@@ -14,6 +14,8 @@ import TodayLobby from '../src/components/today/TodayLobby.vue'
 import TodayActivitySummary from '../src/components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../src/components/today/TodaySubscriptionSummary.vue'
 import TodayPrivateItems from '../src/components/today/TodayPrivateItems.vue'
+import TodayTrainingPlans from '../src/components/today/TodayTrainingPlans.vue'
+import { getTrainingWorkspace } from '../src/api/operatorPlanner.js'
 import { listCalendarPrivateItems } from '../src/api/calendarPrivateItems.js'
 import { serverToday } from '../src/data/activityCalendar.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
@@ -27,8 +29,10 @@ vi.mock('../src/store/auth.js', async () => {
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
 vi.mock('../src/components/SiteFooter.vue', () => ({ default: { name: 'SiteFooter', template: '<footer />' } }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn() }))
-vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
-vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
+vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
+vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn(async account => ({ account_id: account, agent_ids: [] })) }))
+vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(async account => ({ schema_version: 1, account_id: account, revision: 0, plans: [], active_plan_id: null })) }))
+vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(async () => ({ items: [], subscribed_count: 0, total_pending: 0 })), listCalendarSubscriptions: vi.fn(async () => ({ items: [], unavailable_items: [] })), getCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
@@ -194,6 +198,7 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 颗')
   expect(wrapper.get('.today-personal > .today-subscriptions h2').text()).toBe('我的待办')
   expect(wrapper.get('.today-personal > .today-private-items h2').text()).toBe('我的事项与备注')
+  expect(wrapper.get('.today-personal > .today-training h2').text()).toBe('我的养成计划')
   const aside = wrapper.get('.today-aside')
   expect(Array.from(aside.element.children).map(node => node.className)).toEqual(['today-activity-summary', 'today-reminders-target', 'today-account-overview'])
   expect(aside.get('#today-reminders > .todo-reminders').text()).toContain('临期活动')
@@ -237,6 +242,24 @@ it('尚未录入游戏数据也展示私人备注，私人事项慢请求不阻�
   await flushPromises()
   expect(wrapper.get('.today-personal').text()).toContain('先整理备注')
   expect(wrapper.get('.today-aside').text()).not.toContain('先整理备注')
+})
+
+it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个人内容', async () => {
+  signIn(); auth.userInfo = { id: 'owner-a' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '账号', game: '如鸢' }])
+  const pending = deferred()
+  getTrainingWorkspace.mockReturnValueOnce(pending.promise)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.today-personal > .today-training').text()).toContain('正在读取养成计划')
+  expect(wrapper.get('.today-personal > .today-subscriptions').text()).toContain('还没有订阅活动')
+  expect(wrapper.get('.today-personal > .today-private-items h2').text()).toBe('我的事项与备注')
+  pending.resolve({ schema_version: 1, account_id: 'a', revision: 1, active_plan_id: 'main', plans: [
+    { id: 'main', name: '培养主队', source: 'custom', operator_ids: ['char_001_yangxiu'], excluded_operator_ids: [], targets: {} }
+  ] })
+  await flushPromises()
+  expect(wrapper.get('.today-personal > .today-training').text()).toContain('培养主队')
+  expect(wrapper.get('.today-personal > .today-training').text()).toContain('杨修')
+  expect(wrapper.get('.today-aside').text()).not.toContain('培养主队')
 })
 
 it('部分已有数据时补齐为可选折叠区，已有项目没有重复录入入口', async () => {
@@ -318,7 +341,7 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点、可选�
   listAccounts.mockResolvedValue([{ id: 'a', name: '合成账号', game: '如鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   const wrapper = render(); await flushPromises()
-  const instances = [TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems].map(type => wrapper.getComponent(type).vm.$)
+  const instances = [TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems, TodayTrainingPlans].map(type => wrapper.getComponent(type).vm.$)
   const details = wrapper.get('details.data-onboarding')
   details.element.scrollIntoView = vi.fn()
   details.element.open = true; await details.trigger('toggle')
@@ -326,7 +349,7 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点、可选�
   const search = document.querySelector('.duty-search input')
   search.value = '阿蝉'; search.dispatchEvent(new Event('input', { bubbles: true })); search.focus()
   await flushPromises()
-  const calls = [listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems].map(fn => fn.mock.calls.length)
+  const calls = [listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems, getTrainingWorkspace].map(fn => fn.mock.calls.length)
   for (const next of [width, 768, 767, 980, 981, 1080, 1081, 390, 1440, width]) {
     viewport.resize(next); await flushPromises()
     expect(document.querySelector('.duty-search input')).toBe(search)
@@ -334,8 +357,8 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点、可选�
     expect(document.activeElement).toBe(search)
     expect(wrapper.get('details.data-onboarding').element).toBe(details.element)
     expect(details.element.open).toBe(true)
-    ;[TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems].forEach((type, index) => expect(wrapper.getComponent(type).vm.$).toBe(instances[index]))
-    expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems].map(fn => fn.mock.calls.length)).toEqual(calls)
+    ;[TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems, TodayTrainingPlans].forEach((type, index) => expect(wrapper.getComponent(type).vm.$).toBe(instances[index]))
+    expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems, getTrainingWorkspace].map(fn => fn.mock.calls.length)).toEqual(calls)
     expect(wrapper.findAll('.account-switcher')).toHaveLength(1)
   }
   wrapper.unmount()
