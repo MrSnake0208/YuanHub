@@ -22,7 +22,7 @@
       <div class="calendar-days"><span v-for="blank in offset" :key="`blank-${blank}`" /><button v-for="day in days" :key="day" type="button" :data-day="day" :tabindex="day === focusedDay ? 0 : -1" :class="{ selected: keyFor(day) === date, today: keyFor(day) === today }" :aria-label="`${year} 年 ${month + 1} 月 ${day} 日`" :aria-pressed="keyFor(day) === date" :aria-current="keyFor(day) === today ? 'date' : undefined" @keydown="moveDay($event, day)" @click="selectDay(day)">{{ day }}</button></div>
       <button type="button" class="today-button" @click="selectToday">回到今天</button>
     </div>
-    <div v-if="timeOpen" id="reward-timepicker" class="time-popover" role="group" aria-label="选择发生时刻">
+    <div v-if="timeOpen" id="reward-timepicker" ref="timePanel" class="time-popover" role="group" aria-label="选择发生时刻" tabindex="-1">
       <div class="time-heading">
         <div class="time-title"><span>选择时刻</span><small>24 小时制</small></div>
         <button type="button" aria-label="关闭选时" @click="closeTime"><X :size="16" aria-hidden="true" /></button>
@@ -50,6 +50,7 @@ const emit = defineEmits(['update:date', 'update:clock'])
 const root = ref(null)
 const dateTrigger = ref(null)
 const timeTrigger = ref(null)
+const timePanel = ref(null)
 const calendarOpen = ref(false)
 const timeOpen = ref(false)
 const year = ref(new Date().getFullYear())
@@ -75,7 +76,20 @@ function setNow() { const now = new Date(); emit('update:clock', `${String(now.g
 async function focusDay() { await nextTick(); root.value?.querySelector(`[data-day="${focusedDay.value}"]`)?.focus() }
 function toggleCalendar() { timeOpen.value = false; if (calendarOpen.value) { closeCalendar(); return }; let current = new Date(`${props.date}T12:00:00`); if (!Number.isFinite(current.getTime())) current = new Date(); year.value = current.getFullYear(); month.value = current.getMonth(); focusedDay.value = current.getDate(); calendarOpen.value = true; focusDay() }
 function closeCalendar() { calendarOpen.value = false; dateTrigger.value?.focus() }
-async function toggleTime() { calendarOpen.value = false; if (timeOpen.value) { closeTime(); return }; timeOpen.value = true; await nextTick(); root.value?.querySelector('[data-time-part="0"]')?.focus() }
+async function toggleTime(event) {
+  calendarOpen.value = false
+  if (timeOpen.value) { closeTime(); return }
+  timeOpen.value = true
+  await nextTick()
+  // 触屏展开时先展示面板，避免输入框抢焦点唤起软键盘。
+  const touch = event?.pointerType === 'touch' || window.matchMedia?.('(hover: none), (pointer: coarse)')?.matches
+  if (touch) {
+    timePanel.value?.focus({ preventScroll: true })
+    timePanel.value?.scrollIntoView({ block: 'nearest' })
+  } else {
+    root.value?.querySelector('[data-time-part="0"]')?.focus()
+  }
+}
 function closeTime() { timeOpen.value = false; timeTrigger.value?.focus() }
 function closePopovers(event) { if (!calendarOpen.value && !timeOpen.value) return; event.stopPropagation(); event.preventDefault(); if (calendarOpen.value) closeCalendar(); else closeTime() }
 function changeMonth(delta) { const next = new Date(year.value, month.value + delta, 1); year.value = next.getFullYear(); month.value = next.getMonth(); focusedDay.value = Math.min(focusedDay.value, days.value); focusDay() }

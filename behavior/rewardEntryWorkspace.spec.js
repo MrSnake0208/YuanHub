@@ -226,6 +226,39 @@ it('选时面板支持数值输入与关闭后的焦点，禁用时关闭面板�
   expect(wrapper.findAll('[data-clock-part]').every(input => input.element.disabled)).toBe(true)
 })
 
+it.each([
+  ['触屏手机', true, 'touch', false],
+  ['带鼠标设备上的触摸操作', false, 'touch', false],
+  ['旧浏览器触屏点击', true, undefined, false],
+  ['桌面鼠标操作', false, 'mouse', true],
+])('选时打开时按输入方式处理焦点：%s', async (_, coarse, pointerType, focusInput) => {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: coarse })))
+  const wrapper = mount(RewardDateTimePicker, {
+    attachTo: document.body,
+    props: { date: '2026-10-15', clock: '08:09:10' },
+  })
+  const trigger = wrapper.get('button[aria-label="选择发生时刻"]')
+  trigger.element.focus()
+  await trigger.trigger('click', { pointerType })
+  const panel = wrapper.get('#reward-timepicker')
+  const hour = wrapper.get('[data-time-part="0"]')
+  expect(document.activeElement).toBe(focusInput ? hour.element : panel.element)
+  if (focusInput) {
+    expect([hour.element.selectionStart, hour.element.selectionEnd]).toEqual([0, 2])
+  } else {
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+  }
+  expect(wrapper.findAll('.time-column input').every(input => input.attributes('inputmode') === 'numeric')).toBe(true)
+  expect(wrapper.emitted('update:clock')).toBeUndefined()
+  expect(wrapper.emitted('update:date')).toBeUndefined()
+  hour.element.focus()
+  expect(document.activeElement).toBe(hour.element)
+  expect([hour.element.selectionStart, hour.element.selectionEnd]).toEqual([0, 2])
+  await wrapper.get('.done-button').trigger('click')
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+})
+
 it.each([0, 1, 2])('选时主输入在小时光标位置 %i 直接键入 15 覆盖整段，保留分秒', async caret => {
   const wrapper = mount(RewardDateTimePicker, {
     props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
