@@ -1676,7 +1676,7 @@
   font: 10.5px/1.45 var(--font-b);
 }
 .growth-card-remark { margin-top: 6px; }
-.growth-card-remark textarea { height: 32px; min-height: 32px; resize: none; }
+.growth-card-remark textarea { height: 28px; min-height: 28px; resize: none; }
 .growth-card-remark textarea:focus, .growth-card-remark textarea:not(:placeholder-shown) { height: 64px; }
 .growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); }
 .ledger-inline-field {

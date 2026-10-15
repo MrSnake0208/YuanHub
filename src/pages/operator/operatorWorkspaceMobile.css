@@ -1682,11 +1682,10 @@
   font: 10.5px/1.45 var(--font-b);
 }
 .growth-card-remark { margin-top: 6px; }
-.growth-card-remark textarea { height: 32px; min-height: 32px; resize: none; }
+.growth-card-remark textarea { height: 28px; min-height: 28px; resize: none; }
 .growth-card-remark textarea:focus, .growth-card-remark textarea:not(:placeholder-shown) { height: 64px; }
 @media (max-width: 640px) {
-  .growth-card-remark { margin-top: 4px; padding-top: 0; }
-  .growth-card-remark textarea { height: 44px; min-height: 44px; padding: 10px 0; font-size: 16px; }
+  .growth-card-remark textarea { height: 32px; min-height: 32px; padding: 3px 0; font-size: 16px; }
   .growth-card-remark .ledger-card-actions button { min-height: 44px; font-size: 12px; }
 }
 .growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); }
