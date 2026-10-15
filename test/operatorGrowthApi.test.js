@@ -9,12 +9,14 @@ import {
   exportOperator,
   getOperatorAnnotations,
   getOperatorGrowthTargets,
+  getOperatorOrganization,
   importOperator,
   patchOperatorCurrent,
   previewOperatorImport,
   previewOperatorUpgrade,
   putOperatorAnnotation,
-  putOperatorGrowthTarget
+  putOperatorGrowthTarget,
+  putOperatorOrganization
 } from '../src/api/operator.js'
 
 function success(data) {
@@ -23,6 +25,17 @@ function success(data) {
     headers: { 'Content-Type': 'application/json' }
   }))
 }
+
+test('分类接口按当前子账号编码，独立发送快照和revision，不写状态接口', async t => {
+  const calls = []
+  t.mock.method(globalThis, 'fetch', async (url, options) => { calls.push({ url: String(url), options }); return success({ account_id: 'a b', revision: 1 }) })
+  await getOperatorOrganization('a b')
+  const body = { schema_version: 1, status_order: ['active', 'graduated', 'skip', 'discarded'], pinned_ids: [], tags: [], expected_revision: 0 }
+  await putOperatorOrganization('a b', body)
+  assert.equal(calls.length, 2)
+  calls.forEach(call => assert.match(call.url, /\/v1\/operator\/organization\?account_id=a\+b$/))
+  assert.equal(calls[1].options.method, 'PUT'); assert.deepEqual(JSON.parse(calls[1].options.body), body)
+})
 
 for (const cryptoAvailable of [true, false]) {
   test(`手动攻生保存将超长输入及观测签名压缩为摘要，不修改编辑草稿（Web Crypto：${cryptoAvailable}）`, async function (t) {

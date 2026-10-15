@@ -925,7 +925,7 @@
               :has-filters="hasCurrentFilters"
               v-model:growth-filters="growthFilters"
               show-growth-filters
-              description="筛选后按状态、品质、等级、化极、属性与实装顺序排列"
+              description="筛选后置顶密探优先，其余按分组顺序、品质、等级、化极、属性与实装顺序排列"
               @update:status-filter="setWorkbenchStatusFilter"
               @reset="resetCurrentFilters"
             >
@@ -1031,6 +1031,14 @@
                 </div>
               </template>
             </OperatorFilterDossier>
+
+            <OperatorOrganizationManager
+              v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
+              :value="organizationData" :account-id="accountId" :game="gameFilter" :catalog="catalogMap"
+              :ready="organizationReady" :loading="organizationLoading" :saving="organizationSaving" :error="organizationError"
+              :discarded-enabled="discardedEnabled" :selected-ids="Array.from(batchSelectedIds)" v-model:tag-filter="organizationTagFilter"
+              :save="saveOrganization" :reload="reloadOrganization"
+            />
 
             <div v-if="annotationUnsupportedStates.length" class="state err slim" role="alert">
               存在不支持的养成状态（{{ annotationUnsupportedStates.join('、') }}），请刷新到最新版本；可在“{{ discardedEnabled ? '全部（含已弃置）' : '全部' }}”查看。
@@ -1257,6 +1265,10 @@
                       >
                     </div>
                   </header>
+
+                  <OperatorOrganizationCard v-if="auth.isLoggedIn" :operator-id="e.id" :name="e.name || e.id"
+                    :pinned="organizationRanks.pins.has(e.id)" :tags="organizationData.tags" :disabled="!organizationReady"
+                    @pin="toggleOperatorPin(e.id)" @tag="(tagId, add) => setOperatorTag([e.id], tagId, add)" />
 
                   <!-- 暂时隐藏漆园蝶完成状态
                   <div v-if="oddityCompletions[e.id]" class="ledger-oddity-completion">
@@ -3014,6 +3026,10 @@ import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
+import OperatorOrganizationManager from "../../components/operator/OperatorOrganizationManager.vue";
+import OperatorOrganizationCard from "../../components/operator/OperatorOrganizationCard.vue";
+import { useOperatorOrganization } from "../../composables/useOperatorOrganization.js";
+import { compareOperatorOrganization, operatorOrganizationContent, operatorOrganizationRanks, updateOperatorTag } from "../../utils/operatorOrganization.js";
 import OperatorGrowthFilters from "../../components/operator/OperatorGrowthFilters.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
@@ -3194,11 +3210,13 @@ const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
 });
-const workbenchStatusOptions = discardedEnabled ? [
+const workbenchStatusOptions = computed(() => discardedEnabled ? [
   { value: "registered", label: "在册" },
-  ...OPERATOR_STATUS_OPTIONS.map(option => ({ ...option, separateGroup: option.value === "discarded" })),
+  ...OPERATOR_STATUS_OPTIONS.map(option => ({ ...option, separateGroup: option.value === "discarded" }))
+    .sort((a, b) => organizationRanks.value.states.get(a.value) - organizationRanks.value.states.get(b.value)),
   { value: "all", label: "全部（含已弃置）" },
-] : [{ value: "all", label: "全部" }, ...editableStatusOptions];
+] : [{ value: "all", label: "全部" }, ...editableStatusOptions.slice()
+  .sort((a, b) => organizationRanks.value.states.get(a.value) - organizationRanks.value.states.get(b.value))]);
 const loading = ref(false);
 const catalogLoading = ref(false);
 const error = ref("");
@@ -3426,6 +3444,26 @@ const gameFilter = computed({
     activeAccount.setGame(v, accountId.value);
   },
 });
+
+const organizationTagFilter = ref("");
+const { data: organizationData, loading: organizationLoading, saving: organizationSaving, error: organizationError,
+  ready: organizationReady, reload: reloadOrganization, save: saveOrganization } = useOperatorOrganization(accountId, computed(() => auth.isLoggedIn));
+const organizationRanks = computed(() => operatorOrganizationRanks(organizationData.value));
+const organizationTagMembers = computed(() => new Set(organizationData.value.tags.find(tag => tag.id === organizationTagFilter.value)?.operator_ids || []));
+watch([accountId, gameFilter], () => { organizationTagFilter.value = ""; }, { flush: "sync" });
+watch(() => organizationData.value.tags, tags => {
+  if (organizationTagFilter.value && !tags.some(tag => tag.id === organizationTagFilter.value)) organizationTagFilter.value = "";
+});
+
+async function toggleOperatorPin(id) {
+  const next = operatorOrganizationContent(organizationData.value);
+  next.pinned_ids = next.pinned_ids.includes(id) ? next.pinned_ids.filter(value => value !== id) : [id, ...next.pinned_ids];
+  await saveOrganization(next);
+}
+
+async function setOperatorTag(ids, tagId, add) {
+  await saveOrganization(updateOperatorTag(organizationData.value, tagId, ids, add));
+}
 
 watch(
   () => [accountId.value, gameFilter.value, auth.isLoggedIn],
@@ -4847,7 +4885,6 @@ const currentStatusCounts = computed(function () {
   return counts;
 });
 
-const CURRENT_STATUS_ORDER = { growing: 0, graduated: 1, inactive: 2, discarded: 3 };
 const CURRENT_PROF_ORDER = {
   地: 0,
   水: 1,
@@ -4859,12 +4896,10 @@ const CURRENT_PROF_ORDER = {
 };
 
 function compareCurrentEntries(a, b) {
-  let difference =
-    (CURRENT_STATUS_ORDER[operatorStatus(a)] ?? 99) -
-    (CURRENT_STATUS_ORDER[operatorStatus(b)] ?? 99);
+  let difference = compareOperatorOrganization(a.id, operatorStatus(a), b.id, operatorStatus(b), organizationRanks.value);
   if (difference) return difference;
 
-  // 特别关注只在同一养成状态内提前，不打破“养成中 → 已毕业 → 养老中 → 已弃置”的主分组。
+  // 未置顶的特别关注只在同一状态内提前。
   if (favoriteFirst.value) {
     difference =
       Number(favoriteAgentIds.value.has(b.id)) -
@@ -4955,6 +4990,7 @@ function matchesCurrentFilters(entry) {
     matchesOperatorQuality(entry, rarityFilter.value) &&
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
     matchesOperatorStatus(operatorStatus(entry), workbenchStatusFilter.value) &&
+    (!organizationTagFilter.value || organizationTagMembers.value.has(entry.id)) &&
     matchesOperatorGrowthFilters(entry, growthFilters.value) &&
     (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(entry.id))
   );
@@ -5037,7 +5073,9 @@ const currentFilterSuffix = computed(function () {
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
     parts.push("职业「" + subProfFilter.value + "」");
-  const group = workbenchStatusOptions.find(option => option.value === workbenchStatusFilter.value);
+  const group = workbenchStatusOptions.value.find(option => option.value === workbenchStatusFilter.value);
+  const organizationTag = organizationData.value.tags.find(tag => tag.id === organizationTagFilter.value);
+  if (organizationTag) parts.push("标签「" + organizationTag.name + "」");
   parts.push("分组「" + (group ? group.label : workbenchStatusFilter.value) + "」");
   parts.push(...growthFilterParts(growthFilters.value));
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
@@ -5061,6 +5099,7 @@ const hasGrowthDrafts = computed(function () {
 const hasCurrentFilters = computed(function () {
   return (
     Boolean(currentSearch.value.trim()) ||
+    Boolean(organizationTagFilter.value) ||
     rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
@@ -5073,6 +5112,7 @@ const hasCurrentFilters = computed(function () {
 
 function resetCurrentFilters() {
   currentSearch.value = "";
+  organizationTagFilter.value = "";
   rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
@@ -5093,7 +5133,7 @@ function toggleUpgradeReadyFilter(filter) {
 }
 
 function setWorkbenchStatusFilter(value) {
-  if (!workbenchStatusOptions.some(option => option.value === value)) return;
+  if (!workbenchStatusOptions.value.some(option => option.value === value)) return;
   workbenchStatusFilter.value = value;
   upgradeReadyFilter.value = "";
 }
@@ -8598,10 +8638,12 @@ function handleAccountEvent(message) {
     void loadCatalog();
   }
   if (message.event === "operator_annotation") { scheduleSubjectiveRefresh(message.event); return; }
+  if (message.event === "operator_organization") { void reloadOrganization(); return; }
   if (message.event === "operator_favorites") { scheduleSubjectiveRefresh(message.event); return; }
 
   if (message.event === "account_stream_open") {
     if (!message.data?.reconnected) return;
+    void reloadOrganization();
     loadOperatorAnnotations();
     loadAgentFavorites();
     scheduleEventRefresh();
