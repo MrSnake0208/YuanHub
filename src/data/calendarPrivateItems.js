@@ -1,6 +1,7 @@
 import { CALENDAR_GAMES, isCalendarDate, serverToday, SERVER_TIME_ZONE } from './activityCalendar.js'
 
 export const CALENDAR_PRIVATE_ITEMS = Symbol('calendarPrivateItems')
+export const CALENDAR_PRIVATE_ITEMS_UPDATED = 'yuanHub:calendar-private-items-updated'
 export const isPrivateCalendarItem = item => item?.source_type === 'PRIVATE_ITEM'
 
 export function privateCalendarItem(value, account) {
@@ -9,17 +10,23 @@ export function privateCalendarItem(value, account) {
   if (!value || !account || value.account_id !== account.id || value.game !== account.game || !CALENDAR_GAMES.includes(value.game) ||
     typeof value.id !== 'string' || !/^pci_[0-9a-f-]{36}$/.test(value.id) || typeof value.title !== 'string' || !value.title.trim() || value.title.trim().length > 100 ||
     !isCalendarDate(start) || !isCalendarDate(end) || end < start || !Number.isSafeInteger(value.version) || value.version < 0 || typeof value.note !== 'string' || value.note.length > 1000 ||
-    (value.time != null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.time))) return null
+    (value.time != null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) ||
+    (value.reminder_on != null && !['START', 'END'].includes(value.reminder_on)) ||
+    (value.reminder_days_before !== undefined && ![0, 1].includes(value.reminder_days_before))) return null
   return {
     ...value, source_type: 'PRIVATE_ITEM', category: 'PRIVATE_ITEM', title: value.title.trim(),
     start_date: start, end_date: end, start_time: value.time || null, end_time: null,
     start_at: null, end_at: null, time_zone: SERVER_TIME_ZONE, description: value.note,
+    reminder_on: value.reminder_on ?? null, reminder_days_before: value.reminder_days_before ?? 0,
   }
 }
 
 export function privateItemForm(record, date) {
   const start = record?.start_date || record?.date || date || serverToday()
-  return { title: record?.title || '', start_date: start, end_date: record?.end_date || record?.date || start, time: record?.time || '', note: record?.note || '' }
+  return {
+    title: record?.title || '', start_date: start, end_date: record?.end_date || record?.date || start, time: record?.time || '', note: record?.note || '',
+    reminder_on: record ? record.reminder_on || '' : 'START', reminder_days_before: record?.reminder_days_before ?? 0,
+  }
 }
 
 export function validatePrivateItem(form) {
@@ -29,5 +36,7 @@ export function validatePrivateItem(form) {
   if (!errors.start_date && !errors.end_date && form.end_date < form.start_date) errors.end_date = '结束日期不能早于开始日期。'
   if (form.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.time)) errors.time = '请填写有效时间（HH:mm）。'
   if (form.note.length > 1000) errors.note = '说明最多1000字。'
+  if (form.reminder_on != null && form.reminder_on !== '' && !['START', 'END'].includes(form.reminder_on)) errors.reminder_on = '请选择开始日、截止日或关闭提醒。'
+  if (form.reminder_days_before !== undefined && ![0, 1].includes(form.reminder_days_before)) errors.reminder_days_before = '请选择当天或提前一天提醒。'
   return errors
 }

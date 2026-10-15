@@ -157,14 +157,18 @@ const visibleItems = computed(() => {
     .filter(item => (item.end_date == null || item.end_date >= requestRange.value.from) && item.start_date <= requestRange.value.to)
 })
 const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => subscriptionMatchesTask(record, taskStatus.value)))
-let locatedRoute = ''
+let locatedEvent = ''
 watch(() => [route.query.event, visibleItems.value, currentView.value, anchorDate.value], async () => {
   const eventId = Array.isArray(route.query.event) ? route.query.event[0] : route.query.event
-  if (!eventId || locatedRoute === route.fullPath) return
+  if (!eventId) { locatedEvent = ''; return }
+  if (locatedEvent === eventId) return
+  const path = route.fullPath
   await nextTick()
+  if (path !== route.fullPath || locatedEvent === eventId) return
   const card = [...document.querySelectorAll('article.calendar-event[data-event-id]')].find(node => node.dataset.eventId === eventId)
-  if (card) locatedRoute = route.fullPath
-  card?.scrollIntoView?.({ block: 'nearest' })
+  // 链接定位只消费一次，后续选日或切视图由当前操作接管滚动。
+  if (card) locatedEvent = eventId
+  card?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
   card?.querySelector('h4')?.focus({ preventScroll: true })
 }, { flush: 'post' })
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
@@ -239,13 +243,17 @@ async function resetFilters() {
   filterTrigger.value?.focus({ preventScroll: true })
 }
 async function setView(view) {
-  const failure = await router.replace({ query: calendarViewQuery(route.query, { view }, today.value) })
+  const query = calendarViewQuery(route.query, { view }, today.value)
+  delete query.event
+  const failure = await router.replace({ query })
   if (failure) return
   preferredView.value = view
   try { localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, view) } catch { /* In-memory preference still works. */ }
 }
 function setDate(date) {
-  return router.replace({ query: calendarViewQuery(route.query, { view: currentView.value, date }, today.value) })
+  const query = calendarViewQuery(route.query, { view: currentView.value, date }, today.value)
+  delete query.event
+  return router.replace({ query })
 }
 async function goToday() {
   const failure = await setDate(today.value)

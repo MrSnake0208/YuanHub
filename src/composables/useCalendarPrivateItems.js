@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { createCalendarPrivateItem, deleteCalendarPrivateItem, getCalendarPrivateItem, listCalendarPrivateItems, updateCalendarPrivateItem } from '../api/calendarPrivateItems.js'
-import { CALENDAR_PRIVATE_ITEMS, privateCalendarItem, privateItemForm, validatePrivateItem } from '../data/calendarPrivateItems.js'
+import { CALENDAR_PRIVATE_ITEMS, CALENDAR_PRIVATE_ITEMS_UPDATED, privateCalendarItem, privateItemForm, validatePrivateItem } from '../data/calendarPrivateItems.js'
 import { dialog } from '../utils/dialog.js'
 import { calendarRangeLabel, isCalendarDate } from '../data/activityCalendar.js'
 
@@ -73,6 +73,9 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
     records.value = records.value.filter(item => item.id !== value.id)
     if (value.start_date <= range.value.to && value.end_date >= range.value.from) records.value.push(value)
   }
+  function notifyChange() {
+    window.dispatchEvent(new CustomEvent(CALENDAR_PRIVATE_ITEMS_UPDATED, { detail: { userId: subscriptions.identity.value, accountId: subscriptions.account.value.id } }))
+  }
   async function save() {
     const draft = editor.value, context = ticket()
     if (!draft || draft.busy || !current(context)) return false
@@ -80,7 +83,8 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
     if (Object.keys(draft.errors).length) return false
     draft.busy = true; draft.error = ''; draft.conflict = false
     const account = { ...subscriptions.account.value }, user = subscriptions.identity.value
-    const body = { account_id: account.id, title: draft.form.title.trim(), start_date: draft.form.start_date, end_date: draft.form.end_date, time: draft.form.time || null, note: draft.form.note }
+    const body = { account_id: account.id, title: draft.form.title.trim(), start_date: draft.form.start_date, end_date: draft.form.end_date, time: draft.form.time || null, note: draft.form.note,
+      reminder_on: draft.form.reminder_on || null, reminder_days_before: draft.form.reminder_days_before }
     try {
       const raw = draft.record
         ? await updateCalendarPrivateItem(draft.record.id, { ...body, expected_version: draft.record.version }, user)
@@ -89,6 +93,7 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
       const result = privateCalendarItem(raw, account)
       if (!result || draft.record && (result.id !== draft.record.id || result.version <= draft.record.version)) throw new Error('保存结果需要确认，请读取最新内容。')
       accept(result); editor.value = null
+      notifyChange()
       notice.value = `已保存私人事项 · ${calendarRangeLabel(result)}`
       if (result.end_date < range.value.from || result.start_date > range.value.to) notice.value += '。该区间不在当前日期范围，请在月历或时间轴选择覆盖日期查看。'
       return true
@@ -126,6 +131,7 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
       generation++; loading.value = false
       records.value = records.value.filter(value => value.id !== record.id)
       notice.value = '私人事项已删除。'
+      notifyChange()
     } catch (err) {
       if (current(context) && !securityError(err)) {
         error.value = err?.status === 409 ? '事项已变化，请刷新后确认最新内容再删除。' : err?.message || '删除失败，原内容仍保留。'

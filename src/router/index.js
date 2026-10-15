@@ -3,6 +3,7 @@ import { beta } from '../store/beta.js'
 import { betaLandingFor, safeBetaRedirect } from '../utils/betaAccess.js'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
+import { scrollBehavior } from './scrollBehavior.js'
 import { isFeatureEnabled } from '@/config/features.js'
 import { auth, init as authInit } from '@/store/auth.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '@/utils/routeAccess.js'
@@ -11,10 +12,7 @@ import { isNavigationCancelled } from '@/utils/navigationCancellation.js'
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, savedPosition) {
-    if (to.hash) return { el: to.hash, behavior: 'smooth', top: 0 }
-    return savedPosition || { top: 0 }
-  }
+  scrollBehavior,
 })
 
 // 全站路由加载状态：仅真实路径切换时展示，初次进入及 query/hash 更新不打断用户。

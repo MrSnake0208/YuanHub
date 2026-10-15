@@ -33,7 +33,7 @@ test('foreign identity invalid dates and malformed server payloads never enter a
 test('form defaults prefill selected date and validate title note leap date and time boundaries', () => {
   assert.equal(privateItemForm(null).start_date, serverToday())
   assert.equal(privateItemForm(null).end_date, serverToday())
-  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', start_date: '2026-10-15', end_date: '2026-10-15', time: '', note: '' })
+  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', start_date: '2026-10-15', end_date: '2026-10-15', time: '', note: '', reminder_on: 'START', reminder_days_before: 0 })
   const form = { title: ' 文 ', start_date: '2028-02-29', end_date: '2028-02-29', time: '00:00', note: '文'.repeat(1000) }
   assert.deepEqual(validatePrivateItem(form), {})
   for (const patch of [{ title: ' ' }, { title: '文'.repeat(101) }, { start_date: '2026-02-29' }, { end_date: '2026-02-29' }, { time: '24:00' }, { time: '9:00' }, { note: '文'.repeat(1001) }]) assert.ok(Object.keys(validatePrivateItem({ ...form, ...patch })).length)
@@ -64,7 +64,7 @@ test('closed private ranges cover month/year/leap boundaries, clip once and neve
   ]) {
     const item = privateCalendarItem(raw({ start_date: start, end_date: end, time: '09:00' }), account)
     assert.ok(item)
-    assert.deepEqual(privateItemForm(item), { title: item.title, start_date: start, end_date: end, time: '09:00', note: item.note })
+    assert.deepEqual(privateItemForm(item), { title: item.title, start_date: start, end_date: end, time: '09:00', note: item.note, reminder_on: '', reminder_days_before: 0 })
     assert.deepEqual(validatePrivateItem(privateItemForm(item)), {})
     for (const day of [start, middle, end]) assert.equal(calendarItemsOnDay([item, item], day).length, 1)
     assert.ok(monthCalendarDays([item], middle).find(day => day.date === middle).items.includes(item))
@@ -93,4 +93,18 @@ test('partial or invalid new date ranges cannot fall back to the valid legacy da
   ]) assert.equal(privateCalendarItem(raw(patch), account), null)
   assert.equal(validatePrivateItem({ ...privateItemForm(raw()), start_date: '2026-10-20' }).end_date, '结束日期不能早于开始日期。')
   assert.equal(privateCalendarItem({ ...raw(), date: undefined, start_date: '2026-10-12', end_date: '2026-10-15' }, account).start_date, '2026-10-12')
+})
+
+test('historical reminders stay off, new forms default today, and malformed settings fail closed', () => {
+  assert.equal(privateCalendarItem(raw(), account).reminder_on, null)
+  assert.equal(privateItemForm(raw()).reminder_on, '')
+  const item = privateCalendarItem(raw({ reminder_on: 'END', reminder_days_before: 1 }), account)
+  assert.equal(privateItemForm(item).reminder_on, 'END')
+  assert.equal(privateItemForm(item).reminder_days_before, 1)
+  for (const patch of [{ reminder_on: 'OTHER' }, { reminder_on: false }, { reminder_days_before: null }, { reminder_days_before: '1' }, { reminder_days_before: 2 }]) {
+    assert.equal(privateCalendarItem(raw(patch), account), null)
+  }
+  const form = privateItemForm(null, '2026-10-15')
+  assert.ok(validatePrivateItem({ ...form, title: '事项', reminder_on: 'OTHER' }).reminder_on)
+  assert.ok(validatePrivateItem({ ...form, title: '事项', reminder_days_before: '1' }).reminder_days_before)
 })
