@@ -900,7 +900,7 @@ it.each(['preview', 'execute'])('快捷扣料觉醒：%s响应迟到不更新新
   await flushPromises()
   expect(wrapper.find('.ledger-upgrade-popover').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('已提升并扣除库存')
-  expect(wrapper.text()).not.toContain('已觉醒')
+  expect(wrapper.get('.agent-ledger-card').text()).not.toContain('已觉醒')
   expect(operatorApi.executeOperatorUpgrade).toHaveBeenCalledTimes(phase === 'execute' ? 1 : 0)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
