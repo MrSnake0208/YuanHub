@@ -25,16 +25,20 @@
         <div class="pool-group">
           <div class="pool-card" role="group" :aria-label="cardLabel(pool)" @click="onSummaryClick($event, pool)">
             <span class="pool-cover" :class="'cover-tone-' + recruitmentPoolType(details(pool).pool_type).coverTone" :style="recruitmentCoverStyle(details(pool).pool_type)">
-              <span v-if="coverPortraits(pool).length" class="cover-portraits" :class="'portrait-count-' + coverPortraits(pool).length">
-                <img v-for="portrait in coverPortraits(pool)" :key="portrait.id" class="cover-portrait" :src="portrait.src" alt="" loading="lazy" decoding="async" @error="markPortraitFailed(portrait.src)" />
+              <span class="cover-heading">
+                <span class="cover-caption">{{ details(pool).pool_type || '招募档案' }}</span>
+                <span class="cover-name">{{ details(pool).name }}</span>
               </span>
-              <span v-if="hiddenPortraitCount(pool)" class="cover-more">+{{ hiddenPortraitCount(pool) }}</span>
-              <span class="cover-caption">{{ details(pool).pool_type || '招募档案' }}</span>
-              <span class="cover-name">{{ details(pool).name }}</span>
-              <span v-if="coverAgents(pool).length" class="cover-agents" aria-hidden="true">
-                <span v-for="agent in coverAgents(pool)" :key="agent.id" class="up-result">
-                  <OperatorAvatar class="up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
-                  <span class="up-count" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
+              <span class="cover-art">
+                <span v-if="coverPortraits(pool).length" class="cover-portraits" :class="'portrait-count-' + coverPortraits(pool).length">
+                  <img v-for="portrait in coverPortraits(pool)" :key="portrait.id" class="cover-portrait" :src="portrait.src" alt="" loading="lazy" decoding="async" @error="markPortraitFailed(portrait.src)" />
+                </span>
+                <span v-if="hiddenPortraitCount(pool)" class="cover-more">+{{ hiddenPortraitCount(pool) }}</span>
+                <span v-if="coverAgents(pool).length" class="cover-agents" aria-hidden="true">
+                  <span v-for="agent in coverAgents(pool)" :key="agent.id" class="up-result">
+                    <OperatorAvatar class="up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
+                    <span class="up-count" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
+                  </span>
                 </span>
               </span>
             </span>
@@ -156,7 +160,6 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .timeline-heading p{color:var(--ink-60)}button{color:var(--ink);cursor:pointer}button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}button:disabled{opacity:.6;cursor:not-allowed}.sort-button{border:1px solid var(--line);background:var(--surface);border-radius:999px}.year-filters{border:1px solid var(--line);border-radius:20px;background:var(--cream)}.year-filters button{border:0;background:transparent;border-radius:999px}.year-filters button[aria-pressed=true]{background:var(--tea);color:var(--cream)}.timeline-row::before{content:'';border-left:1px solid var(--line)}.date-rail::before{content:'';border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--paper)}.pool-group{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.pool-card{border:0;border-radius:16px;background:var(--surface);transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}.pool-card:hover{border-color:var(--accent);box-shadow:0 4px 18px color-mix(in srgb,var(--tea) 8%,transparent)}.pool-cover{border-radius:10px;background:linear-gradient(115deg,var(--cover-tone),var(--cream))}.pool-cover::before{content:'';background:url(/maayuan/maayuan-pattern.webp) center/900px;opacity:.15}.cover-portrait{opacity:.68}.cover-more{border:1px solid color-mix(in srgb,var(--cream) 72%,transparent);border-radius:999px;background:color-mix(in srgb,var(--ink) 72%,transparent);color:var(--cream);box-shadow:0 2px 8px rgba(0,0,0,.12)}.cover-sprout{color:var(--accent);opacity:.2}.cover-caption{color:var(--ink)}
-.cover-caption,.cover-name{border-radius:3px;background:color-mix(in srgb,var(--cover-tone) 85%,transparent);box-shadow:0 0 6px 4px color-mix(in srgb,var(--cover-tone) 85%,transparent)}
 .up-result .up-avatar{border:1px solid var(--line);border-radius:9px;background:var(--paper)}
 .up-result :deep(.up-avatar img){border-radius:8px}
 .up-count{border:1px solid var(--surface);border-radius:999px;background:var(--tea);color:var(--cream)}
