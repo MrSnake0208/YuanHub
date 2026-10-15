@@ -1,0 +1,53 @@
+import { expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Grid from '../src/components/star/StarShareInventoryGrid.vue'
+const item = (kind, quality, level, name = '重复星石') => ({ kind, quality, level, name })
+
+it('两处手机控件与桌面控件共享品质、名称和排序，同名星石不合并', async () => {
+  const wrapper = mount(Grid, { props: { inventory: [item('main', 'purple', 10), item('main', 'purple', 10), item('main', 'orange', 30, '天府'), item('support', 'purple', 20)] } })
+  expect(wrapper.findAll('li')).toHaveLength(4)
+  const regions = wrapper.findAll('section')
+  expect(regions[0].findAll('li')).toHaveLength(3)
+  await wrapper.findAll('select')[4].setValue('purple')
+  expect(wrapper.findAll('select').filter((_, index) => index % 2 === 0).map(node => node.element.value)).toEqual(['purple', 'purple', 'purple'])
+  expect(wrapper.findAll('li')).toHaveLength(3)
+  await wrapper.findAll('input[type="search"]')[2].setValue('不存在')
+  expect(wrapper.findAll('input[type="search"]').map(node => node.element.value)).toEqual(['不存在', '不存在', '不存在'])
+  expect(wrapper.findAll('li')).toHaveLength(0)
+  expect(wrapper.findAll('h2').every(node => node.text().includes('0 颗'))).toBe(true)
+  await wrapper.findAll('input[type="search"]')[1].setValue('')
+  await wrapper.findAll('select')[5].setValue('level')
+  expect(wrapper.findAll('select').filter((_, index) => index % 2 === 1).map(node => node.element.value)).toEqual(['level', 'level', 'level'])
+})
+it('默认综合等级优先；图片出错仍保留名称、品质和等级且无编辑能力', async () => {
+  const wrapper = mount(Grid, { props: { inventory: [item('main', 'white', 60), item('main', 'orange', 10), item('main', 'orange', 30)] } })
+  expect(wrapper.findAll('.star-share-level').map(node => node.text())).toEqual(['Lv.60', 'Lv.30', 'Lv.10'])
+  await wrapper.findAll('img')[1].trigger('error')
+  expect(wrapper.find('.star-share-disc-fallback').text()).toBe('橙色主星')
+  expect(wrapper.findAll('li')[1].attributes('aria-label')).toContain('重复星石，橙色主星，30级')
+  expect(wrapper.findAll('li')[1].text()).toContain('Lv.30')
+  expect(wrapper.findAll('li button')).toHaveLength(0)
+  expect(wrapper.find('[contenteditable]').exists()).toBe(false)
+})
+it('柔和下拉通过键盘选择并同步另一组控件，列表与控件各自独立', async () => {
+  const wrapper = mount(Grid, { attachTo: document.body, props: { inventory: [item('main', 'purple', 10), item('support', 'orange', 20)] } })
+  const trigger = wrapper.findAll('.soft-select-trigger')[2]
+  await trigger.trigger('keydown', { key: 'ArrowDown' })
+  const menu = wrapper.get('[role="listbox"]')
+  await menu.trigger('keydown', { key: 'Enter' })
+  expect(wrapper.findAll('select').filter((_, index) => index % 2 === 0).map(node => node.element.value)).toEqual(['orange', 'orange', 'orange'])
+  expect(wrapper.find('[role="listbox"]').exists()).toBe(false)
+  const lists = wrapper.findAll('.star-share-list')
+  expect(lists).toHaveLength(2)
+  expect(lists.every(list => list.attributes('tabindex') === '0')).toBe(true)
+  expect(lists.every(list => !list.find('.star-share-controls').exists())).toBe(true)
+  wrapper.unmount()
+})
+it('空分区保留标题，刷新后重新尝试加载图片', async () => {
+  const wrapper = mount(Grid, { props: { inventory: [item('support', 'green', 5)] } })
+  expect(wrapper.findAll('h2')[0].text()).toContain('主星 0 颗')
+  await wrapper.find('img').trigger('error')
+  await wrapper.setProps({ inventory: [item('support', 'green', 6)] })
+  expect(wrapper.find('img').exists()).toBe(true)
+  expect(wrapper.find('.star-share-level').text()).toBe('Lv.6')
+})

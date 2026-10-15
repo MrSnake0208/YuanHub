@@ -46,6 +46,13 @@
             <button type="button" @click="resetInput">重新输入</button>
           </div>
 
+          <div v-else-if="status === 'unauthorized'" class="share-state is-error" role="alert">
+            <h2>分享者尚未公开密探 BOX</h2>
+            <p>此分享码没有密探授权，请向分享者确认。</p>
+            <button type="button" @click="loadShare">重试</button>
+            <button type="button" @click="resetInput">重新输入</button>
+          </div>
+
           <div v-else-if="status === 'error'" class="share-state is-error" role="alert">
             <span class="state-mark" aria-hidden="true"><CircleAlert :size="16" aria-hidden="true" /></span>
             <h2>暂时无法加载</h2>
@@ -283,6 +290,7 @@ import OperatorFilterDossier from '../../components/operator/OperatorFilterDossi
 import { ACTIVE_OPERATOR_LEDGER_CARD_VERSION, OPERATOR_LEDGER_CARD_VERSIONS, operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
+import { parseShareLink, shareRoute } from '../../utils/shareLink.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { operatorEditableStatusOptions, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
@@ -345,13 +353,13 @@ const hasFilters = computed(function () {
 let loadSeq = 0
 
 function submitToken() {
-  const token = parseOperatorShareToken(inputValue.value)
-  if (!token) {
+  const target = parseShareLink(inputValue.value, 'operator')
+  if (!target) {
     inputError.value = inputValue.value.trim() ? '未识别到有效的 BOX 分享码或分享链接' : '请输入 BOX 分享码或分享链接'
     return
   }
   inputError.value = ''
-  router.push({ name: 'operator-share', params: { token: token } })
+  router.push(shareRoute(target))
 }
 
 function resetInput() {
@@ -392,7 +400,7 @@ async function loadShare() {
     status.value = entries.value.length ? 'ready' : 'empty'
   } catch (err) {
     if (seq !== loadSeq) return
-    status.value = err && (err.status === 404 || err.code === 'share_not_found') ? 'not-found' : 'error'
+    status.value = err?.code === 'share_not_authorized' ? 'unauthorized' : err && (err.status === 404 || err.code === 'share_not_found') ? 'not-found' : 'error'
     loadError.value = humanErr(err)
   }
 }
