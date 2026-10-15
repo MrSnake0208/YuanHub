@@ -23,7 +23,7 @@
 
         <!-- 一行式页脚 -->
         <footer class="auth-foot">
-          YuanHub · 鸢鸢相抱 — MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建 ·
+          YuanHub · 鸢鸢相抱 — MaaYuan × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建 ·
           祝各位凹关顺利
         </footer>
       </div>

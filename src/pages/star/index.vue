@@ -159,7 +159,7 @@
         <template #big>星石养成<br /><span>背包 · 整理 · 计划</span></template>
         <template #fine>
           <b>YuanHub</b> · 星石养成工作区<br />
-          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MaaYuan × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内实际背包为准
         </template>
       </SiteFooter>

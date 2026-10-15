@@ -596,7 +596,7 @@
           >账号与连接码<br /><span>应用 · 账号 · 安全连接</span></template
         >
         <template #fine
-          ><b>YuanHub</b> · 应用与数据连接<br />MAA × 鸢BWiki × 辟雍学府 ×
+          ><b>YuanHub</b> · 应用与数据连接<br />MaaYuan × 鸢BWiki × 辟雍学府 ×
           YuanAssist 共同搭建<br />连接码不是登录密码，请只填写到你信任的工具中</template
         >
       </SiteFooter>

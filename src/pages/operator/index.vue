@@ -2938,7 +2938,7 @@
         <template #big>密探养成<br /><span>图鉴 · 快照 · 归档</span></template>
         <template #fine>
           <b>YuanHub</b> · 密探养成档案<br />
-          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MaaYuan × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内实际养成为准
         </template>
       </SiteFooter>
