@@ -41,4 +41,10 @@
 .account-event-preview { position: fixed; z-index: var(--z-popover); right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; overflow-x: auto }
 .account-event-preview strong { padding: 0 7px; font-size: 10px; white-space: nowrap }
 .account-event-preview button { min-width: 44px; min-height: 44px; flex: none; padding: 4px 8px; font: 800 10.5px var(--font-b) }
+@media (min-width: 1081px) {
+  :global(body:has(.version-update) .account-event-toasts) { top: calc(22px + var(--version-update-banner-height)); }
+}
+@media (max-width: 1080px) {
+  :global(body:has(.version-update) .account-event-toasts) { top: auto; bottom: calc(78px + env(safe-area-inset-bottom)); }
+}
 }
