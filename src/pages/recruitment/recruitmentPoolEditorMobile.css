@@ -249,6 +249,10 @@ input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; font: inheri
   margin-top: 4px;
 }
 
+.agent-picker.is-name-search .agent-filter-row {
+  display: none;
+}
+
 .agent-filter-label {
   font-size: 10.5px;
   font-weight: 800;
@@ -346,6 +350,7 @@ footer { gap: 8px; padding-block: 10px max(10px, env(safe-area-inset-bottom)); b
 .footer-state { flex: 1; min-width: 0; font-size: 11px; }
 .footer-actions { flex: none; gap: 6px; }
 .footer-actions > button { padding-inline: 12px; }
+.pool-editor.is-choosing-agent footer { display: none; }
 
 @media (min-width: 431px) {
   .modal-mask { padding: 16px; }

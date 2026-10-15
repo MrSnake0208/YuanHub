@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open && pool" class="modal-mask" @click.self="close">
-      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded && !screenshotMode, 'is-progress-expanded': progressExpanded, 'is-screenshot': screenshotMode }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
+      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded && !screenshotMode, 'is-progress-expanded': progressExpanded, 'is-screenshot': screenshotMode, 'is-choosing-agent': choosingAgent }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
         <header class="editor-header">
           <div class="editor-title">
             <span class="editor-eyebrow">{{ practice ? '练习 · 不会保存到你的账号' : '招募档案' }}</span>
@@ -153,7 +153,7 @@
               >
 
                 <RecruitmentGuideHint v-if="guideVisible && ['agent-search', 'agent-results'].includes(guideStep)" :target="guideStep" :message="guideMessage" />
-                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" role="group" :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : '选择其他密探'">
+                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" :class="{ 'is-name-search': agentSearch.trim() && agentProfFilter === 'all' && agentSubProfFilter === 'all' }" role="group" :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : '选择其他密探'">
                   <label data-guide-target="agent-search" class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
                     <input
@@ -163,6 +163,7 @@
                       autocomplete="off"
                       placeholder="搜索密探名字"
                       :disabled="busy || readOnly || recordsLoading"
+                      @input="scheduleEntryVisibility"
                     >
                   </label>
                   <div class="agent-filter-head">
@@ -794,6 +795,13 @@ function ensureEntryVisible() {
   const bounds = (focusedField || entryComposer.value).getBoundingClientRect()
   const rect = { top: bounds.top, bottom: bounds.bottom, height: bounds.height }
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
+  if (focusedField && focusedField === agentSearchInput.value) {
+    const firstResult = entryComposer.value.querySelector('.agent-choice, .agent-picker-empty')?.getBoundingClientRect()
+    if (firstResult && firstResult.bottom > rect.bottom) {
+      rect.bottom = firstResult.bottom
+      rect.height = rect.bottom - rect.top
+    }
+  }
   const currentHint = panel.value?.querySelector('.guide-hint')
   const hintTarget = currentHint && panel.value?.querySelector(`[data-guide-target="${currentHint.dataset.guideFor}"]`)
   const hintRect = currentHint?.getBoundingClientRect()
