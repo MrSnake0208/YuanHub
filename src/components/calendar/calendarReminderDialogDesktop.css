@@ -1,13 +1,9 @@
 @media (min-width: 768px) {
   .calendar-reminder-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .calendar-reminder { width: min(100%, 520px); max-height: min(90dvh, 720px); display: flex; flex-direction: column; border-radius: 20px; }
-  .calendar-reminder header, .calendar-reminder footer { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; }
-  .calendar-reminder h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
-  .calendar-reminder-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 0 20px; }
-  .calendar-reminder ul { margin: 12px 0; padding-left: 20px; line-height: 1.8; }
+  .calendar-reminder { width: min(100%, 480px); max-height: min(90dvh, 680px); display: flex; flex-direction: column; border-radius: 20px; }
+  .calendar-reminder header { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 14px; }
+  .calendar-reminder-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 4px 20px; scrollbar-gutter: stable; }
+  .calendar-reminder footer { flex: none; display: grid; gap: 10px; padding: 14px 20px 18px; }
   .calendar-reminder button { min-height: 40px; padding: 8px 12px; }
-  .calendar-reminder-close { flex: none; display: grid; place-items: center; }
-  .calendar-reminder-check { display: flex; align-items: center; gap: 8px; min-height: 40px; }
-  .calendar-reminder-check input { width: 18px; height: 18px; flex: none; }
-  .calendar-reminder-primary { margin-left: auto; }
+  .calendar-reminder button.calendar-reminder-close { flex: none; display: grid; place-items: center; width: 40px; padding: 0; }
 }

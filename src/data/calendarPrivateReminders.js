@@ -15,23 +15,24 @@ export function privateItemReminder(item, today) {
   }
 }
 
-export function readReminderDismissals(key, day) {
-  const fallback = memory.get(key)
+export function readReminderDismissals(key, day, storageName = 'localStorage') {
+  const memoryKey = JSON.stringify([storageName, key])
+  const fallback = memory.get(memoryKey)
   const keys = new Set(fallback?.day === day ? fallback.keys : [])
   try {
-    const stored = JSON.parse(localStorage.getItem(key))
+    const stored = JSON.parse(globalThis[storageName].getItem(key))
     if (stored?.day === day && Array.isArray(stored.keys)) {
       for (const value of stored.keys) if (typeof value === 'string') keys.add(value)
     }
   } catch (_) { /* Storage unavailable: keep this session's dismissal. */ }
-  memory.set(key, { day, keys: [...keys] })
+  memory.set(memoryKey, { day, keys: [...keys] })
   return [...keys]
 }
 
-export function dismissPrivateReminders(key, day, reminders) {
-  const keys = [...new Set([...readReminderDismissals(key, day), ...reminders.map(value => value.key)])]
+export function dismissPrivateReminders(key, day, reminders, storageName = 'localStorage') {
+  const keys = [...new Set([...readReminderDismissals(key, day, storageName), ...reminders.map(value => value.key)])]
   const state = { day, keys }
-  memory.set(key, state)
-  try { localStorage.setItem(key, JSON.stringify(state)) } catch (_) { /* Memory remains authoritative for this session. */ }
+  memory.set(JSON.stringify([storageName, key]), state)
+  try { globalThis[storageName].setItem(key, JSON.stringify(state)) } catch (_) { /* Memory remains authoritative for this session. */ }
   return keys
 }
