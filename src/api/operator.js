@@ -13,6 +13,14 @@ import { sha256 } from '../utils/sha256.js'
 
 const PATH = '/v1/operator'
 
+export function getOperatorOrganization(accountId) {
+  return request(PATH + '/organization?' + new URLSearchParams({ account_id: accountId }), { auth: true })
+}
+
+export function putOperatorOrganization(accountId, body) {
+  return request(PATH + '/organization?' + new URLSearchParams({ account_id: accountId }), { method: 'PUT', auth: true, body })
+}
+
 // —— 统一子账号（库存 × 密探共用） ——
 // 账号 CRUD 已统一到 /v1/accounts（见 src/api/accounts.js）。
 // 这里以 Operator* 别名导出（兼容既有调用方），实现上与库存页共用同一批子账号。
