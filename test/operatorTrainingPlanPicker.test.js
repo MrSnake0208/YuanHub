@@ -29,7 +29,7 @@ test('删除清单与醒目的名称输入框同行，并保留二次确认', ()
   const templateText = descriptor.template.content
   const styles = source
   const footer = templateText.slice(templateText.indexOf('<footer'), templateText.indexOf('</footer>'))
-  const nameRow = templateText.slice(templateText.indexOf('<div class="plan-name-row">'), templateText.indexOf('<div class="plan-toolbar">'))
+  const nameRow = templateText.slice(templateText.indexOf('class="plan-name-row"'), templateText.indexOf('<div class="plan-toolbar">'))
   assert.match(nameRow, /class="plan-name-control"[\s\S]*id="plan-name-input"[\s\S]*class="plan-inline-delete"/)
   assert.match(templateText, /class="plan-delete-confirm"[^>]+role="alert"/)
   assert.doesNotMatch(footer, /删除/)
@@ -37,11 +37,12 @@ test('删除清单与醒目的名称输入框同行，并保留二次确认', ()
   assert.match(styles, /\.plan-inline-delete \{ width: 94px; min-width: 94px;/)
   assert.match(styles, /\.plan-toolbar \{[^}]*padding-right: 10px;/)
   assert.match(styles, /\.plan-filter-toggle \{ width: 94px; min-width: 94px;/)
-  assert.match(styles, /@media \(max-width: 560px\)[\s\S]*\.plan-toolbar \{ padding-right: 8px; \}[\s\S]*\.plan-inline-delete, \.plan-filter-toggle \{ width: 88px; min-width: 88px; \}/)
+  assert.match(styles, /@media \(max-width: 560px\)[\s\S]*\.plan-toolbar \{ padding-right: 8px; \}[\s\S]*\.plan-inline-delete \{ width: 88px; min-width: 88px; \}[\s\S]*\.plan-filter-toggle \{ width: 64px; min-width: 64px; \}/)
 })
 
 test('搜索提示覆盖拼音和首字母，移动端候选区按最小宽度自动换行', () => {
-  assert.match(descriptor.template.content, /placeholder="搜索密探、拼音或首字母"/)
+  assert.match(descriptor.template.content, /搜索密探名称、拼音或首字母/)
+  assert.match(descriptor.template.content, /placeholder="搜索名称 \/ 拼音"/)
   assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.plan-candidates \{ grid-template-columns: repeat\(auto-fill, minmax\(64px, 1fr\)\)/)
 })
 

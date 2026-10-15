@@ -18,17 +18,18 @@
     </div>
   </div>
   <dialog ref="dialog" class="plan-dialog" aria-labelledby="plan-editor-title" @click="onBackdrop" @close="resetTransientState">
-    <form class="plan-dialog-shell" @submit.prevent="save">
+    <form class="plan-dialog-shell" :class="{ 'is-adding': addingMembers }" @submit.prevent="save">
       <header class="plan-dialog-head">
         <div class="plan-dialog-identity">
           <span class="plan-dialog-mark" aria-hidden="true"><Users :size="17" /></span>
-          <div><h3 id="plan-editor-title">{{ creating ? '建立培养清单' : '编辑培养清单' }}</h3></div>
+          <div><h3 id="plan-editor-title" ref="dialogTitle" tabindex="-1" :autofocus="addingMembers">{{ addingMembers ? '添加密探' : creating ? '建立培养清单' : '编辑培养清单' }}</h3></div>
         </div>
         <div class="plan-dialog-head-actions"><button type="button" class="plan-dialog-close" aria-label="关闭" title="关闭" @click="dialog.close()"><X :size="19" aria-hidden="true" /></button></div>
       </header>
 
       <div class="plan-dialog-body">
-        <p class="plan-picker-help">选择要培养的密探，可按「养成中」筛选。保存成员不会改变特别关注或养成状态。</p>
+        <p v-if="addingMembers" class="plan-picker-help">添加到「{{ name }}」<small>不会改变特别关注或养成状态</small></p>
+        <p v-else class="plan-picker-help">选择要培养的密探，可按「养成中」筛选。保存成员不会改变特别关注或养成状态。</p>
         <section v-if="confirmingDelete && activePlan" class="plan-delete-confirm" role="alert" aria-labelledby="plan-delete-title">
           <div class="plan-delete-copy"><span aria-hidden="true"><Trash2 :size="17" /></span><div><b id="plan-delete-title">删除「{{ activePlan.name }}」？</b><p>{{ editingFavorites ? '这张清单将从养成规划移除，不会取消已标记的特别关注。' : '清单及其单独保存的养成目标将被删除。' }}删除后仍可在页面提示中撤销。</p></div></div>
           <div><button type="button" :disabled="disabled" @click="confirmingDelete = false">保留清单</button><button ref="deleteConfirm" type="button" class="plan-delete-danger" :disabled="disabled" @click="confirmDelete">确认删除</button></div>
@@ -40,7 +41,7 @@
           <label :class="{ selected: firstPlanMode === 'custom' }"><input v-model="firstPlanMode" name="first-plan-source" type="radio" value="custom" @change="applyFirstPlanMode" /><span><b>空白清单</b><small>自行命名并挑选成员</small></span></label>
         </fieldset>
 
-        <div class="plan-name-row">
+        <div class="plan-name-row" v-if="!addingMembers">
           <label class="plan-name-field" for="plan-name-input">
             <span class="plan-name-meta"><b>清单名称</b><small v-if="editingFavorites">动态跟随特别关注</small><small v-else>各清单独立保存养成目标</small></span>
             <span class="plan-name-control"><PenLine :size="15" aria-hidden="true" /><input id="plan-name-input" ref="nameInput" v-model="name" maxlength="40" required :readonly="editingFavorites" /></span>
@@ -49,7 +50,7 @@
         </div>
 
         <div class="plan-toolbar">
-          <label class="plan-search" for="plan-search-input"><Search :size="16" aria-hidden="true" /><span class="sr-only">查找密探</span><input id="plan-search-input" ref="searchInput" v-model="search" type="search" autocomplete="off" placeholder="搜索密探、拼音或首字母" /></label>
+          <label class="plan-search" for="plan-search-input"><Search :size="16" aria-hidden="true" /><span class="sr-only">搜索密探名称、拼音或首字母</span><input id="plan-search-input" ref="searchInput" v-model="search" type="search" autocomplete="off" placeholder="搜索名称 / 拼音" /></label>
           <button type="button" class="plan-filter-toggle" :class="{ on: filtersOpen }" :aria-expanded="filtersOpen" aria-controls="plan-advanced-filters" @click="filtersOpen = !filtersOpen"><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="advancedFilterCount">{{ advancedFilterCount }}</span></button>
         </div>
 
@@ -71,7 +72,7 @@
 
         <div class="plan-candidates">
           <label v-for="entry in filteredEntries" :key="entry.id" class="plan-candidate" :class="{ selected: selected.has(entry.id) }">
-            <input type="checkbox" :checked="selected.has(entry.id)" @change="toggle(entry.id)" />
+            <input type="checkbox" :checked="selected.has(entry.id)" :disabled="addingMembers && memberIds.has(entry.id)" :aria-label="addingMembers && memberIds.has(entry.id) ? (entry.name || entry.id) + '，已在清单中' : undefined" @change="toggle(entry.id)" />
             <span class="plan-candidate-avatar">
               <OperatorAvatar :avatar="entry.avatar || ''" :name="entry.name || entry.id" :rarity="Number(entry.rarity) || 3" />
               <img v-if="profIcon(entry.prof)" class="plan-candidate-prof" :src="profIcon(entry.prof)" alt="" aria-hidden="true" />
@@ -94,8 +95,8 @@
       </div>
 
       <footer v-if="!confirmingDelete" class="plan-dialog-actions">
-        <p><strong>{{ validSelectedCount }}</strong> 位已选<span v-if="editingFavorites">· 移出不会取消特别关注</span></p>
-        <div><button type="button" class="plan-cancel" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim()">{{ creating ? '创建清单' : '保存更改' }}</button></div>
+        <p aria-live="polite"><strong>{{ addingMembers ? addedMemberCount : validSelectedCount }}</strong> {{ addingMembers ? '位新增' : '位已选' }}<span v-if="editingFavorites && !addingMembers">· 移出不会取消特别关注</span></p>
+        <div><button type="button" class="plan-cancel" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim() || (addingMembers && !addedMemberCount)">{{ addingMembers ? `添加 ${addedMemberCount} 位密探` : creating ? '创建清单' : '保存更改' }}</button></div>
       </footer>
     </form>
   </dialog>
@@ -113,6 +114,7 @@ import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, currentEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
 const dialog = ref(null)
+const dialogTitle = ref(null)
 const planSwitcher = ref(null)
 const switcherTrigger = ref(null)
 const switcherMenu = ref(null)
@@ -121,6 +123,7 @@ const searchInput = ref(null)
 const sourceFirstInput = ref(null)
 const deleteConfirm = ref(null)
 const creating = ref(false)
+const addingMembers = ref(false)
 const name = ref('')
 const search = ref('')
 const rarityFilter = ref('all')
@@ -140,6 +143,7 @@ const catalogIds = computed(() => new Set(props.catalogEntries.map(entry => entr
 const validFavoriteIds = computed(() => [...props.favoriteIds].filter(id => catalogIds.value.has(id)))
 const growingIds = computed(() => new Set(props.currentEntries.filter(entry => catalogIds.value.has(entry.id) && isOperatorOwned(entry) && growthStatus(entry) === 'growing').map(entry => entry.id)))
 const validSelectedCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id)).length)
+const addedMemberCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id) && !props.memberIds.has(id)).length)
 const invalidSelectedCount = computed(() => selected.value.size - validSelectedCount.value)
 const editingFavorites = computed(() => (!creating.value && props.activePlan?.source === 'favorites') || (firstPlanSuggestion.value && firstPlanMode.value === 'favorites'))
 const hasAdvancedFilters = computed(() => rarityFilter.value !== 'all' || profFilter.value !== 'all' || subProfFilter.value !== 'all')
@@ -216,7 +220,9 @@ const filteredEntries = computed(() => {
 })
 async function openEditor(isNew, { selectNewMembers = false } = {}) {
   if (props.disabled) return
+  const openingAccountId = props.accountId
   creating.value = isNew
+  addingMembers.value = selectNewMembers
   firstPlanSuggestion.value = isNew && !props.plans.length
   firstPlanMode.value = firstPlanSuggestion.value ? 'favorites' : 'custom'
   name.value = isNew ? (firstPlanMode.value === 'favorites' ? '特别关注' : '') : props.activePlan?.name || ''
@@ -225,9 +231,11 @@ async function openEditor(isNew, { selectNewMembers = false } = {}) {
   selected.value = isNew ? new Set(firstPlanMode.value === 'favorites' ? validFavoriteIds.value : []) : new Set(props.memberIds)
   confirmingDelete.value = false
   filtersOpen.value = false
-  dialog.value.showModal()
   await nextTick()
-  if (firstPlanSuggestion.value) sourceFirstInput.value?.focus()
+  if (!dialog.value || props.accountId !== openingAccountId || props.disabled) return
+  dialog.value.showModal()
+  if (selectNewMembers && window.matchMedia?.('(max-width: 700px)').matches) dialogTitle.value?.focus()
+  else if (firstPlanSuggestion.value) sourceFirstInput.value?.focus()
   else if (selectNewMembers || editingFavorites.value) searchInput.value?.focus()
   else nameInput.value?.focus()
 }
@@ -246,6 +254,7 @@ function applyFirstPlanMode() {
   nextTick(() => (favorites ? searchInput.value : nameInput.value)?.focus())
 }
 function save() {
+  if (addingMembers.value && !addedMemberCount.value) return
   const id = creating.value ? null : props.activePlan?.id
   if (!creating.value && !id) return
   emit('save', { id, name: name.value.trim(), source: editingFavorites.value ? 'favorites' : 'custom', operatorIds: [...selected.value] }, () => dialog.value.close())
@@ -316,6 +325,7 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-inline-delete:hover:not(:disabled) { border-color: var(--rouge); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); color: var(--rouge); }
 .plan-search > svg { color: var(--ink-60); pointer-events: none; }
 .plan-search input { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.plan-picker-help small { color: var(--ink-60); }
 .plan-filter-toggle { background: var(--surface); color: var(--ink-60); }
 .plan-filter-toggle.on { border-color: var(--accent); color: var(--ink); }
 .plan-filter-toggle > span { border-radius: 999px; background: var(--yellow); color: var(--ink); }
