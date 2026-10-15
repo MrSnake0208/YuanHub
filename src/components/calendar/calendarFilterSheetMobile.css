@@ -6,5 +6,5 @@
 .calendar-filter-sheet-header h2 { font-size: 22px; }
 .calendar-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(18px, env(safe-area-inset-right)) 16px max(18px, env(safe-area-inset-left)); }
 .calendar-filter-sheet-footer { padding: 12px max(18px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); flex: none; }
-.calendar-filter-sheet-footer button { width: 100%; }
+.calendar-filter-sheet-footer button { width: 100%; min-height: 48px; }
 }

@@ -97,7 +97,11 @@ npm run test:behavior -- behavior/activityCalendar.spec.js behavior/activityCale
 
 移动端筛选优化（2026-10-03）：<768px 默认显示“筛选 + 当前游戏/类型摘要”，仅非默认维度显示1/2计数；>=768px 保留完整展开Chips。点击手机入口打开底部弹层，完整选项可换行，桌面和弹层复用 `CalendarFilterControls`。点击即调用既有 `setFilter` 更新URL和请求，弹层保持打开；“完成”仅关闭，“重置筛选”仅清空game/category，保留view/date及无关query，弹层开关不写入URL。加载或失败仍可继续筛选、关闭，业务错误仅在主内容展示。
 
-`CalendarFilterSheet` 使用Teleport、`useModalFocus`、标题初始焦点、Escape/遮罩关闭及入口焦点恢复；打开时锁body/html滚动，关闭和卸载恢复原overflow/padding。仅打开期间监听768px断点，变宽自动关闭、释放锁和焦点陷阱；再次变窄不自动打开。弹层最大高度 `min(76dvh, 640px)`，选项区域内部滚动，完成和重置保留在滚动区域外，底部及两侧包含Safe Area。
+`CalendarFilterSheet` 使用Teleport、`useModalFocus`、标题初始焦点、Escape/遮罩关闭及入口焦点恢复；打开时锁body/html滚动，关闭和卸载恢复原overflow/padding。仅打开期间监听1024px断点，变宽跨入桌面时自动关闭、释放锁和焦点陷阱；再次变窄不自动打开。窄屏弹层最大高度 `min(76dvh, 640px)`，选项区域内部滚动，完成和重置保留在滚动区域外，底部及两侧包含Safe Area。
+
+筛选操作位置优化（2026-10-15）：顶部右侧为低强调的“重置筛选”，底部为全宽茶棕色“完成”主按钮，避免习惯性点击底部时清空条件。完成仅关闭并保留已选条件，重置保持弹层打开；键盘焦点按顶部重置、筛选选项、底部完成的顺序循环。底部按钮至少48px高，保留Safe Area留白。
+
+桌面筛选定位（2026-10-15）：≥1024px 的弹层以筛选按钮为锚点，默认在按钮下方8px、左边缘对齐，距视口左右边缘至少16px；下方空间不足且上方空间更大时向上展开。最大高度按可用空间收缩（上限640px），仅选项区域滚动；打开期间随窗口缩放或滚动更新定位，关闭/卸载移除监听。手机和平板继续使用底部弹层。
 
 本轮风险L1（局部组件交互，URL/API契约与共享状态未改变）。测试新增 `behavior/activityCalendarFilters.spec.js`，真实布局与横屏另由浏览器验收。用户/CI最小回归（cwd YuanHub）：
 

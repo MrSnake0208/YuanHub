@@ -96,6 +96,64 @@ it('桌面入口打开同一浮层，完整控件可操作，Escape恢复焦点'
   expect(document.activeElement).toBe(wrapper.get('.calendar-filter-trigger').element)
 })
 
+it.each([
+  [1440, 900, 280, 120, 164, '280px', '172px', 'auto', '640px'],
+  [1100, 800, 950, 120, 164, '644px', '172px', 'auto', '612px'],
+  [1440, 700, 280, 580, 624, '280px', 'auto', '128px', '556px'],
+  [1440, 400, 280, 120, 164, '280px', '172px', 'auto', '212px'],
+])('桌面锚定与边界避让：视口%s×%s，按钮位于%s/%s–%s', async (width, height, left, top, bottom, expectedLeft, expectedTop, expectedBottom, expectedHeight) => {
+  vi.stubGlobal('innerWidth', width)
+  vi.stubGlobal('innerHeight', height)
+  desktopMedia.matches = true
+  const { wrapper } = await render()
+  vi.spyOn(wrapper.get('.calendar-filter-trigger').element, 'getBoundingClientRect').mockReturnValue({ left, top, bottom })
+  await open(wrapper)
+  const style = dialog().style
+  expect(style.getPropertyValue('--filter-left')).toBe(expectedLeft)
+  expect(style.getPropertyValue('--filter-top')).toBe(expectedTop)
+  expect(style.getPropertyValue('--filter-bottom')).toBe(expectedBottom)
+  expect(style.getPropertyValue('--filter-max-height')).toBe(expectedHeight)
+})
+
+it('打开期间随缩放与滚动更新锚点，关闭和卸载后停止定位', async () => {
+  vi.stubGlobal('innerWidth', 1440)
+  vi.stubGlobal('innerHeight', 900)
+  desktopMedia.matches = true
+  const { wrapper } = await render()
+  const bounds = vi.spyOn(wrapper.get('.calendar-filter-trigger').element, 'getBoundingClientRect')
+    .mockReturnValue({ left: 280, top: 120, bottom: 164 })
+  await open(wrapper)
+  bounds.mockReturnValue({ left: 340, top: 140, bottom: 184 })
+  window.dispatchEvent(new Event('resize'))
+  await flushPromises()
+  expect(dialog().style.getPropertyValue('--filter-left')).toBe('340px')
+  expect(dialog().style.getPropertyValue('--filter-top')).toBe('192px')
+  bounds.mockReturnValue({ left: 340, top: 100, bottom: 144 })
+  window.dispatchEvent(new Event('scroll'))
+  await flushPromises()
+  expect(dialog().style.getPropertyValue('--filter-top')).toBe('152px')
+  await clickSheet('完成')
+  bounds.mockClear()
+  window.dispatchEvent(new Event('resize'))
+  window.dispatchEvent(new Event('scroll'))
+  expect(bounds).not.toHaveBeenCalled()
+  await open(wrapper)
+  wrapper.unmount()
+  bounds.mockClear()
+  window.dispatchEvent(new Event('resize'))
+  window.dispatchEvent(new Event('scroll'))
+  expect(bounds).not.toHaveBeenCalled()
+})
+
+it('手机底部弹层不应用桌面锚点定位', async () => {
+  const { wrapper } = await render()
+  const bounds = vi.spyOn(wrapper.get('.calendar-filter-trigger').element, 'getBoundingClientRect')
+  await open(wrapper)
+  expect(bounds).not.toHaveBeenCalled()
+  expect(dialog().style.getPropertyValue('--filter-left')).toBe('')
+  expect(dialog().style.getPropertyValue('--filter-top')).toBe('')
+})
+
 it.each(['agenda', 'timeline', 'month'])('%s逐项取消仅移除对应条件，保留视图/日期/账号与其它条件', async view => {
   const { wrapper, router } = await render(`/calendar?view=${view}&date=2026-10-09&game=如鸢&category=LOGIN&exclude_recruitment=1&status=ending&ref=keep`)
   expect(wrapper.findAll('.calendar-active-filters button').map(node => node.text())).toEqual(['如鸢', '签到', '不含招募', '近 3 天结束'])
@@ -122,6 +180,7 @@ it('Sheet即时应用并保持打开，只有一组筛选控件，重置保留vi
   expect(dialog()).not.toBeNull()
   expect(sheetButton('如鸢').getAttribute('aria-pressed')).toBe('true')
   expect(document.querySelectorAll('.calendar-filters')).toHaveLength(1)
+  expect(dialog().querySelector('header button')).toBe(sheetButton('重置筛选'))
   await clickSheet('重置筛选')
   expect(router.currentRoute.value.query).toEqual({ view: 'month', date: '2026-09-15', ref: 'share' })
   expect(summaryText(wrapper)).toBe('未启用筛选')
@@ -129,6 +188,21 @@ it('Sheet即时应用并保持打开，只有一组筛选控件，重置保留vi
   expect(sheetButton('全部游戏').getAttribute('aria-pressed')).toBe('true')
   expect(sheetButton('全部类型').getAttribute('aria-pressed')).toBe('true')
   expect(dialog()).not.toBeNull()
+})
+
+it('底部完成关闭弹层并保留已选筛选，顶部提供重置', async () => {
+  const { wrapper, router } = await render('/calendar?game=如鸢&category=LOGIN&ref=keep')
+  await open(wrapper)
+  expect(dialog().querySelector('header button').textContent).toBe('重置筛选')
+  const done = dialog().querySelector('footer button')
+  expect(done.textContent).toBe('完成')
+  const query = { ...router.currentRoute.value.query }
+  const requestCount = listActivityCalendar.mock.calls.length
+  done.click()
+  await flushPromises()
+  expect(dialog()).toBeNull()
+  expect(router.currentRoute.value.query).toEqual(query)
+  expect(listActivityCalendar).toHaveBeenCalledTimes(requestCount)
 })
 
 it.each(['完成', '遮罩', 'Escape'])('%s关闭后恢复入口焦点、滚动样式并清理断点监听', async method => {
@@ -159,9 +233,9 @@ it('复用焦点陷阱：Shift+Tab至末尾、Tab回到首个操作，背景焦�
   const { wrapper } = await render()
   await open(wrapper)
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
-  expect(document.activeElement).toBe(sheetButton('重置筛选'))
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
   expect(document.activeElement).toBe(sheetButton('完成'))
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+  expect(document.activeElement).toBe(sheetButton('重置筛选'))
   wrapper.get('.calendar-today-action').element.focus()
   expect(dialog().contains(document.activeElement)).toBe(true)
 })
