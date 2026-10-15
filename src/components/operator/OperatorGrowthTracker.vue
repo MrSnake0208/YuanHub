@@ -3,7 +3,7 @@
     <header class="planner-heading">
       <div>
         <h2 id="growth-tracker-title">培养计划 · 体力规划</h2>
-        <p>按材料缺口安排每日体力，保存日程后可随时回顾。</p>
+        <p>选好要培养的密探，按材料缺口安排每日体力。</p>
       </div>
       <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
         <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
@@ -54,6 +54,7 @@
               :member-ids="activeMemberIds"
               :favorite-ids="favoriteIds"
               :catalog-entries="catalogEntries"
+              :current-entries="currentEntries"
               :growth-states="growthStates"
               :account-id="accountId"
               :error="planError"
@@ -115,16 +116,17 @@
         </div>
       </section>
 
-      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「添加」，可优先根据特别关注建立第一张清单。</span></div>
-      <div v-else-if="!planRows.length" class="planner-state empty"><Star :size="18" aria-hidden="true" /><span>当前清单还没有密探，可通过上方「编辑清单」添加，或新建培养计划。</span></div>
+      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「新建清单」，可根据特别关注建立，或自行挑选成员。</span></div>
+      <div v-else-if="!planRows.length" class="planner-state empty"><Users :size="18" aria-hidden="true" /><span>当前清单还没有密探。点击上方「添加密探」，也可加入未特别关注的密探。</span></div>
 
       </fieldset>
       <section ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
         <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
-          <div class="workspace-heading-content"><span class="section-kicker">每日执行</span>
+          <div class="workspace-heading-content"><span class="section-kicker">每日刷取建议</span>
             <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
               <button v-if="viewMode === 'display'" type="button" class="plan-icon" aria-label="编辑日程" title="编辑日程" :disabled="cloudBlocked" @click="editSchedule()"><Pencil :size="17" aria-hidden="true" /></button>
             </div></div>
+            <p>此日程暂不支持交给 Maa 自动执行。</p>
           </div>
           <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display')"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
         </div>
@@ -389,7 +391,7 @@ import { isMovieOperator } from '../../utils/operatorForms.js'
 import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Star, Target, X, Minus } from '@lucide/vue'
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X, Minus } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'

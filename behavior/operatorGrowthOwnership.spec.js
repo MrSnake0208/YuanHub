@@ -39,7 +39,7 @@ it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿�
     global: { stubs: { PlannerExactOptimizer: true } },
   })
   await flushPromises()
-  await wrapper.get('[aria-label="编辑清单"]').trigger('click'); await flushPromises()
+  await wrapper.get('[aria-label="管理清单"]').trigger('click'); await flushPromises()
   const picker = wrapper.getComponent({ name: 'OperatorTrainingPlanPicker' }).vm.$
   const input = wrapper.get('#plan-name-input')
   await input.setValue('尚未保存的清单'); input.element.focus()
@@ -54,6 +54,26 @@ it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿�
     expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
     expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
   }
+})
+
+it('追踪页顶部直接添加密探，并将真实拥有状态传入养成中筛选', async () => {
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true,
+      currentEntries: [{ id: 'op', starLevel: 1 }], growthStates: { op: 'growing' },
+      catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }, { id: 'missing', name: '未拥有密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  await wrapper.get('.plan-member-add').trigger('click')
+  await flushPromises()
+  await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('养成中')).trigger('click')
+  expect(wrapper.get('dialog').element.open).toBe(true)
+  expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(1)
+  expect(wrapper.get('.plan-candidates').text()).toContain('测试密探')
+  expect(wrapper.get('.plan-candidates').text()).not.toContain('未拥有密探')
+  expect(wrapper.text()).toContain('此日程暂不支持交给 Maa 自动执行')
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
 })
 
 it('等级修为非零但星级未拥有时，规划不标完成、不显示快捷提升；更新星级后正常拥有', async () => {
