@@ -6,10 +6,9 @@
 .calendar-filter-sheet-header h2 { font-size: 22px; }
 .calendar-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(18px, env(safe-area-inset-right)) 16px max(18px, env(safe-area-inset-left)); }
 .calendar-filter-sheet-footer { padding: 12px max(18px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); flex: none; }
-.calendar-filter-sheet-footer button { width: 100%; }
+.calendar-filter-sheet-footer button { width: 100%; min-height: 48px; }
 @media (min-width: 1024px) {
-  .calendar-filter-mask { align-items: flex-start; justify-content: flex-end; padding: 80px 32px 24px; }
-  .calendar-filter-sheet { width: 440px; max-height: calc(100dvh - 104px); }
+  .calendar-filter-sheet { position: fixed; left: var(--filter-left, 16px); top: var(--filter-top, 16px); bottom: var(--filter-bottom, auto); width: min(440px, calc(100vw - 32px)); max-height: var(--filter-max-height, calc(100dvh - 32px)); }
   .calendar-filter-sheet-footer { padding-bottom: 16px; }
 }
 }

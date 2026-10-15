@@ -43,7 +43,7 @@
           </div>
           <button class="calendar-filter-clear" type="button" @click="resetFilters">清除筛选</button>
         </div>
-        <CalendarFilterSheet :open="filterOpen" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
+        <CalendarFilterSheet :open="filterOpen" :anchor="filterTrigger" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
         <p v-if="mine && privateItems.notice.value" class="calendar-panel" role="status">{{ privateItems.notice.value }}</p>
