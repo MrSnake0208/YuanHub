@@ -67,7 +67,7 @@ it.each(['如鸢', '代号鸢'])('mine switches in place to %s and locks filters
   expect(wrapper.get('.calendar-account-scope').text()).toContain(`${game}（账号锁定）`)
   await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(Array.from(document.querySelectorAll('#calendar-filter-sheet legend')).map(node => node.textContent)).toEqual(['类型', '时间状态'])
-  document.querySelector('.calendar-filter-sheet-header button').click(); await flushPromises()
+  document.querySelector('.calendar-filter-sheet-footer .calendar-primary').click(); await flushPromises()
   await button('全部活动').trigger('click'); await flushPromises()
   expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢')
   expect(router.currentRoute.value.query).toMatchObject({ view: 'agenda', date: '2026-10-05', game: '如鸢', ref: 'keep' })
