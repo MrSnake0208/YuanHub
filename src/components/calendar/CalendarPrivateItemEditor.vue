@@ -26,6 +26,17 @@
           <label for="private-item-time">具体时间 <span>可选 · 留空为全天</span></label>
           <div class="calendar-private-time"><input id="private-item-time" v-model="draft.form.time" type="time" :disabled="draft.busy" :aria-invalid="!!draft.errors.time" aria-describedby="private-item-time-hint" /><button v-if="draft.form.time" type="button" :disabled="draft.busy" @click="draft.form.time = ''">改为全天</button></div>
           <p id="private-item-time-hint">{{ draft.errors.time || 'Asia/Shanghai（上海时间）；仅代表开始日时刻，日期跨度以起止日期为准。' }}</p>
+          <label for="private-item-reminder_on">站内提醒</label>
+          <select id="private-item-reminder_on" v-model="draft.form.reminder_on" :disabled="draft.busy" :aria-invalid="!!draft.errors.reminder_on" aria-describedby="private-item-reminder-hint">
+            <option value="">关闭提醒</option><option value="START">开始日提醒</option><option value="END">截止日提醒</option>
+          </select>
+          <template v-if="draft.form.reminder_on">
+            <label for="private-item-reminder_days_before">提前提醒</label>
+            <select id="private-item-reminder_days_before" v-model.number="draft.form.reminder_days_before" :disabled="draft.busy" :aria-invalid="!!draft.errors.reminder_days_before" aria-describedby="private-item-reminder-hint">
+              <option :value="0">仅当天</option><option :value="1">提前一天＋当天</option>
+            </select>
+          </template>
+          <p id="private-item-reminder-hint">{{ draft.errors.reminder_on || draft.errors.reminder_days_before || '按北京时间日历日提醒，与具体时间无关；进入 Hub 时显示弹窗。只有勾选“今天不再显示”后关闭，当前浏览器当天才不再提醒本批事项。' }}</p>
           <details :open="!!draft.form.note || !!draft.errors.note">
             <summary>附加说明（可选）</summary>
             <label for="private-item-note">纯文本说明 · 最多1000字</label>
@@ -84,8 +95,8 @@ onBeforeUnmount(() => restoreScroll?.())
 header h2 { color: var(--tea); }
 button { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
-:is(button, input, textarea, summary, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
-input, textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+:is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+input, textarea, select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 summary { cursor: pointer; }
 .calendar-private-error { color: var(--rouge); }
 .calendar-private-error a { color: inherit; }

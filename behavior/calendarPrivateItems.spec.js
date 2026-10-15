@@ -10,6 +10,7 @@ import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscrip
 import { createCalendarPrivateItem, deleteCalendarPrivateItem, getCalendarPrivateItem, listCalendarPrivateItems, updateCalendarPrivateItem } from '../src/api/calendarPrivateItems.js'
 import { dialog } from '../src/utils/dialog.js'
 import { installViewport } from '../test-support/viewport.js'
+import { CALENDAR_PRIVATE_ITEMS_UPDATED } from '../src/data/calendarPrivateItems.js'
 
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'owner' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
@@ -105,6 +106,36 @@ it.each(['agenda', 'timeline', 'month'])('private and official items coexist in 
   expect(privateCard.findAll('button').map(node => node.text())).toEqual(['编辑事项', '删除事项'])
   if (view === 'month') expect(wrapper.get('.calendar-month-day[aria-pressed=true]').attributes('aria-label')).toContain('2项事项')
   if (view === 'timeline') expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(2)
+})
+
+it('reminder link locates once without smooth scroll; month selection owns scroll and a new link can locate again', async () => {
+  vi.setSystemTime(new Date('2026-10-15T04:00:00Z'))
+  rows = [raw()]
+  const router = await render()
+  const card = wrapper.get(`article[data-event-id="${rows[0].id}"]`).element
+  const scroll = card.scrollIntoView = vi.fn()
+  await router.replace({ query: { ...router.currentRoute.value.query, event: rows[0].id } }); await flushPromises()
+  expect(scroll).toHaveBeenCalledTimes(1)
+  expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' })
+  expect(document.activeElement).toBe(card.querySelector('h4'))
+  scroll.mockClear()
+  const detail = card.closest('.calendar-month-event')
+  const selectScroll = detail.scrollIntoView = vi.fn()
+  // 保留旧链接时，其它 query 变化也不能重新抢走用户位置。
+  await router.replace({ query: { ...router.currentRoute.value.query, ref: 'another-query' } }); await flushPromises()
+  expect(scroll).not.toHaveBeenCalled()
+  await wrapper.get(`.calendar-month-bar[data-event-id="${rows[0].id}"]`).trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query.date).toBeUndefined()
+  expect(router.currentRoute.value.query.event).toBeUndefined()
+  expect(scroll).not.toHaveBeenCalled()
+  expect(selectScroll).toHaveBeenCalledTimes(1)
+  expect(selectScroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' })
+  expect(document.activeElement).toBe(detail)
+  // 手动选日清除旧定位意图，再点同一事项链接仍能重新定位。
+  await router.replace({ query: { ...router.currentRoute.value.query, event: rows[0].id } }); await flushPromises()
+  expect(scroll).toHaveBeenCalledTimes(1)
+  await button('日程').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query.event).toBeUndefined()
 })
 
 it('public scope never reads private items; completed/category/time filters explain private exclusion while todo retains them', async () => {
@@ -279,6 +310,33 @@ it('legacy edit expands, adjusts, refreshes and collapses a range while retainin
   await wrapper.findComponent(Calendar).vm.$router.replace('/calendar?scope=mine&view=month&date=2026-10-12'); await flushPromises()
   await button('删除事项').trigger('click'); await flushPromises()
   expect(rows).toHaveLength(0); expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('私人内容'))).toBe(false)
+})
+
+it('new reminders default today; target/advance persist and legacy editing does not auto-enable', async () => {
+  const notification = vi.spyOn(window, 'dispatchEvent')
+  await render(); await button('添加私人事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-reminder_on').value).toBe('START')
+  expect(document.querySelector('#private-item-reminder_days_before').value).toBe('0')
+  await field('title', '截止前提醒')
+  for (const [fieldName, value] of [['reminder_on', 'END'], ['reminder_days_before', '1']]) {
+    const select = document.querySelector('#private-item-' + fieldName)
+    select.value = value; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+  }
+  await save()
+  expect(createCalendarPrivateItem.mock.lastCall[0]).toMatchObject({ reminder_on: 'END', reminder_days_before: 1 })
+  expect(notification.mock.calls.filter(([event]) => event.type === CALENDAR_PRIVATE_ITEMS_UPDATED).map(([event]) => event.detail)).toEqual([{ userId: 'owner', accountId: 'a' }])
+  await button('编辑事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-reminder_on').value).toBe('END')
+  expect(document.querySelector('#private-item-reminder_days_before').value).toBe('1')
+  const select = document.querySelector('#private-item-reminder_on')
+  select.value = ''; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+  expect(document.querySelector('#private-item-reminder_days_before')).toBeNull()
+  await save(); expect(updateCalendarPrivateItem.mock.lastCall[1].reminder_on).toBeNull()
+  wrapper.unmount(); rows = [raw()]; await render()
+  await button('编辑事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-reminder_on').value).toBe('')
+  await field('title', '旧事项改名'); await save()
+  expect(updateCalendarPrivateItem.mock.lastCall[1]).toMatchObject({ reminder_on: null, reminder_days_before: 0 })
 })
 
 it('cross-month private range marks each covered day, clips a single bar, groups once and stays private', async () => {

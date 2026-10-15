@@ -1,5 +1,6 @@
 <template>
   <VersionUpdateBanner />
+  <CalendarReminderDialog v-if="isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)" />
   <a class="skip-link" href="#main-content">跳到主要内容</a>
   <Transition name="route-loader">
     <div
@@ -32,6 +33,7 @@ import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
 import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
+import CalendarReminderDialog from '@/components/calendar/CalendarReminderDialog.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
 import BetaCommunityDialog from '@/components/beta/BetaCommunityDialog.vue'
@@ -48,7 +50,7 @@ import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
 import { initializeOnboardingTour } from '@/utils/onboardingTour.js'
-import { TUTORIALS_ENABLED } from '@/config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '@/config/features.js'
 
 let stopWatch = null
 let stopEventPrompt = null
