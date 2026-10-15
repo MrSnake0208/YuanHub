@@ -37,7 +37,7 @@ it.each([
   expect(wrapper.find('.calendar-up-agents').exists()).toBe(false)
   wrapper.unmount()
   for (const component of [Month, Timeline]) {
-    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    const view = mount(component, { global: { stubs: { Teleport: true } }, props: { items: [item], today, anchorDate: today } })
     expect(view.find('.calendar-month-bar-up, .calendar-timeline-bar-up').exists()).toBe(false)
     for (const bar of view.findAll('.calendar-month-bar, .calendar-timeline-bar')) expect(bar.attributes('aria-label')).not.toContain('UP 密探')
     view.unmount()
@@ -46,18 +46,18 @@ it.each([
 
 it('时间轴跨周色条直显双UP，按钮打开完整详情并恢复焦点', async () => {
   const item = pool()
-  const wrapper = mount(Timeline, { props: { items: [item, ...denseMonthItems()], today, anchorDate: today }, attachTo: document.body })
+  const wrapper = mount(Timeline, { global: { stubs: { Teleport: true } }, props: { items: [item, ...denseMonthItems()], today, anchorDate: today }, attachTo: document.body })
   const bar = wrapper.findAll('.calendar-timeline-bar').find(node => node.text().includes(item.title))
   expect(bar.get('.calendar-timeline-bar-up').text()).toBe('UP · 甲 / 乙')
   expect(bar.attributes('aria-label')).toContain('UP 密探：甲、乙')
   expect(bar.get('.calendar-timeline-bar-title').text()).toBe(item.title)
-  expect(bar.attributes('aria-controls')).toBe('calendar-timeline-detail')
+  expect(bar.attributes('aria-haspopup')).toBe('dialog')
   bar.element.focus()
   await bar.trigger('click')
   await flushPromises()
-  expect(wrapper.get('#calendar-timeline-detail .calendar-up-agents').text()).toBe('UP 密探：甲、乙')
-  expect(document.activeElement).toBe(wrapper.get('#calendar-timeline-detail').element)
-  await wrapper.get('#calendar-timeline-detail button').trigger('click')
+  expect(wrapper.get('.calendar-detail-dialog .calendar-up-agents').text()).toBe('UP 密探：甲、乙')
+  expect(document.activeElement.id).toBe('calendar-detail-title')
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(bar.element)
   wrapper.unmount()
 })
@@ -65,18 +65,19 @@ it('时间轴跨周色条直显双UP，按钮打开完整详情并恢复焦点',
 it('高密度月历跨周色条与行数不受UP影响，当天完整清单显示两位名字', async () => {
   const item = pool({ start_date: '2026-09-01', up_agent_names: ['很长的密探名称'.repeat(15), '乙'] })
   const items = [item, ...denseMonthItems()]
-  const wrapper = mount(Month, { props: { items, today, anchorDate: today }, attachTo: document.body })
+  const wrapper = mount(Month, { global: { stubs: { Teleport: true } }, props: { items, today, anchorDate: today }, attachTo: document.body })
   const bars = () => wrapper.findAll('.calendar-month-bar').map(node => ({ id: node.attributes('data-event-id'), style: node.attributes('style') }))
   const withNames = bars()
   const bar = wrapper.findAll('.calendar-month-bar').find(node => node.attributes('data-event-id') === item.id)
   expect(bar.get('.calendar-month-bar-up').text()).toContain(item.up_agent_names[0])
   expect(bar.attributes('aria-label')).toContain(`UP 密探：${item.up_agent_names.join('、')}`)
-  expect(wrapper.get('#calendar-day-detail .calendar-up-agents').text()).toBe(`UP 密探：${item.up_agent_names.join('、')}`)
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
   await bar.trigger('click')
   const [date, accept] = wrapper.emitted('select-date').at(-1)
   expect(date).toBe(today)
-  await accept()
-  expect(document.activeElement.dataset.eventId).toBe(item.id)
+  await accept(); await flushPromises()
+  expect(wrapper.get('.calendar-detail-dialog .calendar-up-agents').text()).toBe(`UP 密探：${item.up_agent_names.join('、')}`)
+  expect(document.activeElement.id).toBe('calendar-detail-title')
   await wrapper.setProps({ items: items.map(value => ({ ...value, up_agent_names: [] })) })
   expect(bars()).toEqual(withNames)
   expect(wrapper.find('.calendar-up-agents').exists()).toBe(false)
@@ -92,7 +93,7 @@ it.each([
 ])('长条正文展示真实名单摘要，完整名单可读屏且安全转义：$names', ({ names, summary }) => {
   const item = pool({ up_agent_names: names })
   for (const component of [Month, Timeline]) {
-    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    const view = mount(component, { global: { stubs: { Teleport: true } }, props: { items: [item], today, anchorDate: today } })
     const bars = view.findAll('.calendar-month-bar, .calendar-timeline-bar')
     expect(bars.length).toBeGreaterThan(0)
     for (const bar of bars) {
@@ -107,12 +108,14 @@ it.each([
 it.each(['如鸢', '代号鸢'])('单日窄条保留首名和余量，详情完整；%s部分确认不使用候选名单', async game => {
   const item = pool({ game, start_date: today, end_date: today, up_agent_names: ['甲', '乙', '丙'], source_up_agent_names: ['未知候选'] })
   for (const component of [Month, Timeline]) {
-    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    const view = mount(component, { global: { stubs: { Teleport: true } }, props: { items: [item], today, anchorDate: today } })
     const bar = view.get('.calendar-month-bar, .calendar-timeline-bar')
     expect(bar.get('.calendar-month-bar-up, .calendar-timeline-bar-up').text()).toBe('UP · 甲 +2')
     expect(bar.attributes('aria-label')).toContain('UP 密探：甲、乙、丙')
     expect(view.text()).not.toContain('未知候选')
-    await bar.trigger('click'); await flushPromises()
+    await bar.trigger('click')
+    if (component === Month) await view.emitted('select-date').at(-1)[1]()
+    await flushPromises()
     expect(view.get('.calendar-up-agents').text()).toBe('UP 密探：甲、乙、丙')
     view.unmount()
   }

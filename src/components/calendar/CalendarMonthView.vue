@@ -1,5 +1,5 @@
 <template>
-  <section class="calendar-month" aria-label="活动月历" :aria-busy="loading">
+  <section ref="month" class="calendar-month" aria-label="活动月历" :aria-busy="loading" tabindex="-1">
     <div class="calendar-window-heading">
       <h2>{{ monthLabel }}</h2>
       <div class="calendar-window-nav" role="group" aria-label="月份导航">
@@ -7,19 +7,19 @@
         <button type="button" aria-label="下个月" @click="selectDate(shiftCalendarMonth(anchorDate, 1))"><ChevronRight :size="20" aria-hidden="true" /></button>
       </div>
     </div>
-    <p class="calendar-month-help">横条表示日期范围 · 箭头表示延续 · 点日期或 +N 查看完整清单</p>
+    <p class="calendar-month-help">点事项查看详情 · 点日期或 +N 查看当天清单 · 箭头表示延续</p>
     <div class="calendar-month-board">
       <div class="calendar-weekdays" aria-hidden="true"><span v-for="day in weekdays" :key="day">{{ day }}</span></div>
       <div class="calendar-month-grid">
         <template v-for="week in weeks" :key="week.from">
           <section class="calendar-month-week" :aria-label="`${calendarDateLabel(week.from)}至${calendarDateLabel(week.to)}`">
             <div class="calendar-month-dates">
-              <button v-for="day in week.days" :key="day.date" type="button" class="calendar-month-day" :class="{ 'is-outside': !day.inMonth, 'is-today': day.date === today }" :aria-pressed="day.date === anchorDate" :aria-current="day.date === today ? 'date' : undefined" :aria-label="dayLabel(day)" :aria-controls="!loading && !error ? 'calendar-day-detail' : undefined" @click="selectDate(day.date)">
+              <button v-for="day in week.days" :key="day.date" type="button" class="calendar-month-day" :class="{ 'is-outside': !day.inMonth, 'is-today': day.date === today }" :aria-pressed="day.date === anchorDate" :aria-current="day.date === today ? 'date' : undefined" :aria-label="dayLabel(day)" aria-haspopup="dialog" @click="openDay(day.date, '', $event)">
                 <span class="calendar-day-number">{{ Number(day.date.slice(8)) }}<span v-if="day.date === today" class="calendar-day-today" aria-hidden="true">今</span></span>
               </button>
             </div>
             <div v-if="week.rowCount" class="calendar-month-bars" :style="{ gridTemplateRows: `repeat(${week.rowCount}, minmax(44px, auto))` }">
-              <button v-for="entry in week.segments" :key="entry.item.id" type="button" class="calendar-month-bar" :class="{ 'is-narrow': entry.position.span === 1, 'has-up-agents': !!entry.upAgents, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}`, gridRow: entry.row + 1 }" :data-event-id="entry.item.id" :data-type-color="entry.display.color" :aria-label="`${entry.item.title}，${entry.display.path}${entry.upAgents ? '，' + entry.upAgents.full : ''}，${calendarRangeLabel(entry.item)}，查看当天完整事项`" aria-controls="calendar-day-detail" @click="openDay(segmentDate(entry, week), entry.item.id)">
+              <button v-for="entry in week.segments" :key="entry.item.id" type="button" class="calendar-month-bar" :class="{ 'is-narrow': entry.position.span === 1, 'has-up-agents': !!entry.upAgents, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}`, gridRow: entry.row + 1 }" :data-event-id="entry.item.id" :data-type-color="entry.display.color" :aria-label="`${entry.item.title}，${entry.display.path}${entry.upAgents ? '，' + entry.upAgents.full : ''}，${calendarRangeLabel(entry.item)}，查看事项详情`" aria-haspopup="dialog" @click="openDay(segmentDate(entry, week), entry.item.id, $event)">
                 <span v-if="entry.position.clippedStart" class="calendar-month-continuation" aria-hidden="true"><ChevronLeft :size="16" aria-hidden="true" /></span>
                 <span class="calendar-month-bar-content">
                   <span class="calendar-month-bar-text">{{ entry.upAgents ? entry.item.title : `${entry.display.label} · ${entry.item.title}` }}</span>
@@ -30,32 +30,30 @@
             </div>
             <div v-if="week.days.some(day => day.hiddenCount)" class="calendar-month-overflow">
               <template v-for="(day, index) in week.days" :key="day.date">
-                <button v-if="day.hiddenCount" type="button" :style="{ gridColumn: index + 1 }" :aria-label="`${calendarDateLabel(day.date)}，另有${day.hiddenCount}项，查看当天全部${day.items.length}项`" aria-controls="calendar-day-detail" @click="openDay(day.date)">+{{ day.hiddenCount }}</button>
+                <button v-if="day.hiddenCount" type="button" :style="{ gridColumn: index + 1 }" :aria-label="`${calendarDateLabel(day.date)}，另有${day.hiddenCount}项，查看当天全部${day.items.length}项`" aria-haspopup="dialog" @click="openDay(day.date, '', $event)">+{{ day.hiddenCount }}</button>
               </template>
             </div>
-          </section>
-          <section v-if="!loading && !error && anchorDate >= week.from && anchorDate <= week.to" id="calendar-day-detail" ref="detail" class="calendar-day-detail" aria-labelledby="calendar-day-detail-title">
-            <div class="calendar-detail-heading"><h3 id="calendar-day-detail-title" tabindex="-1">{{ calendarDateLabel(anchorDate) }}</h3><span role="status">{{ selectedItems.length ? `${selectedItems.length} 项${selectedItems.some(item => item.source_type === 'PRIVATE_ITEM') ? '' : '活动'}` : canCreate ? '暂无事项' : '暂无活动' }}</span><button v-if="canCreate" type="button" class="calendar-private-add" @click="$emit('create-private', anchorDate)"><Plus :size="17" aria-hidden="true" /> 记一件事</button></div>
-            <p v-if="selectedItems.length" class="calendar-hint">当天完整清单，可在清单内滚动查看</p>
-            <div v-if="selectedItems.length" class="calendar-event-list" role="region" :aria-label="`${calendarDateLabel(anchorDate)}全部${selectedItems.length}项`" tabindex="0"><div v-for="item in selectedItems" :key="item.id" class="calendar-month-event" :data-event-id="item.id" tabindex="-1"><CalendarEventCard :item="item" :today="today" /></div></div>
           </section>
         </template>
       </div>
     </div>
+    <CalendarDetailDialog :selection="selection" :items="items" :today="today" :loading="loading" :error="detailError" :can-create="canCreate" @close="closeDetail" @retry="$emit('retry')" @create-private="$emit('create-private', $event)" />
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight, Plus } from '@lucide/vue'
-import CalendarEventCard from './CalendarEventCard.vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
+import { ChevronLeft, ChevronRight } from '@lucide/vue'
+import CalendarDetailDialog from './CalendarDetailDialog.vue'
+import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { addCalendarDays, calendarDateLabel, calendarRangeLabel, monthCalendarWeeks, shiftCalendarMonth } from '@/data/activityCalendar.js'
 import { calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
-const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean, canCreate: Boolean })
-const emit = defineEmits(['select-date', 'create-private'])
+const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean })
+const emit = defineEmits(['select-date', 'create-private', 'close-detail', 'retry'])
+const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
-const wide = ref(false), detail = ref([])
-let media, focusRequest
+const wide = ref(false), month = ref(null), selection = ref(null)
+let media, identityRevision = 0
 const updateWidth = () => { wide.value = media.matches }
 onMounted(() => {
   if (typeof window.matchMedia !== 'function') return
@@ -68,7 +66,6 @@ const monthLabel = computed(() => calendarDateLabel(props.anchorDate, { year: 'n
 const weeks = computed(() => monthCalendarWeeks(props.loading || props.error ? [] : props.items, props.anchorDate, wide.value ? 4 : 3).map(week => ({
   ...week, segments: week.segments.map(entry => ({ ...entry, display: calendarDisplay(entry.item), upAgents: calendarUpAgentDisplay(entry.item) })),
 })))
-const selectedItems = computed(() => weeks.value.flatMap(week => week.days).find(day => day.date === props.anchorDate)?.items || [])
 function dayLabel(day) {
   const label = [calendarDateLabel(day.date, { year: 'numeric', month: 'long', day: 'numeric' })]
   const noun = day.items.some(item => item.source_type === 'PRIVATE_ITEM') ? '事项' : '活动'
@@ -84,31 +81,38 @@ function segmentDate(entry, week) {
   return props.anchorDate >= from && props.anchorDate <= to ? props.anchorDate : from
 }
 function selectDate(date) {
-  focusRequest = null
   emit('select-date', date)
 }
-async function focusDetail() {
-  const request = focusRequest
-  if (!request) return
-  if (props.anchorDate !== request.date || props.error) { focusRequest = null; return }
-  if (props.loading) return
-  await nextTick()
-  if (focusRequest !== request || props.loading || props.error) return
-  const section = detail.value[0]
-  const card = request.id && [...(section?.querySelectorAll('.calendar-month-event') || [])].find(node => node.dataset.eventId === request.id)
-  const target = card || section?.querySelector('h3')
-  target?.focus({ preventScroll: true })
-  target?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
-  focusRequest = null
-}
-function openDay(date, id) {
-  focusRequest = null
-  // Accept focus intent only after navigation/dirty guard, then wait for its data.
+async function openDay(date, id, event) {
+  const trigger = event?.currentTarget, revision = identityRevision
+  if (selection.value && props.anchorDate === date && subscriptions?.dirty.value) {
+    const context = subscriptions.key.value
+    if (!await subscriptions.confirmDiscard() || context !== subscriptions.key.value || revision !== identityRevision) return
+    subscriptions.discardDrafts()
+  }
+  // 导航与未保存确认通过后才打开；跨月加载在弹窗内反馈。
   emit('select-date', date, () => {
     if (props.anchorDate !== date) return
-    focusRequest = { date, id }
-    return focusDetail()
+    if (revision !== identityRevision) return
+    trigger?.focus({ preventScroll: true })
+    selection.value = { date, id }
   })
 }
-watch(() => [props.anchorDate, props.loading, props.error], focusDetail, { flush: 'post' })
+async function closeDetail() {
+  const previous = selection.value, context = subscriptions?.key.value
+  if (!previous || subscriptions && !await subscriptions.confirmDiscard()) return
+  if (context !== subscriptions?.key.value || selection.value !== previous) return
+  if (subscriptions?.dirty.value) subscriptions.discardDrafts()
+  selection.value = null
+  emit('close-detail')
+}
+function resetDetail() { selection.value = null }
+function openEvent(id) {
+  month.value?.focus({ preventScroll: true })
+  selection.value = { date: props.anchorDate, id }
+}
+watch(() => subscriptions?.key.value, resetDetail, { flush: 'sync' })
+watch(() => props.anchorDate, resetDetail, { flush: 'sync' })
+watch([() => subscriptions?.identity.value, () => subscriptions?.account.value?.id], () => { identityRevision++ }, { flush: 'sync' })
+defineExpose({ openEvent, resetDetail })
 </script>

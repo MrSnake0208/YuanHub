@@ -42,11 +42,12 @@ async page => {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status_code: 200, message: 'success', data }) })
   })
   await page.goto('http://localhost:5173/calendar?scope=mine&view=month&ref=private-verification')
-  await page.locator('.calendar-day-detail .calendar-private-actions').waitFor()
+  await page.locator('.calendar-view-content[aria-busy="false"]').waitFor()
   const results = []
   for (const width of [320, 390, 430, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     for (const [view, name] of [['agenda', '日程'], ['timeline', '时间轴'], ['month', '月历']]) {
+      if (await page.locator('.calendar-detail-dialog').isVisible()) await page.getByRole('button', { name: '关闭日历详情', exact: true }).click()
       await page.getByRole('button', { name, exact: true }).click()
       await page.locator('.calendar-view-content[aria-busy="false"]').waitFor()
       if (view === 'timeline') {
@@ -54,6 +55,7 @@ async page => {
         if (await bar.count() !== 1 || !await bar.evaluate(el => el.style.gridColumn.includes('span 35') && el.classList.contains('is-clipped-start') && el.classList.contains('is-clipped-end'))) throw Error('range bar/clipping')
         await bar.click()
       }
+      if (view === 'month') await page.locator('.calendar-month-day[aria-pressed=true]').click()
       const geometry = await page.evaluate(() => ({
         width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
         privateCards: document.querySelectorAll('.calendar-private-actions').length,
@@ -63,6 +65,7 @@ async page => {
       if (view === 'month' && await page.locator('.calendar-month-day[aria-label*="事项"]').count() < 35) throw Error('missing daily coverage')
       results.push({ view, width, pass: true })
     }
+    await page.getByRole('button', { name: '关闭日历详情', exact: true }).click()
     await page.getByRole('button', { name: '添加私人事项', exact: true }).click()
     const modal = page.locator('.calendar-private-dialog')
     await modal.waitFor()
@@ -111,6 +114,8 @@ async page => {
   await modal.getByRole('button', { name: '保存', exact: true }).click(); await modal.waitFor({ state: 'detached' })
   if (page.url() !== url) throw Error('URL changed')
   await page.reload()
+  await page.locator('.calendar-view-content[aria-busy="false"]').waitFor()
+  await page.locator('.calendar-month-day[aria-pressed=true]').click()
   const card = page.locator('.calendar-event').filter({ hasText: '跨月计划（合成验收）' })
   await card.waitFor()
   if (!(await card.textContent()).includes('开始日 09:30')) throw Error('start-time semantics')
@@ -124,6 +129,7 @@ async page => {
   await card.getByRole('button', { name: '删除事项', exact: true }).click(); await page.getByRole('button', { name: '保留', exact: true }).click()
   await card.getByRole('button', { name: '删除事项', exact: true }).click(); await page.getByRole('button', { name: '删除', exact: true }).click()
   await card.waitFor({ state: 'detached' })
+  await page.getByRole('button', { name: '关闭日历详情', exact: true }).click()
   await page.getByRole('button', { name: '全部活动', exact: true }).click()
   if (await page.locator('.calendar-private-actions').count()) throw Error('public leak')
   return { mode: 'real SFC + synthetic API, no real writes', results, journey: 'create range, inline validation, preserve explicit end, unsaved protection, save, refresh, edit refill, collapse, delete, public isolation', pass: true }

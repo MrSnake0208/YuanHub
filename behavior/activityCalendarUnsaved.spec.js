@@ -28,7 +28,7 @@ async function settle(discard = false) { dialog[discard ? '_confirm' : '_cancel'
 async function render(query = '') {
   router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/:pathMatch(.*)*', component: { template: '<div>other</div>' } }] })
   await router.push('/calendar?view=agenda' + query); await router.isReady()
-  wrapper = mount({ components: { AppDialog }, template: '<router-view /><AppDialog />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount({ components: { AppDialog }, template: '<router-view /><AppDialog />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
   await flushPromises()
 }
 async function edit() { await button('编辑待办').trigger('click'); await title().setValue('草稿待办') }
@@ -112,6 +112,7 @@ it('clean close, view/filter changes and leaving have no prompt; opening filters
   await button('月历').trigger('click'); await flushPromises()
   await router.replace({ query: { ...router.currentRoute.value.query, status: 'ongoing' } }); await flushPromises()
   expect(dialog._state.visible).toBe(false)
+  await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises()
   await edit(); await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(dialog._state.visible).toBe(false); expect(title().element.value).toBe('草稿待办')
   document.querySelector('.calendar-filter-sheet-footer .calendar-primary').click(); await flushPromises()
@@ -196,6 +197,7 @@ it('pending save stays unsaved, ignores double submit, then server success remov
 it.each(['月历', '时间轴', '日程'])('late public refresh cannot unmount the dirty %s editor', async view => {
   await render(); await button(view).trigger('click'); await flushPromises()
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
   const late = deferred(); listActivityCalendar.mockReturnValueOnce(late.promise)
   window.dispatchEvent(new Event('pageshow')); await flushPromises()
   await edit(); late.resolve({ items: [] }); await flushPromises()
@@ -247,10 +249,10 @@ it('timeline detail switching and closing wait for explicit discard', async () =
   await wrapper.findAll('.calendar-timeline-bar')[0].trigger('click'); await flushPromises(); await edit()
   await wrapper.findAll('.calendar-timeline-bar')[1].trigger('click'); await flushPromises(); await settle()
   expect(title().element.value).toBe('草稿待办')
-  await button('关闭详情').trigger('click'); await flushPromises(); await settle()
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises(); await settle()
   expect(title().element.value).toBe('草稿待办')
   await wrapper.findAll('.calendar-timeline-bar')[1].trigger('click'); await flushPromises(); await settle(true)
-  expect(wrapper.get('#calendar-timeline-detail').text()).toContain('另一期活动'); expect(wrapper.find('form').exists()).toBe(false)
+  expect(wrapper.get('.calendar-detail-dialog').text()).toContain('另一期活动'); expect(wrapper.find('form').exists()).toBe(false)
 })
 
 it('a late refresh read never replaces an already open leave confirmation', async () => {
@@ -318,4 +320,24 @@ it('canceling personal status selection restores its DOM state as well as the UR
   expect(router.currentRoute.value.query.task).toBe('completed')
   expect(pending.element.value).toBe('completed')
   expect(wrapper.find('form').exists()).toBe(false)
+})
+
+
+it('month detail close cancellation preserves drafts; confirmed close discards without writes', async () => {
+  await render(); await button('月历').trigger('click'); await flushPromises()
+  await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises(); await edit()
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
+  expect(dialog._state.visible).toBe(true)
+  await settle()
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(true)
+  expect(title().element.value).toBe('草稿待办')
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
+  expect(dialog._state.visible).toBe(true)
+  await settle(true)
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
+  expect(document.body.style.overflow).toBe('')
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+  await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises()
+  await button('编辑待办').trigger('click')
+  expect(title().element.value).toBe('第一项')
 })

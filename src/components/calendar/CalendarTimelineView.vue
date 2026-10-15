@@ -22,7 +22,7 @@
         <section v-for="group in groups" :key="group.category" class="calendar-timeline-group" :aria-label="group.label">
           <h3>{{ group.label }}<span>{{ group.items.length }}</span></h3>
           <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
-            <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" :aria-expanded="selectedId === entry.item.id" aria-controls="calendar-timeline-detail" @click="selectEvent(entry.item.id, $event)">
+            <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
               <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
                 <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
                 <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
@@ -37,24 +37,22 @@
         </section>
       </div>
     </div>
-    <div v-if="selectedItem" id="calendar-timeline-detail" ref="detail" class="calendar-timeline-detail" tabindex="-1" role="region" aria-labelledby="calendar-timeline-detail-title">
-      <div class="calendar-detail-heading"><h3 id="calendar-timeline-detail-title">选中活动</h3><button type="button" @click="closeDetail">关闭详情</button></div>
-      <CalendarEventCard :key="selectedItem.id" :item="selectedItem" :today="today" />
-    </div>
+    <CalendarDetailDialog :selection="selection" :items="items" :today="today" :loading="loading" :error="detailError" :can-create="canCreate" @close="closeDetail" @retry="$emit('retry')" @create-private="$emit('create-private', $event)" />
   </section>
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
-import CalendarEventCard from './CalendarEventCard.vue'
+import CalendarDetailDialog from './CalendarDetailDialog.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange } from '@/data/activityCalendar.js'
 import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
-const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean })
-defineEmits(['select-date'])
-const viewport = ref(null), detail = ref(null), selectedId = ref('')
+const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean })
+const emit = defineEmits(['select-date', 'close-detail', 'retry', 'create-private'])
+const viewport = ref(null), selection = ref(null)
+const selectedId = computed(() => selection.value?.id || '')
 const viewportSize = ref({ left: 0, width: 0, dayWidth: 0 })
 let viewportObserver
 function syncViewport() {
@@ -69,7 +67,7 @@ function barContentStyle(position) {
   const end = Math.min(left + width - 12, (position.column - 1 + position.span) * dayWidth - 16)
   return { maxWidth: `${Math.max(0, Math.min(360, end - start))}px` }
 }
-let selectionTrigger = null
+let selectionRevision = 0
 const helpStorageKey = 'yuanhub.activity-calendar.timeline-help-dismissed.v1'
 const showHelp = ref(true)
 try { showHelp.value = localStorage.getItem(helpStorageKey) !== '1' } catch { /* Storage may be unavailable; keep the hint dismissible. */ }
@@ -103,25 +101,35 @@ const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['PRI
   }))
   return { category, label, lanes, items: lanes.flat() }
 }).filter(group => group.lanes.length))
-const selectedItem = computed(() => groups.value.flatMap(group => group.items).find(entry => entry.item.id === selectedId.value)?.item)
 async function selectEvent(id, event) {
   if (selectedId.value === id) return
   const trigger = event.currentTarget
-  const context = subscriptions?.key.value
-  if (subscriptions && (!await subscriptions.confirmDiscard() || context !== subscriptions.key.value)) return
-  selectionTrigger = trigger
-  selectedId.value = id
-  await nextTick()
-  detail.value?.focus({ preventScroll: true })
-  detail.value?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
+  const revision = selectionRevision, previous = selection.value
+  if (subscriptions && !await subscriptions.confirmDiscard()) return
+  if (revision !== selectionRevision || previous !== selection.value) return
+  if (subscriptions?.dirty.value) subscriptions.discardDrafts()
+  trigger.focus({ preventScroll: true })
+  selection.value = eventSelection(id)
 }
 async function closeDetail() {
-  const context = subscriptions?.key.value
-  if (subscriptions && (!await subscriptions.confirmDiscard() || context !== subscriptions.key.value)) return
-  selectedId.value = ''
-  await nextTick()
-  if (selectionTrigger?.isConnected) selectionTrigger.focus({ preventScroll: true })
-  else viewport.value?.focus({ preventScroll: true })
+  const revision = selectionRevision, previous = selection.value
+  if (!previous || subscriptions && !await subscriptions.confirmDiscard()) return
+  if (revision !== selectionRevision || previous !== selection.value) return
+  if (subscriptions?.dirty.value) subscriptions.discardDrafts()
+  selection.value = null
+  emit('close-detail')
+}
+function eventSelection(id) {
+  const item = props.items.find(item => item.id === id)
+  let date = props.anchorDate
+  if (item?.start_date > date) date = item.start_date
+  if (item?.end_date && date > item.end_date) date = item.end_date
+  return { id, date }
+}
+function resetDetail() { selectionRevision++; selection.value = null }
+function openEvent(id) {
+  viewport.value?.focus({ preventScroll: true })
+  selection.value = eventSelection(id)
 }
 function locate() {
   const dayWidth = viewport.value?.querySelector('.calendar-axis-day')?.getBoundingClientRect().width || 0
@@ -137,5 +145,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => viewportObserver?.disconnect())
 watch(() => [props.anchorDate, props.locateRequest], locate, { flush: 'post' })
-watch(selectedItem, item => { if (!item) selectedId.value = '' })
+watch(() => subscriptions?.key.value, resetDetail, { flush: 'sync' })
+watch(() => props.anchorDate, resetDetail, { flush: 'sync' })
+defineExpose({ openEvent, resetDetail })
 </script>

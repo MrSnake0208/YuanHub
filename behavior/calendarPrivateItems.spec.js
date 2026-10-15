@@ -49,12 +49,16 @@ async function field(name, value) {
   input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
 }
 async function save() { editor().querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises() }
-async function render(query = 'scope=mine&view=month&date=2026-10-15') {
+async function render(query = 'scope=mine&view=month&date=2026-10-15', openDetails = true) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/away', component: { template: '<p>离开</p>' } }] })
   await router.push('/calendar?' + query); await router.isReady()
-  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
-  await flushPromises(); return router
+  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
+  await flushPromises()
+  // Existing CRUD cases explicitly enter the day popup before exercising its controls.
+  if (openDetails && wrapper.find('.calendar-month-day[aria-pressed=true]').exists()) await openSelectedDay()
+  return router
 }
+async function openSelectedDay() { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-10T04:00:00Z'))
   const media = new EventTarget(); media.matches = false; vi.stubGlobal('matchMedia', vi.fn(() => media))
@@ -108,34 +112,46 @@ it.each(['agenda', 'timeline', 'month'])('private and official items coexist in 
   if (view === 'timeline') expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(2)
 })
 
-it('reminder link locates once without smooth scroll; month selection owns scroll and a new link can locate again', async () => {
+it.each(['month', 'timeline'])('%s reminder link opens only its item, closing clears intent and the same link opens again', async view => {
   vi.setSystemTime(new Date('2026-10-15T04:00:00Z'))
   rows = [raw()]
-  const router = await render()
-  const card = wrapper.get(`article[data-event-id="${rows[0].id}"]`).element
-  const scroll = card.scrollIntoView = vi.fn()
-  await router.replace({ query: { ...router.currentRoute.value.query, event: rows[0].id } }); await flushPromises()
-  expect(scroll).toHaveBeenCalledTimes(1)
-  expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' })
-  expect(document.activeElement).toBe(card.querySelector('h4'))
-  scroll.mockClear()
-  const detail = card.closest('.calendar-month-event')
-  const selectScroll = detail.scrollIntoView = vi.fn()
-  // 保留旧链接时，其它 query 变化也不能重新抢走用户位置。
+  const router = await render(`scope=mine&view=${view}&date=2026-10-15`, false)
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
+  const link = async () => { await router.replace({ query: { ...router.currentRoute.value.query, event: rows[0].id } }); await flushPromises() }
+  await link()
+  expect(wrapper.findAll('.calendar-detail-dialog article')).toHaveLength(1)
+  expect(wrapper.get('.calendar-detail-dialog article').attributes('data-event-id')).toBe(rows[0].id)
+  expect(document.activeElement.id).toBe('calendar-detail-title')
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query.event).toBeUndefined()
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
+  await link(); expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(true)
   await router.replace({ query: { ...router.currentRoute.value.query, ref: 'another-query' } }); await flushPromises()
-  expect(scroll).not.toHaveBeenCalled()
-  await wrapper.get(`.calendar-month-bar[data-event-id="${rows[0].id}"]`).trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query.date).toBeUndefined()
-  expect(router.currentRoute.value.query.event).toBeUndefined()
-  expect(scroll).not.toHaveBeenCalled()
-  expect(selectScroll).toHaveBeenCalledTimes(1)
-  expect(selectScroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' })
-  expect(document.activeElement).toBe(detail)
-  // 手动选日清除旧定位意图，再点同一事项链接仍能重新定位。
-  await router.replace({ query: { ...router.currentRoute.value.query, event: rows[0].id } }); await flushPromises()
-  expect(scroll).toHaveBeenCalledTimes(1)
-  await button('日程').trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query.event).toBeUndefined()
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
+  if (view === 'month') await openSelectedDay()
+  else { await wrapper.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
+  if (view === 'month') expect(router.currentRoute.value.query.event).toBeUndefined()
+  expect(wrapper.findAll('.calendar-detail-dialog article')).toHaveLength(view === 'month' ? 2 : 1)
+  expect(wrapper.find('.calendar-day-detail').exists()).toBe(false)
+})
+
+it.each(['month', 'timeline'])('%s private editing hides detail, cancellation returns focus and save updates the same detail', async view => {
+  rows = [raw()]; await render(`scope=mine&view=${view}&date=2026-10-15`)
+  if (view === 'timeline') { await wrapper.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
+  const trigger = button('编辑事项'); trigger.element.focus()
+  await trigger.trigger('click'); await flushPromises()
+  expect(wrapper.get('.calendar-detail-mask').isVisible()).toBe(false)
+  expect(wrapper.get('.calendar-detail-mask').attributes('inert')).toBeDefined()
+  expect(editor()).not.toBeNull()
+  editor().querySelector('header button').click(); await flushPromises()
+  expect(wrapper.get('.calendar-detail-mask').isVisible()).toBe(true)
+  expect(document.activeElement).toBe(trigger.element)
+  await trigger.trigger('click'); await flushPromises(); await field('title', '更新后的事项'); await save()
+  expect(wrapper.get('.calendar-detail-dialog').text()).toContain('更新后的事项')
+  expect(editor()).toBeNull()
+  expect(document.body.style.overflow).toBe('hidden')
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
+  expect(document.body.style.overflow).toBe('')
 })
 
 it('public scope never reads private items; completed/category/time filters explain private exclusion while todo retains them', async () => {
@@ -219,13 +235,16 @@ it('A→B→A late reads and saves cannot populate another account or the new A 
   expect(wrapper.text()).not.toContain('旧保存'); expect(editor()).toBeNull()
 })
 
-it.each(['logout', 'identity', 'account'])('%s loss clears private data and draft immediately', async reason => {
-  rows = [raw()]; await render(); await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '秘密草稿')
+it.each(['month', 'timeline'].flatMap(view => ['logout', 'identity', 'account'].map(reason => [view, reason])))('%s %s loss clears private data and draft immediately', async (view, reason) => {
+  rows = [raw()]; await render(`scope=mine&view=${view}&date=2026-10-15`)
+  if (view === 'timeline') { await wrapper.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
+  await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '秘密草稿')
   if (reason === 'logout') { auth.isLoggedIn = false; auth.userInfo = null }
   else if (reason === 'identity') { listAccounts.mockResolvedValue([]); auth.userInfo = { id: 'other-owner' } }
   else activeAccount.set('missing')
   await flushPromises()
   expect(editor()).toBeNull(); expect(wrapper.text()).not.toContain('私人内容'); expect(wrapper.text()).not.toContain('秘密草稿')
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
 })
 
 it('empty account prevents requests and explicitly guides account creation', async () => {
@@ -307,7 +326,7 @@ it('legacy edit expands, adjusts, refreshes and collapses a range while retainin
   await button('编辑事项').trigger('click'); await flushPromises(); await field('end_date', '2026-10-12'); await save()
   expect(rows[0]).toMatchObject({ start_date: '2026-10-12', end_date: '2026-10-12', time: '23:59', note: '保留说明', version: 3 })
   // The selected date is now outside the saved single-day range.
-  await wrapper.findComponent(Calendar).vm.$router.replace('/calendar?scope=mine&view=month&date=2026-10-12'); await flushPromises()
+  await wrapper.findComponent(Calendar).vm.$router.replace('/calendar?scope=mine&view=month&date=2026-10-12'); await flushPromises(); await openSelectedDay()
   await button('删除事项').trigger('click'); await flushPromises()
   expect(rows).toHaveLength(0); expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('私人内容'))).toBe(false)
 })
