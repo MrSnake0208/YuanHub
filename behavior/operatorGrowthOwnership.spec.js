@@ -140,3 +140,32 @@ it.each([
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
 })
+
+it.each([390, 1440])('培养卡化极保留完整数值单位，并解释当前等级修为上限：%ipx', async width => {
+  installViewport(width)
+  plannerApi.getTrainingWorkspace.mockResolvedValue({
+    schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ['op'], excluded_operator_ids: [],
+      targets: { op: { level: 100, elite: 17, star_level: 13 } } }],
+  })
+  const wrapper = mount(Tracker, {
+    props: { accountId: 'acc', isLoggedIn: true,
+      currentEntries: [{ id: 'op', level: 90, elite: 15, starLevel: 13 }],
+      catalogEntries: [{ id: 'op', name: '测试密探', rarity: 4 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  const card = wrapper.get('.growth-card')
+  for (const selector of ['.growth-current-star', '.tracker-star-trigger']) {
+    expect(card.get(selector).findAll('.growth-stage-unit').map(unit => unit.text())).toEqual(['3 星', '0 节点'])
+    expect(card.get(selector).text()).toBe('3 星 · 0 节点')
+  }
+  expect(card.get('.tracker-star-trigger').attributes('aria-label')).toBe('测试密探的目标化极：3 星 · 0 节点')
+  expect(card.get('.growth-limit-note').text()).toBe('已达当前等级修为上限，先提升等级')
+  await wrapper.setProps({ currentEntries: [{ id: 'op', level: 90, elite: 14, starLevel: 13 }] })
+  expect(card.find('.growth-limit-note').exists()).toBe(false)
+  await wrapper.setProps({ currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 13 }] })
+  expect(card.find('.growth-limit-note').exists()).toBe(false)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+})

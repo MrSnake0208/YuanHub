@@ -94,13 +94,13 @@ button { touch-action: manipulation; }
 .growth-percent { flex: none; text-align: right; font: 850 20px var(--font-d); }
 .growth-percent small { margin-left: 2px; font: 700 10px var(--font-b); }
 .growth-progress-list { display: grid; gap: 6px; margin-top: 8px; }
-.growth-progress-row { position: relative; display: grid; gap: 3px; }
-.growth-progress-label { display: grid; grid-template-columns: 2em minmax(0, 1fr); align-items: center; gap: 8px; min-height: 28px; font-size: 10px; }
+.growth-progress-row { position: relative; display: grid; gap: 6px; }
+.growth-progress-label { display: grid; grid-template-columns: 2em minmax(0, 1fr); align-items: center; gap: 12px; min-height: 28px; font-size: 10px; }
 .growth-progress-label > span { font-weight: 800; }
 .growth-progress-side-label { flex: none; font: 750 10px/1.3 var(--font-b); white-space: nowrap; }
 .growth-progress-label b { font: 750 10px/1.3 var(--font-d); white-space: nowrap; }
 .progress-values { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-family: var(--font-d); }
-.growth-progress-label .progress-values { display: grid; width: 100%; max-width: 240px; justify-self: start; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1.5fr) 32px; gap: 4px; font: 750 10px/1.3 var(--font-d); }
+.growth-progress-label .progress-values { display: grid; width: 100%; max-width: 240px; justify-self: start; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr) 32px; gap: 4px; font: 750 10px/1.3 var(--font-d); }
 .growth-progress-label .growth-value-divider { display: none; }
 .growth-progress-label .progress-values > b { white-space: normal; overflow-wrap: anywhere; }
 .growth-progress-label .tracker-editable { width: 100%; min-width: 0; min-height: 36px; padding: 3px; }
@@ -436,36 +436,7 @@ button { touch-action: manipulation; }
   .day-totals .day-balance { display: none; }
 }
 @media (max-width: 640px) {
-  .growth-card-grid { gap: 28px; padding-top: 20px; }
-  .growth-card {
-    padding: 0 10px 8px;
-  }
-  .growth-card-head { align-items: center; gap: 8px; min-height: 44px; margin-top: -23px; }
-  .growth-identity :deep(.operator-avatar), .growth-identity-meta { display: none; }
-  .growth-identity { min-width: 0; }
-  .growth-identity h3 {
-    padding: 2px 6px;
-    font-size: 16px;
-    letter-spacing: .06em;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  .growth-percent { display: inline-flex; flex: none; align-items: baseline; gap: 3px; padding: 2px 6px; font-size: 16px; }
-  .growth-progress-status { display: inline; margin-right: 3px; font: 600 12px/1.5 var(--font-b); }
-  .growth-percent small { margin: 0; font-size: 12px; }
-  .growth-progress-list { gap: 4px; margin-top: 0; }
-  .growth-progress-row { gap: 0; padding-bottom: 3px; }
-  .growth-progress-label { min-height: 44px; gap: 8px; font-size: 12px; }
-  .growth-progress-label .progress-values { gap: 4px; font-size: 13px; }
-  .growth-progress-side-label { font-size: 11px; }
-  .growth-progress-label b, .growth-progress-label .tracker-number-input, .growth-progress-label .tracker-star-trigger { font-size: 13px; }
-  .growth-progress-label .tracker-editable { font-size: 16px; }
-  .growth-track { height: 2px; }
-  .growth-progress-row > small { display: none; }
-  .growth-progress-row > .heart-progress-note.is-unknown { display: block; margin-top: 4px; font-size: 11px; }
-  .growth-materials { margin-top: 4px; }
-  .growth-materials summary { min-height: 44px; font-size: 12px; }
-  .growth-materials summary span { font-size: 12px; }
+  .growth-materials summary { min-height: 28px; }
   .growth-material-chip { min-height: 36px; font-size: 12px; }
   .growth-material-chip small, .growth-material-note { font-size: 11px; }
   .growth-material-chip em { flex-wrap: wrap; justify-content: flex-end; white-space: normal; }
