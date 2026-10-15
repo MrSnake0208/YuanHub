@@ -19,7 +19,7 @@ const samples = [
 const colors = ['rouge', 'yellow', 'blue', 'gray', 'gray', 'orange', 'neutral', 'gold']
 
 it('日程和时间条共享颜色与文字，临近结束和选中不覆盖类型；四组不漏旧类型', async () => {
-  const wrapper = mount(Timeline, { props: { items: samples, today, anchorDate: today } })
+  const wrapper = mount(Timeline, { global: { stubs: { Teleport: true } }, props: { items: samples, today, anchorDate: today } })
   expect(wrapper.findAll('.calendar-timeline-group h3').map(node => node.text())).toEqual(['活动4', '卡池1', '商店1', '其他2'])
   expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(samples.length)
   for (let i = 0; i < samples.length; i++) {
@@ -32,21 +32,23 @@ it('日程和时间条共享颜色与文字，临近结束和选中不覆盖类�
   }
   const bar = wrapper.findAll('.calendar-timeline-bar').find(node => node.attributes('data-type-color') === 'yellow')
   await bar.trigger('click')
-  expect(wrapper.get('.calendar-timeline-detail .calendar-category').text()).toBe('活动 · 家具 · 神秘洞窟')
+  expect(wrapper.get('.calendar-detail-dialog .calendar-category').text()).toBe('活动 · 家具 · 神秘洞窟')
   expect(bar.attributes('aria-pressed')).toBe('true')
   expect(bar.attributes('data-type-color')).toBe('yellow')
 })
 
-it('月历周条与完整当天详情共享类型，独立关联条目数量不合并', () => {
-  const wrapper = mount(Month, { props: { items: samples, today, anchorDate: today } })
+it('月历周条与完整当天详情共享类型，独立关联条目数量不合并', async () => {
+  const wrapper = mount(Month, { global: { stubs: { Teleport: true } }, props: { items: samples, today, anchorDate: today } })
   const day = wrapper.get('.calendar-month-day[aria-pressed=true]')
   expect(day.attributes('aria-label')).toContain('8项活动')
   expect(wrapper.get('.calendar-month-overflow button').text()).toContain('+5')
-  expect(wrapper.get('.calendar-day-detail').element.previousElementSibling.querySelectorAll('.calendar-month-bar')).toHaveLength(3)
+  expect(day.element.closest('.calendar-month-week').querySelectorAll('.calendar-month-bar')).toHaveLength(3)
+  expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
+  await day.trigger('click'); await wrapper.emitted('select-date').at(-1)[1](); await wrapper.vm.$nextTick()
   expect(day.attributes('aria-label')).toContain('活动 · 家具 · 神秘洞窟')
   expect(day.attributes('aria-label')).toContain('其他 · 星池')
   for (let i = 0; i < samples.length; i++) {
-    const card = wrapper.findAll('.calendar-day-detail .calendar-event').find(node => node.get('h4').text() === samples[i].title)
+    const card = wrapper.findAll('.calendar-detail-dialog .calendar-event').find(node => node.get('h4').text() === samples[i].title)
     expect(card.attributes('data-type-color')).toBe(colors[i])
   }
 })

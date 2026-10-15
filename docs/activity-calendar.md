@@ -4,7 +4,7 @@
 
 页面通过 `Intl.DateTimeFormat.formatToParts` 计算 Asia/Shanghai 的服务器日期。日程请求今天至未来 90 天；时间轴请求锚点前 7 天至后 27 天（闭区间五周），前后导航按 35 天推进；月历请求当前月及周一至周日的补位日期，至少 35 格、最多 42 格。月份导航保留日号并钳制月末；同月份日期选择不重复请求。服务器午夜、翌日可见性恢复与 pageshow 更新日程，同一天恢复不重复读取。默认锚点随今天移动，URL 显式日期保持。日期不按用户所在时区换算；没有时间的活动不补具体时刻。
 
-日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按活动/卡池/商店/其他四组展示，重叠活动分轨、相邻区间复用轨道；闭区间条显示起止和截断边界，今天有日期头与竖线；仅面板内部横向滚动，标题在条上可见，点击展开同一活动卡。月历按周展示闭区间活动条，选中日完整活动卡紧跟所属周；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
+日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按活动/卡池/商店/其他四组展示，重叠活动分轨、相邻区间复用轨道；闭区间条显示起止和截断边界，今天有日期头与竖线；仅面板内部横向滚动，标题在条上可见，点击条目使用与月历相同的详情弹窗。月历按周展示闭区间活动条，点击事项条弹出单条详情，点击日期或+N弹出当天清单；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
 
 ### 月历周条（2026-10-12）
 
@@ -12,7 +12,7 @@
 
 手机与平板默认最多3层，宽度达到1024px时4层；空周只留日期行。跨日条覆盖首尾日期；跨周、跨可视区与无结束日期通过箭头和虚线端点提示延续。类型文字与浅色token共同表达分类，长名称省略后可点击查看全文。`+N` 是该日期未在已显示轨道出现的真实事项数，每周切片不制造新活动 ID，也不把跨日重复计数相加。
 
-点日期保持原 URL `date` 单源；点色条定位到该片段内的选中日（否则片段首日），并聚焦对应完整卡片；点 `+N` 聚焦当天清单标题。焦点动作在原导航/草稿确认完成后生效，跨月时等待新数据；取消或普通选日不会留下旧焦点请求。详情只挂载一份，紧随选中周。清单在最多 `min(28rem, 60svh)` 高度内滚动，保留全部卡片、订阅/私人事项操作；清单上方明确提示滚动，键盘可进入清单。主日期与事件操作至少44px高，320px下日期宽度至少44px。媒体查询只调整显示层数，不写用户设置或重复请求。
+点日期保持原 URL `date` 单源并打开当天清单；点色条选中该片段内的选中日（否则片段首日），仅打开该事项；点 `+N` 打开完整当天清单。初次进入与月份箭头导航不自动打开详情，原周下清单已移除。打开动作在导航/草稿确认完成后生效，跨月读取在弹窗内反馈，取消导航不打开旧选择。手机小于768px使用底部弹层，其余宽度居中显示；正文在90dvh范围内滚动，标题、关闭和底部操作始终可达。复用完整卡片、订阅待办和私人事项操作；编辑私人事项暂时隐藏详情，保存/取消回到原详情，删除后显示最新清单或失效提示。关闭按钮、完成、遮罩和Esc统一确认未保存待办，取消保留草稿，接受才放弃；关闭返回入口焦点并保留页面滚动。账号/身份/查询上下文变化清理旧选择，迟到导航接受不能恢复旧账号详情。主日期与事件操作至少44px高，320px下日期宽度至少44px。媒体查询只调整显示层数，不写用户设置或重复请求。
 
 定向验证（在前端仓库）：
 
@@ -289,7 +289,7 @@ npm run test:behavior -- behavior/activityCalendarImport.spec.js behavior/activi
 
 后端直接将权威目录 `pool_type` 附到日历派生响应，`recruitmentPoolTypes.js` 同时供日历和 `RecruitmentTimeline.vue` 使用。规范化先 trim、英文 lowercase：明确别名为 limited、rerun、zhaoying、choice/select、permanent/standard，以及历史已知“傅融地宫”“重逢限定”。接受由“自选/照影/复刻/限定”组成的类型及可选“卡池/招募”后缀，按自选 > 照影 > 复刻 > 限定的既有优先级判定；常驻及可选后缀单独识别。“常驻限定”“并非限定”或未审查的自由文本均回退中性。仅解析 pool_type，不解析活动标题；招募封面保留原淡金 #F2DFAD、淡蓝 #D9E8F5、淡紫 #E7DCF4、淡红 #F1D5D1。常驻与未知不强标限定。前端不会恢复后端已过滤的隐藏/停用卡池。
 
-日程保持暖白卡与左侧 3px 分类色条，类型标签带文字、浅底和细描边。时间轴使用同一 token 的浅背景和左侧标记，类型/游戏用短文字；结束提醒仅影响倒计时文字，选中使用外框与标题下划线，均不覆盖类型色。月历不染日期格，窄屏最多 3 种不同色点加完整活动数量，桌面最多 2 条带细色线的“类型 · 标题”及 +N；日期按钮的可访问名称含全部类型，选中当日显示完整卡片。颜色不是唯一信息，现有日期边界、重叠、键盘详情和焦点恢复保留。
+日程保持暖白卡与左侧 3px 分类色条，类型标签带文字、浅底和细描边。时间轴使用同一 token 的浅背景和左侧标记，类型/游戏用短文字；结束提醒仅影响倒计时文字，选中使用外框与标题下划线，均不覆盖类型色。月历不染日期格，窄屏最多 3 种不同色点加完整活动数量，桌面最多 2 条带细色线的“类型 · 标题”及 +N；日期按钮的可访问名称含全部类型，点击当日以弹窗显示完整卡片。颜色不是唯一信息，现有日期边界、重叠、键盘详情和焦点恢复保留。
 
 地宫/泰山府共享紫色和相同关联提示；家具/神秘洞窟共享黄色，洞窟始终显示在家具下。无权威关联标识时不声明同一期、不视觉合并条目；家具/洞窟同档日期由维护者核对。每个记录仍独立计数、时间、ID、订阅和进度。商店按人工需求录入，不由卡池/活动自动派生。未新增定时任务、常驻细类 Chips 或图例，类型文字已说明颜色语义。
 
@@ -357,7 +357,7 @@ npx vitest run behavior/activityCalendarSubscriptions.spec.js behavior/activityC
 
 显式勾选的当天免打扰状态只保存在当前浏览器，按用户×游戏账号×上海日期隔离，不同步到其它设备；同浏览器标签页通过 storage 事件同步。存储键升级为 `yuanhub.calendar-reminders.v2:`，不沿用旧版普通关闭产生的免打扰状态。存储不可用时使用本次页面会话内存，整页重新加载后可能再次提醒。存储仅含事项标识和提醒安排，不保存标题／备注。提醒设置随私人事项保存在服务端，**先升级后端，再升级前端**；没有新增私人事项完成状态、消息中心记录或离站系统推送。
 
-事项定位：提醒弹窗恢复入口焦点时不带动页面滚动；提醒链接由日历数据就绪后的定位接管，路由不再额外回顶。月历内选日／切视图等 query 导航保留当前位置，由当前点击负责详情定位；手动选日或切视图清除旧事项定位参数，再点击同一提醒仍可重新定位。事项链接定位使用即时滚动，并只消费一次，不因其它 query 变化或后台刷新再次抢走滚动与焦点。其它页面、hash 链接及历史位置恢复保持原规则。
+事项定位：提醒链接等待日历数据就绪后直接打开目标事项弹窗，月历和时间轴不再通过页面滚动定位卡片；关闭清理event参数，同一提醒可再次打开。月历内选日／切视图等query导航保留当前位置并清理旧定位意图；其它query变化和后台刷新不重新打开已消费的弹窗。日程的即时卡片定位、其它页面、hash链接及历史位置恢复保持原规则。
 
 相关自动化用例已补齐，回归由用户／CI执行（cwd `YuanHub`）：
 
@@ -368,7 +368,7 @@ npm run test:behavior -- behavior/calendarPrivateItems.spec.js behavior/calendar
 
 人工验收：手机390px／桌面1440px创建今天开始、明天截止并提前一天提醒的事项；进入其它 Hub 页面应看到合并弹窗，点击标题定位月历。未勾选关闭后刷新应再次出现，勾选后关闭再刷新当天当前批次不再出现；切换账号不显示原账号内容。检查 Tab／Shift+Tab、Esc、关闭后入口焦点及滚动恢复、手机换行和展开滚动，以及已有业务弹窗关闭后才展示提醒。真实浏览器、触控及跨端表现尚未验证。
 
-滚动回归：从其它页面及当前月历分别点击提醒标题，再点击月历私人事项条，应定位对应详情，不出现回顶后再下滑或重复跳动；定位后手动滚动并等待后台重读，不应被旧链接拉回。建议执行 `node --test test/routerScrollBehavior.test.js` 和 `npm run test:behavior -- behavior/calendarPrivateItems.spec.js behavior/calendarPrivateReminders.spec.js`。
+弹窗回归：从其它页面及当前月历分别点击提醒标题，关闭后再点击私人事项条，应打开单条详情且页面位置不变；点日期/+N应显示当天全部事项，翻月和后台重读不应自动弹出。建议执行 `node --test test/routerScrollBehavior.test.js` 和 `npm run test:behavior -- behavior/calendarPrivateItems.spec.js behavior/calendarPrivateReminders.spec.js`。
 
 ### 基础事项行为
 
@@ -398,7 +398,7 @@ npm run build
 
 ```bash
 node --test test/calendarPrivateItems.test.js test/activityCalendar.test.js test/activityCalendarViews.test.js
-npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateItemsApi.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarUnsaved.spec.js
+npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateItemsApi.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptions.spec.js
 ```
 
 浏览器复用既有开发服务，以模拟 API 验证六视口和保存，脚本 `test-support/calendarPrivateRange.browser.js`：`playwright-cli -s=private-range run-code --filename=test-support/calendarPrivateRange.browser.js`。先用该独立会话 `open http://localhost:5173`；不使用真实登录信息或数据库。真实手机软键盘、Safari及真实JWT联调仍需人工检查。
@@ -417,3 +417,27 @@ npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateIte
 node --test test/activityCalendar.test.js test/activityCalendarViews.test.js
 npm run test:behavior -- behavior/activityCalendarUpAgents.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarSubscriptions.spec.js
 ```
+
+### 月历详情弹窗验收（2026-10-15）
+
+风险L3：涉及账号敏感详情、全局焦点/滚动与未保存草稿生命周期，API不变。同步更新月历、类型、UP、私人事项及未保存待办测试；新增真实Teleport的焦点/Tab/Esc、关闭入口、锁滚动恢复、错误重试、动态删除及账号A→B→A迟到导航用例。Agent仅做源码编译与静态可用性审查；以下组件回归由用户执行（cwd YuanHub）：
+
+```sh
+npm run test:behavior -- behavior/calendarDetailDialog.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarTypes.spec.js behavior/activityCalendarUpAgents.spec.js behavior/calendarPrivateItems.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptions.spec.js
+```
+
+人工验收：手机390px和桌面1440px进入月历，下方不应有常驻卡片；点击事项条查看单条，点日期/+N查看全部，弹窗内滚动且背景位置不变。编辑私人事项后保存/取消返回更新后的详情；修改官方待办后尝试关闭，选择继续编辑应保留草稿。关闭后点击同一提醒可再次打开，切换账号不保留原详情。真实浏览器视觉、触控与滚动尚未验证。
+
+### 时间轴统一详情弹窗（2026-10-15）
+
+时间轴与月历复用同一个 `CalendarDetailDialog`，点击官方或私人事项条仅弹出该事项，移除原页内展开区域。手机为底部弹层、桌面居中，保留详情内部滚动、编辑/删除、错误重试和记一件事；关闭按钮、完成、遮罩和Esc统一确认未保存待办。取消确认保留原草稿；接受后关闭并释放滚动锁、返回条目焦点，保留页面及时间轴横向位置。私人编辑器打开时暂时隐藏详情，保存/取消返回同一详情；单条按ID读取，未来/历史条目及修改日期后仍显示当前范围内的最新数据。
+
+时间轴的event链接也等待读取后直接打开弹窗，关闭清理event参数，同一链接可以再次打开。账号/身份/查询/窗口变更清理旧详情，账号A→B→A或关闭确认迟到均不能覆盖新上下文。日程视图继续展示卡片，API与提醒的“今天不再显示”规则不变。
+
+风险L3：共用模态焦点/滚动、账号上下文及草稿生命周期。已同步7份组件测试，覆盖未来条目、日期编辑、横向位置、深链接、编辑返回、账号清理和迟到确认；现有合成浏览器脚本继续复用通用弹窗选择器，未执行。用户最小回归命令（cwd YuanHub）：
+
+```sh
+npm run test:behavior -- behavior/activityCalendarViews.spec.js behavior/activityCalendarTypes.spec.js behavior/activityCalendarUpAgents.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptions.spec.js behavior/calendarPrivateItems.spec.js behavior/calendarDetailDialog.spec.js
+```
+
+人工验收：390px/1440px将时间轴横向滑动后点击官方和私人事项，应弹出与月历相同的详情，页面下方不再新增卡片；关闭后保持原位置。编辑私人事项后保存/取消返回详情，未保存待办取消关闭保留内容；切换账号不保留原详情。Agent只完成源码编译/语法/diff及静态UX审查，真实视觉、触控、滚动与组件回归尚未验证。

@@ -61,8 +61,8 @@
             <p>{{ viewError }}</p><button type="button" @click="retry">重试</button>
           </div>
           <CalendarAgendaView v-if="currentView === 'agenda'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" />
-          <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
-          <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :can-create="privateItems.ready.value" @select-date="(date, afterSelect) => setDate(date).then(afterSelect)" @create-private="privateItems.open(null, $event)" />
+          <CalendarTimelineView v-else-if="currentView === 'timeline'" ref="timelineView" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value" @select-date="setDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
+          <CalendarMonthView v-else ref="monthView" :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value" @select-date="selectMonthDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
         </div>
         <section v-if="mine && visibleUnavailable.length" class="calendar-panel" aria-label="不可用的订阅">
           <h2>活动已停用或不可用</h2>
@@ -122,7 +122,7 @@ const preferredView = ref(calendarView({}, savedView, wide))
 const mine = computed(() => subscriptionScope(route.query))
 const taskStatus = computed(() => subscriptionTask(route.query))
 const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
-const filterOpen = ref(false), filterTrigger = ref(null)
+const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null)
 const activeFilters = computed(() => [
   !mine.value && filters.value.game && { key: 'game', label: filters.value.game, clear: '' },
   filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
@@ -143,7 +143,7 @@ const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed((
 const privateItems = useCalendarPrivateItems(subscriptions, requestRange, mine)
 watch(privateItems.dirty, value => { privateDirty.value = value }, { immediate: true, flush: 'sync' })
 // A committed query update has already passed the shared leave confirmation.
-watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss() }, { flush: 'sync' })
+watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss(); monthView.value?.resetDetail(); timelineView.value?.resetDetail() }, { flush: 'sync' })
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
@@ -157,22 +157,34 @@ const visibleItems = computed(() => {
     .filter(item => (item.end_date == null || item.end_date >= requestRange.value.from) && item.start_date <= requestRange.value.to)
 })
 const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => subscriptionMatchesTask(record, taskStatus.value)))
+const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
+const viewError = computed(() => mine.value ? subscriptions.error.value || privateItems.error.value : error.value)
 let locatedEvent = ''
-watch(() => [route.query.event, visibleItems.value, currentView.value, anchorDate.value], async () => {
+watch(() => [route.query.event, visibleItems.value, currentView.value, anchorDate.value, viewLoading.value, subscriptions.accountLoading.value], async () => {
   const eventId = Array.isArray(route.query.event) ? route.query.event[0] : route.query.event
   if (!eventId) { locatedEvent = ''; return }
   if (locatedEvent === eventId) return
   const path = route.fullPath
   await nextTick()
   if (path !== route.fullPath || locatedEvent === eventId) return
+  if (currentView.value === 'month' || currentView.value === 'timeline') {
+    const view = currentView.value === 'month' ? monthView.value : timelineView.value
+    if (viewLoading.value || mine.value && subscriptions.accountLoading.value || !view) return
+    view.openEvent(eventId)
+    locatedEvent = eventId
+    return
+  }
   const card = [...document.querySelectorAll('article.calendar-event[data-event-id]')].find(node => node.dataset.eventId === eventId)
   // 链接定位只消费一次，后续选日或切视图由当前操作接管滚动。
   if (card) locatedEvent = eventId
   card?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
   card?.querySelector('h4')?.focus({ preventScroll: true })
 }, { flush: 'post' })
-const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
-const viewError = computed(() => mine.value ? subscriptions.error.value || privateItems.error.value : error.value)
+function clearDetailLink() {
+  if (!route.query.event) return
+  const query = { ...route.query }; delete query.event
+  return router.replace({ query })
+}
 function retry() { if (mine.value) { void subscriptions.load(); void privateItems.load() } else void load() }
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }
 function setTask(value, input) {
@@ -254,6 +266,10 @@ function setDate(date) {
   const query = calendarViewQuery(route.query, { view: currentView.value, date }, today.value)
   delete query.event
   return router.replace({ query })
+}
+async function selectMonthDate(date, afterSelect) {
+  const failure = await setDate(date)
+  if (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) afterSelect?.()
 }
 async function goToday() {
   const failure = await setDate(today.value)

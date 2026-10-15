@@ -46,7 +46,9 @@ async page => {
   })
   const base = 'http://127.0.0.1:5173'
   await page.goto(base + '/calendar?scope=mine&view=month&date=2026-10-12')
-  await page.locator('.calendar-day-detail .calendar-event').first().waitFor()
+  const openDay = async () => { await page.locator('.calendar-view-content[aria-busy="false"]').waitFor(); await page.locator('.calendar-month-day[aria-pressed=true]').click(); await page.locator('.calendar-detail-dialog').waitFor() }
+  const closeDay = async () => { if (await page.locator('.calendar-detail-dialog').isVisible()) { await page.getByRole('button', { name: '关闭日历详情', exact: true }).click(); await page.locator('.calendar-detail-dialog').waitFor({ state: 'detached' }) } }
+  await openDay()
   for (const width of [320, 390, 430, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const value = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth, selectHeight: document.querySelector('[aria-label="个人活动状态"]').getBoundingClientRect().height, minButton: Math.min(...[...document.querySelectorAll('.calendar-subscription-actions button')].map(node => node.getBoundingClientRect().height)), bars: document.querySelectorAll('.calendar-month-bar').length }))
@@ -64,19 +66,20 @@ async page => {
   await card().getByRole('button', { name: '标记本期完成', exact: true }).focus()
   await page.keyboard.press('Enter')
   await card().waitFor({ state: 'detached' })
-  if (!await statusSelect.evaluate(node => node === document.activeElement)) throw Error('Removed card lost keyboard focus')
+  if (!await page.evaluate(() => !!document.activeElement.closest('.calendar-detail-dialog'))) throw Error('Removed card lost keyboard focus')
   if (stores['synthetic-a'][1].completed || stores['synthetic-b'][0].completed || stores['synthetic-a'][0].checklist[0].title !== '原有子项') throw Error('Completion crossed period/account or erased draft baseline')
-  await statusSelect.selectOption('completed'); await card().waitFor()
+  await closeDay(); await statusSelect.selectOption('completed'); await openDay(); await card().waitFor()
   await page.screenshot({ path: '.ux/audits/assets/usability-calendar-completion-success.png' })
-  await page.reload(); await card().waitFor()
+  await page.reload(); await openDay(); await card().waitFor()
   if (await statusSelect.inputValue() !== 'completed') throw Error('URL completion state lost on reload')
-  await page.getByRole('button', { name: '全部活动', exact: true }).click(); await card().waitFor()
+  await closeDay(); await page.getByRole('button', { name: '全部活动', exact: true }).click(); await openDay(); await card().waitFor()
   if (!(await card().textContent()).includes('本期已完成')) throw Error('Completed public event disappeared')
   await card().getByRole('button', { name: '撤销完成', exact: true }).click()
-  await page.getByRole('button', { name: '我的日历', exact: true }).click()
-  await statusSelect.selectOption('todo'); await card().waitFor()
+  await closeDay(); await page.getByRole('button', { name: '我的日历', exact: true }).click()
+  await statusSelect.selectOption('todo'); await openDay(); await card().waitFor()
   for (const view of ['日程', '时间轴', '月历']) {
-    await page.getByRole('button', { name: view, exact: true }).click()
+    await closeDay(); await page.getByRole('button', { name: view, exact: true }).click()
+    if (view === '月历') await openDay()
     if (view === '时间轴') await page.locator('.calendar-timeline-bar').filter({ hasText: '神秘洞窟' }).first().click()
     await card().waitFor()
     if (!(await card().textContent()).includes('本期待办')) throw Error('View task status differs')

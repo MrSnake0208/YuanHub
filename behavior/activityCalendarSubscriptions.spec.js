@@ -21,7 +21,7 @@ const button = (text) => wrapper.findAll('button').find(node => node.text() === 
 async function render(query = '') {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/user/profile', component: { template: '<div />' } }] })
   await router.push('/calendar?view=agenda' + query); await router.isReady()
-  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
   await flushPromises(); return router
 }
 beforeEach(() => {
@@ -321,19 +321,22 @@ it.each(['日程', '时间轴', '月历'])('%s supports subscribe todo complete 
   expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('todo')
   if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
   await button('标记本期完成').trigger('click'); await flushPromises()
   expect(setCalendarCompletion.mock.lastCall[1]).toEqual({ account_id: 'a', expected_version: 0, completed: true })
   expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
   expect(wrapper.get('.calendar-subscription-toolbar [role="status"]').text()).toContain('本期已完成')
-  expect(document.activeElement).toBe(wrapper.get('[aria-label="个人活动状态"]').element)
+  expect(document.activeElement).toBe(view !== '日程' ? wrapper.get('#calendar-detail-title').element : wrapper.get('[aria-label="个人活动状态"]').element)
   expect(saveCalendarProgress).not.toHaveBeenCalled()
   await wrapper.get('[aria-label="个人活动状态"]').setValue('completed'); await flushPromises()
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
   expect(wrapper.text()).toContain('本期已完成')
   expect(server.memo_note).toBe('保留历史备注')
   expect(server.checklist[0].completed).toBe(false)
   await button('全部活动').trigger('click'); await flushPromises()
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
   expect(wrapper.text()).toContain('地下遗迹')
   expect(wrapper.text()).toContain('本期已完成')
   await button('撤销完成').trigger('click'); await flushPromises()
@@ -456,6 +459,7 @@ it.each(['日程', '时间轴', '月历'])('%s shares the TODO editor and readon
   await render('&scope=mine&task=all')
   if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
   expect(wrapper.get('.calendar-todo-card-summary').text()).toContain('已完成 0/1 项')
   await button('编辑待办').trigger('click')
   expect(wrapper.find('textarea').exists()).toBe(false)
