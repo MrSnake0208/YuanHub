@@ -10,4 +10,6 @@
 .tool-summary > span + span::before { margin-inline: 8px; }
 .tool-summary time { white-space: nowrap; font: inherit; font-variant-numeric: tabular-nums; }
 .tool-summary b { font-family: var(--font-d); font-weight: 500; }
+.tool-more-content > .act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; font: 700 12.5px var(--font-b); white-space: nowrap; }
+
 }

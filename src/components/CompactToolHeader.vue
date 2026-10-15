@@ -49,6 +49,12 @@ const helpId = useId()
 .tool-more > summary:hover, .tool-more[open] > summary { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .tool-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tool-more-content { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(73,59,44,.12); }
+/* Shared action appearance; each device file owns the menu geometry. */
+.tool-more-content > .act-btn { border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-60); text-decoration: none; cursor: pointer; transition: border-color .18s,color .18s; }
+.tool-more-content > .act-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.tool-more-content > .act-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tool-more-content > .act-btn:disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .tool-more-content > .act-btn { transition: none; } }
 .tool-summary { color: var(--ink-60); }
 .tool-summary > span + span::before { content: '·'; color: var(--ink-35); }
 .tool-summary b { color: inherit; }

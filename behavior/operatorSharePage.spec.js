@@ -156,6 +156,21 @@ it('非法代码由实际表单反馈，无 API 请求或路由跳转', async ()
   expect(viewOperatorShare).not.toHaveBeenCalled()
   expect(useRouter().push).not.toHaveBeenCalled()
 })
+
+it('密探入口粘贴星石完整链接时尊重星石路径，不丢弃类型', async () => {
+  useRoute().params.token = ''
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('input').setValue('https://yuan.example/star/share/' + tokenA)
+  await wrapper.get('form').trigger('submit')
+  expect(useRouter().push).toHaveBeenLastCalledWith({ name: 'star-share', params: { token: tokenA } })
+  expect(viewOperatorShare).not.toHaveBeenCalled()
+})
+it('密探未授权时显示独立提示，不归类为空 BOX', async () => {
+  viewOperatorShare.mockRejectedValue(Object.assign(new Error('disabled'), { status: 404, code: 'share_not_authorized' }))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('尚未公开密探 BOX')
+  expect(wrapper.find('article').exists()).toBe(false)
+})
 it('viewport 变化通过 MediaQuery 事件更新卡片紧凑模式，无需刷新', async () => {
   const wrapper = render(); await flushPromises()
   const stats = () => wrapper.findComponent({ name: 'ShareCardStats' })

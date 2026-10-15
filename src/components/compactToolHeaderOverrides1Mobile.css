@@ -13,4 +13,6 @@
 @media (max-width: 640px) {
   .tool-summary .tool-updated { display: none; }
 }
+.tool-more-content > .act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; font: 700 12.5px var(--font-b); white-space: nowrap; }
+
 }

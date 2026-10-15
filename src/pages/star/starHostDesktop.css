@@ -139,7 +139,7 @@
 .page-star #product-root.is-empty-view:not(.is-bag-view) :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
 .page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
-.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary):not(.file-drop-zone)) {
+.page-star .star-main :deep(button:not(.act-btn):not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary):not(.file-drop-zone)) {
   box-sizing: border-box;
   height: 32px !important;
   min-height: 32px !important;
@@ -148,4 +148,7 @@
   line-height: 1.2;
 }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; }
+.page-star .star-share-manager { margin: 12px 0; }
+.star-share-placeholder { margin: 12px 0; padding: 16px; font-size: 13px; }
+
 }

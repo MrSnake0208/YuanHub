@@ -13,6 +13,8 @@
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
+              <router-link class="act-btn ghost" to="/star/share">查看他人星石背包</router-link>
+              <button v-if="!completionDemo" type="button" class="act-btn ghost" :aria-expanded="showShare" aria-controls="star-account-share" @click="showShare = !showShare">{{ showShare ? '收起分享与数据交换' : '分享与数据交换' }}</button>
               <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
                 :aria-expanded="showArchive" @click="showArchive = !showArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
@@ -79,6 +81,8 @@
               </section>
             </template>
           </ArchiveExchangePanel>
+          <AccountShareManager v-if="showShare && !completionDemo && auth.isLoggedIn && accountId" id="star-account-share" :account-id="accountId" class="star-share-manager" />
+          <p v-else-if="showShare && !completionDemo" id="star-account-share" class="star-share-placeholder">登录并选择游戏账号后，可管理密探与星石分享。</p>
           <p
             v-if="cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
@@ -183,6 +187,7 @@ import { recognitionTutorialExamples, tutorialStorageKey, tutorialSeen, markTuto
 import { bagReviewInfo, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
+import AccountShareManager from "../../components/AccountShareManager.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { listAccounts } from "../../api/accounts.js";
@@ -335,6 +340,7 @@ async function checkRecognitionTutorial() {
   if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value) replayRecognitionTutorial();
 }
 const showArchive = ref(false);
+const showShare = ref(false);
 const showStarImport = ref(false);
 const starImportPreview = ref(null);
 const starImportFile = ref(null);
@@ -925,6 +931,8 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.page-star .star-share-manager { border: 1px solid var(--line); border-radius: 16px; }
+.star-share-placeholder { border: 1px solid var(--line); border-radius: 12px; color: var(--ink-60); background: var(--surface); }
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .star-main :deep(.compact-tool-description) { color: var(--ink); }
 .page-star #product-root :deep(.product-toast) {
