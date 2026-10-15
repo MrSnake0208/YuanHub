@@ -114,7 +114,7 @@ it('clean close, view/filter changes and leaving have no prompt; opening filters
   expect(dialog._state.visible).toBe(false)
   await edit(); await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(dialog._state.visible).toBe(false); expect(title().element.value).toBe('草稿待办')
-  document.querySelector('.calendar-filter-sheet-header button').click(); await flushPromises()
+  document.querySelector('.calendar-filter-sheet-footer .calendar-primary').click(); await flushPromises()
   const leave = router.push('/other'); await flushPromises(); await settle(); await leave
   expect(router.currentRoute.value.path).toBe('/calendar')
   const leaveAgain = router.push('/other'); await flushPromises(); await settle(true); await leaveAgain
