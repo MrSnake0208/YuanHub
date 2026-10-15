@@ -29,6 +29,7 @@ import { accountListChange } from '../src/store/accountList.js'
 import { dialog } from '../src/utils/dialog.js'
 
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn(), updateAccount: vi.fn(), deleteAccount: vi.fn() }))
+vi.mock('../src/components/today/TodayTrainingPlans.vue', () => ({ default: { template: '<section class="today-training" />' } }))
 vi.mock('../src/api/operator.js', async importOriginal => {
   const actual = await importOriginal()
   return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))

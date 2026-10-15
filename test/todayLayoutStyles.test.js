@@ -5,7 +5,7 @@ import postcss from 'postcss'
 import { compileStyle } from '@vue/compiler-sfc'
 
 const directory = new URL('../src/components/today/', import.meta.url)
-const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription', 'todayPrivateItems']
+const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription', 'todayPrivateItems', 'todayTraining']
 
 // Check source ownership and real external CSS compilation, not pixel geometry.
 test('today layouts compile with scoped styles and every device rule is media bounded', () => {
@@ -38,6 +38,6 @@ test('today desktop owns expanded regions while mobile owns compact regions inde
   assert.equal(declarations('todayOnboarding', 'Desktop', '.account-management-card')['grid-template-columns'], 'minmax(0, 1fr) auto')
   assert.equal(declarations('todayOnboarding', 'Mobile', '.sync-recommendation')['flex-direction'], 'column')
   assert.equal(declarations('todayOnboarding', 'Desktop', '.sync-recommendation')['flex-direction'], 'row')
-  assert.equal(declarations('todayLayout', 'Desktop', '.today-main')['margin-left'], '228px')
+  assert.equal(declarations('todayLayout', 'Desktop', '.today-main')['margin-left'], '292px')
   assert.equal(declarations('todayLayout', 'Mobile', '.today-main')['margin-left'], undefined)
 })

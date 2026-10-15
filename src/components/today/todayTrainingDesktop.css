@@ -1,0 +1,14 @@
+@media (min-width: 768px) {
+  .today-training { min-width: 0; padding: 16px; border-radius: 14px; }
+  .training-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
+  p, h3 { overflow-wrap: anywhere; }
+  p { font-size: 13px; }
+  h3 { font-size: 15px; }
+  .training-hint { font-size: 12px; }
+  .training-plan { margin-top: 12px; padding-top: 12px; }
+  .training-list { display: grid; gap: 12px; margin-top: 8px; padding: 0; }
+  .training-list li { min-width: 0; }
+  .training-note { margin-top: 4px; white-space: pre-wrap; }
+  a, button { display: inline-flex; align-items: center; min-height: 36px; overflow-wrap: anywhere; }
+  button { margin-top: 8px; padding: 6px 10px; border-radius: 8px; }
+}

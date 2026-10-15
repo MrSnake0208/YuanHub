@@ -21,6 +21,7 @@ vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'Island
 vi.mock('../src/components/SiteFooter.vue', () => ({ default: { template: '<footer />' } }))
 // This suite owns calendar refresh timers; Lobby clock behavior has its own suite.
 vi.mock('../src/components/today/TodayLobby.vue', () => ({ default: { template: '<header><h1>今日一览</h1><slot /></header>' } }))
+vi.mock('../src/components/today/TodayTrainingPlans.vue', () => ({ default: { template: '<section class="today-training" />' } }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
