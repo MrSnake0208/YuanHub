@@ -5,7 +5,7 @@ import postcss from 'postcss'
 import { compileStyle } from '@vue/compiler-sfc'
 
 const directory = new URL('../src/components/today/', import.meta.url)
-const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription']
+const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription', 'todayPrivateItems']
 
 // Check source ownership and real external CSS compilation, not pixel geometry.
 test('today layouts compile with scoped styles and every device rule is media bounded', () => {
@@ -17,7 +17,7 @@ test('today layouts compile with scoped styles and every device rule is media bo
     postcss.parse(source).walkRules(rule => {
       let node = rule.parent, guards = []
       while (node) { if (node.type === 'atrule' && node.name === 'media') guards.push(node.params); node = node.parent }
-      assert.ok(guards.some(query => end === 'Desktop' ? query === '(min-width: 768px)' || query === '(min-width: 981px)' : query === 'not all and (min-width: 768px)' || query === '(max-width: 600px)'), `${filename.pathname}: ${rule.selector}`)
+      assert.ok(guards.some(query => end === 'Desktop' ? ['(min-width: 768px)', '(min-width: 981px)', '(min-width: 1081px)'].includes(query) : query === 'not all and (min-width: 768px)' || query === '(max-width: 600px)'), `${filename.pathname}: ${rule.selector}`)
     })
   }
 })

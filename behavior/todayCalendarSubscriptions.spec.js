@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import TodaySubscriptionSummary from '../src/components/today/TodaySubscriptionSummary.vue'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress, setCalendarCompletion, setCalendarSubscription } from '../src/api/activityCalendarSubscriptions.js'
 import { auth } from '../src/store/auth.js'
@@ -60,6 +60,28 @@ it('does not truncate the real checklist to the three-activity summary', async (
   expect(wrapper.get('.todo-list').text()).toContain('第四个活动')
   expect(wrapper.get('.todo-scope').text()).toContain('1 项待办未完成')
   expect(wrapper.text()).not.toContain('另有 3 项未完成')
+})
+
+it('renders reminders in the sidebar with one subscription instance and removes them on unmount', async () => {
+  const target = document.createElement('div')
+  target.id = 'today-reminders'
+  document.body.append(target)
+  feed([record('即将截止')])
+  render({ accountId: 'a', game: '如鸢', remindersTarget: '#today-reminders' })
+  await flushPromises()
+  expect(wrapper.get('.todo-list').text()).toContain('即将截止')
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  const reminders = new DOMWrapper(target).get('.todo-reminders')
+  expect(reminders.classes()).toContain('is-sidebar')
+  expect(reminders.get('.reminder-list').text()).toContain('即将截止')
+  reminders.element.open = false
+  await reminders.trigger('toggle')
+  expect(reminders.element.open).toBe(false)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(calendarSubscriptionSummary).toHaveBeenCalledTimes(1)
+  wrapper.unmount(); wrapper = null
+  expect(target.children).toHaveLength(0)
+  expect(vi.getTimerCount()).toBe(0)
 })
 
 it('shows at most six tasks initially and allows completed and long tasks to be inspected', async () => {

@@ -1,22 +1,21 @@
 /* 桌面专属布局与密度；共享字段外观留在功能组件。 */
 @media (min-width: 768px) {
 .today-activity-summary { min-width: 0; padding: 16px; border-radius: 14px; }
-.activity-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.activity-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .activity-heading > div { min-width: 0; }
 .activity-heading h2 { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 .activity-heading h2 svg { flex: 0 0 auto; }
 .activity-heading p, .activity-message, .activity-detail { font-size: 12px; overflow-wrap: anywhere; }
-.activity-link, .activity-error button { display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border-radius: 9px; }
+.activity-link, .activity-error button { display: inline-flex; min-height: 36px; min-width: 44px; align-items: center; justify-content: center; gap: 8px; padding: 6px 10px; border-radius: 9px; }
 .activity-link svg { flex: 0 0 auto; }
-.activity-counts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 16px; }
+.activity-counts { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
 .activity-counts p { font-size: 13px; }
-.activity-preview { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; }
+.activity-preview { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; }
 .activity-preview li { min-width: 0; padding-top: 8px; }
-.activity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; font-size: 14px; overflow-wrap: anywhere; }
+.activity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; font-size: 14px; overflow-wrap: anywhere; }
 .activity-title svg { flex: none; }
-.activity-upcoming { margin-top: 20px; }
+.activity-upcoming { margin-top: 16px; }
 .activity-detail { display: block; }
 .activity-message { margin-top: 12px; }
 .activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
 .activity-error p { flex: 1 1 200px; font-size: 13px; overflow-wrap: anywhere; } }
-@media (min-width: 768px) { .today-activity-summary { padding: 24px; } }

@@ -35,20 +35,22 @@
             <button type="button" :disabled="action.busy || loading" @click="readLatest(eventId)">{{ action.busy ? '读取中…' : '读取最新状态' }}</button>
           </div>
         </template>
-        <details class="todo-reminders" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
-          <summary>临期活动<span v-if="reminders.length"> · {{ reminders.length }} 项</span></summary>
-          <p class="todo-hint">未来 72 小时内截止 · 北京时间</p>
-          <ul v-if="reminders.length" class="reminder-list">
-            <li v-for="record in reminders" :key="record.event_id">
-              <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
-              <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
-            </li>
-          </ul>
-          <p v-else class="todo-hint">暂无临期活动。</p>
-          <p class="todo-hint">{{ total }} 项活动尚未标记本期完成（含历史或不可用订阅）。</p>
-          <p v-if="unavailableCount" class="todo-hint">{{ unavailableCount }} 项订阅活动不可用，已有清单可在日历查看。</p>
-          <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
-        </details>
+        <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
+          <details class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
+            <summary>临期活动<span v-if="reminders.length"> · {{ reminders.length }} 项</span></summary>
+            <p class="todo-hint">未来 72 小时内截止 · 北京时间</p>
+            <ul v-if="reminders.length" class="reminder-list">
+              <li v-for="record in reminders" :key="record.event_id">
+                <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
+                <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
+              </li>
+            </ul>
+            <p v-else class="todo-hint">暂无临期活动。</p>
+            <p class="todo-hint">{{ total }} 项活动尚未标记本期完成（含历史或不可用订阅）。</p>
+            <p v-if="unavailableCount" class="todo-hint">{{ unavailableCount }} 项订阅活动不可用，已有清单可在日历查看。</p>
+            <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
+          </details>
+        </Teleport>
       </template>
     </template>
   </section>
@@ -59,7 +61,7 @@ import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress } from '@/api/activityCalendarSubscriptions.js'
 import { addCalendarDays, CALENDAR_ENDING_WINDOW_MS, calendarDateLabel, calendarDeadline, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, nextCalendarBoundary, SERVER_TIME_ZONE, serverToday } from '@/data/activityCalendar.js'
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' } })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', task: 'todo', ...(props.game ? { game: props.game } : {}) }))
@@ -235,6 +237,7 @@ ul { list-style: none; }
 .is-complete .todo-title { text-decoration: line-through; font-weight: 400; }
 .todo-event { font-weight: 400; }
 .todo-reminders { border-top: 1px solid var(--line); }
+.todo-reminders.is-sidebar { border: 1px solid var(--line); background: var(--surface); }
 summary { color: var(--tea); font-weight: 700; cursor: pointer; }
 time { color: var(--accent-strong); }
 time.is-urgent, .todo-error p { color: var(--rouge); }
