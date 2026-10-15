@@ -6,7 +6,7 @@
 
 养成卡片复用当前账号的培养工作区、特别关注、养成目标与密探标注 GET 接口，按培养清单显示成员、已保存目标与完整纯文本备注，并保留清单外的密探备注。特别关注清单继续使用 `trainingPlanMemberIds` 合并实时关注、显式成员和排除项；自定义清单使用自身目标，未保存的默认目标不在首页推算。卡片只读，不导入本机草稿、不生成体力模拟日程、不写回工作区或扣除库存；点击成员进入养成总览并定位密探，管理入口进入养成总览。此卡片受已有 `OPERATOR_GROWTH_TRACKING` 开关控制，独立于活动日历开关与基础资料录入状态。
 
-养成读取独立于首页其他摘要。身份、账号或游戏切换立即清空旧内容并丢弃旧响应，所有私有响应核对账号；读取失败显示重试入口，普通刷新失败保留上次内容并标注，权限失效清空内容并停止刷新。页面重新可见、恢复页面或收到当前账号的培养清单、目标、备注、关注更新事件时合并刷新，卸载时清理监听和计时器。密探名称复用本地目录，未知 ID 原样显示。定向回归：`npm run test:behavior -- behavior/todayTrainingPlans.spec.js behavior/todayComingSoon.spec.js`，由用户/CI执行。
+养成读取独立于首页其他摘要。身份、账号或游戏切换立即清空旧内容并丢弃旧响应，随后合并同一轮状态更新再读取，避免登录状态先更新时使用旧身份发起请求；所有私有响应核对账号；读取失败显示重试入口，普通刷新失败保留上次内容并标注，权限失效清空内容并停止刷新。页面重新可见、恢复页面或收到当前账号的培养清单、目标、备注、关注更新事件时合并刷新，卸载时清理监听和计时器。密探名称复用本地目录，未知 ID 原样显示。定向回归：`npm run test:behavior -- behavior/todayTrainingPlans.spec.js behavior/todayComingSoon.spec.js`，由用户/CI执行。
 
 私人事项复用 `GET /v1/activity-calendar/private-items` 和 `privateCalendarItem` 校验，展示当前账号进行中及未来 90 天的事项、完整纯文本备注和日期范围。点击标题进入我的日历列表并定位事项，在日历继续编辑。读取独立于活动待办，慢请求或失败不会阻塞待办；身份、账号或游戏切换立即清空旧备注并丢弃旧响应，权限失效清空内容并停止自动刷新。普通刷新失败保留上次内容并明确提示；页面重新可见或北京时间跨日时刷新，卸载后清理。新增定向回归：`npm run test:behavior -- behavior/todayPrivateItems.spec.js behavior/todayComingSoon.spec.js behavior/todayActivitySummary.spec.js`，由用户/CI执行。
 

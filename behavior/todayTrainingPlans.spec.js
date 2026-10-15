@@ -72,6 +72,19 @@ it('does not request without login, a known identity or a selected account', asy
   auth.isLoggedIn = true; auth.userInfo = null; await flushPromises()
   expect(planner.getTrainingWorkspace).not.toHaveBeenCalled()
   expect(operators.getOperatorAnnotations).not.toHaveBeenCalled()
+  expect(operators.getOperatorGrowthTargets).not.toHaveBeenCalled()
+  expect(inventory.listAgentFavorites).not.toHaveBeenCalled()
+})
+
+it('reloads after a same-turn context round trip and cancels a queued load on unmount', async () => {
+  const wrapper = render(); await flushPromises()
+  auth.userInfo = { id: 'owner-b' }; auth.userInfo = { id: 'owner-a' }
+  await flushPromises()
+  expect(planner.getTrainingWorkspace).toHaveBeenCalledTimes(2)
+  expect(wrapper.text()).toContain('优先练主队')
+  auth.userInfo = { id: 'owner-b' }; wrapper.unmount()
+  await flushPromises()
+  expect(planner.getTrainingWorkspace).toHaveBeenCalledTimes(2)
 })
 
 it('distinguishes an empty workspace from a failed read and supports retry', async () => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import CalendarReminderDialog from '../src/components/calendar/CalendarReminderDialog.vue'
 import { modalFocusState, useModalFocus } from '../src/composables/useModalFocus.js'
@@ -115,6 +115,8 @@ it('late A reads cannot populate B or a new A session, including logout and unmo
   const final = deferred(); listCalendarPrivateItems.mockReturnValueOnce(final.promise)
   updated(); await flushPromises(); wrapper.unmount()
   final.resolve({ items: [raw()] }); await flushPromises()
+  // jsdom queues storage notifications separately from the component timers.
+  await vi.advanceTimersByTimeAsync(0)
   expect(vi.getTimerCount()).toBe(0)
 })
 
@@ -253,21 +255,22 @@ it('legacy implicit close state is ignored and snoozing A does not hide B or a n
 })
 
 it('refresh preserves focused actions, and an in-flight result cannot reopen a just-closed dialog', async () => {
-  await render()
-  const snooze = wrapper.findAll('button').find(node => node.text() === '稍后提醒').element
+  await render(true)
+  const page = new DOMWrapper(document.body)
+  const snooze = page.findAll('button').find(node => node.text() === '稍后提醒').element
   snooze.focus(); updated(); await flushPromises()
-  expect(wrapper.findAll('button').find(node => node.text() === '稍后提醒').element).toBe(snooze)
+  expect(page.findAll('button').find(node => node.text() === '稍后提醒').element).toBe(snooze)
   expect(document.activeElement).toBe(snooze)
   const late = deferred(); listCalendarPrivateItems.mockReturnValueOnce(late.promise)
   updated(); await flushPromises()
-  await wrapper.get('button[aria-label="关闭私人日历提醒"]').trigger('click')
+  await page.get('button[aria-label="关闭私人日历提醒"]').trigger('click')
   rows = [raw({ id: 'pci_00000000-0000-0000-0000-000000000002', title: '迟到的新事项' })]
   late.resolve({ items: rows }); await flushPromises()
-  expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+  expect(page.find('[role="dialog"]').exists()).toBe(false)
   expect(localStorage.getItem(reminderStorageKey(owner, 'a'))).toBeNull()
   await vi.advanceTimersByTimeAsync(1100)
   window.dispatchEvent(new Event('pageshow')); await flushPromises()
-  expect(wrapper.text()).toContain('迟到的新事项')
+  expect(page.text()).toContain('迟到的新事项')
 })
 
 it('real Teleport dialog traps Tab, Escape restores focus and body scrolling, and unmount cleans up', async () => {

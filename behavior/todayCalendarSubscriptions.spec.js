@@ -81,6 +81,8 @@ it('renders reminders in the sidebar with one subscription instance and removes 
   expect(calendarSubscriptionSummary).toHaveBeenCalledTimes(1)
   wrapper.unmount(); wrapper = null
   expect(target.children).toHaveLength(0)
+  // Drain the details toggle notification queued by jsdom.
+  await vi.advanceTimersByTimeAsync(0)
   expect(vi.getTimerCount()).toBe(0)
 })
 
