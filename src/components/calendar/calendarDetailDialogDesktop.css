@@ -1,6 +1,8 @@
 @media (min-width: 768px) {
   .calendar-detail-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; justify-content: center; align-items: center; padding: 24px; min-height: 0; }
-  .calendar-detail-dialog { display: flex; flex-direction: column; width: min(100%, 640px); max-height: 90dvh; min-width: 0; border-radius: 20px; }
+  .calendar-detail-dialog { display: flex; flex-direction: column; width: min(100%, 640px); max-height: min(90dvh, calc(var(--calendar-detail-viewport-height, 100dvh) - 48px)); min-width: 0; border-radius: 20px; }
+  .calendar-detail-mask.is-editing-todo { padding: 8px; }
+  .calendar-detail-mask.is-editing-todo .calendar-detail-dialog { max-height: calc(var(--calendar-detail-viewport-height, 100dvh) - 16px); }
   .calendar-detail-dialog.is-single { width: min(100%, 560px); }
   .calendar-detail-dialog header, .calendar-detail-dialog footer { display: flex; flex: none; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 20px; }
   .calendar-detail-dialog header > div { min-width: 0; }
@@ -8,7 +10,7 @@
   .calendar-detail-dialog button { min-height: 38px; padding: 8px 12px; }
   .calendar-detail-dialog :deep(.calendar-subscription button) { min-height: 38px; padding: 8px 10px; }
   .calendar-detail-dialog .calendar-detail-close { display: grid; place-items: center; width: 38px; padding: 0; }
-  .calendar-detail-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 2px 20px 16px; scrollbar-gutter: stable; }
+  .calendar-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 2px 20px 16px; scrollbar-gutter: stable; scroll-padding-block: 12px; }
   .calendar-detail-dialog footer { align-items: center; padding-block: 10px; border-top: 1px solid var(--line); }
   .calendar-detail-dialog.is-single footer { justify-content: flex-end; }
 }

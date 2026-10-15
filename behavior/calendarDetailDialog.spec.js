@@ -11,6 +11,114 @@ const item = (id, patch = {}) => ({ id, title: id, game: '如鸢', category: 'AC
 const props = { selection: { date, id: '' }, items: [item('one'), item('two')], today: date }
 afterEach(() => { document.body.removeAttribute('style'); document.documentElement.removeAttribute('style') })
 
+it.each(['one', ''])('keeps todo editing within the visual viewport for selection %j without losing drafts or moving the page', async id => {
+  const viewport = new EventTarget()
+  viewport.height = 800; viewport.offsetTop = 0
+  vi.stubGlobal('visualViewport', viewport)
+  const add = vi.spyOn(viewport, 'addEventListener'), remove = vi.spyOn(viewport, 'removeEventListener')
+  const pageScroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  const context = {
+    permitted: ref(true), account: ref({ id: 'a', game: '如鸢' }), key: ref('owner:a'), epoch: ref(0), now: ref(Date.parse('2026-10-15T04:00:00Z')),
+    byId: ref({ one: { event_id: 'one', subscribed: true, version: 0, checklist: [{ id: 'todo', title: '已有待办', completed: false }] } }),
+    dirty: ref(false), loading: ref(false), error: ref(''), setDirty: vi.fn((eventId, value) => { context.dirty.value = value }), progress: vi.fn(), complete: vi.fn(), subscribe: vi.fn(),
+  }
+  const wrapper = mount(Detail, { props: { ...props, selection: { date, id }, canCreate: true }, attachTo: document.body, global: { provide: { [CALENDAR_SUBSCRIPTIONS]: context } } })
+  await flushPromises()
+  const mask = document.querySelector('.calendar-detail-mask'), body = mask.querySelector('.calendar-detail-body'), footer = mask.querySelector('footer')
+  expect(mask.style.height).toBe('800px')
+  const card = mask.querySelector('[data-event-id="one"]')
+  Array.from(card.querySelectorAll('button')).find(node => node.textContent === '编辑待办').click(); await flushPromises()
+  const input = card.querySelector('input[type=text]')
+  expect(document.activeElement).toBe(input)
+  expect(mask.classList.contains('is-editing-todo')).toBe(true)
+  expect(footer.style.display).toBe('none')
+  input.value = '键盘变化后保留的草稿'; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+  const bounds = { top: 70, bottom: 280 }
+  const inputBounds = { top: 390, bottom: 434 }
+  vi.spyOn(body, 'getBoundingClientRect').mockImplementation(() => bounds)
+  vi.spyOn(input, 'getBoundingClientRect').mockImplementation(() => inputBounds)
+  body.scrollTop = 0
+  viewport.height = 320; viewport.offsetTop = 90
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(mask.style.top).toBe('90px')
+  expect(mask.style.height).toBe('320px')
+  expect(mask.style.bottom).toBe('auto')
+  expect(mask.style.getPropertyValue('--calendar-detail-viewport-height')).toBe('320px')
+  expect(body.scrollTop).toBe(166)
+  expect(document.activeElement).toBe(input)
+  expect(input.value).toBe('键盘变化后保留的草稿')
+  body.scrollTop = 200; inputBounds.top = 50; inputBounds.bottom = 94
+  viewport.offsetTop = 110
+  viewport.dispatchEvent(new Event('scroll')); await flushPromises()
+  expect(mask.style.top).toBe('110px')
+  expect(body.scrollTop).toBe(168)
+  bounds.bottom = 760; inputBounds.top = 100; inputBounds.bottom = 144
+  viewport.height = 800; viewport.offsetTop = 0
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(mask.style.height).toBe('800px')
+  expect(body.scrollTop).toBe(168)
+  expect(input.value).toBe('键盘变化后保留的草稿')
+  Array.from(card.querySelectorAll('button')).find(node => node.textContent === '添加待办').click(); await flushPromises()
+  const added = card.querySelectorAll('input[type=text]')[1]
+  expect(added).toBeDefined()
+  expect(document.activeElement).toBe(added)
+  expect(input.value).toBe('键盘变化后保留的草稿')
+  expect(footer.style.display).toBe('none')
+  vi.spyOn(added, 'getBoundingClientRect').mockReturnValue({ top: 790, bottom: 834 })
+  body.scrollTop = 0
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(body.scrollTop).toBe(86)
+  const save = card.querySelector('.calendar-todo-save')
+  vi.spyOn(save, 'getBoundingClientRect').mockImplementation(() => ({ top: 916 - body.scrollTop, bottom: 960 - body.scrollTop }))
+  save.focus(); await flushPromises()
+  expect(document.activeElement).toBe(save)
+  expect(body.scrollTop).toBe(212)
+  expect(mask.classList.contains('is-editing-todo')).toBe(true)
+  expect(footer.style.display).toBe('none')
+  mask.querySelector('.calendar-detail-close').focus(); await flushPromises()
+  expect(mask.classList.contains('is-editing-todo')).toBe(false)
+  expect(footer.style.display).toBe('')
+  expect(pageScroll).not.toHaveBeenCalled()
+  expect(context.progress).not.toHaveBeenCalled()
+  expect(context.complete).not.toHaveBeenCalled()
+  expect(context.subscribe).not.toHaveBeenCalled()
+  input.focus(); await flushPromises()
+  expect(footer.style.display).toBe('none')
+  await wrapper.setProps({ selection: { date, id: 'two' } }); await flushPromises()
+  expect(mask.classList.contains('is-editing-todo')).toBe(false)
+  expect(footer.style.display).toBe('')
+  await wrapper.setProps({ selection: null }); await flushPromises()
+  const resize = add.mock.calls.find(([name]) => name === 'resize')[1]
+  expect(remove).toHaveBeenCalledWith('resize', resize)
+  expect(remove).toHaveBeenCalledWith('scroll', resize)
+  await wrapper.setProps({ selection: { date, id } }); await flushPromises()
+  expect(document.querySelector('.calendar-detail-mask').classList.contains('is-editing-todo')).toBe(false)
+  wrapper.unmount()
+  expect(remove.mock.calls.filter(([name]) => name === 'resize')).toHaveLength(2)
+  expect(document.body.style.overflow).toBe('')
+})
+
+it('falls back to the window viewport and removes its resize listener on close and unmount', async () => {
+  vi.stubGlobal('visualViewport', undefined)
+  vi.stubGlobal('innerHeight', 700)
+  const add = vi.spyOn(window, 'addEventListener'), remove = vi.spyOn(window, 'removeEventListener')
+  const wrapper = mount(Detail, { props, global: { stubs: { Teleport: true } } })
+  await flushPromises()
+  const mask = wrapper.get('.calendar-detail-mask').element
+  expect(mask.style.height).toBe('700px')
+  expect(mask.style.top).toBe('0px')
+  vi.stubGlobal('innerHeight', 360)
+  window.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(mask.style.height).toBe('360px')
+  const resize = add.mock.calls.find(([name]) => name === 'resize')[1]
+  await wrapper.setProps({ selection: null }); await flushPromises()
+  expect(remove).toHaveBeenCalledWith('resize', resize)
+  await wrapper.setProps({ selection: props.selection }); await flushPromises()
+  expect(wrapper.get('.calendar-detail-mask').element.style.height).toBe('360px')
+  wrapper.unmount()
+  expect(remove.mock.calls.filter(([name]) => name === 'resize')).toHaveLength(2)
+})
+
 it('real Teleport focuses heading, traps Tab, emits every close path and restores opener/scroll styles', async () => {
   const opener = document.createElement('button'); document.body.append(opener); opener.focus()
   document.body.style.overflow = 'auto'; document.body.style.paddingRight = '7px'

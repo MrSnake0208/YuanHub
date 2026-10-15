@@ -1,6 +1,7 @@
 @media not all and (min-width: 768px) {
   .calendar-detail-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; align-items: flex-end; min-height: 0; }
-  .calendar-detail-dialog { display: flex; flex-direction: column; width: 100%; max-height: 90dvh; min-width: 0; border-radius: 20px 20px 0 0; }
+  .calendar-detail-dialog { display: flex; flex-direction: column; width: 100%; max-height: min(90dvh, calc(var(--calendar-detail-viewport-height, 100dvh) - 8px)); min-width: 0; border-radius: 20px 20px 0 0; }
+  .calendar-detail-mask.is-editing-todo .calendar-detail-dialog { max-height: calc(var(--calendar-detail-viewport-height, 100dvh) - 8px); }
   .calendar-detail-dialog header, .calendar-detail-dialog footer { display: flex; flex: none; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
   .calendar-detail-dialog h2 { font-size: 20px; }
   .calendar-detail-dialog header > div { min-width: 0; }
@@ -8,7 +9,7 @@
   .calendar-detail-dialog button { min-height: 44px; padding: 8px 10px; }
   .calendar-detail-dialog :deep(.calendar-subscription button) { min-height: 44px; padding: 8px 10px; }
   .calendar-detail-dialog .calendar-detail-close { display: grid; place-items: center; width: 44px; padding: 0; }
-  .calendar-detail-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 2px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
+  .calendar-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 2px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); scroll-padding-block: 12px; }
   .calendar-detail-body:last-child { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   .calendar-detail-dialog footer { align-items: center; flex-wrap: wrap; padding-block: 10px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
   .calendar-detail-dialog.is-single footer { justify-content: flex-end; }
