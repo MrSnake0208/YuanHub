@@ -5,7 +5,7 @@ import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from './imageUpload.js'
 export const FEEDBACK_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
 export const FEEDBACK_FILE_ACCEPT = '.txt,.log,.json,.pdf,.zip,text/plain,application/json,application/pdf,application/zip,application/x-zip-compressed'
 export const FEEDBACK_MEDIA_ACCEPT = FEEDBACK_IMAGE_ACCEPT
-export const MAX_FEEDBACK_MEDIA_COUNT = 3
+export const MAX_FEEDBACK_MEDIA_COUNT = 10
 export const MAX_FEEDBACK_MEDIA_SIZE = 10 * 1024 * 1024
 
 const ACCEPTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
