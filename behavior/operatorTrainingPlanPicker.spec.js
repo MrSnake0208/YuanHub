@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import Picker from '../src/components/operator/OperatorTrainingPlanPicker.vue'
 import { operatorFixture } from '../test-support/factories.js'
+import { installViewport } from '../test-support/viewport.js'
 const a = operatorFixture({ id: 'char_1_a', name: '阿蝉', prof: ['阳'] })
 const b = operatorFixture({ id: 'char_2_b', name: '颜良', prof: ['水'] })
 const plan = { id: 'plan-a', name: '第一张清单', source: 'custom' }
@@ -84,6 +85,75 @@ it('顶部添加密探可将非星标成员加入特别关注清单，保留隐�
   expect(new Set(wrapper.emitted('save')[0][0].operatorIds)).toEqual(new Set([a.id, b.id]))
   expect(favorites).toEqual(new Set([a.id]))
   expect(members).toEqual(new Set([a.id]))
+})
+
+it.each([390, 1440])('添加视图隐藏清单管理字段，并按打开时视口设置焦点：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = render()
+  await wrapper.get('.plan-member-add').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('#plan-editor-title').text()).toBe('添加密探')
+  expect(wrapper.get('.plan-picker-help').text()).toContain(plan.name)
+  expect(wrapper.find('#plan-name-input').exists()).toBe(false)
+  expect(wrapper.find('.plan-inline-delete').exists()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get(width <= 700 ? '#plan-editor-title' : '#plan-search-input').element)
+  await wrapper.get('.plan-cancel').trigger('click')
+  viewport.resize(width <= 700 ? 1440 : 390)
+  await wrapper.get('.plan-member-add').trigger('click')
+  await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get(width <= 700 ? '#plan-search-input' : '#plan-editor-title').element)
+})
+
+it('添加人数只计本次新增，筛选中保留已有成员且不能移除，未新增不能保存', async () => {
+  const wrapper = render()
+  await wrapper.get('.plan-member-add').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.plan-dialog-actions p').text()).toBe('0 位新增')
+  expect(wrapper.get('button[type="submit"]').element.disabled).toBe(true)
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  expect(wrapper.get('button[type="submit"]').text()).toBe('添加 1 位密探')
+  expect(wrapper.get('.plan-dialog-actions p').text()).toBe('1 位新增')
+  await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('全部')).trigger('click')
+  const existing = wrapper.get('input[aria-label="阿蝉，已在清单中"]')
+  expect(existing.element.checked).toBe(true)
+  expect(existing.element.disabled).toBe(true)
+  await wrapper.get('input[type="search"]').setValue('颜良')
+  await wrapper.get('input[type="checkbox"]').setValue(false)
+  expect(wrapper.get('button[type="submit"]').element.disabled).toBe(true)
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0]).toMatchObject({ id: plan.id, name: plan.name, source: 'custom' })
+  expect(new Set(wrapper.emitted('save')[0][0].operatorIds)).toEqual(new Set([a.id, b.id]))
+})
+
+it('取消添加不保存草稿，重新管理仍能改名和移除成员', async () => {
+  const wrapper = render()
+  await wrapper.get('.plan-member-add').trigger('click')
+  await flushPromises()
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  await wrapper.get('.plan-cancel').trigger('click')
+  expect(wrapper.get('dialog').element.open).toBe(false)
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await open(wrapper)
+  expect(wrapper.get('#plan-editor-title').text()).toBe('编辑培养清单')
+  expect(wrapper.find('.plan-inline-delete').exists()).toBe(true)
+  await wrapper.get('#plan-name-input').setValue('新的清单名')
+  const existing = wrapper.findAll('.plan-candidate').find(row => row.text().includes('阿蝉')).get('input')
+  expect(existing.element.disabled).toBe(false)
+  await existing.setValue(false)
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0]).toMatchObject({ name: '新的清单名', operatorIds: [] })
+})
+
+it('添加弹窗等待视图更新时切换账号，不重新打开旧账号的草稿', async () => {
+  const wrapper = render()
+  const opening = wrapper.vm.openMemberPicker()
+  await wrapper.setProps({ accountId: 'b' })
+  await opening
+  expect(wrapper.get('dialog').element.open).toBe(false)
+  expect(wrapper.emitted('save')).toBeUndefined()
 })
 
 it('养成中筛选使用拥有状态与养成标注，搜索和切换筛选不会丢失成员', async () => {
