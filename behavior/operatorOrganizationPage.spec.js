@@ -30,7 +30,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn().mockResolv
 const catalog = ['a', 'b', 'c'].map(id => ({ id, name: id, rarity: 5, games: ['如鸢'], prof: '阳', sub_prof: '输出' }))
 let organization, wrapper
 beforeEach(() => {
-  vi.clearAllMocks(); activeAccount.id = 'acc'
+  vi.resetAllMocks(); dialog.confirm.mockResolvedValue(true); activeAccount.id = 'acc'
   organization = { ...emptyOperatorOrganization(), account_id: 'acc', revision: 0 }
   api.getOperatorOrganization.mockImplementation(async account => ({ ...organization, account_id: account }))
   api.putOperatorOrganization.mockImplementation(async (account, body) => {
@@ -54,7 +54,7 @@ async function render() {
     StarLoadoutEditor: true, StarLoadoutModal: true, RouterLink: true,
   } } }); await flushPromises()
 }
-const cardNames = () => wrapper.findAll('.agent-ledger-card h3').map(node => node.text())
+const cardNames = () => wrapper.findAll('.agent-ledger-card').map(node => node.get('h3').text())
 const card = id => wrapper.findAll('.agent-ledger-card').find(node => node.get('h3').text() === id)
 const noGrowthWrites = () => {
   expect(api.putOperatorAnnotation).not.toHaveBeenCalled(); expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
@@ -151,7 +151,7 @@ it('分类确认期间账号上下文改变不授权新的切换，旧草稿不�
 it('分类正在保存时禁止切账号，失败后草稿保留且恢复确认流程', async () => {
   await render(); const manager = await editClassification()
   const pending = deferred(); api.putOperatorOrganization.mockReturnValueOnce(pending.promise)
-  await manager.get('button[type="submit"]').trigger('click')
+  await manager.get('form').trigger('submit')
   const context = wrapper.getComponent(DataAccountContextBar)
   expect(context.props('switchDisabled')).toBe(true)
   expect(await context.props('beforeSwitch')('b')).toBe(false)

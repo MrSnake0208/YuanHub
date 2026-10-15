@@ -760,7 +760,7 @@ it.each([[390, 0], [390, 3], [1440, 0], [1440, 3]])('背包搜索玻璃能找到
     await save(wrapper).trigger('click'); await flushPromises()
     expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
     expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({
-      account_id: 'acc-a', entity_type: 'item', record_type: 'stock_snapshot', snapshot_scope: 'listed',
+      account_id: 'acc-a', entity_type: 'item', record_type: 'stock_snapshot', snapshot_scope: 'full',
       entries: [expect.objectContaining({ id: 'zhuangjinboli', count: 7 })],
     })
   } finally { wrapper.unmount() }
