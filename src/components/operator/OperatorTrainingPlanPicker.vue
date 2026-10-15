@@ -1,15 +1,19 @@
 <template>
   <div class="plan-heading">
-    <div v-if="activePlan" ref="planSwitcher" class="plan-switcher" @focusout="onSwitcherFocusout">
-      <h2 class="plan-title"><button ref="switcherTrigger" type="button" class="plan-title-trigger" :disabled="disabled" aria-haspopup="menu" :aria-expanded="switcherOpen" aria-controls="plan-switcher-menu" @click="toggleSwitcher" @keydown.down.prevent="openSwitcher(true)" @keydown.esc.prevent="closeSwitcher"><span>{{ activePlan.name }}</span><ChevronDown :size="18" :class="{ open: switcherOpen }" aria-hidden="true" /></button></h2>
-      <div v-if="switcherOpen" id="plan-switcher-menu" ref="switcherMenu" class="plan-switcher-menu" role="menu" aria-label="切换培养清单" @keydown="onSwitcherKeydown">
-        <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
+    <div class="plan-identity">
+      <div v-if="activePlan" ref="planSwitcher" class="plan-switcher" @focusout="onSwitcherFocusout">
+        <h2 class="plan-title"><button ref="switcherTrigger" type="button" class="plan-title-trigger" :disabled="disabled" aria-haspopup="menu" :aria-expanded="switcherOpen" aria-controls="plan-switcher-menu" @click="toggleSwitcher" @keydown.down.prevent="openSwitcher(true)" @keydown.esc.prevent="closeSwitcher"><span>{{ activePlan.name }}</span><ChevronDown :size="18" :class="{ open: switcherOpen }" aria-hidden="true" /></button></h2>
+        <div v-if="switcherOpen" id="plan-switcher-menu" ref="switcherMenu" class="plan-switcher-menu" role="menu" aria-label="切换培养清单" @keydown="onSwitcherKeydown">
+          <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
+        </div>
       </div>
+      <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>
+      <p v-if="activePlan" class="plan-source-note">{{ activePlan.source === 'favorites' ? '随特别关注同步，也可添加其他密探' : '手动管理成员，各清单独立保存养成目标' }}</p>
     </div>
-    <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>
     <div class="plan-heading-actions">
-      <button v-if="activePlan" type="button" class="plan-icon" :disabled="disabled" aria-label="编辑清单" title="编辑清单" @click="openEditor(false)"><Pencil :size="17" aria-hidden="true" /></button>
-      <button type="button" class="plan-icon" :class="{ 'plan-add-empty': !activePlan }" :disabled="disabled" :aria-label="activePlan ? '新建计划' : '添加培养清单'" :title="activePlan ? '新建计划' : '添加培养清单'" @click="openEditor(true)"><Plus :size="18" aria-hidden="true" /><span v-if="!activePlan">添加清单</span></button>
+      <button v-if="activePlan" type="button" class="plan-member-add" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
+      <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
+      <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
     </div>
   </div>
   <dialog ref="dialog" class="plan-dialog" aria-labelledby="plan-editor-title" @click="onBackdrop" @close="resetTransientState">
@@ -23,6 +27,7 @@
       </header>
 
       <div class="plan-dialog-body">
+        <p class="plan-picker-help">选择要培养的密探，可按「养成中」筛选。保存成员不会改变特别关注或养成状态。</p>
         <section v-if="confirmingDelete && activePlan" class="plan-delete-confirm" role="alert" aria-labelledby="plan-delete-title">
           <div class="plan-delete-copy"><span aria-hidden="true"><Trash2 :size="17" /></span><div><b id="plan-delete-title">删除「{{ activePlan.name }}」？</b><p>{{ editingFavorites ? '这张清单将从养成规划移除，不会取消已标记的特别关注。' : '清单及其单独保存的养成目标将被删除。' }}删除后仍可在页面提示中撤销。</p></div></div>
           <div><button type="button" :disabled="disabled" @click="confirmingDelete = false">保留清单</button><button ref="deleteConfirm" type="button" class="plan-delete-danger" :disabled="disabled" @click="confirmDelete">确认删除</button></div>
@@ -47,7 +52,7 @@
           <button type="button" class="plan-filter-toggle" :class="{ on: filtersOpen }" :aria-expanded="filtersOpen" aria-controls="plan-advanced-filters" @click="filtersOpen = !filtersOpen"><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="advancedFilterCount">{{ advancedFilterCount }}</span></button>
         </div>
 
-        <div class="plan-selection-tabs" role="group" aria-label="按清单状态筛选">
+        <div class="plan-selection-tabs" role="group" aria-label="按成员与养成状态筛选">
           <button v-for="option in selectionOptions" :key="option.value" type="button" :class="{ on: selectionFilter === option.value }" :aria-pressed="selectionFilter === option.value" @click="selectionFilter = option.value">{{ option.label }}<span>{{ selectionCount(option.value) }}</span></button>
         </div>
 
@@ -83,7 +88,7 @@
             </span>
             <Check v-if="selected.has(entry.id)" class="plan-selected-check" :size="12" aria-hidden="true" />
           </label>
-          <p v-if="!filteredEntries.length">当前筛选下没有密探</p>
+          <p v-if="!filteredEntries.length">{{ selectionFilter === 'growing' ? '当前筛选下没有已拥有的养成中密探，可切换「全部」或调整搜索条件。' : '当前筛选下没有密探' }}</p>
         </div>
       </div>
 
@@ -101,10 +106,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, Pencil, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
+import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, isOperatorOwned, tokens } from '../../utils/operatorFilters.js'
 import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
-const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
+const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, currentEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
 const dialog = ref(null)
 const planSwitcher = ref(null)
@@ -127,11 +132,12 @@ const firstPlanSuggestion = ref(false)
 const confirmingDelete = ref(false)
 const filtersOpen = ref(false)
 const switcherOpen = ref(false)
-const selectionOptions = [{ value: 'all', label: '全部' }, { value: 'selected', label: '已选' }, { value: 'unselected', label: '未选' }]
+const selectionOptions = [{ value: 'all', label: '全部' }, { value: 'growing', label: '养成中' }, { value: 'selected', label: '已选' }, { value: 'unselected', label: '未选' }]
 const rarityOptions = OPERATOR_RARITY_OPTIONS
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
 const catalogIds = computed(() => new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean)))
 const validFavoriteIds = computed(() => [...props.favoriteIds].filter(id => catalogIds.value.has(id)))
+const growingIds = computed(() => new Set(props.currentEntries.filter(entry => catalogIds.value.has(entry.id) && isOperatorOwned(entry) && growthStatus(entry) === 'growing').map(entry => entry.id)))
 const validSelectedCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id)).length)
 const invalidSelectedCount = computed(() => selected.value.size - validSelectedCount.value)
 const editingFavorites = computed(() => (!creating.value && props.activePlan?.source === 'favorites') || (firstPlanSuggestion.value && firstPlanMode.value === 'favorites'))
@@ -143,6 +149,7 @@ const profOptions = computed(() => {
 })
 const subProfOptions = computed(() => ['all', ...deriveSubProfOptions(props.catalogEntries)])
 function selectionCount(value) {
+  if (value === 'growing') return growingIds.value.size
   if (value === 'selected') return validSelectedCount.value
   if (value === 'unselected') return Math.max(0, props.catalogEntries.length - validSelectedCount.value)
   return props.catalogEntries.length
@@ -200,6 +207,7 @@ const filteredEntries = computed(() => {
     if (!matchesOperatorSearch(entry, search.value)) return false
     if (!matchesOperatorQuality(entry, rarityFilter.value)) return false
     if (!matchesProfSubFilter(entry, profFilter.value, subProfFilter.value)) return false
+    if (selectionFilter.value === 'growing' && !growingIds.value.has(entry.id)) return false
     if (selectionFilter.value === 'selected' && !selected.value.has(entry.id)) return false
     if (selectionFilter.value === 'unselected' && selected.value.has(entry.id)) return false
     return true
@@ -266,9 +274,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--tea); }
 .plan-switcher-check { color: var(--accent-strong); }
 .plan-title-empty { color: var(--ink-60); }
-.plan-heading-actions .plan-icon { border-color: transparent; background: transparent; color: var(--ink-60); }
-.plan-heading-actions .plan-icon:hover:not(:disabled) { background: var(--paper); color: var(--tea); }
-.plan-heading-actions .plan-add-empty { border-color: var(--line); background: var(--cream); color: var(--tea); }
+.plan-source-note, .plan-picker-help { color: var(--ink-60); }
+.plan-member-add { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.plan-member-add:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--cream); }
+.plan-text-action { border-color: transparent; background: transparent; color: var(--ink-60); }
+.plan-text-action:hover:not(:disabled) { background: var(--paper); color: var(--tea); }
 button, select, input { color: var(--ink); }
 button, select { border: 1px solid var(--line); border-radius: 9px; background: var(--cream); }
 button { cursor: pointer; }

@@ -68,7 +68,7 @@ test('紧凑筛选控件保留原生语义和可访问状态', () => {
   const templateText = descriptor.template.content
   assert.match(templateText, /aria-controls="plan-advanced-filters"/)
   assert.match(templateText, /:aria-expanded="filtersOpen"/)
-  assert.match(templateText, /role="group" aria-label="按清单状态筛选"/)
+  assert.match(templateText, /role="group" aria-label="按成员与养成状态筛选"/)
   assert.match(templateText, /:aria-pressed="selectionFilter === option.value"/)
 })
 

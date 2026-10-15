@@ -465,9 +465,9 @@ button { touch-action: manipulation; }
   .planner-status { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 12px; padding-top: 0; }
   .status-main { display: contents; }
   .status-title { grid-row: 1; }
-  .status-title :deep(.plan-heading) { flex-wrap: nowrap; gap: 8px; }
+  .status-title :deep(.plan-heading) { flex-wrap: wrap; gap: 10px; }
   .status-title :deep(.plan-switcher) { flex: 1; }
-  .status-title :deep(.plan-heading-actions) { flex: none; }
+  .status-title :deep(.plan-heading-actions) { flex: 1 1 100%; }
   .status-title :deep(.plan-title) { font-size: 20px; }
   .status-metrics { grid-row: 2; }
   .planner-status .status-metric { min-height: 84px; padding: 10px; }
