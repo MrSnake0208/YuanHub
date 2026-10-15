@@ -159,6 +159,8 @@ async function openManualWithPreview(wrapper) {
 }
 
 beforeEach(() => {
+  // jsdom 不提供滚动布局；此处只验证状态和焦点语义。
+  Element.prototype.scrollIntoView = vi.fn()
   inventoryApi.importInventory.mockReset()
   inventoryApi.getCurrent.mockReset().mockResolvedValue([])
   rewardCatalogApi.getRewardCatalog.mockReset()
@@ -166,6 +168,171 @@ beforeEach(() => {
   document.documentElement.style.overflow = ''
   document.body.style.overflow = ''
   document.body.style.paddingRight = ''
+})
+
+it.each(['08:09', '08:09:10'])('粘贴发生时刻 %s 清除旧预览并使用输入值入账', async clock => {
+  inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, warnings: [] })
+  const wrapper = mountWorkspace()
+  await openManualWithPreview(wrapper)
+  const date = document.querySelector('input[aria-label="发生日期"]').value
+  const input = document.querySelector('[data-clock-part="0"]')
+  expect(input).not.toBeNull()
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', { value: { getData: () => clock } })
+  input.dispatchEvent(event)
+  await flushPromises()
+  expect(wrapper.getComponent(RewardDateTimePicker).props('clock')).toBe(clock.length === 5 ? `${clock}:00` : clock)
+  expect(document.querySelector('.preview-section')).toBeNull()
+  await clickElement(bodyButton('预览本次流水'))
+  expect(document.querySelector('.preview-section')).not.toBeNull()
+  await clickElement(bodyButton('确认补录 1 条'))
+  expect(inventoryApi.importInventory.mock.calls[0][0].records[0].effective_at)
+    .toBe(new Date(`${date}T${clock.length === 5 ? clock + ':00' : clock}`).toISOString())
+})
+
+it.each([[0, '24'], [1, '60'], [2, '']])('手输第 %i 段无效数值 %s 阻止预览和入账', async (part, value) => {
+  const wrapper = mountWorkspace()
+  await openManualWithPreview(wrapper)
+  const input = document.querySelector(`[data-clock-part="${part}"]`)
+  expect(input).not.toBeNull()
+  input.value = value
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  await clickElement(bodyButton('预览本次流水'))
+  expect(document.querySelector('.preview-section')).toBeNull()
+  expect(document.body.textContent).toContain('请填写有效的日期与时间')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('选时面板支持数值输入与关闭后的焦点，禁用时关闭面板并锁定输入', async () => {
+  const wrapper = mount(RewardDateTimePicker, {
+    attachTo: document.body,
+    props: { date: '2026-10-15', clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  const trigger = wrapper.get('button[aria-label="选择发生时刻"]')
+  await trigger.trigger('click')
+  const inputs = wrapper.findAll('.time-column input')
+  expect(inputs.map(input => input.element.value)).toEqual(['08', '09', '10'])
+  expect(document.activeElement).toBe(inputs[0].element)
+  await inputs[0].setValue('12')
+  expect(wrapper.emitted('update:clock').at(-1)).toEqual(['12:09:10'])
+  await wrapper.get('.done-button').trigger('click')
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+  await trigger.trigger('click')
+  await wrapper.setProps({ disabled: true })
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
+  expect(trigger.element.disabled).toBe(true)
+  expect(wrapper.findAll('[data-clock-part]').every(input => input.element.disabled)).toBe(true)
+})
+
+it.each([0, 1, 2])('选时主输入在小时光标位置 %i 直接键入 15 覆盖整段，保留分秒', async caret => {
+  const wrapper = mount(RewardDateTimePicker, {
+    props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  const input = wrapper.get('[data-clock-part="0"]')
+  input.element.setSelectionRange(caret, caret)
+  await input.trigger('keydown', { key: '1' })
+  expect([input.element.selectionStart, input.element.selectionEnd]).toEqual([0, 2])
+  input.element.setRangeText('1', input.element.selectionStart, input.element.selectionEnd, 'end')
+  await input.trigger('input')
+  await input.trigger('keydown', { key: '5' })
+  input.element.setRangeText('5', input.element.selectionStart, input.element.selectionEnd, 'end')
+  await input.trigger('input')
+  expect(wrapper.props('clock')).toBe('15:09:10')
+  expect(input.element.value).toBe('15')
+})
+
+it('选时数字键盘仅发送 beforeinput 时，也按当前段覆盖输入', async () => {
+  const wrapper = mount(RewardDateTimePicker, {
+    props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  const input = wrapper.get('[data-clock-part="1"]')
+  input.element.setSelectionRange(1, 1)
+  for (const digit of ['1', '5']) {
+    input.element.dispatchEvent(new InputEvent('beforeinput', { data: digit, inputType: 'insertText', bubbles: true, cancelable: true }))
+    input.element.setRangeText(digit, input.element.selectionStart, input.element.selectionEnd, 'end')
+    await input.trigger('input')
+  }
+  expect(wrapper.props('clock')).toBe('08:15:10')
+})
+
+it.each([[0, 'ArrowUp', '00:00:59'], [1, 'ArrowDown', '23:59:59'], [2, 'ArrowUp', '23:00:00']])('选时第 %i 段用 %s 微调时只循环该段', async (part, key, expected) => {
+  const wrapper = mount(RewardDateTimePicker, {
+    props: { date: '2026-10-15', clock: '23:00:59', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  await wrapper.get(`[data-clock-part="${part}"]`).trigger('keydown', { key })
+  expect(wrapper.props('clock')).toBe(expected)
+  expect(wrapper.emitted('update:date')).toBeUndefined()
+})
+
+it('选时面板阻止确认空段，合法的一位数按 Enter 补零并恢复焦点', async () => {
+  const wrapper = mount(RewardDateTimePicker, {
+    attachTo: document.body,
+    props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  const trigger = wrapper.get('button[aria-label="选择发生时刻"]')
+  await trigger.trigger('click')
+  const input = wrapper.get('[data-time-part="0"]')
+  await input.setValue('')
+  expect(input.attributes('aria-invalid')).toBe('true')
+  expect(wrapper.get('.done-button').element.disabled).toBe(true)
+  await input.trigger('keydown', { key: 'Enter' })
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(true)
+  await input.setValue('7')
+  await input.trigger('keydown', { key: 'Enter' })
+  expect(wrapper.props('clock')).toBe('07:09:10')
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+})
+
+it('选时主输入一位数在失焦和 Enter 时补零', async () => {
+  const wrapper = mount(RewardDateTimePicker, {
+    props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  const hour = wrapper.get('[data-clock-part="0"]')
+  await hour.setValue('7')
+  await hour.trigger('blur')
+  expect(wrapper.props('clock')).toBe('07:09:10')
+  const minute = wrapper.get('[data-clock-part="1"]')
+  await minute.setValue('5')
+  await minute.trigger('keydown', { key: 'Enter' })
+  expect(wrapper.props('clock')).toBe('07:05:10')
+})
+
+it('选时 Esc 只在面板展开时拦截，点外部收起后保留输入', async () => {
+  const parent = document.createElement('div')
+  document.body.append(parent)
+  const escaped = vi.fn()
+  parent.addEventListener('keydown', escaped)
+  const wrapper = mount(RewardDateTimePicker, {
+    attachTo: parent,
+    props: { clock: '08:09:10', 'onUpdate:clock': value => wrapper.setProps({ clock: value }) },
+  })
+  await wrapper.get('[data-clock-part="0"]').trigger('keydown', { key: 'Escape' })
+  expect(escaped).toHaveBeenCalledTimes(1)
+  const trigger = wrapper.get('button[aria-label="选择发生时刻"]')
+  await trigger.trigger('click')
+  await wrapper.get('[data-time-part="0"]').trigger('keydown', { key: 'Escape' })
+  expect(escaped).toHaveBeenCalledTimes(1)
+  expect(document.activeElement).toBe(trigger.element)
+  await trigger.trigger('click')
+  await wrapper.get('[data-time-part="0"]').setValue('15')
+  parent.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
+  expect(wrapper.props('clock')).toBe('15:09:10')
+})
+
+it('选时使用当前时间同时更新本机日期和时分秒', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 9, 15, 4, 5, 6))
+  const wrapper = mount(RewardDateTimePicker, { props: { date: '2026-10-01', clock: '08:09:10' } })
+  await wrapper.get('button[aria-label="选择发生时刻"]').trigger('click')
+  await wrapper.get('.now-button').trigger('click')
+  expect(wrapper.emitted('update:date').at(-1)).toEqual(['2026-10-15'])
+  expect(wrapper.emitted('update:clock').at(-1)).toEqual(['04:05:06'])
+  expect(wrapper.find('#reward-timepicker').exists()).toBe(false)
 })
 
 it.each([390, 1440])('奖励预览和日期弹层跨双端样式断点保持实例、焦点和草稿：%ipx', async width => {

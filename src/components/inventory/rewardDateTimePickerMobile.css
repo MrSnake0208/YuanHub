@@ -5,29 +5,38 @@
 .field-label small { font-size: 11px; font-weight: 400; }
 .datetime-inputs { display: flex; gap: 8px; }
 .date-input, .clock-input { display: flex; align-items: center; min-width: 0; }
-.date-input { flex: 1; }
-.clock-input { justify-content: flex-start; gap: 7px; width: 122px; padding: 0 10px; box-sizing: border-box; font: 13px 'Archivo', var(--font-b); }
+.date-input { flex: 1 1 152px; }
+.clock-input { flex: 1 1 128px; box-sizing: border-box; font: 13px 'Archivo', var(--font-b); }
+.clock-segments { display: flex; flex: 1; align-items: center; min-width: 0; padding: 0 8px; }
+.clock-segments input { flex: 1; width: 2ch; padding: 0; font: inherit; text-align: center; font-variant-numeric: tabular-nums; }
+.clock-segments span { flex-shrink: 0; }
+.clock-input button { flex-shrink: 0; min-width: 36px; }
 input { font: 13px 'Archivo', var(--font-b); width: 100%; min-width: 0; height: 44px; padding: 0 10px; box-sizing: border-box; }
 button { display: inline-flex; justify-content: center; align-items: center; min-width: 44px; min-height: 44px; padding: 0; font: inherit; }
 .date-input button { min-width: 44px; height: 44px; }
-.calendar, .time-popover { position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--z-popover); width: min(296px, calc(100vw - 80px)); padding: 14px; box-sizing: border-box; }
+.calendar { position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--z-popover); width: min(296px, 100%); padding: 14px; box-sizing: border-box; }
 .calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .calendar-heading strong { font-family: var(--font-s); font-size: 14px; }
 .calendar-week, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; text-align: center; }
 .calendar-week { font-size: 11px; padding: 5px 0; }
 .calendar-days button { min-width: 0; min-height: 34px; font-family: 'Archivo', var(--font-b); font-size: 12px; }
 .today-button { width: 100%; margin-top: 8px; font-size: 12px; }
-.time-popover { left: auto; right: 0; width: min(284px, calc(100vw - 80px)); }
-.time-heading { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 11px; }
-.time-heading span { font: 900 15px var(--font-s); }
-.time-heading small { font-size: 10px; }
-.time-columns { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; margin: 12px 0; }
-.time-column { min-width: 0; }
-.time-column-label { display: block; margin-bottom: 5px; text-align: center; font-size: 10px; }
-.time-options { display: grid; grid-template-columns: minmax(0,1fr); gap: 3px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; padding: 3px; scrollbar-width: thin; }
-.time-options button { min-width: 0; min-height: 44px; scroll-snap-align: center; font: 11px 'Archivo', var(--font-b); }
-.time-foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; }
-.now-button { font-size: 11px; }
-.done-button { padding: 0 13px; font-size: 11px; }
-@media (max-width: 480px) { .clock-input { width: 104px; font-size: 11px; } }
+.time-popover { position: absolute; left: 0; top: calc(100% + 10px); z-index: var(--z-popover); width: min(344px, 100%); padding: 18px; box-sizing: border-box; }
+.time-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.time-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.time-title > span { font: 800 18px var(--font-s); }
+.time-title small { padding: 3px 7px; font-size: 10px; white-space: nowrap; }
+.time-heading button { flex-shrink: 0; min-width: 32px; min-height: 32px; }
+.time-description { margin: 0; font-size: 12px; line-height: 1.6; }
+.time-columns { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin: 18px 0 12px; }
+.time-column { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 12px 5px 10px; }
+.time-column:not(:last-child)::after { content: ':'; position: absolute; right: -11px; top: 38px; font: 20px 'Archivo', var(--font-b); }
+.time-column-label { font-size: 11px; font-weight: 700; }
+.time-column input { --input-font-size: 32px; width: 100%; height: 48px; padding: 0; font: 500 var(--input-font-size) 'Archivo', var(--font-b); }
+.time-column small { font: 10px 'Archivo', var(--font-b); }
+.time-hint { margin: 0 0 14px; font-size: 11px; line-height: 1.7; }
+.time-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 12px; }
+.now-button { gap: 6px; padding: 0 4px; font-size: 12px; }
+.done-button { gap: 6px; padding: 0 16px; font-size: 12px; }
+@media (max-width: 480px) { .time-popover { position: static; width: 100%; margin-top: 12px; } }
 }
