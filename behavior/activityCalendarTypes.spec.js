@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import Card from '../src/components/calendar/CalendarEventCard.vue'
 import Timeline from '../src/components/calendar/CalendarTimelineView.vue'
@@ -19,7 +19,7 @@ const samples = [
 const colors = ['rouge', 'yellow', 'blue', 'gray', 'gray', 'orange', 'neutral', 'gold']
 
 it('日程和时间条共享颜色与文字，临近结束和选中不覆盖类型；四组不漏旧类型', async () => {
-  const wrapper = mount(Timeline, { global: { stubs: { Teleport: true } }, props: { items: samples, today, anchorDate: today } })
+  const wrapper = mount(Timeline, { attachTo: document.body, props: { items: samples, today, anchorDate: today } })
   expect(wrapper.findAll('.calendar-timeline-group h3').map(node => node.text())).toEqual(['活动4', '卡池1', '商店1', '其他2'])
   expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(samples.length)
   for (let i = 0; i < samples.length; i++) {
@@ -31,8 +31,8 @@ it('日程和时间条共享颜色与文字，临近结束和选中不覆盖类�
     expect(card.get('.calendar-event').classes()).toContain('is-ending')
   }
   const bar = wrapper.findAll('.calendar-timeline-bar').find(node => node.attributes('data-type-color') === 'yellow')
-  await bar.trigger('click')
-  expect(wrapper.get('.calendar-detail-dialog .calendar-category').text()).toBe('活动 · 家具 · 神秘洞窟')
+  await bar.trigger('click'); await flushPromises()
+  expect(new DOMWrapper(document.body).get('.calendar-detail-dialog .calendar-category').text()).toBe('活动 · 家具 · 神秘洞窟')
   expect(bar.attributes('aria-pressed')).toBe('true')
   expect(bar.attributes('data-type-color')).toBe('yellow')
 })

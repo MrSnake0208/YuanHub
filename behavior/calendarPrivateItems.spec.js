@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
 import { auth } from '../src/store/auth.js'
@@ -22,7 +22,7 @@ const event = { id: 'official', source_type: 'MANUAL', game: '如鸢', title: '�
 const raw = (patch = {}) => ({ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '私人内容', date: '2026-10-15', time: null, note: '', version: 0, created_at: '2026-10-10T04:00:00Z', updated_at: '2026-10-10T04:00:00Z', ...patch })
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 let wrapper, rows
-const button = text => wrapper.findAll('button').find(node => node.text() === text)
+const button = text => new DOMWrapper(document.body).findAll('button').find(node => node.text() === text)
 const editor = () => document.querySelector('.calendar-private-dialog')
 it.each([390, 1440])('真实日历私人事项跨布局保持未保存文本、日期及焦点：%ipx', async width => {
   const viewport = installViewport(width)
@@ -49,10 +49,10 @@ async function field(name, value) {
   input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
 }
 async function save() { editor().querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises() }
-async function render(query = 'scope=mine&view=month&date=2026-10-15', openDetails = true) {
+async function render(query = 'scope=mine&view=month&date=2026-10-15', openDetails = true, teleport = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/away', component: { template: '<p>离开</p>' } }] })
   await router.push('/calendar?' + query); await router.isReady()
-  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: !teleport, IslandSidebar: true, SiteFooter: true } } })
   await flushPromises()
   // Existing CRUD cases explicitly enter the day popup before exercising its controls.
   if (openDetails && wrapper.find('.calendar-month-day[aria-pressed=true]').exists()) await openSelectedDay()
@@ -85,7 +85,7 @@ it('selected date creation saves without navigation; single time persists and pu
   expect(document.activeElement).toBe(document.querySelector('#private-item-title-input'))
   await field('title', '  领取奖励  '); await field('time', '23:59'); await field('note', '纯文本\n说明')
   await save()
-  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-15', time: '23:59', note: '纯文本\n说明' }, 'owner')
+  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-15', time: '23:59', note: '纯文本\n说明', reminder_on: 'START', reminder_days_before: 0 }, 'owner')
   expect(editor()).toBeNull()
   expect(wrapper.text()).toContain('领取奖励')
   expect(wrapper.text()).toContain('23:59（上海时间）')
@@ -136,21 +136,22 @@ it.each(['month', 'timeline'])('%s reminder link opens only its item, closing cl
 })
 
 it.each(['month', 'timeline'])('%s private editing hides detail, cancellation returns focus and save updates the same detail', async view => {
-  rows = [raw()]; await render(`scope=mine&view=${view}&date=2026-10-15`)
-  if (view === 'timeline') { await wrapper.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
+  rows = [raw()]; await render(`scope=mine&view=${view}&date=2026-10-15`, true, true)
+  const page = new DOMWrapper(document.body)
+  if (view === 'timeline') { await page.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
   const trigger = button('编辑事项'); trigger.element.focus()
   await trigger.trigger('click'); await flushPromises()
-  expect(wrapper.get('.calendar-detail-mask').isVisible()).toBe(false)
-  expect(wrapper.get('.calendar-detail-mask').attributes('inert')).toBeDefined()
+  expect(page.get('.calendar-detail-mask').isVisible()).toBe(false)
+  expect(page.get('.calendar-detail-mask').attributes('inert')).toBeDefined()
   expect(editor()).not.toBeNull()
   editor().querySelector('header button').click(); await flushPromises()
-  expect(wrapper.get('.calendar-detail-mask').isVisible()).toBe(true)
+  expect(page.get('.calendar-detail-mask').isVisible()).toBe(true)
   expect(document.activeElement).toBe(trigger.element)
   await trigger.trigger('click'); await flushPromises(); await field('title', '更新后的事项'); await save()
-  expect(wrapper.get('.calendar-detail-dialog').text()).toContain('更新后的事项')
+  expect(page.get('.calendar-detail-dialog').text()).toContain('更新后的事项')
   expect(editor()).toBeNull()
   expect(document.body.style.overflow).toBe('hidden')
-  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
+  await page.get('button[aria-label="关闭日历详情"]').trigger('click'); await flushPromises()
   expect(document.body.style.overflow).toBe('')
 })
 

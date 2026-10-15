@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
 import AccountSwitcher from '../src/components/AccountSwitcher.vue'
@@ -17,11 +17,11 @@ vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubs
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 const event = { id: 'evt', game: '如鸢', title: '地下遗迹', category: 'ACTIVITY', start_date: '2026-10-01', end_date: '2026-10-10' }
 let server, wrapper
-const button = (text) => wrapper.findAll('button').find(node => node.text() === text)
-async function render(query = '') {
+const button = (text) => new DOMWrapper(document.body).findAll('button').find(node => node.text() === text)
+async function render(query = '', teleport = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/user/profile', component: { template: '<div />' } }] })
   await router.push('/calendar?view=agenda' + query); await router.isReady()
-  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: !teleport, IslandSidebar: true, SiteFooter: true } } })
   await flushPromises(); return router
 }
 beforeEach(() => {
@@ -386,6 +386,7 @@ it('task URL composes with time filters, preserves explicit history and never co
   const router = await render('&scope=mine&task=all&date=2026-10-04&status=ongoing')
   expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
   await router.push('/calendar?view=month&scope=mine&task=todo&date=2026-10-04'); await flushPromises()
+  await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('已过期 · 本期未完成')
   await router.push('/calendar?view=month&scope=mine&task=completed&date=2026-10-04'); await flushPromises()
   expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
@@ -456,29 +457,30 @@ it('mine边界更新不隐藏未保存草稿，保存后再应用时间筛选', 
 
 it.each(['日程', '时间轴', '月历'])('%s shares the TODO editor and readonly escaped history', async view => {
   server = { event_id: 'evt', version: 3, subscribed: true, completed: true, manual_completed: true, legacy_completed: true, checklist: [{ id: 'legacy', title: '旧关卡', completed: false }], item: event, memo_title: '历史自定义标题', memo_note: '兑换提醒\n<script>不要执行</script>' }
-  await render('&scope=mine&task=all')
+  await render('&scope=mine&task=all', true)
+  const page = new DOMWrapper(document.body)
   if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
-  if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
-  if (view === '月历') { await wrapper.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
-  expect(wrapper.get('.calendar-todo-card-summary').text()).toContain('已完成 0/1 项')
+  if (view === '时间轴') { await page.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  if (view === '月历') { await page.get('.calendar-month-day[aria-pressed=true]').trigger('click'); await flushPromises() }
+  expect(page.get('.calendar-todo-card-summary').text()).toContain('已完成 0/1 项')
   await button('编辑待办').trigger('click')
-  expect(wrapper.find('textarea').exists()).toBe(false)
-  expect(wrapper.find('[aria-label="备忘标题"]').exists()).toBe(false)
-  expect(wrapper.find('.calendar-completion-row').exists()).toBe(false)
-  const history = wrapper.get('.calendar-todo-history')
+  expect(page.find('textarea').exists()).toBe(false)
+  expect(page.find('[aria-label="备忘标题"]').exists()).toBe(false)
+  expect(page.find('.calendar-completion-row').exists()).toBe(false)
+  const history = page.get('.calendar-todo-history')
   expect(history.attributes('open')).toBeUndefined()
   expect(history.get('summary').text()).toBe('查看旧备忘内容（历史数据）')
   expect(history.text()).toContain('历史自定义标题')
   expect(history.text()).toContain('<script>不要执行</script>')
   expect(history.find('script').exists()).toBe(false)
   expect(history.text()).toContain('不影响待办状态')
-  await wrapper.get('.calendar-check-target input').setValue(true)
-  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  await page.get('.calendar-check-target input').setValue(true)
+  await page.get('.calendar-checklist').trigger('submit'); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1]).toEqual({ account_id: 'a', expected_version: 3, completed: false, progress_mode: 'checklist', checklist: [{ id: 'legacy', title: '旧关卡', completed: true }] })
   expect(server.memo_title).toBe('历史自定义标题')
   expect(server.memo_note).toContain('<script>不要执行</script>')
   expect(server.manual_completed).toBe(true)
-  expect(wrapper.get('.calendar-todo-summary').text()).toContain('待办全部完成')
+  expect(page.get('.calendar-todo-summary').text()).toContain('待办全部完成')
 })
 it('default history is hidden and empty TODO drafts protect collapse, filter, route, unsubscribe and unload', async () => {
   server = { event_id: 'evt', version: 0, subscribed: true, completed: false, manual_completed: false, checklist: [], item: event, memo_title: '本期备忘', memo_note: '' }

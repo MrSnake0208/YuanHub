@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
@@ -104,9 +104,10 @@ async function load() {
   } finally { if (token === generation) loading.value = false }
 }
 watch(key, () => {
-  generation++; clearTimeout(refreshTimer); refreshTimer = null
+  const token = ++generation
+  clearTimeout(refreshTimer); refreshTimer = null
   snapshot.value = null; loading.value = false; error.value = ''; denied.value = false
-  void load()
+  nextTick(() => { if (token === generation) void load() })
 }, { immediate: true, flush: 'sync' })
 function refresh() {
   if (document.visibilityState === 'hidden' || refreshTimer != null) return
