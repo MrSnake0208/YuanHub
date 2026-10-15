@@ -66,7 +66,6 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .progress-error { flex-basis: 100%; font-size: 12px; line-height: 1.6; }
 .entry-section { position: relative; padding: 16px 14px; margin-bottom: 22px; }
 .entry-heading { padding-right: 44px; margin-bottom: 14px; }
-.entry-heading p { margin-top: 3px; font-size: 12px; }
 .entry-workflow { display: grid; gap: 16px; }
 .entry-workflow.is-choosing { grid-template-columns: minmax(0, 1fr); }
 .entry-shortcuts { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; padding-block: 3px; }

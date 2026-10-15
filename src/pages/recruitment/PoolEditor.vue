@@ -100,7 +100,6 @@
             <section v-show="!screenshotMode" class="entry-section" :aria-labelledby="editorId + '-entry'">
               <div class="entry-heading">
                 <h3 :id="editorId + '-entry'">{{ activeRow && originals.has(activeRow.event_id) ? '编辑这条出货' : '记录本次出货' }}</h3>
-                <p>{{ poolDefinition.allow_custom_up ? '点空位选择心愿，点头像记录出货；铅笔改选，底部统一保存' : '加入待保存草稿，核对后统一保存' }}</p>
               </div>
               <div class="entry-workflow" :class="{ 'is-choosing': choosingAgent }">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'agents'" target="agents" :message="guideMessage" />
@@ -1112,7 +1111,6 @@ async function submit() {
 .progress-rail > span { background: var(--editor-green); }
 .progress-error { color: var(--rouge); }
 .entry-section { border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--cream) 35%, var(--surface)); }
-.entry-heading p { color: var(--ink-60); }
 .quick-up-button, .add-record {
   border-color: transparent;
   background: transparent;
