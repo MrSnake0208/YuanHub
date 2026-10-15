@@ -125,7 +125,7 @@ button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
 .time-description, .time-hint, .time-column small { color: var(--ink-60); }
 .time-column { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); transition: border-color .16s, box-shadow .16s; }
 .time-column:focus-within { border-color: var(--tea); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--tea); }
-.time-column input { text-align: center; font-variant-numeric: tabular-nums; caret-color: var(--tea); }
+.time-column input { text-align: center; caret-color: var(--tea); }
 .time-column input::selection, .clock-segments input::selection { color: var(--cream); background: var(--tea); }
 .time-column:has(input[aria-invalid="true"]) { border-color: var(--rouge); }
 .time-column-label { color: var(--ink); }
