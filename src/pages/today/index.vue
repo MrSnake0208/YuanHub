@@ -1,6 +1,6 @@
 <template>
   <TodayLayout :show-overview="calendarEnabled || showAccountOverview"
-    :has-sidebar="calendarEnabled && showAccountOverview">
+    :has-sidebar="calendarEnabled && !!validAccountId">
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
         <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
@@ -27,10 +27,18 @@
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
     </template>
     <template #overview>
+      <div v-if="calendarEnabled && validAccountId" class="today-personal">
+        <TodaySubscriptionSummary :account-id="validAccountId" :game="accountGame" reminders-target="#today-reminders" />
+        <TodayPrivateItems :account-id="validAccountId" :game="accountGame" />
+      </div>
+    </template>
+    <template #activity>
+      <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+    </template>
+    <template #account>
       <div v-if="showAccountOverview" class="today-account-overview">
-        <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" />
         <section class="account-data-summary" aria-labelledby="account-data-title" :aria-busy="summaryLoading">
-          <h2 id="account-data-title">当前账号状态</h2>
+          <h2 id="account-data-title">账号详情</h2>
           <p v-if="summaryLoading" class="today-loading" role="status">正在读取当前账号的数据…</p>
           <p v-else-if="!validAccountId">请选择游戏账号，查看对应的数据状态。</p>
           <template v-else>
@@ -44,7 +52,6 @@
           </template>
         </section>
       </div>
-      <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
     </template>
     <template #onboarding>
       <TodayDataOnboarding
@@ -77,6 +84,7 @@ import TodayDataOnboarding from '../../components/today/TodayDataOnboarding.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
+import TodayPrivateItems from '../../components/today/TodayPrivateItems.vue'
 import TodayLobby from '../../components/today/TodayLobby.vue'
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'

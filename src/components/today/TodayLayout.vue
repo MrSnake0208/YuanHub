@@ -8,6 +8,11 @@
           <slot name="status" />
           <div v-if="showOverview" class="today-overview" :class="{ 'has-sidebar': hasSidebar }" data-tour="today-overview">
             <slot name="overview" />
+            <div class="today-aside">
+              <slot name="activity" />
+              <div id="today-reminders" class="today-reminders-target"></div>
+              <slot name="account" />
+            </div>
           </div>
           <slot name="onboarding" />
         </div>

@@ -2,7 +2,7 @@
   <section v-if="enabled" class="today-activity-summary" aria-labelledby="today-activity-title" :aria-busy="loading">
     <header class="activity-heading">
       <div>
-        <h2 id="today-activity-title"><CalendarDays :size="20" aria-hidden="true" /> 今日活动 · {{ game || '全部游戏' }}</h2>
+        <h2 id="today-activity-title"><CalendarDays :size="20" aria-hidden="true" /> 当前活动 · {{ game || '全部游戏' }}</h2>
         <p><time :datetime="today">{{ today }}</time> · 公开日程 · 按服务器日期</p>
       </div>
       <router-link class="activity-link" :to="calendarTo">查看活动日历 <ArrowRight :size="16" aria-hidden="true" /></router-link>

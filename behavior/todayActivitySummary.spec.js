@@ -27,6 +27,7 @@ vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(), listCalendarSubscriptions: vi.fn(async () => ({ items: [], unavailable_items: [] })), getCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
+vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/config/features.js', async importOriginal => ({ ...(await importOriginal()), isFeatureEnabled: vi.fn(() => true) }))
 
 const today = '2026-10-03'
@@ -48,7 +49,7 @@ function signIn(values = accounts) {
   auth.userInfo = { user_name: '测试殿下' }
   listAccounts.mockResolvedValue(values)
 }
-const render = (component = TodayPage, props = {}) => mount(component, { props, global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
+const render = (component = TodayPage, props = {}) => mount(component, { attachTo: document.body, props, global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
 const card = wrapper => wrapper.get('.today-activity-summary')
 const link = wrapper => card(wrapper).getComponent(RouterLinkStub)
 
@@ -81,7 +82,7 @@ it('无子账号管理员读全部游戏当日摘要，保留导航与建档', a
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
   expect(listActivityCalendar).toHaveBeenCalledWith({ game: '', from: today, to: '2026-10-10' })
-  expect(card(wrapper).text()).toContain('今日活动 · 全部游戏')
+  expect(card(wrapper).text()).toContain('当前活动 · 全部游戏')
   expect(card(wrapper).text()).toContain('今日公开活动')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: {} })
   expect(wrapper.find('.today-alert').exists()).toBe(false)
@@ -100,7 +101,7 @@ it('有效当前账号按game筛选并传给日历链接，换到同游戏账号
   const wrapper = render()
   await flushPromises()
   expect(listActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', from: today, to: '2026-10-10' })
-  expect(card(wrapper).text()).toContain('今日活动 · 如鸢')
+  expect(card(wrapper).text()).toContain('当前活动 · 如鸢')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢' } })
   expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
   const calls = listActivityCalendar.mock.calls.length
