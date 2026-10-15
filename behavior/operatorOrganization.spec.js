@@ -2,7 +2,7 @@ import { defineComponent, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useOperatorOrganization } from '../src/composables/useOperatorOrganization.js'
-import { emptyOperatorOrganization, operatorOrganizationBackup } from '../src/utils/operatorOrganization.js'
+import { emptyOperatorOrganization } from '../src/utils/operatorOrganization.js'
 import OperatorOrganizationManager from '../src/components/operator/OperatorOrganizationManager.vue'
 import OperatorOrganizationCard from '../src/components/operator/OperatorOrganizationCard.vue'
 import { getOperatorOrganization, putOperatorOrganization } from '../src/api/operator.js'
@@ -82,8 +82,8 @@ function managerProps() {
   return { value: remote('a'), accountId: 'a', game: '如鸢', catalog: { a: { name: '甲', games: ['如鸢'] } }, ready: true,
     save: vi.fn().mockResolvedValue(false), reload: vi.fn() }
 }
-async function openManager(props = managerProps()) {
-  const wrapper = mount(OperatorOrganizationManager, { props }); wrappers.push(wrapper)
+async function openManager(props = managerProps(), options = {}) {
+  const wrapper = mount(OperatorOrganizationManager, { props, ...options }); wrappers.push(wrapper)
   wrapper.get('details').element.open = true; await wrapper.get('details').trigger('toggle'); return wrapper
 }
 const clickText = async (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text).trigger('click')
@@ -110,25 +110,68 @@ it('批量标签一次提交固定成员，删除标签不操作密探', async (
   expect(props.save).toHaveBeenLastCalledWith(expect.objectContaining({ tags: [{ id: 'team', name: '主力', operator_ids: [] }] }))
 })
 
-it('备份先预览，确认仅替换草稿，再保存；切账号清理旧草稿', async () => {
-  const props = managerProps(), wrapper = await openManager(props)
-  const backup = operatorOrganizationBackup({ ...emptyOperatorOrganization(), pinned_ids: ['a'] }, '如鸢')
-  const input = wrapper.get('input[type="file"]')
-  Object.defineProperty(input.element, 'files', { configurable: true, value: [{ size: 100, text: async () => JSON.stringify(backup) }] })
-  await input.trigger('change'); await flushPromises()
-  expect(wrapper.text()).toContain('备份预览：1 位置顶'); expect(props.save).not.toHaveBeenCalled()
-  await clickText(wrapper, '用备份替换分类草稿'); expect(props.save).not.toHaveBeenCalled()
-  await clickText(wrapper, '保存分类设置'); expect(props.save).toHaveBeenCalledWith(expect.objectContaining({ pinned_ids: ['a'] }), 0)
-  await wrapper.setProps({ accountId: 'b', value: remote('b') }); expect(wrapper.find('input[aria-label="标签名称 1"]').exists()).toBe(false)
-})
-
 it('云端更新保留脏草稿和旧revision，用户可显式放弃后重新编辑', async () => {
   const props = managerProps(), wrapper = await openManager(props)
   await clickText(wrapper, '新增标签'); await wrapper.get('input[aria-label="标签名称 1"]').setValue('草稿')
   await wrapper.setProps({ value: { ...remote('a', 2), tags: [{ id: 'remote', name: '云端', operator_ids: [] }] } })
   expect(wrapper.text()).toContain('云端分类已有更新'); expect(wrapper.get('input[aria-label="标签名称 1"]').element.value).toBe('草稿')
   await clickText(wrapper, '保存分类设置'); expect(props.save).toHaveBeenLastCalledWith(expect.anything(), 0)
-  await clickText(wrapper, '放弃草稿，使用已读取分类'); expect(wrapper.get('input[aria-label="标签名称 1"]').element.value).toBe('云端')
+  await clickText(wrapper, '放弃修改'); expect(wrapper.get('input[aria-label="标签名称 1"]').element.value).toBe('云端')
+})
+
+it('新增标签自动聚焦；空白与重复名称就地提示、关联字段并阻止提交', async () => {
+  const props = managerProps(), wrapper = await openManager(props, { attachTo: document.body })
+  await clickText(wrapper, '新增标签')
+  const first = wrapper.get('input[aria-label="标签名称 1"]')
+  expect(document.activeElement).toBe(first.element)
+  expect(wrapper.get(`label[for="${first.attributes('id')}"]`).text()).toBe('标签名称 1')
+  expect(wrapper.get('button[type="submit"]').element.disabled).toBe(true)
+  await first.trigger('blur')
+  expect(first.attributes('aria-invalid')).toBe('true')
+  expect(document.getElementById(first.attributes('aria-describedby')).textContent).toContain('请输入标签名称')
+  await first.setValue('主力'); await clickText(wrapper, '新增标签')
+  const second = wrapper.get('input[aria-label="标签名称 2"]')
+  await second.setValue(' 主力 ')
+  expect(wrapper.findAll('.organization-field-error').some(node => node.text().includes('重复'))).toBe(true)
+  expect(wrapper.get('button[type="submit"]').element.disabled).toBe(true)
+  await wrapper.get('form').trigger('submit')
+  expect(document.activeElement).toBe(first.element); expect(props.save).not.toHaveBeenCalled()
+  await second.setValue('备用')
+  expect(wrapper.get('button[type="submit"]').element.disabled).toBe(false)
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(props.save).toHaveBeenCalledWith(expect.objectContaining({ tags: [expect.objectContaining({ name: '主力' }), expect.objectContaining({ name: '备用' })] }), 0)
+})
+
+it('折叠时保留并向外暴露未保存状态；放弃修改恢复已保存分类且不触发写入', async () => {
+  const props = managerProps(), wrapper = await openManager(props)
+  await clickText(wrapper, '新增标签')
+  expect(wrapper.vm.changed).toBe(true)
+  wrapper.get('details').element.open = false; await wrapper.get('details').trigger('toggle')
+  expect(wrapper.vm.open).toBe(false); expect(wrapper.vm.changed).toBe(true)
+  expect(wrapper.find('.organization-filters').exists()).toBe(false)
+  wrapper.get('details').element.open = true; await wrapper.get('details').trigger('toggle')
+  await clickText(wrapper, '放弃修改')
+  expect(wrapper.vm.changed).toBe(false); expect(wrapper.find('[data-tag-name]').exists()).toBe(false)
+  expect(props.save).not.toHaveBeenCalled()
+})
+
+it('成功反馈紧邻保存操作，后续编辑清理旧成功状态；加载失败可在折叠状态重试', async () => {
+  const props = managerProps(); let wrapper
+  props.save.mockImplementation(async content => {
+    await wrapper.setProps({ value: { ...content, account_id: 'a', revision: 1 } }); return true
+  })
+  wrapper = await openManager(props)
+  expect(wrapper.text()).toContain('还没有置顶密探')
+  await clickText(wrapper, '新增标签'); await wrapper.get('[data-tag-name]').setValue('主力')
+  await clickText(wrapper, '保存分类设置'); await flushPromises()
+  expect(wrapper.get('.organization-actions').text()).toContain('分类设置已保存')
+  expect(wrapper.vm.changed).toBe(false)
+  await wrapper.get('[data-tag-name]').setValue('备用')
+  expect(wrapper.get('.organization-actions').text()).not.toContain('分类设置已保存')
+  await wrapper.setProps({ error: 'offline' })
+  expect(wrapper.get('.organization-save-area [role="alert"]').text()).toContain('offline')
+  wrapper.get('details').element.open = false; await wrapper.get('details').trigger('toggle')
+  await clickText(wrapper, '重新读取分类'); expect(props.reload).toHaveBeenCalledTimes(1)
 })
 
 it('卡片置顶独立于特别关注，标签点击等待保存结果，不假装写入成功', async () => {

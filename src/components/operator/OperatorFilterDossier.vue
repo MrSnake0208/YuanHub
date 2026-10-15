@@ -128,6 +128,15 @@
         </div>
       </div>
 
+      <div v-if="tagOptions.length" class="pf-row pf-tag-row">
+        <span class="pf-label">标签</span>
+        <div class="mf-filter current-tag-filter" role="group" :aria-label="`按自定义标签筛选${contextLabel}`">
+          <button type="button" :aria-pressed="!tagFilter" :class="{ on: !tagFilter }" @click="$emit('update:tagFilter', '')">全部<small>{{ totalCount }}</small></button>
+          <button v-for="option in tagOptions" :key="option.value" type="button" :aria-pressed="tagFilter === option.value"
+            :class="{ on: tagFilter === option.value }" @click="$emit('update:tagFilter', option.value)">{{ option.label }}<small>{{ option.count }}</small></button>
+        </div>
+      </div>
+
       <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
     </div>
 
@@ -154,6 +163,8 @@ const props = defineProps({
   subProfOptions: { type: Array, default: function () { return [] } },
   statusOptions: { type: Array, default: function () { return [] } },
   statusCounts: { type: Object, default: function () { return {} } },
+  tagOptions: { type: Array, default: () => [] },
+  tagFilter: { type: String, default: '' },
   rarityFilter: { type: [String, Number], default: 'all' },
   profFilter: { type: String, default: 'all' },
   subProfFilter: { type: String, default: 'all' },
@@ -172,6 +183,7 @@ const emit = defineEmits([
   'update:profFilter',
   'update:subProfFilter',
   'update:statusFilter',
+  'update:tagFilter',
   'update:searchQuery',
   'update:growthFilters',
   'reset',
