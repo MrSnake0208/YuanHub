@@ -55,3 +55,42 @@ test('corrupt storage never breaks reminders or exposes unrelated entries', () =
   }
   delete globalThis.localStorage
 })
+
+test('snooze is tab-session scoped, isolated from daily acknowledgement, and expires at midnight', async () => {
+  const localValues = new Map(), sessionValues = new Map()
+  const storage = values => ({ getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) })
+  globalThis.localStorage = storage(localValues)
+  globalThis.sessionStorage = storage(sessionValues)
+  try {
+    const key = reminderStorageKey('session-owner', 'account-a'), day = '2026-10-15'
+    const reminder = privateItemReminder(item(), day)
+    dismissPrivateReminders(key, day, [reminder], 'sessionStorage')
+    assert.deepEqual(JSON.parse(sessionValues.get(key)), { day, keys: [reminder.key] })
+    assert.deepEqual(readReminderDismissals(key, day, 'sessionStorage'), [reminder.key])
+    assert.deepEqual(readReminderDismissals(key, day), [])
+    assert.deepEqual(readReminderDismissals(reminderStorageKey('other', 'account-a'), day, 'sessionStorage'), [])
+    assert.deepEqual(readReminderDismissals(reminderStorageKey('session-owner', 'account-b'), day, 'sessionStorage'), [])
+    assert.equal(localValues.size, 0)
+    const reloaded = await import('../src/data/calendarPrivateReminders.js?session-reload')
+    assert.deepEqual(reloaded.readReminderDismissals(key, day, 'sessionStorage'), [reminder.key])
+    assert.deepEqual(reloaded.readReminderDismissals(key, '2026-10-16', 'sessionStorage'), [])
+    dismissPrivateReminders(key, day, [{ key: 'acknowledged' }])
+    sessionValues.clear()
+    const newSession = await import('../src/data/calendarPrivateReminders.js?next-session')
+    assert.deepEqual(newSession.readReminderDismissals(key, day, 'sessionStorage'), [])
+    assert.deepEqual(newSession.readReminderDismissals(key, day), ['acknowledged'])
+  } finally { delete globalThis.localStorage; delete globalThis.sessionStorage }
+})
+
+test('unavailable session storage retains snooze in memory without creating a daily acknowledgement', () => {
+  const key = reminderStorageKey('session-failure-owner', 'a'), day = '2026-10-15'
+  globalThis.sessionStorage = { getItem: () => '{', setItem: () => { throw new Error('disabled') } }
+  try {
+    assert.deepEqual(readReminderDismissals(key, day, 'sessionStorage'), [])
+    dismissPrivateReminders(key, day, [{ key: 'snoozed' }], 'sessionStorage')
+    sessionStorage.getItem = () => { throw new Error('disabled') }
+    assert.deepEqual(readReminderDismissals(key, day, 'sessionStorage'), ['snoozed'])
+    assert.deepEqual(readReminderDismissals(key, day), [])
+    assert.deepEqual(readReminderDismissals(key, '2026-10-16', 'sessionStorage'), [])
+  } finally { delete globalThis.sessionStorage }
+})

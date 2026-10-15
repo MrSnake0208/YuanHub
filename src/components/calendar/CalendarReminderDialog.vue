@@ -3,26 +3,40 @@
     <div v-if="visible" class="calendar-reminder-mask" @click.self="close">
       <section ref="panel" class="calendar-reminder" role="dialog" aria-modal="true" aria-labelledby="calendar-reminder-title" aria-describedby="calendar-reminder-hint" tabindex="-1">
         <header>
-          <h2 id="calendar-reminder-title"><Bell :size="20" aria-hidden="true" />私人日历提醒</h2>
+          <div class="calendar-reminder-heading">
+            <h2 id="calendar-reminder-title"><Bell :size="20" aria-hidden="true" /><span aria-live="polite">{{ error ? '私人日历提醒' : `今天有 ${reminders.length} 项提醒` }}</span></h2>
+            <p v-if="account" class="calendar-reminder-account" :title="`${account.game} · ${account.name}`">{{ account.game }} · {{ account.name }}</p>
+          </div>
           <button class="calendar-reminder-close" type="button" aria-label="关闭私人日历提醒" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
         <div class="calendar-reminder-body">
-          <p role="status" aria-live="polite">{{ error || `${account.game} · ${account.name}：${reminders.length} 件事即将开始或截止` }}</p>
-          <button v-if="error" type="button" @click="load">重试读取提醒</button>
+          <div v-if="error" class="calendar-reminder-error">
+            <p role="status" aria-live="polite">{{ error }}</p>
+            <button type="button" @click="load">重试读取提醒</button>
+          </div>
           <template v-else>
-            <ul>
-              <li v-for="reminder in visibleReminders" :key="reminder.key">
-                <span>{{ reminder.label }} · </span>
-                <router-link :to="reminderLink(reminder)" @click="close">{{ reminder.item.title }}</router-link>
-              </li>
-            </ul>
-            <button v-if="reminders.length > 3" type="button" :aria-expanded="expanded" @click="expanded = !expanded">{{ expanded ? '收起' : `展开其余 ${reminders.length - 3} 项` }}</button>
+            <section v-for="group in groups" :key="group.label" class="calendar-reminder-group" :aria-label="group.label">
+              <h3>{{ group.label }}<span>{{ group.reminders.length }} 项</span></h3>
+              <ul>
+                <li v-for="reminder in group.reminders" :key="reminder.key">
+                  <router-link class="calendar-reminder-card" :to="reminderLink(reminder)" :aria-label="`${reminder.item.title}，${reminder.label}，查看日历详情`" @click="close">
+                    <span class="calendar-reminder-card-content">
+                      <span class="calendar-reminder-card-title" :title="reminder.item.title">{{ reminder.item.title }}</span>
+                      <span class="calendar-reminder-card-date">{{ reminder.date }}</span>
+                    </span>
+                    <ChevronRight :size="18" aria-hidden="true" />
+                  </router-link>
+                </li>
+              </ul>
+            </section>
           </template>
-          <p id="calendar-reminder-hint" class="calendar-reminder-hint">北京时间 · 仅当前账号。未勾选时只关闭本次，重新进入仍会提醒。</p>
         </div>
         <footer>
-          <label v-if="!error" class="calendar-reminder-check"><input v-model="suppressToday" type="checkbox" />今天不再显示</label>
-          <button ref="closeButton" type="button" class="calendar-reminder-primary" @click="close">知道了</button>
+          <p id="calendar-reminder-hint" class="calendar-reminder-hint">{{ error ? '北京时间 · 仅当前账号' : '北京时间 · 稍后提醒下次浏览再提示；已知悉仅隐藏今天这批提醒，不会完成事项。' }}</p>
+          <div class="calendar-reminder-actions">
+            <button ref="closeButton" type="button" @click="close">稍后提醒</button>
+            <button v-if="!error" type="button" class="calendar-reminder-primary" @click="acknowledge">今天已知悉</button>
+          </div>
         </footer>
       </section>
     </div>
@@ -31,7 +45,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bell, X } from '@lucide/vue'
+import { Bell, ChevronRight, X } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
 import { activeAccount } from '../../store/activeAccount.js'
@@ -45,21 +59,21 @@ import { dismissPrivateReminders, privateItemReminder, readReminderDismissals, r
 
 const identity = computed(() => auth.isLoggedIn && beta.canUseBetaFeatures && beta.userId === auth.userInfo?.id ? auth.userInfo.id : '')
 const context = computed(() => JSON.stringify([identity.value, activeAccount.id]))
-const account = ref(null), items = ref([]), error = ref(''), day = ref(serverToday()), dismissed = ref([]), expanded = ref(false)
+const account = ref(null), items = ref([]), error = ref(''), day = ref(serverToday()), dismissed = ref([]), snoozed = ref([])
 const storageKey = computed(() => reminderStorageKey(identity.value, activeAccount.id))
-const reminders = computed(() => items.value.map(item => privateItemReminder(item, day.value)).filter(value => value && !dismissed.value.includes(value.key)))
-const visibleReminders = computed(() => expanded.value ? reminders.value : reminders.value.slice(0, 3))
-const panel = ref(null), closeButton = ref(null), modalOpen = ref(false), pendingOpen = ref(false), suppressToday = ref(false)
+const reminders = computed(() => items.value.map(item => privateItemReminder(item, day.value)).filter(value => value && !dismissed.value.includes(value.key) && !snoozed.value.includes(value.key)))
+const groups = computed(() => ['今天开始', '今天截止', '明天开始', '明天截止'].map(label => ({ label, reminders: reminders.value.filter(value => value.label === label) })).filter(group => group.reminders.length))
+const panel = ref(null), closeButton = ref(null), modalOpen = ref(false), pendingOpen = ref(false)
 const hasContent = computed(() => !!(reminders.value.length || error.value))
 const visible = computed(() => modalOpen.value && hasContent.value)
 let generation = 0, alive = true, timer = null, denied = false, lastVisible = 0, closeRevision = 0
 
 function resetPresentation() {
-  closeRevision++; modalOpen.value = false; pendingOpen.value = false; suppressToday.value = false; expanded.value = false
+  closeRevision++; modalOpen.value = false; pendingOpen.value = false
 }
 function tryOpen() {
   if (!pendingOpen.value || modalFocusState.active || !hasContent.value) return
-  suppressToday.value = false; pendingOpen.value = false; modalOpen.value = true
+  pendingOpen.value = false; modalOpen.value = true
 }
 function requestOpen() {
   if (modalOpen.value || !hasContent.value) return
@@ -80,9 +94,17 @@ watch(visible, value => {
 function reminderLink(reminder) {
   return { path: '/calendar', query: { scope: 'mine', task: 'todo', view: 'month', game: account.value.game, date: reminder.date, event: reminder.item.id } }
 }
-function syncDismissals() { dismissed.value = readReminderDismissals(storageKey.value, day.value) }
+function syncDismissals() {
+  dismissed.value = readReminderDismissals(storageKey.value, day.value)
+  snoozed.value = readReminderDismissals(storageKey.value, day.value, 'sessionStorage')
+}
 function close() {
-  if (suppressToday.value && !error.value) dismissed.value = dismissPrivateReminders(storageKey.value, day.value, reminders.value)
+  if (!error.value) snoozed.value = dismissPrivateReminders(storageKey.value, day.value, reminders.value, 'sessionStorage')
+  resetPresentation()
+  error.value = ''
+}
+function acknowledge() {
+  if (!error.value) dismissed.value = dismissPrivateReminders(storageKey.value, day.value, reminders.value)
   resetPresentation()
   error.value = ''
 }
@@ -122,7 +144,7 @@ async function load() {
 watch(context, () => {
   generation++; clearTimeout(timer); denied = false
   resetPresentation()
-  account.value = null; items.value = []; error.value = ''; dismissed.value = []; expanded.value = false
+  account.value = null; items.value = []; error.value = ''; dismissed.value = []; snoozed.value = []
   void load()
 }, { immediate: true, flush: 'sync' })
 useAccountListUpdates(() => { denied = false; void load() })
@@ -152,15 +174,34 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .calendar-reminder-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); }
-.calendar-reminder { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
-.calendar-reminder h2 { color: var(--tea); font: 900 20px/1.4 var(--font-s); }
-.calendar-reminder a { color: var(--tea); text-decoration: underline; text-underline-offset: 3px; }
+.calendar-reminder { min-width: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 16%, transparent); }
+.calendar-reminder-heading { min-width: 0; }
+.calendar-reminder h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--tea); font: 800 20px/1.4 var(--font-s); }
+.calendar-reminder h2 svg { flex: none; }
+.calendar-reminder .calendar-reminder-account { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-60); font-size: 13px; }
 .calendar-reminder p { margin: 0; line-height: 1.6; }
 .calendar-reminder button { font: inherit; color: var(--tea); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .calendar-reminder :is(button, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.calendar-reminder-group + .calendar-reminder-group { margin-top: 14px; }
+.calendar-reminder-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--tea); font-size: 13px; line-height: 1.5; }
+.calendar-reminder-group h3 span { color: var(--ink-60); font-size: 12px; font-weight: 400; }
+.calendar-reminder ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.calendar-reminder li { min-width: 0; }
+.calendar-reminder-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--tea); background: var(--cream); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; }
+.calendar-reminder-card-content { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.calendar-reminder-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.calendar-reminder-card-date { color: var(--ink-60); font-size: 12px; line-height: 1.5; }
+.calendar-reminder-card svg { flex: none; }
+.calendar-reminder-error { display: grid; justify-items: start; gap: 12px; }
 .calendar-reminder-hint { color: var(--ink-60); font-size: 12px; }
+.calendar-reminder-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.calendar-reminder-actions > button:only-child { grid-column: 1 / -1; }
+.calendar-reminder button:active, .calendar-reminder-card:active { filter: brightness(.96); }
 .calendar-reminder button.calendar-reminder-primary { color: var(--cream); background: var(--tea); }
-.calendar-reminder-check input { accent-color: var(--tea); }
+@media (hover: hover) {
+  .calendar-reminder-card:hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, var(--cream)); }
+  .calendar-reminder button:hover { border-color: var(--tea); }
+}
 </style>
 <style scoped src="./calendarReminderDialogDesktop.css"></style>
 <style scoped src="./calendarReminderDialogMobile.css"></style>
