@@ -39,7 +39,8 @@
                 <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label === '已抽' ? '距保底' : '已垫' }}</button>
               </div>
               <label data-guide-target="progress" class="remaining-field">
-                <span class="sr-only">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}（选填，留空保留原进度）</span>
+                <span class="remaining-label">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}</span>
+                <span class="sr-only">（选填，留空保留原进度）</span>
                 <span class="remaining-input">
                   <input ref="remainingInput" v-model="progressInput" type="number" inputmode="numeric" :min="progressLabel === '已抽' ? 1 : 0" :max="progressLabel === '已抽' ? 40 : 39" placeholder="未知" :disabled="busy || readOnly || recordsLoading" :aria-invalid="!!progressError || undefined" :aria-describedby="progressError ? editorId + '-progress-error' : undefined" @input="progressReviewed = false; progressError = ''" @blur="reviewProgress" @invalid="revealProgress">
                   <span>抽</span>
@@ -1109,7 +1110,6 @@ async function submit() {
 .progress-number small { color: var(--ink-60); }
 .progress-rail { background: var(--line); border-radius: 2px; }
 .progress-rail > span { background: var(--editor-green); }
-.progress-label-switch { border: 0; background: transparent; }
 .progress-error { color: var(--rouge); }
 .entry-section { border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--cream) 35%, var(--surface)); }
 .entry-heading p { color: var(--ink-60); }
@@ -1135,8 +1135,10 @@ async function submit() {
 .record-view-switch { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .record-view-switch button { border-color: transparent; border-radius: 5px; background: transparent; color: var(--ink-60); }
 .record-view-switch button.is-selected { color: var(--tea); background: var(--surface); border-color: var(--line); }
-.progress-label-switch { border: 0; background: transparent; }
-.progress-label-switch button.is-selected { background: var(--surface); }
+.progress-label-switch { border-color: var(--ink-35); }
+.progress-label-switch button { color: var(--tea); }
+.progress-label-switch button.is-selected { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.progress-label-switch button.is-selected:not(:disabled):hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 90%, var(--surface)); }
 .sort-help { color: var(--ink-60); }
 .sort-help button { background: transparent; }
 .record-feed { border-top: 1px solid var(--line); }

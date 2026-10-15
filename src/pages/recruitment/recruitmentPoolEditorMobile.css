@@ -66,8 +66,7 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .remaining-guide > .guide-hint { flex-basis: 100%; }
 .remaining-input { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .remaining-input input { width: 66px; margin: 0; padding-inline: 6px; text-align: center; font-family: var(--font-d); }
-.progress-label-switch { padding: 0; }
-.progress-label-switch button { min-width: 44px; padding: 6px 8px; }
+.remaining-field { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
 .progress-error { flex-basis: 100%; font-size: 12px; line-height: 1.6; }
 .entry-section { position: relative; padding: 14px 12px; margin-bottom: 24px; border-color: color-mix(in srgb, var(--line) 65%, transparent); }
 .entry-heading { padding-right: 44px; margin-bottom: 10px; }
@@ -129,7 +128,6 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .record-view-switch button { min-width: 0; padding: 6px 8px; font-size: 12px; white-space: nowrap; }
 .records-toolbar > .record-view-switch { padding: 2px; border-color: transparent; }
 .records-toolbar > .record-view-switch button { min-height: 32px; }
-.progress-label-switch { padding: 0; }
 .sort-help { font-size: 12px; line-height: 1.7; margin-bottom: 8px; }
 .sort-help button { margin-left: 6px; padding: 4px 8px; font-size: 12px; }
 .record-feed { display: grid; list-style: none; margin: 0; padding: 0; }
