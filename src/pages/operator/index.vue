@@ -2325,7 +2325,7 @@
                 <div class="ledger-card-footer growth-card-remark">
                   <textarea
                     :value="operatorRemark(trackerRemarkEntry(row))"
-                    rows="2"
+                    rows="1"
                     maxlength="1000"
                     :aria-label="(row.name || row.id) + '备忘'"
                     placeholder="添加备忘…"
