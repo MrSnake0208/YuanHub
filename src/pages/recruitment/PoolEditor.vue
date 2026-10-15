@@ -362,7 +362,7 @@
             </section>
 
             <p v-if="orderChanged" class="change-note" role="status">历史顺序待保存；两种视图使用同一顺序，抽数与保底不随移动变化。</p>
-            <p v-if="deletedIds.length" class="change-note">保存后将移除 {{ deletedIds.length }} 条已有出货；独立记录会减去该条已知抽数，相邻记录与批次总量不变。</p>
+            <p v-if="deletedIds.length" class="change-note">保存后将移除 {{ deletedIds.length }} 条已有出货，并扣除这些记录的已知抽数；批次记录同步扣减批次计数，相邻记录与当前垫抽不变。</p>
 
           </div>
 
