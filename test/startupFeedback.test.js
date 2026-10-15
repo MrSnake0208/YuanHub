@@ -144,7 +144,7 @@ test('main.js 在首次导航时把启动反馈收口', function () {
 
 test('字体改为非阻塞加载，不再拖住首次绘制', function () {
   const html = readSource('../index.html')
-  assert.match(html, /rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin/)
+  assert.match(html, /rel="preconnect" href="https:\/\/gstatic\.loli\.net" crossorigin/)
   assert.match(html, /media="print" onload="this\.media='all'"/)
-  assert.match(html, /<noscript>[\s\S]*fonts\.googleapis\.com[\s\S]*<\/noscript>/)
+  assert.match(html, /<noscript>[\s\S]*fonts\.loli\.net[\s\S]*<\/noscript>/)
 })
