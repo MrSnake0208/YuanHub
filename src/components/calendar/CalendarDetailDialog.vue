@@ -1,12 +1,12 @@
 <template>
   <Teleport to="body">
-    <div v-if="selection" v-show="!editing" class="calendar-page calendar-public calendar-detail-mask" :aria-hidden="editing ? 'true' : undefined" :inert="editing ? '' : undefined" @click.self="$emit('close')">
+    <div v-if="selection" v-show="!editing" class="calendar-page calendar-public calendar-detail-mask" :class="{ 'is-editing-todo': editingTodo }" :style="viewportStyle" :aria-hidden="editing ? 'true' : undefined" :inert="editing ? '' : undefined" @focusin="updateFocus" @focusout="updateFocus" @input="updateFocus" @click.self="$emit('close')">
       <section ref="panel" class="calendar-detail-dialog" :class="{ 'is-single': !!selection.id }" role="dialog" aria-modal="true" aria-labelledby="calendar-detail-title" tabindex="-1" :aria-busy="loading">
         <header>
           <div><h2 id="calendar-detail-title" ref="heading" tabindex="-1">{{ selection.id ? entries[0]?.title || (loading ? '正在读取事项…' : '事项暂不可用') : calendarDateLabel(selection.date) }}</h2><p v-if="!selection.id" class="calendar-hint">当天全部事项 · {{ entries.length }} 项</p></div>
           <button type="button" class="calendar-detail-close" aria-label="关闭日历详情" @click="$emit('close')"><X :size="20" aria-hidden="true" /></button>
         </header>
-        <div class="calendar-detail-body" role="region" aria-label="日历事项内容" tabindex="0">
+        <div ref="body" class="calendar-detail-body" role="region" aria-label="日历事项内容" tabindex="0">
           <p v-if="privateItems?.notice.value" role="status">{{ privateItems.notice.value }}</p>
           <div v-if="error" class="calendar-error" role="alert"><p>{{ error }}</p><button type="button" @click="$emit('retry')">重试读取</button></div>
           <p v-else-if="loading && !entries.length" role="status">正在读取事项…</p>
@@ -15,7 +15,7 @@
           </div>
           <p v-else role="status">{{ selection.id ? '该事项已删除、不可用或不在当前筛选范围内。' : '当天暂无事项。' }}</p>
         </div>
-        <footer v-if="canCreate || !selection.id">
+        <footer v-if="canCreate || !selection.id" v-show="!editingTodo">
           <button v-if="canCreate" type="button" class="calendar-private-add" @click="$emit('create-private', selection.date)"><Plus :size="17" aria-hidden="true" /> 记一件事</button>
           <button v-if="!selection.id" type="button" class="calendar-detail-done" @click="$emit('close')">完成</button>
         </footer>
@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, X } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { calendarDateLabel, calendarItemsOnDay } from '@/data/activityCalendar.js'
@@ -45,8 +45,33 @@ const entries = computed(() => {
   }
   return calendarItemsOnDay(props.items, props.selection.date)
 })
-const panel = ref(null), heading = ref(null)
+const panel = ref(null), heading = ref(null), body = ref(null)
+const viewportStyle = ref({}), editingTodo = ref(false)
 useModalFocus(open, panel, { initialFocus: () => heading.value, onEscape: () => emit('close'), preventRestoreScroll: true })
+function focusedTodoControl() {
+  const target = document.activeElement
+  return open.value && !editing.value && body.value?.contains(target) && target.matches('.calendar-checklist input, .calendar-checklist button') ? target : null
+}
+function revealTodoControl() {
+  const target = focusedTodoControl()
+  if (!target) return
+  const bounds = body.value.getBoundingClientRect(), rect = target.getBoundingClientRect()
+  // 只移动正文，避免 scrollIntoView 同时推动背景页面或整个弹层。
+  if (rect.top < bounds.top + 12) body.value.scrollTop -= bounds.top + 12 - rect.top
+  else if (rect.bottom > bounds.bottom - 12) body.value.scrollTop += rect.bottom - bounds.bottom + 12
+}
+function updateFocus() {
+  nextTick(() => {
+    editingTodo.value = !!focusedTodoControl()
+    nextTick(revealTodoControl)
+  })
+}
+watch([entries, editing], updateFocus, { flush: 'post' })
+function updateViewport() {
+  const viewport = window.visualViewport, height = viewport?.height || window.innerHeight
+  viewportStyle.value = { top: `${viewport?.offsetTop || 0}px`, height: `${height}px`, bottom: 'auto', '--calendar-detail-viewport-height': `${height}px` }
+  nextTick(revealTodoControl)
+}
 let restoreScroll = null
 watch(open, value => {
   restoreScroll?.(); restoreScroll = null
@@ -56,15 +81,28 @@ watch(open, value => {
   const gap = Math.max(0, window.innerWidth - root.clientWidth)
   if (gap) body.style.paddingRight = `${(Number.parseFloat(getComputedStyle(body).paddingRight) || 0) + gap}px`
   body.style.overflow = root.style.overflow = 'hidden'
-  restoreScroll = () => { body.style.overflow = bodyOverflow; root.style.overflow = rootOverflow; body.style.paddingRight = paddingRight }
+  const viewport = window.visualViewport
+  updateViewport()
+  window.addEventListener('resize', updateViewport)
+  viewport?.addEventListener('resize', updateViewport)
+  viewport?.addEventListener('scroll', updateViewport)
+  restoreScroll = () => {
+    body.style.overflow = bodyOverflow; root.style.overflow = rootOverflow; body.style.paddingRight = paddingRight
+    window.removeEventListener('resize', updateViewport)
+    viewport?.removeEventListener('resize', updateViewport)
+    viewport?.removeEventListener('scroll', updateViewport)
+    viewportStyle.value = {}; editingTodo.value = false
+  }
 }, { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => restoreScroll?.())
 </script>
 
 <style scoped>
-.calendar-detail-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
+.calendar-detail-mask { box-sizing: border-box; background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
 .calendar-detail-dialog { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 16%, transparent); }
 .calendar-detail-dialog h2 { margin: 0; color: var(--tea); font: 800 22px/1.4 var(--font-s); overflow-wrap: anywhere; }
+.calendar-detail-mask.is-editing-todo h2 { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.calendar-detail-mask.is-editing-todo header .calendar-hint { display: none; }
 .calendar-detail-dialog p { margin: 6px 0; overflow-wrap: anywhere; }
 .calendar-detail-dialog button { font: inherit; cursor: pointer; }
 .calendar-detail-dialog :is(button, a, input):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
@@ -96,6 +134,7 @@ onBeforeUnmount(() => restoreScroll?.())
 .calendar-detail-dialog :deep(.calendar-subscription-secondary) { margin-top: 8px; }
 .calendar-detail-dialog :deep(.calendar-subscription .calendar-subscription-secondary button) { padding-inline: 0; border-color: transparent; background: transparent; color: var(--ink-60); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .calendar-detail-dialog :deep(.calendar-checklist) { margin-top: 8px; }
+.calendar-detail-dialog :deep(.calendar-checklist :is(input, button)) { scroll-margin-block: 12px; }
 .calendar-detail-dialog :deep(.calendar-checklist legend) { margin-bottom: 6px; font-size: 12px; font-weight: 400; color: var(--ink-60); }
 .calendar-detail-dialog :deep(.calendar-check-target input[type="checkbox"]) { width: 18px; height: 18px; }
 .calendar-detail-dialog :deep(.calendar-todo-status) { font-size: 12px; }
