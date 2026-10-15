@@ -1,46 +1,63 @@
 <template>
-  <section v-if="context?.permitted.value" class="calendar-subscription" aria-label="私人活动待办">
+  <section v-if="context?.permitted.value" class="calendar-subscription" :class="{ 'is-dialog': detail }" aria-label="私人活动待办">
     <p v-if="!context.account.value" class="calendar-hint">选择游戏账号后可订阅本期活动。</p>
     <p v-else-if="item && item.game !== context.account.value.game" class="calendar-hint">请切换到{{ item.game }}账号后订阅。</p>
     <template v-else>
-      <div class="calendar-subscription-actions">
-        <p v-if="record?.subscribed" class="calendar-activity-status">{{ subscriptionCompleted(record) ? '本期已完成' : !item ? '活动不可用 · 本期未完成' : closed ? '已过期 · 本期未完成' : '本期待办' }}</p>
-        <button v-if="record?.subscribed" type="button" :disabled="busy || blocked || context.dirty.value || context.loading.value || !!context.error.value" @click="changeCompletion">{{ subscriptionCompleted(record) ? '撤销完成' : '标记本期完成' }}</button>
-        <p v-if="record?.subscribed && (!editing || !item)" class="calendar-todo-card-summary">{{ subscriptionProgress(record) }}</p>
-        <button type="button" :disabled="busy || context.loading.value || !!context.error.value || (!record?.subscribed && closed)" @click="changeSubscription">{{ record?.subscribed ? '取消订阅' : closed ? '本期已截止' : '订阅本期' }}</button>
-        <button v-if="record?.subscribed" ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor">{{ editing ? '收起待办' : item ? '编辑待办' : '查看待办' }}</button>
+      <div :class="{ 'calendar-completion-section': detail }">
+        <component :is="variant === 'day' ? 'h4' : 'h3'" v-if="detail" class="calendar-operation-heading">本期完成状态</component>
+        <div class="calendar-subscription-actions">
+          <p v-if="record?.subscribed" class="calendar-activity-status">{{ subscriptionCompleted(record) ? '本期已完成' : !item ? '活动不可用 · 本期未完成' : closed ? '已过期 · 本期未完成' : detail ? '本期未完成' : '本期待办' }}</p>
+          <p v-else-if="detail" class="calendar-hint">订阅本期后，可记录完成状态与个人待办。</p>
+          <button v-if="record?.subscribed" type="button" :class="{ 'calendar-completion-primary': detail && !subscriptionCompleted(record) }" :disabled="busy || blocked || context.dirty.value || context.loading.value || !!context.error.value" @click="changeCompletion">{{ subscriptionCompleted(record) ? '撤销完成' : '标记本期完成' }}</button>
+          <p v-if="!detail && record?.subscribed && (!editing || !item)" class="calendar-todo-card-summary">{{ subscriptionProgress(record) }}</p>
+          <button v-if="!detail || !record?.subscribed" type="button" :class="{ 'calendar-completion-primary': detail && !closed }" :disabled="busy || context.loading.value || !!context.error.value || (!record?.subscribed && closed)" @click="changeSubscription">{{ record?.subscribed ? '取消订阅' : closed ? '本期已截止' : '订阅本期' }}</button>
+          <button v-if="!detail && record?.subscribed" ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor()">{{ editing ? '收起待办' : item ? '编辑待办' : '查看待办' }}</button>
+        </div>
+        <p v-if="record?.subscribed && context.dirty.value" class="calendar-hint">请先保存或收起未保存的修改，再标记本期状态；活动完成与下方清单独立。</p>
       </div>
-      <p v-if="record?.subscribed && context.dirty.value" class="calendar-hint">请先保存或收起未保存的修改，再标记本期状态；活动完成与下方清单独立。</p>
-      <div v-if="editing && record?.subscribed && !item" class="calendar-todo-readonly">
-        <p class="calendar-hint">活动不可用，待办仅可查看。</p>
-        <ul v-if="record.checklist.length"><li v-for="entry in record.checklist" :key="entry.id">{{ entry.completed ? '已完成' : '未完成' }} · {{ entry.title }}</li></ul>
-        <p v-if="!record.checklist.length" class="calendar-hint">暂无待办</p>
+      <div :class="{ 'calendar-personal-todos': detail && record?.subscribed }">
+        <template v-if="detail && record?.subscribed">
+          <div class="calendar-todos-heading">
+            <component :is="variant === 'day' ? 'h4' : 'h3'" class="calendar-operation-heading">个人待办</component>
+            <button ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor(!editing && !!item && !record.checklist.length)">{{ editing ? '收起待办' : !item ? '查看待办' : record.checklist.length ? '编辑待办' : '添加待办' }}</button>
+          </div>
+          <p v-if="!editing" class="calendar-todo-card-summary">{{ subscriptionProgress(record) }}</p>
+          <p v-if="!editing" class="calendar-hint">清单完成与本期完成状态独立。</p>
+        </template>
+        <div v-if="editing && record?.subscribed && !item" class="calendar-todo-readonly">
+          <p class="calendar-hint">活动不可用，待办仅可查看。</p>
+          <ul v-if="record.checklist.length"><li v-for="entry in record.checklist" :key="entry.id">{{ entry.completed ? '已完成' : '未完成' }} · {{ entry.title }}</li></ul>
+          <p v-if="!record.checklist.length" class="calendar-hint">暂无待办</p>
+        </div>
+        <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save">
+          <fieldset :disabled="busy || blocked || !!context.error.value">
+            <legend>活动待办 · 仅当前账号可见</legend>
+            <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="draft.checklist.length && draft.checklist.every(entry => entry.completed)"> · 待办全部完成</span></p>
+            <p class="calendar-hint">{{ detail ? '勾选清单不会自动标记本期完成。' : '清单勾选不代表整期完成。完成活动后，请使用上方“标记本期完成”。' }}</p>
+            <p v-if="!draft.checklist.length" class="calendar-hint">暂无待办</p>
+            <div v-for="(entry, index) in draft.checklist" :key="entry.id" class="calendar-check-row">
+              <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
+              <input v-model="entry.title" type="text" maxlength="80" required :aria-label="`待办 ${index + 1} 名称`">
+              <button type="button" class="calendar-todo-delete" :aria-label="`删除 ${entry.title || '待办' + (index + 1)}`" @click="removeEntry(entry.id)">删除</button>
+            </div>
+            <button type="button" :disabled="draft.checklist.length >= 50" @click="addEntry">添加待办</button>
+            <p v-if="draft.checklist.length >= 50" class="calendar-hint" role="status">已达 50 条待办上限，删除一条后可继续添加。</p>
+            <div class="calendar-subscription-actions">
+              <button type="submit" class="calendar-todo-save" :disabled="!dirty">{{ saving ? '保存中…' : '保存待办' }}</button>
+              <span class="calendar-todo-status" :class="{ 'is-dirty': dirty }" role="status" aria-live="polite">{{ saveStatus }}</span>
+            </div>
+          </fieldset>
+        </form>
+        <details v-if="editing && record?.subscribed && hasHistory" class="calendar-todo-history">
+          <summary>查看旧备忘内容（历史数据）</summary>
+          <p v-if="record.memo_title && record.memo_title !== DEFAULT_MEMO_TITLE">{{ record.memo_title }}</p>
+          <p v-if="record.memo_note" class="calendar-memo-note">{{ record.memo_note }}</p>
+          <p v-if="record.legacy_completed" class="calendar-hint">旧完成记录：已完成（不影响待办状态）</p>
+        </details>
       </div>
-      <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save">
-        <fieldset :disabled="busy || blocked || !!context.error.value">
-          <legend>活动待办 · 仅当前账号可见</legend>
-          <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="draft.checklist.length && draft.checklist.every(entry => entry.completed)"> · 待办全部完成</span></p>
-          <p class="calendar-hint">清单勾选不代表整期完成。完成活动后，请使用上方“标记本期完成”。</p>
-          <p v-if="!draft.checklist.length" class="calendar-hint">暂无待办</p>
-          <div v-for="(entry, index) in draft.checklist" :key="entry.id" class="calendar-check-row">
-            <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
-            <input v-model="entry.title" type="text" maxlength="80" required :aria-label="`待办 ${index + 1} 名称`">
-            <button type="button" class="calendar-todo-delete" :aria-label="`删除 ${entry.title || '待办' + (index + 1)}`" @click="removeEntry(entry.id)">删除</button>
-          </div>
-          <button type="button" :disabled="draft.checklist.length >= 50" @click="addEntry">添加待办</button>
-          <p v-if="draft.checklist.length >= 50" class="calendar-hint" role="status">已达 50 条待办上限，删除一条后可继续添加。</p>
-          <div class="calendar-subscription-actions">
-            <button type="submit" class="calendar-todo-save" :disabled="!dirty">{{ saving ? '保存中…' : '保存待办' }}</button>
-            <span class="calendar-todo-status" :class="{ 'is-dirty': dirty }" role="status" aria-live="polite">{{ saveStatus }}</span>
-          </div>
-        </fieldset>
-      </form>
-      <details v-if="editing && record?.subscribed && hasHistory" class="calendar-todo-history">
-        <summary>查看旧备忘内容（历史数据）</summary>
-        <p v-if="record.memo_title && record.memo_title !== DEFAULT_MEMO_TITLE">{{ record.memo_title }}</p>
-        <p v-if="record.memo_note" class="calendar-memo-note">{{ record.memo_note }}</p>
-        <p v-if="record.legacy_completed" class="calendar-hint">旧完成记录：已完成（不影响待办状态）</p>
-      </details>
+      <div v-if="detail && record?.subscribed" class="calendar-subscription-secondary">
+        <button type="button" :disabled="busy || context.loading.value || !!context.error.value" @click="changeSubscription">取消订阅</button>
+      </div>
       <p v-if="error" class="calendar-error" role="alert">{{ error }}</p>
       <button v-if="blocked" type="button" :disabled="busy" @click="refresh">读取最新状态</button>
       <p v-if="message" class="calendar-hint" role="status">{{ message }}</p>
@@ -53,7 +70,8 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { CALENDAR_SUBSCRIPTIONS, DEFAULT_MEMO_TITLE, progressDraft, subscriptionCompleted, subscriptionProgress } from '@/data/activityCalendarSubscriptions.js'
 import { calendarEnded, serverToday } from '@/data/activityCalendar.js'
 import { dialog } from '@/utils/dialog.js'
-const props = defineProps({ item: { type: Object, default: null }, unavailable: { type: Object, default: null } })
+const props = defineProps({ item: { type: Object, default: null }, unavailable: { type: Object, default: null }, variant: { type: String, default: 'card' } })
+const detail = computed(() => props.variant !== 'card')
 const context = inject(CALENDAR_SUBSCRIPTIONS, null)
 const id = computed(() => props.item?.id || props.unavailable?.event_id || '')
 const record = computed(() => context?.byId.value[id.value] || props.unavailable || null)
@@ -74,14 +92,16 @@ watch(record, value => { if (!dirty.value && !busy.value) adopt(value) }, { imme
 watch(() => [context?.key.value, context?.epoch?.value, id.value], () => { editing.value = false; busy.value = false; saving.value = false; blocked.value = false; error.value = ''; message.value = ''; adopt(record.value) }, { flush: 'sync' })
 watch(dirty, value => { context?.setDirty(id.value, value); if (value) message.value = '' }, { flush: 'sync' })
 onBeforeUnmount(() => { alive = false; context?.setDirty(id.value, false) })
-async function toggleEditor() {
+async function toggleEditor(addFirst = false) {
   const token = stamp()
   if (editing.value && dirty.value && !await context.confirmDiscard()) return
   if (!current(token)) return
   if (!editing.value) adopt(record.value)
   editing.value = !editing.value
   await nextTick()
-  if (current(token)) (editing.value ? editor.value?.querySelector('input[type="text"], button') : editorToggle.value)?.focus()
+  if (!current(token)) return
+  if (editing.value && addFirst) await addEntry()
+  else (editing.value ? editor.value?.querySelector('input[type="text"], button') : editorToggle.value)?.focus()
 }
 async function addEntry() {
   if (draft.value.checklist.length >= 50) return
@@ -112,14 +132,16 @@ function failed(err) {
   error.value = blocked.value ? '保存结果需要确认，草稿已保留。请读取最新状态后再编辑。' : err?.status === 422 && err?.message === '请求字段不正确' ? '服务端尚不支持待办保存协议，请先升级服务端。草稿已保留。' : err?.message || '保存失败，请重试。'
 }
 async function changeSubscription() {
-  if (busy.value) return
-  const token = stamp()
-  if (dirty.value && !await context.confirmDiscard()) return
+  if (busy.value || dialog._state?.visible) return
+  const token = stamp(), subscribed = !record.value?.subscribed
+  if (dirty.value) {
+    if (!await context.confirmDiscard()) return
+  } else if (detail.value && !subscribed && !await dialog.confirm({ title: '取消订阅本期活动？', message: `将取消「${props.item?.title || '本期活动'}」在当前账号的订阅；已保存的待办与完成记录会保留。`, confirmText: '取消订阅', cancelText: '继续保留' })) return
   if (!current(token)) return
   if (busy.value) return
   busy.value = true; error.value = ''; message.value = ''
   try {
-    const value = await context.subscribe(id.value, !record.value?.subscribed)
+    const value = await context.subscribe(id.value, subscribed)
     if (!current(token) || !value) return
     adopt(value); editing.value = false; blocked.value = false
     message.value = value.subscribed ? '已订阅本期，已有待办与历史内容会保留。' : '已取消订阅，待办与历史内容已保留。'

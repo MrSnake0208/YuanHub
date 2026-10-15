@@ -623,7 +623,7 @@ it('Timeline未来活动弹出单条详情，记一件事预填活动覆盖日�
   expect(wrapper.find('.calendar-detail-dialog').exists()).toBe(false)
   await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises()
   expect(wrapper.findAll('.calendar-detail-dialog article')).toHaveLength(1)
-  expect(wrapper.get('.calendar-detail-dialog h4').text()).toBe('未来事项')
+  expect(wrapper.get('.calendar-detail-dialog h2').text()).toBe('未来事项')
   await wrapper.get('.calendar-private-add').trigger('click')
   expect(wrapper.emitted('create-private')).toEqual([['2026-10-15']])
   expect(document.body.style.overflow).toBe('hidden')

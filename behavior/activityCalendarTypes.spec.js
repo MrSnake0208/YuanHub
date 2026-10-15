@@ -48,7 +48,7 @@ it('月历周条与完整当天详情共享类型，独立关联条目数量不�
   expect(day.attributes('aria-label')).toContain('活动 · 家具 · 神秘洞窟')
   expect(day.attributes('aria-label')).toContain('其他 · 星池')
   for (let i = 0; i < samples.length; i++) {
-    const card = wrapper.findAll('.calendar-detail-dialog .calendar-event').find(node => node.get('h4').text() === samples[i].title)
+    const card = wrapper.findAll('.calendar-detail-dialog .calendar-event').find(node => node.get('.calendar-event-title').text() === samples[i].title)
     expect(card.attributes('data-type-color')).toBe(colors[i])
   }
 })
