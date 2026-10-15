@@ -89,6 +89,38 @@ it('已保存心愿重新打开恢复，关闭有草稿保护；普通池保留�
   expect(wrapper.get('.quick-up-button[data-agent-id="fixed-a"]').text()).toContain('甲')
 })
 
+it('直接搜名字启用手机紧凑选人，清空后恢复筛选，已有分类条件不隐藏且仍可加入记录', async () => {
+  const agents = [{ id: 'a', name: '甲', prof: '水' }, { id: 'b', name: '乙', prof: '火' }]
+  const wrapper = render({ agents, records: [] })
+  expect(wrapper.get('.pool-editor').classes()).not.toContain('is-choosing-agent')
+  await wrapper.get('.add-record').trigger('click')
+  expect(wrapper.get('.pool-editor').classes()).toContain('is-choosing-agent')
+  const picker = wrapper.get('.agent-picker')
+  const search = wrapper.get('.agent-search input')
+  expect(picker.classes()).not.toContain('is-name-search')
+  await search.setValue('甲')
+  expect(picker.classes()).toContain('is-name-search')
+  expect(wrapper.findAll('.agent-choice').map(agent => agent.attributes('data-agent-id'))).toEqual(['a'])
+  await search.setValue('   ')
+  expect(picker.classes()).not.toContain('is-name-search')
+  await wrapper.findAll('.agent-filter-options.is-prof button').find(button => button.text() === '火').trigger('click')
+  await search.setValue('甲')
+  expect(picker.classes()).not.toContain('is-name-search')
+  expect(wrapper.find('.agent-choice').exists()).toBe(false)
+  await wrapper.get('.agent-filter-reset').trigger('click')
+  expect(search.element.value).toBe('')
+  expect(picker.classes()).not.toContain('is-name-search')
+  expect(wrapper.findAll('.agent-choice')).toHaveLength(2)
+  await search.setValue('甲')
+  await wrapper.get('.agent-choice[data-agent-id="a"]').trigger('click')
+  expect(wrapper.find('.agent-picker').exists()).toBe(false)
+  expect(wrapper.get('.pool-editor').classes()).not.toContain('is-choosing-agent')
+  await wrapper.get('.composer-actions .primary').trigger('click')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ agent_id: 'a', pull_span: null })
+  wrapper.unmount()
+})
+
 it.each(['Escape', '取消'])('改选心愿时搜索与筛选可用，%s只收起选人且保留出货草稿并恢复焦点', async action => {
   const pool = { ...recruitmentFixture().pools[0], wish_agent_ids: ['a', 'b'] }
   const catalog = recruitmentCatalog().pools.map(pool => ({ ...pool, allow_custom_up: true }))
@@ -548,6 +580,37 @@ it('严格出货正整数与保底1–40，未知进度留空；忙碌不关闭/
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('close')).toBeUndefined()
   expect(wrapper.emitted('save')).toHaveLength(1)
+})
+
+it.each([
+  ['甲', '.agent-choice'],
+  ['不存在的密探', '.agent-picker-empty'],
+])('搜索%s时即使输入框已可见也滚动露出首个候选或空结果，保留焦点且不保存', async (query, resultSelector) => {
+  vi.useFakeTimers()
+  const viewport = Object.assign(new EventTarget(), { height: 480, offsetTop: 0, scale: 1 })
+  vi.stubGlobal('visualViewport', viewport)
+  vi.stubGlobal('innerHeight', 844)
+  const wrapper = render({ records: [] })
+  await wrapper.get('.add-record').trigger('click')
+  const search = wrapper.get('.agent-search input')
+  vi.spyOn(search.element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 300, 300, 44))
+  vi.spyOn(wrapper.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 140 })
+  vi.spyOn(wrapper.get('.editor-body').element, 'getBoundingClientRect').mockReturnValue({ top: 180, bottom: 480 })
+  const scroll = vi.fn()
+  wrapper.get('.editor-body').element.scrollBy = scroll
+  search.element.focus()
+  await vi.advanceTimersByTimeAsync(200)
+  scroll.mockClear()
+  await search.setValue(query)
+  vi.spyOn(wrapper.get(resultSelector).element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 420, 64, 70))
+  await vi.advanceTimersByTimeAsync(200)
+  expect(scroll).toHaveBeenCalledWith({ top: 34, behavior: 'auto' })
+  expect(document.activeElement).toBe(search.element)
+  expect(search.element.value).toBe(query)
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await wrapper.get('.agent-picker-cancel').trigger('click')
+  expect(wrapper.get('.pool-editor').classes()).not.toContain('is-choosing-agent')
+  wrapper.unmount()
 })
 
 it('固定保底条不滚动历史，键盘缩短时更新避让高度并保留焦点', async () => {
