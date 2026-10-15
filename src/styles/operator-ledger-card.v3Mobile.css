@@ -33,6 +33,10 @@
     object-position: center top;
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait img {
+    transform: translateX(60px);
+  }
+
   .agent-ledger-card--v3 .ledger-portrait::after {
     position: absolute;
     inset: 0;
