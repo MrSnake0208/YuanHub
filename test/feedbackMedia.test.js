@@ -46,8 +46,28 @@ test('附件队列接受混合类型并对非法批次保持原子性', () => {
     new File(['x'], `extra-${index}.txt`, { type: 'text/plain' })
   ))
   assert.equal(media.items.length, 2)
-  assert.match(media.error, /最多添加 3 个附件/)
+  assert.match(media.error, /最多添加 10 个附件/)
   media.clear()
+})
+
+test('每条消息接受 10 张图片或 10 个混合附件，第 11 个被拒绝且保留队列', async () => {
+  for (const mixed of [false, true]) {
+    const media = useFeedbackMedia()
+    const files = Array.from({ length: 10 }, (_, index) =>
+      mixed && index % 2
+        ? new File(['log'], `error-${index}.log`, { type: 'text/plain' })
+        : new File(['image'], `screen-${index}.png`, { type: 'image/png' })
+    )
+    await media.addFiles(files.slice(0, 9))
+    await media.addFiles(files.slice(9))
+    assert.deepEqual(media.items.map(item => item.file), files)
+    assert.equal(media.error, '')
+
+    await media.addFiles([new File(['extra'], 'extra.png', { type: 'image/png' })])
+    assert.deepEqual(media.items.map(item => item.file), files)
+    assert.match(media.error, /最多添加 10 个附件/)
+    media.clear()
+  }
 })
 
 test('LOG 接受浏览器常见 MIME 声明', () => {
