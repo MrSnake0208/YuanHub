@@ -201,6 +201,8 @@ npx --no-install playwright cli -s=sidebar-reachability close
 - iOS 安全区域；
 - 软键盘出现后的可达性。
 
+最近事件与账号通知在更新横幅出现时避让横幅：≥1081px 使用 `--version-update-banner-height` 下移；768–1080px 使用底部安全区域定位，避免可换行的横幅遮挡刷新操作；≤767px 保持既有底部布局。
+
 底部固定 UI 按场景使用：
 
 ```css
