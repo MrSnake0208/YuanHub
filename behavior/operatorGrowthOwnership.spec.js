@@ -64,6 +64,12 @@ it('追踪页顶部直接添加密探，并将真实拥有状态传入养成中�
     global: { stubs: { PlannerExactOptimizer: true } },
   })
   await flushPromises()
+  const toolbar = wrapper.get('.plan-heading-actions')
+  for (const label of ['添加密探', '新建清单', '管理清单', '调整设置', '查看体力日程']) {
+    expect(toolbar.text()).toContain(label)
+  }
+  expect(wrapper.get('.status-metrics').text()).toContain('刷取材料备齐度')
+  expect(wrapper.get('.status-metrics').text()).toContain('清单心纸库存')
   await wrapper.get('.plan-member-add').trigger('click')
   await flushPromises()
   await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('养成中')).trigger('click')

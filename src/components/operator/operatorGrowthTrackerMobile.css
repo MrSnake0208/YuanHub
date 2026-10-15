@@ -40,10 +40,11 @@ button { touch-action: manipulation; }
 @media (max-width: 1080px) { .edit-grid { grid-template-columns: 270px minmax(0, 1fr); } }
 @media (max-width: 900px) { .display-grid, .edit-grid, .ledger-grid, .notes-grid { grid-template-columns: 1fr; }.planner-sidebar { position: static; } }
 @media (max-width: 640px) { .growth-tracker { padding: 15px; }.planner-heading { flex-direction: column; }.planner-heading h2 { font-size: 21px; }.planner-refresh { width: 100%; justify-content: center; }.status-metrics { grid-template-columns: 1fr 1fr; }.planner-card { padding: 14px; }.card-heading { flex-direction: column; }.progress-tags { justify-content: flex-start; }.compare-grid { grid-template-columns: 1fr; }.ledger-row { grid-template-columns: minmax(90px, 1fr) 72px 50px 24px; }.editor-actions { align-items: stretch; flex-direction: column; }.editor-actions > div { width: 100%; }.action-button { flex: 1; }.target-fields input, .counter input, .counter button, .ledger-input-wrap input, .goal-panel input { min-height: 44px; }.add-menu { grid-template-columns: 1fr; } }
-.status-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 14px 0 18px; }
-.status-title { min-width: 0; flex: 1 1 auto; }
+.status-main { padding: 14px 0 18px; }
+.status-title { min-width: 0; }
 .status-title h2 { margin-top: 5px; font: 900 25px/1.22 var(--font-s); letter-spacing: .02em; }
 .status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.status-actions .status-action { min-height: 40px; padding: 0 10px; font-size: 12px; }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 800; }
 .workspace-link { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; vertical-align: middle; }
 .workspace-link > svg { flex: none; }
@@ -254,8 +255,7 @@ button { touch-action: manipulation; }
 }
 
 @media (max-width: 900px) {
-  .status-main { flex-direction: column; }
-  .status-actions { width: 100%; }
+  .status-actions { flex: 1 1 100%; }
   .status-action { flex: 1; }
   .settings-panel { grid-template-columns: 1fr 1fr; }
   .settings-block:last-child { grid-column: 1 / -1; padding-top: 13px; padding-left: 0; }
@@ -455,6 +455,9 @@ button { touch-action: manipulation; }
 .tracker-popover-actions button,.add-button,.side-details summary { min-height:44px; }
 .tracker-dialog-close,.roster-remove { width:44px;height:44px; }
 .tracker-number-input { min-width:44px; }
+@media (max-width: 700px) {
+  .status-actions .status-action { min-height: 44px; }
+}
 @media (max-width: 640px) {
   .growth-tracker { margin-top: 10px; padding: 12px; }
   .planner-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding-bottom: 12px; }
@@ -465,15 +468,11 @@ button { touch-action: manipulation; }
   .planner-status { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 12px; padding-top: 0; }
   .status-main { display: contents; }
   .status-title { grid-row: 1; }
-  .status-title :deep(.plan-heading) { flex-wrap: wrap; gap: 10px; }
-  .status-title :deep(.plan-switcher) { flex: 1; }
-  .status-title :deep(.plan-heading-actions) { flex: 1 1 100%; }
   .status-title :deep(.plan-title) { font-size: 20px; }
   .status-metrics { grid-row: 2; }
   .planner-status .status-metric { min-height: 84px; padding: 10px; }
   .status-metric strong { margin-top: 6px; line-height: 1.2; }
   .metric-explanation { margin-top: 4px; }
-  .status-actions { grid-row: 3; }
   .status-rule { padding: 4px 0; }
 }
 }

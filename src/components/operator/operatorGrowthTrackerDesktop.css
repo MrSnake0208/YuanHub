@@ -8,7 +8,7 @@
 .cloud-migration ul { padding-left: 20px; }
 .cloud-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cloud-actions button, .cloud-recovery > button { min-height: 44px; padding: 8px 12px; }
-.planner-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 18px; }
+.planner-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 12px; }
 .section-kicker, .card-kicker, .goal-kicker { display: block; font-size: 11px; font-weight: 800; }
 .planner-heading h2 { margin-top: 6px; font: 900 23px/1.28 var(--font-s); }
 .planner-heading p { max-width: 760px; margin-top: 6px; font-size: 12px; line-height: 1.7; }
@@ -21,11 +21,11 @@ button { touch-action: manipulation; }
 .planner-error { margin: 8px 0; font-size: 12px; line-height: 1.6; }
 .planner-notice { display: flex; align-items: center; gap: 7px; margin: 10px 0; font-size: 12px; }
 .planner-inline-notice { display: block; }
-.planner-status { margin-top: 18px; padding-top: 4px; }
+.planner-status { margin-top: 10px; padding-top: 0; }
 .status-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.status-metric { position: relative; min-width: 0; min-height: 112px; padding: 17px; }
+.status-metric { position: relative; min-width: 0; min-height: 84px; padding: 12px 16px; }
 .status-metric span { display: block; padding-right: 8px; font-size: 11px; font-weight: 800; }
-.status-metric strong { display: block; margin-top: 10px; font: 900 28px/1 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.status-metric strong { display: block; margin-top: 7px; font: 900 28px/1 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .metric-explanation { margin: 8px 0 0; font-size: 12px; line-height: 1.6; }
 .status-metric-primary strong { font-size: 30px; }
 .status-metric strong small { margin-left: 5px; font: 800 10px/1 var(--font-b); }
@@ -38,22 +38,23 @@ button { touch-action: manipulation; }
 .goal-panel { padding: 8px 2px 2px; }.goal-panel h3 { margin-top: 4px; font: 900 20px var(--font-s); }.goal-panel > p { margin-top: 6px; }.goal-panel label { margin-top: 14px; font-size: 11px; }.goal-panel input { min-height: 44px; margin-top: 1px; font-size: 15px; }.field-help { margin-top: 4px; }.goal-shortcuts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }.goal-shortcuts button { min-height: 32px; padding: 0 9px; font-size: 10px; font-weight: 800; }.goal-result { margin-top: 14px; padding: 11px; }.goal-result-title { font-size: 12px; font-weight: 850; }.goal-result p { margin-top: 7px; font-size: 10px; line-height: 1.6; }.goal-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }.goal-metrics div { padding: 8px; }.goal-metrics span, .goal-metrics b { display: block; }.goal-metrics span { font-size: 9px; }.goal-metrics b { margin-top: 3px; font: 800 13px var(--font-d); }.back-button { width: 100%; margin-top: 12px; }
 .editor-main { display: grid; min-width: 0; gap: 12px; }.ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.ledger-card { padding: 12px; }.ledger-heading h3, .compare-heading h3 { font-size: 13px; }.ledger-heading span, .compare-heading span { font-size: 9px; }.ledger-row { display: grid; grid-template-columns: minmax(100px, 1fr) 82px 55px 26px; align-items: center; gap: 7px; padding: 10px 0; }.ledger-row:first-of-type { margin-top: 5px; }.ledger-label-wrap { display: grid; min-width: 0; gap: 5px; }.channel-label { --channel: #887e8f; display: inline-flex; width: max-content; max-width: 100%; align-items: center; gap: 5px; padding: 4px 7px; font-size: 12px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }.channel-label i { width: 6px; height: 6px; }.ledger-input-wrap { display: flex; align-items: center; gap: 4px; }.ledger-input-wrap label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }.ledger-input-wrap input { width: 50px; min-height: 34px; padding: 4px; text-align: right; }.ledger-input-wrap > span { padding-bottom: 0; font-size: 8px; white-space: nowrap; }.recommendation { padding-top: 0; font-size: 8px; text-align: right; }.row-remove { display: grid; width: 26px; height: 32px; place-items: center; padding: 0; }.add-wrap { position: relative; margin-top: 6px; }.add-button { display: inline-flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 5px; font-size: 10px; font-weight: 780; }.add-menu { position: absolute; z-index: var(--z-popover); bottom: calc(100% + 5px); left: 0; width: min(100%, 320px); max-height: min(360px, 60vh); max-height: min(360px, 60dvh); overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; }.add-menu button { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 8px; padding: 8px; font: 13px/1.5 var(--font-b); text-align: left; overflow-wrap: anywhere; }.ledger-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: 7px; padding-top: 8px; font-size: 10px; }.ledger-total b { font: 850 15px var(--font-d); }.compare-card { padding: 12px; }.compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }.compare-option { min-width: 0; padding: 10px; }.compare-option span, .compare-option small, .compare-option em { display: block; font-size: 8px; line-height: 1.5; }.compare-option b { display: block; margin-top: 2px; font-size: 10px; }.compare-option strong { display: block; margin-top: 5px; font: 860 18px var(--font-d); }.compare-option em { margin-top: 4px; font-style: normal; }.editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }.editor-actions p { max-width: 560px; font-size: 10px; line-height: 1.6; }.editor-actions > div { display: flex; gap: 6px; flex-wrap: wrap; }.action-button { min-height: 38px; }
 @media (max-width: 1080px) { .edit-grid { grid-template-columns: 270px minmax(0, 1fr); } }
-.status-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 14px 0 18px; }
-.status-title { min-width: 0; flex: 1 1 auto; }
+.status-main { padding: 8px 0 12px; }
+.status-title { min-width: 0; }
 .status-title h2 { margin-top: 5px; font: 900 25px/1.22 var(--font-s); letter-spacing: .02em; }
 .status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.status-actions { margin-left: auto; }
+.status-actions .status-action { min-height: 40px; padding: 0 10px; font-size: 12px; }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 800; }
 .workspace-link { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; vertical-align: middle; }
 .workspace-link > svg { flex: none; }
 .outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; font-size: 10px; }
-.status-rule { display: flex; align-items: center; gap: 10px; padding: 16px 0 12px; font: 700 10px var(--font-s); letter-spacing: .16em; }
+.status-rule { display: flex; align-items: center; gap: 10px; padding: 10px 0 8px; font: 700 10px var(--font-s); letter-spacing: .16em; }
 .status-rule span { height: 1px; flex: 1; }
 .status-rule span:last-child { transform: scaleX(-1); }
 .status-rule i { font-style: normal; white-space: nowrap; }
 .planner-status .status-roster { display: block; padding: 0; }
 .planner-status .status-metrics { margin-top: 0; }
-.planner-status .status-metric { padding: 17px; }
 .growth-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 14px; margin-top: 0; }
 .growth-card { --growth-rarity-accent: var(--yellow-deep); --growth-rarity-border: var(--yellow-deep); --growth-rarity-start: var(--cream); position: relative; align-self: start; min-width: 0; padding: 12px; }
 .growth-card.rarity-r5 { --growth-rarity-accent: var(--yellow-deep); }

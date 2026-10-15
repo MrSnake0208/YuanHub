@@ -62,17 +62,20 @@
               @select="selectPlan"
               @save="savePlan"
               @remove="removePlan"
-            />
-          </div>
-          <div v-if="activePlan" class="status-actions">
-            <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />调整设置</button>
-            <button type="button" class="status-action primary" @click="openPlanner('display')"><CalendarDays :size="15" aria-hidden="true" />查看体力日程</button>
+            >
+              <template #actions>
+                <div v-if="activePlan" class="status-actions">
+                  <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />调整设置</button>
+                  <button type="button" class="status-action secondary" @click="openPlanner('display')"><CalendarDays :size="15" aria-hidden="true" />查看体力日程</button>
+                </div>
+              </template>
+            </OperatorTrainingPlanPicker>
           </div>
         </div>
         <div v-if="activePlan" class="status-metrics" role="group" aria-label="培养进度概览">
           <div class="status-metric status-metric-primary"><span>预计还需</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
-          <div class="status-metric"><span>等级&修为进度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
-          <div class="status-metric"><span>心纸状态</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
+          <div class="status-metric"><span>刷取材料备齐度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
+          <div class="status-metric"><span>清单心纸库存</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
           <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
         </div>
         <p v-if="loading" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
@@ -1429,7 +1432,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-title h2 { color: var(--ink); }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { border: 1px solid var(--planner-line); border-radius: 10px; background: rgba(255, 253, 246, .84); color: var(--ink); }
 .status-action:hover, .workspace-link:hover, .toolbar-button:hover { border-color: var(--accent); color: var(--accent-strong); }
-.status-action.primary { border-color: var(--planner-deep); background: var(--planner-deep); color: var(--cream); }
 .status-sync-note { color: var(--accent-strong); }
 .status-rule { color: #9d7c4e; }
 .status-rule span { background: linear-gradient(90deg, transparent, rgba(183, 144, 80, .35)); }
