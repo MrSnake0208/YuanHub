@@ -153,10 +153,10 @@
                   <span class="section-kicker">数据交换</span>
                   <h2>JSON 备份导入/导出</h2>
                   <p>
-                    此处用于已有 JSON 备份。手动补录请点「录入密探」，扫描复核请从上方待复核列表进入。导出包含客观档案、状态、备注、关注和养成目标。
+                    此处用于已有 JSON 备份。手动补录请点「录入密探」，扫描复核请从上方待复核列表进入。档案备份包含练度、状态、备注、关注和养成目标；分类设置可在这里单独导出与恢复。
                   </p>
                 </div>
-                <span class="archive-format">JSON · v4 无损导出</span>
+                <span class="archive-format">JSON · 档案 / 分类</span>
               </div>
               <div class="archive-actions">
                 <button
@@ -170,7 +170,7 @@
                   }}
                 </button>
                 <div class="export-group">
-                  <div class="export-label">导出范围</div>
+                  <div class="export-label">档案导出范围</div>
                   <div
                     class="export-options"
                     role="radiogroup"
@@ -220,8 +220,12 @@
                     :disabled="!auth.isLoggedIn || !accountId"
                     @click="doExport"
                   >
-                    <Download :size="16" aria-hidden="true" />导出完整备份
+                    <Download :size="16" aria-hidden="true" />导出密探档案
                   </button>
+                  <button class="act-btn organization-export" :disabled="!auth.isLoggedIn || !accountId || !organizationReady" @click="exportOrganizationBackup">
+                    <Download :size="16" aria-hidden="true" />导出当前账号分类
+                  </button>
+                  <small class="tip organization-export-tip">分类仅包含当前账号已保存的置顶、分组顺序和标签，不含编辑草稿。</small>
                 </div>
               </div>
             </div>
@@ -236,11 +240,12 @@
             <div v-if="!selectedScanReview" class="backup-import">
             <h2>JSON 备份导入</h2>
             <p id="operator-import-tip" class="tip">
-              v3 / v4 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
+              支持密探档案和分类设置 JSON，自动识别文件类型。导入均先校验并预览，确认后才写入当前账号；分类恢复只替换置顶、分组顺序和标签。
             </p>
             <div class="import-target">
               <span>导入目标</span><strong>{{ currentAccountName }}</strong
-              ><small v-if="importDocumentVersion"
+              ><small v-if="isOrganizationImport">已识别分类设置备份</small
+              ><small v-else-if="importDocumentVersion"
                 >已识别 v{{ importDocumentVersion }}</small
               >
             </div>
@@ -248,7 +253,7 @@
               id="operator-import-json"
               v-model="importText"
               :disabled="importing"
-              aria-label="密探交换档案 JSON"
+              aria-label="密探档案或分类设置 JSON"
               :aria-invalid="!!importError"
               :aria-describedby="
                 importError
@@ -281,7 +286,11 @@
                 填入 v3 示例
               </button>
               <button
-                v-if="[3, 4].includes(importDocumentVersion)"
+                v-if="isOrganizationImport"
+                class="btn primary" type="button" :disabled="importing || !organizationReady || !accountId" @click="previewOrganizationImport"
+              >校验并预览分类</button>
+              <button
+                v-else-if="[3, 4].includes(importDocumentVersion)"
                 class="btn primary"
                 type="button"
                 :disabled="importing || !importText.trim() || !accountId"
@@ -309,6 +318,20 @@
             <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
             <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
             <details v-if="importRequestIssue" class="import-technical"><summary>本次请求的技术详情</summary><pre>{{ JSON.stringify(importRequestIssue, null, 2) }}</pre></details>
+            <section v-if="organizationImportPreview" class="import-preview organization-import-preview" aria-live="polite" aria-label="分类恢复预览">
+              <div class="import-preview-head">
+                <div><strong>分类恢复预览 · {{ currentAccountName }}</strong>
+                  <span>{{ organizationImportPreview.content.pinned_ids.length }} 位置顶 · {{ organizationImportPreview.content.tags.length }} 个标签</span>
+                </div>
+                <button class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认恢复分类' }}</button>
+              </div>
+              <p class="import-preview-warning">将替换当前账号已保存的置顶、分组顺序和全部标签。密探练度、养成状态和特别关注保持不变。</p>
+              <p v-if="organizationData.revision !== organizationImportPreview.revision" class="import-preview-warning" role="alert">当前分类已有更新，请重新校验并预览后再恢复。</p>
+              <p class="tip">分组顺序：{{ organizationImportPreview.content.status_order.filter(state => discardedEnabled || state !== 'discarded').map(operatorAnnotationStatusLabel).join(' → ') }}</p>
+              <p v-if="organizationImportPreview.content.tags.length" class="tip">标签：{{ organizationImportPreview.content.tags.map(tag => tag.name).join('、') }}</p>
+            </section>
+            <p v-if="organizationImportMessage" class="tip" role="status">{{ organizationImportMessage }}</p>
+            <p v-if="isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="btn ghost" :disabled="organizationLoading || organizationSaving" @click="reloadOrganization">重新读取分类</button></p>
             <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="v2 导入预览">
               <div class="import-preview-head">
                 <div>
@@ -908,7 +931,7 @@
               compact
               searchable
               v-model:search-query="currentSearch"
-              v-if="ownedCurrentEntries.length > 0 && currentLoadedKey === accountId + ':' + gameFilter"
+              v-if="currentLoadedKey === accountId + ':' + gameFilter && (ownedCurrentEntries.length > 0 || (auth.isLoggedIn && accountId))"
               v-reveal
               :result-count="filteredCurrent.length"
               :total-count="ownedCurrentEntries.length"
@@ -917,6 +940,8 @@
               :sub-prof-options="subProfOptions"
               :status-options="workbenchStatusOptions"
               :status-counts="currentStatusCounts"
+              :tag-options="organizationTagOptions"
+              v-model:tag-filter="organizationTagFilter"
               v-model:rarity-filter="rarityFilter"
               v-model:prof-filter="profFilter"
               v-model:sub-prof-filter="subProfFilter"
@@ -946,6 +971,9 @@
                 </button>
               </template>
               <template #secondary-tool>
+                <button v-if="auth.isLoggedIn" type="button" class="current-batch-toggle current-organization-toggle"
+                  :class="{ on: organizationManager?.open }" :aria-expanded="Boolean(organizationManager?.open)" :aria-controls="organizationManager?.panelId"
+                  @click="organizationManager?.toggle()"><SlidersHorizontal :size="13" aria-hidden="true" />分类设置<span v-if="organizationSaving" role="status"> · 保存中</span><span v-else-if="organizationDirty" role="status"> · 未保存</span></button>
                 <button
                   v-if="auth.isLoggedIn"
                   class="current-batch-toggle"
@@ -962,6 +990,14 @@
                 </button>
               </template>
               <template #footer>
+                <OperatorOrganizationManager
+                  ref="organizationManager"
+                  v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
+                  :value="organizationData" :account-id="accountId" :game="gameFilter" :catalog="catalogMap"
+                  :ready="organizationReady" :loading="organizationLoading" :saving="organizationSaving" :error="organizationError"
+                  :discarded-enabled="discardedEnabled" :selected-ids="Array.from(batchSelectedIds)"
+                  :save="saveOrganization" :reload="reloadOrganization"
+                />
                 <div
                   v-if="batchSelectMode"
                   class="batch-status-bar"
@@ -1031,14 +1067,6 @@
                 </div>
               </template>
             </OperatorFilterDossier>
-
-            <OperatorOrganizationManager
-              v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
-              :value="organizationData" :account-id="accountId" :game="gameFilter" :catalog="catalogMap"
-              :ready="organizationReady" :loading="organizationLoading" :saving="organizationSaving" :error="organizationError"
-              :discarded-enabled="discardedEnabled" :selected-ids="Array.from(batchSelectedIds)" v-model:tag-filter="organizationTagFilter"
-              :save="saveOrganization" :reload="reloadOrganization"
-            />
 
             <div v-if="annotationUnsupportedStates.length" class="state err slim" role="alert">
               存在不支持的养成状态（{{ annotationUnsupportedStates.join('、') }}），请刷新到最新版本；可在“{{ discardedEnabled ? '全部（含已弃置）' : '全部' }}”查看。
@@ -3008,6 +3036,7 @@ import {
   RotateCcw,
   Save,
   ScanLine,
+  SlidersHorizontal,
   Star,
   Swords,
   Target,
@@ -3029,7 +3058,7 @@ import OperatorFilterDossier from "../../components/operator/OperatorFilterDossi
 import OperatorOrganizationManager from "../../components/operator/OperatorOrganizationManager.vue";
 import OperatorOrganizationCard from "../../components/operator/OperatorOrganizationCard.vue";
 import { useOperatorOrganization } from "../../composables/useOperatorOrganization.js";
-import { compareOperatorOrganization, operatorOrganizationContent, operatorOrganizationRanks, updateOperatorTag } from "../../utils/operatorOrganization.js";
+import { OPERATOR_ORGANIZATION_FORMAT, compareOperatorOrganization, operatorOrganizationBackup, operatorOrganizationContent, operatorOrganizationRanks, readOperatorOrganizationBackup, updateOperatorTag } from "../../utils/operatorOrganization.js";
 import OperatorGrowthFilters from "../../components/operator/OperatorGrowthFilters.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
@@ -3235,6 +3264,8 @@ const importing = ref(false);
 const importResult = ref(null);
 const importPreview = ref(null);
 const importPreviewKey = ref("");
+const organizationImportPreview = ref(null);
+const organizationImportMessage = ref("");
 const importV2Preview = ref(null);
 const importV2PreviewKey = ref("");
 const importConfirmReview = ref(false);
@@ -3446,10 +3477,17 @@ const gameFilter = computed({
 });
 
 const organizationTagFilter = ref("");
+const organizationManager = ref(null);
+const organizationDirty = computed(() => Boolean(organizationManager.value?.changed));
+const confirmOrganizationDiscard = useUnsavedChanges(organizationDirty, "分类设置", { title: "放弃未保存的分类设置？" });
 const { data: organizationData, loading: organizationLoading, saving: organizationSaving, error: organizationError,
   ready: organizationReady, reload: reloadOrganization, save: saveOrganization } = useOperatorOrganization(accountId, computed(() => auth.isLoggedIn));
 const organizationRanks = computed(() => operatorOrganizationRanks(organizationData.value));
 const organizationTagMembers = computed(() => new Set(organizationData.value.tags.find(tag => tag.id === organizationTagFilter.value)?.operator_ids || []));
+const organizationTagOptions = computed(() => {
+  const owned = new Set(ownedCurrentEntries.value.map(entry => entry.id));
+  return organizationData.value.tags.map(tag => ({ value: tag.id, label: tag.name, count: tag.operator_ids.filter(id => owned.has(id)).length }));
+});
 watch([accountId, gameFilter], () => { organizationTagFilter.value = ""; }, { flush: "sync" });
 watch(() => organizationData.value.tags, tags => {
   if (organizationTagFilter.value && !tags.some(tag => tag.id === organizationTagFilter.value)) organizationTagFilter.value = "";
@@ -3603,6 +3641,11 @@ const currentAccountName = computed(function () {
     return item.id === accountId.value;
   });
   return account ? account.name : "当前账号";
+});
+
+const isOrganizationImport = computed(() => {
+  try { return JSON.parse(importText.value).format === OPERATOR_ORGANIZATION_FORMAT; }
+  catch (_) { return false; }
 });
 
 const importDocumentVersion = computed(function () {
@@ -8234,7 +8277,7 @@ async function loadAccounts() {
   }
 }
 
-const accountSwitchBusy = computed(() => savingEdit.value || importing.value || starLoadoutSaving.value ||
+const accountSwitchBusy = computed(() => savingEdit.value || importing.value || starLoadoutSaving.value || organizationSaving.value ||
   batchStatusBusy.value || quickSavingIds.value.size > 0 || cardCombatSavingIds.value.size > 0 ||
   growthExecuteBusyKeys.value.size > 0 || annotationBusyIds.value.size > 0 || favoriteBusyIds.value.size > 0);
 async function beforeAccountSwitch() {
@@ -8242,6 +8285,7 @@ async function beforeAccountSwitch() {
   const contextSeq = currentContextSeq;
   if (editorDirty.value && !(await confirmEditorDiscard())) return false;
   if (scanReviewDirty.value && !(await confirmScanReviewDiscard())) return false;
+  if (organizationDirty.value && !(await confirmOrganizationDiscard())) return false;
   if (contextSeq !== currentContextSeq || accountSwitchBusy.value) return false;
   const dirtyCards = currentEntries.value.some(entry => cardDraftBaselines.value[entry.id] && cardDraftBaselines.value[entry.id] !== cardDraftSnapshot(entry));
   if (dirtyCards || starLoadoutIsDirty() || (!selectedScanReview.value && importText.value.trim() && !importResult.value)) {
@@ -8737,6 +8781,8 @@ function v3ImportRequest(document, confirmReview) {
 }
 
 function resetImportPreview() {
+  organizationImportPreview.value = null;
+  organizationImportMessage.value = "";
   importPreview.value = null;
   importPreviewKey.value = "";
   importV2Preview.value = null;
@@ -8750,6 +8796,53 @@ function onImportTextInput() {
   importResult.value = null;
   importConfirmReview.value = false;
   resetImportPreview();
+}
+
+function previewOrganizationImport() {
+  if (importing.value || !organizationReady.value || !accountId.value) return;
+  resetImportPreview();
+  importError.value = "";
+  importResult.value = null;
+  try {
+    organizationImportPreview.value = {
+      content: readOperatorOrganizationBackup(importText.value, gameFilter.value, catalogMap.value),
+      text: importText.value, accountId: accountId.value, revision: organizationData.value.revision,
+    };
+  } catch (err) { importError.value = humanErr(err, "分类备份校验失败"); }
+}
+
+async function commitOrganizationImport() {
+  const preview = organizationImportPreview.value;
+  if (importing.value || !organizationReady.value || !preview || preview.text !== importText.value || preview.accountId !== accountId.value || preview.revision !== organizationData.value.revision) return;
+  const contextSeq = currentContextSeq;
+  const operation = ++importOperationSeq;
+  importing.value = true;
+  importError.value = "";
+  try {
+    if (!(await confirmOrganizationDiscard()) || !importRequestIsCurrent(operation, contextSeq, preview.accountId)) return;
+    if (await saveOrganization(preview.content, preview.revision)) {
+      await nextTick();
+      if (!importRequestIsCurrent(operation, contextSeq, preview.accountId)) return;
+      organizationManager.value?.resetDraft();
+      resetImportPreview();
+      organizationImportMessage.value = "分类已恢复并保存到当前账号";
+      importText.value = "";
+    }
+  } catch (err) {
+    if (importRequestIsCurrent(operation, contextSeq, preview.accountId)) importError.value = humanErr(err, "分类恢复失败，输入和草稿已保留");
+  } finally {
+    if (importRequestIsCurrent(operation, contextSeq, preview.accountId)) importing.value = false;
+  }
+}
+
+function exportOrganizationBackup() {
+  if (!auth.isLoggedIn || !accountId.value || !organizationReady.value) return;
+  const blob = new Blob([JSON.stringify(operatorOrganizationBackup(organizationData.value, gameFilter.value), null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "密探分类-" + accountId.value + ".json";
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 async function previewV3Import() {
@@ -10056,6 +10149,10 @@ onBeforeUnmount(function () {
   border-color: var(--tea);
   background: var(--tea);
   color: var(--cream);
+}
+.organization-export, .organization-export-tip {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 .export-submit:hover:not(:disabled) {
   border-color: var(--tea-deep);

@@ -1,145 +1,210 @@
 <template>
   <section class="operator-organization" aria-label="密探置顶与自定义分类">
-    <div v-if="loading || saving" role="status">{{ saving ? '正在保存分类…' : '正在读取分类…' }}</div>
-    <div v-if="error" class="organization-error" role="alert">{{ error }} <button type="button" :disabled="loading || saving" @click="reload">重新读取分类</button></div>
-    <div class="organization-filters" role="group" aria-label="按自定义标签筛选">
-      <span>标签</span><button type="button" :aria-pressed="!tagFilter" @click="$emit('update:tagFilter', '')">全部</button>
-      <button v-for="tag in value.tags" :key="tag.id" type="button" :aria-pressed="tagFilter === tag.id" @click="$emit('update:tagFilter', tag.id)">{{ tag.name }}</button>
-    </div>
+    <div v-if="loading" role="status" class="organization-feedback">正在读取分类…</div>
+    <div v-if="error && !panelOpen" class="organization-error" role="alert">{{ error }} <button type="button" :disabled="loading || saving" @click="reload">重新读取分类</button></div>
     <div v-if="selectedIds.length && value.tags.length" class="organization-batch">
       <label>已选 {{ selectedIds.length }} 位，批量标签 <select v-model="batchTag" :disabled="!ready"><option value="">选择标签</option><option v-for="tag in value.tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option></select></label>
       <button type="button" :disabled="!ready || !batchTag" @click="applyBatch(true)">添加标签</button>
       <button type="button" :disabled="!ready || !batchTag" @click="applyBatch(false)">移除标签</button>
     </div>
-    <details ref="panel" @toggle="onToggle">
-      <summary>管理置顶与标签</summary>
-      <div v-if="draft" class="organization-editor">
-        <p>置顶密探优先展示，筛选仍然生效。分类按当前子账号云端保存，不改变养成状态或特别关注。</p>
-        <div class="organization-section">
-          <strong>分组顺序</strong>
-          <div v-for="(state, index) in visibleStates" :key="state" class="organization-row">
-            <span>{{ stateLabel(state) }}</span>
-            <button type="button" :disabled="index === 0 || !ready" :aria-label="'上移' + stateLabel(state)" @click="moveState(state, -1)">上移</button>
-            <button type="button" :disabled="index === visibleStates.length - 1 || !ready" :aria-label="'下移' + stateLabel(state)" @click="moveState(state, 1)">下移</button>
+    <details :id="panelId" ref="panel" class="organization-settings" @toggle="onToggle">
+      <summary hidden>分类设置</summary>
+      <form v-if="draft" ref="editor" class="organization-editor" novalidate @submit.prevent="saveDraft">
+        <p class="organization-intro">仅调整当前子账号的展示分类，不改变练度、养成状态或特别关注。</p>
+        <div class="organization-editor-grid">
+          <div class="organization-order-panel">
+            <section class="organization-section" aria-label="分组顺序">
+              <div class="organization-section-heading"><SlidersHorizontal :size="16" aria-hidden="true" /><h3>分组顺序</h3></div>
+              <p>未置顶密探按以下顺序排列。</p>
+              <ol class="organization-sort-list">
+                <li v-for="(state, index) in visibleStates" :key="state" class="organization-sort-row">
+                  <span class="organization-rank" aria-hidden="true">{{ index + 1 }}</span><span class="organization-sort-name">{{ stateLabel(state) }}</span>
+                  <div class="organization-row-actions">
+                    <button type="button" :disabled="index === 0 || !ready" :aria-label="'上移' + stateLabel(state)" @click="moveState(state, -1)"><ArrowUp :size="13" aria-hidden="true" />上移</button>
+                    <button type="button" :disabled="index === visibleStates.length - 1 || !ready" :aria-label="'下移' + stateLabel(state)" @click="moveState(state, 1)"><ArrowDown :size="13" aria-hidden="true" />下移</button>
+                  </div>
+                </li>
+              </ol>
+            </section>
+            <section class="organization-section" aria-label="置顶顺序">
+              <div class="organization-section-heading"><Pin :size="16" aria-hidden="true" /><h3>置顶顺序</h3><small>{{ draft.pinned_ids.length }} 位</small></div>
+              <p v-if="!draft.pinned_ids.length" class="organization-empty">还没有置顶密探。点击下方密探卡片的“置顶”，即可优先展示。</p>
+              <ol v-else class="organization-sort-list">
+                <li v-for="(id, index) in draft.pinned_ids" :key="id" class="organization-sort-row organization-pin-row">
+                  <span class="organization-rank" aria-hidden="true">{{ index + 1 }}</span><span class="organization-sort-name">{{ catalog[id]?.name || id }}</span>
+                  <div class="organization-row-actions">
+                    <button type="button" :disabled="index === 0 || !ready" :aria-label="'上移置顶' + (catalog[id]?.name || id)" @click="move(draft.pinned_ids, index, -1)"><ArrowUp :size="13" aria-hidden="true" />上移</button>
+                    <button type="button" :disabled="index === draft.pinned_ids.length - 1 || !ready" :aria-label="'下移置顶' + (catalog[id]?.name || id)" @click="move(draft.pinned_ids, index, 1)"><ArrowDown :size="13" aria-hidden="true" />下移</button>
+                    <button type="button" :disabled="!ready" :aria-label="'取消置顶' + (catalog[id]?.name || id)" @click="draft.pinned_ids.splice(index, 1)">取消置顶</button>
+                  </div>
+                </li>
+              </ol>
+            </section>
+          </div>
+          <section class="organization-section organization-tags-panel" aria-label="自定义标签">
+            <div class="organization-section-heading"><Tags :size="16" aria-hidden="true" /><h3>自定义标签</h3><small>{{ draft.tags.length }}/20</small></div>
+            <p id="organization-tag-help">一个密探可有多个标签，保存后可用于上方筛选。</p>
+            <p v-if="!draft.tags.length" class="organization-empty">按你的习惯分类，例如“主力队”“备用”“暂缓培养”。</p>
+            <div v-if="draft.tags.length" class="organization-tag-caption"><span>标签名称</span><small>1–40 字，不可重复</small></div>
+            <div v-if="draft.tags.length" class="organization-tag-list">
+              <div v-for="(tag, index) in draft.tags" :key="tag.id" class="organization-tag-row">
+                <div class="organization-tag-field">
+                  <label :for="tagInputId(tag)" class="organization-visually-hidden">标签名称 {{ index + 1 }}</label>
+                  <input :id="tagInputId(tag)" v-model="tag.name" data-tag-name :aria-label="'标签名称 ' + (index + 1)" placeholder="例如：主力队" maxlength="40" :disabled="!ready"
+                    :aria-invalid="Boolean(visibleTagError(tag, index))" :aria-describedby="visibleTagError(tag, index) ? tagInputId(tag) + '-error' : 'organization-tag-help'" @blur="touchedTagIds.add(tag.id)" />
+                  <p v-if="visibleTagError(tag, index)" :id="tagInputId(tag) + '-error'" class="organization-field-error" role="alert">{{ tagErrors[index] }}</p>
+                </div>
+                <div class="organization-tag-meta"><small>关联 {{ tag.operator_ids.length }} 位<span class="organization-visually-hidden">密探</span></small>
+                  <button type="button" class="organization-delete" :disabled="!ready" :aria-label="'删除标签' + (tag.name || (index + 1))" @click="draft.tags.splice(index, 1)">删除</button>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="organization-add" :disabled="draft.tags.length >= 20 || !ready" @click="addTag"><Plus :size="14" aria-hidden="true" />新增标签</button>
+            <small>删除标签仅移除分类，密探资料保留。</small>
+          </section>
+        </div>
+        <p v-if="invalidIds.length" class="organization-warning">有 {{ invalidIds.length }} 位密探不在当前游戏图鉴中。<button type="button" :disabled="!ready" @click="cleanInvalid">清理失效密探引用</button></p>
+        <div class="organization-save-area">
+          <div v-if="error" class="organization-error" role="alert">{{ error }} <button type="button" :disabled="loading || saving" @click="reload">重新读取分类</button></div>
+          <p v-if="changed && baselineRevision !== value.revision" class="organization-warning" role="status">云端分类已有更新，你的修改仍保留。请先放弃修改，再基于最新分类编辑。</p>
+          <div class="organization-actions">
+            <button type="submit" class="organization-save" :disabled="!ready || !changed || hasTagErrors">{{ saving ? '保存中…' : '保存分类设置' }}</button>
+            <button type="button" :disabled="!ready || !changed" @click="resetDraft">放弃修改</button>
+            <span v-if="notice" class="organization-feedback" :class="{ 'organization-field-error': noticeError }" :role="noticeError ? 'alert' : 'status'">{{ notice }}</span>
+            <small v-else-if="hasTagErrors">请填写标签名称，名称不能重复。</small>
+            <small v-else-if="changed">修改尚未保存</small>
           </div>
         </div>
-        <div v-if="draft.pinned_ids.length" class="organization-section">
-          <strong>置顶顺序</strong>
-          <div v-for="(id, index) in draft.pinned_ids" :key="id" class="organization-row">
-            <span>{{ catalog[id]?.name || id }}</span>
-            <button type="button" :disabled="index === 0 || !ready" :aria-label="'上移置顶' + (catalog[id]?.name || id)" @click="move(draft.pinned_ids, index, -1)">上移</button>
-            <button type="button" :disabled="index === draft.pinned_ids.length - 1 || !ready" :aria-label="'下移置顶' + (catalog[id]?.name || id)" @click="move(draft.pinned_ids, index, 1)">下移</button>
-            <button type="button" :disabled="!ready" @click="draft.pinned_ids.splice(index, 1)">取消置顶</button>
-          </div>
-        </div>
-        <div class="organization-section">
-          <strong>自定义标签（{{ draft.tags.length }}/20）</strong>
-          <div v-for="(tag, index) in draft.tags" :key="tag.id" class="organization-row">
-            <input v-model="tag.name" :aria-label="'标签名称 ' + (index + 1)" maxlength="40" :disabled="!ready" />
-            <small>{{ tag.operator_ids.length }} 位</small><button type="button" :disabled="!ready" :aria-label="'删除标签' + tag.name" @click="draft.tags.splice(index, 1)">删除</button>
-          </div>
-          <button type="button" :disabled="draft.tags.length >= 20 || !ready" @click="addTag">新增标签</button>
-          <small>一个密探可属于多个标签。删除标签保留密探、练度和其他标签；保存后生效。</small>
-        </div>
-        <p v-if="invalidIds.length">有 {{ invalidIds.length }} 位密探已不在当前游戏图鉴中。<button type="button" :disabled="!ready" @click="cleanInvalid">清理失效密探引用</button></p>
-        <div class="organization-actions">
-          <button type="button" class="btn primary" :disabled="!ready || !changed" @click="saveDraft">保存分类设置</button>
-          <button type="button" :disabled="!ready" @click="resetDraft">放弃草稿，使用已读取分类</button>
-        </div>
-        <p v-if="changed && baselineRevision !== value.revision" role="status">云端分类已有更新，当前草稿仍保留。请核对后放弃草稿并重新编辑，避免覆盖其他设备的修改。</p>
-        <details class="organization-backup">
-          <summary>分类备份与恢复</summary>
-          <p>此文件只包含置顶、分组顺序和标签，密探档案备份不包含这些设置。</p>
-          <button type="button" :disabled="!ready" @click="exportBackup">导出已保存分类</button>
-          <label>选择分类备份<input type="file" accept="application/json,.json" :disabled="!ready" @change="readBackupFile" /></label>
-          <p v-if="importPreview">备份预览：{{ importPreview.pinned_ids.length }} 位置顶、{{ importPreview.tags.length }} 个标签。确认后替换当前账号的分类草稿，仍需点击“保存分类设置”。</p>
-          <button v-if="importPreview" type="button" :disabled="!ready" @click="draft = importPreview; importPreview = null">用备份替换分类草稿</button>
-        </details>
-        <p v-if="notice" role="status">{{ notice }}</p>
-      </div>
+      </form>
     </details>
   </section>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
+import { ArrowDown, ArrowUp, Pin, Plus, SlidersHorizontal, Tags } from '@lucide/vue'
 import { operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
-import { operatorOrganizationBackup, operatorOrganizationContent, readOperatorOrganizationBackup, updateOperatorTag } from '../../utils/operatorOrganization.js'
+import { operatorOrganizationContent, updateOperatorTag } from '../../utils/operatorOrganization.js'
 const props = defineProps({ value: { type: Object, required: true }, accountId: { type: String, required: true }, game: { type: String, required: true },
   catalog: { type: Object, required: true }, ready: Boolean, loading: Boolean, saving: Boolean, error: { type: String, default: '' },
-  discardedEnabled: Boolean, tagFilter: { type: String, default: '' }, selectedIds: { type: Array, default: () => [] },
+  discardedEnabled: Boolean, selectedIds: { type: Array, default: () => [] },
   save: { type: Function, required: true }, reload: { type: Function, required: true } })
-defineEmits(['update:tagFilter'])
-const panel = ref(null), draft = ref(null), baseline = ref(''), baselineRevision = ref(0), batchTag = ref(''), notice = ref(''), importPreview = ref(null)
-const changed = computed(() => draft.value && JSON.stringify(draft.value) !== baseline.value)
+const panelId = useId()
+const panel = ref(null), panelOpen = ref(false), editor = ref(null), draft = ref(null), baseline = ref(''), baselineRevision = ref(0)
+const batchTag = ref(''), notice = ref(''), noticeError = ref(false), touchedTagIds = ref(new Set()), validationAttempted = ref(false)
+const changed = computed(() => Boolean(draft.value && JSON.stringify(draft.value) !== baseline.value))
+defineExpose({ changed, open: panelOpen, panelId, toggle, resetDraft })
 const visibleStates = computed(() => draft.value?.status_order.filter(state => props.discardedEnabled || state !== 'discarded') || [])
 const invalidIds = computed(() => [...new Set([...(draft.value?.pinned_ids || []), ...(draft.value?.tags.flatMap(tag => tag.operator_ids) || [])])]
   .filter(id => !props.catalog[id]?.games?.includes(props.game)))
+const tagErrors = computed(() => {
+  const names = draft.value?.tags.map(tag => tag.name.trim()) || []
+  return names.map(name => !name ? '请输入标签名称' : name.length > 40 ? '标签名称不能超过 40 字' : names.filter(value => value === name).length > 1 ? '标签名称重复，请换一个名称' : '')
+})
+const hasTagErrors = computed(() => tagErrors.value.some(Boolean))
 const stateLabel = operatorAnnotationStatusLabel
+const tagInputId = tag => 'organization-tag-' + props.accountId + '-' + tag.id
+const visibleTagError = (tag, index) => tagErrors.value[index] && (tag.name.trim() || touchedTagIds.value.has(tag.id) || validationAttempted.value)
+function focusTag(index) { editor.value?.querySelectorAll('[data-tag-name]')[index]?.focus() }
 function resetDraft() {
   draft.value = operatorOrganizationContent(props.value)
   baseline.value = JSON.stringify(draft.value); baselineRevision.value = props.value.revision
-  notice.value = ''; importPreview.value = null
+  notice.value = ''; noticeError.value = false; touchedTagIds.value.clear(); validationAttempted.value = false
 }
-function onToggle() { if (panel.value.open && !draft.value) resetDraft() }
-watch(() => props.accountId, () => { draft.value = null; batchTag.value = ''; notice.value = ''; importPreview.value = null; if (panel.value) panel.value.open = false })
+function setPanelOpen(open) {
+  if (!panel.value) return
+  panel.value.open = panelOpen.value = open
+  if (open && !draft.value) resetDraft()
+}
+function toggle() { setPanelOpen(!panelOpen.value) }
+function onToggle() { if (panel.value) setPanelOpen(panel.value.open) }
+watch(() => props.accountId, () => { draft.value = null; batchTag.value = ''; notice.value = ''; panelOpen.value = false; if (panel.value) panel.value.open = false })
 watch(() => props.value, () => { if (draft.value && !changed.value) resetDraft(); if (!props.value.tags.some(tag => tag.id === batchTag.value)) batchTag.value = '' })
+watch(() => draft.value, () => { notice.value = ''; noticeError.value = false }, { deep: true, flush: 'sync' })
 function move(list, index, delta) { const [item] = list.splice(index, 1); list.splice(index + delta, 0, item) }
 function moveState(state, delta) {
   const other = visibleStates.value[visibleStates.value.indexOf(state) + delta]
   const first = draft.value.status_order.indexOf(state), second = draft.value.status_order.indexOf(other)
   ;[draft.value.status_order[first], draft.value.status_order[second]] = [draft.value.status_order[second], draft.value.status_order[first]]
 }
-function addTag() { draft.value.tags.push({ id: crypto.randomUUID(), name: '', operator_ids: [] }) }
+async function addTag() {
+  const tag = { id: crypto.randomUUID(), name: '', operator_ids: [] }
+  draft.value.tags.push(tag)
+  await nextTick(); focusTag(draft.value?.tags.findIndex(item => item.id === tag.id))
+}
 function cleanInvalid() {
   const invalid = new Set(invalidIds.value)
   draft.value.pinned_ids = draft.value.pinned_ids.filter(id => !invalid.has(id))
   draft.value.tags.forEach(tag => { tag.operator_ids = tag.operator_ids.filter(id => !invalid.has(id)) })
 }
 async function saveDraft() {
+  validationAttempted.value = true
+  if (hasTagErrors.value) { await nextTick(); focusTag(tagErrors.value.findIndex(Boolean)); return }
+  if (!props.ready || !changed.value) return
   try {
     const content = operatorOrganizationContent(draft.value)
     if (await props.save(content, baselineRevision.value)) { resetDraft(); notice.value = '分类设置已保存' }
-  } catch (err) { notice.value = err.message }
+  } catch (err) { notice.value = err.message; noticeError.value = true }
 }
 async function applyBatch(add) {
   try { await props.save(updateOperatorTag(props.value, batchTag.value, [...props.selectedIds], add)) }
-  catch (err) { notice.value = err.message }
-}
-function exportBackup() {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(operatorOrganizationBackup(props.value, props.game), null, 2)], { type: 'application/json' }))
-  const link = document.createElement('a'); link.href = url; link.download = '密探分类-' + props.accountId + '.json'; link.click(); URL.revokeObjectURL(url)
-}
-async function readBackupFile(event) {
-  const file = event.target.files?.[0], target = props.accountId
-  importPreview.value = null; notice.value = ''
-  if (!file) return
-  try {
-    if (file.size > 1024 * 1024) throw new Error('分类备份超过 1 MB')
-    const text = await file.text()
-    if (props.accountId === target) importPreview.value = readOperatorOrganizationBackup(text, props.game, props.catalog)
-  } catch (err) { if (props.accountId === target) notice.value = err.message }
-  finally { event.target.value = '' }
+  catch (err) { notice.value = err.message; noticeError.value = true }
 }
 </script>
 
 <style scoped>
-.operator-organization { padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
-.organization-filters, .organization-batch, .organization-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.operator-organization { container: operator-organization / inline-size; color: var(--ink); font-size: 13px; line-height: 1.6; }
+.organization-batch, .organization-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.organization-batch { margin: 0 14px 12px; }
 button, select, input { font: inherit; }
-button { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--tea); padding: 5px 9px; cursor: pointer; }
-button[aria-pressed="true"] { background: var(--cream); color: var(--ink); border-color: var(--tea); }
-button:disabled { opacity: .5; cursor: default; }
+button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--tea); padding: 5px 9px; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button:hover:not(:disabled) { background: var(--cream); border-color: var(--tea); }
 summary { padding: 5px 0; cursor: pointer; font-weight: 600; }
-.organization-editor { display: grid; gap: 12px; padding-top: 8px; }
-.organization-section { display: grid; gap: 7px; }
-.organization-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.organization-row > span, .organization-row > input { flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
-input:not([type="file"]), select { max-width: 100%; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--ink); padding: 5px; }
-input[type="file"] { max-width: 100%; }
-p, small { margin: 0; color: var(--tea); overflow-wrap: anywhere; }
-.organization-backup { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
-.organization-backup label { display: grid; gap: 6px; margin-top: 8px; }
-.organization-error { margin-bottom: 8px; color: var(--tea); }
+.organization-editor { display: grid; gap: 16px; max-width: 1040px; padding: 0 14px 14px; }
+.organization-editor-grid, .organization-order-panel { display: grid; gap: 16px; min-width: 0; }
+.organization-section { display: grid; align-content: start; gap: 9px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); }
+.organization-section-heading { display: flex; align-items: center; gap: 7px; }
+h3 { font-size: 14px; font-weight: 650; line-height: 1.5; }
+.organization-section-heading small { margin-left: auto; }
+.organization-sort-list { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.organization-sort-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.organization-sort-row:last-child { border-bottom: 0; }
+.organization-rank { display: grid; place-items: center; flex: 0 0 22px; height: 22px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-60); font-family: var(--font-d); font-size: 11px; }
+.organization-sort-name { flex: 1 1 60px; min-width: 0; overflow-wrap: anywhere; }
+.organization-row-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.organization-pin-row .organization-row-actions { flex-basis: 100%; padding-left: 30px; }
+.organization-tag-caption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-top: 4px; font-size: 12px; font-weight: 600; }
+.organization-tag-caption small { font-weight: 400; }
+.organization-tag-list { display: grid; gap: 8px; }
+.organization-tag-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.organization-tag-field { display: grid; gap: 5px; min-width: 0; }
+.organization-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.organization-tag-field input { min-height: 36px; }
+.organization-tag-meta { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; align-items: center; justify-content: end; }
+.organization-tag-meta small { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.organization-delete { min-height: 36px; min-width: 44px; color: var(--rouge); background: transparent; border-color: transparent; }
+.organization-add { justify-self: stretch; width: 100%; min-height: 36px; border-style: dashed; background: transparent; }
+input:not([type="file"]), select { width: 100%; min-width: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); padding: 7px 9px; }
+.organization-batch select { width: auto; }
+input[aria-invalid="true"] { border-color: var(--rouge); }
+p, small { margin: 0; color: var(--ink-60); overflow-wrap: anywhere; }
+small { font-size: 12px; }
+.organization-empty { padding: 9px 0; }
+.organization-save-area { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.organization-save { background: var(--tea); color: var(--cream); border-color: var(--tea); padding: 7px 14px; font-weight: 600; }
+.organization-save:hover:not(:disabled) { background: var(--tea-deep); color: var(--cream); }
+.organization-feedback { color: var(--ink-60); font-size: 12px; }
+.operator-organization > .organization-feedback { margin: 0 14px 10px; }
+.organization-error, .organization-field-error { color: var(--rouge); font-size: 12px; }
+.organization-error { margin: 8px 0; }
+.operator-organization > .organization-error { margin: 0 14px 12px; }
+.organization-warning { padding: 9px 12px; background: var(--paper); border-radius: 7px; }
 button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+@container operator-organization (min-width: 700px) {
+  .organization-editor-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; }
+}
+@container operator-organization (max-width: 360px) {
+  .organization-tag-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
 </style>
