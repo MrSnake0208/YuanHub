@@ -196,7 +196,7 @@ async function downloadGuide() {
     const [catalog, operators] = await Promise.all([getRecruitmentCatalog(token.game), getOperatorCatalog()])
     if (!sameOwner(token)) return
     const guide = recruitmentImportGuide(token.game, catalog, operators)
-    downloadFile(JSON.stringify(guide, null, 2), 'recruitment-import-guide-' + token.game + '.json', 'application/json;charset=utf-8')
+    downloadFile(JSON.stringify(guide, null, 2), 'YuanHub-招募档案导入规范-' + token.game + '.json', 'application/json;charset=utf-8')
     notice.value = '已下载导入规范和当前公共目录，请交给 AI 与原始资料一起使用'
   } catch (failure) { if (sameOwner(token)) await showError(failure.message || '获取目录失败，请稍后重试') }
   finally { guideLoading.value = false }
@@ -208,7 +208,8 @@ async function exportFile(format) {
   try {
     const document = await exportRecruitment(token.accountId)
     if (!sameOwner(token)) return
-    const filename = 'recruitment-' + token.accountId + '.' + format
+    const accountName = (props.accountName || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 48) || '未命名账号'
+    const filename = 'YuanHub-' + (format === 'json' ? '招募档案完整备份-' : '招募记录表格-') + token.game + '-' + accountName + '.' + format
     if (format === 'json') {
       const json = JSON.stringify(document)
       if (new Blob([json]).size > MAX_IMPORT_BYTES || document.events.length > 20000) throw new Error('快照超过可恢复备份的 5 MiB / 20,000 条结果限制，未生成截断文件')

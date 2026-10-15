@@ -12,7 +12,7 @@ import { installViewport } from '../test-support/viewport.js'
 vi.mock('../src/api/recruitment.js', () => ({ exportRecruitment: vi.fn(), previewRecruitmentImport: vi.fn(), commitRecruitmentImport: vi.fn(), getRecruitmentCatalog: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
 vi.mock('../src/api/request.js', () => ({ request: vi.fn() }))
-let capturedBlob
+let capturedBlob, capturedFilename
 const documentFixture = () => ({ schema: 'yuanhub.recruitment.v1', exported_at: '2026-10-01T00:00:00Z', source_account: { account_id: 'acc-a' }, game: '代号鸢', archive_revision: 3, baseline: 100, current_pool_id: 'pool-a', pools: [{ pool_id: 'pool-a', snapshot: { name: '测试池' }, progress: null }], temporary_agents: [], events: [recruitmentEvent('stable', 17)], batches: [] })
 function previewFixture() { return { preview_token: 'bound-preview', document_hash: 'bound-hash', target_revision: 3, expires_at: new Date(Date.now() + 60000).toISOString(), items: [{ entity_type: 'state', id: 'state', status: 'add', reason: '恢复进度' }, { entity_type: 'event', id: 'stable', status: 'count_overlap', reason: '可能已包含在基准中，默认跳过' }], stats: { added: 1, duplicates: 0, conflicts: 0, skipped: 1 }, risks: ['请核对基准与记录重叠'], current_known_total: 100, backup_known_total: 117, candidate_known_total: 100, can_commit: true } }
 function render(props = {}) { return mount(RecruitmentExchange, { attachTo: document.body, global: { stubs: { Teleport: true } }, props: { open: true, accountId: 'acc-a', accountName: '大号', identity: 'user-a', revision: 3, game: '代号鸢', contextVersion: 0, requestVersion: 0, ...props } }) }
@@ -43,10 +43,10 @@ it.each([390, 1440])('招募备份预览跨布局保持文件、令牌绑定的�
   }
 })
 beforeEach(() => {
-  vi.clearAllMocks(); vi.stubGlobal('Blob', NodeBlob); capturedBlob = null
+  vi.clearAllMocks(); vi.stubGlobal('Blob', NodeBlob); capturedBlob = null; capturedFilename = null
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(blob => { capturedBlob = blob; return 'blob:synthetic' }) })
   Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { capturedFilename = this.download })
   api.exportRecruitment.mockResolvedValue(documentFixture()); api.previewRecruitmentImport.mockImplementation(async () => previewFixture()); api.commitRecruitmentImport.mockResolvedValue({ archive_revision: 4 })
 })
 
@@ -127,6 +127,19 @@ it('完整snapshot下载包含baseline/池状态/批次/tombstone，CSV不从当
   expect(JSON.parse(await capturedBlob.text())).toEqual(document); expect(wrapper.get('input[type=file]').attributes('disabled')).toBeDefined()
   await button(wrapper, '导出表格（CSV）').trigger('click'); await flushPromises(); const csv = await capturedBlob.text(); expect(csv).toContain('"baseline"'); expect(csv).toContain('"pool_state"'); expect(csv).toContain('"batch"'); expect(csv).toContain('"deleted"'); expect(csv).toContain('"\'=1+1","17","0"'); expect(api.exportRecruitment).toHaveBeenCalledWith('acc-a')
 })
+it.each([
+  ['大号', '大号'],
+  ['  大号/测试:*?"<>|\\\u0000\n  ', '大号_测试__________'],
+  ['', '未命名账号'],
+  ['   ', '未命名账号'],
+  ['鸢'.repeat(60), '鸢'.repeat(48)],
+])('中文导出文件名保留游戏和账号，清理非法字符及空名称：%s', async (accountName, safeName) => {
+  const wrapper = render({ accountName })
+  await button(wrapper, '下载完整备份（JSON）').trigger('click'); await flushPromises()
+  expect(capturedFilename).toBe('YuanHub-招募档案完整备份-代号鸢-' + safeName + '.json')
+  await button(wrapper, '导出表格（CSV）').trigger('click'); await flushPromises()
+  expect(capturedFilename).toBe('YuanHub-招募记录表格-代号鸢-' + safeName + '.csv')
+})
 it('JSON按实际紧凑UTF8字节导出接近5MiB仍可恢复，超限快照不下载截断文件', async () => {
   const document = documentFixture(); document.events = Array.from({ length: 4000 }, (_, index) => ({ ...recruitmentEvent('e_' + index, 17), note: '' }))
   const overhead = new NodeBlob([JSON.stringify(document)]).size, available = MAX_IMPORT_BYTES - 10 - overhead, perEvent = Math.floor(available / 4000), remainder = available % 4000
@@ -182,6 +195,7 @@ it('规范下载读取当前游戏公共目录，不含用户档案，并附最�
   mockGuideCatalogs(); const wrapper = render()
   await button(wrapper, '获取 AI 导入规范').trigger('click'); await flushPromises()
   const guide = JSON.parse(await capturedBlob.text())
+  expect(capturedFilename).toBe('YuanHub-招募档案导入规范-代号鸢.json')
   expect(api.getRecruitmentCatalog).toHaveBeenCalledWith('代号鸢')
   expect(guide.instructions.join('')).toContain('可下载的UTF-8 .json文件')
   expect(guide.instructions.join('')).toContain('粘贴 JSON')
