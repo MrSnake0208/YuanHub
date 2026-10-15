@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import Detail from '../src/components/calendar/CalendarDetailDialog.vue'
+import EventCard from '../src/components/calendar/CalendarEventCard.vue'
 import Month from '../src/components/calendar/CalendarMonthView.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '../src/data/activityCalendarSubscriptions.js'
 
@@ -43,7 +44,9 @@ it('shows live deduplicated day or single-item data, updates/deletion and select
   await wrapper.setProps({ selection: { date, id: 'two' } })
   expect(wrapper.findAll('article')).toHaveLength(1)
   await wrapper.setProps({ items: [item('two', { title: 'updated' })] })
-  expect(wrapper.get('h4').text()).toBe('updated')
+  expect(wrapper.get('h2').text()).toBe('updated')
+  expect(wrapper.find('.calendar-event-title').exists()).toBe(false)
+  expect(wrapper.find('.calendar-detail-done').exists()).toBe(false)
   await wrapper.get('.calendar-private-add').trigger('click')
   expect(wrapper.emitted('create-private')).toEqual([[date]])
   await wrapper.setProps({ items: [] })
@@ -81,8 +84,35 @@ it('single-item details are independent of the anchor day and follow edits withi
   expect(wrapper.findAll('article')).toHaveLength(0)
   await wrapper.setProps({ selection: { date, id: 'future' } })
   expect(wrapper.findAll('article')).toHaveLength(1)
-  expect(wrapper.get('h4').text()).toBe('future')
+  expect(wrapper.get('h2').text()).toBe('future')
   await wrapper.setProps({ items: [{ ...future, start_date: '2026-10-20', end_date: '2026-10-20', title: 'moved' }] })
-  expect(wrapper.get('h4').text()).toBe('moved')
+  expect(wrapper.get('h2').text()).toBe('moved')
   expect(wrapper.get('.calendar-range').text()).toContain('2026-10-20')
+})
+
+it('single detail uses the event title once, hides missing-time noise, and preserves the day list and default agenda card', async () => {
+  const event = item('activity', { title: 'https://example.com/' + 'long-title/'.repeat(7), source_type: 'MANUAL' })
+  const wrapper = mount(Detail, { props: { ...props, selection: { date, id: event.id }, items: [event, item('another')] }, global: { stubs: { Teleport: true } } })
+  expect(wrapper.get('h2').text()).toBe(event.title)
+  expect(wrapper.get('.calendar-event').classes()).toContain('is-detail')
+  expect(wrapper.find('.calendar-event-title').exists()).toBe(false)
+  expect(wrapper.find('footer').exists()).toBe(false)
+  expect(wrapper.get('.calendar-category').classes()).toContain('is-muted')
+  expect(wrapper.get('.calendar-range').text()).toContain(date)
+  expect(wrapper.text()).not.toContain('具体时间未提供')
+  await wrapper.get('button[aria-label="关闭日历详情"]').trigger('click')
+  await wrapper.get('.calendar-detail-mask').trigger('click')
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  expect(wrapper.emitted('close')).toHaveLength(3)
+  await wrapper.setProps({ selection: { date, id: '' } })
+  expect(wrapper.findAll('.calendar-event.is-day')).toHaveLength(2)
+  expect(wrapper.findAll('h3.calendar-event-title').map(node => node.text())).toEqual([event.title, 'another'])
+  expect(wrapper.get('.calendar-detail-done').text()).toBe('完成')
+  expect(wrapper.text()).not.toContain('具体时间未提供')
+  const agenda = mount(EventCard, { props: { item: event, today: date } })
+  expect(agenda.get('h4').text()).toBe(event.title)
+  expect(agenda.text()).toContain('具体时间未提供')
+  expect(agenda.get('.calendar-event').classes()).not.toContain('is-detail')
+  expect(agenda.get('.calendar-category').classes()).not.toContain('is-muted')
+  agenda.unmount()
 })

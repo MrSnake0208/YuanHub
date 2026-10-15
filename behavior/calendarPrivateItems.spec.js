@@ -102,7 +102,7 @@ it.each(['agenda', 'timeline', 'month'])('private and official items coexist in 
   await render(`scope=mine&view=${view}&date=2026-10-15&ref=keep`)
   expect(wrapper.text()).toContain('私人内容'); expect(wrapper.text()).toContain('官方活动')
   if (view === 'timeline') { await wrapper.get('.calendar-timeline-bar[aria-label^="私人内容"]').trigger('click'); await flushPromises() }
-  const privateCard = wrapper.findAll('.calendar-event').find(card => card.text().includes('私人内容'))
+  const privateCard = wrapper.get(`.calendar-event[data-event-id="${rows[0].id}"]`)
   expect(privateCard.text()).toContain('仅自己可见')
   expect(privateCard.text()).not.toContain('手工整理')
   expect(privateCard.text()).not.toContain('编辑待办')
