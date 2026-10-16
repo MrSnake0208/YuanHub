@@ -1,10 +1,13 @@
 <template>
   <section class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
     <header class="training-heading">
-      <h2 id="today-training-title">我的养成计划</h2>
-      <router-link :to="{ path: '/operator', query: { tab: 'current' } }">去密探养成</router-link>
+      <div class="training-heading-copy">
+        <h2 id="today-training-title">我的养成计划</h2>
+        <p v-if="snapshot && plans.length" class="training-hint">{{ plans.length }} 个清单 · {{ planMemberCount }} 条培养目标</p>
+        <p v-else class="training-hint">当前账号的培养清单与密探备注</p>
+      </div>
+      <router-link class="training-manage" :to="{ path: '/operator', query: { tab: 'current' } }">管理养成<ArrowRight :size="14" aria-hidden="true" /></router-link>
     </header>
-    <p class="training-hint">当前账号的云端培养清单与密探备注</p>
     <p v-if="!identity || !accountId">登录并选择游戏账号后，可查看养成计划。</p>
     <template v-else>
       <p v-if="loading && !snapshot" role="status">正在读取养成计划…</p>
@@ -15,21 +18,36 @@
       </div>
       <template v-if="snapshot">
         <p v-if="!plans.length && !otherNotes.length">还没有培养成员或备注，可去密探养成设置计划。</p>
-        <article v-for="plan in plans" :key="plan.id" class="training-plan">
-          <h3>{{ plan.name }}<span v-if="plan.id === snapshot.workspace.activePlanId" class="training-hint"> · 当前清单</span></h3>
+        <article v-for="plan in plans" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
+          <header class="training-plan-heading">
+            <h3>{{ plan.name }}</h3>
+            <span class="training-count">{{ plan.members.length }}人</span>
+            <span v-if="plan.id === snapshot.workspace.activePlanId" class="training-current">当前清单</span>
+          </header>
           <ul class="training-list">
             <li v-for="member in plan.members" :key="member.id">
-              <router-link :to="operatorTo(member.id)">{{ member.name }}</router-link>
-              <p class="training-hint">{{ member.target }}</p>
+              <router-link class="training-member" :to="operatorTo(member.id)">
+                <OperatorAvatar :avatar="member.avatar" :name="member.name" :rarity="member.rarity" aria-hidden="true" />
+                <span class="training-member-name">{{ member.name }}</span>
+                <span class="training-target">{{ member.target }}</span>
+                <ChevronRight class="training-chevron" :size="14" aria-hidden="true" />
+              </router-link>
               <p v-if="member.note" class="training-note">{{ member.note }}</p>
             </li>
           </ul>
         </article>
         <article v-if="otherNotes.length" class="training-plan">
-          <h3>其他密探备注</h3>
+          <header class="training-plan-heading">
+            <h3>其他密探备注</h3>
+            <span class="training-count">{{ otherNotes.length }}人</span>
+          </header>
           <ul class="training-list">
             <li v-for="member in otherNotes" :key="member.id">
-              <router-link :to="operatorTo(member.id)">{{ member.name }}</router-link>
+              <router-link class="training-member training-member-notes" :to="operatorTo(member.id)">
+                <OperatorAvatar :avatar="member.avatar" :name="member.name" :rarity="member.rarity" aria-hidden="true" />
+                <span class="training-member-name">{{ member.name }}</span>
+                <ChevronRight class="training-chevron" :size="14" aria-hidden="true" />
+              </router-link>
               <p class="training-note">{{ member.note }}</p>
             </li>
           </ul>
@@ -41,6 +59,8 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ArrowRight, ChevronRight } from '@lucide/vue'
+import OperatorAvatar from '../operator/OperatorAvatar.vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
@@ -64,11 +84,14 @@ function member(id, target) {
   if (target?.level != null) labels.push('等级 ' + target.level)
   if (target?.elite != null) labels.push('修为 ' + target.elite)
   if (target?.huaji || target?.starLevel != null || target?.star_level != null) labels.push(operatorHuajiLabel({ ...entry, ...target }))
-  return { id, name: entry.name, note: snapshot.value.notes[id] || '', target: labels.length ? '目标：' + labels.join(' · ') : '未保存专属目标，详见养成页' }
+  return { id, name: entry.name, avatar: typeof entry.avatar === 'string' ? entry.avatar : '', rarity: Number(entry.rarity) || 3,
+    note: snapshot.value.notes[id] || '', target: labels.length ? labels.join(' · ') : '未保存专属目标，详见养成页' }
 }
 const plans = computed(() => (snapshot.value?.workspace.plans || []).map(plan => ({ ...plan,
   members: [...trainingPlanMemberIds(plan, snapshot.value.favorites)].map(id => member(id, plan.source === 'favorites' ? snapshot.value.targets[id] : plan.targets[id]))
-})).filter(plan => plan.members.length))
+})).filter(plan => plan.members.length)
+  .sort((a, b) => Number(b.id === snapshot.value.workspace.activePlanId) - Number(a.id === snapshot.value.workspace.activePlanId)))
+const planMemberCount = computed(() => plans.value.reduce((total, plan) => total + plan.members.length, 0))
 const otherNotes = computed(() => {
   const planned = new Set(plans.value.flatMap(plan => plan.members.map(item => item.id)))
   return Object.keys(snapshot.value?.notes || {}).filter(id => !planned.has(id) && snapshot.value.notes[id].trim()).map(id => member(id))
@@ -137,13 +160,24 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .today-training { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
-h3 { color: var(--tea); }
+h2 { color: var(--tea); font: 800 20px/1.5 var(--font-s); }
+h3 { color: var(--tea); font: 700 15px/1.5 var(--font-b); }
 p { line-height: 1.7; }
 .training-hint { color: var(--ink-60); font-weight: 400; }
 .training-plan { border-top: 1px solid var(--line); }
+.training-current { border: 1px solid #a8c6b3; background: #e5eee5; color: #365b43; font-weight: 600; }
+.training-count, .training-target, .training-chevron { color: var(--ink-60); font-weight: 400; }
+.training-target { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .training-list { list-style: none; }
 a, button { color: var(--tea); font-weight: 700; }
+.training-manage, .training-member { text-decoration: none; }
+.training-manage { font-weight: 500; }
+.training-member:focus-visible { background: var(--cream); }
+.training-note { border-left: 2px solid var(--line); background: var(--cream); color: var(--ink-60); }
+@media (hover: hover) {
+  .training-manage:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .training-member:hover { background: var(--cream); }
+}
 .training-error { color: var(--rouge); }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
