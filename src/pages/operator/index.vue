@@ -10,8 +10,8 @@
             switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
         <template #primary-actions>
-          <button type="button" class="btn primary roster-share" :aria-expanded="!accountWorkspaceCompact" aria-controls="operator-account-workspace"
-            :title="currentAccountName + ' · ' + ledgerShareStatus" @click="accountWorkspaceCompact = !accountWorkspaceCompact">
+          <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
+            :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
             <Share2 :size="16" aria-hidden="true" />分享 BOX <small>{{ ledgerShareStatus }}</small>
           </button>
           <router-link class="btn ghost roster-view-box" to="/operator/share"><Users :size="16" aria-hidden="true" />查看他人 BOX</router-link>
@@ -122,15 +122,24 @@
               @click="openGrowthPlanningPreview">养成规划 · 即将上线</button>
           </div>
 
-          <!-- 分享与数据交换面板；账号选择统一在个人中心。 -->
+          <OperatorShareManager
+            ref="operatorShareManager"
+            v-model:open="shareModalOpen"
+            :account-id="auth.isLoggedIn ? accountId : ''"
+            :account-name="currentAccountName"
+            :is-logged-in="auth.isLoggedIn"
+            @share-change="operatorShare = $event"
+          />
+
+          <!-- JSON 数据交换保留原有入口，与分享弹窗独立。 -->
           <AccountWorkspace
-            v-show="!accountWorkspaceCompact"
+            v-show="showArchive && !accountWorkspaceCompact"
             id="operator-account-workspace"
             tour-target="operator-workspace"
             class="operator-account-workspace"
             :class="{ 'is-compact': accountWorkspaceCompact, 'has-archive': showArchive }"
             v-model:compact="accountWorkspaceCompact"
-            summary-label="分享与数据交换"
+            summary-label="JSON 数据交换"
             split
             :show-account-bar="false"
             :error="accountError"
@@ -138,20 +147,6 @@
             <template #summary-actions>
               <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="hideBackupImport">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
             </template>
-            <template #side>
-              <OperatorShareManager
-                v-if="auth.isLoggedIn && accountId"
-                ref="operatorShareManager"
-                :account-id="accountId"
-                @share-change="operatorShare = $event"
-              />
-              <div v-else class="operator-share-placeholder">
-                <span class="section-kicker">分享链接</span>
-                <h2>分享当前密探 BOX</h2>
-                <p>{{ !auth.isLoggedIn ? '登录并选择账号后，可生成分享链接。' : '创建并选择账号后，可生成分享链接。' }}</p>
-              </div>
-            </template>
-
             <div v-if="showArchive" class="archive-workspace">
               <div class="archive-heading">
                 <div>
@@ -3517,6 +3512,7 @@ watch(
   { immediate: true },
 );
 const accountWorkspaceCompact = ref(true);
+const shareModalOpen = ref(false);
 const operatorShareManager = ref(null);
 const operatorShare = ref(null);
 const shareCopyFeedback = ref("");
@@ -3558,7 +3554,7 @@ async function copyLedgerShare() {
   clearTimeout(shareCopyTimer);
   const ok = await operatorShareManager.value?.copyCurrentShare();
   if (seq !== shareCopySeq || targetAccount !== accountId.value) return;
-  shareCopyFeedback.value = ok ? "分享链接已复制" : "复制失败，请展开面板手动复制链接";
+  shareCopyFeedback.value = ok ? "分享链接已复制" : "复制失败，请打开分享弹窗手动复制链接";
   shareCopyTimer = setTimeout(() => { shareCopyFeedback.value = ""; }, ok ? 2200 : 4000);
 }
 const accountsLoading = ref(false);

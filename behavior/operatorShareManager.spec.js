@@ -9,9 +9,13 @@ vi.mock('../src/api/accountShare.js', () => ({
   setAccountShareScope: vi.fn(), getAccountShare: vi.fn(), regenerateAccountShare: vi.fn(), revokeAccountShare: vi.fn()
 }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
+function renderManager(options) {
+  return mount(Manager, { ...options, props: { open: true, ...options.props }, global: { stubs: { Teleport: true } } })
+}
 const active = (id, code = id + '-code') => ({ account_id: id, active: true, share_code: code, scopes: ['operator'] })
 function button(wrapper, text) { return wrapper.findAll('button').find(node => node.text().includes(text)) }
 beforeEach(() => {
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   for (const fn of Object.values(api)) fn.mockReset()
   dialog.confirm.mockReset()
   api.getAccountShare.mockResolvedValue({ active: false })
@@ -19,7 +23,7 @@ beforeEach(() => {
 
 describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it('初始化只读取，不会创建、更新或撤销分享', async () => {
-    const wrapper = mount(Manager, { props: { accountId: 'a' } })
+    const wrapper = renderManager({ props: { accountId: 'a' } })
     expect(wrapper.get('[role="status"]').text()).toContain('读取')
     await flushPromises()
     expect(api.getAccountShare).toHaveBeenCalledExactlyOnceWith('a')
@@ -29,7 +33,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it('账号切换后 A 的迟到结果不能显示在 B 的工作区', async () => {
     const a = deferred(), b = deferred()
     api.getAccountShare.mockImplementation(id => id === 'a' ? a.promise : b.promise)
-    const wrapper = mount(Manager, { props: { accountId: 'a' } })
+    const wrapper = renderManager({ props: { accountId: 'a' } })
     await wrapper.setProps({ accountId: 'b' })
     b.resolve(active('b')); await flushPromises()
     a.resolve(active('a')); await flushPromises()
@@ -40,7 +44,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it('旧账号请求结束不能清除新账号仍在等待的 loading', async () => {
     const a = deferred(), b = deferred()
     api.getAccountShare.mockImplementation(id => id === 'a' ? a.promise : b.promise)
-    const wrapper = mount(Manager, { props: { accountId: 'a' } })
+    const wrapper = renderManager({ props: { accountId: 'a' } })
     await wrapper.setProps({ accountId: 'b' })
     a.resolve(active('a')); await flushPromises()
     expect(wrapper.get('[role="status"]').text()).toContain('读取')
@@ -50,7 +54,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it.each(['重新生成', '全部撤销'])('确认 %s 期间切换账号不会对 B 执行 A 的指令', async label => {
     api.getAccountShare.mockImplementation(id => Promise.resolve(active(id)))
     const confirmation = deferred(); dialog.confirm.mockReturnValue(confirmation.promise)
-    const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+    const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
     await button(wrapper, label).trigger('click')
     await wrapper.setProps({ accountId: 'b' }); await flushPromises()
     confirmation.resolve(true); await flushPromises()
@@ -60,17 +64,18 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
   })
   it('生成按钮只在显式点击后调用写 API，等待期间禁止重复点击', async () => {
     const result = deferred(); api.setAccountShareScope.mockReturnValue(result.promise)
-    const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+    const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
     await wrapper.get('[role="switch"][aria-label="密探 BOX分享"]').setValue(true)
     expect(api.setAccountShareScope).toHaveBeenCalledExactlyOnceWith('a', 'operator', true)
-    expect(wrapper.findAll('button').every(node => node.element.disabled)).toBe(true)
+    expect(wrapper.get('.share-manager').findAll('button').every(node => node.element.disabled)).toBe(true)
+    expect(wrapper.get('[aria-label="关闭分享弹窗"]').element.disabled).toBe(false)
     result.resolve(active('a', 'safe/code')); await flushPromises()
     expect(wrapper.get('a').attributes('href')).toBe('http://127.0.0.1/operator/share/safe%2Fcode')
     expect(wrapper.get('input[readonly]').attributes()).toHaveProperty('readonly')
   })
   it('查询失败展示可理解的错误且不会自动重试写操作', async () => {
     api.getAccountShare.mockRejectedValue(new TypeError('Failed to fetch'))
-    const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+    const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toBe('网络异常，请稍后重试')
     expect(api.setAccountShareScope).not.toHaveBeenCalled()
     expect(api.regenerateAccountShare).not.toHaveBeenCalled()
@@ -78,7 +83,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it('卸载后迟到请求不再发出成功状态事件', async () => {
     const result = deferred(); api.getAccountShare.mockReturnValue(result.promise)
     const onShareChange = vi.fn()
-    const wrapper = mount(Manager, { props: { accountId: 'a', onShareChange } })
+    const wrapper = renderManager({ props: { accountId: 'a', onShareChange } })
     const count = onShareChange.mock.calls.length
     wrapper.unmount(); result.resolve(active('a')); await flushPromises()
     expect(onShareChange).toHaveBeenCalledTimes(count)
@@ -87,7 +92,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
 
 it('regression: clearing the selected account cancels loading even while the previous read is pending', async () => {
   const pending = deferred(); api.getAccountShare.mockReturnValue(pending.promise)
-  const wrapper = mount(Manager, { props: { accountId: 'a' } })
+  const wrapper = renderManager({ props: { accountId: 'a' } })
   await wrapper.setProps({ accountId: '' })
   expect(wrapper.text()).not.toContain('正在读取分享状态')
   pending.resolve(active('a')); await flushPromises()
@@ -97,14 +102,14 @@ it('regression: clearing the selected account cancels loading even while the pre
 })
 
 it('empty account initialization never calls account APIs', async () => {
-  const wrapper = mount(Manager, { props: { accountId: '' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: '' } }); await flushPromises()
   expect(wrapper.text()).not.toContain('正在读取分享状态')
   for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled()
 })
 
 it('星石独立开启不点亮密探徽标，两个范围共用代码且各有对应链接', async () => {
   api.getAccountShare.mockResolvedValue({ ...active('a'), scopes: ['star'] })
-  const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   expect(wrapper.get('input[readonly]').element.value).toContain('/star/share/a-code')
   expect(wrapper.emitted('share-change').at(-1)[0]).toMatchObject({ status: '未开启', link: '' })
   api.setAccountShareScope.mockResolvedValue({ ...active('a'), scopes: ['operator', 'star'] })
@@ -119,7 +124,7 @@ it('星石独立开启不点亮密探徽标，两个范围共用代码且各有�
 it('授权保存过程中切换账号，旧账号结果不会改写新账号开关与链接', async () => {
   api.getAccountShare.mockImplementation(id => Promise.resolve(active(id)))
   const pending = deferred(); api.setAccountShareScope.mockReturnValue(pending.promise)
-  const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   await wrapper.get('[role="switch"][aria-label="星石背包分享"]').setValue(true)
   expect(wrapper.findAll('[role="switch"]').every(node => node.element.disabled)).toBe(true)
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
@@ -130,7 +135,7 @@ it('授权保存过程中切换账号，旧账号结果不会改写新账号开�
 it('拒绝全局撤销保留授权，确认文案明确涵盖两种旧链接', async () => {
   api.getAccountShare.mockResolvedValue({ ...active('a'), scopes: ['operator', 'star'] })
   dialog.confirm.mockResolvedValue(false)
-  const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   await button(wrapper, '全部撤销').trigger('click'); await flushPromises()
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('两个旧链接') }))
   expect(api.revokeAccountShare).not.toHaveBeenCalled()
@@ -139,7 +144,7 @@ it('拒绝全局撤销保留授权，确认文案明确涵盖两种旧链接', a
 it('复制失败保留只读链接，允许手动选中复制', async () => {
   api.getAccountShare.mockResolvedValue(active('a'))
   vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
-  const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   await wrapper.findAll('button').find(node => node.text().includes('复制密探')).trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('复制失败，请手动选中复制')
   expect(wrapper.get('input[readonly]').element.value).toContain('a-code')
@@ -147,7 +152,7 @@ it('复制失败保留只读链接，允许手动选中复制', async () => {
 it('账号切换后旧复制结果不显示在新账号卡片', async () => {
   api.getAccountShare.mockImplementation(id => Promise.resolve(active(id)))
   const copied = deferred(); vi.stubGlobal('navigator', { clipboard: { writeText: () => copied.promise } })
-  const wrapper = mount(Manager, { props: { accountId: 'a' } }); await flushPromises()
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   await wrapper.findAll('button').find(node => node.text().includes('复制密探')).trigger('click')
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   copied.resolve(); await flushPromises()
