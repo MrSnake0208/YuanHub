@@ -239,3 +239,47 @@
 .calendar-public .calendar-private-actions button { min-height: 44px; padding: 8px 12px; }
 .calendar-public .calendar-description { overflow-wrap: anywhere; white-space: pre-wrap; }
 }
+
+/* 我的日历手机端专属排版；公开模式及 >=768px 沿用原布局。 */
+@media (max-width: 767px) {
+  .calendar-mine-mobile .calendar-subscription-toolbar { row-gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .calendar-mine-mobile .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-mine-mobile .calendar-subscription-toolbar > .calendar-chips button[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 65%, var(--surface)); }
+  .calendar-mine-mobile .calendar-view-tools { display: flex; gap: 8px; }
+  .calendar-mine-mobile .calendar-view-switcher { flex: 1; min-width: 0; }
+  .calendar-mine-mobile .calendar-view-switcher button { padding-inline: 4px; }
+  .calendar-mine-mobile .calendar-today-action { flex: none; padding-inline: 8px; }
+  .calendar-mine-mobile .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; min-width: 0; }
+  .calendar-mine-mobile .account-switcher .context-selector { display: flex; width: 100%; min-width: 0; padding: 8px 6px; }
+  .calendar-mine-mobile .account-switcher .account-name { min-width: 0; }
+  .calendar-mine-mobile .calendar-private-add { grid-column: 2; grid-row: 3; min-height: 38px; padding: 6px 8px; font-size: 13px; white-space: nowrap; }
+  .calendar-mine-mobile .calendar-filter-state { flex-wrap: wrap; gap: 4px 8px; }
+  .calendar-mine-mobile .calendar-filter-summary { display: none; }
+  .calendar-mine-mobile .calendar-active-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+  .calendar-mine-mobile .calendar-active-filters button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 6px; font-size: 12px; }
+  .calendar-mine-mobile .calendar-filter-clear { flex: none; min-height: 32px; padding: 4px; font-size: 12px; }
+  .calendar-mine-mobile .calendar-agenda { gap: 20px; }
+  .calendar-mine-mobile .calendar-section { gap: 10px; }
+  .calendar-mine-mobile .calendar-section > h2 { flex-wrap: wrap; gap: 4px 8px; padding-bottom: 8px; font-size: 22px; }
+  .calendar-mine-mobile .calendar-personal-today > h2 { border-bottom: 0; padding-bottom: 0; }
+  .calendar-mine-mobile .calendar-personal-today > h2 > time { font: 13px var(--font-b); color: var(--ink-60); }
+  .calendar-mine-mobile .calendar-section > h2 > span { margin-left: auto; }
+  .calendar-mine-mobile .calendar-date-group, .calendar-mine-mobile .calendar-event-list { gap: 10px; }
+  .calendar-mine-mobile .calendar-event.is-personal { display: flex; flex-direction: column; padding: 14px; border-left-width: 1px; gap: 6px; }
+  .calendar-mine-mobile .is-personal .calendar-event-heading, .calendar-mine-mobile .is-personal .calendar-event-identity { display: contents; }
+  .calendar-mine-mobile .is-personal .calendar-event-title { order: 0; margin: 0; font-size: 21px; line-height: 1.4; overflow-wrap: anywhere; }
+  .calendar-mine-mobile .is-personal .calendar-event-status { order: 1; gap: 4px 8px; }
+  .calendar-mine-mobile .is-personal .calendar-range { order: 2; margin: 0; flex-wrap: wrap; font-size: 13px; }
+  .calendar-mine-mobile .is-personal .calendar-badges { order: 3; gap: 4px 8px; }
+  .calendar-mine-mobile .is-personal .calendar-badges > span { padding: 2px 6px; border: 0; font-size: 12px; font-weight: 400; background: var(--cream); color: var(--ink-60); }
+  .calendar-mine-mobile .is-personal .calendar-category.is-untyped { background: transparent; padding-inline: 0; }
+  .calendar-mine-mobile .is-personal > .calendar-hint { order: 4; margin: 0; font-size: 12px; }
+  .calendar-mine-mobile .is-personal .calendar-description { order: 5; margin: 0; font-size: 13px; }
+  .calendar-mine-mobile .is-personal .calendar-association { order: 6; }
+  .calendar-mine-mobile .is-personal .calendar-event-foot { order: 7; margin: 0; }
+  .calendar-mine-mobile .is-personal .calendar-subscription, .calendar-mine-mobile .is-personal .calendar-private-actions { order: 8; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .calendar-mine-mobile .is-personal .calendar-subscription-actions { gap: 6px 8px; }
+  .calendar-mine-mobile .is-personal .calendar-subscription-actions > button, .calendar-mine-mobile .is-personal .calendar-private-actions > button { min-height: 34px; padding: 6px 8px; font-size: 12px; }
+  .calendar-mine-mobile .is-personal .calendar-activity-status { flex-basis: 100%; margin: 0; font-size: 13px; font-weight: 700; }
+  .calendar-mine-mobile .is-personal .calendar-todo-card-summary { margin: 0; font-size: 12px; }
+}

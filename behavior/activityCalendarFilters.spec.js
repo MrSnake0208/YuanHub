@@ -21,7 +21,7 @@ beforeEach(() => {
     removeEventListener: vi.fn(target.removeEventListener.bind(target)),
     dispatchEvent: target.dispatchEvent.bind(target),
   }
-  vi.stubGlobal('matchMedia', vi.fn(() => desktopMedia))
+  vi.stubGlobal('matchMedia', vi.fn(query => query === '(min-width: 1024px)' ? desktopMedia : Object.assign(new EventTarget(), { matches: false })))
   isFeatureEnabled.mockReturnValue(true)
   listActivityCalendar.mockResolvedValue({ items: [] })
 })

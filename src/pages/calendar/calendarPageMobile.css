@@ -10,6 +10,10 @@
 @media (max-width: 767px) {
   .calendar-public .calendar-header { padding-block: 12px 8px; gap: 8px; }
   .calendar-public .calendar-header h1 { font-size: 26px; }
+  .calendar-mine-mobile .calendar-header { padding: 0; gap: 0; }
+  .calendar-mine-mobile .calendar-header-copy { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .calendar-mine-mobile .calendar-content { padding-top: 12px; }
+  .calendar-mine-mobile .calendar-mine-view-target { display: block; grid-column: 1 / -1; grid-row: 2; min-width: 0; }
 }
 @media (min-width: 768px) {
   .calendar-public .calendar-header { grid-template-columns: minmax(0, 1fr) auto; }
