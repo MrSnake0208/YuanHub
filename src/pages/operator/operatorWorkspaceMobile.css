@@ -42,6 +42,7 @@
 .roster-header :deep(.compact-tool-actions .tool-more) { position: static; }
 .roster-header :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 .roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--cream) 30%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--cream) 12%, transparent); line-height: 1.3; }
 .roster-summary { margin: 4px 0 0; font-size: 12px; }
 .roster-summary .tool-updated { display: inline-flex; }
 @container (max-width: 340px) {

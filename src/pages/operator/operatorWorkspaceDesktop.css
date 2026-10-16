@@ -34,13 +34,13 @@
 }
 
 .roster-header { padding-block: 16px 10px; }
-.roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'heading account' 'actions actions'; gap: 4px 16px; }
-.roster-header :deep(.compact-tool-actions) { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.roster-header :deep(.compact-tool-row) { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.roster-header :deep(.compact-tool-heading) { flex: none; }
+.roster-header :deep(.compact-tool-account) { flex: 1 1 180px; }
+.roster-header :deep(.compact-tool-actions) { flex: 0 1 auto; min-width: 0; max-width: 100%; margin-inline-start: auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 7px 14px; font-size: 13px; white-space: nowrap; }
-.roster-summary { margin: 2px 0 0; }
-@container (min-width: 900px) {
-  .roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading account actions'; }
-}
+.roster-header .roster-share small { margin-inline-start: 2px; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--cream) 30%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--cream) 12%, transparent); font-size: 11px; line-height: 1.3; }
+.roster-summary { width: 100%; margin: 6px 0 0; }
 .page-operator .operator-tabs.tool-workspace-tabs { padding: 5px; gap: 6px; }
 .page-operator .tool-workspace-tabs > .workspace-tab-list { gap: 6px; }
 .page-operator .operator-tabs.tool-workspace-tabs button { min-height: 40px; padding: 7px 18px; }
