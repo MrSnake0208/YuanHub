@@ -1,5 +1,5 @@
 <template>
-  <section v-if="!hideEmpty || !ready || loading || error || count || total || unavailableCount || tasks.length || emptyRecords.length" ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
+  <section v-if="showChecklist && (!hideEmpty || !ready || loading || error || count || total || unavailableCount || tasks.length || emptyRecords.length)" ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
     <header class="todo-heading">
       <h2 id="today-subscriptions-title"><ListChecks :size="19" aria-hidden="true" /> 活动待办</h2>
       <router-link :to="{ path: '/calendar', query: mineQuery }">查看全部</router-link>
@@ -48,21 +48,21 @@
             <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
           </details>
         </div>
-        <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
-          <details v-if="reminders.length" ref="remindersPanel" class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
-            <summary><BellRing :size="18" aria-hidden="true" /> 今日重点<span>{{ reminders.length }} 项提醒</span><ChevronDown class="reminder-chevron" :size="14" aria-hidden="true" /></summary>
-            <p class="todo-hint reminder-scope">订阅活动未来 72 小时内截止 · 北京时间</p>
-            <ul class="reminder-list">
-              <li v-for="record in reminders" :key="record.event_id">
-                <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
-                <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
-              </li>
-            </ul>
-          </details>
-        </Teleport>
       </template>
     </template>
   </section>
+  <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
+    <details v-if="showReminders && ready && reminders.length" ref="remindersPanel" class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
+      <summary><BellRing :size="18" aria-hidden="true" /> 今日重点<span>{{ reminders.length }} 项提醒</span><ChevronDown class="reminder-chevron" :size="14" aria-hidden="true" /></summary>
+      <p class="todo-hint reminder-scope">订阅活动未来 72 小时内截止 · 北京时间</p>
+      <ul class="reminder-list">
+        <li v-for="record in reminders" :key="record.event_id">
+          <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
+          <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
+        </li>
+      </ul>
+    </details>
+  </Teleport>
 </template>
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -71,7 +71,7 @@ import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress } from '@/api/activityCalendarSubscriptions.js'
 import { addCalendarDays, CALENDAR_ENDING_WINDOW_MS, calendarDateLabel, calendarDeadline, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, nextCalendarBoundary, SERVER_TIME_ZONE, serverToday } from '@/data/activityCalendar.js'
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' }, hideEmpty: Boolean })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' }, hideEmpty: Boolean, showChecklist: { type: Boolean, default: true }, showReminders: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', task: 'todo', ...(props.game ? { game: props.game } : {}) }))

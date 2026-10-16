@@ -1,5 +1,5 @@
 <template>
-  <section v-if="enabled" class="today-activity-summary" aria-labelledby="today-activity-title" :aria-busy="loading">
+  <section v-if="visible && enabled" class="today-activity-summary" aria-labelledby="today-activity-title" :aria-busy="loading">
     <header class="activity-heading">
       <div>
         <h2 id="today-activity-title"><CalendarDays :size="19" aria-hidden="true" /> 游戏活动</h2>
@@ -40,7 +40,7 @@ import { listActivityCalendar } from '../../api/activityCalendar.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { addCalendarDays, CALENDAR_CATEGORIES, calendarDateLabel, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, normalizeCalendarItems, SERVER_TIME_ZONE, serverToday } from '../../data/activityCalendar.js'
 
-const props = defineProps({ game: { type: String, default: '' } })
+const props = defineProps({ visible: { type: Boolean, default: true }, game: { type: String, default: '' } })
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const today = ref(serverToday())
 const now = ref(Date.now())

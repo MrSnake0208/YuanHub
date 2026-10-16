@@ -2,7 +2,10 @@
   <TodayLayout :show-overview="calendarEnabled || trainingEnabled">
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
-        <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
+        <template #actions>
+          <button v-if="auth.isLoggedIn" type="button" class="today-customize" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /> 自定义首页</button>
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
+        </template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"
           ref="accountContext"
@@ -17,6 +20,12 @@
       </TodayLobby>
     </template>
     <template #status>
+      <p v-if="preferenceOwner && preferenceActive.loading && !preferenceActive.snapshot" class="today-loading" role="status">正在读取首页设置…</p>
+      <div v-if="preferenceOwner && preferenceActive.error" class="today-alert" role="alert">
+        <span>首页设置读取失败：{{ preferenceActive.error }}{{ preferenceActive.snapshot ? '（保留上次设置）' : '' }}</span>
+        <button type="button" :disabled="preferenceActive.loading" @click="preferences.load(layoutMode)">重试读取设置</button>
+      </div>
+      <p v-if="preferenceActive.snapshot && allModulesHidden" class="today-loading" role="status">当前端的首页模块已全部隐藏，可从「自定义首页」恢复默认并保存。</p>
       <div v-if="errorMessage" class="today-alert" role="alert">
         <span>{{ errorMessage }}</span>
         <button type="button" :disabled="summaryLoading" @click="accountLoadFailed ? loadDashboard() : retrySummary()">重试</button>
@@ -26,16 +35,16 @@
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
     </template>
     <template #overview>
-      <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" />
+      <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" :show-checklist="moduleShown('checklist')" :show-reminders="moduleShown('highlights')" />
     </template>
     <template #activities>
-      <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+      <TodayActivitySummary v-if="calendarEnabled" :visible="moduleShown('activities')" :game="calendarGame" />
     </template>
     <template #training>
-      <TodayTrainingPlans v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
+      <TodayTrainingPlans :visible="moduleShown('training')" v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
     </template>
     <template #notes>
-      <TodayPrivateItems v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
+      <TodayPrivateItems :visible="moduleShown('private_items')" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
     </template>
     <template #onboarding>
       <TodayDataOnboarding
@@ -53,6 +62,7 @@
       />
     </template>
   </TodayLayout>
+  <TodayPreferencesPanel v-model:open="customizeOpen" :preferences="preferences" />
 </template>
 
 <script setup>
@@ -60,7 +70,9 @@ import { useAccountListUpdates } from '../../store/accountList.js'
 import TutorialEntry from '../../components/TutorialEntry.vue'
 import OnboardingGuide from '../../components/OnboardingGuide.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Gem, PackageOpen, Users } from '@lucide/vue'
+import { Gem, PackageOpen, SlidersHorizontal, Users } from '@lucide/vue'
+import { TODAY_MODULES, useTodayPreferences } from '../../composables/useTodayPreferences.js'
+import TodayPreferencesPanel from '../../components/today/TodayPreferencesPanel.vue'
 import TodayLayout from '../../components/today/TodayLayout.vue'
 import TodayDataOnboarding from '../../components/today/TodayDataOnboarding.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
@@ -124,6 +136,10 @@ const DATA_SETUP_CONFIG = Object.freeze([
   }
 ])
 
+const preferences = useTodayPreferences()
+const { owner: preferenceOwner, layoutMode, active: preferenceActive, shown: moduleShown } = preferences
+const allModulesHidden = computed(() => TODAY_MODULES.every(item => !moduleShown(item.id)))
+const customizeOpen = ref(false)
 const accounts = ref([])
 const accountContext = ref(null)
 useAccountListUpdates(next => { accounts.value = next })
@@ -310,6 +326,8 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 </script>
 
 <style scoped>
+.today-customize { border: 1px solid var(--line); border-radius: 8px; color: var(--tea); background: var(--cream); cursor: pointer; font: inherit; font-size: 13px; }
+.today-customize:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
 /* 刻意共享的字段外观，不持有双端布局。 */
 
 .today-alert { border: 1px solid var(--rouge); color: var(--rouge); line-height: 1.7; }

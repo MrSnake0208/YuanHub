@@ -21,12 +21,14 @@ import { addCalendarDays, serverToday } from '../src/data/activityCalendar.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { calendarSubscriptionSummary, listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
+import { getTodayPreferences, saveTodayPreferences } from '../src/api/todayPreferences.js'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ accessToken: '', userInfo: null, isLoggedIn: false }), logout: vi.fn() }
 })
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
+vi.mock('../src/api/todayPreferences.js', () => ({ getTodayPreferences: vi.fn(async mode => ({ layout_mode: mode, schema_version: 1, version: 0, hidden_modules: [] })), saveTodayPreferences: vi.fn() }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn(async account => ({ account_id: account, agent_ids: [] })) }))
@@ -42,11 +44,13 @@ const render = () => mount(TodayPage, { attachTo: document.body, global: { plugi
 function signIn() {
   auth.isLoggedIn = true
   auth.accessToken = 'test-only'
-  auth.userInfo = { user_name: '测试殿下' }
+  auth.userInfo = { id: 'synthetic-owner', user_name: '测试殿下' }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getTodayPreferences.mockImplementation(async mode => ({ layout_mode: mode, schema_version: 1, version: 0, hidden_modules: [] }))
+  saveTodayPreferences.mockImplementation(async (mode, body) => ({ layout_mode: mode, schema_version: 1, version: body.expected_version + 1, hidden_modules: body.hidden_modules }))
   auth.accessToken = ''
   auth.isLoggedIn = false
   auth.isAdmin = false
@@ -561,4 +565,32 @@ it.each([
   expect(wrapper.find('.today-secondary .today-training').exists()).toBe(false)
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+})
+
+
+it('偏好隐藏全部仍保留导航、账号、自定义与建档；恢复默认即时展示且resize不重挂业务', async () => {
+  const viewport = installViewport(1440)
+  signIn(); auth.userInfo = { id: 'owner' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '新账号', game: '如鸢' }])
+  getTodayPreferences.mockImplementation(async mode => ({ layout_mode: mode, schema_version: 1, version: 2, hidden_modules: mode === 'desktop' ? ['highlights', 'checklist', 'activities', 'training', 'private_items'] : [] }))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('nav').exists()).toBe(true)
+  expect(wrapper.find('.lobby-context').exists()).toBe(true)
+  expect(wrapper.find('.today-customize').exists()).toBe(true)
+  expect(wrapper.find('.data-onboarding').exists()).toBe(true)
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
+  expect(wrapper.text()).toContain('首页模块已全部隐藏')
+  const instance = wrapper.getComponent(TodayActivitySummary).vm.$
+  viewport.resize(390); await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(true)
+  expect(wrapper.getComponent(TodayActivitySummary).vm.$).toBe(instance)
+  expect(getTodayPreferences).toHaveBeenCalledTimes(2)
+  viewport.resize(1440); await flushPromises()
+  await wrapper.get('.today-customize').trigger('click'); await flushPromises()
+  const panel = document.querySelector('.today-preferences')
+  const button = text => [...panel.querySelectorAll('button')].find(item => item.textContent.includes(text))
+  button('恢复默认').click(); await flushPromises(); button('保存设置').click(); await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(true)
+  expect(wrapper.getComponent(TodayActivitySummary).vm.$).toBe(instance)
+  expect(wrapper.text()).not.toContain('首页模块已全部隐藏')
 })

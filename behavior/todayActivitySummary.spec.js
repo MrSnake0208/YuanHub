@@ -11,6 +11,7 @@ import { getCurrent } from '../src/api/inventory.js'
 import { getCurrentStarState } from '../src/api/starState.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { calendarSubscriptionSummary } from '../src/api/activityCalendarSubscriptions.js'
+import { getTodayPreferences } from '../src/api/todayPreferences.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
 
 vi.mock('../src/store/auth.js', async () => {
@@ -22,6 +23,7 @@ vi.mock('../src/components/SiteFooter.vue', () => ({ default: { template: '<foot
 // This suite owns calendar refresh timers; Lobby clock behavior has its own suite.
 vi.mock('../src/components/today/TodayLobby.vue', () => ({ default: { template: '<header><h1>今日一览</h1><slot /></header>' } }))
 vi.mock('../src/components/today/TodayTrainingPlans.vue', () => ({ default: { template: '<section class="today-training" />' } }))
+vi.mock('../src/api/todayPreferences.js', () => ({ getTodayPreferences: vi.fn(), saveTodayPreferences: vi.fn() }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
@@ -47,7 +49,7 @@ function signIn(values = accounts) {
   auth.isLoggedIn = true
   auth.isAdmin = false
   auth.accessToken = 'test-only'
-  auth.userInfo = { user_name: '测试殿下' }
+  auth.userInfo = { id: 'synthetic-owner', user_name: '测试殿下' }
   listAccounts.mockResolvedValue(values)
 }
 const render = (component = TodayPage, props = {}) => mount(component, { attachTo: document.body, props, global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
@@ -56,6 +58,7 @@ const link = wrapper => card(wrapper).getComponent(RouterLinkStub)
 
 beforeEach(() => {
   vi.resetAllMocks()
+  getTodayPreferences.mockImplementation(async mode => ({ layout_mode: mode, schema_version: 1, version: 0, hidden_modules: [] }))
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-10-03T04:00:00Z'))
   auth.isLoggedIn = false
@@ -473,4 +476,19 @@ it('截止显示按北京时间换算，不用来源时区日期制造今日结�
   await wrapper.findAll('.activity-counts button')[1].trigger('click')
   expect(wrapper.text()).toContain('今天没有即将结束的活动')
   expect(wrapper.find('.activity-preview').exists()).toBe(false)
+})
+
+
+it('偏好默认开启不能绕过日历与养成全局开关，建档与导航保留', async () => {
+  signIn([])
+  isFeatureEnabled.mockReturnValue(false)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
+  expect(wrapper.find('.today-training').exists()).toBe(false)
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-private-items').exists()).toBe(false)
+  expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
+  expect(wrapper.find('.data-onboarding').exists()).toBe(true)
+  expect(listActivityCalendar).not.toHaveBeenCalled()
+  expect(calendarSubscriptionSummary).not.toHaveBeenCalled()
 })

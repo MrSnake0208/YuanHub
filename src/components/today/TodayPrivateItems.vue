@@ -1,5 +1,5 @@
 <template>
-  <section v-if="!hideEmpty || !identity || !accountId || loading || error || items.length" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
+  <section v-if="visible && (!hideEmpty || !identity || !accountId || loading || error || items.length)" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
     <header class="private-heading">
       <h2 id="today-private-title"><NotebookPen :size="18" aria-hidden="true" /> 私人安排</h2>
       <router-link :to="calendarTo()">查看全部</router-link>
@@ -37,7 +37,7 @@ import { listCalendarPrivateItems } from '../../api/calendarPrivateItems.js'
 import { privateCalendarItem } from '../../data/calendarPrivateItems.js'
 import { addCalendarDays, calendarRangeLabel, millisecondsUntilServerMidnight, serverToday } from '../../data/activityCalendar.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const items = ref([]), loading = ref(false), error = ref(''), denied = ref(false)
