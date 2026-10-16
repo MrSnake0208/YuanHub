@@ -13,7 +13,7 @@
       <div class="current-filter-tools">
         <label v-if="compact && searchable" class="current-filter-search">
           <Search :size="13" aria-hidden="true" /><span class="sr-only">搜索{{ contextLabel }}</span>
-          <input :value="searchQuery" type="search" autocomplete="off" :placeholder="searchPlaceholder" @input="$emit('update:searchQuery', $event.target.value)" />
+          <input ref="searchInput" :value="searchQuery" type="search" autocomplete="off" :placeholder="searchPlaceholder" @input="$emit('update:searchQuery', $event.target.value)" />
         </label>
         <span class="current-filter-result" aria-live="polite">
           <b>{{ resultCount }}</b> / {{ totalCount }} 位
@@ -23,6 +23,7 @@
             <Search :size="13" aria-hidden="true" />
             <span class="sr-only">搜索{{ contextLabel }}</span>
             <input
+              ref="searchInput"
               :value="searchQuery"
               type="search"
               autocomplete="off"
@@ -40,12 +41,15 @@
           <RotateCcw :size="13" aria-hidden="true" />重置
         </button>
         <slot name="secondary-tool" />
-        <button v-if="compact" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">更多筛选{{ hasFilters ? ' · 已启用' : '' }}</button>
+        <button v-if="compact" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">
+          更多筛选<template v-if="advancedFilterCount != null"><span v-if="advancedFilterCount"> · {{ advancedFilterCount }}</span></template><template v-else-if="hasFilters"> · 已启用</template>
+        </button>
       </div>
     </div>
 
     <div class="current-filter-rows">
       <div v-show="!compact || filtersOpen" :id="filtersId" class="dossier-extra">
+        <slot name="extra-filters" />
         <div class="pf-row pf-prof-row">
           <span class="pf-label">属性</span>
           <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
@@ -112,8 +116,8 @@
       </div>
 
       <div class="pf-row pf-status-row">
-        <span class="pf-label">状态</span>
-        <div class="mf-filter current-status-filter" role="group" :aria-label="`按养成状态筛选${contextLabel}`">
+        <span class="pf-label">{{ statusLabel }}</span>
+        <div class="mf-filter current-status-filter" role="group" :aria-label="`按${statusLabel === '状态' ? '养成状态' : statusLabel}筛选${contextLabel}`">
           <template v-for="option in statusOptions" :key="option.value">
             <span v-if="option.separateGroup" class="status-group-break" aria-hidden="true"></span>
             <button
@@ -151,6 +155,8 @@ import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
 
 const filtersOpen = ref(false)
 const filtersId = useId()
+const searchInput = ref(null)
+defineExpose({ focusSearch: () => searchInput.value?.focus() })
 const props = defineProps({
   compact: Boolean,
   title: { type: String, default: '筛选案卷' },
@@ -162,6 +168,7 @@ const props = defineProps({
   profOptions: { type: Array, default: function () { return [] } },
   subProfOptions: { type: Array, default: function () { return [] } },
   statusOptions: { type: Array, default: function () { return [] } },
+  statusLabel: { type: String, default: '状态' },
   statusCounts: { type: Object, default: function () { return {} } },
   tagOptions: { type: Array, default: () => [] },
   tagFilter: { type: String, default: '' },
@@ -174,6 +181,7 @@ const props = defineProps({
   searchQuery: { type: String, default: '' },
   searchPlaceholder: { type: String, default: '搜索名称 / 别名 / ID' },
   hasFilters: Boolean,
+  advancedFilterCount: { type: Number, default: null },
   growthFilters: { type: Object, default: function () { return {} } },
   showGrowthFilters: Boolean,
 })

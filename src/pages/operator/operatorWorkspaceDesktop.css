@@ -2996,19 +2996,6 @@
 .operator-main > section { padding-top: 0; }
 .operator-mobile-tabs { display: none; }
 .panel:has(> .catalog-tools) { margin-top: 12px; }
-.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search search' 'entry more' 'filter filter'; gap: 4px 8px; align-items: center; margin-top: 0; }
-.catalog-tools .manifest-bar { display: contents; }
-.catalog-tools .mf-search { grid-area: search; width: 100%; min-width: 0; min-height: 44px; }
-.catalog-entry { grid-area: entry; justify-self: start; min-height: 44px; padding: 8px 16px; font-size: 13px; white-space: nowrap; }
-.catalog-tools .manifest-bar > .mf-filter { grid-area: filter; }
-.catalog-tools .mf-filter { min-height: 44px; align-items: center; width: fit-content; max-width: 100%; padding: 0; }
-.catalog-tools .mf-filter button { min-height: 44px; min-width: 44px; padding-inline: 12px; }
-.catalog-more-filters { display: contents; }
-.catalog-more-filters > summary { grid-area: more; justify-self: end; width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 4px; font-size: 13px; list-style: none; white-space: nowrap; }
-.catalog-more-filters > summary::-webkit-details-marker { display: none; }
-.catalog-more-filters > summary::after { margin-left: 4px; }
-.catalog-more-filters > :not(summary) { grid-column: 1 / -1; }
-.catalog-more-filters .prof-filter { margin-top: 4px; padding: 8px 0; }
 .current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; }
 .current-status-summary { margin: 0; }
 .panel > .catalog-tools ~ .backpack { margin-top: 16px; padding: 10px; }
@@ -3019,7 +3006,5 @@
 .catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
 @media (min-width: 768px) {
   .panel > .catalog-tools ~ .backpack { margin-inline: -17px; padding: 16px; }
-  .catalog-tools { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search entry' 'filter more'; gap: 4px 16px; }
-  .catalog-tools:not(:has(.catalog-entry)) { grid-template-areas: 'search search' 'filter more'; }
 }
 }
