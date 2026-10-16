@@ -11,9 +11,10 @@
             <div id="today-reminders" class="today-reminders-target"><slot name="highlights" /></div>
             <div class="today-workspace">
               <div class="today-column today-primary">
+                <slot name="todos" />
+                <slot name="training" />
                 <slot name="overview" />
                 <div ref="mobileActivities" class="today-activities-target"></div>
-                <slot name="training" />
               </div>
               <div class="today-column today-secondary">
                 <Teleport :to="mobileActivities || 'body'" :disabled="desktop || !mobileActivities">

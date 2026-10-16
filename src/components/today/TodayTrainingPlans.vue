@@ -17,6 +17,7 @@
         <button v-if="!denied" type="button" :disabled="loading" @click="load">重试读取</button>
       </div>
       <template v-if="snapshot">
+        <div v-if="activePlan" ref="dailyPreview"></div>
         <p v-if="!plans.length && !otherNotes.length">还没有培养成员或备注，可去密探养成设置计划。</p>
         <article v-for="plan in plans.slice(0, 1)" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
           <header class="training-plan-heading">
@@ -42,12 +43,14 @@
       </template>
     </template>
   </section>
+  <TodayTrainingDaily v-if="activePlan" :account-id="accountId" :game="game" :plan-id="activePlan.id" :plan-name="activePlan.name" :context-ready="!loading && !error" :context-error="error" :preview-target="dailyPreview" :todos-target="todosTarget" :show-todos="showTodos" @retry-context="load" />
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowRight, UsersRound } from '@lucide/vue'
 import OperatorAvatar from '../operator/OperatorAvatar.vue'
+import TodayTrainingDaily from './TodayTrainingDaily.vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
@@ -58,11 +61,13 @@ import { trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { operatorHuajiLabel } from '../../utils/operatorHuaji.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true } })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true }, todosTarget: { type: String, default: '' }, showTodos: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const catalog = new Map(AGENT_CATALOG.map(entry => [entry.id, entry]))
 const snapshot = ref(null), loading = ref(false), error = ref(''), denied = ref(false)
+const dailyPreview = ref(null)
+const activePlan = computed(() => snapshot.value?.workspace.plans.find(plan => plan.id === snapshot.value.workspace.activePlanId))
 let generation = 0, refreshTimer = null, unsubscribe = null
 const operatorTo = id => ({ path: '/operator', query: { tab: 'current', focus: id } })
 function member(id, target) {

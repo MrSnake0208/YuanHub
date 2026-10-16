@@ -16,9 +16,10 @@ import { dialog } from '../src/utils/dialog.js'
 import * as features from '../src/config/features.js'
 import { installViewport } from '../test-support/viewport.js'
 
+const navigation = vi.hoisted(() => ({ query: {}, path: '/operator' }))
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  useRoute: () => ({ query: {}, path: '/operator' }),
+  useRouter: () => ({ replace: vi.fn().mockResolvedValue(), push: vi.fn().mockResolvedValue() }),
+  useRoute: () => navigation,
   onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {},
 }))
 vi.mock('../src/api/operator.js', async importOriginal => {
@@ -48,6 +49,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn().mockResolv
 const operator = { id: 'op', name: '测试密探', rarity: 3, games: ['如鸢'] }
 beforeEach(() => {
   vi.clearAllMocks()
+  navigation.query = {}
   auth.isLoggedIn = true
   activeAccount.id = 'acc'
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
@@ -63,6 +65,20 @@ beforeEach(() => {
   const media = new EventTarget()
   media.matches = false
   vi.stubGlobal('matchMedia', vi.fn(() => media))
+})
+
+it('今日历练的完整规划链接直接打开已启用的养成页签', async () => {
+  navigation.query = { tab: 'tracking' }
+  const wrapper = renderPage(); await flushPromises()
+  expect(wrapper.get('#operator-tab-tracking').attributes('aria-selected')).toBe('true')
+})
+
+it('今日历练链接不会绕过养成规划功能开关', async () => {
+  vi.spyOn(features, 'isFeatureEnabled').mockReturnValue(false)
+  navigation.query = { tab: 'tracking' }
+  const wrapper = renderPage(); await flushPromises()
+  expect(wrapper.find('#operator-tab-tracking').exists()).toBe(false)
+  expect(wrapper.find('#operator-panel-tracking').exists()).toBe(false)
 })
 
 const wrappers = new Set()

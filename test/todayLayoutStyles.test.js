@@ -5,7 +5,7 @@ import postcss from 'postcss'
 import { compileStyle } from '@vue/compiler-sfc'
 
 const directory = new URL('../src/components/today/', import.meta.url)
-const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription', 'todayHighlights', 'todayPrivateItems', 'todayTraining', 'todayPreferences']
+const owners = ['todayLayout', 'todayAccount', 'todayOnboarding', 'todayLobby', 'todayActivity', 'todaySubscription', 'todayHighlights', 'todayPrivateItems', 'todayTraining', 'todayTrainingDaily', 'todayPreferences']
 
 // Check source ownership and real external CSS compilation, not pixel geometry.
 test('today layouts compile with scoped styles and every device rule is media bounded', () => {

@@ -38,6 +38,9 @@
     <template #highlights>
       <TodayHighlights v-if="calendarEnabled && validAccountId && moduleShown('highlights')" :key="highlightContext" :items="highlights" :sources="highlightSources" @retry="retryHighlights" @empty-focus="focusCustomize" />
     </template>
+    <template #todos>
+      <div id="today-training-todos"></div>
+    </template>
     <template #overview>
       <TodaySubscriptionSummary ref="subscriptionSource" @highlight-state="subscriptionState = $event" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" :show-checklist="moduleShown('checklist')" :show-reminders="false" />
     </template>
@@ -45,7 +48,7 @@
       <TodayActivitySummary v-if="calendarEnabled" :visible="moduleShown('activities')" :game="calendarGame" />
     </template>
     <template #training>
-      <TodayTrainingPlans :visible="moduleShown('training')" v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
+      <TodayTrainingPlans :visible="moduleShown('training')" v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" todos-target="#today-training-todos" :show-todos="moduleShown('checklist')" />
     </template>
     <template #notes>
       <TodayPrivateItems ref="privateSource" @highlight-state="privateState = $event" :visible="moduleShown('private_items')" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
@@ -347,6 +350,7 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 </script>
 
 <style scoped>
+#today-training-todos:empty { display: none; }
 .today-customize { border: 1px solid var(--line); border-radius: 8px; color: var(--tea); background: var(--cream); cursor: pointer; font: inherit; font-size: 13px; }
 .today-customize:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
 /* 刻意共享的字段外观，不持有双端布局。 */

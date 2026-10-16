@@ -1,0 +1,21 @@
+@media (min-width: 768px) {
+  .daily-preview { margin-top: 14px; padding-top: 14px; }
+  .daily-todos { padding: 18px; border-radius: 12px; }
+  h2 { font-size: 21px; }
+  h3 { font-size: 17px; }
+  .daily-todos > h3 { margin-top: 16px; }
+  p, .daily-heading time { font-size: 14px; line-height: 1.7; }
+  .daily-hint, .daily-cloud, .daily-footnote, small { font-size: 12px; }
+  .daily-source-list, .daily-task-list { display: grid; gap: 9px; margin: 14px 0; }
+  .daily-source-row { padding: 13px 14px; font-size: 15px; }
+  .daily-task-row { padding: 15px 14px; font-size: 15px; }
+  .daily-stage { font-size: 13px; }
+  .daily-done { font-size: 13px; }
+  .daily-total { margin-top: 14px; padding-top: 12px; font-size: 15px; }
+  .daily-summary { margin-top: 12px; font-size: 16px; }
+  .daily-adopt { min-height: 42px; padding: 10px 16px; margin-top: 14px; font-size: 15px; }
+  .daily-details { padding: 12px 0; font-size: 13px; }
+  .daily-cloud { padding-top: 12px; }
+  .daily-footnote, .daily-error, .daily-notice, .daily-warning { margin-top: 12px; }
+  .daily-error button { margin-top: 8px; }
+}

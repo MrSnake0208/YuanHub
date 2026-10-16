@@ -23,6 +23,9 @@ import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { calendarSubscriptionSummary, listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
 import { getTodayPreferences, saveTodayPreferences } from '../src/api/todayPreferences.js'
+import { getOperatorDailyTasks } from '../src/api/operatorDailyTasks.js'
+import { dailyTrainingResponse, trainingItem } from '../test-support/todayTraining.js'
+import TodayPreferencesPanel from '../src/components/today/TodayPreferencesPanel.vue'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -34,6 +37,10 @@ vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount:
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn(async account => ({ account_id: account, agent_ids: [] })) }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(async account => ({ schema_version: 1, account_id: account, revision: 0, plans: [], active_plan_id: null })) }))
+vi.mock('../src/api/operatorDailyTasks.js', () => ({
+  getOperatorDailyTasks: vi.fn(async (account, plan, date) => ({ account_id: account, plan_id: plan, date, version: 0, needs_update: false, source: { status: 'no_schedule', revision: 0, items: [] }, tasks: [] })),
+  adoptOperatorDailyTasks: vi.fn(), completeOperatorDailyTask: vi.fn()
+}))
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
@@ -62,6 +69,30 @@ beforeEach(() => {
   getCurrent.mockResolvedValue([])
   getCurrentStarState.mockResolvedValue({ inventory: [] })
   listCalendarPrivateItems.mockResolvedValue({ items: [] })
+})
+
+it('今日历练待办与养成预览各保留一份状态，隐藏模块不删除或重复加载', async () => {
+  installViewport(390); signIn()
+  listAccounts.mockResolvedValueOnce([{ id: 'a', name: '合成账号', game: '如鸢' }])
+  getOperatorCurrent.mockResolvedValueOnce({ entries: { one: { star_level: 1 } } })
+  getTrainingWorkspace.mockResolvedValueOnce({ schema_version: 1, account_id: 'a', revision: 1, active_plan_id: 'main', plans: [{
+    id: 'main', name: '当前清单', source: 'custom', operator_ids: ['one'], excluded_operator_ids: [], targets: {}
+  }] })
+  getOperatorDailyTasks.mockImplementationOnce(async (account, plan, date) => dailyTrainingResponse({ account, plan, date, version: 1, tasks: [trainingItem(10, 1), trainingItem(12, 4)] }))
+  const wrapper = render(); await flushPromises()
+  const todos = wrapper.get('.daily-todos').element
+  expect(wrapper.get('.today-primary').element.contains(todos)).toBe(true)
+  expect(todos.compareDocumentPosition(wrapper.get('.today-training').element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(wrapper.findAll('.daily-adopt')).toHaveLength(1)
+  const preferences = wrapper.getComponent(TodayPreferencesPanel).props('preferences')
+  preferences.setShown('mobile', 'training', false); await preferences.save('mobile'); await flushPromises()
+  expect(wrapper.find('.today-training').exists()).toBe(false)
+  expect(wrapper.get('.daily-todos').element).toBe(todos)
+  preferences.setShown('mobile', 'checklist', false); await preferences.save('mobile'); await flushPromises()
+  expect(wrapper.find('.daily-todos').exists()).toBe(false)
+  preferences.setShown('mobile', 'training', true); await preferences.save('mobile'); await flushPromises()
+  expect(wrapper.text()).toContain('首页待办已隐藏')
+  expect(getOperatorDailyTasks).toHaveBeenCalledTimes(1)
 })
 
 function deferred() {
