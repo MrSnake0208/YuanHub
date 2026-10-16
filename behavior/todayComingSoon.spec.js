@@ -594,3 +594,143 @@ it('偏好隐藏全部仍保留导航、账号、自定义与建档；恢复默�
   expect(wrapper.getComponent(TodayActivitySummary).vm.$).toBe(instance)
   expect(wrapper.text()).not.toContain('首页模块已全部隐藏')
 })
+
+const highlightActivity = (title = '临期订阅', patch = {}) => ({ event_id: 'highlight-event', version: 1, subscribed: true, manual_completed: false,
+  checklist: [1, 2, 3].map(id => ({ id: String(id), title: '活动清单' + id, completed: false })),
+  item: { id: 'highlight-event', title, start_date: serverToday(), end_date: serverToday() }, ...patch })
+const highlightPrivate = (title = '开启提醒的事项', account = 'a', patch = {}) => ({ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: account,
+  game: '如鸢', title, start_date: serverToday(), end_date: serverToday(), time: null, note: '', version: 1, reminder_on: 'START', reminder_days_before: 0, ...patch })
+async function renderHighlights() {
+  signIn(); auth.userInfo = { id: 'highlight-owner' }
+  listAccounts.mockResolvedValue([{ id: 'a', game: '如鸢', name: '账号A' }, { id: 'b', game: '如鸢', name: '账号B' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
+  const wrapper = render(); await flushPromises(); return wrapper
+}
+
+it('重点复用两个来源，Checklist按活动去重且普通私人安排不成为重点', async () => {
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [highlightActivity()], unavailable_items: [] })
+  calendarSubscriptionSummary.mockResolvedValueOnce({ items: [], subscribed_count: 1, total_pending: 1 })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [highlightPrivate(), highlightPrivate('没有启用提醒', 'a', { id: 'pci_00000000-0000-0000-0000-000000000002', reminder_on: null })] })
+  const wrapper = await renderHighlights(), highlights = wrapper.get('#today-reminders')
+  expect(highlights.get('summary').text()).toContain('2 项提醒')
+  expect(highlights.findAll('li')).toHaveLength(2)
+  expect(highlights.text()).toContain('还有 3 条活动待办未完成')
+  expect(highlights.text()).not.toContain('没有启用提醒')
+  expect(highlights.findAll('.highlight-title').map(node => node.text())).toEqual(['开启提醒的事项', '临期订阅'])
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(calendarSubscriptionSummary).toHaveBeenCalledTimes(1)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+})
+
+it.each(['subscriptions', 'private'])('重点来源 %s 失败保留另一来源，重试只读取失败来源', async failed => {
+  listCalendarSubscriptions.mockResolvedValue({ items: [highlightActivity()], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValue({ items: [highlightPrivate()] })
+  const failing = failed === 'subscriptions' ? listCalendarSubscriptions : listCalendarPrivateItems
+  failing.mockRejectedValueOnce(new Error('来源离线'))
+  const wrapper = await renderHighlights(), highlights = wrapper.get('#today-reminders')
+  expect(highlights.get('summary').text()).toContain('1 项提醒')
+  expect(highlights.text()).toContain(failed === 'subscriptions' ? '开启提醒的事项' : '临期订阅')
+  expect(highlights.get('[role=alert]').text()).toContain('已读取的重点仍可查看')
+  const unaffected = failed === 'subscriptions' ? listCalendarPrivateItems : listCalendarSubscriptions
+  const calls = unaffected.mock.calls.length
+  await highlights.get('[role=alert] button').trigger('click'); await flushPromises()
+  expect(highlights.get('summary').text()).toContain('2 项提醒')
+  expect(unaffected).toHaveBeenCalledTimes(calls)
+  expect(highlights.find('[role=alert]').exists()).toBe(false)
+})
+
+it.each(['highlights', 'checklist', 'activities', 'training', 'private_items'])('隐藏 %s 不改变其他来源或模块，保留双端独立配置', async hidden => {
+  const viewport = installViewport(1440)
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [highlightActivity()], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [highlightPrivate()] })
+  getTodayPreferences.mockImplementation(async mode => ({ layout_mode: mode, schema_version: 1, version: 2, hidden_modules: mode === 'desktop' ? [hidden] : [] }))
+  const wrapper = await renderHighlights()
+  const selectors = { highlights: '.todo-reminders', checklist: '.today-subscriptions', activities: '.today-activity-summary', training: '.today-training', private_items: '.today-private-items' }
+  for (const [id, selector] of Object.entries(selectors)) expect(wrapper.find(selector).exists()).toBe(id !== hidden)
+  if (hidden !== 'highlights') expect(wrapper.get('.todo-reminders summary').text()).toContain('2 项提醒')
+  const instances = [TodaySubscriptionSummary, TodayPrivateItems].map(type => wrapper.getComponent(type).vm.$)
+  viewport.resize(390); await flushPromises()
+  for (const selector of Object.values(selectors)) expect(wrapper.find(selector).exists()).toBe(true)
+  viewport.resize(1440); await flushPromises()
+  expect(wrapper.find(selectors[hidden]).exists()).toBe(false)
+  ;[TodaySubscriptionSummary, TodayPrivateItems].forEach((type, i) => expect(wrapper.getComponent(type).vm.$).toBe(instances[i]))
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+  expect(saveTodayPreferences).not.toHaveBeenCalled()
+})
+
+it.each(['account', 'identity', 'game', 'logout', 'clear', 'unmount'])('综合重点在 %s 切换后清除旧数据并拒绝两个来源的迟到响应', async change => {
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [highlightActivity('旧活动秘密')], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [highlightPrivate('旧私人秘密')] })
+  const wrapper = await renderHighlights()
+  expect(wrapper.get('#today-reminders').text()).toContain('旧活动秘密')
+  const subscription = deferred(), privateItems = deferred()
+  listCalendarSubscriptions.mockReturnValueOnce(subscription.promise)
+  listCalendarPrivateItems.mockReturnValueOnce(privateItems.promise)
+  const notify = type => window.dispatchEvent(new CustomEvent(type, { detail: { userId: 'highlight-owner', accountId: 'a' } }))
+  notify('calendar-subscriptions-updated'); notify('yuanHub:calendar-private-items-updated'); await flushPromises()
+  listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValue({ items: [] })
+  if (change === 'account') activeAccount.set('b')
+  if (change === 'identity') auth.userInfo = { id: 'other-owner' }
+  if (change === 'game') activeAccount.setGame('代号鸢', 'a')
+  if (change === 'logout') auth.isLoggedIn = false
+  if (change === 'clear') activeAccount.clear()
+  if (change === 'unmount') wrapper.unmount()
+  await flushPromises()
+  expect(document.body.textContent).not.toMatch(/旧活动秘密|旧私人秘密/)
+  subscription.resolve({ items: [highlightActivity('迟到活动秘密')], unavailable_items: [] })
+  privateItems.resolve({ items: [highlightPrivate('迟到私人秘密')] }); await flushPromises()
+  expect(document.body.textContent).not.toMatch(/迟到活动秘密|迟到私人秘密/)
+})
+
+it('重点为空不占位，私人事项更新后重新出现，关闭提醒后隐藏且焦点返回自定义入口', async () => {
+  listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [] }); listCalendarPrivateItems.mockResolvedValue({ items: [] })
+  const wrapper = await renderHighlights()
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  const notify = () => window.dispatchEvent(new CustomEvent('yuanHub:calendar-private-items-updated', { detail: { userId: 'highlight-owner', accountId: 'a' } }))
+  listCalendarPrivateItems.mockResolvedValue({ items: [highlightPrivate()] }); notify(); await flushPromises()
+  expect(wrapper.get('.todo-reminders').text()).toContain('开启提醒的事项')
+  wrapper.get('.todo-reminders summary').element.focus()
+  listCalendarPrivateItems.mockResolvedValue({ items: [highlightPrivate('已关闭', 'a', { reminder_on: null })] }); notify(); await flushPromises()
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get('.today-customize').element)
+})
+
+it('弹窗稍后/已知悉记录不删除首页私人重点，隐藏重点只改变展示', async () => {
+  installViewport(1440)
+  listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValue({ items: [highlightPrivate()] })
+  const { reminderStorageKey, privateItemReminder } = await import('../src/data/calendarPrivateReminders.js')
+  const key = reminderStorageKey('highlight-owner', 'a')
+  const state = JSON.stringify({ day: serverToday(), keys: [privateItemReminder(highlightPrivate(), serverToday()).key] })
+  localStorage.setItem(key, state); sessionStorage.setItem(key, state)
+  const wrapper = await renderHighlights()
+  expect(wrapper.get('#today-reminders').text()).toContain('开启提醒的事项')
+  const p = wrapper.vm.preferences
+  p.setShown('desktop', 'highlights', false); await p.save('desktop'); await flushPromises()
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(localStorage.getItem(key)).toBe(state)
+  expect(sessionStorage.getItem(key)).toBe(state)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+})
+
+it('A→B→A后采用最新重点，最早A的迟到活动及私人事项不能覆盖', async () => {
+  listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [] }); listCalendarPrivateItems.mockResolvedValue({ items: [] })
+  const wrapper = await renderHighlights()
+  const subscriptions = deferred(), privateItems = deferred()
+  listCalendarSubscriptions.mockReturnValueOnce(subscriptions.promise); listCalendarPrivateItems.mockReturnValueOnce(privateItems.promise)
+  for (const type of ['calendar-subscriptions-updated', 'yuanHub:calendar-private-items-updated']) {
+    window.dispatchEvent(new CustomEvent(type, { detail: { userId: 'highlight-owner', accountId: 'a' } }))
+  }
+  await flushPromises(); activeAccount.set('b'); await flushPromises()
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [highlightActivity('最新A活动')], unavailable_items: [] })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [highlightPrivate('最新A私人事项')] })
+  activeAccount.set('a'); await flushPromises()
+  subscriptions.resolve({ items: [highlightActivity('过时A活动')], unavailable_items: [] })
+  privateItems.resolve({ items: [highlightPrivate('过时A私人事项')] }); await flushPromises()
+  const highlights = wrapper.get('#today-reminders')
+  expect(highlights.text()).toContain('最新A活动')
+  expect(highlights.text()).toContain('最新A私人事项')
+  expect(highlights.text()).not.toContain('过时A')
+})

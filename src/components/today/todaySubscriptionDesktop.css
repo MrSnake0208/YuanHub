@@ -32,26 +32,7 @@
   .todo-subscription-status > summary { min-height: 28px; padding-block: 4px; font-size: 11px; }
   .todo-subscription-status p { margin: 5px 0; }
   .todo-subscription-status a { display: inline-flex; align-items: center; min-height: 32px; font-size: 12px; }
-  .todo-reminders { min-width: 0; margin-top: 12px; padding: 10px 14px; border-radius: 10px; }
-  .todo-reminders.is-sidebar { margin-top: 0; }
-  .todo-reminders > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 28px; font: 800 16px/1.5 var(--font-s); list-style: none; }
-  .todo-reminders > summary::-webkit-details-marker { display: none; }
-  .todo-reminders > summary span { color: var(--rouge); font: 400 11px/1.5 var(--font-b); }
-  .reminder-chevron { margin-left: auto;  }
-  .todo-reminders[open] .reminder-chevron { transform: rotate(180deg); }
-  .reminder-scope { margin-top: 2px; font-size: 11px; }
-  .reminder-list { display: grid; gap: 6px; margin: 6px 0 0; }
-  .reminder-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; min-width: 0; }
-  .reminder-list a { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 28px; font-size: 12px; text-decoration: none; overflow-wrap: anywhere; }
-  .reminder-list a:hover { text-decoration: underline; }
-  .reminder-list time { font-size: 11px; }
   .todo-error { margin-top: 8px; }
   button { min-height: 32px; padding: 5px 10px; border-radius: 7px; font-size: 12px; overflow-wrap: anywhere; }
   .todo-title, .todo-event { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-}
-@media (min-width: 768px) {
-  .todo-reminders.is-sidebar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 24px; }
-  .todo-reminders.is-sidebar > summary { grid-column: 1 / -1; }
-  .todo-reminders.is-sidebar .reminder-scope { grid-column: 1; align-self: center; margin: 0; }
-  .todo-reminders.is-sidebar .reminder-list { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; }
 }

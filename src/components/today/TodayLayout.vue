@@ -8,7 +8,7 @@
           <slot name="status" />
           <slot name="onboarding" />
           <div v-if="showOverview" class="today-overview" data-tour="today-overview">
-            <div id="today-reminders" class="today-reminders-target"></div>
+            <div id="today-reminders" class="today-reminders-target"><slot name="highlights" /></div>
             <div class="today-workspace">
               <div class="today-column today-primary">
                 <slot name="overview" />

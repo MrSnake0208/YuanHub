@@ -52,33 +52,27 @@
     </template>
   </section>
   <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
-    <details v-if="showReminders && ready && reminders.length" ref="remindersPanel" class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
-      <summary><BellRing :size="18" aria-hidden="true" /> 今日重点<span>{{ reminders.length }} 项提醒</span><ChevronDown class="reminder-chevron" :size="14" aria-hidden="true" /></summary>
-      <p class="todo-hint reminder-scope">订阅活动未来 72 小时内截止 · 北京时间</p>
-      <ul class="reminder-list">
-        <li v-for="record in reminders" :key="record.event_id">
-          <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
-          <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
-        </li>
-      </ul>
-    </details>
+    <TodayHighlights v-if="showReminders && (ready || listError)" :items="reminders" :sources="[{ id: 'subscriptions', label: '订阅活动', loading: listLoading, error: listError, denied }]" :class="{ 'is-sidebar': !!remindersTarget }" @retry="load" @empty-focus="focusTask('')" />
   </Teleport>
 </template>
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BellRing, CheckCheck, ChevronDown, ChevronRight, ListChecks } from '@lucide/vue'
+import { CheckCheck, ChevronRight, ListChecks } from '@lucide/vue'
+import TodayHighlights from './TodayHighlights.vue'
+import { aggregateTodayHighlights } from '../../data/todayHighlights.js'
 import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress } from '@/api/activityCalendarSubscriptions.js'
-import { addCalendarDays, CALENDAR_ENDING_WINDOW_MS, calendarDateLabel, calendarDeadline, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, nextCalendarBoundary, SERVER_TIME_ZONE, serverToday } from '@/data/activityCalendar.js'
+import { addCalendarDays, calendarDateLabel, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, nextCalendarBoundary, SERVER_TIME_ZONE, serverToday } from '@/data/activityCalendar.js'
 const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' }, hideEmpty: Boolean, showChecklist: { type: Boolean, default: true }, showReminders: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', task: 'todo', ...(props.game ? { game: props.game } : {}) }))
-const root = ref(null), records = ref([]), order = ref([]), summaryItems = ref([]), actions = ref({})
-const remindersPanel = ref(null)
+const root = ref(null), records = ref([]), order = ref([]), actions = ref({})
+const emit = defineEmits(['highlight-state'])
+const listError = ref(''), listLoading = ref(false), denied = ref(false)
 const count = ref(0), total = ref(0), unavailableCount = ref(0), loading = ref(false), ready = ref(false), error = ref(''), message = ref(''), now = ref(Date.now())
-const showAll = ref(false), remindersOpen = ref(true)
+const showAll = ref(false)
 const today = computed(() => serverToday(new Date(now.value)))
 const byId = computed(() => new Map(records.value.map(record => [record.event_id, record])))
 const currentRecords = computed(() => records.value.filter(record => record.subscribed && record.item && !subscriptionCompleted(record) && !calendarEnded(record.item, today.value, now.value)))
@@ -94,7 +88,7 @@ const previewTasks = computed(() => tasks.value.filter(task => !task.entry.compl
 const visibleTasks = computed(() => showAll.value ? tasks.value : previewTasks.value)
 const pendingTasks = computed(() => tasks.value.filter(task => !task.entry.completed).length)
 const emptyRecords = computed(() => currentRecords.value.filter(record => !record.checklist.length))
-const reminders = computed(() => summaryItems.value.filter(record => record.subscribed && record.item && !subscriptionCompleted(record) && !calendarEnded(record.item, today.value, now.value) && calendarTimeBounds(record.item).end - now.value <= CALENDAR_ENDING_WINDOW_MS).slice(0, 3))
+const reminders = computed(() => aggregateTodayHighlights({ subscriptions: records.value, now: now.value, game: props.game }))
 const busy = computed(() => Object.values(actions.value).some(action => action.busy))
 let generation = 0, epoch = 0, alive = true, timer = null, minute = null, lastVisible = 0, deferredLoad = false, notifying = false
 const ticket = () => [key.value, epoch]
@@ -108,18 +102,12 @@ function taskDeadline(item) {
   const time = item.end_at ? ' ' + new Intl.DateTimeFormat('zh-CN', { timeZone: SERVER_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(item.end_at)) : ''
   return day + time + '截止'
 }
-function deadlineLabel(item) {
-  const date = item.end_at ? serverToday(new Date(item.end_at)) : item.end_date
-  const time = item.end_at ? ' ' + new Intl.DateTimeFormat('zh-CN', { timeZone: SERVER_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(item.end_at)) : ''
-  const remaining = calendarTimeBounds(item).start <= now.value ? calendarDeadline(item, today.value, now.value) : ''
-  return `${calendarDateLabel(date, { month: 'long', day: 'numeric' })}${time}截止${remaining ? ' · ' + remaining : ''}`
-}
 function schedule() {
   clearTimeout(timer)
   const time = Date.now()
   const boundary = nextCalendarBoundary(records.value.filter(record => record.item).map(record => record.item), time)
   const wait = Math.min(millisecondsUntilServerMidnight(new Date(time)) + 100, boundary - time + 50)
-  if (alive && props.accountId && identity.value) timer = setTimeout(load, wait)
+  if (alive && props.accountId && identity.value && !denied.value) timer = setTimeout(load, wait)
 }
 function focusTask(key) {
   if (!root.value) return
@@ -138,26 +126,49 @@ async function adopt(result) {
   }
 }
 async function load() {
+  if (denied.value) return
   if (busy.value) { deferredLoad = true; return }
   deferredLoad = false
   const token = ++generation, context = ticket()
   clearTimeout(timer)
-  now.value = Date.now(); error.value = ''
+  now.value = Date.now(); error.value = ''; listError.value = ''
   if (!identity.value || !props.accountId) return
-  loading.value = true
+  loading.value = true; listLoading.value = true
   try {
-    const [list, summary] = await Promise.all([
-      listCalendarSubscriptions({ account_id: props.accountId, from: today.value, to: addCalendarDays(today.value, 90) }, identity.value),
-      calendarSubscriptionSummary(props.accountId, identity.value)
+    await Promise.allSettled([
+      (async () => {
+        try {
+          const list = await listCalendarSubscriptions({ account_id: props.accountId, from: today.value, to: addCalendarDays(today.value, 90) }, identity.value)
+          if (!current(context) || token !== generation) return
+          if (!Array.isArray(list?.items) || list.items.some(record => !Number.isInteger(record.version) || !Array.isArray(record.checklist))) throw new Error('待办读取结果不完整，请重新读取。')
+          now.value = Date.now()
+          unavailableCount.value = list.unavailable_items?.length || 0; ready.value = true
+          await adopt(list)
+        } catch (err) {
+          if (!current(context) || token !== generation) return
+          listError.value = err?.message || '个人待办暂时无法读取。'
+          error.value = listError.value
+          if ([401, 403].includes(err?.status) || err?.status === 404 && err?.code === 'account_not_found') {
+            denied.value = true
+            listError.value = '身份、权限或账号已失效，请重新登录或选择账号。'
+            error.value = listError.value
+            records.value = []; order.value = []; ready.value = false
+          }
+        } finally {
+          if (current(context) && token === generation) { listLoading.value = false; schedule() }
+        }
+      })(),
+      (async () => {
+        try {
+          const summary = await calendarSubscriptionSummary(props.accountId, identity.value)
+          if (!current(context) || token !== generation) return
+          if (!Number.isInteger(summary?.subscribed_count) || !Number.isInteger(summary?.total_pending)) throw new Error('订阅概况读取结果不完整，请重试。')
+          count.value = summary.subscribed_count; total.value = summary.total_pending
+        } catch (err) {
+          if (current(context) && token === generation) error.value ||= err?.message || '订阅概况暂时无法读取。'
+        }
+      })()
     ])
-    if (!current(context) || token !== generation) return
-    if ((list.items || []).some(record => !Number.isInteger(record.version) || !Array.isArray(record.checklist))) throw new Error('待办读取结果不完整，请重新读取。')
-    now.value = Date.now()
-    summaryItems.value = summary.items || []; count.value = summary.subscribed_count || 0; total.value = summary.total_pending || 0
-    unavailableCount.value = list.unavailable_items?.length || 0; ready.value = true
-    await adopt(list)
-  } catch (err) {
-    if (current(context) && token === generation) error.value = err?.message || '个人待办暂时无法读取。'
   } finally {
     if (current(context) && token === generation) { loading.value = false; schedule() }
   }
@@ -178,7 +189,6 @@ async function toggle(task, event) {
         subscriptionCompleted(result) !== subscriptionCompleted(task.record) || result.completed !== subscriptionCompleted(result) ||
         snapshot(result.checklist) !== snapshot(checklist)) throw new Error('保存结果需要确认')
     records.value = records.value.map(record => record.event_id === id ? result : record)
-    summaryItems.value = summaryItems.value.map(record => record.event_id === id ? result : record)
     message.value = `已保存「${task.entry.title}」`
     const focused = document.activeElement
     await nextTick()
@@ -214,7 +224,6 @@ async function readLatest(id) {
     if (result?.event_id !== id || !Number.isInteger(result.version) || result.version < previous.version || !Array.isArray(result.checklist)) throw new Error('读取结果需要确认')
     await adopt({ items: records.value.map(record => record.event_id === id ? result : record) })
     if (!current(context)) return
-    summaryItems.value = summaryItems.value.map(record => record.event_id === id ? result : record)
     if (result.subscribed !== previous.subscribed || subscriptionCompleted(result) !== subscriptionCompleted(previous) || !result.item) deferredLoad = true
     actions.value[id] = { ...action, error: '', blocked: false, busy: false }
     message.value = '已读取最新状态，请核对后重新勾选。'
@@ -236,18 +245,15 @@ function visible() {
 function updated(event) {
   if (!notifying && event.detail?.userId === identity.value && event.detail?.accountId === props.accountId) void load()
 }
-watch(() => reminders.value.length, async (length, previous) => {
-  if (length || !previous || !ready.value || !remindersPanel.value?.contains(document.activeElement)) return
-  const context = ticket()
-  await nextTick()
-  if (current(context) && document.activeElement === document.body) focusTask('')
-})
 watch(key, () => {
   clearInterval(minute); clearTimeout(timer); generation++; epoch++; deferredLoad = false
   if (identity.value && props.accountId) minute = setInterval(() => { if (document.visibilityState !== 'hidden') now.value = Date.now() }, 60000)
-  records.value = []; order.value = []; summaryItems.value = []; actions.value = {}; count.value = 0; total.value = 0; unavailableCount.value = 0
-  ready.value = false; loading.value = false; error.value = ''; message.value = ''; showAll.value = false; void load()
+  records.value = []; order.value = []; actions.value = {}; count.value = 0; total.value = 0; unavailableCount.value = 0
+  ready.value = false; loading.value = false; error.value = ''; listError.value = ''; listLoading.value = false; denied.value = false; message.value = ''; showAll.value = false; void load()
 }, { immediate: true, flush: 'sync' })
+// Share the existing list, including manually completed activities with unfinished Checklist.
+watch(() => ({ context: key.value, items: records.value, loading: listLoading.value, error: listError.value, denied: denied.value, now: now.value }), state => emit('highlight-state', state), { immediate: true, deep: true, flush: 'sync' })
+defineExpose({ reload: load })
 onMounted(() => {
   document.addEventListener('visibilitychange', visible); window.addEventListener('pageshow', visible); window.addEventListener('calendar-subscriptions-updated', updated)
 })
@@ -266,8 +272,6 @@ ul { list-style: none; }
 .todo-title { font-weight: 700; }
 .is-complete .todo-title { text-decoration: line-through; font-weight: 400; }
 .todo-event { font-weight: 400; }
-.todo-reminders { border: 1px solid color-mix(in srgb, var(--rouge) 45%, var(--line)); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); }
-.todo-reminders > summary { color: var(--rouge); }
 .todo-subscription-status { border-top: 1px solid var(--line); }
 .todo-subscription-status > summary { color: var(--ink-60); font-weight: 400; }
 summary { color: var(--tea); font-weight: 700; cursor: pointer; }

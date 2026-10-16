@@ -34,8 +34,11 @@
       <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
     </template>
+    <template #highlights>
+      <TodayHighlights v-if="calendarEnabled && validAccountId && moduleShown('highlights')" :key="highlightContext" :items="highlights" :sources="highlightSources" @retry="retryHighlights" @empty-focus="focusCustomize" />
+    </template>
     <template #overview>
-      <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" :show-checklist="moduleShown('checklist')" :show-reminders="moduleShown('highlights')" />
+      <TodaySubscriptionSummary ref="subscriptionSource" @highlight-state="subscriptionState = $event" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" :show-checklist="moduleShown('checklist')" :show-reminders="false" />
     </template>
     <template #activities>
       <TodayActivitySummary v-if="calendarEnabled" :visible="moduleShown('activities')" :game="calendarGame" />
@@ -44,7 +47,7 @@
       <TodayTrainingPlans :visible="moduleShown('training')" v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
     </template>
     <template #notes>
-      <TodayPrivateItems :visible="moduleShown('private_items')" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
+      <TodayPrivateItems ref="privateSource" @highlight-state="privateState = $event" :visible="moduleShown('private_items')" v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
     </template>
     <template #onboarding>
       <TodayDataOnboarding
@@ -73,6 +76,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Gem, PackageOpen, SlidersHorizontal, Users } from '@lucide/vue'
 import { TODAY_MODULES, useTodayPreferences } from '../../composables/useTodayPreferences.js'
 import TodayPreferencesPanel from '../../components/today/TodayPreferencesPanel.vue'
+import TodayHighlights from '../../components/today/TodayHighlights.vue'
+import { aggregateTodayHighlights } from '../../data/todayHighlights.js'
 import TodayLayout from '../../components/today/TodayLayout.vue'
 import TodayDataOnboarding from '../../components/today/TodayDataOnboarding.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
@@ -142,6 +147,8 @@ const allModulesHidden = computed(() => TODAY_MODULES.every(item => !moduleShown
 const customizeOpen = ref(false)
 const accounts = ref([])
 const accountContext = ref(null)
+const subscriptionSource = ref(null), privateSource = ref(null)
+const subscriptionState = ref(null), privateState = ref(null)
 useAccountListUpdates(next => { accounts.value = next })
 const realSummary = ref({ ...EMPTY_SUMMARY })
 const accountLoading = ref(false)
@@ -161,6 +168,20 @@ const calendarGame = computed(function () {
   return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
     ? accountGame.value : ''
 })
+const highlightContext = computed(() => JSON.stringify([auth.isLoggedIn ? auth.userInfo?.id || '' : '', validAccountId.value, accountGame.value]))
+watch([highlightContext, calendarEnabled], () => { subscriptionState.value = null; privateState.value = null }, { flush: 'sync' })
+const highlightSources = computed(() => [
+  { id: 'subscriptions', label: '订阅活动', state: subscriptionState.value },
+  { id: 'private', label: '私人事项', state: privateState.value }
+].map(({ state, ...source }) => ({ ...source, ...(state?.context === highlightContext.value ? state : { items: [], loading: true, error: '' }) })))
+const highlights = computed(() => aggregateTodayHighlights({
+  subscriptions: highlightSources.value[0].items,
+  privateItems: highlightSources.value[1].items,
+  now: subscriptionState.value?.context === highlightContext.value ? subscriptionState.value.now : Date.now(),
+  game: accountGame.value
+}))
+function retryHighlights(source) { if (source === 'subscriptions') subscriptionSource.value?.reload(); else privateSource.value?.reload() }
+function focusCustomize() { document.querySelector('.today-customize')?.focus({ preventScroll: true }) }
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
 const isReturningUser = computed(() => !!validAccountId.value && hasTodayAccountData(realSummary.value))
 const onboardingStage = computed(function () {
