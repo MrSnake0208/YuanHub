@@ -12,7 +12,7 @@
       <div class="lobby-scene">
         <div class="lobby-copy">
           <p class="lobby-greeting">{{ greeting }}，殿下</p>
-          <p class="lobby-status" role="status">{{ status }}</p>
+          <p v-if="status" class="lobby-status" role="status">{{ status }}</p>
           <div class="lobby-duty">
             <span><strong>{{ companion.name }}</strong> · 值守中</span>
             <button type="button" aria-haspopup="dialog" @click="openPicker">更换值守</button>
