@@ -1,22 +1,29 @@
-/* 手机专属布局与密度；不继承桌面几何规则。 */
+/* Mobile 日程密度独立持有。 */
 @media not all and (min-width: 768px) {
-.today-activity-summary { min-width: 0; padding: 16px; border-radius: 14px; }
-.activity-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
-.activity-heading > div { min-width: 0; }
-.activity-heading h2 { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
-.activity-heading h2 svg { flex: 0 0 auto; }
-.activity-heading p, .activity-message, .activity-detail { font-size: 12px; overflow-wrap: anywhere; }
-.activity-link, .activity-error button { display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border-radius: 9px; }
-.activity-link svg { flex: 0 0 auto; }
-.activity-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.activity-counts strong { display: block; margin-top: 4px; }
-.activity-counts p { font-size: 13px; }
-.activity-preview { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; }
-.activity-preview li { min-width: 0; padding-top: 8px; }
-.activity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; font-size: 14px; overflow-wrap: anywhere; }
-.activity-title svg { flex: none; }
-.activity-upcoming { margin-top: 20px; }
-.activity-detail { display: block; }
-.activity-message { margin-top: 12px; }
-.activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
-.activity-error p { flex: 1 1 200px; font-size: 13px; overflow-wrap: anywhere; } }
+  .today-activity-summary { min-width: 0; padding: 12px; border-radius: 10px; }
+  .activity-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; }
+  .activity-heading > div { display: contents; }
+  .activity-heading p { grid-column: 1 / -1; grid-row: 2; }
+  .activity-link { grid-column: 2; grid-row: 1; font-size: 12px; }
+  .activity-heading h2 { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; font-size: 16px; overflow-wrap: anywhere; }
+  .activity-heading h2 svg, .activity-link svg, .activity-title svg { flex: none; }
+  .activity-heading p, .activity-message, .activity-detail { font-size: 12px; overflow-wrap: anywhere; }
+  .activity-link, .activity-error button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 5px 8px; border-radius: 6px; }
+  .activity-counts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; padding: 6px 0; border-block: 1px solid var(--line); }
+  .activity-counts p { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
+  .activity-counts strong { font-size: 18px; }
+  .activity-preview { display: grid; gap: 0; margin: 8px 0 0; padding: 0; }
+  .activity-preview li { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; padding: 7px 0; }
+  .activity-preview li:first-child { border-top: 0; }
+  .activity-date { display: grid; gap: 2px; padding: 6px 2px; border-radius: 6px; font-size: 13px; line-height: 1.4; text-align: center; }
+  .activity-date span { font-size: 12px; }
+  .activity-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 8px; min-width: 0; }
+  .activity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; overflow-wrap: anywhere; }
+  .activity-status { font-size: 12px; line-height: 1.7; }
+  .activity-detail { grid-column: 1 / -1; display: block; font-size: 12px; }
+  .activity-upcoming { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .activity-upcoming h3 { font-size: 14px; }
+  .activity-message { margin-top: 8px; }
+  .activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
+  .activity-error p { flex: 1 1 200px; font-size: 13px; overflow-wrap: anywhere; }
+}

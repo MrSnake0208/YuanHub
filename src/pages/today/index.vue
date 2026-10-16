@@ -27,14 +27,12 @@
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
     </template>
     <template #overview>
-      <div v-if="(calendarEnabled || trainingEnabled) && validAccountId" class="today-personal">
-        <TodaySubscriptionSummary v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" />
-        <TodayTrainingPlans v-if="trainingEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
-        <TodayPrivateItems v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
-      </div>
+      <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" />
+      <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+      <TodayTrainingPlans v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
     </template>
-    <template v-if="calendarEnabled" #activity>
-      <TodayActivitySummary :game="calendarGame" />
+    <template #notes>
+      <TodayPrivateItems v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
     </template>
     <template #onboarding>
       <TodayDataOnboarding
