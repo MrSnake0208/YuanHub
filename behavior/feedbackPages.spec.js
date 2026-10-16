@@ -519,6 +519,74 @@ it('旧类型链接直接打开私人表单，不显示类型选择', async () =
   wrapper.unmount()
 })
 
+it('新建反馈随软键盘视口变化只滚动正文，保留输入焦点和草稿', async () => {
+  const viewport = new EventTarget()
+  viewport.height = 800; viewport.offsetTop = 0
+  vi.stubGlobal('visualViewport', viewport)
+  const add = vi.spyOn(viewport, 'addEventListener'), remove = vi.spyOn(viewport, 'removeEventListener')
+  const pageScroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  useRoute().query = { new: '1' }
+  const wrapper = render(MyFeedback, { attachTo: document.body, global: { stubs: { teleport: false } } }); await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  const mask = ui.get('.feedback-new-mask').element
+  const body = ui.get('.feedback-new-body').element
+  const input = ui.get('.feedback-modal textarea').element
+  expect(body.contains(ui.get('.modal-foot').element)).toBe(false)
+  expect(mask.style.height).toBe('800px')
+  await ui.get('.feedback-modal textarea').setValue('键盘展开后仍然保留的正文')
+  input.focus(); await flushPromises()
+  const bounds = { top: 130, bottom: 290, height: 160 }
+  const rect = { top: 340, bottom: 440, height: 100 }
+  vi.spyOn(body, 'getBoundingClientRect').mockImplementation(() => bounds)
+  vi.spyOn(input, 'getBoundingClientRect').mockImplementation(() => rect)
+  body.scrollTop = 0
+  viewport.height = 320; viewport.offsetTop = 90
+  expect(window.visualViewport).toBe(viewport)
+  expect(add).toHaveBeenCalledWith('resize', expect.any(Function))
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(mask.style.top).toBe('90px')
+  expect(mask.style.height).toBe('320px')
+  expect(mask.style.bottom).toBe('auto')
+  expect(mask.style.getPropertyValue('--feedback-new-viewport-height')).toBe('320px')
+  expect(body.scrollTop).toBe(162)
+  expect(ui.get('.feedback-modal textarea').element).toBe(input)
+  expect(document.activeElement).toBe(input)
+  expect(input.value).toBe('键盘展开后仍然保留的正文')
+  body.scrollTop = 200; rect.top = 100; rect.bottom = 200
+  viewport.offsetTop = 110
+  viewport.dispatchEvent(new Event('scroll')); await flushPromises()
+  expect(mask.style.top).toBe('110px')
+  expect(body.scrollTop).toBe(158)
+  bounds.bottom = 720; bounds.height = 590; rect.top = 200; rect.bottom = 300
+  viewport.height = 800; viewport.offsetTop = 0
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(body.scrollTop).toBe(158)
+  expect(input.value).toBe('键盘展开后仍然保留的正文')
+  expect(pageScroll).not.toHaveBeenCalled()
+  expect(api.createFeedback).not.toHaveBeenCalled()
+  dialog.confirm.mockResolvedValue(true)
+  await ui.get('[aria-label="关闭提交反馈弹窗"]').trigger('click'); await flushPromises()
+  const resize = add.mock.calls.find(([name]) => name === 'resize')[1]
+  expect(remove).toHaveBeenCalledWith('resize', resize)
+  expect(remove).toHaveBeenCalledWith('scroll', resize)
+  wrapper.unmount()
+})
+
+it('新建反馈没有 visualViewport 时使用窗口高度，卸载时清理监听', async () => {
+  vi.stubGlobal('visualViewport', undefined)
+  vi.stubGlobal('innerHeight', 700)
+  const add = vi.spyOn(window, 'addEventListener'), remove = vi.spyOn(window, 'removeEventListener')
+  useRoute().query = { new: '1' }
+  const wrapper = render(MyFeedback); await flushPromises()
+  expect(wrapper.get('.feedback-new-mask').element.style.height).toBe('700px')
+  vi.stubGlobal('innerHeight', 360)
+  window.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(wrapper.get('.feedback-new-mask').element.style.height).toBe('360px')
+  const resize = add.mock.calls.find(([name]) => name === 'resize')[1]
+  wrapper.unmount()
+  expect(remove).toHaveBeenCalledWith('resize', resize)
+})
+
 it.each([MyFeedback, ManagedFeedback])('个人与管理列表不展示类型筛选或历史类型标签', async component => {
   const wrapper = render(component); await flushPromises()
   expect(wrapper.text()).not.toContain('反馈类型')
