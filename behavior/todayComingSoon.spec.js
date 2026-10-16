@@ -1,7 +1,8 @@
 import { createPinia } from 'pinia'
+import { defineComponent } from 'vue'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
-import { routeLocationKey } from 'vue-router'
+import { createMemoryHistory, createRouter, routeLocationKey } from 'vue-router'
 import TodayPage from '../src/pages/today/index.vue'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
@@ -68,6 +69,39 @@ function deferred() {
   const promise = new Promise((res, rej) => { resolve = res; reject = rej })
   return { promise, resolve, reject }
 }
+
+it.each(['.private-title', '.private-heading a', '.activity-link'])('今日一览经 %s 跳转后，out-in 过渡能挂载目标页并可返回', async selector => {
+  signIn()
+  listAccounts.mockResolvedValue([{ id: 'a', name: '账号', game: '如鸢' }])
+  listCalendarPrivateItems.mockResolvedValue({ items: [{
+    id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢',
+    title: '我的计划', date: serverToday(), time: null, note: '', version: 0
+  }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [
+    { path: '/', component: TodayPage },
+    { path: '/calendar', component: { template: '<main id="main-content">日历目标页</main>' } },
+    { path: '/:pathMatch(.*)*', component: { template: '<main />' } }
+  ] })
+  await router.push('/')
+  await router.isReady()
+  // 使用真实 out-in 生命周期；jsdom 不验证 CSS 动画或浏览器布局。
+  const host = defineComponent({ template: '<RouterView v-slot="{ Component }"><Transition name="fade" mode="out-in"><component :is="Component" /></Transition></RouterView>' })
+  const wrapper = mount(host, { attachTo: document.body, global: {
+    plugins: [createPinia(), router], stubs: { OnboardingGuide: true, transition: false }
+  } })
+  await flushPromises()
+  await wrapper.get(selector).trigger('click')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/calendar')
+  await vi.waitFor(() => expect(wrapper.get('#main-content').text()).toBe('日历目标页'))
+  expect(wrapper.find('.today-page').exists()).toBe(false)
+  await router.push('/')
+  await flushPromises()
+  await vi.waitFor(() => expect(wrapper.find('.today-page #main-content').exists()).toBe(true))
+  await wrapper.get('.today-customize').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"][aria-labelledby="today-preferences-title"]')).not.toBeNull()
+})
 
 it('账号加载不显示建账号或缺数据提示；无账号时只显示创建流程', async () => {
   signIn()
