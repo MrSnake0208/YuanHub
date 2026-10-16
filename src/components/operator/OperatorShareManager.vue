@@ -74,15 +74,15 @@ defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? fals
 .operator-share-dialog:focus { outline: none; }
 .operator-share-header { display: flex; align-items: flex-start; justify-content: space-between; flex: none; gap: 16px; border-bottom: 1px solid var(--line); }
 .operator-share-header > div { min-width: 0; }
-.operator-share-header h2 { margin: 0; font: 900 22px/1.4 var(--font-s); }
-.operator-share-header p { margin: 6px 0 0; color: var(--ink-60); font-size: 14px; overflow-wrap: anywhere; }
-.operator-share-close { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); cursor: pointer; }
+.operator-share-header h2 { margin: 0; font: 900 20px/1.4 var(--font-s); }
+.operator-share-header p { margin: 4px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.operator-share-close { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .operator-share-close:hover { background: var(--paper); }
 .operator-share-close:focus-visible,.operator-share-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .operator-share-body { min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
-.operator-share-content { border: 0; padding-bottom: calc(22px + env(safe-area-inset-bottom)); background: transparent; }
+.operator-share-content { border: 0; background: transparent; }
 .operator-share-content h3 { margin: 0; font: 800 16px/1.4 var(--font-s); }
-.operator-share-help { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--ink-60); font-size: 12.5px; line-height: 1.7; }
+.operator-share-help { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--ink-60); font-size: 12.5px; line-height: 1.7; }
 .operator-share-help p { margin: 0 0 6px; }
 .operator-share-help summary { cursor: pointer; color: var(--ink); }
 .operator-share-help details p { margin-top: 8px; }
