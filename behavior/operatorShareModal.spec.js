@@ -14,7 +14,7 @@ vi.mock('../src/api/accountShare.js', () => ({
 const active = (id, scopes = ['operator'], code = id + '-code') => ({ account_id: id, active: scopes.length > 0, scopes, share_code: code })
 const node = selector => new DOMWrapper(document.querySelector(selector))
 const panel = () => node('#operator-share-dialog')
-const button = text => panel().findAll('button').find(item => item.text().includes(text))
+const button = text => panel().findAll('button').find(item => (item.attributes('aria-label') || item.text()).includes(text))
 const escape = () => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
 let wrapper
 beforeEach(() => {
@@ -68,7 +68,7 @@ it('关闭后迟到状态照常更新，重新打开保持实例、链接及读�
   expect(api.setAccountShareScope).not.toHaveBeenCalled()
 })
 
-it('Escape、底部和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗中', async () => {
+it('Escape、右上角和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗中', async () => {
   document.body.style.overflow = 'auto'
   document.documentElement.style.overflow = 'scroll'
   vi.spyOn(window, 'scrollY', 'get').mockReturnValue(320)
@@ -76,7 +76,8 @@ it('Escape、底部和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗中
   expect(document.body.style.position).toBe('fixed')
   expect(document.body.style.top).toBe('-320px')
   const close = panel().get('[aria-label="关闭分享弹窗"]')
-  const done = panel().get('footer button')
+  const done = button('全部撤销')
+  expect(panel().find('footer button').exists()).toBe(false)
   expect(document.activeElement).toBe(close.element)
   done.element.focus()
   done.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
@@ -87,7 +88,7 @@ it('Escape、底部和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗中
   expect(document.body.style.overflow).toBe('auto')
   expect(document.documentElement.style.overflow).toBe('scroll')
   expect(window.scrollTo).toHaveBeenLastCalledWith(0, 320)
-  await open(); await panel().get('footer button').trigger('click'); await flushPromises()
+  await open(); await panel().get('[aria-label="关闭分享弹窗"]').trigger('click'); await flushPromises()
   expect(panel().isVisible()).toBe(false)
   await open()
   await panel().get('input[readonly]').trigger('pointerdown')
@@ -115,9 +116,35 @@ it('双权限独立切换并共用分享码，两条链接均可访问和复制'
   expect(panel().findAll('.visit').map(link => link.attributes('href'))).toEqual([
     'http://127.0.0.1/operator/share/a-code', 'http://127.0.0.1/star/share/a-code',
   ])
+  expect(panel().findAll('.visit').every(link => link.attributes('target') === '_blank' && link.attributes('rel') === 'noopener noreferrer')).toBe(true)
   await button('复制密探').trigger('click'); await flushPromises()
   await button('复制星石').trigger('click'); await flushPromises()
   expect(writeText.mock.calls.map(([value]) => value)).toEqual(panel().findAll('input[readonly]').map(input => input.element.value))
+})
+
+it('紧凑链接保留完整 URL，复制受限时仍可选中手动复制；隐私范围默认折叠', async () => {
+  const code = 'a-long-share-code-with-untruncated-content-0123456789'
+  api.getAccountShare.mockResolvedValue(active('a', ['operator', 'star'], code))
+  vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
+  await render(); await open()
+  const input = panel().get('[aria-label="密探 BOX分享链接"]')
+  const full = 'http://127.0.0.1/operator/share/' + code
+  expect(input.element.value).toBe(full)
+  expect(input.attributes('title')).toBe(full)
+  input.element.focus()
+  expect(input.element.selectionStart).toBe(0)
+  expect(input.element.selectionEnd).toBe(full.length)
+  await button('复制密探').trigger('click'); await flushPromises()
+  expect(panel().text()).toContain('复制失败，请手动选中复制')
+  expect(input.element.value).toBe(full)
+  const details = panel().get('details')
+  expect(details.element.open).toBe(false)
+  details.element.open = true
+  expect(details.text()).toContain('两个视图共用分享码')
+  expect(details.text()).toContain('不会移除这些信息')
+  expect(details.text()).toContain('云端已保存的全部星石')
+  expect(panel().text()).toContain('不含备注、目标、计划或 OCR 记录')
+  expect(panel().get('.share-management-label').text()).toContain('两个旧链接立即失效')
 })
 
 it('模态中的复制回退在焦点约束内选中链接，并恢复复制按钮焦点', async () => {
@@ -175,7 +202,7 @@ it('打开时切换账号立即清空旧链接，关闭后忽略旧账号迟到�
   wrapper.vm.accountId = 'b'; await flushPromises()
   expect(panel().text()).toContain('b账号')
   expect(panel().get('input[readonly]').element.value).toContain('b-code')
-  await panel().get('footer button').trigger('click')
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click')
   pending.resolve(active('a')); await flushPromises()
   await open()
   expect(panel().get('input[readonly]').element.value).toContain('b-code')
@@ -224,7 +251,7 @@ it('已显示 A 的链接在切换到等待中的 B 时清空，关闭期间权�
   api.setAccountShareScope.mockReturnValue(update.promise)
   await panel().get('[aria-label="密探 BOX分享"]').setValue(false)
   expect(panel().text()).toContain('更新中')
-  await panel().get('footer button').trigger('click')
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click')
   update.resolve(active('b', [])); await flushPromises()
   expect(panel().isVisible()).toBe(false)
   expect(wrapper.findComponent(OperatorShareManager).emitted('share-change').at(-1)[0]).toMatchObject({ accountId: 'b', status: '未开启', link: '' })

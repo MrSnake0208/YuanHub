@@ -460,7 +460,7 @@ it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随�
   expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
   await share.trigger('click')
   expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
-  await modal.get('footer button').trigger('click')
+  await modal.get('[aria-label="关闭分享弹窗"]').trigger('click')
   activeAccount.id = 'other-acc'
   await flushPromises()
   expect(accountShareApi.getAccountShare).toHaveBeenLastCalledWith('other-acc')
@@ -489,7 +489,7 @@ it('JSON 仍从更多打开，分享弹窗不改写导入草稿或导出范围',
   const before = workspace.html()
   await wrapper.get('.roster-share').trigger('click')
   expect(document.querySelector('#operator-share-dialog .archive-workspace')).toBeNull()
-  await new DOMWrapper(document.querySelector('#operator-share-dialog footer button')).trigger('click')
+  await new DOMWrapper(document.querySelector('#operator-share-dialog [aria-label="关闭分享弹窗"]')).trigger('click')
   expect(workspace.html()).toBe(before)
   expect(input.element.value).toBe('{"draft":"保留"}')
   await wrapper.get('.archive-toggle').trigger('click')

@@ -56,11 +56,15 @@ it.each([390, 768, 1440])('站内完整链接输入、只读卡片、筛选、�
   await render()
   expect(panel().attributes('aria-modal')).toBe('true')
   expect(panel().text()).toContain('查看他人 BOX')
+  expect(panel().findAll('h2').map(item => item.text())).toEqual(['查看他人 BOX'])
+  expect(panel().get('.share-entry-notice').text()).toContain('不会修改你的密探档案')
+  expect(button('查看 BOX')).toBeDefined()
   expect(document.activeElement).toBe(panel().get('input').element)
   expect(viewOperatorShare).not.toHaveBeenCalled()
   const link = 'https://yuan.example/operator/share/' + tokenA
   await submit(link)
   expect(viewOperatorShare).toHaveBeenCalledExactlyOnceWith(tokenA)
+  expect(panel().classes()).toContain('has-results')
   const card = panel().get('article[role="listitem"]')
   expect(card.text()).toContain('公开密探')
   expect(card.attributes('tabindex')).toBeUndefined()
@@ -87,6 +91,26 @@ it.each([390, 768, 1440])('站内完整链接输入、只读卡片、筛选、�
   expect(useRouter().push).not.toHaveBeenCalled(); expect(useRouter().replace).not.toHaveBeenCalled()
   expect(useRoute()).toMatchObject({ path: '/operator', query: { tab: 'current' } })
   expect(fetch).not.toHaveBeenCalled()
+})
+
+it('从长结果重新输入或重试时将弹窗内容滚回顶部，避免隐藏输入入口', async () => {
+  await render(); await submit()
+  const body = panel().get('.box-viewer-body').element
+  // jsdom 没有布局；为自动聚焦后的可见性检查提供真实可用的内容区。
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 24, 100, 44))
+  vi.spyOn(body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 680, 400))
+  body.scrollTop = 700
+  await button('重新输入').trigger('click'); await flushPromises()
+  expect(body.scrollTop).toBe(0)
+  expect(document.activeElement).toBe(panel().get('input').element)
+  viewOperatorShare.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  await submit(tokenB)
+  expect(panel().text()).toContain('暂时无法加载')
+  body.scrollTop = 200
+  await button('重试').trigger('click'); await flushPromises()
+  expect(body.scrollTop).toBe(0)
+  expect(panel().findAll('article')).toHaveLength(1)
+  expect(useRouter().push).not.toHaveBeenCalled()
 })
 
 it.each([

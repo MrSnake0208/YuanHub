@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import Manager from '../src/components/operator/OperatorShareManager.vue'
+import AccountShareManager from '../src/components/AccountShareManager.vue'
 import * as api from '../src/api/accountShare.js'
 import { dialog } from '../src/utils/dialog.js'
 import { deferred } from '../test-support/factories.js'
@@ -145,7 +146,7 @@ it('复制失败保留只读链接，允许手动选中复制', async () => {
   api.getAccountShare.mockResolvedValue(active('a'))
   vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
   const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
-  await wrapper.findAll('button').find(node => node.text().includes('复制密探')).trigger('click'); await flushPromises()
+  await wrapper.get('[aria-label="复制密探 BOX链接"]').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('复制失败，请手动选中复制')
   expect(wrapper.get('input[readonly]').element.value).toContain('a-code')
 })
@@ -153,9 +154,37 @@ it('账号切换后旧复制结果不显示在新账号卡片', async () => {
   api.getAccountShare.mockImplementation(id => Promise.resolve(active(id)))
   const copied = deferred(); vi.stubGlobal('navigator', { clipboard: { writeText: () => copied.promise } })
   const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
-  await wrapper.findAll('button').find(node => node.text().includes('复制密探')).trigger('click')
+  await wrapper.get('[aria-label="复制密探 BOX链接"]').trigger('click')
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   copied.resolve(); await flushPromises()
   expect(wrapper.text()).not.toContain('已复制')
   expect(wrapper.get('input[readonly]').element.value).toContain('b-code')
+})
+
+it('星石单独公开时整体分享已开启，密探徽标仍未开启；更新中和失败后可刷新恢复', async () => {
+  api.getAccountShare.mockResolvedValue({ ...active('a'), scopes: ['star'] })
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
+  expect(wrapper.get('.share-summary strong').text()).toBe('分享已开启')
+  expect(wrapper.emitted('status-change').at(-1)[0]).toBe('未开启')
+  expect(wrapper.text()).toContain('立即生效，无需额外保存')
+  const pending = deferred(); api.setAccountShareScope.mockReturnValue(pending.promise)
+  await wrapper.get('[aria-label="密探 BOX分享"]').setValue(true)
+  expect(wrapper.get('.share-summary strong').text()).toContain('更新中')
+  expect(wrapper.findAll('.share-scope-status').every(item => item.text().includes('更新中'))).toBe(true)
+  pending.reject(new TypeError('Failed to fetch')); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('网络异常')
+  await button(wrapper, '刷新状态').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="星石背包分享"]').element.checked).toBe(true)
+  expect(wrapper.get('[aria-label="密探 BOX分享"]').element.checked).toBe(false)
+})
+
+it('默认管理器保留星石页面的原有展示与访问方式', async () => {
+  api.getAccountShare.mockResolvedValue(active('a'))
+  const wrapper = mount(AccountShareManager, { props: { accountId: 'a' } }); await flushPromises()
+  expect(wrapper.classes()).not.toContain('is-compact')
+  expect(wrapper.find('.share-summary').exists()).toBe(false)
+  expect(wrapper.get('[aria-label="复制密探 BOX链接"]').text()).toBe('复制密探 BOX链接')
+  expect(wrapper.get('.visit').attributes('target')).toBeUndefined()
+  expect(wrapper.text()).toContain('两个视图共用分享码')
+  wrapper.unmount()
 })

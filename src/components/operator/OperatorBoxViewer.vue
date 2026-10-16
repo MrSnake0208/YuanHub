@@ -5,11 +5,11 @@
       <section id="operator-box-viewer" ref="panel" class="box-viewer-dialog" :class="{ 'has-results': status !== 'input' }"
         role="dialog" aria-modal="true" aria-labelledby="box-viewer-title" tabindex="-1" @focusin="revealFocusedControl">
         <header class="box-viewer-header">
-          <h2 id="box-viewer-title">查看他人 BOX</h2>
+          <div><h2 id="box-viewer-title">查看他人 BOX</h2><p v-if="status === 'input'">通过分享码或链接查看他人公开的密探档案</p></div>
           <button ref="closeButton" type="button" class="box-viewer-close" aria-label="关闭查看他人 BOX" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
         <div ref="scrollBody" class="box-viewer-body">
-          <OperatorShareContent :token="token" embedded @submit="token = $event.token" @reset="token = ''" @status-change="status = $event" />
+          <OperatorShareContent :token="token" embedded @submit="token = $event.token" @reset="token = ''" @status-change="onStatusChange" />
         </div>
       </section>
     </div>
@@ -35,6 +35,10 @@ function close() {
 function onBackdrop() {
   if (backdropPressed.value) close()
   backdropPressed.value = false
+}
+function onStatusChange(value) {
+  status.value = value
+  if (scrollBody.value) scrollBody.value.scrollTop = 0
 }
 useModalFocus(open, panel, { initialFocus: () => panel.value?.querySelector('input') || closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {
@@ -63,6 +67,8 @@ watch(open, (visible, _, onCleanup) => {
 .box-viewer-dialog:focus { outline: none; }
 .box-viewer-header { display: flex; flex: none; justify-content: space-between; align-items: center; gap: 16px; padding: calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); background: var(--surface); }
 .box-viewer-header h2 { margin: 0; min-width: 0; font: 900 20px/1.4 var(--font-s); }
+.box-viewer-header > div { min-width: 0; }
+.box-viewer-header p { margin: 6px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
 .box-viewer-close { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .box-viewer-close:hover { background: var(--paper); }
 .box-viewer-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -77,4 +83,5 @@ watch(open, (visible, _, onCleanup) => {
 /* 键盘挤压时保留标题和关闭入口，仍只滚动内容区。 */
 .is-short-viewport .box-viewer-header { padding-block: 8px; }
 .is-short-viewport .box-viewer-dialog { max-height: 100%; }
+.is-short-viewport .box-viewer-header p { display: none; }
 </style>
