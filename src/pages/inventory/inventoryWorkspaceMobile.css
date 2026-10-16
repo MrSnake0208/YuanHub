@@ -2593,7 +2593,9 @@
   }
   .range {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
     gap: 10px;
   }
   .range label {
@@ -2606,6 +2608,7 @@
   .range input {
     box-sizing: border-box;
     width: 100%;
+    max-width: 100%;
     min-height: 44px;
     min-width: 0;
     font-size: 16px;
