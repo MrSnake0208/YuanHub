@@ -8666,7 +8666,7 @@ async function consumeOperatorNavigation() {
   const reviewOperatorId = routeQueryValue(route.query.review_operator);
   const reviewAccountId = routeQueryValue(route.query.account_id);
   const effect = routeQueryValue(route.query.effect) === "new" ? "new" : "updated";
-  const targetTab = requestedTab === "current" || requestedTab === "catalog" ? requestedTab : "";
+  const targetTab = requestedTab === "current" || requestedTab === "catalog" || requestedTab === "tracking" && growthTrackingEnabled ? requestedTab : "";
   if (!targetTab && !operatorId && !reviewRecordId) return;
   if (reviewRecordId && reviewAccountId && accounts.value.some(account => account.id === reviewAccountId)) accountId.value = reviewAccountId;
   const contextSeq = currentContextSeq;

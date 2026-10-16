@@ -18,7 +18,7 @@ const workspace = account => ({ schema_version: 1, account_id: account, revision
   { id: 'main', name: '我的主队', source: 'custom', operator_ids: [yangxiu], excluded_operator_ids: [], targets: { [yangxiu]: { level: 60, elite: 9, star_level: 7 } } }
 ] })
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
-const render = (props = { accountId: 'a', game: '如鸢' }) => mount(TodayTrainingPlans, { attachTo: document.body, props, global: { stubs: { RouterLink: RouterLinkStub } } })
+const render = (props = { accountId: 'a', game: '如鸢' }) => mount(TodayTrainingPlans, { attachTo: document.body, props, global: { stubs: { RouterLink: RouterLinkStub, TodayTrainingDaily: true } } })
 const publish = (event, account = 'a') => events.forEach(listener => listener({ event, data: { account_id: account } }))
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers(); events.clear()
