@@ -33,6 +33,7 @@
 
       <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
+      <TodayPreferencesPanel v-model:open="customizeOpen" :preferences="preferences" />
     </template>
     <template #highlights>
       <TodayHighlights v-if="calendarEnabled && validAccountId && moduleShown('highlights')" :key="highlightContext" :items="highlights" :sources="highlightSources" @retry="retryHighlights" @empty-focus="focusCustomize" />
@@ -65,7 +66,6 @@
       />
     </template>
   </TodayLayout>
-  <TodayPreferencesPanel v-model:open="customizeOpen" :preferences="preferences" />
 </template>
 
 <script setup>
