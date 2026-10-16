@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import FeedbackAccess from '../src/pages/feedback/admin.vue'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
-import { createFeedbackCategory, getFeedbackAccess, listFeedbackAccessGrants, renameFeedbackCategory, updateFeedbackAccessGrant } from '../src/api/feedback.js'
+import { createFeedbackCategory, getFeedbackAccess, listFeedbackAccessGrants, renameFeedbackCategory, setFeedbackCategoryHidden, updateFeedbackAccessGrant } from '../src/api/feedback.js'
 import { dialog } from '../src/utils/dialog.js'
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
@@ -12,7 +12,7 @@ vi.mock('../src/store/auth.js', () => ({ auth: {
 vi.mock('../src/store/feedbackUnread.js', () => ({ feedbackUnreadState: { count: 0 } }))
 vi.mock('../src/api/feedback.js', () => ({
   listFeedbackAccessGrants: vi.fn(), getFeedbackAccess: vi.fn(), updateFeedbackAccessGrant: vi.fn(), deleteFeedbackAccessGrant: vi.fn(),
-  createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn()
+  createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn(), setFeedbackCategoryHidden: vi.fn()
 }))
 vi.mock('../src/api/user.js', () => ({ searchFeedbackAccessUsers: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
@@ -36,6 +36,7 @@ beforeEach(() => {
   updateFeedbackAccessGrant.mockReset().mockResolvedValue({})
   createFeedbackCategory.mockReset().mockResolvedValue({ key: 'CUSTOM_TEST', label: '新板块' })
   renameFeedbackCategory.mockReset().mockResolvedValue({ key: 'OPERATOR', label: '密探' })
+  setFeedbackCategoryHidden.mockReset().mockResolvedValue({})
   dialog.confirm.mockReset()
 })
 
@@ -167,4 +168,51 @@ it('leaving the page before confirmation resolves cannot save a grant later', as
   wrapper.unmount()
   pending.resolve(true); await flushPromises()
   expect(updateFeedbackAccessGrant).not.toHaveBeenCalled()
+})
+
+
+it('隐藏全部板块后仍可恢复，授权选择不显示隐藏项且保存保留既有授权', async () => {
+  const visible = { key: 'OPERATOR', label: '密探养成', hidden: false }
+  const hidden = { ...visible, hidden: true }
+  listFeedbackAccessGrants.mockResolvedValue([{
+    userId: 'manager', userName: '测试管理员', feedbackRoles: ['OPERATOR'],
+    operatorAreas: ['OPERATOR'], receiveAreas: ['OPERATOR'], manageAreas: ['OPERATOR']
+  }])
+  const wrapper = render(); await flushPromises()
+  getFeedbackAccess.mockResolvedValue({ available_categories: [], category_catalog: [hidden] })
+  await wrapper.get('[aria-label="隐藏 密探养成"]').trigger('click'); await flushPromises()
+  expect(setFeedbackCategoryHidden).toHaveBeenCalledWith('OPERATOR', true)
+  expect(wrapper.get('.category-list').text()).toContain('已隐藏')
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+
+  await wrapper.get('[aria-label="编辑 测试管理员"]').trigger('click')
+  expect(wrapper.findAll('.permission-group').slice(1).every(group => group.findAll('input[type="checkbox"]').length === 0)).toBe(true)
+  expect(wrapper.get('.access-preview').text()).toContain('密探养成')
+  dialog.confirm.mockResolvedValue(true)
+  await wrapper.get('.modal-foot .primary').trigger('click'); await flushPromises()
+  expect(updateFeedbackAccessGrant).toHaveBeenCalledWith('manager', expect.objectContaining({
+    operatorAreas: ['OPERATOR'], receiveAreas: ['OPERATOR'], manageAreas: ['OPERATOR']
+  }))
+
+  getFeedbackAccess.mockResolvedValue({ available_categories: [visible], category_catalog: [visible] })
+  await wrapper.get('[aria-label="恢复显示 密探养成"]').trigger('click'); await flushPromises()
+  expect(setFeedbackCategoryHidden).toHaveBeenLastCalledWith('OPERATOR', false)
+  expect(wrapper.get('.category-list').text()).not.toContain('已隐藏')
+  await wrapper.get('.access-create').trigger('click')
+  expect(wrapper.findAll('.permission-group')[1].text()).toContain('密探养成')
+  wrapper.unmount()
+})
+
+it('隐藏请求处理中禁止重复提交，失败保留原状态并提示', async () => {
+  const pending = deferred()
+  setFeedbackCategoryHidden.mockReturnValue(pending.promise)
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('[aria-label="隐藏 密探养成"]').trigger('click')
+  expect(wrapper.get('[aria-label="隐藏 密探养成"]').attributes('disabled')).toBeDefined()
+  await wrapper.get('[aria-label="隐藏 密探养成"]').trigger('click')
+  expect(setFeedbackCategoryHidden).toHaveBeenCalledTimes(1)
+  pending.resolve(Promise.reject(new Error('目录已更新，请刷新'))); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('目录已更新')
+  expect(wrapper.find('[aria-label="恢复显示 密探养成"]').exists()).toBe(false)
+  wrapper.unmount()
 })

@@ -288,6 +288,7 @@ const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
 const access = ref({ superAdmin: false, operatorAreas: [], developerAreas: [], availableWorkAreas: [] })
+const categoryCatalog = ref([])
 const loadingAccess = ref(true)
 const loading = ref(false)
 const error = ref('')
@@ -386,7 +387,7 @@ const markAllReadHint = computed(() => feedbackUnreadState.count > 0
   : '当前没有未读反馈')
 
 function categoryLabel(category) {
-  return categoryOptions.value.find(option => option.key === category)?.label || category || '其他模块'
+  return categoryCatalog.value.find(option => option.key === category)?.label || category || '其他模块'
 }
 
 function statusLabel(status, hasAdminReply, item) {
@@ -436,7 +437,9 @@ async function loadAccess() {
     const data = await getFeedbackAccess()
     if (!isMounted) return
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
-    if (!rawAreas.length) throw new Error('反馈板块目录为空')
+    const catalog = data.categoryCatalog || data.category_catalog || rawAreas
+    if (!catalog.length) throw new Error('反馈板块目录为空')
+    categoryCatalog.value = catalog
     access.value = {
       superAdmin: Boolean(data.superAdmin ?? data.super_admin),
       operatorAreas: data.operatorAreas || data.operator_areas || [],

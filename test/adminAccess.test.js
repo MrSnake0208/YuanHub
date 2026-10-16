@@ -101,3 +101,14 @@ test('ledger audit preserves public change detail and resource identity', () => 
   assert.deepEqual(log.before.ledger, { value: '旧价格=6' })
   assert.deepEqual(log.after.ledger, { value: '新价格=7' })
 })
+
+
+test('feedback visibility audit preserves both true and false snapshots', () => {
+  const log = normalizeAdminAuditLog({
+    action: 'FEEDBACK_CATEGORY_VISIBILITY_UPDATED',
+    before: { feedback_category_label: '历史板块', feedback_category_hidden: true },
+    after: { feedback_category_label: '历史板块', feedback_category_hidden: false }
+  })
+  assert.equal(log.before.feedbackCategoryHidden, true)
+  assert.equal(log.after.feedbackCategoryHidden, false)
+})

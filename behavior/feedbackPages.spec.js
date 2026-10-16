@@ -1481,3 +1481,42 @@ it('工作台主次队列保留七项，空负责人及消息提示取真实数�
   expect(rows[1].get('.ticket-reply-marker').text()).toBe('需回复')
   wrapper.unmount()
 })
+
+
+it.each([['用户', MyFeedback], ['管理员', ManagedFeedback]])('%s不选择隐藏板块但历史工单保留名称', async (_, component) => {
+  api.getFeedbackAccess.mockResolvedValue({
+    super_admin: true, operator_areas: ['OPERATOR', 'STAR'],
+    available_categories: [{ key: 'STAR', label: '星石' }],
+    category_catalog: [{ key: 'STAR', label: '星石' }, { key: 'OPERATOR', label: '已隐藏的历史板块', hidden: true }]
+  })
+  const wrapper = render(component); await flushPromises()
+  expect(wrapper.findAll('.feedback-filter select option').some(option => option.element.value === 'OPERATOR')).toBe(false)
+  expect(wrapper.text()).toContain('已隐藏的历史板块')
+  if (component === MyFeedback) {
+    await wrapper.get('.page-header-action').trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.feedback-form-grid select option').some(option => option.element.value === 'OPERATOR')).toBe(false)
+  } else {
+    api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'PROCESSING' })
+    await choose(wrapper, 'rpt_a')
+    await wrapper.findAll('button').find(button => button.text() === '工单流转').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === '调整板块').trigger('click')
+    expect(wrapper.findAll('.feedback-workflow-form select option').some(option => option.element.value === 'OPERATOR')).toBe(false)
+  }
+  wrapper.unmount()
+})
+
+it.each([MyFeedback, ManagedFeedback])('全部板块隐藏时历史列表仍可加载，不误报目录失败', async component => {
+  api.getFeedbackAccess.mockResolvedValue({
+    super_admin: true, operator_areas: ['OPERATOR'], available_categories: [],
+    category_catalog: [{ key: 'OPERATOR', label: '历史板块', hidden: true }]
+  })
+  const wrapper = render(component); await flushPromises()
+  expect(wrapper.text()).not.toContain('加载失败')
+  expect(wrapper.text()).toContain('历史板块')
+  if (component === MyFeedback) {
+    await wrapper.get('.page-header-action').trigger('click'); await flushPromises()
+    expect(wrapper.get('.feedback-form-grid select').text()).toContain('暂无可选反馈板块')
+    expect(wrapper.get('button[type="submit"].feedback-primary-action').attributes('disabled')).toBeDefined()
+  }
+  wrapper.unmount()
+})

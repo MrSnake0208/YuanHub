@@ -256,6 +256,12 @@ export function renameFeedbackCategory(key, label) {
   })
 }
 
+export function setFeedbackCategoryHidden(key, hidden) {
+  return request('/v1/admin/feedback-categories/' + encodeURIComponent(key) + '/visibility', {
+    method: 'PUT', auth: true, body: { hidden }
+  })
+}
+
 export function updateFeedbackAccessGrant(userId, grant) {
   return request('/v1/admin/feedback-access/' + encodeURIComponent(userId), {
     method: 'PUT',
