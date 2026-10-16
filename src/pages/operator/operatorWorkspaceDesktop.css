@@ -3008,6 +3008,7 @@
 }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-account) { display: none; }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
+.operator-account-workspace.has-archive :deep(.workspace-panels) { grid-template-columns: minmax(0, 1fr); }
 .current-upgrade-reminder button,.current-batch-toggle,
 .batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,

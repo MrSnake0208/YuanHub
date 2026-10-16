@@ -1,7 +1,7 @@
 <template>
   <section class="share-manager" :aria-labelledby="titleId">
     <div class="share-manager-heading">
-      <div><span class="section-kicker">分享链接</span><h2 :id="titleId">分享当前账号</h2></div>
+      <slot name="heading" :title-id="titleId"><div><span class="section-kicker">分享链接</span><h2 :id="titleId">分享当前账号</h2></div></slot>
       <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
       <p class="share-description">两个视图共用分享码。拿到任一链接的人都能查看已开启的内容，无需登录；全部关闭后旧码失效。</p>
     </div>
@@ -10,13 +10,11 @@
     <template v-else>
       <div class="share-scopes" aria-label="公开内容">
         <label v-for="option in options" :key="option.scope" class="share-scope">
-          <span>{{ option.label }}分享</span>
+          <span>{{ option.label }}分享<small class="share-scope-status">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
           <input type="checkbox" role="switch" :aria-label="option.label + '分享'" :checked="scopes.includes(option.scope)"
             :disabled="!accountId || busy" @change="toggleScope(option.scope, $event)" />
         </label>
       </div>
-      <p class="share-description share-private">仅公开所选内容，不包含备注、目标、计划或 OCR 记录。星石展示云端已保存背包，本机未同步修改不会出现在分享中。</p>
-      <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
       <template v-if="share?.active && share.share_code">
         <div v-for="option in options.filter(item => scopes.includes(item.scope))" :key="option.scope" class="share-values">
           <label><span>{{ option.label }}分享链接</span><input :value="link(option.scope)" readonly :aria-label="option.label + '分享链接'" /></label>
@@ -25,12 +23,16 @@
             <a class="share-button visit" :href="link(option.scope)">访问我的{{ option.label }}</a>
           </div>
         </div>
-        <div class="share-actions share-code-actions">
-          <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">重新生成</button>
-          <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
-        </div>
       </template>
       <p v-else class="share-state">当前未公开任何内容。开启一种分享后，将生成分享链接。</p>
+      <slot name="help">
+        <p class="share-description share-private">仅公开所选内容，不包含备注、目标、计划或 OCR 记录。星石展示云端已保存背包，本机未同步修改不会出现在分享中。</p>
+        <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
+      </slot>
+      <div v-if="share?.active && share.share_code" class="share-actions share-code-actions">
+        <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">重新生成</button>
+        <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
+      </div>
     </template>
     <p v-if="busy" class="share-state" role="status" aria-live="polite">正在更新分享状态…</p>
     <p v-if="message" class="share-message" role="status" aria-live="polite">{{ message }}</p>
@@ -42,6 +44,7 @@ import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { getAccountShare, setAccountShareScope, regenerateAccountShare, revokeAccountShare } from '../api/accountShare.js'
 import { sharePath } from '../utils/shareLink.js'
 import { dialog } from '../utils/dialog.js'
+import { modalFocusState } from '../composables/useModalFocus.js'
 
 const props = defineProps({ accountId: { type: String, required: true } })
 const emit = defineEmits(['status-change', 'share-change'])
@@ -50,7 +53,7 @@ const options = [{ scope: 'operator', label: '密探 BOX' }, { scope: 'star', la
 const share = ref(null), loading = ref(false), busy = ref(false), error = ref(''), message = ref('')
 const scopes = computed(() => Array.isArray(share.value?.scopes) ? share.value.scopes : [])
 // Keep the existing operator ledger badge scoped to operator, even for star-only accounts.
-const status = computed(() => loading.value ? '读取中…' : busy.value ? '更新中…' : error.value ? '状态异常，请展开查看' : scopes.value.includes('operator') ? '已开启' : '未开启')
+const status = computed(() => loading.value ? '读取中…' : busy.value ? '更新中…' : error.value ? '状态异常，请查看分享管理' : scopes.value.includes('operator') ? '已开启' : '未开启')
 let requestSeq = 0, loadSeq = 0
 const current = (id, seq) => props.accountId === id && seq === requestSeq
 function link(scope) { return share.value?.share_code ? window.location.origin + sharePath(share.value.share_code, scope) : '' }
@@ -103,9 +106,16 @@ async function copy(value, label) {
   } catch {
     const textarea = document.createElement('textarea')
     let copied = false
-    try { textarea.value = value; textarea.style.position = 'fixed'; textarea.style.opacity = '0'; document.body.appendChild(textarea); textarea.select(); copied = document.execCommand('copy') }
+    const focused = document.activeElement
+    try {
+      textarea.value = value; textarea.readOnly = true
+      Object.assign(textarea.style, { position: 'fixed', opacity: '0', fontSize: '16px' })
+      ;(modalFocusState.panel || document.body).appendChild(textarea)
+      textarea.focus({ preventScroll: true }); textarea.select()
+      copied = document.execCommand('copy')
+    }
     catch { copied = false }
-    finally { textarea.remove() }
+    finally { textarea.remove(); focused?.focus({ preventScroll: true }) }
     if (!copied) { if (current(id, seq)) message.value = '复制失败，请手动选中复制'; return false }
   }
   if (!current(id, seq)) return false
@@ -125,6 +135,7 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .share-scopes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 14px }
 .share-scope { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12.5px; color: var(--ink); cursor: pointer }
 .share-scope input { flex: none; width: 18px; height: 18px; accent-color: var(--tea) }
+.share-scope-status { display: block; margin-top: 2px; color: var(--ink-60); font-size: 11px; font-weight: 400 }
 .share-scope:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
 .share-private { margin-top: 8px }
 .share-scope-note { margin-top: 4px }

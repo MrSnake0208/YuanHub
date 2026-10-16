@@ -1,6 +1,6 @@
 import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
 import * as accountShareApi from '../src/api/accountShare.js'
@@ -420,12 +420,14 @@ it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('顶部分享入口复用管理面板，仅展开且状态跟随当前账号', async () => {
+it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随当前账号', async () => {
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   operatorApi.listOperatorAccounts.mockResolvedValue([
     { id: 'acc', name: '测试账号', game: '如鸢' },
     { id: 'other-acc', name: '另一个账号', game: '如鸢' },
   ])
   accountShareApi.getAccountShare.mockImplementation(async id => ({
+    active: id === 'acc',
     share_code: id === 'acc' ? 'test-code' : '', scopes: id === 'acc' ? ['operator'] : [],
   }))
   const wrapper = renderPage({ attachTo: document.body }, { AccountWorkspace: false, OperatorShareManager: false })
@@ -438,19 +440,58 @@ it('顶部分享入口复用管理面板，仅展开且状态跟随当前账号'
   expect(header.get('.roster-view-box').attributes('to')).toBe('/operator/share')
   expect(header.get('.tool-more-content').text()).not.toMatch(/分享|查看他人/)
   expect(header.text()).not.toContain('管理当前账号的密探档案')
+  const content = wrapper.get('#operator-panel-catalog').html()
+  const modal = new DOMWrapper(document.getElementById('operator-share-dialog'))
+  expect(modal.isVisible()).toBe(false)
+  share.element.focus()
   await share.trigger('click')
-  expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(true)
-  expect(share.attributes('aria-expanded')).toBe('true')
-  await share.trigger('click')
+  expect(modal.isVisible()).toBe(true)
+  expect(modal.text()).toContain('测试账号')
   expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(false)
+  expect(share.attributes('aria-expanded')).toBe('true')
+  await modal.get('[aria-label="关闭分享弹窗"]').trigger('click'); await flushPromises()
+  expect(modal.isVisible()).toBe(false)
+  expect(share.attributes('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(share.element)
+  expect(wrapper.get('#operator-panel-catalog').html()).toBe(content)
+  expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
+  await share.trigger('click')
+  expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
+  await modal.get('footer button').trigger('click')
   activeAccount.id = 'other-acc'
   await flushPromises()
   expect(accountShareApi.getAccountShare).toHaveBeenLastCalledWith('other-acc')
   expect(share.text()).toContain('未分享')
   expect(share.text()).not.toContain('已开启')
+  await share.trigger('click')
+  expect(modal.text()).toContain('另一个账号')
+  expect(modal.find('input[readonly]').exists()).toBe(false)
   expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
   expect(accountShareApi.regenerateAccountShare).not.toHaveBeenCalled()
   expect(accountShareApi.revokeAccountShare).not.toHaveBeenCalled()
+})
+
+it('JSON 仍从更多打开，分享弹窗不改写导入草稿或导出范围', async () => {
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  accountShareApi.getAccountShare.mockResolvedValue({ active: false, scopes: [] })
+  const wrapper = renderPage({ attachTo: document.body }, { AccountWorkspace: false, OperatorShareManager: false })
+  await flushPromises()
+  await wrapper.get('.archive-toggle').trigger('click')
+  const workspace = wrapper.get('#operator-account-workspace')
+  expect(workspace.isVisible()).toBe(true)
+  expect(workspace.get('.export-submit').text()).toContain('导出密探档案')
+  await workspace.get('.archive-import').trigger('click')
+  const input = wrapper.get('.backup-import textarea')
+  await input.setValue('{"draft":"保留"}')
+  const before = workspace.html()
+  await wrapper.get('.roster-share').trigger('click')
+  expect(document.querySelector('#operator-share-dialog .archive-workspace')).toBeNull()
+  await new DOMWrapper(document.querySelector('#operator-share-dialog footer button')).trigger('click')
+  expect(workspace.html()).toBe(before)
+  expect(input.element.value).toBe('{"draft":"保留"}')
+  await wrapper.get('.archive-toggle').trigger('click')
+  expect(workspace.isVisible()).toBe(false)
+  expect(wrapper.find('.backup-import').exists()).toBe(false)
 })
 
 it('更多筛选仅统计高级条件，关闭面板仍保留条件与结果', async () => {
