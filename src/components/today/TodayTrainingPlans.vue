@@ -44,7 +44,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
-import { getOperatorAnnotations, getOperatorGrowthTargets } from '../../api/operator.js'
+import { getOperatorCatalog, getOperatorAnnotations, getOperatorGrowthTargets } from '../../api/operator.js'
 import { listAgentFavorites } from '../../api/inventory.js'
 import { workspaceFromRemote } from '../../data/operatorPlannerRemote.js'
 import { trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
@@ -59,7 +59,7 @@ const snapshot = ref(null), loading = ref(false), error = ref(''), denied = ref(
 let generation = 0, refreshTimer = null, unsubscribe = null
 const operatorTo = id => ({ path: '/operator', query: { tab: 'current', focus: id } })
 function member(id, target) {
-  const entry = catalog.get(id) || { id, name: id }
+  const entry = snapshot.value.catalog.get(id) || { id, name: id }
   const labels = []
   if (target?.level != null) labels.push('等级 ' + target.level)
   if (target?.elite != null) labels.push('修为 ' + target.elite)
@@ -84,15 +84,22 @@ async function load() {
   const token = ++generation, account = props.accountId
   loading.value = true; error.value = ''
   try {
-    const [workspace, annotations, favorites, targets] = await Promise.all([
-      getTrainingWorkspace(account), getOperatorAnnotations(account), listAgentFavorites(account), getOperatorGrowthTargets(account)
+    const [workspace, annotations, favorites, targets, operatorCatalog] = await Promise.all([
+      getTrainingWorkspace(account), getOperatorAnnotations(account), listAgentFavorites(account), getOperatorGrowthTargets(account),
+      getOperatorCatalog().catch(() => null)
     ])
     if (token !== generation) return
     const notes = itemsFrom(annotations, account)
     if (!Array.isArray(workspace?.plans) || notes.some(item => item.note != null && typeof item.note !== 'string')
       || favorites?.account_id !== account || !Array.isArray(favorites.agent_ids)
       || favorites.agent_ids.some(id => typeof id !== 'string' || !id)) throw new Error('养成数据读取结果不完整，请重试。')
-    snapshot.value = { workspace: workspaceFromRemote(workspace, account), favorites: new Set(favorites.agent_ids),
+    const resolvedCatalog = new Map(catalog)
+    for (const entry of Array.isArray(operatorCatalog?.operators) ? operatorCatalog.operators : []) {
+      if (typeof entry?.id === 'string' && typeof entry.name === 'string' && entry.name.trim()) {
+        resolvedCatalog.set(entry.id, { ...catalog.get(entry.id), ...entry, name: entry.name.trim() })
+      }
+    }
+    snapshot.value = { catalog: resolvedCatalog, workspace: workspaceFromRemote(workspace, account), favorites: new Set(favorites.agent_ids),
       notes: Object.fromEntries(notes.map(item => [item.operator_id, item.note || ''])),
       targets: Object.fromEntries(itemsFrom(targets, account).map(item => [item.operator_id, item])) }
   } catch (err) {
