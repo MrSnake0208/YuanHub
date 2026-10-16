@@ -13,30 +13,50 @@
 .training-replace { margin-top: 12px; padding: 12px; }
 .training-replace p { margin: 0 0 10px; font-size: 12px; line-height: 1.7; }
 .training-replace button { margin: 0 8px 8px 0; }
-.training-fields { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; margin-top: 18px; }
+.training-fields { display: grid; grid-template-columns: minmax(0,1fr) minmax(116px,.75fr); gap: 12px; margin-top: 16px; }
 .training-fields label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
 .training-fields input, .training-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; }
 .training-fields .row-error { margin: 0; }
-.training-level-settings { margin-top: 18px; padding: 0 12px 12px; }
-.training-level-settings summary { min-height: 44px; padding: 12px 0; font-size: 12px; }
+.training-group-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; }
+.training-group-options .outline-button { min-width: 0; min-height: 36px; padding: 7px 8px; font-size: 12px; }
+.training-stepper { display: flex; min-width: 0; overflow: hidden; }
+.training-stepper .outline-button { flex: 0 0 32px; min-width: 32px; min-height: 42px; padding: 6px; }
+.training-fields .training-stepper input { flex: 1; width: 0; min-height: 42px; text-align: center; padding: 8px 2px; }
+.training-entry-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 14px; }
+.training-entry-actions .add-training { margin-top: 0; min-height: 36px; padding: 8px 12px; }
+.training-draft-rewards { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 14px; font-size: 12px; }
+.training-reward-chip { display: inline-flex; align-items: center; gap: 6px; }
+.training-draft-rewards .reward-item-icon { flex-basis: 24px; width: 24px; height: 24px; }
+.training-selection > .shortcut-note { font-size: 11px; margin-top: 10px; }
+.training-records { margin-top: 18px; }
+.training-records h4 { margin: 0; font-size: 14px; }
+.training-records h4 small { margin-left: 8px; font-weight: 400; }
+.training-records ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.training-records li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.training-records li > span { display: grid; gap: 4px; }
+.training-records li > div { display: flex; gap: 14px; }
+.training-records .text-button { min-height: 32px; }
+.training-toolbar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.training-toolbar h4 { font-size: 18px; }
+.training-level-settings { margin: 0; padding: 0; }
+.training-settings-panel { position: absolute; inset-inline: 0; top: calc(100% + 8px); z-index: var(--z-popover); padding: 12px; }
+.training-level-settings summary { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 0 4px 8px; font-size: 12px; }
 .training-level-settings summary span { margin-left: 12px; }
 .training-level-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap: 8px; margin-top: 12px; }
 .training-level-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; font-size: 12px; }
 .training-level-options input, .training-show-all input { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; }
 .training-show-all { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; font-size: 12px; }
-.training-selection { margin-top: 18px; padding-top: 14px; }
-.training-selection-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; }
-.training-selection-heading .text-button { min-width: 44px; min-height: 44px; }
+.training-selection { margin: 0; padding: 14px; }
+.training-help { margin-top: 18px; }
+.training-help summary { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 32px; font-size: 11px; }
+.training-help summary > span:last-child { display: inline-flex; align-items: center; gap: 4px; }
 .add-training { margin-top: 16px; }
-.training-formulas { list-style: none; padding: 14px; margin: 18px 0 0; }
-.training-formulas li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 7px 14px; padding: 7px 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-.training-formulas strong, .training-count { font-family: var(--font-d); }
+.training-count { font-family: var(--font-d); }
 .training-count { margin-left: auto; overflow-wrap: anywhere; }
 .training-material { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
 .reward-item-icon { display: inline-grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; font-size: 12px; }
 .reward-item-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .error-message a { display: block; margin-top: 5px; }
-@media (min-width: 768px) { .training-fields { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 button, input, select, textarea { font: inherit; }
 button { padding: 0; }
 .entry-button, .outline-button, .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 17px; font-size: 12px; font-weight: 800; }
