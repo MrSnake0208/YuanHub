@@ -13,28 +13,28 @@
       <button type="button" @click="load">重试</button>
     </div>
     <template v-else>
-      <ul v-if="counts.total" class="activity-preview" aria-label="今日活动预览">
-        <li v-for="item in preview" :key="item.id">
-          <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
-          <span class="activity-detail">{{ calendarStatuses(item, today, now).join(' / ') }} · <template v-if="item.end_date">截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : ' · 具体时间未提供' }}</template><template v-else>持续进行</template></span>
-        </li>
-      </ul>
-      <p v-else class="activity-message">{{ game || '全部游戏' }}今天暂无公开活动，可以查看接下来的日程。</p>
-      <p v-if="counts.total > preview.length" class="activity-message">另有 {{ counts.total - preview.length }} 项，查看活动日历了解详情。</p>
       <div v-if="counts.total" class="activity-counts" aria-label="今日活动统计">
         <p>进行中 <strong>{{ counts.ongoing }}</strong></p>
         <p>今日开始 <strong>{{ counts.starts }}</strong></p>
         <p>今日结束 <strong>{{ counts.ends }}</strong></p>
       </div>
+      <ul v-if="counts.total" class="activity-preview" aria-label="今日活动预览">
+        <li v-for="item in preview" :key="item.id">
+          <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
+          <span class="activity-detail">{{ calendarStatuses(item, today, now).join(' / ') }} · <template v-if="item.end_date">截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : '（仅日期）' }}</template><template v-else>持续进行</template></span>
+        </li>
+      </ul>
+      <p v-else class="activity-message">{{ game || '全部游戏' }}今天暂无公开活动，可以查看接下来的日程。</p>
+      <p v-if="counts.total > preview.length" class="activity-message">另有 {{ counts.total - preview.length }} 项，查看活动日历了解详情。</p>
       <section v-if="upcoming.length" class="activity-upcoming" aria-labelledby="activity-upcoming-title">
         <h3 id="activity-upcoming-title">接下来 7 天</h3>
         <ul class="activity-preview">
-          <li v-for="item in upcoming.slice(0, 2)" :key="item.id">
+          <li v-for="item in upcoming.slice(0, 1)" :key="item.id">
             <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
             <span class="activity-detail">{{ item.start_date }}{{ item.start_time ? ' ' + item.start_time : '' }} 开始 · {{ item.end_date ? '截止 ' + item.end_date : '持续进行' }}</span>
           </li>
         </ul>
-        <p v-if="upcoming.length > 2" class="activity-message">另有 {{ upcoming.length - 2 }} 项即将开始，可在日历查看。</p>
+        <p v-if="upcoming.length > 1" class="activity-message">另有 {{ upcoming.length - 1 }} 项即将开始，可在日历查看。</p>
       </section>
     </template>
   </section>

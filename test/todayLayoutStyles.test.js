@@ -31,8 +31,10 @@ function declarations(owner, end, selector) {
 }
 
 test('today desktop owns expanded regions while mobile owns compact regions independently', () => {
-  assert.equal(declarations('todayLobby', 'Desktop', '.lobby-scene')['min-height'], '260px')
-  assert.equal(declarations('todayLobby', 'Mobile', '.lobby-scene')['min-height'], '164px')
+  const desktopScene = parseFloat(declarations('todayLobby', 'Desktop', '.lobby-scene')['min-height'])
+  const mobileScene = parseFloat(declarations('todayLobby', 'Mobile', '.lobby-scene')['min-height'])
+  assert.ok(desktopScene > mobileScene)
+  assert.ok(desktopScene <= 180 && mobileScene <= 140, 'overview scenes leave space for summaries')
   assert.equal(declarations('todayOnboarding', 'Desktop', '.data-readiness-grid')['grid-template-columns'], 'repeat(3, minmax(0, 1fr))')
   assert.equal(declarations('todayOnboarding', 'Mobile', '.data-readiness-grid')['grid-template-columns'], '1fr')
   assert.equal(declarations('todayOnboarding', 'Desktop', '.account-management-card')['grid-template-columns'], 'minmax(0, 1fr) auto')

@@ -30,6 +30,10 @@ function feed(items, { summaryItems = items.slice(0, 3), total = items.filter(va
   saveCalendarProgress.mockImplementation(async (id, body) => ({ ...structuredClone(items.find(value => value.event_id === id)), version: body.expected_version + 1, checklist: structuredClone(body.checklist) }))
 }
 const checks = () => wrapper.findAll('input[type=checkbox]')
+const expandChecklist = async () => {
+  const more = wrapper.find('.todo-more')
+  if (more.exists() && more.attributes('aria-expanded') === 'false') await more.trigger('click')
+}
 const notify = (userId = 'user', accountId = 'a') => window.dispatchEvent(new CustomEvent('calendar-subscriptions-updated', { detail: { userId, accountId } }))
 
 beforeEach(() => {
@@ -42,7 +46,8 @@ it('shows real titles and checked states, prioritizes pending, and separates act
   feed([record('活动一', { checklist: [entry('done', '领取奖励', true), entry('todo', '明天开始打')] })], { total: 7, count: 8 })
   render(); await flushPromises()
   expect(wrapper.get('h2').text()).toBe('我的待办')
-  expect(checks().map(input => input.element.checked)).toEqual([false, true])
+  expect(checks().map(input => input.element.checked)).toEqual([false])
+  expect(wrapper.find('.is-complete').exists()).toBe(false)
   expect(checks()[0].attributes('aria-label')).toBe('完成 明天开始打（活动一）')
   expect(wrapper.get('.todo-scope').text()).toContain('1 项待办未完成')
   expect(wrapper.text()).toContain('7 项活动尚未标记本期完成')
@@ -86,18 +91,22 @@ it('renders reminders in the sidebar with one subscription instance and removes 
   expect(vi.getTimerCount()).toBe(0)
 })
 
-it('shows at most six tasks initially and allows completed and long tasks to be inspected', async () => {
+it('previews three pending tasks and keeps the full checklist available on request', async () => {
   feed([record('密集清单', { checklist: Array.from({ length: 9 }, (_, i) => entry('e' + i, ('很长的待办文字' + i).repeat(5), i >= 7)) })])
   render(); await flushPromises()
-  expect(checks()).toHaveLength(6)
+  expect(checks()).toHaveLength(3)
+  expect(wrapper.text()).toContain('7 项待办未完成')
+  expect(wrapper.text()).toContain('还有 4 项未完成')
+  expect(wrapper.find('.is-complete').exists()).toBe(false)
+  expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { scope: 'mine', task: 'todo', game: '如鸢' } })
   const more = wrapper.get('.todo-more')
   expect(more.attributes('aria-expanded')).toBe('false')
-  expect(more.text()).toContain('3 项')
+  expect(more.text()).toBe('展开完整清单')
   await more.trigger('click')
   expect(checks()).toHaveLength(9)
   expect(checks().filter(input => input.element.checked)).toHaveLength(2)
   expect(wrapper.findAll('.is-complete')).toHaveLength(2)
-  await more.trigger('click'); expect(checks()).toHaveLength(6)
+  await more.trigger('click'); expect(checks()).toHaveLength(3)
 })
 
 it('saves the target flag with the exact version and all other entries/order unchanged', async () => {
@@ -109,6 +118,7 @@ it('saves the target flag with the exact version and all other entries/order unc
     account_id: 'a', expected_version: 4, completed: false, progress_mode: 'checklist',
     checklist: [entry('z', '  原有文字  ', true), entry('target', '明天开始打', true), entry('a', '相同标题')]
   }, 'user')
+  await expandChecklist()
   expect(checks()[0].element.checked).toBe(true)
   expect(original.checklist[1].completed).toBe(false)
   expect(setCalendarCompletion).not.toHaveBeenCalled(); expect(setCalendarSubscription).not.toHaveBeenCalled()
@@ -130,8 +140,12 @@ it('keeps the confirmed state during saving, ignores rapid repeated clicks, and 
   await checks()[0].setValue(true); await checks()[1].setValue(true)
   expect(saveCalendarProgress).toHaveBeenCalledTimes(1)
   write.resolve({ ...original, version: 5, checklist: [entry('one', '事项一', true), entry('two', '事项二')] }); await flushPromises()
+  expect(checks()).toHaveLength(1)
+  expect(checks()[0].attributes('aria-label')).toBe('完成 事项二（活动一）')
+  expect(document.activeElement).toBe(checks()[0].element)
+  await expandChecklist()
   expect(checks()[0].element.checked).toBe(true)
-  expect(document.activeElement === checks()[0].element).toBe(true)
+  expect(document.activeElement === checks()[1].element).toBe(true)
   await checks()[1].setValue(true); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ expected_version: 5, checklist: [entry('one', '事项一', true), entry('two', '事项二', true)] })
   expect(wrapper.text()).toContain('当前范围的清单已全部勾选')
@@ -140,6 +154,9 @@ it('keeps the confirmed state during saving, ignores rapid repeated clicks, and 
 
 it('can undo a completed checklist item without changing the period completion flag', async () => {
   feed([record('活动一', { checklist: [entry('one', '明天开始打', true)] })]); render(); await flushPromises()
+  expect(checks()).toHaveLength(0)
+  expect(wrapper.text()).toContain('当前范围的清单已全部勾选')
+  await expandChecklist()
   expect(checks()[0].attributes('aria-label')).toContain('取消完成')
   await checks()[0].setValue(false); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ completed: false, progress_mode: 'checklist', checklist: [entry('one', '明天开始打')] })
@@ -165,10 +182,12 @@ it('reads a conflict version and new remote entries before the user retries, pre
   wrapper.get('[role=alert] button').element.focus()
   await wrapper.get('[role=alert] button').trigger('click'); await flushPromises()
   expect(getCalendarSubscription).toHaveBeenCalledExactlyOnceWith('活动一', 'a', 'user')
-  expect(wrapper.text()).toContain('另一页面新加的事项')
+  expect(wrapper.get('.todo-list').text()).not.toContain('另一页面新加的事项')
   expect(wrapper.text()).toContain('改过名字的事项')
   expect(wrapper.find('[role=alert]').exists()).toBe(false)
   expect(document.activeElement.dataset.todoKey).toBe(JSON.stringify(['活动一', 'one']))
+  await expandChecklist()
+  expect(wrapper.get('.todo-list').text()).toContain('另一页面新加的事项')
   await checks()[0].setValue(true); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ expected_version: 9, checklist: [entry('remote', '另一页面新加的事项', true), entry('one', '改过名字的事项', true)] })
 })
@@ -178,6 +197,8 @@ it('reconciles a save with unknown outcome by reading the already saved value, w
   render(); await flushPromises(); await checks()[0].setValue(true); await flushPromises()
   getCalendarSubscription.mockResolvedValue(record('活动一', { version: 5, checklist: [entry('one', '明天开始打', true)] }))
   await wrapper.get('[role=alert] button').trigger('click'); await flushPromises()
+  expect(checks()).toHaveLength(0)
+  await expandChecklist()
   expect(checks()[0].element.checked).toBe(true)
   expect(saveCalendarProgress).toHaveBeenCalledTimes(1)
   expect(wrapper.text()).toContain('已读取最新状态')
@@ -213,6 +234,7 @@ it('allows different activities to save independently without mixing their versi
   const write = deferred(); saveCalendarProgress.mockImplementationOnce(() => write.promise)
   render(); await flushPromises(); await checks()[0].setValue(true); await checks()[1].setValue(true); await flushPromises()
   expect(saveCalendarProgress.mock.calls.map(call => [call[0], call[1].expected_version])).toEqual([['活动A', 4], ['活动B', 12]])
+  await expandChecklist()
   expect(checks().map(input => input.element.checked)).toEqual([false, true])
   write.resolve({ ...a, version: 5, checklist: [entry('one', '明天开始打', true)] }); await flushPromises()
   expect(checks().every(input => input.element.checked)).toBe(true)
@@ -394,7 +416,7 @@ it.each(['cutoff', 'midnight'])('refreshes once at the exact %s boundary and rel
   wrapper.unmount(); expect(vi.getTimerCount()).toBe(0)
 })
 
-it('refreshes on visibility/pageshow, preserves a focused checkbox during reordering, and keeps links separately accessible', async () => {
+it('refreshes without expanding the overview and restores focus when a task leaves the preview', async () => {
   const original = record('未来活动', {}, { start_date: '2026-10-06', end_date: '2026-10-09' })
   feed([original]); render(); await flushPromises()
   const link = wrapper.findAllComponents(RouterLinkStub).find(value => value.attributes('aria-label') === '查看活动 未来活动')
@@ -409,8 +431,10 @@ it('refreshes on visibility/pageshow, preserves a focused checkbox during reorde
   feed([record('新活动', { checklist: Array.from({ length: 6 }, (_, i) => entry('new' + i, '新事项' + i)) }), { ...original, checklist: [entry('one', '明天开始打', true)] }])
   window.dispatchEvent(new Event('pageshow')); await flushPromises()
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(2)
-  expect(checks()).toHaveLength(7)
-  expect(document.activeElement.dataset.todoKey).toBe(JSON.stringify(['未来活动', 'one']))
+  expect(checks()).toHaveLength(3)
+  expect(wrapper.find('.is-complete').exists()).toBe(false)
+  expect(wrapper.get('.todo-more').attributes('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(wrapper.get('.todo-heading a').element)
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
   document.dispatchEvent(new Event('visibilitychange')); await flushPromises()
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(2)

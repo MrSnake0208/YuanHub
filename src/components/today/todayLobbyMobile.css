@@ -3,15 +3,15 @@
 .today-lobby { isolation: isolate; }
 .lobby-wrap { max-width: 1180px; container-type: inline-size; }
 .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'context context'; align-items: center; gap: 4px 12px; min-height: 52px; padding-top: 4px; }
-.lobby-scene { position: relative; min-height: 164px; display: flex; align-items: center; }
+.lobby-scene { position: relative; min-height: 116px; display: flex; align-items: center; }
 .lobby-copy { position: relative; z-index: 2; width: 58%; min-width: 0; padding: 12px 8px 12px 0; }
 .lobby-heading { grid-area: heading; display: grid; gap: 2px; min-width: 0; }
 .lobby-heading time { font-size: 11px; }
 .lobby-status { margin-top: 6px; font-size: 13px; overflow-wrap: anywhere; }
 .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin-top: 8px; font-size: 12px; }
-.lobby-duty button { min-height: 44px; padding: 6px 4px; }
+.lobby-duty button { min-height: 32px; padding: 4px; }
 .lobby-save-notice { margin-top: 4px; font-size: 12px; }
-.lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 164px; overflow: hidden; }
+.lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 116px; overflow: hidden; }
 .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: translateY(12px); }
 .lobby-art-error { padding: 50px 8px; font-size: 12px; text-align: center; }
 .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }

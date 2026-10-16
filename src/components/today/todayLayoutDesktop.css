@@ -7,6 +7,8 @@
   .today-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
   .today-aside { display: grid; align-content: start; gap: 16px; min-width: 0; }
   .today-reminders-target:empty { display: none; }
+  :deep(.today-personal:empty) { display: none; }
+  :deep(.today-overview:has(> .today-personal:empty)) { grid-template-columns: minmax(0, 1fr); }
 }
 @media (min-width: 981px) {
   .has-sidebar { grid-template-columns: minmax(0, 1fr) minmax(240px, 28%); }

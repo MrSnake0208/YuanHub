@@ -1,6 +1,6 @@
 <template>
-  <TodayLayout :show-overview="calendarEnabled || trainingEnabled || showAccountOverview"
-    :has-sidebar="(calendarEnabled || trainingEnabled) && !!validAccountId">
+  <TodayLayout :show-overview="calendarEnabled || trainingEnabled"
+    :has-sidebar="calendarEnabled && !!validAccountId">
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
         <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
@@ -28,31 +28,13 @@
     </template>
     <template #overview>
       <div v-if="(calendarEnabled || trainingEnabled) && validAccountId" class="today-personal">
-        <TodaySubscriptionSummary v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" reminders-target="#today-reminders" />
-        <TodayTrainingPlans v-if="trainingEnabled" :account-id="validAccountId" :game="accountGame" />
-        <TodayPrivateItems v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" />
+        <TodaySubscriptionSummary v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" />
+        <TodayTrainingPlans v-if="trainingEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
+        <TodayPrivateItems v-if="calendarEnabled" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
       </div>
     </template>
-    <template #activity>
-      <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
-    </template>
-    <template #account>
-      <div v-if="showAccountOverview" class="today-account-overview">
-        <section class="account-data-summary" aria-labelledby="account-data-title" :aria-busy="summaryLoading">
-          <h2 id="account-data-title">账号详情</h2>
-          <p v-if="summaryLoading" class="today-loading" role="status">正在读取当前账号的数据…</p>
-          <p v-else-if="!validAccountId">请选择游戏账号，查看对应的数据状态。</p>
-          <template v-else>
-            <ul class="account-data-list">
-              <li v-for="item in dataSetupItems" :key="item.key" :class="{ 'is-unknown': item.status === 'unknown' }">
-                <span>{{ item.title }}</span><strong>{{ item.statusLabel }}</strong>
-              </li>
-            </ul>
-            <p v-if="unknownDataItems.length">{{ unknownDataLabel }}状态未确认，不会要求重新录入。</p>
-            <p v-else-if="!missingDataItems.length">已录入的数据可继续在对应工作区维护。</p>
-          </template>
-        </section>
-      </div>
+    <template v-if="calendarEnabled" #activity>
+      <TodayActivitySummary :game="calendarGame" />
     </template>
     <template #onboarding>
       <TodayDataOnboarding
@@ -164,7 +146,6 @@ const calendarGame = computed(function () {
 })
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
 const isReturningUser = computed(() => !!validAccountId.value && hasTodayAccountData(realSummary.value))
-const showAccountOverview = computed(() => auth.isLoggedIn && !accountLoading.value && !accountLoadFailed.value && accounts.value.length > 0 && (summaryLoading.value || !showDataOnboarding.value || isReturningUser.value))
 const onboardingStage = computed(function () {
   return getTodayOnboardingStage({
     isLoggedIn: auth.isLoggedIn,
@@ -181,6 +162,8 @@ const showDataOnboarding = computed(function () {
     summary: realSummary.value
   })
 })
+const isFreshAccount = computed(() => showDataOnboarding.value && onboardingStage.value === 'data'
+  && Object.values(dataReadiness.value).every(status => status === 'empty'))
 const dataSetupItems = computed(function () {
   return DATA_SETUP_CONFIG.map(function (item) {
     const status = dataReadiness.value[item.key]
@@ -221,8 +204,7 @@ const autoSyncMissingLabel = computed(function () {
 const onboardingTitle = computed(function () {
   if (onboardingStage.value === 'auth') return '先登录，再开始建立今日一览'
   if (onboardingStage.value === 'account') return '先建立你的游戏子账号'
-  const names = missingDataItems.value.map(function (item) { return item.title })
-  return names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
+  return unknownDataItems.value.length ? '部分资料状态待确认' : '从一份资料开始'
 })
 const onboardingDescription = computed(function () {
   if (onboardingStage.value === 'auth') {
@@ -231,7 +213,9 @@ const onboardingDescription = computed(function () {
   if (onboardingStage.value === 'account') {
     return '密探、库存、星石和自动同步数据都需要先归属到一个游戏账号。账号统一在个人中心创建和维护。'
   }
-  return 'YuanHub 已分别检查当前子账号的密探、库存和星石。缺哪一项就只补哪一项，已有数据不会重复要求录入。'
+  return unknownDataItems.value.length
+    ? '仅对确认缺少的数据提供录入入口；状态待确认的资料无需重新录入。'
+    : '任选一项录入即可开始，也可以连接 MaaYuan 自动同步密探和库存。'
 })
 const onboardingNote = computed(function () {
   return '任选所需业务 · 无需全部录入'
@@ -330,13 +314,6 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 .today-alert { border: 1px solid var(--rouge); color: var(--rouge); line-height: 1.7; }
 .today-alert button { border: 1px solid currentColor; background: var(--surface); color: inherit; cursor: pointer; }
 .today-loading { color: var(--tea); line-height: 1.7; }
-.account-data-summary { border: 1px solid var(--line); background: var(--surface); }
-.account-data-summary h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
-.account-data-summary > p { color: var(--tea); line-height: 1.7; }
-.account-data-list { list-style: none; }
-.account-data-list li { line-height: 1.7; }
-.account-data-list strong { font-weight: 650; }
-.account-data-list .is-unknown { color: var(--rouge); }
 a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 </style>
 <style scoped src="../../components/today/todayAccountDesktop.css"></style>

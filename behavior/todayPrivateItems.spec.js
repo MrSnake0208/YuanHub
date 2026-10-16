@@ -15,7 +15,7 @@ beforeEach(() => {
   listCalendarPrivateItems.mockResolvedValue({ items: [] })
 })
 
-it('shows complete plain-text notes, multi-day ranges and chronological links to my calendar', async () => {
+it('shows bounded plain-text notes, multi-day ranges and chronological links to my calendar', async () => {
   const note = '<img src=x onerror=alert(1)>\n' + '长备注'.repeat(250)
   listCalendarPrivateItems.mockResolvedValue({ items: [
     record({ id: 'pci_00000000-0000-0000-0000-000000000002', title: '未来事项', date: '2026-10-20' }),
@@ -26,10 +26,21 @@ it('shows complete plain-text notes, multi-day ranges and chronological links to
   const wrapper = render(); await flushPromises()
   expect(listCalendarPrivateItems).toHaveBeenCalledExactlyOnceWith({ account_id: 'a', from: '2026-10-15', to: '2027-01-13' }, 'owner-a')
   expect(wrapper.findAll('.private-title').map(node => node.text())).toEqual(['进行中', '未来事项'])
-  expect(wrapper.get('.private-note').element.textContent).toBe(note)
+  expect(wrapper.get('.private-note').element.textContent).toBe(note.slice(0, 80) + '…')
   expect(wrapper.find('img').exists()).toBe(false)
   expect(wrapper.text()).toContain('2026-10-14 — 2026-10-16 · 开始日 08:30（上海时间）')
   expect(wrapper.findAllComponents(RouterLinkStub)[1].props('to')).toEqual({ path: '/calendar', query: { scope: 'mine', task: 'todo', game: '如鸢', view: 'list', date: '2026-10-15', event: record().id } })
+})
+
+it('previews the first two items while retaining the total and full calendar entry', async () => {
+  listCalendarPrivateItems.mockResolvedValue({ items: [3, 1, 2].map(index => record({
+    id: `pci_00000000-0000-0000-0000-00000000000${index}`, title: `事项${index}`, date: `2026-10-1${index + 5}`
+  })) })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.private-title').map(node => node.text())).toEqual(['事项1', '事项2'])
+  expect(wrapper.text()).toContain('3 项事项')
+  expect(wrapper.text()).toContain('还有 1 项')
+  expect(wrapper.getComponent(RouterLinkStub).props('to').query).toMatchObject({ scope: 'mine', view: 'list', game: '如鸢' })
 })
 
 it('does not request private data without login or a selected account', async () => {

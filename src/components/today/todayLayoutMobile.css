@@ -6,4 +6,5 @@
   .today-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
   .today-aside { display: grid; align-content: start; gap: 16px; min-width: 0; }
   .today-reminders-target:empty { display: none; }
+  :deep(.today-personal:empty) { display: none; }
 }

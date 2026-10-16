@@ -1,5 +1,5 @@
 <template>
-  <section class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
+  <section v-if="!hideEmpty || !snapshot || loading || error || plans.length || otherNotes.length" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
     <header class="training-heading">
       <div class="training-heading-copy">
         <h2 id="today-training-title">我的养成计划</h2>
@@ -18,40 +18,25 @@
       </div>
       <template v-if="snapshot">
         <p v-if="!plans.length && !otherNotes.length">还没有培养成员或备注，可去密探养成设置计划。</p>
-        <article v-for="plan in plans" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
+        <article v-for="plan in plans.slice(0, 1)" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
           <header class="training-plan-heading">
             <h3>{{ plan.name }}</h3>
             <span class="training-count">{{ plan.members.length }}人</span>
             <span v-if="plan.id === snapshot.workspace.activePlanId" class="training-current">当前清单</span>
           </header>
           <ul class="training-list">
-            <li v-for="member in plan.members" :key="member.id">
+            <li v-for="member in plan.members.slice(0, 3)" :key="member.id">
               <router-link class="training-member" :to="operatorTo(member.id)">
                 <OperatorAvatar :avatar="member.avatar" :name="member.name" :rarity="member.rarity" aria-hidden="true" />
                 <span class="training-member-name">{{ member.name }}</span>
-                <span class="training-target">{{ member.target }}</span>
-                <ChevronRight class="training-chevron" :size="14" aria-hidden="true" />
               </router-link>
-              <p v-if="member.note" class="training-note">{{ member.note }}</p>
             </li>
           </ul>
+          <p v-if="plan.members.length > 3" class="training-hint">另有 {{ plan.members.length - 3 }} 名密探</p>
         </article>
-        <article v-if="otherNotes.length" class="training-plan">
-          <header class="training-plan-heading">
-            <h3>其他密探备注</h3>
-            <span class="training-count">{{ otherNotes.length }}人</span>
-          </header>
-          <ul class="training-list">
-            <li v-for="member in otherNotes" :key="member.id">
-              <router-link class="training-member training-member-notes" :to="operatorTo(member.id)">
-                <OperatorAvatar :avatar="member.avatar" :name="member.name" :rarity="member.rarity" aria-hidden="true" />
-                <span class="training-member-name">{{ member.name }}</span>
-                <ChevronRight class="training-chevron" :size="14" aria-hidden="true" />
-              </router-link>
-              <p class="training-note">{{ member.note }}</p>
-            </li>
-          </ul>
-        </article>
+        <p v-if="plans.length > 1" class="training-hint">另有 {{ plans.length - 1 }} 个清单，可在养成页查看。</p>
+        <p v-if="notePreview" class="training-note">{{ notePreview }}</p>
+        <p v-if="otherNotes.length" class="training-hint">{{ otherNotes.length }} 名清单外密探有备注，可在养成页查看。</p>
       </template>
     </template>
   </section>
@@ -59,7 +44,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowRight, ChevronRight } from '@lucide/vue'
+import { ArrowRight } from '@lucide/vue'
 import OperatorAvatar from '../operator/OperatorAvatar.vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
@@ -71,7 +56,7 @@ import { trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { operatorHuajiLabel } from '../../utils/operatorHuaji.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' } })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const catalog = new Map(AGENT_CATALOG.map(entry => [entry.id, entry]))
@@ -95,6 +80,10 @@ const planMemberCount = computed(() => plans.value.reduce((total, plan) => total
 const otherNotes = computed(() => {
   const planned = new Set(plans.value.flatMap(plan => plan.members.map(item => item.id)))
   return Object.keys(snapshot.value?.notes || {}).filter(id => !planned.has(id) && snapshot.value.notes[id].trim()).map(id => member(id))
+})
+const notePreview = computed(() => {
+  const note = Object.values(snapshot.value?.notes || {}).find(value => value.trim())?.trim() || ''
+  return note.length > 80 ? note.slice(0, 80) + '…' : note
 })
 function itemsFrom(data, account) {
   if (data?.account_id !== account || !Array.isArray(data.items)

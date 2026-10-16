@@ -11,7 +11,7 @@ import { getCurrent } from '../src/api/inventory.js'
 import { getCurrentStarState } from '../src/api/starState.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { calendarSubscriptionSummary } from '../src/api/activityCalendarSubscriptions.js'
-import { isFeatureEnabled } from '../src/config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -203,6 +203,20 @@ it('已知精确截止触发本地预览更新，日期未知时间不伪造完�
   wrapper.unmount(); expect(vi.getTimerCount()).toBe(0)
 })
 
+it('活动统计先于预览展示，未来活动只预览一项并保留完整入口', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [item(), ...[1, 2, 3].map(index => item({
+    id: 'future-' + index, title: '未来活动' + index, start_date: `2026-10-0${index + 3}`, end_date: '2026-10-10'
+  }))] })
+  const wrapper = render(TodayActivitySummary, { game: '如鸢' }); await flushPromises()
+  const children = Array.from(wrapper.element.children)
+  expect(children.indexOf(wrapper.get('.activity-counts').element)).toBeLessThan(children.indexOf(wrapper.get('[aria-label="今日活动预览"]').element))
+  expect(wrapper.findAll('.activity-upcoming li')).toHaveLength(1)
+  expect(wrapper.get('.activity-upcoming').text()).toContain('未来活动1')
+  expect(wrapper.get('.activity-upcoming').text()).toContain('另有 2 项即将开始')
+  expect(wrapper.get('.activity-detail').text()).toContain('（仅日期）')
+  expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢' } })
+})
+
 it('dashboard已有错误在日历失败和重试后保持原样', async () => {
   signIn()
   getOperatorCurrent.mockRejectedValue(new Error('密探读取失败'))
@@ -248,7 +262,8 @@ it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数�
   expect(listActivityCalendar).not.toHaveBeenCalled()
   expect(getOperatorCurrent).toHaveBeenCalled()
   expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   expect(wrapper.get('.data-account-context-bar').text()).toContain('大号')
   // Drain jsdom's zero-delay storage events from the existing account persistence.
   await vi.advanceTimersByTimeAsync(0)
@@ -373,18 +388,31 @@ it('普通用户可读活动摘要，退出登录清理计时器并丢弃迟到�
   wrapper.unmount()
 })
 
+it('仅开启养成时不保留账号详情或空的活动侧栏', async () => {
+  isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.ACTIVITY_CALENDAR)
+  signIn()
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.today-training').exists()).toBe(true)
+  expect(wrapper.find('.today-aside').exists()).toBe(false)
+  expect(wrapper.get('.today-overview').classes()).not.toContain('has-sidebar')
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
+  expect(listActivityCalendar).not.toHaveBeenCalled()
+})
+
 it('今日原地换账号同步清空摘要，不让A数量冒充B', async () => {
   signIn(); activeAccount.set('acc-a')
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
   const readB = deferred(); getOperatorCurrent.mockReturnValueOnce(readB.promise)
   activeAccount.set('acc-b')
   expect(wrapper.vm.realSummary.operatorCount).toBeNull()
   await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('正在读取当前账号')
-  expect(wrapper.get('.account-data-summary').text()).not.toContain('已录入 1 位')
+  expect(wrapper.vm.summaryLoading).toBe(true)
+  expect(wrapper.vm.realSummary.operatorCount).toBeNull()
   readB.resolve({ entries: {} }); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('尚未录入')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(0)
+  expect(wrapper.vm.summaryLoading).toBe(false)
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
 })
 

@@ -1,8 +1,8 @@
 <template>
-  <section ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
+  <section v-if="!hideEmpty || !ready || loading || error || count || total || unavailableCount || tasks.length || emptyRecords.length" ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
     <header class="todo-heading">
       <h2 id="today-subscriptions-title">我的待办</h2>
-      <router-link :to="{ path: '/calendar', query: mineQuery }">查看我的待办</router-link>
+      <router-link :to="{ path: '/calendar', query: mineQuery }">查看全部</router-link>
     </header>
     <p v-if="!identity">登录并选择游戏账号后，可查看自己的活动待办。</p>
     <p v-else-if="!accountId">选择游戏账号后，在活动日历订阅你关注的本期活动。</p>
@@ -10,7 +10,7 @@
       <p v-if="loading && !ready" role="status">正在读取待办…</p>
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
-        <p class="todo-scope">进行中与未来 90 天的订阅清单<span v-if="tasks.length"> · {{ pendingTasks }} 项待办未完成</span></p>
+        <p class="todo-scope"><template v-if="tasks.length">{{ pendingTasks }} 项待办未完成</template><template v-else>进行中与未来 90 天的订阅清单</template></p>
         <p v-if="!tasks.length">{{ !count ? '还没有订阅活动，去日历中订阅本期吧。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办，可去添加或查看其他档期。' }}</p>
         <p v-else-if="!pendingTasks" class="todo-hint">当前范围的清单已全部勾选。</p>
         <ul v-if="tasks.length" id="today-todo-list" class="todo-list">
@@ -26,7 +26,8 @@
             <router-link class="todo-event-link" :aria-label="`查看活动 ${task.record.item.title}`" :to="eventLink(task.record)">查看</router-link>
           </li>
         </ul>
-        <button v-if="tasks.length > 6" type="button" class="todo-more" :aria-expanded="showAll" aria-controls="today-todo-list" @click="showAll = !showAll">{{ showAll ? '收起更多待办' : `展开更多待办（${tasks.length - 6} 项）` }}</button>
+        <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" aria-controls="today-todo-list" @click="showAll = !showAll">{{ showAll ? '收起清单' : '展开完整清单' }}</button>
+        <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成，可查看全部。</p>
         <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办</router-link>
         <p v-if="message" role="status" aria-live="polite">{{ message }}</p>
         <template v-for="(action, eventId) in actions" :key="eventId">
@@ -61,7 +62,7 @@ import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress } from '@/api/activityCalendarSubscriptions.js'
 import { addCalendarDays, CALENDAR_ENDING_WINDOW_MS, calendarDateLabel, calendarDeadline, calendarEnded, calendarTimeBounds, millisecondsUntilServerMidnight, nextCalendarBoundary, SERVER_TIME_ZONE, serverToday } from '@/data/activityCalendar.js'
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' } })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, remindersTarget: { type: String, default: '' }, hideEmpty: Boolean })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', task: 'todo', ...(props.game ? { game: props.game } : {}) }))
@@ -79,7 +80,8 @@ const tasks = computed(() => {
     return entry && currentIds.has(eventId) ? [{ record, entry }] : []
   })
 })
-const visibleTasks = computed(() => showAll.value ? tasks.value : tasks.value.slice(0, 6))
+const previewTasks = computed(() => tasks.value.filter(task => !task.entry.completed).slice(0, 3))
+const visibleTasks = computed(() => showAll.value ? tasks.value : previewTasks.value)
 const pendingTasks = computed(() => tasks.value.filter(task => !task.entry.completed).length)
 const emptyRecords = computed(() => currentRecords.value.filter(record => !record.checklist.length))
 const reminders = computed(() => summaryItems.value.filter(record => record.subscribed && record.item && !subscriptionCompleted(record) && !calendarEnded(record.item, today.value, now.value) && calendarTimeBounds(record.item).end - now.value <= CALENDAR_ENDING_WINDOW_MS).slice(0, 3))
@@ -104,6 +106,7 @@ function schedule() {
   if (alive && props.accountId && identity.value) timer = setTimeout(load, wait)
 }
 function focusTask(key) {
+  if (!root.value) return
   const control = Array.from(root.value.querySelectorAll('input[type=checkbox]')).find(input => input.dataset.todoKey === key) || root.value.querySelector('.todo-heading a')
   control?.focus()
 }
@@ -113,7 +116,6 @@ async function adopt(result) {
   order.value = currentRecords.value.flatMap(record => record.checklist.map(entry => ({ record, entry })))
     .sort((a, b) => Number(a.entry.completed) - Number(b.entry.completed)).map(task => [task.record.event_id, task.entry.id])
   if (!focusedKey) return
-  if (tasks.value.findIndex(task => taskKey(task) === focusedKey) >= 6) showAll.value = true
   await nextTick()
   if (current(context) && (document.activeElement === focused || document.activeElement === document.body)) {
     focusTask(focusedKey)
@@ -162,6 +164,12 @@ async function toggle(task, event) {
     records.value = records.value.map(record => record.event_id === id ? result : record)
     summaryItems.value = summaryItems.value.map(record => record.event_id === id ? result : record)
     message.value = `已保存「${task.entry.title}」`
+    const focused = document.activeElement
+    await nextTick()
+    if (!current(context)) return
+    if (focused?.dataset?.todoKey === taskKey(task) && document.activeElement === document.body) {
+      focusTask(visibleTasks.value[0] ? taskKey(visibleTasks.value[0]) : '')
+    }
     notifying = true
     try { window.dispatchEvent(new CustomEvent('calendar-subscriptions-updated', { detail: { userId: user, accountId: owner } })) }
     finally { notifying = false }
@@ -242,6 +250,8 @@ summary { color: var(--tea); font-weight: 700; cursor: pointer; }
 time { color: var(--accent-strong); }
 time.is-urgent, .todo-error p { color: var(--rouge); }
 a, button { color: var(--tea); font-weight: 700; }
+.todo-heading a, .todo-event-link, .todo-add { font-size: 12px; font-weight: 500; text-decoration: none; }
+.todo-heading a:hover, .todo-event-link:hover, .todo-add:hover { text-decoration: underline; }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }

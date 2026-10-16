@@ -5,7 +5,7 @@
   >
     <div class="onboarding-heading">
       <div>
-        <span class="onboarding-kicker">第一次建档</span>
+        <span class="onboarding-kicker">{{ onboardingStage === 'data' && Object.values(dataReadiness).includes('unknown') ? '数据状态待确认' : '第一次建档' }}</span>
         <h2 id="data-onboarding-title">{{ onboardingTitle }}</h2>
         <p>{{ onboardingDescription }}</p>
       </div>
@@ -65,7 +65,7 @@
               <span class="readiness-status">{{ item.statusLabel }}</span>
             </div>
           </div>
-          <p>{{ item.description }}</p>
+          <p v-if="item.status !== 'empty'">{{ item.description }}</p>
           <router-link
             v-if="item.status === 'empty'"
             class="readiness-action"
@@ -82,16 +82,15 @@
           <span class="entry-icon" aria-hidden="true"><Link2 :size="20" /></span>
           <div>
             <span class="recommend-badge">推荐</span>
-            <h3>不想手填，可以连接 MaaYuan</h3>
+            <h3>连接 MaaYuan 自动同步</h3>
             <p>
-              当前可帮助你自动补齐：{{ autoSyncMissingLabel }}。
-              连接后，以后完成对应 MaaYuan 任务就会同步到这个子账号。
+              自动同步：{{ autoSyncMissingLabel }}。完成对应 MaaYuan 任务后更新到当前游戏账号。
             </p>
-            <small v-if="dataReadiness.star === 'empty'">星石自动同步仍在接入中，当前请先从「星石背包」手动录入。</small>
+            <small v-if="dataReadiness.star === 'empty'">星石暂需手动录入。</small>
           </div>
         </div>
         <router-link class="entry-primary-action" :to="maaYuanConnectTo">
-          去生成连接码
+          连接 MaaYuan
           <ArrowRight :size="16" aria-hidden="true" />
         </router-link>
       </article>
