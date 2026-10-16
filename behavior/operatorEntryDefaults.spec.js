@@ -3,9 +3,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
+import * as plannerApi from '../src/api/operatorPlanner.js'
+import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
 import { getCurrentStarState } from '../src/api/starState.js'
 import { getCurrentStarLoadout, putCurrentStarLoadout } from '../src/api/starLoadout.js'
-import { getCurrent as getInventoryCurrent, listAgentFavorites } from '../src/api/inventory.js'
+import { getCurrent as getInventoryCurrent, listAgentFavorites, listRecords } from '../src/api/inventory.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
@@ -25,7 +27,11 @@ vi.mock('../src/api/operator.js', async importOriginal => {
 })
 vi.mock('../src/api/inventory.js', async importOriginal => {
   const actual = await importOriginal()
-  return { ...actual, getCurrent: vi.fn(), listAgentFavorites: vi.fn() }
+  return { ...actual, getCurrent: vi.fn(), listAgentFavorites: vi.fn(), listRecords: vi.fn() }
+})
+vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
+  const actual = await importOriginal()
+  return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
 })
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
@@ -61,10 +67,10 @@ beforeEach(() => {
 
 const wrappers = new Set()
 afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear() })
-function renderPage(options = {}) {
+function renderPage(options = {}, stubs = {}) {
   const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true, RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
-      OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true },
+      OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, ...stubs },
     directives: { reveal: () => {} },
   } })
   wrappers.add(wrapper)
@@ -91,6 +97,44 @@ async function openCardStarEditor(existing, catalog = { ...operator, rarity: 4 }
 }
 const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
+
+it.each([
+  ['旧星级', { star_level: 19 }],
+  ['独立化极', { huaji: { owned: true, stage: 19, awakened: false } }],
+])('养成清单先于档案加载时不缓存零值草稿，图鉴保留%s', async (_, growth) => {
+  localStorage.setItem('operator-tabs', 'tracking')
+  let resolveCurrent
+  const pending = new Promise(resolve => { resolveCurrent = resolve })
+  operatorApi.getOperatorCurrent.mockReturnValue(pending)
+  operatorApi.getOperatorGrowthTargets.mockResolvedValue({ items: [] })
+  plannerApi.getTrainingWorkspace.mockResolvedValue({
+    schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ['op'], excluded_operator_ids: [],
+      targets: { op: { level: 100, elite: 17, star_level: 19 } } }],
+  })
+  plannerApi.getStaminaSchedule.mockResolvedValue({
+    schema_version: 1, rules_version: PLANNER_RULES.version, account_id: 'acc', revision: 0,
+  })
+  listRecords.mockResolvedValue({ items: [] })
+  const wrapper = renderPage({}, { OperatorGrowthTracker: false, PlannerExactOptimizer: true })
+  await flushPromises()
+  expect(wrapper.get('.growth-current-star').text()).toBe('未拥有')
+
+  resolveCurrent([{ entries: { op: { level: 50, elite: 7, ...growth } } }])
+  await flushPromises()
+  expect(wrapper.get('.growth-current-star').text()).toBe('4 星 · 0 节点')
+  await wrapper.get('#operator-tab-current').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').attributes('aria-label')).toBe('化极：4 星 · 0 节点')
+  expect(wrapper.get('.ledger-huaji-value').text()).not.toContain('未拥有')
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('50')
+  expect(wrapper.get('input[aria-label="修为"]').element.value).toBe('7')
+  expect(wrapper.find('.ledger-card-save').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(operatorApi.putOperatorGrowthTarget).not.toHaveBeenCalled()
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+})
 
 it.each([390, 1440])('真实密探完整编辑器跨双端布局保留草稿、焦点和唯一面板：%ipx', async width => {
   const viewport = installViewport(width)
