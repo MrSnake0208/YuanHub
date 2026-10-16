@@ -1,23 +1,23 @@
-/* Desktop 紧凑值守页头；弹窗保持原交互尺寸。 */
+/* 桌面账号带与值守场景分别组织，立绘不占工作区宽度。 */
 @media (min-width: 768px) {
   .today-lobby { isolation: isolate; }
-  .lobby-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .85fr); align-items: center; gap: 24px; max-width: 1280px; padding: 8px clamp(20px, 2.2vw, 32px); }
-  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'context context'; align-items: center; gap: 6px 12px; padding-top: 0; }
-  .lobby-heading { grid-area: heading; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
-  .lobby-heading h1 { font-size: 18px; }
+  .lobby-wrap { max-width: 1400px; padding: 0 clamp(20px, 2.2vw, 32px); }
+  .lobby-header { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+  .lobby-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; min-width: 0; }
+  .lobby-heading h1 { font-size: 16px; }
   .lobby-heading time { font-size: 12px; }
-  .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
-  .lobby-actions { grid-area: actions; }
-  .lobby-scene { position: relative; display: flex; align-items: center; min-height: 92px; }
-  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 112px); min-width: 0; padding: 10px 0; }
-  .lobby-greeting { font-size: 20px; }
-  .lobby-status { margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; }
-  .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 2px; font-size: 12px; }
-  .lobby-duty button { min-height: 30px; padding: 4px 2px; }
+  .lobby-context { margin-left: auto; min-width: 0; max-width: 100%; }
+  .lobby-actions { flex: none; }
+  .lobby-scene { position: relative; display: flex; align-items: center; min-height: 106px; }
+  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 220px); min-width: 0; padding: 16px 0; }
+  .lobby-greeting { font-size: 28px; letter-spacing: .05em; }
+  .lobby-status { margin-top: 3px; font-size: 12px; overflow-wrap: anywhere; }
+  .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin-top: 4px; font-size: 12px; }
+  .lobby-duty button { min-height: 28px; padding: 3px 2px; }
   .lobby-save-notice { margin-top: 4px; font-size: 12px; }
-  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 104px; height: 92px; overflow: hidden; }
+  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 210px; height: 122px; overflow: hidden; }
   .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
-  .lobby-art-error { padding: 12px 4px; font-size: 12px; text-align: center; }
+  .lobby-art-error { padding: 20px 4px; font-size: 12px; text-align: center; }
 .duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border-radius: 20px; }
 .duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .duty-picker-heading button { display: grid; flex: none; width: 44px; height: 44px; border-radius: 9px; }

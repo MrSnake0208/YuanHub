@@ -4,7 +4,7 @@
       <div class="lobby-header">
         <div class="lobby-heading">
           <h1>今日一览</h1>
-          <time :datetime="dateTime">{{ dateLabel }}</time>
+          <time :datetime="dateTime" title="日历日期以北京时间为准">{{ dateLabel }}</time>
         </div>
         <div v-if="$slots.default" class="lobby-context"><slot /></div>
         <div v-if="$slots.actions" class="lobby-actions"><slot name="actions" /></div>
@@ -60,6 +60,7 @@ import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import portraits from '../../data/operatorPortraits.json'
 import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
+import { calendarDateLabel, serverToday } from '../../data/activityCalendar.js'
 
 const props = defineProps({ ownerId: { type: String, default: '' }, status: { type: String, required: true } })
 const roster = AGENT_CATALOG.filter(entry => portraits[entry.id])
@@ -73,11 +74,8 @@ const greeting = computed(() => {
   const hour = now.value.getHours()
   return hour < 6 ? '夜深了' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'
 })
-const dateTime = computed(() => {
-  const date = now.value
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-})
-const dateLabel = computed(() => now.value.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }))
+const dateTime = computed(() => serverToday(now.value))
+const dateLabel = computed(() => calendarDateLabel(dateTime.value))
 
 watch(storageKey, () => {
   pickerOpen.value = false
@@ -121,7 +119,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享的字段外观，不持有双端布局。 */
 
-.today-lobby { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--ink); }
+.today-lobby { border-bottom: 1px solid var(--line); background: linear-gradient(110deg, var(--surface), color-mix(in srgb, var(--cream) 90%, transparent)); color: var(--ink); }
 .lobby-heading h1 { color: var(--tea); font: 900 14px/1.5 var(--font-s); letter-spacing: .08em; }
 .lobby-heading time { color: var(--ink-60); line-height: 1.5; }
 .lobby-greeting { color: var(--tea); font: 900 clamp(21px, 5.5vw, 26px)/1.5 var(--font-s); }

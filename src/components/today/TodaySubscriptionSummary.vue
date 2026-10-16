@@ -1,7 +1,7 @@
 <template>
   <section v-if="!hideEmpty || !ready || loading || error || count || total || unavailableCount || tasks.length || emptyRecords.length" ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
     <header class="todo-heading">
-      <h2 id="today-subscriptions-title">我的待办</h2>
+      <h2 id="today-subscriptions-title"><ListChecks :size="19" aria-hidden="true" /> 活动待办</h2>
       <router-link :to="{ path: '/calendar', query: mineQuery }">查看全部</router-link>
     </header>
     <p v-if="!identity">登录并选择游戏账号后，可查看自己的活动待办。</p>
@@ -10,10 +10,10 @@
       <p v-if="loading && !ready" role="status">正在读取待办…</p>
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
-        <p class="todo-scope"><template v-if="tasks.length">{{ pendingTasks }} 项待办未完成</template><template v-else>进行中与未来 90 天的订阅清单</template></p>
-        <p v-if="!tasks.length">{{ !count ? '还没有订阅活动，去日历中订阅本期吧。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办，可去添加或查看其他档期。' }}</p>
-        <p v-else-if="!pendingTasks" class="todo-hint">当前范围的清单已全部勾选。</p>
-        <ul v-if="tasks.length" id="today-todo-list" class="todo-list">
+        <p class="todo-scope"><template v-if="pendingTasks"><strong>{{ pendingTasks }}</strong> 项待办未完成</template><template v-else>来自已订阅活动的 Checklist</template></p>
+        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办，去日历订阅活动并添加清单。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅活动不会自动创建 Checklist。' }}</p>
+        <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>当前范围的清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
+        <ul v-if="visibleTasks.length" id="today-todo-list" class="todo-list" :class="{ 'is-expanded': showAll }">
           <li v-for="task in visibleTasks" :key="taskKey(task)" class="todo-row" :class="{ 'is-complete': task.entry.completed }">
             <label class="todo-check" :class="{ 'is-disabled': locked(task.record) }">
               <input type="checkbox" :checked="task.entry.completed" :data-todo-key="taskKey(task)" :aria-disabled="locked(task.record)" :aria-label="`${task.entry.completed ? '取消完成' : '完成'} ${task.entry.title}（${task.record.item.title}）`" @change="toggle(task, $event)">
@@ -23,10 +23,13 @@
               <span class="todo-event">{{ task.record.item.title }}</span>
               <span v-if="actions[task.record.event_id]?.busy && actions[task.record.event_id]?.entryId === task.entry.id" class="todo-hint" role="status">保存中…</span>
             </div>
-            <router-link class="todo-event-link" :aria-label="`查看活动 ${task.record.item.title}`" :to="eventLink(task.record)">查看</router-link>
+            <router-link class="todo-event-link" :aria-label="`查看活动 ${task.record.item.title}`" :to="eventLink(task.record)">
+              <time v-if="task.record.item.end_date" :datetime="task.record.item.end_at || task.record.item.end_date" :title="task.record.item.end_at ? '活动截止时间已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(task.record.item).end - now <= 86400000 }">{{ taskDeadline(task.record.item) }}</time>
+              <ChevronRight v-else :size="16" aria-hidden="true" />
+            </router-link>
           </li>
         </ul>
-        <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" aria-controls="today-todo-list" @click="showAll = !showAll">{{ showAll ? '收起清单' : '展开完整清单' }}</button>
+        <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" :aria-controls="visibleTasks.length ? 'today-todo-list' : undefined" @click="showAll = !showAll">{{ showAll ? '收起清单' : pendingTasks ? '展开完整清单' : '查看已勾选清单' }}</button>
         <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成，可查看全部。</p>
         <p v-if="message" role="status" aria-live="polite">{{ message }}</p>
         <template v-for="(action, eventId) in actions" :key="eventId">
@@ -47,8 +50,8 @@
         </div>
         <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
           <details v-if="reminders.length" ref="remindersPanel" class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
-            <summary>临期活动<span> · {{ reminders.length }} 项</span></summary>
-            <p class="todo-hint">未来 72 小时内截止 · 北京时间</p>
+            <summary><BellRing :size="18" aria-hidden="true" /> 今日重点<span>{{ reminders.length }} 项提醒</span><ChevronDown class="reminder-chevron" :size="14" aria-hidden="true" /></summary>
+            <p class="todo-hint reminder-scope">订阅活动未来 72 小时内截止 · 北京时间</p>
             <ul class="reminder-list">
               <li v-for="record in reminders" :key="record.event_id">
                 <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
@@ -63,6 +66,7 @@
 </template>
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { BellRing, CheckCheck, ChevronDown, ChevronRight, ListChecks } from '@lucide/vue'
 import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress } from '@/api/activityCalendarSubscriptions.js'
@@ -98,6 +102,12 @@ const current = context => alive && context[0] === key.value && context[1] === e
 const taskKey = task => JSON.stringify([task.record.event_id, task.entry.id])
 function eventLink(record) { return { path: '/calendar', query: { ...mineQuery.value, view: 'month', date: record.item.start_date > today.value ? record.item.start_date : today.value, event: record.event_id } } }
 function locked(record) { return loading.value || !!error.value || actions.value[record.event_id]?.busy || actions.value[record.event_id]?.blocked || !Number.isInteger(record.version) }
+function taskDeadline(item) {
+  const date = item.end_at ? serverToday(new Date(item.end_at)) : item.end_date
+  const day = date === today.value ? '今天' : calendarDateLabel(date, { month: 'numeric', day: 'numeric' })
+  const time = item.end_at ? ' ' + new Intl.DateTimeFormat('zh-CN', { timeZone: SERVER_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(item.end_at)) : ''
+  return day + time + '截止'
+}
 function deadlineLabel(item) {
   const date = item.end_at ? serverToday(new Date(item.end_at)) : item.end_date
   const time = item.end_at ? ' ' + new Intl.DateTimeFormat('zh-CN', { timeZone: SERVER_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(item.end_at)) : ''

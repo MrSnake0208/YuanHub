@@ -1,6 +1,5 @@
 <template>
-  <TodayLayout :show-overview="calendarEnabled || trainingEnabled"
-    :has-sidebar="calendarEnabled && !!validAccountId">
+  <TodayLayout :show-overview="calendarEnabled || trainingEnabled">
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
         <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
@@ -28,11 +27,15 @@
     </template>
     <template #overview>
       <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" reminders-target="#today-reminders" />
+    </template>
+    <template #activities>
       <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+    </template>
+    <template #training>
       <TodayTrainingPlans v-if="trainingEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
     </template>
     <template #notes>
-      <TodayPrivateItems v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" :hide-empty="isFreshAccount" />
+      <TodayPrivateItems v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" hide-empty />
     </template>
     <template #onboarding>
       <TodayDataOnboarding

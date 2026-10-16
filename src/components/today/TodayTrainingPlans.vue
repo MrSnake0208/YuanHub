@@ -2,7 +2,7 @@
   <section v-if="!hideEmpty || !snapshot || loading || error || plans.length || otherNotes.length" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
     <header class="training-heading">
       <div class="training-heading-copy">
-        <h2 id="today-training-title">我的养成计划</h2>
+        <h2 id="today-training-title"><UsersRound :size="19" aria-hidden="true" /> 我的养成计划</h2>
         <p v-if="snapshot && plans.length" class="training-hint">{{ plans.length }} 个清单 · {{ planMemberCount }} 条培养目标</p>
         <p v-else class="training-hint">当前账号的培养清单与密探备注</p>
       </div>
@@ -25,16 +25,16 @@
             <span v-if="plan.id === snapshot.workspace.activePlanId" class="training-current">当前清单</span>
           </header>
           <ul class="training-list">
-            <li v-for="member in plan.members.slice(0, 3)" :key="member.id">
+            <li v-for="member in plan.members.slice(0, 5)" :key="member.id">
               <router-link class="training-member" :to="operatorTo(member.id)">
                 <OperatorAvatar :avatar="member.avatar" :name="member.name" :rarity="member.rarity" aria-hidden="true" />
                 <span class="training-member-name">{{ member.name }}</span>
               </router-link>
             </li>
           </ul>
-          <p v-if="plan.members.length > 3" class="training-hint">另有 {{ plan.members.length - 3 }} 名密探</p>
+          <p v-if="plan.members.length > 5" class="training-hint">另有 {{ plan.members.length - 5 }} 名密探</p>
         </article>
-        <div class="training-extra">
+        <div v-if="plans.length > 1 || otherNotes.length" class="training-extra">
           <p v-if="plans.length > 1" class="training-hint">另有 {{ plans.length - 1 }} 个清单，可在养成页查看。</p>
           <p v-if="otherNotes.length" class="training-hint">{{ otherNotes.length }} 名清单外密探有备注，可在养成页查看。</p>
         </div>
@@ -46,7 +46,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowRight } from '@lucide/vue'
+import { ArrowRight, UsersRound } from '@lucide/vue'
 import OperatorAvatar from '../operator/OperatorAvatar.vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'

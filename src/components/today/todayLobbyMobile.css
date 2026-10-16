@@ -1,21 +1,21 @@
-/* Mobile 紧凑值守页头；弹窗保持原交互尺寸。 */
+/* 手机将账号收进日期行，值守只保留短场景。 */
 @media not all and (min-width: 768px) {
   .today-lobby { isolation: isolate; }
-  .lobby-wrap { max-width: 1180px; padding-inline: 12px; container-type: inline-size; }
-  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading context actions'; align-items: center; gap: 4px 8px; padding-top: 4px; }
-  .lobby-heading { grid-area: heading; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+  .lobby-wrap { padding-inline: 14px; }
+  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding-top: 4px; }
+  .lobby-heading { min-width: 0; }
   .lobby-heading h1 { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .lobby-heading time { font-size: 12px; }
-  .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
-  .lobby-actions { grid-area: actions; }
-  .lobby-scene { position: relative; display: flex; align-items: center; min-height: 64px; }
-  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 80px); min-width: 0; padding: 4px 0; }
-  .lobby-greeting { font-size: 18px; }
-  .lobby-status { margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; }
-  .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 2px; font-size: 12px; }
-  .lobby-duty button { min-height: 30px; padding: 4px 2px; }
+  .lobby-heading time { font-size: 11px; }
+  .lobby-context { min-width: 0; max-width: 100%; justify-self: end; }
+  .lobby-actions { min-width: 0; }
+  .lobby-scene { position: relative; display: flex; align-items: center; min-height: 72px; }
+  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 88px); min-width: 0; padding: 8px 0; }
+  .lobby-greeting { font-size: 22px; letter-spacing: .03em; }
+  .lobby-status { margin-top: 3px; font-size: 12px; overflow-wrap: anywhere; }
+  .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; margin-top: 1px; font-size: 12px; }
+  .lobby-duty button { min-height: 28px; padding: 3px 2px; }
   .lobby-save-notice { margin-top: 4px; font-size: 12px; }
-  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 74px; height: 64px; overflow: hidden; }
+  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 86px; height: 80px; overflow: hidden; }
   .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
   .lobby-art-error { padding: 12px 4px; font-size: 12px; text-align: center; }
 .duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border-radius: 20px; }

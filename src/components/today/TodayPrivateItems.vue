@@ -1,10 +1,10 @@
 <template>
   <section v-if="!hideEmpty || !identity || !accountId || loading || error || items.length" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
     <header class="private-heading">
-      <h2 id="today-private-title">我的事项与备注</h2>
+      <h2 id="today-private-title"><NotebookPen :size="18" aria-hidden="true" /> 私人安排</h2>
       <router-link :to="calendarTo()">查看全部</router-link>
     </header>
-    <p class="private-hint"><span v-if="items.length">{{ items.length }} 项事项 · </span>仅当前账号可见</p>
+    <p class="private-hint private-scope" title="进行中及未来 7 天的私人安排"><span v-if="items.length">{{ items.length }} 项事项 · </span>仅当前账号可见</p>
     <p v-if="!identity || !accountId">登录并选择游戏账号后，可查看自己的事项与备注。</p>
     <template v-else>
       <p v-if="loading && !items.length" role="status">正在读取私人事项…</p>
@@ -16,9 +16,12 @@
       <p v-if="!loading && !error && !items.length">还没有私人事项，可去我的日历记下计划和备注。</p>
       <ul v-if="items.length" class="private-list">
         <li v-for="item in items.slice(0, 2)" :key="item.id">
-          <router-link class="private-title" :to="calendarTo(item)">{{ item.title }}</router-link>
-          <p class="private-hint">{{ calendarRangeLabel(item) }}</p>
-          <p v-if="item.note" class="private-note">{{ item.note.length > 80 ? item.note.slice(0, 80) + '…' : item.note }}</p>
+          <time class="private-date" :datetime="item.start_date"><strong>{{ item.start_date.slice(5).replace('-', '/') }}</strong><span>{{ item.start_time || '全天' }}</span></time>
+          <div class="private-body">
+            <router-link class="private-title" :to="calendarTo(item)">{{ item.title }}</router-link>
+            <p v-if="item.end_date !== item.start_date" class="private-hint">{{ calendarRangeLabel(item) }}</p>
+            <p v-if="item.note" class="private-note">{{ item.note.length > 80 ? item.note.slice(0, 80) + '…' : item.note }}</p>
+          </div>
         </li>
       </ul>
       <p v-if="items.length > 2" class="private-hint">还有 {{ items.length - 2 }} 项，可在日历查看。</p>
@@ -28,6 +31,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { NotebookPen } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
 import { listCalendarPrivateItems } from '../../api/calendarPrivateItems.js'
 import { privateCalendarItem } from '../../data/calendarPrivateItems.js'
@@ -44,7 +48,7 @@ function calendarTo(item) {
 async function load() {
   if (!identity.value || !props.accountId || denied.value) return
   const token = ++generation, account = { id: props.accountId, game: props.game }
-  const from = serverToday(), to = addCalendarDays(from, 90)
+  const from = serverToday(), to = addCalendarDays(from, 7)
   clearTimeout(timer)
   loading.value = true; error.value = ''
   try {

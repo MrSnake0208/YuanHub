@@ -139,17 +139,17 @@ it('resolves live favorites, explicit members and exclusions with the shared pla
   expect(wrapper.text()).not.toContain('阿蝉')
 })
 
-it('bounds the member preview to three without changing total counts or the management link', async () => {
+it('bounds the real member strip to five without changing totals or the management link', async () => {
   const data = workspace('a')
-  data.plans[1].operator_ids = [yangxiu, achan, 'char_003_sunshangxiang', 'char_004_guojia']
+  data.plans[1].operator_ids = [yangxiu, achan, 'char_003_sunshangxiang', 'char_004_guojia', 'char_005_chen', 'char_006_liu']
   planner.getTrainingWorkspace.mockResolvedValue(data)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.findAll('.training-member')).toHaveLength(3)
-  expect(wrapper.get('.training-count').text()).toBe('4人')
-  expect(wrapper.text()).toContain('1 个清单 · 4 条培养目标')
+  expect(wrapper.findAll('.training-member')).toHaveLength(5)
+  expect(wrapper.get('.training-count').text()).toBe('6人')
+  expect(wrapper.text()).toContain('1 个清单 · 6 条培养目标')
   expect(wrapper.text()).toContain('另有 1 名密探')
   expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/operator', query: { tab: 'current' } })
-  expect(data.plans[1].operator_ids).toHaveLength(4)
+  expect(data.plans[1].operator_ids).toHaveLength(6)
 })
 
 it('does not request without login, a known identity or a selected account', async () => {

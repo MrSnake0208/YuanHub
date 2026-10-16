@@ -1,29 +1,30 @@
-/* Mobile 日程密度独立持有。 */
+/* Mobile：状态分段与活动票签，不使用待办的勾选行。 */
 @media not all and (min-width: 768px) {
-  .today-activity-summary { min-width: 0; padding: 12px; border-radius: 10px; }
-  .activity-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; }
-  .activity-heading > div { display: contents; }
-  .activity-heading p { grid-column: 1 / -1; grid-row: 2; }
-  .activity-link { grid-column: 2; grid-row: 1; font-size: 12px; }
-  .activity-heading h2 { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; font-size: 16px; overflow-wrap: anywhere; }
-  .activity-heading h2 svg, .activity-link svg, .activity-title svg { flex: none; }
-  .activity-heading p, .activity-message, .activity-detail { font-size: 12px; overflow-wrap: anywhere; }
-  .activity-link, .activity-error button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 5px 8px; border-radius: 6px; }
-  .activity-counts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; padding: 6px 0; border-block: 1px solid var(--line); }
-  .activity-counts p { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
-  .activity-counts strong { font-size: 18px; }
+  .today-activity-summary { min-width: 0; padding: 12px; border-radius: 12px; }
+  .activity-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+  .activity-heading > div { min-width: 0; }
+  .activity-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; }
+  .activity-heading h2 svg, .activity-link svg { flex: none; }
+  .activity-heading p { margin: 3px 0 0; font-size: 11px; overflow-wrap: anywhere; }
+  .activity-link { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; font-size: 12px; }
+  .activity-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 12px; padding: 3px; border-radius: 8px; }
+  .activity-counts button { min-width: 0; min-height: 30px; padding: 3px 2px; border-radius: 5px; }
+  .activity-counts strong { margin-left: 3px; font-size: 13px; }
   .activity-preview { display: grid; gap: 0; margin: 8px 0 0; padding: 0; }
-  .activity-preview li { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; padding: 7px 0; }
-  .activity-preview li:first-child { border-top: 0; }
-  .activity-date { display: grid; gap: 2px; padding: 6px 2px; border-radius: 6px; font-size: 13px; line-height: 1.4; text-align: center; }
-  .activity-date span { font-size: 12px; }
-  .activity-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 8px; min-width: 0; }
-  .activity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; overflow-wrap: anywhere; }
-  .activity-status { font-size: 12px; line-height: 1.7; }
-  .activity-detail { grid-column: 1 / -1; display: block; font-size: 12px; }
-  .activity-upcoming { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
-  .activity-upcoming h3 { font-size: 14px; }
-  .activity-message { margin-top: 8px; }
-  .activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
-  .activity-error p { flex: 1 1 200px; font-size: 13px; overflow-wrap: anywhere; }
+  .activity-preview li { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; padding-block: 8px; }
+  .activity-emblem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; align-self: start; min-height: 44px; border-radius: 7px; }
+  .activity-emblem span { font-size: 10px; line-height: 1.4; }
+  .activity-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 8px; min-width: 0; }
+  .activity-title { min-width: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .activity-status { align-self: start; padding: 1px 5px; border-radius: 4px; font-size: 10px; line-height: 1.6; }
+  .activity-detail { grid-column: 1 / -1; font-size: 11px; overflow-wrap: anywhere; }
+  .activity-message { margin: 12px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+  .activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; }
+  .activity-error p { flex: 1 1 200px; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .activity-error button { min-height: 32px; padding: 5px 10px; border-radius: 6px; }
+  .activity-next { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 32px; margin-top: 10px; padding: 6px 8px; border-radius: 6px; text-align: left; }
+  .activity-next span { flex: none; font-size: 11px; }
+  .activity-next strong { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
+  .activity-next svg { flex: none; }
+  .activity-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 }

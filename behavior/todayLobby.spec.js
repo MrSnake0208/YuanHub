@@ -125,3 +125,12 @@ it('问候按本地时间更新，跨日恢复可见时更新日期，卸载释�
   wrapper.unmount()
   expect(vi.getTimerCount()).toBe(0)
 })
+
+it('页头日历日期以北京时间为准，与游戏活动跨日口径一致', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-06T16:01:00Z'))
+  const wrapper = render()
+  expect(wrapper.get('time').attributes('datetime')).toBe('2026-10-07')
+  expect(wrapper.get('time').attributes('title')).toContain('北京时间')
+  expect(wrapper.get('time').text()).toContain('10月7日')
+})
