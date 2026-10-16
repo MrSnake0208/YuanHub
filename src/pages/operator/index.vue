@@ -478,124 +478,41 @@
             :class="{ 'is-active': activeTab === 'catalog' }"
           >
             <div class="catalog-tools">
-            <div class="manifest-bar" v-reveal>
-              <input
-                ref="catalogSearchInput"
-                v-model.trim="manifestSearch"
-                class="mf-search"
-                type="search"
-                name="operator-search"
-                aria-label="搜索密探名称、别名或 ID"
-                placeholder="搜索名称 / 别名 / ID"
-              />
-              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
-              <div class="mf-filter" role="group" aria-label="招募状态">
-                <button
-                  :aria-pressed="manifestFilter === 'all'"
-                  :class="{ on: manifestFilter === 'all' }"
-                  @click="manifestFilter = 'all'"
-                >
-                  全部
-                </button>
-                <button
-                  :aria-pressed="manifestFilter === 'owned'"
-                  :class="{ on: manifestFilter === 'owned' }"
-                  @click="manifestFilter = 'owned'"
-                >
-                  已招募
-                </button>
-                <button
-                  :aria-pressed="manifestFilter === 'missing'"
-                  :class="{ on: manifestFilter === 'missing' }"
-                  @click="manifestFilter = 'missing'"
-                >
-                  未招募
-                </button>
-              </div>
-            </div>
-
-            <!-- 属性 / 职业 / 品质 筛选 -->
-            <details class="catalog-more-filters">
-              <summary>更多筛选<span v-if="manifestAdvancedFilterCount"> · {{ manifestAdvancedFilterCount }}</span></summary>
-              <label class="catalog-version-copy">目录版本 <input class="catalog-version-value" type="text" readonly
-                :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
-                aria-label="目录版本，可选中复制" @focus="$event.target.select()" /></label>
-            <div class="prof-filter catalog-prof-filter">
-              <div class="pf-row pf-prof-row">
-                <span class="pf-label">属性</span>
-                <div
-                  class="mf-filter"
-                  role="group"
-                  aria-label="按属性筛选密探图鉴"
-                >
-                  <button
-                    type="button"
-                    :aria-pressed="profFilter === 'all'"
-                    :class="{ on: profFilter === 'all' }"
-                    @click="profFilter = 'all'"
-                  >
-                    全部
-                  </button>
-                  <button
-                    v-for="p in profOptions"
-                    :key="p"
-                    type="button"
-                    :aria-pressed="profFilter === p"
-                    :class="{ on: profFilter === p }"
-                    @click="profFilter = p"
-                  >
-                    <img
-                      v-if="profIcon(p)"
-                      :src="profIcon(p)"
-                      alt=""
-                      aria-hidden="true"
-                    />{{ p }}
-                  </button>
-                </div>
-              </div>
-              <div class="pf-row pf-subprof-row">
-                <span class="pf-label">职业</span>
-                <div
-                  class="mf-filter"
-                  role="group"
-                  aria-label="按职业筛选密探图鉴"
-                >
-                  <button
-                    type="button"
-                    :aria-pressed="subProfFilter === 'all'"
-                    :class="{ on: subProfFilter === 'all' }"
-                    @click="subProfFilter = 'all'"
-                  >
-                    全部
-                  </button>
-                  <button
-                    v-for="s in subProfOptions"
-                    :key="s"
-                    type="button"
-                    :aria-pressed="subProfFilter === s"
-                    :class="{ on: subProfFilter === s }"
-                    @click="subProfFilter = s"
-                  >
-                    {{ s }}
-                  </button>
-                </div>
-              </div>
-              <div class="pf-row pf-rarity-row">
-                <span class="pf-label">品质</span>
-                <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选密探图鉴">
-                  <button
-                    v-for="option in rarityOptions"
-                    :key="option.value"
-                    type="button"
-                    :aria-pressed="rarityFilter === option.value"
-                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-                    @click="rarityFilter = option.value"
-                  >{{ option.label }}</button>
-                </div>
-              </div>
-              <OperatorGrowthFilters v-model="manifestGrowthFilters" />
-            </div>
-            </details>
+              <OperatorFilterDossier
+                ref="catalogFilters"
+                compact
+                searchable
+                context-label="密探图鉴"
+                status-label="招募状态"
+                :search-query="manifestSearch"
+                @update:search-query="manifestSearch = $event.trim()"
+                :result-count="manifestEntries.length"
+                :total-count="statsEntries.length"
+                :rarity-options="rarityOptions"
+                :prof-options="profOptions"
+                :sub-prof-options="subProfOptions"
+                :status-options="manifestStatusOptions"
+                :status-counts="{ owned: manifestOwned, missing: manifestMissing }"
+                v-model:rarity-filter="rarityFilter"
+                v-model:prof-filter="profFilter"
+                v-model:sub-prof-filter="subProfFilter"
+                v-model:status-filter="manifestFilter"
+                :prof-icon="profIcon"
+                :has-filters="hasManifestFilters"
+                :advanced-filter-count="manifestAdvancedFilterCount"
+                v-model:growth-filters="manifestGrowthFilters"
+                show-growth-filters
+                @reset="focusCatalogEntry"
+              >
+                <template #primary-tool>
+                  <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
+                </template>
+                <template #extra-filters>
+                  <label class="catalog-version-copy">目录版本 <input class="catalog-version-value" type="text" readonly
+                    :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
+                    aria-label="目录版本，可选中复制" @focus="$event.target.select()" /></label>
+                </template>
+              </OperatorFilterDossier>
             </div>
 
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
@@ -3059,7 +2976,6 @@ import OperatorOrganizationManager from "../../components/operator/OperatorOrgan
 import OperatorOrganizationCard from "../../components/operator/OperatorOrganizationCard.vue";
 import { useOperatorOrganization } from "../../composables/useOperatorOrganization.js";
 import { OPERATOR_ORGANIZATION_FORMAT, compareOperatorOrganization, operatorOrganizationBackup, operatorOrganizationContent, operatorOrganizationRanks, readOperatorOrganizationBackup, updateOperatorTag } from "../../utils/operatorOrganization.js";
-import OperatorGrowthFilters from "../../components/operator/OperatorGrowthFilters.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
@@ -3215,8 +3131,13 @@ let operatorAccountDataReady = false;
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
 const currentSearch = ref("");
-const catalogSearchInput = ref(null);
+const catalogFilters = ref(null);
 const manifestFilter = ref("all");
+const manifestStatusOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'owned', label: '已招募' },
+  { value: 'missing', label: '未招募' },
+];
 const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
@@ -4906,7 +4827,7 @@ async function focusCatalogEntry() {
   rarityFilter.value = profFilter.value = subProfFilter.value = "all";
   manifestGrowthFilters.value = emptyGrowthFilters();
   await nextTick();
-  catalogSearchInput.value?.focus();
+  catalogFilters.value?.focusSearch();
 }
 
 async function retryEntryData() {
@@ -12593,16 +12514,7 @@ onBeforeUnmount(function () {
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
 /* Page owns metadata and filters; cards retain their existing presentation. */
-.catalog-tools .mf-search { background: var(--surface); }
 .catalog-entry { border-radius: 8px; text-decoration: none; }
-.catalog-tools .mf-filter { background: transparent; }
-.catalog-tools .mf-filter button { border-radius: 8px; }
-.catalog-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); box-shadow: none; }
-.catalog-more-filters > summary { border: 0; color: var(--ink-60); cursor: pointer; }
-.catalog-more-filters > summary::after { content: '+'; }
-.catalog-more-filters[open] > summary::after { content: '−'; }
-.catalog-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.catalog-more-filters .prof-filter { border: 0; background: transparent; }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }

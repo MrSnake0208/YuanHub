@@ -117,6 +117,33 @@ it('紧凑模式常驻搜索和状态，更多筛选展开后可使用原有属�
   expect(wrapper.props('profFilter')).toBe('阳')
 })
 
+it('图鉴可复用招募状态和高级筛选数量，关闭更多筛选保留附加内容', async () => {
+  const wrapper = mount(OperatorFilterDossier, { props: {
+    compact: true, contextLabel: '密探图鉴', statusLabel: '招募状态', totalCount: 3,
+    statusOptions: [{ value: 'all', label: '全部' }, { value: 'owned', label: '已招募' }, { value: 'missing', label: '未招募' }],
+    statusCounts: { owned: 1, missing: 2 }, advancedFilterCount: 0, hasFilters: true,
+  }, slots: { 'extra-filters': '<label>目录版本<input value="catalog-test" /></label>' } })
+  expect(wrapper.get('.pf-status-row .pf-label').text()).toBe('招募状态')
+  expect(wrapper.get('[aria-label="按招募状态筛选密探图鉴"]').exists()).toBe(true)
+  expect(wrapper.findAll('.current-status-filter button').map(button => button.text())).toEqual(['全部3', '已招募1', '未招募2'])
+  expect(wrapper.get('.dossier-more').text()).toBe('更多筛选')
+  await wrapper.get('.status-missing').trigger('click')
+  expect(wrapper.emitted('update:statusFilter')).toEqual([['missing']])
+  await wrapper.setProps({ advancedFilterCount: 2 })
+  expect(wrapper.get('.dossier-more').text()).toBe('更多筛选 · 2')
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(wrapper.get('.dossier-extra').isVisible()).toBe(true)
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(wrapper.get('.dossier-extra').isVisible()).toBe(false)
+  expect(wrapper.get('.dossier-extra input').element.value).toBe('catalog-test')
+})
+
+it.each([true, false])('筛选组件可聚焦实际搜索框（compact=%s）', compact => {
+  const wrapper = mount(OperatorFilterDossier, { attachTo: document.body, props: { compact, searchable: true } })
+  wrapper.vm.focusSearch()
+  expect(document.activeElement).toBe(wrapper.get('.current-filter-search input').element)
+})
+
 it('自定义标签复用原筛选行与选中语义；没有标签时不增加空筛选行', async () => {
   const wrapper = mount(OperatorFilterDossier, { props: { compact: true, totalCount: 6 } })
   expect(wrapper.find('.pf-tag-row').exists()).toBe(false)
