@@ -99,9 +99,12 @@ const growthValues = wrapper => wrapper.findAll('.level-row input').map(input =>
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
 
 it.each([
-  ['旧星级', { star_level: 19 }],
-  ['独立化极', { huaji: { owned: true, stage: 19, awakened: false } }],
-])('养成清单先于档案加载时不缓存零值草稿，图鉴保留%s', async (_, growth) => {
+  ['旧星级与单套命盘', { star_level: 19, discs: [{ ot_name: '测试命盘甲' }] }, [['测试命盘甲'], []]],
+  ['独立化极与两套命盘', { huaji: { owned: true, stage: 19, awakened: false }, disc_loadouts: [
+    { id: 'disc_1', discs: [{ ot_name: '测试命盘甲' }, { ot_name: '测试命盘乙' }] },
+    { id: 'disc_2', discs: [{ ot_name: '测试命盘丙' }] },
+  ] }, [['测试命盘甲', '测试命盘乙'], ['测试命盘丙']]],
+])('养成清单先于档案加载时不缓存空草稿，图鉴保留%s', async (_, growth, expectedDiscs) => {
   localStorage.setItem('operator-tabs', 'tracking')
   let resolveCurrent
   const pending = new Promise(resolve => { resolveCurrent = resolve })
@@ -119,9 +122,18 @@ it.each([
   const wrapper = renderPage({}, { OperatorGrowthTracker: false, PlannerExactOptimizer: true })
   await flushPromises()
   expect(wrapper.get('.growth-current-star').text()).toBe('未拥有')
+  const pendingRemark = wrapper.get('.growth-card-remark textarea')
+  expect(pendingRemark.element.disabled).toBe(true)
+  // Even a synthetic input must not create a draft from the placeholder row.
+  pendingRemark.element.value = '加载前输入'
+  pendingRemark.element.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.find('.growth-card-remark .ledger-card-save').exists()).toBe(false)
 
   resolveCurrent([{ entries: { op: { level: 50, elite: 7, ...growth } } }])
   await flushPromises()
+  expect(wrapper.get('.growth-card-remark textarea').element.disabled).toBe(false)
+  expect(wrapper.get('.growth-card-remark textarea').element.value).toBe('')
   expect(wrapper.get('.growth-current-star').text()).toBe('4 星 · 0 节点')
   await wrapper.get('#operator-tab-current').trigger('click')
   await flushPromises()
@@ -129,11 +141,177 @@ it.each([
   expect(wrapper.get('.ledger-huaji-value').text()).not.toContain('未拥有')
   expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('50')
   expect(wrapper.get('input[aria-label="修为"]').element.value).toBe('7')
+  for (const [index, label] of ['一', '二'].entries()) {
+    expect(wrapper.get('[aria-label="编辑命盘' + label + '"]').findAll('.disc-term').map(disc => disc.text())).toEqual(expectedDiscs[index])
+  }
   expect(wrapper.find('.ledger-card-save').exists()).toBe(false)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
   expect(operatorApi.putOperatorGrowthTarget).not.toHaveBeenCalled()
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+})
+
+function deferred() {
+  let resolve
+  const promise = new Promise(done => { resolve = done })
+  return { promise, resolve }
+}
+
+async function openTrackingLedger(current) {
+  localStorage.setItem('operator-tabs', 'tracking')
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: current } }])
+  const wrapper = renderPage()
+  await flushPromises()
+  await wrapper.get('#operator-tab-current').trigger('click')
+  await flushPromises()
+  return wrapper
+}
+
+async function refreshFromTracker(wrapper) {
+  wrapper.getComponent({ name: 'OperatorGrowthTracker' }).vm.$emit('refresh-operators')
+  await flushPromises()
+}
+
+const snapshotCurrent = () => ({
+  level: 50, elite: 7, revision: 3, huaji: { owned: true, stage: 19, awakened: false },
+  discs: [{ ot_name: '旧命盘' }], combat_stats: { manual_attack: 111, manual_hp: 1111 },
+})
+const refreshedCurrent = () => ({
+  level: 55, elite: 8, revision: 4, huaji: { owned: true, stage: 20, awakened: false },
+  disc_loadouts: [
+    { id: 'disc_1', discs: [{ ot_name: '新命盘甲' }] },
+    { id: 'disc_2', discs: [{ ot_name: '新命盘乙' }] },
+  ], combat_stats: { manual_attack: 222, manual_hp: 2222 },
+})
+
+it('清单触发全量刷新时，干净草稿采用最新独立化极、双命盘与手动面板', async () => {
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('50')
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: refreshedCurrent() } }])
+  await refreshFromTracker(wrapper)
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('55')
+  expect(wrapper.get('input[aria-label="修为"]').element.value).toBe('8')
+  expect(wrapper.get('.ledger-huaji-value').text()).toContain('4 星 · 1 节点')
+  expect(wrapper.get('[aria-label="编辑命盘一"] .disc-term').text()).toBe('新命盘甲')
+  expect(wrapper.get('[aria-label="编辑命盘二"] .disc-term').text()).toBe('新命盘乙')
+  expect(wrapper.get('input[aria-label="测试密探攻击力"]').element.value).toBe('222')
+  expect(wrapper.get('input[aria-label="测试密探生命力"]').element.value).toBe('2222')
+  expect(wrapper.find('.agent-ledger-card .ledger-card-save').exists()).toBe(false)
+  await wrapper.get('input[aria-label="等级"]').setValue('56')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic failure'))
+  await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).toMatchObject({
+    expected_revision: 4, level: 56, elite: 8, huaji: { stage: 20 },
+    disc_loadouts: [{ discs: [{ ot_name: '新命盘甲' }] }, { discs: [{ ot_name: '新命盘乙' }] }],
+    combat_stats: { manual_attack: 222, manual_hp: 2222 },
+  })
+})
+
+it('全量刷新保留真正未保存编辑，并用编辑开始时的 revision 防止旧字段覆盖新档案', async () => {
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  await wrapper.get('input[aria-label="等级"]').setValue('60')
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: refreshedCurrent() } }])
+  await refreshFromTracker(wrapper)
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('60')
+  expect(wrapper.get('[aria-label="编辑命盘一"] .disc-term').text()).toBe('旧命盘')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('档案版本已更新'))
+  await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).toMatchObject({ expected_revision: 3, level: 60 })
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('60')
+  expect(wrapper.find('.agent-ledger-card .ledger-card-save').exists()).toBe(true)
+  await wrapper.get('.agent-ledger-card .ledger-card-cancel').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('55')
+  expect(wrapper.get('[aria-label="编辑命盘一"] .disc-term').text()).toBe('新命盘甲')
+  expect(wrapper.find('.agent-ledger-card .ledger-card-save').exists()).toBe(false)
+})
+
+it('档案删除后重新出现时不复用之前的编辑草稿或面板', async () => {
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  await wrapper.get('input[aria-label="等级"]').setValue('60')
+  operatorApi.getOperatorCurrent.mockResolvedValue([])
+  await refreshFromTracker(wrapper)
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: refreshedCurrent() } }])
+  await refreshFromTracker(wrapper)
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('55')
+  expect(wrapper.get('input[aria-label="测试密探攻击力"]').element.value).toBe('222')
+  expect(wrapper.find('.agent-ledger-card .ledger-card-save').exists()).toBe(false)
+})
+
+it.each([false, true])('化极 SSE 同步独立 huaji 且保留未保存编辑与版本保护：dirty=%s', async dirty => {
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  if (dirty) await wrapper.get('input[aria-label="等级"]').setValue('60')
+  const event = { event: 'operator-upgrade', data: { account_id: 'acc', transaction_id: 'huaji-tx',
+    operator_id: 'op', dimension: 'huaji', from: 19, to: 20, operator_revision: 4 } }
+  const handler = subscribeAccountEvents.mock.calls.at(-1)[0]
+  handler(event)
+  await flushPromises()
+  expect(wrapper.get('.ledger-huaji-value').text()).toContain(dirty ? '4 星 · 0 节点' : '4 星 · 1 节点')
+  const current = wrapper.getComponent({ name: 'OperatorGrowthTracker' }).props('currentEntries')[0]
+  expect(current).toMatchObject({ starLevel: 20, revision: 4, huaji: { owned: true, stage: 20, awakened: false } })
+  handler(event)
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+  if (!dirty) await wrapper.get('input[aria-label="等级"]').setValue('51')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic failure'))
+  await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.expected_revision).toBe(dirty ? 3 : 4)
+})
+
+it.each(['快照', '装配'])('较早星石快照迟到时不能覆盖较新的%s结果或关闭编辑器', async kind => {
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  const oldState = deferred()
+  const oldLoadout = deferred()
+  getCurrentStarState.mockReturnValueOnce(oldState.promise)
+  getCurrentStarLoadout.mockReturnValueOnce(oldLoadout.promise)
+  await refreshFromTracker(wrapper)
+  const stone = { instance_id: 'new-stone', kind: 'main', name: '新星石', level: 10 }
+  getCurrentStarState.mockResolvedValue({ generation: 2, entries: [stone] })
+  getCurrentStarLoadout.mockResolvedValue({ generation: 2, revision: 5, loadouts: { op: { main1: 'new-stone' } } })
+  if (kind === '装配') {
+    await wrapper.get('.ledger-stones .stone-slot').trigger('click')
+    await flushPromises()
+  } else await refreshFromTracker(wrapper)
+  const modal = wrapper.getComponent({ name: 'StarLoadoutModal' })
+  expect(modal.props('open')).toBe(kind === '装配')
+  expect(wrapper.get('.ledger-stones .stone-slot').text()).toContain('新星石')
+  oldState.resolve({ generation: 1, entries: [] })
+  oldLoadout.resolve({ generation: 1, revision: 0, loadouts: {} })
+  await flushPromises()
+  expect(modal.props('open')).toBe(kind === '装配')
+  expect(modal.props('inventoryEntries')).toEqual([stone])
+  expect(modal.props('draftLoadouts').op.main1).toBe('new-stone')
+  expect(wrapper.get('.ledger-stones .stone-slot').text()).toContain('新星石')
+})
+
+it('星石装配保存成功后，保存前发出的快照不能恢复旧佩戴', async () => {
+  const stone = { instance_id: 'stone-a', kind: 'main', name: '已保存星石', level: 10 }
+  getCurrentStarState.mockResolvedValue({ generation: 0, entries: [stone] })
+  const wrapper = await openTrackingLedger(snapshotCurrent())
+  await wrapper.get('.ledger-stones .stone-slot').trigger('click')
+  await flushPromises()
+  const modal = wrapper.getComponent({ name: 'StarLoadoutModal' })
+  modal.vm.$emit('update:draft-loadouts', { op: { main1: 'stone-a' } })
+  const oldState = deferred()
+  const oldLoadout = deferred()
+  getCurrentStarState.mockReturnValueOnce(oldState.promise)
+  getCurrentStarLoadout.mockReturnValueOnce(oldLoadout.promise)
+  await refreshFromTracker(wrapper)
+  putCurrentStarLoadout.mockResolvedValueOnce({ generation: 0, revision: 1, loadouts: { op: { main1: 'stone-a' } } })
+  modal.vm.$emit('request-close')
+  await flushPromises()
+  expect(putCurrentStarLoadout).toHaveBeenCalledWith('acc', expect.objectContaining({
+    expected_revision: 0, expected_generation: 0, loadouts: expect.objectContaining({ op: expect.objectContaining({ main1: 'stone-a' }) }),
+  }))
+  expect(modal.props('open')).toBe(false)
+  oldState.resolve({ generation: 0, entries: [stone] })
+  oldLoadout.resolve({ generation: 0, revision: 0, loadouts: {} })
+  await flushPromises()
+  expect(wrapper.get('.ledger-stones .stone-slot').text()).toContain('已保存星石')
 })
 
 it.each([390, 1440])('真实密探完整编辑器跨双端布局保留草稿、焦点和唯一面板：%ipx', async width => {

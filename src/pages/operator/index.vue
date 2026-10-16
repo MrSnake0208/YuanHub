@@ -2369,7 +2369,7 @@
                     maxlength="1000"
                     :aria-label="(row.name || row.id) + '备忘'"
                     placeholder="添加备忘…"
-                    :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
+                    :disabled="!currentMap[row.id] || cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
                     @input="setOperatorRemarkDraft(trackerRemarkEntry(row), $event.target.value)"
                   ></textarea>
                   <div v-if="cardHasDraft(trackerRemarkEntry(row))" class="ledger-card-actions">
@@ -5593,6 +5593,12 @@ function normalizeCardStarStones(entry) {
   });
 }
 
+function cardStarLevel(entry) {
+  const stage = operatorHuaji(entry).stage;
+  return stage == null ? Number(entry.starLevel) || 0
+    : entry.spOf && stage > 0 ? Math.floor((stage - 1) / 6) + 1 : stage;
+}
+
 function ensureCardDraft(entry) {
   if (!entry || !entry.id) return null;
   if (!cardGrowthDrafts.value[entry.id]) {
@@ -5603,9 +5609,10 @@ function ensureCardDraft(entry) {
     );
     cardGrowthDrafts.value = Object.assign({}, cardGrowthDrafts.value, {
       [entry.id]: {
+        revision: Number(entry.revision) || 0,
         level: Number(entry.level) || 0,
         elite: Number(entry.elite) || 0,
-        star: operatorHuaji(entry).stage == null ? Number(entry.starLevel) || 0 : entry.spOf ? Math.floor((operatorHuaji(entry).stage - 1) / 6) + 1 : operatorHuaji(entry).stage,
+        star: cardStarLevel(entry),
         awakened: operatorHuaji(entry).awakened,
         discLoadouts: normalizeCardDiscLoadouts(entry),
         starStones: normalizeCardStarStones(entry),
@@ -6038,13 +6045,17 @@ function uuid() {
 }
 
 function resetCardDraftState(id) {
-  [cardGrowthDrafts, cardDraftBaselines, cardCombatDrafts].forEach(
+  [cardGrowthDrafts, cardDraftBaselines, cardCombatDrafts, cardCombatModes].forEach(
     function (state) {
       const next = Object.assign({}, state.value);
       delete next[id];
       state.value = next;
     },
   );
+  const editedKeys = new Set(cardCombatEditedKeys.value);
+  editedKeys.delete(id + ":attack");
+  editedKeys.delete(id + ":hp");
+  cardCombatEditedKeys.value = editedKeys;
 }
 
 async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
@@ -6183,9 +6194,10 @@ function applyUpgradeOperator(entry, raw) {
   }
   const draft = ensureCardDraft(entry);
   if (draft) {
+    draft.revision = Number(entry.revision) || 0;
     draft.level = entry.level;
     draft.elite = entry.elite;
-    draft.star = entry.starLevel;
+    draft.star = cardStarLevel(entry);
     draft.awakened = operatorHuaji(entry).awakened;
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, {
       [entry.id]: cardDraftSnapshot(entry),
@@ -6666,6 +6678,8 @@ function cancelCardDraft(entry) {
   editedKeys.delete(entry.id + ":hp");
   cardCombatEditedKeys.value = editedKeys;
   cardPopoverKey.value = "";
+  if (draft.revision !== (Number(entry.revision) || 0))
+    mergePatchedCurrentEntry(entry, entry);
   clearCardSubmitState(entry);
 }
 
@@ -6999,7 +7013,7 @@ async function prepareStarLoadout(operator, slot) {
   starLoadoutError.value = "";
   try {
     const [inventory, loadout] = await readStarLoadoutPair(targetAccount);
-    if (seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
+    if (operatorPageDisposed || seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
       return false;
     starInventoryEntries.value = starSnapshotEntries(inventory);
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
@@ -7016,7 +7030,7 @@ async function prepareStarLoadout(operator, slot) {
     starLoadoutAccountId.value = targetAccount;
     return true;
   } catch (err) {
-    if (seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
+    if (operatorPageDisposed || seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
       return false;
     starLoadoutError.value = humanErr(err, "无法加载当前星石数据");
     return false;
@@ -7027,9 +7041,10 @@ async function prepareStarLoadout(operator, slot) {
 
 async function loadStarLoadoutSnapshot(targetAccount) {
   if (!targetAccount) return;
+  const seq = ++starLoadoutLoadSeq;
   try {
     const [inventory, loadout] = await readStarLoadoutPair(targetAccount);
-    if (accountId.value !== targetAccount) return;
+    if (operatorPageDisposed || seq !== starLoadoutLoadSeq || accountId.value !== targetAccount) return;
     const generation = Number(inventory?.generation || 0);
     if (starLoadoutOpen.value && starStateGeneration.value !== generation) {
       starLoadoutSaveSeq += 1;
@@ -7048,6 +7063,8 @@ async function loadStarLoadoutSnapshot(targetAccount) {
     if (!keepCurrentDraft || nextRevision === starLoadoutRevision.value) starLoadoutRevision.value = nextRevision;
   } catch (_) {
     // The operator ledger remains usable if the independent star snapshot is unavailable.
+  } finally {
+    if (seq === starLoadoutLoadSeq) starLoadoutLoading.value = false;
   }
 }
 
@@ -7094,6 +7111,8 @@ async function persistStarLoadout() {
     if (saveSeq !== starLoadoutSaveSeq || accountId.value !== targetAccount ||
       starLoadoutAccountId.value !== targetAccount || starStateGeneration.value !== targetGeneration ||
       starLoadoutRevision.value !== targetRevision) return false;
+    starLoadoutLoadSeq += 1;
+    starLoadoutLoading.value = false;
     starLoadoutCurrent.value = normalizeCloudLoadouts(response);
     starLoadoutRevision.value = Number(response && response.revision || starLoadoutRevision.value + 1);
     return true;
@@ -7204,6 +7223,8 @@ function trackerRemarkEntry(row) {
 }
 
 function setOperatorRemarkDraft(entry, value) {
+  entry = currentMap.value[entry?.id];
+  if (!entry) return;
   const draft = ensureCardDraft(entry);
   workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, {
     [entry.id]: value,
@@ -7496,7 +7517,7 @@ function cardPatch(entry) {
   );
   const modes = growth.modes || cardCombatModes.value[entry.id] || {};
   const patch = {
-    expected_revision: Number(entry.revision) || 0,
+    expected_revision: growth.revision,
     reason: "manual_correction",
     level: Number(growth.level) || 0,
     elite: Number(growth.elite) || 0,
@@ -7672,9 +7693,10 @@ function mergePatchedCurrentEntry(entry, payload) {
   const stats = normalized.combatStats || normalizeOperatorCombatStats({});
   const growth = ensureCardDraft(entry);
   if (growth) {
+    growth.revision = Number(normalized.revision) || 0;
     growth.level = Number(normalized.level) || 0;
     growth.elite = Number(normalized.elite) || 0;
-    growth.star = Number(normalized.starLevel) || 0;
+    growth.star = cardStarLevel(normalized);
     growth.awakened = operatorHuaji(normalized).awakened;
     growth.discLoadouts = normalizeCardDiscLoadouts(normalized);
     growth.starStones = normalizeCardStarStones(normalized);
@@ -8345,6 +8367,11 @@ async function reloadCurrent(quiet) {
     });
     currentEntries.value = Object.keys(combined)
       .map(function (id) {
+        const existing = currentMap.value[id];
+        if (existing) {
+          applyCurrentEntrySnapshot(id, combined[id]);
+          return existing;
+        }
         return normalizeCurrentEntry(id, combined[id]);
       })
       .filter(function (e) {
@@ -8358,6 +8385,9 @@ async function reloadCurrent(quiet) {
           operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id)
         );
       });
+    Object.keys(cardGrowthDrafts.value).forEach(function (id) {
+      if (!currentMap.value[id]) resetCardDraftState(id);
+    });
     currentLoadedKey.value = targetKey;
     publishOperatorCurrentRead({ ownerId, accountId: targetAccount, game: targetGame, data });
     await loadStarLoadoutSnapshot(targetAccount);
@@ -8713,7 +8743,8 @@ function handleAccountEvent(message) {
       level: dimension === "level" ? next : entry.level,
       elite: dimension === "elite" ? next : entry.elite,
       star_level: dimension === "awakening" ? 25 : dimension === "huaji" ? next : entry.starLevel,
-      huaji: dimension === "awakening" ? { owned: true, stage: 25, awakened: true } : undefined,
+      huaji: dimension === "awakening" ? { owned: true, stage: 25, awakened: true }
+        : dimension === "huaji" ? operatorHuajiDraft(entry, next) : undefined,
       revision:
         data.operator_revision != null
           ? data.operator_revision
@@ -9288,6 +9319,8 @@ onBeforeUnmount(function () {
   currentContextSeq += 1;
   catalogLoadSeq += 1;
   currentLoadSeq += 1;
+  starLoadoutLoadSeq += 1;
+  starLoadoutSaveSeq += 1;
   cardSubmitTimers.forEach(clearTimeout);
   cardSubmitTimers.clear();
   compactStatsQuery?.removeEventListener("change", syncCompactStats);
