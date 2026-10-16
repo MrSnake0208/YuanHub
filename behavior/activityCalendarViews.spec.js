@@ -26,11 +26,11 @@ function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no })
   return { promise, resolve, reject }
 }
-async function render(path = '/calendar') {
+async function render(path = '/calendar', realTeleport = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }] })
   await router.push(path)
   await router.isReady()
-  const wrapper = mount(Calendar, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: true, IslandSidebar: true, SiteFooter: true } } })
+  const wrapper = mount(Calendar, { attachTo: document.body, global: { plugins: [router], stubs: { Teleport: !realTeleport, IslandSidebar: true, SiteFooter: true } } })
   await flushPromises()
   return { wrapper, router }
 }
@@ -45,7 +45,7 @@ beforeEach(() => {
 
 it.each([390, 1440].flatMap(width => ['agenda', 'timeline', 'month'].map(view => [width, view])))('用户选择的日历视图跨独立布局保持实例、URL与焦点：%ipx %s', async (width, view) => {
   const viewport = installViewport(width)
-  const { wrapper, router } = await render(`/calendar?view=${view}&date=2026-10-07&game=如鸢&ref=share`)
+  const { wrapper, router } = await render(`/calendar?view=${view}&date=2026-10-07&game=如鸢&ref=share`, true)
   const component = { agenda: Agenda, timeline: Timeline, month: Month }[view]
   const instance = wrapper.getComponent(component).vm.$
   const selected = wrapper.get('.calendar-view-switcher [aria-pressed=true]')
@@ -135,6 +135,7 @@ it.each(['agenda', 'timeline', 'month'])('%s的今天动作清理日期，保留
 })
 
 it('历史月份仍有正确今日摘要；历史项保留在月历且不污染今天统计', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   listActivityCalendar.mockImplementation(async query => ({ items: query.from === today && query.to === today
     ? [event({ start_date: today, end_date: today })]
     : [event({ title: '历史活动', start_date: '2026-08-01', end_date: '2026-08-31' })] }))
@@ -148,6 +149,7 @@ it('历史月份仍有正确今日摘要；历史项保留在月历且不污染�
 })
 
 it('快速视图切换旧成功/失败响应不覆盖新视图，卸载响应不再提交', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   const old = deferred(), stale = deferred(), last = deferred()
   listActivityCalendar.mockReturnValueOnce(old.promise).mockReturnValueOnce(stale.promise).mockResolvedValue({ items: [event({ title: '最新月历活动' })] })
   const { wrapper } = await render('/calendar?view=agenda')
@@ -284,6 +286,7 @@ it('Month重复副本统一去重；未获导航接受时不打开弹窗', async
 })
 
 it('Month跨月条立即显示读取反馈，新范围数据在同一弹窗展示', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   const { wrapper, router } = await render('/calendar?view=month&date=2026-10-15')
   const pending = deferred()
   listActivityCalendar.mockReturnValueOnce(pending.promise)

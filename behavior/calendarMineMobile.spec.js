@@ -71,7 +71,7 @@ it.each([320, 390, 430])('%ipx 我的日历只挂载一套视图工具，并用�
   expect(wrapper.get('[data-event-id="' + personal.id + '"]').find('.calendar-subscription').exists()).toBe(false)
   await click('全部活动')
   expect(wrapper.find('.calendar-mine-mobile').exists()).toBe(false)
-  expect(wrapper.get('.calendar-header .calendar-view-switcher').exists()).toBe(true)
+  expect(wrapper.get('.calendar-public-view-target .calendar-view-switcher').exists()).toBe(true)
   expect(wrapper.get('.calendar-today').text()).toContain('公开统计口径')
   expect(wrapper.find('.is-personal').exists()).toBe(false)
   expect(wrapper.get('[data-event-id="evt"] .calendar-event-title').element.tagName).toBe('H4')

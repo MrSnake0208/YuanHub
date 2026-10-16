@@ -1,12 +1,12 @@
 <template>
-  <div class="calendar-page calendar-public" :class="{ 'calendar-mine-mobile': mobileMine }">
+  <div class="calendar-page calendar-public" :class="{ 'calendar-mine-mobile': mobileMine, 'calendar-public-mobile': mobilePublic }">
     <IslandSidebar />
     <main id="main-content">
       <header class="calendar-header wrap">
         <div class="calendar-header-copy">
           <h1>活动日历</h1>
         </div>
-        <Teleport :to="mobileViewTools || 'body'" :disabled="!mobileMine || !mobileViewTools">
+        <Teleport :to="mobileViewTools || 'body'" :disabled="!(mobileMine || mobilePublic) || !mobileViewTools">
           <div v-if="enabled" class="calendar-view-tools">
             <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
             <CalendarViewSwitcher :model-value="currentView" @update:model-value="setView" />
@@ -23,7 +23,7 @@
             <SlidersHorizontal :size="17" aria-hidden="true" /><span>筛选</span>
             <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
           </button>
-          <div v-if="mine" ref="mobileViewTools" class="calendar-mine-view-target"></div>
+          <div v-show="mine || mobilePublic" ref="mobileViewTools" :class="mine ? 'calendar-mine-view-target' : 'calendar-public-view-target'"></div>
           <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
@@ -47,7 +47,11 @@
           <button v-if="!mobileMine || activeFilters.some(condition => condition.key !== 'task')" class="calendar-filter-clear" type="button" @click="resetFilters">{{ mobileMine ? '清除类型/时间' : '清除筛选' }}</button>
         </div>
         <CalendarFilterSheet :open="filterOpen" :anchor="filterTrigger" :filters="filters" :lock-game="mine" :personal="mobileMine" :task-status="taskStatus" :private-items-hidden="privateItemsHidden" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @task="setTask" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
-        <CalendarTodaySummary v-if="!mobileMine" :today="today" :counts="todayCounts" :loading="loading" :error="error" />
+        <details v-if="mobilePublic && currentView !== 'agenda'" class="calendar-public-statistics">
+          <summary>今日公开活动统计</summary>
+          <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
+        </details>
+        <CalendarTodaySummary v-else-if="!mobileMine" :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
         <p v-if="mine && privateItems.notice.value" class="calendar-panel" role="status">{{ privateItems.notice.value }}</p>
         <p v-if="mine && privateItemsHidden" class="calendar-hint" role="status">{{ mobileMine ? '当前筛选仅显示订阅活动，私人事项已隐藏。请在筛选中调整类型、时间或本期状态。' : '当前类型、时间状态或已完成视图仅显示订阅活动，私人事项已隐藏；清除类型/时间筛选或切回我的待办即可查看。' }}</p>
@@ -63,9 +67,9 @@
           <div v-else-if="viewError" class="calendar-panel calendar-error" role="alert">
             <p>{{ viewError }}</p><button type="button" @click="retry">重试</button>
           </div>
-          <CalendarAgendaView v-if="currentView === 'agenda'" :personal="mobileMine" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" />
-          <CalendarTimelineView v-else-if="currentView === 'timeline'" ref="timelineView" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value" @select-date="setDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
-          <CalendarMonthView v-else ref="monthView" :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value" @select-date="selectMonthDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
+          <CalendarAgendaView v-if="currentView === 'agenda'" ref="agendaView" :personal="mobileMine" :compact-public="mobilePublic" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" @close-detail="clearDetailLink" @retry="retry" />
+          <CalendarTimelineView v-else-if="currentView === 'timeline'" ref="timelineView" :compact-public="mobilePublic" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value && !mobilePublic" @select-date="setDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
+          <CalendarMonthView v-else ref="monthView" :compact-public="mobilePublic" :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :detail-error="viewError" :can-create="privateItems.ready.value && !mobilePublic" @select-date="selectMonthDate" @create-private="privateItems.open(null, $event)" @close-detail="clearDetailLink" @retry="retry" />
         </div>
         <section v-if="mine && visibleUnavailable.length" class="calendar-panel" aria-label="不可用的订阅">
           <h2>活动已停用或不可用</h2>
@@ -127,6 +131,7 @@ const taskStatus = computed(() => subscriptionTask(route.query))
 const phone = ref(typeof window !== 'undefined' && window.innerWidth < 768)
 const phoneMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 767px)') : null
 const mobileMine = computed(() => mine.value && phone.value)
+const mobilePublic = computed(() => !mine.value && phone.value)
 const mobileViewTools = ref(null)
 function syncPhone(event) {
   const focused = document.activeElement
@@ -139,7 +144,7 @@ function syncPhone(event) {
 onMounted(() => phoneMedia?.addEventListener('change', syncPhone))
 onBeforeUnmount(() => phoneMedia?.removeEventListener('change', syncPhone))
 const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
-const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null)
+const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null), agendaView = ref(null)
 const activeFilters = computed(() => [
   !mine.value && filters.value.game && { key: 'game', label: filters.value.game, clear: '' },
   filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
@@ -161,7 +166,7 @@ const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed((
 const privateItems = useCalendarPrivateItems(subscriptions, requestRange, mine)
 watch(privateItems.dirty, value => { privateDirty.value = value }, { immediate: true, flush: 'sync' })
 // A committed query update has already passed the shared leave confirmation.
-watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss(); monthView.value?.resetDetail(); timelineView.value?.resetDetail() }, { flush: 'sync' })
+watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss(); monthView.value?.resetDetail(); timelineView.value?.resetDetail(); agendaView.value?.resetDetail() }, { flush: 'sync' })
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))

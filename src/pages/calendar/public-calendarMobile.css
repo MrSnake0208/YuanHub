@@ -283,3 +283,81 @@
   .calendar-mine-mobile .is-personal .calendar-activity-status { flex-basis: 100%; margin: 0; font-size: 13px; font-weight: 700; }
   .calendar-mine-mobile .is-personal .calendar-todo-card-summary { margin: 0; font-size: 12px; }
 }
+
+/* 全部活动手机展示：不使用同时覆盖 mine 的 .calendar-public 作为隔离边界。 */
+@media (max-width: 767px) {
+  .calendar-public-mobile .calendar-subscription-toolbar { gap: 6px 8px; }
+  .calendar-public-mobile .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-public-mobile .calendar-public-view-target,
+  .calendar-public-mobile .calendar-view-tools { display: contents; }
+  .calendar-public-mobile .calendar-view-switcher { grid-column: 1 / -1; grid-row: 2; }
+  .calendar-public-mobile .calendar-today-action { grid-column: 2; grid-row: 3; }
+  .calendar-public-mobile .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; }
+  .calendar-public-mobile .account-switcher .context-selector { width: 100%; min-width: 0; min-height: 36px; padding: 6px 4px; gap: 4px; justify-content: flex-start; background: transparent; border-color: transparent; font-size: 12px; }
+  .calendar-public-mobile .account-switcher .account-name { min-width: 0; max-width: none; overflow: visible; overflow-wrap: anywhere; white-space: normal; text-overflow: clip; }
+  .calendar-public-mobile .calendar-filter-state { flex-wrap: wrap; gap: 4px 8px; }
+  .calendar-public-mobile .calendar-filter-summary { display: none; }
+  .calendar-public-mobile .calendar-active-filters { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+  .calendar-public-mobile .calendar-active-filters button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 6px; font-size: 12px; }
+  .calendar-public-mobile .calendar-filter-clear { min-height: 30px; padding: 4px; font-size: 12px; }
+  .calendar-public-mobile .calendar-public-statistics { font-size: 12px; color: var(--ink-60); }
+  .calendar-public-mobile .calendar-public-statistics > summary { width: fit-content; padding-block: 4px; cursor: pointer; }
+  .calendar-public-mobile .calendar-public-statistics .calendar-today { margin-top: 6px; }
+  .calendar-public-mobile .calendar-agenda { gap: 20px; }
+  .calendar-public-mobile .calendar-section { gap: 10px; }
+  .calendar-public-mobile .calendar-section > h2 { font-size: 20px; padding-bottom: 6px; }
+  .calendar-public-mobile .calendar-section > h2 > span { margin-left: auto; }
+  .calendar-public-mobile .calendar-public-agenda-today > h2 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .calendar-public-mobile .calendar-date-group { gap: 8px; }
+  .calendar-public-mobile .calendar-event-list { gap: 8px; }
+  .calendar-public-mobile .calendar-public-summary { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; }
+  .calendar-public-mobile .calendar-public-summary .calendar-event-title { margin: 0; font-size: 19px; line-height: 1.45; }
+  .calendar-public-mobile button.calendar-public-summary-open { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; min-height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
+  .calendar-public-mobile .calendar-public-summary-open > span { min-width: 0; overflow-wrap: anywhere; }
+  .calendar-public-mobile .calendar-public-summary-open > svg { flex: none; color: var(--ink-60); }
+  .calendar-public-mobile .calendar-public-summary-open:active { background: var(--cream); }
+  .calendar-public-mobile .calendar-public-summary .calendar-event-status { gap: 4px 8px; }
+  .calendar-public-mobile .calendar-public-summary .calendar-state { padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--yellow) 32%, var(--surface)); font-size: 12px; }
+  .calendar-public-mobile .calendar-public-summary .calendar-range { margin: 0; font-size: 12px; line-height: 1.5; }
+  .calendar-public-mobile .calendar-public-summary .calendar-badges { gap: 4px 8px; }
+  .calendar-public-mobile .calendar-public-summary :is(.calendar-game, .calendar-category) { padding: 0; border: 0; background: transparent; color: var(--ink-60); font-size: 12px; }
+  .calendar-public-mobile .calendar-public-summary :is(.calendar-description, .calendar-hint, .calendar-public-personal-status) { margin: 0; font-size: 12px; line-height: 1.5; }
+  .calendar-public-mobile .calendar-public-personal-status { color: var(--tea); }
+  .calendar-public-mobile :is(.calendar-month, .calendar-timeline) { padding: 12px; border-radius: 14px; }
+  .calendar-public-mobile .calendar-window-heading { gap: 6px; margin-bottom: 6px; }
+  .calendar-public-mobile .calendar-window-heading h2 { font-size: 20px; }
+  .calendar-public-mobile .calendar-timeline-help { padding: 8px; gap: 8px; }
+  .calendar-public-mobile .calendar-timeline-help > p { font-size: 12px; line-height: 1.5; }
+  .calendar-public-mobile .calendar-timeline-help > button { min-height: 32px; padding: 6px 8px; font-size: 12px; }
+  .calendar-public-mobile .calendar-timeline-group { padding-top: 6px; }
+  .calendar-public-mobile .calendar-timeline-group > h3 { left: 4px; padding: 0 4px 2px 0; }
+  .calendar-public-mobile button.calendar-public-group-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px; border: 0; background: transparent; color: var(--tea); font: 700 14px var(--font-b); }
+  .calendar-public-mobile .calendar-public-group-toggle > span { font: 12px var(--font-d); color: var(--ink-60); }
+  .calendar-public-mobile button.calendar-timeline-bar { min-width: 0; min-height: 34px; padding: 5px 6px; }
+  /* 窄条显示两行摘要；完整标题保留于可访问名称、原生提示和详情，避免离屏条在零宽交集处撑高整条轨道。 */
+  .calendar-public-mobile .calendar-timeline-bar-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+  .calendar-public-mobile .calendar-timeline-track { padding-block: 3px; }
+  .calendar-public-mobile .calendar-month-help { margin: 0; font-size: 12px; line-height: 1.5; }
+  .calendar-public-mobile .calendar-weekdays { padding-block: 8px; font-size: 12px; }
+  .calendar-public-mobile .calendar-month-week { padding-bottom: 0; border-top: 0; }
+  .calendar-public-mobile .calendar-month-dates { padding-block: 0; }
+  .calendar-public-mobile button.calendar-month-day { min-height: 44px; padding: 2px 0; align-content: center; gap: 2px; }
+  .calendar-public-mobile .calendar-day-number { font-size: 14px; min-height: 20px; }
+  .calendar-public-mobile .calendar-day-today { font-size: 10px; }
+  .calendar-public-mobile .calendar-month-density { display: flex; align-items: center; justify-content: center; gap: 2px; min-height: 12px; }
+  .calendar-public-mobile .calendar-month-density > i { width: 4px; height: 4px; flex: none; border-radius: 50%; background: var(--event-mark); }
+  .calendar-public-mobile .calendar-month-density > small { font: 10px var(--font-d); color: var(--ink-60); }
+  .calendar-public-mobile .calendar-public-day-list { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .calendar-public-mobile .calendar-public-day-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 6px; }
+  .calendar-public-mobile .calendar-public-day-heading h3 { margin: 0; font-size: 16px; }
+  .calendar-public-mobile .calendar-public-day-heading h3 > span { font: 12px var(--font-b); }
+  .calendar-public-mobile .calendar-public-day-heading > button { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 4px; border-color: transparent; background: transparent; color: var(--tea); font-size: 12px; }
+  .calendar-public-mobile .calendar-public-summary.is-day-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 6px; padding: 8px 10px; }
+  .calendar-public-mobile .is-day-summary .calendar-event-title { font-size: 16px; }
+  .calendar-public-mobile .is-day-summary .calendar-event-status { align-content: center; }
+  .calendar-public-mobile .is-day-summary :is(.calendar-badges, .calendar-public-personal-status) { grid-column: 1 / -1; }
+  @media (max-width: 359px) {
+    .calendar-public-mobile .calendar-public-summary.is-day-summary { grid-template-columns: minmax(0, 1fr); }
+    .calendar-public-mobile .is-day-summary .calendar-event-status { grid-column: 1; }
+  }
+}

@@ -20,19 +20,24 @@
         </div>
         <div v-if="todayColumn >= 0" class="calendar-today-line" :style="{ left: `calc((${todayColumn} + .5) * var(--calendar-day-width))` }" aria-hidden="true" />
         <section v-for="group in groups" :key="group.category" class="calendar-timeline-group" :aria-label="group.label">
-          <h3>{{ group.label }}<span>{{ group.items.length }}</span></h3>
-          <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
-            <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
-              <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
-                <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
-                <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
-                <span v-if="entry.upAgents || entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-meta">
-                  <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
-                  <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
-                  <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
+          <h3>
+            <button v-if="compactPublic" type="button" class="calendar-public-group-toggle" :aria-expanded="!collapsedGroups.includes(group.category)" :aria-controls="`calendar-timeline-group-${group.category}`" @click="toggleGroup(group.category)"><ChevronRight v-if="collapsedGroups.includes(group.category)" :size="16" aria-hidden="true" /><ChevronDown v-else :size="16" aria-hidden="true" />{{ group.label }}<span>{{ group.items.length }}</span></button>
+            <template v-else>{{ group.label }}<span>{{ group.items.length }}</span></template>
+          </h3>
+          <div v-show="!compactPublic || !collapsedGroups.includes(group.category)" :id="`calendar-timeline-group-${group.category}`">
+            <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
+              <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
+                <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
+                  <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
+                  <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
+                  <span v-if="!compactPublic && (entry.upAgents || entry.item.start_date !== entry.item.end_date)" class="calendar-timeline-bar-meta">
+                    <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
+                    <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
+                    <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -43,15 +48,19 @@
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight } from '@lucide/vue'
+import { ChevronDown, ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarDetailDialog from './CalendarDetailDialog.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange } from '@/data/activityCalendar.js'
 import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
-const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean })
+const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean, compactPublic: Boolean })
 const emit = defineEmits(['select-date', 'close-detail', 'retry', 'create-private'])
 const viewport = ref(null), selection = ref(null)
+const collapsedGroups = ref([])
+function toggleGroup(category) {
+  collapsedGroups.value = collapsedGroups.value.includes(category) ? collapsedGroups.value.filter(value => value !== category) : [...collapsedGroups.value, category]
+}
 const selectedId = computed(() => selection.value?.id || '')
 const viewportSize = ref({ left: 0, width: 0, dayWidth: 0 })
 let viewportObserver
