@@ -726,3 +726,19 @@ test('历史响应的板块解析优先有效 area，与后端详情授权一致
   assert.equal(experience.category, 'OTHER')
   assert.equal(normalizeFeedback({ type: 'BUG', category: 'OTHER', area: 'OPERATOR' }).category, 'OPERATOR')
 })
+
+// 普通表单不提供类型；显式历史类型调用继续由上面的兼容测试覆盖。
+test('未指定类型的普通反馈默认 OTHER，两个授权默认关闭', async () => {
+  await withFetch(async (_url, options) => {
+    const body = JSON.parse(options.body)
+    assert.equal(body.type, 'OTHER')
+    assert.equal(body.category, 'CUSTOM_TEST')
+    assert.equal(body.public_consent, false)
+    assert.equal(body.client_info_consent, false)
+    assert.equal('title' in body, false)
+    return apiResponse({ id: 'rpt_other', ...body })
+  }, async () => {
+    const result = await createFeedback({ category: 'CUSTOM_TEST', content: '普通反馈' })
+    assert.equal(result.type, 'OTHER')
+  })
+})

@@ -9,7 +9,6 @@
     @keydown.space.prevent="$emit('open', item)"
   >
     <header class="public-card-badges">
-      <FeedbackTypeBadge :type="item.type" />
       <span v-if="item.categoryLabel" class="public-card-category">{{ item.categoryLabel }}</span>
       <FeedbackStatusBadge :status="item.publicStatus" />
     </header>
@@ -39,7 +38,6 @@
 <script setup>
 import { Heart } from '@lucide/vue'
 import FeedbackStatusBadge from '@/components/feedback/FeedbackStatusBadge.vue'
-import FeedbackTypeBadge from '@/components/feedback/FeedbackTypeBadge.vue'
 import FeedbackSupportButton from '@/components/co-creation/FeedbackSupportButton.vue'
 
 defineProps({

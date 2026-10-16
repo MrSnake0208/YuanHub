@@ -26,7 +26,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublishPanel.vue'
-import { getManagedFeedback, publishFeedback, unpublishFeedback, updateFeedbackPublicStatus, updateFeedbackType } from '@/api/feedback.js'
+import { getManagedFeedback, publishFeedback, unpublishFeedback, updateFeedbackPublicStatus } from '@/api/feedback.js'
 import { getPublicFeedback } from '@/api/coCreation.js'
 import { auth } from '@/store/auth.js'
 import { canManageAnyFeedback } from '@/utils/authPermissions.js'
@@ -104,10 +104,6 @@ async function save(payload) {
   error.value = ''
   message.value = ''
   try {
-    if (ticket.value.publicConsent === true && payload.type !== ticket.value.type) {
-      await updateFeedbackType(id, payload.type)
-      if (!current()) return
-    }
     const updated = ticket.value.publicConsent === true
       ? await publishFeedback(id, payload)
       : await updateFeedbackPublicStatus(id, payload.publicStatus)

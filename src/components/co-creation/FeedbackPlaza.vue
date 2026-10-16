@@ -28,13 +28,6 @@
 
     <div class="feedback-filter-row">
       <label class="feedback-filter">
-        <span>反馈类型</span>
-        <select v-model="type" @change="reloadFromFirstPage">
-          <option value="">全部</option>
-          <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-        </select>
-      </label>
-      <label class="feedback-filter">
         <span>状态</span>
         <select v-model="status" @change="reloadFromFirstPage">
           <option value="">全部状态</option>
@@ -97,15 +90,13 @@ import { ArrowRight, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from 
 import PublicFeedbackCard from '@/components/co-creation/PublicFeedbackCard.vue'
 import PublicFeedbackDetailModal from '@/components/co-creation/PublicFeedbackDetailModal.vue'
 import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
-import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
+import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
-  focusId: { type: String, default: '' },
-  initialType: { type: String, default: '' }
+  focusId: { type: String, default: '' }
 })
 
 const PAGE_SIZE = 12
-const typeOptions = PUBLIC_TYPE_OPTIONS
 const statusOptions = PUBLIC_STATUS_OPTIONS
 const sortOptions = PUBLIC_SORT_OPTIONS
 
@@ -113,7 +104,6 @@ const items = ref([])
 const total = ref(0)
 const page = ref(1)
 const keyword = ref('')
-const type = ref('')
 const status = ref('')
 const sort = ref('latest')
 const loading = ref(false)
@@ -132,7 +122,7 @@ let searchTimer = null
 let isMounted = false
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
-const hasFilters = computed(() => Boolean(keyword.value.trim() || type.value || status.value))
+const hasFilters = computed(() => Boolean(keyword.value.trim() || status.value))
 
 function formatDate(value) {
   if (!value) return ''
@@ -147,7 +137,6 @@ async function load() {
     const data = await listPublicFeedback({
       page: page.value,
       pageSize: PAGE_SIZE,
-      type: type.value || undefined,
       status: status.value || undefined,
       keyword: keyword.value.trim() || undefined,
       sort: sort.value
@@ -177,7 +166,6 @@ async function clearFilters() {
   searchTimer = null
   if (!await closeDetail() || !isMounted) return
   keyword.value = ''
-  type.value = ''
   status.value = ''
   page.value = 1
   load()
@@ -202,7 +190,7 @@ function scheduleSearch() {
 }
 
 function goSubmit() {
-  router.push({ path: '/feedback', query: { new: '1', ...(type.value ? { type: type.value } : {}) } })
+  router.push({ path: '/feedback', query: { new: '1' } })
 }
 
 function openDetail(item) {
@@ -256,11 +244,6 @@ function onUnpublished() {
 
 watch(() => props.focusId, id => {
   if (id) openDetailById(id)
-}, { immediate: true })
-
-watch(() => props.initialType, value => {
-  type.value = value
-  if (isMounted) reloadFromFirstPage()
 }, { immediate: true })
 
 onMounted(() => {

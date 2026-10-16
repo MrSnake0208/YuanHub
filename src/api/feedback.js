@@ -7,7 +7,7 @@ import { isFeedbackType } from '../utils/feedbackPublic.js'
 // diagnostics 始终取自本次构建实际运行的前端版本，与 clientInfoConsent 无关：
 // clientInfoConsent 只控制 IP / User-Agent；publicConsent 单独控制管理员公开授权。
 export async function createFeedback(payload) {
-  const rawType = String(payload.type || 'FEEDBACK').trim().toUpperCase()
+  const rawType = String(payload.type || 'OTHER').trim().toUpperCase()
   const rawCategory = String(payload.category || '').trim().toUpperCase()
   const rawArea = String(payload.area || '').trim().toUpperCase()
   const legacyType = rawType === 'FEEDBACK' && isFeedbackType(rawCategory) ? rawCategory : rawType

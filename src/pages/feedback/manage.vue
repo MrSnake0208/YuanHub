@@ -24,33 +24,25 @@
 
           <template v-else>
             <p v-if="pageMessage" class="feedback-workflow-message feedback-page-message" role="status">{{ pageMessage }}</p>
-            <div class="feedback-command-bar">
-              <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
-                <Search :size="18" aria-hidden="true" />
-                <input v-model="q" type="search" name="managed-feedback-search" aria-label="搜索待处理反馈" placeholder="搜索反馈内容或工单编号..." />
-                <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
-              </form>
-              <div class="feedback-status-tabs" role="tablist" aria-label="工作队列">
-                <button
-                  v-for="status in statusTabs"
-                  :key="status.key"
-                  type="button"
-                  role="tab"
-                  :aria-selected="filterStatus === status.key"
-                  :class="{ on: filterStatus === status.key }"
-                  @click="setFilter(status)"
-                >{{ status.label }} <span class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</span></button>
+            <div class="feedback-work-queues" role="group" aria-label="工作队列">
+              <div class="feedback-primary-queues">
+                <button v-for="status in primaryQueues" :key="status.key" type="button" :aria-pressed="filterStatus === status.key" :class="{ on: filterStatus === status.key }" @click="setFilter(status)">
+                  <span>{{ status.label }}</span><strong class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</strong>
+                </button>
+              </div>
+              <div class="feedback-secondary-queues">
+                <button v-for="status in secondaryQueues" :key="status.key" type="button" :aria-pressed="filterStatus === status.key" :class="{ on: filterStatus === status.key }" @click="setFilter(status)">{{ status.label }} <span class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</span></button>
               </div>
             </div>
+            <p class="feedback-queue-note">队列可能重叠，数量不能相加；“程序已交回”表示曾交回运营。</p>
+            <p v-if="queueCountError" class="feedback-form-error" role="status">{{ queueCountError }} <button type="button" @click="loadQueueCounts">重试</button></p>
 
-            <div class="feedback-filter-row">
-              <label class="feedback-filter">
-                <span>反馈类型</span>
-                <select :value="filterType" @change="changeListOption('type', $event)">
-                  <option value="">全部类型</option>
-                  <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-                </select>
-              </label>
+            <div class="feedback-command-bar feedback-manage-toolbar">
+              <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
+                <Search :size="18" aria-hidden="true" />
+                <input v-model="q" type="search" name="managed-feedback-search" aria-label="搜索待处理反馈" placeholder="搜索工单编号或反馈内容…" />
+                <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
+              </form>
               <label class="feedback-filter">
                 <span>负责板块</span>
                 <select :value="filterCategory" @change="changeListOption('category', $event)">
@@ -66,33 +58,28 @@
                   <option value="latest">最新提交</option>
                 </select>
               </label>
-              <label class="feedback-filter">
-                <span>每页显示</span>
-                <select :value="pageSize" aria-label="每页显示数量" @change="changeListOption('pageSize', $event)">
-                  <option v-for="size in [20, 30, 50]" :key="size" :value="size">{{ size }} 条</option>
-                </select>
-              </label>
-              <div class="feedback-result-tools">
-                <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
-              </div>
             </div>
-            <p v-if="queueCountError" class="feedback-form-error" role="status">{{ queueCountError }} <button type="button" @click="loadQueueCounts">重试</button></p>
-            <div class="feedback-read-tools">
-              <span>以下操作作用于全部管理范围，与当前筛选无关。</span>
-                <button
-                  class="feedback-button feedback-mark-read-button"
-                  type="button"
-                  :disabled="markingAllRead || feedbackUnreadState.loading || feedbackUnreadState.count === 0"
-                  :title="markAllReadHint"
-                  :aria-label="markAllReadHint"
-                  @click="markAllUnreadFeedback"
-                >
-                  <CheckCheck :size="15" aria-hidden="true" />
-                  <span>{{ markingAllRead ? '标记中…' : '全部管理范围已读' }}</span>
-                  <span v-if="feedbackUnreadState.count > 0" class="feedback-mark-read-count" aria-hidden="true">
-                    {{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}
-                  </span>
-                </button>
+            <div class="feedback-list-settings">
+              <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
+              <details class="feedback-management-settings">
+                <summary>管理操作与列表设置</summary>
+                <div class="feedback-management-settings-body">
+                  <label class="feedback-filter">
+                    <span>每页显示</span>
+                    <select :value="pageSize" aria-label="每页显示数量" @change="changeListOption('pageSize', $event)">
+                      <option v-for="size in [20, 30, 50]" :key="size" :value="size">{{ size }} 条</option>
+                    </select>
+                  </label>
+                  <div class="feedback-read-tools">
+                    <span>以下操作作用于全部管理范围，与当前筛选无关。</span>
+                    <button class="feedback-button feedback-mark-read-button" type="button" :disabled="markingAllRead || feedbackUnreadState.loading || feedbackUnreadState.count === 0" :title="markAllReadHint" :aria-label="markAllReadHint" @click="markAllUnreadFeedback">
+                      <CheckCheck :size="15" aria-hidden="true" />
+                      <span>{{ markingAllRead ? '标记中…' : '全部管理范围已读' }}</span>
+                      <span v-if="feedbackUnreadState.count > 0" class="feedback-mark-read-count" aria-hidden="true">{{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}</span>
+                    </button>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <FeedbackTicketWorkspace
@@ -105,7 +92,6 @@
               :page="page"
               :page-size="pageSize"
               :total-pages="totalPages"
-              :type-label="typeLabel"
               :category-label="categoryLabel"
               :status-label="statusLabel"
               :format-date="formatDate"
@@ -254,7 +240,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
-import { PUBLIC_TYPE_OPTIONS, publicStatusLabel, publicTypeLabel as typeLabel } from '@/utils/feedbackPublic.js'
+import { publicStatusLabel } from '@/utils/feedbackPublic.js'
 import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
@@ -279,7 +265,6 @@ import {
   mergeFeedback,
   publishFeedback,
   unpublishFeedback,
-  updateFeedbackType,
   updateFeedbackPublicStatus,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
@@ -294,12 +279,11 @@ const allStatusTabs = [
   { key: 'UNASSIGNED', label: '待接单' },
   { key: 'MINE', label: '我负责' },
   { key: 'NEEDS_REPLY', label: '需我回复' },
-  { key: 'DEV', label: '待程序' },
-  { key: 'RETURNED', label: '已交回运营' },
+  { key: 'DEV', label: '待程序处理' },
+  { key: 'RETURNED', label: '程序已交回' },
   { key: 'CLOSED', label: '已结束' },
   { key: 'ALL', label: '全部' }
 ]
-const feedbackTypeOptions = PUBLIC_TYPE_OPTIONS
 const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
@@ -316,7 +300,6 @@ const queueCounts = ref({})
 const queueCountError = ref('')
 const pageMessage = ref('')
 const filterStatus = ref('UNASSIGNED')
-const filterType = ref('')
 const filterCategory = ref('')
 const selectedId = ref('')
 const selectedDetail = ref(null)
@@ -389,6 +372,8 @@ const statusTabs = computed(() => allStatusTabs.filter(tab => {
   if (tab.key === 'RETURNED') return access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0
   return access.value.developerAreas.length > 0 || (tab.key === 'DEV' && access.value.operatorAreas.length > 0)
 }))
+const primaryQueues = computed(() => statusTabs.value.filter(tab => ['UNASSIGNED', 'MINE', 'NEEDS_REPLY', 'DEV'].includes(tab.key)))
+const secondaryQueues = computed(() => statusTabs.value.filter(tab => ['RETURNED', 'CLOSED', 'ALL'].includes(tab.key)))
 const categoryOptions = computed(() => {
   const all = access.value.availableWorkAreas
   return access.value.superAdmin ? all : all.filter(option => access.value.operatorAreas.includes(option.key) || access.value.developerAreas.includes(option.key))
@@ -434,7 +419,6 @@ async function loadQueueCounts() {
   queueCountError.value = ''
   try {
     const counts = await getFeedbackQueueCounts(statusTabs.value.map(tab => tab.key), {
-      type: filterType.value || undefined,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined
     })
@@ -481,7 +465,6 @@ async function loadFeedback({ background = false } = {}) {
       page: page.value,
       pageSize: pageSize.value,
       queue: filterStatus.value,
-      type: filterType.value || undefined,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined,
       sortBy: sort.value === 'updated' ? 'updatedAt' : 'createdAt',
@@ -509,7 +492,7 @@ async function reloadFromFirstPage() {
 }
 
 async function changeListOption(key, event) {
-  const model = { type: filterType, category: filterCategory, sort, pageSize }[key]
+  const model = { category: filterCategory, sort, pageSize }[key]
   const input = event.target
   const next = input.value
   input.value = String(model.value)
@@ -812,10 +795,6 @@ async function savePublicInfo(payload) {
   publicMessage.value = ''
   publicError.value = ''
   try {
-    if (selectedDetail.value?.publicConsent === true && payload.type && payload.type !== selectedDetail.value?.type) {
-      await updateFeedbackType(id, payload.type)
-      if (!isCurrentDetail(requestId, id, userId)) return
-    }
     const detail = selectedDetail.value?.publicConsent === true
       ? await publishFeedback(id, payload)
       : await updateFeedbackPublicStatus(id, payload.publicStatus)
@@ -1040,7 +1019,7 @@ onBeforeUnmount(() => {
 .feedback-merge-relations a { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--surface); color: var(--feedback-text); text-decoration: underline; text-underline-offset: 2px; }
 .feedback-merge-relations a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .feedback-management-summary { color: var(--feedback-text-muted); }
-.feedback-read-tools { color: var(--feedback-text-muted); }
+.feedback-queue-note, .feedback-read-tools { color: var(--feedback-text-muted); }
 .feedback-reply-tools code { color: var(--feedback-text-muted); }
 .feedback-reply-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .feedback-workflow-options { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
@@ -1060,6 +1039,13 @@ onBeforeUnmount(() => {
 .feedback-workflow-events b { color: var(--feedback-text); }
 .feedback-workflow-events time, .feedback-workflow-events span { color: var(--feedback-text-dim); }
 .feedback-workflow-events p { color: var(--feedback-text-muted); }
+
+.feedback-work-queues button { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text); cursor: pointer; }
+.feedback-work-queues button:hover { background: var(--feedback-panel-hover); }
+.feedback-work-queues button.on { border-color: var(--yellow-deep); background: var(--feedback-accent-soft); box-shadow: inset 0 -2px var(--yellow-deep); }
+.feedback-work-queues button:focus-visible, .feedback-management-settings summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-management-settings { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
+.feedback-management-settings summary { cursor: pointer; }
 </style>
 <style scoped src="./feedbackManageDesktop.css"></style>
 <style scoped src="./feedbackManageMobile.css"></style>

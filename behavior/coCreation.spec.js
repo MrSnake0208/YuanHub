@@ -53,20 +53,22 @@ beforeEach(() => {
 })
 
 describe('FeedbackPlaza', () => {
-  it('广场筛选展示统一七类型，日历板块在公开卡片与详情一致显示', async () => {
+  it('广场不显示类型筛选，日历板块在公开卡片与详情一致显示', async () => {
     api.listPublicFeedback.mockResolvedValue({ items: [publicItem({ category: 'CALENDAR', categoryLabel: '活动日历' })], total: 1 })
     const wrapper = render(FeedbackPlaza); await flushPromises()
-    const options = wrapper.findAll('.feedback-filter select')[0].findAll('option').slice(1)
-    expect(options.map(option => ({ key: option.element.value, label: option.text() }))).toEqual(PUBLIC_TYPE_OPTIONS)
+    expect(wrapper.findAll('.feedback-filter select')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('反馈类型')
+    expect(api.listPublicFeedback.mock.lastCall[0]).not.toHaveProperty('type')
     expect(wrapper.get('.public-card-category').text()).toBe('活动日历')
     const detail = render(PublicFeedbackDetail, { props: { item: publicItem({ category: 'CALENDAR', categoryLabel: '活动日历' }), formatDate }, global: { stubs: { PublicFeedbackManagement: true } } })
     expect(detail.get('.public-detail-category').text()).toBe('活动日历')
     wrapper.unmount(); detail.unmount()
   })
 
-  it.each(PUBLIC_TYPE_OPTIONS)('公开卡片正确显示 $key 类型', ({ key, label }) => {
+  it.each(PUBLIC_TYPE_OPTIONS)('公开卡片保留历史 $key 内容而不展示类型', ({ key }) => {
     const wrapper = render(PublicFeedbackCard, { props: { item: publicItem({ type: key }), formatDate } })
-    expect(wrapper.get('.feedback-type-badge').text()).toBe(label)
+    expect(wrapper.find('.feedback-type-badge').exists()).toBe(false)
+    expect(wrapper.text()).toContain('数据页面增加当前账号标识')
     wrapper.unmount()
   })
 
@@ -94,7 +96,7 @@ describe('FeedbackPlaza', () => {
     expect(wrapper.get('.plaza-state.empty').text()).toContain('暂时还没有公开的反馈')
   })
 
-  it.each([['type', 0, 'BUG'], ['status', 1, 'COMPLETED']])('%s无结果使用筛选空态，清除后保留排序并回第一页', async (_, index, value) => {
+  it.each([['status', 0, 'COMPLETED']])('%s无结果使用筛选空态，清除后保留排序并回第一页', async (_, index, value) => {
     api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
     const wrapper = render(FeedbackPlaza); await flushPromises()
     await wrapper.findAll('.feedback-status-tabs button')[0].trigger('click'); await flushPromises()
@@ -103,7 +105,7 @@ describe('FeedbackPlaza', () => {
     expect(wrapper.get('.plaza-state.empty').text()).toContain('当前筛选没有找到')
     expect(wrapper.get('.plaza-state.empty').text()).not.toContain('暂时还没有公开')
     await wrapper.get('.plaza-state.empty .feedback-button').trigger('click'); await flushPromises()
-    expect(api.listPublicFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, type: undefined, status: undefined, keyword: undefined, sort: previousSort }))
+    expect(api.listPublicFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, status: undefined, keyword: undefined, sort: previousSort }))
     expect(wrapper.findAll('.feedback-filter select').every(select => select.element.value === '')).toBe(true)
     expect(wrapper.get('.plaza-state.empty').text()).toContain('暂时还没有公开')
   })
@@ -127,10 +129,10 @@ describe('FeedbackPlaza', () => {
     api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
     const wrapper = render(FeedbackPlaza); await flushPromises()
     api.listPublicFeedback.mockRejectedValueOnce(new Error('offline'))
-    await wrapper.findAll('.feedback-filter select')[0].setValue('BUG'); await flushPromises()
+    await wrapper.findAll('.feedback-filter select')[0].setValue('CONFIRMED'); await flushPromises()
     expect(wrapper.find('.plaza-state.empty').exists()).toBe(false)
     expect(wrapper.get('.plaza-state.error').text()).toContain('反馈加载失败')
-    expect(wrapper.findAll('.feedback-filter select')[0].element.value).toBe('BUG')
+    expect(wrapper.findAll('.feedback-filter select')[0].element.value).toBe('CONFIRMED')
     await wrapper.get('.plaza-state.error button').trigger('click'); await flushPromises()
     expect(wrapper.get('.plaza-state.empty').text()).toContain('当前筛选没有找到')
   })
@@ -216,21 +218,21 @@ describe('反馈中心公开广场', () => {
     expect(wrapper.get('.plaza-submit').getComponent(RouterLinkStub).props('to')).toBe('/feedback?new=1')
     expect(api.listPublicFeedback).toHaveBeenCalled()
   })
-  it('旧许愿入口的类型筛选和公开详情意图传递给广场', async () => {
+  it('旧链接忽略类型但仍打开指定公开详情', async () => {
     routing.route.query = { type: 'FEATURE', feedback: 'rpt_1' }
     api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
     api.getPublicFeedback.mockResolvedValue(publicItem({ type: 'FEATURE' }))
     const wrapper = render(FeedbackPlazaPage)
     await flushPromises()
-    expect(api.listPublicFeedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'FEATURE' }))
+    expect(api.listPublicFeedback.mock.lastCall[0]).not.toHaveProperty('type')
     expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1')
     expect(wrapper.get('[role="dialog"]').text()).toContain('公开说明')
   })
-  it('搜索无结果时提交直接打开反馈表单并携带类型', async () => {
+  it('搜索无结果时提交直接打开普通反馈表单', async () => {
     api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
-    const wrapper = render(FeedbackPlaza, { props: { initialType: 'FEATURE' } })
+    const wrapper = render(FeedbackPlaza)
     await flushPromises()
     await wrapper.get('.plaza-state.empty .feedback-primary-action').trigger('click')
-    expect(routing.push).toHaveBeenCalledWith({ path: '/feedback', query: { new: '1', type: 'FEATURE' } })
+    expect(routing.push).toHaveBeenCalledWith({ path: '/feedback', query: { new: '1' } })
   })
 })

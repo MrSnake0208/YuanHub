@@ -22,7 +22,7 @@
 
     <div v-show="open || dialog" :id="panelId" class="admin-public-body">
       <p class="admin-public-hint">
-        {{ canPublish ? '用户已允许整理到反馈广场。发布后只展示公开标题与摘要；原始正文、附件与账号信息不会公开。' : '用户未授权发布到反馈广场，不能发布或修改公开正文；已公开的内容仍可更新状态或取消公开。' }}
+        {{ isReport ? '举报工单仅供私下处理，不能发布到反馈广场。' : canPublish ? '用户已允许整理到反馈广场。发布后只展示公开标题与摘要；原始正文、附件与账号信息不会公开。' : '用户未授权发布到反馈广场，不能发布或修改公开正文；已公开的内容仍可更新状态或取消公开。' }}
       </p>
 
       <div class="admin-public-grid">
@@ -33,14 +33,6 @@
         <label class="full">
           <span>公开摘要</span>
           <textarea v-model="form.publicSummary" class="feedback-form-control" :disabled="!canPublish" rows="3" maxlength="1000" placeholder="适合公开展示的描述，不要包含用户隐私"></textarea>
-        </label>
-        <label>
-          <span>反馈类型</span>
-          <small>同时更新内部工单类型与广场分类。</small>
-          <select v-model="form.type" class="feedback-form-control" :disabled="!canPublish">
-            <option v-if="!isFeedbackType(item.type)" :value="item.type || ''">{{ publicTypeLabel(item.type) }}（保留原类型）</option>
-            <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-          </select>
         </label>
         <label>
           <span>公开状态</span>
@@ -75,7 +67,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { ChevronDown } from '@lucide/vue'
-import { PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS, isFeedbackType, publicTypeLabel } from '@/utils/feedbackPublic.js'
+import { PUBLIC_STATUS_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -89,9 +81,9 @@ const props = defineProps({
 const emit = defineEmits(['save', 'unpublish'])
 
 const statusOptions = PUBLIC_STATUS_OPTIONS
-const typeOptions = PUBLIC_TYPE_OPTIONS
 const isPublic = computed(() => String(props.item?.visibility || '').toUpperCase() === 'PUBLIC')
-const canPublish = computed(() => props.item?.publicConsent === true)
+const isReport = computed(() => props.item?.type === 'REPORT' || (props.item?.type === 'FEEDBACK' && props.item?.category === 'REPORT'))
+const canPublish = computed(() => props.item?.publicConsent === true && !isReport.value)
 const open = ref(false)
 const panelId = computed(() => `admin-feedback-public-${String(props.item?.id || 'current').replace(/[^a-zA-Z0-9_-]/g, '-')}`)
 const summaryText = computed(() => {
@@ -101,11 +93,10 @@ const summaryText = computed(() => {
   return `${state} · ${Number(props.item?.supportCount || 0)} 人支持`
 })
 
-const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLECTING', type: 'BUG' })
+const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLECTING' })
 const hasDraft = computed(() => form.publicStatus !== (props.item?.publicStatus || 'COLLECTING') || (canPublish.value && (
   form.publicTitle.trim() !== (props.item?.publicTitle || props.item?.title || '').trim() ||
-  form.publicSummary.trim() !== (props.item?.publicSummary || '').trim() ||
-  form.type !== (props.item?.type || '')
+  form.publicSummary.trim() !== (props.item?.publicSummary || '').trim()
 )))
 defineExpose({ hasDraft })
 
@@ -113,7 +104,6 @@ function sync() {
   form.publicTitle = props.item?.publicTitle || props.item?.title || ''
   form.publicSummary = props.item?.publicSummary || ''
   form.publicStatus = props.item?.publicStatus || 'COLLECTING'
-  form.type = props.item?.type || ''
 }
 
 watch(() => [props.item?.id, props.item?.visibility], sync, { immediate: true })
@@ -122,12 +112,10 @@ watch(() => props.item?.id, () => { open.value = false })
 function save() {
   const publicTitle = form.publicTitle.trim()
   if ((!canPublish.value && !isPublic.value) || (canPublish.value && !publicTitle) || props.busy) return
-  if (form.type !== (props.item?.type || '') && !isFeedbackType(form.type)) return
   emit('save', {
     publicTitle,
     publicSummary: form.publicSummary.trim() || null,
-    publicStatus: form.publicStatus || 'COLLECTING',
-    type: form.type || undefined
+    publicStatus: form.publicStatus || 'COLLECTING'
   })
 }
 </script>
