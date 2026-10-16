@@ -10,7 +10,7 @@ import { getOperatorCurrent } from '../src/api/operator.js'
 import { getCurrent } from '../src/api/inventory.js'
 import { getCurrentStarState } from '../src/api/starState.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
-import { calendarSubscriptionSummary } from '../src/api/activityCalendarSubscriptions.js'
+import { calendarSubscriptionSummary, listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
 import { getTodayPreferences } from '../src/api/todayPreferences.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
 
@@ -74,6 +74,7 @@ beforeEach(() => {
   getCurrentStarState.mockResolvedValue({ inventory: [{ instance_id: 'star-a' }] })
   listActivityCalendar.mockResolvedValue({ items: [item()] })
   calendarSubscriptionSummary.mockResolvedValue({ items: [], subscribed_count: 0, total_pending: 0 })
+  listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [] })
 })
 afterEach(() => { delete document.visibilityState })
 
@@ -254,9 +255,12 @@ it.each(['public', 'private'])('%s失败不吞掉另一类活动内容；数据�
     calendarSubscriptionSummary.mockRejectedValue(new Error('个人订阅失败'))
     listActivityCalendar.mockResolvedValue({ items: [item({ game: accounts[0].game })] })
   }
-  if (failed === 'public') calendarSubscriptionSummary.mockResolvedValue({
-    items: [{ event_id: 'mine', subscribed: true, item: item({ title: '个人临期事项' }), checklist: [] }], subscribed_count: 1, total_pending: 1
-  })
+  if (failed === 'public') {
+    listCalendarSubscriptions.mockResolvedValue({
+      items: [{ event_id: 'mine', subscribed: true, version: 1, item: item({ title: '个人临期事项' }), checklist: [] }], unavailable_items: []
+    })
+    calendarSubscriptionSummary.mockResolvedValue({ subscribed_count: 1, total_pending: 1 })
+  }
   getOperatorCurrent.mockRejectedValue(new Error('摘要失败'))
   const wrapper = render(); await flushPromises()
   expect(wrapper.text()).toContain(failed === 'public' ? '个人临期事项' : '今日公开活动')

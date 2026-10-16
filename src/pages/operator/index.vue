@@ -8344,7 +8344,7 @@ async function reloadCurrent(quiet) {
   const targetKey = targetAccount + ":" + targetGame;
   const ownerId = auth.userInfo?.id;
   const seq = ++currentLoadSeq;
-  loading.value = true;
+  if (!quiet || currentLoadedKey.value !== targetKey) loading.value = true;
   if (!quiet) error.value = "";
   try {
     const data = await getOperatorCurrent({

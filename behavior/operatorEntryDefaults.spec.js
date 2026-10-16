@@ -70,7 +70,7 @@ afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear
 function renderPage(options = {}, stubs = {}) {
   const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true, RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
-      OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, ...stubs },
+      OperatorShareManager: true, OperatorGrowthTracker: { name: 'OperatorGrowthTracker', props: ['currentEntries'], template: '<div />' }, StarLoadoutEditor: true, StarLoadoutModal: true, ...stubs },
     directives: { reveal: () => {} },
   } })
   wrappers.add(wrapper)
@@ -120,6 +120,7 @@ it.each([
   })
   listRecords.mockResolvedValue({ items: [] })
   const wrapper = renderPage({}, { OperatorGrowthTracker: false, PlannerExactOptimizer: true })
+  await vi.dynamicImportSettled()
   await flushPromises()
   expect(wrapper.get('.growth-current-star').text()).toBe('未拥有')
   const pendingRemark = wrapper.get('.growth-card-remark textarea')
@@ -191,7 +192,7 @@ it('清单触发全量刷新时，干净草稿采用最新独立化极、双命�
   await refreshFromTracker(wrapper)
   expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('55')
   expect(wrapper.get('input[aria-label="修为"]').element.value).toBe('8')
-  expect(wrapper.get('.ledger-huaji-value').text()).toContain('4 星 · 1 节点')
+  expect(wrapper.get('.ledger-huaji-value').attributes('aria-label')).toBe('化极：4 星 · 1 节点')
   expect(wrapper.get('[aria-label="编辑命盘一"] .disc-term').text()).toBe('新命盘甲')
   expect(wrapper.get('[aria-label="编辑命盘二"] .disc-term').text()).toBe('新命盘乙')
   expect(wrapper.get('input[aria-label="测试密探攻击力"]').element.value).toBe('222')
@@ -202,10 +203,11 @@ it('清单触发全量刷新时，干净草稿采用最新独立化极、双命�
   await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click')
   await flushPromises()
   expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).toMatchObject({
-    expected_revision: 4, level: 56, elite: 8, huaji: { stage: 20 },
+    expected_revision: 4, level: 56, elite: 8,
     disc_loadouts: [{ discs: [{ ot_name: '新命盘甲' }] }, { discs: [{ ot_name: '新命盘乙' }] }],
-    combat_stats: { manual_attack: 222, manual_hp: 2222 },
+    combat_stats: { manual_attack: 222, manual_hp: 2222, observed_inputs: { huaji: { stage: 20 } } },
   })
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).not.toHaveProperty('huaji')
 })
 
 it('全量刷新保留真正未保存编辑，并用编辑开始时的 revision 防止旧字段覆盖新档案', async () => {
@@ -248,7 +250,7 @@ it.each([false, true])('化极 SSE 同步独立 huaji 且保留未保存编辑�
   const handler = subscribeAccountEvents.mock.calls.at(-1)[0]
   handler(event)
   await flushPromises()
-  expect(wrapper.get('.ledger-huaji-value').text()).toContain(dirty ? '4 星 · 0 节点' : '4 星 · 1 节点')
+  expect(wrapper.get('.ledger-huaji-value').attributes('aria-label')).toBe(dirty ? '化极：4 星 · 0 节点' : '化极：4 星 · 1 节点')
   const current = wrapper.getComponent({ name: 'OperatorGrowthTracker' }).props('currentEntries')[0]
   expect(current).toMatchObject({ starLevel: 20, revision: 4, huaji: { owned: true, stage: 20, awakened: false } })
   handler(event)
@@ -269,6 +271,7 @@ it.each(['快照', '装配'])('较早星石快照迟到时不能覆盖较新的%
   getCurrentStarState.mockReturnValueOnce(oldState.promise)
   getCurrentStarLoadout.mockReturnValueOnce(oldLoadout.promise)
   await refreshFromTracker(wrapper)
+  expect(wrapper.get('.agent-ledger-card').isVisible()).toBe(true)
   const stone = { instance_id: 'new-stone', kind: 'main', name: '新星石', level: 10 }
   getCurrentStarState.mockResolvedValue({ generation: 2, entries: [stone] })
   getCurrentStarLoadout.mockResolvedValue({ generation: 2, revision: 5, loadouts: { op: { main1: 'new-stone' } } })
