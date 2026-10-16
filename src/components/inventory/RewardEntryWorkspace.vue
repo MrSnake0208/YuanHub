@@ -78,29 +78,41 @@
           </div>
           <div class="manual-columns">
             <section v-if="trainingByRuns" class="reward-picker training-picker" aria-label="按完成次数计算历练奖励">
-              <div class="picker-heading"><h4>历练完成次数</h4><span>填写实际成功完成的次数，失败战斗不计</span></div>
-              <details class="training-level-settings">
-                <summary>设置常用关卡<span>已启用 {{ commonTrainingLevels.length }} 关</span></summary>
-                <p id="training-level-help" class="shortcut-note">勾选常刷的关卡，至少保留一关。三种历练共用此设置，按子账号和游戏保存在当前浏览器；取消常用不会改变已填写的关卡。</p>
-                <div class="training-level-options" role="group" aria-label="常用关卡" aria-describedby="training-level-help">
-                  <label v-for="level in TRAINING_REWARD_LEVELS" :key="level" :class="{ selected: commonTrainingLevels.includes(level) }"><input type="checkbox" :value="level" :checked="commonTrainingLevels.includes(level)" :disabled="commonTrainingLevels.length === 1 && commonTrainingLevels.includes(level)" @change="changeCommonTrainingLevel(level, $event.target.checked)" />第 {{ level }} 关</label>
+              <div class="training-toolbar"><h4>历练奖励</h4>
+                <details class="training-level-settings">
+                  <summary>常用关卡<ChevronDown :size="13" aria-hidden="true" /></summary>
+                  <div class="training-settings-panel">
+                  <p id="training-level-help" class="shortcut-note">勾选常刷的关卡，至少保留一关。三种历练共用此设置，按子账号和游戏保存在当前浏览器；取消常用不会改变已填写的关卡。</p>
+                  <div class="training-level-options" role="group" aria-label="常用关卡" aria-describedby="training-level-help">
+                    <label v-for="level in TRAINING_REWARD_LEVELS" :key="level" :class="{ selected: commonTrainingLevels.includes(level) }"><input type="checkbox" :value="level" :checked="commonTrainingLevels.includes(level)" :disabled="commonTrainingLevels.length === 1 && commonTrainingLevels.includes(level)" @change="changeCommonTrainingLevel(level, $event.target.checked)" />第 {{ level }} 关</label>
+                  </div>
+                  <label class="training-show-all"><input v-model="showAllTrainingLevels" type="checkbox" />显示全部 1–12 关</label>
+                  </div>
+                </details>
+              </div>
+              <div class="training-selection" aria-label="历练录入区">
+                <div id="training-group" class="training-group-options" role="group" aria-label="历练类型" tabindex="-1" :aria-invalid="!!error && trainingInputError.field === 'group'" :aria-describedby="error && trainingInputError.field === 'group' ? 'training-error' : undefined">
+                  <button v-for="group in TRAINING_REWARD_GROUPS" :key="group.id" type="button" class="outline-button" :aria-pressed="manual.training.draft.groupId === group.id" @click="manual.training.draft.groupId = group.id; changeTrainingDraft()">{{ group.name }}</button>
                 </div>
-              </details>
-              <label class="training-show-all"><input v-model="showAllTrainingLevels" type="checkbox" />显示全部 1–12 关</label>
-              <p v-if="trainingLevelNotice" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
-              <div v-for="(selection, index) in manual.training.selections" :key="selection.key" class="training-selection" role="group" :aria-label="`第 ${index + 1} 组历练`">
-                <div class="training-selection-heading"><b>第 {{ index + 1 }} 组历练</b><button v-if="manual.training.selections.length > 1" type="button" class="text-button" :aria-label="`移除第 ${index + 1} 组历练`" @click="removeTrainingSelection(index)">移除</button></div>
+                <p v-if="error && trainingInputError.field === 'group'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</p>
                 <div class="training-fields">
-                  <label :for="trainingFieldId('group', index)">历练类型<select :id="trainingFieldId('group', index)" v-model="selection.groupId" :aria-invalid="trainingRowResults[index].field === 'group'" :aria-describedby="trainingRowResults[index].field === 'group' ? trainingFieldId('error', index) : undefined" @change="clearPreview"><option value="">请选择类型</option><option v-for="group in TRAINING_REWARD_GROUPS" :key="group.id" :value="group.id">{{ group.name }}</option></select><span v-if="trainingRowResults[index].field === 'group'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
-                  <label :for="trainingFieldId('level', index)">历练关卡<select :id="trainingFieldId('level', index)" v-model="selection.level" :aria-invalid="trainingRowResults[index].field === 'level'" :aria-describedby="trainingRowResults[index].field === 'level' ? trainingFieldId('error', index) : undefined" @change="clearPreview"><option value="">请选择关卡</option><option v-for="level in trainingLevelOptions(selection.level)" :key="level" :value="level" :disabled="manual.training.selections.some((other, otherIndex) => otherIndex !== index && other.groupId === selection.groupId && other.level === level)">第 {{ level }} 关{{ !showAllTrainingLevels && !commonTrainingLevels.includes(level) ? '（当前选择）' : '' }}</option></select><span v-if="trainingRowResults[index].field === 'level'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
-                  <label :for="trainingFieldId('runs', index)">成功完成次数<input :id="trainingFieldId('runs', index)" v-model="selection.runs" type="text" inputmode="numeric" :aria-invalid="trainingRowResults[index].field === 'runs'" :aria-describedby="trainingRowResults[index].field === 'runs' ? trainingFieldId('error', index) + ' training-note' : 'training-note'" @input="clearPreview" /><span v-if="trainingRowResults[index].field === 'runs'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
+                  <label for="training-level">关卡<select id="training-level" v-model="manual.training.draft.level" :aria-invalid="!!error && trainingInputError.field === 'level'" :aria-describedby="error && trainingInputError.field === 'level' ? 'training-error' : undefined" @change="changeTrainingDraft"><option value="">请选择关卡</option><option v-for="level in trainingLevelOptions(manual.training.draft.level)" :key="level" :value="level">第 {{ level }} 关{{ !showAllTrainingLevels && !commonTrainingLevels.includes(level) ? '（当前选择）' : '' }}</option></select><span v-if="error && trainingInputError.field === 'level'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
+                  <label for="training-runs">完成次数<span class="training-stepper"><button type="button" class="outline-button" aria-label="减少完成次数" :disabled="!canAdjustTrainingRuns(-1)" @click="adjustTrainingRuns(-1)">−</button><input id="training-runs" v-model="manual.training.draft.runs" type="text" inputmode="numeric" :aria-invalid="!!error && trainingInputError.field === 'runs'" :aria-describedby="error && trainingInputError.field === 'runs' ? 'training-error training-note' : 'training-note'" @input="changeTrainingDraft" /><button type="button" class="outline-button" aria-label="增加完成次数" :disabled="!canAdjustTrainingRuns(1)" @click="adjustTrainingRuns(1)">+</button></span><span v-if="error && trainingInputError.field === 'runs'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
                 </div>
-                <p v-if="trainingRowResults[index].field === 'catalog' || trainingRowResults[index].field === 'game'" class="row-error">{{ trainingRowResults[index].error }}</p>
-                <ul v-if="trainingRowResults[index].entries.length" class="training-formulas" :aria-label="`第 ${index + 1} 组历练必得奖励计算`"><li v-for="entry in trainingRowResults[index].entries" :key="entry.id"><b class="training-material"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span>{{ entry.name }}</b><span>单次 {{ entry.perRunCount }} × {{ trainingRowResults[index].runs }} 次 = <strong>+{{ entry.count }}</strong></span></li></ul>
+                <p v-if="trainingInputError.field === 'catalog' || trainingInputError.field === 'game'" class="row-error">{{ trainingInputError.error }}</p>
+                <div v-if="trainingDraftResult.entries.length" class="training-draft-rewards" aria-label="本条预计获得"><span v-for="entry in trainingDraftResult.entries" :key="entry.id" class="training-reward-chip"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="24" height="24" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }} <strong>+{{ entry.count }}</strong></span></span></div>
+                <div class="training-entry-actions"><button v-if="manual.training.editingKey != null || manual.training.dirty" type="button" class="text-button" @click="cancelTrainingEdit">{{ manual.training.editingKey == null ? '清除本条' : '取消修改' }}</button><button type="button" class="outline-button add-training" :disabled="!trainingPending" @click="addTrainingSelection"><Plus v-if="manual.training.editingKey == null" :size="14" aria-hidden="true" />{{ manual.training.editingKey == null ? '加入本次记录' : '保存修改' }}</button></div>
+                <p class="shortcut-note">{{ trainingPending ? '当前输入会参与预览，加入相同关卡将合并次数。' : '已加入清单，修改后可继续添加。' }}</p>
+              </div>
+              <p v-if="manual.training.notice" class="shortcut-note" role="status">{{ manual.training.notice }}</p>
+              <div class="training-records" aria-label="本次历练记录">
+                <h4>已加入清单 <small>{{ manual.training.selections.length }} 条</small></h4>
+                <p v-if="!manual.training.selections.length" class="shortcut-note">尚未加入记录</p>
+                <ul v-else><li v-for="selection in manual.training.selections" :key="selection.key"><span><b>{{ trainingSelectionLabel(selection) }}</b><small>{{ selection.runs }} 次{{ manual.training.editingKey === selection.key ? ' · 正在编辑' : '' }}</small></span><div><button type="button" class="text-button" :aria-label="'编辑' + trainingSelectionLabel(selection)" @click="editTrainingSelection(selection)">编辑</button><button type="button" class="text-button" :aria-label="'删除' + trainingSelectionLabel(selection)" @click="removeTrainingSelection(selection.key)">删除</button></div></li></ul>
               </div>
               <button v-if="trainingCalculation.field === 'catalog'" type="button" class="outline-button" @click="loadCatalog">重新加载奖励目录</button>
-              <button type="button" class="outline-button add-training" :disabled="manual.training.selections.length >= MAX_TRAINING_SELECTIONS" @click="addTrainingSelection"><Plus :size="14" aria-hidden="true" />添加一组历练</button>
-              <p id="training-note" class="shortcut-note">可填写同类型的多个关卡或不同类型，每组独立选择关卡和次数，共用上方发生时间，相同材料自动合计。同一类型同一关卡只填一组。只计算关卡必得修为材料，第 1、2 关各一种，其余各两种；额外掉落请按实际结果补录。次数可以超过 6；不同发生时间请分别录入。</p>
+              <p v-if="trainingLevelNotice" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
+              <details class="training-help"><summary><span>仅计算必得修为材料</span><span>掉落说明<ChevronDown :size="12" aria-hidden="true" /></span></summary><p id="training-note" class="shortcut-note">第 1、2 关各一种材料，其余各两种；额外掉落请按实际结果补录。次数可以超过 6。多条记录共用上方发生时间，不同发生时间请分别录入；确认补录后才入账。</p></details>
             </section>
             <section v-else class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
@@ -188,7 +200,7 @@ import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../
 import { REWARD_CHANNELS, WHITE_COIN_PRESETS, dailyWhiteCoinRecordId, validateWhiteCoinAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD_LEVELS, MAX_TRAINING_SELECTIONS, calculateTrainingRewards, calculateTrainingRewardBatch, trainingRewardUnavailableReason } from '../../data/inventory/trainingRewards.js'
+import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD_LEVELS, calculateTrainingRewards, calculateTrainingRewardBatch, trainingRewardUnavailableReason } from '../../data/inventory/trainingRewards.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
@@ -241,7 +253,7 @@ function freshManual() {
   return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', training: freshTraining() }
 }
 function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupId: '', level: '', runs: '1' } }
-function freshTraining() { return { mode: 'materials', selections: [freshTrainingSelection()], replacePrompt: false } }
+function freshTraining() { return { mode: trainingRewardUnavailableReason(props.game) ? 'materials' : 'runs', selections: [], draft: freshTrainingSelection(), dirty: false, editingKey: null, notice: '', replacePrompt: false } }
 const manual = ref(freshManual())
 switchDraftBaseline = JSON.stringify(manual.value)
 function resetManual() { manual.value = freshManual(); switchDraftBaseline = JSON.stringify(manual.value) }
@@ -275,19 +287,31 @@ function changeCommonTrainingLevel(level, selected) {
 function trainingLevelOptions(selectedLevel) { return TRAINING_REWARD_LEVELS.filter(level => showAllTrainingLevels.value || commonTrainingLevels.value.includes(level) || selectedLevel === level) }
 loadTrainingLevelPreference()
 const trainingByRuns = computed(() => manual.value.channel === '历练' && manual.value.training.mode === 'runs')
+const trainingPending = computed(() => manual.value.training.dirty || !manual.value.training.selections.length)
+const trainingDraftResult = computed(() => {
+  try { return calculateTrainingRewards({ game: props.game, ...manual.value.training.draft, entities: entities.value }) }
+  catch (err) { return { entries: [], error: err.message, field: err.field } }
+})
 const trainingCalculation = computed(() => {
   if (!trainingByRuns.value) return { entries: [] }
   try {
-    return calculateTrainingRewardBatch({ game: props.game, selections: manual.value.training.selections, entities: entities.value })
-  } catch (err) { return { entries: [], error: err.message, field: err.field, selectionIndex: err.selectionIndex } }
+    const training = manual.value.training
+    const selections = training.selections.filter(selection => selection.key !== training.editingKey).map(selection => ({ ...selection }))
+    if (trainingPending.value) {
+      if (trainingDraftResult.value.error) return { ...trainingDraftResult.value, entries: [] }
+      const draft = { ...training.draft, runs: trainingDraftResult.value.runs }
+      const existing = selections.find(selection => selection.groupId === draft.groupId && selection.level === draft.level)
+      if (existing) existing.runs = Number(existing.runs) + draft.runs
+      else {
+        const editingIndex = training.selections.findIndex(selection => selection.key === training.editingKey)
+        selections.splice(editingIndex < 0 ? selections.length : editingIndex, 0, draft)
+      }
+    }
+    return { ...calculateTrainingRewardBatch({ game: props.game, selections, entities: entities.value }), selections }
+  } catch (err) { return { entries: [], error: err.message, field: err.field } }
 })
-const trainingRowResults = computed(() => trainingByRuns.value ? manual.value.training.selections.map((selection, index) => {
-  if (trainingCalculation.value.error && trainingCalculation.value.selectionIndex === index) return { ...trainingCalculation.value, entries: [] }
-  try { return calculateTrainingRewards({ game: props.game, ...selection, entities: entities.value }) }
-  catch (err) { return { entries: [], error: err.message, field: err.field } }
-}) : [])
-function trainingFieldId(field, index = 0) { return `training-${field}${index ? '-' + index : ''}` }
-const trainingErrorTarget = computed(() => trainingFieldId(trainingCalculation.value.field, trainingCalculation.value.selectionIndex))
+const trainingInputError = computed(() => trainingPending.value ? trainingCalculation.value : {})
+const trainingErrorTarget = computed(() => `training-${trainingCalculation.value.field}`)
 const basketEntries = computed(() => trainingByRuns.value ? trainingCalculation.value.entries : manual.value.presets.length ? manual.value.presets : manual.value.entries)
 const dailyCoinTotal = computed(() => {
   const counts = manual.value.presets.map(preset => Number(preset.count))
@@ -378,7 +402,11 @@ watch(() => [props.accountId, props.game], () => {
 async function showError(message) {
   error.value = /Failed to fetch|NetworkError|Load failed/i.test(message) ? '网络连接失败，请检查连接后重试。' : message
   await nextTick()
-  errorBox.value?.focus()
+  const fieldError = trainingByRuns.value && error.value === trainingInputError.value.error ? document.getElementById('training-error') : null
+  if (fieldError) {
+    fieldError.focus({ preventScroll: true })
+    fieldError.scrollIntoView({ block: 'nearest' })
+  } else errorBox.value?.focus()
 }
 async function loadCatalog() {
   if (catalogLoading.value) return
@@ -465,6 +493,7 @@ function changeTrainingMode(nextMode, confirmed = false) {
     }
     manual.value.entries = []
   } else {
+    if ((manual.value.training.dirty || manual.value.training.selections.length) && trainingCalculation.value.error) { showError(trainingCalculation.value.error); return }
     manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count }))
   }
   manual.value.training.mode = nextMode
@@ -472,19 +501,56 @@ function changeTrainingMode(nextMode, confirmed = false) {
   clearPreview()
 }
 function focusTrainingError() { document.getElementById(trainingErrorTarget.value)?.focus() }
-async function addTrainingSelection() {
-  if (locked.value || result.value || props.disabled || manual.value.training.selections.length >= MAX_TRAINING_SELECTIONS) return
-  manual.value.training.selections.push(freshTrainingSelection())
-  clearPreview()
-  await nextTick()
-  document.getElementById(trainingFieldId('group', manual.value.training.selections.length - 1))?.focus()
+function changeTrainingDraft() { manual.value.training.dirty = true; manual.value.training.notice = ''; clearPreview() }
+function trainingSelectionLabel(selection) { return `${TRAINING_REWARD_GROUPS.find(group => group.id === selection.groupId)?.name || ''} · 第 ${selection.level} 关` }
+function canAdjustTrainingRuns(delta) {
+  const runs = manual.value.training.draft.runs
+  const next = Number(runs) + delta
+  return /^\d+$/.test(String(runs)) && Number.isSafeInteger(next) && next >= 1 && next <= (trainingDraftResult.value.maxRuns || 2147483647)
 }
-async function removeTrainingSelection(index) {
-  if (locked.value || result.value || props.disabled || manual.value.training.selections.length <= 1) return
-  manual.value.training.selections.splice(index, 1)
+function adjustTrainingRuns(delta) {
+  if (locked.value || result.value || props.disabled || !canAdjustTrainingRuns(delta)) return
+  manual.value.training.draft.runs = String(Number(manual.value.training.draft.runs) + delta)
+  changeTrainingDraft()
+}
+function addTrainingSelection() {
+  if (locked.value || result.value || props.disabled) return
+  if (!trainingPending.value) return
+  const training = manual.value.training
+  training.dirty = true
+  clearPreview()
+  if (trainingCalculation.value.error) { showError(trainingCalculation.value.error); return }
+  const merged = training.selections.some(selection => selection.key !== training.editingKey && selection.groupId === training.draft.groupId && selection.level === training.draft.level)
+  training.selections = trainingCalculation.value.selections
+  training.notice = merged ? '已合并相同关卡的次数，请核对本次记录。' : training.editingKey == null ? '已加入本次记录，尚未入账。' : '已保存修改，尚未入账。'
+  training.editingKey = null
+  training.dirty = false
+  training.draft = { ...freshTrainingSelection(), groupId: training.draft.groupId, level: training.draft.level }
+}
+function cancelTrainingEdit() {
+  if (locked.value || result.value || props.disabled) return
+  const training = manual.value.training
+  training.draft = freshTrainingSelection(); training.editingKey = null; training.dirty = false; training.notice = ''
+  clearPreview()
+}
+async function editTrainingSelection(selection) {
+  if (locked.value || result.value || props.disabled) return
+  if (manual.value.training.dirty) { showError('请先加入当前输入、保存修改或取消修改，再编辑其他记录。'); return }
+  const training = manual.value.training
+  training.draft = { ...selection, runs: String(selection.runs) }; training.editingKey = selection.key; training.dirty = true; training.notice = ''
   clearPreview()
   await nextTick()
-  document.getElementById(trainingFieldId('group', Math.min(index, manual.value.training.selections.length - 1)))?.focus()
+  document.getElementById('training-runs')?.focus()
+}
+async function removeTrainingSelection(key) {
+  if (locked.value || result.value || props.disabled) return
+  if (manual.value.training.editingKey === key) cancelTrainingEdit()
+  manual.value.training.selections = manual.value.training.selections.filter(selection => selection.key !== key)
+  manual.value.training.notice = '已删除本次草稿中的记录。'
+  if (!manual.value.training.selections.length && !manual.value.training.dirty) manual.value.training.draft = freshTrainingSelection()
+  clearPreview()
+  await nextTick()
+  document.getElementById('training-runs')?.focus()
 }
 function changeChannel(channel) {
   if (channel === manual.value.channel || locked.value) return
@@ -645,7 +711,7 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', 
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .reward-workspace, .reward-dialog-mask { color: var(--ink); }
 .whitecoin-shortcuts { border-bottom: 1px solid var(--line); }
-.shortcut-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
+.shortcut-options [aria-pressed="true"], .training-group-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
 .whitecoin-purpose select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .shortcut-note { color: var(--ink-60); }
 .training-mode-section { border-bottom: 1px solid var(--line); }
@@ -659,7 +725,6 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', 
 .training-level-options input, .training-show-all input { appearance: auto; accent-color: var(--accent); }
 .training-show-all { cursor: pointer; }
 .training-selection { border-top: 1px solid var(--line); }
-.training-formulas { border: 1px solid var(--reward-gold-soft); border-radius: 10px; background: var(--cream); }
 .reward-item-icon { border-radius: 6px; background: var(--cream); color: var(--ink-60); }
 .error-message a { text-decoration: underline; }
 button, input, select, textarea { color: inherit; }
@@ -798,6 +863,29 @@ fieldset { border: 0; }
   .panel-heading { border-radius: 0; }
   .reward-receipt { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+.training-toolbar h4 { margin: 0; color: var(--ink); }
+.training-settings-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px -12px var(--tea); }
+.training-level-settings { border: 0; border-radius: 0; }
+.training-level-settings summary { color: var(--tea); list-style: none; }
+.training-level-settings summary::-webkit-details-marker, .training-help summary::-webkit-details-marker { display: none; }
+.training-level-settings[open] summary > svg, .training-help[open] summary svg { transform: rotate(180deg); }
+.training-selection { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.training-group-options { background: var(--cream); border-radius: 9px; }
+.training-group-options .outline-button { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-60); font-weight: 600; }
+.training-group-options .outline-button[aria-pressed="true"] { color: var(--tea); background: var(--surface); border-color: var(--line); box-shadow: 0 1px 3px -2px var(--tea); }
+.training-stepper { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.training-stepper .outline-button { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.training-fields .training-stepper input { border: 0; border-radius: 0; background: transparent; }
+.training-stepper:focus-within { outline: 2px solid var(--tea); outline-offset: 2px; }
+.training-stepper input:focus-visible { outline: none; }
+.training-stepper button:focus-visible { outline: 2px solid var(--tea); outline-offset: -4px; }
+.training-reward-chip { color: var(--ink-60); }
+.training-reward-chip strong { color: var(--tea); font-family: var(--font-d); }
+.training-entry-actions .add-training { border-color: var(--reward-gold-soft); background: var(--cream); color: var(--tea); box-shadow: none; }
+.training-help summary { color: var(--ink-60); cursor: pointer; list-style: none; }
+.training-help summary > span:last-child { color: var(--tea); }
+.training-picker summary:focus-visible, #training-group:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   button, .reward-dialog-enter-active, .reward-dialog-leave-active, .reward-dialog-enter-active .reward-dialog, .reward-dialog-leave-active .reward-dialog { transition: none; }
 }
