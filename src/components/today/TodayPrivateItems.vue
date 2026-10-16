@@ -84,7 +84,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.today-private-items { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.today-private-items { border: 1px solid var(--line); background: var(--cream); color: var(--ink); }
 h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
 p { line-height: 1.7; }
 .private-hint { color: var(--ink-60); }

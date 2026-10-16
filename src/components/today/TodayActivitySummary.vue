@@ -2,8 +2,8 @@
   <section v-if="enabled" class="today-activity-summary" aria-labelledby="today-activity-title" :aria-busy="loading">
     <header class="activity-heading">
       <div>
-        <h2 id="today-activity-title"><CalendarDays :size="20" aria-hidden="true" /> 当前活动 · {{ game || '全部游戏' }}</h2>
-        <p><time :datetime="today">{{ today }}</time> · 公开日程 · 按服务器日期</p>
+        <h2 id="today-activity-title"><CalendarDays :size="18" aria-hidden="true" /> 游戏日程</h2>
+        <p>{{ game || '全部游戏' }} · <time :datetime="today">{{ today }}</time> · 服务器日期</p>
       </div>
       <router-link class="activity-link" :to="calendarTo">查看活动日历 <ArrowRight :size="16" aria-hidden="true" /></router-link>
     </header>
@@ -20,8 +20,12 @@
       </div>
       <ul v-if="counts.total" class="activity-preview" aria-label="今日活动预览">
         <li v-for="item in preview" :key="item.id">
-          <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
-          <span class="activity-detail">{{ calendarStatuses(item, today, now).join(' / ') }} · <template v-if="item.end_date">截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : '（仅日期）' }}</template><template v-else>持续进行</template></span>
+          <time class="activity-date" :datetime="item.start_date" :aria-label="'开始日期 ' + item.start_date" :title="item.start_date"><span>始于</span>{{ item.start_date.slice(5).replace('-', '/') }}</time>
+          <div class="activity-entry">
+            <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
+            <span class="activity-status">{{ calendarStatuses(item, today, now).join(' / ') }}</span>
+            <span class="activity-detail"><template v-if="item.end_date">截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : '（仅日期）' }}</template><template v-else>持续进行</template></span>
+          </div>
         </li>
       </ul>
       <p v-else class="activity-message">{{ game || '全部游戏' }}今天暂无公开活动，可以查看接下来的日程。</p>
@@ -30,8 +34,11 @@
         <h3 id="activity-upcoming-title">接下来 7 天</h3>
         <ul class="activity-preview">
           <li v-for="item in upcoming.slice(0, 1)" :key="item.id">
-            <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
-            <span class="activity-detail">{{ item.start_date }}{{ item.start_time ? ' ' + item.start_time : '' }} 开始 · {{ item.end_date ? '截止 ' + item.end_date : '持续进行' }}</span>
+            <time class="activity-date" :datetime="item.start_date" :aria-label="'开始日期 ' + item.start_date" :title="item.start_date"><span>开始</span>{{ item.start_date.slice(5).replace('-', '/') }}</time>
+            <div class="activity-entry">
+              <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
+              <span class="activity-detail">{{ item.start_date }}{{ item.start_time ? ' ' + item.start_time : '' }} 开始 · {{ item.end_date ? '截止 ' + item.end_date : '持续进行' }}</span>
+            </div>
           </li>
         </ul>
         <p v-if="upcoming.length > 1" class="activity-message">另有 {{ upcoming.length - 1 }} 项即将开始，可在日历查看。</p>
@@ -126,6 +133,9 @@ onBeforeUnmount(() => {
 .activity-counts strong { color: var(--tea); font: 800 20px/1 var(--font-d); }
 .activity-preview { list-style: none; }
 .activity-preview li { border-top: 1px solid var(--line); }
+.activity-date { color: var(--tea); font-family: var(--font-d); font-variant-numeric: tabular-nums; background: var(--cream); }
+.activity-date span { color: var(--ink-60); font-family: var(--font-b); }
+.activity-status { color: var(--tea); font-weight: 600; }
 .activity-title { color: var(--tea); text-decoration: none; font-weight: 800; line-height: 1.6; }
 .activity-title:hover { color: var(--accent-strong); }
 .activity-title:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }

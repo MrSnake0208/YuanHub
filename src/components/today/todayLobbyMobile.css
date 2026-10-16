@@ -1,21 +1,23 @@
-/* 手机专属布局与密度；不继承桌面几何规则。 */
+/* Mobile 紧凑值守页头；弹窗保持原交互尺寸。 */
 @media not all and (min-width: 768px) {
-.today-lobby { isolation: isolate; }
-.lobby-wrap { max-width: 1180px; container-type: inline-size; }
-.lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'context context'; align-items: center; gap: 4px 12px; min-height: 52px; padding-top: 4px; }
-.lobby-scene { position: relative; min-height: 116px; display: flex; align-items: center; }
-.lobby-copy { position: relative; z-index: 2; width: 58%; min-width: 0; padding: 12px 8px 12px 0; }
-.lobby-heading { grid-area: heading; display: grid; gap: 2px; min-width: 0; }
-.lobby-heading time { font-size: 11px; }
-.lobby-status { margin-top: 6px; font-size: 13px; overflow-wrap: anywhere; }
-.lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin-top: 8px; font-size: 12px; }
-.lobby-duty button { min-height: 32px; padding: 4px; }
-.lobby-save-notice { margin-top: 4px; font-size: 12px; }
-.lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 116px; overflow: hidden; }
-.lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: translateY(12px); }
-.lobby-art-error { padding: 50px 8px; font-size: 12px; text-align: center; }
-.lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
-.lobby-actions { grid-area: actions; }
+  .today-lobby { isolation: isolate; }
+  .lobby-wrap { max-width: 1180px; padding-inline: 12px; container-type: inline-size; }
+  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading context actions'; align-items: center; gap: 4px 8px; padding-top: 4px; }
+  .lobby-heading { grid-area: heading; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+  .lobby-heading h1 { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .lobby-heading time { font-size: 12px; }
+  .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
+  .lobby-actions { grid-area: actions; }
+  .lobby-scene { position: relative; display: flex; align-items: center; min-height: 64px; }
+  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 80px); min-width: 0; padding: 4px 0; }
+  .lobby-greeting { font-size: 18px; }
+  .lobby-status { margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; }
+  .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 2px; font-size: 12px; }
+  .lobby-duty button { min-height: 30px; padding: 4px 2px; }
+  .lobby-save-notice { margin-top: 4px; font-size: 12px; }
+  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 74px; height: 64px; overflow: hidden; }
+  .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
+  .lobby-art-error { padding: 12px 4px; font-size: 12px; text-align: center; }
 .duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border-radius: 20px; }
 .duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .duty-picker-heading button { display: grid; flex: none; width: 44px; height: 44px; border-radius: 9px; }
@@ -29,8 +31,8 @@
 .duty-candidates button span { overflow-wrap: anywhere; }
 .duty-candidates button svg { flex: none; }
 .duty-candidates > p { grid-column: 1 / -1; padding: 20px 0; font-size: 13px; }
-.duty-picker-heading button { place-items: center; } }
+.duty-picker-heading button { place-items: center; }
+}
 @media (max-width: 600px) {
   .duty-picker { max-height: 85dvh; border-radius: 20px 20px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 }
-

@@ -19,7 +19,7 @@ import { getTrainingWorkspace } from '../src/api/operatorPlanner.js'
 import { listCalendarPrivateItems } from '../src/api/calendarPrivateItems.js'
 import { serverToday } from '../src/data/activityCalendar.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
-import { listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
+import { calendarSubscriptionSummary, listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
 
 vi.mock('../src/store/auth.js', async () => {
@@ -27,7 +27,6 @@ vi.mock('../src/store/auth.js', async () => {
   return { auth: reactive({ accessToken: '', userInfo: null, isLoggedIn: false }), logout: vi.fn() }
 })
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
-vi.mock('../src/components/SiteFooter.vue', () => ({ default: { name: 'SiteFooter', template: '<footer />' } }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn(async account => ({ account_id: account, agent_ids: [] })) }))
@@ -90,6 +89,7 @@ it('全部为空保留首次建档，读取全失败保留unknown而不宣称已
   expect(wrapper.get('.lobby-status').text()).toBe('当前账号尚未建档，先从第一份资料开始吧。')
   expect(wrapper.findAll('.readiness-action')).toHaveLength(3)
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
+  expect(wrapper.find('footer').exists()).toBe(false)
   getOperatorCurrent.mockRejectedValue(new Error('失败'))
   getCurrent.mockRejectedValue(new Error('失败'))
   getCurrentStarState.mockRejectedValue(new Error('失败'))
@@ -118,7 +118,8 @@ it('全新账号先展示紧凑引导，确认读取为空后隐藏业务空卡�
   expect(wrapper.find('.today-training').exists()).toBe(false)
   expect(wrapper.find('.today-private-items').exists()).toBe(false)
   expect(wrapper.find('.todo-reminders').exists()).toBe(false)
-  expect(wrapper.get('.today-personal').element.matches(':empty')).toBe(true)
+  expect(wrapper.get('.today-workspace').get('.today-activity-summary').exists()).toBe(true)
+  expect(wrapper.get('.today-aside').findAll('section')).toHaveLength(0)
   expect(wrapper.findComponent(TodaySubscriptionSummary).exists()).toBe(true)
   expect(wrapper.findComponent(TodayTrainingPlans).exists()).toBe(true)
   expect(wrapper.findComponent(TodayPrivateItems).exists()).toBe(true)
@@ -256,12 +257,14 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   expect(wrapper.vm.realSummary.operatorCount).toBe(1)
   expect(wrapper.vm.realSummary.starCount).toBe(1)
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
-  expect(wrapper.get('.today-personal > .today-subscriptions h2').text()).toBe('我的待办')
-  expect(wrapper.get('.today-personal > .today-private-items h2').text()).toBe('我的事项与备注')
-  expect(wrapper.get('.today-personal > .today-training h2').text()).toBe('我的养成计划')
+  expect(wrapper.get('.today-workspace > .today-subscriptions h2').text()).toBe('我的待办')
+  expect(wrapper.get('.today-aside > .today-private-items h2').text()).toBe('我的事项与备注')
+  expect(wrapper.get('.today-workspace > .today-training h2').text()).toBe('我的养成计划')
   const aside = wrapper.get('.today-aside')
-  expect(Array.from(aside.element.children).map(node => node.className)).toEqual(['today-activity-summary', 'today-reminders-target'])
-  expect(aside.get('#today-reminders > .todo-reminders').text()).toContain('临期活动')
+  expect(aside.get('.today-private-items').exists()).toBe(true)
+  expect(wrapper.get('#today-reminders').element.children).toHaveLength(0)
+  expect(wrapper.get('.todo-subscription-status').text()).toContain('暂无临期活动。')
+  expect(Array.from(wrapper.get('.today-workspace').element.children).map(node => node.className)).toEqual(['today-subscriptions', 'today-activity-summary', 'today-training'])
   expect(aside.text()).not.toContain('账号详情')
   expect(wrapper.find('.today-subscriptions .todo-reminders').exists()).toBe(false)
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
@@ -285,7 +288,7 @@ it('无账号时活动使用单栏，有账号时个人工作台占主栏', asyn
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
-  expect(wrapper.find('.today-personal').exists()).toBe(true)
+  expect(wrapper.find('.today-workspace').exists()).toBe(true)
   expect(wrapper.find('.today-account-overview').exists()).toBe(false)
   expect(wrapper.get('.today-overview').classes()).toContain('has-sidebar')
 })
@@ -296,14 +299,14 @@ it('尚未录入游戏数据也展示私人备注，私人事项慢请求不阻�
   const pending = deferred()
   listCalendarPrivateItems.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.find('.today-personal > .today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-workspace > .today-subscriptions').exists()).toBe(false)
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.today-private-items').text()).toContain('正在读取私人事项')
   expect(wrapper.find('section.data-onboarding').exists()).toBe(true)
   pending.resolve({ items: [{ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '我的计划', date: serverToday(), time: null, note: '先整理备注', version: 0 }] })
   await flushPromises()
-  expect(wrapper.get('.today-personal').text()).toContain('先整理备注')
-  expect(wrapper.get('.today-aside').text()).not.toContain('先整理备注')
+  expect(wrapper.get('.today-aside').text()).toContain('先整理备注')
+  expect(wrapper.get('.today-workspace').text()).not.toContain('先整理备注')
 })
 
 it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个人内容', async () => {
@@ -312,17 +315,17 @@ it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个�
   const pending = deferred()
   getTrainingWorkspace.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.today-personal > .today-training').text()).toContain('正在读取养成计划')
-  expect(wrapper.find('.today-personal > .today-subscriptions').exists()).toBe(false)
-  expect(wrapper.find('.today-personal > .today-private-items').exists()).toBe(false)
+  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('正在读取养成计划')
+  expect(wrapper.find('.today-workspace > .today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-aside > .today-private-items').exists()).toBe(false)
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
   pending.resolve({ schema_version: 1, account_id: 'a', revision: 1, active_plan_id: 'main', plans: [
     { id: 'main', name: '培养主队', source: 'custom', operator_ids: ['char_001_yangxiu'], excluded_operator_ids: [], targets: {} }
   ] })
   await flushPromises()
-  expect(wrapper.get('.today-personal > .today-training').text()).toContain('培养主队')
-  expect(wrapper.get('.today-personal > .today-training').text()).toContain('杨修')
+  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('培养主队')
+  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('杨修')
   expect(wrapper.get('.today-aside').text()).not.toContain('培养主队')
 })
 
@@ -449,4 +452,38 @@ it.each([390, 1440])('%ipx 创建入口仍连接真实账号管理，跨断点�
   expect(createAccount).not.toHaveBeenCalled()
   expect(listAccounts).toHaveBeenCalledTimes(1)
   expect(getOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('临期提醒先于主工作区；跨断点保留展开状态、焦点和唯一订阅实例', async () => {
+  const viewport = installViewport(390)
+  signIn(); auth.userInfo = { id: 'synthetic-owner' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '合成账号', game: '如鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
+  const record = { event_id: 'near', subscribed: true, version: 1, completed: false, manual_completed: false,
+    checklist: [{ id: 'one', title: '领取奖励', completed: false }],
+    item: { id: 'near', title: '即将截止', start_date: serverToday(), end_date: serverToday() } }
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [record], unavailable_items: [] })
+  calendarSubscriptionSummary.mockResolvedValueOnce({ items: [record], subscribed_count: 1, total_pending: 1 })
+  const wrapper = render(); await flushPromises()
+  const target = wrapper.get('#today-reminders')
+  const workspace = wrapper.get('.today-workspace')
+  expect(target.element.compareDocumentPosition(workspace.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(target.get('.todo-reminders').text()).toContain('即将截止')
+  expect(wrapper.find('.today-subscriptions .todo-reminders').exists()).toBe(false)
+  const details = target.get('details')
+  details.element.open = false; await details.trigger('toggle')
+  const status = wrapper.get('.todo-subscription-status').element; status.open = true
+  const summary = details.get('summary').element; summary.focus()
+  const instance = wrapper.getComponent(TodaySubscriptionSummary).vm.$
+  const calls = [listCalendarSubscriptions, calendarSubscriptionSummary].map(fn => fn.mock.calls.length)
+  for (const width of [768, 981, 1024, 1081, 1440, 390]) {
+    viewport.resize(width); await flushPromises()
+    expect(wrapper.getComponent(TodaySubscriptionSummary).vm.$).toBe(instance)
+    expect(target.get('details').element).toBe(details.element)
+    expect(details.element.open).toBe(false)
+    expect(wrapper.get('.todo-subscription-status').element).toBe(status)
+    expect(status.open).toBe(true)
+    expect(document.activeElement).toBe(summary)
+    expect([listCalendarSubscriptions, calendarSubscriptionSummary].map(fn => fn.mock.calls.length)).toEqual(calls)
+  }
 })

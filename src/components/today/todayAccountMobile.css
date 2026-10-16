@@ -3,5 +3,4 @@
 .today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
 .today-alert button { min-height: 44px; padding: 8px 12px; border-radius: 7px; }
 .today-loading { font-size: 13px; }
-.today-personal { display: grid; align-content: start; gap: 16px; min-width: 0; }
 }

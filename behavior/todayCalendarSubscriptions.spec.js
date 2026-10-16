@@ -3,6 +3,7 @@ import { DOMWrapper, flushPromises, mount, RouterLinkStub } from '@vue/test-util
 import TodaySubscriptionSummary from '../src/components/today/TodaySubscriptionSummary.vue'
 import { calendarSubscriptionSummary, getCalendarSubscription, listCalendarSubscriptions, saveCalendarProgress, setCalendarCompletion, setCalendarSubscription } from '../src/api/activityCalendarSubscriptions.js'
 import { auth } from '../src/store/auth.js'
+import { h } from 'vue'
 
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(), listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn(), setCalendarCompletion: vi.fn(), setCalendarSubscription: vi.fn() }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, userInfo: { id: 'user' } }) }))
@@ -20,8 +21,10 @@ const deferred = () => {
   return { promise, resolve, reject }
 }
 let wrapper
+// Match real RouterLink focusability; the default stub renders an anchor without href.
+const FocusableRouterLinkStub = { ...RouterLinkStub, render() { return h('a', { href: '#calendar' }, this.$slots.default?.()) } }
 const render = (props = { accountId: 'a', game: '如鸢' }) => {
-  wrapper = mount(TodaySubscriptionSummary, { attachTo: document.body, props, global: { stubs: { RouterLink: RouterLinkStub } } })
+  wrapper = mount(TodaySubscriptionSummary, { attachTo: document.body, props, global: { stubs: { RouterLink: FocusableRouterLinkStub } } })
   return wrapper
 }
 function feed(items, { summaryItems = items.slice(0, 3), total = items.filter(value => !value.manual_completed).length, count = items.length, unavailable = [] } = {}) {
@@ -349,7 +352,7 @@ it('keeps historical/unavailable totals traceable instead of pretending their ta
   expect(wrapper.text()).toContain('当前范围暂无待办')
   expect(wrapper.text()).toContain('3 项活动尚未标记本期完成')
   expect(wrapper.text()).toContain('1 项订阅活动不可用')
-  const all = wrapper.findAllComponents(RouterLinkStub).find(link => link.text().includes('查看全部'))
+  const all = wrapper.get('.todo-subscription-status').getComponent(RouterLinkStub)
   expect(all.props('to').query).toMatchObject({ scope: 'mine', task: 'all', game: '如鸢' })
 })
 
@@ -438,4 +441,39 @@ it('refreshes without expanding the overview and restores focus when a task leav
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
   document.dispatchEvent(new Event('visibilitychange')); await flushPromises()
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(2)
+})
+
+
+it('没有真实临期活动时不占提醒区，订阅统计和异常仍在待办概况中', async () => {
+  const target = document.createElement('div'); target.id = 'today-reminders'; document.body.append(target)
+  feed([record('长期活动', {}, { end_date: '2026-11-01' })], { count: 4, total: 3, unavailable: [record('不可用', { item: null })] })
+  render({ accountId: 'a', remindersTarget: '#today-reminders' }); await flushPromises()
+  expect(target.children).toHaveLength(0)
+  const status = wrapper.get('.todo-subscription-status')
+  expect(status.text()).toContain('暂无临期活动。')
+  expect(status.text()).toContain('3 项活动尚未标记本期完成')
+  expect(status.text()).toContain('1 项订阅活动不可用')
+  expect(status.getComponent(RouterLinkStub).props('to').query.task).toBe('all')
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(calendarSubscriptionSummary).toHaveBeenCalledTimes(1)
+  target.remove()
+})
+
+it('临期活动消退时将摘要上的焦点恢复到待办入口，不改变任务数据', async () => {
+  const near = record('即将结束', {}, { end_at: '2026-10-05T04:00:01Z' })
+  feed([near]); render(); await flushPromises()
+  const summary = wrapper.get('.todo-reminders summary').element; summary.focus()
+  await vi.advanceTimersByTimeAsync(1200); await flushPromises()
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get('.todo-heading a').element)
+  expect(wrapper.get('.todo-subscription-status').text()).toContain('暂无临期活动。')
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+})
+
+it('临期活动消退时不抢走提醒区域外的焦点', async () => {
+  feed([record('即将结束', {}, { end_at: '2026-10-05T04:00:01Z' })]); render(); await flushPromises()
+  const outside = document.createElement('button'); document.body.append(outside); outside.focus()
+  await vi.advanceTimersByTimeAsync(1200); await flushPromises()
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(document.activeElement).toBe(outside)
 })

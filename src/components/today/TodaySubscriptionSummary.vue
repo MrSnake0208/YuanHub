@@ -28,7 +28,6 @@
         </ul>
         <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" aria-controls="today-todo-list" @click="showAll = !showAll">{{ showAll ? '收起清单' : '展开完整清单' }}</button>
         <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成，可查看全部。</p>
-        <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办</router-link>
         <p v-if="message" role="status" aria-live="polite">{{ message }}</p>
         <template v-for="(action, eventId) in actions" :key="eventId">
           <div v-if="action.error" class="todo-error" role="alert">
@@ -36,20 +35,26 @@
             <button type="button" :disabled="action.busy || loading" @click="readLatest(eventId)">{{ action.busy ? '读取中…' : '读取最新状态' }}</button>
           </div>
         </template>
+        <div class="todo-footer">
+          <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办</router-link>
+          <details class="todo-subscription-status">
+            <summary>订阅概况 · {{ count }} 项活动</summary>
+            <p class="todo-hint">{{ total }} 项活动尚未标记本期完成（含历史或不可用订阅）。</p>
+            <p v-if="!reminders.length" class="todo-hint">暂无临期活动。</p>
+            <p v-if="unavailableCount" class="todo-hint">{{ unavailableCount }} 项订阅活动不可用，已有清单可在日历查看。</p>
+            <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
+          </details>
+        </div>
         <Teleport :to="remindersTarget || 'body'" :disabled="!remindersTarget" defer>
-          <details class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
-            <summary>临期活动<span v-if="reminders.length"> · {{ reminders.length }} 项</span></summary>
+          <details v-if="reminders.length" ref="remindersPanel" class="todo-reminders" :class="{ 'is-sidebar': !!remindersTarget }" :open="remindersOpen" @toggle="remindersOpen = $event.target.open">
+            <summary>临期活动<span> · {{ reminders.length }} 项</span></summary>
             <p class="todo-hint">未来 72 小时内截止 · 北京时间</p>
-            <ul v-if="reminders.length" class="reminder-list">
+            <ul class="reminder-list">
               <li v-for="record in reminders" :key="record.event_id">
                 <router-link :to="eventLink(record)">{{ record.item.title }}</router-link>
                 <time :datetime="record.item.end_at || record.item.end_date" :title="record.item.end_at ? '已换算为北京时间' : '活动仅提供日期，按北京时间日历日判断'" :class="{ 'is-urgent': calendarTimeBounds(record.item).end - now <= 86400000 }">{{ deadlineLabel(record.item) }}</time>
               </li>
             </ul>
-            <p v-else class="todo-hint">暂无临期活动。</p>
-            <p class="todo-hint">{{ total }} 项活动尚未标记本期完成（含历史或不可用订阅）。</p>
-            <p v-if="unavailableCount" class="todo-hint">{{ unavailableCount }} 项订阅活动不可用，已有清单可在日历查看。</p>
-            <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
           </details>
         </Teleport>
       </template>
@@ -67,6 +72,7 @@ const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', task: 'todo', ...(props.game ? { game: props.game } : {}) }))
 const root = ref(null), records = ref([]), order = ref([]), summaryItems = ref([]), actions = ref({})
+const remindersPanel = ref(null)
 const count = ref(0), total = ref(0), unavailableCount = ref(0), loading = ref(false), ready = ref(false), error = ref(''), message = ref(''), now = ref(Date.now())
 const showAll = ref(false), remindersOpen = ref(true)
 const today = computed(() => serverToday(new Date(now.value)))
@@ -220,6 +226,12 @@ function visible() {
 function updated(event) {
   if (!notifying && event.detail?.userId === identity.value && event.detail?.accountId === props.accountId) void load()
 }
+watch(() => reminders.value.length, async (length, previous) => {
+  if (length || !previous || !ready.value || !remindersPanel.value?.contains(document.activeElement)) return
+  const context = ticket()
+  await nextTick()
+  if (current(context) && document.activeElement === document.body) focusTask('')
+})
 watch(key, () => {
   clearInterval(minute); clearTimeout(timer); generation++; epoch++; deferredLoad = false
   if (identity.value && props.accountId) minute = setInterval(() => { if (document.visibilityState !== 'hidden') now.value = Date.now() }, 60000)
@@ -244,8 +256,10 @@ ul { list-style: none; }
 .todo-title { font-weight: 700; }
 .is-complete .todo-title { text-decoration: line-through; font-weight: 400; }
 .todo-event { font-weight: 400; }
-.todo-reminders { border-top: 1px solid var(--line); }
-.todo-reminders.is-sidebar { border: 1px solid var(--line); background: var(--surface); }
+.todo-reminders { border: 1px solid color-mix(in srgb, var(--rouge) 45%, var(--line)); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); }
+.todo-reminders > summary { color: var(--rouge); }
+.todo-subscription-status { border-top: 1px solid var(--line); }
+.todo-subscription-status > summary { color: var(--ink-60); font-weight: 400; }
 summary { color: var(--tea); font-weight: 700; cursor: pointer; }
 time { color: var(--accent-strong); }
 time.is-urgent, .todo-error p { color: var(--rouge); }

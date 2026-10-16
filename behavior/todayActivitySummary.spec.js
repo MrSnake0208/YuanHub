@@ -83,7 +83,8 @@ it('无子账号管理员读全部游戏当日摘要，保留导航与建档', a
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
   expect(listActivityCalendar).toHaveBeenCalledWith({ game: '', from: today, to: '2026-10-10' })
-  expect(card(wrapper).text()).toContain('当前活动 · 全部游戏')
+  expect(card(wrapper).get('h2').text()).toBe('游戏日程')
+  expect(card(wrapper).get('.activity-heading p').text()).toContain('全部游戏')
   expect(card(wrapper).text()).toContain('今日公开活动')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: {} })
   expect(wrapper.find('.today-alert').exists()).toBe(false)
@@ -93,7 +94,7 @@ it('无子账号管理员读全部游戏当日摘要，保留导航与建档', a
   expect(wrapper.get('[data-tour="today-overview"]').exists()).toBe(true)
   expect(wrapper.get('.data-onboarding').text()).toContain('先建立你的游戏子账号')
   const sections = wrapper.findAll('.today-content section')
-  expect(sections.findIndex(node => node.classes().includes('today-activity-summary'))).toBeLessThan(sections.findIndex(node => node.classes().includes('data-onboarding')))
+  expect(sections.findIndex(node => node.classes().includes('data-onboarding'))).toBeLessThan(sections.findIndex(node => node.classes().includes('today-activity-summary')))
 })
 
 it('有效当前账号按game筛选并传给日历链接，换到同游戏账号不重复读取', async () => {
@@ -102,7 +103,7 @@ it('有效当前账号按game筛选并传给日历链接，换到同游戏账号
   const wrapper = render()
   await flushPromises()
   expect(listActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', from: today, to: '2026-10-10' })
-  expect(card(wrapper).text()).toContain('当前活动 · 如鸢')
+  expect(card(wrapper).get('.activity-heading p').text()).toContain('如鸢')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢' } })
   expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
   const calls = listActivityCalendar.mock.calls.length
@@ -186,6 +187,8 @@ it('今日条目按截止日期优先，未来7天可见并有可定位的日历
   ] })
   const wrapper = render(TodayActivitySummary, { game: '如鸢' }); await flushPromises()
   expect(wrapper.findAll('[aria-label="今日活动预览"] .activity-title').map(node => node.text())).toEqual(['今天结束', '明日结束', '长期活动'])
+  expect(wrapper.get('.activity-date').attributes('datetime')).toBe('2026-10-01')
+  expect(wrapper.get('.activity-date').attributes('aria-label')).toBe('开始日期 2026-10-01')
   expect(wrapper.text()).toContain('七天内开始')
   expect(wrapper.text()).not.toContain('超出窗口')
   expect(wrapper.get('.activity-upcoming').getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢', view: 'month', date: '2026-10-10' } })
