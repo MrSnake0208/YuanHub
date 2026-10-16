@@ -5686,7 +5686,7 @@ function cardHuaji(entry) {
 }
 
 function cardHasDraft(entry) {
-  const draft = ensureCardDraft(entry);
+  const draft = cardGrowthDrafts.value[entry.id];
   if (!draft) return false;
   const baseline = cardDraftBaselines.value[entry.id];
   return baseline !== cardDraftSnapshot(entry);
