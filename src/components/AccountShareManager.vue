@@ -1,12 +1,15 @@
 <template>
   <section class="share-manager" :class="{ 'is-compact': compact }" :aria-labelledby="titleId">
-    <p v-if="compact && !loading && !error" class="share-summary" :class="{ 'is-active': scopes.length }" role="status" aria-live="polite">
-      <strong>{{ busy ? '分享更新中…' : scopes.length ? '分享已开启' : '分享未开启' }}</strong>
-      <span>已公开内容对持有分享链接的人可见，无需登录。</span>
-    </p>
+    <div v-if="compact" class="share-overview">
+      <p v-if="!loading && !error" class="share-summary" :class="{ 'is-active': scopes.length }" role="status" aria-live="polite">
+        <strong>{{ busy ? '分享更新中…' : scopes.length ? '分享已开启' : '分享未开启' }}</strong>
+        <span>仅开放已开启的内容，无需登录。</span>
+      </p>
+      <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
+    </div>
     <div class="share-manager-heading">
       <slot name="heading" :title-id="titleId"><div><span class="section-kicker">分享链接</span><h2 :id="titleId">分享当前账号</h2></div></slot>
-      <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
+      <button v-if="!compact" class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
       <p v-if="!compact" class="share-description">两个视图共用分享码。拿到任一链接的人都能查看已开启的内容，无需登录；全部关闭后旧码失效。</p>
       <p v-else class="share-description share-immediate">更改权限后立即生效，无需额外保存。</p>
     </div>
@@ -35,11 +38,12 @@
         <p class="share-description share-private">仅公开所选内容，不包含备注、目标、计划或 OCR 记录。星石展示云端已保存背包，本机未同步修改不会出现在分享中。</p>
         <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
       </slot>
-      <div v-if="share?.active && share.share_code" class="share-actions share-code-actions">
-        <p v-if="compact" class="share-management-label">链接管理<small>重新生成或全部撤销后，两个旧链接立即失效。</small></p>
-        <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">重新生成</button>
+      <component :is="compact ? 'details' : 'div'" v-if="share?.active && share.share_code" class="share-actions share-code-actions">
+        <summary v-if="compact">更多管理</summary>
+        <p v-if="compact" class="share-management-label">重新生成或全部撤销后，两个分享范围的旧链接立即失效。</p>
+        <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">{{ compact ? '重新生成分享链接' : '重新生成' }}</button>
         <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
-      </div>
+      </component>
     </template>
     <p v-if="busy" class="share-state" role="status" aria-live="polite">正在更新分享状态…</p>
     <p v-if="message" class="share-message" role="status" aria-live="polite">{{ message }}</p>
@@ -168,34 +172,47 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
   .share-values input { font-size: 16px }
 }
 @media(max-width:360px) { .share-scopes { grid-template-columns: 1fr } }
-.is-compact .share-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0 0 20px; }
-.is-compact .share-summary strong { color: var(--ink); font-size: 15px; }
-.is-compact .share-summary.is-active strong { color: var(--accent-strong); }
-.is-compact .share-immediate { margin: 0; }
-.is-compact .share-scopes { margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.is-compact .share-scope { padding: 12px; font-size: 14px; }
+.share-manager.is-compact { container: account-share / inline-size; padding: 16px 20px calc(16px + env(safe-area-inset-bottom)); }
+.is-compact .share-overview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.is-compact .share-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.is-compact .share-summary strong { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; }
+.is-compact .share-summary strong::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-35); }
+.is-compact .share-summary.is-active strong { color: #257348; }
+.is-compact .share-summary.is-active strong::before { background: currentColor; }
+.is-compact .share-overview > button { flex: none; margin-left: auto; }
+.is-compact .share-manager-heading { align-items: center; }
+.is-compact .share-immediate { grid-column: auto; margin: 0; text-align: right; font-size: 12px; }
+.is-compact .share-scopes { margin-top: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.is-compact .share-scope { min-height: 0; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
+.is-compact .share-scope-status { font-size: 12px; }
 .is-compact .share-scope input { appearance: none; position: relative; width: 38px; height: 22px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; background: var(--ink-35); cursor: pointer; }
 .is-compact .share-scope input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); }
 .is-compact .share-scope input:checked { background: var(--tea); }
 .is-compact .share-scope input:checked::after { left: 18px; }
 .is-compact .share-scope input:disabled { opacity: .5; cursor: wait; }
-.is-compact .share-links-title { margin: 22px 0 0; font: 800 16px/1.4 var(--font-s); }
-.is-compact .share-values { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-top: 12px; }
-.is-compact .share-values label { color: var(--ink); font-size: 13px; }
-.is-compact .share-values input { text-overflow: ellipsis; border-width: 1px; border-radius: 8px; }
+.is-compact .share-links-title { margin: 18px 0 0; font: 800 16px/1.4 var(--font-s); }
+.is-compact .share-values { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.is-compact .share-values label { grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px; color: var(--ink); font-size: 13px; }
+.is-compact .share-values input { min-height: 36px; padding: 6px; text-overflow: ellipsis; border: 0; border-radius: 4px; background: transparent; }
 .is-compact .share-values input:focus { text-overflow: clip; outline: 2px solid var(--accent); outline-offset: 2px; }
-.is-compact .share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--line); border-radius: 8px; color: var(--ink); background: transparent; }
+.is-compact .share-values .share-actions { display: flex; flex-wrap: nowrap; }
+.is-compact .share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 36px; padding: 6px 10px; border-color: var(--line); border-radius: 8px; color: var(--ink); background: transparent; white-space: nowrap; }
 .is-compact .share-button.danger { border-color: var(--rouge); color: var(--rouge); }
 .is-compact .share-button:hover:not(:disabled) { background: var(--paper); }
-.is-compact .share-code-actions { margin-top: 20px; }
-.is-compact .share-management-label { flex-basis: 100%; margin: 0 0 4px; color: var(--ink); font-weight: 800; }
-.is-compact .share-management-label small { display: block; color: var(--ink-60); font-weight: 400; }
+.is-compact .share-code-actions { display: block; margin-top: 14px; padding-top: 12px; }
+.is-compact .share-code-actions summary { width: fit-content; color: var(--ink); font-size: 13px; line-height: 1.8; cursor: pointer; }
+.is-compact .share-code-actions summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.is-compact .share-management-label { margin: 8px 0; font-size: 12px; }
+.is-compact .share-code-actions > .share-button + .share-button { margin-left: 8px; }
 @media(max-width:640px) {
+  .share-manager.is-compact { padding-inline: 16px; }
   .is-compact .share-scopes { gap: 8px; }
   .is-compact .share-scope { gap: 6px; padding: 10px 8px; font-size: 12.5px; }
-  .is-compact .share-values { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .is-compact .share-values .share-actions { display: flex; }
-  .is-compact .share-values .share-button { flex: 1; }
-  .is-compact .share-management-label { grid-column: 1 / -1; }
+}
+@container account-share (max-width: 560px) {
+  .is-compact .share-values { align-items: end; gap: 8px; }
+  .is-compact .share-values label { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .is-compact .share-values .share-button { gap: 4px; padding-inline: 8px; }
+  .is-compact .share-immediate { max-width: 150px; }
 }
 </style>

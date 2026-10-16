@@ -65,20 +65,21 @@ watch(open, (visible, _, onCleanup) => {
 .box-viewer-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 0; background: rgba(73, 59, 44, .5); }
 .box-viewer-dialog { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; max-height: 100%; box-sizing: border-box; overflow: hidden; background: var(--surface); color: var(--ink); }
 .box-viewer-dialog:focus { outline: none; }
-.box-viewer-header { display: flex; flex: none; justify-content: space-between; align-items: center; gap: 16px; padding: calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); background: var(--surface); }
+.box-viewer-header { display: flex; flex: none; justify-content: space-between; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); background: var(--surface); }
 .box-viewer-header h2 { margin: 0; min-width: 0; font: 900 20px/1.4 var(--font-s); }
 .box-viewer-header > div { min-width: 0; }
-.box-viewer-header p { margin: 6px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
+.box-viewer-header p { margin: 4px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
 .box-viewer-close { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .box-viewer-close:hover { background: var(--paper); }
 .box-viewer-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .box-viewer-body { min-width: 0; min-height: 0; padding: 16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 @media (min-width: 641px) {
   .box-viewer-mask { padding: 24px; }
-  .box-viewer-dialog { width: min(680px, 100%); height: auto; max-height: min(90dvh, calc(var(--modal-viewport-height, 100dvh) * .9)); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4); }
+  .box-viewer-dialog { width: min(640px, 100%); height: auto; max-height: min(90dvh, calc(var(--modal-viewport-height, 100dvh) * .9)); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4); }
   .box-viewer-dialog.has-results { width: min(1100px, 100%); }
-  .box-viewer-header { padding: 20px 24px; }
-  .box-viewer-body { padding: 20px 24px; }
+  .box-viewer-header { padding: 14px 20px; }
+  .box-viewer-close { width: 36px; height: 36px; }
+  .box-viewer-body { padding: 16px 20px; }
 }
 /* 键盘挤压时保留标题和关闭入口，仍只滚动内容区。 */
 .is-short-viewport .box-viewer-header { padding-block: 8px; }

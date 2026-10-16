@@ -26,7 +26,6 @@
       </div>
       <div v-if="embedded" class="share-entry-notice">
         <p>查看过程为只读，不会修改你的密探档案。</p>
-        <p>仅能查看对方已公开的内容；星石背包链接可在新标签中访问。</p>
       </div>
     </form>
 
@@ -810,18 +809,23 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .operator-share-content.is-embedded { container-type: inline-size; }
 .is-embedded .share-entry { max-width: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 .is-embedded .share-entry label { margin-top: 0; color: var(--ink); font-size: 14px; }
-.is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr); }
-.is-embedded .share-entry input { font-size: 16px; border-radius: 8px; background: var(--surface); }
-.is-embedded .share-entry button { border-radius: 8px; }
-.share-entry-notice { margin-top: 20px; padding: 12px 16px; border-radius: 8px; background: var(--cream); }
+.is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; }
+.is-embedded .share-entry input { min-height: 40px; padding: 8px 10px; font-size: 16px; border-radius: 8px; background: var(--surface); }
+.is-embedded .share-entry button { min-height: 40px; padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
+.share-entry-notice { margin-top: 12px; }
 .share-entry-notice p { margin: 0; color: var(--ink-60); font-size: 12.5px; line-height: 1.8; }
+@media (min-width: 641px) {
+  .is-embedded .share-entry input { font-size: 14px; }
+}
 @container (max-width: 900px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (max-width: 600px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: 1fr; }
-  .is-embedded .share-entry-row { grid-template-columns: 1fr; }
   .is-embedded .share-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .is-embedded .share-toolbar p { grid-column: 1 / -1; }
+}
+@container (max-width: 480px) {
+  .is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

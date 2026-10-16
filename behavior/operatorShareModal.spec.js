@@ -44,6 +44,11 @@ async function open() {
   opener.element.focus()
   await opener.trigger('click'); await flushPromises()
 }
+async function expandManagement() {
+  const details = panel().get('details.share-code-actions')
+  if (!details.element.open) await details.get('summary').trigger('click')
+  expect(details.element.open).toBe(true)
+}
 
 it('关闭后迟到状态照常更新，重新打开保持实例、链接及读取次数，复制引用仍有效', async () => {
   const pending = deferred()
@@ -76,7 +81,7 @@ it('Escape、右上角和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗
   expect(document.body.style.position).toBe('fixed')
   expect(document.body.style.top).toBe('-320px')
   const close = panel().get('[aria-label="关闭分享弹窗"]')
-  const done = button('全部撤销')
+  const done = panel().get('.share-code-actions summary')
   expect(panel().find('footer button').exists()).toBe(false)
   expect(document.activeElement).toBe(close.element)
   done.element.focus()
@@ -144,7 +149,24 @@ it('紧凑链接保留完整 URL，复制受限时仍可选中手动复制；隐
   expect(details.text()).toContain('不会移除这些信息')
   expect(details.text()).toContain('云端已保存的全部星石')
   expect(panel().text()).toContain('不含备注、目标、计划或 OCR 记录')
-  expect(panel().get('.share-management-label').text()).toContain('两个旧链接立即失效')
+  expect(panel().get('.share-management-label').text()).toContain('两个分享范围的旧链接立即失效')
+})
+
+it('更多管理默认折叠，展开和收起不写分享状态，收起时危险操作不进入 Tab 顺序', async () => {
+  await render(); await open()
+  const details = panel().get('details.share-code-actions')
+  const summary = details.get('summary')
+  expect(summary.text()).toBe('更多管理')
+  expect(details.element.open).toBe(false)
+  await expandManagement()
+  expect(details.text()).toContain('重新生成分享链接')
+  expect(details.text()).toContain('两个分享范围的旧链接立即失效')
+  await summary.trigger('click')
+  expect(details.element.open).toBe(false)
+  summary.element.focus()
+  summary.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+  expect(document.activeElement).toBe(panel().get('[aria-label="关闭分享弹窗"]').element)
+  for (const fn of [api.setAccountShareScope, api.regenerateAccountShare, api.revokeAccountShare]) expect(fn).not.toHaveBeenCalled()
 })
 
 it('模态中的复制回退在焦点约束内选中链接，并恢复复制按钮焦点', async () => {
@@ -175,6 +197,7 @@ it.each([
   api.getAccountShare.mockResolvedValue(active('a', ['operator', 'star']))
   api[action].mockResolvedValue(result)
   await render(); await open()
+  await expandManagement()
   button(label).element.focus()
   await button(label).trigger('click'); await flushPromises()
   expect(dialog._state.visible).toBe(true)
