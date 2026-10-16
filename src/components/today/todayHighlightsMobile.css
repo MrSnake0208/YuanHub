@@ -1,0 +1,15 @@
+@media not all and (min-width: 768px) {
+  .todo-reminders { min-width: 0; padding: 10px 12px; border-radius: 10px; }
+  summary { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  summary span { margin-left: auto; font-size: 12px; }
+  summary svg { flex: none; }
+  .reminder-scope { margin: 6px 0; }
+  .reminder-list { margin: 0; padding: 0; }
+  .highlight-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; padding: 9px 0; }
+  .highlight-body { display: grid; gap: 2px; min-width: 0; }
+  .highlight-link > svg { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  time { grid-column: 1; }
+  .highlight-more { width: 100%; margin-top: 8px; padding: 8px 10px; font-size: 13px; }
+  .highlight-error { display: grid; justify-items: start; gap: 6px; margin: 8px 0; font-size: 13px; }
+  .highlight-error button { padding: 6px 8px; }
+}

@@ -34,10 +34,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { NotebookPen } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
 import { listCalendarPrivateItems } from '../../api/calendarPrivateItems.js'
-import { privateCalendarItem } from '../../data/calendarPrivateItems.js'
+import { CALENDAR_PRIVATE_ITEMS_UPDATED, privateCalendarItem } from '../../data/calendarPrivateItems.js'
 import { addCalendarDays, calendarRangeLabel, millisecondsUntilServerMidnight, serverToday } from '../../data/activityCalendar.js'
 
 const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true } })
+const emit = defineEmits(['highlight-state'])
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const items = ref([]), loading = ref(false), error = ref(''), denied = ref(false)
@@ -76,14 +77,19 @@ watch(key, () => {
   items.value = []; loading.value = false; error.value = ''; denied.value = false
   void load()
 }, { immediate: true, flush: 'sync' })
+watch(() => ({ context: key.value, items: items.value, loading: loading.value, error: error.value, denied: denied.value }), state => emit('highlight-state', state), { immediate: true, deep: true, flush: 'sync' })
+defineExpose({ reload: load })
+function updated(event) {
+  if (event.detail?.userId === identity.value && event.detail?.accountId === props.accountId) void load()
+}
 function refresh() {
   if (document.visibilityState === 'hidden' || Date.now() - lastVisible < 1000) return
   lastVisible = Date.now(); void load()
 }
-onMounted(() => { document.addEventListener('visibilitychange', refresh); window.addEventListener('pageshow', refresh) })
+onMounted(() => { document.addEventListener('visibilitychange', refresh); window.addEventListener('pageshow', refresh); window.addEventListener(CALENDAR_PRIVATE_ITEMS_UPDATED, updated) })
 onBeforeUnmount(() => {
   generation++; clearTimeout(timer)
-  document.removeEventListener('visibilitychange', refresh); window.removeEventListener('pageshow', refresh)
+  document.removeEventListener('visibilitychange', refresh); window.removeEventListener('pageshow', refresh); window.removeEventListener(CALENDAR_PRIVATE_ITEMS_UPDATED, updated)
 })
 </script>
 

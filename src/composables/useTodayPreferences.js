@@ -3,7 +3,7 @@ import { auth } from '../store/auth.js'
 import { getTodayPreferences, saveTodayPreferences } from '../api/todayPreferences.js'
 
 export const TODAY_MODULES = Object.freeze([
-  { id: 'highlights', label: '今日重点', description: '临期活动提醒' },
+  { id: 'highlights', label: '今日重点', description: '临期活动、活动待办与私人提醒' },
   { id: 'checklist', label: '活动待办', description: '来自已订阅活动的 Checklist' },
   { id: 'activities', label: '游戏活动', description: '公开活动与招募日程' },
   { id: 'training', label: '我的养成计划', description: '密探培养清单摘要' },

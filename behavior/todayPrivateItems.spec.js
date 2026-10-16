@@ -180,3 +180,23 @@ it('refreshes immediately if a slow read finishes after Shanghai midnight', asyn
   expect(listCalendarPrivateItems).toHaveBeenCalledTimes(2)
   expect(listCalendarPrivateItems.mock.lastCall[0].from).toBe('2026-10-16')
 })
+
+it('publishes reminders while the private module is hidden and refreshes only matching mutation events', async () => {
+  const reminder = record({ reminder_on: 'START', reminder_days_before: 0 })
+  listCalendarPrivateItems.mockResolvedValue({ items: [reminder] })
+  const wrapper = render({ accountId: 'a', game: '如鸢', visible: false }); await flushPromises()
+  expect(wrapper.find('section').exists()).toBe(false)
+  const state = () => wrapper.emitted('highlight-state').at(-1)[0]
+  expect(state().context).toBe(JSON.stringify(['owner-a', 'a', '如鸢']))
+  expect(state().items[0].reminder_on).toBe('START')
+  const notify = (userId, accountId) => window.dispatchEvent(new CustomEvent('yuanHub:calendar-private-items-updated', { detail: { userId, accountId } }))
+  notify('other', 'a'); notify('owner-a', 'other'); await flushPromises()
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+  listCalendarPrivateItems.mockResolvedValue({ items: [{ ...reminder, reminder_on: null, title: '修改后' }] })
+  notify('owner-a', 'a'); await flushPromises()
+  expect(state().items[0].reminder_on).toBe(null)
+  expect(state().items[0].title).toBe('修改后')
+  wrapper.unmount()
+  notify('owner-a', 'a'); await flushPromises()
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(2)
+})

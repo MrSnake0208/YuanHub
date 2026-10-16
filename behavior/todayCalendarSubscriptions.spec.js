@@ -78,7 +78,7 @@ it('多个订阅且无Checklist时不生成任务，临期只提示活动截止'
   expect(wrapper.text()).toContain('订阅活动不会自动创建 Checklist')
   expect(wrapper.get('.todo-subscription-status').text()).toContain('4 项活动')
   expect(wrapper.get('.todo-reminders summary').text()).toContain('今日重点')
-  expect(wrapper.get('.reminder-scope').text()).toContain('订阅活动未来 72 小时内截止')
+  expect(wrapper.get('.reminder-scope').text()).toContain('临期活动与待办')
   expect(wrapper.get('.todo-scope').text()).not.toContain('4 项待办')
   expect(saveCalendarProgress).not.toHaveBeenCalled()
   expect(setCalendarCompletion).not.toHaveBeenCalled()
@@ -531,4 +531,52 @@ it('隐藏待办保留今日重点，隐藏重点保留待办，不重复读取�
   expect(saveCalendarProgress).not.toHaveBeenCalled()
   expect(setCalendarSubscription).not.toHaveBeenCalled()
   expect(setCalendarCompletion).not.toHaveBeenCalled()
+})
+
+it('publishes the untruncated list before a slow/failing summary, without duplicating requests', async () => {
+  const summary = deferred()
+  const values = [1, 2, 3, 4, 5].map(id => record('临期' + id))
+  feed(values); calendarSubscriptionSummary.mockReturnValueOnce(summary.promise)
+  render(); await flushPromises()
+  const states = () => wrapper.emitted('highlight-state').at(-1)[0]
+  expect(states().items).toHaveLength(5)
+  expect(states().loading).toBe(false)
+  expect(wrapper.get('.todo-reminders summary').text()).toContain('5 项提醒')
+  summary.reject(new Error('概况离线')); await flushPromises()
+  expect(states().items).toHaveLength(5)
+  expect(states().error).toBe('')
+  expect(wrapper.get('.todo-reminders summary').text()).toContain('5 项提醒')
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+})
+
+it('updates the published Checklist count immediately after a confirmed save', async () => {
+  feed([record('临期', { checklist: [entry('one', '任务一'), entry('two', '任务二')] })])
+  render(); await flushPromises()
+  expect(wrapper.get('.highlight-pending').text()).toContain('2 条')
+  await checks()[0].setValue(true); await flushPromises()
+  expect(wrapper.get('.highlight-pending').text()).toContain('1 条')
+  expect(wrapper.emitted('highlight-state').at(-1)[0].items[0].checklist[0].completed).toBe(true)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+})
+
+it('manual period completion leaves real pending Checklist reminders, and removes fully finished activity reminders on refresh', async () => {
+  feed([record('保留待办'), record('全部完成', { checklist: [] })]); render(); await flushPromises()
+  feed([record('保留待办', { manual_completed: true }), record('全部完成', { manual_completed: true, checklist: [] })])
+  notify(); await flushPromises()
+  expect(wrapper.get('.reminder-list').text()).toContain('保留待办')
+  expect(wrapper.get('.reminder-list').text()).not.toContain('全部完成')
+  expect(checks()).toHaveLength(0)
+})
+
+it('clears subscription snapshots after a denied read and stops refresh until identity changes', async () => {
+  feed([record('账号秘密')]); render(); await flushPromises()
+  listCalendarSubscriptions.mockRejectedValueOnce({ status: 403 })
+  notify(); await flushPromises()
+  const state = wrapper.emitted('highlight-state').at(-1)[0]
+  expect(state.items).toEqual([])
+  expect(state.denied).toBe(true)
+  expect(state.error).toContain('身份、权限或账号已失效')
+  expect(wrapper.text()).not.toContain('账号秘密')
+  notify(); await flushPromises()
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(2)
 })
