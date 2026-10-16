@@ -104,6 +104,31 @@ it('等级修为非零但星级未拥有时，规划不标完成、不显示快�
 })
 
 
+it.each(['level', 'elite', 'star'])('快捷提升弹层仅打开%s时计算内容，关闭后停止读取卡片草稿', async field => {
+  const growthActionTargetLabel = vi.fn(() => '测试提升目标')
+  const growthActionBreakthrough = vi.fn(() => false)
+  const wrapper = mount(Tracker, {
+    props: { accountId: 'acc', isLoggedIn: true,
+      currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }],
+      catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }],
+      growthActionTargetLabel, growthActionBreakthrough },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  expect(growthActionTargetLabel).not.toHaveBeenCalled()
+  expect(growthActionBreakthrough).not.toHaveBeenCalled()
+  await wrapper.setProps({ growthActionPopoverKey: 'op:' + field })
+  expect(wrapper.findAll('.growth-action-popover')).toHaveLength(1)
+  expect(wrapper.get('.growth-action-popover').text()).toContain('测试提升目标')
+  expect(growthActionTargetLabel).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'op' }), field)
+  growthActionTargetLabel.mockClear()
+  growthActionBreakthrough.mockClear()
+  await wrapper.setProps({ growthActionPopoverKey: '' })
+  expect(wrapper.find('.growth-action-popover').exists()).toBe(false)
+  expect(growthActionTargetLabel).not.toHaveBeenCalled()
+  expect(growthActionBreakthrough).not.toHaveBeenCalled()
+})
+
 it('电影目标使用直接星级，不显示普通心纸和节点，并保留共享规划说明', async () => {
   plannerApi.getTrainingWorkspace.mockResolvedValue({
     schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
