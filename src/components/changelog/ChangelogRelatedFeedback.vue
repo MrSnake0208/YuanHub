@@ -4,7 +4,7 @@
     <ul>
       <li v-for="item in items" :key="item.id">
         <router-link :to="{ path: '/feedback/plaza', query: { feedback: item.id } }">{{ item.publicTitle || '未命名反馈' }}</router-link>
-        <span>{{ typeLabel(item.type) }} · {{ item.supportCount }} 人支持</span>
+        <span>{{ item.supportCount }} 人支持</span>
       </li>
     </ul>
   </div>
@@ -13,7 +13,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { listPublicFeedback } from '@/api/coCreation.js'
-import { publicTypeLabel } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
   versionId: { type: String, required: true }
@@ -21,10 +20,6 @@ const props = defineProps({
 
 const items = ref([])
 let isMounted = false
-
-function typeLabel(type) {
-  return publicTypeLabel(type)
-}
 
 onMounted(async () => {
   isMounted = true

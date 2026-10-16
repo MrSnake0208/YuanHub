@@ -11,7 +11,7 @@
       @click="toggle"
     >
       <Heart :size="15" aria-hidden="true" :fill="supported ? 'currentColor' : 'none'" />
-      <span>{{ pending ? '处理中…' : supported ? '已支持' : supportActionLabel(type) }}</span>
+      <span>{{ pending ? '处理中…' : supported ? '已关注' : supportActionLabel(type) }}</span>
       <span v-if="showCount" class="support-count">{{ supportCount }}</span>
     </button>
     <span v-if="errorText" class="support-error" role="alert">{{ errorText }}</span>
@@ -42,7 +42,7 @@ const router = useRouter()
 const pending = ref(false)
 const errorText = ref('')
 
-const actionLabel = computed(() => props.supported ? '取消支持' : supportActionLabel(props.type))
+const actionLabel = computed(() => props.supported ? '取消关注' : supportActionLabel(props.type))
 
 async function toggle() {
   if (pending.value || props.disabled) return

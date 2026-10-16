@@ -20,18 +20,18 @@ test('七种类型的选项、显示名和校验使用同一定义', () => {
 })
 
 test('日历预填只接受动态目录中的板块并复用同名自定义 key', () => {
-  assert.deepEqual(feedbackPrefill({ type: ' experience ', category: ' calendar ', content: '不得复制' }, categories), { type: 'EXPERIENCE', category: 'CALENDAR' })
-  assert.deepEqual(feedbackPrefill({ category: 'CALENDAR' }, [{ key: 'CUSTOM_CAL', label: '活动日历' }]), { type: 'BUG', category: 'CUSTOM_CAL' })
-  assert.deepEqual(feedbackPrefill({ category: 'CALENDAR' }, [{ key: 'CUSTOM_CAL', label: '活动与招募日程', builtinKey: 'CALENDAR' }]), { type: 'BUG', category: 'CUSTOM_CAL' })
+  assert.deepEqual(feedbackPrefill({ type: ' experience ', category: ' calendar ', content: '不得复制' }, categories), { type: 'OTHER', category: 'CALENDAR' })
+  assert.deepEqual(feedbackPrefill({ category: 'CALENDAR' }, [{ key: 'CUSTOM_CAL', label: '活动日历' }]), { type: 'OTHER', category: 'CUSTOM_CAL' })
+  assert.deepEqual(feedbackPrefill({ category: 'CALENDAR' }, [{ key: 'CUSTOM_CAL', label: '活动与招募日程', builtinKey: 'CALENDAR' }]), { type: 'OTHER', category: 'CUSTOM_CAL' })
   assert.equal(feedbackPrefill({ category: 'CALENDAR' }, []).category, '')
-  assert.deepEqual(feedbackPrefill({ type: 'UNKNOWN', category: 'UNKNOWN' }, categories), { type: 'BUG', category: '' })
-  assert.deepEqual(feedbackPrefill({ type: ['BUG'], category: ['CALENDAR'] }, categories), { type: 'BUG', category: '' })
+  assert.deepEqual(feedbackPrefill({ type: 'UNKNOWN', category: 'UNKNOWN' }, categories), { type: 'OTHER', category: '' })
+  assert.deepEqual(feedbackPrefill({ type: ['BUG'], category: ['CALENDAR'] }, categories), { type: 'OTHER', category: '' })
 })
 
-test('旧 FEEDBACK 和 type/category/area 链接保留类型与板块的独立语义', () => {
+test('旧 FEEDBACK 和 type/category/area 链接仅保留板块预填，普通类型固定 OTHER', () => {
   for (const type of ['BUG', 'EXPERIENCE', 'ACCOUNT']) {
-    assert.deepEqual(feedbackPrefill({ type: 'FEEDBACK', category: type, area: 'OPERATOR' }, categories), { type, category: 'OPERATOR' })
-    assert.deepEqual(feedbackPrefill({ type, category: type, area: 'CALENDAR' }, categories), { type, category: 'CALENDAR' })
+    assert.deepEqual(feedbackPrefill({ type: 'FEEDBACK', category: type, area: 'OPERATOR' }, categories), { type: 'OTHER', category: 'OPERATOR' })
+    assert.deepEqual(feedbackPrefill({ type, category: type, area: 'CALENDAR' }, categories), { type: 'OTHER', category: 'CALENDAR' })
   }
-  assert.deepEqual(feedbackPrefill({ type: 'FEEDBACK', category: 'CALENDAR' }, categories), { type: 'BUG', category: 'CALENDAR' })
+  assert.deepEqual(feedbackPrefill({ type: 'FEEDBACK', category: 'CALENDAR' }, categories), { type: 'OTHER', category: 'CALENDAR' })
 })

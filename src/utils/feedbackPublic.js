@@ -35,7 +35,7 @@ export function feedbackPrefill(query, categories) {
   if ((legacy && isFeedbackType(rawCategory)) || (rawCategory === type && rawArea)) category = rawArea
   const board = categories.find(option => option.key === category || (category === 'CALENDAR' && option.builtinKey === 'CALENDAR'))
     || (category === 'CALENDAR' ? categories.find(option => option.label === '活动日历') : null)
-  return { type: isFeedbackType(type) ? type : 'BUG', category: board?.key || '' }
+  return { type: 'OTHER', category: board?.key || '' }
 }
 
 export const PUBLIC_SORT_OPTIONS = Object.freeze([
@@ -54,10 +54,7 @@ export function publicTypeLabel(type) {
   return PUBLIC_TYPE_OPTIONS.find(option => option.key === key)?.label || '其他'
 }
 
-// 底层行为完全相同,仅按反馈类型切换文案。
-export function supportActionLabel(type) {
-  const key = String(type || '').trim().toUpperCase()
-  if (key === 'FEATURE') return '我也想要'
-  if (key === 'EXPERIENCE') return '支持这个建议'
-  return '我也遇到了'
+// 所有历史类型沿用同一关注行为。
+export function supportActionLabel() {
+  return '关注此反馈'
 }

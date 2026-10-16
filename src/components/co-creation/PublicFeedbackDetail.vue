@@ -5,7 +5,6 @@
 
     <template v-else-if="item">
       <div class="public-detail-badges">
-        <FeedbackTypeBadge :type="item.type" />
         <span v-if="item.categoryLabel" class="public-detail-category">{{ item.categoryLabel }}</span>
         <FeedbackStatusBadge :status="item.publicStatus" />
       </div>
@@ -59,7 +58,6 @@
 <script setup>
 import { CheckCircle2 } from '@lucide/vue'
 import FeedbackStatusBadge from '@/components/feedback/FeedbackStatusBadge.vue'
-import FeedbackTypeBadge from '@/components/feedback/FeedbackTypeBadge.vue'
 import FeedbackSupportButton from '@/components/co-creation/FeedbackSupportButton.vue'
 import PublicFeedbackManagement from '@/components/co-creation/PublicFeedbackManagement.vue'
 import { ref } from 'vue'

@@ -14,14 +14,12 @@
       <table class="ticket-table" :class="{ 'is-workflow': workflow }">
         <thead>
           <tr>
-            <th v-if="!workflow">类型</th>
-            <th v-if="!workflow">反馈板块</th>
             <th class="ticket-content-heading">反馈内容</th>
+            <th class="ticket-category-heading">反馈板块</th>
             <th v-if="workflow" class="ticket-state-heading">待办 / 状态</th>
             <th v-if="workflow" class="ticket-owner-heading">负责人</th>
             <th v-if="showReporter && !workflow">提交人</th>
             <th v-if="!workflow">状态</th>
-            <th v-if="!workflow">提交时间</th>
             <th>更新时间</th>
             <th class="ticket-operation">操作</th>
           </tr>
@@ -35,19 +33,16 @@
             @click="$emit('select', item.id)"
             @keydown.enter="$emit('select', item.id)"
           >
-            <td v-if="!workflow" data-label="类型"><span class="ticket-type">{{ typeLabel(item.type) }}</span></td>
-            <td v-if="!workflow" data-label="反馈板块"><span class="ticket-category">{{ categoryLabel(item.category) }}</span></td>
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ item.title || truncate(item.content, 72) }}</strong>
               <details @click.stop @keydown.stop><summary>工单编号</summary><code>{{ item.id }}</code><button class="ticket-copy" type="button" @click="copyId(item.id)">复制编号</button></details>
               <div v-if="workflow" class="ticket-workflow-tags">
-                <span class="ticket-type">{{ typeLabel(item.type) }}</span>
-                <span class="ticket-category">{{ categoryLabel(item.workArea) }}</span>
                 <span v-if="item.category !== item.workArea" class="ticket-origin">来源 · {{ categoryLabel(item.category) }}</span>
                 <span v-if="showReporter" class="ticket-origin">提交人 · {{ reporterName(item) }}</span>
               </div>
               <span v-if="isUnread(item)" class="ticket-unread-marker">{{ workflow ? '新消息未读' : '有新更新' }}</span>
             </td>
+            <td data-label="反馈板块"><span class="ticket-category">{{ categoryLabel(workflow ? item.workArea : item.category) }}</span></td>
             <td v-if="showReporter && !workflow" data-label="提交人">{{ reporterName(item) }}</td>
             <td :data-label="workflow ? '待办 / 状态' : '状态'">
               <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">
@@ -55,12 +50,11 @@
               </span>
               <span v-if="workflow && item.needsReply && item.status === 'OPEN'" class="ticket-reply-marker">需回复</span>
             </td>
-            <td v-if="workflow" data-label="负责人"><span class="ticket-operator" :title="item.operatorAssigneeName || '待接单'">{{ item.operatorAssigneeName || '待接单' }}</span></td>
-            <td v-if="!workflow" data-label="提交时间"><time :datetime="item.createdAt">{{ formatDate(item.createdAt) }}</time></td>
+            <td v-if="workflow" data-label="负责人"><span class="ticket-operator" :title="item.operatorAssigneeName || '未分配'">{{ item.operatorAssigneeName || '未分配' }}</span></td>
             <td data-label="更新时间"><time :datetime="item.updatedAt || item.createdAt">{{ formatDate(item.updatedAt || item.createdAt) }}</time></td>
             <td class="ticket-operation" data-label="操作">
               <button type="button" @click.stop="$emit('select', item.id)">
-                <MessageSquareText :size="16" aria-hidden="true" />查看反馈
+                <MessageSquareText :size="16" aria-hidden="true" />{{ workflow ? '查看工单' : '查看反馈' }}
               </button>
             </td>
           </tr>
@@ -113,11 +107,10 @@
                 <span>提交于</span>
                 <time :datetime="selectedItem.createdAt">{{ formatDate(selectedItem.createdAt) }}</time>
               </span>
-              <span v-if="workflow" class="ticket-operator" :title="selectedItem.operatorAssigneeName || '待接单'">运营 · {{ selectedItem.operatorAssigneeName || '待接单' }}</span>
+              <span v-if="workflow" class="ticket-operator" :title="selectedItem.operatorAssigneeName || '未分配'">运营 · {{ selectedItem.operatorAssigneeName || '未分配' }}</span>
             </div>
             <div class="ticket-detail-context">
               <div class="ticket-badges ticket-badges-secondary">
-                <span class="ticket-type">类型 · {{ typeLabel(selectedItem.type) }}</span>
                 <span class="ticket-category">{{ workflow ? '负责板块' : '板块' }} · {{ categoryLabel(workflow ? selectedItem.workArea : selectedItem.category) }}</span>
               </div>
               <code><span>工单</span>{{ selectedItem.id }}</code>
@@ -160,7 +153,6 @@ const props = defineProps({
   showReporter: { type: Boolean, default: false },
   workflow: { type: Boolean, default: false },
   unreadFeedbackIds: { type: Array, default: () => [] },
-  typeLabel: { type: Function, required: true },
   categoryLabel: { type: Function, required: true },
   statusLabel: { type: Function, required: true },
   formatDate: { type: Function, required: true }

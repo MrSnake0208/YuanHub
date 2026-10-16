@@ -4,7 +4,7 @@
 
     <main id="main-content">
       <header class="page-header"><div class="wrap"><div class="page-header-row">
-        <div class="page-header-identity"><h1 class="page-header-title">我的反馈</h1><p class="page-header-description">提交并跟进工单，查看管理员回复。</p></div>
+        <div class="page-header-identity"><h1 class="page-header-title">反馈中心</h1><p class="page-header-description">你的声音，让 YuanHub 变得更好。</p></div>
         <div v-if="loading || error || feedbacks.length || hasFilters" class="page-header-actions">
           <button class="page-header-action" type="button" @click="showNewForm = true"><Plus :size="18" aria-hidden="true" />新建反馈</button>
         </div>
@@ -40,13 +40,6 @@
 
           <div v-if="!isInitialEmpty" class="feedback-filter-row">
             <label class="feedback-filter">
-              <span>反馈类型</span>
-              <select v-model="filterType" @change="reloadFromFirstPage">
-                <option value="">全部类型</option>
-                <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-              </select>
-            </label>
-            <label class="feedback-filter">
               <span>反馈板块</span>
               <select v-model="filterCategory" :disabled="!categoryOptions.length" @change="reloadFromFirstPage">
                 <option value="">全部板块</option>
@@ -66,7 +59,6 @@
             :total="totalCount"
             :page="page"
             :total-pages="totalPages"
-            :type-label="typeLabel"
             :category-label="categoryLabel"
             :status-label="statusLabel"
             :format-date="formatDate"
@@ -147,54 +139,44 @@
         <div ref="newFormPanel" class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" tabindex="-1" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
             <div>
-              <span class="feedback-modal-kicker">NEW / FEEDBACK</span>
               <h2 id="feedback-modal-title">新建反馈</h2>
             </div>
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
           <form @submit.prevent="submitFeedback">
-            <p class="feedback-submission-note">默认仅与你和管理员私下沟通。只有你允许，管理员才可整理到反馈广场；原始正文、附件与账号信息不会直接公开。</p>
+            <p class="feedback-submission-note">遇到问题，或者有什么新想法？直接告诉我们就好。</p>
             <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
             <div class="feedback-form-grid">
               <label>
-                <span>反馈类型</span>
-                <select v-model="newFeedback.type" class="feedback-form-control" required @change="scheduleSimilarSearch">
-                  <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-                </select>
-              </label>
-              <label>
-                <span>反馈板块</span>
+                <span>反馈板块 <em>*</em></span>
                 <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
                   <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : '正在加载反馈板块' }}</option>
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
-              <label class="feedback-consent full">
-                <input v-model="newFeedback.publicConsent" name="public-consent" type="checkbox" @change="formError = ''; scheduleSimilarSearch()" />
-                <span>允许管理员整理到反馈广场（可选）<small>勾选后需填写标题，管理员审核后再决定是否发布公开标题与摘要。</small></span>
-              </label>
-              <label v-if="newFeedback.publicConsent" class="full">
-                <span>标题（必填）</span>
-                <input v-model="newFeedback.title" class="feedback-form-control" type="text" maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或建议" @input="formError = ''; scheduleSimilarSearch()" />
-                <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
-              </label>
-              <SimilarFeedbackList
-                v-if="newFeedback.publicConsent"
-                class="full"
-                :items="similarItems"
-                :loading="similarLoading"
-                @support="handleSimilarSupport"
-              />
-              <label class="full">
-                <span>详细描述</span>
-                <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required @paste="handleNewMediaPaste"></textarea>
+              <label>
+                <span>反馈内容 <em>*</em></span>
+                <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="描述遇到的问题、希望改进的地方，或者你的想法……" required @paste="handleNewMediaPaste"></textarea>
                 <small>{{ newFeedback.content.length }} / 1000</small>
               </label>
-              <FeedbackAttachmentPicker class="full" :media="newMedia" :busy="submitting" />
-              <label class="feedback-consent full">
-                <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
-                <span>允许附加浏览器、操作系统和 IP 地址信息，帮助定位问题</span>
+              <FeedbackAttachmentPicker :media="newMedia" :busy="submitting" />
+              <label class="feedback-consent">
+                <input v-model="newFeedback.publicConsent" name="public-consent" type="checkbox" @change="formError = ''; scheduleSimilarSearch()" />
+                <span>允许管理员整理后发布到反馈广场<small>默认仅你与管理员可见。勾选后仍需审核，原始正文、附件与账号信息不会直接公开。</small></span>
               </label>
+              <label v-if="newFeedback.publicConsent">
+                <span>公开标题 <em>*</em></span>
+                <input v-model="newFeedback.title" class="feedback-form-control" type="text" required maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或想法" @input="formError = ''; scheduleSimilarSearch()" />
+                <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
+              </label>
+              <SimilarFeedbackList v-if="newFeedback.publicConsent" :items="similarItems" :loading="similarLoading" @support="handleSimilarSupport" />
+              <details class="feedback-optional-settings">
+                <summary>客户端信息（可选{{ newFeedback.clientInfoConsent ? '，已授权' : '' }}）</summary>
+                <label class="feedback-consent">
+                  <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
+                  <span>允许附加浏览器、操作系统和 IP 地址信息，帮助定位问题<small>仅用于管理员排查，与公开授权独立；默认不上传这些信息。</small></span>
+                </label>
+              </details>
             </div>
             <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
             <div v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</div>
@@ -242,13 +224,12 @@ import {
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
-import { PUBLIC_TYPE_OPTIONS, feedbackPrefill, isFeedbackType, publicTypeLabel as typeLabel } from '@/utils/feedbackPublic.js'
+import { feedbackPrefill } from '@/utils/feedbackPublic.js'
 import { dialog } from '@/utils/dialog.js'
 import '@/styles/page-header.css'
 
 const PAGE_SIZE = 20
 const statusTabs = ['全部', '处理中', '已完成', '已驳回']
-const feedbackTypeOptions = PUBLIC_TYPE_OPTIONS
 const route = useRoute()
 const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
@@ -260,7 +241,6 @@ const page = ref(1)
 const totalCount = ref(0)
 const q = ref('')
 const filterStatus = ref('全部')
-const filterType = ref('')
 const filterCategory = ref('')
 const selectedId = ref('')
 const selectedDetail = ref(null)
@@ -278,10 +258,10 @@ const replyTarget = ref('')
 const replying = ref(false)
 const updatingStatus = ref(false)
 const replyContent = ref('')
-const newFeedback = ref({ type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false })
+const newFeedback = ref({ type: 'OTHER', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
 const newFeedbackDirty = computed(() => showNewForm.value && (
-  Boolean(newFeedback.value.title.trim() || newFeedback.value.content.trim() || newFeedback.value.category || newFeedback.value.publicConsent || newFeedback.value.clientInfoConsent || newFeedback.value.type !== 'BUG') || newMedia.items.length > 0
+  Boolean(newFeedback.value.title.trim() || newFeedback.value.content.trim() || newFeedback.value.category || newFeedback.value.publicConsent || newFeedback.value.clientInfoConsent) || newMedia.items.length > 0
 ))
 const confirmNewFeedbackDiscard = useUnsavedChanges(newFeedbackDirty, '反馈草稿')
 const similarItems = ref([])
@@ -300,12 +280,11 @@ let isMounted = false
 
 const categoryOptions = computed(() => access.value.availableAreas)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
-const hasFilters = computed(() => Boolean(q.value.trim() || filterType.value || filterCategory.value || filterStatus.value !== '全部'))
+const hasFilters = computed(() => Boolean(q.value.trim() || filterCategory.value || filterStatus.value !== '全部'))
 const isInitialEmpty = computed(() => listLoaded.value && !loading.value && !error.value && !hasFilters.value && totalCount.value === 0 && !feedbacks.value.length)
 
 function clearFilters() {
   q.value = ''
-  filterType.value = ''
   filterCategory.value = ''
   filterStatus.value = '全部'
   reloadFromFirstPage()
@@ -319,8 +298,9 @@ function categoryLabel(category) {
   return categoryOptions.value.find(option => option.key === category)?.label || category || '其他模块'
 }
 
-function statusLabel(status, hasAdminReply) {
-  if (status === 'OPEN') return hasAdminReply ? '已回复' : '待回复'
+function statusLabel(status, _hasAdminReply, item) {
+  if (item?.mergedIntoId) return '已合并'
+  if (status === 'OPEN') return '处理中'
   return { RESOLVED: '已完成', DISMISSED: '已驳回' }[status] || status || '未知状态'
 }
 
@@ -351,7 +331,6 @@ async function loadFeedback() {
       page: page.value,
       pageSize: PAGE_SIZE,
       status: statusParam(),
-      type: filterType.value || undefined,
       category: filterCategory.value || undefined,
       q: q.value.trim() || undefined
     })
@@ -528,7 +507,7 @@ async function closeNewFeedback() {
   if (!await confirmNewFeedbackDiscard()) return
   showNewForm.value = false
   formError.value = ''
-  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
+  newFeedback.value = { type: 'OTHER', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
   newMedia.clear()
   resetSimilar()
 }
@@ -555,7 +534,7 @@ function scheduleSimilarSearch() {
 
 async function runSimilarSearch(requestId, title) {
   try {
-    const items = await findSimilarFeedback(title, newFeedback.value.type)
+    const items = await findSimilarFeedback(title)
     if (!isMounted || requestId !== similarRequestId || !showNewForm.value) return
     similarItems.value = items
   } catch (_) {
@@ -576,15 +555,11 @@ async function submitFeedback() {
   if (newFeedback.value.publicConsent && !title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
-  if (!isFeedbackType(newFeedback.value.type)) {
-    formError.value = '请选择有效的反馈类型'
-    return
-  }
   if (!categoryOptions.value.some(option => option.key === newFeedback.value.category)) {
     formError.value = '请选择有效的反馈板块'
     return
   }
-  const payload = { ...newFeedback.value, title, content }
+  const payload = { ...newFeedback.value, type: 'OTHER', title, content }
   const userId = currentUserId()
   submitting.value = true
   formError.value = ''
@@ -595,12 +570,11 @@ async function submitFeedback() {
     if (!isMounted || currentUserId() !== userId) return
     newMedia.clear()
     resetSimilar()
-    newFeedback.value = { type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
+    newFeedback.value = { type: 'OTHER', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
     showNewForm.value = false
     publicNotice.value = '反馈已提交。管理员回复后会收到站内通知，你也可以在这里继续补充。'
     filterStatus.value = '全部'
-    filterType.value = ''
-    filterCategory.value = ''
+      filterCategory.value = ''
     q.value = ''
     page.value = 1
     await loadFeedback()
@@ -668,7 +642,9 @@ onBeforeUnmount(() => {
 
 .feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); }
 .feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
-.feedback-modal-kicker { color: var(--feedback-accent); }
+.feedback-optional-settings { color: var(--feedback-text-muted); }
+.feedback-optional-settings summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-form-grid em { color: var(--feedback-danger); font-style: normal; }
 .feedback-modal .modal-head h2 { color: var(--feedback-text); }
 .feedback-modal .modal-head button { color: var(--feedback-text-muted); }
 .feedback-modal form { background: var(--feedback-panel-deep); }

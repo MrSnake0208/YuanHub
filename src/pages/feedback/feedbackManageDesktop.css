@@ -51,4 +51,27 @@
 .feedback-workflow-events b { font-size: 12px; }
 .feedback-workflow-events time, .feedback-workflow-events span { font-size: 11px; }
 .feedback-workflow-events p { margin: 0; font-size: 12px; line-height: 1.6; }
+
+.feedback-work-queues { display: flex; align-items: stretch; gap: 14px; margin-top: 18px; min-width: 0; }
+.feedback-primary-queues { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.feedback-primary-queues button { min-width: 0; display: grid; gap: 5px; padding: 12px; text-align: left; font: 700 12px var(--font-b); }
+.feedback-primary-queues .feedback-queue-count { margin: 0; font: 700 20px var(--font-d); }
+.feedback-secondary-queues { display: flex; align-items: stretch; gap: 6px; }
+.feedback-secondary-queues button { min-width: 64px; padding: 8px; font: 700 11px var(--font-b); }
+.feedback-secondary-queues .feedback-queue-count { display: block; margin: 5px 0 0; }
+.feedback-queue-note { margin: 8px 0 0; font-size: 11px; line-height: 1.6; }
+.feedback-manage-toolbar { grid-template-columns: minmax(180px, 1fr) auto auto; gap: 10px; margin-top: 14px; }
+.feedback-list-settings { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.feedback-list-settings > .feedback-result-meta { padding-block: 10px; }
+.feedback-management-settings { max-width: 100%; }
+.feedback-management-settings summary { padding: 9px 12px; font-size: 12px; }
+.feedback-management-settings-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+.feedback-read-tools { margin-top: 0; justify-content: flex-start; }
+@media (max-width: 1250px) {
+  .feedback-work-queues { flex-direction: column; gap: 8px; }
+  .feedback-secondary-queues button { min-width: 0; display: flex; gap: 8px; align-items: center; }
+  .feedback-secondary-queues .feedback-queue-count { margin: 0; }
+  .feedback-manage-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .feedback-manage-toolbar .feedback-search { grid-column: 1 / -1; }
+}
 }

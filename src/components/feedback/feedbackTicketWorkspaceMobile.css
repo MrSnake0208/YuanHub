@@ -99,4 +99,13 @@
   .ticket-detail-context { align-items: flex-start; flex-direction: column; gap: 10px; }
   .ticket-detail-scroll { padding: 0 16px calc(20px + env(safe-area-inset-bottom)); }
 }
+
+.ticket-table td::before { content: attr(data-label); color: var(--feedback-text-muted); }
+.ticket-table .ticket-summary-cell::before, .ticket-table .ticket-operation::before { content: none; }
+.ticket-table tbody tr { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.ticket-table .ticket-summary-cell strong { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ticket-summary-cell summary { padding-block: 4px; }
+.ticket-copy { min-height: 32px; }
+.ticket-operator { white-space: normal; overflow-wrap: anywhere; }
+.ticket-category { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 }

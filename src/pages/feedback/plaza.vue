@@ -9,7 +9,7 @@
       <section class="feedback-content"><div class="wrap">
         <FeedbackWorkspaceNav active="plaza" />
         <p class="plaza-context">这里只展示管理员整理后的公开内容。开发目标与验收进度可在 <router-link to="/co-creation">大饼中心</router-link> 查看。</p>
-        <FeedbackPlaza :focus-id="focusId" :initial-type="initialType" />
+        <FeedbackPlaza :focus-id="focusId" />
       </div></section>
     </main>
   </div>
@@ -22,12 +22,10 @@ import { Plus } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import FeedbackPlaza from '@/components/co-creation/FeedbackPlaza.vue'
-import { PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
 import '@/styles/page-header.css'
 
 const route = useRoute()
 const focusId = computed(() => String(route.query.feedback || ''))
-const initialType = computed(() => PUBLIC_TYPE_OPTIONS.some(option => option.key === route.query.type) ? route.query.type : '')
 </script>
 
 <style src="../../styles/feedback-workspace.css"></style>
