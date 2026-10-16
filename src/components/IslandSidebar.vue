@@ -86,7 +86,6 @@
             </router-link>
             <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
               <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
-              <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
             </router-link>
             <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
               <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
@@ -186,7 +185,6 @@
       </router-link>
       <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
         <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
-        <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
       </router-link>
       <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
         <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
@@ -276,10 +274,6 @@ import { dialog } from "@/utils/dialog.js";
 import { modalFocusState, useModalFocus } from "@/composables/useModalFocus.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
-import {
-  feedbackUnreadState,
-  subscribeFeedbackUnread,
-} from "@/store/feedbackUnread.js";
 
 // 已登录状态（reactive，随 auth 变化）
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
@@ -329,7 +323,6 @@ watch(menuOpen, (open) => {
   if (typeof document === "undefined") return;
   document.body.classList.toggle("mobile-nav-open", open);
 });
-let stopFeedbackUnread = null;
 
 async function onLogout() {
   const confirmed = await dialog.confirm({ title: '退出登录？', message: '退出后需要重新登录才能访问个人数据。', confirmText: '退出登录' });
@@ -409,7 +402,6 @@ function openBetaCommunity() {
 }
 
 onMounted(function () {
-  stopFeedbackUnread = subscribeFeedbackUnread();
   document.addEventListener("click", onOutsideClick);
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchmove", onTouchMove, { passive: true });
@@ -418,7 +410,6 @@ onMounted(function () {
 });
 
 onBeforeUnmount(function () {
-  if (stopFeedbackUnread) stopFeedbackUnread();
   document.removeEventListener("click", onOutsideClick);
   document.removeEventListener("touchstart", onTouchStart);
   document.removeEventListener("touchmove", onTouchMove);
