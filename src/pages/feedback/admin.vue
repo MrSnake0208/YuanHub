@@ -14,22 +14,23 @@
           <FeedbackWorkspaceNav active="admin" />
           <section class="category-panel" aria-labelledby="category-panel-title">
             <h2 id="category-panel-title">反馈板块</h2>
-            <p>用户和管理员使用同一份板块目录。改名不会改变已有反馈或授权的归属。</p>
+            <p>隐藏后，用户和管理员无法再从选项中选择该板块；已有反馈和授权保留，可随时恢复显示。改名不会改变归属。</p>
             <form class="category-create" @submit.prevent="addCategory">
               <label for="new-feedback-category">新增板块</label>
               <input id="new-feedback-category" v-model="newCategoryLabel" maxlength="24" required :disabled="categorySaving || loading || !!error" placeholder="板块名称" />
               <button class="command primary" type="submit" :disabled="categorySaving || loading || !!error || !newCategoryLabel.trim()">新增</button>
             </form>
-            <ul v-if="areas.length && !error" class="category-list">
-              <li v-for="area in areas" :key="area.key">
+            <ul v-if="categoryCatalog.length && !error" class="category-list">
+              <li v-for="area in categoryCatalog" :key="area.key">
                 <template v-if="editingCategoryKey === area.key">
                   <input v-model="editingCategoryLabel" :aria-label="'修改 ' + area.label + ' 名称'" maxlength="24" :disabled="categorySaving" @keydown.enter.prevent="saveCategory" @keydown.esc="cancelCategoryEdit" />
                   <button type="button" :disabled="categorySaving || !editingCategoryLabel.trim()" @click="saveCategory">保存</button>
                   <button type="button" :disabled="categorySaving" @click="cancelCategoryEdit">取消</button>
                 </template>
                 <template v-else>
-                  <span>{{ area.label }}</span>
+                  <span>{{ area.label }}<small v-if="area.hidden">（已隐藏）</small></span>
                   <button type="button" :aria-label="'重命名 ' + area.label" :disabled="categorySaving" @click="startCategoryEdit(area)">改名</button>
+                  <button type="button" :aria-label="(area.hidden ? '恢复显示 ' : '隐藏 ') + area.label" :disabled="categorySaving || loading || !!error" @click="toggleCategoryHidden(area)">{{ area.hidden ? '恢复显示' : '隐藏' }}</button>
                 </template>
               </li>
             </ul>
@@ -194,6 +195,7 @@ import {
   getFeedbackAccess,
   listFeedbackAccessGrants,
   renameFeedbackCategory,
+  setFeedbackCategoryHidden,
   updateFeedbackAccessGrant
 } from '@/api/feedback.js'
 import { searchFeedbackAccessUsers } from '@/api/user.js'
@@ -203,7 +205,8 @@ import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import '@/styles/page-header.css'
 
 const grants = ref([])
-const areas = ref([])
+const categoryCatalog = ref([])
+const areas = computed(() => categoryCatalog.value.filter(area => !area.hidden))
 const newCategoryLabel = ref('')
 const editingCategoryKey = ref('')
 const editingCategoryLabel = ref('')
@@ -260,7 +263,7 @@ function normalizeGrant(grant) {
 }
 
 function areaLabel(key) {
-  return areas.value.find(area => area.key === key)?.label || key
+  return categoryCatalog.value.find(area => area.key === key)?.label || key
 }
 
 function formatDate(value) {
@@ -310,6 +313,20 @@ async function saveCategory() {
   }
 }
 
+async function toggleCategoryHidden(area) {
+  if (categorySaving.value || loading.value || error.value) return
+  categorySaving.value = true
+  categoryError.value = ''
+  try {
+    await setFeedbackCategoryHidden(area.key, !area.hidden)
+    if (isMounted) await load()
+  } catch (e) {
+    if (isMounted && !await handleForbidden(e)) categoryError.value = e.message || '修改板块显示状态失败'
+  } finally {
+    categorySaving.value = false
+  }
+}
+
 async function load() {
   if (!isMounted) return
   const requestId = ++loadRequestId
@@ -320,8 +337,9 @@ async function load() {
     if (!isMounted || requestId !== loadRequestId) return
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
-    if (!rawAreas.length) throw new Error('反馈板块目录为空')
-    areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
+    const catalog = accessData.categoryCatalog || accessData.category_catalog || rawAreas
+    if (!catalog.length) throw new Error('反馈板块目录为空')
+    categoryCatalog.value = catalog.map(area => ({ key: area.key, label: area.label, hidden: area.hidden === true }))
   } catch (e) {
     if (await handleForbidden(e)) return
     if (isMounted && requestId === loadRequestId) error.value = e.message || '权限配置加载失败'

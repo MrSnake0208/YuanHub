@@ -46,6 +46,7 @@ function normalizeAuditSnapshot(value) {
     receiveAreas: Array.isArray(receiveAreas) ? receiveAreas.slice() : [],
     manageAreas: Array.isArray(manageAreas) ? manageAreas.slice() : [],
     feedbackCategoryLabel: value.feedbackCategoryLabel || value.feedback_category_label || null,
+    feedbackCategoryHidden: value.feedbackCategoryHidden ?? value.feedback_category_hidden ?? null,
     ledger: value.ledger || null,
     recruitmentAccess: value.recruitmentAccess || value.recruitment_access || null,
     ...(value.beta && typeof value.beta === 'object' && !Array.isArray(value.beta)

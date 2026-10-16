@@ -23,6 +23,7 @@ import {
   listFeedbackAccessGrants,
   normalizeFeedback,
   renameFeedbackCategory,
+  setFeedbackCategoryHidden,
   updateFeedbackAccessGrant,
   updateFeedbackType,
   updateManagedFeedbackStatus,
@@ -741,4 +742,23 @@ test('未指定类型的普通反馈默认 OTHER，两个授权默认关闭', as
     const result = await createFeedback({ category: 'CUSTOM_TEST', content: '普通反馈' })
     assert.equal(result.type, 'OTHER')
   })
+})
+
+
+test('板块隐藏和恢复发送布尔状态并编码稳定标识', async () => {
+  const calls = []
+  await withFetch(async (url, options) => {
+    calls.push({ url: String(url), method: options.method, body: JSON.parse(options.body) })
+    return apiResponse({ key: 'CUSTOM/TEST', label: '板块', hidden: JSON.parse(options.body).hidden })
+  }, async () => {
+    for (const hidden of [true, false]) {
+      assert.equal((await setFeedbackCategoryHidden('CUSTOM/TEST', hidden)).hidden, hidden)
+    }
+  })
+  assert.equal(calls.length, 2)
+  for (const [index, hidden] of [true, false].entries()) {
+    assert.match(calls[index].url, /\/v1\/admin\/feedback-categories\/CUSTOM%2FTEST\/visibility$/)
+    assert.equal(calls[index].method, 'PUT')
+    assert.deepEqual(calls[index].body, { hidden })
+  }
 })

@@ -151,7 +151,7 @@
                 <label>
                   <span>反馈板块 <em>*</em></span>
                   <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
-                    <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : '正在加载反馈板块' }}</option>
+                    <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : categoryCatalog.length ? '暂无可选反馈板块' : '正在加载反馈板块' }}</option>
                     <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                   </select>
                 </label>
@@ -236,6 +236,7 @@ const route = useRoute()
 const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
 const accessError = ref('')
+const categoryCatalog = ref([])
 const loading = ref(false)
 const listLoaded = ref(false)
 const error = ref('')
@@ -328,7 +329,7 @@ function statusParam() {
 }
 
 function categoryLabel(category) {
-  return categoryOptions.value.find(option => option.key === category)?.label || category || '其他模块'
+  return categoryCatalog.value.find(option => option.key === category)?.label || category || '其他模块'
 }
 
 function statusLabel(status, _hasAdminReply, item) {
@@ -347,7 +348,9 @@ async function loadAccess() {
   try {
     const data = await getFeedbackAccess()
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
-    if (!rawAreas.length) throw new Error('反馈板块目录为空')
+    const catalog = data.categoryCatalog || data.category_catalog || rawAreas
+    if (!catalog.length) throw new Error('反馈板块目录为空')
+    categoryCatalog.value = catalog
     access.value.availableAreas = rawAreas.map(option => ({ key: option.key, label: option.label, builtinKey: option.builtinKey ?? option.builtin_key }))
   } catch (_) {
     access.value.availableAreas = []
