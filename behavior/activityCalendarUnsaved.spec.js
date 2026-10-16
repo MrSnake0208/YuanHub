@@ -32,7 +32,12 @@ async function render(query = '') {
   wrapper = mount({ components: { AppDialog }, template: '<router-view /><AppDialog />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   await flushPromises()
 }
-async function edit() { await button('编辑待办').trigger('click'); await title().setValue('草稿待办') }
+async function edit() {
+  if (!button('编辑待办') && page.find('.calendar-public-summary-open').exists()) {
+    await page.get('.calendar-public-summary-open').trigger('click'); await flushPromises()
+  }
+  await button('编辑待办').trigger('click'); await title().setValue('草稿待办')
+}
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z'))
   const media = new EventTarget(); media.matches = false; vi.stubGlobal('matchMedia', vi.fn(() => media))
