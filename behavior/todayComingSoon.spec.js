@@ -95,9 +95,66 @@ it('全部为空保留首次建档，读取全失败保留unknown而不宣称已
   getCurrentStarState.mockRejectedValue(new Error('失败'))
   activeAccount.setGame('代号鸢', 'a'); await flushPromises()
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
-  expect(wrapper.get('.account-data-summary').text()).toContain('密探、库存、星石状态未确认')
+  expect(wrapper.vm.dataReadiness).toEqual({ operator: 'unknown', inventory: 'unknown', star: 'unknown' })
   expect(wrapper.get('.lobby-status').text()).toContain('密探、库存、星石状态待确认')
-  expect(wrapper.get('.account-data-summary').text()).not.toContain('已录入的数据可继续')
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
+})
+
+it('全新账号先展示紧凑引导，确认读取为空后隐藏业务空卡但保留读取实例', async () => {
+  signIn(); auth.userInfo = { id: 'owner-a' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '新账号', game: '如鸢' }])
+  const wrapper = render(); await flushPromises()
+  const onboarding = wrapper.get('.data-onboarding')
+  const overview = wrapper.get('.today-overview')
+  expect(onboarding.element.compareDocumentPosition(overview.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(onboarding.get('h2').text()).toBe('从一份资料开始')
+  expect(wrapper.findAll('.readiness-action')).toHaveLength(3)
+  expect(wrapper.findAllComponents(RouterLinkStub).filter(link => link.classes().includes('readiness-action')).map(link => link.props('to')))
+    .toEqual(['/operator?tab=current', '/inventory', '/star'])
+  expect(wrapper.get('.sync-recommendation').getComponent(RouterLinkStub).props('to')).toEqual({
+    path: '/user/profile', query: { connect: 'maayuan', from: 'today' }, hash: '#maayuan-app-title'
+  })
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-training').exists()).toBe(false)
+  expect(wrapper.find('.today-private-items').exists()).toBe(false)
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(wrapper.get('.today-personal').element.matches(':empty')).toBe(true)
+  expect(wrapper.findComponent(TodaySubscriptionSummary).exists()).toBe(true)
+  expect(wrapper.findComponent(TodayTrainingPlans).exists()).toBe(true)
+  expect(wrapper.findComponent(TodayPrivateItems).exists()).toBe(true)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(getTrainingWorkspace).toHaveBeenCalledTimes(1)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(true)
+})
+
+it('新账号的业务读取失败仍显示错误和重试入口，不隐藏为无内容', async () => {
+  signIn(); auth.userInfo = { id: 'owner-a' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '新账号', game: '如鸢' }])
+  listCalendarSubscriptions.mockRejectedValueOnce(new Error('待办离线'))
+  getTrainingWorkspace.mockRejectedValueOnce(new Error('养成离线'))
+  listCalendarPrivateItems.mockRejectedValueOnce(new Error('事项离线'))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.data-onboarding').exists()).toBe(true)
+  for (const [selector, message] of [['.today-subscriptions', '待办离线'], ['.today-training', '养成离线'], ['.today-private-items', '事项离线']]) {
+    const card = wrapper.get(selector)
+    expect(card.get('[role=alert]').text()).toContain(message)
+    expect(card.get('[role=alert] button').text()).toContain('重试')
+  }
+})
+
+it('全新账号已有订阅清单时继续显示真实待办，不被资料引导隐藏', async () => {
+  signIn(); auth.userInfo = { id: 'owner-a' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '新账号', game: '如鸢' }])
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: [{
+    event_id: 'event-a', subscribed: true, completed: false, manual_completed: false, version: 1,
+    checklist: [{ id: 'todo-a', title: '先领取奖励', completed: false }],
+    item: { id: 'event-a', title: '今日活动', start_date: serverToday(), end_date: serverToday() }
+  }], unavailable_items: [] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.data-onboarding').exists()).toBe(true)
+  expect(wrapper.get('.today-subscriptions').text()).toContain('先领取奖励')
+  expect(wrapper.get('.today-subscriptions input').element.checked).toBe(false)
 })
 
 it('A→B立即清空旧摘要，迟到A不能覆盖B；清空与失效id不发账号请求', async () => {
@@ -107,15 +164,17 @@ it('A→B立即清空旧摘要，迟到A不能覆盖B；清空与失效id不发�
   getOperatorCurrent.mockImplementation(({ accountId }) => accountId === 'a' ? a.promise : b.promise)
   const wrapper = render(); await flushPromises()
   activeAccount.set('b'); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('正在读取当前账号')
+  expect(wrapper.get('.lobby-status').text()).toContain('正在为你整理')
+  expect(wrapper.vm.realSummary.operatorCount).toBeNull()
   b.resolve({ entries: { one: { star_level: 1 }, two: { star_level: 1 } } }); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(2)
   expect(wrapper.find('.lobby-status').exists()).toBe(false)
   a.resolve({ entries: { old: {} } }); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(2)
   const calls = getOperatorCurrent.mock.calls.length
   activeAccount.clear(); await flushPromises()
-  expect(wrapper.get('.account-data-summary').text()).toContain('请选择游戏账号')
+  expect(wrapper.get('.lobby-status').text()).toContain('选一个游戏账号')
+  expect(wrapper.vm.realSummary.operatorCount).toBeNull()
   activeAccount.set('not-owned'); await flushPromises()
   expect(getOperatorCurrent).toHaveBeenCalledTimes(calls)
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
@@ -158,7 +217,7 @@ it('切换登录身份时旧列表与旧摘要失效，不把上个用户数据�
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
   late.resolve({ entries: { old: {} } }); await flushPromises()
   expect(wrapper.get('.data-account-context-bar').text()).toContain('B')
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(2)
   auth.isLoggedIn = false; await flushPromises()
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   expect(wrapper.get('.data-onboarding').text()).toContain('登录并继续')
@@ -194,15 +253,16 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   expect(wrapper.findAll('.account-switcher')).toHaveLength(1)
   expect(wrapper.get('.lobby-scene').find('.account-switcher').exists()).toBe(false)
   expect(wrapper.get('.lobby-status').text()).toBe('当前账号资料已就绪，今天也辛苦了。')
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 颗')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
+  expect(wrapper.vm.realSummary.starCount).toBe(1)
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   expect(wrapper.get('.today-personal > .today-subscriptions h2').text()).toBe('我的待办')
   expect(wrapper.get('.today-personal > .today-private-items h2').text()).toBe('我的事项与备注')
   expect(wrapper.get('.today-personal > .today-training h2').text()).toBe('我的养成计划')
   const aside = wrapper.get('.today-aside')
-  expect(Array.from(aside.element.children).map(node => node.className)).toEqual(['today-activity-summary', 'today-reminders-target', 'today-account-overview'])
+  expect(Array.from(aside.element.children).map(node => node.className)).toEqual(['today-activity-summary', 'today-reminders-target'])
   expect(aside.get('#today-reminders > .todo-reminders').text()).toContain('临期活动')
-  expect(aside.get('.account-data-summary h2').text()).toBe('账号详情')
+  expect(aside.text()).not.toContain('账号详情')
   expect(wrapper.find('.today-subscriptions .todo-reminders').exists()).toBe(false)
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
   expect(wrapper.find('.today-coming-soon').exists()).toBe(false)
@@ -225,7 +285,8 @@ it('无账号时活动使用单栏，有账号时个人工作台占主栏', asyn
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
-  expect(wrapper.find('.today-account-overview').exists()).toBe(true)
+  expect(wrapper.find('.today-personal').exists()).toBe(true)
+  expect(wrapper.find('.today-account-overview').exists()).toBe(false)
   expect(wrapper.get('.today-overview').classes()).toContain('has-sidebar')
 })
 
@@ -235,7 +296,8 @@ it('尚未录入游戏数据也展示私人备注，私人事项慢请求不阻�
   const pending = deferred()
   listCalendarPrivateItems.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.today-personal > .today-subscriptions').text()).toContain('还没有订阅活动')
+  expect(wrapper.find('.today-personal > .today-subscriptions').exists()).toBe(false)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.today-private-items').text()).toContain('正在读取私人事项')
   expect(wrapper.find('section.data-onboarding').exists()).toBe(true)
   pending.resolve({ items: [{ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '我的计划', date: serverToday(), time: null, note: '先整理备注', version: 0 }] })
@@ -251,8 +313,10 @@ it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个�
   getTrainingWorkspace.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.today-personal > .today-training').text()).toContain('正在读取养成计划')
-  expect(wrapper.get('.today-personal > .today-subscriptions').text()).toContain('还没有订阅活动')
-  expect(wrapper.get('.today-personal > .today-private-items h2').text()).toBe('我的事项与备注')
+  expect(wrapper.find('.today-personal > .today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-personal > .today-private-items').exists()).toBe(false)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
   pending.resolve({ schema_version: 1, account_id: 'a', revision: 1, active_plan_id: 'main', plans: [
     { id: 'main', name: '培养主队', source: 'custom', operator_ids: ['char_001_yangxiu'], excluded_operator_ids: [], targets: {} }
   ] })
@@ -262,7 +326,7 @@ it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个�
   expect(wrapper.get('.today-aside').text()).not.toContain('培养主队')
 })
 
-it('已有部分数据时不展示补齐区和缺项提醒，账号详情仍展示真实状态', async () => {
+it('已有部分数据时不展示补齐区、缺项提醒或账号详情，保留真实录入状态', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { '1001': { star_level: 1, level: 1 } } })
@@ -274,8 +338,9 @@ it('已有部分数据时不展示补齐区和缺项提醒，账号详情仍展�
   expect(getCurrentStarState).toHaveBeenCalled()
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
   expect(wrapper.find('.lobby-status').exists()).toBe(false)
-  expect(wrapper.get('.account-data-summary').text()).toContain('尚未录入')
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
+  expect(wrapper.vm.dataReadiness.star).toBe('empty')
   expect(wrapper.find('.readiness-action').exists()).toBe(false)
 })
 
@@ -287,9 +352,10 @@ it('只缺星石数据时也不展示缺项提醒或可选补齐入口', async (
   const wrapper = render(); await flushPromises()
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
   expect(wrapper.find('.lobby-status').exists()).toBe(false)
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
-  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 种')
-  expect(wrapper.get('.account-data-summary').text()).toContain('星石尚未录入')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
+  expect(wrapper.vm.realSummary.inventoryKindCount).toBe(1)
+  expect(wrapper.vm.dataReadiness.star).toBe('empty')
+  expect(wrapper.find('.account-data-summary').exists()).toBe(false)
 })
 
 it('完整零库存基准不被引导重新录入，部分零录入不宣称完整盘点', async () => {
@@ -301,11 +367,12 @@ it('完整零库存基准不被引导重新录入，部分零录入不宣称完�
   ]) {
     getCurrent.mockResolvedValue(inventory)
     const wrapper = render(); await flushPromises()
-    const card = wrapper.findAll('.account-data-list li').find(card => card.get('span').text() === '库存')
-    expect(card.text()).toContain(label)
-    expect(card.find('.readiness-action').exists()).toBe(false)
+    const item = wrapper.vm.dataSetupItems.find(item => item.key === 'inventory')
+    expect(item.statusLabel).toBe(label)
+    expect(item.status).toBe('ready')
+    expect(wrapper.find('.readiness-action').exists()).toBe(false)
     expect(wrapper.find('.data-onboarding').exists()).toBe(false)
-    if (label.startsWith('已有')) expect(card.text()).not.toContain('完整库存基准')
+    if (label.startsWith('已有')) expect(item.description).not.toContain('完整库存基准')
     wrapper.unmount()
   }
 })
@@ -315,6 +382,8 @@ it('库存元信息不足与读取失败使用不同说明，均不要求重录'
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
   getCurrent.mockResolvedValue({ entries: {} })
   let wrapper = render(); await flushPromises()
+  expect(wrapper.get('.onboarding-kicker').text()).toBe('数据状态待确认')
+  expect(wrapper.vm.isFreshAccount).toBe(false)
   let card = wrapper.findAll('.data-readiness-card').find(card => card.get('h3').text() === '库存')
   expect(card.text()).toContain('录入状态待确认')
   expect(card.text()).not.toContain('读取失败')

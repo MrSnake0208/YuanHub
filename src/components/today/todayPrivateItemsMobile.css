@@ -6,7 +6,7 @@
   .private-list { display: grid; gap: 12px; margin: 12px 0 0; padding: 0; }
   .private-list li { min-width: 0; padding-top: 12px; }
   .private-title { font-size: 15px; overflow-wrap: anywhere; }
-  .private-note { margin-top: 8px; white-space: pre-wrap; }
+  .private-note { margin-top: 4px; white-space: nowrap; }
   a, button { display: inline-flex; align-items: center; min-height: 44px; }
   button { margin-top: 8px; padding: 8px 12px; border-radius: 8px; }
 }

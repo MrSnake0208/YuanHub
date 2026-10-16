@@ -30,7 +30,7 @@ beforeEach(() => {
   inventory.listAgentFavorites.mockImplementation(async account => ({ account_id: account, agent_ids: [] }))
 })
 
-it('shows saved plan targets and complete plain-text notes, including notes outside plans', async () => {
+it('shows a plan overview and a bounded plain-text note with links to full details', async () => {
   const note = '<img src=x onerror=alert(1)>\n' + '长备注'.repeat(250)
   operators.getOperatorAnnotations.mockResolvedValue({ account_id: 'a', items: [
     { operator_id: yangxiu, note }, { operator_id: achan, note: '没有加入清单也保留' }
@@ -41,15 +41,15 @@ it('shows saved plan targets and complete plain-text notes, including notes outs
   expect(wrapper.get('.training-plan-heading h3').text()).toBe('我的主队')
   expect(wrapper.get('.training-current').text()).toBe('当前清单')
   expect(wrapper.text()).toContain('杨修')
-  expect(wrapper.get('.training-target').text()).toBe('等级 60 · 修为 9 · 2 星 · 0 节点')
+  expect(wrapper.find('.training-target').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('等级 100')
-  expect(wrapper.get('.training-note').element.textContent).toBe(note)
+  expect(wrapper.get('.training-note').element.textContent).toBe(note.slice(0, 80) + '…')
   expect(wrapper.get('.training-note').find('img').exists()).toBe(false)
   expect(wrapper.findAll('img')).toHaveLength(1)
   expect(wrapper.get('.operator-avatar img').attributes('src')).toBe('/avatar/char_001_yangxiu.webp')
   expect(wrapper.get('.operator-avatar').classes()).toContain('rarity-r5')
-  expect(wrapper.text()).toContain('其他密探备注')
-  expect(wrapper.text()).toContain('没有加入清单也保留')
+  expect(wrapper.text()).toContain('1 名清单外密探有备注')
+  expect(wrapper.text()).not.toContain('没有加入清单也保留')
   expect(wrapper.findAllComponents(RouterLinkStub)[1].props('to')).toEqual({ path: '/operator', query: { tab: 'current', focus: yangxiu } })
   expect(planner.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(planner.putStaminaSchedule).not.toHaveBeenCalled()
@@ -71,9 +71,13 @@ it('uses public catalog names for favorites, custom plans and notes while preser
   ] })
   const wrapper = render(); await flushPromises()
   const links = wrapper.findAllComponents(RouterLinkStub).slice(1)
-  expect(links.map(link => link.get('.training-member-name').text())).toEqual(['魏延', '杨修（公共图鉴）', '陈琳', '周泰'])
-  expect(links.map(link => link.props('to').query.focus)).toEqual([weiyan, yangxiu, chenlin, zhoutai])
+  expect(links.map(link => link.get('.training-member-name').text())).toEqual(['魏延', '杨修（公共图鉴）'])
+  expect(links.map(link => link.props('to').query.focus)).toEqual([weiyan, yangxiu])
   expect(wrapper.text()).toContain('计划外备注')
+  data.active_plan_id = 'favorites'
+  publish('operator_training_workspace'); await vi.advanceTimersByTimeAsync(180); await flushPromises()
+  expect(wrapper.get('.training-member-name').text()).toBe('陈琳')
+  expect(wrapper.findAllComponents(RouterLinkStub)[1].props('to').query.focus).toBe(chenlin)
 })
 
 it.each(['unavailable', 'invalid', 'invalid entries'])('keeps plans and local names when the public catalog is %s', async kind => {
@@ -90,23 +94,23 @@ it.each(['unavailable', 'invalid', 'invalid entries'])('keeps plans and local na
   expect(wrapper.find('[role=alert]').exists()).toBe(false)
 })
 
-it('puts the current plan first, preserves other plan order and counts membership across plans', async () => {
+it('previews only the current plan while counting all plans and preserving workspace order', async () => {
   const data = workspace('a')
   data.plans.push({ id: 'reserve', name: '后备清单', source: 'custom', operator_ids: [achan], excluded_operator_ids: [], targets: {} })
   planner.getTrainingWorkspace.mockResolvedValue(data)
   inventory.listAgentFavorites.mockResolvedValue({ account_id: 'a', agent_ids: [yangxiu] })
   const wrapper = render(); await flushPromises()
-  expect(wrapper.findAll('.training-plan-heading h3').map(title => title.text())).toEqual(['我的主队', '特别关注', '后备清单'])
+  expect(wrapper.findAll('.training-plan-heading h3').map(title => title.text())).toEqual(['我的主队'])
   expect(wrapper.get('.training-heading-copy .training-hint').text()).toBe('3 个清单 · 3 条培养目标')
-  expect(wrapper.findAll('.training-count').map(count => count.text())).toEqual(['1人', '1人', '1人'])
+  expect(wrapper.findAll('.training-count').map(count => count.text())).toEqual(['1人'])
   expect(wrapper.get('.is-current h3').text()).toBe('我的主队')
   expect(wrapper.findAll('.training-current')).toHaveLength(1)
-  expect(wrapper.findAll('.training-target')[2].text()).toBe('未保存专属目标，详见养成页')
+  expect(wrapper.text()).toContain('另有 2 个清单')
   expect(data.plans.map(plan => plan.id)).toEqual(['favorites', 'main', 'reserve'])
 
   data.active_plan_id = 'favorites'
   publish('operator_training_workspace'); await vi.advanceTimersByTimeAsync(180); await flushPromises()
-  expect(wrapper.findAll('.training-plan-heading h3').map(title => title.text())).toEqual(['特别关注', '我的主队', '后备清单'])
+  expect(wrapper.findAll('.training-plan-heading h3').map(title => title.text())).toEqual(['特别关注'])
   expect(wrapper.get('.is-current h3').text()).toBe('特别关注')
   expect(planner.putTrainingWorkspace).not.toHaveBeenCalled()
 })
@@ -130,8 +134,22 @@ it('resolves live favorites, explicit members and exclusions with the shared pla
   const wrapper = render(); await flushPromises()
   expect(wrapper.findAll('.training-list li')).toHaveLength(1)
   expect(wrapper.text()).toContain('特别关注')
-  expect(wrapper.get('.training-target').text()).toBe('等级 80 · 修为 13')
+  expect(wrapper.find('.training-target').exists()).toBe(false)
+  expect(wrapper.get('.training-member-name').text()).toBe('杨修')
   expect(wrapper.text()).not.toContain('阿蝉')
+})
+
+it('bounds the member preview to three without changing total counts or the management link', async () => {
+  const data = workspace('a')
+  data.plans[1].operator_ids = [yangxiu, achan, 'char_003_sunshangxiang', 'char_004_guojia']
+  planner.getTrainingWorkspace.mockResolvedValue(data)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.training-member')).toHaveLength(3)
+  expect(wrapper.get('.training-count').text()).toBe('4人')
+  expect(wrapper.text()).toContain('1 个清单 · 4 条培养目标')
+  expect(wrapper.text()).toContain('另有 1 名密探')
+  expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/operator', query: { tab: 'current' } })
+  expect(data.plans[1].operator_ids).toHaveLength(4)
 })
 
 it('does not request without login, a known identity or a selected account', async () => {

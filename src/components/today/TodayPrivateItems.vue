@@ -1,10 +1,10 @@
 <template>
-  <section class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
+  <section v-if="!hideEmpty || !identity || !accountId || loading || error || items.length" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
     <header class="private-heading">
       <h2 id="today-private-title">我的事项与备注</h2>
-      <router-link :to="calendarTo()">去日历管理</router-link>
+      <router-link :to="calendarTo()">查看全部</router-link>
     </header>
-    <p class="private-hint">进行中与未来 90 天 · 仅当前账号可见</p>
+    <p class="private-hint"><span v-if="items.length">{{ items.length }} 项事项 · </span>仅当前账号可见</p>
     <p v-if="!identity || !accountId">登录并选择游戏账号后，可查看自己的事项与备注。</p>
     <template v-else>
       <p v-if="loading && !items.length" role="status">正在读取私人事项…</p>
@@ -15,12 +15,13 @@
       </div>
       <p v-if="!loading && !error && !items.length">还没有私人事项，可去我的日历记下计划和备注。</p>
       <ul v-if="items.length" class="private-list">
-        <li v-for="item in items" :key="item.id">
+        <li v-for="item in items.slice(0, 2)" :key="item.id">
           <router-link class="private-title" :to="calendarTo(item)">{{ item.title }}</router-link>
           <p class="private-hint">{{ calendarRangeLabel(item) }}</p>
-          <p v-if="item.note" class="private-note">{{ item.note }}</p>
+          <p v-if="item.note" class="private-note">{{ item.note.length > 80 ? item.note.slice(0, 80) + '…' : item.note }}</p>
         </li>
       </ul>
+      <p v-if="items.length > 2" class="private-hint">还有 {{ items.length - 2 }} 项，可在日历查看。</p>
     </template>
   </section>
 </template>
@@ -32,7 +33,7 @@ import { listCalendarPrivateItems } from '../../api/calendarPrivateItems.js'
 import { privateCalendarItem } from '../../data/calendarPrivateItems.js'
 import { addCalendarDays, calendarRangeLabel, millisecondsUntilServerMidnight, serverToday } from '../../data/activityCalendar.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' } })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const items = ref([]), loading = ref(false), error = ref(''), denied = ref(false)
@@ -89,7 +90,10 @@ p { line-height: 1.7; }
 .private-hint { color: var(--ink-60); }
 .private-list { list-style: none; }
 .private-list li { border-top: 1px solid var(--line); }
+.private-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a, button { color: var(--tea); font-weight: 700; }
+.private-heading a { font-size: 12px; font-weight: 500; text-decoration: none; }
+.private-heading a:hover { text-decoration: underline; }
 .private-error { color: var(--rouge); }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }

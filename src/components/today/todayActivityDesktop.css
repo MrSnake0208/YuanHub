@@ -8,7 +8,8 @@
 .activity-heading p, .activity-message, .activity-detail { font-size: 12px; overflow-wrap: anywhere; }
 .activity-link, .activity-error button { display: inline-flex; min-height: 36px; min-width: 44px; align-items: center; justify-content: center; gap: 8px; padding: 6px 10px; border-radius: 9px; }
 .activity-link svg { flex: 0 0 auto; }
-.activity-counts { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+.activity-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.activity-counts strong { display: block; margin-top: 4px; }
 .activity-counts p { font-size: 13px; }
 .activity-preview { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; }
 .activity-preview li { min-width: 0; padding-top: 8px; }
