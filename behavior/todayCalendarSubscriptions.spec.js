@@ -509,3 +509,26 @@ it('临期活动消退时不抢走提醒区域外的焦点', async () => {
   expect(wrapper.find('.todo-reminders').exists()).toBe(false)
   expect(document.activeElement).toBe(outside)
 })
+
+
+it('隐藏待办保留今日重点，隐藏重点保留待办，不重复读取或修改订阅', async () => {
+  feed([record('临期活动', { checklist: [entry('todo', '完成剧情')] })])
+  render(); await flushPromises()
+  const instance = wrapper.vm.$
+  await wrapper.setProps({ showChecklist: false })
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
+  expect(wrapper.get('.todo-reminders').text()).toContain('临期活动')
+  await wrapper.setProps({ showChecklist: true, showReminders: false })
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(wrapper.get('.todo-list').text()).toContain('完成剧情')
+  await wrapper.setProps({ showChecklist: false, showReminders: false })
+  expect(wrapper.find('.todo-reminders').exists()).toBe(false)
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
+  await wrapper.setProps({ showChecklist: true, showReminders: true })
+  expect(wrapper.vm.$).toBe(instance)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(calendarSubscriptionSummary).toHaveBeenCalledTimes(1)
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+  expect(setCalendarSubscription).not.toHaveBeenCalled()
+  expect(setCalendarCompletion).not.toHaveBeenCalled()
+})

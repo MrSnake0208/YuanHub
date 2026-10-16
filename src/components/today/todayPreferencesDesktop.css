@@ -1,0 +1,14 @@
+@media (min-width: 768px) {
+  .today-preferences-mask { display: grid; place-items: center; padding: 24px; }
+  .today-preferences { display: grid; gap: 16px; width: min(420px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 24px; border-radius: 16px; }
+  .preferences-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .preferences-heading button { display: grid; place-items: center; width: 36px; height: 36px; flex: none; }
+  .preferences-modes, .preferences-footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .preferences-modes { padding: 3px; }
+  .preferences-modes button, .preferences-footer button { min-height: 40px; padding: 6px 8px; }
+  .preferences-footer { gap: 12px; }
+  .preferences-module { display: grid; grid-template-columns: 24px minmax(0, 1fr) 24px; align-items: center; gap: 12px; padding: 12px; }
+  .preferences-module span { display: grid; gap: 2px; }
+  .preferences-module input { width: 18px; height: 18px; }
+  .preferences-error { display: grid; justify-items: start; gap: 6px; }
+}

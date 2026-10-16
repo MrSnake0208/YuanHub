@@ -1,5 +1,5 @@
 <template>
-  <section v-if="!hideEmpty || !snapshot || loading || error || plans.length || otherNotes.length" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
+  <section v-if="visible && (!hideEmpty || !snapshot || loading || error || plans.length || otherNotes.length)" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
     <header class="training-heading">
       <div class="training-heading-copy">
         <h2 id="today-training-title"><UsersRound :size="19" aria-hidden="true" /> 我的养成计划</h2>
@@ -58,7 +58,7 @@ import { trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { operatorHuajiLabel } from '../../utils/operatorHuaji.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean })
+const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const catalog = new Map(AGENT_CATALOG.map(entry => [entry.id, entry]))

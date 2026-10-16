@@ -6,5 +6,5 @@
   .today-overview, .today-workspace { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; }
   .today-column, .today-activities-target { display: contents; }
   .today-reminders-target { min-width: 0; }
-  .today-reminders-target:not(:has(> details)), .today-workspace:not(:has(section)) { display: none; }
+  .today-workspace:not(:has(section)), .today-reminders-target:not(:has(> details)), .today-workspace:not(:has(section)) { display: none; }
 }

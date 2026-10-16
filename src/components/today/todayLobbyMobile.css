@@ -8,6 +8,8 @@
   .lobby-heading time { font-size: 11px; }
   .lobby-context { min-width: 0; max-width: 100%; justify-self: end; }
   .lobby-actions { min-width: 0; }
+  .lobby-header:has(.today-customize) { grid-template-columns: auto minmax(0, 1fr); }
+  .lobby-header:has(.today-customize) .lobby-actions { grid-column: 1 / -1; justify-self: end; }
   .lobby-scene { position: relative; display: flex; align-items: center; min-height: 72px; }
   .lobby-copy { position: relative; z-index: 2; width: calc(100% - 88px); min-width: 0; padding: 8px 0; }
   .lobby-greeting { font-size: 22px; letter-spacing: .03em; }
