@@ -864,15 +864,14 @@ fieldset { border: 0; }
   .reward-receipt { border-left: 0; border-top: 1px solid var(--line); }
 }
 
-.training-toolbar h4 { margin: 0; color: var(--ink); }
+.training-toolbar h4 { color: var(--ink); }
 .training-settings-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px -12px var(--tea); }
 .training-level-settings { border: 0; border-radius: 0; }
 .training-level-settings summary { color: var(--tea); list-style: none; }
-.training-level-settings summary::-webkit-details-marker, .training-help summary::-webkit-details-marker { display: none; }
 .training-level-settings[open] summary > svg, .training-help[open] summary svg { transform: rotate(180deg); }
 .training-selection { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .training-group-options { background: var(--cream); border-radius: 9px; }
-.training-group-options .outline-button { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-60); font-weight: 600; }
+.training-group-options .outline-button { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-60); }
 .training-group-options .outline-button[aria-pressed="true"] { color: var(--tea); background: var(--surface); border-color: var(--line); box-shadow: 0 1px 3px -2px var(--tea); }
 .training-stepper { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .training-stepper .outline-button { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
@@ -881,7 +880,7 @@ fieldset { border: 0; }
 .training-stepper input:focus-visible { outline: none; }
 .training-stepper button:focus-visible { outline: 2px solid var(--tea); outline-offset: -4px; }
 .training-reward-chip { color: var(--ink-60); }
-.training-reward-chip strong { color: var(--tea); font-family: var(--font-d); }
+.training-reward-chip strong { color: var(--tea); }
 .training-entry-actions .add-training { border-color: var(--reward-gold-soft); background: var(--cream); color: var(--tea); box-shadow: none; }
 .training-help summary { color: var(--ink-60); cursor: pointer; list-style: none; }
 .training-help summary > span:last-child { color: var(--tea); }

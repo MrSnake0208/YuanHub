@@ -30,11 +30,13 @@ function declarations(owner, end, selector) {
   return Object.fromEntries(values)
 }
 
-test('today desktop owns expanded regions while mobile owns compact regions independently', () => {
-  const desktopScene = parseFloat(declarations('todayLobby', 'Desktop', '.lobby-scene')['min-height'])
-  const mobileScene = parseFloat(declarations('todayLobby', 'Mobile', '.lobby-scene')['min-height'])
-  assert.ok(desktopScene > mobileScene)
-  assert.ok(desktopScene <= 180 && mobileScene <= 140, 'overview scenes leave space for summaries')
+test('today device layouts keep compact scenes and own their regions independently', () => {
+  for (const [end, maxHeight] of [['Desktop', 180], ['Mobile', 140]]) {
+    const scene = parseFloat(declarations('todayLobby', end, '.lobby-scene')['min-height'])
+    const portrait = parseFloat(declarations('todayLobby', end, '.lobby-portrait').height)
+    assert.ok(scene > 0 && scene <= maxHeight, `${end} scene leaves space for summaries`)
+    assert.ok(portrait >= scene, `${end} portrait fills the scene height`)
+  }
   assert.equal(declarations('todayOnboarding', 'Desktop', '.data-readiness-grid')['grid-template-columns'], 'repeat(3, minmax(0, 1fr))')
   assert.equal(declarations('todayOnboarding', 'Mobile', '.data-readiness-grid')['grid-template-columns'], '1fr')
   assert.equal(declarations('todayOnboarding', 'Desktop', '.account-management-card')['grid-template-columns'], 'minmax(0, 1fr) auto')
