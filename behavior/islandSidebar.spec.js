@@ -364,6 +364,20 @@ it('常用功能保持双端一致顺序和直达，不增加分类标题或账�
   expect(wrapper.get('.mobile-more').attributes('open')).toBeUndefined()
 })
 
+it.each([false, true])('软下线后游客/管理员双端均无大饼入口（管理员=%s）', async admin => {
+  if (admin) Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'admin-a' }, adminAccess: { superAdmin: true }, adminAccessLoaded: true })
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper).some(path => typeof path === 'string' && path.startsWith('/co-creation'))).toBe(false)
+  expect(wrapper.text()).not.toContain('大饼中心')
+  for (const selector of ['.sidebar-more', '.mobile-more']) {
+    const detail = wrapper.get(selector)
+    await detail.get('summary').trigger('click')
+    expect(detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/changelog', '/beta', '/install'])
+  }
+  wrapper.unmount()
+})
+
 it('反馈直达入口不显示管理员未读，更多不重复展示反馈，双端账号与通知可达', async () => {
   Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a', user_name: '测试殿下' } })
   const wrapper = render()
@@ -390,7 +404,7 @@ it('反馈直达入口不显示管理员未读，更多不重复展示反馈，�
     await detail.get('summary').trigger('click')
     expect(detail.attributes('open')).toBeDefined()
     const paths = detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    expect(paths).toEqual(['/co-creation', '/changelog', '/beta', '/install'])
+    expect(paths).toEqual(['/changelog', '/beta', '/install'])
   }
   feedbackUnreadState.count = 0
   await flushPromises()
@@ -460,7 +474,7 @@ it('更多不再打开全局教程选择器；内测群保持原动作', async (
   expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
 })
 
-it.each(['/manage', '/manage/', '/operator/admin', '/operator/admin/', '/calendar/admin', '/calendar/admin/', '/feedback/manage', '/feedback/admin', '/co-creation/admin', '/admin/changelog'])('%s 双端只归属管理，不高亮玩家入口或更多', async path => {
+it.each(['/manage', '/manage/', '/operator/admin', '/operator/admin/', '/calendar/admin', '/calendar/admin/', '/feedback/manage', '/feedback/admin', '/admin/changelog'])('%s 双端只归属管理，不高亮玩家入口或更多', async path => {
   Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'admin-a' }, isAdmin: true, adminAccess: { superAdmin: true }, adminAccessLoaded: true })
   Object.assign(currentRoute, { path, fullPath: path })
   const wrapper = render()
