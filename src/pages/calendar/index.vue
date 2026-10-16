@@ -355,7 +355,8 @@ watch(() => [items.value, subscriptions.records.value], scheduleBoundary)
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .calendar-public .calendar-header h1 { color: var(--tea); }
-.calendar-mine-view-target { display: none; }
+/* 手机目标承接视图工具，仅桌面隐藏空占位。 */
+@media (min-width: 768px) { .calendar-mine-view-target { display: none; } }
 </style>
 <style scoped src="./calendarPageDesktop.css"></style>
 <style scoped src="./calendarPageMobile.css"></style>

@@ -240,19 +240,22 @@
 .calendar-public .calendar-description { overflow-wrap: anywhere; white-space: pre-wrap; }
 }
 
-/* 我的日历手机端专属排版；公开模式及 >=768px 沿用原布局。 */
+/* 手机两种范围共用工具排版，私人事项单独占行，避免撑宽筛选所在列。 */
 @media (max-width: 767px) {
-  .calendar-mine-mobile .calendar-subscription-toolbar { row-gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-  .calendar-mine-mobile .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .calendar-mine-mobile .calendar-subscription-toolbar > .calendar-chips button[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 65%, var(--surface)); }
-  .calendar-mine-mobile .calendar-view-tools { display: flex; gap: 8px; }
-  .calendar-mine-mobile .calendar-view-switcher { flex: 1; min-width: 0; }
-  .calendar-mine-mobile .calendar-view-switcher button { padding-inline: 4px; }
-  .calendar-mine-mobile .calendar-today-action { flex: none; padding-inline: 8px; }
-  .calendar-mine-mobile .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; min-width: 0; }
-  .calendar-mine-mobile .account-switcher .context-selector { display: flex; width: 100%; min-width: 0; padding: 8px 6px; }
-  .calendar-mine-mobile .account-switcher .account-name { min-width: 0; }
-  .calendar-mine-mobile .calendar-private-add { grid-column: 2; grid-row: 3; min-height: 38px; padding: 6px 8px; font-size: 13px; white-space: nowrap; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar { gap: 6px 8px; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1; grid-row: 1; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-filter-trigger { grid-column: 2; grid-row: 1; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) :is(.calendar-public-view-target, .calendar-mine-view-target, .calendar-view-tools) { display: contents; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-view-switcher { grid-column: 1 / -1; grid-row: 2; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-today-action { grid-column: 2; grid-row: 3; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; min-width: 0; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .account-switcher .context-selector { display: flex; width: 100%; min-width: 0; min-height: 36px; padding: 6px 4px; gap: 4px; justify-content: flex-start; background: transparent; border-color: transparent; font-size: 12px; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .account-switcher .account-name { min-width: 0; max-width: none; overflow: visible; overflow-wrap: anywhere; white-space: normal; text-overflow: clip; }
+  .calendar-mine-mobile .calendar-private-add { grid-column: 1 / -1; grid-row: 4; justify-self: end; min-width: 0; min-height: 38px; padding: 6px 8px; font-size: 13px; }
+}
+
+/* 我的日历手机端专属内容排版。 */
+@media (max-width: 767px) {
   .calendar-mine-mobile .calendar-filter-state { flex-wrap: wrap; gap: 4px 8px; }
   .calendar-mine-mobile .calendar-filter-summary { display: none; }
   .calendar-mine-mobile .calendar-active-filters { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -286,15 +289,6 @@
 
 /* 全部活动手机展示：不使用同时覆盖 mine 的 .calendar-public 作为隔离边界。 */
 @media (max-width: 767px) {
-  .calendar-public-mobile .calendar-subscription-toolbar { gap: 6px 8px; }
-  .calendar-public-mobile .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .calendar-public-mobile .calendar-public-view-target,
-  .calendar-public-mobile .calendar-view-tools { display: contents; }
-  .calendar-public-mobile .calendar-view-switcher { grid-column: 1 / -1; grid-row: 2; }
-  .calendar-public-mobile .calendar-today-action { grid-column: 2; grid-row: 3; }
-  .calendar-public-mobile .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; }
-  .calendar-public-mobile .account-switcher .context-selector { width: 100%; min-width: 0; min-height: 36px; padding: 6px 4px; gap: 4px; justify-content: flex-start; background: transparent; border-color: transparent; font-size: 12px; }
-  .calendar-public-mobile .account-switcher .account-name { min-width: 0; max-width: none; overflow: visible; overflow-wrap: anywhere; white-space: normal; text-overflow: clip; }
   .calendar-public-mobile .calendar-filter-state { flex-wrap: wrap; gap: 4px 8px; }
   .calendar-public-mobile .calendar-filter-summary { display: none; }
   .calendar-public-mobile .calendar-active-filters { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
