@@ -18,7 +18,7 @@
 .training-fields input, .training-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; }
 .training-fields .row-error { margin: 0; }
 .training-group-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; }
-.training-group-options .outline-button { min-width: 0; min-height: 36px; padding: 7px 8px; font-size: 12px; }
+.training-group-options .outline-button { min-width: 0; min-height: 36px; padding: 7px 8px; font-size: 12px; font-weight: 600; }
 .training-stepper { display: flex; min-width: 0; overflow: hidden; }
 .training-stepper .outline-button { flex: 0 0 32px; min-width: 32px; min-height: 42px; padding: 6px; }
 .training-fields .training-stepper input { flex: 1; width: 0; min-height: 42px; text-align: center; padding: 8px 2px; }
@@ -26,6 +26,7 @@
 .training-entry-actions .add-training { margin-top: 0; min-height: 36px; padding: 8px 12px; }
 .training-draft-rewards { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 14px; font-size: 12px; }
 .training-reward-chip { display: inline-flex; align-items: center; gap: 6px; }
+.training-reward-chip strong { font-family: var(--font-d); }
 .training-draft-rewards .reward-item-icon { flex-basis: 24px; width: 24px; height: 24px; }
 .training-selection > .shortcut-note { font-size: 11px; margin-top: 10px; }
 .training-records { margin-top: 18px; }
@@ -37,10 +38,11 @@
 .training-records li > div { display: flex; gap: 14px; }
 .training-records .text-button { min-height: 32px; }
 .training-toolbar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.training-toolbar h4 { font-size: 18px; }
+.training-toolbar h4 { margin: 0; font-size: 18px; }
 .training-level-settings { margin: 0; padding: 0; }
 .training-settings-panel { position: absolute; inset-inline: 0; top: calc(100% + 8px); z-index: var(--z-popover); padding: 12px; }
 .training-level-settings summary { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 0 4px 8px; font-size: 12px; }
+.training-level-settings summary::-webkit-details-marker, .training-help summary::-webkit-details-marker { display: none; }
 .training-level-settings summary span { margin-left: 12px; }
 .training-level-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap: 8px; margin-top: 12px; }
 .training-level-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; font-size: 12px; }
