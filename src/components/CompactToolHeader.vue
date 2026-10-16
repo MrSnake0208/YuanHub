@@ -7,13 +7,15 @@
           <p v-if="description" class="compact-tool-description">{{ description }}</p>
         </div>
         <div v-if="$slots.account" class="compact-tool-account"><slot name="account" /></div>
-        <div v-if="$slots.help || $slots.actions" class="compact-tool-actions">
+        <div v-if="$slots.help || $slots.actions || $slots['primary-actions']" class="compact-tool-actions">
+          <slot name="primary-actions" />
           <button v-if="$slots.help" type="button" class="compact-tool-help" :aria-expanded="helpOpen" :aria-controls="helpId" @click="helpOpen = !helpOpen">
             <CircleHelp :size="15" aria-hidden="true" />帮助
           </button>
           <slot name="actions" />
         </div>
       </div>
+      <slot name="summary" />
       <div v-if="helpOpen" :id="helpId" class="compact-tool-help-content"><slot name="help" /></div>
     </div>
   </header>

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
+import * as accountShareApi from '../src/api/accountShare.js'
 import * as plannerApi from '../src/api/operatorPlanner.js'
 import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
 import { getCurrentStarState } from '../src/api/starState.js'
@@ -35,11 +36,13 @@ vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
   return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
 })
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
+vi.mock('../src/api/accountShare.js', () => ({ getAccountShare: vi.fn(), setAccountShareScope: vi.fn(), regenerateAccountShare: vi.fn(), revokeAccountShare: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
-vi.mock('../src/store/activeAccount.js', async () => {
+vi.mock('../src/store/activeAccount.js', async importOriginal => {
+  const actual = await importOriginal()
   const { reactive } = await import('vue')
-  return { activeAccount: reactive({
+  return { ...actual, activeAccount: reactive({
     id: 'acc', gameFor: () => '如鸢', set: vi.fn(), setGame: vi.fn(), syncAccounts: vi.fn(),
   }) }
 })
@@ -417,8 +420,42 @@ it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
+it('顶部分享入口复用管理面板，仅展开且状态跟随当前账号', async () => {
+  operatorApi.listOperatorAccounts.mockResolvedValue([
+    { id: 'acc', name: '测试账号', game: '如鸢' },
+    { id: 'other-acc', name: '另一个账号', game: '如鸢' },
+  ])
+  accountShareApi.getAccountShare.mockImplementation(async id => ({
+    share_code: id === 'acc' ? 'test-code' : '', scopes: id === 'acc' ? ['operator'] : [],
+  }))
+  const wrapper = renderPage({ attachTo: document.body }, { AccountWorkspace: false, OperatorShareManager: false })
+  await flushPromises()
+  const header = wrapper.get('.roster-header')
+  const share = header.get('.roster-share')
+  expect(share.text()).toContain('分享 BOX')
+  expect(share.text()).toContain('已开启')
+  expect(share.attributes('aria-expanded')).toBe('false')
+  expect(header.get('.roster-view-box').attributes('to')).toBe('/operator/share')
+  expect(header.get('.tool-more-content').text()).not.toMatch(/分享|查看他人/)
+  expect(header.text()).not.toContain('管理当前账号的密探档案')
+  await share.trigger('click')
+  expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(true)
+  expect(share.attributes('aria-expanded')).toBe('true')
+  await share.trigger('click')
+  expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(false)
+  activeAccount.id = 'other-acc'
+  await flushPromises()
+  expect(accountShareApi.getAccountShare).toHaveBeenLastCalledWith('other-acc')
+  expect(share.text()).toContain('未分享')
+  expect(share.text()).not.toContain('已开启')
+  expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
+  expect(accountShareApi.regenerateAccountShare).not.toHaveBeenCalled()
+  expect(accountShareApi.revokeAccountShare).not.toHaveBeenCalled()
+})
+
 it('更多筛选仅统计高级条件，关闭面板仍保留条件与结果', async () => {
-  const wrapper = renderPage()
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
+  const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
   const panel = wrapper.get('.catalog-tools')
   const more = panel.get('.dossier-more')

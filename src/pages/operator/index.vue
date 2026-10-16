@@ -3,25 +3,35 @@
     <IslandSidebar />
 
     <main id="main-content" class="operator-main">
-      <CompactToolHeader title="密探名册" description="管理当前账号的密探档案">
+      <CompactToolHeader class="roster-header" title="密探名册">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" :switch-disabled="accountSwitchBusy"
             switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
+        <template #primary-actions>
+          <button type="button" class="btn primary roster-share" :aria-expanded="!accountWorkspaceCompact" aria-controls="operator-account-workspace"
+            :title="currentAccountName + ' · ' + ledgerShareStatus" @click="accountWorkspaceCompact = !accountWorkspaceCompact">
+            <Share2 :size="16" aria-hidden="true" />分享 BOX <small>{{ ledgerShareStatus }}</small>
+          </button>
+          <router-link class="btn ghost roster-view-box" to="/operator/share"><Users :size="16" aria-hidden="true" />查看他人 BOX</router-link>
+        </template>
         <template #actions>
-          <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
-              <router-link class="act-btn ghost" to="/operator/share">查看他人 BOX</router-link>
-              <button type="button" class="act-btn ghost workspace-tabs-toggle" :aria-expanded="!accountWorkspaceCompact" aria-controls="operator-account-workspace"
-                @click="accountWorkspaceCompact = !accountWorkspaceCompact">{{ accountWorkspaceCompact ? '分享与数据交换' : '收起分享与数据交换' }}</button>
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
+              <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
             </div>
           </details>
+        </template>
+        <template #summary>
+          <div class="tool-summary roster-summary" aria-label="密探概览">
+            <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位</span><span>{{ manifestPercent }}</span>
+            <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
+          </div>
         </template>
         <template #help>
           <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
@@ -32,10 +42,6 @@
       <section>
         <div class="wrap">
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" />
-          <div class="tool-summary" aria-label="密探概览">
-            <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
-            <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
-          </div>
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
             <p>{{ currentAccountName }} · 可靠分区可能已保存，待核内容不会自动当作全部保存成功。点「查看并修改」可用字段表单核对，无需编辑代码。</p>
@@ -130,7 +136,6 @@
             :error="accountError"
           >
             <template #summary-actions>
-              <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
               <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="hideBackupImport">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
             </template>
             <template #side>
@@ -2952,12 +2957,14 @@ import {
   Pencil,
   RotateCcw,
   Save,
+  Share2,
   ScanLine,
   SlidersHorizontal,
   Star,
   Swords,
   Target,
   Upload,
+  Users,
   X,
   Plus,
   Sparkles,
@@ -9261,7 +9268,7 @@ onBeforeUnmount(function () {
 /* Page-owned workspaces only; other segmented controls keep their own hierarchy. */
 .page-operator .operator-tabs.tool-workspace-tabs {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   box-shadow: none;
   backdrop-filter: none;
@@ -12515,6 +12522,12 @@ onBeforeUnmount(function () {
 
 /* Page owns metadata and filters; cards retain their existing presentation. */
 .catalog-entry { border-radius: 8px; text-decoration: none; }
+.roster-header .btn { border-radius: 10px; text-decoration: none; }
+.roster-share small { font-size: 10px; font-weight: 500; }
+.catalog-tools :deep(.current-filter-head) { background: transparent; }
+.catalog-tools :deep(.pf-status-row .mf-filter) { background: transparent; }
+.catalog-tools :deep(.pf-status-row button) { border: 1px solid transparent; background: color-mix(in srgb, var(--tea) 4%, var(--surface)); }
+.catalog-tools :deep(.pf-status-row button.on) { border-color: var(--accent); background: var(--cream); color: var(--tea); box-shadow: inset 0 -1px var(--tea); }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
