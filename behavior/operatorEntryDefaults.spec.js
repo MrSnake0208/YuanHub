@@ -17,9 +17,9 @@ import { dialog } from '../src/utils/dialog.js'
 import * as features from '../src/config/features.js'
 import { installViewport } from '../test-support/viewport.js'
 
-const navigation = vi.hoisted(() => ({ query: {}, path: '/operator' }))
+const navigation = vi.hoisted(() => ({ query: {}, path: '/operator', push: vi.fn().mockResolvedValue(), replace: vi.fn().mockResolvedValue() }))
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: vi.fn().mockResolvedValue(), push: vi.fn().mockResolvedValue() }),
+  useRouter: () => ({ replace: navigation.replace, push: navigation.push }),
   useRoute: () => navigation,
   onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {},
 }))
@@ -53,6 +53,8 @@ const operator = { id: 'op', name: '测试密探', rarity: 3, games: ['如鸢'] 
 beforeEach(() => {
   vi.clearAllMocks()
   navigation.query = {}
+  navigation.push.mockResolvedValue()
+  navigation.replace.mockResolvedValue()
   auth.isLoggedIn = true
   activeAccount.id = 'acc'
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
@@ -437,7 +439,8 @@ it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随�
   expect(share.text()).toContain('分享 BOX')
   expect(share.text()).toContain('已开启')
   expect(share.attributes('aria-expanded')).toBe('false')
-  expect(header.get('.roster-view-box').attributes('to')).toBe('/operator/share')
+  expect(header.get('.roster-view-box').element.tagName).toBe('BUTTON')
+  expect(header.get('.roster-view-box').attributes('aria-haspopup')).toBe('dialog')
   expect(header.get('.tool-more-content').text()).not.toMatch(/分享|查看他人/)
   expect(header.text()).not.toContain('管理当前账号的密探档案')
   const content = wrapper.get('#operator-panel-catalog').html()
@@ -1270,4 +1273,46 @@ it.each([24, 25])('快捷觉醒通知：同步stage%s的状态与两种库存，
   // 人工校正回五星不扣料，库存应保留事件回传余额。
   await wrapper.get('[aria-label="快捷设置星级与觉醒"]').setValue('5')
   expect(wrapper.get('.ledger-heart-stock').text()).toBe('20/100')
+})
+
+
+it.each(['catalog', 'current', 'tracking'])('查看他人 BOX 全流程后保留名册 %s 标签、筛选、实例、账号及滚动', async tab => {
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  vi.spyOn(window, 'scrollY', 'get').mockReturnValue(560)
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
+  operatorApi.viewOperatorShare.mockResolvedValue({ game: '如鸢', entries: { op: { level: 50 } } })
+  const wrapper = renderPage({ attachTo: document.body })
+  await flushPromises()
+  const search = wrapper.get('.catalog-tools input[type="search"]')
+  await search.setValue('测试密探')
+  await wrapper.get('.catalog-tools .dossier-more').trigger('click')
+  await wrapper.get('.catalog-tools .rarity-filter button:last-child').trigger('click')
+  await wrapper.get('#operator-tab-' + tab).trigger('click'); await flushPromises()
+  const catalog = wrapper.get('#operator-panel-catalog').element
+  const before = catalog.innerHTML
+  const selected = wrapper.get('#operator-tab-' + tab)
+  const entry = wrapper.get('.roster-view-box')
+  entry.element.focus()
+  navigation.push.mockClear(); navigation.replace.mockClear()
+  await entry.trigger('click'); await flushPromises()
+  expect(entry.attributes('aria-expanded')).toBe('true')
+  const modal = new DOMWrapper(document.getElementById('operator-box-viewer'))
+  await modal.get('input').setValue('https://yuan.example/operator/share/test-code')
+  await modal.get('form').trigger('submit'); await flushPromises()
+  expect(modal.get('article[role="listitem"]').text()).toContain('测试密探')
+  await modal.get('[aria-label="关闭查看他人 BOX"]').trigger('click'); await flushPromises()
+  expect(document.getElementById('operator-box-viewer')).toBeNull()
+  expect(entry.attributes('aria-expanded')).toBe('false')
+  expect(selected.attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('#operator-panel-catalog').element).toBe(catalog)
+  expect(catalog.innerHTML).toBe(before)
+  expect(search.element.value).toBe('测试密探')
+  expect(document.activeElement).toBe(entry.element)
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 560)
+  expect(activeAccount.id).toBe('acc')
+  expect(activeAccount.set).not.toHaveBeenCalled()
+  expect(navigation.push).not.toHaveBeenCalled(); expect(navigation.replace).not.toHaveBeenCalled()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(operatorApi.putOperatorGrowthTarget).not.toHaveBeenCalled()
 })

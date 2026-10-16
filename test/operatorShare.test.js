@@ -30,7 +30,9 @@ function read(rel) {
 }
 
 const routes = read('src/router/routes.js')
-const sharePage = read('src/pages/operator/share.vue')
+const shareShell = read('src/pages/operator/share.vue')
+const shareContent = read('src/components/operator/OperatorShareContent.vue')
+const sharePage = shareShell + shareContent
 const operatorPage = read('src/pages/operator/index.vue')
 const filterDossier = read('src/components/operator/OperatorFilterDossier.vue')
 const sharedLedgerStyles = read('src/styles/operator-ledger-card.v1.css')
@@ -250,4 +252,13 @@ test('分享保留弃置和未知状态，不隐藏成员或改变练度排序',
 test('v3 schema 明确包含四种养成状态', () => {
   const schema = JSON.parse(read('docs/schemas/operator-growth-exchange-v3.schema.json'))
   assert.deepEqual(schema.$defs.growthState.enum, ['active', 'graduated', 'skip', 'discarded'])
+})
+
+test('公开内容共用且无页面壳、路由或私人写操作，弹窗仅管理本地代码', () => {
+  const viewer = read('src/components/operator/OperatorBoxViewer.vue')
+  assert.match(shareShell, /<OperatorShareContent/)
+  assert.match(viewer, /<OperatorShareContent/)
+  assert.doesNotMatch(shareContent, /IslandSidebar|SiteFooter|main-content|useRouter|router\.push|<iframe/)
+  assert.doesNotMatch(viewer, /router|<iframe|main-content/)
+  assert.match(viewer, /token = \$event.token/)
 })
