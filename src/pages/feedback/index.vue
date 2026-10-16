@@ -135,7 +135,7 @@
     </main>
 
     <Teleport to="body">
-      <div v-if="showNewForm" class="modal-mask" role="presentation" @click.self="closeNewFeedback">
+      <div v-if="showNewForm" class="modal-mask feedback-new-mask" :style="newFormViewportStyle" role="presentation" @click.self="closeNewFeedback">
         <div ref="newFormPanel" class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" tabindex="-1" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
             <div>
@@ -144,42 +144,44 @@
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
           <form @submit.prevent="submitFeedback">
-            <p class="feedback-submission-note">遇到问题，或者有什么新想法？直接告诉我们就好。</p>
-            <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
-            <div class="feedback-form-grid">
-              <label>
-                <span>反馈板块 <em>*</em></span>
-                <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
-                  <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : '正在加载反馈板块' }}</option>
-                  <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
-                </select>
-              </label>
-              <label>
-                <span>反馈内容 <em>*</em></span>
-                <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="描述遇到的问题、希望改进的地方，或者你的想法……" required @paste="handleNewMediaPaste"></textarea>
-                <small>{{ newFeedback.content.length }} / 1000</small>
-              </label>
-              <FeedbackAttachmentPicker :media="newMedia" :busy="submitting" />
-              <label class="feedback-consent">
-                <input v-model="newFeedback.publicConsent" name="public-consent" type="checkbox" @change="formError = ''; scheduleSimilarSearch()" />
-                <span>允许管理员整理后发布到反馈广场<small>默认仅你与管理员可见。勾选后仍需审核，原始正文、附件与账号信息不会直接公开。</small></span>
-              </label>
-              <label v-if="newFeedback.publicConsent">
-                <span>公开标题 <em>*</em></span>
-                <input v-model="newFeedback.title" class="feedback-form-control" type="text" required maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或想法" @input="formError = ''; scheduleSimilarSearch()" />
-                <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
-              </label>
-              <SimilarFeedbackList v-if="newFeedback.publicConsent" :items="similarItems" :loading="similarLoading" @support="handleSimilarSupport" />
-              <details class="feedback-optional-settings">
-                <summary>客户端信息（可选{{ newFeedback.clientInfoConsent ? '，已授权' : '' }}）</summary>
-                <label class="feedback-consent">
-                  <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
-                  <span>允许附加浏览器、操作系统和 IP 地址信息，帮助定位问题<small>仅用于管理员排查，与公开授权独立；默认不上传这些信息。</small></span>
+            <div ref="newFormBody" class="feedback-new-body" @focusin="revealNewFeedbackControl">
+              <p class="feedback-submission-note">遇到问题，或者有什么新想法？直接告诉我们就好。</p>
+              <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
+              <div class="feedback-form-grid">
+                <label>
+                  <span>反馈板块 <em>*</em></span>
+                  <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
+                    <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : '正在加载反馈板块' }}</option>
+                    <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+                  </select>
                 </label>
-              </details>
+                <label>
+                  <span>反馈内容 <em>*</em></span>
+                  <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="描述遇到的问题、希望改进的地方，或者你的想法……" required @paste="handleNewMediaPaste"></textarea>
+                  <small>{{ newFeedback.content.length }} / 1000</small>
+                </label>
+                <FeedbackAttachmentPicker :media="newMedia" :busy="submitting" />
+                <label class="feedback-consent">
+                  <input v-model="newFeedback.publicConsent" name="public-consent" type="checkbox" @change="formError = ''; scheduleSimilarSearch()" />
+                  <span>允许管理员整理后发布到反馈广场<small>默认仅你与管理员可见。勾选后仍需审核，原始正文、附件与账号信息不会直接公开。</small></span>
+                </label>
+                <label v-if="newFeedback.publicConsent">
+                  <span>公开标题 <em>*</em></span>
+                  <input v-model="newFeedback.title" class="feedback-form-control" type="text" required maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或想法" @input="formError = ''; scheduleSimilarSearch()" />
+                  <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
+                </label>
+                <SimilarFeedbackList v-if="newFeedback.publicConsent" :items="similarItems" :loading="similarLoading" @support="handleSimilarSupport" />
+                <details class="feedback-optional-settings">
+                  <summary>客户端信息（可选{{ newFeedback.clientInfoConsent ? '，已授权' : '' }}）</summary>
+                  <label class="feedback-consent">
+                    <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
+                    <span>允许附加浏览器、操作系统和 IP 地址信息，帮助定位问题<small>仅用于管理员排查，与公开授权独立；默认不上传这些信息。</small></span>
+                  </label>
+                </details>
+              </div>
+              <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
+              <div v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</div>
             </div>
-            <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
-            <div v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</div>
             <div class="modal-foot">
               <button type="button" class="feedback-button" @click="closeNewFeedback">取消</button>
               <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading || newMedia.optimizing || !categoryOptions.length">
@@ -248,10 +250,41 @@ const detailLoading = ref(false)
 const detailError = ref('')
 const showNewForm = ref(false)
 const newFormPanel = ref(null)
+const newFormBody = ref(null)
+const newFormViewportStyle = ref({})
 useModalFocus(() => showNewForm.value, newFormPanel, {
   initialFocus: () => newFormPanel.value?.querySelector('select'),
   onEscape: closeNewFeedback
 })
+function revealNewFeedbackControl() {
+  nextTick(() => {
+    const body = newFormBody.value, target = document.activeElement
+    if (!showNewForm.value || !body?.contains(target)) return
+    const bounds = body.getBoundingClientRect(), rect = target.getBoundingClientRect()
+    // 只滚动正文，避免将背景页面或整个弹窗推到键盘后面。
+    if (rect.top < bounds.top + 12 || rect.height > bounds.height - 24) body.scrollTop += rect.top - bounds.top - 12
+    else if (rect.bottom > bounds.bottom - 12) body.scrollTop += rect.bottom - bounds.bottom + 12
+  })
+}
+watch(showNewForm, (open, _, onCleanup) => {
+  if (!open) return
+  const viewport = window.visualViewport
+  const updateViewport = () => {
+    const height = viewport?.height || window.innerHeight
+    newFormViewportStyle.value = { top: `${viewport?.offsetTop || 0}px`, height: `${height}px`, bottom: 'auto', '--feedback-new-viewport-height': `${height}px` }
+    revealNewFeedbackControl()
+  }
+  updateViewport()
+  window.addEventListener('resize', updateViewport)
+  viewport?.addEventListener('resize', updateViewport)
+  viewport?.addEventListener('scroll', updateViewport)
+  onCleanup(() => {
+    window.removeEventListener('resize', updateViewport)
+    viewport?.removeEventListener('resize', updateViewport)
+    viewport?.removeEventListener('scroll', updateViewport)
+    newFormViewportStyle.value = {}
+  })
+}, { flush: 'post' })
 const submitting = ref(false)
 const formError = ref('')
 const replyTarget = ref('')

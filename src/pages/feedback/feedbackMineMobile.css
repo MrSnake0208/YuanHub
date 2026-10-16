@@ -43,21 +43,24 @@
   .feedback-form-grid .full { grid-column: auto; }
 }
 
-.feedback-modal { width: min(560px, 100%); overflow: hidden; display: flex; flex-direction: column; }
+.feedback-new-mask { box-sizing: border-box; min-height: 0; }
+.feedback-modal { width: min(560px, 100%); max-height: calc(var(--feedback-new-viewport-height, 100dvh) - 32px); overflow: hidden; display: flex; flex-direction: column; }
 .feedback-modal .modal-head { flex: none; padding: 20px 22px 12px; }
-.feedback-modal form { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 22px; gap: 12px; }
-.feedback-modal .feedback-form-grid textarea { min-height: 150px; }
-.feedback-modal .modal-foot { position: sticky; bottom: 0; z-index: 1; flex: none; margin-inline: -22px; padding: 12px 22px; background: var(--feedback-panel-deep); }
+.feedback-modal form { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 0; gap: 0; }
+.feedback-new-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 22px 12px; scroll-padding-block: 12px; }
+.feedback-modal .feedback-form-grid textarea { height: 150px; min-height: 80px; max-height: max(80px, calc(var(--feedback-new-viewport-height, 100dvh) - 220px)); }
+.feedback-modal .modal-foot { flex: none; margin: 0; padding: 12px 22px; background: var(--feedback-panel-deep); }
 .feedback-optional-settings summary { width: fit-content; padding-block: 6px; font-size: 12px; cursor: pointer; }
 .feedback-optional-settings .feedback-consent { margin-top: 8px; }
 .feedback-modal :deep(.feedback-media-field) { padding: 10px 12px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .feedback-modal :deep(.feedback-media-picker-button) { min-height: 36px; }
 @media (max-width: 767px) {
-  .feedback-modal { width: 100%; max-width: 560px; max-height: calc(100dvh - 16px); }
+  .feedback-new-mask { padding: 8px; }
+  .feedback-modal { width: 100%; max-width: 560px; max-height: calc(var(--feedback-new-viewport-height, 100dvh) - 16px); }
   .feedback-modal .modal-head { padding: 16px 16px 10px; }
-  .feedback-modal form { padding-inline: 16px; }
+  .feedback-new-body { padding-inline: 16px; }
   .feedback-modal .feedback-form-control { font-size: 16px; }
-  .feedback-modal .modal-foot { margin-inline: -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .feedback-modal .modal-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
   .feedback-modal .modal-foot button { flex: 1; }
 }
 }
