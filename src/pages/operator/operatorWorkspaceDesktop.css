@@ -33,6 +33,29 @@
   font-size: 13px;
 }
 
+.roster-header { padding-block: 16px 10px; }
+.roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'heading account' 'actions actions'; gap: 4px 16px; }
+.roster-header :deep(.compact-tool-actions) { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 7px 14px; font-size: 13px; white-space: nowrap; }
+.roster-summary { margin: 2px 0 0; }
+@container (min-width: 900px) {
+  .roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading account actions'; }
+}
+.page-operator .operator-tabs.tool-workspace-tabs { padding: 5px; gap: 6px; }
+.page-operator .tool-workspace-tabs > .workspace-tab-list { gap: 6px; }
+.page-operator .operator-tabs.tool-workspace-tabs button { min-height: 40px; padding: 7px 18px; }
+.catalog-tools :deep(.current-filter-head) { padding: 12px 14px; }
+.catalog-tools :deep(.is-compact .current-filter-tools) { flex-wrap: wrap; gap: 10px; min-width: 0; }
+.catalog-tools :deep(.is-compact .current-filter-search) { flex: 1 1 220px; width: auto; min-width: 0; min-height: 40px; padding: 6px 10px; }
+.catalog-tools :deep(.current-filter-search input) { font-size: 13px; }
+.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; min-height: 40px; margin: 0; padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+.catalog-tools :deep(.current-filter-result) { flex: none; font-size: 12px; }
+.catalog-tools :deep(.dossier-more) { min-height: 40px; align-self: auto; }
+.catalog-tools :deep(.current-filter-rows) { padding: 8px 14px 10px; }
+.catalog-tools :deep(.pf-status-row) { gap: 12px; }
+.catalog-tools :deep(.pf-status-row .mf-filter) { flex: 0 1 auto; padding: 0; gap: 8px; }
+.catalog-tools :deep(.pf-status-row button) { min-height: 34px; padding: 6px 14px; }
+
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
 .catalog-version-value { width: 14ch; max-width: 100%; padding: 0; font: inherit; font-weight: 700; text-overflow: ellipsis; }

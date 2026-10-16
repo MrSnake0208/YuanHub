@@ -35,6 +35,31 @@
   font-size: 13px;
 }
 
+.roster-header { padding-block: 12px 8px; }
+.roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'heading account' 'actions actions'; gap: 4px 10px; }
+.roster-header :deep(.compact-tool-heading h1) { font-size: 28px; }
+.roster-header :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; justify-content: flex-start; gap: 6px; }
+.roster-header :deep(.compact-tool-actions .tool-more) { position: static; }
+.roster-header :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
+.roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.roster-summary { margin: 4px 0 0; font-size: 12px; }
+.roster-summary .tool-updated { display: inline-flex; }
+@container (max-width: 340px) {
+  .roster-header :deep(.compact-tool-row) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; }
+}
+.catalog-tools :deep(.is-compact .current-filter-tools) { flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+.catalog-tools :deep(.is-compact .current-filter-search) { order: 0; flex: 1 1 220px; width: auto; min-width: 0; min-height: 36px; box-sizing: border-box; }
+.catalog-tools :deep(.current-filter-search input) { font-size: 13px; }
+.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; min-height: 36px; margin: 0; padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+.catalog-tools :deep(.is-compact .current-filter-tools button) { order: 0; }
+.catalog-tools :deep(.current-filter-result) { flex: none; font-size: 12px; }
+.catalog-tools :deep(.dossier-more) { align-self: auto; }
+.catalog-tools :deep(.pf-status-row .mf-filter) { display: flex; flex-wrap: wrap; padding: 0; gap: 6px; }
+.catalog-tools :deep(.pf-status-row button) { flex: 0 1 auto; width: auto; min-height: 34px; padding: 6px 10px; }
+@media (max-width: 640px) {
+  .catalog-tools :deep(.is-compact .current-filter-search) { flex-basis: 100%; }
+}
+
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
 .catalog-version-value { width: 14ch; max-width: 100%; padding: 0; font: inherit; font-weight: 700; text-overflow: ellipsis; }
