@@ -57,8 +57,6 @@
     <template #onboarding>
       <TodayDataOnboarding
         v-if="showDataOnboarding"
-        :is-returning-user="isReturningUser"
-        :missing-data-items="missingDataItems"
         :onboarding-title="onboardingTitle"
         :onboarding-description="onboardingDescription"
         :onboarding-note="onboardingNote"
@@ -175,6 +173,7 @@ const onboardingStage = computed(function () {
   })
 })
 const showDataOnboarding = computed(function () {
+  if (isReturningUser.value) return false
   if (auth.isLoggedIn && (accountLoadFailed.value || accountLoading.value || summaryLoading.value || (accounts.value.length && !validAccountId.value))) return false
   return shouldShowTodayDataOnboarding({
     isLoggedIn: auth.isLoggedIn,
@@ -223,7 +222,7 @@ const onboardingTitle = computed(function () {
   if (onboardingStage.value === 'auth') return '先登录，再开始建立今日一览'
   if (onboardingStage.value === 'account') return '先建立你的游戏子账号'
   const names = missingDataItems.value.map(function (item) { return item.title })
-  return isReturningUser.value ? '按需补齐数据' : names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
+  return names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
 })
 const onboardingDescription = computed(function () {
   if (onboardingStage.value === 'auth') {
@@ -246,7 +245,7 @@ const lobbyStatus = computed(() => {
   if (unknownDataItems.value.length) return `${unknownDataLabel.value}状态待确认，无需重复录入。`
   if (!isReturningUser.value) return '当前账号尚未建档，先从第一份资料开始吧。'
   return missingDataItems.value.length
-    ? `还有 ${missingDataItems.value.length} 项资料尚未建档，随时可以继续。`
+    ? ''
     : '当前账号资料已就绪，今天也辛苦了。'
 })
 const maaYuanConnectTo = computed(function () {

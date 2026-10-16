@@ -32,9 +32,6 @@
 .sync-recommendation small { display: block; margin-top: 6px; font-size: 10.5px; }
 .entry-icon { display: grid; width: 40px; height: 40px; border-radius: 10px; }
 .entry-primary-action, .entry-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border-radius: 9px; font-size: 12px; }
-.data-onboarding.is-optional { padding: 0; border-radius: 0; }
-.is-optional > summary { min-height: 44px; padding: 10px 0; font-size: 13px; }
-.is-optional .onboarding-heading { margin-top: 12px; }
 .auth-onboarding-card > .entry-icon { display: none; }
 .readiness-icon { place-items: center; }
 .entry-icon { place-items: center; } }

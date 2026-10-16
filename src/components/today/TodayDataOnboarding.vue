@@ -1,15 +1,11 @@
 <template>
-  <component
-    :is="isReturningUser ? 'details' : 'section'"
+  <section
     class="data-onboarding"
-    :class="{ 'is-optional': isReturningUser }"
     aria-labelledby="data-onboarding-title"
-    @toggle="$event.currentTarget.open && $event.currentTarget.scrollIntoView({ block: 'start' })"
   >
-    <summary v-if="isReturningUser">还有 {{ missingDataItems.length }} 项数据可补齐（可选）</summary>
     <div class="onboarding-heading">
       <div>
-        <span v-if="!isReturningUser" class="onboarding-kicker">第一次建档</span>
+        <span class="onboarding-kicker">第一次建档</span>
         <h2 id="data-onboarding-title">{{ onboardingTitle }}</h2>
         <p>{{ onboardingDescription }}</p>
       </div>
@@ -100,15 +96,13 @@
         </router-link>
       </article>
     </div>
-  </component>
+  </section>
 </template>
 
 <script setup>
 import { ArrowRight, Link2, Users } from '@lucide/vue'
 
 defineProps({
-  isReturningUser: Boolean,
-  missingDataItems: { type: Array, required: true },
   onboardingTitle: { type: String, required: true },
   onboardingDescription: { type: String, required: true },
   onboardingNote: { type: String, required: true },
@@ -157,10 +151,8 @@ defineEmits(['create-account'])
 .entry-primary-action, .entry-secondary-action { font-weight: 900; text-decoration: none; }
 .entry-primary-action { background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); }
 .entry-secondary-action { border: 1px solid rgba(73, 59, 44, .22); color: var(--ink); }
-.data-onboarding.is-optional { border: 0; background: transparent; }
-.is-optional > summary { color: var(--tea); font-weight: 700; cursor: pointer; }
 
-a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 </style>
 <style scoped src="./todayOnboardingDesktop.css"></style>
 <style scoped src="./todayOnboardingMobile.css"></style>
