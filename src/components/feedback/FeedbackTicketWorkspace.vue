@@ -83,8 +83,8 @@
     </footer>
 
     <Teleport to="body">
-      <div v-if="selectedItem" class="ticket-detail-mask" role="presentation" @click.self="$emit('close')">
-        <section ref="detailPanel" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
+      <div v-if="selectedItem" class="ticket-detail-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation" @click.self="$emit('close')">
+        <section ref="detailPanel" @focusin="revealFocusedControl" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
           <header class="ticket-detail-head">
             <div>
               <span class="ticket-detail-kicker">FEEDBACK / TICKET</span>
@@ -94,29 +94,29 @@
               <X :size="22" />
             </button>
           </header>
-          <div class="ticket-detail-meta">
-            <div class="ticket-detail-overview">
-              <span class="ticket-status ticket-detail-status" :class="['status-' + selectedItem.status, 'stage-' + selectedItem.workflowStage]">
-                {{ statusLabel(selectedItem.status, selectedItem.hasAdminReply, selectedItem) }}
-              </span>
-              <span v-if="showReporter" class="ticket-detail-fact">
-                <span>提交人</span>
-                <strong>{{ reporterName(selectedItem) }}</strong>
-              </span>
-              <span class="ticket-detail-fact">
-                <span>提交于</span>
-                <time :datetime="selectedItem.createdAt">{{ formatDate(selectedItem.createdAt) }}</time>
-              </span>
-              <span v-if="workflow" class="ticket-operator" :title="selectedItem.operatorAssigneeName || '未分配'">运营 · {{ selectedItem.operatorAssigneeName || '未分配' }}</span>
-            </div>
-            <div class="ticket-detail-context">
-              <div class="ticket-badges ticket-badges-secondary">
-                <span class="ticket-category">{{ workflow ? '负责板块' : '板块' }} · {{ categoryLabel(workflow ? selectedItem.workArea : selectedItem.category) }}</span>
+          <div ref="scrollBody" class="ticket-detail-scroll">
+            <div class="ticket-detail-meta">
+              <div class="ticket-detail-overview">
+                <span class="ticket-status ticket-detail-status" :class="['status-' + selectedItem.status, 'stage-' + selectedItem.workflowStage]">
+                  {{ statusLabel(selectedItem.status, selectedItem.hasAdminReply, selectedItem) }}
+                </span>
+                <span v-if="showReporter" class="ticket-detail-fact">
+                  <span>提交人</span>
+                  <strong>{{ reporterName(selectedItem) }}</strong>
+                </span>
+                <span class="ticket-detail-fact">
+                  <span>提交于</span>
+                  <time :datetime="selectedItem.createdAt">{{ formatDate(selectedItem.createdAt) }}</time>
+                </span>
+                <span v-if="workflow" class="ticket-operator" :title="selectedItem.operatorAssigneeName || '未分配'">运营 · {{ selectedItem.operatorAssigneeName || '未分配' }}</span>
               </div>
-              <code><span>工单</span>{{ selectedItem.id }}</code>
+              <div class="ticket-detail-context">
+                <div class="ticket-badges ticket-badges-secondary">
+                  <span class="ticket-category">{{ workflow ? '负责板块' : '板块' }} · {{ categoryLabel(workflow ? selectedItem.workArea : selectedItem.category) }}</span>
+                </div>
+                <code><span>工单</span>{{ selectedItem.id }}</code>
+              </div>
             </div>
-          </div>
-          <div class="ticket-detail-scroll">
             <slot name="detail" :item="selectedItem" />
           </div>
         </section>
@@ -128,6 +128,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useModalFocus } from '@/composables/useModalFocus.js'
+import { useModalViewport } from '@/composables/useModalViewport.js'
 import {
   ChevronLeft,
   ChevronRight,
@@ -164,6 +165,8 @@ const detailCloseButton = ref(null)
 const copyMessage = ref('')
 
 const selectedItem = computed(() => props.selectedItem || props.items.find(item => item.id === props.selectedId) || (props.selectedId ? { id: props.selectedId } : null))
+const scrollBody = ref(null)
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => Boolean(selectedItem.value), scrollBody, detailPanel)
 useModalFocus(() => Boolean(selectedItem.value), detailPanel, {
   initialFocus: () => detailCloseButton.value,
   onEscape: () => { if (!hasOpenOverlayAbove()) emit('close') }
@@ -202,6 +205,7 @@ async function copyId(id) {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.ticket-detail-dialog .ticket-detail-scroll :deep(textarea) { min-height: min(120px, max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px))); max-height: max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px)); }
 .ticket-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); box-shadow: 0 16px 36px -32px rgba(73, 59, 44, .42); }
 .ticket-table { border-collapse: collapse; }
 .ticket-table th,

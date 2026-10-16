@@ -1,12 +1,12 @@
 <template>
   <Teleport to="body">
-    <div v-if="draft" class="calendar-private-mask" @click.self="state.close">
-      <section ref="panel" class="calendar-private-dialog" role="dialog" aria-modal="true" aria-labelledby="private-item-title" tabindex="-1" :aria-busy="draft.busy">
+    <div v-if="draft" class="calendar-private-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="state.close">
+      <section ref="panel" @focusin="revealFocusedControl" class="calendar-private-dialog" role="dialog" aria-modal="true" aria-labelledby="private-item-title" tabindex="-1" :aria-busy="draft.busy">
         <header>
           <h2 id="private-item-title">{{ draft.record ? '编辑私人事项' : '添加私人事项' }}</h2>
           <button type="button" :disabled="draft.busy" aria-label="关闭私人事项编辑" @click="state.close"><X :size="20" aria-hidden="true" /></button>
         </header>
-        <form id="private-item-form" class="calendar-private-body" novalidate @submit.prevent="save">
+        <form id="private-item-form" ref="scrollBody" class="calendar-private-body" novalidate @submit.prevent="save">
           <p class="calendar-private-context">{{ account.game }} · {{ account.name }} · 仅自己可见</p>
           <div v-if="Object.keys(draft.errors).length" ref="errorSummary" class="calendar-private-error" role="alert" tabindex="-1">
             <p>请检查以下内容：</p>
@@ -60,6 +60,7 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { CALENDAR_PRIVATE_ITEMS, validatePrivateItem } from '@/data/calendarPrivateItems.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
+import { useModalViewport } from '@/composables/useModalViewport.js'
 defineProps({ account: { type: Object, required: true } })
 const state = inject(CALENDAR_PRIVATE_ITEMS)
 const draft = computed(() => state.editor.value)
@@ -69,6 +70,8 @@ const invalidDates = computed(() => {
   return !!(errors.start_date || errors.end_date)
 })
 const panel = ref(null), titleInput = ref(null), errorSummary = ref(null)
+const scrollBody = ref(null)
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !!draft.value, scrollBody, panel)
 useModalFocus(computed(() => !!draft.value), panel, { initialFocus: () => titleInput.value, onEscape: () => state.close() })
 function focusField(field) { panel.value?.querySelector(field === 'title' ? '#private-item-title-input' : '#private-item-' + field)?.focus() }
 async function save() {

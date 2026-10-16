@@ -126,6 +126,39 @@ const expectNoWrites = () => {
   expect(starApi.putCurrentStarLoadout).not.toHaveBeenCalled()
 }
 
+it('密探编辑软键盘缩放只滚动正文，保留数值与焦点且不写入', async () => {
+  const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  vi.stubGlobal('visualViewport', viewport)
+  const wrapper = await render()
+  document.body.append(wrapper.element)
+  await currentTab(wrapper); await flushPromises()
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
+  const input = wrapper.get('.editor-body input[type="number"]'), body = wrapper.get('.editor-body').element
+  await input.setValue('2')
+  input.element.focus(); await flushPromises()
+  body.scrollTop = 0
+  vi.spyOn(body, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 260, height: 160 })
+  vi.spyOn(input.element, 'getBoundingClientRect').mockImplementation(() => ({ top: 260 - body.scrollTop, bottom: 300 - body.scrollTop, height: 40 }))
+  viewport.height = 420; viewport.offsetTop = 32
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(wrapper.get('.editor-mask').element.style.height).toBe('420px')
+  expect(wrapper.get('.editor-mask').element.style.top).toBe('32px')
+  expect(body.scrollTop).toBe(52)
+  expect(wrapper.get('.editor-body input[type="number"]').element).toBe(input.element)
+  expect(input.element.value).toBe('2')
+  expect(document.activeElement).toBe(input.element)
+  const panel = wrapper.get('.editor-panel').element
+  vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ top: 48, bottom: 200, height: 152 })
+  vi.mocked(input.element.getBoundingClientRect).mockImplementation(() => ({ top: 260 - panel.scrollTop, bottom: 300 - panel.scrollTop, height: 40 }))
+  viewport.height = 200
+  viewport.dispatchEvent(new Event('resize')); await flushPromises()
+  expect(wrapper.get('.editor-mask').classes('is-short-viewport')).toBe(true)
+  expect(panel.scrollTop).toBe(112)
+  expect(input.element.value).toBe('2')
+  expect(document.activeElement).toBe(input.element)
+  expectNoWrites()
+})
+
 it.each(['v1', 'v2', 'v3'])('%s 隐藏完成标签但保留三态计算，稀有度、等级/修为/标注与观测过期互不混淆', async version => {
   skin.version = version
   api.getOperatorCatalog.mockResolvedValue({ operators: [operator(), operator('未满', 4, [350, 1820, 11]), operator('缺项', 5, [500, 2600, 15]), operator('未拥有')] })

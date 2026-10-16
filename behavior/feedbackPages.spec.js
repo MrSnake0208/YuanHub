@@ -418,15 +418,16 @@ beforeEach(() => {
 
 it.each([390, 1440].flatMap(width => [[width, '我的工单', MyFeedback], [width, '管理工单', ManagedFeedback]]))('真实工单回复跨双端布局保持草稿、焦点及详情实例：%ipx %s', async (width, _label, component) => {
   const viewport = installViewport(width)
-  const wrapper = render(component, { attachTo: document.body }); await flushPromises()
-  await choose(wrapper, 'rpt_a'); await compose(wrapper, '尚未发送的回复')
+  const wrapper = render(component, { attachTo: document.body, global: { stubs: { teleport: false } } }); await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await choose(wrapper, 'rpt_a'); await compose(ui, '尚未发送的回复')
   const detail = wrapper.getComponent({ name: 'FeedbackTicketDetail' }).vm.$
-  const input = wrapper.get('.feedback-reply-form textarea'); input.element.focus()
+  const input = ui.get('.feedback-reply-form textarea'); input.element.focus()
   const reads = [api.getFeedback.mock.calls.length, api.getManagedFeedback.mock.calls.length]
   for (const next of [640, 641, 767, 768, 1080, 1081, 320, 1440]) {
     viewport.resize(next); await flushPromises()
     expect(wrapper.getComponent({ name: 'FeedbackTicketDetail' }).vm.$).toBe(detail)
-    expect(wrapper.findAll('.ticket-detail-dialog')).toHaveLength(1)
+    expect(ui.findAll('.ticket-detail-dialog')).toHaveLength(1)
     expect(input.element.value).toBe('尚未发送的回复')
     expect(document.activeElement).toBe(input.element)
     expect([api.getFeedback.mock.calls.length, api.getManagedFeedback.mock.calls.length]).toEqual(reads)
@@ -438,18 +439,19 @@ it.each([390, 1440].flatMap(width => [[width, '我的工单', MyFeedback], [widt
 it.each([390, 1440])('真实工单公开发布弹窗跨布局保持标题与摘要，不自动发布：%ipx', async width => {
   const viewport = installViewport(width)
   api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'PROCESSING', publicConsent: true, visibility: 'PRIVATE' })
-  const wrapper = render(ManagedFeedback, { attachTo: document.body }); await flushPromises(); await choose(wrapper, 'rpt_a')
-  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '管理操作').trigger('click')
-  await wrapper.get('[aria-label="管理操作选项"]').findAll('button')[0].trigger('click'); await flushPromises()
+  const wrapper = render(ManagedFeedback, { attachTo: document.body, global: { stubs: { teleport: false } } }); await flushPromises(); await choose(wrapper, 'rpt_a')
+  const ui = new DOMWrapper(document.body)
+  await ui.findAll('.feedback-action-toolbar button').find(button => button.text() === '管理操作').trigger('click')
+  await ui.get('[aria-label="管理操作选项"]').findAll('button')[0].trigger('click'); await flushPromises()
   const panel = wrapper.getComponent(AdminFeedbackPublishPanel).vm.$
-  const title = wrapper.get('.feedback-management-dialog input')
-  const summary = wrapper.get('.feedback-management-dialog textarea')
+  const title = ui.get('.feedback-management-dialog input')
+  const summary = ui.get('.feedback-management-dialog textarea')
   await title.setValue('尚未发布的标题'); await summary.setValue('尚未发布的公开摘要'); summary.element.focus()
   const reads = api.getManagedFeedback.mock.calls.length
   for (const next of [640, 641, 767, 768, 1080, 1081, 320, 1440]) {
     viewport.resize(next); await flushPromises()
     expect(wrapper.getComponent(AdminFeedbackPublishPanel).vm.$).toBe(panel)
-    expect(wrapper.findAll('.feedback-management-dialog')).toHaveLength(1)
+    expect(ui.findAll('.feedback-management-dialog')).toHaveLength(1)
     expect(title.element.value).toBe('尚未发布的标题')
     expect(summary.element.value).toBe('尚未发布的公开摘要')
     expect(document.activeElement).toBe(summary.element)

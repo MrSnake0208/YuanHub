@@ -65,7 +65,7 @@ button { padding: 0; }
 .muted { font-size: 12px; }
 .reward-dialog-enter-from .reward-dialog, .reward-dialog-leave-to .reward-dialog { transform: translateY(12px) scale(.985); }
 .reward-dialog-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 24px; overscroll-behavior: none; }
-.reward-panel { position: relative; width: min(1240px, 100%); max-height: calc(100dvh - 48px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.reward-panel { position: relative; width: min(1240px, 100%); max-height: calc(var(--modal-viewport-height, 100dvh) - 48px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .reward-panel::before { position: absolute; inset: 5px; }
 .reward-dialog-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 20px; padding-bottom: max(0px, env(safe-area-inset-bottom)); }
 .reward-dialog-scroll :is(button, input, textarea, select, [tabindex]):focus-visible { scroll-margin-block: 18px; }
@@ -166,7 +166,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .paste-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; margin-top: 13px; font-size: 11px; }
 .rotated { transform: rotate(180deg); }
 .paste-area { padding-top: 10px; }
-.paste-area textarea { width: 100%; min-height: 110px; padding: 13px; font-size: 12px; line-height: 1.8; resize: vertical; }
+.paste-area textarea { width: 100%; min-height: min(110px, max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px))); max-height: max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px)); padding: 13px; font-size: 12px; line-height: 1.8; resize: vertical; }
 .paste-area > button { display: flex; margin: 10px 0 0 auto; }
 .preview-section { padding: 23px 30px 0; }
 .preview-heading { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
@@ -222,7 +222,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 }
 @media (max-width: 767px) {
   .reward-dialog-mask { padding: 0; place-items: stretch; }
-  .reward-panel { width: 100%; height: 100dvh; max-height: none; }
+  .reward-panel { width: 100%; height: var(--modal-viewport-height, 100dvh); max-height: var(--modal-viewport-height, 100dvh); }
   .reward-panel::before { display: none; }
   .reward-dialog-scroll { padding-bottom: env(safe-area-inset-bottom); }
   .panel-heading { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; padding: calc(14px + env(safe-area-inset-top)) 18px 14px; gap: 8px 12px; }
@@ -299,4 +299,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .panel-footnote svg { margin-top: 2px; }
   .error-message { margin: 16px; }
 }
+
+.is-short-viewport .reward-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.is-short-viewport .reward-dialog-scroll { overflow: visible; }
 }

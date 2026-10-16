@@ -17,9 +17,13 @@
 .dialog {
   width: 100%;
   max-width: 400px;
+  max-height: calc(var(--modal-viewport-height, 100dvh) - 40px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 .dialog-head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,6 +56,10 @@
 }
 
 .dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 12px;
   padding: 18px 20px 4px;
 }
 .dialog-msg {
@@ -110,6 +118,7 @@
 }
 
 .dialog-foot {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -128,4 +137,7 @@
   font-family: var(--font-b);
 }
 .dlg-btn:active:not(:disabled) { transform: scale(.98); }
+
+.is-short-viewport .dialog { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.is-short-viewport .dialog-body { overflow: visible; }
 }

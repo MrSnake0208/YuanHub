@@ -1,7 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 767px) {
 .calendar-private-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; align-items: flex-end; }
-.calendar-private-dialog { width: 100%; min-width: 0; height: 94dvh; padding: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.calendar-private-dialog { width: 100%; min-width: 0; height: var(--modal-viewport-height, 94dvh); padding: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
 header, footer { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px max(16px, env(safe-area-inset-right)) 14px max(16px, env(safe-area-inset-left)); }
 header h2 { margin: 0; font: 900 22px/1.4 var(--font-s); }
 button, input, select, summary { min-height: 44px; }
@@ -11,7 +11,7 @@ header button { display: grid; place-items: center; min-width: 44px; padding: 8p
 label { display: block; margin: 12px 0 6px; font-weight: 700; }
 label span, p, label[for=private-item-note] { font-size: 13px; font-weight: 400; }
 input, textarea, select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: 16px; }
-textarea { resize: vertical; }
+textarea { resize: vertical; min-height: 48px; max-height: max(48px, calc(var(--modal-viewport-height, 100dvh) - 200px)); }
 p { margin: 6px 0; line-height: 1.6; overflow-wrap: anywhere; }
 .calendar-private-context { margin: 0 0 12px; }
 .calendar-private-dates { display: grid; gap: 0 12px; grid-template-columns: minmax(0, 1fr); }
@@ -23,4 +23,7 @@ summary { display: flex; align-items: center; }
 .calendar-private-error a { display: block; min-height: 44px; }
 footer { padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
 footer div { display: flex; gap: 8px; margin-left: auto; }
+
+.is-short-viewport .calendar-private-dialog { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.is-short-viewport .calendar-private-body { overflow: visible; }
 }

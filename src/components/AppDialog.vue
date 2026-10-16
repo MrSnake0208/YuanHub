@@ -1,8 +1,8 @@
 <template>
   <Teleport to="body">
     <Transition name="dialog">
-      <div v-if="state.visible" class="dialog-mask" @click.self="onBackdrop">
-        <div ref="dialogEl" class="dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message" tabindex="-1">
+      <div v-if="state.visible" class="dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="onBackdrop">
+        <div ref="dialogEl" @focusin="revealFocusedControl" class="dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message" tabindex="-1">
           <div class="dialog-head">
             <span id="app-dialog-title" class="dialog-title">
               <span class="dialog-ic" :class="'ic-' + state.type" aria-hidden="true">
@@ -15,7 +15,7 @@
             </button>
           </div>
 
-          <div class="dialog-body">
+          <div ref="scrollBody" class="dialog-body">
             <p id="app-dialog-message" class="dialog-msg">{{ state.message }}</p>
             <div v-if="state.mode === 'choice'" class="dialog-choices">
               <button
@@ -81,12 +81,15 @@ import { ref, computed } from 'vue'
 import { X, Info, AlertTriangle, CheckCircle2, ChevronRight } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
+import { useModalViewport } from '@/composables/useModalViewport.js'
 
 const state = dialog._state
 const inputEl = ref(null)
 const confirmEl = ref(null)
 const firstChoiceEl = ref(null)
 const dialogEl = ref(null)
+const scrollBody = ref(null)
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => state.visible, scrollBody, dialogEl)
 
 const ICONS = { info: Info, danger: AlertTriangle, success: CheckCircle2 }
 const icon = computed(function () {

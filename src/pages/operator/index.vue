@@ -2339,11 +2339,14 @@
       <div
         v-if="editing"
         class="editor-mask"
+        :class="{ 'is-short-viewport': editorShortViewport }"
+        :style="editorViewportStyle"
         @click.self="closeEditor"
         @keydown.esc="closeEditor"
       >
         <div
           ref="editorPanelEl"
+          @focusin="revealEditorControl"
           class="editor-panel"
           role="dialog"
           aria-modal="true"
@@ -2523,7 +2526,7 @@
             </button>
           </div>
 
-          <div class="editor-body">
+          <div ref="editorBodyEl" class="editor-body">
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
@@ -2922,6 +2925,7 @@
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates } from '../../store/accountList.js'
+import { useModalViewport } from '../../composables/useModalViewport.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
@@ -3361,6 +3365,8 @@ const starLoadoutError = ref("");
 let starLoadoutLoadSeq = 0;
 let starLoadoutSaveSeq = 0;
 const editorPanelEl = ref(null);
+const editorBodyEl = ref(null);
+const { viewportStyle: editorViewportStyle, shortViewport: editorShortViewport, revealFocusedControl: revealEditorControl } = useModalViewport(editing, editorBodyEl, editorPanelEl);
 let bodyOverflowBeforeEditor = "";
 let bodyLockedByEditor = false;
 let editorTriggerEl = null;
