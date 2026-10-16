@@ -3,7 +3,9 @@ import { reactive } from 'vue'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import ChangelogContent from '../src/components/changelog/ChangelogContent.vue'
 import ChangelogPage from '../src/pages/changelog/index.vue'
+import ChangelogRelatedFeedback from '../src/components/changelog/ChangelogRelatedFeedback.vue'
 import { listChangelog } from '../src/api/changelog.js'
+import { listPublicFeedback } from '../src/api/coCreation.js'
 import { changelogHighlights } from '../src/utils/changelogContent.js'
 
 vi.mock('../src/api/changelog.js', () => ({ listChangelog: vi.fn() }))
@@ -20,6 +22,20 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/changelog')
   Element.prototype.scrollIntoView = vi.fn()
   listChangelog.mockReset().mockResolvedValue({ data: [{ id: 'release-example', revision: 1, title: '可读的版本', versionLabel: '1.0', publishedAt: '2026-09-30T00:00:00Z', body: body() }], page: 1, hasNext: false })
+})
+
+it('已发布版本的关联反馈继续链接到反馈广场详情', async () => {
+  listPublicFeedback.mockResolvedValueOnce({ items: [{ id: 'public/history', publicTitle: '历史公开反馈', supportCount: 8 }] })
+  const wrapper = mount(ChangelogRelatedFeedback, {
+    props: { versionId: 'release-example' },
+    global: { stubs: { RouterLink: RouterLinkStub } }
+  })
+  await flushPromises()
+  expect(listPublicFeedback).toHaveBeenCalledWith({ completedVersionId: 'release-example', pageSize: 6, sort: 'updated' })
+  expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/feedback/plaza', query: { feedback: 'public/history' } })
+  expect(wrapper.text()).toContain('历史公开反馈')
+  expect(wrapper.text()).toContain('8 人支持')
+  wrapper.unmount()
 })
 
 it('响应式正文和嵌套图片可以渲染，更新正文不改写原始图片地址', async () => {

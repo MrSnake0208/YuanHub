@@ -8,7 +8,7 @@
       </div></div></header>
       <section class="feedback-content"><div class="wrap">
         <FeedbackWorkspaceNav active="plaza" />
-        <p class="plaza-context">这里只展示管理员整理后的公开内容。开发目标与验收进度可在 <router-link to="/co-creation">大饼中心</router-link> 查看。</p>
+        <p class="plaza-context">这里只展示管理员整理后的公开内容。</p>
         <FeedbackPlaza :focus-id="focusId" />
       </div></section>
     </main>
@@ -34,7 +34,6 @@ const focusId = computed(() => String(route.query.feedback || ''))
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .plaza-context { color: var(--feedback-text-muted); }
-.plaza-context a { color: var(--accent-strong); }
 </style>
 <style scoped src="./feedbackPlazaPageDesktop.css"></style>
 <style scoped src="./feedbackPlazaPageMobile.css"></style>

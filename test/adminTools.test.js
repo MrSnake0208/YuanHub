@@ -23,7 +23,6 @@ test('maps every management tool to its existing permission boundary', function 
   })
   assert.deepEqual(getVisibleAdminTools(access).map(function (tool) { return tool.to }), [
     '/admin/ledger',
-    '/co-creation/admin',
     '/admin/beta',
     '/feedback/manage',
     '/feedback/admin',
@@ -76,6 +75,13 @@ test('招募独立访问配置入口退役，不再出现在管理工作台', ()
   assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE] })).some(tool => tool.to === '/admin/recruitment-access'), false)
 })
 
+test('开发目标入口软下线，原权限保留但不展示工具', () => {
+  const access = normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.DEVELOPMENT_GOAL_MANAGE] })
+  assert.deepEqual(getVisibleAdminTools(access), [])
+  assert.equal(isManagementRoute('/co-creation/admin'), false)
+  assert.equal(ADMIN_PERMISSIONS.DEVELOPMENT_GOAL_MANAGE, 'development_goal:manage')
+})
+
 test('adds a single accessible workbench back link to management detail pages', function () {
   const backLink = readSource('../src/components/admin/AdminBackLink.vue')
   const workbench = readSource('../src/pages/admin/index.vue')
@@ -118,7 +124,7 @@ test('keeps notification private and provides a guest feedback entry in more', f
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
   const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || route.meta?.requiredPermission || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 13)
+  assert.equal(managementPaths.length, 12)
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)
     assert.equal(isManagementRoute(path + '/'), true, path + '/')

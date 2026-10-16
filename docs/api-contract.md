@@ -1183,7 +1183,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `src/api/ledger.js` | 广陵账房方案 CRUD |
 | `src/api/feedback.js` | 个人反馈、反馈工作台、反馈权限管理与工单操作 |
 | `src/api/coCreation.js` | 反馈广场公开列表、详情、相似查询与支持 |
-| `src/api/developmentGoals.js` | 大饼中心独立开发目标、验收进度与管理员维护 |
+| `src/api/developmentGoals.js` | 大饼中心已软下线；保留独立开发目标历史协议，启用页面不再调用 |
 | `src/store/auth.js` | 登录态、持久化、刷新和退出 |
 | `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
 | `src/pages/level/admin.vue` | `/level/admin` 关卡管理工作台；入口和路由要求 `level_catalog:write` |
@@ -1211,9 +1211,11 @@ error_count / conflict_count / conflicts / errors / catalog_version
 - [ ] 同步 `src/api/*` 封装、页面调用和相关测试
 - [ ] v3 变更同步协议文档、JSON Schema 与 examples
 
-## 16. 独立开发目标（当前工作区）
+## 16. 独立开发目标（已软下线，历史协议保留）
 
-反馈中心的公开广场为 `/feedback/plaza`，私人反馈仍在 `/feedback`。大饼中心 `/co-creation` 展示独立开发目标，许愿池已移除；旧 `tab=plaza/wish` 和 `feedback` 详情入口转到公开广场，旧 `tab=roadmap` 展示开发目标。
+反馈中心的公开广场为 `/feedback/plaza`，私人反馈仍在 `/feedback`。大饼中心已于 2026-10-16 在前端软下线：`/co-creation`（含旧 `tab=roadmap`）默认跳转 `/changelog`；旧 `tab=plaza/wish` 或带有效 `feedback` 的链接继续转到反馈广场，移除废弃 `tab/type` 参数并保留 `feedback` 定位及其他查询信息。`/co-creation/admin` 跳转 `/manage`，由目标工作台负责登录及管理权限检查。两旧路由不再加载开发目标页面或业务数据。
+
+以下接口、权限和 `development_goals` 历史数据完整保留，无迁移或删除。公开读取仍可被外部调用；有原权限的外部客户端仍可维护目标。本次仅关闭前端入口，不禁用后端协议，也不影响公开反馈和版本关联。
 
 | 方法与路径 | 认证与权限 | 用途 |
 |---|---|---|
@@ -1227,7 +1229,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 
 响应按 ApiResult 包装。分页数据为 `{has_next,page,total,data}`；目标包含上述字段、`id`、`linked_feedback: [{id,title}]`、`updated_at` 和 `version`。公开响应不返回 `feedback_ids`，并实时过滤已经取消公开的关联。管理响应保留关联 ID 供管理员解绑，但同样隐藏非公开反馈标题。
 
-未登录返回 HTTP 401，权限不足 403，校验失败 400，目标不存在 404，并发版本冲突 409。冲突时前端保留编辑内容，重新加载前确认是否放弃未保存修改。现有 PLATFORM_ADMIN/SUPER_ADMIN 角色获得管理能力；管理入口为 `/co-creation/admin`。
+未登录返回 HTTP 401，权限不足 403，校验失败 400，目标不存在 404，并发版本冲突 409。保留的目标编辑实现会在冲突时保留编辑内容，重新加载前确认是否放弃未保存修改，但目前不再通过路由开放。现有 PLATFORM_ADMIN/SUPER_ADMIN 的目标管理权限仍保留；前端不再提供新增、编辑或公开展示入口。
 
 ## 独立化极兼容补充
 

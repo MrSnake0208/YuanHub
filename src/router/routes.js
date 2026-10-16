@@ -410,26 +410,24 @@ export const routes = [
         name: 'development-goal-admin',
         display: false,
         module: 'admin',
-        component: () => import('/src/pages/co-creation/admin.vue'),
-        meta: { title: '开发目标管理 — 鸢鸢相抱 · YuanHub', requiresAuth: true, requiredPermission: 'development_goal:manage' }
+        redirect: '/manage'
     },
     {
         path: '/co-creation',
         text: '大饼中心',
         name: 'co-creation',
-        display: true,
+        display: false,
         module: 'user',
         icon: 'users-round',
-        component: () => import('/src/pages/co-creation/index.vue'),
-        beforeEnter: to => {
+        // 软下线不加载目标页面；历史公开反馈分享仍由反馈广场接收。
+        redirect: to => {
             if (to.query.feedback || ['plaza', 'wish'].includes(to.query.tab)) {
-                const { tab, ...query } = to.query
-                if (tab === 'wish') query.type = 'FEATURE'
+                const query = { ...to.query }
+                delete query.tab
+                delete query.type
                 return { path: '/feedback/plaza', query, replace: true }
             }
-        },
-        meta: {
-            title: '大饼中心 — 鸢鸢相抱 · YuanHub'
+            return { path: '/changelog', query: {}, replace: true }
         }
     },
     {

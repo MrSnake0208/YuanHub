@@ -98,9 +98,6 @@
               <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
             </summary>
             <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
-              <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
-                <Lightbulb :size="20" aria-hidden="true" /><span>大饼中心</span>
-              </router-link>
               <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
                 <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
               </router-link>
@@ -198,9 +195,6 @@
           <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
         </summary>
         <nav id="desktop-service-nav" class="sidebar-more-panel" aria-label="YuanHub 服务">
-          <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
-            <Lightbulb :size="18" aria-hidden="true" /><span>大饼中心</span>
-          </router-link>
           <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
             <ScrollText :size="18" aria-hidden="true" /><span>更新日志</span>
           </router-link>
@@ -249,7 +243,6 @@ import {
   Gem,
   House,
   LayoutDashboard,
-  Lightbulb,
   LogIn,
   LogOut,
   Menu,
@@ -304,7 +297,6 @@ const router = useRouter();
 const route = useRoute();
 const managementActive = computed(() => isManagementRoute(route.path));
 const moreActive = computed(() => !managementActive.value && (
-  route.path.startsWith("/co-creation") ||
   ["/beta", "/changelog", "/install"].includes(route.path)
 ));
 const desktopMore = ref(null);
