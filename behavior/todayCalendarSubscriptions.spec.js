@@ -48,7 +48,7 @@ afterEach(() => { wrapper?.unmount(); wrapper = null; vi.useRealTimers(); delete
 it('shows real titles and checked states, prioritizes pending, and separates activity counts', async () => {
   feed([record('活动一', { checklist: [entry('done', '领取奖励', true), entry('todo', '明天开始打')] })], { total: 7, count: 8 })
   render(); await flushPromises()
-  expect(wrapper.get('h2').text()).toBe('我的待办')
+  expect(wrapper.get('h2').text()).toBe('活动待办')
   expect(checks().map(input => input.element.checked)).toEqual([false])
   expect(wrapper.find('.is-complete').exists()).toBe(false)
   expect(checks()[0].attributes('aria-label')).toBe('完成 明天开始打（活动一）')
@@ -68,6 +68,33 @@ it('does not truncate the real checklist to the three-activity summary', async (
   expect(wrapper.get('.todo-list').text()).toContain('第四个活动')
   expect(wrapper.get('.todo-scope').text()).toContain('1 项待办未完成')
   expect(wrapper.text()).not.toContain('另有 3 项未完成')
+})
+
+it('多个订阅且无Checklist时不生成任务，临期只提示活动截止', async () => {
+  feed([1, 2, 3, 4].map(id => record('订阅' + id, { checklist: [] })))
+  render(); await flushPromises()
+  expect(checks()).toHaveLength(0)
+  expect(wrapper.find('.todo-list').exists()).toBe(false)
+  expect(wrapper.text()).toContain('订阅活动不会自动创建 Checklist')
+  expect(wrapper.get('.todo-subscription-status').text()).toContain('4 项活动')
+  expect(wrapper.get('.todo-reminders summary').text()).toContain('今日重点')
+  expect(wrapper.get('.reminder-scope').text()).toContain('订阅活动未来 72 小时内截止')
+  expect(wrapper.get('.todo-scope').text()).not.toContain('4 项待办')
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+  expect(setCalendarCompletion).not.toHaveBeenCalled()
+})
+
+it('清单全勾选不代表本期完成，保留临期提醒与取消勾选入口', async () => {
+  feed([record('清单已勾选', { checklist: [entry('done', '领取奖励', true)] })])
+  render(); await flushPromises()
+  expect(wrapper.get('.todo-empty').text()).toContain('清单勾选与活动本期完成分别记录')
+  expect(wrapper.get('.reminder-list').text()).toContain('清单已勾选')
+  expect(wrapper.text()).not.toContain('活动均已标记本期完成')
+  expect(wrapper.find('.todo-list').exists()).toBe(false)
+  await wrapper.get('.todo-more').trigger('click')
+  expect(checks()).toHaveLength(1)
+  expect(checks()[0].element.checked).toBe(true)
+  expect(setCalendarCompletion).not.toHaveBeenCalled()
 })
 
 it('renders reminders in the sidebar with one subscription instance and removes them on unmount', async () => {
@@ -105,11 +132,14 @@ it('previews three pending tasks and keeps the full checklist available on reque
   const more = wrapper.get('.todo-more')
   expect(more.attributes('aria-expanded')).toBe('false')
   expect(more.text()).toBe('展开完整清单')
+  expect(wrapper.get('.todo-list').classes()).not.toContain('is-expanded')
   await more.trigger('click')
+  expect(wrapper.get('.todo-list').classes()).toContain('is-expanded')
   expect(checks()).toHaveLength(9)
   expect(checks().filter(input => input.element.checked)).toHaveLength(2)
   expect(wrapper.findAll('.is-complete')).toHaveLength(2)
   await more.trigger('click'); expect(checks()).toHaveLength(3)
+  expect(wrapper.get('.todo-list').classes()).not.toContain('is-expanded')
 })
 
 it('saves the target flag with the exact version and all other entries/order unchanged', async () => {
@@ -336,7 +366,7 @@ it('makes no private request without login/account and distinguishes subscriptio
   expect(wrapper.text()).toContain('选择游戏账号后')
   expect(listCalendarSubscriptions).not.toHaveBeenCalled()
   await wrapper.setProps({ accountId: 'a' }); await flushPromises()
-  expect(wrapper.text()).toContain('还没有订阅活动')
+  expect(wrapper.text()).toContain('还没有活动待办')
   feed([record('空清单活动', { checklist: [] })]); notify(); await flushPromises()
   expect(wrapper.text()).toContain('当前范围暂无待办')
   expect(wrapper.get('.todo-add').text()).toBe('去添加待办')
@@ -360,7 +390,7 @@ it('does not turn a failed load into an empty state and preserves existing rows 
   listCalendarSubscriptions.mockRejectedValueOnce(new Error('读取离线'))
   render(); await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toContain('读取离线')
-  expect(wrapper.text()).not.toContain('还没有订阅活动')
+  expect(wrapper.text()).not.toContain('还没有活动待办')
   feed([record('活动一')]); await wrapper.get('[role=alert] button').trigger('click'); await flushPromises()
   listCalendarSubscriptions.mockRejectedValueOnce(new Error('刷新失败')); notify(); await flushPromises()
   expect(wrapper.get('.todo-list').text()).toContain('明天开始打')
@@ -406,6 +436,8 @@ it('uses Shanghai day-end for date-only deadlines and converts exact timestamps 
   expect(wrapper.get('.todo-reminders').text()).toContain('北京时间')
   expect(wrapper.get('time').attributes('title')).toContain('仅提供日期')
   expect(wrapper.text()).not.toMatch(/Asia\/Shanghai|America\/Los_Angeles/)
+  expect(wrapper.findAll('.todo-event-link time').map(node => node.text())).toEqual(['10/7截止', '10/8截止', '10/6 14:30截止'])
+  expect(wrapper.get('.todo-event-link time').text()).not.toMatch(/23:59|00:00/)
 })
 
 it.each(['cutoff', 'midnight'])('refreshes once at the exact %s boundary and releases timers on unmount', async boundary => {

@@ -1,14 +1,23 @@
-/* Mobile 私人事项以侧记/轻量预览展示。 */
+/* Mobile：私人安排采用日期侧记，不提供完成控件。 */
 @media not all and (min-width: 768px) {
-  .today-private-items { min-width: 0; padding: 14px; border-radius: 10px; }
+  .today-private-items { min-width: 0; padding: 12px; border-radius: 12px; }
   .private-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
-  h2 { font-size: 16px; }
-  p { font-size: 13px; overflow-wrap: anywhere; }
-  .private-hint { font-size: 12px; }
-  .private-list { display: grid; gap: 10px; margin: 8px 0 0; padding: 0; }
-  .private-list li { min-width: 0; padding-top: 10px; }
-  .private-title { font-size: 14px; overflow-wrap: anywhere; }
-  .private-note { margin-top: 4px; white-space: nowrap; }
-  a, button { display: inline-flex; align-items: center; min-height: 32px; }
-  button { margin-top: 8px; padding: 6px 10px; border-radius: 7px; }
+  h2 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 16px; }
+  h2 svg { flex: none; }
+  p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+  .private-hint { font-size: 11px; }
+  .private-scope { margin-top: 2px; }
+  .private-list { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; }
+  .private-list li { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; padding-top: 10px; }
+  .private-date { display: flex; flex-direction: column; align-items: center; gap: 2px; border-right: 1px solid var(--line); padding-right: 8px; color: var(--tea); }
+  .private-date strong { font: 600 15px/1.5 var(--font-d); font-variant-numeric: tabular-nums; }
+  .private-date span { font-size: 11px; color: var(--ink-60); }
+  .private-body { min-width: 0; }
+  .private-title { min-height: 24px; font-size: 13px; text-decoration: none; overflow-wrap: anywhere; }
+  .private-title:hover { text-decoration: underline; }
+  .private-note { margin-top: 3px; font-size: 11px; color: var(--ink-60); }
+  .private-heading a { display: inline-flex; align-items: center; min-height: 28px; }
+  .private-error { margin-top: 10px; }
+  button { min-height: 32px; margin-top: 6px; padding: 5px 10px; border-radius: 7px; }
+  .private-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 }

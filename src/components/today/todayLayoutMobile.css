@@ -1,10 +1,10 @@
-/* 手机直接按稳定DOM读取：提醒、待办、日程、头像清单、私人事项。 */
+/* 手机：重点条、三条任务、分段活动、角色带、轻量安排。 */
 @media not all and (min-width: 768px) {
   .today-page, .today-main { min-height: 100dvh; }
-  .today-wrap { max-width: 1180px; padding-inline: 12px; }
-  .today-content { padding: 10px 0 20px; }
-  .today-overview { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; }
-  .today-workspace, .today-aside { display: contents; }
+  .today-wrap { padding-inline: 12px; }
+  .today-content { padding: 10px 0 calc(20px + env(safe-area-inset-bottom)); }
+  .today-overview, .today-workspace { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; }
+  .today-column, .today-activities-target { display: contents; }
   .today-reminders-target { min-width: 0; }
-  .today-reminders-target:not(:has(> details)) { display: none; }
+  .today-reminders-target:not(:has(> details)), .today-workspace:not(:has(section)) { display: none; }
 }

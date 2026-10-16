@@ -1,25 +1,27 @@
-/* Desktop 养成摘要：清单与成员为主，不推算进度。 */
+/* Desktop：独立角色带只展示真实清单与头像。 */
 @media (min-width: 768px) {
-  .today-training { min-width: 0; padding: 16px; border-radius: 10px; container: today-training / inline-size; }
+  .today-training { min-width: 0; padding: 16px 18px; border-radius: 12px; }
   .training-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
   .training-heading-copy { min-width: 0; }
-  h2 { font-size: 18px; }
+  h2 { display: flex; align-items: center; gap: 8px; font-size: 18px; }
+  h2 svg { flex: none; }
   h2, h3, p { margin: 0; overflow-wrap: anywhere; }
-  p { font-size: 13px; }
-  .training-hint { margin-top: 4px; font-size: 12px; }
+  p { font-size: 12px; }
+  .training-hint { margin-top: 3px; font-size: 11px; }
   .today-training > p, .training-error { margin-top: 10px; }
-  .training-manage { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 12px; }
-  .training-plan { margin-top: 8px; padding-top: 8px; }
-  .training-plan-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-  .training-plan-heading h3 { min-width: 0; font-size: 14px; }
-  .training-count { font-size: 12px; }
-  .training-current { padding: 2px 7px; border-radius: 5px; font-size: 11px; }
-  .training-list { max-width: 420px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 10px 0 0; padding: 0; }
-  .training-list li { min-width: 0; }
-  .training-member { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px; border-radius: 8px; text-align: center; }
-  .training-member :deep(.operator-avatar) { flex: none; width: 44px; height: 44px; }
-  .training-member-name { min-width: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-  .training-extra { display: flex; flex-wrap: wrap; gap: 0 12px; }
-  .training-note { margin-top: 10px; padding: 6px 8px; border-radius: 0 6px 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  button { display: inline-flex; align-items: center; min-height: 36px; margin-top: 8px; padding: 6px 10px; border-radius: 8px; overflow-wrap: anywhere; }
+  .training-manage { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; font-size: 12px; }
+  .training-plan { margin-top: 10px; padding-top: 8px; }
+  .training-plan-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
+  .training-plan-heading h3 { min-width: 0; font-size: 12px; }
+  .training-count { font-size: 11px; }
+  .training-current { padding: 1px 5px; border-radius: 4px; font-size: 10px; }
+  .training-list { display: flex; gap: 14px; margin: 8px 0 0; padding: 4px; overflow-x: auto; overscroll-behavior-x: contain; }
+  .training-list li { flex: none; min-width: 0; width: 74px; }
+  .training-member { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 3px; border-radius: 8px; text-align: center; }
+  .training-member :deep(.operator-avatar) { flex: none; width: 62px; height: 62px; }
+  .training-member-name { min-width: 0; max-width: 100%; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .training-extra { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 4px; }
+  .training-note { margin-top: 8px; padding: 5px 8px; border-radius: 0 6px 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  button { min-height: 32px; margin-top: 8px; padding: 5px 10px; border-radius: 7px; overflow-wrap: anywhere; }
+  .training-member-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 }

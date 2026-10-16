@@ -83,7 +83,7 @@ it('无子账号管理员读全部游戏当日摘要，保留导航与建档', a
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
   expect(listActivityCalendar).toHaveBeenCalledWith({ game: '', from: today, to: '2026-10-10' })
-  expect(card(wrapper).get('h2').text()).toBe('游戏日程')
+  expect(card(wrapper).get('h2').text()).toBe('游戏活动')
   expect(card(wrapper).get('.activity-heading p').text()).toContain('全部游戏')
   expect(card(wrapper).text()).toContain('今日公开活动')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: {} })
@@ -164,7 +164,7 @@ it('日历局部失败/重试不改变dashboard错误，也不重新请求dashbo
   listActivityCalendar.mockRejectedValue(new Error('日历网络失败'))
   const wrapper = render()
   await flushPromises()
-  expect(card(wrapper).get('[role=alert]').text()).toContain('活动日程暂时无法读取')
+  expect(card(wrapper).get('[role=alert]').text()).toContain('游戏活动暂时无法读取')
   expect(wrapper.find('.today-alert').exists()).toBe(false)
   expect(link(wrapper).props('to').query).toEqual({ game: '代号鸢' })
   const dashboardCalls = getOperatorCurrent.mock.calls.length
@@ -186,12 +186,13 @@ it('今日条目按截止日期优先，未来7天可见并有可定位的日历
     item({ id: 'too-far', title: '超出窗口', start_date: '2026-10-11', end_date: '2026-10-12' })
   ] })
   const wrapper = render(TodayActivitySummary, { game: '如鸢' }); await flushPromises()
-  expect(wrapper.findAll('[aria-label="今日活动预览"] .activity-title').map(node => node.text())).toEqual(['今天结束', '明日结束', '长期活动'])
-  expect(wrapper.get('.activity-date').attributes('datetime')).toBe('2026-10-01')
-  expect(wrapper.get('.activity-date').attributes('aria-label')).toBe('开始日期 2026-10-01')
+  expect(wrapper.findAll('[aria-label="游戏活动预览"] .activity-title').map(node => node.text())).toEqual(['今天结束', '明日结束', '长期活动'])
+  expect(wrapper.get('.activity-emblem').text()).toBe('活动')
+  expect(wrapper.get('.activity-detail').text()).toBe('今天截止（仅日期）')
   expect(wrapper.text()).toContain('七天内开始')
   expect(wrapper.text()).not.toContain('超出窗口')
-  expect(wrapper.get('.activity-upcoming').getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢', view: 'month', date: '2026-10-10' } })
+  await wrapper.get('.activity-next').trigger('click')
+  expect(wrapper.get('.activity-preview').getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢', view: 'month', date: '2026-10-10', event: 'future' } })
   expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
 })
 
@@ -206,17 +207,25 @@ it('已知精确截止触发本地预览更新，日期未知时间不伪造完�
   wrapper.unmount(); expect(vi.getTimerCount()).toBe(0)
 })
 
-it('活动统计先于预览展示，未来活动只预览一项并保留完整入口', async () => {
-  listActivityCalendar.mockResolvedValue({ items: [item(), ...[1, 2, 3].map(index => item({
+it('真实状态分段切换有界预览，不重复请求或展示全部未来列表', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [item(), ...[1, 2, 3, 4].map(index => item({
     id: 'future-' + index, title: '未来活动' + index, start_date: `2026-10-0${index + 3}`, end_date: '2026-10-10'
   }))] })
   const wrapper = render(TodayActivitySummary, { game: '如鸢' }); await flushPromises()
-  const children = Array.from(wrapper.element.children)
-  expect(children.indexOf(wrapper.get('.activity-counts').element)).toBeLessThan(children.indexOf(wrapper.get('[aria-label="今日活动预览"]').element))
-  expect(wrapper.findAll('.activity-upcoming li')).toHaveLength(1)
-  expect(wrapper.get('.activity-upcoming').text()).toContain('未来活动1')
-  expect(wrapper.get('.activity-upcoming').text()).toContain('另有 2 项即将开始')
+  expect(wrapper.findAll('.activity-counts button').map(node => node.text())).toEqual(['进行中 1', '今日结束 1', '即将开始 4'])
+  expect(wrapper.findAll('.activity-preview li')).toHaveLength(1)
+  expect(wrapper.get('.activity-next').text()).toContain('未来活动1')
   expect(wrapper.get('.activity-detail').text()).toContain('（仅日期）')
+  await wrapper.findAll('.activity-counts button')[2].trigger('click')
+  expect(wrapper.findAll('.activity-preview .activity-title').map(node => node.text())).toEqual(['未来活动1', '未来活动2', '未来活动3'])
+  expect(wrapper.text()).toContain('另有 1 项')
+  expect(wrapper.findAll('.activity-counts button')[2].attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.activity-status').text()).toBe('即将开始')
+  expect(wrapper.get('.activity-detail').text()).toBe('10/4开始（仅日期）')
+  await wrapper.findAll('.activity-counts button')[1].trigger('click')
+  expect(wrapper.findAll('.activity-preview li')).toHaveLength(1)
+  expect(wrapper.get('.activity-status').text()).toBe('今日结束')
+  expect(listActivityCalendar).toHaveBeenCalledTimes(1)
   expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/calendar', query: { game: '如鸢' } })
 })
 
@@ -279,7 +288,7 @@ it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数�
   expect(vi.getTimerCount()).toBe(0)
 })
 
-it.each([true, false])('计数遵循同日开始+结束、严格ongoing和去重total，预览最多3项（仅同日=%s）', async sameDayOnly => {
+it.each([true, false])('进行中含今日开始/结束，今日结束为子集，去重且预览最多3项（仅同日=%s）', async sameDayOnly => {
   signIn([])
   const sameDay = item({ id: 'same', title: '同日活动' })
   listActivityCalendar.mockResolvedValue({ items: sameDayOnly ? [sameDay, { ...sameDay }] : [
@@ -293,10 +302,10 @@ it.each([true, false])('计数遵循同日开始+结束、严格ongoing和去重
   ] })
   const wrapper = render()
   await flushPromises()
-  expect(card(wrapper).findAll('.activity-counts p').map(node => node.text())).toEqual(sameDayOnly
-    ? ['进行中 0', '今日开始 1', '今日结束 1'] : ['进行中 2', '今日开始 2', '今日结束 2'])
-  expect(card(wrapper).findAll('[aria-label="今日活动预览"] li')).toHaveLength(sameDayOnly ? 1 : 3)
-  expect(card(wrapper).text()).toContain('今日结束 / 今日开始')
+  expect(card(wrapper).findAll('.activity-counts button').map(node => node.text())).toEqual(sameDayOnly
+    ? ['进行中 1', '今日结束 1', '即将开始 0'] : ['进行中 5', '今日结束 2', '即将开始 1'])
+  expect(card(wrapper).findAll('[aria-label="游戏活动预览"] li')).toHaveLength(sameDayOnly ? 1 : 3)
+  expect(card(wrapper).text()).toContain('今日结束')
   expect(card(wrapper).text()).not.toContain('历史项')
   if (!sameDayOnly) expect(card(wrapper).text()).toContain('未来项')
   if (sameDayOnly) expect(card(wrapper).text()).not.toContain('另有')
@@ -396,8 +405,8 @@ it('仅开启养成时不保留账号详情或空的活动侧栏', async () => {
   signIn()
   const wrapper = render(); await flushPromises()
   expect(wrapper.find('.today-training').exists()).toBe(true)
-  expect(wrapper.find('.today-aside').exists()).toBe(false)
-  expect(wrapper.get('.today-overview').classes()).not.toContain('has-sidebar')
+  expect(wrapper.find('.today-workspace .today-activity-summary').exists()).toBe(false)
+  expect(wrapper.find('.today-private-items').exists()).toBe(false)
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   expect(listActivityCalendar).not.toHaveBeenCalled()
 })
@@ -429,6 +438,39 @@ it('持续活动保留在今日摘要，排序不报错且展示持续进行', a
   expect(card(wrapper).text()).toContain('持续活动')
   expect(card(wrapper).text()).toContain('持续进行')
   expect(card(wrapper).text()).not.toContain('截止 null')
-  expect(card(wrapper).findAll('.activity-counts p').map(node => node.text())).toEqual(['进行中 1', '今日开始 1', '今日结束 1'])
-  expect(card(wrapper).findAll('[aria-label="今日活动预览"] li')[0].text()).toContain('今日截止')
+  expect(card(wrapper).findAll('.activity-counts button').map(node => node.text())).toEqual(['进行中 2', '今日结束 1', '即将开始 0'])
+  expect(card(wrapper).findAll('[aria-label="游戏活动预览"] li')[0].text()).toContain('今日截止')
+})
+
+it('今日稍后开始归于即将开始，精确起止边界更新状态且无需重新请求', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [item({
+    id: 'later-today', title: '今日稍后招募', category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL',
+    start_at: '2026-10-03T04:00:01Z', end_at: '2026-10-03T04:00:03Z'
+  })] })
+  const wrapper = render(TodayActivitySummary); await flushPromises()
+  expect(wrapper.findAll('.activity-counts button').map(node => node.text())).toEqual(['进行中 0', '今日结束 0', '即将开始 1'])
+  expect(wrapper.get('.activity-status').text()).toBe('即将开始')
+  expect(wrapper.get('.activity-emblem').text()).toBe('招募')
+  expect(wrapper.get('.activity-detail').text()).toBe('今天 12:00开始 · 北京时间')
+  await vi.advanceTimersByTimeAsync(1100); await flushPromises()
+  expect(wrapper.findAll('.activity-counts button').map(node => node.text())).toEqual(['进行中 1', '今日结束 1', '即将开始 0'])
+  expect(wrapper.get('.activity-status').text()).toBe('今日结束')
+  await vi.advanceTimersByTimeAsync(2000); await flushPromises()
+  expect(wrapper.find('.activity-preview').exists()).toBe(false)
+  expect(wrapper.text()).toContain('暂无公开活动')
+  expect(listActivityCalendar).toHaveBeenCalledTimes(1)
+})
+
+it('截止显示按北京时间换算，不用来源时区日期制造今日结束', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [item({
+    title: '跨时区截止', start_date: '2026-10-01', end_date: today,
+    end_at: '2026-10-03T23:30:00-07:00', time_zone: 'America/Los_Angeles'
+  })] })
+  const wrapper = render(TodayActivitySummary); await flushPromises()
+  expect(wrapper.findAll('.activity-counts button').map(node => node.text())).toEqual(['进行中 1', '今日结束 0', '即将开始 0'])
+  expect(wrapper.get('.activity-status').text()).toBe('进行中')
+  expect(wrapper.get('.activity-detail').text()).toBe('10/4 14:30截止 · 北京时间')
+  await wrapper.findAll('.activity-counts button')[1].trigger('click')
+  expect(wrapper.text()).toContain('今天没有即将结束的活动')
+  expect(wrapper.find('.activity-preview').exists()).toBe(false)
 })

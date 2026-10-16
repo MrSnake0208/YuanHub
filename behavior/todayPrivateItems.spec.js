@@ -24,7 +24,7 @@ it('shows bounded plain-text notes, multi-day ranges and chronological links to 
     record({ id: 'pci_00000000-0000-0000-0000-000000000004', title: '范围外', date: '2027-02-01' }),
   ] })
   const wrapper = render(); await flushPromises()
-  expect(listCalendarPrivateItems).toHaveBeenCalledExactlyOnceWith({ account_id: 'a', from: '2026-10-15', to: '2027-01-13' }, 'owner-a')
+  expect(listCalendarPrivateItems).toHaveBeenCalledExactlyOnceWith({ account_id: 'a', from: '2026-10-15', to: '2026-10-22' }, 'owner-a')
   expect(wrapper.findAll('.private-title').map(node => node.text())).toEqual(['进行中', '未来事项'])
   expect(wrapper.get('.private-note').element.textContent).toBe(note.slice(0, 80) + '…')
   expect(wrapper.find('img').exists()).toBe(false)
@@ -59,6 +59,27 @@ it('distinguishes failed reads from an empty list and allows retry', async () =>
   await wrapper.get('button').trigger('click'); await flushPromises()
   expect(wrapper.find('[role=alert]').exists()).toBe(false)
   expect(wrapper.text()).toContain('还没有私人事项')
+})
+
+it('首页空安排读取成功后不占区域，加载和失败仍可见且可重试', async () => {
+  const pending = deferred()
+  listCalendarPrivateItems.mockReturnValueOnce(pending.promise)
+  const wrapper = render({ accountId: 'a', game: '如鸢', hideEmpty: true })
+  expect(wrapper.get('[role=status]').text()).toContain('正在读取')
+  pending.resolve({ items: [] }); await flushPromises()
+  expect(wrapper.find('section').exists()).toBe(false)
+  listCalendarPrivateItems.mockRejectedValueOnce(new Error('私人安排离线'))
+  window.dispatchEvent(new Event('pageshow')); await flushPromises()
+  expect(wrapper.get('[role=alert]').text()).toContain('私人安排离线')
+  await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.find('section').exists()).toBe(false)
+})
+
+it('远期安排留在完整日历，不使首页保留空私人卡片', async () => {
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [record({ date: '2026-11-01' })] })
+  const wrapper = render({ accountId: 'a', game: '如鸢', hideEmpty: true }); await flushPromises()
+  expect(wrapper.find('section').exists()).toBe(false)
+  expect(listCalendarPrivateItems.mock.lastCall[0].to).toBe('2026-10-22')
 })
 
 it.each(['account', 'identity', 'game', 'clear', 'logout', 'unmount'])('ignores late notes after %s changes', async change => {

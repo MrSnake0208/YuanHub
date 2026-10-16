@@ -17,7 +17,7 @@ import TodayPrivateItems from '../src/components/today/TodayPrivateItems.vue'
 import TodayTrainingPlans from '../src/components/today/TodayTrainingPlans.vue'
 import { getTrainingWorkspace } from '../src/api/operatorPlanner.js'
 import { listCalendarPrivateItems } from '../src/api/calendarPrivateItems.js'
-import { serverToday } from '../src/data/activityCalendar.js'
+import { addCalendarDays, serverToday } from '../src/data/activityCalendar.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { calendarSubscriptionSummary, listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
@@ -119,7 +119,7 @@ it('全新账号先展示紧凑引导，确认读取为空后隐藏业务空卡�
   expect(wrapper.find('.today-private-items').exists()).toBe(false)
   expect(wrapper.find('.todo-reminders').exists()).toBe(false)
   expect(wrapper.get('.today-workspace').get('.today-activity-summary').exists()).toBe(true)
-  expect(wrapper.get('.today-aside').findAll('section')).toHaveLength(0)
+  expect(wrapper.find('.today-training').exists()).toBe(false)
   expect(wrapper.findComponent(TodaySubscriptionSummary).exists()).toBe(true)
   expect(wrapper.findComponent(TodayTrainingPlans).exists()).toBe(true)
   expect(wrapper.findComponent(TodayPrivateItems).exists()).toBe(true)
@@ -257,14 +257,15 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   expect(wrapper.vm.realSummary.operatorCount).toBe(1)
   expect(wrapper.vm.realSummary.starCount).toBe(1)
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
-  expect(wrapper.get('.today-workspace > .today-subscriptions h2').text()).toBe('我的待办')
-  expect(wrapper.get('.today-aside > .today-private-items h2').text()).toBe('我的事项与备注')
-  expect(wrapper.get('.today-workspace > .today-training h2').text()).toBe('我的养成计划')
-  const aside = wrapper.get('.today-aside')
-  expect(aside.get('.today-private-items').exists()).toBe(true)
+  expect(wrapper.get('.today-primary > .today-subscriptions h2').text()).toBe('活动待办')
+  expect(wrapper.find('.today-private-items').exists()).toBe(false)
+  expect(wrapper.get('.today-primary > .today-training h2').text()).toBe('我的养成计划')
+  const aside = wrapper.get('.today-secondary')
+  expect(aside.find('.today-private-items').exists()).toBe(false)
   expect(wrapper.get('#today-reminders').element.children).toHaveLength(0)
   expect(wrapper.get('.todo-subscription-status').text()).toContain('暂无临期活动。')
-  expect(Array.from(wrapper.get('.today-workspace').element.children).map(node => node.className)).toEqual(['today-subscriptions', 'today-activity-summary', 'today-training'])
+  expect(wrapper.get('.today-primary').find('.today-training').exists()).toBe(true)
+  expect(wrapper.findAll('.today-activity-summary')).toHaveLength(1)
   expect(aside.text()).not.toContain('账号详情')
   expect(wrapper.find('.today-subscriptions .todo-reminders').exists()).toBe(false)
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
@@ -279,18 +280,20 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   expect(wrapper.find('nav[aria-label="今日一览的工具入口"]').exists()).toBe(false)
 })
 
-it('无账号时活动使用单栏，有账号时个人工作台占主栏', async () => {
+it('无账号时只挂载公开区，有账号时待办与独立养成区可用', async () => {
   signIn(); auth.isAdmin = true
   const wrapper = render(); await flushPromises()
   expect(wrapper.find('.today-activity-summary').exists()).toBe(true)
   expect(wrapper.find('.today-account-overview').exists()).toBe(false)
-  expect(wrapper.get('.today-overview').classes()).not.toContain('has-sidebar')
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-private-items').exists()).toBe(false)
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
   expect(wrapper.find('.today-workspace').exists()).toBe(true)
   expect(wrapper.find('.today-account-overview').exists()).toBe(false)
-  expect(wrapper.get('.today-overview').classes()).toContain('has-sidebar')
+  expect(wrapper.get('.today-workspace .today-subscriptions').exists()).toBe(true)
+  expect(wrapper.get('.today-primary .today-training').exists()).toBe(true)
 })
 
 it('尚未录入游戏数据也展示私人备注，私人事项慢请求不阻塞活动待办', async () => {
@@ -299,14 +302,14 @@ it('尚未录入游戏数据也展示私人备注，私人事项慢请求不阻�
   const pending = deferred()
   listCalendarPrivateItems.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.find('.today-workspace > .today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-primary > .today-subscriptions').exists()).toBe(false)
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.today-private-items').text()).toContain('正在读取私人事项')
   expect(wrapper.find('section.data-onboarding').exists()).toBe(true)
   pending.resolve({ items: [{ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '我的计划', date: serverToday(), time: null, note: '先整理备注', version: 0 }] })
   await flushPromises()
-  expect(wrapper.get('.today-aside').text()).toContain('先整理备注')
-  expect(wrapper.get('.today-workspace').text()).not.toContain('先整理备注')
+  expect(wrapper.get('.today-private-items').text()).toContain('先整理备注')
+  expect(wrapper.find('.today-subscriptions').exists()).toBe(false)
 })
 
 it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个人内容', async () => {
@@ -315,18 +318,18 @@ it('尚未录入游戏数据也展示养成清单，慢请求不阻塞其他个�
   const pending = deferred()
   getTrainingWorkspace.mockReturnValueOnce(pending.promise)
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('正在读取养成计划')
-  expect(wrapper.find('.today-workspace > .today-subscriptions').exists()).toBe(false)
-  expect(wrapper.find('.today-aside > .today-private-items').exists()).toBe(false)
+  expect(wrapper.get('.today-primary > .today-training').text()).toContain('正在读取养成计划')
+  expect(wrapper.find('.today-primary > .today-subscriptions').exists()).toBe(false)
+  expect(wrapper.find('.today-secondary > .today-private-items').exists()).toBe(false)
   expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
   expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
   pending.resolve({ schema_version: 1, account_id: 'a', revision: 1, active_plan_id: 'main', plans: [
     { id: 'main', name: '培养主队', source: 'custom', operator_ids: ['char_001_yangxiu'], excluded_operator_ids: [], targets: {} }
   ] })
   await flushPromises()
-  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('培养主队')
-  expect(wrapper.get('.today-workspace > .today-training').text()).toContain('杨修')
-  expect(wrapper.get('.today-aside').text()).not.toContain('培养主队')
+  expect(wrapper.get('.today-primary > .today-training').text()).toContain('培养主队')
+  expect(wrapper.get('.today-primary > .today-training').text()).toContain('杨修')
+  expect(wrapper.get('.today-activity-summary').text()).not.toContain('培养主队')
 })
 
 it('已有部分数据时不展示补齐区、缺项提醒或账号详情，保留真实录入状态', async () => {
@@ -406,9 +409,12 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点及唯一�
   signIn(); auth.isAdmin = true; auth.userInfo = { id: 'synthetic-owner' }
   listAccounts.mockResolvedValue([{ id: 'a', name: '合成账号', game: '如鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
+  listActivityCalendar.mockResolvedValueOnce({ items: [{ id: 'upcoming', title: '即将开始的招募', game: '如鸢', category: 'RECRUITMENT', start_date: addCalendarDays(serverToday(), 1), end_date: addCalendarDays(serverToday(), 7) }] })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: [{ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '私人日期事项', date: serverToday(), time: null, note: '', version: 0 }] })
   const wrapper = render(); await flushPromises()
   const instances = [TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems, TodayTrainingPlans].map(type => wrapper.getComponent(type).vm.$)
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
+  await wrapper.findAll('.activity-counts button')[2].trigger('click')
   await wrapper.get('.lobby-duty button').trigger('click'); await flushPromises()
   const search = document.querySelector('.duty-search input')
   search.value = '阿蝉'; search.dispatchEvent(new Event('input', { bubbles: true })); search.focus()
@@ -421,11 +427,30 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点及唯一�
     expect(document.activeElement).toBe(search)
     expect(wrapper.find('.data-onboarding').exists()).toBe(false)
     expect(wrapper.find('.lobby-status').exists()).toBe(false)
+    expect(wrapper.findAll('.activity-counts button')[2].attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.activity-title').text()).toBe('即将开始的招募')
+    expect(wrapper.get('.today-activity-summary').element.parentElement.className).toBe(next >= 768 ? 'today-column today-secondary' : 'today-activities-target')
+    expect(wrapper.findAll('.today-workspace section').map(section => section.classes()[0])).toEqual(next >= 768
+      ? ['today-subscriptions', 'today-training', 'today-activity-summary', 'today-private-items']
+      : ['today-subscriptions', 'today-activity-summary', 'today-training', 'today-private-items'])
     ;[TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems, TodayTrainingPlans].forEach((type, index) => expect(wrapper.getComponent(type).vm.$).toBe(instances[index]))
     expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems, getTrainingWorkspace].map(fn => fn.mock.calls.length)).toEqual(calls)
     expect(wrapper.findAll('.account-switcher')).toHaveLength(1)
   }
+  document.querySelector('[aria-label="关闭值守选择"]').click(); await flushPromises()
+  const segment = wrapper.findAll('.activity-counts button')[2].element
+  segment.focus()
+  for (const next of [767, 768, 1440, 390]) {
+    viewport.resize(next); await flushPromises()
+    expect(document.activeElement).toBe(segment)
+    expect(wrapper.findAll('.activity-counts button')[2].element).toBe(segment)
+    expect(wrapper.getComponent(TodayActivitySummary).vm.$).toBe(instances[1])
+    expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems, getTrainingWorkspace].map(fn => fn.mock.calls.length)).toEqual(calls)
+  }
+  const layoutMedia = viewport.queries.find(({ media }) => media.addEventListener.mock.calls.some(([, listener]) => listener.name === 'syncLayout')).media
   wrapper.unmount()
+  expect(layoutMedia.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+  expect(document.querySelector('.today-activities-target')).toBeNull()
   expect(document.querySelector('.duty-picker')).toBeNull()
 })
 
@@ -486,4 +511,54 @@ it('临期提醒先于主工作区；跨断点保留展开状态、焦点和唯�
     expect(document.activeElement).toBe(summary)
     expect([listCalendarSubscriptions, calendarSubscriptionSummary].map(fn => fn.mock.calls.length)).toEqual(calls)
   }
+})
+
+it.each([
+  { name: '多个订阅无Checklist', subscriptions: 4, tasks: 0, privateItems: 0, members: 0, activities: 3 },
+  { name: '多条未完成待办', subscriptions: 2, tasks: 7, privateItems: 0, members: 0, activities: 3 },
+  { name: '全勾选但本期未完成', subscriptions: 2, tasks: 4, checked: true, privateItems: 0, members: 0, activities: 2 },
+  { name: '仅有私人安排', subscriptions: 0, tasks: 0, privateItems: 1, members: 0, activities: 0 },
+  { name: '有养成没有游戏活动', subscriptions: 0, tasks: 0, privateItems: 0, members: 2, activities: 0 },
+  { name: '各模块大量真实格式数据', subscriptions: 8, tasks: 5, privateItems: 6, members: 8, activities: 8 },
+])('$name：业务对象独立，摘要有界且完整入口保留', async scenario => {
+  signIn(); auth.userInfo = { id: 'synthetic-owner' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '合成账号', game: '如鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
+  const today = serverToday(), tomorrow = addCalendarDays(today, 1)
+  const events = Array.from({ length: scenario.subscriptions }, (_, index) => ({
+    event_id: 'sub-' + index, version: 1, subscribed: true, completed: false, manual_completed: false,
+    checklist: Array.from({ length: scenario.tasks }, (_, task) => ({ id: 'task-' + task, title: '活动任务' + task, completed: !!scenario.checked })),
+    item: { id: 'sub-' + index, title: '订阅活动' + index, start_date: today, end_date: tomorrow }
+  }))
+  listCalendarSubscriptions.mockResolvedValueOnce({ items: events, unavailable_items: [] })
+  calendarSubscriptionSummary.mockResolvedValueOnce({ items: events.slice(0, 3), subscribed_count: events.length, total_pending: events.length })
+  listActivityCalendar.mockResolvedValueOnce({ items: Array.from({ length: scenario.activities }, (_, index) => ({
+    id: 'public-' + index, game: '如鸢', category: 'ACTIVITY', title: '公开游戏活动' + index, start_date: today, end_date: tomorrow
+  })) })
+  listCalendarPrivateItems.mockResolvedValueOnce({ items: Array.from({ length: scenario.privateItems }, (_, index) => ({
+    id: 'pci_00000000-0000-0000-0000-' + String(index + 1).padStart(12, '0'), account_id: 'a', game: '如鸢',
+    title: '私人安排' + index, start_date: today, end_date: today, time: null, note: '独立的私人备注', version: 0
+  })) })
+  getTrainingWorkspace.mockResolvedValueOnce({ schema_version: 1, account_id: 'a', revision: 0, active_plan_id: 'main', plans: scenario.members ? [{
+    id: 'main', name: '真实格式培养清单', source: 'custom', operator_ids: Array.from({ length: scenario.members }, (_, index) => 'synthetic-operator-' + index), excluded_operator_ids: [], targets: {}
+  }] : [] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.todo-list input[type=checkbox]')).toHaveLength(scenario.checked ? 0 : Math.min(3, scenario.tasks * scenario.subscriptions))
+  expect(wrapper.findAll('.activity-preview li')).toHaveLength(Math.min(3, scenario.activities))
+  expect(wrapper.findAll('.private-list li')).toHaveLength(Math.min(2, scenario.privateItems))
+  expect(wrapper.findAll('.training-member')).toHaveLength(Math.min(5, scenario.members))
+  expect(wrapper.find('.today-private-items').exists()).toBe(scenario.privateItems > 0)
+  expect(wrapper.findAll('.today-training input[type=checkbox], .today-private-items input[type=checkbox]')).toHaveLength(0)
+  expect(wrapper.find('.todo-reminders').exists()).toBe(scenario.subscriptions > 0)
+  if (scenario.tasks && !scenario.checked) expect(wrapper.get('.todo-scope').text()).toContain(`${scenario.tasks * scenario.subscriptions} 项待办未完成`)
+  if (!scenario.tasks && scenario.subscriptions) expect(wrapper.get('.todo-empty').text()).toContain('订阅活动不会自动创建 Checklist')
+  if (scenario.checked) {
+    expect(wrapper.get('.todo-empty').text()).toContain('清单已全部勾选')
+    expect(wrapper.text()).not.toContain('活动均已标记本期完成')
+    expect(wrapper.find('.todo-more').exists()).toBe(true)
+  }
+  expect(wrapper.get('.today-primary').find('.today-training').exists()).toBe(true)
+  expect(wrapper.find('.today-secondary .today-training').exists()).toBe(false)
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(1)
+  expect(listCalendarPrivateItems).toHaveBeenCalledTimes(1)
 })
