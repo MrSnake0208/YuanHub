@@ -45,7 +45,6 @@ vi.mock('../src/store/feedbackUnread.js', async () => {
   return { feedbackUnreadState: reactive({ count: 0 }), subscribeFeedbackUnread: vi.fn() }
 })
 const currentRoute = useRoute()
-let unsubscribe
 beforeEach(() => {
   vi.useFakeTimers()
   isFeatureEnabled.mockImplementation(key => [FEATURE_KEYS.ACTIVITY_CALENDAR, FEATURE_KEYS.RECRUITMENT_ARCHIVE].includes(key))
@@ -56,7 +55,7 @@ beforeEach(() => {
   Object.assign(currentRoute, { path: '/', fullPath: '/', meta: { title: '今日一览 — YuanHub' } })
   beta.mine.canUseBetaFeatures = false; beta.mine.enrollmentStatus = ''
   betaCommunity.open.mockClear()
-  unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
+  subscribeFeedbackUnread.mockReset()
   logout.mockReset(); dialog.confirm.mockReset()
 })
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
@@ -211,11 +210,11 @@ it('招募入口对访客和普通用户公开，不再读取独立招募授权'
   expect(recruitmentAccess.setIdentity).not.toHaveBeenCalled()
   expect(recruitmentAccess.refresh).not.toHaveBeenCalled()
 })
-it('卸载只释放反馈订阅，不在 Sidebar 内维护通知轮询', async () => {
+it('导航不订阅管理员反馈未读，也不自行维护通知轮询', async () => {
   auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
   const wrapper = render(); await flushPromises()
   wrapper.unmount()
-  expect(unsubscribe).toHaveBeenCalledTimes(1)
+  expect(subscribeFeedbackUnread).not.toHaveBeenCalled()
   expect(vi.getTimerCount()).toBe(0)
 })
 it('手机导航明确标出当前页，展开后可发现首尾入口和内测图标', async () => {
@@ -365,7 +364,7 @@ it('常用功能保持双端一致顺序和直达，不增加分类标题或账�
   expect(wrapper.get('.mobile-more').attributes('open')).toBeUndefined()
 })
 
-it('反馈直达入口保留未读，更多不重复展示反馈，双端账号与通知可达', async () => {
+it('反馈直达入口不显示管理员未读，更多不重复展示反馈，双端账号与通知可达', async () => {
   Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a', user_name: '测试殿下' } })
   const wrapper = render()
   feedbackUnreadState.count = 108
@@ -376,7 +375,8 @@ it('反馈直达入口保留未读，更多不重复展示反馈，双端账号�
   expect(feedbackLinks).toHaveLength(2)
   for (const link of feedbackLinks) {
     expect(link.element.closest('details')).toBeNull()
-    expect(link.get('.more-feedback-badge').text()).toBe('99+')
+    expect(link.text()).toBe('反馈中心')
+    expect(link.find('.more-feedback-badge').exists()).toBe(false)
   }
   for (const selector of ['.sidebar-more > summary', '.mobile-more > summary']) {
     expect(wrapper.get(selector).attributes('aria-label')).toBe('更多')
@@ -395,6 +395,25 @@ it('反馈直达入口保留未读，更多不重复展示反馈，双端账号�
   feedbackUnreadState.count = 0
   await flushPromises()
   expect(wrapper.findAll('.more-feedback-badge')).toHaveLength(0)
+})
+
+it.each([3, 108])('管理员有 %i 条待阅反馈时，双端反馈中心仍不显示管理角标', async count => {
+  Object.assign(auth, {
+    accessToken: 'test-only', userInfo: { id: 'admin-a' },
+    adminAccessLoaded: true, adminAccess: { superAdmin: true }
+  })
+  feedbackUnreadState.count = count
+  notificationUnreadState.count = 2
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const feedbackLinks = wrapper.findAllComponents(RouterLinkStub).filter(link => link.props('to') === '/feedback')
+  expect(feedbackLinks).toHaveLength(2)
+  for (const link of feedbackLinks) expect(link.text()).toBe('反馈中心')
+  expect(routes(wrapper).filter(path => path === '/manage')).toHaveLength(2)
+  expect(wrapper.find('.more-feedback-badge').exists()).toBe(false)
+  expect(subscribeFeedbackUnread).not.toHaveBeenCalled()
+  expect(wrapper.get('.sidebar-notifications').attributes('aria-label')).toBe('通知，2 条未读')
+  expect(wrapper.get('.mobile-header-badge').text()).toBe('2')
 })
 
 it.each([[false, '/feedback/plaza'], [true, '/feedback']])('反馈页只高亮独立入口，登录状态：%s', async (loggedIn, path) => {

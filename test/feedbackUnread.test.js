@@ -280,7 +280,7 @@ test('列表归一化同时支持 reporter boundary 的 snake_case 和 camelCase
   }
 })
 
-test('反馈未读状态保留在全站导航和管理详情，页内导航仅含用户入口', () => {
+test('管理员反馈未读仅用于管理详情，全站反馈入口和页内导航不承载管理状态', () => {
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
   const feedbackNav = readFileSync(new URL('../src/components/feedback/FeedbackWorkspaceNav.vue', import.meta.url), 'utf8')
   const feedbackUnreadStore = readFileSync(new URL('../src/store/feedbackUnread.js', import.meta.url), 'utf8')
@@ -293,8 +293,7 @@ test('反馈未读状态保留在全站导航和管理详情，页内导航仅�
   assert.match(feedbackUnreadStore, /subscribeFeedbackUnread/)
   assert.match(feedbackUnreadStore, /feedbackUnreadContext/)
   assert.doesNotMatch(sidebar, /listManagedFeedback/)
-  assert.match(sidebar, /feedbackUnreadState\.count/)
-  assert.match(sidebar, /subscribeFeedbackUnread\(\)/)
+  assert.doesNotMatch(sidebar, /feedbackUnreadState|subscribeFeedbackUnread/)
   assert.doesNotMatch(managePage, /const unreadFeedbackIds = computed\(\(\) => feedbacks\.value/)
   assert.match(managePage, /feedbackUnreadState\.ids/)
   assert.match(sidebar, /notificationUnreadState\.count/)
