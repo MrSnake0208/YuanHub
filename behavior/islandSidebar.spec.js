@@ -12,6 +12,7 @@ import { useRoute } from 'vue-router'
 import { feedbackUnreadState } from '../src/store/feedbackUnread.js'
 import { beta } from '../src/store/beta.js'
 import { betaCommunity } from '../src/store/betaCommunity.js'
+import { modalFocusState } from '../src/composables/useModalFocus.js'
 vi.mock('../src/config/features.js', async importOriginal => {
   const original = await importOriginal()
   return { ...original, isFeatureEnabled: vi.fn(original.isFeatureEnabled) }
@@ -60,6 +61,119 @@ beforeEach(() => {
 })
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
+
+function dispatchTouch(target, type, x, y, count = 1) {
+  const point = { identifier: 7, clientX: x, clientY: y }
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.assign(event, {
+    touches: type === 'touchend' || type === 'touchcancel' ? [] : Array(count).fill(point),
+    changedTouches: [point],
+  })
+  target.dispatchEvent(event)
+  return event
+}
+
+function swipeSurface(markup = '<main><p>页面正文</p></main>') {
+  vi.stubGlobal('innerWidth', 390)
+  const surface = document.createElement('div')
+  surface.innerHTML = markup
+  document.body.append(surface)
+  return surface.firstElementChild
+}
+
+it('手机正文右滑打开同一目录，保留原生事件和关闭后菜单焦点', async () => {
+  const wrapper = render()
+  const surface = swipeSurface()
+  dispatchTouch(surface, 'touchstart', 60, 200)
+  const end = dispatchTouch(surface, 'touchend', 180, 210)
+  await flushPromises()
+  expect(end.defaultPrevented).toBe(false)
+  expect(wrapper.get('.mobile-menu-button').attributes('aria-expanded')).toBe('true')
+  expect(document.activeElement).toBe(wrapper.get('#mobile-main-nav').element)
+  expect(document.body.classList.contains('mobile-nav-open')).toBe(true)
+  await wrapper.get('.mobile-drawer-close').trigger('click')
+  await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get('.mobile-menu-button').element)
+  expect(document.body.classList.contains('mobile-nav-open')).toBe(false)
+})
+
+it.each([
+  ['左滑', 160, 200, 60, 200],
+  ['短滑', 60, 200, 90, 200],
+  ['竖滑', 60, 200, 70, 330],
+  ['斜滑', 60, 200, 180, 260],
+  ['浏览器左边缘', 10, 200, 180, 200],
+  ['浏览器右边缘', 380, 200, 490, 200],
+])('%s 不打开目录', async (_, x, y, toX, toY) => {
+  const wrapper = render()
+  const surface = swipeSurface()
+  dispatchTouch(surface, 'touchstart', x, y)
+  dispatchTouch(surface, 'touchend', toX, toY)
+  await flushPromises()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+})
+
+it.each(['<input type="date">', '<textarea></textarea>', '<select></select>', '<button>操作</button>', '<a href="#">链接</a>', '<div contenteditable="true"><span>编辑</span></div>', '<div role="tablist"><span>页签</span></div>'])('控件 %s 保留自己的手势', async markup => {
+  const wrapper = render()
+  const surface = swipeSurface(markup)
+  const target = surface.firstElementChild || surface
+  dispatchTouch(target, 'touchstart', 60, 200)
+  dispatchTouch(target, 'touchend', 180, 200)
+  await flushPromises()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+})
+
+it('横向滚动容器内的正文不触发目录', async () => {
+  const wrapper = render()
+  const surface = swipeSurface('<div style="overflow-x:auto"><p>横向表格</p></div>')
+  Object.defineProperties(surface, { scrollWidth: { value: 800 }, clientWidth: { value: 300 } })
+  dispatchTouch(surface.firstElementChild, 'touchstart', 60, 200)
+  dispatchTouch(surface.firstElementChild, 'touchend', 180, 200)
+  await flushPromises()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+})
+
+it.each(['竖向滚动', '多指', '取消', '慢拖', '路由切换', '切换桌面'])('%s 中断后不把后续移动当作右滑', async action => {
+  const wrapper = render()
+  const surface = swipeSurface()
+  dispatchTouch(surface, 'touchstart', 60, 200)
+  if (action === '竖向滚动') dispatchTouch(surface, 'touchmove', 65, 250)
+  if (action === '多指') dispatchTouch(surface, 'touchmove', 65, 200, 2)
+  if (action === '取消') dispatchTouch(surface, 'touchcancel', 65, 200)
+  if (action === '慢拖') vi.advanceTimersByTime(700)
+  if (action === '路由切换') {
+    Object.assign(currentRoute, { path: '/inventory', fullPath: '/inventory' })
+    await flushPromises()
+  }
+  if (action === '切换桌面') vi.stubGlobal('innerWidth', 1440)
+  dispatchTouch(surface, 'touchend', 180, 200)
+  await flushPromises()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+})
+
+it('桌面触控及现有弹窗期间不打开目录，卸载清理触控监听', async () => {
+  const wrapper = render()
+  const surface = swipeSurface()
+  vi.stubGlobal('innerWidth', 1440)
+  dispatchTouch(surface, 'touchstart', 60, 200)
+  vi.stubGlobal('innerWidth', 390)
+  dispatchTouch(surface, 'touchend', 180, 200)
+  await flushPromises()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+  modalFocusState.active = true
+  try {
+    dispatchTouch(surface, 'touchstart', 60, 200)
+    dispatchTouch(surface, 'touchend', 180, 200)
+    await flushPromises()
+    expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+  } finally {
+    modalFocusState.active = false
+  }
+  const remove = vi.spyOn(document, 'removeEventListener')
+  wrapper.unmount()
+  for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) expect(remove).toHaveBeenCalledWith(type, expect.any(Function))
+})
+
 it('移动导航关闭时仍提供教程末步的可达菜单目标', () => {
   const wrapper = render()
   expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)

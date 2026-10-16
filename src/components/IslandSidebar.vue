@@ -273,7 +273,7 @@ import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
-import { useModalFocus } from "@/composables/useModalFocus.js";
+import { modalFocusState, useModalFocus } from "@/composables/useModalFocus.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
 import {
@@ -321,6 +321,7 @@ useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEsca
 const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "YuanHub");
 
 watch(() => route.fullPath, () => {
+  cancelSwipe();
   menuOpen.value = false;
   closeDesktopMore();
 });
@@ -350,6 +351,42 @@ function closeMenu() {
   void nextTick(() => menuToggle.value?.focus());
 }
 
+let swipeStart = null;
+
+function cancelSwipe() {
+  swipeStart = null;
+}
+
+function onTouchStart(event) {
+  cancelSwipe();
+  if (window.innerWidth > 1080 || menuOpen.value || modalFocusState.active || event.defaultPrevented || event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  // 留出系统返回手势边缘，表单和横向滚动区保留自己的触控行为。
+  if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24 || window.getSelection()?.isCollapsed === false) return;
+  const target = event.target;
+  if (!(target instanceof Element) || target.closest('input, textarea, select, button, a, summary, [contenteditable]:not([contenteditable="false"]), [role="slider"], [role="dialog"], [role="tablist"]')) return;
+  for (let node = target; node && node !== document.body; node = node.parentElement) {
+    if (node.scrollWidth > node.clientWidth && /auto|scroll/.test(getComputedStyle(node).overflowX)) return;
+  }
+  swipeStart = { x: touch.clientX, y: touch.clientY, id: touch.identifier, time: Date.now() };
+}
+
+function onTouchMove(event) {
+  if (!swipeStart) return;
+  const touch = event.touches[0];
+  if (event.touches.length !== 1 || touch.identifier !== swipeStart.id || Math.abs(touch.clientY - swipeStart.y) > 24 || touch.clientX < swipeStart.x - 24) cancelSwipe();
+}
+
+function onTouchEnd(event) {
+  const start = swipeStart;
+  cancelSwipe();
+  const touch = event.changedTouches[0];
+  if (!start || !touch || event.touches.length || touch.identifier !== start.id || event.defaultPrevented || window.innerWidth > 1080 || menuOpen.value || modalFocusState.active) return;
+  const dx = touch.clientX - start.x;
+  const dy = Math.abs(touch.clientY - start.y);
+  if (Date.now() - start.time <= 600 && dx >= 80 && dy <= 24) toggleMenu();
+}
+
 function closeDesktopMore(restoreFocus = false) {
   const details = desktopMore.value;
   if (!details?.open) return;
@@ -374,11 +411,19 @@ function openBetaCommunity() {
 onMounted(function () {
   stopFeedbackUnread = subscribeFeedbackUnread();
   document.addEventListener("click", onOutsideClick);
+  document.addEventListener("touchstart", onTouchStart, { passive: true });
+  document.addEventListener("touchmove", onTouchMove, { passive: true });
+  document.addEventListener("touchend", onTouchEnd, { passive: true });
+  document.addEventListener("touchcancel", cancelSwipe, { passive: true });
 });
 
 onBeforeUnmount(function () {
   if (stopFeedbackUnread) stopFeedbackUnread();
   document.removeEventListener("click", onOutsideClick);
+  document.removeEventListener("touchstart", onTouchStart);
+  document.removeEventListener("touchmove", onTouchMove);
+  document.removeEventListener("touchend", onTouchEnd);
+  document.removeEventListener("touchcancel", cancelSwipe);
   document.body.classList.remove("mobile-nav-open");
 });
 </script>
