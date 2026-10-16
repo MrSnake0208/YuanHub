@@ -26,7 +26,7 @@ const button = text => new DOMWrapper(document.body).findAll('button').find(node
 const editor = () => document.querySelector('.calendar-private-dialog')
 it.each([390, 1440])('真实日历私人事项跨布局保持未保存文本、日期及焦点：%ipx', async width => {
   const viewport = installViewport(width)
-  await render(); await button('添加私人事项').trigger('click'); await flushPromises()
+  await render(undefined, true, true); await button('添加私人事项').trigger('click'); await flushPromises()
   await field('title', '尚未保存的私人事项'); await field('start_date', '2026-10-16'); await field('note', '私密草稿')
   const instance = wrapper.getComponent({ name: 'CalendarPrivateItemEditor' }).vm.$
   const input = document.querySelector('#private-item-title-input'); input.focus()

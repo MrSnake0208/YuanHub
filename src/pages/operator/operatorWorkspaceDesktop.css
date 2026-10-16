@@ -2176,7 +2176,7 @@
   height: min(92vh, 900px);
   height: min(92dvh, 900px);
   max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(var(--modal-viewport-height, 100dvh) - 48px);
   min-width: 0;
   min-height: 0;
   flex-direction: column;
@@ -3031,4 +3031,7 @@
 @media (min-width: 768px) {
   .panel > .catalog-tools ~ .backpack { margin-inline: -17px; padding: 16px; }
 }
+
+.is-short-viewport .editor-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.is-short-viewport .editor-body { overflow: visible; }
 }

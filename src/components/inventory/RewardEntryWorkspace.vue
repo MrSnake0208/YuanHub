@@ -9,10 +9,11 @@
 
     <Teleport to="body">
       <Transition name="reward-dialog">
-        <div v-if="mode" class="reward-dialog-mask" role="presentation" @click.self="requestClose">
+        <div v-if="mode" class="reward-dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation" @click.self="requestClose">
           <section
             id="reward-entry-panel"
             ref="dialogEl"
+            @focusin="revealFocusedControl"
             class="reward-panel reward-dialog"
             :class="`mode-${mode}`"
             role="dialog"
@@ -33,7 +34,7 @@
               <button type="button" class="icon-button close-button" :aria-disabled="locked ? 'true' : 'false'" :aria-label="locked ? closeLockMessage : '关闭奖励工作台'" :title="locked ? closeLockMessage : '关闭奖励工作台'" @click="requestClose"><X :size="18" aria-hidden="true" /></button>
             </header>
 
-            <div class="reward-dialog-scroll">
+            <div ref="scrollBody" class="reward-dialog-scroll">
               <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}<a v-if="trainingByRuns && ['group', 'level', 'runs'].includes(trainingCalculation.field)" :href="`#${trainingErrorTarget}`" @click.prevent="focusTrainingError">返回历练字段</a></span></div>
               <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
               <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
@@ -193,6 +194,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useModalViewport } from '../../composables/useModalViewport.js'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { getCurrent, importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
@@ -217,6 +219,8 @@ const errorBox = ref(null)
 const resultBox = ref(null)
 const heading = ref(null)
 const dialogEl = ref(null)
+const scrollBody = ref(null)
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !!mode.value, scrollBody, dialogEl)
 const lockNotice = ref(null)
 const manualButton = ref(null)
 const reportButton = ref(null)
