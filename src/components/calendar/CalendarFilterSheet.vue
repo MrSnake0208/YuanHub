@@ -1,12 +1,26 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="calendar-page calendar-public calendar-filter-mask" @click.self="emit('close')">
+    <div v-if="open" class="calendar-page calendar-public calendar-filter-mask" :class="{ 'calendar-personal-filter': personal }" @click.self="emit('close')">
       <section id="calendar-filter-sheet" ref="panel" class="calendar-filter-sheet" :style="position" role="dialog" aria-modal="true" aria-labelledby="calendar-filter-sheet-title" tabindex="-1">
         <header class="calendar-filter-sheet-header">
           <h2 id="calendar-filter-sheet-title" ref="heading" tabindex="-1">筛选</h2>
-          <button type="button" @click="emit('reset')">重置筛选</button>
+          <button type="button" @click="emit('reset')">{{ personal ? '重置类型/时间' : '重置筛选' }}</button>
         </header>
         <div class="calendar-filter-sheet-body">
+          <div v-if="personal" class="calendar-filters calendar-personal-filters">
+            <fieldset>
+              <legend>订阅活动 · 本期状态</legend>
+              <div class="calendar-chips">
+                <button v-for="(label, status) in { todo: '我的待办', completed: '已完成', all: '全部订阅' }" :key="status" type="button" :aria-pressed="taskStatus === status" @click="emit('task', status)">{{ label }}</button>
+              </div>
+              <p class="calendar-hint">仅筛选订阅活动的本期完成状态，待办清单完成不等于本期完成。私人事项没有完成状态。</p>
+            </fieldset>
+            <p class="calendar-hint" role="status">{{ privateItemsHidden ? '当前条件仅显示订阅活动，私人事项已隐藏。选择我的待办或全部订阅，并清除类型和时间状态筛选，即可查看私人事项。' : '同时显示当前账号的私人事项；选择类型、时间状态或已完成后，私人事项会隐藏。不含招募仅排除招募活动。' }}</p>
+            <details class="calendar-personal-help">
+              <summary>我的日历说明</summary>
+              <p class="calendar-hint">游戏随当前账号锁定。订阅即本期待办，截止不会自动完成；历史档期可调整日期查看。私人事项仅当前账号可见。</p>
+            </details>
+          </div>
           <CalendarFilterControls :filters="filters" :lock-game="lockGame" :games="games" :categories="categories" @change="emit('change', $event)" />
         </div>
         <footer class="calendar-filter-sheet-footer">
@@ -27,10 +41,13 @@ const props = defineProps({
   anchor: { type: Object, default: null },
   filters: { type: Object, required: true },
   lockGame: Boolean,
+  personal: Boolean,
+  taskStatus: { type: String, default: 'todo' },
+  privateItemsHidden: Boolean,
   games: { type: Array, required: true },
   categories: { type: Object, required: true },
 })
-const emit = defineEmits(['close', 'change', 'reset'])
+const emit = defineEmits(['close', 'change', 'task', 'reset'])
 const panel = ref(null), heading = ref(null)
 const position = ref({})
 useModalFocus(toRef(props, 'open'), panel, {
