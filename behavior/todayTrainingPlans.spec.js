@@ -10,7 +10,7 @@ const events = vi.hoisted(() => new Set())
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, userInfo: { id: 'owner-a' } }) }))
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: listener => { events.add(listener); return () => events.delete(listener) } }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(), putTrainingWorkspace: vi.fn(), putStaminaSchedule: vi.fn(), importLocalTrainingWorkspace: vi.fn() }))
-vi.mock('../src/api/operator.js', () => ({ getOperatorAnnotations: vi.fn(), getOperatorGrowthTargets: vi.fn(), putOperatorAnnotation: vi.fn(), putOperatorGrowthTarget: vi.fn() }))
+vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorAnnotations: vi.fn(), getOperatorGrowthTargets: vi.fn(), putOperatorAnnotation: vi.fn(), putOperatorGrowthTarget: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ listAgentFavorites: vi.fn(), addAgentFavorite: vi.fn() }))
 const yangxiu = 'char_001_yangxiu', achan = 'char_014_achan'
 const workspace = account => ({ schema_version: 1, account_id: account, revision: 2, active_plan_id: 'main', plans: [
@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers(); events.clear()
   auth.isLoggedIn = true; auth.userInfo = { id: 'owner-a' }
   planner.getTrainingWorkspace.mockImplementation(async account => workspace(account))
+  operators.getOperatorCatalog.mockResolvedValue({ operators: [] })
   operators.getOperatorAnnotations.mockImplementation(async account => ({ account_id: account, items: [{ operator_id: yangxiu, note: '优先练主队' }] }))
   operators.getOperatorGrowthTargets.mockImplementation(async account => ({ account_id: account, items: [] }))
   inventory.listAgentFavorites.mockImplementation(async account => ({ account_id: account, agent_ids: [] }))
@@ -53,6 +54,46 @@ it('shows saved plan targets and complete plain-text notes, including notes outs
   expect(inventory.addAgentFavorite).not.toHaveBeenCalled()
 })
 
+it('uses public catalog names for favorites, custom plans and notes while preserving focus IDs', async () => {
+  const zhoutai = 'char_129_zhoutai', chenlin = 'char_130_chenlin', weiyan = 'char_131_weiyan'
+  const data = workspace('a'); data.plans[1].operator_ids = [weiyan, yangxiu]
+  planner.getTrainingWorkspace.mockResolvedValue(data)
+  inventory.listAgentFavorites.mockResolvedValue({ account_id: 'a', agent_ids: [chenlin] })
+  operators.getOperatorAnnotations.mockResolvedValue({ account_id: 'a', items: [{ operator_id: zhoutai, note: '计划外备注' }] })
+  operators.getOperatorCatalog.mockResolvedValue({ operators: [
+    { id: zhoutai, name: '周泰' }, { id: chenlin, name: '陈琳' }, { id: weiyan, name: '魏延' },
+    { id: yangxiu, name: '杨修（公共图鉴）' }
+  ] })
+  const wrapper = render(); await flushPromises()
+  const links = wrapper.findAllComponents(RouterLinkStub).slice(1)
+  expect(links.map(link => link.text())).toEqual(['陈琳', '魏延', '杨修（公共图鉴）', '周泰'])
+  expect(links.map(link => link.props('to').query.focus)).toEqual([chenlin, weiyan, yangxiu, zhoutai])
+  expect(wrapper.text()).toContain('计划外备注')
+})
+
+it.each(['unavailable', 'invalid', 'invalid entries'])('keeps plans and local names when the public catalog is %s', async kind => {
+  if (kind === 'unavailable') operators.getOperatorCatalog.mockRejectedValue(new Error('图鉴暂不可用'))
+  if (kind === 'invalid') operators.getOperatorCatalog.mockResolvedValue({ operators: null })
+  if (kind === 'invalid entries') operators.getOperatorCatalog.mockResolvedValue({ operators: [null, { id: yangxiu, name: ' ' }, { id: yangxiu, name: 3 }] })
+  const unknown = 'char_unknown'
+  const data = workspace('a'); data.plans[1].operator_ids.push(unknown)
+  planner.getTrainingWorkspace.mockResolvedValue(data)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAllComponents(RouterLinkStub).slice(1).map(link => link.text())).toEqual(['杨修', unknown])
+  expect(wrapper.text()).toContain('优先练主队')
+  expect(wrapper.find('[role=alert]').exists()).toBe(false)
+})
+
+it('discards a late public catalog response after switching accounts', async () => {
+  const pending = deferred(); operators.getOperatorCatalog.mockReturnValueOnce(pending.promise)
+  const wrapper = render(); await flushPromises()
+  operators.getOperatorCatalog.mockResolvedValue({ operators: [{ id: yangxiu, name: '最新图鉴名称' }] })
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  pending.resolve({ operators: [{ id: yangxiu, name: '旧图鉴名称' }] }); await flushPromises()
+  expect(wrapper.text()).toContain('最新图鉴名称')
+  expect(wrapper.text()).not.toContain('旧图鉴名称')
+})
+
 it('resolves live favorites, explicit members and exclusions with the shared plan rule', async () => {
   const data = workspace('a'); data.plans = [data.plans[0]]
   data.plans[0].operator_ids = [yangxiu]; data.plans[0].excluded_operator_ids = [achan]
@@ -71,6 +112,7 @@ it('does not request without login, a known identity or a selected account', asy
   auth.isLoggedIn = false; await wrapper.setProps({ accountId: 'a' }); await flushPromises()
   auth.isLoggedIn = true; auth.userInfo = null; await flushPromises()
   expect(planner.getTrainingWorkspace).not.toHaveBeenCalled()
+  expect(operators.getOperatorCatalog).not.toHaveBeenCalled()
   expect(operators.getOperatorAnnotations).not.toHaveBeenCalled()
   expect(operators.getOperatorGrowthTargets).not.toHaveBeenCalled()
   expect(inventory.listAgentFavorites).not.toHaveBeenCalled()

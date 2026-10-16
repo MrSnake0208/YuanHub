@@ -29,7 +29,7 @@ vi.mock('../src/store/auth.js', async () => {
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
 vi.mock('../src/components/SiteFooter.vue', () => ({ default: { name: 'SiteFooter', template: '<footer />' } }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn() }))
-vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
+vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn(async account => ({ account_id: account, agent_ids: [] })) }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(async account => ({ schema_version: 1, account_id: account, revision: 0, plans: [], active_plan_id: null })) }))
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
