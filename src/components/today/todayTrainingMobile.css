@@ -1,14 +1,26 @@
 @media not all and (min-width: 768px) {
   .today-training { min-width: 0; padding: 16px; border-radius: 14px; }
-  .training-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
-  p, h3 { overflow-wrap: anywhere; }
+  .training-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 4px 12px; }
+  .training-heading-copy { min-width: 0; }
+  h2, h3, p { margin: 0; overflow-wrap: anywhere; }
   p { font-size: 13px; }
-  h3 { font-size: 15px; }
-  .training-hint { font-size: 12px; }
-  .training-plan { margin-top: 12px; padding-top: 12px; }
-  .training-list { display: grid; gap: 12px; margin-top: 8px; padding: 0; }
+  .training-hint { margin-top: 4px; font-size: 12px; }
+  .today-training > p, .training-error { margin-top: 12px; }
+  .training-manage { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 13px; }
+  .training-plan { margin-top: 14px; padding-top: 12px; }
+  .training-plan-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .training-plan-heading h3 { min-width: 0; }
+  .training-count { font-size: 12px; }
+  .training-current { padding: 2px 7px; border-radius: 5px; font-size: 11px; }
+  .training-list { display: grid; gap: 2px; margin: 8px 0 0; padding: 0; }
   .training-list li { min-width: 0; }
-  .training-note { margin-top: 4px; white-space: pre-wrap; }
-  a, button { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
-  button { margin-top: 8px; padding: 8px 12px; border-radius: 8px; }
+  .training-member { display: grid; grid-template-columns: 36px minmax(0, 1fr) 14px; align-items: center; gap: 3px 10px; min-height: 64px; padding: 8px 4px; border-radius: 8px; }
+  .training-member :deep(.operator-avatar) { grid-column: 1; grid-row: 1 / 3; width: 36px; height: 36px; }
+  .training-member-name { grid-column: 2; min-width: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .training-target { grid-column: 2; min-width: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+  .training-chevron { grid-column: 3; grid-row: 1 / 3; }
+  .training-member-notes { min-height: 52px; }
+  .training-member-notes :deep(.operator-avatar), .training-member-notes .training-chevron { grid-row: 1; }
+  .training-note { margin: 0 4px 8px 50px; padding: 6px 8px; border-radius: 0 6px 6px 0; white-space: pre-wrap; }
+  button { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 8px 12px; border-radius: 8px; overflow-wrap: anywhere; }
 }
