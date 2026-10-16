@@ -1,9 +1,11 @@
 <template>
   <div ref="contentPanel" class="operator-share-content" :class="{ 'is-embedded': embedded }" tabindex="-1">
     <form v-if="status === 'input'" class="share-entry" @submit.prevent="submitToken">
-      <span class="section-kicker">公开查看</span>
-      <h2>输入 BOX 分享码</h2>
-      <p>可粘贴代码，也可粘贴完整分享链接。</p>
+      <template v-if="!embedded">
+        <span class="section-kicker">公开查看</span>
+        <h2>输入 BOX 分享码</h2>
+        <p>可粘贴代码，也可粘贴完整分享链接。</p>
+      </template>
       <label :for="inputId">BOX 分享码或分享链接</label>
       <div class="share-entry-row">
         <input
@@ -13,7 +15,7 @@
           inputmode="text"
           :aria-invalid="!!inputError"
           :aria-describedby="inputError ? inputId + '-error' : undefined"
-          placeholder="例如：550e8400-e29b-41d4-a716-446655440000"
+          :placeholder="embedded ? '粘贴他人的分享码或完整链接…' : '例如：550e8400-e29b-41d4-a716-446655440000'"
         />
         <button type="submit">{{ embedded ? '查看 BOX' : '查看密探 BOX' }}</button>
       </div>
@@ -21,6 +23,10 @@
       <div v-if="starTarget" class="share-star-notice" role="status">
         <p>这是星石背包分享链接，可在新标签中查看。</p>
         <a class="btn ghost" :href="sharePath(starTarget.token, 'star')" target="_blank" rel="noopener noreferrer">在新标签打开星石背包</a>
+      </div>
+      <div v-if="embedded" class="share-entry-notice">
+        <p>查看过程为只读，不会修改你的密探档案。</p>
+        <p>仅能查看对方已公开的内容；星石背包链接可在新标签中访问。</p>
       </div>
     </form>
 
@@ -802,12 +808,18 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .share-star-notice a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 /* 弹窗可用宽度小于页面，卡片按容器换列。 */
 .operator-share-content.is-embedded { container-type: inline-size; }
+.is-embedded .share-entry { max-width: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.is-embedded .share-entry label { margin-top: 0; color: var(--ink); font-size: 14px; }
+.is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr); }
+.is-embedded .share-entry input { font-size: 16px; border-radius: 8px; background: var(--surface); }
+.is-embedded .share-entry button { border-radius: 8px; }
+.share-entry-notice { margin-top: 20px; padding: 12px 16px; border-radius: 8px; background: var(--cream); }
+.share-entry-notice p { margin: 0; color: var(--ink-60); font-size: 12.5px; line-height: 1.8; }
 @container (max-width: 900px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (max-width: 600px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: 1fr; }
-  .is-embedded .share-entry { padding: 24px 18px; }
   .is-embedded .share-entry-row { grid-template-columns: 1fr; }
   .is-embedded .share-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .is-embedded .share-toolbar p { grid-column: 1 / -1; }

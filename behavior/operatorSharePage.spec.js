@@ -157,6 +157,17 @@ it('非法代码由实际表单反馈，无 API 请求或路由跳转', async ()
   expect(useRouter().push).not.toHaveBeenCalled()
 })
 
+it('独立公开页保留输入标题和路由式查询，不受弹窗紧凑入口影响', async () => {
+  useRoute().params.token = ''
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.share-entry h2').text()).toBe('输入 BOX 分享码')
+  expect(wrapper.get('.share-entry button').text()).toBe('查看密探 BOX')
+  expect(wrapper.find('.share-entry-notice').exists()).toBe(false)
+  await wrapper.get('input').setValue(tokenA)
+  await wrapper.get('form').trigger('submit')
+  expect(useRouter().push).toHaveBeenCalledExactlyOnceWith({ name: 'operator-share', params: { token: tokenA } })
+})
+
 it('密探入口粘贴星石完整链接时尊重星石路径，不丢弃类型', async () => {
   useRoute().params.token = ''
   const wrapper = render(); await flushPromises()

@@ -1,26 +1,32 @@
 <template>
-  <section class="share-manager" :aria-labelledby="titleId">
+  <section class="share-manager" :class="{ 'is-compact': compact }" :aria-labelledby="titleId">
+    <p v-if="compact && !loading && !error" class="share-summary" :class="{ 'is-active': scopes.length }" role="status" aria-live="polite">
+      <strong>{{ busy ? '分享更新中…' : scopes.length ? '分享已开启' : '分享未开启' }}</strong>
+      <span>已公开内容对持有分享链接的人可见，无需登录。</span>
+    </p>
     <div class="share-manager-heading">
       <slot name="heading" :title-id="titleId"><div><span class="section-kicker">分享链接</span><h2 :id="titleId">分享当前账号</h2></div></slot>
       <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
-      <p class="share-description">两个视图共用分享码。拿到任一链接的人都能查看已开启的内容，无需登录；全部关闭后旧码失效。</p>
+      <p v-if="!compact" class="share-description">两个视图共用分享码。拿到任一链接的人都能查看已开启的内容，无需登录；全部关闭后旧码失效。</p>
+      <p v-else class="share-description share-immediate">更改权限后立即生效，无需额外保存。</p>
     </div>
     <p v-if="loading" class="share-state" role="status">正在读取分享状态…</p>
     <p v-else-if="error" class="share-state is-error" role="alert">{{ error }}</p>
     <template v-else>
       <div class="share-scopes" aria-label="公开内容">
         <label v-for="option in options" :key="option.scope" class="share-scope">
-          <span>{{ option.label }}分享<small class="share-scope-status">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
+          <span>{{ option.label }}<template v-if="!compact">分享</template><small class="share-scope-status">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
           <input type="checkbox" role="switch" :aria-label="option.label + '分享'" :checked="scopes.includes(option.scope)"
             :disabled="!accountId || busy" @change="toggleScope(option.scope, $event)" />
         </label>
       </div>
       <template v-if="share?.active && share.share_code">
+        <h3 v-if="compact" class="share-links-title">分享链接</h3>
         <div v-for="option in options.filter(item => scopes.includes(item.scope))" :key="option.scope" class="share-values">
-          <label><span>{{ option.label }}分享链接</span><input :value="link(option.scope)" readonly :aria-label="option.label + '分享链接'" /></label>
+          <label><span>{{ option.label }}<template v-if="!compact">分享链接</template></span><input :value="link(option.scope)" :title="link(option.scope)" readonly :aria-label="option.label + '分享链接'" @focus="compact && $event.target.select()" /></label>
           <div class="share-actions">
-            <button class="share-button" type="button" :disabled="busy" @click="copy(link(option.scope), option.label + '分享链接')">复制{{ option.label }}链接</button>
-            <a class="share-button visit" :href="link(option.scope)">访问我的{{ option.label }}</a>
+            <button class="share-button" type="button" :aria-label="'复制' + option.label + '链接'" :disabled="busy" @click="copy(link(option.scope), option.label + '分享链接')"><Copy v-if="compact" :size="15" aria-hidden="true" />复制<template v-if="!compact">{{ option.label }}链接</template></button>
+            <a class="share-button visit" :href="link(option.scope)" :target="compact ? '_blank' : undefined" :rel="compact ? 'noopener noreferrer' : undefined" :aria-label="'访问我的' + option.label"><ExternalLink v-if="compact" :size="15" aria-hidden="true" />{{ compact ? '访问' : '访问我的' + option.label }}</a>
           </div>
         </div>
       </template>
@@ -30,6 +36,7 @@
         <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
       </slot>
       <div v-if="share?.active && share.share_code" class="share-actions share-code-actions">
+        <p v-if="compact" class="share-management-label">链接管理<small>重新生成或全部撤销后，两个旧链接立即失效。</small></p>
         <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">重新生成</button>
         <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
       </div>
@@ -41,12 +48,13 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { Copy, ExternalLink } from '@lucide/vue'
 import { getAccountShare, setAccountShareScope, regenerateAccountShare, revokeAccountShare } from '../api/accountShare.js'
 import { sharePath } from '../utils/shareLink.js'
 import { dialog } from '../utils/dialog.js'
 import { modalFocusState } from '../composables/useModalFocus.js'
 
-const props = defineProps({ accountId: { type: String, required: true } })
+const props = defineProps({ accountId: { type: String, required: true }, compact: { type: Boolean, default: false } })
 const emit = defineEmits(['status-change', 'share-change'])
 const titleId = 'account-share-title-' + useId()
 const options = [{ scope: 'operator', label: '密探 BOX' }, { scope: 'star', label: '星石背包' }]
@@ -160,4 +168,34 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
   .share-values input { font-size: 16px }
 }
 @media(max-width:360px) { .share-scopes { grid-template-columns: 1fr } }
+.is-compact .share-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0 0 20px; }
+.is-compact .share-summary strong { color: var(--ink); font-size: 15px; }
+.is-compact .share-summary.is-active strong { color: var(--accent-strong); }
+.is-compact .share-immediate { margin: 0; }
+.is-compact .share-scopes { margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.is-compact .share-scope { padding: 12px; font-size: 14px; }
+.is-compact .share-scope input { appearance: none; position: relative; width: 38px; height: 22px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; background: var(--ink-35); cursor: pointer; }
+.is-compact .share-scope input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); }
+.is-compact .share-scope input:checked { background: var(--tea); }
+.is-compact .share-scope input:checked::after { left: 18px; }
+.is-compact .share-scope input:disabled { opacity: .5; cursor: wait; }
+.is-compact .share-links-title { margin: 22px 0 0; font: 800 16px/1.4 var(--font-s); }
+.is-compact .share-values { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-top: 12px; }
+.is-compact .share-values label { color: var(--ink); font-size: 13px; }
+.is-compact .share-values input { text-overflow: ellipsis; border-width: 1px; border-radius: 8px; }
+.is-compact .share-values input:focus { text-overflow: clip; outline: 2px solid var(--accent); outline-offset: 2px; }
+.is-compact .share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--line); border-radius: 8px; color: var(--ink); background: transparent; }
+.is-compact .share-button.danger { border-color: var(--rouge); color: var(--rouge); }
+.is-compact .share-button:hover:not(:disabled) { background: var(--paper); }
+.is-compact .share-code-actions { margin-top: 20px; }
+.is-compact .share-management-label { flex-basis: 100%; margin: 0 0 4px; color: var(--ink); font-weight: 800; }
+.is-compact .share-management-label small { display: block; color: var(--ink-60); font-weight: 400; }
+@media(max-width:640px) {
+  .is-compact .share-scopes { gap: 8px; }
+  .is-compact .share-scope { gap: 6px; padding: 10px 8px; font-size: 12.5px; }
+  .is-compact .share-values { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .is-compact .share-values .share-actions { display: flex; }
+  .is-compact .share-values .share-button { flex: 1; }
+  .is-compact .share-management-label { grid-column: 1 / -1; }
+}
 </style>
