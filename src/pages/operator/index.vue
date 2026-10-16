@@ -14,7 +14,7 @@
             :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
             <Share2 :size="16" aria-hidden="true" />分享 BOX <small>{{ ledgerShareStatus }}</small>
           </button>
-          <router-link class="btn ghost roster-view-box" to="/operator/share"><Users :size="16" aria-hidden="true" />查看他人 BOX</router-link>
+          <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
         </template>
         <template #actions>
           <details class="tool-more">
@@ -121,6 +121,8 @@
               @focus="$event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })"
               @click="openGrowthPlanningPreview">养成规划 · 即将上线</button>
           </div>
+
+          <OperatorBoxViewer v-model:open="boxViewerOpen" />
 
           <OperatorShareManager
             ref="operatorShareManager"
@@ -2982,6 +2984,7 @@ import OperatorOrganizationManager from "../../components/operator/OperatorOrgan
 import OperatorOrganizationCard from "../../components/operator/OperatorOrganizationCard.vue";
 import { useOperatorOrganization } from "../../composables/useOperatorOrganization.js";
 import { OPERATOR_ORGANIZATION_FORMAT, compareOperatorOrganization, operatorOrganizationBackup, operatorOrganizationContent, operatorOrganizationRanks, readOperatorOrganizationBackup, updateOperatorTag } from "../../utils/operatorOrganization.js";
+import OperatorBoxViewer from "../../components/operator/OperatorBoxViewer.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
@@ -3518,6 +3521,7 @@ watch(
   { immediate: true },
 );
 const accountWorkspaceCompact = ref(true);
+const boxViewerOpen = ref(false);
 const shareModalOpen = ref(false);
 const operatorShareManager = ref(null);
 const operatorShare = ref(null);
