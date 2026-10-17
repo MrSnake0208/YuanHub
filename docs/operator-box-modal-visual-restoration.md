@@ -12,6 +12,12 @@
 
 调用范围：`OperatorShareManager` 使用 compact 管理器；星石页 `src/pages/star/index.vue` 使用普通管理器。`OperatorBoxViewer` 使用 embedded 查看组件；公开分享页 `src/pages/operator/share.vue` 使用普通查看组件。新增外观限定在 compact/embedded 模式，没有新增配置、依赖、导出或业务 fixture。
 
+### 查看他人 BOX 紧凑筛选（2026-10-17）
+
+弹窗中的 `OperatorFilterDossier` 通过 `:compact="embedded"` 复用“密探图鉴”和“养成总览”的紧凑工具头：搜索、数量及养成状态直接显示，属性与职业默认收进“更多筛选”，展开或收起不清空筛选条件，重置沿用原逻辑。外部公开分享页保持原展开模式。本次为 L1 局部展示与交互调整，不新增 CSS 或业务逻辑。
+
+组件测试补充弹窗默认折叠、展开、属性筛选、收起后条件保留与重置，并检查公开页仍使用展开模式。建议用户执行 `npx --no-install vitest run behavior/operatorBoxViewer.spec.js behavior/operatorSharePage.spec.js`；本次未运行回归测试或浏览器自动化。人工验收：在390px和1440px下打开查看他人 BOX，输入有效分享码，检查搜索和状态直接可用，“更多筛选”展开后可筛选属性/职业，收起后结果保留，重置恢复全部，工具头无横向溢出。
+
 ## 可观察差异与实现对照
 
 | 目标图设计点 | 修改前实际代码 | 本轮实现及选择器 | 非浏览器验证与限制 |

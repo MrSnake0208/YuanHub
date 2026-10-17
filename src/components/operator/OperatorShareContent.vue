@@ -81,6 +81,7 @@
 
       <OperatorFilterDossier
         v-if="status === 'ready'"
+        :compact="embedded"
         v-model:search-query="searchQuery"
         v-model:prof-filter="profFilter"
         v-model:sub-prof-filter="subProfFilter"

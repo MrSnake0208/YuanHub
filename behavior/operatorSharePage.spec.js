@@ -32,6 +32,7 @@ it.each([390, 1440])('公开页真实筛选跨布局保持搜索、焦点和只�
   const viewport = installViewport(width)
   const wrapper = render({ OperatorFilterDossier: false, ShareCardStats: false })
   document.body.append(wrapper.element); await flushPromises()
+  expect(wrapper.get('.share-filter-dossier').classes()).not.toContain('is-compact')
   const dossier = wrapper.getComponent({ name: 'OperatorFilterDossier' }).vm.$
   const search = wrapper.get('input[type="search"]')
   await search.setValue('只读')
