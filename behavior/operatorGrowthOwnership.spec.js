@@ -7,6 +7,7 @@ import * as plannerApi from '../src/api/operatorPlanner.js'
 import { getOperatorGrowthTargets } from '../src/api/operator.js'
 import { getCurrent, listRecords } from '../src/api/inventory.js'
 import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
+import PlannerDailySources from '../src/components/operator/PlannerDailySources.vue'
 
 vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
   const actual = await importOriginal()
@@ -18,6 +19,8 @@ vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  plannerApi.putTrainingWorkspace.mockReset()
+  plannerApi.putStaminaSchedule.mockReset()
   plannerApi.getTrainingWorkspace.mockResolvedValue({
     schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
     plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ['op'], excluded_operator_ids: [],
@@ -29,6 +32,33 @@ beforeEach(() => {
   getOperatorGrowthTargets.mockResolvedValue({ items: [] })
   getCurrent.mockResolvedValue([])
   listRecords.mockResolvedValue({ items: [] })
+})
+
+it('真实追踪工作台保存子账号月卡后预览并确认应用，初始化与预览均不写云端日程', async () => {
+  plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: 2 }))
+  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }))
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, game: '如鸢', currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  await wrapper.findAll('button').find(button => button.text().includes('调整设置')).trigger('click'); await flushPromises()
+  const settings = wrapper.getComponent(PlannerDailySources)
+  await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
+  await settings.findAll('button').find(button => button.text() === '保存子账号配置').trigger('click'); await flushPromises()
+  expect(plannerApi.putTrainingWorkspace.mock.calls[0][1].stamina_sources.monthly_card).toMatchObject({ tier: 'zhaoyang', daily_amount: 60, shop_amount: 20 })
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  await settings.findAll('button').find(button => button.text() === '预览影响范围').trigger('click'); await flushPromises()
+  expect(settings.text()).toContain('过去不变')
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  await settings.findAll('button').find(button => button.text() === '应用到未来日程').trigger('click'); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  const [account, plan, body] = plannerApi.putStaminaSchedule.mock.calls[0]
+  expect([account, plan]).toEqual(['acc', 'plan'])
+  expect(body.schedule.result.timeline[0].totals.gains).toBe(488)
+  expect(body.preferences.source_periods[0].sources.monthly_card.tier).toBe('zhaoyang')
 })
 
 it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿和编辑器：%ipx', async width => {

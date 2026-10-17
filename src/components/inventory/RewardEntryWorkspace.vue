@@ -45,9 +45,11 @@
           <div class="whitecoin-shortcuts">
             <div class="section-label">白金币日常快捷录入<span>可同时选择多个来源；每个来源每个游戏日仅记一笔</span></div>
             <div class="shortcut-options" role="group" aria-label="白金币日常来源">
-              <button v-for="preset in WHITE_COIN_PRESETS" :key="preset.id" type="button" class="outline-button" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectWhiteCoinPreset(preset)">{{ preset.channel }} {{ preset.count }}</button>
+              <button v-for="preset in whiteCoinPresets" :key="preset.id" type="button" class="outline-button" :disabled="preset.count === 0" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectWhiteCoinPreset(preset)">{{ preset.channel }} {{ preset.count }}</button>
+              <label class="monthly-tier-field">月卡档位<select v-model="monthlyTier" aria-label="月卡奖励档位" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
               <button v-if="manual.presets.length" type="button" class="outline-button" @click="manual.presets = []; manual.whiteCoinPurpose = ''; clearPreview()">普通补录</button>
             </div>
+            <p class="shortcut-note">仅勾选已经领取的来源；邮箱待领取奖励请暂勿入账。月卡数量为可编辑预设，请按实际领取核对。{{ monthlyPreferenceNote }}</p>
             <label v-if="manual.presets.length" class="whitecoin-purpose">本次记录用途<select v-model="manual.whiteCoinPurpose" aria-label="白金币记录用途" @change="clearPreview"><option value="">请选择记录用途</option><option value="income">新增收入（计入库存）</option><option value="annotation">补标已盘点收入（仅补历史）</option></select></label>
             <p v-if="manual.presets.length" class="shortcut-note">已被 MaaYuan 扫描或手动盘点包含的收入，请选择补标并填写实际发生时间；未经盘点的新收入才计入库存。游戏日按北京时间 05:00 划分。</p>
           </div>
@@ -198,6 +200,9 @@ import { useModalViewport } from '../../composables/useModalViewport.js'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { getCurrent, importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
+import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
+import { workspaceFromRemote } from '../../data/operatorPlannerRemote.js'
+import { monthlyCardTier, monthlyCardTiers } from '../../data/monthlyCard.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, WHITE_COIN_PRESETS, dailyWhiteCoinRecordId, validateWhiteCoinAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
@@ -208,6 +213,31 @@ import RewardDateTimePicker from './RewardDateTimePicker.vue'
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
 const emit = defineEmits(['imported', 'busy'])
 const mode = ref('')
+const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref('')
+let monthlyPreferenceSeq = 0, monthlyTierTouched = false
+const monthlyTiers = computed(() => monthlyCardTiers(props.game))
+const whiteCoinPresets = computed(() => WHITE_COIN_PRESETS.map(preset => preset.id === 'monthly-card' ? { ...preset, count: monthlyCardTier(monthlyTier.value, props.game).coins } : preset))
+function changeMonthlyTier() {
+  monthlyTierTouched = true
+  const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
+  if (entry) {
+    const count = monthlyCardTier(monthlyTier.value, props.game).coins
+    if (count) entry.count = count
+    else removeReward('monthly-card')
+  }
+  clearPreview()
+}
+async function loadMonthlyPreference() {
+  const token = ++monthlyPreferenceSeq, account = props.accountId, game = props.game, draft = manual.value
+  monthlyPreferenceNote.value = ''
+  try {
+    const workspace = workspaceFromRemote(await getTrainingWorkspace(account), account)
+    if (token !== monthlyPreferenceSeq || disposed || props.accountId !== account || props.game !== game || mode.value !== 'manual' || manual.value !== draft || monthlyTierTouched) return
+    if (workspace.staminaSources) monthlyTier.value = workspace.staminaSources.monthlyCard.tier
+  } catch (_) {
+    if (token === monthlyPreferenceSeq && !disposed && props.accountId === account && props.game === game && mode.value === 'manual') monthlyPreferenceNote.value = '云端月卡设置暂不可用，可手动选择。'
+  }
+}
 let switchDraftBaseline = ''
 const entities = ref([])
 const catalogLoading = ref(false)
@@ -260,7 +290,7 @@ function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupI
 function freshTraining() { return { mode: trainingRewardUnavailableReason(props.game) ? 'materials' : 'runs', selections: [], draft: freshTrainingSelection(), dirty: false, editingKey: null, notice: '', replacePrompt: false } }
 const manual = ref(freshManual())
 switchDraftBaseline = JSON.stringify(manual.value)
-function resetManual() { manual.value = freshManual(); switchDraftBaseline = JSON.stringify(manual.value) }
+function resetManual() { manual.value = freshManual(); monthlyTierTouched = false; switchDraftBaseline = JSON.stringify(manual.value) }
 const trainingUnavailable = computed(() => trainingRewardUnavailableReason(props.game))
 const commonTrainingLevels = ref([...DEFAULT_TRAINING_REWARD_LEVELS])
 const showAllTrainingLevels = ref(false)
@@ -390,6 +420,7 @@ watch(mode, async (value, previous) => {
   }
 })
 watch(() => [props.accountId, props.game], () => {
+  ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''
   loadTrainingLevelPreference()
   fileReadSeq++
   readingFile.value = false
@@ -438,6 +469,7 @@ async function open(nextMode, trigger) {
     fileReadSeq++; readingFile.value = false; clearPreview()
   }
   mode.value = nextMode
+  if (nextMode === 'manual') void loadMonthlyPreference()
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
@@ -570,6 +602,7 @@ function changeChannel(channel) {
   clearPreview()
 }
 function selectWhiteCoinPreset(preset) {
+  if (preset.id === 'monthly-card') monthlyTierTouched = true
   if (manual.value.presets.some(entry => entry.id === preset.id)) {
     removeReward(preset.id)
   } else {
@@ -590,8 +623,7 @@ function addReward(entity) {
 }
 function adjustReward(entry, delta) {
   const value = Number(entry.count)
-  const step = entry.id === 'baijinbi' || entry.channel ? 10 : 1
-  const next = (Number.isInteger(value) ? value : 0) + (delta * step)
+  const next = (Number.isInteger(value) ? value : 0) + delta
   if (next <= 0) removeReward(entry.id)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
 }
@@ -717,6 +749,8 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', 
 .whitecoin-shortcuts { border-bottom: 1px solid var(--line); }
 .shortcut-options [aria-pressed="true"], .training-group-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
 .whitecoin-purpose select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.monthly-tier-field { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.monthly-tier-field select { min-width: 0; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; }
 .shortcut-note { color: var(--ink-60); }
 .training-mode-section { border-bottom: 1px solid var(--line); }
 .training-replace { border: 1px solid var(--reward-gold); border-radius: 9px; background: var(--cream); }

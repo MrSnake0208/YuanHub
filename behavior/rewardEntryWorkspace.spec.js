@@ -4,6 +4,7 @@ import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspa
 import RewardDateTimePicker from '../src/components/inventory/RewardDateTimePicker.vue'
 import * as inventoryApi from '../src/api/inventory.js'
 import * as rewardCatalogApi from '../src/api/rewardCatalog.js'
+import * as plannerApi from '../src/api/operatorPlanner.js'
 import { deferred } from '../test-support/factories.js'
 import { TRAINING_REWARD_GROUPS } from '../src/data/inventory/trainingRewards.js'
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
@@ -16,6 +17,7 @@ vi.mock('../src/api/inventory.js', () => ({
 vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
 }))
+vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn() }))
 
 const catalog = [
   { entity_type: 'item', id: 'baijinbi', name: '白金币', rarity: 3 },
@@ -175,6 +177,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   inventoryApi.importInventory.mockReset()
   inventoryApi.getCurrent.mockReset().mockResolvedValue([])
+  plannerApi.getTrainingWorkspace.mockReset().mockResolvedValue({ schema_version: 1, account_id: 'acc-1', revision: 0 })
   rewardCatalogApi.getRewardCatalog.mockReset()
   rewardCatalogApi.getRewardCatalog.mockResolvedValue(catalog)
   document.documentElement.style.overflow = ''
@@ -1072,6 +1075,53 @@ describe('历练按次数补录', () => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it.each([['xingguang', 65], ['yuehua', 80], ['zhaoyang', 90]])('月卡档位%s可与日常50同时录入，保留来源游戏日ID', async (tier, count) => {
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 2, duplicates: 0, history_only: 0, superseded: 0 })
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    const select = document.body.querySelector('[aria-label="月卡奖励档位"]')
+    select.value = tier; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    expect(document.body.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe(String(count))
+    await clickElement(bodyButton('密探日常 50'))
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录 2 条'))
+    const records = inventoryApi.importInventory.mock.calls[0][0].records
+    expect(records.map(record => record.entries[0].count)).toEqual([count, 50])
+    expect(records[0].record_id).toBe('yuanhub:daily-whitecoin:monthly-card:2026-09-30')
+    expect(records[0].record_type).toBe('reward_delta')
+  })
+
+  it('云端档位只预填建议、不勾选或入账；迟到的账号A设置不污染B', async () => {
+    const request = deferred()
+    plannerApi.getTrainingWorkspace.mockReturnValueOnce(request.promise)
+    const wrapper = mountWorkspace()
+    await button(wrapper, '添加奖励流水').trigger('click'); await flushPromises()
+    expect(document.body.querySelector('.basket-empty')).not.toBeNull()
+    await wrapper.setProps({ accountId: 'acc-2' })
+    plannerApi.getTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc-2', revision: 1,
+      stamina_sources: { monthly_card: { tier: 'xingguang' }, fixed_sources: [] } })
+    await button(wrapper, '添加奖励流水').trigger('click'); await flushPromises()
+    request.resolve({ schema_version: 1, account_id: 'acc-1', revision: 2,
+      stamina_sources: { monthly_card: { tier: 'zhaoyang' }, fixed_sources: [] } }); await flushPromises()
+    expect(document.body.querySelector('[aria-label="月卡奖励档位"]').value).toBe('xingguang')
+    expect(bodyButton('月卡奖励 65')).toBeDefined()
+    expect(document.body.querySelector('.basket-empty')).not.toBeNull()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('云端默认值读取失败仍可手选；迟到的默认值不改写已录入65', async () => {
+    const request = deferred(); plannerApi.getTrainingWorkspace.mockReturnValueOnce(request.promise)
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    const quantity = document.body.querySelector('input[aria-label="月卡奖励白金币数量"]')
+    quantity.value = '65'; quantity.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    request.resolve({ schema_version: 1, account_id: 'acc-1', revision: 2,
+      stamina_sources: { monthly_card: { tier: 'zhaoyang' }, fixed_sources: [] } }); await flushPromises()
+    expect(quantity.value).toBe('65')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.body.querySelector('.preview-record').textContent).toContain('+ 65')
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
   it('快捷预填来源数量，但没有选择记录用途时不能预览或提交', async () => {
     const wrapper = mountWorkspace()
     await openQuickCoin(wrapper)
@@ -1131,7 +1181,7 @@ describe('奖励补录工作台弹层', () => {
     const labelButton = label => receipt.querySelector(`button[aria-label="${label}"]`)
     expect(document.body.querySelector('.reward-tile').disabled).toBe(true)
     await clickElement(labelButton('增加白金币 · 月卡奖励'))
-    expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('70')
+    expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('61')
     await clickElement(labelButton('减少白金币 · 月卡奖励'))
     expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('60')
     await clickElement(labelButton('移除白金币 · 月卡奖励'))

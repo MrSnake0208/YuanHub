@@ -1,4 +1,5 @@
 import { TRAINING_GROUPS } from './operatorTraining.js'
+import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
 import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, createGain, createSpend,
   normalizePlannerPlan, normalizePlannerPreferences, plannerActions, plannerStateIsEmpty,
   PLANNER_RULES, PURCHASE_CUMULATIVE, planTotals, settlePlannerDay } from './cultivationPlanner.js'
@@ -9,8 +10,8 @@ function reserveGain(source, index) {
   return { id: reserveGainId(index), label: source.name || '体力储备', name: source.name || '体力储备', colorKey: 'custom', kind: 'energy', custom: true, value: source.amount, rec: source.amount }
 }
 
-function defaultPlan(preferences, extra = 0) {
-  const gains = [createGain('natural'), createGain('meal')]
+function defaultPlan(preferences, extra = 0, date = '') {
+  const gains = resolveDailyStaminaGains([createGain('natural'), createGain('meal')], preferences, date)
   if (preferences.purchaseCount) gains.push(createGain('buy', { value: preferences.purchaseCount }))
   if (extra) gains.push(createGain('custom', { label: '额外体力', value: extra }))
   return normalizePlannerPlan({ gains, spends: ['luoyang', 'shouchun'].filter(id => preferences[id])
@@ -44,7 +45,7 @@ export function prepareExactPlanner(input) {
     const manual = index !== 0 && Boolean(config.manualPlans?.[date])
     let plan = manual ? normalizePlannerPlan(config.manualPlans[date])
       : index === 0 && config.firstDay ? normalizePlannerPlan(config.firstDay)
-        : defaultPlan(preferences, index === 0 ? config.initialExtra : 0)
+        : defaultPlan(preferences, index === 0 ? config.initialExtra : 0, date)
     if (!manual) plan.spends = plan.spends.filter(spend => spend.custom || !['training', 'stage624'].includes(spend.kind))
     if (config.objective === 'coins' && !manual) plan.gains = plan.gains.filter(gain => gain.id !== 'buy')
     const checkPlan = config.objective === 'coins' && !manual
@@ -185,7 +186,7 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
   for (let d = 0; d < problem.horizon; d++) {
     const start = state, spec = problem.days[d]
     const planned = etaDays != null && d >= etaDays && !spec.manual && !(d === 0 && problem.config.firstDay)
-      ? defaultPlan(normalizePlannerPreferences()) : plans[d] || spec.plan
+      ? defaultPlan({ ...normalizePlannerPreferences(), sourcePeriods: problem.preferences.sourcePeriods }, 0, spec.date) : plans[d] || spec.plan
     for (let index = 0; index < problem.reserves.length; index++) {
       const claims = planned.gains.filter(gain => gain.id === reserveGainId(index))
       if (claims.length && (claims.length > 1 || reserveUses.has(index) || !spec.eligibleReserves.some(item => item.index === index) || claims[0].value !== problem.reserves[index].amount)) return null
@@ -213,7 +214,7 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
   // Once materials are ready, preserve future manual dates but remove automatic
   // purchases/dispatch/farming that no longer serve this cultivation plan.
   for (let d = Math.max(1, etaDays); d < length; d++) if (!problem.days[d].manual) {
-    const day = timeline[d], settled = settlePlannerDay(day.start, defaultPlan(normalizePlannerPreferences()), problem.config)
+    const day = timeline[d], settled = settlePlannerDay(day.start, defaultPlan({ ...normalizePlannerPreferences(), sourcePeriods: problem.preferences.sourcePeriods }, 0, day.date), problem.config)
     Object.assign(day, settled, { recommended: settled.planned })
   }
   const result = { timeline: timeline.slice(0, length), status: 'complete', etaDays, remaining: state, blocked: [],
