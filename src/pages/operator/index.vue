@@ -2235,7 +2235,6 @@
             class="panel"
             :class="{ 'is-active': activeTab === 'tracking' }"
           >
-            <p class="planning-bug-notice" role="note"><strong>测试中：</strong>规划结果可能不准确，请核对后操作。<router-link class="link" to="/feedback">反馈问题</router-link></p>
             <OperatorGrowthTracker
               :account-id="accountId"
               :current-entries="currentEntries"
@@ -9289,7 +9288,6 @@ onBeforeUnmount(function () {
 }
 
 
-.planning-bug-notice { border: 1px solid var(--accent); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .catalog-version-value { border: 0; background: transparent; color: inherit; }
 .catalog-version-value:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .oddity-completion-badge {
