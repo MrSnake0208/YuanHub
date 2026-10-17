@@ -12,7 +12,7 @@
         <template #primary-actions>
           <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
             :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
-            <Share2 :size="16" aria-hidden="true" />分享 BOX <small>{{ ledgerShareStatus }}</small>
+            <Share2 :size="16" aria-hidden="true" />分享 BOX <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
           </button>
           <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
         </template>
@@ -125,7 +125,6 @@
           <OperatorBoxViewer v-model:open="boxViewerOpen" />
 
           <OperatorShareManager
-            ref="operatorShareManager"
             v-model:open="shareModalOpen"
             :account-id="auth.isLoggedIn ? accountId : ''"
             :account-name="currentAccountName"
@@ -730,12 +729,6 @@
             :class="{ 'is-active': activeTab === 'current' }"
           >
             <div v-if="ownedCurrentEntries.length" class="current-workbench-summary">
-                  <div class="ledger-share-control">
-                  <button v-if="isOperatorSharing" type="button" class="ledger-share-badge is-sharing" aria-label="分享中，点击复制分享链接" title="点击复制分享链接" @click="copyLedgerShare">分享中</button>
-                  <span v-else class="ledger-share-badge">{{ ledgerShareStatus }}</span>
-                  <span v-if="shareCopyFeedback" class="ledger-share-feedback" role="status">{{ shareCopyFeedback }}</span>
-                  </div>
-
               <div class="tool-summary current-status-summary" aria-label="当前养成状态概览">
                 <span>养成中 <b>{{ currentStatusCounts.growing }}</b></span>
                 <span>已毕业 <b>{{ currentStatusCounts.graduated }}</b></span>
@@ -3523,18 +3516,13 @@ watch(
 const accountWorkspaceCompact = ref(true);
 const boxViewerOpen = ref(false);
 const shareModalOpen = ref(false);
-const operatorShareManager = ref(null);
 const operatorShare = ref(null);
-const shareCopyFeedback = ref("");
-let shareCopyTimer;
-let shareCopySeq = 0;
 const isOperatorSharing = computed(() => auth.isLoggedIn && operatorShare.value?.accountId === accountId.value && !!operatorShare.value?.link);
 const ledgerShareStatus = computed(() => {
-  if (!auth.isLoggedIn || !accountId.value) return "未分享";
+  if (!auth.isLoggedIn || !accountId.value) return "未开启";
   if (operatorShare.value?.accountId !== accountId.value) return "读取中…";
-  return operatorShare.value.status === "未开启" ? "未分享" : operatorShare.value.status;
+  return operatorShare.value.status;
 });
-watch(accountId, () => { clearTimeout(shareCopyTimer); shareCopySeq += 1; shareCopyFeedback.value = ""; });
 watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn], () => {
   importOperationSeq += 1;
   scanReviewCurrentSeq += 1;
@@ -3558,15 +3546,6 @@ watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn], () => {
 watch(importError, async message => {
   if (message && selectedScanReview.value) { await nextTick(); scanReviewErrorEl.value?.focus(); }
 });
-async function copyLedgerShare() {
-  const targetAccount = accountId.value;
-  const seq = ++shareCopySeq;
-  clearTimeout(shareCopyTimer);
-  const ok = await operatorShareManager.value?.copyCurrentShare();
-  if (seq !== shareCopySeq || targetAccount !== accountId.value) return;
-  shareCopyFeedback.value = ok ? "分享链接已复制" : "复制失败，请打开分享弹窗手动复制链接";
-  shareCopyTimer = setTimeout(() => { shareCopyFeedback.value = ""; }, ok ? 2200 : 4000);
-}
 const accountsLoading = ref(false);
 const accountError = ref("");
 const exportAll = ref(false);
@@ -9258,8 +9237,6 @@ onBeforeUnmount(function () {
   cardSubmitTimers.forEach(clearTimeout);
   cardSubmitTimers.clear();
   compactStatsQuery?.removeEventListener("change", syncCompactStats);
-  clearTimeout(shareCopyTimer);
-  shareCopySeq += 1;
   document.removeEventListener("pointerdown", handleCardPopoverOutside);
   window.removeEventListener("scroll", hideDiscTooltip, true);
   window.removeEventListener("resize", hideDiscTooltip);
@@ -9338,13 +9315,6 @@ onBeforeUnmount(function () {
 .scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .import-technical summary { cursor: pointer; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
-.ledger-share-badge { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); }
-.ledger-share-badge::before { content: ''; border-radius: 50%; background: var(--ink-35); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-35) 12%, transparent); }
-.ledger-share-badge.is-sharing::before { background: #6f9f76; box-shadow: 0 0 0 3px rgba(111, 159, 118, .14), 0 0 7px rgba(111, 159, 118, .22); }
-.ledger-share-badge.is-sharing { color: var(--ink); cursor: pointer; }
-.ledger-share-badge.is-sharing:hover { background: var(--paper); }
-.ledger-share-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ledger-share-feedback { color: var(--accent-strong); }
 .operator-share-placeholder p { color: var(--ink-60); }
 
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
@@ -12506,8 +12476,6 @@ onBeforeUnmount(function () {
     background: transparent;
   }
 }
-.ledger-share-control .ledger-share-feedback { border-radius: 10px; background: var(--tea); color: var(--cream); box-shadow: 0 5px 16px rgba(73, 59, 44, .15); pointer-events: none; }
-.ledger-share-feedback::before { content: ''; background: var(--tea); }
 @media (max-width: 1080px) {
   .page-operator :deep(.workspace-summary) { background: var(--cream); }
   .page-operator :deep(.workspace-toggle) { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; color: var(--tea); }
@@ -12529,7 +12497,9 @@ onBeforeUnmount(function () {
 /* Page owns metadata and filters; cards retain their existing presentation. */
 .catalog-entry { border-radius: 8px; text-decoration: none; }
 .roster-header .btn { border-radius: 10px; text-decoration: none; }
-.roster-share small { font-size: 10px; font-weight: 500; }
+.roster-header .roster-share small { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; }
+.roster-share small::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-60); }
+.roster-share small.is-sharing::before { background: #6f9f76; box-shadow: 0 0 0 3px rgba(111, 159, 118, .14); }
 .catalog-tools :deep(.current-filter-head) { background: transparent; }
 .catalog-tools :deep(.pf-status-row .mf-filter) { background: transparent; }
 .catalog-tools :deep(.pf-status-row button) { border: 1px solid transparent; background: color-mix(in srgb, var(--tea) 4%, var(--surface)); }
