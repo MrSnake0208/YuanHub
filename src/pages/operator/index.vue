@@ -10,11 +10,13 @@
             switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
         <template #primary-actions>
-          <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
-            :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
-            <Share2 :size="16" aria-hidden="true" />分享 BOX <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
-          </button>
-          <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
+          <div class="roster-box-actions">
+            <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
+              :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
+              <Share2 :size="16" aria-hidden="true" />分享 BOX <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
+            </button>
+            <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
+          </div>
         </template>
         <template #actions>
           <details class="tool-more">
@@ -29,11 +31,14 @@
         </template>
         <template #summary>
           <div class="tool-summary roster-summary" aria-label="密探概览">
-            <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位</span><span>{{ manifestPercent }}</span>
+            <span class="roster-total">图鉴 <b>{{ catalogCount }}</b> 位</span>
+            <span class="roster-owned">已招募 <b>{{ manifestOwned }}</b><span class="roster-mobile-total"> / <b>{{ catalogCount }}</b></span> 位</span>
+            <span>{{ manifestPercent }}</span>
             <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
           </div>
         </template>
         <template #help>
+          <p>图鉴更新于 {{ catalogVersion || '本地兜底' }}；完整目录版本也可在「更多筛选」中选中复制。</p>
           <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
           <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
         </template>

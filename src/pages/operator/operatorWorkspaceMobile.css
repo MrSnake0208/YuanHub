@@ -45,9 +45,8 @@
 .roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid var(--surface); border-radius: 999px; background: var(--surface); color: var(--ink); line-height: 1.3; }
 .roster-summary { margin: 4px 0 0; font-size: 12px; }
 .roster-summary .tool-updated { display: inline-flex; }
-@container (max-width: 340px) {
-  .roster-header :deep(.compact-tool-row) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; }
-}
+.roster-box-actions { display: contents; }
+.roster-summary .roster-mobile-total { display: none; }
 @media (min-width: 768px) {
   .roster-header :deep(.compact-tool-row) { display: flex; flex-wrap: wrap; gap: 8px 16px; }
   .roster-header :deep(.compact-tool-heading) { flex: none; }
@@ -4213,10 +4212,68 @@
 @media (max-width: 767px) {
   .page-operator :deep(.compact-tool-header) { padding-block: 12px 8px; }
   .page-operator :deep(.compact-tool-heading h1) { font-size: 26px; }
+  .roster-header :deep(.wrap) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 8px;
+    overflow: visible;
+  }
+  .roster-header :deep(.compact-tool-row),
+  .roster-header :deep(.compact-tool-actions) { display: contents; }
+  .roster-header :deep(.compact-tool-heading) { grid-area: 1 / 1; }
+  .roster-header :deep(.compact-tool-account) { grid-area: 1 / 2; }
+  .roster-header :deep(.compact-tool-help) { grid-area: 1 / 3; min-height: 34px; }
+  .roster-header :deep(.data-account-context-bar.is-compact) { min-height: 34px; }
+  .roster-header :deep(.context-selector) { flex-wrap: wrap; min-height: 34px; padding: 4px 6px; gap: 2px 4px; }
+  .roster-header :deep(.account-name) { flex: 1 1 2em; }
+  .roster-box-actions { grid-area: 2 / 1 / auto / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+  .roster-box-actions .btn { flex: 1 1 auto; }
+  .roster-summary { grid-area: 3 / 1 / auto / 3; min-width: 0; margin: 0; }
+  .roster-summary .roster-total, .roster-summary .tool-updated { display: none; }
+  .roster-summary > .roster-owned::before { display: none; }
+  .roster-summary .roster-mobile-total { display: inline-flex; gap: 4px; }
+  .roster-header :deep(.compact-tool-actions .tool-more) { grid-area: 3 / 3; position: relative; }
+  .roster-header :deep(.tool-more > summary) { min-height: 34px; }
+  .roster-header :deep(.tool-more-content) { left: auto; right: 0; max-width: calc(100vw - 32px); }
+  .roster-header :deep(.compact-tool-help-content) { grid-column: 1 / -1; min-width: 0; margin-top: 0; }
   .page-operator .operator-tabs.tool-workspace-tabs { width: 100%; }
   .page-operator .tool-workspace-tabs > .workspace-tab-list { flex-grow: 1; }
   .page-operator .operator-tabs.tool-workspace-tabs button { flex-grow: 1; min-height: 38px; padding-block: 6px; }
   .panel:has(> .catalog-tools) { margin-top: 8px; }
+  /* 只重排图鉴工具区，养成总览及他人 BOX 保留共享组件的默认布局。 */
+  .catalog-tools :deep(.operator-filter-dossier.is-compact) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  .catalog-tools :deep(.current-filter-head),
+  .catalog-tools :deep(.current-filter-tools),
+  .catalog-tools :deep(.current-filter-rows) { display: contents; }
+  .catalog-tools :deep(.current-filter-title),
+  .catalog-tools :deep(.pf-status-row > .pf-label) { display: none; }
+  .catalog-tools :deep(.current-filter-result) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .catalog-tools :deep(.current-filter-search) { grid-area: 1 / 1; width: 100%; min-width: 0; box-sizing: border-box; }
+  .catalog-tools .catalog-entry { grid-area: 1 / 2; margin: 0; }
+  .catalog-tools :deep(.dossier-more) { grid-area: 2 / 2; align-self: center; }
+  .catalog-tools :deep(.pf-status-row) { grid-area: 2 / 1; display: block; min-width: 0; }
+  .catalog-tools :deep(.current-status-filter) { display: flex; flex-wrap: wrap; box-sizing: border-box; }
+  .catalog-tools :deep(.current-status-filter button) { flex: 1 1 auto; width: auto; padding-inline: 6px; white-space: normal; }
+  .catalog-tools :deep(.current-status-filter button.on) { background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); }
+  .catalog-tools :deep(.current-filter-reset) { grid-column: 1 / -1; justify-self: end; }
+  .catalog-tools :deep(.dossier-extra) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
   .panel > .catalog-tools ~ .backpack { margin-top: 10px; }
   .panel > .catalog-tools ~ .backpack .slot-name { margin-top: 6px; min-height: 1.45em; }
   .panel > .catalog-tools ~ .backpack .slot-count { left: 3px; bottom: 3px; padding: 3px 4px; font-size: 11px; }
