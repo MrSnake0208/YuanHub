@@ -117,7 +117,6 @@ button { touch-action: manipulation; }
 .growth-track i { display: block; height: 100%; }
 .growth-quick-action { display: inline-grid; width: 32px; min-width: 32px; height: 32px; min-height: 32px; flex: none; place-items: center; padding: 0; }
 .growth-quick-action svg { display: block; }
-.growth-quick-action:has(span) { height: auto; max-width: 100%; padding: 3px 0; font: 700 11px/1.4 var(--font-b); }
 .tracker-star-anchor b { white-space: normal; overflow-wrap: anywhere; }
 .growth-action-notice { margin: 7px 0 0; font-size: 10px; font-weight: 750; line-height: 1.5; }
 .growth-materials { margin-top: 6px; padding-top: 0; }
