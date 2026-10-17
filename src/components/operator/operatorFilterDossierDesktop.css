@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 10px 14px;
+  padding: 8px 14px;
 }
 .current-filter-title {
   display: flex;
@@ -54,7 +54,7 @@
 .current-filter-search {
   display: inline-flex;
   width: clamp(150px, 20vw, 220px);
-  min-height: 30px;
+  min-height: 32px;
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
@@ -63,7 +63,7 @@
   width: 100%;
   min-width: 0;
   padding: 0;
-  font: 11px var(--font-b);
+  font: 12px var(--font-b);
 }
 .current-filter-reset {
   display: inline-flex;
@@ -133,8 +133,17 @@
   white-space: nowrap;
   clip-path: inset(50%);
 }
-.dossier-more { align-self: flex-start; min-height: 44px; margin: 0; padding: 0 12px; font: inherit; font-size: 13px; white-space: nowrap; }
+.dossier-more { align-self: center; min-height: 32px; margin: 0; padding: 0 10px; font: inherit; font-size: 12px; white-space: nowrap; }
 .is-compact .current-filter-title { display: none; }
-.is-compact .current-filter-tools { flex: 1; width: 100%; justify-content: flex-start; }
+.is-compact .current-filter-tools { flex: 1; min-width: 0; width: 100%; flex-wrap: wrap; justify-content: flex-start; }
 .is-compact .current-filter-search { flex: 1 1 180px; }
+.operator-filter-dossier .current-filter-tools :deep(button),
+.operator-filter-dossier .current-filter-tools :deep(.btn) {
+  flex: none;
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 }

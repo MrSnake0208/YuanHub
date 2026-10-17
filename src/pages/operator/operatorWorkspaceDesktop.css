@@ -44,17 +44,16 @@
 .page-operator .operator-tabs.tool-workspace-tabs { padding: 5px; gap: 6px; }
 .page-operator .tool-workspace-tabs > .workspace-tab-list { gap: 6px; }
 .page-operator .operator-tabs.tool-workspace-tabs button { min-height: 40px; padding: 7px 18px; }
-.catalog-tools :deep(.current-filter-head) { padding: 12px 14px; }
+.catalog-tools :deep(.current-filter-head) { padding: 8px 14px; }
 .catalog-tools :deep(.is-compact .current-filter-tools) { flex-wrap: wrap; gap: 10px; min-width: 0; }
-.catalog-tools :deep(.is-compact .current-filter-search) { flex: 1 1 220px; width: auto; min-width: 0; min-height: 40px; padding: 6px 10px; }
-.catalog-tools :deep(.current-filter-search input) { font-size: 13px; }
-.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; min-height: 40px; margin: 0; padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+.catalog-tools :deep(.is-compact .current-filter-search) { flex: 1 1 220px; width: auto; min-width: 0; }
+.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; margin: 0; white-space: nowrap; }
 .catalog-tools :deep(.current-filter-result) { flex: none; font-size: 12px; }
-.catalog-tools :deep(.dossier-more) { min-height: 40px; align-self: auto; }
+.catalog-tools :deep(.dossier-more) { align-self: auto; }
 .catalog-tools :deep(.current-filter-rows) { padding: 8px 14px 10px; }
 .catalog-tools :deep(.pf-status-row) { gap: 12px; }
 .catalog-tools :deep(.pf-status-row .mf-filter) { flex: 0 1 auto; padding: 0; gap: 8px; }
-.catalog-tools :deep(.pf-status-row button) { min-height: 34px; padding: 6px 14px; }
+.catalog-tools :deep(.pf-status-row button) { padding: 6px 14px; }
 
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
