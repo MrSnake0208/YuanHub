@@ -87,7 +87,9 @@ export const FALLBACK_DESCRIPTIONS = {
   'operator:write': '密探数据写入（只写）',
   'operator:export': '密探数据导出',
   'operator:scan:write': '密探自动采集写入',
-  'star:capture:write': '上传星石截图'
+  'star:capture:write': '上传星石截图',
+  // 活动日历（对应后端 OpenApiPermission.CALENDAR_READ，code 40001）
+  'calendar:read': '活动日历读取'
 }
 
 // 后端 created_at 为 ISO-8601 字符串（Instant），格式化为本地时间（无秒）。
