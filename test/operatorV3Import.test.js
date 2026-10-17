@@ -79,3 +79,12 @@ test('v4浏览器往返保留owned未知stage和独立awake及raw/source', () =>
     assert.equal(body.document.records[0].record_id, 'backup')
   }
 })
+
+
+test('v5读取保留独立突破与采集时未知，不改旧v4语义', () => {
+  const document = { format: 'myshare-operator-exchange', version: 5, accounts: [{ id: 'local' }], records: [{ account_id: 'local', entries: [{ operator_id: 'op', level: 90, level_breakthrough_stage: 9, combat_stats: { observed_inputs: { level: 90, level_breakthrough_stage: null } } }] }] }
+  assert.equal(isOperatorV3Document(document), true)
+  const request = buildOperatorV3BrowserRequest(document, 'account', false)
+  assert.deepEqual(request.document, document)
+  assert.equal(request.document.records[0].entries[0].combat_stats.observed_inputs.level_breakthrough_stage, null)
+})

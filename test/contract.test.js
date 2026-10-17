@@ -209,3 +209,9 @@ test('operator v4正式schema和有效/错误样例在前后端保持一致', ()
     assert.deepEqual(JSON.parse(readRel('YuanHub/docs/examples/operator-growth-exchange-v4/' + name)), JSON.parse(readRel('BackEndV3-Share/src/test/resources/operator-growth-exchange-v4/' + name)))
   }
 })
+
+
+test('operator v5 schema及突破/未知观测样例在前后端一致', () => {
+  assert.deepEqual(JSON.parse(readRel('YuanHub/docs/schemas/operator-growth-exchange-v5.schema.json')), JSON.parse(readRel('BackEndV3-Share/src/main/resources/schema/operator-growth-exchange-v5.schema.json')))
+  for (const name of ['boundary.valid.json', 'out-of-range.invalid.json']) assert.deepEqual(JSON.parse(readRel('YuanHub/docs/examples/operator-growth-exchange-v5/' + name)), JSON.parse(readRel('BackEndV3-Share/src/test/resources/operator-growth-exchange-v5/' + name)))
+})

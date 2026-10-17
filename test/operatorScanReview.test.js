@@ -106,3 +106,24 @@ test('中文原因保留未知服务端原意，脱敏诊断不包含身份、�
   for (const value of ['private', review.account_id, review.operator_id, review.record_id, 'local-synthetic']) assert.equal(diagnostic.includes(value), false)
   assert.equal(operatorReviewRows(review, catalog).find(row => row.id === 'equipment').supported, false)
 })
+
+
+test('突破可独立复核为未知或合法阶段，不重传历史观测', () => {
+  const { review, catalog, current, entry } = operatorScanReviewFixture()
+  entry.level = 90
+  entry.level_breakthrough_stage = null
+  entry.section_status.breakthrough = 'review'
+  current.level = 90
+  const rows = operatorReviewRows(review, catalog)
+  const row = rows.find(item => item.kind === 'breakthrough')
+  assert.equal(row.value, null)
+  row.included = true
+  for (const value of [null, 8, 9]) {
+    row.value = value
+    const doc = buildOperatorReviewCorrection(review, rows, 'new', review.correctedAt, catalog, current)
+    assert.equal(doc.version, 5)
+    assert.deepEqual(doc.records[0].entries[0], { operator_id: review.operator_id, level_breakthrough_stage: value })
+  }
+  row.value = 7
+  assert.match(operatorReviewRowError(row, rows, catalog, current), /不匹配/)
+})

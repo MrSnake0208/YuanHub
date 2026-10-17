@@ -1,0 +1,42 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 5,
+  "exported_at": "2026-10-17T00:00:00Z",
+  "producer": {
+    "platform": "myshare",
+    "version": "7"
+  },
+  "accounts": [
+    {
+      "id": "fixture",
+      "name": "合成测试账号",
+      "game_scope": "如鸢"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "fixture",
+      "record_id": "fixture:breakthrough-v5",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-10-17T00:00:00Z",
+      "snapshot_scope": "listed",
+      "source_kind": "backup",
+      "entries": [
+        {
+          "operator_id": "char_044_zhangliao",
+          "level": 90,
+          "level_breakthrough_stage": 9,
+          "combat_stats": {
+            "observed_attack": 1234,
+            "observed_status": "unverified",
+            "observed_inputs": {
+              "level": 90,
+              "level_breakthrough_stage": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import {
   OPERATOR_PANEL_STONES,
   OPERATOR_PANEL_STONE_GROUPS
 } from '../data/operatorPanelCalculator.js'
-import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from './operatorGrowthRules.js'
+import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX, operatorLevelBreakthroughStage } from './operatorGrowthRules.js'
 
 const MAX_CURIOS = 24
 export const OPERATOR_ODDITY_KEYS = ['attack', 'hp', 'special']
@@ -30,6 +30,7 @@ export function formatOperatorOddityCurrent(key, raw) {
 }
 
 export function fillOperatorDraftToMax(draft, odditySchema) {
+  draft.levelBreakthroughStage = 9
   draft.level = OPERATOR_LEVEL_MAX
   draft.elite = OPERATOR_ELITE_MAX
   return fillOperatorOdditiesToMax(draft, odditySchema)
@@ -253,6 +254,7 @@ export function combatInputSignature(input) {
   return JSON.stringify({
     operatorName: textOrEmpty(input.operatorName || input.name),
     level: Math.max(0, Math.trunc(Number(input.level) || 0)),
+    levelBreakthroughStage: operatorLevelBreakthroughStage(input),
     elite: Math.max(0, Math.trunc(Number(input.elite) || 0)),
     starLevel: Math.max(0, Math.trunc(Number(input.starLevel) || 0)),
     huaji: input.huaji || null,
@@ -377,6 +379,7 @@ export function calculateWikiOperatorCombatStats(input) {
   input = input || {}
   const role = panelRoleForInput(input)
   if (!role) return { status: 'unsupported', source: 'rules', reason: '暂时无法计算该密探的面板数据' }
+  if (operatorLevelBreakthroughStage(input) !== Math.floor((Number(input.level) - 1) / 10)) return { status: 'unsupported', source: 'rules', reason: '等级突破未知或暂无对应基础值，请保留观测记录' }
   const levelTier = panelTierForLevel(input.level)
   if (!levelTier || Math.trunc(Number(input.elite) || 0) !== PANEL_ELITE_CAPS[levelTier - 1]) {
     return { status: 'unsupported', source: 'rules', reason: '仅提供完整等级·修为节点，暂时无法计算当前组合' }
@@ -441,7 +444,8 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
   const backendReferenceSignature = normalized.combatInputSignature && !/^sha256:/i.test(normalized.combatInputSignature)
     ? normalized.combatInputSignature
     : ''
-  const observedInputs = normalized.observedInputs || {}
+  const rawInputs = normalized.observedInputs || {}
+  const observedInputs = { ...rawInputs, starLevel: rawInputs.starLevel ?? rawInputs.star_level }
   const primitiveInputChanged = [
     ['level', input && input.level],
     ['elite', input && input.elite],
@@ -454,7 +458,11 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     observedInputs.elite != null && Number(observedInputs.elite) === Number(input && input.elite) &&
     observedInputs.starLevel != null && Number(observedInputs.starLevel) === Number(input && input.starLevel)
   const independentHuajiChanged = !localReferenceSignature && (Object.keys(observedInputs).length > 0 || Boolean(backendReferenceSignature)) && Boolean(input?.huaji) && JSON.stringify(observedInputs.huaji || null) !== JSON.stringify(input.huaji)
-  const changedSinceObservation = independentHuajiChanged || (localReferenceSignature
+  const capturedStage = operatorLevelBreakthroughStage(observedInputs)
+  const currentStage = operatorLevelBreakthroughStage(input)
+  const breakthroughUnverified = currentStage == null || (capturedStage == null && !(localReferenceSignature === signature && currentStage != null)) || normalized.observedStatus === 'unverified'
+  const breakthroughChanged = capturedStage != null && currentStage !== capturedStage
+  const changedSinceObservation = breakthroughChanged || independentHuajiChanged || (localReferenceSignature
     ? localReferenceSignature !== signature
     : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature)))
   const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
@@ -477,7 +485,9 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
         automaticHp: null,
         automaticAttackLabel: '—',
         automaticHpLabel: '—',
-        status: useManual ? 'manual' : (normalized.attack != null || normalized.hp != null ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
+        status: hasManualCorrection || normalized.attack != null || normalized.hp != null
+          ? (changedSinceObservation ? 'stale' : breakthroughUnverified ? 'unverified' : useManual ? 'manual' : 'observed')
+          : 'missing',
         source: useManual ? 'manual' : normalized.source,
         reason: result.reason,
         changedSinceObservation: changedSinceObservation,
@@ -521,7 +531,7 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     automaticHp: null,
     automaticAttackLabel: '—',
     automaticHpLabel: '—',
-    status: hasManualCorrection && !changedSinceObservation ? 'manual' : (hasObservedValue ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
+    status: hasObservedValue && !changedSinceObservation && breakthroughUnverified ? 'unverified' : hasManualCorrection && !changedSinceObservation ? 'manual' : (hasObservedValue ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
     source: hasManualCorrection && !changedSinceObservation ? 'manual' : normalized.source,
     changedSinceObservation: changedSinceObservation,
     inputSignature: signature,
@@ -535,6 +545,7 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
 export function combatStatsSourceLabel(source, status) {
   if (status === 'calculated') return '自动计算'
   if (status === 'manual') return '手动修正'
+  if (status === 'unverified') return '突破待核对'
   if (status === 'stale') return '扫描值待重算'
   if (status === 'observed') return source === 'manual' ? '手动记录' : '扫描记录'
   return '暂无扫描属性'

@@ -403,7 +403,7 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
       observedInputs: { signature: signature },
       observedStatus: 'valid'
     },
-    input: Object.assign({}, input, { level: 90, elite: 15 })
+    input: Object.assign({}, input, { level: 90, levelBreakthroughStage: 8, elite: 15 })
   })
   assert.equal(stats.status, 'calculated')
   assert.notEqual(stats.attack, 9999)
@@ -414,14 +414,14 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
 test('Wiki 修为阶段与化极节点按原页面顺序计入攻生命', function () {
   const wikiDefault = calculateOperatorCombatStats({
     stored: {},
-    input: { operatorName: '庞德', level: 90, elite: 15, starLevel: 7 }
+    input: { operatorName: '庞德', level: 90, levelBreakthroughStage: 8, elite: 15, starLevel: 7 }
   })
   assert.equal(wikiDefault.attack, 5447.0999)
   assert.equal(wikiDefault.hp, 18381.3003)
 
   const tierTwo = calculateOperatorCombatStats({
     stored: {},
-    input: { operatorName: '杨修', level: 60, elite: 9, starLevel: 0 }
+    input: { operatorName: '杨修', level: 60, levelBreakthroughStage: 5, elite: 9, starLevel: 0 }
   })
   assert.equal(tierTwo.attack, 1798.435)
   assert.equal(tierTwo.hp, 10698.45)

@@ -57,7 +57,7 @@ export function sharedPlanCalculations(catalog, currentById, selectedIds, target
       const awakeningUnsupported = desired?.awakened === true && huaji.awakened !== true
       const knownStar = unknownStage ? { heart: 0, money: 0, items: {} } : calculateStarRequirements(huaji.stage, desired.stage)
       result[entry.id] = {
-        level: calculateLevelRequirements(current.level || 0, ownsCost ? levelTarget : current.level || 0, subProf),
+        level: calculateLevelRequirements(current.level || 0, ownsCost ? levelTarget : current.level || 0, subProf, false, current.levelBreakthroughStage ?? current.level_breakthrough_stage),
         xiuwei: calculateXiuweiRequirements(current.elite || 0, ownsCost ? eliteTarget : current.elite || 0, job),
         star: isMovieOperator(entry)
           ? { heart: 0, money: 0, items: {}, unsupported: targets[index].starLevel > star }
