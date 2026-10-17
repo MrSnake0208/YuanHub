@@ -4,6 +4,7 @@ export const recordsViewProps = {
   disabled: { type: Boolean, default: false },
   fmtTime: { type: Function, required: true },
   entrySummary: { type: Function, required: true },
+  iconSrc: { type: Function, required: true },
   stockEffectLabel: { type: Function, required: true },
   staminaCostOf: { type: Function, required: true },
 }

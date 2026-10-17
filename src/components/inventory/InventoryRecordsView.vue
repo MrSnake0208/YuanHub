@@ -34,10 +34,6 @@ function recordNode(id) {
 
 function focusRecord(id, action) {
   const node = recordNode(id)
-  if (isMobile.value && action === 'delete') {
-    toggleDetails(id, true)
-    if (node?.querySelector('details')) node.querySelector('details').open = true
-  }
   const control = node?.querySelector(`[data-record-action="${action}"]`) || node?.querySelector('[data-record-action]')
   const target = control && !control.disabled ? control : node || host.value
   target?.focus({ preventScroll: true })

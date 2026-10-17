@@ -1,13 +1,13 @@
 /* 手机报告布局与密度；独立于桌面文件，内部容器查询保留。 */
 @media (max-width: 760px) {
-.resource-report { margin-top: 16px; border-radius: 8px; overflow: hidden }
+.resource-report { margin-top: 16px; border-radius: 16px; overflow: hidden }
 .report-heading { padding: 16px 20px 13px }
 .report-heading-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px }
 .report-heading-copy > span { display: block; font-size: 10px }
 h2, h3 { margin: 0 }
 .report-heading-copy h2 { margin-top: 2px; font-size: 20px }
 .coin-basis { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
-.coin-basis button { min-height: 44px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+.coin-basis button { min-height: 32px; padding: 6px 10px; border-radius: 8px; font-size: 12px; }
 h3 { font-size: 15px }
 .report-heading p, .explanation, .resource-summary small { font-size: 12px }
 .resource-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; overflow: hidden }
@@ -79,10 +79,10 @@ h3 { font-size: 15px }
   .resource-name img { width: 20px; height: 20px }
   .resource-name h3 { font-size: 10px; text-align: center }
   .resource-summary .summary-meta { display: block; font-size: 11px; line-height: 1.5 }
-  .summary-values { gap: 3px; margin-top: 5px }
+  .summary-values { flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 5px }
   .summary-values > strong { max-width: 100%; font-size: 15px; line-height: 1.1 }
   .summary-foot { gap: 2px; font-size: 8px }
-  .summary-foot span { display: none }
+  .summary-foot span { display: inline }
   .summary-foot b { font-size: 10px }
   .view-heading { align-items: center; flex-wrap: nowrap; gap: 6px; padding: 14px 14px 0 }
   .range-title { min-width: 0; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap }

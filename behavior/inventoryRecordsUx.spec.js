@@ -50,17 +50,12 @@ const undo = wrapper => history(wrapper).findAll('button').find(button => button
 let viewport
 
 async function removeButton(wrapper) {
-  const details = history(wrapper).find('.record-details')
-  if (details.exists() && !details.element.open) {
-    details.element.open = true
-    await details.trigger('toggle')
-  }
   return history(wrapper).get('.record-del')
 }
 
 describe.each([1440, 390])('操作历史 %ipx', width => {
 
-function render(stubs = {}) {
+function render(stubs = {}, directives = {}) {
   return mount(InventoryPage, { global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
@@ -68,7 +63,7 @@ function render(stubs = {}) {
       ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,
       ...stubs,
     },
-    directives: { reveal: () => {} },
+    directives: { reveal: () => {}, ...directives },
   } })
 }
 
@@ -119,6 +114,22 @@ it('从清单进入历史才读取，加载中禁用动作且重复触发不重�
   expect(history(wrapper).get('.record').text()).toContain('白金币+5')
   expect(filter(wrapper, '全部').attributes('aria-pressed')).toBe('true')
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('首屏清单与工作区内容不依赖滚动观察器才显示', async () => {
+  localStorage.setItem('inventory-tabs', 'manifest')
+  inventoryApi.getCurrent.mockResolvedValue([{ account_id: 'acc-1', entity_type: 'item', full_baseline_at: record.effective_at, entries: { baijinbi: { count: 5 } } }])
+  inventoryApi.getAcquired.mockResolvedValue({ acquired: {} })
+  // 模拟尚未收到 intersection 回调，不以 jsdom 伪造可见比例。
+  const wrapper = render({}, { reveal: { mounted(element) { element.classList.add('rv'); element.style.opacity = '0' } } })
+  await flushPromises()
+  expect(wrapper.get('.backpack.manifest-items').classes()).not.toContain('rv')
+  expect(wrapper.get('.backpack.manifest-items').isVisible()).toBe(true)
+  for (const tab of ['records', 'acquired', 'manifest']) {
+    await wrapper.get('#inventory-tab-' + tab).trigger('click'); await flushPromises()
+    expect(wrapper.get('#inventory-panel-' + tab).isVisible()).toBe(true)
+    expect(wrapper.get('.inventory-main').findAll('.rv')).toHaveLength(0)
+  }
 })
 
 it('真实壳层与工作区导航保留手动键盘激活，跨壳层断点不重建或发请求', async () => {
@@ -604,6 +615,46 @@ it('历史报告入口连接唯一真实奖励实例，跨断点保留文本草�
   expect(document.querySelector('#reward-entry-panel')).toBeNull()
   expect(opener.attributes('aria-expanded')).toBe('false')
   expect(document.activeElement).toBe(opener.element)
+})
+
+it('统计默认三时段渐进筛选，自定义保留日期校验，扩展预设使用原查询', async () => {
+  localStorage.setItem('inventory-tabs', 'acquired')
+  inventoryApi.getAcquired.mockResolvedValue({ acquired: {} })
+  inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+  const wrapper = render()
+  document.body.append(wrapper.element); await flushPromises()
+  expect(wrapper.get('.acquired-bar').classes()).not.toContain('is-custom')
+  const reads = inventoryApi.getAcquired.mock.calls.length
+  await wrapper.get('.custom-range-toggle').trigger('click')
+  expect(wrapper.get('.custom-range-toggle').attributes('aria-expanded')).toBe('true')
+  expect(wrapper.get('.acquired-bar').classes()).toContain('is-custom')
+  expect(inventoryApi.getAcquired.mock.calls.length).toBe(reads)
+  await wrapper.get('#acquired-range-from').setValue('2026-10-17')
+  await wrapper.get('#acquired-range-to').setValue('2026-10-16')
+  await wrapper.get('.acquired-submit').trigger('click'); await flushPromises()
+  expect(wrapper.vm.$.setupState.acquiredError).toBe('请选择有效的起止日期')
+  expect(inventoryApi.getAcquired.mock.calls.length).toBe(reads)
+  expect(wrapper.findAll('.range-more-options button').map(button => button.text())).toEqual(['本周', '上周', '本月', '上月'])
+  await wrapper.get('.range-more-options button').trigger('click'); await flushPromises()
+  expect(wrapper.get('.acquired-bar').classes()).not.toContain('is-custom')
+  expect(inventoryApi.getAcquired.mock.calls.length).toBe(reads + 2)
+  const cached = inventoryApi.getAcquired.mock.calls.length
+  await wrapper.get('#inventory-tab-manifest').trigger('click'); await flushPromises()
+  await wrapper.get('#inventory-tab-acquired').trigger('click'); await flushPromises()
+  expect(inventoryApi.getAcquired.mock.calls.length).toBe(cached)
+  await wrapper.vm.$.setupState.focusResourceRange()
+  expect(wrapper.get('.acquired-bar').classes()).toContain('is-custom')
+  expect(document.activeElement).toBe(wrapper.get('#acquired-range-from').element)
+})
+
+it('历史紧凑下拉沿用全部/道具/心纸筛选，导入入口仍连接原工作台', async () => {
+  const wrapper = render(); await flushPromises()
+  const select = wrapper.get('.records-filter-select')
+  expect(select.findAll('option').map(option => option.element.value)).toEqual(['all', 'item', 'agent'])
+  await select.setValue('agent'); await flushPromises()
+  expect(wrapper.vm.$.setupState.recordsEntityType).toBe('agent')
+  expect(inventoryApi.listRecords.mock.calls.at(-1)[0]).toMatchObject({ accountId: 'acc-1', entityType: 'agent' })
+  expect(wrapper.get('.records-report-entry').text()).toBe('导入本地报告')
 })
 
 it('真实统计父级跨断点保留月历日期、趋势固定点与排行选择，resize 零额外请求', async () => {

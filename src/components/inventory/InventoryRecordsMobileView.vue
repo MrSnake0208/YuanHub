@@ -1,28 +1,49 @@
 <template>
-  <ul class="record-list records-mobile" aria-label="库存操作历史">
-    <li v-for="r in recordsList" :key="r.record_id" class="record" :data-record-id="r.record_id" tabindex="-1">
-      <time class="record-time" :datetime="r.effective_at || undefined">{{ fmtTime(r.effective_at) || '时间未提供' }}</time>
-      <div class="record-top">
-        <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ recordTypeLabel(r.record_type) }}</span>
-        <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ entityTypeLabel(r.entity_type) }}</span>
-      </div>
-      <div class="record-entries">{{ entrySummary(r.entries, r.record_type) || '暂无项目明细' }}</div>
-      <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
-      <details class="record-details" :open="expandedIds.includes(r.record_id)" @toggle="$emit('toggle-details', r.record_id, $event.target.open)">
-        <summary data-record-action="details">记录详情与操作</summary>
-        <div class="record-detail-body">
-          <div v-if="r.acquisition_channel" class="record-source">来源：{{ r.acquisition_channel }}</div>
-          <div v-if="staminaCostOf(r) !== undefined" class="record-stamina">消耗体力 {{ staminaCostOf(r) }}</div>
-          <div class="record-id">记录 ID：{{ r.record_id || '未提供' }}</div>
-          <p v-if="r.record_type === 'consumption_delta'" class="record-delete-note">升级消耗不可单独删除。</p>
-          <button v-else type="button" class="record-del" data-record-action="delete" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)">删除</button>
+  <section class="records-timeline" aria-labelledby="inventory-timeline-title">
+    <h2 id="inventory-timeline-title"><Leaf :size="20" aria-hidden="true" />库存变更记录</h2>
+    <ul class="record-list records-mobile" aria-label="库存操作历史">
+      <li v-for="r in recordsList" :key="r.record_id" class="record" :class="'record-' + r.record_type" :data-record-id="r.record_id" tabindex="-1">
+        <span class="record-marker" aria-hidden="true"><Gift v-if="r.record_type === 'reward_delta'" :size="23" /><Minus v-else-if="r.record_type === 'consumption_delta'" :size="23" /><RefreshCw v-else :size="23" /></span>
+        <div class="record-copy">
+          <div class="record-top"><strong>{{ recordTypeLabel(r.record_type) }}</strong><span class="record-entity">{{ entityTypeLabel(r.entity_type) }}</span></div>
+          <div class="record-entries">
+            <template v-if="r.entries?.length">
+              <span v-for="(entry, index) in r.entries" :key="index" class="record-entry">
+                <img v-if="entry.id && ['item', 'agent'].includes(r.entity_type)" :src="iconSrc({ ...entry, entity_type: r.entity_type })" alt="" width="26" height="26" loading="lazy" @load="$event.currentTarget.hidden = false" @error="$event.currentTarget.hidden = true" />
+                <span>{{ entrySummary([entry], r.record_type) }}</span>
+              </span>
+            </template>
+            <template v-else>暂无项目明细</template>
+          </div>
+          <div class="record-source">来源：{{ r.acquisition_channel || '未标注来源' }}</div>
+          <time class="record-time" :datetime="r.effective_at || undefined"><Clock3 :size="12" aria-hidden="true" />{{ fmtTime(r.effective_at) || '时间未提供' }}</time>
         </div>
-      </details>
-    </li>
-  </ul>
+        <div class="record-summary">
+          <span class="record-change" :class="r.record_type === 'reward_delta' ? 'is-gain' : r.record_type === 'consumption_delta' ? 'is-cost' : ''">
+            <template v-if="r.record_type === 'stock_snapshot'">{{ r.entries?.length || 0 }} 项盘点</template>
+            <template v-else-if="r.entries?.length > 1 && ['reward_delta', 'consumption_delta'].includes(r.record_type)">{{ r.entries.length }} 项{{ r.record_type === 'reward_delta' ? '奖励' : '消耗' }}</template>
+            <template v-else>{{ entrySummary(r.entries, r.record_type) || '暂无项目明细' }}</template>
+          </span>
+          <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
+          <div class="record-actions">
+            <button type="button" class="record-detail-toggle" data-record-action="details" aria-label="显示详情" title="显示详情" :aria-expanded="expandedIds.includes(r.record_id)" :aria-controls="'inventory-record-details-' + encodeURIComponent(r.record_id)" @click="$emit('toggle-details', r.record_id, !expandedIds.includes(r.record_id))"><Eye :size="16" aria-hidden="true" /></button>
+            <button v-if="r.record_type !== 'consumption_delta'" type="button" class="record-del" data-record-action="delete" aria-label="删除记录" title="删除记录" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="16" aria-hidden="true" /></button>
+          </div>
+        </div>
+        <div v-show="expandedIds.includes(r.record_id)" :id="'inventory-record-details-' + encodeURIComponent(r.record_id)" class="record-details">
+          <div class="record-detail-body">
+            <div v-if="staminaCostOf(r) !== undefined" class="record-stamina">消耗体力 {{ staminaCostOf(r) }}</div>
+            <div class="record-id">记录 ID：{{ r.record_id || '未提供' }}</div>
+            <p v-if="r.record_type === 'consumption_delta'" class="record-delete-note">升级消耗不可单独删除。</p>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </section>
 </template>
 
 <script setup>
+import { Clock3, Eye, Gift, Leaf, Minus, RefreshCw, Trash2 } from '@lucide/vue'
 import { recordsViewProps, recordTypeLabel, entityTypeLabel } from './inventoryRecordsView.js'
 
 defineProps({ ...recordsViewProps, expandedIds: { type: Array, required: true } })
@@ -30,25 +51,4 @@ defineEmits(['delete-record', 'toggle-details'])
 </script>
 
 <style scoped src="./inventoryRecordsView.css"></style>
-<style scoped>
-/* 手机布局与阅读顺序独立维护，不继承桌面布局。 */
-.record-list {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.record { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 10px; border-radius: 16px; padding: 14px; }
-.record-time { margin: 0; font-size: 11.5px; color: var(--ink-60); }
-.record-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.record-entries { font-size: 13px; }
-.record-id { font-size: 11px; }
-.effect { justify-self: start; }
-.record-details { min-width: 0; border-top: 1px solid var(--line); }
-summary { padding: 12px 0; color: var(--ink-60); font-size: 12px; font-weight: 700; cursor: pointer; }
-.record-detail-body { display: grid; min-width: 0; gap: 10px; overflow-wrap: anywhere; font-size: 12px; color: var(--ink-60); }
-.record-del { width: 100%; min-height: 44px; margin-top: 4px; border-radius: 10px; padding: 7px 16px; font-size: 12px; }
-.record-delete-note { margin: 0; }
-</style>
+<style scoped src="./inventoryRecordsMobileView.css"></style>

@@ -1,5 +1,6 @@
 /* 历史桌面布局；640px 以上保留原有筛选与概览密度。 */
 @media not all and (max-width: 640px) {
+.records-filter-select { display: none; }
 .load-more {
   display: block;
   margin: 16px auto 0;

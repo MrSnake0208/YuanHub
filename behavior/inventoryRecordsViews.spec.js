@@ -11,6 +11,7 @@ const row = {
 let viewport
 const props = () => ({ recordsList: [row], accountId: 'synthetic-a', deleteRecord: vi.fn(),
   fmtTime: value => value, entrySummary: () => '长摘要'.repeat(30),
+  iconSrc: entry => '/inventory-icons/' + (entry.entity_type === 'agent' ? 'agents' : 'items') + '/' + entry.id + '.png',
   stockEffectLabel: () => '已生效', staminaCostOf: record => record.stamina_cost,
 })
 const render = options => mount(InventoryRecordsView, { props: props(), attachTo: document.body, ...options })
@@ -28,33 +29,41 @@ it.each([320, 390, 430, 640, 641, 768, 1024, 1440])('%ipx 初始即只挂载对�
   expect(wrapper.text()).toContain('已生效')
   expect(wrapper.text()).not.toContain('未知类型')
   if (width <= 640) {
-    const details = wrapper.get('details')
-    expect(details.element.open).toBe(false)
-    details.element.open = true
-    await details.trigger('toggle')
-    expect(wrapper.get('.record-del').element.closest('details').open).toBe(true)
+    const details = wrapper.get('.record-details')
+    expect(details.isVisible()).toBe(false)
+    expect(wrapper.get('.record-del').isVisible()).toBe(true)
+    expect(wrapper.get('.record-del').element.closest('.record-details')).toBeNull()
+    const toggle = wrapper.get('[data-record-action="details"]')
+    expect(toggle.attributes('aria-controls')).toBe(details.attributes('id'))
+    expect(toggle.attributes('aria-label')).toBe('显示详情')
+    await toggle.trigger('click')
+    expect(details.isVisible()).toBe(true)
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    await toggle.trigger('click')
+    expect(details.isVisible()).toBe(false)
   }
   await wrapper.get('.record-del').trigger('click')
   expect(wrapper.props('deleteRecord')).toHaveBeenCalledOnce()
   expect(wrapper.props('deleteRecord')).toHaveBeenCalledWith(row)
+  await flushPromises()
+  if (width <= 640) expect(wrapper.get('.record-details').isVisible()).toBe(false)
 })
 
 it('跨断点保留展开状态和语义焦点，同一模式 resize 保留节点，卸载清除监听', async () => {
   const wrapper = render()
   const media = viewport.queries.find(({ media }) => media.media === '(max-width: 640px)')
-  const details = wrapper.get('details')
-  details.element.open = true
-  await details.trigger('toggle')
+  const details = wrapper.get('.record-details')
+  await wrapper.get('[data-record-action="details"]').trigger('click')
   wrapper.get('.record-del').element.focus()
   viewport.resize(430)
   await flushPromises()
-  expect(wrapper.get('details').element).toBe(details.element)
+  expect(wrapper.get('.record-details').element).toBe(details.element)
   for (const width of [641, 1024, 390, 768, 640]) {
     viewport.resize(width)
     await flushPromises()
     expect(wrapper.findAll('.record-list')).toHaveLength(1)
     expect(document.activeElement).toBe(wrapper.get('.record-del').element)
-    if (width <= 640) expect(wrapper.get('details').element.open).toBe(true)
+    if (width <= 640) expect(wrapper.get('.record-details').isVisible()).toBe(true)
   }
   expect(wrapper.props('deleteRecord')).not.toHaveBeenCalled()
   wrapper.unmount()
@@ -94,8 +103,6 @@ it('确认期间切换视图不抢弹窗焦点，取消后恢复到新删除入�
   let resolve
   const confirmation = new Promise(done => { resolve = done })
   const wrapper = render({ props: { ...props(), deleteRecord: vi.fn(() => confirmation) } })
-  wrapper.get('details').element.open = true
-  await wrapper.get('details').trigger('toggle')
   wrapper.get('.record-del').element.focus()
   await wrapper.get('.record-del').trigger('click')
   const modalButton = document.createElement('button')
@@ -114,9 +121,46 @@ it('确认期间切换视图不抢弹窗焦点，取消后恢复到新删除入�
 it.each(['busy', 'consumption'])('%s 记录旋转后焦点留在同一记录，不落到禁用按钮或页面外', async mode => {
   const wrapper = render({ props: { ...props(), disabled: mode === 'busy',
     recordsList: [{ ...row, record_type: mode === 'consumption' ? 'consumption_delta' : row.record_type }] } })
-  wrapper.get('summary').element.focus()
+  wrapper.get('[data-record-action="details"]').element.focus()
   viewport.resize(1440)
   await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.record').element)
   expect(wrapper.props('deleteRecord')).not.toHaveBeenCalled()
+})
+
+it('移动时间线区分快照项目数和真实增量，不把盘点显示为收益', async () => {
+  const wrapper = render({ props: { ...props(), entrySummary: (entries, type) =>
+    entries.map(entry => entry.id + (type === 'reward_delta' ? '+' : '=') + entry.count).join('、'),
+    recordsList: [{ ...row, entries: [{ id: 'fuchuan', count: 80 }] },
+      { ...row, record_id: 'reward:test', record_type: 'reward_delta', entries: [{ id: 'fuchuan', count: 7 }] }] } })
+  expect(wrapper.findAll('.record-change').map(node => node.text())).toEqual(['1 项盘点', 'fuchuan+7'])
+  expect(wrapper.get('.record-change').text()).not.toContain('+80')
+  expect(wrapper.findAll('.record-marker')).toHaveLength(2)
+  await wrapper.setProps({ recordsList: [{ ...row, record_type: 'reward_delta', entries: [{ id: 'fuchuan', count: 7 }, { id: 'baijinbi', count: 30 }] }] })
+  expect(wrapper.get('.record-change').text()).toBe('2 项奖励')
+  expect(wrapper.get('.record-details').isVisible()).toBe(false)
+  expect(wrapper.findAll('.record-copy .record-entry').map(node => node.text())).toEqual(['fuchuan+7', 'baijinbi+30'])
+  expect(wrapper.get('.record-copy .record-entries').isVisible()).toBe(true)
+  expect(wrapper.get('.record-copy .record-source').text()).toBe('来源：' + row.acquisition_channel)
+  expect(wrapper.get('.record-copy .record-source').isVisible()).toBe(true)
+  await wrapper.setProps({ recordsList: [{ ...row, acquisition_channel: undefined }] })
+  expect(wrapper.get('.record-copy .record-source').text()).toBe('来源：未标注来源')
+})
+
+it.each(['item', 'agent'])('移动记录使用 %s 对应资源图标，加载失败仍保留名称数量', async entityType => {
+  const entry = { id: 'synthetic-icon', name: '测试物品', count: 3 }
+  const iconSrc = vi.fn(props().iconSrc)
+  const wrapper = render({ props: { ...props(), iconSrc, recordsList: [{ ...row, entity_type: entityType, entries: [entry] }],
+    entrySummary: entries => entries.map(value => value.name + '=' + value.count).join('、') } })
+  const image = wrapper.get('.record-copy .record-entry img')
+  expect(image.isVisible()).toBe(true)
+  expect(image.attributes('src')).toBe('/inventory-icons/' + (entityType === 'agent' ? 'agents' : 'items') + '/synthetic-icon.png')
+  expect(iconSrc).toHaveBeenCalledWith({ ...entry, entity_type: entityType })
+  expect(entry).not.toHaveProperty('entity_type')
+  await image.trigger('error')
+  expect(image.isVisible()).toBe(false)
+  expect(wrapper.get('.record-entry').text()).toBe('测试物品=3')
+  expect(wrapper.get('.record-details').isVisible()).toBe(false)
+  await image.trigger('load')
+  expect(image.isVisible()).toBe(true)
 })

@@ -1,5 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 1080px) {
+.custom-range-toggle, .range-more, .inventory-freshness-copy > svg { display: none; }
+
 .archive-toggle {
   min-height: 44px;
   align-self: center;
