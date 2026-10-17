@@ -162,7 +162,7 @@ test('密探图鉴在筛选激活时显示筛选后的密探数量', function ()
   // 数量必须来自与列表同一套筛选口径，页面不得再内联另一份过滤条件。
   assert.match(operatorPage, /matchesManifestFilters\(e, \{/)
   assert.match(operatorPage, /return hasActiveManifestFilters\(\{/)
-  assert.match(operatorPage, /<OperatorGrowthFilters v-model="manifestGrowthFilters"\s*\/>/)
+  assert.match(operatorPage, /<OperatorFilterDossier\b[^>]*v-model:growth-filters="manifestGrowthFilters"[^>]*show-growth-filters/)
   assert.match(operatorPage, /growthFilters: manifestGrowthFilters\.value/g)
 })
 

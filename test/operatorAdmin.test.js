@@ -62,6 +62,6 @@ test('管理端维护第三奇闻名称，但不在前端推导上限', function
   assert.match(adminPage, /v-model\.trim="form\.specialOddityCustomName"/)
   assert.match(adminPage, /specialOddityName: resolvedSpecialOddityName\(\)/)
   assert.match(adminPage, /aria-invalid="specialOddityError/)
-  assert.match(adminPage, /上限由服务端按稀有度生成/)
+  assert.match(adminPage, /这里只修改名称，上限会按品质自动计算/)
   assert.doesNotMatch(adminPage, /rarity\s*===?\s*3[^\n]+(?:300|1560|9)/)
 })
