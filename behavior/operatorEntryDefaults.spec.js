@@ -422,8 +422,11 @@ it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随当前账号', async () => {
+it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当前账号', async () => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  const writeText = vi.fn().mockResolvedValue()
+  vi.stubGlobal('navigator', { clipboard: { writeText } })
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
   operatorApi.listOperatorAccounts.mockResolvedValue([
     { id: 'acc', name: '测试账号', game: '如鸢' },
     { id: 'other-acc', name: '另一个账号', game: '如鸢' },
@@ -438,6 +441,7 @@ it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随�
   const share = header.get('.roster-share')
   expect(share.text()).toContain('分享 BOX')
   expect(share.text()).toContain('已开启')
+  expect(share.get('small').classes()).toContain('is-sharing')
   expect(share.attributes('aria-expanded')).toBe('false')
   expect(header.get('.roster-view-box').element.tagName).toBe('BUTTON')
   expect(header.get('.roster-view-box').attributes('aria-haspopup')).toBe('dialog')
@@ -452,19 +456,25 @@ it('顶部分享入口打开独立弹窗，关闭不改正文且状态仍跟随�
   expect(modal.text()).toContain('测试账号')
   expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(false)
   expect(share.attributes('aria-expanded')).toBe('true')
+  await modal.get('[aria-label="复制密探 BOX链接"]').trigger('click'); await flushPromises()
+  expect(writeText).toHaveBeenCalledExactlyOnceWith(window.location.origin + '/operator/share/test-code')
   await modal.get('[aria-label="关闭分享弹窗"]').trigger('click'); await flushPromises()
   expect(modal.isVisible()).toBe(false)
   expect(share.attributes('aria-expanded')).toBe('false')
   expect(document.activeElement).toBe(share.element)
   expect(wrapper.get('#operator-panel-catalog').html()).toBe(content)
   expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  expect(wrapper.get('.current-status-summary').text()).toContain('养成中')
+  expect(wrapper.get('#operator-panel-current').text()).not.toMatch(/分享中|未开启|未分享/)
   await share.trigger('click')
   expect(accountShareApi.getAccountShare).toHaveBeenCalledTimes(1)
   await modal.get('[aria-label="关闭分享弹窗"]').trigger('click')
   activeAccount.id = 'other-acc'
   await flushPromises()
   expect(accountShareApi.getAccountShare).toHaveBeenLastCalledWith('other-acc')
-  expect(share.text()).toContain('未分享')
+  expect(share.text()).toContain('未开启')
+  expect(share.get('small').classes()).not.toContain('is-sharing')
   expect(share.text()).not.toContain('已开启')
   await share.trigger('click')
   expect(modal.text()).toContain('另一个账号')

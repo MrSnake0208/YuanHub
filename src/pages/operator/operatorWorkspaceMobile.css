@@ -42,7 +42,7 @@
 .roster-header :deep(.compact-tool-actions .tool-more) { position: static; }
 .roster-header :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 .roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
-.roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--cream) 30%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--cream) 12%, transparent); line-height: 1.3; }
+.roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid var(--surface); border-radius: 999px; background: var(--surface); color: var(--ink); line-height: 1.3; }
 .roster-summary { margin: 4px 0 0; font-size: 12px; }
 .roster-summary .tool-updated { display: inline-flex; }
 @container (max-width: 340px) {
@@ -130,9 +130,6 @@
 .workspace-mobile-link { display: none; }
 .current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .current-ledger-heading .section-kicker { margin-bottom: 0; }
-.ledger-share-badge { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 10px; font: 700 12px var(--font-b); }
-.ledger-share-badge::before { flex: none; width: 7px; height: 7px; }
-.ledger-share-feedback { font-size: 12px; }
 @media (max-width: 1080px) {
   .page-operator :deep(.workspace-summary) { flex-wrap: wrap; justify-content: flex-start; gap: 6px; padding: 10px; }
   .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { display: inline-flex; min-height: 44px; padding: 8px 10px; font-size: 12px; justify-content: center; flex: 1 1 auto; white-space: nowrap; }
@@ -4174,9 +4171,6 @@
   }
 }
 
-.ledger-share-control { position: relative; flex: none; }
-.ledger-share-control .ledger-share-feedback { position: absolute; z-index: 5; top: calc(100% + 4px); right: 0; width: max-content; max-width: min(240px, 70vw); padding: 8px 12px; font-size: 12px; line-height: 1.5; }
-.ledger-share-feedback::before { position: absolute; top: -4px; right: 18px; width: 8px; height: 8px; transform: rotate(45deg); }
 .upgrade-filter-icon { display: none; }
 @media (max-width: 1080px) {
   .page-operator :deep(.workspace-summary) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 6px 8px; gap: 6px; }
@@ -4202,12 +4196,10 @@
   .current-workbench-head { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; gap: 4px 28px; padding: 16px 22px; }
   .current-workbench-copy, .current-ledger-heading { display: contents; }
   .current-ledger-heading > .section-kicker { grid-column: 1; grid-row: 1; align-self: center; margin: 0; }
-  .ledger-share-control { grid-column: 2; grid-row: 1; justify-self: end; }
   .current-workbench-title { grid-column: 1; grid-row: 2; margin-top: 0; }
   .current-workbench-copy > p { grid-column: 1; margin-top: 2px; }
   .current-workbench-head .current-workbench-index { grid-column: 2; grid-row: 2 / span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); width: 100%; box-sizing: border-box; gap: 10px; padding: 10px 12px; align-self: start; }
   .current-workbench-index .current-status-index { grid-template-columns: repeat(var(--current-status-columns, 4), minmax(0, 1fr)); gap: 10px; }
-  .ledger-share-control .ledger-share-badge { min-height: 32px; padding: 4px 8px; }
 }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-account) { display: none; }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
@@ -4251,9 +4243,6 @@
   #operator-panel-current { margin-top: 8px; }
   .current-workbench-summary { margin-top: 0; padding: 0; border-bottom: 0; }
   .current-workbench-summary .current-status-summary { display: none; }
-  .current-workbench-summary .ledger-share-badge { min-height: 28px; padding: 4px 0; }
-  .current-workbench-summary .ledger-share-feedback { left: 0; right: auto; }
-  .current-workbench-summary .ledger-share-feedback::before { left: 14px; right: auto; }
   #operator-panel-current :deep(.operator-filter-dossier.is-compact) { margin-top: 6px; }
   #operator-panel-current :deep(.is-compact .current-filter-head) { padding: 8px; }
   #operator-panel-current :deep(.is-compact .current-filter-tools) { gap: 6px 8px; }
