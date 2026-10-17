@@ -119,7 +119,7 @@
   object-fit: contain;
 }
 .status-group-break { flex-basis: 100%; margin: 2px 0; }
-.current-status-filter button, .current-tag-filter button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.current-status-filter button, .current-tag-filter button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .current-status-filter button small, .current-tag-filter button small {
   margin-left: 2px;
   font: 800 9px var(--font-d);
