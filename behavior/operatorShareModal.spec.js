@@ -44,11 +44,6 @@ async function open() {
   opener.element.focus()
   await opener.trigger('click'); await flushPromises()
 }
-async function expandManagement() {
-  const details = panel().get('details.share-code-actions')
-  if (!details.element.open) await details.get('summary').trigger('click')
-  expect(details.element.open).toBe(true)
-}
 
 it('关闭后迟到状态照常更新，重新打开保持实例、链接及读取次数，复制引用仍有效', async () => {
   const pending = deferred()
@@ -81,8 +76,8 @@ it('Escape、右上角和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗
   expect(document.body.style.position).toBe('fixed')
   expect(document.body.style.top).toBe('-320px')
   const close = panel().get('[aria-label="关闭分享弹窗"]')
-  const done = panel().get('.share-code-actions summary')
-  expect(panel().find('footer button').exists()).toBe(false)
+  const done = panel().get('footer .is-primary')
+  expect(panel().get('footer').findAll('button')).toHaveLength(3)
   expect(document.activeElement).toBe(close.element)
   done.element.focus()
   done.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
@@ -143,29 +138,29 @@ it('紧凑链接保留完整 URL，复制受限时仍可选中手动复制；隐
   expect(panel().text()).toContain('复制失败，请手动选中复制')
   expect(input.element.value).toBe(full)
   const details = panel().get('details')
+  expect(details.get('summary strong').text()).toBe('公开范围与隐私说明')
+  expect(details.get('summary small').text()).toContain('不含备注、目标、计划或 OCR 记录')
   expect(details.element.open).toBe(false)
   details.element.open = true
   expect(details.text()).toContain('两个视图共用分享码')
   expect(details.text()).toContain('不会移除这些信息')
   expect(details.text()).toContain('云端已保存的全部星石')
   expect(panel().text()).toContain('不含备注、目标、计划或 OCR 记录')
-  expect(panel().get('.share-management-label').text()).toContain('两个分享范围的旧链接立即失效')
 })
 
-it('更多管理默认折叠，展开和收起不写分享状态，收起时危险操作不进入 Tab 顺序', async () => {
+it('管理操作直接显示在正文外的底栏，底部关闭归还焦点且不写分享状态', async () => {
   await render(); await open()
-  const details = panel().get('details.share-code-actions')
-  const summary = details.get('summary')
-  expect(summary.text()).toBe('更多管理')
-  expect(details.element.open).toBe(false)
-  await expandManagement()
-  expect(details.text()).toContain('重新生成分享链接')
-  expect(details.text()).toContain('两个分享范围的旧链接立即失效')
-  await summary.trigger('click')
-  expect(details.element.open).toBe(false)
-  summary.element.focus()
-  summary.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+  const footer = panel().get('footer')
+  expect(footer.findAll('button').map(item => item.text())).toEqual(['重新生成全部分享链接', '全部撤销分享', '关闭'])
+  expect(panel().get('.operator-share-body').find('.operator-share-footer-actions').exists()).toBe(false)
+  expect(panel().find('details.share-code-actions').exists()).toBe(false)
+  const done = footer.get('.is-primary')
+  done.element.focus()
+  done.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
   expect(document.activeElement).toBe(panel().get('[aria-label="关闭分享弹窗"]').element)
+  await done.trigger('click'); await flushPromises()
+  expect(panel().isVisible()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get('.opener').element)
   for (const fn of [api.setAccountShareScope, api.regenerateAccountShare, api.revokeAccountShare]) expect(fn).not.toHaveBeenCalled()
 })
 
@@ -197,7 +192,6 @@ it.each([
   api.getAccountShare.mockResolvedValue(active('a', ['operator', 'star']))
   api[action].mockResolvedValue(result)
   await render(); await open()
-  await expandManagement()
   button(label).element.focus()
   await button(label).trigger('click'); await flushPromises()
   expect(dialog._state.visible).toBe(true)

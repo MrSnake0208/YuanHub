@@ -75,11 +75,12 @@ watch(open, (visible, _, onCleanup) => {
 .box-viewer-body { min-width: 0; min-height: 0; padding: 16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 @media (min-width: 641px) {
   .box-viewer-mask { padding: 24px; }
-  .box-viewer-dialog { width: min(640px, 100%); height: auto; max-height: min(90dvh, calc(var(--modal-viewport-height, 100dvh) * .9)); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4); }
+  .box-viewer-dialog { width: min(660px, 100%); height: auto; max-height: min(90dvh, calc(var(--modal-viewport-height, 100dvh) * .9)); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4); }
   .box-viewer-dialog.has-results { width: min(1100px, 100%); }
-  .box-viewer-header { padding: 14px 20px; }
+  .box-viewer-header { padding: 16px 24px; }
+  .box-viewer-header h2 { font-size: 22px; }
   .box-viewer-close { width: 36px; height: 36px; }
-  .box-viewer-body { padding: 16px 20px; }
+  .box-viewer-body { padding: 20px 24px 24px; }
 }
 /* 键盘挤压时保留标题和关闭入口，仍只滚动内容区。 */
 .is-short-viewport .box-viewer-header { padding-block: 8px; }
