@@ -750,6 +750,13 @@ const permissionGroups = computed(function () {
         return permission.scope.startsWith("star:");
       }),
     },
+    {
+      key: "calendar",
+      title: "活动日历",
+      items: permissions.value.filter(function (permission) {
+        return permission.scope.startsWith("calendar:");
+      }),
+    },
   ].filter(function (group) {
     return group.items.length;
   });
@@ -764,6 +771,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
   "star:capture:write": "上传星石截图",
+  "calendar:read": "查看活动日历与订阅",
 };
 
 function friendlyPermissionTitle(scope) {
