@@ -1,8 +1,8 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 640px) {
-.growth-filter-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; }
+.growth-filter-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; }
 .growth-filter-presets > span { margin-right: 2px; font: 800 11px var(--font-b); }
-.growth-filter-presets button { min-height: 38px; padding: 6px 13px; font: 800 11.5px var(--font-b); white-space: nowrap; }
+.growth-filter-presets button { min-height: 34px; padding: 3px 8px; font: 800 11.5px var(--font-b); white-space: nowrap; }
 .current-growth-filter { padding-top: 4px; }
 .current-growth-filter summary { display: flex; width: fit-content; min-height: 36px; align-items: center; gap: 4px; font: 800 11px var(--font-b); }
 .current-growth-filter summary span { margin-left: 5px; }
@@ -18,7 +18,6 @@
 .growth-filter-error { margin: 6px 0 0; font: 700 11px var(--font-b); }
 @media (max-width: 640px) {
   .growth-filter-presets > span { flex-basis: 100%; }
-  .growth-filter-presets button { min-height: 44px; }
   .growth-filter-fields { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .current-growth-filter summary { min-height: 44px; }
   .growth-filter-enable { min-height: 44px; }

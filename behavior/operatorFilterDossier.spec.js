@@ -117,6 +117,48 @@ it('紧凑模式常驻搜索和状态，更多筛选展开后可使用原有属�
   expect(wrapper.props('profFilter')).toBe('阳')
 })
 
+it.each(['密探图鉴', '当前养成'])('%s 沿用共同操作顺序，专属操作排在公共入口之后', contextLabel => {
+  const secondaryLabels = contextLabel === '当前养成' ? ['特别关注优先', '分类设置', '批量标注'] : []
+  const wrapper = mount(OperatorFilterDossier, { props: {
+    compact: true, searchable: true, contextLabel, hasFilters: true, advancedFilterCount: 0,
+  }, slots: {
+    'primary-tool': '<a class="btn primary" href="/operator/quick">录入密探</a>',
+    ...(secondaryLabels.length ? { 'secondary-tool': secondaryLabels.map(label => `<button type="button">${label}</button>`).join('') } : {}),
+  } })
+  const controls = wrapper.get('.current-filter-tools').findAll('input, a, button')
+  expect(controls.map(control => control.element.tagName === 'INPUT' ? '搜索' : control.text()))
+    .toEqual(['搜索', '录入密探', '更多筛选', '重置', ...secondaryLabels])
+  if (secondaryLabels.length) {
+    expect(wrapper.get('.current-filter-secondary').findAll('button').map(button => button.text())).toEqual(secondaryLabels)
+  } else {
+    expect(wrapper.find('.current-filter-secondary').exists()).toBe(false)
+  }
+  wrapper.unmount()
+})
+
+it.each([false, true])('强制展开时显示所有筛选，解除后保留原展开状态（原展开=%s）', async previouslyOpen => {
+  const wrapper = mount(OperatorFilterDossier, { attachTo: document.body, props: {
+    compact: true, searchable: true, searchQuery: '杨修', profFilter: '阳',
+    profOptions: ['阳'], subProfOptions: ['输出'], rarityOptions: [{ value: 5, label: '绝密' }],
+  } })
+  if (previouslyOpen) await wrapper.get('.dossier-more').trigger('click')
+  await wrapper.setProps({ forceExpanded: true })
+  expect(wrapper.find('.dossier-more').exists()).toBe(false)
+  for (const selector of ['.pf-prof-row', '.pf-subprof-row', '.pf-rarity-row']) {
+    expect(wrapper.get(selector).isVisible()).toBe(true)
+  }
+  expect(wrapper.get('.current-filter-search input').isVisible()).toBe(true)
+  await wrapper.findAll('.pf-subprof-row button')[1].trigger('click')
+  expect(wrapper.emitted('update:subProfFilter')).toEqual([['输出']])
+  await wrapper.setProps({ forceExpanded: false })
+  expect(wrapper.get('.dossier-extra').isVisible()).toBe(previouslyOpen)
+  expect(wrapper.get('.dossier-more').attributes('aria-expanded')).toBe(String(previouslyOpen))
+  expect(wrapper.get('.current-filter-search input').element.value).toBe('杨修')
+  expect(wrapper.findAll('.pf-prof-row button')[1].attributes('aria-pressed')).toBe('true')
+  expect(wrapper.emitted('reset')).toBeUndefined()
+  wrapper.unmount()
+})
+
 it('图鉴可复用招募状态和高级筛选数量，关闭更多筛选保留附加内容', async () => {
   const wrapper = mount(OperatorFilterDossier, { props: {
     compact: true, contextLabel: '密探图鉴', statusLabel: '招募状态', totalCount: 3,

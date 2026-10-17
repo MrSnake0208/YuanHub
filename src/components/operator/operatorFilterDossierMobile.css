@@ -43,6 +43,12 @@
   align-items: center;
   gap: 8px;
 }
+.current-filter-secondary {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
 .current-filter-result {
   font-size: 10.5px;
   font-weight: 800;
@@ -226,7 +232,7 @@
   white-space: nowrap;
 }
 .is-compact .current-filter-search {
-  order: 1;
+  order: 0;
   flex: 0 0 100%;
   width: 100%;
   min-width: 0;
@@ -235,7 +241,6 @@
 }
 .is-compact .current-filter-search input { font-size: 12px; }
 .is-compact .current-filter-tools :deep(button) {
-  order: 2;
   flex: none;
   min-height: 34px;
   padding: 5px 8px;
@@ -244,7 +249,6 @@
   line-height: 1.4;
   white-space: nowrap;
 }
-.is-compact .current-filter-tools .current-filter-reset { order: 3; }
 .is-compact .pf-status-row, .is-compact .pf-tag-row { display: block; }
 .is-compact .pf-status-row > .pf-label, .is-compact .pf-tag-row > .pf-label { display: none; }
 .is-compact .pf-status-row .mf-filter { display: flex; flex-wrap: wrap; }
