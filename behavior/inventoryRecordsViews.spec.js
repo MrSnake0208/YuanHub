@@ -46,7 +46,7 @@ it.each([320, 390, 430, 640, 641, 768, 1024, 1440])('%ipx 初始即只挂载对�
   expect(wrapper.props('deleteRecord')).toHaveBeenCalledOnce()
   expect(wrapper.props('deleteRecord')).toHaveBeenCalledWith(row)
   await flushPromises()
-  if (width <= 640) expect(wrapper.get('.record-details').isVisible()).toBe(false)
+  expect(wrapper.get('.record-details').isVisible()).toBe(false)
 })
 
 it('跨断点保留展开状态和语义焦点，同一模式 resize 保留节点，卸载清除监听', async () => {
@@ -63,7 +63,7 @@ it('跨断点保留展开状态和语义焦点，同一模式 resize 保留节�
     await flushPromises()
     expect(wrapper.findAll('.record-list')).toHaveLength(1)
     expect(document.activeElement).toBe(wrapper.get('.record-del').element)
-    if (width <= 640) expect(wrapper.get('.record-details').isVisible()).toBe(true)
+    expect(wrapper.get('.record-details').isVisible()).toBe(true)
   }
   expect(wrapper.props('deleteRecord')).not.toHaveBeenCalled()
   wrapper.unmount()
@@ -124,7 +124,7 @@ it.each(['busy', 'consumption'])('%s 记录旋转后焦点留在同一记录，�
   wrapper.get('[data-record-action="details"]').element.focus()
   viewport.resize(1440)
   await flushPromises()
-  expect(document.activeElement).toBe(wrapper.get('.record').element)
+  expect(document.activeElement).toBe(wrapper.get('[data-record-action="details"]').element)
   expect(wrapper.props('deleteRecord')).not.toHaveBeenCalled()
 })
 
@@ -147,12 +147,13 @@ it('移动时间线区分快照项目数和真实增量，不把盘点显示为�
   expect(wrapper.get('.record-copy .record-source').text()).toBe('来源：未标注来源')
 })
 
-it.each(['item', 'agent'])('移动记录使用 %s 对应资源图标，加载失败仍保留名称数量', async entityType => {
+it.each([[390, 'item'], [390, 'agent'], [768, 'item'], [768, 'agent'], [1440, 'item'], [1440, 'agent']])('%ipx 记录使用 %s 对应资源图标，加载失败仍保留名称数量', async (width, entityType) => {
+  viewport.resize(width)
   const entry = { id: 'synthetic-icon', name: '测试物品', count: 3 }
   const iconSrc = vi.fn(props().iconSrc)
   const wrapper = render({ props: { ...props(), iconSrc, recordsList: [{ ...row, entity_type: entityType, entries: [entry] }],
     entrySummary: entries => entries.map(value => value.name + '=' + value.count).join('、') } })
-  const image = wrapper.get('.record-copy .record-entry img')
+  const image = wrapper.get('.record-entry img')
   expect(image.isVisible()).toBe(true)
   expect(image.attributes('src')).toBe('/inventory-icons/' + (entityType === 'agent' ? 'agents' : 'items') + '/synthetic-icon.png')
   expect(iconSrc).toHaveBeenCalledWith({ ...entry, entity_type: entityType })
@@ -163,4 +164,25 @@ it.each(['item', 'agent'])('移动记录使用 %s 对应资源图标，加载失
   expect(wrapper.get('.record-details').isVisible()).toBe(false)
   await image.trigger('load')
   expect(image.isVisible()).toBe(true)
+})
+
+it.each([641, 768, 900, 901, 1440])('%ipx 桌面记录常驻物品与来源，记录 ID 可展开收起', async width => {
+  viewport.resize(width)
+  const wrapper = render({ props: { ...props(), recordsList: [{ ...row, entries: [{ id: 'fuchuan', count: 4 }] }],
+    entrySummary: entries => entries.map(entry => entry.id + '=' + entry.count).join('、') } })
+  expect(wrapper.get('.records-desktop-panel h2').text()).toBe('库存变更记录')
+  expect(wrapper.get('.record-entry').text()).toBe('fuchuan=4')
+  expect(wrapper.get('.record-entry').isVisible()).toBe(true)
+  expect(wrapper.get('.record-source').text()).toBe('来源：' + row.acquisition_channel)
+  expect(wrapper.get('.record-source').isVisible()).toBe(true)
+  expect(wrapper.get('.record-time').attributes('datetime')).toBe(row.effective_at)
+  expect(wrapper.get('.record-id').isVisible()).toBe(false)
+  const toggle = wrapper.get('[data-record-action="details"]')
+  expect(toggle.attributes('aria-controls')).toBe(wrapper.get('.record-details').attributes('id'))
+  await toggle.trigger('click')
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  expect(wrapper.get('.record-id').isVisible()).toBe(true)
+  await toggle.trigger('click')
+  expect(wrapper.get('.record-id').isVisible()).toBe(false)
+  expect(wrapper.props('deleteRecord')).not.toHaveBeenCalled()
 })
