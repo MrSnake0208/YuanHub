@@ -15,13 +15,14 @@
           <section class="category-panel" aria-labelledby="category-panel-title">
             <h2 id="category-panel-title">反馈板块</h2>
             <p>隐藏后，用户和管理员无法再从选项中选择该板块；已有反馈和授权保留，可随时恢复显示。改名不会改变归属。</p>
+            <p>使用上移、下移调整显示顺序，每次调整自动保存，反馈表单和筛选项刷新后使用该顺序。</p>
             <form class="category-create" @submit.prevent="addCategory">
               <label for="new-feedback-category">新增板块</label>
               <input id="new-feedback-category" v-model="newCategoryLabel" maxlength="24" required :disabled="categorySaving || loading || !!error" placeholder="板块名称" />
               <button class="command primary" type="submit" :disabled="categorySaving || loading || !!error || !newCategoryLabel.trim()">新增</button>
             </form>
             <ul v-if="categoryCatalog.length && !error" class="category-list">
-              <li v-for="area in categoryCatalog" :key="area.key">
+              <li v-for="(area, index) in categoryCatalog" :key="area.key">
                 <template v-if="editingCategoryKey === area.key">
                   <input v-model="editingCategoryLabel" :aria-label="'修改 ' + area.label + ' 名称'" maxlength="24" :disabled="categorySaving" @keydown.enter.prevent="saveCategory" @keydown.esc="cancelCategoryEdit" />
                   <button type="button" :disabled="categorySaving || !editingCategoryLabel.trim()" @click="saveCategory">保存</button>
@@ -31,10 +32,13 @@
                   <span>{{ area.label }}<small v-if="area.hidden">（已隐藏）</small></span>
                   <button type="button" :aria-label="'重命名 ' + area.label" :disabled="categorySaving" @click="startCategoryEdit(area)">改名</button>
                   <button type="button" :aria-label="(area.hidden ? '恢复显示 ' : '隐藏 ') + area.label" :disabled="categorySaving || loading || !!error" @click="toggleCategoryHidden(area)">{{ area.hidden ? '恢复显示' : '隐藏' }}</button>
+                  <button type="button" :aria-label="'上移 ' + area.label" :disabled="index === 0 || categorySaving || loading || !!error || !!editingCategoryKey" @click="moveCategory(index, -1)">上移</button>
+                  <button type="button" :aria-label="'下移 ' + area.label" :disabled="index === categoryCatalog.length - 1 || categorySaving || loading || !!error || !!editingCategoryKey" @click="moveCategory(index, 1)">下移</button>
                 </template>
               </li>
             </ul>
             <p v-if="categoryError" class="editor-error" role="alert">{{ categoryError }}</p>
+            <p v-if="categorySaving" role="status">正在保存板块…</p>
           </section>
           <div class="access-heading">
             <h2 id="access-grants-title">用户授权</h2>
@@ -195,6 +199,7 @@ import {
   getFeedbackAccess,
   listFeedbackAccessGrants,
   renameFeedbackCategory,
+  reorderFeedbackCategories,
   setFeedbackCategoryHidden,
   updateFeedbackAccessGrant
 } from '@/api/feedback.js'
@@ -322,6 +327,27 @@ async function toggleCategoryHidden(area) {
     if (isMounted) await load()
   } catch (e) {
     if (isMounted && !await handleForbidden(e)) categoryError.value = e.message || '修改板块显示状态失败'
+  } finally {
+    categorySaving.value = false
+  }
+}
+
+async function moveCategory(index, offset) {
+  if (categorySaving.value || loading.value || error.value || editingCategoryKey.value) return
+  const target = index + offset
+  if (target < 0 || target >= categoryCatalog.value.length) return
+  const expectedKeys = categoryCatalog.value.map(area => area.key)
+  const keys = [...expectedKeys]
+  const movingKey = keys[index]
+  keys[index] = keys[target]
+  keys[target] = movingKey
+  categorySaving.value = true
+  categoryError.value = ''
+  try {
+    const catalog = await reorderFeedbackCategories(keys, expectedKeys)
+    if (isMounted) categoryCatalog.value = catalog
+  } catch (e) {
+    if (isMounted && !await handleForbidden(e)) categoryError.value = e.message || '调整板块顺序失败'
   } finally {
     categorySaving.value = false
   }

@@ -19,6 +19,18 @@ beforeEach(() => {
   listAdminRoleUsers.mockResolvedValue([binding, { ...binding, userId: 'inactive', activated: false, roles: ['PLATFORM_ADMIN'] }])
 })
 
+it('板块排序审计显示动作和前后顺序', async () => {
+  const snapshot = order => ({ roles: [], receiveAreas: [], manageAreas: [], feedbackCategoryOrder: order })
+  listAdminAuditLogs.mockResolvedValue({ data: [{
+    id: 'order-log', action: 'FEEDBACK_CATEGORY_REORDERED', actorUserId: 'root', targetResource: 'feedback_categories',
+    before: snapshot(['日历', '其他']), after: snapshot(['其他', '日历'])
+  }], page: 1, total: 1, hasNext: false })
+  const wrapper = render(Audit); await flushPromises()
+  expect(wrapper.get('.action-tag').text()).toBe('调整反馈板块顺序')
+  expect(wrapper.findAll('.snapshot-line').map(line => line.text())).toEqual(['板块顺序：日历 → 其他', '板块顺序：其他 → 日历'])
+  wrapper.unmount()
+})
+
 it('审计身份独立，真实页数和总量跟随列表，原翻页请求不变', async () => {
   const wrapper = render(Audit); await flushPromises()
   expect(wrapper.get('h1').text()).toBe('审计记录')

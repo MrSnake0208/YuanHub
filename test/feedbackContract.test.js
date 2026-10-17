@@ -23,6 +23,7 @@ import {
   listFeedbackAccessGrants,
   normalizeFeedback,
   renameFeedbackCategory,
+  reorderFeedbackCategories,
   setFeedbackCategoryHidden,
   updateFeedbackAccessGrant,
   updateFeedbackType,
@@ -60,6 +61,17 @@ test('超级管理员板块写接口发送名称并保留稳定标识', async ()
   assert.match(calls[1].url, /\/v1\/admin\/feedback-categories\/CUSTOM_TEST$/)
   assert.equal(calls[1].method, 'PUT')
   assert.deepEqual(calls[1].body, { label: '新名称' })
+})
+
+test('板块排序发送新旧完整顺序并保留后端返回顺序和隐藏状态', async () => {
+  const catalog = [{ key: 'OTHER', label: '其他' }, { key: 'CALENDAR', label: '日历', hidden: true }]
+  const result = await withFetch(async (url, options) => {
+    assert.match(String(url), /\/v1\/admin\/feedback-categories\/order$/)
+    assert.equal(options.method, 'PUT')
+    assert.deepEqual(JSON.parse(options.body), { keys: ['OTHER', 'CALENDAR'], expected_keys: ['CALENDAR', 'OTHER'] })
+    return apiResponse(catalog)
+  }, () => reorderFeedbackCategories(['OTHER', 'CALENDAR'], ['CALENDAR', 'OTHER']))
+  assert.deepEqual(result, catalog)
 })
 
 test('反馈板块审计保留改名前后名称', () => {

@@ -103,6 +103,16 @@ test('ledger audit preserves public change detail and resource identity', () => 
 })
 
 
+test('板块排序审计兼容两种命名并保留前后名称顺序', () => {
+  const log = normalizeAdminAuditLog({
+    action: 'FEEDBACK_CATEGORY_REORDERED',
+    before: { feedback_category_order: ['日历', '其他'] },
+    after: { feedbackCategoryOrder: ['其他', '日历'] }
+  })
+  assert.deepEqual(log.before.feedbackCategoryOrder, ['日历', '其他'])
+  assert.deepEqual(log.after.feedbackCategoryOrder, ['其他', '日历'])
+})
+
 test('feedback visibility audit preserves both true and false snapshots', () => {
   const log = normalizeAdminAuditLog({
     action: 'FEEDBACK_CATEGORY_VISIBILITY_UPDATED',
