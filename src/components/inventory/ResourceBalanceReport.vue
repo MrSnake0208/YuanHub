@@ -21,7 +21,8 @@
         <small class="summary-meta"><template v-if="resource.latest">{{ resource.latest.state }} · 最近记录 <time :datetime="resource.latest.day">{{ resource.latest.day }}</time></template><template v-else>{{ truncated ? '已加载记录中暂无基准' : '本期无库存基准' }}</template></small>
       </article>
     </div>
-    <p class="explanation">奖励获得量只统计奖励流水，库存快照不计入；获得量不等于库存净变化。本期净变化为本期首末有效库存记录之差，不能单独据此判断支出或转化量。</p>
+    <p class="explanation">获得量统计奖励记录；净变化比较本期首末库存，两者不同。</p>
+    <details class="explanation"><summary>统计口径</summary><p>获得量不计入库存盘点；净变化为本期首末有效库存记录之差，不能单独据此推算支出或转化量。</p></details>
     <div class="view-heading">
       <h3 class="range-title">{{ from }} 至 {{ to }}</h3>
       <div class="view-switch" role="group" aria-label="资源展示方式"><button v-for="option in views" :key="option.id" type="button" :aria-pressed="view === option.id" @click="view = option.id">{{ option.label }}</button></div>

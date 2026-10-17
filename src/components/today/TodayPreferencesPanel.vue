@@ -6,7 +6,7 @@
           <h2 id="today-preferences-title">自定义今日一览</h2>
           <button type="button" aria-label="关闭首页设置" :disabled="preferences.anySaving.value || confirming" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
-        <p id="today-preferences-note">选择要在{{ selected === 'desktop' ? '电脑端' : '手机端' }}首页显示的模块</p>
+        <p id="today-preferences-note">选择{{ selected === 'desktop' ? '电脑端' : '手机端' }}首页模块，两端分别保存。</p>
         <div class="preferences-modes" role="group" aria-label="编辑哪一端的首页设置">
           <button v-for="mode in modes" :key="mode.id" type="button" :aria-pressed="selected === mode.id" @click="selected = mode.id">{{ mode.label }}<span v-if="preferences.dirty(mode.id)" class="preferences-draft"> · 未保存</span></button>
         </div>
@@ -33,7 +33,7 @@
           <button type="button" :disabled="!state.snapshot || state.loading || state.saving || !!state.error || state.conflict || confirming" @click="preferences.reset(selected)">恢复默认</button>
           <button type="button" class="preferences-save" :disabled="!state.snapshot || state.loading || state.saving || !!state.error || state.conflict || confirming || !preferences.dirty(selected)" @click="preferences.save(selected)">{{ state.saving ? '保存中…' : state.saveError && !state.conflict ? '重试保存' : '保存设置' }}</button>
         </footer>
-        <p class="preferences-help">两端独立保存，切换标签会保留草稿。隐藏不删除数据或关闭站内提醒；空模块和未开放功能仍按原规则隐藏。恢复默认后需保存。</p>
+        <p class="preferences-help">切换时保留草稿；隐藏模块不会删除数据或关闭提醒。空模块和未开放功能不显示，恢复默认后请保存。</p>
       </section>
     </div>
   </Teleport>

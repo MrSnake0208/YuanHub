@@ -23,7 +23,7 @@
               <div>
                 <p class="eyebrow">卡池目录</p>
                 <h2 id="catalog-list-title">公共卡池</h2>
-                <p class="hint">先找到需要维护的卡池，再进入独立编辑器；列表不会和未保存的表单混在一起。</p>
+                <p class="hint">选择卡池开始编辑。</p>
               </div>
               <button class="primary" type="button" :disabled="loading || importing" @click="openNew">新建卡池</button>
             </header>
@@ -150,7 +150,7 @@
                 <div class="section-head">
                   <div>
                     <h3 id="pool-up-title">当前 UP</h3>
-                    <p class="hint">直接添加或退役名额，不需要先维护一个“UP 数量”。已绑定图鉴时，展示名称跟随图鉴。</p>
+                    <p class="hint">添加或退役 UP 名额；已关联密探的名称随图鉴更新。</p>
                   </div>
                   <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
                 </div>

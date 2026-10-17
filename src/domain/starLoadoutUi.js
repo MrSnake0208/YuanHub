@@ -44,7 +44,7 @@ export function applySessionPreset({ names, kind, draftLoadouts, targetOperator,
     if (!name) return
     nameIndex += 1
     const found = chooseBestMatchingInstance({ inventoryEntries, loadouts, targetOperator, targetOperatorId: targetOperator.id, requiredKind: kind, requiredName: name, hideEquipped })
-    if (!found) messages.push(name + '：无可用实例或当前密探不可佩戴')
+    if (!found) messages.push(name + '：没有可用星石，或不适合当前密探')
     else {
       loadouts = assignInstanceToDraft({ loadouts, targetOperatorId: targetOperator.id, targetSlot: slot, instanceId: found.instanceId, inventoryEntries })
     }

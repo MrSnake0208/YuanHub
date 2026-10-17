@@ -112,7 +112,7 @@ test('FALLBACK_DESCRIPTIONS 覆盖 MaaYuan 所需星石采集 scope', () => {
   assert.equal(FALLBACK_DESCRIPTIONS['operator:write'], '密探数据写入（只写）')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:export'], '密探数据导出')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:scan:write'], '密探自动采集写入')
-  assert.equal(FALLBACK_DESCRIPTIONS['star:capture:write'], '上传星石背包临时采集结果')
+  assert.equal(FALLBACK_DESCRIPTIONS['star:capture:write'], '上传星石截图')
 })
 
 test('MaaYuan 默认权限包含密探读取用于养成状态筛选，不包含库存读取或导出', () => {

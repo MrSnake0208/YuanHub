@@ -3,7 +3,7 @@
     <div v-if="compact" class="share-overview">
       <p v-if="!loading && !error" class="share-summary" :class="{ 'is-active': scopes.length }" role="status" aria-live="polite">
         <strong>{{ busy ? '分享更新中…' : scopes.length ? '分享已开启' : '分享未开启' }}</strong>
-        <span>仅开放已开启的内容，无需登录。</span>
+        <span>持有链接即可查看已开启内容，无需登录。</span>
       </p>
       <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare"><RefreshCw :size="14" aria-hidden="true" />刷新状态</button>
     </div>
@@ -19,11 +19,12 @@
       <div class="share-scopes" aria-label="公开内容">
         <label v-for="option in options" :key="option.scope" class="share-scope">
           <span v-if="compact" class="share-scope-icon" aria-hidden="true"><component :is="option.scope === 'operator' ? Users : Gem" :size="22" /></span>
-          <span class="share-scope-copy">{{ option.label }}<template v-if="!compact">分享</template><small v-if="compact" class="share-scope-description">{{ option.scope === 'operator' ? '公开已选的密探档案' : '公开云端星石信息' }}</small><small class="share-scope-status" :class="{ 'is-enabled': scopes.includes(option.scope) }">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
+          <span class="share-scope-copy">{{ option.label }}<template v-if="!compact">分享</template><small class="share-scope-description">{{ option.scope === 'operator' ? '公开此账号中已持有密探的档案与佩戴星石' : '公开云端已保存的全部星石' }}</small><small class="share-scope-status" :class="{ 'is-enabled': scopes.includes(option.scope) }">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
           <input type="checkbox" role="switch" :aria-label="option.label + '分享'" :checked="scopes.includes(option.scope)"
             :disabled="!accountId || busy" @change="toggleScope(option.scope, $event)" />
         </label>
       </div>
+      <p class="share-description share-scope-note">关闭星石背包分享，不会隐藏密探 BOX 中的佩戴星石。</p>
       <label v-if="scopes.includes('operator')" class="share-scope share-tag-sharing">
         <span v-if="compact" class="share-scope-icon" aria-hidden="true"><Tags :size="22" /></span>
         <span class="share-scope-copy">公开自定义标签<small class="share-scope-description">默认不公开；开启后，所有持有分享链接的人可查看已公开密探的标签并筛选。关闭密探 BOX 会同时关闭此项。</small><small class="share-scope-status" :class="{ 'is-enabled': scopes.includes('operator_tags') }">{{ busy ? '更新中…' : scopes.includes('operator_tags') ? '已开启' : '未开启' }}</small></span>
@@ -42,9 +43,11 @@
       </template>
       <p v-else class="share-state">当前未公开任何内容。开启一种分享后，将生成分享链接。</p>
       <slot name="help">
-        <p class="share-description share-private">仅公开所选内容，不包含备注、目标、计划或 OCR 记录。星石展示云端已保存背包，本机未同步修改不会出现在分享中。</p>
-        <p class="share-description">自定义标签默认私有；主动开启“公开自定义标签”后，随密探 BOX 只读公开。置顶与分组顺序始终不公开。</p>
-        <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
+        <details class="share-description share-private">
+          <summary>公开范围与隐私说明</summary>
+          <p>不公开备注、目标、计划或识别记录。本机未同步的星石修改不会出现在分享中。</p>
+          <p>自定义标签默认私有，主动开启后随密探 BOX 公开；置顶与分组顺序始终不公开。</p>
+        </details>
       </slot>
       <slot v-if="share?.active && share.share_code" name="management" :busy="busy" :regenerate="regenerate" :revoke="revoke">
         <component :is="compact ? 'details' : 'div'" class="share-actions share-code-actions">
@@ -158,10 +161,10 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .share-scopes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 14px }
 .share-scope { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12.5px; color: var(--ink); cursor: pointer }
 .share-scope input { flex: none; width: 18px; height: 18px; accent-color: var(--tea) }
+.share-scope-copy { min-width: 0; overflow-wrap: anywhere }
+.share-scope-description { display: block; margin-top: 2px; color: var(--ink-60); font-size: 12px; font-weight: 400; line-height: 1.6 }
 .share-scope-status { display: block; margin-top: 2px; color: var(--ink-60); font-size: 11px; font-weight: 400 }
 .share-tag-sharing { margin-top: 8px }
-.share-tag-sharing .share-scope-copy { min-width: 0; overflow-wrap: anywhere }
-.share-tag-sharing .share-scope-description { display: block; margin-top: 2px; color: var(--ink-60); font-size: 12px; font-weight: 400; line-height: 1.6 }
 .share-scope:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
 .share-private { margin-top: 8px }
 .share-scope-note { margin-top: 4px }

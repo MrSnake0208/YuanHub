@@ -247,7 +247,7 @@ const rateDraft = ref(String(bundledLedgerCatalog.exchangeRate));
 const rateError = ref("");
 const publicCatalog = ref(bundledLedgerCatalog);
 const catalogLoading = ref(false);
-const catalogMessage = ref("正在读取已发布公共目录；当前为内置迁移数据。");
+const catalogMessage = ref("正在更新礼包信息，暂用备用资料，价格可能不是最新。");
 const catalogError = ref(false);
 let rateOwned = false;
 let catalogSequence = 0;
@@ -458,22 +458,22 @@ async function loadPublicCatalog() {
     replaceCatalog(next);
     catalogHasLive = true;
     catalogError.value = false;
-    catalogMessage.value = next.packages.daihao.length || next.packages.ru.length ? "已读取最新发布目录；已有选购项保留原快照。" : "管理员尚未发布可售礼包；已选礼包和私人方案仍保留。";
+    catalogMessage.value = next.packages.daihao.length || next.packages.ru.length ? "礼包信息已更新；已选礼包保持原信息。" : "管理员尚未发布可售礼包；已选礼包和私人方案仍保留。";
     try { localStorage.setItem(LEDGER_CACHE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), data: raw })); } catch { /* Catalog remains usable when browser storage is full. */ }
   } catch (error) {
     if (!alive || sequence !== catalogSequence) return;
     catalogError.value = true;
-    let fallback = catalogHasLive ? "保留本页已读取目录" : "使用内置迁移数据（不是最新发布数据）";
+    let fallback = catalogHasLive ? "沿用本页已加载的礼包资料" : "使用备用礼包资料，价格可能不是最新";
     if (!catalogHasLive) {
       try {
         const cache = JSON.parse(localStorage.getItem(LEDGER_CACHE_KEY));
         if (cache && Number.isFinite(Date.parse(cache.savedAt))) {
           replaceCatalog(normalizeLedgerCatalog(cache.data));
-          fallback = `使用上次成功缓存（${new Date(cache.savedAt).toLocaleString()}，不是最新发布数据）`;
+          fallback = `使用上次加载的礼包资料（${new Date(cache.savedAt).toLocaleString()}，价格可能不是最新）`;
         }
       } catch { /* Invalid cache falls back to the bundled migration data. */ }
     }
-    catalogMessage.value = `公共目录读取失败：${error.message || "网络异常"}；${fallback}。购物车已保留。`;
+    catalogMessage.value = `礼包信息更新失败：${error.message || "网络异常"}；${fallback}。购物车已保留。`;
   } finally {
     if (alive && sequence === catalogSequence) catalogLoading.value = false;
   }
@@ -599,7 +599,7 @@ function humanErr(err, fallback) {
   const msg = err.message;
   if (!msg) return fallback; // message 缺省（后端列表/详情 message=null）
   if (/Failed to fetch|NetworkError|fetch/i.test(msg))
-    return "网络异常，请检查后端服务是否已启动";
+    return "暂时无法连接 YuanHub，请检查网络后重试；仍失败时请反馈。";
   return msg;
 }
 

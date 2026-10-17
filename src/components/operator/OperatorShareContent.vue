@@ -120,7 +120,6 @@
       <div v-else class="current-ledger share-ledger">
         <div class="current-ledger-meta">
           <span>版本「{{ share.game || '—' }}」 · {{ filteredEntries.length }} 位密探</span>
-          <span>只读展示分享数据</span>
         </div>
         <div class="operator-grid agent-ledger-grid" role="list">
           <article

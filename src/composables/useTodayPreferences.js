@@ -4,7 +4,7 @@ import { getTodayPreferences, saveTodayPreferences } from '../api/todayPreferenc
 
 export const TODAY_MODULES = Object.freeze([
   { id: 'highlights', label: '今日重点', description: '临期活动、活动待办与私人提醒' },
-  { id: 'checklist', label: '今日待办', description: '活动 Checklist 与已加入的养成历练' },
+  { id: 'checklist', label: '今日待办', description: '活动待办清单与已加入的养成历练' },
   { id: 'activities', label: '游戏活动', description: '公开活动与招募日程' },
   { id: 'training', label: '我的养成计划', description: '今日历练与密探培养清单摘要' },
   { id: 'private_items', label: '私人安排', description: '自己创建的日期事项' }

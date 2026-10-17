@@ -249,17 +249,17 @@ const onboardingTitle = computed(function () {
 })
 const onboardingDescription = computed(function () {
   if (onboardingStage.value === 'auth') {
-    return '今日一览会根据你的真实数据给出提示。先登录，之后会继续判断是否需要创建子账号。'
+    return '登录后，查看你的今日事项。'
   }
   if (onboardingStage.value === 'account') {
-    return '密探、库存、星石和自动同步数据都需要先归属到一个游戏账号。账号统一在个人中心创建和维护。'
+    return '为你的游戏存档分别记录密探、库存和星石。'
   }
   return unknownDataItems.value.length
     ? '仅对确认缺少的数据提供录入入口；状态待确认的资料无需重新录入。'
     : '任选一项录入即可开始，也可以连接 MaaYuan 自动同步密探和库存。'
 })
 const onboardingNote = computed(function () {
-  return '任选所需业务 · 无需全部录入'
+  return '按需录入 · 无需全部填写'
 })
 const lobbyStatus = computed(() => {
   if (!auth.isLoggedIn) return '登录后，一起看看你的今日事项。'

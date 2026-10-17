@@ -5,7 +5,7 @@
       <div class="exact-controls exact-toolbar" :class="{ 'has-alternatives': canExploreAlternatives }">
         <label class="exact-time-limit"><span class="desktop-copy">每个方案计算时限</span><span class="mobile-copy">时限</span><PlannerSelect v-model="seconds" class="exact-seconds-select" label="每个方案计算时限" numeric :menu-width="104" :options="timeLimitOptions" :disabled="busy || disabled" /></label>
         <button v-if="busy" type="button" class="exact-calculate" @click="cancel"><X :size="15" aria-hidden="true" /><span class="desktop-copy">取消剩余计算</span><span class="mobile-copy">取消计算</span></button>
-        <button v-else type="button" class="exact-calculate" :class="{ primary: !canExploreAlternatives }" :disabled="disabled || !input" @click="calculate('comparison')"><Calculator :size="15" aria-hidden="true" /><span class="desktop-copy">{{ Object.keys(results).length ? '重新计算全局最优解' : '计算全局最优解' }}</span><span class="mobile-copy">{{ Object.keys(results).length ? '重新计算' : '计算方案' }}</span></button>
+        <button v-else type="button" class="exact-calculate" :class="{ primary: !canExploreAlternatives }" :disabled="disabled || !input" @click="calculate('comparison')"><Calculator :size="15" aria-hidden="true" /><span class="desktop-copy">{{ Object.keys(results).length ? '重新计算方案' : '计算更优方案' }}</span><span class="mobile-copy">{{ Object.keys(results).length ? '重新计算' : '计算方案' }}</span></button>
         <button v-if="canExploreAlternatives" type="button" class="primary exact-explore" :disabled="disabled || busy" @click="calculate('alternatives')"><Calculator :size="15" aria-hidden="true" /><span class="desktop-copy">计算期限与补足方案</span><span class="mobile-copy">计算补足方案</span></button>
       </div>
     </div>
@@ -15,7 +15,7 @@
       <div><p>{{ description }}</p><p>{{ input?.objective === 'coins' ? '按当前库存独立试算，不改写日程。' : dateSelectionHint }}</p></div>
     </details>
     <p v-if="busy || message" class="exact-status" :class="{ 'is-computing': busy }" role="status" aria-atomic="true">{{ busy ? progress : message }}</p>
-    <p v-if="showEstimateNote" class="exact-estimate-note">快速估算 · 尚未证明最优</p>
+    <p v-if="showEstimateNote" class="exact-estimate-note">快速估算 · 尚未确认最优</p>
     <PlannerDeadlineTrack v-if="visitedDays.length" :groups="dayGroups" :results="results" :selected="selectedAlternative"
       :target-days="input.dates.length" :extra-limit="PLANNER_RULES.maxDailyExtraStamina" @select="selectedAlternative = $event" />
     <dialog ref="applyDialog" class="alternative-dialog" aria-labelledby="alternative-apply-title"><h3 id="alternative-apply-title">采用补足日程</h3><p>将从规划起始日替换今天及后续日程，包括原手工安排。请确认能在每日安排中取得所需额外体力，并接受购买和派遣调整。</p><p v-if="applyingScenario">需额外体力 {{ results[applyingScenario.id]?.solution?.requiredExtra || 0 }} · 累计白金币 {{ results[applyingScenario.id]?.solution?.totalCoins || 0 }}</p><div class="exact-controls"><button autofocus @click="applyDialog.close()">取消</button><button class="primary" :disabled="disabled || busy" @click="confirmAlternative">确认采用</button></div></dialog>
@@ -28,21 +28,21 @@
         </header>
         <p v-if="scenario.id === 'minimum-coins'" class="exact-help exact-policy">每日购买次数可不同</p>
         <p v-if="scenario.input.objective === 'extra'" class="exact-help exact-policy">{{ scenario.input.reduceDispatch ? '可减少派遣，' : '' }}保留当前每日购买 {{ scenario.input.preferences?.purchaseCount || 0 }} 次，优先利用可用储备。额外补充每日最多 {{ PLANNER_RULES.maxDailyExtraStamina }} 体力（估算），需在建议日期到账。</p>
-        <p v-if="scenario.result" class="exact-proof" :class="scenario.result.status" role="status">{{ scenario.input.feasibilityOnly && scenario.result.solution ? '已验证可行，不保证最优' : resultLabel(scenario.result) }}</p>
+        <p v-if="scenario.result" class="exact-proof" :class="scenario.result.status" role="status">{{ scenario.input.feasibilityOnly && scenario.result.solution ? '可完成，尚未确认最优' : resultLabel(scenario.result) }}</p>
         <p v-else-if="errors[scenario.id]" class="exact-error" role="alert">{{ errors[scenario.id] }}</p>
-        <p v-else class="exact-proof" :class="{ pending: activeId === scenario.id, 'shared-estimate': showEstimateNote && scenario.summary }">{{ activeId === scenario.id ? '正在计算…' : busy ? '等待计算' : scenario.summary ? '快速估算 · 未证明最优' : '尚未计算' }}</p>
+        <p v-else class="exact-proof" :class="{ pending: activeId === scenario.id, 'shared-estimate': showEstimateNote && scenario.summary }">{{ activeId === scenario.id ? '正在计算…' : busy ? '等待计算' : scenario.summary ? '快速估算 · 未确认最优' : '尚未计算' }}</p>
         <p v-if="scenario.result?.status === 'infeasible'" class="exact-help">{{ scenario.result.horizon }} 天内{{ scenario.input.objective === 'extra' ? '在每日补充上限内仍无法完成，可延长期限或调整培养与派遣。' : '无法满足全部约束（每日最多购买 8 次）。' }}</p>
-        <dl v-if="scenario.summary" class="exact-metrics" :aria-label="scenario.result?.solution ? '计算结果' : '快速估算，未证明最优'">
+        <dl v-if="scenario.summary" class="exact-metrics" :aria-label="scenario.result?.solution ? '计算结果' : '快速估算，未确认最优'">
           <div><dt>预计备齐</dt><dd>{{ scenario.summary.etaDays }}<small>天</small></dd></div>
           <div><dt>累计白金币</dt><dd>{{ scenario.summary.totalCoins.toLocaleString() }}</dd></div>
           <div v-if="scenario.input.objective === 'extra'" class="exact-extra"><dt>还需额外体力</dt><dd>{{ scenario.summary.requiredExtra.toLocaleString() }}</dd></div>
         </dl>
-        <p v-if="!scenario.result && scenario.summary && busy" class="exact-help">以上为快速估算，未证明最优。</p>
-        <p v-if="!scenario.result && !scenario.summary && !errors[scenario.id] && !scenario.id.startsWith('deadline-') && scenario.input.objective !== 'coins'" class="exact-help">快速估算未找到可行方案，可运行全局计算进一步验证。</p>
+        <p v-if="!scenario.result && scenario.summary && busy" class="exact-help">以上为快速估算，未确认最优。</p>
+        <p v-if="!scenario.result && !scenario.summary && !errors[scenario.id] && !scenario.id.startsWith('deadline-') && scenario.input.objective !== 'coins'" class="exact-help">快速估算未找到可行方案，可进一步计算确认。</p>
         <template v-if="scenario.result?.solution">
           <p v-if="scenario.result.objective === 'overall' && scenario.result.status !== 'optimal'" class="exact-help">最短至少 {{ scenario.result.lowerBound }} 天。</p>
           <p v-if="scenario.result.objective === 'priority'" class="exact-help">{{ agentCompletionLabel(scenario.result) }}</p>
-          <details v-if="scenario.result.solution.reserveUsage?.length" class="reserve-summary"><summary>储备：已领取 {{ scenario.result.solution.totalReserveUsed }} · 未领取 {{ scenario.result.solution.totalReserveUnused }}</summary><ul><li v-for="source in scenario.result.solution.reserveUsage" :key="source.id">{{ source.name }} · {{ source.amount }} 体力 · {{ source.usedDate ? source.usedDate + ' 整笔领取' : '未领取' }}</li></ul><p class="exact-help">每条仅领取一次。未领取项未计入日程；已证明最低费用时，剩余储备无法再降低白金币。</p></details>
+          <details v-if="scenario.result.solution.reserveUsage?.length" class="reserve-summary"><summary>储备：已领取 {{ scenario.result.solution.totalReserveUsed }} · 未领取 {{ scenario.result.solution.totalReserveUnused }}</summary><ul><li v-for="source in scenario.result.solution.reserveUsage" :key="source.id">{{ source.name }} · {{ source.amount }} 体力 · {{ source.usedDate ? source.usedDate + ' 整笔领取' : '未领取' }}</li></ul><p class="exact-help">每条仅领取一次。未领取项未计入日程；已确认费用最低时，剩余储备无法再降低白金币。</p></details>
           <p v-if="scenario.id.startsWith('deadline-') && scenario.input.objective === 'coins'" class="exact-help">{{ purchaseDifference(scenario.result) }}</p>
           <div class="exact-result-actions" :class="{ 'has-apply': scenario.id.startsWith('deadline-') || input?.objective !== 'coins' }">
             <details class="exact-schedule">
@@ -107,13 +107,13 @@ function compactTitle(scenario) { return scenario.title.startsWith('当前设置
 const description = computed(() => props.input?.objective === 'coins' ? '先寻找最低白金币方案，再与固定购买档位对照；储备按各自的领取规则参与计算。'
   : props.input?.objective === 'priority' ? '按培养清单顺序优先完成，比较不同购买档位。' : '以整张清单最早备齐为目标，比较不同购买档位。')
 function resultLabel(result) { return result.status === 'optimal'
-  ? result.objective === 'extra' ? '已证明最少补充体力' : result.objective === 'coins' ? '已证明最低白金币' : result.objective === 'priority' ? '已证明按清单顺序全局最优' : '已证明全局最短'
-  : ({ feasible: '已有可行方案，尚未证明最优', infeasible: '已证明当前期限不可行', unknown: '暂未找到可行方案，无法判断是否可完成' }[result.status] || '计算结束') }
+  ? result.objective === 'extra' ? '当前条件下补充体力最少' : result.objective === 'coins' ? '当前条件下白金币支出最低' : result.objective === 'priority' ? '按清单顺序优先完成的最优方案' : '当前条件下完成时间最短'
+  : ({ feasible: '可完成，尚未确认最优', infeasible: '按当前条件，期限内无法完成', unknown: '暂未找到可行方案，无法判断是否可完成' }[result.status] || '计算结束') }
 function agentCompletionLabel(result) { return Object.entries(result.solution?.agentDays || {}).map(([id, days]) => `${props.agentNames[id] || id}：${days} 天`).join('；') }
 const runner = createExactComparisonRunner(() => new Worker(new URL('../../workers/exactPlanner.worker.js', import.meta.url), { type: 'module' }), data => {
   if (resultInput !== JSON.stringify(props.input)) return
   const scenario = runningScenarios.find(item => item.id === data.id)
-  if (data.type === 'complete') { busy.value = false; activeId.value = ''; message.value = '本次计算结束，请查看结果与证明状态。'; return }
+  if (data.type === 'complete') { busy.value = false; activeId.value = ''; message.value = '本次计算结束，请查看各方案结果。'; return }
   if (data.type === 'start') { if (data.id.startsWith('deadline-') && !visitedDays.value.includes(scenario.input.dates.length)) visitedDays.value.push(scenario.input.dates.length); activeId.value = data.id; progress.value = `正在计算${scenario.title}…`; return }
   if (data.type === 'progress') { progress.value = `${scenario.title}：${data.message}`; return }
   if (data.type === 'result') results.value[data.id] = { ...data.result, inputKey: JSON.stringify(scenario.input), comparisonInputKey: resultInput, comparisonId: data.id }

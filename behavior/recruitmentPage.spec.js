@@ -309,7 +309,7 @@ it('教程允许未知保底与未知间隔直接保存，原子请求与读回�
   await editor(wrapper).get('.quick-up-button').trigger('click')
   await editor(wrapper).get('.unknown-pulls').trigger('click')
   expect(hintTarget(wrapper)).toBe('save-record')
-  expect(editor(wrapper).text()).toContain('当前保底可选填')
+  expect(editor(wrapper).text()).toContain('保底选填，留空保留原进度')
   await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(editor(wrapper).text()).toContain('待保存')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
@@ -790,7 +790,7 @@ it('空目录仍可导入并聚焦导入按钮，SSE/游戏/账号删除和卸�
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await addRecord(wrapper); archives['acc-a'].archive_revision++; subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'recruitment_changed', data: { account_id: 'acc-a' } }); await flushPromises(); expect(editor(wrapper).text()).toContain('待保存')
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '账号', game: '如鸢' }]); subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'account_stream_open', data: { account_id: 'acc-a' } }); await flushPromises(); expect(new DOMWrapper(document.body).find('.pool-editor[role=dialog]').exists()).toBe(false); expect(api.getRecruitmentCatalog.mock.calls.at(-1)[0]).toBe('如鸢')
   listAccounts.mockResolvedValue([{ id: 'acc-b', name: '小号', game: '代号鸢' }]); subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'account_deleted', data: { account_id: 'acc-a' } }); await flushPromises(); expect(activeAccount.id).toBe('acc-b'); const dispose = subscribeAccountEvents.mock.results.at(-1).value; wrapper.unmount(); expect(dispose).toHaveBeenCalledOnce()
-  archives['acc-b'].pools = []; api.getRecruitmentCatalog.mockResolvedValue({ pools: [] }); const empty = render({ RecruitmentExchange: false }); await flushPromises(); expect(empty.text()).toContain('当前游戏暂无公共卡池'); await button(empty, '导入备份').trigger('click'); await flushPromises(); expect(document.activeElement).toBe(button(empty, '导入 JSON').element)
+  archives['acc-b'].pools = []; api.getRecruitmentCatalog.mockResolvedValue({ pools: [] }); const empty = render({ RecruitmentExchange: false }); await flushPromises(); expect(empty.text()).toContain('当前游戏暂无可用卡池'); await button(empty, '导入备份').trigger('click'); await flushPromises(); expect(document.activeElement).toBe(button(empty, '导入 JSON').element)
 })
 
 it('切账号先检查具体卡池草稿，取消保留记录；提交期间禁用切换', async () => {

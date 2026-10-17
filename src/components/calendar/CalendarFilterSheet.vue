@@ -13,7 +13,7 @@
               <div class="calendar-chips">
                 <button v-for="(label, status) in { todo: '我的待办', completed: '已完成', all: '全部订阅' }" :key="status" type="button" :aria-pressed="taskStatus === status" @click="emit('task', status)">{{ label }}</button>
               </div>
-              <p class="calendar-hint">仅筛选订阅活动的本期完成状态，待办清单完成不等于本期完成。私人事项没有完成状态。</p>
+              <p class="calendar-hint">按活动本期状态筛选；私人事项不分完成状态。</p>
             </fieldset>
             <p class="calendar-hint" role="status">{{ privateItemsHidden ? '当前条件仅显示订阅活动，私人事项已隐藏。选择我的待办或全部订阅，并清除类型和时间状态筛选，即可查看私人事项。' : '同时显示当前账号的私人事项；选择类型、时间状态或已完成后，私人事项会隐藏。不含招募仅排除招募活动。' }}</p>
             <details class="calendar-personal-help">

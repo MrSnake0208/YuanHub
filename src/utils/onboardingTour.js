@@ -61,9 +61,9 @@ export async function refreshTutorialBusiness() {
     if (!valid()) return
     tutorialBusiness.error = task === 'maayuan-first-sync'
       ? (error?.status === 404
-          ? '当前连接已失效或服务尚未提供同步验证接口。可重新读取或退出；不能把连接码创建成功视为同步成功。'
-          : '暂时无法读取连接或同步证据，尚不能确认成功。可稍后重新检查或退出；历史记录没有连接来源时无法追认。')
-      : error?.message || '暂时无法读取业务结果，请在真实页面处理错误后重试。'
+          ? '连接已失效或暂不支持查询同步状态。请重新读取或退出教程；创建连接码不代表同步成功。'
+          : '暂时无法确认这条连接是否同步，请稍后重试或退出教程。无法关联到此连接的历史记录不能用于确认同步。')
+      : error?.message || '暂时无法读取资料，请处理页面中的错误后重试。'
     if (task === 'maayuan-first-sync') store.applyProgress({ waitingFor: 'read_error' })
     else applyBusiness()
   }

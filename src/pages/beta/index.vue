@@ -337,7 +337,6 @@
 
       <SiteFooter>
         <template #big>从这里，一起完善<br><span>YuanHub · 邀请测试</span></template>
-        <template #fine>不用懂技术，也不用刻意找问题<br>真实使用感受，就是最有用的反馈</template>
       </SiteFooter>
       </div>
     </main>

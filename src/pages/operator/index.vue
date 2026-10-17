@@ -44,7 +44,7 @@
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" />
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
-            <p>{{ currentAccountName }} · 可靠分区可能已保存，待核内容不会自动当作全部保存成功。点「查看并修改」可用字段表单核对，无需编辑代码。</p>
+            <p>{{ currentAccountName }} · 部分内容仍待确认，请点「查看并修改」对照游戏核对；已保存内容可在档案查看。</p>
             <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
             <ul>
               <li v-for="review in scanReviews" :key="review.record_id + ':' + review.operator_id">
@@ -154,8 +154,12 @@
                   <span class="section-kicker">数据交换</span>
                   <h2>JSON 备份导入/导出</h2>
                   <p>
-                    此处用于已有 JSON 备份。手动补录请点「录入密探」，扫描复核请从上方待复核列表进入。档案备份包含练度、状态、备注、关注和养成目标；分类设置可在这里单独导出与恢复。
+                    导入或导出密探档案、分类设置备份。
                   </p>
+                  <details>
+                    <summary>备份范围与录入方式</summary>
+                    <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。手动补录请点「录入密探」，采集复核请从待复核列表进入。</p>
+                  </details>
                 </div>
                 <span class="archive-format">JSON · 档案 / 分类</span>
               </div>
@@ -440,7 +444,7 @@
                   <details class="import-technical"><summary>技术详情</summary><pre>{{ JSON.stringify(item, null, 2) }}</pre></details>
                 </details>
               </div>
-              <p v-if="!v3Receipt.items.length" class="import-preview-warning">旧版响应没有逐项回执，无法据此确认每个字段的保存情况。请重新读回当前档案核对；复核提醒继续保留。</p>
+              <p v-if="!v3Receipt.items.length" class="import-preview-warning">暂时无法确认每项是否保存。请重新读取当前档案核对，复核提醒会继续保留。</p>
             </section>
             <div
               v-if="importResult && importResult.kind === 'v2'"
@@ -828,7 +832,7 @@
             </div>
 
             <section v-if="orphanCurrentEntries.length" class="orphan-current" aria-label="已从公共图鉴删除的密探">
-              <p>以下密探已从公共图鉴删除，旧养成仍保存在此子账号中。核对 ID 后可移除。</p>
+              <p>这些密探已不在图鉴中，原有养成记录仍保留。移除前请核对密探信息。</p>
               <ul>
                 <li v-for="entry in orphanCurrentEntries" :key="entry.id">
                   <span><b>{{ entry.name || entry.id }}</b><small>Lv.{{ entry.level }} · 修为 {{ entry.elite }}<template v-if="entry.name"> · {{ entry.id }}</template></small></span>
@@ -862,7 +866,7 @@
               :has-filters="hasCurrentFilters"
               v-model:growth-filters="growthFilters"
               show-growth-filters
-              description="筛选后置顶密探优先，其余按分组顺序、品质、等级、化极、属性与实装顺序排列"
+              description="置顶优先，其余按分组与养成排序"
               @update:status-filter="setWorkbenchStatusFilter"
               @reset="resetCurrentFilters"
             >
@@ -902,6 +906,7 @@
                 </button>
               </template>
               <template #footer>
+                <details><summary>排序说明</summary><p>置顶密探优先，其余按分组顺序、品质、等级、化极、属性与实装顺序排列。</p></details>
                 <OperatorOrganizationManager
                   ref="organizationManager"
                   v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
@@ -9193,7 +9198,7 @@ function humanErr(err, fallback) {
   const msg = err.message;
   if (!msg) return fallback;
   if (/Failed to fetch|NetworkError|fetch/i.test(msg))
-    return "网络异常，请检查后端服务是否已启动";
+    return "暂时无法连接 YuanHub，请检查网络后重试；仍失败时请反馈。";
   return msg;
 }
 

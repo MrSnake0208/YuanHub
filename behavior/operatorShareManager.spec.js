@@ -23,6 +23,19 @@ beforeEach(() => {
   api.getAccountShare.mockResolvedValue({ active: false })
 })
 
+it.each([false, true])('公开范围与佩戴星石提醒无需展开帮助即可查看：compact=%s', async compact => {
+  api.getAccountShare.mockResolvedValue(active('a'))
+  const wrapper = mount(AccountShareManager, { props: { accountId: 'a', compact } }); await flushPromises()
+  const descriptions = wrapper.findAll('.share-scopes .share-scope-description')
+  expect(descriptions.map(node => node.text())).toEqual(['公开此账号中已持有密探的档案与佩戴星石', '公开云端已保存的全部星石'])
+  const warning = wrapper.get('.share-scope-note')
+  expect(warning.text()).toContain('关闭星石背包分享，不会隐藏密探 BOX 中的佩戴星石')
+  expect(warning.element.closest('details')).toBeNull()
+  expect(wrapper.get('details.share-private').element.open).toBe(false)
+  expect(api.setAccountShareScope).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
 it.each([false, true])('标签默认私有，仅显式开关更新权限且不产生额外链接：compact=%s', async compact => {
   api.getAccountShare.mockResolvedValue(active('a'))
   const wrapper = mount(AccountShareManager, { props: { accountId: 'a', compact } }); await flushPromises()
@@ -239,7 +252,7 @@ it('紧凑权限卡同时展示类型说明与真实开关状态', async () => {
   api.getAccountShare.mockResolvedValue(active('a'))
   const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
   const scopes = wrapper.findAll('.share-scopes .share-scope')
-  expect(scopes.map(scope => scope.get('.share-scope-description').text())).toEqual(['公开已选的密探档案', '公开云端星石信息'])
+  expect(scopes.map(scope => scope.get('.share-scope-description').text())).toEqual(['公开此账号中已持有密探的档案与佩戴星石', '公开云端已保存的全部星石'])
   expect(scopes.map(scope => scope.get('.share-scope-status').text())).toEqual(['已开启', '未开启'])
   expect(scopes.map(scope => scope.get('[role="switch"]').element.checked)).toEqual([true, false])
   expect(wrapper.get('.share-summary strong').text()).toBe('分享已开启')

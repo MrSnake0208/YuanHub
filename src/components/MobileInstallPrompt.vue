@@ -2,20 +2,20 @@
   <Transition name="pwa-install">
     <aside v-if="visible" ref="panel" class="pwa-install-prompt" role="region" aria-label="添加 YuanHub 到桌面">
       <div class="pwa-install-card">
-        <div class="pwa-install-exit"><button ref="exitButton" class="pwa-install-secondary pwa-install-close" type="button" @click="closePrompt">{{ pwaInstallState.guideActive ? '关闭教程 / 退出引导' : '直接使用 / 暂时关闭' }}</button></div>
+        <div class="pwa-install-exit"><button ref="exitButton" class="pwa-install-secondary pwa-install-close" type="button" @click="closePrompt">{{ pwaInstallState.guideActive ? '关闭教程' : '暂时关闭' }}</button></div>
         <div class="pwa-install-main">
           <img src="/pwa/icon-192.png" alt="" width="52" height="52" />
           <div>
             <p class="pwa-install-title">把 YuanHub 放到桌面</p>
-            <p class="pwa-install-copy">可以跟着完成真实安装，也可以继续使用网页版。</p>
+            <p class="pwa-install-copy">可以添加到桌面，也可以继续使用网页版。</p>
           </div>
         </div>
         <div v-if="pwaInstallState.guideActive" class="pwa-install-guide" aria-live="polite">
           <p v-if="pwaInstallState.requesting">正在打开系统安装提示。你仍可关闭教程。</p>
-          <p v-else-if="pwaInstallState.phase === 'waiting-for-install'">正在等待系统完成安装。请从桌面图标打开 YuanHub；系统同意安装还不代表安装完成。</p>
+          <p v-else-if="pwaInstallState.phase === 'waiting-for-install'">正在等待安装完成。请从桌面图标打开 YuanHub，确认安装状态。</p>
           <p v-else-if="pwaInstallState.phase === 'dismissed'">本次系统安装提示已取消。可以重试，也可以关闭教程。</p>
           <p v-else-if="pwaInstallState.phase === 'failed'">系统安装调用失败。可打开安装任务页排查并重试。</p>
-          <p v-else-if="pwaInstallState.installable">点击“立即添加到桌面”，在真实系统提示中选择是否安装。</p>
+          <p v-else-if="pwaInstallState.installable">点击“立即添加到桌面”，在系统提示中选择是否安装。</p>
           <p v-else>{{ getPwaInstallGuidance() }}</p>
         </div>
         <div class="pwa-install-actions">

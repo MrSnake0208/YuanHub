@@ -137,7 +137,7 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
   const wrapper = render()
   await flushPromises()
   await wrapper.get('.app-connect').trigger('click')
-  expect(wrapper.get('.grant-review').text()).toContain('上传星石背包临时采集结果（MaaYuan 采集任务接入中）')
+  expect(wrapper.get('.grant-review').text()).toContain('上传星石截图（MaaYuan 自动采集接入中）')
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
   await wrapper.get('.nt-row button').trigger('click'); await flushPromises()
@@ -150,6 +150,7 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
 it('补权限与停止连接使用站内危险确认；取消或账号切换后不提交', async () => {
   let wrapper = render()
   await flushPromises()
+  expect(wrapper.get('.technical-details').text()).toContain('点击此连接的“让它支持 MaaYuan”补齐权限，原连接码不变')
   dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.t-btn.update').trigger('click')
   await flushPromises()

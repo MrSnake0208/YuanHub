@@ -1256,7 +1256,7 @@ async function saveCurrentPage() {
   if (!accountId.value) {
     pageSave.show = true;
     pageSave.ok = false;
-    pageSave.message = "请先创建并选择一个子账号（可在密探或库存页新建）";
+    pageSave.message = "请先选择游戏账号；尚未创建时，请前往「账号与连接码」。";
     return false;
   }
   const key = currentKey.value;

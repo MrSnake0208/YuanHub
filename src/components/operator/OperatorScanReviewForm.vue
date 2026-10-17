@@ -2,7 +2,7 @@
   <section ref="panel" class="scan-review-form" aria-labelledby="scan-review-title" tabindex="-1" @keydown.esc.stop.prevent="!busy && $emit('close')">
     <header>
       <OperatorAvatar :avatar="catalog.avatar" :name="catalog.name || '未知密探'" :rarity="Number(catalog.rarity) || 3" />
-      <div><h2 id="scan-review-title">复核 {{ catalog.name || '未知密探' }}</h2><p>{{ accountName }} · {{ review.status === 'rejected' ? '本条采集被拒绝，尚未写入' : '可靠分区可能已保存，以下待核内容仍需确认' }}</p></div>
+      <div><h2 id="scan-review-title">复核 {{ catalog.name || '未知密探' }}</h2><p>{{ accountName }} · {{ review.status === 'rejected' ? '本条采集被拒绝，尚未写入' : '部分内容可能已保存，以下内容仍需核对' }}</p></div>
       <button type="button" class="close" :disabled="busy" aria-label="关闭扫描复核" @click="$emit('close')"><X :size="20" aria-hidden="true" /></button>
     </header>
     <p>对照游戏核对采集值，修改后点「校验并预览」。只有你勾选的待核字段会提交，确认保存后才生效。</p>
@@ -20,7 +20,7 @@
         <strong>请先修正以下内容</strong><ul><li v-for="row in errors" :key="row.id"><a :href="'#scan-review-field-' + row.id" @click.prevent="focusField(row.id)">{{ row.label }}：{{ errorFor(row) }}</a></li></ul>
       </div>
       <fieldset v-for="row in rows" :id="'scan-review-field-' + row.id" :key="row.id" :disabled="busy || !row.pending" :aria-invalid="!!errorFor(row)" :aria-describedby="'scan-review-value-' + row.id + (errorFor(row) ? ' scan-review-error-' + row.id : '')" tabindex="-1">
-        <legend>{{ row.label }} <small>{{ row.pending ? '待核对' : '可靠分区 · 本次不提交' }}</small></legend>
+        <legend>{{ row.label }} <small>{{ row.pending ? '待核对' : '本项不参与这次保存' }}</small></legend>
         <p :id="'scan-review-value-' + row.id" class="values">现值：{{ valueLabel(operatorReviewCurrentValue(row, current, catalog), row.id) }}<br />采集值：{{ valueLabel(row.collected, row.id) }}</p>
         <template v-if="row.pending && row.supported">
           <label class="check"><input v-model="row.included" type="checkbox" :aria-label="'确认本次保存' + row.label" />本次保存此项</label>

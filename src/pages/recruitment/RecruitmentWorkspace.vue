@@ -91,12 +91,12 @@ const pageGuideTarget = computed(() => {
   return 'pools'
 })
 const pageGuideMessage = computed(() => {
-  if (!identity.value) return '先登录，才能记录自己的真实抽卡；也可以先练习。'
+  if (!identity.value) return '登录后记录自己的抽卡，也可以先练习。'
   if (state.error) return '读取失败不代表没有记录。请重新读取，或先练习。'
-  if (state.loading || state.accountsLoading) return '正在读取真实资料，读完后会带你找到卡池。'
+  if (state.loading || state.accountsLoading) return '正在读取招募档案，请稍候。'
   if (!state.accounts.length) return '先添加你实际玩的游戏账号，已有账号不需要重建。'
   if (!available.value) return '在这里选择你实际使用的游戏账号。'
-  return '正在确认档案；不会把未读到的资料当空数据。'
+  return '正在读取档案，已有记录无需重复录入。'
 })
 function openGuide() {
   if (!TUTORIALS_ENABLED) return

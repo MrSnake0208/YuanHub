@@ -16,7 +16,7 @@
       <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
       <div class="auth-onboarding-copy">
         <h3>先登录 YuanHub</h3>
-        <p>登录后会继续检查你有没有子账号，再分别检查密探、库存和星石。已经有的数据不会要求你重复录入。</p>
+        <p>已有资料无需重复录入。</p>
       </div>
       <div class="auth-onboarding-actions">
         <router-link class="entry-primary-action" :to="{ path: '/login', query: { redirect: '/' } }">
@@ -37,7 +37,6 @@
         <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
         <div>
           <h3 id="inline-account-title">先建立你的游戏账号</h3>
-          <p>在这里创建游戏账号，今日一览会自动继续检查这个账号的数据。</p>
         </div>
       </div>
       <button

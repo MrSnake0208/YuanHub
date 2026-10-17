@@ -180,7 +180,7 @@ function notifyForEvent(message) {
     const reviewHref = recordId && operatorId && accountId
       ? '/operator?' + new URLSearchParams({ account_id: accountId, review_record: recordId, review_operator: operatorId })
       : '/operator'
-    showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '请核对采集结果；可靠分区可能已写入', reviewHref })
+    showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '部分内容可能已保存，请核对采集结果', reviewHref })
   } else if (message.event === 'inventory_import') {
     void notifyInventoryImport(data)
   }

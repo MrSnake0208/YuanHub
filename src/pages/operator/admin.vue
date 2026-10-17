@@ -239,7 +239,7 @@
                     @input="specialOddityError = ''"
                   />
                 </label>
-                <small id="special-oddity-hint" class="hint">只维护展示名称；稳定键固定为 special，上限由服务端按稀有度生成。</small>
+                <small id="special-oddity-hint" class="hint">这里只修改名称，上限会按品质自动计算。</small>
                 <small v-show="specialOddityError" id="special-oddity-error" class="field-error" role="alert">{{ specialOddityError }}</small>
               </fieldset>
               <div class="oddity-schema-preview" aria-label="奇闻稳定键与当前服务端上限">
@@ -799,7 +799,7 @@ function humanErr(err, fallback) {
   if (!err) return fallback
   const msg = err.message
   if (!msg) return fallback
-  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '网络异常，请检查后端服务是否已启动'
+  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '暂时无法连接 YuanHub，请检查网络后重试；仍失败时请反馈。'
   return msg
 }
 

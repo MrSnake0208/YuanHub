@@ -10,8 +10,8 @@
       <p v-if="loading && !ready" role="status">正在读取待办…</p>
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
-        <p class="todo-scope"><template v-if="pendingTasks"><strong>{{ pendingTasks }}</strong> 项待办未完成</template><template v-else>来自已订阅活动的 Checklist</template></p>
-        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办，去日历订阅活动并添加清单。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅活动不会自动创建 Checklist。' }}</p>
+        <p class="todo-scope"><template v-if="pendingTasks"><strong>{{ pendingTasks }}</strong> 项待办未完成</template><template v-else>来自已订阅活动的待办清单</template></p>
+        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办，去日历订阅活动并添加清单。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅后还需自行添加待办清单。' }}</p>
         <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>当前范围的清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
         <ul v-if="visibleTasks.length" id="today-todo-list" class="todo-list" :class="{ 'is-expanded': showAll }">
           <li v-for="task in visibleTasks" :key="taskKey(task)" class="todo-row" :class="{ 'is-complete': task.entry.completed }">

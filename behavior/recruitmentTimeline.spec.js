@@ -167,7 +167,7 @@ it('目录优先更新日期名字及头像，退役UP不展示；账号上下�
 
 it('空目录仍提示维护历史，忙碌时禁止切换卡池', async () => {
   const wrapper = render({ pools: [] })
-  expect(wrapper.text()).toContain('当前游戏暂无公共卡池')
+  expect(wrapper.text()).toContain('当前游戏暂无可用卡池')
   await wrapper.setProps({ pools: [pool('pool-a')], busy: true })
   expect(wrapper.get('.entry-label').attributes('disabled')).toBeDefined()
   await wrapper.get('.entry-label').trigger('click'); expect(wrapper.emitted('select')).toBeUndefined()

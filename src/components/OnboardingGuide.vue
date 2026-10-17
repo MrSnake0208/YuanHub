@@ -14,10 +14,10 @@
             <button v-else-if="['today-first-data', 'inventory-first-baseline'].includes(store.tutorialTask)" type="button" @click="close">继续使用</button>
             <router-link v-else to="/operator" @click="close">去录入密探</router-link>
           </div>
-          <p v-if="store.tutorialTask === 'operator-first-entry'" class="tutorial-note">已有档案会直接复用。复习时在养成总览选择已有密探，核对并按实际变化编辑；无需再录入同一位。</p>
-          <p v-else-if="store.tutorialTask === 'inventory-first-baseline'" class="tutorial-note">已有完整基准会直接复用。复习时点击「更新库存」，按现在的真实数量盘点并保存；无需创建重复记录。</p>
-          <p v-else-if="store.tutorialTask === 'maayuan-first-sync'" class="tutorial-note">已有连接与同步成果会直接复用。以后继续用此连接同步有变化的真实库存，无需再创建连接码。</p>
-          <p v-else-if="store.tutorialTask === 'account-create'" class="tutorial-note">已有账号会直接复用。复习时点击「管理游戏账号」，核对名称与游戏；无需再创建同一个账号。</p>
+          <p v-if="store.tutorialTask === 'operator-first-entry'" class="tutorial-note">可在养成总览核对并更新已有密探，无需重复录入。</p>
+          <p v-else-if="store.tutorialTask === 'inventory-first-baseline'" class="tutorial-note">已有盘点无需重做；库存变化时，点击「更新库存」核对并保存。</p>
+          <p v-else-if="store.tutorialTask === 'maayuan-first-sync'" class="tutorial-note">继续用现有连接同步库存，无需重新创建连接码。</p>
+          <p v-else-if="store.tutorialTask === 'account-create'" class="tutorial-note">可在「管理游戏账号」核对名称与游戏，无需重复创建。</p>
         </template>
         <template v-else>
           <p aria-live="polite" aria-atomic="true">{{ instruction }}</p>
@@ -27,11 +27,11 @@
           </div>
           <div v-if="destination || store.waitingFor === 'read_error'" class="tutorial-actions">
             <router-link v-if="destination" :to="destination.to">{{ destination.label }}</router-link>
-            <button v-if="store.waitingFor === 'read_error'" type="button" @click="refreshTutorialBusiness">重新读取真实状态</button>
+            <button v-if="store.waitingFor === 'read_error'" type="button" @click="refreshTutorialBusiness">重新读取资料</button>
           </div>
           <template v-if="store.tutorialTask === 'maayuan-first-sync' && store.waitingFor === 'maa_sync'">
-            <p class="tutorial-note">无法直接观察 MaaYuan 设置；等待这条连接的真实库存记录，返回、刷新或跨页后会重新检查。</p>
-            <button type="button" @click="refreshTutorialBusiness">我已返回，检查真实同步</button>
+            <p class="tutorial-note">请在 MaaYuan 运行一次库存任务，再返回检查同步结果。仅完成连接设置不代表已同步。</p>
+            <button type="button" @click="refreshTutorialBusiness">我已返回，检查同步</button>
           </template>
         </template>
       </aside>
@@ -57,27 +57,27 @@ const visible = computed(() => TUTORIALS_ENABLED && props.tasks.includes(store.t
   (!modalFocusState.active || relatedModal.value))
 const title = computed(() => ONBOARDING_TASKS[store.tutorialTask]?.title)
 const instruction = computed(() => ({
-  login: '先登录真实账号，返回后继续实操。',
-  business_state: '正在读取真实业务状态；随时可以退出。',
-  read_error: '读取失败，暂不能确认成果。请处理真实错误或稍后继续。',
-  account_created: '点击真实「创建游戏账号」，填写名称、选择游戏并创建。',
+  login: '先登录 YuanHub，返回后继续。',
+  business_state: '正在读取账号资料，随时可以退出。',
+  read_error: '资料读取失败，请按错误提示处理，或稍后重试。',
+  account_created: '点击「创建游戏账号」，填写名称并选择游戏。',
   account_selected: '你已有游戏账号，请在页面账号选择器中选择要录入的账号。',
-  first_task: '账号已就绪。选择一项你现在需要的真实任务，建立第一份数据即可。',
-  inventory_saved: '点击真实「开始首次盘点」或「更新库存」，核对全部道具的真实数量，确认完整盘点并保存。未保存或只有局部录入都不算完成。',
-  star_saved: '在星石背包导入你的真实游戏截图，识别后核对并保存到当前账号；返回 Today 后验证云端保存结果。',
-  today_return: '真实数据已读取。返回 Today 重新确认当前账号状态，即可完成首次建档。',
-  maa_connect: '点击页面真实「连接 MaaYuan」按钮。',
-  maa_account: '在高亮的游戏账号选择器中，选择要保存库存的真实账号。',
-  maa_create: '核对所选账号与权限，再点击真实「创建 MaaYuan 连接码」。',
-  maa_copy: '连接码已就绪，还没确认同步。点击这条连接的真实「复制连接码」。',
-  maa_sync: '现在去 MaaYuan：打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，粘贴刚复制的连接码，运行一次任务。YuanHub 正在等待第一次真实库存同步。',
+  first_task: '账号已就绪，选择一项需要录入的资料即可开始。',
+  inventory_saved: '点击「开始首次盘点」或「更新库存」，核对全部道具数量，确认完整盘点并保存。首次盘点需要完整录入，局部录入不能完成此步骤。',
+  star_saved: '导入星石游戏截图，核对并保存到当前账号，再返回「今日一览」查看保存结果。',
+  today_return: '资料已读取，返回「今日一览」确认保存结果。',
+  maa_connect: '点击「连接 MaaYuan」。',
+  maa_account: '选择要保存库存的游戏账号。',
+  maa_create: '核对账号与权限，再点击「创建 MaaYuan 连接码」。',
+  maa_copy: '连接码已就绪。点击「复制连接码」，继续设置同步。',
+  maa_sync: '现在去 MaaYuan：打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，粘贴刚复制的连接码，运行一次任务。完成后返回 YuanHub 检查同步结果。',
   operator_saved: route.path === '/operator/quick'
-    ? '勾选一位真实密探，按游戏实际情况填写星级、等级与修为，核对预览并确认保存。'
+    ? '勾选一位密探，按游戏实际情况填写星级、等级与修为，核对预览并确认保存。'
     : '在密探名册点击「开始录入密探」，录入一位你实际拥有的密探。'
-}[store.waitingFor] || '请选择要完成的真实任务。'))
+}[store.waitingFor] || '请选择需要录入的资料。'))
 const destination = computed(() => {
   if (store.waitingFor === 'login') return { to: { path: '/login', query: { redirect: ONBOARDING_TASKS[store.tutorialTask].route } }, label: '去登录' }
-  if (store.waitingFor === 'today_return') return { to: '/', label: '返回 Today 验证第一份数据' }
+  if (store.waitingFor === 'today_return') return { to: '/', label: '返回今日一览查看结果' }
   if (store.tutorialTask === 'maayuan-first-sync' && route.path !== '/user/profile' && store.waitingFor !== 'login') return { to: '/user/profile#maayuan-app-title', label: '返回 MaaYuan 连接' }
   if (store.waitingFor === 'account_created' && route.path !== '/user/profile') return { to: '/user/profile#game-accounts', label: '去创建游戏账号' }
   if (store.waitingFor === 'account_selected') {
@@ -86,7 +86,7 @@ const destination = computed(() => {
   }
   if (store.waitingFor === 'operator_saved' && !['/operator', '/operator/quick'].includes(route.path)) return { to: '/operator', label: '返回密探名册' }
   if (store.waitingFor === 'inventory_saved' && route.path !== '/inventory') return { to: '/inventory', label: '去库存完成盘点' }
-  if (store.waitingFor === 'star_saved' && route.path !== '/star') return { to: '/star', label: '去识别真实截图' }
+  if (store.waitingFor === 'star_saved' && route.path !== '/star') return { to: '/star', label: '去识别游戏截图' }
   return null
 })
 

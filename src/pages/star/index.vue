@@ -51,7 +51,7 @@
           </div>
           <ArchiveExchangePanel
             v-if="showArchive"
-            description="可导出当前账号的星石背包、养成计划和经验星曜 JSON；导入会替换这些数据。备份不含密探佩戴关系和 OCR 证据。"
+            description="备份当前账号的星石背包、养成计划和经验星曜。导入将替换这些数据；备份不含密探佩戴关系或识别原始资料。"
             :import-open="showStarImport"
             :import-disabled="!productReady || starExchangeBusy"
             :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
@@ -63,7 +63,7 @@
           >
             <template #import>
               <section v-if="showStarImport" class="star-exchange-import">
-                <p class="tip">选择 YuanStar 导出的 JSON 档案。确认后将替换当前账号的星石数据，不会恢复旧实例 ID、密探佩戴关系或 OCR 证据。</p>
+                <p class="tip">选择本工具导出的 JSON 备份。确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
                 <label class="btn ghost file-label">
                   选择 JSON 文件
                   <input ref="starImportFile" type="file" accept=".json,application/json" @change="onStarImportFile" />

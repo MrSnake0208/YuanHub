@@ -13,7 +13,7 @@
           <button v-if="!detail || !record?.subscribed" type="button" :class="{ 'calendar-completion-primary': detail && !closed }" :disabled="busy || context.loading.value || !!context.error.value || (!record?.subscribed && closed)" @click="changeSubscription">{{ record?.subscribed ? '取消订阅' : closed ? '本期已截止' : '订阅本期' }}</button>
           <button v-if="!detail && record?.subscribed" ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor()">{{ editing ? '收起待办' : item ? '编辑待办' : '查看待办' }}</button>
         </div>
-        <p v-if="record?.subscribed && context.dirty.value" class="calendar-hint">请先保存或收起未保存的修改，再标记本期状态；活动完成与下方清单独立。</p>
+        <p v-if="record?.subscribed && context.dirty.value" class="calendar-hint">请先保存或收起未保存的修改，再标记本期状态。</p>
       </div>
       <div :class="{ 'calendar-personal-todos': detail && record?.subscribed }">
         <template v-if="detail && record?.subscribed">
@@ -33,7 +33,7 @@
           <fieldset :disabled="busy || blocked || !!context.error.value">
             <legend>活动待办 · 仅当前账号可见</legend>
             <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="draft.checklist.length && draft.checklist.every(entry => entry.completed)"> · 待办全部完成</span></p>
-            <p class="calendar-hint">{{ detail ? '勾选清单不会自动标记本期完成。' : '清单勾选不代表整期完成。完成活动后，请使用上方“标记本期完成”。' }}</p>
+            <p class="calendar-hint">清单勾选不会自动完成本期活动，请另点“标记本期完成”。</p>
             <p v-if="!draft.checklist.length" class="calendar-hint">暂无待办</p>
             <div v-for="(entry, index) in draft.checklist" :key="entry.id" class="calendar-check-row">
               <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
