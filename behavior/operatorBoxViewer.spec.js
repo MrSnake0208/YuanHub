@@ -51,6 +51,52 @@ async function submit(value = tokenA) {
   await panel().get('form').trigger('submit'); await flushPromises()
 }
 
+it.each([false, true])('公开标签在两种宿主中只读展示，可组合筛选、重置及刷新撤销：embedded=%s', async embedded => {
+  const other = operatorFixture({ id: 'char_other', name: '备用密探', prof: ['阴'], sub_prof: ['破军'] })
+  const entries = { [operator.id]: operator.growth, [other.id]: { ...other.growth, growth_state: 'graduated' } }
+  getOperatorCatalog.mockResolvedValue({ operators: [operator, other] })
+  viewOperatorShare.mockResolvedValue({ ...share, entries, tags: [
+    { id: 'main', name: '<b>主力</b>', operator_ids: [operator.id] },
+    { id: 'backup', name: '备用', operator_ids: [other.id] },
+    { id: 'hidden', name: '未公开密探标签', operator_ids: ['not-shared'] },
+  ] })
+  const content = mount(OperatorShareContent, { props: { token: tokenA, embedded }, attachTo: document.body })
+  await flushPromises()
+  const tagButton = name => content.findAll('.pf-tag-row button').find(item => item.text().startsWith(name))
+  expect(content.findAll('.share-ledger-tags')).toHaveLength(2)
+  expect(content.get('.share-ledger-tags').text()).toContain('<b>主力</b>')
+  expect(content.find('.share-ledger-tags b').exists()).toBe(false)
+  expect(content.findAll('.share-ledger-tags button, .share-ledger-tags input')).toHaveLength(0)
+  expect(content.get('.pf-tag-row').text()).not.toContain('未公开密探标签')
+  await tagButton('<b>主力</b>').trigger('click')
+  expect(content.findAll('article')).toHaveLength(1)
+  expect(content.get('article').text()).toContain('公开密探')
+  await content.get('.status-graduated').trigger('click')
+  expect(content.findAll('article')).toHaveLength(0)
+  await content.get('.current-filter-reset').trigger('click')
+  expect(content.findAll('article')).toHaveLength(2)
+  await tagButton('备用').trigger('click')
+  await content.get('input[type="search"]').setValue('公开密探')
+  expect(content.findAll('article')).toHaveLength(0)
+  await content.get('.current-filter-reset').trigger('click')
+  await tagButton('备用').trigger('click')
+  viewOperatorShare.mockResolvedValue({ ...share, entries, tags: [] })
+  await content.findAll('button').find(item => item.text() === '刷新数据').trigger('click'); await flushPromises()
+  expect(content.find('.pf-tag-row').exists()).toBe(false)
+  expect(content.find('.share-ledger-tags').exists()).toBe(false)
+  expect(content.findAll('article')).toHaveLength(2)
+  viewOperatorShare.mockResolvedValue({ ...share, entries, tags: [{ id: 'new', name: '新分享标签', operator_ids: [other.id] }] })
+  await content.setProps({ token: tokenB }); await flushPromises()
+  expect(content.get('.pf-tag-row').text()).toContain('新分享标签')
+  await tagButton('新分享标签').trigger('click')
+  viewOperatorShare.mockResolvedValue({ ...share, entries })
+  await content.setProps({ token: tokenA }); await flushPromises()
+  expect(content.findAll('article')).toHaveLength(2)
+  expect(content.find('.pf-tag-row').exists()).toBe(false)
+  expect(fetch).not.toHaveBeenCalled()
+  content.unmount()
+})
+
 it.each([390, 768, 1440])('站内完整链接输入、只读卡片、筛选、刷新和重新输入不跳转：%ipx', async width => {
   installViewport(width)
   await render()

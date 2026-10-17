@@ -14,12 +14,54 @@ function renderManager(options) {
   return mount(Manager, { ...options, props: { open: true, ...options.props }, global: { stubs: { Teleport: true } } })
 }
 const active = (id, code = id + '-code') => ({ account_id: id, active: true, share_code: code, scopes: ['operator'] })
+const tagSwitch = wrapper => wrapper.find('[role="switch"][aria-label="公开自定义标签"]')
 function button(wrapper, text) { return wrapper.findAll('button').find(node => node.text().includes(text)) }
 beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   for (const fn of Object.values(api)) fn.mockReset()
   dialog.confirm.mockReset()
   api.getAccountShare.mockResolvedValue({ active: false })
+})
+
+it.each([false, true])('标签默认私有，仅显式开关更新权限且不产生额外链接：compact=%s', async compact => {
+  api.getAccountShare.mockResolvedValue(active('a'))
+  const wrapper = mount(AccountShareManager, { props: { accountId: 'a', compact } }); await flushPromises()
+  expect(tagSwitch(wrapper).element.checked).toBe(false)
+  expect(wrapper.text()).toContain('默认不公开')
+  expect(api.setAccountShareScope).not.toHaveBeenCalled()
+  const pending = deferred(); api.setAccountShareScope.mockReturnValueOnce(pending.promise)
+  await tagSwitch(wrapper).setValue(true)
+  expect(api.setAccountShareScope).toHaveBeenCalledExactlyOnceWith('a', 'operator_tags', true)
+  expect(tagSwitch(wrapper).element.disabled).toBe(true)
+  expect(tagSwitch(wrapper).element.checked).toBe(false)
+  pending.resolve({ ...active('a'), scopes: ['operator', 'operator_tags'] }); await flushPromises()
+  expect(tagSwitch(wrapper).element.checked).toBe(true)
+  expect(wrapper.findAll('.share-values')).toHaveLength(1)
+  expect(wrapper.text()).toContain('自定义标签已公开')
+  api.setAccountShareScope.mockResolvedValueOnce(active('a'))
+  await tagSwitch(wrapper).setValue(false); await flushPromises()
+  expect(tagSwitch(wrapper).element.checked).toBe(false)
+  expect(api.setAccountShareScope).toHaveBeenLastCalledWith('a', 'operator_tags', false)
+  api.setAccountShareScope.mockResolvedValueOnce({ active: true, share_code: 'a-code', scopes: ['star'] })
+  await wrapper.get('[aria-label="密探 BOX分享"]').setValue(false); await flushPromises()
+  expect(tagSwitch(wrapper).exists()).toBe(false)
+})
+
+it('标签公开失败可刷新恢复，旧账号的迟到更新不公开新账号标签', async () => {
+  api.getAccountShare.mockImplementation(id => Promise.resolve(active(id)))
+  api.setAccountShareScope.mockRejectedValueOnce(new Error('保存失败'))
+  const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
+  await tagSwitch(wrapper).setValue(true); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('保存失败')
+  await button(wrapper, '刷新状态').trigger('click'); await flushPromises()
+  expect(tagSwitch(wrapper).element.checked).toBe(false)
+  const pending = deferred(); api.setAccountShareScope.mockReturnValueOnce(pending.promise)
+  await tagSwitch(wrapper).setValue(true)
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  pending.resolve({ ...active('a'), scopes: ['operator', 'operator_tags'] }); await flushPromises()
+  expect(tagSwitch(wrapper).element.checked).toBe(false)
+  expect(wrapper.get('input[readonly]').element.value).toContain('b-code')
+  expect(wrapper.emitted('share-change').at(-1)[0]).toMatchObject({ accountId: 'b', scopes: ['operator'] })
 })
 
 describe('当前子账号分享管理：渲染与真实异步行为', () => {
@@ -196,7 +238,7 @@ it('默认管理器保留星石页面的原有展示与访问方式', async () =
 it('紧凑权限卡同时展示类型说明与真实开关状态', async () => {
   api.getAccountShare.mockResolvedValue(active('a'))
   const wrapper = renderManager({ props: { accountId: 'a' } }); await flushPromises()
-  const scopes = wrapper.findAll('.share-scope')
+  const scopes = wrapper.findAll('.share-scopes .share-scope')
   expect(scopes.map(scope => scope.get('.share-scope-description').text())).toEqual(['公开已选的密探档案', '公开云端星石信息'])
   expect(scopes.map(scope => scope.get('.share-scope-status').text())).toEqual(['已开启', '未开启'])
   expect(scopes.map(scope => scope.get('[role="switch"]').element.checked)).toEqual([true, false])

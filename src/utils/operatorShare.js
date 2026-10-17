@@ -82,6 +82,7 @@ export function mergeOperatorShareEntries(share, catalog) {
     return [operatorId(operator), { operator: operator, order: index }]
   }))
   const entries = share && share.entries && typeof share.entries === 'object' ? share.entries : {}
+  const tags = Array.isArray(share?.tags) ? share.tags : []
 
   return Object.entries(entries).map(function ([id, growth]) {
     const hit = byId.get(id)
@@ -98,15 +99,18 @@ export function mergeOperatorShareEntries(share, catalog) {
       sp_of: text(operator.sp_of || operator.spOf),
       oddity_schema: operator.oddity_schema || operator.odditySchema || {},
       growth: growth && typeof growth === 'object' ? growth : {},
+      tags: tags.filter(tag => Array.isArray(tag?.operator_ids) && tag.operator_ids.includes(id))
+        .map(tag => ({ id: text(tag.id), name: text(tag.name) })),
       order: hit ? hit.order : Number.MAX_SAFE_INTEGER
     }
   }).sort(compareOperatorShareEntries)
 }
 
-export function filterOperatorShareEntries(entries, search, prof, subProf, status = 'all') {
+export function filterOperatorShareEntries(entries, search, prof, subProf, status = 'all', tagId = '') {
   const query = text(search).toLowerCase()
   return (Array.isArray(entries) ? entries : []).filter(function (entry) {
     if (!matchesProfSubFilter(entry, prof, subProf)) return false
+    if (tagId && !entry.tags?.some(tag => tag.id === tagId)) return false
     const growthState = operatorShareGrowthState(entry)
     const displayStatus = operatorAnnotationStatus(growthState)
     if (status !== 'all' && displayStatus !== status) return false

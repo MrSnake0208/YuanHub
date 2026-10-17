@@ -1,5 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 1080px) {
+.share-ledger-tags { position: relative; z-index: 1; display: flex; grid-column: 1 / -1; flex-wrap: wrap; gap: 4px; min-width: 0; margin-top: 8px }
+.share-ledger-tags span { max-width: 100%; padding: 3px 8px; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere }
 .share-entry { max-width: 780px; margin: 0 auto; padding: 34px }
 .section-kicker { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 800; letter-spacing: .14em }
 .share-entry h2,.share-state h2 { font-family: var(--font-s); font-size: 24px; font-weight: 900 }
