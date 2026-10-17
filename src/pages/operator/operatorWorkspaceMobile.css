@@ -55,17 +55,6 @@
   .roster-header :deep(.compact-tool-actions) { flex: 0 1 auto; min-width: 0; max-width: 100%; margin-inline-start: auto; justify-content: flex-end; }
   .roster-header :deep(.tool-more-content) { left: auto; right: 0; }
 }
-.catalog-tools :deep(.is-compact .current-filter-tools) { flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
-.catalog-tools :deep(.is-compact .current-filter-search) { order: 0; flex: 1 1 220px; width: auto; min-width: 0; box-sizing: border-box; }
-.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; margin: 0; white-space: nowrap; }
-.catalog-tools :deep(.is-compact .current-filter-tools button) { order: 0; }
-.catalog-tools :deep(.current-filter-result) { flex: none; font-size: 12px; }
-.catalog-tools :deep(.dossier-more) { align-self: auto; }
-.catalog-tools :deep(.pf-status-row .mf-filter) { display: flex; flex-wrap: wrap; padding: 0; gap: 6px; }
-.catalog-tools :deep(.pf-status-row button) { flex: 0 1 auto; width: auto; padding: 6px 10px; }
-@media (max-width: 640px) {
-  .catalog-tools :deep(.is-compact .current-filter-search) { flex-basis: 100%; }
-}
 
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
@@ -952,12 +941,12 @@
   min-width: 100%;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   padding-bottom: 4px;
 }
 .batch-quick-title {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 28px;
   align-items: center;
   padding-right: 4px;
   font-size: 11px;
@@ -965,21 +954,21 @@
 }
 .batch-quick-filters button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 28px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 5px 8px 5px 13px;
+  gap: 4px;
+  padding: 3px 8px;
   font: 800 11.5px var(--font-b);
   white-space: nowrap;
 }
 .batch-quick-filters button small {
   display: inline-grid;
-  min-width: 22px;
-  min-height: 22px;
+  min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
   place-items: center;
-  padding: 0 5px;
+  padding: 0;
   font: 800 10px var(--font-d);
 }
 .batch-select-all {
@@ -3240,7 +3229,7 @@
     padding: 8px 9px;
   }
   .batch-quick-filters {
-    gap: 8px;
+    gap: 6px;
   }
   .batch-quick-title {
     min-height: auto;
@@ -3248,7 +3237,7 @@
     padding-right: 0;
   }
   .batch-quick-filters button {
-    min-height: 44px;
+    min-height: 34px;
   }
   .batch-status-actions {
     margin-left: 0;
@@ -3258,6 +3247,7 @@
   .batch-clear {
     flex: 1;
     min-width: 0;
+    min-height: 34px;
   }
   .current-filter-rows {
     gap: 5px;
@@ -4203,7 +4193,6 @@
 .operator-account-workspace:not(.has-archive) :deep(.workspace-account) { display: none; }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
 .current-upgrade-reminder button,.current-batch-toggle,
-.batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,
 .ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn { min-height:44px; }
 .current-favorite-sort,.current-filter-reset { min-height:32px; }
@@ -4243,12 +4232,6 @@
   .current-workbench-summary { margin-top: 0; padding: 0; border-bottom: 0; }
   .current-workbench-summary .current-status-summary { display: none; }
   #operator-panel-current :deep(.operator-filter-dossier.is-compact) { margin-top: 6px; }
-  #operator-panel-current :deep(.is-compact .current-filter-head) { padding: 8px; }
-  #operator-panel-current :deep(.is-compact .current-filter-tools) { gap: 6px 8px; }
-  #operator-panel-current :deep(.is-compact .current-filter-tools button) { min-height: 34px; padding: 5px 6px; }
-  #operator-panel-current :deep(.is-compact .current-filter-tools .btn.primary) { padding-inline: 10px; }
-  #operator-panel-current :deep(.is-compact .current-filter-rows) { padding: 6px 8px; }
-  #operator-panel-current :deep(.is-compact .current-status-filter button) { min-height: 34px; }
   .current-favorite-sort:not(.on), .current-batch-toggle:not(.on) { border-color: transparent; background: transparent; }
   #operator-panel-current .current-ledger { margin-top: 8px; padding: 8px; }
   #operator-panel-current .current-ledger-meta { gap: 2px; padding-bottom: 8px; font-weight: 400; }

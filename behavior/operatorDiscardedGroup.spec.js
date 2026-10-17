@@ -83,6 +83,26 @@ const noObjectiveWrites = () => {
   expect(inventory.addAgentFavorite).not.toHaveBeenCalled(); expect(inventory.removeAgentFavorite).not.toHaveBeenCalled()
 }
 
+it('批量标注直接展开属性、职业和品质筛选，退出后恢复紧凑浏览', async () => {
+  const wrapper = await render()
+  await wrapper.get('#operator-tab-current').trigger('click')
+  await flushPromises()
+  const filters = wrapper.get('#operator-panel-current .operator-filter-dossier')
+  expect(filters.get('.current-filter-secondary').findAll('button').map(button => button.text()))
+    .toEqual(['特别关注优先', '分类设置', '批量标注'])
+  expect(filters.get('.dossier-extra').isVisible()).toBe(false)
+  await filters.get('.current-batch-toggle[title="批量标注养成状态"]').trigger('click')
+  for (const selector of ['.pf-prof-row', '.pf-subprof-row', '.pf-rarity-row']) {
+    expect(filters.get(selector).isVisible()).toBe(true)
+  }
+  expect(filters.find('.dossier-more').exists()).toBe(false)
+  await filters.get('.current-batch-toggle[title="批量标注养成状态"]').trigger('click')
+  expect(filters.get('.dossier-extra').isVisible()).toBe(false)
+  expect(filters.get('.dossier-more').attributes('aria-expanded')).toBe('false')
+  noObjectiveWrites()
+  wrapper.unmount()
+})
+
 it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读取并恢复已有弃置', async () => {
   events.discardedEnabled = false
   const wrapper = await render()

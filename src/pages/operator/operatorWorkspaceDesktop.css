@@ -44,16 +44,6 @@
 .page-operator .operator-tabs.tool-workspace-tabs { padding: 5px; gap: 6px; }
 .page-operator .tool-workspace-tabs > .workspace-tab-list { gap: 6px; }
 .page-operator .operator-tabs.tool-workspace-tabs button { min-height: 40px; padding: 7px 18px; }
-.catalog-tools :deep(.current-filter-head) { padding: 8px 14px; }
-.catalog-tools :deep(.is-compact .current-filter-tools) { flex-wrap: wrap; gap: 10px; min-width: 0; }
-.catalog-tools :deep(.is-compact .current-filter-search) { flex: 1 1 220px; width: auto; min-width: 0; }
-.catalog-tools :deep(.is-compact .current-filter-tools .catalog-entry.btn.primary) { flex: 0 0 auto; width: auto; margin: 0; white-space: nowrap; }
-.catalog-tools :deep(.current-filter-result) { flex: none; font-size: 12px; }
-.catalog-tools :deep(.dossier-more) { align-self: auto; }
-.catalog-tools :deep(.current-filter-rows) { padding: 8px 14px 10px; }
-.catalog-tools :deep(.pf-status-row) { gap: 12px; }
-.catalog-tools :deep(.pf-status-row .mf-filter) { flex: 0 1 auto; padding: 0; gap: 8px; }
-.catalog-tools :deep(.pf-status-row button) { padding: 6px 14px; }
 
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
@@ -936,12 +926,12 @@
   min-width: 100%;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   padding-bottom: 4px;
 }
 .batch-quick-title {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 28px;
   align-items: center;
   padding-right: 4px;
   font-size: 11px;
@@ -949,21 +939,21 @@
 }
 .batch-quick-filters button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 28px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 5px 8px 5px 13px;
+  gap: 4px;
+  padding: 3px 8px;
   font: 800 11.5px var(--font-b);
   white-space: nowrap;
 }
 .batch-quick-filters button small {
   display: inline-grid;
-  min-width: 22px;
-  min-height: 22px;
+  min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
   place-items: center;
-  padding: 0 5px;
+  padding: 0;
   font: 800 10px var(--font-d);
 }
 .batch-select-all {
@@ -3001,7 +2991,6 @@
 .operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
 .operator-account-workspace.has-archive :deep(.workspace-panels) { grid-template-columns: minmax(0, 1fr); }
 .current-upgrade-reminder button,.current-batch-toggle,
-.batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,
 .ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn { min-height:44px; }
 .current-favorite-sort,.current-filter-reset { min-height:32px; }

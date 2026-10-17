@@ -847,6 +847,7 @@
               compact
               searchable
               v-model:search-query="currentSearch"
+              :force-expanded="batchSelectMode"
               v-if="currentLoadedKey === accountId + ':' + gameFilter && (ownedCurrentEntries.length > 0 || (auth.isLoggedIn && accountId))"
               v-reveal
               :result-count="filteredCurrent.length"
@@ -872,6 +873,8 @@
             >
               <template #primary-tool>
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
+              </template>
+              <template #secondary-tool>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -885,8 +888,6 @@
                     aria-hidden="true"
                   />特别关注优先
                 </button>
-              </template>
-              <template #secondary-tool>
                 <button v-if="auth.isLoggedIn" type="button" class="current-batch-toggle current-organization-toggle"
                   :class="{ on: organizationManager?.open }" :aria-expanded="Boolean(organizationManager?.open)" :aria-controls="organizationManager?.panelId"
                   @click="organizationManager?.toggle()"><SlidersHorizontal :size="13" aria-hidden="true" />分类设置<span v-if="organizationSaving" role="status"> · 保存中</span><span v-else-if="organizationDirty" role="status"> · 未保存</span></button>
@@ -10630,8 +10631,6 @@ onBeforeUnmount(function () {
     color 0.2s var(--ease);
 }
 .batch-quick-filters button small {
-  border-radius: 999px;
-  background: var(--cream);
   color: var(--ink-60);
 }
 .batch-quick-filters button:hover:not(:disabled) {
@@ -10645,7 +10644,6 @@ onBeforeUnmount(function () {
   color: var(--cream);
 }
 .batch-quick-filters button.on small {
-  background: rgba(255, 248, 236, 0.18);
   color: var(--cream);
 }
 .batch-quick-filters button:disabled {
@@ -12498,15 +12496,10 @@ onBeforeUnmount(function () {
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
 /* Page owns metadata and filters; cards retain their existing presentation. */
-.catalog-entry { border-radius: 8px; text-decoration: none; }
 .roster-header .btn { border-radius: 10px; text-decoration: none; }
 .roster-header .roster-share small { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; }
 .roster-share small::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-60); }
 .roster-share small.is-sharing::before { background: #6f9f76; box-shadow: 0 0 0 3px rgba(111, 159, 118, .14); }
-.catalog-tools :deep(.current-filter-head) { background: transparent; }
-.catalog-tools :deep(.pf-status-row .mf-filter) { background: transparent; }
-.catalog-tools :deep(.pf-status-row button) { border: 1px solid transparent; background: color-mix(in srgb, var(--tea) 4%, var(--surface)); }
-.catalog-tools :deep(.pf-status-row button.on) { border-color: var(--accent); background: var(--cream); color: var(--tea); box-shadow: inset 0 -1px var(--tea); }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }

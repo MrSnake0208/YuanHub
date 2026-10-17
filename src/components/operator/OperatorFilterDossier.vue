@@ -32,6 +32,9 @@
             />
           </label>
         </slot>
+        <button v-if="compact && !forceExpanded" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">
+          更多筛选<template v-if="advancedFilterCount != null"><span v-if="advancedFilterCount"> · {{ advancedFilterCount }}</span></template><template v-else-if="hasFilters"> · 已启用</template>
+        </button>
         <button
           v-if="hasFilters"
           class="current-filter-reset"
@@ -40,15 +43,14 @@
         >
           <RotateCcw :size="13" aria-hidden="true" />重置
         </button>
-        <slot name="secondary-tool" />
-        <button v-if="compact" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">
-          更多筛选<template v-if="advancedFilterCount != null"><span v-if="advancedFilterCount"> · {{ advancedFilterCount }}</span></template><template v-else-if="hasFilters"> · 已启用</template>
-        </button>
+        <div v-if="$slots['secondary-tool']" class="current-filter-secondary">
+          <slot name="secondary-tool" />
+        </div>
       </div>
     </div>
 
     <div class="current-filter-rows">
-      <div v-show="!compact || filtersOpen" :id="filtersId" class="dossier-extra">
+      <div v-show="!compact || forceExpanded || filtersOpen" :id="filtersId" class="dossier-extra">
         <slot name="extra-filters" />
         <div class="pf-row pf-prof-row">
           <span class="pf-label">属性</span>
@@ -159,6 +161,7 @@ const searchInput = ref(null)
 defineExpose({ focusSearch: () => searchInput.value?.focus() })
 const props = defineProps({
   compact: Boolean,
+  forceExpanded: Boolean,
   title: { type: String, default: '筛选案卷' },
   description: { type: String, default: '' },
   contextLabel: { type: String, default: '当前养成' },
@@ -212,6 +215,10 @@ function statusCount(value) {
 .current-filter-head {
   border-bottom: 1px dashed var(--line);
   background: var(--cream);
+}
+.current-filter-tools :deep(.btn) {
+  border-radius: 8px;
+  text-decoration: none;
 }
 .current-filter-title strong {
   color: var(--tea);

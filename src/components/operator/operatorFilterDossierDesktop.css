@@ -43,6 +43,12 @@
   align-items: center;
   gap: 8px;
 }
+.current-filter-secondary {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .current-filter-result {
   font-size: 10.5px;
   font-weight: 800;
