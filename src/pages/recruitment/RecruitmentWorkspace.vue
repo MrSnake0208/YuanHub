@@ -34,7 +34,8 @@
               <div><span>{{ metric.label }}</span>
                 <p v-if="metric.agents == null" class="summary-empty">—</p>
                 <p v-else-if="!metric.agents.length" class="summary-empty">暂无记录</p>
-                <ul v-else class="summary-agent-list"><li v-for="agent in metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
+                <ul v-else :id="'summary-agents-' + metric.key" class="summary-agent-list"><li v-for="agent in metric.key === 'most-obtained' && !mostObtainedExpanded ? metric.agents.slice(0, 3) : metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
+                <button v-if="metric.key === 'most-obtained' && metric.agents?.length > 3" type="button" class="summary-agent-toggle" :aria-expanded="mostObtainedExpanded" aria-controls="summary-agents-most-obtained" @click="mostObtainedExpanded = !mostObtainedExpanded">{{ mostObtainedExpanded ? '收起' : `另有 ${metric.agents.length - 3} 位并列 · 展开全部` }}</button>
               </div>
             </div>
           </div>
@@ -72,11 +73,12 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts, previews, loadPreview } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
+const mostObtainedExpanded = ref(false)
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const goldAgentHighlights = computed(() => [
-  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents?.slice(0, 1) },
+  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents },
   { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents }
 ])
 const canRecordPool = pool => {
@@ -118,7 +120,7 @@ function dismissPageGuide() {
   guidePicker.value = false; guideActive.value = false
   nextTick(() => guideEntry.value?.focus({ preventScroll: true }))
 }
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false })
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false; mostObtainedExpanded.value = false })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
   if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
@@ -183,6 +185,7 @@ async function savePool(payload) {
 .archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.summary{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-icon{color:var(--accent-strong)}.summary-item>div>span,.summary-item small{color:var(--ink-60)}.summary strong{color:var(--tea)}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
 button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.error{color:var(--rouge)}@media(min-width:768px){.summary-item:not(:nth-child(3n+1)){border-left:1px solid var(--line)}}
 .summary-agent-list{list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary .summary-agent-list strong{font:700 15px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60)}
+.summary-agent-toggle{min-height:0;margin-top:4px;padding:4px 0;border:0;background:transparent;color:var(--accent-strong);font:12px/1.5 var(--font-b);text-align:left;overflow-wrap:anywhere}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 </style>
 <style scoped src="./recruitmentWorkspaceDesktop.css"></style>
