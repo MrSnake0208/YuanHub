@@ -131,7 +131,7 @@ it('首批只在进入视口后请求，退出卸载观察器；失败与未读�
   callback([{ isIntersecting: true }]); await nextTick()
   expect(wrapper.emitted('load')).toEqual([[false]])
   await wrapper.setProps({ entry: { ...entry([event('one')]), cursor: 'next' } })
-  expect(wrapper.text()).toContain('尚未读完')
+  expect(wrapper.text()).toContain('还有记录未加载')
   await button(wrapper, '加载更多记录').trigger('click')
   expect(wrapper.emitted('load')[1]).toEqual([true])
   await wrapper.setProps({ entry: { ...entry([]), error: '读取失败' } })

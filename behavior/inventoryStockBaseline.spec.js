@@ -599,7 +599,7 @@ it.each(['manifest', 'acquired', 'records'])('%s 直接记录奖励，共用一�
   expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   expect(document.querySelector('[role="dialog"] h3').textContent).toBe('添加奖励流水')
   expect(document.activeElement).toBe(document.querySelector('[role="dialog"] h3'))
-  expect(document.querySelector('.baseline-note').textContent).toContain('可能仅记录历史')
+  expect(document.querySelector('.baseline-note').textContent).toContain('只补历史，不会再次增加库存')
   expect(inventoryApi.listRecords).toHaveBeenCalledTimes(historyReads)
   expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
   await closeReward()

@@ -68,9 +68,9 @@ it('养老密探置顶跨越养成中，取消后恢复默认顺序，状态筛�
   expect(wrapper.get('.current-organization-toggle').element.closest('.current-filter-tools')).not.toBeNull()
   await card('c').get('[aria-label="置顶c"]').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual(['c', 'a', 'b'])
-  await wrapper.get('.current-status-filter .status-growing').trigger('click'); await flushPromises()
+  await wrapper.get('#operator-panel-current .current-status-filter .status-growing').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual(['a'])
-  await wrapper.get('.current-status-filter .status-all').trigger('click'); await flushPromises()
+  await wrapper.get('#operator-panel-current .current-status-filter .status-all').trigger('click'); await flushPromises()
   await card('c').get('[aria-label="取消置顶c"]').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual(['a', 'b', 'c']); noGrowthWrites()
 })
@@ -87,8 +87,8 @@ it('尚无密探时也可在现有筛选区设置分类，无需独立工具卡�
 it('云端分组顺序刷新回读生效；置顶始终优先，未开启弃置入口', async () => {
   organization.status_order = ['skip', 'graduated', 'active', 'discarded']; organization.pinned_ids = ['b']
   await render(); expect(cardNames()).toEqual(['b', 'c', 'a'])
-  expect(wrapper.find('.current-status-filter .status-discarded').exists()).toBe(false)
-  expect(wrapper.findAll('.current-status-filter button').map(node => node.text().replace(/\d/g, ''))).toEqual(['全部', '养老中', '已毕业', '养成中'])
+  expect(wrapper.find('#operator-panel-current .current-status-filter .status-discarded').exists()).toBe(false)
+  expect(wrapper.findAll('#operator-panel-current .current-status-filter button').map(node => node.text().replace(/\d/g, ''))).toEqual(['全部', '养老中', '已毕业', '养成中'])
   expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
 })
 
@@ -101,7 +101,7 @@ it('标签筛选与状态筛选取交集，清除筛选保留标签与置顶，�
   expect(tags.get('button').text()).toBe('全部3')
   await tags.findAll('button').find(node => node.text() === '主力2').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual(['a', 'c'])
-  await wrapper.get('.current-status-filter .status-graduated').trigger('click'); await flushPromises()
+  await wrapper.get('#operator-panel-current .current-status-filter .status-graduated').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual([]); expect(wrapper.text()).toContain('标签「主力」')
   await wrapper.findAll('button').find(node => node.text() === '清除筛选').trigger('click'); await flushPromises()
   expect(cardNames()).toEqual(['a', 'b', 'c'])

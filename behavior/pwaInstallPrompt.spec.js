@@ -338,7 +338,7 @@ it('旧推广偏好不冒充安装，手动开始后 accepted 仍只等待', asy
   expect(host.find('.installed-banner').exists()).toBe(false)
   await host.get('.install-now').trigger('click')
   await host.get('.install-now').trigger('click'); await flushPromises()
-  expect(host.get('.install-feedback').text()).toContain('等待安装完成')
+  expect(host.get('.install-feedback').text()).toContain('正在等待系统完成安装')
   expect(host.find('.installed-banner').exists()).toBe(false)
   expect(context.install.pwaInstallState.installed).toBe(false)
 })

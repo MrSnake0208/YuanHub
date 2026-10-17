@@ -238,7 +238,7 @@ it('默认管理器保留星石页面的原有展示与访问方式', async () =
   const wrapper = mount(AccountShareManager, { props: { accountId: 'a' } }); await flushPromises()
   expect(wrapper.classes()).not.toContain('is-compact')
   expect(wrapper.find('.share-summary').exists()).toBe(false)
-  expect(wrapper.find('.share-scope-description').exists()).toBe(false)
+  expect(wrapper.get('.share-scope-description').text()).toBe('公开此账号中已持有密探的档案与佩戴星石')
   expect(wrapper.find('.share-scope-icon').exists()).toBe(false)
   expect(wrapper.get('[aria-label="复制密探 BOX链接"]').text()).toBe('复制密探 BOX链接')
   expect(wrapper.get('.visit').attributes('target')).toBeUndefined()

@@ -397,7 +397,7 @@ it('lagging baselines and failed GETs cannot offer acceptance or unlock the inpu
   const baseline = JSON.parse(f.documents[0]).records[0].effective_at
   f.setBaseline(null); root.querySelector('#growth-retry-inventory').click(); await settle()
   expect(root.querySelector('#growth-accept-inventory').disabled).toBe(true)
-  expect(root.querySelector('.growth-error').textContent).toContain('尚未可靠确认')
+  expect(root.querySelector('.growth-error').textContent).toContain('库存尚未确认')
   expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.value === '')).toBe(true)
   f.setBaseline(baseline); root.querySelector('#growth-retry-inventory').click(); await settle()
   expect(root.querySelector('#growth-accept-inventory').disabled).toBe(false)

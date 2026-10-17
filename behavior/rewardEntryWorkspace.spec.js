@@ -912,7 +912,7 @@ describe('历练按次数补录', () => {
     await flushPromises()
     await clickElement(bodyButton('预览本次流水'))
     expect(document.body.querySelector('.preview-section').textContent).toContain(`游戏：${game}`)
-    expect(document.body.querySelector('.preview-section').textContent).toContain('同批奖励请勿再次补录')
+    expect(document.body.querySelector('.preview-section').textContent).toContain('已同步或录入过的同一笔奖励，请勿再次补录')
     expect(inventoryApi.importInventory).not.toHaveBeenCalled()
     await clickElement(bodyButton('确认补录 1 条'))
     const documentSent = inventoryApi.importInventory.mock.calls[0][0]

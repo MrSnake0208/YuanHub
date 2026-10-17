@@ -186,6 +186,7 @@ it.each(['/', '/operator', '/inventory', '/user/profile'])('已有真实数据�
   stock = [{ account_id: 'acc', entity_type: 'item', entries: {}, full_baseline_at: '2026-10-08T00:00:00Z' }]
   const { store } = await render(path)
   expect(guide()).toBeNull()
+  if (path === '/operator') await host.get('.roster-header .tool-more > summary').trigger('click')
   expect(host.findAll('.tutorial-entry')).toHaveLength(1)
   expect(host.get('.tutorial-entry').isVisible()).toBe(true)
   await followHere()
@@ -194,7 +195,7 @@ it.each(['/', '/operator', '/inventory', '/user/profile'])('已有真实数据�
   expect(guide().textContent).not.toContain('第一次连接 MaaYuan')
   if (path !== '/') {
     expect(store.tutorialCompleted).toBe(true)
-    expect(guide().textContent).toContain('复习时')
+    expect(guide().textContent).toContain({ '/operator': '无需重复录入', '/inventory': '已有盘点无需重做', '/user/profile': '无需重复创建' }[path])
   }
   expect(accountsApi.createAccount).not.toHaveBeenCalled()
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
@@ -216,7 +217,7 @@ it('离开任务页不留下浮层、不查询或跳转；回到任务页重新�
   expect(router.currentRoute.value.path).toBe('/changelog')
   await router.push('/operator'); await flushPromises()
   expect(store.tutorialCompleted).toBe(true)
-  expect(guide().textContent).toContain('复习时')
+  expect(guide().textContent).toContain('无需重复录入')
 })
 
 it('局部关闭将焦点还给发起入口；无关业务模态优先处理Esc且不结束教程', async () => {
@@ -419,7 +420,7 @@ async function createConnection(router) {
   await host.get('.app-connect').trigger('click'); await flushPromises()
   expect(host.get('#maayuan-account').element.value).toBe('')
   await host.get('#maayuan-account').setValue('acc'); await flushPromises()
-  expect(guide().textContent).toContain('核对所选账号与权限')
+  expect(guide().textContent).toContain('核对账号与权限')
   connectionApi.generateOpenApiToken.mockImplementationOnce(async () => {
     connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
     return { ...connection(), token: crypto.randomUUID() }
@@ -432,7 +433,7 @@ it('MaaYuan真实选择→API创建→真实复制→等待；收到服务端库
   await createConnection(router)
   expect(store.maaYuan.phase).toBe('token-created')
   expect(store.tutorialCompleted).toBe(false)
-  expect(guide().textContent).toContain('还没确认同步')
+  expect(guide().textContent).toContain('连接码已就绪。点击「复制连接码」，继续设置同步。')
   expect(connectionApi.generateOpenApiToken).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc', scopes: ['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'] }))
   expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
   await host.get('.nt-row button').trigger('click'); await flushPromises()
