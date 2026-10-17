@@ -266,14 +266,16 @@
             </aside>
             <div class="editor-main">
               <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel conditions-workspace" tabindex="-1" aria-label="规划条件">
-                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>设置培养目标、体力来源与可刷层数，生成后在「方案对比」中查看结果。</p></div><span class="conditions-account">子账号来源共用</span></header>
+                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>选好培养方式，沿用日常设置，即可开始规划。</p></div><span class="conditions-account">当前子账号</span></header>
   <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
 <section id="planning-conditions" class="conditions-content">
-<section class="condition-module core-conditions" aria-labelledby="core-conditions-title">
-  <header class="condition-module-heading"><span class="condition-letter" aria-hidden="true">A</span><h3 id="core-conditions-title">核心规划设置</h3><p>决定培养方案的基础条件</p></header>
-  <div class="core-settings-grid">
-
-<div v-if="goalMode" class="core-setting goal-conditions">
+  <section class="condition-module strategy-conditions" aria-labelledby="core-conditions-title">
+    <header class="condition-module-heading"><h3 id="core-conditions-title">{{ goalMode ? '你想多久养成？' : '你想怎么养？' }}</h3><p>{{ goalMode ? '设定期限，比较完成清单所需的白金币。' : '选择培养策略，决定材料备齐的先后。' }}</p></header>
+    <div v-if="!goalMode" class="strategy-cards" role="group" aria-label="培养策略">
+      <button type="button" :class="{ active: strategy === 'overall' }" :aria-pressed="strategy === 'overall'" :disabled="scheduleActionBlocked" @click="setStrategy('overall')"><Users :size="28" aria-hidden="true" /><span><b>整体完成</b><small>以整个清单尽早备齐材料为目标</small></span><Check v-if="strategy === 'overall'" :size="18" aria-hidden="true" /></button>
+      <button type="button" :class="{ active: strategy === 'priority' }" :aria-pressed="strategy === 'priority'" :disabled="scheduleActionBlocked" @click="setStrategy('priority')"><ListOrdered :size="28" aria-hidden="true" /><span><b>优先完成密探</b><small>按清单顺序优先备齐各密探材料</small></span><Check v-if="strategy === 'priority'" :size="18" aria-hidden="true" /></button>
+    </div>
+<div v-if="goalMode" class="goal-conditions">
   <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
   <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title" aria-describedby="goal-date-picker-description">
     <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4><p id="goal-date-picker-description">希望最晚在这一天完成当前清单的养成。</p></header>
@@ -285,8 +287,9 @@
   <p class="goal-completion-date">截止日期：<time :datetime="goalCompletionDate">{{ formatLongDate(goalCompletionDate) }}</time></p>
   <p class="goal-date-help">日期按“含今天”换算，最多支持 90 天。</p>
   <div class="goal-shortcuts"><button v-for="days in [7, 10, 14, 21]" :key="days" type="button" :class="{ active: Number(goalDays) === days }" @click="goalDays = days">{{ days }} 天</button></div>
-</div><div v-if="!goalMode" class="core-setting"><div class="settings-block-head"><h3>培养策略</h3></div><div class="strategy-switch" role="group" aria-label="培养策略"><button type="button" :class="{ active: strategy === 'overall' }" :aria-pressed="strategy === 'overall'" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" :aria-pressed="strategy === 'priority'" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下一步方案对比沿用此策略。</p></div><div class="core-setting"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div></div><details class="preference-help"><summary>体力与花费说明</summary><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></details></div><div class="core-setting training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<PlannerSelect class="training-level-select" :model-value="workspace.trainingLevels[group.id]" :options="group.stages.map(stage => ({ value: stage.level, label: stage.name }))" :label="group.name + '最高层'" :disabled="cloudBlocked" @update:model-value="setTrainingLevel(group.id, $event)" /></label></div></div></div>
-<section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
+</div>
+    <details v-if="goalMode" class="reserve-details" @invalid.capture="$event.currentTarget.open = true"><summary>体力储备 <span>额外体力 {{ goalInitialExtra }} · 待领取 {{ goalReserveSources.length }} 笔</span></summary>
+<section class="reserve-management" aria-labelledby="reserve-management-title">
   <div class="reserve-management-heading"><div><h3 id="reserve-management-title">体力储备</h3><p>已到账体力用于第一天；未领取储备会安排到需要的日期，每笔一次领完。</p></div><span class="reserve-total">待领取 {{ goalReserveSources.length }} 笔 · {{ goalReserveSources.reduce((sum, source) => sum + Math.max(0, Number(source.amount) || 0), 0) }} 体力</span></div>
   <div class="reserve-management-body">
     <div class="reserve-initial"><label for="goal-initial-extra">起始日额外体力</label><div class="reserve-amount"><input id="goal-initial-extra" type="number" min="0" max="99999" step="1" v-model.number.lazy="goalInitialExtra" /><span>体力</span></div><p>已经到账，仅第一天可用，不跨日结转。</p></div>
@@ -300,11 +303,13 @@
     </div>
   </div>
 </section>
-</section>
-<PlannerDailySources v-show="!goalMode" :sources="workspace.staminaSources" :account-id="accountId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
+    </details>
+  </section>
+  <PlannerRoutineSettings :preferences="plannerPreferences" :levels="workspace.trainingLevels" :account-id="accountId" :plan-id="workspace.activePlanId" :revision="workspace.revision" :disabled="scheduleActionBlocked" @save-preferences="saveRoutinePreferences" @save-levels="saveTrainingLevels" />
+  <PlannerDailySources :sources="workspace.staminaSources" :account-id="accountId" :plan-id="workspace.activePlanId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :allow-application="!goalMode" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
 </section>
                 <footer class="planner-step-actions">
-                  <button type="button" class="workspace-link" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" /></button>
+                  <button type="button" class="workspace-link" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" />直接编辑每日</button>
                   <button type="button" class="action-button primary" @click="setPlannerStep('comparison')">下一步：方案对比<ChevronRight :size="16" aria-hidden="true" /></button>
                 </footer>
               </section>
@@ -404,7 +409,7 @@ import { isMovieOperator } from '../../utils/operatorForms.js'
 import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X, Minus } from '@lucide/vue'
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
@@ -426,17 +431,20 @@ import PlannerDateTabs from './PlannerDateTabs.vue'
 import PlannerSelect from './PlannerSelect.vue'
 import PlannerCustomEntry from './PlannerCustomEntry.vue'
 import PlannerDailySources from './PlannerDailySources.vue'
+import PlannerRoutineSettings from './PlannerRoutineSettings.vue'
 import { withSourcePeriod } from '../../data/dailyStaminaSources.js'
 import { applyDailySourcesToSchedule } from '../../data/fixedPlannerSchedule.js'
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
-import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
+import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
 const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
+const workspaceSession = ref(0)
+watch(() => [props.accountId, props.isLoggedIn], () => { workspaceSession.value++ }, { flush: 'sync' })
 const dailySourcePreview = ref(null)
 const dailySourcePreviewKey = () => JSON.stringify([props.accountId, workspace.value.activePlanId, workspace.value.revision, fixedSchedule.value, manualPlans.value, plannerPreferences.value, plannerToday.value])
 const visibleDailySourcePreview = computed(() => dailySourcePreview.value && dailySourcePreview.value.key === dailySourcePreviewKey() ? dailySourcePreview.value : null)
@@ -827,7 +835,6 @@ function simulationLabel(result) {
   if (result.status === 'horizon') return '90 天内未备齐'
   return result.etaDays === 0 ? '材料已备齐' : formatEta(result.etaDays)
 }
-const purchaseCostLabel = computed(() => formatNumber(PURCHASE_CUMULATIVE[normalizePlannerPreferences(plannerPreferences.value).purchaseCount]) + ' 白金币')
 const aggregateMoneyLabel = computed(() => { const money = planRows.value.reduce((sum, row) => sum + Number(row.calculation.total.money || 0), 0); return `${hasUnknownRequirements.value ? '已知部分' : '目标'}五铢钱需求 ${formatNumber(money)}` })
 function plannerStateTotal(state) { return Object.values(aggregatePlannerState(state || {})).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) }
 function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.png' : '' }
@@ -969,7 +976,7 @@ function trainingGroupForSpend(spend) { const groupId = spend?.groupId || ({ fen
 function workspaceCopy() { return JSON.parse(JSON.stringify(workspace.value)) }
 async function commitWorkspace(next, notice = '', undoable = false) {
   const previous = workspaceCopy()
-  const account = props.accountId
+  const account = props.accountId, session = workspaceSession.value
   const movies = new Set(props.catalogEntries.filter(isMovieOperator).map(entry => entry.id))
   for (const plan of next.plans || []) {
     for (const [id, target] of Object.entries(plan.targets || {})) {
@@ -977,7 +984,7 @@ async function commitWorkspace(next, notice = '', undoable = false) {
     }
   }
   const saved = await saveWorkspace(next)
-  if (props.accountId !== account) return false
+  if (props.accountId !== account || session !== workspaceSession.value) return false
   if (saved) { undoWorkspace.value = undoable ? previous : null; planError.value = ''; planNotice.value = notice }
   else planError.value = workspaceState.value.error?.message || '请先处理未完成的云端保存，再修改清单'
   return saved
@@ -1044,10 +1051,32 @@ async function removePlan(onRemoved) {
   if (await commitWorkspace(next, '培养清单已删除', true)) { closeStarTarget(); targetNotice.value = ''; onRemoved?.() }
 }
 function undoPlanChange() { if (undoWorkspace.value) commitWorkspace(JSON.parse(JSON.stringify(undoWorkspace.value)), '已恢复清单') }
-async function setTrainingLevel(groupId, value) {
-  const next = workspaceCopy(); next.trainingLevels[groupId] = Number(value)
-  if (await commitWorkspace(next)) persistPlannerSnapshot()
+const pendingRoutineSave = ref(null)
+function sameRoutineContext(context) { return context.accountId === props.accountId && context.planId === workspace.value.activePlanId }
+async function saveTrainingLevels(levels, context, done) {
+  if (!sameRoutineContext(context) || scheduleActionBlocked.value || context.revision !== workspace.value.revision || context.base !== JSON.stringify(workspace.value.trainingLevels)) { done(false); return }
+  const next = workspaceCopy(); next.trainingLevels = normalizeTrainingLevels(levels)
+  const saved = await commitWorkspace(next)
+  if (!sameRoutineContext(context)) { done(false); return }
+  if (saved) persistPlannerSnapshot()
+  done(saved)
 }
+function saveRoutinePreferences(preferences, context, done) {
+  if (!sameRoutineContext(context) || scheduleActionBlocked.value || context.base !== JSON.stringify(plannerPreferences.value)) { done(false); return }
+  const previous = plannerPreferences.value
+  plannerPreferences.value = normalizePlannerPreferences(preferences)
+  if (!persistPlannerSnapshot()) { plannerPreferences.value = previous; done(false); return }
+  if (!schedulePending.value) { done(!scheduleState.value.error); return }
+  pendingRoutineSave.value = { context, done, session: workspaceSession.value }
+}
+watch(() => [schedulePending.value, scheduleState.value.error, workspaceSession.value, workspace.value.activePlanId], () => {
+  const pending = pendingRoutineSave.value
+  if (!pending) return
+  const current = sameRoutineContext(pending.context) && pending.session === workspaceSession.value
+  if (current && schedulePending.value && !scheduleState.value.error) return
+  pendingRoutineSave.value = null
+  pending.done(current && !scheduleState.value.error)
+})
 function applyPlannerSnapshot(snapshot) {
   closeScheduleAction()
   plannerPreferences.value = snapshot?.preferences || normalizePlannerPreferences()
@@ -1137,7 +1166,7 @@ function resetSavedSchedule() {
 async function setPlannerStep(step, validate = true) {
   if (!plannerSteps.some(item => item.id === step)) return
   if (validate && plannerStep.value === 'conditions' && step === 'comparison') {
-    const invalid = [...(plannerConditionsRef.value?.querySelectorAll('input, select') || [])].find(input => !input.disabled && !input.checkValidity())
+    const invalid = [...(plannerConditionsRef.value?.querySelectorAll('.goal-conditions input, .reserve-details input') || [])].find(input => !input.matches(':disabled') && !input.checkValidity())
     if (invalid) { await nextTick(); invalid.reportValidity(); return }
   }
   closeGoalDatePicker(false)
@@ -1179,9 +1208,7 @@ function adoptExactPlan(outcome) {
     planError.value = ''; planNotice.value = outcome.status === 'optimal' ? '已采用全局最优方案，并保留此前日期与未来手工安排' : '已采用当前可行方案，尚未证明全局最优'
   } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerPreferences.value = previousPreferences; planError.value = '方案采用失败：' + err.message }
 }
-function setStrategy(value) { strategy.value = value; persistPlannerSnapshot() }
-function savePreferences() { plannerPreferences.value = normalizePlannerPreferences(plannerPreferences.value); persistPlannerSnapshot() }
-function changePreference(key, delta) { plannerPreferences.value = normalizePlannerPreferences({ ...plannerPreferences.value, [key]: (Number(plannerPreferences.value[key]) || 0) + delta }); persistPlannerSnapshot() }
+function setStrategy(value) { if (scheduleActionBlocked.value) return; strategy.value = value; persistPlannerSnapshot() }
 function moveRosterMember(id, delta) {
   if (cloudBlocked.value || schedulePending.value) return
   const ids = [...orderedRosterIds.value]
@@ -1423,7 +1450,7 @@ function handleInventoryEvent(message) {
   if (['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) scheduleInventoryRefresh(message)
 }
 
-watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false }, { immediate: true })
+watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false; dailySourcePreview.value = null; goalMode.value = false; goalDays.value = 10; goalInitialExtra.value = 0; goalReserveSources.value = []; closeGoalDatePicker(false) }, { immediate: true })
 watch(() => [props.accountId, props.isLoggedIn, props.refreshKey, props.active], () => { if (props.active) { syncPlannerClock(); emit('refresh-operators'); loadTargets(); loadInventory() } }, { immediate: true })
 watch(cloudSnapshot, applyPlannerSnapshot)
 watch(() => [plannerStep.value, goalMode.value], ([step, mode]) => { if (step !== 'conditions' || !mode) closeGoalDatePicker(false) })
@@ -1577,13 +1604,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planning-panel-heading p { color: var(--ink-60); }
 .conditions-workspace.planning-panel { overflow: visible; }
 .conditions-account { border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--tea); }
-.condition-module { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--cream); }
-.condition-module-heading h3 { color: var(--ink); }
-.condition-module-heading p { color: var(--ink-60); }
-.condition-letter { border-radius: 50%; color: var(--surface); background: var(--accent); }
-.core-setting { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-.preference-help summary { color: var(--ink-60); cursor: pointer; }
-.preference-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .planning-mode button { border: 1px solid var(--planner-line); border-radius: 9px; background: var(--cream); color: var(--tea); cursor: pointer; }
 .planning-mode button.active { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .planning-mode button.goal-mode { border-color: #c8b2d6; background: #faf6fc; color: #7e6699; }
@@ -1708,3 +1728,4 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 </style>
 <style scoped src="./operatorGrowthTrackerDesktop.css"></style>
 <style scoped src="./operatorGrowthTrackerMobile.css"></style>
+<style scoped src="./plannerConditionCards.css"></style>

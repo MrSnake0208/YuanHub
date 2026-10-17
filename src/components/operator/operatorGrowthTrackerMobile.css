@@ -469,47 +469,15 @@ button { touch-action: manipulation; }
   .status-rule { padding: 4px 0; }
 }
 
-/* 规划条件按容器宽度重排，避免侧栏占位后继续硬挤三列。 */
-.conditions-account { flex: none; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
+/* 规划条件首页仅承载策略和摘要；详细字段在按需面板编辑。 */
+.conditions-account { flex: 0 1 auto; padding: 5px 8px; font-size: 11px; overflow-wrap: anywhere; }
 .conditions-content { display: grid; min-width: 0; gap: 14px; padding: 0 18px 16px; }
-.condition-module { min-width: 0; padding: 12px; }
-.condition-module-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.condition-module-heading h3 { margin: 0; font: 800 15px/1.4 var(--font-s); }
-.condition-module-heading p { margin: 0; font-size: 11px; }
-.condition-letter { display: grid; flex: none; width: 26px; height: 26px; place-items: center; font: 700 17px var(--font-d); }
-.core-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; align-items: start; }
-.core-setting { min-width: 0; padding: 12px; }
-.core-setting .settings-block-head { flex-wrap: wrap; gap: 4px 8px; }
-.core-setting .settings-block-head h3 { margin: 0; font-size: 14px; }
-.core-setting .settings-block-head span { font-size: 11px; }
-.core-setting .strategy-switch { grid-template-columns: auto auto; border-radius: 8px; }
-.core-setting .strategy-switch button { padding: 7px 6px; font-size: 12px; line-height: 1.5; white-space: nowrap; }
-.core-setting .setting-help { margin: 8px 0 0; font-size: 12px; }
-.core-setting .setting-line { margin-top: 0; gap: 8px; }
-.core-setting .setting-line label { flex: none; font-size: 13px; white-space: nowrap; }
-.core-setting .counter { flex: none; }
-.core-setting .counter input { width: 42px; font-size: 13px; }
-.core-setting .counter button { width: 28px; }
-.core-setting .settings-fields { gap: 8px; }
-.core-setting .goal-calendar-heading { gap: 4px; }
-.core-setting .goal-calendar-heading button { min-width: 28px; min-height: 32px; }
-.core-setting .goal-calendar-heading strong { font-size: 12px; }
-.core-setting .training-levels { gap: 6px; }
-.core-setting .training-levels label { gap: 8px; font-size: 12px; white-space: nowrap; }
-.core-setting .training-level-select { flex: 1 1 100px; min-width: 0; width: auto; }
-.preference-help { margin-top: 10px; font-size: 11px; }
 @media (max-width: 640px) {
-  .conditions-workspace .planning-panel-heading { padding: 14px 12px 10px; gap: 8px; }
+  .conditions-workspace .planning-panel-heading { padding: 14px 12px 10px; gap: 8px; flex-wrap: wrap; }
   .conditions-workspace .planning-panel-heading > div { flex: 1 1 160px; }
-  .conditions-workspace .planning-panel-heading p { display: none; }
+  .conditions-workspace .planning-panel-heading p { margin-top: 4px; }
   .conditions-workspace .planning-mode { margin: 0 12px 12px; max-width: none; gap: 6px; }
-  .conditions-workspace .planning-mode button { min-height: 36px; padding: 6px; gap: 4px; font-size: 12px; }
+  .conditions-workspace .planning-mode button { min-height: 44px; padding: 6px 8px; gap: 4px; font-size: 12px; }
   .conditions-content { padding: 0 12px 12px; gap: 12px; }
-  .condition-module { padding: 10px; }
-  .condition-module-heading p { display: none; }
-  .core-settings-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .core-setting { padding: 10px; }
-  .core-setting .strategy-switch button { min-height: 34px; }
-  .core-setting .counter input, .core-setting .counter button { min-height: 34px; }
 }
 }

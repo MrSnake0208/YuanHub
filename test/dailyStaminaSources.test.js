@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { monthlyCardTiers } from '../src/data/monthlyCard.js'
 import { emptyStaminaSources, resolveDailyStaminaGains, validateStaminaSources, withSourcePeriod } from '../src/data/dailyStaminaSources.js'
-import { buildRecommendedPlan, createGain, createSpend, normalizePlannerPreferences, normalizePlannerSnapshot, planTotals, simulatePlanner } from '../src/data/cultivationPlanner.js'
+import { buildRecommendedPlan, clonePlannerValue, createGain, createSpend, normalizePlannerPreferences, normalizePlannerSnapshot, planTotals, simulatePlanner } from '../src/data/cultivationPlanner.js'
 import { prepareExactPlanner } from '../src/data/exactPlanner.js'
 import { applyDailySourcesToSchedule, createFixedSchedule, fixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
 import { emptyTrainingWorkspace } from '../src/data/operatorTrainingPlans.js'
@@ -78,7 +78,8 @@ test('暂时无体力时仍等待未来生效月卡，不误判整个计划不�
 })
 
 test('未来应用不修改过去或开始日前记录，默认保留手工日期，允许单日覆写，重算不丢来源', () => {
-  const input = context(), manual = { gains: [...free(), createGain('gift', { value: 7 })], spends: [createSpend('luoyang', { value: 1 })] }
+  // 已保存手工日为 JSON，不包含构造器返回的 undefined 可选字段。
+  const input = context(), manual = clonePlannerValue({ gains: [...free(), createGain('gift', { value: 7 })], spends: [createSpend('luoyang', { value: 1 })] })
   const plans = { '2026-10-19': manual }
   const previous = createFixedSchedule({ ...input, date: '2026-10-16' }, plans)
   const frozen = JSON.stringify(previous)
@@ -102,7 +103,7 @@ test('未来应用不修改过去或开始日前记录，默认保留手工日�
 
 test('明确选择替换手工来源时保留一次性获取和支出，月卡与固定来源只算一次', () => {
   const sources = cardSources(); sources.fixedSources.push({ id: 'event', label: '每日活动', value: 10, enabled: true })
-  const manual = { gains: [...free(), createGain('event', { value: 99 }), createGain('gift', { value: 7 })], spends: [createSpend('luoyang', { value: 1 })] }
+  const manual = clonePlannerValue({ gains: [...free(), createGain('event', { value: 99 }), createGain('gift', { value: 7 })], spends: [createSpend('luoyang', { value: 1 })] })
   const previous = createFixedSchedule(context(), { [today]: manual })
   const next = applyDailySourcesToSchedule(previous, { [today]: manual }, sources, today, today, true)
   assert.equal(planTotals(next.manualPlans[today]).gains, 505)
