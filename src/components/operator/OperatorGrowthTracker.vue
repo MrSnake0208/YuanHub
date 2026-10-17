@@ -265,12 +265,15 @@
               </section>
             </aside>
             <div class="editor-main">
-              <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel" tabindex="-1" aria-label="规划条件">
-                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>设定培养目标、体力偏好与可刷层数。</p></div></header>
+              <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel conditions-workspace" tabindex="-1" aria-label="规划条件">
+                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>设置培养目标、体力来源与可刷层数，生成后在「方案对比」中查看结果。</p></div><span class="conditions-account">子账号来源共用</span></header>
   <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
-<section id="planning-conditions" class="settings-panel">
-<PlannerDailySources v-show="!goalMode" class="settings-block" :sources="workspace.staminaSources" :account-id="accountId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
-<div v-if="goalMode" class="settings-block goal-conditions">
+<section id="planning-conditions" class="conditions-content">
+<section class="condition-module core-conditions" aria-labelledby="core-conditions-title">
+  <header class="condition-module-heading"><span class="condition-letter" aria-hidden="true">A</span><h3 id="core-conditions-title">核心规划设置</h3><p>决定培养方案的基础条件</p></header>
+  <div class="core-settings-grid">
+
+<div v-if="goalMode" class="core-setting goal-conditions">
   <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
   <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title" aria-describedby="goal-date-picker-description">
     <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4><p id="goal-date-picker-description">希望最晚在这一天完成当前清单的养成。</p></header>
@@ -282,7 +285,8 @@
   <p class="goal-completion-date">截止日期：<time :datetime="goalCompletionDate">{{ formatLongDate(goalCompletionDate) }}</time></p>
   <p class="goal-date-help">日期按“含今天”换算，最多支持 90 天。</p>
   <div class="goal-shortcuts"><button v-for="days in [7, 10, 14, 21]" :key="days" type="button" :class="{ active: Number(goalDays) === days }" @click="goalDays = days">{{ days }} 天</button></div>
-</div><div v-if="!goalMode" class="settings-block"><div class="settings-block-head"><h3>培养策略</h3><span>{{ strategy === 'priority' ? '顺序参与规划' : '清单仅用于展示' }}</span></div><div class="strategy-switch"><button type="button" :class="{ active: strategy === 'overall' }" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下一步方案对比沿用此策略。</p></div><div class="settings-block"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div></div><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></div><div class="settings-block training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<PlannerSelect class="training-level-select" :model-value="workspace.trainingLevels[group.id]" :options="group.stages.map(stage => ({ value: stage.level, label: stage.name }))" :label="group.name + '最高层'" :disabled="cloudBlocked" @update:model-value="setTrainingLevel(group.id, $event)" /></label></div></div><section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
+</div><div v-if="!goalMode" class="core-setting"><div class="settings-block-head"><h3>培养策略</h3></div><div class="strategy-switch" role="group" aria-label="培养策略"><button type="button" :class="{ active: strategy === 'overall' }" :aria-pressed="strategy === 'overall'" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" :aria-pressed="strategy === 'priority'" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下一步方案对比沿用此策略。</p></div><div class="core-setting"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)"><Minus :size="16" aria-hidden="true" /></button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)"><Plus :size="16" aria-hidden="true" /></button></div></div></div><details class="preference-help"><summary>体力与花费说明</summary><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></details></div><div class="core-setting training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<PlannerSelect class="training-level-select" :model-value="workspace.trainingLevels[group.id]" :options="group.stages.map(stage => ({ value: stage.level, label: stage.name }))" :label="group.name + '最高层'" :disabled="cloudBlocked" @update:model-value="setTrainingLevel(group.id, $event)" /></label></div></div></div>
+<section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
   <div class="reserve-management-heading"><div><h3 id="reserve-management-title">体力储备</h3><p>已到账体力用于第一天；未领取储备会安排到需要的日期，每笔一次领完。</p></div><span class="reserve-total">待领取 {{ goalReserveSources.length }} 笔 · {{ goalReserveSources.reduce((sum, source) => sum + Math.max(0, Number(source.amount) || 0), 0) }} 体力</span></div>
   <div class="reserve-management-body">
     <div class="reserve-initial"><label for="goal-initial-extra">起始日额外体力</label><div class="reserve-amount"><input id="goal-initial-extra" type="number" min="0" max="99999" step="1" v-model.number.lazy="goalInitialExtra" /><span>体力</span></div><p>已经到账，仅第一天可用，不跨日结转。</p></div>
@@ -295,7 +299,10 @@
       </div></div>
     </div>
   </div>
-</section></section>
+</section>
+</section>
+<PlannerDailySources v-show="!goalMode" :sources="workspace.staminaSources" :account-id="accountId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
+</section>
                 <footer class="planner-step-actions">
                   <button type="button" class="workspace-link" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" /></button>
                   <button type="button" class="action-button primary" @click="setPlannerStep('comparison')">下一步：方案对比<ChevronRight :size="16" aria-hidden="true" /></button>
@@ -1131,7 +1138,7 @@ async function setPlannerStep(step, validate = true) {
   if (!plannerSteps.some(item => item.id === step)) return
   if (validate && plannerStep.value === 'conditions' && step === 'comparison') {
     const invalid = [...(plannerConditionsRef.value?.querySelectorAll('input, select') || [])].find(input => !input.disabled && !input.checkValidity())
-    if (invalid) { invalid.reportValidity(); return }
+    if (invalid) { await nextTick(); invalid.reportValidity(); return }
   }
   closeGoalDatePicker(false)
   addMenu.value = ''; pendingSpendChannel.value = ''
@@ -1568,6 +1575,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
  .planning-panel { border: 1px solid var(--planner-line); border-radius: 14px; background: var(--surface); }
 .planning-panel-heading h3 { color: var(--tea); }
 .planning-panel-heading p { color: var(--ink-60); }
+.conditions-workspace.planning-panel { overflow: visible; }
+.conditions-account { border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--tea); }
+.condition-module { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--cream); }
+.condition-module-heading h3 { color: var(--ink); }
+.condition-module-heading p { color: var(--ink-60); }
+.condition-letter { border-radius: 50%; color: var(--surface); background: var(--accent); }
+.core-setting { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.preference-help summary { color: var(--ink-60); cursor: pointer; }
+.preference-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .planning-mode button { border: 1px solid var(--planner-line); border-radius: 9px; background: var(--cream); color: var(--tea); cursor: pointer; }
 .planning-mode button.active { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .planning-mode button.goal-mode { border-color: #c8b2d6; background: #faf6fc; color: #7e6699; }
@@ -1615,18 +1631,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .toolbar-button.active { border-color: var(--planner-deep); background: #f6ecdc; }
 .toolbar-button.goal { color: #7e6699; }
 .toolbar-button.goal.active { border-color: #c8b2d6; background: #f0e8f6; }
-.settings-block + .settings-block { border-left: 1px solid var(--planner-line); }
 .settings-block-head h3 { color: var(--ink); }
 .settings-block-head span { color: var(--planner-muted); }
 .setting-help { color: var(--planner-muted); }
 .goal-field-help { color: var(--planner-muted); }
 
-@media (max-width: 900px) {
-  .settings-block:last-child { border-top: 1px solid var(--planner-line); border-left: 0; }
-}
-@media (max-width: 640px) {
-  .settings-block + .settings-block, .settings-block:last-child { border-top: 1px solid var(--planner-line); border-left: 0; }
-}
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; }.progress-track i, .growth-track i { transition: none; } }
 .compare-option { color: var(--ink); cursor: pointer; }.compare-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { installViewport } from '../test-support/viewport.js'
 import { h } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -8,6 +8,10 @@ import { getOperatorGrowthTargets } from '../src/api/operator.js'
 import { getCurrent, listRecords } from '../src/api/inventory.js'
 import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
 import PlannerDailySources from '../src/components/operator/PlannerDailySources.vue'
+import PlannerSelect from '../src/components/operator/PlannerSelect.vue'
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+afterEach(() => { HTMLElement.prototype.scrollIntoView = originalScrollIntoView })
 
 vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
   const actual = await importOriginal()
@@ -19,6 +23,8 @@ vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // jsdom 不实现布局滚动；这里仅验证步骤切换和原有数据事件。
+  HTMLElement.prototype.scrollIntoView = vi.fn()
   plannerApi.putTrainingWorkspace.mockReset()
   plannerApi.putStaminaSchedule.mockReset()
   plannerApi.getTrainingWorkspace.mockResolvedValue({
@@ -32,6 +38,68 @@ beforeEach(() => {
   getOperatorGrowthTargets.mockResolvedValue({ items: [] })
   getCurrent.mockResolvedValue([])
   listRecords.mockResolvedValue({ items: [] })
+})
+
+it('规划条件重排后策略、偏好、层数和目标天数仍接入原规划状态，培养清单及后两步保留', async () => {
+  plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: 2 }))
+  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => {
+    const saved = { ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }
+    plannerApi.getStaminaSchedule.mockResolvedValue(saved)
+    return saved
+  })
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  const click = async text => { await wrapper.findAll('button').find(button => button.text().includes(text)).trigger('click'); await flushPromises() }
+  await click('调整设置')
+  expect(wrapper.get('#core-conditions-title').text()).toBe('核心规划设置')
+  expect(wrapper.get('#daily-sources-title').text()).toBe('体力来源配置')
+  expect(wrapper.get('#source-application-title').text()).toBe('应用到未来日程')
+  expect(wrapper.get('.edit-roster').text()).toContain('测试密探')
+  const sources = wrapper.getComponent(PlannerDailySources)
+  const invalidAmount = sources.get('[aria-label="月卡每日奖励体力"]')
+  await invalidAmount.setValue(-1)
+  expect(sources.get('[aria-controls="monthly-card-editor"]').attributes('aria-expanded')).toBe('false')
+  const report = vi.spyOn(invalidAmount.element, 'reportValidity').mockImplementation(() => {
+    expect(sources.get('[aria-controls="monthly-card-editor"]').attributes('aria-expanded')).toBe('true')
+    return false
+  })
+  await click('下一步：方案对比')
+  expect(report).toHaveBeenCalledOnce()
+  expect(wrapper.get('#planner-step-conditions').isVisible()).toBe(true)
+  await sources.findAll('button').find(button => button.text() === '重新载入').trigger('click')
+  await click('优先完成密探')
+  expect(wrapper.get('[aria-label="培养策略"]').findAll('button')[1].attributes('aria-pressed')).toBe('true')
+  await wrapper.get('#pref-luoyang').setValue(2); await flushPromises()
+  await wrapper.get('#pref-shouchun').setValue(1); await flushPromises()
+  await wrapper.get('#pref-purchase').setValue(3); await flushPromises()
+  const level = wrapper.findAllComponents(PlannerSelect).find(select => select.classes().includes('training-level-select'))
+  const option = level.props('options')[0]
+  level.vm.$emit('update:modelValue', option.value); await flushPromises()
+  expect(level.props('modelValue')).toBe(option.value)
+  expect(plannerApi.putTrainingWorkspace).toHaveBeenCalledTimes(1)
+  const settings = wrapper.getComponent(PlannerDailySources).vm.$
+  await click('按目标天数规划')
+  expect(wrapper.find('[aria-label="培养策略"]').exists()).toBe(false)
+  expect(wrapper.get('#goal-days').element.value).toBe('10')
+  expect(wrapper.get('#reserve-management-title').text()).toBe('体力储备')
+  await wrapper.get('#goal-days').setValue(14)
+  await wrapper.get('#goal-initial-extra').setValue(42)
+  await wrapper.get('[aria-label="添加储备"]').trigger('click'); await flushPromises()
+  expect(wrapper.findAll('.reserve-pack-row')).toHaveLength(1)
+  expect(wrapper.getComponent(PlannerDailySources).vm.$).toBe(settings)
+  await click('常规日程规划')
+  expect(wrapper.get('#pref-luoyang').element.value).toBe('2')
+  expect(wrapper.get('#pref-shouchun').element.value).toBe('1')
+  expect(wrapper.get('#pref-purchase').element.value).toBe('3')
+  await click('下一步：方案对比')
+  expect(wrapper.get('#planner-step-comparison').isVisible()).toBe(true)
+  expect(wrapper.get('#planner-step-conditions').isVisible()).toBe(false)
+  expect(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2]).toMatchObject({ strategy: 'priority', preferences: { luoyang: 2, shouchun: 1, purchase_count: 3 } })
+  await click('编辑当前日程')
+  expect(wrapper.get('#planner-step-daily').isVisible()).toBe(true)
 })
 
 it('真实追踪工作台保存子账号月卡后预览并确认应用，初始化与预览均不写云端日程', async () => {
