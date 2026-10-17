@@ -23,6 +23,7 @@
                 <details class="operator-share-privacy"><summary><ShieldCheck :size="20" aria-hidden="true" /><span><strong>公开范围与隐私说明</strong><small>仅公开已开启的内容，不含备注、目标、计划或 OCR 记录。</small></span><ChevronDown class="operator-share-chevron" :size="16" aria-hidden="true" /></summary>
                   <p>两个视图共用分享码。拿到任一链接的人都能查看已开启的内容，无需登录；全部关闭后旧码失效。</p>
                   <p>密探 BOX 包含档案中原有的佩戴星石；关闭星石背包分享，不会移除这些信息。</p>
+                  <p>自定义标签默认私有；主动开启“公开自定义标签”后，持有链接的人可查看已公开密探的标签并筛选。置顶与分组顺序不公开，关闭密探 BOX 会同时撤销标签公开。</p>
                   <p>星石背包公开云端已保存的全部星石，本机未同步修改不会出现在分享中。</p>
                 </details>
               </div>

@@ -86,6 +86,7 @@
         v-model:prof-filter="profFilter"
         v-model:sub-prof-filter="subProfFilter"
         v-model:status-filter="statusFilter"
+        v-model:tag-filter="tagFilter"
         class="share-filter-dossier"
         context-label="分享密探"
         description="筛选后按品质、等级、化极、属性与实装顺序排列"
@@ -95,6 +96,7 @@
         :sub-prof-options="availableSubProfOptions"
         :status-options="shareStatusOptions"
         :status-counts="shareStatusCounts"
+        :tag-options="shareTagOptions"
         :prof-icon="profIcon"
         :has-filters="hasFilters"
         searchable
@@ -256,6 +258,9 @@
                 </div>
               </div>
             </div>
+            <div v-if="entry.tags.length" class="share-ledger-tags" aria-label="公开自定义标签">
+              <span v-for="tag in entry.tags" :key="tag.id">{{ tag.name }}</span>
+            </div>
           </article>
         </div>
       </div>
@@ -331,6 +336,7 @@ const searchQuery = ref('')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
 const statusFilter = ref('all')
+const tagFilter = ref('')
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 const profOptions = AGENT_PROFS
 const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
@@ -347,10 +353,20 @@ const shareStatusCounts = computed(function () {
   }, { growing: 0, graduated: 0, inactive: 0, discarded: 0 })
 })
 const filteredEntries = computed(function () {
-  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value)
+  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value, tagFilter.value)
+})
+const shareTagOptions = computed(function () {
+  const tags = new Map()
+  for (const entry of entries.value) {
+    for (const tag of entry.tags) {
+      if (!tags.has(tag.id)) tags.set(tag.id, { value: tag.id, label: tag.name, count: 0 })
+      tags.get(tag.id).count++
+    }
+  }
+  return Array.from(tags.values())
 })
 const hasFilters = computed(function () {
-  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all' || statusFilter.value !== 'all')
+  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all' || statusFilter.value !== 'all' || tagFilter.value)
 })
 let loadSeq = 0
 
@@ -378,6 +394,7 @@ function clearFilters() {
   profFilter.value = 'all'
   subProfFilter.value = 'all'
   statusFilter.value = 'all'
+  tagFilter.value = ''
 }
 
 async function loadShare() {
@@ -404,6 +421,7 @@ async function loadShare() {
     if (seq !== loadSeq) return
     share.value = shareData || { entries: {} }
     entries.value = mergeOperatorShareEntries(share.value, catalog)
+    if (tagFilter.value && !entries.value.some(entry => entry.tags.some(tag => tag.id === tagFilter.value))) tagFilter.value = ''
     status.value = entries.value.length ? 'ready' : 'empty'
   } catch (err) {
     if (seq !== loadSeq) return
@@ -638,6 +656,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .current-ledger-meta span:last-child { color: var(--yellow) }
 .agent-ledger-card { color: var(--ink); border: 1px solid var(--line); border-top: 2px solid var(--ledger-rarity-accent); border-radius: 12px; background: linear-gradient(180deg, var(--surface), var(--cream)); box-shadow: 0 8px 24px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .8); cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease) }
 .agent-ledger-card--share { cursor: default }
+.share-ledger-tags span { border: 1px solid var(--line); border-radius: 999px; background: var(--cream); color: var(--tea) }
 .agent-ledger-card:hover { box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card.status-growing { border-left: 3px solid #6f9f76 }

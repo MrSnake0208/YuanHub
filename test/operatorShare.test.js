@@ -108,6 +108,27 @@ test('分享条目筛选支持名称、别名、ID及属性职业 AND 组合并�
   assert.deepEqual(filterOperatorShareEntries(entries, '没有这个', 'all', 'all'), [])
 })
 
+test('公开标签只关联分享中的密探，支持多标签及其他条件取交集，旧响应保持无标签', () => {
+  const catalog = { operators: [
+    { id: 'a', name: '甲', prof: ['阳'], sub_prof: ['龙盾'] },
+    { id: 'b', name: '乙', prof: ['阴'], sub_prof: ['破军'] },
+  ] }
+  const share = { entries: { a: { growth_state: 'active' }, b: { growth_state: 'graduated' } }, tags: [
+    { id: 'main', name: '主力', operator_ids: ['a', 'b', 'not-shared'] },
+    { id: 'backup', name: '备用', operator_ids: ['b'] },
+  ] }
+  const entries = mergeOperatorShareEntries(share, catalog)
+  assert.deepEqual(entries.find(entry => entry.id === 'a').tags, [{ id: 'main', name: '主力' }])
+  assert.equal(entries.find(entry => entry.id === 'b').tags.length, 2)
+  assert.deepEqual(filterOperatorShareEntries(entries, '甲', '阳', '龙盾', 'growing', 'main').map(entry => entry.id), ['a'])
+  assert.deepEqual(filterOperatorShareEntries(entries, '甲', '阳', '龙盾', 'growing', 'backup'), [])
+  assert.deepEqual(filterOperatorShareEntries(entries, '', 'all', 'all', 'graduated', 'backup').map(entry => entry.id), ['b'])
+  assert.deepEqual(filterOperatorShareEntries(entries, '', 'all', 'all', 'all', 'missing'), [])
+  const legacy = mergeOperatorShareEntries({ entries: share.entries }, catalog)
+  assert.equal(legacy.every(entry => entry.tags.length === 0), true)
+  assert.equal(filterOperatorShareEntries(legacy, '', 'all', 'all').length, 2)
+})
+
 test('分享卡片不按养成状态分层，直接按稀有度、等级、化极、属性与实装顺序排序', () => {
   const entries = [
     { id: 'char_003', name: '丙', rarity: 5, prof: ['阴'], growth: { growth_state: 'skip', level: 100, star_level: 31 } },
