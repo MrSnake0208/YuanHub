@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { ChevronUp, CircleAlert } from '@lucide/vue'
 import Tracker from '../src/components/operator/OperatorGrowthTracker.vue'
 import * as plannerApi from '../src/api/operatorPlanner.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../src/api/operator.js'
@@ -73,11 +74,31 @@ it.each([null, false, true])('stage25+%s只有要求觉醒且已确认时显示�
   plannerApi.getTrainingWorkspace.mockResolvedValue(workspace('custom', huaji(25, true)))
   const quickUpgrade = vi.fn()
   const wrapper = await render(huaji(25, awakened), {}, { quickUpgrade })
+  expect(wrapper.get('.growth-current-star').text()).toBe(awakened === true ? '已觉醒' : '5 星')
   expect(wrapper.get('.growth-card').classes().includes('complete')).toBe(awakened === true)
   expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain(awakened === true ? '100%' : '96%')
   const button = wrapper.get('[aria-label*="快捷提升化极"]')
+  expect(button.text()).toBe('')
+  expect(button.find('svg').exists()).toBe(true)
   expect(button.element.disabled).toBe(awakened === true)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
   if (awakened !== true) { await button.trigger('click'); expect(quickUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: 'op' }), 'star', 1) }
+})
+
+it.each(['up', 'alert'])('五星觉醒入口使用父页面的%s图标状态和动作说明，不显示旧确认文字', async icon => {
+  const quickUpgrade = vi.fn()
+  const wrapper = await render(huaji(), {}, { quickUpgrade, quickUpgradeState: () => ({
+    visible: true, disabled: false, icon, label: '觉醒', title: '查看觉醒材料并确认扣除库存',
+  }) })
+  const button = wrapper.get('[aria-label="测试密探快捷提升化极：觉醒"]')
+  expect(button.text()).toBe('')
+  expect(button.attributes('title')).toBe('查看觉醒材料并确认扣除库存')
+  expect(button.findComponent(icon === 'up' ? ChevronUp : CircleAlert).exists()).toBe(true)
+  await button.trigger('click')
+  expect(quickUpgrade).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'op', huaji: huaji() }), 'star', 1)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
 })
 
 it('只选五星可完成，觉醒目标切回五星不会把未知自动记成false', async () => {
