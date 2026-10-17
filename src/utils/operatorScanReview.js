@@ -1,11 +1,11 @@
 import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax } from './operatorHuaji.js'
 import { isMovieOperator } from './operatorForms.js'
-import { getMaxEliteForLevel, OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from './operatorGrowthRules.js'
+import { getMaxEliteForLevel, OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX, operatorLevelBreakthroughStage, validLevelBreakthroughStage } from './operatorGrowthRules.js'
 import { OPERATOR_ODDITY_KEYS, normalizeOperatorOdditySchema, operatorOddityCurrentError } from './operatorCombatStats.js'
 import { DISC_LOADOUT_LIMIT, DISC_SELECTION_LIMIT, discNameOf } from './operatorDiscLoadouts.js'
 
 const clone = value => value == null ? value : JSON.parse(JSON.stringify(value))
-const labels = { level: '等级', elite: '修为', huaji: '化极与觉醒', star_level: '化极', basic: '等级与修为', oddities: '奇闻属性', disc_loadouts: '命盘', equipment: '已装备星石', equipped_star_stones: '已装备星石', combat_stats: '战斗观测', match: '密探身份' }
+const labels = { level_breakthrough_stage: '等级突破', breakthrough: '等级突破', level: '等级', elite: '修为', huaji: '化极与觉醒', star_level: '化极', basic: '等级与修为', oddities: '奇闻属性', disc_loadouts: '命盘', equipment: '已装备星石', equipped_star_stones: '已装备星石', combat_stats: '战斗观测', match: '密探身份' }
 function reviewHuaji(entry, catalog) {
   const legacy = entry?.star_level ?? entry?.starLevel
   if (typeof entry?.huaji?.owned === 'boolean' || (typeof legacy === 'number' && Number.isInteger(legacy) && legacy >= 0)) return operatorHuaji({ ...catalog, ...entry })
@@ -22,6 +22,7 @@ export function operatorReviewField(issue) {
   if (oddity) return 'oddity-' + oddity[1]
   if (/star_level|huaji/.test(path)) return 'huaji'
   if (/disc_loadouts/.test(path)) return 'disc_loadouts'
+  if (path === 'level_breakthrough_stage') return path
   if (path === 'level' || path === 'elite') return path
   return ''
 }
@@ -43,6 +44,7 @@ export function operatorReviewIssueText(issue) {
   }
   return ({
     invalid_star_level: '化极数值不在该密探的允许范围内，请重新选择星级和节点。',
+    invalid_level_breakthrough: '突破与等级不匹配，请对照游戏确认当前等级上限。',
     invalid_huaji: '化极或拥有状态不合法，请按游戏中的实际状态重新选择。',
     legacy_huaji_requires_review: '历史星级无法确定，请核对游戏后确认；不会自动拉满。',
     huaji_conflict: '化极与已确认的觉醒记录矛盾，请重新读回并核对。',
@@ -57,7 +59,7 @@ export function operatorReviewIssueText(issue) {
     invalid_game: '密探不属于当前游戏，请切换正确的游戏账号核对。',
     account_game_mismatch: '采集记录与目标账号的游戏不一致，请核对账号。',
     unknown_operator: '图鉴未找到该密探，请更新图鉴或重新采集。',
-    shared_growth_conflict: '本体与特殊形态的等级或修为不一致，请重新核对共享养成。',
+    shared_growth_conflict: '本体与特殊形态的等级、突破或修为不一致，请重新核对共享养成。',
   })[issue?.code] || message || '服务端未提供文字原因；原始错误码保留在技术详情中。'
 }
 
@@ -87,6 +89,7 @@ export function operatorReviewRows(review, catalog) {
   for (const key of ['level', 'elite']) {
     if (key in entry || status.basic === 'review' || status.basic === 'unavailable') add(key, 'basic', labels[key], entry[key], 'number', { max: key === 'level' ? OPERATOR_LEVEL_MAX : OPERATOR_ELITE_MAX })
   }
+  if ('level_breakthrough_stage' in entry || ['review', 'unavailable'].includes(status.breakthrough)) add('level_breakthrough_stage', 'breakthrough', labels.breakthrough, entry.level_breakthrough_stage ?? null, 'breakthrough', { value: entry.level_breakthrough_stage ?? null, level: entry.level })
   if ('huaji' in entry || 'star_level' in entry || ['review', 'unavailable'].includes(status.huaji)) {
     const facts = reviewHuaji(entry, catalog)
     add('huaji', 'huaji', labels.huaji, facts, 'huaji')
@@ -111,6 +114,7 @@ export function operatorReviewRows(review, catalog) {
 
 export function operatorReviewCurrentValue(row, raw, catalog) {
   if (!raw) return null
+  if (row.id === 'level_breakthrough_stage') return operatorLevelBreakthroughStage(raw)
   if (row.id === 'huaji') return reviewHuaji(raw, catalog)
   if (row.id === 'disc_loadouts') return raw.disc_loadouts ?? raw.discLoadouts ?? null
   if (row.id === 'equipment') return raw.star_stones ?? raw.starStones ?? null
@@ -134,6 +138,11 @@ export function operatorReviewValueLabel(value, id, catalog) {
 export function operatorReviewRowError(row, rows, catalog, current) {
   if (!row.included || !row.pending || !row.supported) return ''
   const value = row.kind === 'huaji' ? operatorReviewHuajiValue(row, current, catalog) : row.value
+  if (row.kind === 'breakthrough') {
+    const level = rows.find(item => item.id === 'level' && item.included)?.value ?? current?.level
+    if (value != null && level == null) return '请先确认并勾选等级'
+    return value == null || validLevelBreakthroughStage(level, value) ? '' : '突破与等级不匹配，请重新选择'
+  }
   if (row.kind === 'huaji') {
     if (typeof value?.owned !== 'boolean') return '请先确认是否拥有'
     if (![true, false, null].includes(value.awakened)) return '请选择觉醒状态'
@@ -185,7 +194,7 @@ export function buildOperatorReviewCorrection(review, rows, recordId, now, catal
   }
   if (entry.combat_stats) entry.section_status = { oddities: selected.filter(row => row.key).length === 3 ? 'ready' : 'partial' }
   // A manual correction records today's confirmation, while the original scan stays untouched.
-  return { ...clone(review.document), version: 4, exported_at: now,
+  return { ...clone(review.document), version: 5, exported_at: now,
     accounts: clone(review.document.accounts || []).filter(account => account.id === record.account_id), records: [{
     record_id: recordId, account_id: record.account_id, record_type: 'operator_snapshot', game: record.game,
     effective_at: now, snapshot_scope: 'listed', source_kind: 'manual', entries: [entry],
@@ -208,7 +217,7 @@ export function operatorReviewCanClose(response, review, document, complete) {
 
 export function operatorReviewDiagnostic(review) {
   const { entry } = operatorReviewSource(review)
-  const fields = new Set(['level', 'elite', 'huaji', 'star_level', 'combat_stats', 'disc_loadouts', 'equipped_star_stones', 'match'])
+  const fields = new Set(['level_breakthrough_stage', 'level', 'elite', 'huaji', 'star_level', 'combat_stats', 'disc_loadouts', 'equipped_star_stones', 'match'])
   return JSON.stringify({
     version: review.document.version, status: ['review', 'rejected'].includes(review.status) ? review.status : 'unknown',
     fields: Object.keys(entry).filter(key => fields.has(key)),

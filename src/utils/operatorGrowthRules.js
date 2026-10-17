@@ -38,3 +38,23 @@ export function getMaxEliteForLevel(level) {
   }
   return Math.min(OPERATOR_ELITE_MAX, maxElite)
 }
+
+// 整十级可在突破前后停留，不能仅凭等级替用户确认。
+export function isLevelBreakthroughBoundary(level) {
+  return Number.isInteger(Number(level)) && Number(level) >= 10 && Number(level) <= 90 && Number(level) % 10 === 0
+}
+
+export function inferredLevelBreakthroughStage(level) {
+  const n = Number(level)
+  return Number.isInteger(n) && n >= 1 && n <= 100 && !isLevelBreakthroughBoundary(n) ? Math.floor((n - 1) / 10) : null
+}
+
+export function validLevelBreakthroughStage(level, stage) {
+  const n = Number(level)
+  return typeof stage === 'number' && Number.isInteger(stage) && n >= 1 && n <= 100 && Number.isInteger(n) && Number(stage) >= Math.floor((n - 1) / 10) && Number(stage) <= Math.min(9, Math.floor(n / 10))
+}
+
+export function operatorLevelBreakthroughStage(entry) {
+  const stage = Object.prototype.hasOwnProperty.call(entry || {}, 'levelBreakthroughStage') ? entry.levelBreakthroughStage : entry?.level_breakthrough_stage
+  return validLevelBreakthroughStage(entry?.level, stage) ? Number(stage) : inferredLevelBreakthroughStage(entry?.level)
+}

@@ -295,7 +295,7 @@
                 class="btn primary" type="button" :disabled="importing || !organizationReady || !accountId" @click="previewOrganizationImport"
               >校验并预览分类</button>
               <button
-                v-else-if="[3, 4].includes(importDocumentVersion)"
+                v-else-if="[3, 4, 5].includes(importDocumentVersion)"
                 class="btn primary"
                 type="button"
                 :disabled="importing || !importText.trim() || !accountId"
@@ -1440,6 +1440,7 @@
                             growthTargetLabel(e, "level")
                           }}
                         </p>
+                        <OperatorLevelBreakthroughSelect v-model="ensureCardDraft(e).levelBreakthroughStage" :level="Number(cardGrowthValue(e, 'level')) || 0" :disabled="isGrowthPreviewBusy(e, 'level') || isGrowthExecuteBusy(e, 'level')" />
                         <label
                           v-if="showLevelBreakthroughOption(e, 5)"
                           class="ledger-breakthrough-toggle"
@@ -1447,6 +1448,7 @@
                             type="checkbox"
                             :checked="cardLevelBreakthrough(e)"
                             :disabled="
+                              operatorLevelBreakthroughStage(ensureCardDraft(e)) != null ||
                               isGrowthPreviewBusy(e, 'level') ||
                               isGrowthExecuteBusy(e, 'level')
                             "
@@ -2527,6 +2529,7 @@
           </div>
 
           <div ref="editorBodyEl" class="editor-body">
+            <OperatorLevelBreakthroughSelect v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
@@ -2536,6 +2539,7 @@
                     <input
                       type="number"
                       v-model.number="editForm.level"
+                      @input="editForm.levelBreakthroughStage = inferredLevelBreakthroughStage(editForm.level)"
                       inputmode="numeric"
                       min="0"
                       max="100"
@@ -3026,6 +3030,7 @@ import {
   matchesOperatorStatus,
   reconcileOperatorAnnotations,
 } from "../../utils/operatorAnnotations.js";
+import OperatorLevelBreakthroughSelect from "../../components/operator/OperatorLevelBreakthroughSelect.vue";
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
@@ -3034,6 +3039,8 @@ import {
   OPERATOR_LEVEL_MAX,
   OPERATOR_ELITE_MAX,
   getMaxEliteForLevel,
+  inferredLevelBreakthroughStage,
+  operatorLevelBreakthroughStage,
 } from "../../utils/operatorGrowthRules.js";
 import {
   OPERATOR_TAB_STORAGE_KEY,
@@ -3330,6 +3337,7 @@ const editForm = ref({
   elite: 1,
   starLevel: 0,
   level: 1,
+  levelBreakthroughStage: 0,
   discLoadouts: [],
   stones: {},
   combatStats: normalizeOperatorCombatStats({}),
@@ -4136,9 +4144,7 @@ function persistCombatStats(id) {
         curios: editForm.value.combatStats.curios,
         oddities: editForm.value.combatStats.oddities,
         source: editForm.value.combatStats.source,
-        observedInputs: {
-          signature: calculatedCombatStats.value.inputSignature,
-        },
+        observedInputs: editForm.value.combatStats.observedInputs,
         observedAt: editForm.value.combatStats.observedAt,
         rulesVersion: "wiki-panel-2026-03",
       }),
@@ -4269,6 +4275,7 @@ function normalizeEntry(e, odditySchema) {
           ? e.star_level
           : 0,
     level: e.level != null ? e.level : 0,
+    levelBreakthroughStage: operatorLevelBreakthroughStage(e),
     discs: e.discs || [],
     discLoadouts: e.discLoadouts || e.disc_loadouts || [],
     starStones: (e.starStones || e.star_stones || []).map(function (s) {
@@ -4306,6 +4313,7 @@ const combatStatsInput = computed(function () {
   return {
     operatorName: editingOp.value && editingOp.value.name,
     level: editForm.value.level,
+    levelBreakthroughStage: operatorLevelBreakthroughStage(editForm.value),
     elite: editForm.value.elite,
     starLevel: editForm.value.starLevel,
     huaji: { ...huaji, awakened: huaji.owned ? editForm.value.awakened : null },
@@ -4421,10 +4429,10 @@ const combatHpInputValue = computed(function () {
 
 function markCombatCorrectionCurrent() {
   const signature = combatInputSignature(combatStatsInput.value);
-  editForm.value.combatStats.observedInputs = { signature: signature };
+  editForm.value.combatStats.observedInputs = { level: editForm.value.level, levelBreakthroughStage: operatorLevelBreakthroughStage(editForm.value), signature: signature };
   editForm.value.combatStats.combatInputSignature = signature;
   editForm.value.combatStats.frontendObservedSignature = signature;
-  editForm.value.combatStats.observedStatus = "valid";
+  editForm.value.combatStats.observedStatus = operatorLevelBreakthroughStage(editForm.value) == null ? "unverified" : "valid";
 }
 
 function toggleAutomaticCombatStat(key) {
@@ -4482,7 +4490,7 @@ function oddityLimitTitle(key) {
 }
 
 function applyEditGrowthPreset(level, elite) {
-  Object.assign(editForm.value, { level, elite });
+  Object.assign(editForm.value, { level, elite, levelBreakthroughStage: level === editForm.value.level ? editForm.value.levelBreakthroughStage : inferredLevelBreakthroughStage(level) });
   editNotice.value = "已填入 " + level + "级 / 修为" + elite + "，请确认后保存";
   editNoticeError.value = false;
 }
@@ -5529,6 +5537,7 @@ function ensureCardDraft(entry) {
       [entry.id]: {
         revision: Number(entry.revision) || 0,
         level: Number(entry.level) || 0,
+        levelBreakthroughStage: operatorLevelBreakthroughStage(entry),
         elite: Number(entry.elite) || 0,
         star: cardStarLevel(entry),
         awakened: operatorHuaji(entry).awakened,
@@ -5552,6 +5561,7 @@ function cardDraftSnapshot(entry) {
   const combat = cardCombatDrafts.value[entry.id] || {};
   return JSON.stringify({
     level: Number(growth.level) || 0,
+    levelBreakthroughStage: operatorLevelBreakthroughStage(growth),
     elite: Number(growth.elite) || 0,
     star: Number(growth.star) || 0,
     awakened: growth.awakened,
@@ -5625,7 +5635,9 @@ function setGrowthInput(entry, field, event) {
     Number(event && event.target ? event.target.value : 0),
   );
   if (!Number.isFinite(value)) value = 0;
+  const before = draft[field];
   draft[field] = Math.max(0, Math.min(max, value));
+  if (field === "level" && before !== draft.level) draft.levelBreakthroughStage = inferredLevelBreakthroughStage(draft.level);
   if (field === "level" && draft.elite > getMaxEliteForLevel(draft.level))
     draft.elite = getMaxEliteForLevel(draft.level);
 }
@@ -5701,6 +5713,9 @@ watch(cardPopoverKey, (key, _previous, onCleanup) => {
 
 function cardLevelBreakthrough(entry) {
   if (!showLevelBreakthroughOption(entry, 5)) return false;
+  const draft = ensureCardDraft(entry);
+  const stage = operatorLevelBreakthroughStage(draft);
+  if (stage != null) return stage === Number(draft.level) / 10;
   return (
     Number(cardLevelBreakthroughs.value[entry.id]) ===
     Number(cardGrowthValue(entry, "level"))
@@ -5720,6 +5735,10 @@ function showLevelBreakthroughOption(entry, step) {
 
 function setCardLevelBreakthrough(entry, event) {
   if (!entry || !entry.id) return;
+  if (operatorLevelBreakthroughStage(ensureCardDraft(entry)) != null) {
+    if (event?.target) event.target.checked = cardLevelBreakthrough(entry);
+    return;
+  }
   const checked = Boolean(event && event.target && event.target.checked);
   cardLevelBreakthroughs.value = Object.assign(
     {},
@@ -5765,11 +5784,7 @@ function growthPreviewError(entry, field) {
 
 function growthPreviewAvailable(entry, field) {
   const preview = growthPreviewData(entry, field);
-  return !!(
-    preview &&
-    preview.available &&
-    growthPreviewHonorsBreakthroughSkip(entry, field)
-  );
+  return !!(preview && preview.available);
 }
 
 function growthPreviewRequirements(entry, field) {
@@ -5783,44 +5798,8 @@ function sharedGrowthCatalog(entry) {
   return catalogMap.value[entry.spOf || entry.id] || entry;
 }
 
-function levelBreakthroughMaterialIds(entry) {
-  const draft = ensureCardDraft(entry);
-  if (!draft) return new Set();
-  const withBreakthrough = calculateLevelRequirements(
-    draft.level,
-    growthTarget(entry, "level"),
-    firstSubProf(sharedGrowthCatalog(entry)),
-    false,
-  );
-  const withoutBreakthrough = calculateLevelRequirements(
-    draft.level,
-    growthTarget(entry, "level"),
-    firstSubProf(sharedGrowthCatalog(entry)),
-    true,
-  );
-  return new Set(
-    Object.keys(withBreakthrough.items || {}).filter(function (id) {
-      return !withoutBreakthrough.items || !withoutBreakthrough.items[id];
-    }),
-  );
-}
-
-function growthPreviewHonorsBreakthroughSkip(entry, field) {
-  if (field !== "level" || !cardLevelBreakthrough(entry)) return true;
-  const breakthroughIds = levelBreakthroughMaterialIds(entry);
-  return !growthPreviewRequirements(entry, field).some(function (item) {
-    return breakthroughIds.has(item && item.id);
-  });
-}
-
 function growthPreviewDisplayRequirements(entry, field) {
-  let requirements = growthPreviewRequirements(entry, field).slice();
-  if (field === "level" && cardLevelBreakthrough(entry)) {
-    const breakthroughIds = levelBreakthroughMaterialIds(entry);
-    requirements = requirements.filter(function (item) {
-      return !breakthroughIds.has(item && item.id);
-    });
-  }
+  const requirements = growthPreviewRequirements(entry, field).slice();
   if (field !== "level" || cardMaterialLoadedAccount.value !== accountId.value)
     return requirements;
   const bookIds = new Set([
@@ -5919,12 +5898,6 @@ function growthPreviewBlockingReasons(entry, field) {
   const visibleReasons = reasons.filter(function (reason) {
     return String((reason && reason.code) || "") !== "insufficient_inventory";
   });
-  if (preview && !growthPreviewHonorsBreakthroughSkip(entry, field)) {
-    visibleReasons.push({
-      code: "skip_breakthrough_unsupported",
-      message: "本次预览仍包含突破材料，为避免误扣，暂不能执行",
-    });
-  }
   return visibleReasons;
 }
 
@@ -6098,6 +6071,7 @@ function applyUpgradeOperator(entry, raw) {
   const preserveDraft =
     !!cardGrowthDrafts.value[entry.id] && cardHasDraft(entry);
   entry.level = Number(raw.level) || 0;
+  entry.levelBreakthroughStage = operatorLevelBreakthroughStage(raw);
   entry.elite = Number(raw.elite) || 0;
   entry.starLevel =
     Number(raw.star_level != null ? raw.star_level : raw.starLevel) || 0;
@@ -6114,6 +6088,7 @@ function applyUpgradeOperator(entry, raw) {
   if (draft) {
     draft.revision = Number(entry.revision) || 0;
     draft.level = entry.level;
+    draft.levelBreakthroughStage = entry.levelBreakthroughStage;
     draft.elite = entry.elite;
     draft.star = cardStarLevel(entry);
     draft.awakened = operatorHuaji(entry).awakened;
@@ -6127,6 +6102,7 @@ async function executeGrowthAction(entry, field) {
   const contextSeq = currentContextSeq;
   const key = growthActionKey(entry, field);
   const preview = growthPreviewData(entry, field);
+  if (cardHasDraft(entry)) { showQuickNotice(entry.id, "请先保存或取消卡片中的手动修改"); return false; }
   if (!preview || !preview.available || growthExecuteBusyKeys.value.has(key))
     return false;
   const target = Number(preview.to);
@@ -6273,6 +6249,7 @@ function quickGrowthRequirementReady(entry, field, step) {
       Math.min(100, level + step),
       firstSubProf(sharedGrowthCatalog(entry)),
       cardLevelBreakthrough(entry),
+      operatorLevelBreakthroughStage(draft || entry),
     );
   } else if (field === "elite") {
     const maxElite = getMaxEliteForLevel(level);
@@ -6466,6 +6443,7 @@ function growthMaterials(entry, field, step) {
       growthTarget(entry, "level", step),
       firstSubProf(sharedGrowthCatalog(entry)),
       cardLevelBreakthrough(entry),
+      operatorLevelBreakthroughStage(draft || entry),
     );
   else if (field === "elite")
     requirement = calculateXiuweiRequirements(
@@ -6541,6 +6519,7 @@ function cancelCardDraft(entry) {
     baseline.level == null
       ? Number(entry.level) || 0
       : Number(baseline.level) || 0;
+  draft.levelBreakthroughStage = operatorLevelBreakthroughStage({ ...baseline, level: draft.level });
   draft.elite =
     baseline.elite == null
       ? Number(entry.elite) || 0
@@ -7200,6 +7179,7 @@ function cardCombatInput(entry) {
     operatorName: entry.name,
     spOf: entry.spOf || "",
     level: Number(growth.level) || 0,
+    levelBreakthroughStage: operatorLevelBreakthroughStage(growth),
     elite: Number(growth.elite) || 0,
     starLevel: Number(growth.star) || 0,
     huaji: cardHuaji(entry),
@@ -7438,6 +7418,7 @@ function cardPatch(entry) {
     expected_revision: growth.revision,
     reason: "manual_correction",
     level: Number(growth.level) || 0,
+    level_breakthrough_stage: operatorLevelBreakthroughStage(growth),
     elite: Number(growth.elite) || 0,
     star_level: Number(growth.star) || 0,
     disc_loadouts: (growth.discLoadouts || []).map(function (loadout, index) {
@@ -7497,11 +7478,13 @@ function cardPatch(entry) {
       },
     },
   };
-  if (combat.attack != null || combat.hp != null) {
+  const baseline = parsedCardDraftBaseline(entry);
+  if ((combat.attack != null || combat.hp != null) && (Number(combat.attack) !== Number(baseline.attack) || Number(combat.hp) !== Number(baseline.hp))) {
     patch.combat_stats.source = "manual";
     patch.combat_stats.combat_input_signature = combatInputSignature(input);
     patch.combat_stats.observed_inputs = {
       level: growth.level,
+      level_breakthrough_stage: operatorLevelBreakthroughStage(growth),
       elite: growth.elite,
       star_level: growth.star,
       huaji: input.huaji,
@@ -7719,8 +7702,10 @@ async function saveCardCombat(entry) {
     patch.combat_stats.combat_input_signature = signature;
     patch.combat_stats.observed_inputs = {
       level: entry.level,
+      level_breakthrough_stage: operatorLevelBreakthroughStage(entry),
       elite: entry.elite,
       star_level: entry.starLevel,
+      huaji: input.huaji,
       oddities_signature: signature,
       equipped_star_stones_signature: signature,
     };
@@ -7812,6 +7797,7 @@ function applyEditorEntry(existing, op, id, allowCache) {
     elite: existing.elite != null ? existing.elite : 1,
     starLevel: huaji.stage == null ? Number(existing.starLevel) || 0 : op.spOf && huaji.stage > 0 ? (huaji.stage - 1) / 6 + 1 : huaji.stage,
     level: existing.level != null ? existing.level : 1,
+    levelBreakthroughStage: operatorLevelBreakthroughStage(existing),
     discLoadouts: discState.loadouts,
     stones: stones,
     combatStats: combatStats,
@@ -7819,8 +7805,12 @@ function applyEditorEntry(existing, op, id, allowCache) {
   const currentSignature = combatInputSignature(combatStatsInput.value);
   const observedInputs = combatStats.observedInputs || {};
   if (
-    combatStats.observedStatus !== "stale" ||
+    (combatStats.observedStatus !== "stale" && combatStats.observedStatus !== "unverified" &&
+      operatorLevelBreakthroughStage(observedInputs) != null &&
+      operatorLevelBreakthroughStage(observedInputs) === operatorLevelBreakthroughStage(editForm.value)) ||
     (combatStats.source === "manual" &&
+      operatorLevelBreakthroughStage(observedInputs) != null &&
+      operatorLevelBreakthroughStage(observedInputs) === operatorLevelBreakthroughStage(editForm.value) &&
       observedInputs.level != null &&
       Number(observedInputs.level) === Number(editForm.value.level) &&
       observedInputs.elite != null &&
@@ -7998,6 +7988,7 @@ async function saveEdit() {
         combatStats.observedInputs.signature === currentCombatSignature));
   const patch = {
     level: level,
+    level_breakthrough_stage: operatorLevelBreakthroughStage(editForm.value),
     elite: elite,
     star_level: starLevel,
     disc_loadouts: discLoadouts,
@@ -8034,6 +8025,7 @@ async function saveEdit() {
     patch.combat_stats.combat_input_signature = currentCombatSignature;
     patch.combat_stats.observed_inputs = {
       level: level,
+      level_breakthrough_stage: operatorLevelBreakthroughStage(editForm.value),
       elite: elite,
       star_level: starLevel,
       huaji: combatStatsInput.value.huaji,
@@ -8659,6 +8651,7 @@ function handleAccountEvent(message) {
     const next = Number(data.to) || 0;
     applyUpgradeOperator(entry, {
       level: dimension === "level" ? next : entry.level,
+      level_breakthrough_stage: dimension === "level" ? Math.floor((next - 1) / 10) : operatorLevelBreakthroughStage(entry),
       elite: dimension === "elite" ? next : entry.elite,
       star_level: dimension === "awakening" ? 25 : dimension === "huaji" ? next : entry.starLevel,
       huaji: dimension === "awakening" ? { owned: true, stage: 25, awakened: true }
@@ -9157,7 +9150,7 @@ async function doExport() {
   }
   const contextSeq = currentContextSeq;
   try {
-    const opts = { version: 4 };
+    const opts = { version: 5 };
     if (exportAll.value && accounts.value.length > 1) {
       opts.scope = "all";
     } else {
@@ -9193,6 +9186,8 @@ function humanErr(err, fallback) {
     invalid_growth_state: "养成状态无效",
     invalid_upgrade_target: "当前目标不能通过快捷提升完成",
     invalid_star_level: "化极目标超过该密探允许的范围",
+    invalid_level_breakthrough: "突破与当前等级不匹配，请重新核对",
+    level_breakthrough_conflict: "本次已突破选择与档案矛盾，请刷新并核对等级上限",
     preview_expired: "提升预览已过期，请重新确认",
   };
   if (err.code && byCode[err.code]) return byCode[err.code];

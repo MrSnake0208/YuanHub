@@ -1326,3 +1326,24 @@ it.each(['catalog', 'current', 'tracking'])('查看他人 BOX 全流程后保留
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
   expect(operatorApi.putOperatorGrowthTarget).not.toHaveBeenCalled()
 })
+
+
+it('90级突破独立读回，改等级后不沿用边界选择，保存明确未知不重签旧面板', async () => {
+  const wrapper = await openEditor({ level: 90, elite: 15, revision: 7, level_breakthrough_stage: 9,
+    huaji: { owned: true, stage: 1, awakened: false }, combat_stats: { observed_attack: 1234,
+      observed_status: 'unverified', observed_inputs: { level: 90, level_breakthrough_stage: null } } })
+  const selector = () => wrapper.get('.editor-panel .level-breakthrough-field select')
+  expect(selector().element.value).toBe('9')
+  await selector().setValue('8')
+  await wrapper.get('.editor-panel .level-row input[max="100"]').setValue(91)
+  expect(wrapper.find('.editor-panel .level-breakthrough-field select').exists()).toBe(false)
+  await wrapper.get('.editor-panel .level-row input[max="100"]').setValue(90)
+  expect(selector().element.value).toBe('')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  const patch = operatorApi.patchOperatorCurrent.mock.lastCall[0].patch
+  expect(patch).toMatchObject({ level: 90, level_breakthrough_stage: null, expected_revision: 7 })
+  expect(patch.combat_stats).not.toHaveProperty('observed_inputs')
+  expect(patch.combat_stats).not.toHaveProperty('combat_input_signature')
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})

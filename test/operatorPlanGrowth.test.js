@@ -125,3 +125,14 @@ test('fallback generator retains SP relations from canonical and legacy input wi
     rmSync(directory, { recursive: true, force: true })
   }
 })
+
+
+test('共享规划只计一次，已确认90突破不再计该节点的材料或铜钱', () => {
+  const current = { base: { level: 90, elite: 15, levelBreakthroughStage: 9 }, movie: { level: 90, elite: 15, levelBreakthroughStage: 9 } }
+  const targets = row => normalizeGrowthTarget(row, { level: 95, elite: 15 })
+  const costs = sharedPlanCalculations([base, movie], current, new Set(['base', 'movie']), targets)
+  assert.deepEqual(costs.base.level.items, {})
+  assert.equal(costs.base.level.money, 0)
+  assert.ok(costs.base.level.experience > 0)
+  assert.equal(costs.movie.level.experience, 0)
+})

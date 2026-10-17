@@ -1,5 +1,6 @@
 # 密探独立化极与 operator exchange v4
 
+当前完整备份推荐[v5（含等级突破与观测快照）](./operator-growth-data-exchange-protocol-v5.md)。
 ## 1. 权威事实与能力
 
 当前 API、持久化和 v4 使用 `huaji:{owned:boolean,stage:0..25|null,awakened:boolean|null}`。`true` 确认已觉醒，`false` 确认未觉醒，`null` 待确认。`owned=true` 可以阶段未知；不能用共享等级/修为推导拥有。未拥有必须 stage=0，觉醒不得 true；拥有时 stage 不能为0。

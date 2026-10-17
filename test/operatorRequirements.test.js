@@ -19,11 +19,17 @@ test('等级计算跨越突破门槛并按从属给出专属材料', function ()
   assert.equal(result.money, 300000)
 })
 
-test('等级计算可跳过已完成的突破材料', function () {
-  const result = calculateLevelRequirements(69, 71, '破军', true)
-  assert.equal(result.experience, 29500 + 30700)
-  assert.deepEqual(result.items, {})
-  assert.equal(result.money, 300000)
+test('已突破只免除起始节点，后续突破材料与铜钱保留', function () {
+  const result = calculateLevelRequirements(70, 81, '破军', false, 7)
+  const later = calculateLevelRequirements(71, 81, '破军')
+  assert.deepEqual(result.items, later.items)
+  assert.equal(result.money, later.money)
+  assert.ok(result.money > 0)
+  assert.equal(result.experience, calculateLevelRequirements(70, 81, '破军').experience)
+  assert.deepEqual(calculateLevelRequirements(69, 71, '破军', true), calculateLevelRequirements(69, 71, '破军'))
+  assert.deepEqual(calculateLevelRequirements(70, 71, '破军', true, 6), calculateLevelRequirements(70, 71, '破军', false, 6))
+  assert.deepEqual(calculateLevelRequirements(70, 71, '破军', true).items, {})
+  assert.equal(calculateLevelRequirements(70, 71, '破军', true).money, 0)
 })
 
 test('普通24到25只计最后一步且五星不再计费', function () {

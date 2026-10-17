@@ -1,3 +1,4 @@
+import { operatorLevelBreakthroughStage, isLevelBreakthroughBoundary } from '../utils/operatorGrowthRules.js'
 // 固定的密探养成需求规则，整理自 docs/reference/yuan-operator-calculator。
 // 规则不随账号版本切换；库存主键使用 YuanHub catalog.js 的稳定 id。
 
@@ -109,21 +110,23 @@ export function starLabelForStage(stage) {
   return STAR_LABELS[numberBetween(stage, 0, 25)] || '1-0'
 }
 
-export function calculateLevelRequirements(currentLevel, targetLevel, subProf, skipBreakthroughMaterials) {
+export function calculateLevelRequirements(currentLevel, targetLevel, subProf, skipBreakthroughMaterials, levelBreakthroughStage = null) {
   const from = numberBetween(currentLevel, 0, 100)
   const to = numberBetween(targetLevel, 0, 100)
   const result = { experience: 0, money: 0, items: {}, books: { fragment: 0, complete: 0, sixTao: 0 } }
   if (to <= from) return result
   for (let level = from + 1; level <= to; level += 1) result.experience += LEVEL_EXP[level] || 0
+  const stage = operatorLevelBreakthroughStage({ level: from, levelBreakthroughStage })
+  const skipStarting = isLevelBreakthroughBoundary(from) && (stage === from / 10 || (stage == null && skipBreakthroughMaterials))
   BREAKTHROUGHS.forEach(function (entry) {
-    if (from <= entry.level && to > entry.level) {
+    if (from <= entry.level && to > entry.level && !(entry.level === from && skipStarting)) {
       Object.keys(entry).forEach(function (key) {
         if (key === 'level' || key === 'zhuanShu70' || key === 'zhuanShu80') return
         if (key === 'money') result.money += entry[key]
-        else if (!skipBreakthroughMaterials) add(result.items, key, entry[key])
+        else add(result.items, key, entry[key])
       })
       const prof = String(subProf || '')
-      if (!skipBreakthroughMaterials) {
+      {
         if (entry.zhuanShu70) add(result.items, PROFESSION_MATERIALS[70][prof], entry.zhuanShu70)
         if (entry.zhuanShu80) add(result.items, PROFESSION_MATERIALS[80][prof], entry.zhuanShu80)
       }

@@ -28,6 +28,7 @@
             <input v-model.number="row.value" type="number" :inputmode="row.key === 'special' ? 'decimal' : 'numeric'" min="0" :max="row.max" :step="row.key === 'special' ? '0.1' : '1'" placeholder="未知，请核对" :aria-label="'修正后的' + row.label" :aria-invalid="!!errorFor(row)" :aria-describedby="errorFor(row) ? 'scan-review-error-' + row.id : 'scan-review-value-' + row.id" @input="row.included = true" />
             <small v-if="row.max != null">上限 {{ row.max }}<template v-if="row.key === 'special'"> · 最多一位小数</template></small>
           </label>
+          <OperatorLevelBreakthroughSelect v-else-if="row.kind === 'breakthrough'" v-model="row.value" :level="Number(rows.find(item => item.id === 'level' && item.included)?.value ?? current?.level ?? row.level) || 0" @update:model-value="row.included = true" />
           <div v-else-if="row.kind === 'huaji'" class="huaji-fields">
             <label>拥有状态<select v-model="row.value.owned" aria-label="复核拥有状态" @change="changeOwned(row)"><option :value="null">未知</option><option :value="true">已拥有</option><option :value="false">未拥有</option></select></label>
             <label>化极星级与节点<select v-model="row.value.stage" aria-label="复核化极星级与节点" :disabled="row.value.owned !== true" @change="row.included = true; row.stageEdited = true"><option :value="null">未知，请核对</option><option v-if="row.value.stage === 0" :value="0">未拥有</option><option v-for="stage in stages" :key="stage" :value="stage">{{ valueLabel({ owned: true, stage, awakened: null }, 'huaji').split(' · 觉醒')[0] }}</option></select></label>
@@ -64,6 +65,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
+import OperatorLevelBreakthroughSelect from './OperatorLevelBreakthroughSelect.vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { operatorHuajiMax } from '../../utils/operatorHuaji.js'
