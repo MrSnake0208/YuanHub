@@ -53,9 +53,10 @@ test('提交前再次阻止不属于对应渠道的条目，不影响历史报�
   assert.doesNotThrow(() => validateManualRewardChannel({ acquisition_channel: '历练', entity_type: 'item', entries: [{ id: 'liutaobingshu' }] }, entities))
   assert.throws(() => rewardOptionsForChannel('未知渠道', entities), /获取渠道/)
 })
-test('白金币手动补录必须是 10 的倍数', () => {
-  assert.throws(() => validateManualRewardChannel({ acquisition_channel: '派遣-洛阳', entity_type: 'item', entries: [{ id: 'baijinbi', count: 1 }] }, entities), /10/) 
-  assert.doesNotThrow(() => validateManualRewardChannel({ acquisition_channel: '派遣-洛阳', entity_type: 'item', entries: [{ id: 'baijinbi', count: 10 }] }, entities))
+test('白金币允许普通正整数和星光65，仍拒绝零、小数与越界', () => {
+  const record = count => ({ record_type: 'reward_delta', acquisition_channel: '月卡奖励', entity_type: 'item', entries: [{ id: 'baijinbi', count }] })
+  for (const count of [1, 50, 60, 65, 80, 90, 2147483647]) assert.doesNotThrow(() => validateManualRewardChannel(record(count), entities, '手动补录'))
+  for (const count of [0, -1, 1.5, 2147483648, NaN]) assert.throws(() => validateManualRewardChannel(record(count), entities, '手动补录'), /整数/)
 })
 test('其他奖励允许自定义渠道，但仍按选择的来源类型校验奖励', () => {
   const base = { record_type: 'reward_delta', entity_type: 'item', entries: [{ id: 'jizhi', count: 1 }] }

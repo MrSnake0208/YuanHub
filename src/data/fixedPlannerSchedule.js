@@ -1,6 +1,7 @@
 import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, normalizePlannerSpend, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
 import { evaluateExactPlans, prepareExactPlanner } from './exactPlanner.js'
 import { exactComparisonScenarios, exactDeadlineAlternatives } from './exactPlannerComparison.js'
+import { MONTHLY_STAMINA_IDS, resolveDailyStaminaGains, sourcesForDate, withSourcePeriod } from './dailyStaminaSources.js'
 
 export function plannerDateAfter(date, days) {
   const value = new Date(date + 'T12:00:00')
@@ -61,6 +62,43 @@ export function resetFixedSchedule(context, manualPlans = {}, previous = null) {
 
 export function visibleFixedScheduleTimeline(schedule) {
   return fixedScheduleTimeline(schedule).filter(day => !schedule.context.displayStartDate || day.date >= schedule.context.displayStartDate)
+}
+
+export function applyDailySourcesToSchedule(schedule, manualPlans, sources, fromDate, today, overwriteManual = false) {
+  if (fromDate < today || fromDate < schedule.baselineDate) throw new Error('固定来源只能应用于今天或未来日期')
+  const baselineDate = today > schedule.baselineDate ? today : schedule.baselineDate
+  const offset = dayOffset(baselineDate, fromDate)
+  if (!Number.isInteger(offset) || offset < 0 || offset >= PLANNER_RULES.maxEtaDays) throw new Error('请选择未来90天内的日期')
+  const throughDate = plannerDateAfter(baselineDate, PLANNER_RULES.maxEtaDays - 1)
+  const preferences = withSourcePeriod(schedule.context.preferences, sources, fromDate)
+  const nextPlans = clonePlannerValue(manualPlans)
+  if (overwriteManual) for (const [date, plan] of Object.entries(nextPlans)) {
+    if (date < fromDate || date > throughDate) continue
+    const previous = sourcesForDate(schedule.context.preferences, date)
+    const ids = new Set(['natural', 'meal', ...MONTHLY_STAMINA_IDS, ...(previous?.fixedSources || []).map(source => source.id), ...sources.fixedSources.map(source => source.id)])
+    const defaults = [{ id: 'natural', label: '自然恢复', kind: 'energy', value: 288, rec: 288, colorKey: 'natural' },
+      { id: 'meal', label: '每日进膳', kind: 'energy', value: 120, rec: 120, colorKey: 'meal' }]
+    plan.gains = [...plan.gains.filter(gain => !ids.has(gain.id)), ...resolveDailyStaminaGains(defaults, preferences, date)]
+  }
+  const days = fixedScheduleTimeline(schedule)
+  const prefix = schedule.result.timeline.filter(day => day.date >= baselineDate && day.date < fromDate)
+  if (prefix.some(day => day.errors?.length || day.paused)) throw new Error('请先修正开始日期之前的无效日程')
+  const startAt = date => days.find(day => day.date === date)?.start || days.filter(day => day.date < date).at(-1)?.end || schedule.context.initialState
+  const suffix = createFixedSchedule({ ...schedule.context, date: fromDate, initialState: startAt(fromDate), preferences }, nextPlans, schedule, PLANNER_RULES.maxEtaDays - offset)
+  const next = clonePlannerValue(schedule)
+  next.baselineDate = baselineDate
+  next.history = days.filter(day => day.date < baselineDate)
+  next.context = { ...next.context, date: baselineDate, initialState: startAt(baselineDate), stock: projectedPlannerStock(schedule, baselineDate), preferences }
+  next.context.planBaselines = Object.fromEntries(Object.entries(next.context.planBaselines || {}).filter(([date]) => date < fromDate || date > throughDate || !overwriteManual))
+  next.result = { ...suffix.result, timeline: prefix.concat(suffix.result.timeline.map((day, index) => ({ ...day, index: offset + index,
+    progressRows: plannerProgressRows(next.context.requiredState, next.context.initialState, day, next.context.stock) }))) }
+  next.result.etaDays = suffix.result.etaDays == null ? null : plannerStateIsEmpty(next.context.initialState) ? 0
+    : plannerStateIsEmpty(startAt(fromDate)) ? Math.max(0, (schedule.result.etaDays || 0) - dayOffset(schedule.baselineDate, baselineDate)) : offset + suffix.result.etaDays
+  next.result.lastProgressDay = suffix.result.lastProgressDay ? offset + suffix.result.lastProgressDay
+    : prefix.reduce((last, day) => plannerStateRemaining(day.end) < plannerStateRemaining(day.start) ? dayOffset(baselineDate, day.date) + 1 : last, 0)
+  return { schedule: next, manualPlans: nextPlans, preferences, throughDate,
+    affectedDates: next.result.timeline.filter(day => day.date >= fromDate && day.date <= throughDate && (overwriteManual || !nextPlans[day.date])).length,
+    preservedManualDates: Object.keys(nextPlans).filter(date => date >= fromDate && date <= throughDate && !overwriteManual).length }
 }
 
 export function pendingScheduleEdits(schedule, date) {

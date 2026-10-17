@@ -2244,6 +2244,7 @@
             :class="{ 'is-active': activeTab === 'tracking' }"
           >
             <OperatorGrowthTracker
+              :game="gameFilter"
               :account-id="accountId"
               :current-entries="currentEntries"
               :catalog-entries="catalogOperators"

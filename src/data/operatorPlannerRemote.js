@@ -7,7 +7,8 @@ const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperat
   'manualPlans', 'startDate', 'baselineDate', 'initialState', 'requiredState', 'progressRows', 'plannedYield',
   'etaDays', 'lastProgressDay', 'costPer', 'groupId', 'stageLevel', 'colorKey', 'defaultValue', 'costCoins',
   'totalCoins', 'initialExtra', 'dailyCoins', 'beforePercent', 'todayPercent', 'startRemaining', 'planBaselines', 'awaitingRecalculation',
-  'displayStartDate', 'fromDate', 'completionDays', 'agentDays']
+  'displayStartDate', 'fromDate', 'completionDays', 'agentDays', 'staminaSources', 'monthlyCard', 'fixedSources',
+  'dailyEnabled', 'shopEnabled', 'dailyAmount', 'shopAmount', 'endDate', 'sourcePeriods']
 const snake = Object.fromEntries(fields.map(key => [key, key.replace(/[A-Z]/g, c => '_' + c.toLowerCase())]))
 const camel = Object.fromEntries(Object.entries(snake).map(([a, b]) => [b, a]))
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -19,6 +20,7 @@ function mapFields(value, names) {
 export function workspaceBody(workspace, revision = workspace.revision) {
   return { schema_version: 1, expected_revision: revision, ...mapFields({
     activePlanId: workspace.activePlanId, trainingLevels: workspace.trainingLevels,
+    ...(workspace.staminaSources ? { staminaSources: workspace.staminaSources } : {}),
     plans: workspace.plans.map(plan => ({ ...plan, targets: plan.source === 'favorites' ? {} : Object.fromEntries(
       Object.entries(plan.targets).map(([id, target]) => [id, { level: target.level, elite: target.elite, ...(target.huaji ? { huaji: target.huaji } : { starLevel: target.starLevel }) }])) }))
   }, snake) }

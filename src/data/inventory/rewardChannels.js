@@ -76,8 +76,8 @@ export function validateManualRewardChannel(record, entities, sourceChannel = re
     if (!options.some(option => option.id === entry.id && option.entity_type === record.entity_type)) {
       throw new TypeError(`「${entry.name || entry.id}」不属于此渠道的奖励范围`)
     }
-    if (entry.id === 'baijinbi' && (!Number.isInteger(entry.count) || entry.count % 10 !== 0)) {
-      throw new TypeError('白金币必须按 10 为单位添加')
+    if (entry.id === 'baijinbi' && (!Number.isInteger(entry.count) || entry.count < 1 || entry.count > 2147483647)) {
+      throw new TypeError('白金币数量必须为 1–2147483647 的整数')
     }
   }
   if (record.acquisition_channel !== sourceChannel && (!record.acquisition_channel || record.acquisition_channel.trim().length > 64)) {

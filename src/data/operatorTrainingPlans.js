@@ -1,4 +1,5 @@
 import { normalizeTrainingLevels } from './operatorTraining.js'
+import { normalizeStaminaSources } from './dailyStaminaSources.js'
 
 export const TRAINING_WORKSPACE_VERSION = 1
 export const FAVORITES_PLAN_ID = 'favorites'
@@ -32,7 +33,8 @@ export function normalizeTrainingWorkspace(raw, accountId) {
   }))
   return { ...base, plans, revision: Math.max(0, Number(raw.revision) || 0), updatedAt: raw.updatedAt || null,
     activePlanId: plans.some(plan => plan.id === raw.activePlanId) ? raw.activePlanId : (plans[0]?.id || null),
-    trainingLevels: normalizeTrainingLevels(raw.trainingLevels) }
+    trainingLevels: normalizeTrainingLevels(raw.trainingLevels),
+    ...(raw.staminaSources ? { staminaSources: normalizeStaminaSources(raw.staminaSources) } : {}) }
 }
 
 export function sanitizeTrainingPlanOperators(plan, validOperatorIds) {

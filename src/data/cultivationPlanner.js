@@ -1,4 +1,5 @@
 import { BOOK_VALUES, TRAINING_GROUPS, normalizeTrainingLevels } from './operatorTraining.js'
+import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
 
 // 这些规则是 v13 demo 的可替换假设。真实游戏规则确认后，只需替换这里，
 // 规划器的状态传播和界面不需要跟着重写。
@@ -22,6 +23,8 @@ export const PURCHASE_CUMULATIVE = Object.freeze([0, 50, 100, 200, 300, 450, 600
 export const GAIN_CHANNELS = Object.freeze([
   { id: 'natural', label: '自然恢复', colorKey: 'natural', kind: 'energy', defaultValue: 288 },
   { id: 'meal', label: '每日进膳', colorKey: 'meal', kind: 'energy', defaultValue: 120 },
+  { id: 'monthly-card-daily', label: '月卡每日奖励', colorKey: 'custom', kind: 'energy', defaultValue: 60 },
+  { id: 'monthly-card-shop', label: '月卡商店免费体力', colorKey: 'custom', kind: 'energy', defaultValue: 20 },
   { id: 'mail', label: '邮箱储备', colorKey: 'mail', kind: 'energy', defaultValue: 60 },
   { id: 'event', label: '活动奖励', colorKey: 'event', kind: 'energy', defaultValue: 60 },
   { id: 'gift', label: '礼包体力', colorKey: 'gift', kind: 'energy', defaultValue: 60 },
@@ -71,7 +74,8 @@ export function normalizePlannerPreferences(value = {}) {
   return {
     luoyang: integer(value.luoyang, 0, 0, PLANNER_RULES.maxDispatchCount),
     shouchun: integer(value.shouchun, 0, 0, PLANNER_RULES.maxDispatchCount),
-    purchaseCount: integer(value.purchaseCount == null ? value.buy : value.purchaseCount, 0, 0, PLANNER_RULES.maxPurchaseCount)
+    purchaseCount: integer(value.purchaseCount == null ? value.buy : value.purchaseCount, 0, 0, PLANNER_RULES.maxPurchaseCount),
+    ...(Array.isArray(value.sourcePeriods) ? { sourcePeriods: clonePlannerValue(value.sourcePeriods) } : {})
   }
 }
 
@@ -358,12 +362,13 @@ function spendColor(group) {
 }
 
 
-export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, initialExtra = 0, gains, fixedSpends }) {
+export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, date = '', initialExtra = 0, gains, fixedSpends }) {
   const prefs = normalizePlannerPreferences(preferences)
   const plan = { gains: [
     { id: 'natural', label: '自然恢复', colorKey: 'natural', kind: 'energy', value: 288, rec: 288 },
     { id: 'meal', label: '每日进膳', colorKey: 'meal', kind: 'energy', value: 120, rec: 120 }
   ], spends: [] }
+  plan.gains = resolveDailyStaminaGains(plan.gains, prefs, date)
   const candidates = plannerActions(groups, levels)
   if (gains === undefined && !candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)) return plan
   if (prefs.purchaseCount) plan.gains.push({ id: 'buy', label: '购买体力', colorKey: 'buy', kind: 'count', value: prefs.purchaseCount, rec: prefs.purchaseCount })
@@ -495,7 +500,7 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
   for (let index = 0; index < maxDays; index += 1) {
     const date = dates[index] || String(index + 1)
     const start = clonePlannerState(state)
-    const recommended = buildRecommendedPlan({ ...options, state: start, preferences, initialExtra: index === 0 ? initialExtra : 0 })
+    const recommended = buildRecommendedPlan({ ...options, state: start, preferences, date, initialExtra: index === 0 ? initialExtra : 0 })
     const manual = Boolean(manualPlans[date])
     const planned = manual ? normalizePlannerPlan(manualPlans[date]) : recommended
     const settled = settlePlannerDay(start, planned, options)
@@ -503,6 +508,9 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     const changed = plannerStateRemaining(day.end) < plannerStateRemaining(start)
     if (changed) lastProgressDay = index + 1
     const futureManual = dates.slice(index + 1, maxDays).some(nextDate => manualPlans[nextDate])
+    const futureSourceChange = (preferences.sourcePeriods || []).some(period =>
+      period.fromDate > date && period.fromDate <= dates[Math.min(maxDays, dates.length) - 1] ||
+      period.sources.monthlyCard.startDate > date && period.sources.monthlyCard.startDate <= dates[Math.min(maxDays, dates.length) - 1])
     if (day.errors.length) {
       timeline.push(day)
       return { timeline, status: 'invalid', etaDays: null, lastProgressDay, remaining: start, blocked: plannerBlockedResources(start, groups, levels) }
@@ -512,7 +520,7 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
       timeline.push(day)
       return { timeline, status: 'complete', etaDays: plannerStateIsEmpty(initialState) ? 0 : index + 1, lastProgressDay, remaining: state, blocked: [] }
     }
-    if (!changed && !manual && !futureManual) {
+    if (!changed && !manual && !futureManual && !futureSourceChange) {
       if (!timeline.length) timeline.push(day)
       return { timeline, status: 'blocked', etaDays: null, lastProgressDay, remaining: state, blocked: plannerBlockedResources(state, groups, levels) }
     }

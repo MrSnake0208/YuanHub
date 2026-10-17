@@ -268,7 +268,9 @@
               <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel" tabindex="-1" aria-label="规划条件">
                 <header class="planning-panel-heading"><div><h3>规划条件</h3><p>设定培养目标、体力偏好与可刷层数。</p></div></header>
   <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
-<section id="planning-conditions" class="settings-panel"><div v-if="goalMode" class="settings-block goal-conditions">
+<section id="planning-conditions" class="settings-panel">
+<PlannerDailySources v-show="!goalMode" class="settings-block" :sources="workspace.staminaSources" :account-id="accountId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
+<div v-if="goalMode" class="settings-block goal-conditions">
   <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
   <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title" aria-describedby="goal-date-picker-description">
     <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4><p id="goal-date-picker-description">希望最晚在这一天完成当前清单的养成。</p></header>
@@ -416,15 +418,21 @@ import { buildRecentAcquisitionHistory, recentBusinessDayKeys } from '../../data
 import PlannerDateTabs from './PlannerDateTabs.vue'
 import PlannerSelect from './PlannerSelect.vue'
 import PlannerCustomEntry from './PlannerCustomEntry.vue'
+import PlannerDailySources from './PlannerDailySources.vue'
+import { withSourcePeriod } from '../../data/dailyStaminaSources.js'
+import { applyDailySourcesToSchedule } from '../../data/fixedPlannerSchedule.js'
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
+const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
+const dailySourcePreview = ref(null)
+const dailySourcePreviewKey = () => JSON.stringify([props.accountId, workspace.value.activePlanId, workspace.value.revision, fixedSchedule.value, manualPlans.value, plannerPreferences.value, plannerToday.value])
+const visibleDailySourcePreview = computed(() => dailySourcePreview.value && dailySourcePreview.value.key === dailySourcePreviewKey() ? dailySourcePreview.value : null)
 const plannerRules = PLANNER_RULES
 const loading = ref(false)
 const error = ref('')
@@ -749,7 +757,7 @@ const currentDay = computed(() => {
   if (day) return day
   const start = plannerTimeline.value.at(-1)?.end || plannerInitialState.value
   const options = { groups: TRAINING_GROUPS, levels: plannerLevels.value, strategy: strategy.value, agentOrder: plannerOrderForOptimization.value }
-  const recommended = buildRecommendedPlan({ ...options, state: start, preferences: plannerPreferences.value })
+  const recommended = buildRecommendedPlan({ ...options, state: start, preferences: plannerPreferences.value, date: selectedDate.value })
   const planned = manualPlans.value[selectedDate.value] || recommended
   const settled = settlePlannerDay(start, planned, options)
   const paused = plannerSimulation.value.status === 'invalid'
@@ -1042,8 +1050,40 @@ function applyPlannerSnapshot(snapshot) {
   fixedSchedule.value = snapshot?.schedule || null
   scheduleTimezone.value = fixedSchedule.value ? snapshot?.timezone || BUSINESS_TIMEZONE : BUSINESS_TIMEZONE
   plannerToday.value = plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR)
+  if (!fixedSchedule.value && workspace.value.staminaSources) plannerPreferences.value = withSourcePeriod(plannerPreferences.value, workspace.value.staminaSources, plannerToday.value)
   plannerStartDate.value = snapshot?.schedule?.startDate || plannerToday.value
   if (!plannerDates.value.includes(selectedDate.value)) selectedDate.value = plannerDates.value.includes(plannerToday.value) ? plannerToday.value : plannerDates.value[0]
+}
+async function saveDailySources(sources, revision, done) {
+  if (revision !== workspace.value.revision || cloudBlocked.value || schedulePending.value) { done(false); return }
+  const next = workspaceCopy(); next.staminaSources = sources
+  const same = JSON.stringify(workspace.value.staminaSources) === JSON.stringify(sources)
+  const saved = same || await commitWorkspace(next, '子账号固定来源已保存；已保存清单请预览并应用')
+  if (saved && !fixedSchedule.value) plannerPreferences.value = withSourcePeriod(plannerPreferences.value, sources, plannerToday.value)
+  done(saved)
+}
+function previewDailySources({ fromDate, overwrite }) {
+  dailySourcePreview.value = null
+  try {
+    if (!workspace.value.staminaSources) throw new Error('请先保存子账号固定来源配置')
+    if (scheduleDifferences.value.goalsChanged) throw new Error('培养目标已变化，请先更新当前日程')
+    const schedule = fixedSchedule.value || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
+    const next = applyDailySourcesToSchedule(schedule, manualPlans.value, workspace.value.staminaSources, fromDate, plannerToday.value, overwrite)
+    dailySourcePreview.value = { ...next, fromDate, key: dailySourcePreviewKey() }
+    planError.value = ''
+  } catch (err) { planError.value = err.message }
+}
+function applyDailySources() {
+  const next = visibleDailySourcePreview.value
+  if (!next || cloudBlocked.value || schedulePending.value) return
+  const previous = { schedule: fixedSchedule.value, manualPlans: manualPlans.value, preferences: plannerPreferences.value }
+  fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans; plannerPreferences.value = next.preferences
+  if (!persistPlannerSnapshot(false)) {
+    fixedSchedule.value = previous.schedule; manualPlans.value = previous.manualPlans; plannerPreferences.value = previous.preferences
+    return
+  }
+  dailySourcePreview.value = null
+  planNotice.value = `已应用固定来源至 ${next.affectedDates} 个日期，保存状态以云端提示为准`
 }
 function persistPlannerSnapshot(revise = true) {
   if (cloudBlocked.value) return false
