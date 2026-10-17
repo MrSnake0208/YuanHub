@@ -125,7 +125,7 @@ it('iOS 当前环境直接给分享动作，等待与浏览器返回均不确认
 it('有 standalone 成果直接显示真实状态，不强迫重做或把未参加者算完成', async () => {
   const { wrapper, install } = await render({ ios: true, standalone: true })
   expect(wrapper.get('.installed-banner').text()).toContain('你现在正从桌面版 YuanHub 运行')
-  expect(wrapper.get('.install-now').text()).toContain('复用已安装成果')
+  expect(wrapper.get('.install-now').text()).toBe('查看安装教程')
   expect(install.pwaInstallState.tutorialCompleted).toBe(false)
   await wrapper.get('.install-now').trigger('click'); await flushPromises()
   expect(install.pwaInstallState.tutorialCompleted).toBe(true)
@@ -156,5 +156,5 @@ it('暂停后 appinstalled 不算教程完成；手动继续复用真实成果�
   await wrapper.get('.install-now').trigger('click'); await flushPromises()
   expect(install.pwaInstallState.tutorialCompleted).toBe(true)
   expect(wrapper.get('.installed-banner').text()).toContain('实操教程已完成')
-  expect(wrapper.get('.install-now').text()).toContain('复用已安装成果')
+  expect(wrapper.get('.install-now').text()).toBe('查看安装教程')
 })

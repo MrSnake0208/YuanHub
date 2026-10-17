@@ -63,7 +63,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
 const render = async () => {
-  const wrapper = mount(OperatorPage, { global: { plugins: [createPinia()],
+  const wrapper = mount(OperatorPage, { attachTo: document.body, global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: { template: '<div><slot /><slot name="side" /></div>' },
       DataAccountContextBar: { template: '<div><slot name="actions" /></div>' },
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, RouterLink: true },
@@ -73,7 +73,7 @@ const render = async () => {
 }
 const cards = wrapper => wrapper.findAll('.agent-ledger-card')
 const card = (wrapper, id) => cards(wrapper).find(node => node.get('h3').text() === id)
-const group = async (wrapper, state) => { await wrapper.get('.current-status-filter .status-' + state).trigger('click'); await flushPromises() }
+const group = async (wrapper, state) => { await wrapper.get('#operator-panel-current .current-status-filter .status-' + state).trigger('click'); await flushPromises() }
 const status = async (wrapper, id, state) => {
   const option = card(wrapper, id).findAll('[role="option"]').find(node => node.text() === state)
   await option.trigger('click'); await flushPromises()
@@ -107,10 +107,10 @@ it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读�
   events.discardedEnabled = false
   const wrapper = await render()
   expect(cards(wrapper)).toHaveLength(4)
-  expect(wrapper.get('.current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
-  expect(wrapper.get('.current-status-filter .status-all').text()).toBe('全部4')
-  expect(wrapper.find('.current-status-filter .status-discarded').exists()).toBe(false)
-  expect(wrapper.find('.current-status-filter .status-registered').exists()).toBe(false)
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-all').text()).toBe('全部4')
+  expect(wrapper.find('#operator-panel-current .current-status-filter .status-discarded').exists()).toBe(false)
+  expect(wrapper.find('#operator-panel-current .current-status-filter .status-registered').exists()).toBe(false)
   expect(wrapper.find('.current-status-summary .status-discarded').exists()).toBe(false)
   expect(wrapper.find('.ledger-status-help').exists()).toBe(false)
   expect(card(wrapper, 'a').findAll('[role="option"]').map(option => option.text())).toEqual(['养成中', '已毕业', '养老中'])
@@ -125,7 +125,7 @@ it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读�
   await group(wrapper, 'growing')
   await wrapper.findAll('button').find(node => node.text() === '清除筛选').trigger('click'); await flushPromises()
   expect(cards(wrapper)).toHaveLength(4)
-  expect(wrapper.get('.current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
   await status(wrapper, 'a', '养老中')
   expect(api.putOperatorAnnotation).toHaveBeenLastCalledWith(expect.objectContaining({ operatorId: 'a', annotation: expect.objectContaining({ growth_state: 'skip' }) }))
   noObjectiveWrites()
@@ -154,13 +154,13 @@ it('关闭弃置时延后迁移本地弃置且保留缓存，旧状态照常迁�
 it('默认在册、独立弃置、显式全部及品质交集，计数不受额外筛选影响，重置回在册', async () => {
   const wrapper = await render()
   expect(cards(wrapper).map(node => node.get('h3').text())).toEqual(['a', 'b', 'c'])
-  expect(wrapper.get('.current-status-filter .status-registered').text()).toBe('在册3')
-  expect(wrapper.get('.current-status-filter .status-all').text()).toBe('全部（含已弃置）4')
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-registered').text()).toBe('在册3')
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-all').text()).toBe('全部（含已弃置）4')
   await group(wrapper, 'discarded'); expect(card(wrapper, 'd')).toBeTruthy(); expect(cards(wrapper)).toHaveLength(1)
-  await wrapper.get('.rarity-filter .rarity-r5').trigger('click')
+  await wrapper.get('#operator-panel-current .rarity-filter .rarity-r5').trigger('click')
   expect(cards(wrapper)).toHaveLength(0)
   expect(wrapper.text()).toContain('分组「已弃置」')
-  expect(wrapper.get('.current-status-filter .status-discarded').text()).toBe('已弃置1')
+  expect(wrapper.get('#operator-panel-current .current-status-filter .status-discarded').text()).toBe('已弃置1')
   await wrapper.findAll('button').find(node => node.text() === '清除筛选，返回在册').trigger('click')
   expect(cards(wrapper)).toHaveLength(3)
   await group(wrapper, 'all'); expect(cards(wrapper)).toHaveLength(4)
@@ -298,12 +298,12 @@ it('保存中刷新不提前移动卡片；页面卸载后忽略保存结果', a
 
 it('养成总览的紧凑搜索与状态筛选组合，重置恢复列表且不写数据', async () => {
   const wrapper = await render()
-  await wrapper.get('.current-filter-search input').setValue('b')
+  await wrapper.get('#operator-panel-current .current-filter-search input').setValue('b')
   expect(cards(wrapper).map(node => node.get('h3').text())).toEqual(['b'])
   await group(wrapper, 'growing')
   expect(cards(wrapper)).toHaveLength(0)
-  await wrapper.get('.current-filter-reset').trigger('click')
-  expect(wrapper.get('.current-filter-search input').element.value).toBe('')
+  await wrapper.get('#operator-panel-current .current-filter-reset').trigger('click')
+  expect(wrapper.get('#operator-panel-current .current-filter-search input').element.value).toBe('')
   expect(cards(wrapper)).toHaveLength(3)
   noObjectiveWrites()
 })

@@ -499,9 +499,8 @@ it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点及唯一�
     expect(wrapper.findAll('.activity-counts button')[2].attributes('aria-pressed')).toBe('true')
     expect(wrapper.get('.activity-title').text()).toBe('即将开始的招募')
     expect(wrapper.get('.today-activity-summary').element.parentElement.className).toBe(next >= 768 ? 'today-column today-secondary' : 'today-activities-target')
-    expect(wrapper.findAll('.today-workspace section').map(section => section.classes()[0])).toEqual(next >= 768
-      ? ['today-subscriptions', 'today-training', 'today-activity-summary', 'today-private-items']
-      : ['today-subscriptions', 'today-activity-summary', 'today-training', 'today-private-items'])
+    expect(wrapper.findAll('.today-workspace section').map(section => section.classes()[0])).toEqual(
+      ['today-training', 'today-subscriptions', 'today-activity-summary', 'today-private-items'])
     ;[TodayLobby, TodayActivitySummary, TodaySubscriptionSummary, TodayPrivateItems, TodayTrainingPlans].forEach((type, index) => expect(wrapper.getComponent(type).vm.$).toBe(instances[index]))
     expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions, listCalendarPrivateItems, getTrainingWorkspace].map(fn => fn.mock.calls.length)).toEqual(calls)
     expect(wrapper.findAll('.account-switcher')).toHaveLength(1)

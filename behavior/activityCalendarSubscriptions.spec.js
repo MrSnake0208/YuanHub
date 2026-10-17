@@ -64,7 +64,7 @@ it.each(['如鸢', '代号鸢'])('mine switches in place to %s and locks filters
   expect(listCalendarSubscriptions.mock.lastCall[0]).toMatchObject({ account_id: 'b' })
   expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game })
   expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('todo')
-  expect(wrapper.get('.calendar-account-scope').text()).toContain(`${game}（账号锁定）`)
+  expect(wrapper.get('.context-selector').text()).toContain(game)
   await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(Array.from(document.querySelectorAll('#calendar-filter-sheet legend')).map(node => node.textContent)).toEqual(['类型', '时间状态'])
   document.querySelector('.calendar-filter-sheet-footer .calendar-primary').click(); await flushPromises()
@@ -247,7 +247,7 @@ it('mine retains view and date while ignoring foreign game query and filters com
   const router = await render('&scope=mine&pending=1&game=代号鸢&ref=test')
   expect(wrapper.text()).not.toContain('地下遗迹')
   expect(wrapper.getComponent(AccountSwitcher).props('accountId')).toBe('a')
-  expect(wrapper.text()).toContain('订阅即本期待办，截止不会自动完成')
+  expect(wrapper.text()).toContain('订阅活动需手动标记本期完成')
   await button('全部活动').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', game: '代号鸢', ref: 'test' })
 })
@@ -414,7 +414,7 @@ it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐
   listCalendarSubscriptions.mockResolvedValue({ items: records, unavailable_items: [{ event_id: 'old', subscribed: true, version: 0, checklist: [] }], subscribed_count: 5 })
   const router = await render('&scope=mine&pending=1&game=代号鸢&exclude_recruitment=1&status=ending&date=2026-10-05&ref=keep')
   expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login'])
-  expect(wrapper.get('.calendar-account-scope').text()).toContain('如鸢（账号锁定）')
+  expect(wrapper.get('.context-selector').text()).toContain('如鸢')
   const reads = listCalendarSubscriptions.mock.calls.length
   await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', game: '代号鸢', date: '2026-10-05', ref: 'keep' })
@@ -431,7 +431,7 @@ it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐
 
 it('mine切换个人状态与取消时间筛选互不影响账号或公开游戏query', async () => {
   const router = await render('&scope=mine&pending=1&status=ending&game=代号鸢&ref=keep')
-  expect(wrapper.get('.calendar-account-scope').text()).toContain('如鸢（账号锁定）')
+  expect(wrapper.get('.context-selector').text()).toContain('如鸢')
   expect(wrapper.find('[aria-label="取消筛选：如鸢"]').exists()).toBe(false)
   await wrapper.get('[aria-label="个人活动状态"]').setValue('all'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', task: 'all', status: 'ending', game: '代号鸢', ref: 'keep' })

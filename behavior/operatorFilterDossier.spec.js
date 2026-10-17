@@ -160,7 +160,7 @@ it.each([false, true])('强制展开时显示所有筛选，解除后保留原�
 })
 
 it('图鉴可复用招募状态和高级筛选数量，关闭更多筛选保留附加内容', async () => {
-  const wrapper = mount(OperatorFilterDossier, { props: {
+  const wrapper = mount(OperatorFilterDossier, { attachTo: document.body, props: {
     compact: true, contextLabel: '密探图鉴', statusLabel: '招募状态', totalCount: 3,
     statusOptions: [{ value: 'all', label: '全部' }, { value: 'owned', label: '已招募' }, { value: 'missing', label: '未招募' }],
     statusCounts: { owned: 1, missing: 2 }, advancedFilterCount: 0, hasFilters: true,
