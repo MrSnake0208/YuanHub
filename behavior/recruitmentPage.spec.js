@@ -45,16 +45,16 @@ beforeEach(() => {
 })
 
 it('平均出绝密使用账号摘要，刷新和切换账号更新且不请求明细', async () => {
-  archives['acc-a'].summary.average_gold_pulls = 26.7
+  archives['acc-a'].summary.average_gold_pulls = 26.73
   archives['acc-b'].summary.average_gold_pulls = 12
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.summary-average').text()).toContain('平均出绝密抽数')
-  expect(wrapper.get('.summary-average strong').text()).toBe('26.7')
+  expect(wrapper.get('.summary-average strong').text()).toBe('26.73')
   archives['acc-a'].summary.average_gold_pulls = 28.5
   await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
-  expect(wrapper.get('.summary-average strong').text()).toBe('28.5')
+  expect(wrapper.get('.summary-average strong').text()).toBe('28.50')
   activeAccount.set('acc-b'); await flushPromises()
-  expect(wrapper.get('.summary-average strong').text()).toBe('12')
+  expect(wrapper.get('.summary-average strong').text()).toBe('12.00')
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   expect(api.listRecruitmentBatches).not.toHaveBeenCalled()
   wrapper.unmount()
