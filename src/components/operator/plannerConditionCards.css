@@ -1,0 +1,34 @@
+.condition-module { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.condition-module-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 12px; }
+.condition-module-heading h3 { margin: 0; color: var(--ink); font: 800 17px/1.4 var(--font-s); }
+.condition-module-heading p { margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.5; }
+.condition-summary-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+.condition-summary-card { display: flex; align-items: center; gap: 12px; min-width: 0; width: 100%; padding: 14px 12px; text-align: left; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 10px; font: inherit; cursor: pointer; }
+.condition-summary-icon { display: grid; flex: none; place-items: center; width: 38px; height: 38px; color: var(--accent-strong, var(--tea)); }
+.condition-summary-copy { display: grid; flex: 1; gap: 5px; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.condition-summary-copy b { font-size: 14px; font-weight: 700; }
+.condition-summary-copy small { color: var(--ink-60); font-size: 12px; }
+.condition-summary-copy > span { color: var(--tea); font-size: 13px; }
+.condition-summary-card > svg { flex: none; color: var(--ink-60); }
+.condition-summary-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.condition-summary-card:disabled { cursor: default; opacity: .55; }
+.strategy-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.strategy-cards button { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px 12px; text-align: left; border: 1px solid var(--line); border-radius: 10px; color: var(--tea); background: var(--cream); cursor: pointer; }
+.strategy-cards button.active { border-color: var(--accent); background: var(--paper); box-shadow: inset 0 0 0 1px var(--accent); }
+.strategy-cards button > svg { flex: none; color: var(--accent-strong, var(--tea)); }
+.strategy-cards button > span { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.strategy-cards b { font-size: 16px; font-weight: 800; }
+.strategy-cards small { font: 12px/1.5 var(--font-b); color: var(--ink-60); }
+.strategy-cards button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.strategy-cards button:disabled { opacity: .55; cursor: default; }
+.goal-conditions { max-width: 520px; }
+.reserve-details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.reserve-details > summary { color: var(--tea); cursor: pointer; font-size: 14px; line-height: 1.7; }
+.reserve-details > summary span { display: inline-block; color: var(--ink-60); font-size: 12px; margin-left: 8px; }
+@media (hover: hover) {
+  .condition-summary-card:hover:not(:disabled) { border-color: var(--accent); background: var(--surface); }
+}
+@media (min-width: 768px) {
+  .condition-summary-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); }
+  .strategy-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); }
+}
