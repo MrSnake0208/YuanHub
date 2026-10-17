@@ -87,6 +87,8 @@ export const FALLBACK_DESCRIPTIONS = {
   'operator:write': '密探数据写入（只写）',
   'operator:export': '密探数据导出',
   'operator:scan:write': '密探自动采集写入',
+  // 今日历练完成记录（对应后端 OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE，code 20005）
+  'operator:daily-tasks:write': '今日历练完成记录（写入）',
   'star:capture:write': '上传星石截图',
   // 活动日历（对应后端 OpenApiPermission.CALENDAR_READ，code 40001）
   'calendar:read': '活动日历读取'
