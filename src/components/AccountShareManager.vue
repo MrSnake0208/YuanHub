@@ -5,7 +5,7 @@
         <strong>{{ busy ? '分享更新中…' : scopes.length ? '分享已开启' : '分享未开启' }}</strong>
         <span>仅开放已开启的内容，无需登录。</span>
       </p>
-      <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">刷新状态</button>
+      <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare"><RefreshCw :size="14" aria-hidden="true" />刷新状态</button>
     </div>
     <div class="share-manager-heading">
       <slot name="heading" :title-id="titleId"><div><span class="section-kicker">分享链接</span><h2 :id="titleId">分享当前账号</h2></div></slot>
@@ -18,7 +18,8 @@
     <template v-else>
       <div class="share-scopes" aria-label="公开内容">
         <label v-for="option in options" :key="option.scope" class="share-scope">
-          <span>{{ option.label }}<template v-if="!compact">分享</template><small class="share-scope-status">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
+          <span v-if="compact" class="share-scope-icon" aria-hidden="true"><component :is="option.scope === 'operator' ? Users : Gem" :size="22" /></span>
+          <span class="share-scope-copy">{{ option.label }}<template v-if="!compact">分享</template><small v-if="compact" class="share-scope-description">{{ option.scope === 'operator' ? '公开已选的密探档案' : '公开云端星石信息' }}</small><small class="share-scope-status" :class="{ 'is-enabled': scopes.includes(option.scope) }">{{ busy ? '更新中…' : scopes.includes(option.scope) ? '已开启' : '未开启' }}</small></span>
           <input type="checkbox" role="switch" :aria-label="option.label + '分享'" :checked="scopes.includes(option.scope)"
             :disabled="!accountId || busy" @change="toggleScope(option.scope, $event)" />
         </label>
@@ -26,7 +27,7 @@
       <template v-if="share?.active && share.share_code">
         <h3 v-if="compact" class="share-links-title">分享链接</h3>
         <div v-for="option in options.filter(item => scopes.includes(item.scope))" :key="option.scope" class="share-values">
-          <label><span>{{ option.label }}<template v-if="!compact">分享链接</template></span><input :value="link(option.scope)" :title="link(option.scope)" readonly :aria-label="option.label + '分享链接'" @focus="compact && $event.target.select()" /></label>
+          <label><span>{{ option.label }}分享链接</span><input :value="link(option.scope)" :title="link(option.scope)" readonly :aria-label="option.label + '分享链接'" @focus="compact && $event.target.select()" /></label>
           <div class="share-actions">
             <button class="share-button" type="button" :aria-label="'复制' + option.label + '链接'" :disabled="busy" @click="copy(link(option.scope), option.label + '分享链接')"><Copy v-if="compact" :size="15" aria-hidden="true" />复制<template v-if="!compact">{{ option.label }}链接</template></button>
             <a class="share-button visit" :href="link(option.scope)" :target="compact ? '_blank' : undefined" :rel="compact ? 'noopener noreferrer' : undefined" :aria-label="'访问我的' + option.label"><ExternalLink v-if="compact" :size="15" aria-hidden="true" />{{ compact ? '访问' : '访问我的' + option.label }}</a>
@@ -38,12 +39,14 @@
         <p class="share-description share-private">仅公开所选内容，不包含备注、目标、计划或 OCR 记录。星石展示云端已保存背包，本机未同步修改不会出现在分享中。</p>
         <p class="share-description share-scope-note">密探 BOX 包含档案中原有的佩戴星石；星石背包公开当前云端背包的全部星石。关闭星石背包分享，不会移除密探 BOX 中已有的佩戴星石信息。</p>
       </slot>
-      <component :is="compact ? 'details' : 'div'" v-if="share?.active && share.share_code" class="share-actions share-code-actions">
-        <summary v-if="compact">更多管理</summary>
-        <p v-if="compact" class="share-management-label">重新生成或全部撤销后，两个分享范围的旧链接立即失效。</p>
-        <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">{{ compact ? '重新生成分享链接' : '重新生成' }}</button>
-        <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
-      </component>
+      <slot v-if="share?.active && share.share_code" name="management" :busy="busy" :regenerate="regenerate" :revoke="revoke">
+        <component :is="compact ? 'details' : 'div'" class="share-actions share-code-actions">
+          <summary v-if="compact"><Settings2 :size="18" aria-hidden="true" /><span>更多管理</span><ChevronDown class="share-management-chevron" :size="16" aria-hidden="true" /></summary>
+          <p v-if="compact" class="share-management-label">重新生成或全部撤销后，两个分享范围的旧链接立即失效。</p>
+          <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">{{ compact ? '重新生成分享链接' : '重新生成' }}</button>
+          <button class="share-button danger" type="button" :disabled="busy" @click="revoke">全部撤销</button>
+        </component>
+      </slot>
     </template>
     <p v-if="busy" class="share-state" role="status" aria-live="polite">正在更新分享状态…</p>
     <p v-if="message" class="share-message" role="status" aria-live="polite">{{ message }}</p>
@@ -52,7 +55,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
-import { Copy, ExternalLink } from '@lucide/vue'
+import { ChevronDown, Copy, ExternalLink, Gem, RefreshCw, Settings2, Users } from '@lucide/vue'
 import { getAccountShare, setAccountShareScope, regenerateAccountShare, revokeAccountShare } from '../api/accountShare.js'
 import { sharePath } from '../utils/shareLink.js'
 import { dialog } from '../utils/dialog.js'
@@ -172,47 +175,65 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
   .share-values input { font-size: 16px }
 }
 @media(max-width:360px) { .share-scopes { grid-template-columns: 1fr } }
-.share-manager.is-compact { container: account-share / inline-size; padding: 16px 20px calc(16px + env(safe-area-inset-bottom)); }
-.is-compact .share-overview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.is-compact .share-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+/* Compact mode belongs to the operator modal; the star page keeps the base presentation. */
+.share-manager.is-compact { container: account-share / inline-size; padding: 18px 24px calc(20px + env(safe-area-inset-bottom)); }
+.is-compact .share-overview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.is-compact .share-summary { display: grid; gap: 4px; margin: 0; }
 .is-compact .share-summary strong { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; }
-.is-compact .share-summary strong::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-35); }
+.is-compact .share-summary strong::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ink-35); }
 .is-compact .share-summary.is-active strong { color: #257348; }
 .is-compact .share-summary.is-active strong::before { background: currentColor; }
+.is-compact .share-summary > span { padding-left: 17px; font-size: 12px; }
 .is-compact .share-overview > button { flex: none; margin-left: auto; }
 .is-compact .share-manager-heading { align-items: center; }
 .is-compact .share-immediate { grid-column: auto; margin: 0; text-align: right; font-size: 12px; }
-.is-compact .share-scopes { margin-top: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.is-compact .share-scope { min-height: 0; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
-.is-compact .share-scope-status { font-size: 12px; }
-.is-compact .share-scope input { appearance: none; position: relative; width: 38px; height: 22px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; background: var(--ink-35); cursor: pointer; }
-.is-compact .share-scope input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); }
+.is-compact .share-scopes { margin-top: 10px; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.is-compact .share-scope { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; box-sizing: border-box; min-height: 80px; padding: 12px 14px; border-radius: 10px; background: linear-gradient(110deg, var(--surface), var(--cream)); font-size: 14px; line-height: 1.5; }
+.is-compact .share-scope:hover { border-color: var(--accent); }
+.is-compact .share-scope-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--paper); color: var(--tea); }
+.is-compact .share-scope-copy { min-width: 0; font-weight: 700; }
+.is-compact .share-scope-description { display: block; margin-top: 2px; color: var(--ink-60); font-size: 12px; font-weight: 400; }
+.is-compact .share-scope-status { font-size: 11px; }
+.is-compact .share-scope-status.is-enabled { color: #257348; }
+.is-compact .share-scope input { appearance: none; position: relative; margin: 0; width: 40px; height: 24px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; background: var(--ink-35); cursor: pointer; }
+.is-compact .share-scope input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
 .is-compact .share-scope input:checked { background: var(--tea); }
 .is-compact .share-scope input:checked::after { left: 18px; }
 .is-compact .share-scope input:disabled { opacity: .5; cursor: wait; }
 .is-compact .share-links-title { margin: 18px 0 0; font: 800 16px/1.4 var(--font-s); }
-.is-compact .share-values { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
-.is-compact .share-values label { grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px; color: var(--ink); font-size: 13px; }
-.is-compact .share-values input { min-height: 36px; padding: 6px; text-overflow: ellipsis; border: 0; border-radius: 4px; background: transparent; }
+.is-compact .share-values { grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px; box-sizing: border-box; min-height: 72px; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
+.is-compact .share-values label { grid-template-columns: minmax(0, 1fr); gap: 4px; color: var(--ink); font-size: 13px; }
+.is-compact .share-values input { display: block; min-height: 22px; height: 22px; padding: 0; text-overflow: ellipsis; border: 0; border-radius: 3px; background: transparent; color: var(--ink-60); font: 12px/1.6 var(--font-b); }
 .is-compact .share-values input:focus { text-overflow: clip; outline: 2px solid var(--accent); outline-offset: 2px; }
-.is-compact .share-values .share-actions { display: flex; flex-wrap: nowrap; }
+.is-compact .share-values .share-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; }
 .is-compact .share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 36px; padding: 6px 10px; border-color: var(--line); border-radius: 8px; color: var(--ink); background: transparent; white-space: nowrap; }
 .is-compact .share-button.danger { border-color: var(--rouge); color: var(--rouge); }
 .is-compact .share-button:hover:not(:disabled) { background: var(--paper); }
-.is-compact .share-code-actions { display: block; margin-top: 14px; padding-top: 12px; }
-.is-compact .share-code-actions summary { width: fit-content; color: var(--ink); font-size: 13px; line-height: 1.8; cursor: pointer; }
+.is-compact .share-code-actions { display: block; margin-top: 10px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
+.is-compact .share-code-actions summary { display: flex; align-items: center; gap: 10px; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border-radius: 10px; list-style: none; color: var(--tea); font-size: 13px; line-height: 1.8; cursor: pointer; }
+.is-compact .share-code-actions summary::-webkit-details-marker { display: none; }
+.is-compact .share-code-actions summary::marker { content: ''; }
+.is-compact .share-code-actions summary > span { flex: 1; min-width: 0; font-weight: 700; }
+.is-compact .share-code-actions summary > svg { flex: none; }
+.is-compact .share-code-actions summary:hover,.is-compact .share-code-actions[open] summary { background: var(--paper); }
+.is-compact .share-code-actions[open] .share-management-chevron { transform: rotate(180deg); }
 .is-compact .share-code-actions summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.is-compact .share-management-label { margin: 8px 0; font-size: 12px; }
+.is-compact .share-management-label { margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; }
+.is-compact .share-code-actions > .share-button { margin: 0 0 12px 14px; }
 .is-compact .share-code-actions > .share-button + .share-button { margin-left: 8px; }
 @media(max-width:640px) {
   .share-manager.is-compact { padding-inline: 16px; }
-  .is-compact .share-scopes { gap: 8px; }
-  .is-compact .share-scope { gap: 6px; padding: 10px 8px; font-size: 12.5px; }
+  .is-compact .share-values input { height: 26px; font-size: 16px; }
+  .is-compact .share-button { min-height: 44px; }
 }
-@container account-share (max-width: 560px) {
-  .is-compact .share-values { align-items: end; gap: 8px; }
-  .is-compact .share-values label { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .is-compact .share-values .share-button { gap: 4px; padding-inline: 8px; }
-  .is-compact .share-immediate { max-width: 150px; }
+@container account-share (min-width: 580px) {
+  .is-compact .share-scopes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .is-compact .share-values { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@container account-share (max-width: 360px) {
+  .is-compact .share-overview { align-items: flex-start; flex-wrap: wrap; }
+  .is-compact .share-immediate { max-width: 130px; }
+  .is-compact .share-code-actions > .share-button { display: flex; margin: 0 14px 12px; }
+  .is-compact .share-code-actions > .share-button + .share-button { margin-left: 14px; }
 }
 </style>

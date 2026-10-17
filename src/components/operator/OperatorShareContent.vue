@@ -1,12 +1,13 @@
 <template>
   <div ref="contentPanel" class="operator-share-content" :class="{ 'is-embedded': embedded }" tabindex="-1">
+    <h3 v-if="embedded && status !== 'input'" class="box-step-title box-results-title"><span class="box-step-number" aria-hidden="true">2</span>查看公开内容</h3>
     <form v-if="status === 'input'" class="share-entry" @submit.prevent="submitToken">
       <template v-if="!embedded">
         <span class="section-kicker">公开查看</span>
         <h2>输入 BOX 分享码</h2>
         <p>可粘贴代码，也可粘贴完整分享链接。</p>
       </template>
-      <label :for="inputId">BOX 分享码或分享链接</label>
+      <label :for="inputId" :class="{ 'box-step-title': embedded }"><span v-if="embedded" class="box-step-number" aria-hidden="true">1</span>{{ embedded ? '输入分享码或分享链接' : 'BOX 分享码或分享链接' }}</label>
       <div class="share-entry-row">
         <input
           :id="inputId" ref="input"
@@ -17,16 +18,27 @@
           :aria-describedby="inputError ? inputId + '-error' : undefined"
           :placeholder="embedded ? '粘贴他人的分享码或完整链接…' : '例如：550e8400-e29b-41d4-a716-446655440000'"
         />
-        <button type="submit">{{ embedded ? '查看 BOX' : '查看密探 BOX' }}</button>
+        <button type="submit"><Search v-if="embedded" :size="16" aria-hidden="true" />{{ embedded ? '查看 BOX' : '查看密探 BOX' }}</button>
       </div>
       <p v-if="inputError" :id="inputId + '-error'" class="entry-error" role="alert">{{ inputError }}</p>
       <div v-if="starTarget" class="share-star-notice" role="status">
         <p>这是星石背包分享链接，可在新标签中查看。</p>
         <a class="btn ghost" :href="sharePath(starTarget.token, 'star')" target="_blank" rel="noopener noreferrer">在新标签打开星石背包</a>
       </div>
-      <div v-if="embedded" class="share-entry-notice">
-        <p>查看过程为只读，不会修改你的密探档案。</p>
-      </div>
+      <template v-if="embedded">
+        <section class="box-preview" :aria-labelledby="inputId + '-preview-title'">
+          <h3 :id="inputId + '-preview-title'" class="box-step-title"><span class="box-step-number" aria-hidden="true">2</span>查看公开内容</h3>
+          <div class="box-preview-empty">
+            <span class="box-preview-art" aria-hidden="true"><BookUser :size="42" :stroke-width="1.4" /><Search :size="24" class="box-preview-search" /></span>
+            <strong>输入分享码后，在这里查看公开的密探档案</strong>
+            <p>粘贴分享码或完整链接，点击「查看 BOX」即可。</p>
+          </div>
+        </section>
+        <aside class="share-entry-notice" aria-label="公开查看提示">
+          <ShieldCheck :size="18" aria-hidden="true" />
+          <div><strong>小提示</strong><p>仅展示对方已公开的内容，无需登录。</p><p>查看过程为只读，不会修改你的密探档案。</p></div>
+        </aside>
+      </template>
     </form>
 
     <div v-else-if="status === 'loading'" class="share-state" role="status" aria-live="polite">
@@ -269,7 +281,7 @@ function shareHuajiValue(entry) { const value = operatorHuaji({ ...entry, ...ent
 
 import { formatOperatorOddityCurrent } from '../../utils/operatorCombatStats.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
-import { Heart, Star, Swords, CircleAlert, SearchX, Plus, Sparkles, X } from '@lucide/vue'
+import { BookUser, Heart, Star, Swords, CircleAlert, Search, SearchX, ShieldCheck, Plus, Sparkles, X } from '@lucide/vue'
 import ShareCardStats from './ShareCardStats.vue'
 import OperatorFilterDossier from './OperatorFilterDossier.vue'
 import { ACTIVE_OPERATOR_LEDGER_CARD_VERSION, OPERATOR_LEDGER_CARD_VERSIONS, operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
@@ -806,26 +818,37 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .share-star-notice { margin-top: 16px; overflow-wrap: anywhere; }
 .share-star-notice a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 /* 弹窗可用宽度小于页面，卡片按容器换列。 */
-.operator-share-content.is-embedded { container-type: inline-size; }
+.operator-share-content.is-embedded { container: box-content / inline-size; }
 .is-embedded .share-entry { max-width: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
-.is-embedded .share-entry label { margin-top: 0; color: var(--ink); font-size: 14px; }
-.is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; }
-.is-embedded .share-entry input { min-height: 40px; padding: 8px 10px; font-size: 16px; border-radius: 8px; background: var(--surface); }
-.is-embedded .share-entry button { min-height: 40px; padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
-.share-entry-notice { margin-top: 12px; }
-.share-entry-notice p { margin: 0; color: var(--ink-60); font-size: 12.5px; line-height: 1.8; }
+.is-embedded .share-entry label { display: flex; margin-top: 0; color: var(--ink); font-size: 14px; }
+.is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 10px; margin-top: 12px; }
+.is-embedded .share-entry input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px; font-size: 16px; border-radius: 9px; background: var(--surface); }
+.is-embedded .share-entry button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 20px; border-radius: 9px; font-size: 13px; white-space: nowrap; }
+.is-embedded .box-step-title { display: flex; align-items: center; gap: 9px; margin: 0; font: 700 14px/1.5 var(--font-b); }
+.box-step-number { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--tea); color: var(--cream); font: 700 12px var(--font-d); }
+.is-embedded .box-results-title { margin-bottom: 16px; }
+.box-preview { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.box-preview-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 12px 24px; text-align: center; }
+.box-preview-art { position: relative; display: grid; place-items: center; width: 88px; height: 88px; margin-bottom: 4px; border: 1px solid var(--line); border-radius: 50%; background: radial-gradient(circle, var(--surface), var(--paper)); color: var(--tea); }
+.box-preview-search { position: absolute; bottom: 10px; right: 8px; padding: 4px; border: 1px solid var(--line); border-radius: 50%; background: var(--cream); }
+.box-preview-empty strong { font-size: 14px; line-height: 1.7; }
+.box-preview-empty p { margin: 0; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
+.share-entry-notice { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
+.share-entry-notice > svg { flex: none; margin-top: 2px; color: var(--tea); }
+.share-entry-notice strong { font-size: 13px; color: var(--tea); }
+.share-entry-notice p { margin: 3px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
 @media (min-width: 641px) {
   .is-embedded .share-entry input { font-size: 14px; }
 }
-@container (max-width: 900px) {
+@container box-content (max-width: 900px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@container (max-width: 600px) {
+@container box-content (max-width: 600px) {
   .is-embedded .operator-grid.agent-ledger-grid { grid-template-columns: 1fr; }
   .is-embedded .share-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .is-embedded .share-toolbar p { grid-column: 1 / -1; }
 }
-@container (max-width: 480px) {
-  .is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr); }
+@container box-content (min-width: 480px) {
+  .is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr) auto; }
 }
 </style>
