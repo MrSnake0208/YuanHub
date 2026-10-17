@@ -1,33 +1,8 @@
-/* 此端工作区导航布局独立持有；键盘与选中状态仍共享。 */
+/* 确认稿三等分导航；保持原键盘手动激活语义。 */
 @media (max-width: 1080px) {
-.inventory-tabs {
-  position: static;
-  inset: auto;
-  z-index: auto;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-  min-width: 0;
-  max-width: 100%;
-  margin: 0;
-  padding: 4px;
-  border-radius: 12px;
-  overflow-x: auto;
-}
-.inventory-tabs button svg { display: none; }
-.inventory-tabs button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  flex-direction: row;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-}
-.inventory-tabs button[aria-haspopup="dialog"] {
-  font-size: 13px;
-}
+  .inventory-tabs { position: static; inset: auto; z-index: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 3px; width: 100%; min-width: 0; max-width: 100%; margin: 12px 0 0; padding: 4px; border-radius: 12px; overflow: visible; box-shadow: 0 3px 8px color-mix(in srgb, var(--tea) 6%, transparent); }
+  .inventory-tabs button svg { display: none; }
+  .inventory-tabs button { display: inline-flex; min-width: 0; min-height: 38px; align-items: center; justify-content: center; padding: 6px 3px; border-radius: 9px; font-size: 14px; font-weight: 800; }
+  .inventory-tabs button[aria-selected="true"] { border-bottom-width: 3px; background: color-mix(in srgb, var(--yellow) 38%, var(--surface)); }
+  .inventory-tabs button[aria-haspopup="dialog"] { font-size: 13px; }
 }

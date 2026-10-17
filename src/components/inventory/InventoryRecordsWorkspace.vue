@@ -19,11 +19,15 @@
           @click="$emit('open-report', $event.currentTarget)"><Upload :size="16" aria-hidden="true" />导入本地报告</button>
       </div>
     </section>
-    <div class="records-head" v-reveal>
+    <div class="records-head">
       <span class="hint"
         >删除记录后会重新计算库存，可在本页撤销。</span
       >
       <span class="sp"></span>
+      <select class="records-filter-select" aria-label="筛选历史记录对象" :value="recordsEntityType" :disabled="recordsLoading"
+        @change="$emit('filter', $event.target.value)">
+        <option value="all">全部类型</option><option value="item">道具</option><option value="agent">心纸</option>
+      </select>
       <div
         class="records-filter"
         role="group"

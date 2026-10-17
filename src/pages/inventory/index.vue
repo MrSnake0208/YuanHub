@@ -1,6 +1,6 @@
 <template>
   <InventoryLayout>
-      <CompactToolHeader title="背包库存" description="查看材料与心纸，掌握库存余量">
+      <CompactToolHeader class="inventory-header" title="背包库存" description="查看材料与心纸，掌握库存余量">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
@@ -24,13 +24,9 @@
         <template #help>
           <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记录奖励」补录增量流水，「更新库存」盘点当前总量。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
         </template>
-      </CompactToolHeader>
-
-      <section>
-        <div class="wrap">
-          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
+        <template #summary>
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
-            <div class="inventory-freshness-copy"><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
+            <div class="inventory-freshness-copy"><Clock3 :size="15" aria-hidden="true" /><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
             <div v-if="inventoryAccountReady" class="inventory-actions">
               <button type="button" class="btn ghost reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
                 aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual'"
@@ -39,6 +35,12 @@
                 @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
             </div>
           </div>
+        </template>
+      </CompactToolHeader>
+
+      <section>
+        <div class="wrap">
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
           <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)">
             <router-link v-if="!auth.isLoggedIn" class="btn primary" :to="{ path: '/login', query: { redirect: '/inventory' } }">登录</router-link>
             <button v-else-if="accountError || error" class="btn primary" type="button" @click="accountError ? loadAccounts() : reloadCurrent()">重试</button>
@@ -76,11 +78,11 @@
 
           <InventoryWorkspaceTabs
             v-show="!inventoryPromptTitle || inventoryBrowseCatalog || editingStock"
-            :active-tab="activeTab" @select="setTab" v-reveal
+            :active-tab="activeTab" @select="setTab"
           />
 
           <!-- 导入档案 -->
-          <div v-if="showArchive && !editingStock && showImport" class="import-box" v-reveal>
+          <div v-if="showArchive && !editingStock && showImport" class="import-box">
             <p id="inventory-import-tip" class="tip">
               粘贴符合《库存数据交换协议 v2》的 JSON
               文档，或选择文件上传；导入结果会在下方展示。
@@ -159,7 +161,6 @@
               v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
               :class="{ 'is-editing': editingStock }"
-              v-reveal
             >
               <aside
                 class="manifest-scope"
@@ -668,7 +669,6 @@
                 'manifest-items': entityType === 'item',
                 'manifest-agents': entityType === 'agent',
               }"
-              v-reveal
             >
               <div v-if="manifestEntries.length === 0" class="state slim">
                 {{
@@ -974,7 +974,6 @@
             <section
               class="acquired-query"
               aria-labelledby="acquired-query-title"
-              v-reveal
             >
               <div class="acquired-query-head">
                 <h2 id="acquired-query-title">统计时段</h2>
@@ -985,16 +984,27 @@
                   v-for="preset in rangePresets"
                   :key="preset.id"
                   :aria-pressed="rangePreset === preset.id"
-                  :class="{ on: rangePreset === preset.id }"
+                  :class="{ on: rangePreset === preset.id, 'extended-range': !['7d', '30d'].includes(preset.id) }"
                   :disabled="acquiredLoading"
                   @click="applyRangePreset(preset.id)"
                 >
                   {{ preset.label }}
                 </button>
+                <button type="button" class="custom-range-toggle" :aria-pressed="rangePreset === 'custom'"
+                  :aria-expanded="rangePreset === 'custom'" aria-controls="inventory-custom-range"
+                  :class="{ on: rangePreset === 'custom' }" :disabled="acquiredLoading" @click="markCustomRange">自定义</button>
+                <details class="range-more">
+                  <summary>{{ rangePresets.slice(2).find(preset => preset.id === rangePreset)?.label || '更多时段' }}<ChevronDown :size="13" aria-hidden="true" /></summary>
+                  <div class="range-more-options">
+                    <button v-for="preset in rangePresets.slice(2)" :key="preset.id" type="button"
+                      :aria-pressed="rangePreset === preset.id" :class="{ on: rangePreset === preset.id }"
+                      :disabled="acquiredLoading" @click="applyRangePreset(preset.id)">{{ preset.label }}</button>
+                  </div>
+                </details>
               </div>
 
-              <div class="acquired-bar">
-                <div class="range">
+              <div class="acquired-bar" :class="{ 'is-custom': rangePreset === 'custom' }">
+                <div id="inventory-custom-range" class="range">
                   <label>
                     <span class="lb">开始日期</span>
                     <input
@@ -1122,7 +1132,6 @@
                 :records-available="!acquiredRecordsError"
                 :favorite-loading="favoriteLoading"
                 :favorite-error="favoriteError"
-                v-reveal
               >
                 <template #actions>
                   <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
@@ -1135,7 +1144,6 @@
               <div
                 class="type-switch acquired-type-switch"
                 aria-label="统计对象"
-                v-reveal
               >
                 <button
                   type="button"
@@ -1223,7 +1231,7 @@
                 >
               </div>
               <template v-else>
-                <div class="acquired-tools" v-reveal>
+                <div class="acquired-tools">
                   <div
                     class="acquired-views"
                     role="tablist"
@@ -1318,7 +1326,6 @@
                   v-if="acquiredView === 'overview'"
                   class="backpack acquired-overview"
                   aria-label="获得总览"
-                  v-reveal
                 >
                   <div class="bp-head acquired-overview-head">
                     <span class="bp-tip">{{ acquiredResultCaption }}</span>
@@ -1389,7 +1396,6 @@
                   v-else-if="acquiredView === 'source'"
                   class="acquired-ledger"
                   aria-labelledby="source-title"
-                  v-reveal
                 >
                   <div class="ledger-head">
                     <div>
@@ -1431,7 +1437,6 @@
                   v-else-if="acquiredView === 'timeline'"
                   class="acquired-ledger"
                   aria-labelledby="timeline-title"
-                  v-reveal
                 >
                   <div class="ledger-head">
                     <div>
@@ -1478,7 +1483,6 @@
                   v-else
                   class="acquired-ledger acquired-details"
                   aria-labelledby="details-title"
-                  v-reveal
                 >
                   <div class="ledger-head details-head">
                     <div>
@@ -1562,7 +1566,7 @@
               <InventoryRecordsView
                 :records-list="recordsList" :account-id="accountId"
                 :disabled="Boolean(recordsBusyId) || recordsLoading"
-                :fmt-time="fmtTime" :entry-summary="entrySummary"
+                :fmt-time="fmtTime" :entry-summary="entrySummary" :icon-src="iconSrc"
                 :stock-effect-label="stockEffectLabel" :stamina-cost-of="staminaCostOf"
                 :delete-record="onDeleteRecord"
               />
@@ -1613,6 +1617,7 @@ import {
   Star,
   Upload,
   X,
+  Clock3,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import TutorialEntry from "../../components/TutorialEntry.vue";
@@ -1955,7 +1960,9 @@ function onRewardImported(targetAccountId) {
   if (activeTab.value === "acquired") loadAcquired();
 }
 
-function focusResourceRange() {
+async function focusResourceRange() {
+  markCustomRange();
+  await nextTick();
   document.getElementById("acquired-range-from")?.focus();
 }
 
