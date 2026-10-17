@@ -180,7 +180,7 @@ test('missing/older baseline does not authorize acceptance; fresh full baseline 
   await assert.rejects(f.writer.save('a', 'jiezheping', 10))
   for (const baseline of [null, 'invalid', '2026-10-08T00:59:59Z']) {
     f.setBaseline(baseline)
-    await assert.rejects(f.writer.read('a'), /尚未可靠确认/)
+    await assert.rejects(f.writer.read('a'), /库存尚未确认/)
     assert.equal(f.writer.getPending().canAccept, false)
     await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /不能使用/)
   }
@@ -209,7 +209,7 @@ test('acceptance revalidates baseline and account instead of trusting the previo
   const f = conflictFixture()
   await assert.rejects(f.writer.save('a', 'jiezheping', 10))
   f.setBaseline(null)
-  await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /尚未可靠确认/)
+  await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /库存尚未确认/)
   assert.equal(f.writer.hasPending(), true)
   f.switch()
   await assert.rejects(f.writer.acceptCurrent('a', 'jiezheping', 10), /账号已切换/)
