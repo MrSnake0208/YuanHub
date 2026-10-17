@@ -256,6 +256,12 @@ export function renameFeedbackCategory(key, label) {
   })
 }
 
+export function reorderFeedbackCategories(keys, expectedKeys) {
+  return request('/v1/admin/feedback-categories/order', {
+    method: 'PUT', auth: true, body: { keys, expected_keys: expectedKeys }
+  })
+}
+
 export function setFeedbackCategoryHidden(key, hidden) {
   return request('/v1/admin/feedback-categories/' + encodeURIComponent(key) + '/visibility', {
     method: 'PUT', auth: true, body: { hidden }

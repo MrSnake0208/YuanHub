@@ -41,12 +41,14 @@ function normalizeAuditSnapshot(value) {
   if (!value || typeof value !== 'object') return null
   const receiveAreas = value.receiveAreas || value.receive_areas
   const manageAreas = value.manageAreas || value.manage_areas
+  const feedbackCategoryOrder = value.feedbackCategoryOrder || value.feedback_category_order
   return {
     roles: Array.isArray(value.roles) ? value.roles.slice() : [],
     receiveAreas: Array.isArray(receiveAreas) ? receiveAreas.slice() : [],
     manageAreas: Array.isArray(manageAreas) ? manageAreas.slice() : [],
     feedbackCategoryLabel: value.feedbackCategoryLabel || value.feedback_category_label || null,
     feedbackCategoryHidden: value.feedbackCategoryHidden ?? value.feedback_category_hidden ?? null,
+    feedbackCategoryOrder: Array.isArray(feedbackCategoryOrder) ? feedbackCategoryOrder.slice() : [],
     ledger: value.ledger || null,
     recruitmentAccess: value.recruitmentAccess || value.recruitment_access || null,
     ...(value.beta && typeof value.beta === 'object' && !Array.isArray(value.beta)

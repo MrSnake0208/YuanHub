@@ -2,17 +2,18 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import FeedbackAccess from '../src/pages/feedback/admin.vue'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
-import { createFeedbackCategory, getFeedbackAccess, listFeedbackAccessGrants, renameFeedbackCategory, setFeedbackCategoryHidden, updateFeedbackAccessGrant } from '../src/api/feedback.js'
+import { createFeedbackCategory, getFeedbackAccess, listFeedbackAccessGrants, renameFeedbackCategory, reorderFeedbackCategories, setFeedbackCategoryHidden, updateFeedbackAccessGrant } from '../src/api/feedback.js'
 import { dialog } from '../src/utils/dialog.js'
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
+const router = vi.hoisted(() => ({ replace: vi.fn() }))
+vi.mock('vue-router', () => ({ useRouter: () => router }))
 vi.mock('../src/store/auth.js', () => ({ auth: {
   userInfo: { id: 'root' }, adminAccess: { permissions: ['admin:feedback_access:manage'], manageAreas: [] }
 } }))
 vi.mock('../src/store/feedbackUnread.js', () => ({ feedbackUnreadState: { count: 0 } }))
 vi.mock('../src/api/feedback.js', () => ({
   listFeedbackAccessGrants: vi.fn(), getFeedbackAccess: vi.fn(), updateFeedbackAccessGrant: vi.fn(), deleteFeedbackAccessGrant: vi.fn(),
-  createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn(), setFeedbackCategoryHidden: vi.fn()
+  createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn(), reorderFeedbackCategories: vi.fn(), setFeedbackCategoryHidden: vi.fn()
 }))
 vi.mock('../src/api/user.js', () => ({ searchFeedbackAccessUsers: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
@@ -30,6 +31,7 @@ async function search(wrapper, query) {
 }
 beforeEach(() => {
   vi.useFakeTimers()
+  router.replace.mockReset()
   getFeedbackAccess.mockReset().mockResolvedValue({ available_categories: [{ key: 'OPERATOR', label: '密探养成' }] })
   listFeedbackAccessGrants.mockReset().mockResolvedValue([])
   searchFeedbackAccessUsers.mockReset().mockResolvedValue([])
@@ -37,7 +39,94 @@ beforeEach(() => {
   createFeedbackCategory.mockReset().mockResolvedValue({ key: 'CUSTOM_TEST', label: '新板块' })
   renameFeedbackCategory.mockReset().mockResolvedValue({ key: 'OPERATOR', label: '密探' })
   setFeedbackCategoryHidden.mockReset().mockResolvedValue({})
+  reorderFeedbackCategories.mockReset()
   dialog.confirm.mockReset()
+})
+
+const orderedCategories = () => [
+  { key: 'OPERATOR', label: '密探养成', hidden: false },
+  { key: 'CUSTOM_HIDDEN', label: '隐藏板块', hidden: true },
+  { key: 'CALENDAR', label: '活动日历', hidden: false }
+]
+const categoryNames = wrapper => wrapper.findAll('.category-list li > span').map(item => item.text())
+
+it('上移下移保存完整目录顺序含隐藏项，首尾禁用，重载保序', async () => {
+  let catalog = orderedCategories()
+  getFeedbackAccess.mockImplementation(async () => ({ category_catalog: catalog }))
+  reorderFeedbackCategories.mockImplementation(async keys => {
+    catalog = keys.map(key => catalog.find(area => area.key === key))
+    return catalog
+  })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[aria-label="上移 密探养成"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('[aria-label="下移 活动日历"]').attributes('disabled')).toBeDefined()
+  await wrapper.get('[aria-label="下移 密探养成"]').trigger('click'); await flushPromises()
+  expect(reorderFeedbackCategories).toHaveBeenLastCalledWith(
+    ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR'], ['OPERATOR', 'CUSTOM_HIDDEN', 'CALENDAR']
+  )
+  expect(categoryNames(wrapper)).toEqual(['隐藏板块（已隐藏）', '密探养成', '活动日历'])
+  await wrapper.get('[aria-label="上移 活动日历"]').trigger('click'); await flushPromises()
+  expect(reorderFeedbackCategories).toHaveBeenLastCalledWith(
+    ['CUSTOM_HIDDEN', 'CALENDAR', 'OPERATOR'], ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR']
+  )
+  wrapper.unmount()
+  const reloaded = render(); await flushPromises()
+  expect(categoryNames(reloaded)).toEqual(['隐藏板块（已隐藏）', '活动日历', '密探养成'])
+  await reloaded.get('.access-create').trigger('click')
+  expect(reloaded.findAll('.permission-group')[1].findAll('label').map(label => label.text())).toEqual(['活动日历', '密探养成'])
+  reloaded.unmount()
+})
+
+it('排序保存中禁用重复操作，失败保留原顺序并可重试', async () => {
+  getFeedbackAccess.mockResolvedValue({ category_catalog: orderedCategories() })
+  let reject
+  reorderFeedbackCategories.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+  const wrapper = render(); await flushPromises()
+  const original = categoryNames(wrapper)
+  await wrapper.get('[aria-label="下移 密探养成"]').trigger('click')
+  expect(wrapper.get('[role="status"]').text()).toContain('正在保存板块')
+  expect(wrapper.findAll('.category-list button').every(button => button.attributes('disabled') !== undefined)).toBe(true)
+  await wrapper.get('[aria-label="上移 活动日历"]').trigger('click')
+  expect(reorderFeedbackCategories).toHaveBeenCalledTimes(1)
+  expect(categoryNames(wrapper)).toEqual(original)
+  reject(Object.assign(new Error('反馈板块顺序已更新，请刷新后重试'), { status: 409 })); await flushPromises()
+  expect(categoryNames(wrapper)).toEqual(original)
+  expect(wrapper.get('[role="alert"]').text()).toContain('请刷新后重试')
+  expect(wrapper.get('[aria-label="下移 密探养成"]').attributes('disabled')).toBeUndefined()
+  reorderFeedbackCategories.mockResolvedValue([orderedCategories()[1], orderedCategories()[0], orderedCategories()[2]])
+  await wrapper.get('[aria-label="下移 密探养成"]').trigger('click'); await flushPromises()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(categoryNames(wrapper)[0]).toContain('隐藏板块')
+  wrapper.unmount()
+})
+
+it('排序无权限时走原403页面并保留当前顺序', async () => {
+  getFeedbackAccess.mockResolvedValue({ category_catalog: orderedCategories() })
+  reorderFeedbackCategories.mockRejectedValue(Object.assign(new Error('权限不足'), { status: 403 }))
+  const wrapper = render(); await flushPromises()
+  const original = categoryNames(wrapper)
+  await wrapper.get('[aria-label="下移 密探养成"]').trigger('click'); await flushPromises()
+  expect(router.replace).toHaveBeenCalledWith({ path: '/forbidden', query: { from: '/feedback/admin' } })
+  expect(categoryNames(wrapper)).toEqual(original)
+  wrapper.unmount()
+})
+
+it('改名期间禁止排序，离开页面后的排序响应不继续请求目录', async () => {
+  getFeedbackAccess.mockResolvedValue({ category_catalog: orderedCategories() })
+  const pending = deferred()
+  reorderFeedbackCategories.mockReturnValue(pending.promise)
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('[aria-label="重命名 密探养成"]').trigger('click')
+  expect(wrapper.get('[aria-label="上移 活动日历"]').attributes('disabled')).toBeDefined()
+  await wrapper.get('[aria-label="上移 活动日历"]').trigger('click')
+  expect(reorderFeedbackCategories).not.toHaveBeenCalled()
+  await wrapper.get('.category-list li button:last-child').trigger('click')
+  await wrapper.get('[aria-label="下移 密探养成"]').trigger('click')
+  const reads = getFeedbackAccess.mock.calls.length
+  wrapper.unmount()
+  pending.resolve(orderedCategories().reverse()); await flushPromises()
+  expect(getFeedbackAccess).toHaveBeenCalledTimes(reads)
+  expect(reorderFeedbackCategories).toHaveBeenCalledTimes(1)
 })
 
 it('超级管理员新增和改名板块后重新读取目录', async () => {
