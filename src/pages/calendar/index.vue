@@ -34,7 +34,7 @@
             </select>
           </label>
           <button v-if="mine" type="button" class="calendar-private-add" :disabled="!privateItems.ready.value" @click="privateItems.open(null, anchorDate)"><Plus :size="17" aria-hidden="true" /> 添加私人事项</button>
-          <p v-if="mine && !mobileMine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅即本期待办，截止不会自动完成；历史档期可调整日期查看。私人事项仅当前账号可见。</p>
+          <p v-if="mine && !mobileMine && subscriptions.account.value" class="calendar-hint calendar-account-scope">私人事项仅当前账号可见；订阅活动需手动标记本期完成。</p>
           <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">

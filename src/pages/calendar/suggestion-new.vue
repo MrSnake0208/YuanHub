@@ -11,7 +11,7 @@
       <section v-else-if="result" ref="successRegion" class="calendar-panel calendar-section" tabindex="-1" aria-labelledby="suggestion-success"><h2 id="suggestion-success">{{ SUGGESTION_STATUSES[result.status] }}：资料已提交</h2><p>建议编号：{{ result.id }}。提交后不能修改或撤回。</p><router-link class="calendar-source-link" :to="{ path: '/calendar/suggestions', query: { id: result.id } }">查看我的建议与审核结果</router-link><button type="button" @click="startAnother">再补充一条活动</button></section>
       <form v-else class="calendar-panel calendar-form" novalidate @submit.prevent="submit">
         <div v-if="error" ref="errorSummary" class="calendar-error" role="alert" tabindex="-1"><h2>请检查提交资料</h2><p>{{ error }}</p><ul v-if="Object.keys(fieldErrors).length"><li v-for="(message, key) in fieldErrors" :key="key"><a :href="'#suggestion-' + key" @click.prevent="focusField(key)">{{ SUGGESTION_FIELD_LABELS[key] }}：{{ message }}</a></li></ul></div>
-        <p v-if="attempt" role="status">这次提交的资料和请求标识已保留。结果可能已保存，可重试相同资料，或先查看“我的建议”。</p>
+        <p v-if="attempt" role="status">提交结果暂未确认，资料已保留。请先查看“我的建议”，或重试本次提交。</p>
         <fieldset :disabled="saving || !!attempt || !permitted"><legend>活动资料（* 为必填）</legend><CalendarSuggestionFields :form="form" :errors="fieldErrors" submission /></fieldset>
         <CalendarSuggestionDuplicates :key="identity" :form="form" :disabled="saving || !permitted" />
         <p class="calendar-hint">这里补充已经公布的活动信息；希望游戏举办新活动请使用反馈中心。私人说明只供核对，不会自动公开。</p>

@@ -36,7 +36,7 @@
               <option :value="0">仅当天</option><option :value="1">提前一天＋当天</option>
             </select>
           </template>
-          <p id="private-item-reminder-hint">{{ draft.errors.reminder_on || draft.errors.reminder_days_before || '按北京时间日历日提醒，与具体时间无关。进入 Hub 时可选“稍后提醒”或“今天已知悉”。' }}</p>
+          <p id="private-item-reminder-hint">{{ draft.errors.reminder_on || draft.errors.reminder_days_before || '按北京时间的日期提醒，不按具体时刻提醒。' }}</p>
           <details :open="!!draft.form.note || !!draft.errors.note">
             <summary>附加说明（可选）</summary>
             <label for="private-item-note">纯文本说明 · 最多1000字</label>

@@ -139,13 +139,13 @@ it('紧凑链接保留完整 URL，复制受限时仍可选中手动复制；隐
   expect(input.element.value).toBe(full)
   const details = panel().get('details')
   expect(details.get('summary strong').text()).toBe('公开范围与隐私说明')
-  expect(details.get('summary small').text()).toContain('不含备注、目标、计划或 OCR 记录')
+  expect(details.get('summary small').text()).toContain('不公开备注、目标、计划或识别记录')
   expect(details.element.open).toBe(false)
   details.element.open = true
   expect(details.text()).toContain('两个视图共用分享码')
-  expect(details.text()).toContain('不会移除这些信息')
+  expect(panel().text()).toContain('关闭星石背包分享，不会隐藏密探 BOX 中的佩戴星石')
   expect(details.text()).toContain('云端已保存的全部星石')
-  expect(panel().text()).toContain('不含备注、目标、计划或 OCR 记录')
+  expect(panel().text()).toContain('不公开备注、目标、计划或识别记录')
 })
 
 it('管理操作直接显示在正文外的底栏，底部关闭归还焦点且不写分享状态', async () => {

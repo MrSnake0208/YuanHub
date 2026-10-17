@@ -263,7 +263,7 @@
               </div>
               <p v-if="entryError" :id="editorId + '-entry-error'" class="form-error" role="alert">{{ entryError }}</p>
               <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
-              <p v-if="tailProgress == null" class="unknown-progress-note">当前保底可选填：留空也能保存密探记录，保留原进度；原本未知则继续未知。</p>
+              <p v-if="tailProgress == null" class="unknown-progress-note">保底选填，留空保留原进度。</p>
             </section>
 
             <section class="records-section" :aria-labelledby="editorId + '-records'">
@@ -356,7 +356,7 @@
               </div>
 
               <div v-if="hasMore || (rows.length && recordView === 'agents' && !screenshotMode)" class="records-tail">
-                <p v-if="rows.length && recordView === 'agents' && !screenshotMode" class="bar-legend">头像下方显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
+                <p v-if="rows.length && recordView === 'agents' && !screenshotMode" class="bar-legend">每个头像代表一次出货。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">继续加载记录</button>
               </div>
             </section>

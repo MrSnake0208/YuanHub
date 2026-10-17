@@ -6,11 +6,11 @@
         <div class="wrap">
           <div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">添加到桌面</span></div>
           <h1>添加到桌面<span class="small">Install YuanHub</span></h1>
-          <p class="hero-sub">{{ TUTORIALS_ENABLED ? '跟着完成一次真实安装，或继续使用网页版。随时可以关闭教程。' : '添加 YuanHub 到桌面，或继续使用网页版。' }}</p>
+          <p class="hero-sub">{{ TUTORIALS_ENABLED ? '跟着完成安装，或继续使用网页版。随时可以关闭教程。' : '添加 YuanHub 到桌面，或继续使用网页版。' }}</p>
         </div>
       </header>
       <section class="wrap install-content">
-        <div v-if="TUTORIALS_ENABLED && pwaInstallState.guideActive" class="task-exit"><button ref="exitButton" class="install-secondary exit-guide" type="button" @click="exitGuide">关闭教程 / 退出引导</button></div>
+        <div v-if="TUTORIALS_ENABLED && pwaInstallState.guideActive" class="task-exit"><button ref="exitButton" class="install-secondary exit-guide" type="button" @click="exitGuide">关闭教程</button></div>
         <article v-if="pwaInstallState.standalone || pwaInstallState.installed" class="guide-card">
           <div class="installed-banner" role="status">
             <CircleCheck :size="24" aria-hidden="true" />
@@ -20,7 +20,7 @@
               <p v-if="TUTORIALS_ENABLED && pwaInstallState.tutorialCompleted">实操教程已完成。</p>
             </div>
           </div>
-          <button v-if="TUTORIALS_ENABLED" ref="startButton" class="install-now" type="button" @click="beginGuide">使用教程（复用已安装成果）</button>
+          <button v-if="TUTORIALS_ENABLED" ref="startButton" class="install-now" type="button" @click="beginGuide">查看安装教程</button>
           <router-link ref="doneLink" class="install-secondary" to="/">继续使用 YuanHub</router-link>
         </article>
 
@@ -37,7 +37,7 @@
             <template v-else>
               <p v-if="pwaInstallState.phase === 'dismissed'">本次安装已取消。可以重试，也可以继续使用网页版。</p>
               <p v-else-if="pwaInstallState.phase === 'failed'">系统安装调用失败，请按下方方法排查。</p>
-              <p v-if="pwaInstallState.installable">点击“立即添加到桌面”，在真实系统提示中选择是否安装。</p>
+              <p v-if="pwaInstallState.installable">点击“立即添加到桌面”，在系统提示中选择是否安装。</p>
               <p v-else>{{ getPwaInstallGuidance() }}</p>
             </template>
           </div>
@@ -50,7 +50,7 @@
             <button v-if="pwaInstallState.phase === 'waiting-for-install'" class="install-secondary" type="button" @click="showMenu = !showMenu">{{ showMenu ? '收起菜单方法' : '返回查看菜单方法' }}</button>
           </div>
           <p v-if="showMenu && pwaInstallState.phase === 'waiting-for-install'" class="guide-intro">{{ getPwaInstallGuidance() }}</p>
-          <p v-if="!pwaInstallState.installable" class="guide-intro">网页无法确认浏览器外的菜单操作，教程会等待真实安装证据。如果只创建了快捷方式，仍以浏览器窗口打开，就不能确认已安装为桌面应用。</p>
+          <p v-if="!pwaInstallState.installable" class="guide-intro">请从桌面图标打开 YuanHub，确认安装状态。如果仍在浏览器窗口打开，可能只创建了快捷方式，尚未安装为应用。</p>
           <div v-if="pwaInstallState.phase === 'failed'" class="shortcut-permission-help">
             <Settings2 :size="22" aria-hidden="true" />
             <div>
@@ -64,7 +64,7 @@
         <article v-else-if="TUTORIALS_ENABLED" class="guide-card">
           <div class="install-overview">
             <img src="/pwa/icon-192.png" alt="YuanHub 应用图标" width="68" height="68" />
-            <div><h2>{{ pwaInstallState.dismissedForNow ? '教程已暂停，网页版仍可照常使用' : '把 YuanHub 放到桌面' }}</h2><p>安装需要你亲自操作系统提示或浏览器菜单。阅读说明不会完成教程。</p></div>
+            <div><h2>{{ pwaInstallState.dismissedForNow ? '教程已暂停，网页版仍可照常使用' : '把 YuanHub 放到桌面' }}</h2><p>按系统提示或浏览器菜单完成安装，也可以继续使用网页版。</p></div>
           </div>
           <div class="task-actions">
             <button ref="startButton" class="install-now" type="button" @click="beginGuide">{{ pwaInstallState.tutorialStarted ? '继续实操教程' : '跟着做一次' }}</button>
@@ -131,7 +131,7 @@ const installButton = ref(null)
 const exitButton = ref(null)
 const showMenu = ref(false)
 const taskTitle = computed(() => {
-  if (pwaInstallState.phase === 'waiting-for-install') return '等待真实安装结果'
+  if (pwaInstallState.phase === 'waiting-for-install') return '等待安装结果'
   if (pwaInstallState.phase === 'failed') return '恢复安装任务'
   return pwaInstallState.installable ? '现在安装 YuanHub' : '打开浏览器安装菜单'
 })

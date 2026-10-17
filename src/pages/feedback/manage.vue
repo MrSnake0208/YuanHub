@@ -34,7 +34,8 @@
                 <button v-for="status in secondaryQueues" :key="status.key" type="button" :aria-pressed="filterStatus === status.key" :class="{ on: filterStatus === status.key }" @click="setFilter(status)">{{ status.label }} <span class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</span></button>
               </div>
             </div>
-            <p class="feedback-queue-note">队列可能重叠，数量不能相加；“程序已交回”表示曾交回运营。</p>
+            <p class="feedback-queue-note">同一工单可能出现在多个队列，数量不可相加。</p>
+            <details class="feedback-queue-note"><summary>“程序已交回”包含哪些工单？</summary><p>包含曾由程序交回运营的工单，不代表当前仍由运营处理。</p></details>
             <p v-if="queueCountError" class="feedback-form-error" role="status">{{ queueCountError }} <button type="button" @click="loadQueueCounts">重试</button></p>
 
             <div class="feedback-command-bar feedback-manage-toolbar">

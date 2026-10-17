@@ -17,7 +17,7 @@
       <button type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
     </div>
     <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先找你抽过的池子，看池名、UP 密探和日期，再点「记一笔／查看记录」。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
-    <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无公共卡池，请联系管理员配置。可导入已有备份，或等待公共目录配置。</p>
+    <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无可用卡池，可导入已有备份，或稍后再试。</p>
     <p v-else-if="!visiblePools.length" data-guide-target="pool-unavailable" class="timeline-empty">此年份暂无卡池。</p>
     <ol class="timeline-list" data-guide-target="pool-cards">
       <li v-for="pool in visiblePools" :key="pool.pool_id" class="timeline-row">

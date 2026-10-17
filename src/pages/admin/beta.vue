@@ -20,7 +20,7 @@
         <div class="admin-card"><h2>运营操作</h2>
           <label class="reason-label" for="beta-admin-reason">本次变更原因（必填，写入审计）</label>
           <textarea ref="reasonInput" id="beta-admin-reason" v-model.trim="reason" maxlength="300" rows="3" placeholder="例如：同步流程稳定，开放下一批候补" />
-          <p class="reason-hint">运营操作会写入审计记录；未填写原因时点击按钮会提示补充，不会静默禁用。</p>
+          <p class="reason-hint">请填写变更原因，操作会记入审计。</p>
           <section class="capacity-panel" aria-labelledby="beta-capacity-title">
             <div class="capacity-head">
               <h3 id="beta-capacity-title">自定义扩容</h3>

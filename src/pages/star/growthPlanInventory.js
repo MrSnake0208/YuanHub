@@ -54,7 +54,7 @@ export function createGrowthPlanInventoryWriter({ getCurrent, importInventory, i
     return Object.assign(new Error(message, { cause: error }),
       { status: error.status, code: error.code, inventoryPending: pending })
   }
-  const conflict = p => new Error(`${bottleNames[p.id]}${p.notApplied ? '本次记录已保存，但未改变当前库存。' : '当前库存与本次保存数量不一致。'}本次保存：${p.count}，当前库存：${p.latest.inventory[p.id] ?? '未知'}。${p.latest.reliable ? '请核对后重新读取，或使用当前库存；使用当前库存只读取核对，不会再次修改云端库存。' : '当前库存尚未可靠确认，请重新读取；仍无法确认时请保留数据并联系维护者。'}`)
+  const conflict = p => new Error(`${bottleNames[p.id]}${p.notApplied ? '本次记录已保存，但未改变当前库存。' : '库存与本次填写数量不一致。'}本次填写：${p.count}，当前库存：${p.latest.inventory[p.id] ?? '未知'}。${p.latest.reliable ? '请重新读取核对，或使用当前库存（不会再次写入）。' : '库存尚未确认，请重新读取；仍无法确认时保留数据并联系维护者。'}`)
 
   async function readBack(p) {
     p.latest = null // A failed/obsolete read cannot leave an older acceptance offer enabled.

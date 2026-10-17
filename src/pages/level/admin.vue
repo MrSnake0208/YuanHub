@@ -187,7 +187,7 @@
         <div v-if="editing" class="editor-mask" role="presentation" @click.self="closeEditor">
           <section class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="level-editor-title">
             <header class="editor-head">
-              <div><span class="eyebrow">LEVEL CATALOG</span><h2 id="level-editor-title">{{ isNew ? '新建关卡' : '编辑关卡' }}</h2><p>{{ isNew ? '新增条目会生成稳定的关卡 ID。' : '保存时会校验当前 revision，避免覆盖其他管理员的修改。' }}</p></div>
+              <div><span class="eyebrow">LEVEL CATALOG</span><h2 id="level-editor-title">{{ isNew ? '新建关卡' : '编辑关卡' }}</h2><p>{{ isNew ? '新关卡将自动分配编号。' : '保存前会检查是否有他人更新；冲突时请先核对最新内容。' }}</p></div>
               <button class="icon-command" type="button" title="关闭编辑器" :disabled="saving" @click="closeEditor"><X :size="19" aria-hidden="true" /></button>
             </header>
             <div v-if="editorError" class="editor-error" role="alert">{{ editorError }}<button v-if="revisionConflict" type="button" @click="reloadAfterConflict">重新加载</button></div>
@@ -360,7 +360,7 @@ function detailText(value) {
 
 function humanError(err, fallback) {
   if (!err) return fallback
-  if (/Failed to fetch|NetworkError|fetch/i.test(err.message || '')) return '网络异常，请检查后端服务是否已启动'
+  if (/Failed to fetch|NetworkError|fetch/i.test(err.message || '')) return '暂时无法连接 YuanHub，请检查网络后重试；仍失败时请反馈。'
   return err.message || fallback
 }
 

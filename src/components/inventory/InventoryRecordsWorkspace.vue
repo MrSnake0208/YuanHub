@@ -5,7 +5,7 @@
         <span class="records-kicker">库存追踪 · 操作历史</span>
         <h2 id="records-overview-title">浏览库存变更记录</h2>
         <p>
-          这里按时间查阅、筛选和追踪库存更新与奖励入账，也可删除与恢复记录。新增奖励请使用顶部「记录奖励」；本地报告可在此导入。
+          新增奖励请用「记录奖励」；本地报告可在此导入。
         </p>
       </div>
       <div class="records-overview-actions">
@@ -21,7 +21,7 @@
     </section>
     <div class="records-head" v-reveal>
       <span class="hint"
-        >筛选要查看的记录类型；删除单条后会自动重放剩余记录并重建库存。</span
+        >删除记录后会重新计算库存，可在本页撤销。</span
       >
       <span class="sp"></span>
       <div
@@ -67,7 +67,7 @@
     </div>
 
     <div v-for="notice in deletedRecordNotices" :key="notice.recordId" class="inventory-inline-state" role="status">
-      已删除「{{ notice.summary }}」，库存已重建。
+      已删除「{{ notice.summary }}」，库存已重新计算。
       <button type="button" class="link" :disabled="Boolean(recordsBusyId)" @click="$emit('restore', notice)">撤销删除</button>
     </div>
     <div v-if="recordsActionError" class="inventory-inline-state is-error" role="alert">{{ recordsActionError }}</div>

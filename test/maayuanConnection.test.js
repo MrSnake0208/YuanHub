@@ -11,8 +11,8 @@ test('MaaYuan 创建连接保留密探读取并包含星石采集权限', () => 
   assert.match(profile, /scopes:\s*MAAYUAN_REQUIRED_SCOPES\.slice\(\)/)
   const grantReview = profile.slice(profile.indexOf('<div class="grant-review">'), profile.indexOf('</div>', profile.indexOf('<div class="grant-review">') + 1))
   assert.match(grantReview, /<h4>将会允许<\/h4>/)
-  assert.match(grantReview, /上传星石背包临时采集结果/)
-  assert.match(grantReview, /MaaYuan 采集任务接入中/)
+  assert.match(grantReview, /上传星石截图/)
+  assert.match(grantReview, /MaaYuan 自动采集接入中/)
 })
 
 test('MaaYuan 现有连接以 PATCH scope 原地升级而不创建新连接', () => {
@@ -33,13 +33,13 @@ test('高级权限选择器展示星石采集权限分组', () => {
 })
 
 test('MaaYuan首次闭环只选背包，其他任务折叠且星石边界准确', () => {
-  assert.match(profile, /连接码已创建，还没确认同步/)
+  assert.match(profile, /复制连接码后，前往 MaaYuan 开启同步/)
   assert.match(profile, /仅创建连接码不表示同步成功/)
   assert.match(profile, /newTokenKind === 'maayuan' && tokenCopied/)
   assert.match(profile, /百宝箱 · 自动识别背包/)
   assert.match(profile, /同步至 YuanHub/)
   assert.match(profile, /YuanHub 连接码/)
-  assert.match(profile, /运行一次真实任务/)
+  assert.match(profile, /运行一次任务/)
   assert.match(profile, /以后还可以同步什么/)
   assert.match(profile, /采集密探信息/)
   assert.match(profile, /据点日常/)

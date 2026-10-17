@@ -62,7 +62,7 @@
               <label v-if="manual.channel === '手动补录' && !manual.presets.length" class="custom-channel-field"><span>自定义渠道名称 <small>例如：活动邮件、月卡奖励</small></span><input v-model.trim="manual.customChannel" type="text" maxlength="64" placeholder="填写这笔奖励的来源" @input="clearPreview" /></label>
               <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" :disabled="locked || !!result || disabled" @update:date="clearPreview" @update:clock="clearPreview" />
               <label v-if="requiresStamina" class="stamina-field"><span>消耗体力<small>本次派遣</small></span><span class="stamina-input"><Flame :size="16" aria-hidden="true" /><input v-model="manual.stamina" type="text" inputmode="numeric" aria-label="消耗体力" placeholder="填写实际消耗" @input="clearPreview" /><span>点</span></span></label>
-              <p class="baseline-note"><History :size="14" aria-hidden="true" /><span>{{ manualBeforeLatestSnapshot ? '时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。' : '奖励按实际发生时间入账；若已被较新完整或局部盘点覆盖，可能仅记录历史、不增加当前库存，以服务端结果为准。奖励流水不能代替完整盘点基准。' }}</span></p>
+              <p class="baseline-note"><History :size="14" aria-hidden="true" /><span>{{ manualBeforeLatestSnapshot ? '这笔奖励早于最近一次已知盘点，已在盘点中计入的部分只补历史，不会再次增加库存。' : '按实际获得时间记录。已在后续盘点中计入的部分只补历史，不会再次增加库存；奖励记录不能代替完整盘点。' }}</span></p>
             </div>
           </div>
           <div v-if="manual.channel === '历练'" class="training-mode-section">
@@ -83,7 +83,7 @@
                 <details class="training-level-settings">
                   <summary>常用关卡<ChevronDown :size="13" aria-hidden="true" /></summary>
                   <div class="training-settings-panel">
-                  <p id="training-level-help" class="shortcut-note">勾选常刷的关卡，至少保留一关。三种历练共用此设置，按子账号和游戏保存在当前浏览器；取消常用不会改变已填写的关卡。</p>
+                  <p id="training-level-help" class="shortcut-note">至少选择一关。三种历练共用此设置，按游戏账号和游戏保存在当前浏览器；取消常用不影响已填关卡。</p>
                   <div class="training-level-options" role="group" aria-label="常用关卡" aria-describedby="training-level-help">
                     <label v-for="level in TRAINING_REWARD_LEVELS" :key="level" :class="{ selected: commonTrainingLevels.includes(level) }"><input type="checkbox" :value="level" :checked="commonTrainingLevels.includes(level)" :disabled="commonTrainingLevels.length === 1 && commonTrainingLevels.includes(level)" @change="changeCommonTrainingLevel(level, $event.target.checked)" />第 {{ level }} 关</label>
                   </div>
@@ -167,7 +167,7 @@
       </div>
 
       <div v-if="previewed" class="preview-section">
-        <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已自动上报或已在历史记录中的同批奖励请勿再次补录；不同来源的记录 ID 不会自动合并。</p>
+        <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已同步或录入过的同一笔奖励，请勿再次补录；换一种录入方式仍可能重复计数。</p>
         <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
         <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
         <ul v-else class="preview-list"><li v-for="row in rows" :key="row.key" :class="{ invalid: row.error, selected: row.selected }">
@@ -183,7 +183,7 @@
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
       <div v-if="result" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
-              <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励补齐获得量，快照保留库存总量；服务端按原时间与记录 ID 处理历史和去重。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
+              <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励记录统计获得量，盘点记录保存库存总量。导入保留原记录时间，同一条记录不会重复导入。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
         </div>

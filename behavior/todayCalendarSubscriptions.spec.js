@@ -75,7 +75,7 @@ it('多个订阅且无Checklist时不生成任务，临期只提示活动截止'
   render(); await flushPromises()
   expect(checks()).toHaveLength(0)
   expect(wrapper.find('.todo-list').exists()).toBe(false)
-  expect(wrapper.text()).toContain('订阅活动不会自动创建 Checklist')
+  expect(wrapper.text()).toContain('订阅后还需自行添加待办清单')
   expect(wrapper.get('.todo-subscription-status').text()).toContain('4 项活动')
   expect(wrapper.get('.todo-reminders summary').text()).toContain('今日重点')
   expect(wrapper.get('.reminder-scope').text()).toContain('临期活动与待办')

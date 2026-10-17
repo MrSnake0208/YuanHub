@@ -37,7 +37,7 @@
               <input v-model="form.extra" type="text" placeholder="如: 100体力" />
             </div>
             <div class="full">
-              <label>排序 ID</label>
+              <label>显示顺序</label>
               <input v-model="form.sortId" type="number" placeholder="数字越小越靠前 (可选)" />
             </div>
           </div>

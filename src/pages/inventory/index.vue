@@ -287,7 +287,7 @@
                   </div>
                 </div>
                 <span v-if="error" class="mf-sync-error" role="status"
-                  >云端库存同步失败：{{ error }}（数量按 0 显示）</span
+                  >库存未能读取：{{ error }}。当前按 0 显示，不代表实际库存；请重试读取。</span
                 >
               </div>
             </div>
@@ -1189,7 +1189,7 @@
                 </p>
                 <p v-if="acquiredRecordsTruncated">
                   本次明细最多整理 5,000
-                  条；总量仍以后端汇总为准，幸运日、连续收获和同框结论可能不完整。
+                  条，幸运日、连续收获和同框分析可能不完整；总量以汇总统计为准。
                 </p>
                 <p v-if="acquiredAgentHistoryError">
                   长期失联统计暂不可用：{{ acquiredAgentHistoryError }}
@@ -1198,7 +1198,7 @@
                   密探历史流水超过 5,000 条，未查到的密探不会被判定为从未获得。
                 </p>
                 <p v-if="!acquiredTotalsMatch">
-                  流水明细与汇总口径存在差异；总览排行以后端汇总为准。
+                  明细与汇总存在差异，排行以汇总统计为准。
                 </p>
                 <p v-if="periodDispatchDuration.unconvertedRecordCount">
                   有
@@ -3579,7 +3579,7 @@ function humanErr(err, fallback) {
   const msg = err.message;
   if (!msg) return fallback;
   if (/Failed to fetch|NetworkError|fetch/i.test(msg))
-    return "网络异常，请检查后端服务是否已启动";
+    return "暂时无法连接 YuanHub，请检查网络后重试；仍失败时请反馈。";
   return msg;
 }
 

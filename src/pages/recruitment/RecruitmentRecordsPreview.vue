@@ -2,7 +2,7 @@
   <div ref="root" class="pool-preview" tabindex="0" role="region" :aria-label="`${poolName}抽卡明细`" :aria-busy="!!entry?.loading">
     <p v-if="!entry || entry.loading" class="preview-note" role="status">{{ entry?.items.length ? '正在加载更多记录…' : '正在读取明细…' }}</p>
     <p v-if="entry?.error" class="preview-error" role="alert">{{ entry.error }} <button type="button" :disabled="busy || entry.loading" @click="$emit('load', false)">重新读取明细</button></p>
-    <p v-if="entry?.cursor" class="preview-note">已载入最早 {{ entry.items.length }} 条，尚未读完；已载入记录按最新到最早展示。</p>
+    <p v-if="entry?.cursor" class="preview-note">当前载入最早的 {{ entry.items.length }} 条记录，按新到旧排列；还有记录未加载。</p>
     <ol v-if="rows.length" :class="view === 'agents' ? 'preview-agents' : 'preview-progress'" :aria-label="view === 'agents' ? '密探视图' : '进度条视图'">
       <li v-for="row in rows" :key="row.event.event_id" class="preview-record" :data-event-id="row.event.event_id" :aria-label="row.label">
         <span class="preview-portrait" aria-hidden="true">

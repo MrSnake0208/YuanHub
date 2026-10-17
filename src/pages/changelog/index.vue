@@ -5,7 +5,7 @@
       <header class="page-header"><div class="wrap">
         <h1 class="page-header-title">更新日志</h1>
         <p class="page-header-description">查看 YuanHub 已发布的功能与改进。</p>
-        <p class="page-header-context">当前站点版本 {{ productVersionLabel }} · 下方为审核通过的公开日志</p>
+        <p class="page-header-context">当前站点版本 {{ productVersionLabel }}</p>
       </div></header>
       <section class="wrap changelog-feed" aria-live="polite">
         <p v-if="loading && !entries.length" class="state">正在加载更新日志…</p>
@@ -25,7 +25,7 @@
         <p v-else-if="anchorPending" class="anchor-status" role="status">此日志尚未加载，可继续加载更多查找。</p>
         <button v-if="hasNext" class="load-more" type="button" :disabled="loading" @click="load(page + 1)">{{ loading ? '正在加载…' : '加载更多' }}</button>
       </section>
-      <SiteFooter><template #big>持续更新<br><span>让每次改变都有迹可循</span></template><template #fine><b>YuanHub</b> · 更新日志<br>仅展示审核通过的公开内容</template></SiteFooter>
+      <SiteFooter><template #big>持续更新<br><span>让每次改变都有迹可循</span></template><template #fine><b>YuanHub</b> · 更新日志</template></SiteFooter>
     </main>
   </div>
 </template>

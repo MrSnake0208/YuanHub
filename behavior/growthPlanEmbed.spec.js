@@ -361,7 +361,7 @@ async function inventoryRecoveryFixture() {
 it('real writer conflict exposes GET-only recovery; acceptance unlocks fields and preserves experience/route', async () => {
   const f = await inventoryRecoveryFixture(), before = await handle.getCloudBusinessSnapshot(), route = routeIds()
   change('[data-growth-bottle="jiezheping"]', '24'); await settle()
-  expect(root.querySelector('.growth-error').textContent).toContain('本次保存：24，当前库存：10')
+  expect(root.querySelector('.growth-error').textContent).toContain('本次填写：24，当前库存：10')
   expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('10')
   expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
   expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.disabled)).toBe(true)

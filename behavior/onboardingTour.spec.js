@@ -249,7 +249,7 @@ it('真实名册入口→真实快捷录入→真实确认→服务端读回，�
   expect(current[0].entries.op).toEqual(entry)
   expect(store.tutorialCompleted).toBe(true)
   expect(store.completedTasks['operator-first-entry']).toMatchObject({ accountId: 'acc', operatorId: 'op', ownerId: 'owner' })
-  expect(guide().textContent).toContain('录入结果已验证')
+  expect(guide().textContent).toContain('密探资料已保存到当前账号')
 })
 
 it('真实账号表单创建是前置，创建成功自动转为等待密探，不替用户填数据', async () => {
@@ -310,7 +310,7 @@ it('刷新重新读取真实成果，已有账号与密探直接跳过，无业�
   host.unmount(); current = stored()
   const restored = await render('/operator')
   expect(restored.store.tutorialCompleted).toBe(true)
-  expect(guide().textContent).toContain('录入结果已验证')
+  expect(guide().textContent).toContain('密探资料已保存到当前账号')
   expect(accountsApi.createAccount).not.toHaveBeenCalled(); expect(operatorApi.importOperator).not.toHaveBeenCalled()
 })
 
@@ -440,7 +440,7 @@ it('MaaYuan真实选择→API创建→真实复制→等待；收到服务端库
   expect(store.tutorialCompleted).toBe(false)
   expect(guide().textContent).toContain('自动识别背包')
   expect(guide().textContent).not.toContain('下一步')
-  await clickText('我已返回，检查真实同步')
+  await clickText('我已返回，检查同步')
   expect(store.tutorialCompleted).toBe(false)
   connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
   eventCallbacks.forEach(listener => listener({ event: 'inventory_import', data: { account_id: 'acc' } }))
@@ -661,7 +661,7 @@ it('Today自愿参加→选择密探→真实保存→回到Today核验；一份
   await selectAndSave()
   expect(store.waitingFor).toBe('today_return')
   expect(store.tutorialCompleted).toBe(false)
-  await clickText('返回 Today 验证第一份数据')
+  await clickText('返回今日一览查看结果')
   expect(router.currentRoute.value.path).toBe('/')
   expect(store.tutorialCompleted).toBe(true)
   expect(guide().textContent).toContain('第一份数据已建立')
@@ -694,7 +694,7 @@ it('库存实操只有真实保存并读到完整基准后完成，全零也可�
   expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({ snapshot_scope: 'full', record_type: 'stock_snapshot', account_id: 'acc' })
   expect(store.tutorialCompleted).toBe(true)
   expect(host.findComponent(InventoryPage).get('.inventory-freshness time').attributes('datetime')).toBe(stock[0].full_baseline_at)
-  expect(guide().textContent).toContain('完整库存基准已验证')
+  expect(guide().textContent).toContain('首次完整库存盘点已保存')
 })
 
 it.each(['失败', '无基准', '读取失败'])('库存保存%s保持任务未完成并允许退出，保留真实草稿/数据', async variant => {

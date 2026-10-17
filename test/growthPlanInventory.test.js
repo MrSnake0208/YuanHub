@@ -51,7 +51,7 @@ for (const [id,name] of [['jiezhuping','解注瓶'],['jiezheping','解谪瓶'],[
     const writer=createGrowthPlanInventoryWriter({isCurrent:()=>true,
       getCurrent:async()=>({account_id:'a',entity_type:'item',entries:{...entries,[id]:{count:current}}}),
       importInventory:async document=>{writes++;assert.deepEqual(document.records[0].entries,[{id,count:8,name}]);return {accepted:1}},createId:()=> 'conflict-'+id})
-    await assert.rejects(writer.save('a',id,8),/当前库存与本次保存数量不一致.*本次保存：8，当前库存：3/)
+    await assert.rejects(writer.save('a',id,8),/库存与本次填写数量不一致.*本次填写：8，当前库存：3/)
     assert.equal(writer.hasPending(),true)
     await assert.rejects(writer.save('a',id,9),/重试本次保存/)
     await assert.rejects(writer.save('a',id,8),/不一致/)

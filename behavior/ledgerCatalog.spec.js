@@ -73,6 +73,6 @@ it('network failure uses visibly dated cache and retry with empty published cata
 it('bad response keeps bundled catalog and exposes migration fallback rather than claiming freshness', async () => {
   api.getLedgerCatalog.mockResolvedValue(null)
   const w = render(); await flushPromises()
-  expect(w.get('.cart-catalog-status').text()).toContain('内置迁移数据')
+  expect(w.get('.cart-catalog-status').text()).toContain('使用备用礼包资料，价格可能不是最新')
   expect(w.findAll('.pkg-card')).toHaveLength(packagesDaihao.length)
 })

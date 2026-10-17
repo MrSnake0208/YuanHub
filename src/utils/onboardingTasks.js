@@ -1,10 +1,10 @@
 // Task contracts and validators; entries belong to their own pages.
 export const ONBOARDING_TASKS = {
-  'today-first-data': { title: '建立第一份真实数据', route: '/', result: '第一份数据已建立' },
-  'inventory-first-baseline': { title: '完成首次库存盘点', route: '/inventory', result: '首次库存盘点已完成，完整库存基准已验证。' },
-  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '当前账号的密探录入结果已验证。' },
+  'today-first-data': { title: '建立第一份资料', route: '/', result: '第一份数据已建立' },
+  'inventory-first-baseline': { title: '完成首次库存盘点', route: '/inventory', result: '首次完整库存盘点已保存。' },
+  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '密探资料已保存到当前账号。' },
   'maayuan-first-sync': { title: '第一次连接 MaaYuan', route: '/user/profile', result: '第一次 MaaYuan 同步已完成' },
-  'account-create': { title: '建立第一个游戏账号', route: '/user/profile#game-accounts', result: '真实游戏账号已就绪，可以开始记录数据。' }
+  'account-create': { title: '建立第一个游戏账号', route: '/user/profile#game-accounts', result: '游戏账号已就绪，可以开始记录资料。' }
 }
 
 export const FIRST_DATA_TASKS = {

@@ -98,7 +98,7 @@
                     ><Sparkles
                       :size="15"
                       aria-hidden="true"
-                    />上传星石背包临时采集结果</span
+                    />上传星石截图</span
                   >
                   <span class="no-read"
                     ><ShieldCheck
@@ -150,8 +150,7 @@
                 </div>
               </div>
               <p v-if="cameFromToday" class="today-connect-note" role="note">
-                你已经从「今日一览」来到这里。以后需要新建或管理连接码时，
-                直接从左侧「账号与连接码」进入即可。
+                以后可从「账号与连接码」管理连接。
               </p>
 
               <div
@@ -185,7 +184,7 @@
                   :disabled="creatingMode === 'maayuan'"
                   aria-describedby="maayuan-account-help"
                 >
-                  <option v-if="maaGuideActive && !onboarding.maaYuan.accountId" value="" disabled>请选择真实游戏账号</option>
+                  <option v-if="maaGuideActive && !onboarding.maaYuan.accountId" value="" disabled>请选择游戏账号</option>
                   <option
                     v-for="account in accounts"
                     :key="account.id"
@@ -215,7 +214,7 @@
                 <span class="step-mark">2</span>
                 <div>
                   <h3>确认 MaaYuan 可以做什么</h3>
-                  <p>默认包含上传权限与密探读取权限，用于按养成状态筛选。</p>
+                  <p>读取密探状态，用于按养成状态筛选。</p>
                 </div>
               </div>
 
@@ -235,7 +234,7 @@
                     <Check :size="17" aria-hidden="true" />读取当前密探数据与养成状态
                   </p>
                   <p>
-                    <Check :size="17" aria-hidden="true" />上传星石背包临时采集结果（MaaYuan 采集任务接入中）
+                    <Check :size="17" aria-hidden="true" />上传星石截图（MaaYuan 自动采集接入中）
                   </p>
                 </div>
                 <div class="grant-column deny">
@@ -251,8 +250,7 @@
               </div>
 
               <p class="stable-token-note">
-                <KeyRound :size="17" aria-hidden="true" />以后 MaaYuan
-                新增权限时，你只需在这里确认更新，已填写的连接码不会变化。旧连接码如需使用“仅扫描养成中”，请在下方点击“让它支持 MaaYuan”补齐权限。
+                <KeyRound :size="17" aria-hidden="true" />以后更新权限仍需你确认，连接码无需重新填写。
               </p>
               <div class="panel-actions">
                 <button
@@ -303,10 +301,10 @@
                   </p>
                 </div>
               </div>
-              <p v-if="newTokenKind === 'maayuan'" class="paste-steps">连接码已创建，还没确认同步。请先点击真实「复制连接码」；仅创建连接码不表示同步成功。</p>
+              <p v-if="newTokenKind === 'maayuan'" class="paste-steps">复制连接码后，前往 MaaYuan 开启同步。仅创建连接码不表示同步成功。</p>
               <details v-if="newTokenKind === 'maayuan' && tokenCopied" class="paste-steps">
                 <summary>现在去 MaaYuan 完成设置</summary>
-                <p>打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，在「YuanHub 连接码」粘贴刚复制的内容，运行一次真实任务，然后回到 YuanHub 检查库存。</p>
+                <p>打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，在「YuanHub 连接码」粘贴刚复制的内容，运行一次任务，然后回到 YuanHub 检查库存。</p>
                 <p>星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中。</p>
               </details>
               <div class="nt-row">
@@ -432,6 +430,7 @@
                       <summary>查看技术详情</summary>
                       <code>{{ tokenItem.token_id }}</code>
                       <p>这是凭证编号，不是需要填写到 MaaYuan 的连接码。</p>
+                      <p v-if="!supportsMaaYuan(tokenItem)">需要“仅扫描养成中”时，点击此连接的“让它支持 MaaYuan”补齐权限，原连接码不变。</p>
                     </details>
                   </div>
                   <div class="connection-actions">
@@ -764,7 +763,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:write": "导入并更新密探数据",
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
-  "star:capture:write": "上传星石背包临时采集结果",
+  "star:capture:write": "上传星石截图",
 };
 
 function friendlyPermissionTitle(scope) {

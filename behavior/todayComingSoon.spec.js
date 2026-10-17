@@ -620,7 +620,7 @@ it.each([
   expect(wrapper.findAll('.today-training input[type=checkbox], .today-private-items input[type=checkbox]')).toHaveLength(0)
   expect(wrapper.find('.todo-reminders').exists()).toBe(scenario.subscriptions > 0)
   if (scenario.tasks && !scenario.checked) expect(wrapper.get('.todo-scope').text()).toContain(`${scenario.tasks * scenario.subscriptions} 项待办未完成`)
-  if (!scenario.tasks && scenario.subscriptions) expect(wrapper.get('.todo-empty').text()).toContain('订阅活动不会自动创建 Checklist')
+  if (!scenario.tasks && scenario.subscriptions) expect(wrapper.get('.todo-empty').text()).toContain('订阅后还需自行添加待办清单')
   if (scenario.checked) {
     expect(wrapper.get('.todo-empty').text()).toContain('清单已全部勾选')
     expect(wrapper.text()).not.toContain('活动均已标记本期完成')
