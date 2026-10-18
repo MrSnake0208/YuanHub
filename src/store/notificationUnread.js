@@ -16,6 +16,7 @@ export const notificationUnreadState = reactive({
   feedbackRefIds: [],
   loading: false,
   detailsLoading: false,
+  detailsError: false,
   loaded: false,
   detailsLoaded: false
 })
@@ -30,6 +31,11 @@ let stopIdentityWatch = null
 let subscriberCount = 0
 let detailsSubscriberCount = 0
 let activeIdentity = ''
+let realtimeManaged = false
+
+export function setNotificationRealtimeManaged(value) {
+  realtimeManaged = Boolean(value)
+}
 
 function currentIdentity() {
   const user = auth.userInfo
@@ -48,6 +54,7 @@ function clearState({ loaded = true } = {}) {
   notificationUnreadState.feedbackRefIds = []
   notificationUnreadState.loading = false
   notificationUnreadState.detailsLoading = false
+  notificationUnreadState.detailsError = false
   notificationUnreadState.loaded = loaded
   notificationUnreadState.detailsLoaded = loaded
   countLoadedAt = 0
@@ -68,6 +75,7 @@ function applyUnreadNotifications(notifications) {
   notificationUnreadState.count = items.length
   notificationUnreadState.loaded = true
   notificationUnreadState.detailsLoaded = true
+  notificationUnreadState.detailsError = false
   countLoadedAt = Date.now()
   detailsLoadedAt = countLoadedAt
 }
@@ -137,6 +145,7 @@ export function refreshNotificationUnreadDetails({ force = false } = {}) {
       return notifications
     })
     .catch(function () {
+      if (revision === requestId && identity === currentIdentity()) notificationUnreadState.detailsError = true
       return notificationUnreadState.unreadNotifications
     })
     .finally(function () {
@@ -161,6 +170,7 @@ function handleNotificationStateChange() {
 }
 
 function refreshVisible() {
+  if (realtimeManaged) return
   if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
   void refreshNotificationState()
 }
@@ -179,7 +189,7 @@ function startNotificationUnread() {
     detailsRequestPromise = null
     clearState({ loaded: false })
     if (identity) void refreshNotificationState({ force: true })
-  }, { immediate: true })
+  }, { immediate: true, flush: 'sync' })
 
   if (typeof window !== 'undefined') {
     window.addEventListener(NOTIFICATION_STATE_EVENT, handleNotificationStateChange)

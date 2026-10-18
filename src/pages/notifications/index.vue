@@ -33,6 +33,9 @@
               >
                 {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
               </button>
+              <button type="button" class="page-header-action" :aria-pressed="notificationSound.enabled" @click="setNotificationSoundEnabled(!notificationSound.enabled)">
+                回复提示音：{{ notificationSound.enabled ? '开' : '关' }}
+              </button>
             </div>
             <span class="sort-lb">共 {{ total }} 条</span>
             <p v-if="markAllError" class="action-error" role="alert">{{ markAllError }}</p>
@@ -119,6 +122,8 @@ import { canManageAnyFeedback } from '../../utils/authPermissions.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountIdDetails from '../../components/AccountIdDetails.vue'
+import { notificationSound, setNotificationSoundEnabled } from '../../utils/notificationSound.js'
+import { NOTIFICATION_RECEIVED_EVENT } from '../../store/notificationRealtime.js'
 import {
   listNotifications,
   markNotificationRead,
@@ -149,6 +154,7 @@ const page = ref(1)
 let notificationRequestId = 0
 let mutationRequestId = 0
 let mounted = false
+let pendingLiveRefresh = false
 const identity = computed(() => auth.accessToken ? String(auth.userInfo?.id || auth.userInfo?.userId || auth.userInfo?.user_id || '') : '')
 
 function ownsRequest(requestId, userId) {
@@ -201,7 +207,8 @@ function formatTime(iso) {
   return y + '-' + m + '-' + day + ' ' + h + ':' + min
 }
 
-async function loadNotifications({ afterRead = false } = {}) {
+async function loadNotifications({ afterRead = false, preservePages = false } = {}) {
+  const pages = preservePages ? page.value : 1
   const requestId = ++notificationRequestId
   const userId = identity.value
   loadingMore.value = false
@@ -214,10 +221,11 @@ async function loadNotifications({ afterRead = false } = {}) {
       pageSize: PAGE_SIZE
     }
     if (filter.value === 'unread') params.unreadOnly = true
-    const data = await listNotifications(params)
+    const results = await Promise.all(Array.from({ length: pages }, (_, index) => listNotifications({ ...params, page: index + 1 })))
+    const data = results[0]
     if (!ownsRequest(requestId, userId)) return
-    notifications.value = Array.isArray(data.notifications) ? data.notifications : []
-    page.value = 1
+    notifications.value = results.flatMap(result => Array.isArray(result.notifications) ? result.notifications : [])
+    page.value = pages
     total.value = data.total
     setNotificationUnreadCount(data.unreadCount)
   } catch (err) {
@@ -341,12 +349,27 @@ function isManagementNotification(kind) {
   return ['FEEDBACK_ASSIGNED', 'FEEDBACK_MESSAGE_FROM_REPORTER', 'FEEDBACK_DEV_HANDOFF', 'FEEDBACK_DEV_RETURN'].includes(kind)
 }
 
+function refreshLiveNotifications() {
+  if (loading.value || loadingMore.value || markingAll.value || markingId.value) {
+    pendingLiveRefresh = true
+    return
+  }
+  pendingLiveRefresh = false
+  void loadNotifications({ preservePages: true })
+}
+
+watch(() => [loading.value, loadingMore.value, markingAll.value, markingId.value], values => {
+  if (pendingLiveRefresh && !values.some(Boolean)) refreshLiveNotifications()
+})
+
 onMounted(function () {
   mounted = true
+  window.addEventListener(NOTIFICATION_RECEIVED_EVENT, refreshLiveNotifications)
   loadNotifications()
 })
 
 watch(identity, function () {
+  pendingLiveRefresh = false
   mutationRequestId += 1
   notificationRequestId += 1
   notifications.value = []
@@ -364,6 +387,7 @@ watch(identity, function () {
 }, { flush: 'sync' })
 
 onBeforeUnmount(function () {
+  window.removeEventListener(NOTIFICATION_RECEIVED_EVENT, refreshLiveNotifications)
   mounted = false
   mutationRequestId += 1
   notificationRequestId += 1

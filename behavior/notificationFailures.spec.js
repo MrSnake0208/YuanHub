@@ -271,3 +271,39 @@ it.each([390, 1440])('通知在%s起步跨断点保持未读筛选与列表焦�
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
   }
 })
+
+it('实时刷新保留已加载页数和分页边界，随后加载更多不重复', async () => {
+  const wrapper = await loadTwoPages()
+  listNotifications.mockImplementation(async ({ page }) => ({ notifications: batch((page - 1) * 20), total: 61, unreadCount: 61 }))
+  window.dispatchEvent(new CustomEvent('yuanHub:notification-received')); await flushPromises()
+  expect(wrapper.findAll('.notification-item')).toHaveLength(40)
+  expect(listNotifications).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 })
+  await wrapper.get('.btn-more').trigger('click'); await flushPromises()
+  expect(listNotifications).toHaveBeenLastCalledWith({ page: 3, pageSize: 20 })
+  expect(wrapper.findAll('.notification-item')).toHaveLength(60)
+})
+
+it('声音开关与全部已读独立，设置保存在浏览器本地', async () => {
+  const wrapper = render(); await flushPromises()
+  const button = wrapper.findAll('.notification-actions button').find(item => item.text().includes('回复提示音'))
+  const previous = button.attributes('aria-pressed')
+  await button.trigger('click')
+  expect(button.attributes('aria-pressed')).toBe(previous === 'true' ? 'false' : 'true')
+  expect(localStorage.getItem('yuanhub:feedback-reply-sound:v1')).toBe(previous === 'true' ? '0' : '1')
+  expect(markAllNotificationsRead).not.toHaveBeenCalled()
+})
+
+it('标记全部期间到达的实时通知延后刷新，不打断标记或重复写入', async () => {
+  const wrapper = render(); await flushPromises()
+  const pending = deferred()
+  markAllNotificationsRead.mockReturnValue(pending.promise)
+  await wrapper.get('.notification-actions button').trigger('click')
+  const calls = listNotifications.mock.calls.length
+  window.dispatchEvent(new CustomEvent('yuanHub:notification-received')); await flushPromises()
+  expect(listNotifications).toHaveBeenCalledTimes(calls)
+  listNotifications.mockResolvedValue({ notifications: [{ ...first, readAt: '2026-10-18T00:00:00Z' }], total: 1, unreadCount: 0 })
+  pending.resolve({ updated: 1 }); await flushPromises()
+  expect(listNotifications).toHaveBeenCalledTimes(calls + 1)
+  expect(markAllNotificationsRead).toHaveBeenCalledOnce()
+  expect(wrapper.findAll('.notification-item.unread')).toHaveLength(0)
+})

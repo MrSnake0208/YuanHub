@@ -196,6 +196,7 @@
 </template>
 
 <script setup>
+import { subscribeFeedbackNotificationRefresh } from '../../store/notificationRealtime.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
@@ -442,19 +443,21 @@ function isCurrentDetail(requestId, id, userId) {
   return isMounted && requestId === detailRequestId && selectedId.value === id && currentUserId() === userId
 }
 
-async function loadFeedbackDetail(id) {
+async function loadFeedbackDetail(id, { background = false } = {}) {
   const requestId = ++detailRequestId
   const userId = currentUserId()
-  detailLoading.value = true
+  if (!background) detailLoading.value = true
   detailError.value = ''
   try {
     const detail = await getFeedback(id)
     if (!isCurrentDetail(requestId, id, userId)) return
     if (!detail.viewerIsReporter) throw new Error('该工单不属于我的反馈')
-    replaceTicket(detail)
+    if (background) Object.assign(selectedDetail.value, detail)
+    else replaceTicket(detail)
     await nextTick()
     if (!isCurrentDetail(requestId, id, userId)) return
     await clearFeedbackNotifications(detail.id || id)
+    return isCurrentDetail(requestId, id, userId)
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId)) detailError.value = e.message || '详情加载失败'
   } finally {
@@ -626,8 +629,17 @@ function handleWindowKeydown(event) {
   if (event.key === 'Escape' && selectedId.value) closeDetail()
 }
 
+let stopNotificationRefresh = null
+
+async function refreshOpenFeedback(notification) {
+  if (!isMounted || detailLoading.value || selectedId.value !== String(notification.refId)) return false
+  const id = selectedId.value
+  return await loadFeedbackDetail(id, { background: true }) === true
+}
+
 onMounted(async () => {
   isMounted = true
+  stopNotificationRefresh = subscribeFeedbackNotificationRefresh(refreshOpenFeedback)
   stopNotificationUnread = subscribeNotificationUnread({ details: true })
   stopFeedbackUnread = subscribeFeedbackUnread()
   window.addEventListener('keydown', handleWindowKeydown)
@@ -657,6 +669,7 @@ watch(() => route.query.id, id => {
 })
 
 onBeforeUnmount(() => {
+  if (stopNotificationRefresh) stopNotificationRefresh()
   isMounted = false
   ready = false
   detailRequestId += 1

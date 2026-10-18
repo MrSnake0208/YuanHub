@@ -236,6 +236,7 @@
 </template>
 
 <script setup>
+import { subscribeFeedbackNotificationRefresh } from '../../store/notificationRealtime.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useModalFocus } from '@/composables/useModalFocus.js'
@@ -564,20 +565,22 @@ function isCurrentDetail(requestId, id, userId) {
   return isMounted && requestId === detailRequestId && selectedId.value === id && currentUserId() === userId
 }
 
-async function loadFeedbackDetail(id) {
+async function loadFeedbackDetail(id, { background = false } = {}) {
   const requestId = ++detailRequestId
   const userId = currentUserId()
-  resetWorkflowHistory()
-  detailLoading.value = true
+  if (!background) resetWorkflowHistory()
+  if (!background) detailLoading.value = true
   detailError.value = ''
   try {
     const detail = await getManagedFeedback(id)
     if (!isCurrentDetail(requestId, id, userId)) return
-    replaceTicket(detail)
+    if (background) Object.assign(selectedDetail.value, detail)
+    else replaceTicket(detail)
     await nextTick()
     if (!isCurrentDetail(requestId, id, userId)) return
     selectedId.value = id
     void feedbackUnreadStore.refreshFeedbackUnread({ force: true })
+    return true
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
   } finally {
@@ -974,8 +977,17 @@ async function handleForbidden(value) {
   return true
 }
 
+let stopNotificationRefresh = null
+
+async function refreshOpenFeedback(notification) {
+  if (!isMounted || detailLoading.value || selectedId.value !== String(notification.refId)) return false
+  const id = selectedId.value
+  return await loadFeedbackDetail(id, { background: true }) === true
+}
+
 onMounted(async () => {
   isMounted = true
+  stopNotificationRefresh = subscribeFeedbackNotificationRefresh(refreshOpenFeedback)
   stopFeedbackUnread = subscribeFeedbackUnread()
   await loadAccess()
   if (!isMounted || !hasManagePermission.value) return
@@ -997,6 +1009,7 @@ watch(() => route.query.id, id => {
 })
 
 onBeforeUnmount(() => {
+  if (stopNotificationRefresh) stopNotificationRefresh()
   isMounted = false
   ready = false
   loadRequestId += 1

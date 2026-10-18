@@ -40,7 +40,7 @@ import BetaCommunityDialog from '@/components/beta/BetaCommunityDialog.vue'
 import { auth } from '@/store/auth.js'
 import { beta } from '@/store/beta.js'
 import { betaCommunity } from '@/store/betaCommunity.js'
-import { subscribeNotificationUnread } from '@/store/notificationUnread.js'
+import { startNotificationRealtime } from '@/store/notificationRealtime.js'
 import { betaLandingFor } from '@/utils/betaAccess.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
@@ -144,7 +144,7 @@ function routeStarCapture(message) {
 onMounted(function () {
   if (TUTORIALS_ENABLED) stopOnboarding = initializeOnboardingTour(router)
   resetMonitorPromptForFreshNavigation()
-  stopNotificationUnread = subscribeNotificationUnread()
+  stopNotificationUnread = startNotificationRealtime()
   stopIdentityWatch = watch(() => auth.userInfo?.id || '', (userId) => {
     beta.setIdentity(userId)
     if (stopBetaSubscription) stopBetaSubscription()
