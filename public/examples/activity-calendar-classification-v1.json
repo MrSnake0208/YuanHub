@@ -1,0 +1,30 @@
+{
+  "document_type": "activity-calendar-classification",
+  "schema_version": 1,
+  "exported_at": "2026-10-18T00:00:00Z",
+  "classification_options": {
+    "活动": [
+      "大型/周年",
+      "地宫",
+      "签到/楼主查岗",
+      "初见日/转盘"
+    ],
+    "卡池": [
+      "限定",
+      "复刻",
+      "照影",
+      "自选"
+    ],
+    "家具": [
+      "历练",
+      "神秘洞窟"
+    ],
+    "其他": [
+      "维护",
+      "商店",
+      "星池"
+    ]
+  },
+  "items": [],
+  "reference_items": []
+}
