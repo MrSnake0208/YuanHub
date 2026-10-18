@@ -880,6 +880,9 @@
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               </template>
               <template #secondary-tool>
+                <button class="current-favorite-sort" :class="{ on: onlyReroll }" type="button" :aria-pressed="onlyReroll" @click="onlyReroll = !onlyReroll">
+                  <Target :size="13" aria-hidden="true" />只看待洗
+                </button>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -2117,6 +2120,11 @@
                     </div>
                   </div>
 
+                  <button v-if="cardDiscTargetSummary(e)" class="ledger-disc-target-summary" type="button" aria-haspopup="dialog"
+                    :aria-label="e.name + '：' + cardDiscTargetSummary(e) + '，查看命盘目标'" @click.stop="discTargetEntryId = e.id">
+                    {{ cardDiscTargetSummary(e) }}
+                  </button>
+
                   <div class="ledger-stones" aria-label="已装备星石">
                     <span class="ledger-stone-row-label" aria-hidden="true">主星</span>
                     <span class="ledger-stone-row-label" aria-hidden="true">辅星</span>
@@ -2743,7 +2751,7 @@
                     "
                   >
                     <CircleDot v-if="selectedDiscLoadoutIndex === index" class="disc-combination-mark" :size="22" aria-hidden="true" /><Circle v-else class="disc-combination-mark" :size="22" aria-hidden="true" />
-                    <span class="disc-combination-label">组合 {{ index + 1 }}</span>
+                    <span class="disc-combination-label">组合 {{ index + 1 }} · {{ DISC_STATUSES[loadout.status] }}</span>
                     <strong>{{ loadout.name || "未命名组合" }}</strong><ChevronRight class="disc-combination-arrow" :size="18" aria-hidden="true" />
                   </button>
                 </div>
@@ -2797,11 +2805,23 @@
                     </button>
                   </div>
 
+                  <div class="disc-target-toolbar">
+                    <div class="disc-status-controls" role="group" :aria-label="'命盘' + (selectedDiscLoadoutIndex + 1) + '状态'">
+                      <button v-for="(label, status) in DISC_STATUSES" :key="status" type="button" :aria-pressed="selectedDiscLoadout.status === status"
+                        :class="{ on: selectedDiscLoadout.status === status }" @click="selectedDiscLoadout.status = status">{{ label }}</button>
+                    </div>
+                  </div>
+                  <OperatorDiscComparison :current="selectedDiscLoadout.discNames" :target="selectedDiscLoadout.targetDiscNames" :catalog="editingDiscs" editable
+                    @copy="copyCurrentDiscTarget" @remove="removeDiscTarget" />
+                  <div class="disc-pick-mode" role="group" aria-label="词条编辑对象">
+                    <button type="button" :aria-pressed="!editingDiscTarget" :class="{ on: !editingDiscTarget }" @click="editingDiscTarget = false">编辑当前命盘</button>
+                    <button type="button" :aria-pressed="editingDiscTarget" :class="{ on: editingDiscTarget }" @click="editingDiscTarget = true">编辑目标命盘</button>
+                  </div>
                   <div class="disc-options">
                     <div class="disc-options-head">
-                      <span>选择命盘</span>
+                      <span>{{ editingDiscTarget ? '选择目标词条' : '选择命盘' }}</span>
                       <strong
-                        >{{ selectedDiscLoadout.discNames.length }} / 3</strong
+                        >{{ selectedDiscNames.length }} / 3</strong
                       >
                     </div>
                     <p v-if="!editingDiscs.length" class="hint">
@@ -2835,7 +2855,7 @@
                 </div>
 
                 <p class="disc-storage-note">
-                  两套命盘组合和名称都会同步到云端；这里不区分当前装备。
+                  两套组合、标记和目标均保存到当前账号；目标不会替换实际命盘。
                 </p>
               </div>
             </section>
@@ -2928,6 +2948,8 @@
           数据仅供参考，请以游戏内实际养成为准
         </template>
       </SiteFooter>
+      <OperatorDiscTargetModal :entry="discTargetEntry" :catalog="catalogMap[discTargetEntryId]?.discs || []"
+        @close="discTargetEntryId = ''" @edit="editDiscTarget" />
       <StarLoadoutModal
         :open="starLoadoutOpen"
         :target-operator="starLoadoutTarget"
@@ -3016,6 +3038,8 @@ import OperatorShareManager from "../../components/operator/OperatorShareManager
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import OperatorEditorNav from "./OperatorEditorNav.vue";
+import OperatorDiscComparison from "../../components/operator/OperatorDiscComparison.vue";
+import OperatorDiscTargetModal from "../../components/operator/OperatorDiscTargetModal.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
 import operatorPortraits from "../../data/operatorPortraits.json";
@@ -3089,6 +3113,11 @@ import {
 import {
   automaticDiscLoadoutName,
   createDiscLoadoutState,
+  createDiscLoadout,
+  DISC_STATUSES,
+  discLoadoutPayload,
+  discTargetSummary,
+  hasRerollDisc,
 } from "../../utils/operatorDiscLoadouts.js";
 import {
   starCardFallback,
@@ -3372,6 +3401,13 @@ const editForm = ref({
 const combatDisplayMode = ref({ attack: null, hp: null });
 let combatDisplaySignature = "";
 const selectedDiscLoadoutIndex = ref(0);
+const editingDiscTarget = ref(false);
+const onlyReroll = ref(false);
+const discTargetEntryId = ref("");
+const discTargetEntry = computed(() => {
+  const entry = currentEntries.value.find(item => item.id === discTargetEntryId.value);
+  return entry ? { ...entry, discLoadouts: cardGrowthDrafts.value[entry.id]?.discLoadouts || entry.discLoadouts } : null;
+});
 const editNotice = ref("");
 const editNoticeError = ref(false);
 const editOddityErrorKey = ref("");
@@ -3481,6 +3517,8 @@ watch(
     currentLoadSeq += 1;
     currentLoadedKey.value = "";
     currentEntries.value = [];
+    discTargetEntryId.value = "";
+    onlyReroll.value = false;
     awakeningId.value = '';
     quickEditorKey.value = "";
     quickConfirmKey.value = "";
@@ -4008,6 +4046,30 @@ function isMajorGoldDisc(disc) {
 const selectedDiscLoadout = computed(function () {
   return editForm.value.discLoadouts[selectedDiscLoadoutIndex.value] || null;
 });
+const selectedDiscNames = computed(() => selectedDiscLoadout.value
+  ? selectedDiscLoadout.value[editingDiscTarget.value ? 'targetDiscNames' : 'discNames'] : []);
+
+function copyCurrentDiscTarget() {
+  selectedDiscLoadout.value.targetDiscNames = selectedDiscLoadout.value.discNames.slice();
+  editingDiscTarget.value = true;
+}
+function removeDiscTarget(name) {
+  selectedDiscLoadout.value.targetDiscNames = selectedDiscLoadout.value.targetDiscNames.filter(item => item !== name);
+}
+function cardDiscTargetSummary(entry) {
+  return discTargetSummary(cardGrowthDrafts.value[entry.id]?.discLoadouts || entry.discLoadouts);
+}
+async function editDiscTarget(index) {
+  const id = discTargetEntryId.value;
+  discTargetEntryId.value = "";
+  await nextTick();
+  await openEdit(id);
+  if (editing.value && editingId.value === id) {
+    editorSection.value = 'discs';
+    selectedDiscLoadoutIndex.value = index;
+    editingDiscTarget.value = true;
+  }
+}
 
 function syncDiscLoadoutAutoName(loadout) {
   if (!loadout || loadout.nameMode === "manual") return;
@@ -4051,25 +4113,26 @@ function resetDiscLoadoutName(index) {
 
 function isDiscSelected(disc) {
   const loadout = selectedDiscLoadout.value;
-  return !!loadout && loadout.discNames.indexOf(discKey(disc)) !== -1;
+  return !!loadout && selectedDiscNames.value.indexOf(discKey(disc)) !== -1;
 }
 
 function toggleDiscSelection(disc, event) {
   const loadout = selectedDiscLoadout.value;
   const key = discKey(disc);
   if (!loadout || !key) return;
-  const index = loadout.discNames.indexOf(key);
+  const names = selectedDiscNames.value;
+  const index = names.indexOf(key);
   if (index !== -1) {
-    loadout.discNames.splice(index, 1);
-  } else if (loadout.discNames.length >= 3) {
+    names.splice(index, 1);
+  } else if (names.length >= 3) {
     if (event && event.target) event.target.checked = false;
     editNotice.value = "每套命盘组合最多选择 3 个";
     editNoticeError.value = true;
     return;
   } else {
-    loadout.discNames.push(key);
+    names.push(key);
   }
-  syncDiscLoadoutAutoName(loadout);
+  if (!editingDiscTarget.value) syncDiscLoadoutAutoName(loadout);
   if (editNotice.value === "每套命盘组合最多选择 3 个") {
     editNotice.value = "";
     editNoticeError.value = false;
@@ -5012,6 +5075,7 @@ const currentQuickFilterCandidates = computed(function () {
 const filteredCurrent = computed(function () {
   const quickKeys = Array.from(activeQuickFilterKeys.value);
   return currentQuickFilterCandidates.value
+    .filter(entry => !onlyReroll.value || hasRerollDisc(entry.discLoadouts))
     .filter(function (entry) {
       return (
         quickKeys.length === 0 ||
@@ -5107,6 +5171,7 @@ const hasGrowthDrafts = computed(function () {
 
 const hasCurrentFilters = computed(function () {
   return (
+    onlyReroll.value ||
     Boolean(currentSearch.value.trim()) ||
     Boolean(organizationTagFilter.value) ||
     rarityFilter.value !== "all" ||
@@ -5120,6 +5185,7 @@ const hasCurrentFilters = computed(function () {
 });
 
 function resetCurrentFilters() {
+  onlyReroll.value = false;
   currentSearch.value = "";
   organizationTagFilter.value = "";
   rarityFilter.value = "all";
@@ -5517,11 +5583,7 @@ function normalizeCardDiscLoadouts(entry) {
       : Array.isArray(loadout.discs)
         ? loadout.discs.map(discKey).filter(Boolean)
         : [];
-    return {
-      id: String(loadout.id || "disc_" + (index + 1)),
-      name: String(loadout.name || ""),
-      discNames: names.filter(Boolean).slice(0, 3),
-    };
+    return createDiscLoadout(index, { ...loadout, discNames: names });
   });
 }
 
@@ -7461,19 +7523,7 @@ function cardPatch(entry) {
     level_breakthrough_stage: operatorLevelBreakthroughStage(growth),
     elite: Number(growth.elite) || 0,
     star_level: Number(growth.star) || 0,
-    disc_loadouts: (growth.discLoadouts || []).map(function (loadout, index) {
-      const names = Array.isArray(loadout.discNames)
-        ? loadout.discNames.slice(0, 3)
-        : [];
-      return {
-        id: String(loadout.id || "disc_" + (index + 1)),
-        name:
-          String(loadout.name || "").trim() || automaticDiscLoadoutName(names),
-        discs: names.map(function (name) {
-          return { ot_name: name };
-        }),
-      };
-    }),
+    disc_loadouts: (growth.discLoadouts || []).map(discLoadoutPayload),
     star_stones: (growth.starStones || [])
       .filter(function (stone) {
         return stone && stone.name;
@@ -7793,6 +7843,7 @@ async function openEdit(id) {
   editingId.value = id;
   editingOp.value = op;
   editorSection.value = 'growth';
+  editingDiscTarget.value = false;
   applyEditorEntry(existing, op, id, Object.keys(existing).length > 0);
   editConflictDraft.value = null;
   editNotice.value = "";
@@ -8010,19 +8061,7 @@ async function saveEdit() {
     return;
   }
   const existing = currentMap.value[op.id] || {};
-  const discLoadouts = editForm.value.discLoadouts.map(
-    function (loadout, index) {
-      return {
-        id: String(loadout.id || "disc_" + (index + 1)),
-        name:
-          String(loadout.name || "").trim() ||
-          automaticDiscLoadoutName(loadout.discNames),
-        discs: loadout.discNames.map(function (name) {
-          return { ot_name: name };
-        }),
-      };
-    },
-  );
+  const discLoadouts = editForm.value.discLoadouts.map(discLoadoutPayload);
   const normalizedManual = function (value) {
     return value === "" || value == null ? null : Number(value);
   };
@@ -12593,6 +12632,18 @@ onBeforeUnmount(function () {
 .batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--tea); }
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
+.ledger-disc-target-summary { display: block; grid-column: 1 / -1; width: 100%; min-width: 0; margin: 0; padding: 2px 0; border: 0; background: transparent; color: var(--tea); font: 600 11px var(--font-s); line-height: 1.4; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.ledger-disc-target-summary:hover { color: var(--accent-strong); }
+.ledger-disc-target-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-target-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.disc-status-controls, .disc-pick-mode { display: flex; flex-wrap: wrap; gap: 6px; }
+.disc-status-controls button, .disc-pick-mode button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--tea); font: 600 12px var(--font-s); cursor: pointer; }
+.disc-status-controls button.on, .disc-pick-mode button.on { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
+.disc-status-controls button:focus-visible, .disc-pick-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-pick-mode { margin-top: 12px; }
+@media (max-width: 640px) {
+  :is(.agent-ledger-card--v2, .agent-ledger-card--v3) .ledger-loadouts > .ledger-disc-target-summary { grid-row: 3; }
+}
 /* Page owns metadata and filters; cards retain their existing presentation. */
 .roster-header .btn { border-radius: 10px; text-decoration: none; }
 .roster-header .roster-share small { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; }
