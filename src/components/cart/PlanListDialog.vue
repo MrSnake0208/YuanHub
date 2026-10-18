@@ -42,6 +42,7 @@
                       <template v-if="p.summary"> · ¥{{ Number(p.summary.total_cny || 0).toFixed(2) }} · {{ p.summary.total_draws || 0 }} 抽</template>
                     </span>
                   </button>
+                  <button type="button" class="pbtn plan-load" :aria-label="`加载方案「${p.name}」`" @click="$emit('load', p)">加载</button>
                   <button type="button" class="pbtn" title="重命名" @click="startRename(p)"><Pencil :size="14" /></button>
                   <button type="button" class="pbtn danger" title="删除" @click="$emit('remove', p)"><Trash2 :size="14" /></button>
                 </template>
@@ -60,6 +61,7 @@
                   <b>{{ p.name }}</b>
                   <span class="meta">{{ p.version === 'daihao' ? '代号鸢' : '如鸢' }} · 本机暂存</span>
                 </button>
+                <button type="button" class="pbtn plan-load" :aria-label="`加载本机方案「${p.name}」`" @click="$emit('load-guest', p)">加载</button>
                 <button type="button" class="pbtn danger" title="删除" @click="$emit('remove-guest', p)"><Trash2 :size="14" /></button>
               </div>
             </div>

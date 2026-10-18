@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
+import { resetCartDraft } from '../src/store/cartDraft.js'
 import PlanListDialog from '../src/components/cart/PlanListDialog.vue'
 import * as api from '../src/api/ledgerCatalog.js'
 import { ledgerFixture } from '../test-support/ledgerCatalog.js'
@@ -11,7 +12,13 @@ vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn() }))
 const render = () => mount(CartPage, { global: { stubs: { IslandSidebar: true, SiteFooter: true }, directives: { reveal: () => {} } } })
 const deferred = () => { let resolve; const promise = new Promise(ok => { resolve = ok }); return { promise, resolve } }
 const total = w => w.get('.receipt .grand-total .v').text()
-beforeEach(() => { vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-11T00:00:00Z')); api.getLedgerCatalog.mockResolvedValue(ledgerFixture()) })
+beforeEach(() => {
+  resetCartDraft()
+  vi.resetAllMocks()
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-11T00:00:00Z'))
+  api.getLedgerCatalog.mockResolvedValue(ledgerFixture())
+})
 
 it('published catalog supports both games same numeric ID decimal draws and dynamic arbitrary campaigns', async () => {
   const w = render(); await flushPromises()
@@ -67,7 +74,8 @@ it('network failure uses visibly dated cache and retry with empty published cata
   expect(w.get('.cart-catalog-status').text()).toContain('尚未发布可售礼包')
   w.unmount()
   const fresh = render(); await flushPromises()
-  expect(fresh.findAll('.pkg-card')).toHaveLength(0)
+  expect(fresh.findAll('.pkg-card')).toHaveLength(1)
+  expect(total(fresh)).toBe('¥16.00')
 })
 
 it('bad response keeps bundled catalog and exposes migration fallback rather than claiming freshness', async () => {

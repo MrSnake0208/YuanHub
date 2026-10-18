@@ -13,12 +13,11 @@
             <span class="cart-currency">· CNY</span>
           </div>
         </template>
+        <template #primary-actions>
+          <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
+        </template>
         <template #actions>
-          <button type="button" class="cart-plan-list tool-utility" aria-label="我的方案" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" /><span class="tool-utility-label">我的方案</span></button>
-          <details class="tool-more">
-            <summary aria-label="更多页面操作">更多</summary>
-            <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()"><button type="button" class="btn ghost cart-plan-save" @click="openPlanSave"><Save :size="16" aria-hidden="true" />保存方案</button></div>
-          </details>
+          <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>
         <template #help>
           <p>搜索并选择礼包，按汇率换算人民币预算，累计积分抽数和累充奖励，保存方案或导出账单图片。两个版本的购物清单独立保留，切换版本不会清空。</p>
@@ -56,6 +55,7 @@
           <div class="cart-catalog-status">
             <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
             <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
+            <p class="cart-draft-hint">清单在本次标签页内保留，切换页面不会清空；刷新、关闭或切换账号前，请先点「保存方案」。</p>
           </div>
           <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, toRefs, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import {
   Plus,
   Trash2,
@@ -239,25 +239,21 @@ import {
   deletePlan,
 } from "../../api/ledger.js";
 import { auth } from "../../store/auth.js";
+import { useCartDraft } from "../../store/cartDraft.js";
 import { dialog } from "../../utils/dialog.js";
 
-const version = ref("daihao");
-const exchangeRate = ref(bundledLedgerCatalog.exchangeRate);
-const rateDraft = ref(String(bundledLedgerCatalog.exchangeRate));
-const rateError = ref("");
+const cloudIdentity = () => auth.isLoggedIn ? String(auth.userInfo?.id || "authenticated") : "";
+const {
+  version, exchangeRate, rateDraft, rateError, rateOwned,
+  cartDaihao, cartRu, initialPointsDaihao, initialPointsRu,
+  customPackagesDaihao, customPackagesRu, plansByVersion, builtinSnapshots,
+} = toRefs(useCartDraft(cloudIdentity()));
 const publicCatalog = ref(bundledLedgerCatalog);
 const catalogLoading = ref(false);
 const catalogMessage = ref("正在更新礼包信息，暂用备用资料，价格可能不是最新。");
 const catalogError = ref(false);
-let rateOwned = false;
 let catalogSequence = 0;
 let catalogHasLive = false;
-const cartDaihao = ref({});
-const cartRu = ref({});
-const initialPointsDaihao = ref(0);
-const initialPointsRu = ref(0);
-const customPackagesDaihao = ref([]);
-const customPackagesRu = ref([]);
 const showCustomForm = ref(false);
 const activeCategory = ref("全部");
 const drawFilter = ref("all");
@@ -270,17 +266,15 @@ const operationMessage = ref("");
 const operationError = ref(false);
 
 // ---- 方案管理状态（广陵账房云存储） ----
-const plansByVersion = reactive({ daihao: { id: null, name: "", isLocal: false }, ru: { id: null, name: "", isLocal: false } });
-const currentPlan = computed(() => plansByVersion[version.value]);
+const currentPlan = computed(() => plansByVersion.value[version.value]);
 const showPlanSave = ref(false); // 保存对话框开关
 const showPlanList = ref(false); // 方案列表抽屉/弹层开关
 const myPlans = ref([]); // 云端方案列表（PlanListItemDto[]）
 const planLoading = ref(false);
 const planSaving = ref(false);
-const builtinSnapshots = reactive({ daihao: [], ru: [] });
 const currentBuiltins = computed(() => mergePackageSnapshots(
   publicCatalog.value.packages[version.value],
-  builtinSnapshots[version.value],
+  builtinSnapshots.value[version.value],
 ));
 const guestPlans = ref([]); // 游客本地暂存（读取见改动点 E5）
 
@@ -288,7 +282,6 @@ let timer = null;
 let alive = true;
 let planLoadSequence = 0;
 let cloudGeneration = 0;
-const cloudIdentity = () => auth.isLoggedIn ? String(auth.userInfo?.id || "authenticated") : "";
 const cloudContext = () => `${cloudGeneration}:${cloudIdentity()}`;
 watch(cloudIdentity, () => {
   cloudGeneration++;
@@ -296,9 +289,9 @@ watch(cloudIdentity, () => {
   myPlans.value = [];
   showPlanList.value = false;
   showPlanSave.value = false;
-  for (const plan of Object.values(plansByVersion)) {
-    if (!plan.isLocal) Object.assign(plan, { id: null, name: "", isLocal: false });
-  }
+  useCartDraft(cloudIdentity());
+  replaceCatalog(publicCatalog.value);
+  showResult("账号已变化，当前草稿已清空；可从「我的方案」重新加载。");
 }, { flush: "sync" });
 onMounted(() => {
   timer = setInterval(() => {
@@ -308,6 +301,8 @@ onMounted(() => {
   guestPlans.value = readGuestPlans(); // 恢复游客本地暂存（改动点 E5）
 });
 onBeforeUnmount(() => {
+  // 已选预算离页后沿用当时汇率，避免新目录默认值悄悄改变合计。
+  if (daihaoCount.value) rateOwned.value = true;
   alive = false;
   planLoadSequence++;
   if (timer) clearInterval(timer);
@@ -387,7 +382,7 @@ function resetFilters() {
   selectedOnly.value = false;
 }
 function updateRateDraft(value) {
-  rateOwned = true;
+  rateOwned.value = true;
   rateDraft.value = value;
   const rate = parseReferenceRate(value);
   rateError.value = rate === null ? "请输入有限且不小于 0 的参考汇率" : "";
@@ -439,11 +434,11 @@ const campaigns = computed(() => ledgerCampaignProgress(publicCatalog.value.camp
 function replaceCatalog(next) {
   for (const game of ["daihao", "ru"]) {
     const cart = game === "daihao" ? cartDaihao.value : cartRu.value;
-    const selected = mergePackageSnapshots(publicCatalog.value.packages[game], builtinSnapshots[game]).filter(p => cart[p.id] > 0);
-    builtinSnapshots[game] = mergePackageSnapshots(builtinSnapshots[game], selected);
+    const selected = mergePackageSnapshots(publicCatalog.value.packages[game], builtinSnapshots.value[game]).filter(p => cart[p.id] > 0);
+    builtinSnapshots.value[game] = mergePackageSnapshots(builtinSnapshots.value[game], selected);
   }
   publicCatalog.value = next;
-  if (!rateOwned) {
+  if (!rateOwned.value) {
     exchangeRate.value = next.exchangeRate;
     rateDraft.value = String(next.exchangeRate);
   }
@@ -512,9 +507,9 @@ function addToCart(pkg) {
   const cart = version.value === "daihao" ? cartDaihao : cartRu;
   const cur = cart.value[pkg.id] || 0;
   if (cur < pkg.limit) {
-    if (!isCustomPkg(pkg.id) && !builtinSnapshots[version.value].some(p => p.id === pkg.id)) {
+    if (!isCustomPkg(pkg.id) && !builtinSnapshots.value[version.value].some(p => p.id === pkg.id)) {
       const { calculatedPriceCny, ...snapshot } = pkg;
-      builtinSnapshots[version.value].push(snapshot);
+      builtinSnapshots.value[version.value].push(snapshot);
     }
     cart.value = { ...cart.value, [pkg.id]: cur + 1 };
   }
@@ -534,9 +529,11 @@ function removeFromCart(pkg) {
 
 async function clearCart() {
   if (cartItems.value.length === 0) return;
+  const identity = cloudContext();
   const selectedVersion = version.value;
   const name = selectedVersion === "daihao" ? "代号鸢" : "如鸢";
   if (!await dialog.confirm({ title: "清空购物车", message: `确定清空「${name}」购物车中的 ${selectedVersion === "daihao" ? daihaoCount.value : ruCount.value} 件礼包吗？`, type: "danger", confirmText: "清空" })) return;
+  if (!alive || identity !== cloudContext()) return;
   if (selectedVersion === "daihao") cartDaihao.value = {};
   else cartRu.value = {};
   showResult(`已清空「${name}」购物车。`);
@@ -569,11 +566,13 @@ function addCustomPackage(form) {
 }
 
 async function deleteCustom(id) {
+  const identity = cloudContext();
   const selectedVersion = version.value;
   const pkg = currentCustoms.value.find((item) => item.id === id);
   if (!pkg) return;
   const qty = currentCart.value[id] || 0;
   if (!await dialog.confirm({ title: "删除自定义礼包", message: `确定删除「${pkg.name}」吗？${qty ? `购物车中的 ${qty} 件也会移除。` : ""}`, type: "danger", confirmText: "删除" })) return;
+  if (!alive || identity !== cloudContext()) return;
   if (selectedVersion === "daihao") {
     customPackagesDaihao.value = customPackagesDaihao.value.filter(
       (p) => p.id !== id,
@@ -705,7 +704,7 @@ async function onConfirmSave(payload) {
     return;
   }
   const savingVersion = version.value;
-  const savingPlan = plansByVersion[savingVersion];
+  const savingPlan = plansByVersion.value[savingVersion];
   const body = buildPayload(name.trim());
   const overwrite = payload.overwrite;
 
@@ -819,7 +818,7 @@ function applyPlan(plan) {
       });
     }
   });
-  builtinSnapshots[plan.version] = snapshots;
+  builtinSnapshots.value[plan.version] = snapshots;
 
   // ⑥ 初始积分（按版本）
   if (isDaihao) initialPointsDaihao.value = plan.initial_points || 0;
@@ -879,7 +878,7 @@ async function loadPlan(plan) {
     const full = await getPlan(plan.id); // 列表是轻量，需再取详情
     if (!alive || identity !== cloudContext() || sequence !== planLoadSequence || version.value !== requestedVersion) return;
     applyPlan(full);
-    Object.assign(plansByVersion[full.version], { id: full.id, isLocal: false, name: full.name });
+    Object.assign(plansByVersion.value[full.version], { id: full.id, isLocal: false, name: full.name });
     showPlanList.value = false;
   } catch (err) {
     if (alive && identity === cloudContext() && sequence === planLoadSequence) showResult(humanErr(err, "加载方案失败"), true);
@@ -900,7 +899,7 @@ function loadGuestPlan(rec) {
     created_at: rec.created_at,
     updated_at: rec.updated_at,
   });
-  Object.assign(plansByVersion[rec.version], { id: rec._localId, isLocal: true, name: rec.name });
+  Object.assign(plansByVersion.value[rec.version], { id: rec._localId, isLocal: true, name: rec.name });
   showPlanList.value = false;
 }
 
@@ -918,7 +917,7 @@ async function renamePlan(plan, newName) {
     const plans = await listPlans();
     if (!alive || identity !== cloudContext()) return;
     myPlans.value = plans;
-    const state = plansByVersion[full.version];
+    const state = plansByVersion.value[full.version];
     if (!state.isLocal && state.id === full.id) state.name = newName.trim();
   } catch (err) {
     if (alive && identity === cloudContext()) showResult(humanErr(err, "重命名失败"), true);
@@ -935,7 +934,7 @@ async function removePlan(plan) {
     myPlans.value = myPlans.value.filter(function (p) {
       return p.id !== plan.id;
     });
-    const state = plansByVersion[plan.version];
+    const state = plansByVersion.value[plan.version];
     if (!state.isLocal && state.id === plan.id) Object.assign(state, { id: null, name: "", isLocal: false });
   } catch (err) {
     if (alive && identity === cloudContext()) showResult(humanErr(err, "删除失败"), true);
@@ -962,7 +961,7 @@ function writeGuestPlans(list) {
 
 function upsertGuestPlan(payload, overwrite) {
   const list = readGuestPlans();
-  const state = plansByVersion[payload.version];
+  const state = plansByVersion.value[payload.version];
   if (overwrite && state.id && state.isLocal) {
     // 覆盖：按 _localId 匹配（仅本地方案）
     const localId = String(state.id);
@@ -994,7 +993,7 @@ function removeGuestPlan(rec) {
       return String(p._localId) !== String(rec._localId);
     }),
   );
-  const state = plansByVersion[rec.version];
+  const state = plansByVersion.value[rec.version];
   if (state.isLocal && String(state.id) === String(rec._localId)) Object.assign(state, { id: null, name: "", isLocal: false });
 }
 

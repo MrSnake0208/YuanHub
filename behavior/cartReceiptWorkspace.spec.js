@@ -2,6 +2,7 @@ import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
+import { resetCartDraft } from '../src/store/cartDraft.js'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import ReceiptPanel from '../src/components/cart/ReceiptPanel.vue'
 import html2canvas from 'html2canvas'
@@ -12,6 +13,7 @@ vi.mock('html2canvas', () => ({ default: vi.fn() }))
 
 let media, change
 beforeEach(() => {
+  resetCartDraft()
   vi.resetAllMocks()
   change = null
   media = {

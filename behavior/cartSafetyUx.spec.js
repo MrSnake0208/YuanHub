@@ -2,6 +2,7 @@ import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
+import { resetCartDraft } from '../src/store/cartDraft.js'
 import CustomPackageModal from '../src/components/cart/CustomPackageModal.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import { dialog } from '../src/utils/dialog.js'
@@ -21,6 +22,7 @@ const addFirst = async (wrapper) => {
 }
 
 beforeEach(() => {
+  resetCartDraft()
   vi.clearAllMocks()
   dialog.confirm.mockResolvedValue(true)
   vi.stubGlobal('requestAnimationFrame', callback => callback())

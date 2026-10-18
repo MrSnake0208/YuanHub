@@ -28,7 +28,6 @@
 .cart-main > section { padding-top: 0; }
 .cart-header-context { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: center; }
 .tool-utility { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 8px 4px; font: 500 12px/1.5 var(--font-b); white-space: nowrap; }
-@media (max-width: 380px) { .tool-utility-label { display: none; } .tool-utility { min-width: 44px; } }
 .cart-version-selector { min-height: 44px; max-width: 100%; padding: 6px 8px; font: 500 13px/1.5 var(--font-b); }
 .cart-currency { font-size: 12px; white-space: nowrap; }
 .cart-rate-settings { margin-top: 0; font-size: 13px; }
@@ -53,12 +52,10 @@
 .cart-layout :deep(.cart-actions .btn) { flex: 1; min-width: 0; min-height: 44px; padding: 8px 8px; font-size: 13px; white-space: nowrap; }
 @media(max-width:767px) {
   .cart-main :deep(.compact-tool-header) { padding-block: 12px 8px; }
-  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account actions'; gap: 6px 10px; }
+  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account account' 'actions actions'; gap: 6px 10px; }
   .cart-main :deep(.compact-tool-heading h1) { font-size: 26px; }
   .cart-main :deep(.compact-tool-description) { font-size: 12px; font-weight: 400; color: var(--ink-60); text-wrap: pretty; }
-  .cart-main :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; }
-  .cart-main :deep(.compact-tool-actions .tool-more) { position: static; }
-  .cart-main :deep(.tool-more-content) { max-width: min(300px, calc(100vw - 32px)); }
+  .cart-main :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; justify-content: flex-start; }
   .cart-version-selector { min-height: 38px; }
   .cart-rate-settings > summary { min-height: 36px; flex-wrap: wrap; }
   .cart-filters { margin-block: 6px 10px; }
@@ -76,10 +73,5 @@
   .cart-mbar .btns { flex-shrink: 0; }
   .cart-mbar .mbtn { min-height: 40px; padding-inline: 9px; white-space: nowrap; }
   .cart-mbar .mbtn:disabled { opacity: 1; background: var(--paper); border: 1px solid var(--line); color: var(--ink-60); box-shadow: none; }
-}
-@media(max-width:380px) {
-  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account account' 'actions actions'; }
-  .cart-main :deep(.compact-tool-actions) { justify-content: flex-start; }
-  .cart-main :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 }
 }
