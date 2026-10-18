@@ -48,7 +48,7 @@ it('列表筛选提交API，独立编辑器与列表互斥，保存携带version
   await filter(wrapper, '日期范围终点').setValue('2026-10-15')
   await filter(wrapper, '搜索标题').setValue('活动')
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(api.listAdminActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', category: 'ACTIVITY', enabled: 'true', from: '2026-10-01', to: '2026-10-15', search: '活动' })
+  expect(api.listAdminActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', category: '', enabled: 'true', from: '2026-10-01', to: '2026-10-15', search: '活动' })
   await button(wrapper, '编辑活动').trigger('click')
   expect(wrapper.find('.calendar-list').exists()).toBe(false)
   expect(document.activeElement).toBe(wrapper.get('.calendar-editor').element)
@@ -206,11 +206,11 @@ it('列表网络错误可刷新，倒置日期范围不发送请求，保存网�
 it('管理员编辑家具及神秘洞窟往返分类并保持原活动ID版本日期', async () => {
   const wrapper = render(); await flushPromises()
   await button(wrapper, '编辑活动').trigger('click')
-  await wrapper.get('#calendar-subtype').setValue('FURNITURE')
-  await wrapper.get('#calendar-subtype_detail').setValue('MYSTERIOUS_CAVE')
+  await wrapper.get('#calendar-category').setValue('FURNITURE')
+  await wrapper.get('#calendar-subtype').setValue('MYSTERIOUS_CAVE')
   await wrapper.get('form').trigger('submit'); await flushPromises()
   expect(api.updateActivityCalendar).toHaveBeenCalledWith('evt-a', expect.objectContaining({
-    category: 'ACTIVITY', subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE', expected_version: 0,
+    category: 'ACTIVITY', subtype: 'MYSTERIOUS_CAVE', subtype_detail: null, expected_version: 0,
     start_date: '2026-10-03', end_date: '2026-10-10',
   }))
 })

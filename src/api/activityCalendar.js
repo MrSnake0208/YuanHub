@@ -35,3 +35,7 @@ export function getActivityCalendarSuggestion(id) { return request(PUBLIC_PATH +
 export function listAdminActivityCalendarSuggestions(filters) { return request(ADMIN_PATH + '/suggestions' + suggestionQuery(filters), adminOptions()) }
 export function acceptActivityCalendarSuggestion(id, body) { return request(ADMIN_PATH + '/suggestions/' + encodeURIComponent(id) + '/accept', { ...adminOptions(), method: 'POST', body }) }
 export function rejectActivityCalendarSuggestion(id, body) { return request(ADMIN_PATH + '/suggestions/' + encodeURIComponent(id) + '/reject', { ...adminOptions(), method: 'POST', body }) }
+
+export const exportActivityCalendar = () => request(ADMIN_PATH + '/export', adminOptions())
+export const previewCalendarClassification = json => request(ADMIN_PATH + '/classification-import/preview', { ...adminOptions(), method: 'POST', body: { json } })
+export const commitCalendarClassification = (json, previewToken) => request(ADMIN_PATH + '/classification-import/commit', { ...adminOptions(), method: 'POST', body: { json, preview_token: previewToken } })

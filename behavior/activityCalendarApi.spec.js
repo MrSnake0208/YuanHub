@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { request } from '../src/api/request.js'
-import { createActivityCalendar, listActivityCalendar, listAdminActivityCalendar, updateActivityCalendar, previewActivityCalendarImport, commitActivityCalendarImport } from '../src/api/activityCalendar.js'
+import { createActivityCalendar, listActivityCalendar, listAdminActivityCalendar, updateActivityCalendar, previewActivityCalendarImport, commitActivityCalendarImport, exportActivityCalendar, previewCalendarClassification, commitCalendarClassification } from '../src/api/activityCalendar.js'
 vi.mock('../src/api/request.js', () => ({ request: vi.fn().mockResolvedValue({ items: [] }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'synthetic', userInfo: { id: 'admin-a' } } }))
 
@@ -28,4 +28,13 @@ it('导入预览和提交均绑定当前管理员，提交携带原文与预览t
   expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/import/preview', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: '[{}]' } })
   await commitActivityCalendarImport('[{}]', 'token')
   expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/import/commit', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: '[{}]', preview_token: 'token' } })
+})
+
+it('分类全量导出与导入绑定当前身份，独立于新增型导入', async () => {
+  await exportActivityCalendar()
+  expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/export', { auth: true, expectedUserId: 'admin-a' })
+  await previewCalendarClassification('source')
+  expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/classification-import/preview', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: 'source' } })
+  await commitCalendarClassification('source', 'snapshot')
+  expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/classification-import/commit', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: 'source', preview_token: 'snapshot' } })
 })
