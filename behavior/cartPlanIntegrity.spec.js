@@ -2,6 +2,7 @@ import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
+import { resetCartDraft } from '../src/store/cartDraft.js'
 import PlanListDialog from '../src/components/cart/PlanListDialog.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import { packagesDaihao, packagesRu } from '../src/data/packages.js'
@@ -50,6 +51,7 @@ function deferred() {
 }
 
 beforeEach(() => {
+  resetCartDraft()
   vi.resetAllMocks()
   auth.isLoggedIn = false
   auth.userInfo = null
@@ -266,7 +268,7 @@ it('failure allows retry and a cloud response from a previous login cannot repla
   await flushPromises()
   pending.resolve({ ...plan(), name: '旧账号响应' })
   await flushPromises()
-  expect(total(wrapper)).toBe('¥42.00')
+  expect(wrapper.get('.cart-mbar .sum .v').text()).toBe('¥0.00')
   expect(wrapper.findComponent(PlanSaveDialog).exists()).toBe(false)
   expect(wrapper.text()).not.toContain('旧账号响应')
   expect(ledger.createPlan).toHaveBeenCalledTimes(2)
