@@ -1,6 +1,14 @@
 # 开发者文档维护
 
-此文件是维护说明，不在公开白名单。公开入口为 `/developers`，页面注册为 `src/data/developerManifest.js`，资产白名单为 `src/data/developerAssets.js`。
+此文件是维护说明，不在公开白名单。公开入口为 `/developers`；场景入口及密探引导内容在 `src/data/developerUseCases.js`，技术文档注册为 `src/data/developerManifest.js`，资产白名单为 `src/data/developerAssets.js`。
+
+## 场景入口与技术阅读器
+
+- `/developers` 由 `src/pages/developers/index.vue` 呈现场景首页，不加载 Markdown 正文。首批四个入口只有密探读取提供完整新手引导；库存、日历和每日历练直接链接已实现 API 文档及章节。
+- `/developers/use-cases/operator-read` 使用 `use-case.vue`，展示只读边界、个人中心实际授权步骤、通用 AI 任务、curl、当前 DTO 结构与常见错误。页面不读取 Token、不请求用户数据；API 根地址沿用 `API_BASE`，未配置时为当前站点。真实连接码由用户在自己的本地工具中填写，不粘贴到 AI 聊天。
+- 技术路由继续使用原有阅读器 `reference.vue`，保留文档搜索、章节、下载和代码复制。原首页 Markdown 仍在白名单中，旧 `/developers#doc-*` 深链接仍进入该正文；去掉 hash 返回新首页。
+- 新场景优先添加数据配置；新增完整引导复用页面结构并显式注册公开路由。不要将场景说明当成新 API 已实现的证据。新手站内链接需要逐个加入 `developerPageLinks`，不扩大资源白名单。
+- Token 创建仍在「个人中心 → 应用与数据连接 → 开发者与第三方 API」，受原有登录与当前 Beta 策略控制；阅读教程不等于取得访问资格。
 
 ## 权威来源
 
@@ -34,4 +42,6 @@ npm run build
 node scripts/check-developer-docs.mjs --dist
 ```
 
-最后一个检查比对发布文档实际集合、内容、首页脚本与 PWA 边界，不启动服务或浏览器。人工检查 `/developers` 的桌面目录、手机折叠目录、锚点、代码复制和 Schema 下载；代码检查不等于浏览器验收。
+前两个命令是本轮页面/路由改造的定向检查。构建与 `--dist` 仅在需要发布产物验证时运行，最后一个检查比对发布文档实际集合、内容、首页脚本与 PWA 边界，不启动服务或浏览器。
+
+人工检查首页、密探引导在 320 / 390 / 430 / 768 / 1024 / 1440px 的换行、键盘焦点、复制提示和主要入口：宽屏场景两列，手机单列，无整页横向滚动。沿「读取我的密探 → 前往创建连接码」确认既有登录/授权流程；复制说明给 AI 时不附真实连接码。技术页继续检查桌面目录、手机折叠目录、锚点、代码复制和 Schema 下载；代码/jsdom 检查不等于真实浏览器验收。

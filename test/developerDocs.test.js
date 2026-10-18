@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { parseDeveloperMarkdown, resolveDeveloperLink } from '../src/utils/developerMarkdown.js'
 import { developerDocuments } from '../src/data/developerManifest.js'
+import { developerReferences, developerUseCases, operatorReadGuide, operatorReadPrompt } from '../src/data/developerUseCases.js'
 import { routes } from '../src/router/routes.js'
 import { checkDeveloperDocs } from '../scripts/check-developer-docs.mjs'
 import { scrollBehavior } from '../src/router/scrollBehavior.js'
@@ -53,4 +54,34 @@ test('every published Schema uses self-contained references', async () => {
       visit(schema)
     }
   }
+})
+
+test('scenario and reference links target approved documents and existing chapter anchors', async () => {
+  for (const entry of [...developerUseCases, ...developerReferences]) {
+    const [path, hash] = entry.path.split('#')
+    assert.ok(resolveDeveloperLink(entry.path, 'developers/index.md', String), entry.path)
+    if (!hash) continue
+    const doc = developerDocuments.find(doc => doc.path === path)
+    const body = await readFile(new URL('../docs/' + doc.source, import.meta.url), 'utf8')
+    assert.ok(parseDeveloperMarkdown(body).headings.some(heading => heading.id === decodeURIComponent(hash)), entry.path)
+  }
+})
+
+test('operator tutorial uses the current read DTO and explicit read-only/environment boundaries', () => {
+  const { example, curl, faqs } = operatorReadGuide
+  assert.equal(example.status_code, 200)
+  assert.ok(Array.isArray(example.data))
+  const [profile] = example.data
+  assert.equal(profile.account_id, 'example_account')
+  assert.ok(!Array.isArray(profile.entries))
+  const entry = profile.entries.EXAMPLE_OPERATOR_ID
+  assert.equal(entry.level, 60)
+  assert.equal(entry.star_level, 3)
+  assert.deepEqual(entry.huaji, { owned: true, stage: 1, awakened: false })
+  for (const term of ['GET /open-api/operator/current', 'operator:read', 'Authorization: Bearer <OpenAPI Token>', 'account_id', 'game', 'status_code', 'data', 'entries', '/v1/operator/catalog', 'data.operators', 'V5', 'BASE_URL', 'OPENAPI_TOKEN', '401', '403', '运行命令']) {
+    assert.ok(operatorReadPrompt.includes(term), term)
+  }
+  assert.ok(curl.includes('$BASE_URL/open-api/operator/current'))
+  assert.ok(curl.includes('read -r -s OPENAPI_TOKEN'))
+  assert.equal(faqs.length, 4)
 })

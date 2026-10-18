@@ -287,4 +287,4 @@ export const developerDocuments = [
 
 export const developerFiles = [...new Set(developerDocuments.flatMap(doc => [doc.source, ...doc.downloads]))]
 
-export const developerPageLinks = ["/user/profile", "/changelog", "/developers"]
+export const developerPageLinks = ["/user/profile", "/changelog", "/developers", "/developers/use-cases/operator-read"]

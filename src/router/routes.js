@@ -14,27 +14,32 @@ import { FEATURE_KEYS } from '../config/features.js'
 export const routes = [
     {
         path: '/developers', name: 'developers', text: '开发者中心', display: false, module: 'developers', icon: 'book-open',
-        component: () => import('/src/pages/developers/index.vue'), props: { documentId: 'home' },
+        component: () => import('/src/pages/developers/index.vue'),
         meta: { title: '开发者中心 — YuanHub' }
+    },
+    {
+        path: '/developers/use-cases/operator-read', name: 'developers-operator-read', display: false, module: 'developers',
+        component: () => import('/src/pages/developers/use-case.vue'),
+        meta: { title: '读取我的密探 — YuanHub' }
     },
     ...['guide', 'api', 'protocols', 'changelog', 'gaps'].map(section => ({
         path: `/developers/${section}`, name: `developers-${section}`, display: false, module: 'developers',
-        component: () => import('/src/pages/developers/index.vue'), props: { documentId: section },
+        component: () => import('/src/pages/developers/reference.vue'), props: { documentId: section },
         meta: { title: '开发者文档 — YuanHub' }
     })),
     {
         path: '/developers/api/:slug', name: 'developers-api-detail', display: false, module: 'developers',
-        component: () => import('/src/pages/developers/index.vue'), props: route => ({ documentId: `api-${route.params.slug}` }),
+        component: () => import('/src/pages/developers/reference.vue'), props: route => ({ documentId: `api-${route.params.slug}` }),
         meta: { title: 'API 参考 — YuanHub' }
     },
     {
         path: '/developers/protocols/:slug', name: 'developers-protocol-detail', display: false, module: 'developers',
-        component: () => import('/src/pages/developers/index.vue'), props: route => ({ documentId: route.params.slug }),
+        component: () => import('/src/pages/developers/reference.vue'), props: route => ({ documentId: route.params.slug }),
         meta: { title: '数据交换协议 — YuanHub' }
     },
     {
         path: '/developers/:pathMatch(.*)*', name: 'developers-not-found', display: false, module: 'developers',
-        component: () => import('/src/pages/developers/index.vue'), props: { documentId: 'missing' },
+        component: () => import('/src/pages/developers/reference.vue'), props: { documentId: 'missing' },
         meta: { title: '文档不存在 — YuanHub' }
     },
     {

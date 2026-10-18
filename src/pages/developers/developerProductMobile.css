@@ -1,0 +1,7 @@
+@media (max-width: 767px) {
+  .developer-product-content { padding-inline: 16px; gap: 24px; }
+  .developer-product .page-header-title { font-size: 28px; text-wrap: balance; }
+  .developer-scenario { padding: 16px; gap: 12px; }
+  .developer-copy-prompt { width: 100%; }
+  .developer-product-footer { flex-direction: column; align-items: start; }
+}
