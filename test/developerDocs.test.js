@@ -57,7 +57,10 @@ test('every published Schema uses self-contained references', async () => {
 })
 
 test('scenario and reference links target approved documents and existing chapter anchors', async () => {
-  for (const entry of [...developerUseCases, ...developerReferences]) {
+  for (const entry of [...developerUseCases, ...developerReferences,
+    { path: '/developers/guide#doc-用户操作说明' },
+    { path: '/developers/gaps#doc-后续任务建议正式第三方应用授权' }
+  ]) {
     const [path, hash] = entry.path.split('#')
     assert.ok(resolveDeveloperLink(entry.path, 'developers/index.md', String), entry.path)
     if (!hash) continue
@@ -78,10 +81,33 @@ test('operator tutorial uses the current read DTO and explicit read-only/environ
   assert.equal(entry.level, 60)
   assert.equal(entry.star_level, 3)
   assert.deepEqual(entry.huaji, { owned: true, stage: 1, awakened: false })
-  for (const term of ['GET /open-api/operator/current', 'operator:read', 'Authorization: Bearer <OpenAPI Token>', 'account_id', 'game', 'status_code', 'data', 'entries', '/v1/operator/catalog', 'data.operators', 'V5', 'BASE_URL', 'OPENAPI_TOKEN', '401', '403', '运行命令']) {
+  for (const term of ['GET /open-api/operator/current', 'operator:read', 'Authorization: Bearer <OpenAPI Token>', 'account_id', 'game', 'status_code', 'data', 'entries', '/v1/operator/catalog', 'data.operators', 'V5', 'BASE_URL', 'OPENAPI_TOKEN', '401', '403', '运行命令', '第三方应用', '现有代码', '微信小程序', '服务端会话', '断开本应用', '最多 5 个 Token', 'Beta', '不虚构 OAuth', '禁止打包进分发软件']) {
     assert.ok(operatorReadPrompt.includes(term), term)
   }
   assert.ok(curl.includes('$BASE_URL/open-api/operator/current'))
   assert.ok(curl.includes('read -r -s OPENAPI_TOKEN'))
   assert.equal(faqs.length, 4)
+})
+
+test('published server example reads credentials for the authenticated application user only', async () => {
+  const requests = []
+  const fetch = async (url, options) => {
+    requests.push({ url, ...options })
+    return { ok: true, status: 200, json: async () => ({ status_code: 200, data: [{ account_id: options.headers.Authorization }] }) }
+  }
+  const readOperators = new Function('fetch', 'AbortSignal', 'process',
+    operatorReadGuide.serverExample.replace('export ', '') + '; return readOperatorsForUser;'
+  )(fetch, AbortSignal, { env: { BASE_URL: 'https://api.example.test' } })
+  const users = []
+  const store = { getForUser: async userId => {
+    users.push(userId)
+    return userId === 'unconnected' ? null : { token: 'synthetic-' + userId }
+  } }
+  assert.deepEqual(await readOperators('alice', store), [{ account_id: 'Bearer synthetic-alice' }])
+  assert.deepEqual(await readOperators('bob', store), [{ account_id: 'Bearer synthetic-bob' }])
+  await assert.rejects(() => readOperators('', store), /请先登录/)
+  await assert.rejects(() => readOperators('unconnected', store), /请先连接/)
+  assert.deepEqual(users, ['alice', 'bob', 'unconnected'])
+  assert.equal(requests.length, 2)
+  assert.ok(requests.every(request => request.url === 'https://api.example.test/open-api/operator/current' && request.redirect === 'error'))
 })

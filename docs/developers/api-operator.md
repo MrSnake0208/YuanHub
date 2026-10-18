@@ -1,6 +1,6 @@
 # 密探及养成 API
 
-第一次接入？从[读取我的密探：新手引导](/developers/use-cases/operator-read)开始，按步骤创建只读连接码并复制 AI 接入说明。
+第一次为第三方应用接入？从[第三方应用密探数据接入指南](/developers/use-cases/operator-read)开始，先用自己的测试账号调试，再为每位应用用户分别连接，并复制完整集成需求给 AI。
 
 状态：Token 受限扫描正式支持，旧 V2 兼容保留；完整 V5 备份使用站内 JWT。版本与字段说明见[密探 V5](../operator-growth-data-exchange-protocol-v5.md)及其继承的[V4](../operator-growth-data-exchange-protocol-v4.md)、[V3](../operator-growth-data-exchange-protocol-v3.md)。
 

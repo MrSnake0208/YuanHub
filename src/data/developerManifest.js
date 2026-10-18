@@ -13,12 +13,12 @@ export const developerDocuments = [
   },
   {
     "id": "guide",
-    "title": "快速接入",
+    "title": "第三方接入指南",
     "path": "/developers/guide",
     "source": "developers/guide.md",
     "version": "V1",
     "status": "接入指南",
-    "summary": "公共目录、连接码、子账号与首次读取",
+    "summary": "能力选择、开发调试、逐用户授权与上线安全",
     "updated": "2026-10-18",
     "downloads": []
   },
