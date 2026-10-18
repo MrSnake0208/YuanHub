@@ -1,59 +1,37 @@
-import { expect, it, vi } from 'vitest'
+import { expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import OperatorEditorNav from '../src/pages/operator/OperatorEditorNav.vue'
 
-function scrollRoot() {
-  const root = document.createElement('div')
-  root.innerHTML = ['growth', 'discs', 'stars'].map(id => `<section data-editor-section="${id}"><h4 id="operator-editor-${id}" tabindex="-1">${id}</h4><input value="draft" /></section>`).join('')
-  document.body.append(root)
-  root.getBoundingClientRect = () => ({ top: 100 })
-  root.querySelectorAll('section').forEach((section, index) => {
-    section.getBoundingClientRect = section.firstChild.getBoundingClientRect = () => ({ top: 112 + index * 300 - root.scrollTop })
-  })
-  Object.defineProperties(root, { clientHeight: { value: 400 }, scrollHeight: { value: 900 } })
-  root.scrollTo = vi.fn(({ top }) => { root.scrollTop = top; root.dispatchEvent(new Event('scroll')) })
-  return root
-}
-
-it('页内定位移动焦点和当前分区，保留所有表单节点与输入', async () => {
-  const root = scrollRoot()
-  const input = root.querySelector('input')
-  input.value = '未保存的养成'
-  const wrapper = mount(OperatorEditorNav, { attachTo: document.body, props: { scrollRoot: root } })
-  await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
-  expect(root.scrollTo).toHaveBeenLastCalledWith({ top: 300, behavior: 'instant' })
-  expect(document.activeElement).toBe(root.querySelector('#operator-editor-discs'))
-  expect(wrapper.get('[aria-current="location"]').text()).toBe('命盘')
-  expect(root.querySelector('input')).toBe(input)
-  expect(input.value).toBe('未保存的养成')
-  expect(root.querySelectorAll('section')).toHaveLength(3)
+it('三个入口具有标签语义，只请求切换、不滚动表单或写云端', async () => {
+  const wrapper = mount(OperatorEditorNav, { props: { modelValue: 'growth' } })
+  expect(wrapper.findAll('[role="tab"]')).toHaveLength(3)
+  expect(wrapper.get('[aria-selected="true"]').text()).toBe('基础养成')
+  await wrapper.get('#operator-editor-tab-discs').trigger('click')
+  expect(wrapper.emitted('update:modelValue')).toEqual([['discs']])
+  await wrapper.setProps({ modelValue: 'discs' })
+  expect(wrapper.get('[aria-selected="true"]').text()).toBe('命盘')
+  expect(wrapper.get('#operator-editor-tab-discs').attributes('aria-controls')).toBe('operator-editor-discs')
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('滚动到底部时高亮星石，滚回顶部恢复基础养成', async () => {
-  const root = scrollRoot()
-  const wrapper = mount(OperatorEditorNav, { props: { scrollRoot: root } })
-  root.scrollTo({ top: 500 }); await wrapper.vm.$nextTick()
-  expect(wrapper.get('[aria-current="location"]').text()).toBe('星石')
-  root.scrollTo({ top: 0 }); await wrapper.vm.$nextTick()
-  expect(wrapper.get('[aria-current="location"]').text()).toBe('基础养成')
-})
-
-it('极矮视口切换滚动容器时避开吸顶导航，并清理旧监听', async () => {
-  const body = scrollRoot()
-  const wrapper = mount(OperatorEditorNav, { attachTo: document.body, props: { scrollRoot: body } })
-  const panel = document.createElement('div')
-  document.body.append(panel)
-  panel.append(wrapper.element, body)
-  panel.getBoundingClientRect = () => ({ top: 60 })
-  wrapper.element.getBoundingClientRect = () => ({ bottom: 104 })
-  panel.scrollTo = vi.fn()
-  const removeBody = vi.spyOn(body, 'removeEventListener')
-  const removePanel = vi.spyOn(panel, 'removeEventListener')
-  await wrapper.setProps({ scrollRoot: panel })
-  expect(removeBody).toHaveBeenCalledWith('scroll', expect.any(Function))
-  await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
-  expect(panel.scrollTo).toHaveBeenCalledWith({ top: 296, behavior: 'instant' })
-  wrapper.unmount()
-  expect(removePanel).toHaveBeenCalledWith('scroll', expect.any(Function))
+it('左右/Home/End只移动焦点，离开后当前标签恢复唯一Tab入口', async () => {
+  const wrapper = mount(OperatorEditorNav, { attachTo: document.body })
+  const tabs = wrapper.findAll('[role="tab"]')
+  tabs[0].element.focus()
+  await tabs[0].trigger('keydown', { key: 'ArrowRight' })
+  expect(document.activeElement).toBe(tabs[1].element)
+  expect(tabs.map(tab => tab.element.tabIndex)).toEqual([-1, 0, -1])
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  await tabs[1].trigger('keydown', { key: 'End' })
+  expect(document.activeElement).toBe(tabs[2].element)
+  await tabs[2].trigger('keydown', { key: 'ArrowRight' })
+  expect(document.activeElement).toBe(tabs[0].element)
+  await tabs[0].trigger('keydown', { key: 'ArrowLeft' })
+  expect(document.activeElement).toBe(tabs[2].element)
+  await tabs[2].trigger('keydown', { key: 'Home' })
+  expect(document.activeElement).toBe(tabs[0].element)
+  await tabs[0].trigger('keydown', { key: 'ArrowRight' })
+  tabs[1].element.blur()
+  expect(tabs.map(tab => tab.element.tabIndex)).toEqual([0, -1, -1])
+  expect(fetch).not.toHaveBeenCalled()
 })

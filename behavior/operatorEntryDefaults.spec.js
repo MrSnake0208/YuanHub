@@ -97,10 +97,10 @@ function renderPage(options = {}, stubs = {}) {
   wrappers.add(wrapper)
   return wrapper
 }
-async function openEditor(existing, catalog = operator) {
+async function openEditor(existing, catalog = operator, stubs = {}, options = {}) {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [catalog] })
   operatorApi.getOperatorCurrent.mockResolvedValue(existing ? [{ entries: { op: existing } }] : [])
-  const wrapper = renderPage()
+  const wrapper = renderPage(options, stubs)
   await flushPromises()
   await wrapper.get('[aria-label="编辑测试密探"]').trigger('click')
   await flushPromises()
@@ -116,26 +116,36 @@ async function openCardStarEditor(existing, catalog = { ...operator, rarity: 4 }
   await wrapper.get('.ledger-huaji-value').trigger('click')
   return wrapper
 }
-const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
+const growthValues = wrapper => wrapper.findAll('.level-row input[type="number"]').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
 
 it('编辑分区导航保留两套命盘、养成和星石草稿，统一交给原保存流程', async () => {
   getCurrentStarState.mockResolvedValue({ generation: 0, entries: [{ instance_id: 'stone-a', kind: 'main', name: '天府', level: 10 }] })
   const wrapper = await openEditor({ level: 50, elite: 7, star_level: 7, revision: 2 }, {
     ...operator, rarity: 4, discs: [{ ot_name: '测试命盘甲', color: '金' }, { ot_name: '测试命盘乙', color: '紫' }],
-  })
-  wrapper.get('.editor-body').element.scrollTo = vi.fn()
+  }, { StarLoadoutEditor: false }, { attachTo: document.body })
+  expect(wrapper.get('#operator-editor-growth').isVisible()).toBe(true)
+  expect(wrapper.get('#operator-editor-discs').isVisible()).toBe(false)
+  expect(wrapper.get('#operator-editor-stars').isVisible()).toBe(false)
   const starEditor = wrapper.getComponent({ name: 'StarLoadoutEditor' })
   const initialStarEditor = starEditor.vm.$
-  await wrapper.findAll('.level-row input')[0].setValue('60')
+  await wrapper.findAll('.level-row input[type="number"]')[0].setValue('60')
   await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
+  expect(wrapper.get('#operator-editor-growth').isVisible()).toBe(false)
+  expect(wrapper.get('#operator-editor-discs').isVisible()).toBe(true)
+  expect(wrapper.get('.disc-loadout-name input').element.value).toBe('')
+  expect(wrapper.get('.disc-loadout-name input').attributes('placeholder')).toBe('选择命盘后自动命名')
   await wrapper.findAll('.disc-option input')[0].setValue(true)
+  expect(wrapper.get('.disc-loadout-name input').element.value).toBe('测试命盘甲')
   await wrapper.get('.disc-loadout-name input').setValue('命盘一草稿')
   await wrapper.get('#disc-loadout-tab-1').trigger('click')
   await wrapper.findAll('.disc-option input')[1].setValue(true)
   await wrapper.get('.disc-loadout-name input').setValue('命盘二草稿')
   await wrapper.get('[aria-controls="operator-editor-stars"]').trigger('click')
-  starEditor.vm.$emit('update:draft-loadouts', { op: { main1: 'stone-a' } })
+  expect(wrapper.get('#operator-editor-stars').isVisible()).toBe(true)
+  expect(wrapper.get('#operator-editor-discs').isVisible()).toBe(false)
+  await starEditor.get('.star-candidate').trigger('click')
+  await starEditor.get('.star-query input').setValue('天府')
   await wrapper.get('[aria-controls="operator-editor-growth"]').trigger('click')
   await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
   await wrapper.get('#disc-loadout-tab-0').trigger('click')
@@ -144,6 +154,7 @@ it('编辑分区导航保留两套命盘、养成和星石草稿，统一交给�
   expect(growthValues(wrapper)).toEqual(['60', '7'])
   expect(wrapper.getComponent({ name: 'StarLoadoutEditor' }).vm.$).toBe(initialStarEditor)
   expect(starEditor.props('draftLoadouts').op.main1).toBe('stone-a')
+  expect(starEditor.get('.star-query input').element.value).toBe('天府')
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
   expect(putCurrentStarLoadout).not.toHaveBeenCalled()
   operatorApi.patchOperatorCurrent.mockResolvedValueOnce({ level: 60, elite: 7, star_level: 7, revision: 3 })
@@ -383,7 +394,7 @@ it.each([390, 1440])('真实密探完整编辑器跨双端布局保留草稿、�
   const wrapper = await openEditor()
   document.body.append(wrapper.element)
   const panel = wrapper.get('.editor-panel').element
-  const input = wrapper.findAll('.level-row input')[0]
+  const input = wrapper.findAll('.level-row input[type="number"]')[0]
   await input.setValue('37')
   input.element.focus()
   const reads = operatorApi.getOperatorCurrent.mock.calls.length
@@ -756,10 +767,14 @@ it.each([
   [0, '0.5', '整数'], [1, '0.5', '整数'],
 ])('非法奇闻输入保留草稿并定位字段 %#', async (index, value, message) => {
   const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  document.body.append(wrapper.element)
   const input = wrapper.findAll('.oddity-field input')[index]
   await input.setValue(value)
+  await wrapper.get('#operator-editor-tab-discs').trigger('click')
   await wrapper.get('.editor-save').trigger('click')
   await flushPromises()
+  expect(wrapper.get('#operator-editor-tab-growth').attributes('aria-selected')).toBe('true')
+  expect(document.activeElement).toBe(input.element)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
   expect(input.element.value).toBe(value)
   expect(input.attributes('aria-invalid')).toBe('true')
@@ -880,7 +895,7 @@ it('隐密不展示五星或觉醒按钮，历史异常可以仅编辑其它字�
   expect(wrapper.findAll('.star-groups button').map(button => button.text())).not.toContain('5星')
   expect(wrapper.find('[aria-label="觉醒确认"]').exists()).toBe(false)
   expect(wrapper.text()).toContain('历史化极待复核')
-  await wrapper.findAll('.level-row input')[0].setValue('90')
+  await wrapper.findAll('.level-row input[type="number"]')[0].setValue('90')
   operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
   await wrapper.get('.editor-save').trigger('click')
   await flushPromises()
@@ -925,7 +940,7 @@ it.each([null, false, true])('并列觉醒按钮保留已存%s，打开或保存
   const wrapper = await openEditor({ level: 80, elite: 12, starLevel: 25, huaji: { owned: true, stage: 25, awakened } }, { ...operator, rarity: 4 })
   expect(wrapper.get('.star-groups [aria-label="觉醒确认"]').attributes('aria-pressed')).toBe(String(awakened === true))
   expect(wrapper.find('.star-card select').exists()).toBe(false)
-  await wrapper.findAll('.level-row input')[0].setValue('90')
+  await wrapper.findAll('.level-row input[type="number"]')[0].setValue('90')
   operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
   await wrapper.get('.editor-save').trigger('click'); await flushPromises()
   expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).not.toHaveProperty('huaji')
@@ -1399,22 +1414,56 @@ it.each(['catalog', 'current', 'tracking'])('查看他人 BOX 全流程后保留
 })
 
 
-it('90级突破独立读回，改等级后不沿用边界选择，保存明确未知不重签旧面板', async () => {
+it('90级突破独立读回，改等级再返回保留明确选择，不重签旧观测', async () => {
   const wrapper = await openEditor({ level: 90, elite: 15, revision: 7, level_breakthrough_stage: 9,
     huaji: { owned: true, stage: 1, awakened: false }, combat_stats: { observed_attack: 1234,
       observed_status: 'unverified', observed_inputs: { level: 90, level_breakthrough_stage: null } } })
-  const selector = () => wrapper.get('.editor-panel .level-breakthrough-field select')
-  expect(selector().element.value).toBe('9')
-  await selector().setValue('8')
+  const checkbox = () => wrapper.get('.editor-panel .level-breakthrough-check input')
+  expect(checkbox().element.checked).toBe(true)
+  await checkbox().setValue(false)
   await wrapper.get('.editor-panel .level-row input[max="100"]').setValue(91)
-  expect(wrapper.find('.editor-panel .level-breakthrough-field select').exists()).toBe(false)
+  expect(wrapper.find('.editor-panel .level-breakthrough-check').exists()).toBe(false)
   await wrapper.get('.editor-panel .level-row input[max="100"]').setValue(90)
-  expect(selector().element.value).toBe('')
+  expect(checkbox().element.checked).toBe(false)
+  expect(checkbox().element.indeterminate).toBe(false)
   operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
   await wrapper.get('.editor-save').trigger('click'); await flushPromises()
   const patch = operatorApi.patchOperatorCurrent.mock.lastCall[0].patch
-  expect(patch).toMatchObject({ level: 90, level_breakthrough_stage: null, expected_revision: 7 })
+  expect(patch).toMatchObject({ level: 90, level_breakthrough_stage: 8, expected_revision: 7 })
   expect(patch.combat_stats).not.toHaveProperty('observed_inputs')
   expect(patch.combat_stats).not.toHaveProperty('combat_input_signature')
   expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})
+
+it.each([undefined, 'base'])('历史未知突破在标签/等级切换后仍未知，普通/SP保存不推断', async spOf => {
+  const wrapper = await openEditor({ level: 90, elite: 15, revision: 3, level_breakthrough_stage: null,
+    huaji: { owned: true, stage: null, awakened: null } }, { ...operator, sp_of: spOf })
+  const level = wrapper.get('.editor-panel .level-row input[max="100"]')
+  expect(wrapper.get('.level-breakthrough-check input').element.indeterminate).toBe(true)
+  await level.setValue(89)
+  expect(wrapper.find('.level-breakthrough-check').exists()).toBe(false)
+  await level.setValue(90)
+  await wrapper.get('#operator-editor-tab-discs').trigger('click')
+  await wrapper.get('#operator-editor-tab-growth').trigger('click')
+  expect(wrapper.get('.level-breakthrough-check').text()).toContain('待核对')
+  expect(wrapper.get('.level-breakthrough-check input').element.indeterminate).toBe(true)
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).toMatchObject({ level: 90, level_breakthrough_stage: null })
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).not.toHaveProperty('huaji')
+})
+
+it('只修改星石也会在取消时确认，拒绝放弃保留原草稿', async () => {
+  getCurrentStarState.mockResolvedValue({ generation: 0, entries: [{ instance_id: 'stone-a', kind: 'main', name: '天府', level: 10 }] })
+  const wrapper = await openEditor({ level: 90, elite: 15, star_level: 1 })
+  const starEditor = wrapper.getComponent({ name: 'StarLoadoutEditor' })
+  starEditor.vm.$emit('update:draft-loadouts', { op: { main1: 'stone-a' } })
+  await flushPromises()
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('.editor-cancel').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledOnce()
+  expect(wrapper.find('.editor-panel').exists()).toBe(true)
+  expect(starEditor.props('draftLoadouts').op.main1).toBe('stone-a')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(putCurrentStarLoadout).not.toHaveBeenCalled()
 })

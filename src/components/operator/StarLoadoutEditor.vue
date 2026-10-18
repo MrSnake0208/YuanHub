@@ -9,13 +9,17 @@
 
     <div class="star-slot-groups">
       <section v-for="kind in kinds" :key="kind.id" class="star-slot-group" :class="{ active: activeKind === kind.id }" @click="activateKind(kind.id)">
-        <button type="button" class="star-group-heading" @click.stop="activateKind(kind.id)">{{ kind.label }} <small>{{ filledCount(kind.id) }}/3</small></button>
+        <button type="button" class="star-group-heading" :aria-pressed="activeKind === kind.id" @click.stop="activateKind(kind.id)">{{ kind.label }} <small>{{ filledCount(kind.id) }}/3</small></button>
         <div class="star-slot-grid" :aria-label="kind.label + '槽位'">
-          <article v-for="slot in kind.slots" :key="slot" class="star-loadout-slot" :class="{ replacement: replacementSlot === slot, empty: !slotEntry(slot) }" @click.stop="chooseReplacement(slot)">
+          <article v-for="slot in kind.slots" :key="slot" class="star-loadout-slot" :class="{ replacement: replacementSlot === slot, 'is-target': targetSlot === slot, empty: !slotEntry(slot) }">
+            <button type="button" class="star-slot-pick" :aria-label="'选择' + slotLabel(slot) + '，' + (slotEntry(slot)?.name || '未装配')" :aria-pressed="targetSlot === slot" @click.stop="chooseReplacement(slot)">
+            <span v-if="inline && !slotEntry(slot)" class="star-slot-add"><Plus :size="20" aria-hidden="true" /></span>
             <span class="star-slot-label">{{ slotLabel(slot) }}</span>
-            <template v-if="slotEntry(slot)"><strong class="star-slot-value">{{ slotEntry(slot).name }}</strong><small class="star-slot-level">Lv{{ slotEntry(slot).level || 0 }}</small><button type="button" class="star-slot-clear" :aria-label="'卸下' + slotLabel(slot)" @click.stop="clear(slot)"><X :size="16" aria-hidden="true" /></button></template>
+            <template v-if="slotEntry(slot)"><strong class="star-slot-value">{{ slotEntry(slot).name }}</strong><small class="star-slot-level">Lv{{ slotEntry(slot).level || 0 }}</small></template>
             <strong v-else class="star-slot-value is-empty">未装配</strong>
-            <span v-if="replacementSlot === slot" class="star-replacement-mark">替换</span>
+            </button>
+            <button v-if="slotEntry(slot)" type="button" class="star-slot-clear" :aria-label="'卸下' + slotLabel(slot)" @click.stop="clear(slot)"><X :size="16" aria-hidden="true" /></button>
+            <span v-if="replacementSlot === slot" class="star-replacement-mark">{{ slotEntry(slot) ? '替换' : '选择中' }}</span>
           </article>
         </div>
       </section>
@@ -24,12 +28,16 @@
     <div class="star-filter-row">
       <label>用途<SoftSelect v-model="usage" :options="usageSelectOptions" aria-label="星石用途" placeholder="全部" /></label>
       <label class="star-query">筛选<input v-model="query" placeholder="天府 武曲 天机" /></label>
-      <p class="star-active-slot">{{ selectionLabel }}</p>
+      <p class="star-active-slot" role="status">{{ selectionLabel }}</p>
       <label class="star-hide"><input v-model="hideEquipped" type="checkbox" />隐藏已佩戴星石</label>
     </div>
 
     <div class="star-candidate-scroll">
-      <p v-if="!filteredCandidates.length" class="hint">没有符合条件的星石。</p>
+      <div v-if="!filteredCandidates.length" class="star-empty-state" role="status">
+        <component :is="inventoryEntries.length ? SearchX : PackageOpen" :size="40" aria-hidden="true" />
+        <strong>{{ inventoryEntries.length ? '没有符合条件的星石。' : '暂无星石库存' }}</strong>
+        <p>{{ inventoryEntries.length ? '可以调整用途、搜索或隐藏已佩戴条件，也可切换主星 / 辅星。' : '先到星石背包添加星石，再回来装配。' }}</p>
+      </div>
       <div v-else class="star-candidate-grid">
         <button v-for="candidate in decoratedCandidates" :key="candidate.instanceId" type="button" class="star-candidate" :class="['quality-' + (candidate.quality || 'neutral'), { disabled: candidate.disabled }]" :disabled="candidate.disabled" :title="candidate.disabledReason" @click="select(candidate)">
           <span>{{ candidate.name }}</span><strong>Lv{{ candidate.level || 0 }}</strong><small>{{ ownerLabel(candidate) }}</small>
@@ -42,7 +50,7 @@
 </template>
 
 <script setup>
-import { X } from '@lucide/vue'
+import { X, Plus, PackageOpen, SearchX } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { assignInstanceToDraft, buildStarLoadoutCandidates, canAssignStarInstance, clearDraftSlot, emptyLoadout, groupSlots, nextGroupSlot, slotKind } from '../../domain/starLoadout.js'
 import { applySessionPreset, filterStarCandidates } from '../../domain/starLoadoutUi.js'
@@ -88,7 +96,7 @@ const decoratedCandidates = computed(function () {
     return Object.assign({}, candidate, { disabled: !result.allowed, disabledReason: result.reason })
   })
 })
-const selectionLabel = computed(function () { return replacementSlot.value ? '正在替换：' + slotLabel(replacementSlot.value) : '正在选择：' + (activeKind.value === 'main' ? '主星' : '辅星') + '（' + filledCount(activeKind.value) + '/3）' })
+const selectionLabel = computed(function () { return replacementSlot.value ? (slotEntry(replacementSlot.value) ? '正在替换：' : '正在选择：') + slotLabel(replacementSlot.value) : '正在选择：' + (activeKind.value === 'main' ? '主星' : '辅星') + '（' + filledCount(activeKind.value) + '/3）' })
 
 watch(function () { return [props.targetOperator?.id, props.initialSlot] }, function () {
   const kind = slotKind(props.initialSlot)
@@ -137,6 +145,14 @@ async function savePresets(next) {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* C2S: the editor surface intentionally merges into its host instead of adding another card shell. */
+.star-slot-pick { display: grid; grid-column: 1 / -1; grid-template-columns: inherit; align-items: center; gap: inherit; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+.star-slot-pick:focus-visible, .star-group-heading:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
+.star-slot-add { display: grid; place-items: center; justify-self: center; width: 32px; height: 32px; border-radius: 50%; background: var(--paper); color: var(--ink-60); }
+.star-loadout-slot.is-target { border-color: var(--accent-strong); }
+.star-empty-state { display: grid; justify-items: center; gap: 8px; padding: 28px 16px; border-radius: 10px; background: var(--cream); color: var(--ink-60); text-align: center; }
+.star-empty-state > svg { color: var(--ink-60); }
+.star-empty-state > strong { color: var(--ink); font-size: 15px; }
+.star-empty-state > p { margin: 0; font-size: 12px; line-height: 1.6; }
 .star-loadout-editor{background:#fffcf7;color:var(--ink,#493b2c)}.star-loadout-editor.is-inline{background:transparent}.star-preset-row{border-bottom:1.5px dashed var(--line,#decdb8)}.star-preset-row label{color:var(--ink,#493b2c)}.star-filter-row label{color:var(--ink-60,#897666)}.star-subtle-button{border:1px solid var(--line-strong,#b89568);border-radius:10px;background:transparent;color:var(--ink,#493b2c);cursor:pointer}.star-subtle-button:hover:not(:disabled){background:#f4e7d5}.star-subtle-button:disabled{cursor:not-allowed;opacity:.55}.star-loadout-notice{color:var(--rouge,#a6514a)}.star-slot-group+.star-slot-group{border-top:1.5px dashed var(--line,#decdb8)}.star-group-heading{border:0;background:transparent;color:var(--ink,#493b2c);cursor:pointer}.star-slot-group.active .star-group-heading{color:#6b4a31}.star-slot-group.active .star-group-heading::before{border-radius:3px;background:#c78a46;content:''}.star-group-heading small{color:var(--ink-50,#897666)}.star-loadout-slot{border:1px solid #decdb8;border-radius:8px;background:#fffcf7;cursor:pointer;transition:border-color .18s,background-color .18s,box-shadow .18s}.star-loadout-slot:hover{border-color:#caa77f;background:#fff8ee}.star-loadout-slot.replacement{border-color:rgba(199,138,70,.78);background:#fff9f1;box-shadow:0 2px 8px rgba(89,61,36,.10)}.star-replacement-mark{opacity:.78;border:1px solid rgba(199,138,70,.45);border-radius:7px;background:#fff5e7;color:#7a5435}.star-slot-label{color:var(--ink-60,#897666)}.star-slot-value{color:var(--ink,#493b2c)}.star-slot-level{color:var(--ink-50,#897666)}.star-slot-value.is-empty{color:var(--ink-50,#897666)}.star-loadout-slot.empty{background:#f8f3ea}.star-slot-clear{border:0;background:transparent;color:var(--ink-50,#897666);cursor:pointer}.star-filter-row{border-top:1.5px dashed var(--line,#decdb8);border-bottom:1.5px dashed var(--line,#decdb8);background:transparent}.star-active-slot{color:var(--ink-60,#897666)}.star-hide{color:var(--ink,#493b2c)!important}.star-query input{border:1.5px solid #decdb8;border-radius:10px;background:var(--surface,#fffdf6);color:var(--ink,#493b2c);outline:none}.star-query input:focus{border-color:var(--accent,#d78935);box-shadow:0 0 0 3px rgba(199,138,70,.12)}.star-hide input{accent-color:#c78a46}.star-candidate{border:1px solid #decdb8;border-radius:7px;background:#f4f2ee;color:var(--ink,#493b2c);cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}.star-candidate::before{border-radius:6px 0 0 6px;background:#b8b0a5;content:''}.star-candidate:hover:not(:disabled){border-color:#c78a46;box-shadow:0 3px 9px rgba(89,61,36,.10)}.star-candidate small{color:var(--ink-50,#897666)}.star-candidate.disabled{cursor:not-allowed;opacity:.5}.quality-orange{background:#fff1e3}.quality-orange::before{background:#d99a55}.quality-purple{background:#f4edfa}.quality-purple::before{background:#a98bc3}.quality-blue{background:#eef4fa}.quality-blue::before{background:#86a7be}.quality-green{background:#f0f5ec}.quality-green::before{background:#8fa57c}.quality-white,.quality-gray,.quality-grey,.quality-neutral{background:#f4f2ee}.quality-white::before,.quality-gray::before,.quality-grey::before,.quality-neutral::before{background:#b8b0a5}
 </style>
 <style scoped src="./starLoadoutEditorDesktop.css"></style>

@@ -27,3 +27,26 @@ it.each([390, 1440])('真实星石弹窗跨布局保留编辑器、分组、搜�
     expect(fetch).not.toHaveBeenCalled()
   }
 })
+
+it('星石空状态区分库存与筛选；六槽位可聚焦选择并沿用装备草稿', async () => {
+  const wrapper = mount(StarLoadoutEditor, { props: { inline: true, targetOperator: { id: 'op' } } })
+  expect(wrapper.get('.star-empty-state').text()).toContain('暂无星石库存')
+  expect(wrapper.findAll('.star-slot-pick')).toHaveLength(6)
+  await wrapper.setProps({ inventoryEntries: [{ instance_id: 'a', name: '天府', kind: 'main', level: 10 }] })
+  expect(wrapper.find('.star-empty-state').exists()).toBe(false)
+  await wrapper.get('.star-query input').setValue('不存在')
+  expect(wrapper.get('.star-empty-state').text()).toContain('没有符合条件的星石')
+  await wrapper.get('.star-query input').setValue('')
+  await wrapper.findAll('.star-slot-pick')[1].trigger('click')
+  expect(wrapper.get('.star-active-slot').text()).toBe('正在选择：主星2')
+  expect(wrapper.findAll('.star-slot-pick')[1].attributes('aria-pressed')).toBe('true')
+  expect(wrapper.emitted('update:draftLoadouts')).toBeUndefined()
+  await wrapper.get('.star-candidate').trigger('click')
+  const next = wrapper.emitted('update:draftLoadouts').at(-1)[0]
+  expect(next.op.main2).toBe('a')
+  await wrapper.setProps({ draftLoadouts: next })
+  expect(wrapper.findAll('.star-slot-pick')[1].text()).toContain('天府')
+  await wrapper.get('[aria-label="卸下主星2"]').trigger('click')
+  expect(wrapper.emitted('update:draftLoadouts').at(-1)[0].op.main2).toBeNull()
+  expect(fetch).not.toHaveBeenCalled()
+})
