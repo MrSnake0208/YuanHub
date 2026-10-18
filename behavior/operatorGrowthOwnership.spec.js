@@ -75,6 +75,33 @@ async function mountRoster() {
   return wrapper
 }
 const rosterIds = wrapper => wrapper.findAll('[data-roster-id]').map(row => row.attributes('data-roster-id'))
+it('新建第三张培养清单后仍可切回特别关注和已有自定义清单', async () => {
+  const favorites = { id: 'favorites', name: '特别关注', source: 'favorites', operator_ids: [], excluded_operator_ids: [], targets: {} }
+  const existing = { ...favorites, id: 'earth', name: '备战地泰山', source: 'custom' }
+  plannerApi.getTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: existing.id, plans: [favorites, existing] })
+  let revision = 1
+  plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: ++revision }))
+  const wrapper = mount(Tracker, { attachTo: document.body, props: { accountId: 'acc', isLoggedIn: true }, global: { stubs: { PlannerExactOptimizer: true, teleport: true } } })
+  await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '新建清单').trigger('click')
+  await wrapper.get('#plan-name-input').setValue('备战阴泰山')
+  await wrapper.get('.plan-dialog form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('.plan-title-trigger').text()).toBe('备战阴泰山')
+  for (const name of ['特别关注', '备战地泰山']) {
+    await wrapper.get('.plan-title-trigger').trigger('click')
+    const item = wrapper.findAll('[role="menuitemradio"]').find(button => button.text() === name)
+    await item.trigger('pointerdown')
+    item.element.focus()
+    await flushPromises()
+    await item.trigger('pointerup')
+    await item.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.plan-title-trigger').text()).toBe(name)
+  }
+  expect(plannerApi.putTrainingWorkspace).toHaveBeenCalledTimes(3)
+  expect(plannerApi.putTrainingWorkspace.mock.calls[2][1].plans.map(plan => plan.name)).toEqual(['特别关注', '备战地泰山', '备战阴泰山'])
+})
 function previewRosterMove(from, to) {
   const sortable = rosterSortables.at(-1), item = sortable.el.children[from]
   sortable.indices = { oldDraggableIndex: from, newDraggableIndex: to }

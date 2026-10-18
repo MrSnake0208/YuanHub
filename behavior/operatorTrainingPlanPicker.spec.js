@@ -64,6 +64,52 @@ it('搜索只筛选可见候选，不丢失已选成员', async () => {
   expect(wrapper.emitted('save')[0][0].operatorIds).toEqual([a.id])
 })
 
+it.each(['mouse', 'touch'])('清单选项在 %s 按下时保留焦点，松开点击才切换', async pointerType => {
+  const second = { ...plan, id: 'plan-b', name: '备战地泰山' }
+  const wrapper = render({ plans: [plan, second] })
+  const trigger = wrapper.get('.plan-title-trigger')
+  trigger.element.focus()
+  await trigger.trigger('click')
+  const item = wrapper.findAll('[role="menuitemradio"]')[1].element
+  const press = new MouseEvent('pointerdown', { bubbles: true, cancelable: true })
+  Object.defineProperty(press, 'pointerType', { value: pointerType })
+  item.dispatchEvent(press)
+  // 模拟按下按钮不聚焦的浏览器：未阻止默认行为时，焦点会离开触发器。
+  if (!press.defaultPrevented) trigger.element.blur()
+  await flushPromises()
+  expect(wrapper.emitted('select')).toBeUndefined()
+  expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+  item.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+  item.click()
+  await flushPromises()
+  expect(wrapper.emitted('select')).toEqual([['plan-b']])
+  expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+})
+
+it('清单菜单保留键盘导航、Escape、Tab 离开和外部点击关闭', async () => {
+  const wrapper = render({ plans: [plan, { ...plan, id: 'plan-b' }] })
+  const trigger = wrapper.get('.plan-title-trigger')
+  trigger.element.focus()
+  await trigger.trigger('keydown', { key: 'ArrowDown' })
+  const items = wrapper.findAll('[role="menuitemradio"]')
+  expect(document.activeElement).toBe(items[0].element)
+  await items[0].trigger('keydown', { key: 'ArrowDown' })
+  expect(document.activeElement).toBe(items[1].element)
+  await items[1].trigger('keydown', { key: 'Escape' })
+  expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+  await trigger.trigger('click')
+  wrapper.get('.plan-member-add').element.focus()
+  await flushPromises()
+  expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  await trigger.trigger('click')
+  document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  expect(wrapper.emitted('select')).toBeUndefined()
+})
+
 it('顶部添加密探可将非星标成员加入特别关注清单，保留隐藏的已有成员', async () => {
   const favorites = new Set([a.id]), members = new Set([a.id])
   const favoritePlan = { id: 'favorites', name: '特别关注', source: 'favorites' }

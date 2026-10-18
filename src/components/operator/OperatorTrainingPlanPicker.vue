@@ -4,7 +4,7 @@
       <div v-if="activePlan" ref="planSwitcher" class="plan-switcher" @focusout="onSwitcherFocusout">
         <h2 class="plan-title"><button ref="switcherTrigger" type="button" class="plan-title-trigger" :disabled="disabled" aria-haspopup="menu" :aria-expanded="switcherOpen" aria-controls="plan-switcher-menu" @click="toggleSwitcher" @keydown.down.prevent="openSwitcher(true)" @keydown.esc.prevent="closeSwitcher"><span>{{ activePlan.name }}</span><ChevronDown :size="18" :class="{ open: switcherOpen }" aria-hidden="true" /></button></h2>
         <div v-if="switcherOpen" id="plan-switcher-menu" ref="switcherMenu" class="plan-switcher-menu" role="menu" aria-label="切换培养清单" @keydown="onSwitcherKeydown">
-          <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
+          <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @pointerdown.prevent @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
         </div>
       </div>
       <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>

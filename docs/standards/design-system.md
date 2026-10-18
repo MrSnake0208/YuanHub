@@ -54,6 +54,8 @@
 
 当前站点 `body` 以 `/maayuan/maayuan-pattern.webp` 配合暖纸张渐变构成品牌背景。保留现有共享壳层资源；页面或功能区可按明确设计采用不同的局部底板、纹理与布局，不要求每个模块复制同一背景。
 
+主站目前提供浅色配色：`index.html` 在样式加载前声明 `color-scheme: only light`，`main.css` 的 `:root` 保持相同声明，避免支持该标准的浏览器自动深色化导致卡片、图标和底色混用。依据 [Chrome 自动深色主题说明](https://developer.chrome.com/blog/auto-dark-theme#how_to_opt-out_of_auto_dark_theme)；第三方浏览器可能有自己的夜间处理，鸿蒙夸克仍需真机验证首次打开及浅深切换后的表现。
+
 ---
 
 ## 4. 各家身份色（看板/共建区用）
