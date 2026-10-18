@@ -148,7 +148,7 @@ it('双目标切换不丢草稿，修改目标不改实际命盘，保存重开�
   wrapper.unmount()
 })
 
-it('名册筛选任意待洗盘，详情显示两套实际与目标，进入指定组合，切换账号关闭详情且不串目标', async () => {
+it('名册筛选任意待洗盘，详情精简完美盘并保留待洗目标，进入指定组合，切换账号关闭详情且不串目标', async () => {
   const wrapper = await showRoster({
     op: entry(undefined, { disc_loadouts: [loadout('one', ['A'], 'perfect'), loadout('two', ['B'], 'reroll', ['D'])] }),
     other: entry(undefined, { disc_loadouts: [loadout('one', ['A'])] }),
@@ -159,8 +159,11 @@ it('名册筛选任意待洗盘，详情显示两套实际与目标，进入指�
   wrapper.get('.ledger-disc-target-summary').element.focus()
   await wrapper.get('.ledger-disc-target-summary').trigger('click'); await flushPromises()
   expect(document.body.style.overflow).toBe('hidden')
-  expect(document.querySelector('.disc-target-modal').textContent).toContain('目标未设置')
-  expect(document.querySelector('.disc-target-modal').textContent).toContain('待补全目标')
+  const details = document.querySelectorAll('.disc-target-detail')
+  expect(details[0].textContent).toContain('A')
+  expect(details[0].textContent).not.toContain('目标命盘')
+  expect(details[1].textContent).toContain('D')
+  expect(details[1].textContent).toContain('已设置 1/3，1 条目标未匹配')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
   expect(document.querySelector('.disc-target-modal')).toBeNull()
   expect(document.activeElement).toBe(wrapper.get('.ledger-disc-target-summary').element)

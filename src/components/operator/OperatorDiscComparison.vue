@@ -1,26 +1,26 @@
 <template>
-  <div class="disc-comparison">
+  <div class="disc-comparison" :class="{ 'is-compact': compact, 'is-current-only': currentOnly }">
     <section class="disc-comparison-side">
-      <h5>当前命盘</h5>
+      <h5 v-if="!currentOnly">当前命盘</h5>
       <div class="disc-comparison-terms">
         <span v-for="name in actual" :key="name" :class="termClass(name)">{{ label(name) }}</span>
         <small v-if="!actual.length">未配置命盘</small>
       </div>
     </section>
-    <span class="disc-comparison-arrow" aria-hidden="true">→</span>
-    <section class="disc-comparison-side">
+    <span v-if="!currentOnly && !compact" class="disc-comparison-arrow" aria-hidden="true">→</span>
+    <section v-if="!currentOnly" class="disc-comparison-side">
       <div class="disc-comparison-heading">
-        <h5>目标命盘 <small>{{ desired.length }} / 3</small></h5>
+        <h5>目标命盘 <small v-if="!compact">{{ desired.length }} / 3</small></h5>
         <button v-if="editable" type="button" class="disc-copy-current" @click="$emit('copy')">复制当前为目标</button>
       </div>
       <div class="disc-comparison-terms">
         <span v-for="name in desired" :key="name" :class="[termClass(name), { 'is-changed': difference.added.includes(name) }]">
-          {{ label(name) }}<small v-if="difference.added.includes(name)">目标</small>
+          {{ label(name) }}<small v-if="!compact && difference.added.includes(name)">目标</small>
           <button v-if="editable" type="button" :aria-label="'移除目标词条' + name" @click="$emit('remove', name)">×</button>
         </span>
         <small v-if="!desired.length">目标未设置</small>
       </div>
-      <p class="disc-comparison-difference" aria-live="polite">{{ differenceText }}</p>
+      <p v-if="differenceText" class="disc-comparison-difference" aria-live="polite">{{ differenceText }}</p>
     </section>
   </div>
 </template>
@@ -34,6 +34,8 @@ const props = defineProps({
   target: { type: Array, default: () => [] },
   catalog: { type: Array, default: () => [] },
   editable: Boolean,
+  compact: Boolean,
+  currentOnly: Boolean,
 })
 defineEmits(['copy', 'remove'])
 const actual = computed(() => normalizeDiscNames(props.current))
@@ -46,6 +48,12 @@ function termClass(name) {
 }
 const differenceText = computed(() => {
   const diff = difference.value
+  if (props.compact) {
+    if (!diff.targetCount) return ''
+    const remaining = diff.added.length ? diff.added.length + ' 条目标未匹配' : '已填写目标均已匹配'
+    if (!diff.complete) return '已设置 ' + diff.targetCount + '/3，' + remaining
+    return diff.added.length ? remaining : '当前已符合目标，标记由你确认'
+  }
   if (!diff.targetCount) return '可稍后设置目标'
   if (!diff.complete) return '已设置 ' + diff.targetCount + '/3，待补全目标'
   if (!diff.added.length) return '当前已符合目标，标记由你确认'
@@ -79,4 +87,12 @@ const differenceText = computed(() => {
   .disc-comparison { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; }
   .disc-comparison-arrow { display: block; align-self: center; color: var(--ink-60); font-size: 24px; }
 }
+.disc-comparison.is-compact { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.is-compact .disc-comparison-side { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.is-compact h5 { font: 12px var(--font-s); color: var(--ink-60); }
+.is-compact .disc-comparison-terms { margin-top: 6px; }
+.is-compact.is-current-only .disc-comparison-terms { margin-top: 0; }
+.is-compact .disc-comparison-term { border-radius: 6px; }
+.is-compact .disc-comparison-term.is-changed { border-color: currentColor; font-weight: 600; }
+.is-compact .disc-comparison-difference { margin-top: 8px; }
 </style>
