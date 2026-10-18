@@ -78,22 +78,25 @@ export function discTargetDifference(current, target) {
   return { removed, added, complete, count: complete ? added.length : null, targetCount: desired.length }
 }
 
-export function discTargetSummary(loadouts) {
+export function discTargetSummaryItems(loadouts) {
   const normalized = createDiscLoadoutState(loadouts).loadouts
-  if (normalized.every(item => item.status === 'perfect')) return '✓ 两套完美'
+  if (normalized.every(item => item.status === 'perfect')) return [{ status: 'perfect', label: '两盘完美' }]
   return normalized.flatMap((item, index) => {
     if (item.status === 'unmarked') return []
-    const prefix = index === 0 ? '①' : '②'
-    if (item.status === 'perfect') return [prefix + ' ✓ 完美']
+    const prefix = index === 0 ? '一盘' : '二盘'
+    if (item.status === 'perfect') return [{ status: item.status, label: prefix + '完美' }]
     const diff = discTargetDifference(item.discNames, item.targetDiscNames)
-    let detail = '目标未设置'
-    if (diff.targetCount && !diff.complete) detail = '目标 ' + diff.targetCount + '/3'
+    let detail = ''
     if (diff.complete) {
-      detail = !diff.count ? '目标已达成'
-        : diff.removed.length >= diff.added.length ? '改' + diff.count + '处' : '差' + diff.count + '项'
+      detail = !diff.count ? '·目标已达成'
+        : diff.removed.length >= diff.added.length ? '·' + diff.count + '处' : '·差' + diff.count + '项'
     }
-    return [prefix + ' 待洗·' + detail]
-  }).join('　')
+    return [{ status: item.status, label: prefix + '待洗' + detail }]
+  })
+}
+
+export function discTargetSummary(loadouts) {
+  return discTargetSummaryItems(loadouts).map(item => item.label).join(' │ ')
 }
 
 export function hasRerollDisc(loadouts) {

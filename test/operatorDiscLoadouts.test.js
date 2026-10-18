@@ -9,6 +9,7 @@ import {
   discLoadoutPayload,
   discTargetDifference,
   discTargetSummary,
+  discTargetSummaryItems,
   hasRerollDisc
 } from '../src/utils/operatorDiscLoadouts.js'
 
@@ -75,12 +76,22 @@ test('差异按无序合法词条比较，去重且部分目标不报告替换�
 test('紧凑摘要覆盖双待洗、混合状态、双完美与未完整目标', () => {
   const one = { discNames: ['A', 'B', 'C'], status: 'reroll', targetDiscNames: ['A', 'B', 'D'] }
   const two = { discNames: ['A', 'B', 'C'], status: 'reroll', targetDiscNames: ['A', 'D', 'E'] }
-  assert.equal(discTargetSummary([one, two]), '① 待洗·改1处　② 待洗·改2处')
-  assert.equal(discTargetSummary([{ ...one, status: 'perfect' }, two]), '① ✓ 完美　② 待洗·改2处')
-  assert.equal(discTargetSummary([{ status: 'perfect' }, { status: 'perfect' }]), '✓ 两套完美')
+  assert.equal(discTargetSummary([one, two]), '一盘待洗·1处 │ 二盘待洗·2处')
+  assert.equal(discTargetSummary([{ ...one, status: 'perfect' }, two]), '一盘完美 │ 二盘待洗·2处')
+  assert.equal(discTargetSummary([{ status: 'perfect' }, { status: 'perfect' }]), '两盘完美')
   assert.equal(discTargetSummary([{ ...one, status: 'unmarked' }, { status: 'unmarked' }]), '')
-  assert.equal(discTargetSummary([{}, { status: 'reroll' }]), '② 待洗·目标未设置')
-  assert.equal(discTargetSummary([{ ...one, targetDiscNames: ['A', 'B'] }]), '① 待洗·目标 2/3')
+  assert.equal(discTargetSummary([{}, { status: 'reroll' }]), '二盘待洗')
+  assert.equal(discTargetSummary([{ ...one, targetDiscNames: ['A', 'B'] }]), '一盘待洗')
+  assert.equal(discTargetSummary([{ status: 'perfect' }]), '一盘完美')
+  assert.equal(discTargetSummary([{ ...one, targetDiscNames: ['A', 'B', 'C'] }]), '一盘待洗·目标已达成')
+  assert.equal(discTargetSummary([{ ...one, discNames: ['A'] }]), '一盘待洗·差2项')
+  assert.deepEqual(discTargetSummaryItems([{ status: 'perfect' }, two]), [
+    { status: 'perfect', label: '一盘完美' },
+    { status: 'reroll', label: '二盘待洗·2处' }
+  ])
+  assert.deepEqual(discTargetSummaryItems([{ status: 'perfect' }, { status: 'perfect' }]), [
+    { status: 'perfect', label: '两盘完美' }
+  ])
   assert.equal(hasRerollDisc([{}, two]), true)
   assert.equal(hasRerollDisc([{ status: 'perfect' }]), false)
 })

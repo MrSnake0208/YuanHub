@@ -2121,7 +2121,13 @@
 
                   <button v-if="cardDiscTargetSummary(e)" class="ledger-disc-target-summary" type="button" aria-haspopup="dialog"
                     :aria-label="e.name + '：' + cardDiscTargetSummary(e) + '，查看命盘目标'" @click.stop="discTargetEntryId = e.id">
-                    {{ cardDiscTargetSummary(e) }}
+                    <span v-for="(item, index) in cardDiscTargetSummaryItems(e)" :key="index"
+                      class="ledger-disc-target-state" :class="'is-' + item.status">
+                      <Check v-if="item.status === 'perfect'" :size="11" aria-hidden="true" />
+                      <RotateCcw v-else :size="11" aria-hidden="true" />
+                      <span>{{ item.label }}</span>
+                    </span>
+                    <ChevronRight class="ledger-disc-target-arrow" :size="11" aria-hidden="true" />
                   </button>
 
                   <div class="ledger-stones" aria-label="已装备星石">
@@ -3116,6 +3122,7 @@ import {
   DISC_STATUSES,
   discLoadoutPayload,
   discTargetSummary,
+  discTargetSummaryItems,
   hasRerollDisc,
 } from "../../utils/operatorDiscLoadouts.js";
 import {
@@ -4057,6 +4064,9 @@ function removeDiscTarget(name) {
 }
 function cardDiscTargetSummary(entry) {
   return discTargetSummary(cardGrowthDrafts.value[entry.id]?.discLoadouts || entry.discLoadouts);
+}
+function cardDiscTargetSummaryItems(entry) {
+  return discTargetSummaryItems(cardGrowthDrafts.value[entry.id]?.discLoadouts || entry.discLoadouts);
 }
 async function editDiscTarget(index) {
   const id = discTargetEntryId.value;
@@ -12631,9 +12641,18 @@ onBeforeUnmount(function () {
 .batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--tea); }
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
-.ledger-disc-target-summary { display: block; grid-column: 1 / -1; width: 100%; min-width: 0; margin: 0; padding: 2px 0; border: 0; background: transparent; color: var(--tea); font: 600 11px var(--font-s); line-height: 1.4; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.ledger-disc-target-summary:hover { color: var(--accent-strong); }
+.ledger-disc-target-summary { display: flex; align-items: center; gap: 3px; grid-column: 1 / -1; justify-self: start; width: fit-content; max-width: 100%; min-width: 0; box-sizing: border-box; margin: 0; padding: 2px 3px; border: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 5px; background: var(--cream); color: var(--tea); font: 600 11px/1.4 var(--font-b); text-align: left; white-space: nowrap; cursor: pointer; }
+.ledger-disc-target-summary:hover { border-color: var(--line); background: var(--surface); }
 .ledger-disc-target-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ledger-disc-target-state { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.ledger-disc-target-state + .ledger-disc-target-state { padding-left: 3px; border-left: 1px solid var(--line); }
+.ledger-disc-target-state.is-perfect { color: #52694e; }
+.ledger-disc-target-state.is-reroll { color: var(--accent-strong); }
+.ledger-disc-target-state > svg, .ledger-disc-target-arrow { flex: none; }
+.ledger-disc-target-state > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ledger-disc-target-arrow { color: var(--ink-35); }
+.ledger-disc-target-state + .ledger-disc-target-state + .ledger-disc-target-arrow { display: none; }
+.ledger-disc-target-summary ~ .ledger-stones > .stone-slot.is-empty:not(:hover):not(:focus-visible) { border-color: color-mix(in srgb, var(--line) 65%, transparent); }
 .disc-target-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 .disc-status-controls, .disc-pick-mode { display: flex; flex-wrap: wrap; gap: 6px; }
 .disc-status-controls button, .disc-pick-mode button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--tea); font: 600 12px var(--font-s); cursor: pointer; }
