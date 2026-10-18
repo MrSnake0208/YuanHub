@@ -26,7 +26,7 @@ export function filterAchievements(entries, records, filters) {
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
       (!reward || (entry.reward || '').toLocaleLowerCase().includes(reward)) &&
-      (!query || [entry.name, entry.condition, ...(entry.aliases || []), ...(entry.operators || []).map(operator => operator.name)]
+      (!query || [entry.name, entry.condition, ...(entry.operators || []).map(operator => operator.name)]
         .join(' ').toLocaleLowerCase().includes(query))
   }).sort((a, b) => a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
 }

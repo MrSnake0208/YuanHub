@@ -287,17 +287,23 @@ it('未完成筛选中保存成功提示停留6秒后移出，撤销恢复历史
   } finally { vi.useRealTimers() }
 })
 
-it('历史来源不显示链接或空补充区，完成说明仍可查看', async () => {
+it('历史来源、完成方法和章节不显示或留下空补充区，剧透仍默认折叠', async () => {
   const catalog = achievementCatalog(2)
-  catalog.entries.forEach(entry => { entry.sources = [{ title: '历史资料来源', url: 'https://example.test/legacy', usage: '测试资料' }] })
-  catalog.entries[1].method = '测试完成方法'
+  catalog.entries.forEach(entry => {
+    entry.sources = [{ title: '历史资料来源', url: 'https://example.test/legacy', usage: '测试资料' }]
+    entry.method = '历史完成方法'; entry.chapter = '历史章节'
+  })
+  catalog.entries[1].spoiler = '测试剧透'
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const rows = wrapper.findAll('.achievement-row')
   expect(rows[0].find('.achievement-supplement').exists()).toBe(false)
-  expect(rows[1].get('.achievement-supplement > summary').text()).toBe('完成说明')
-  expect(rows[1].text()).toContain('测试完成方法')
+  expect(rows[1].get('.achievement-supplement > summary').text()).toBe('注意事项与剧透')
+  expect(rows[1].get('.achievement-supplement').attributes('open')).toBeUndefined()
+  expect(rows[1].text()).toContain('测试剧透')
   expect(wrapper.text()).not.toContain('历史资料来源')
+  expect(wrapper.text()).not.toContain('历史完成方法')
+  expect(wrapper.text()).not.toContain('历史章节')
   expect(wrapper.find('a[href="https://example.test/legacy"]').exists()).toBe(false)
 })
 
