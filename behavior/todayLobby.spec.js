@@ -1,6 +1,17 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import TodayLobby from '../src/components/today/TodayLobby.vue'
+import { getOperatorCatalog } from '../src/api/operator.js'
+import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
+
+vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
+
+beforeEach(() => {
+  getOperatorCatalog.mockReset().mockResolvedValue({ operators: [...AGENT_CATALOG.map(entry => ({
+    ...entry,
+    games: entry.name === '孙尚香' ? ['代号鸢'] : ['代号鸢', '如鸢']
+  })), { id: 'char_131_weiyan', name: '魏延', games: ['代号鸢', '如鸢'] }] })
+})
 
 const status = '当前账号的三项数据已录入，今日事项在下方。'
 const render = props => mount(TodayLobby, { attachTo: document.body, props: { status, ...props } })
@@ -22,6 +33,73 @@ async function choose(name) {
   await flushPromises()
 }
 afterEach(() => vi.restoreAllMocks())
+
+it('值守名单及搜索随当前游戏过滤，切换游戏不重复请求目录', async () => {
+  const wrapper = render({ game: '如鸢' })
+  await open(wrapper)
+  expect(picker().querySelector('[aria-label="选择郭嘉值守"]')).not.toBeNull()
+  expect(picker().querySelector('[aria-label="选择孙尚香值守"]')).toBeNull()
+  for (const query of ['孙尚香', 'ssx']) {
+    await search(query)
+    expect(picker().textContent).toContain('没有找到密探')
+  }
+  await wrapper.setProps({ game: '代号鸢' })
+  expect(picker().querySelector('[aria-label="选择孙尚香值守"]')).not.toBeNull()
+  expect(getOperatorCatalog).toHaveBeenCalledTimes(1)
+  await wrapper.setProps({ game: '' })
+  expect(picker().querySelector('[aria-label="选择孙尚香值守"]')).not.toBeNull()
+})
+
+it('目录加载与失败时不放出未过滤名单，可重试恢复', async () => {
+  let rejectCatalog
+  getOperatorCatalog.mockImplementationOnce(() => new Promise((_, reject) => { rejectCatalog = reject }))
+  const wrapper = render({ game: '如鸢' })
+  await open(wrapper)
+  expect(picker().textContent).toContain('正在读取密探目录')
+  expect(picker().querySelectorAll('.duty-candidates button')).toHaveLength(0)
+  rejectCatalog(new Error('合成目录失败'))
+  await flushPromises()
+  expect(picker().querySelector('[role="alert"]').textContent).toContain('合成目录失败')
+  expect(picker().querySelectorAll('.duty-candidates button')).toHaveLength(0)
+  picker().querySelector('.duty-retry').click()
+  await flushPromises()
+  expect(picker().querySelector('[role="alert"]')).toBeNull()
+  expect(picker().querySelector('[aria-label="选择郭嘉值守"]')).not.toBeNull()
+  expect(picker().querySelector('[aria-label="选择孙尚香值守"]')).toBeNull()
+})
+
+it('游戏不适用的已存值守暂用阿蝉，不覆盖偏好，切回后恢复', async () => {
+  localStorage.setItem('yh_today_companion:user:user-a', 'char_003_sunshangxiang')
+  const write = vi.spyOn(Storage.prototype, 'setItem')
+  const wrapper = render({ ownerId: 'user-a', game: '如鸢' })
+  await flushPromises()
+  expect(wrapper.get('.lobby-duty').text()).toContain('阿蝉')
+  await wrapper.setProps({ game: '代号鸢' })
+  expect(wrapper.get('.lobby-duty').text()).toContain('孙尚香')
+  expect(write).not.toHaveBeenCalled()
+})
+
+it('公共图鉴新增且有立绘的密探可选择，刷新后仍保留', async () => {
+  const wrapper = render({ ownerId: 'user-a', game: '如鸢' })
+  await open(wrapper)
+  await choose('魏延')
+  expect(wrapper.get('.lobby-duty').text()).toContain('魏延')
+  wrapper.unmount()
+  const restored = render({ ownerId: 'user-a', game: '如鸢' })
+  await flushPromises()
+  expect(restored.get('.lobby-duty').text()).toContain('魏延')
+})
+
+it('选择值守密探作为搜索框上方的可见关联标签', async () => {
+  const wrapper = render()
+  await open(wrapper)
+  const input = picker().querySelector('input')
+  const label = input.labels[0]
+  expect(label.textContent).toBe('选择值守密探')
+  expect(label.classList.contains('sr-only')).toBe(false)
+  expect(label.contains(input)).toBe(false)
+  expect(label.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
 
 it('账号上下文与标题同属页头，问候场景不再承载账号入口', () => {
   const wrapper = mount(TodayLobby, { props: { status }, slots: { default: '<button>切换游戏账号</button>' } })

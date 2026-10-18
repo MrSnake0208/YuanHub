@@ -24,14 +24,15 @@
 .duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .duty-picker-heading button { display: grid; flex: none; width: 44px; height: 44px; border-radius: 9px; }
 #duty-picker-note, .duty-result-count { font-size: 12px; }
-.duty-search { display: flex; flex: none; align-items: center; gap: 8px; margin-top: 16px; padding: 0 12px; border-radius: 10px; }
+.duty-search-label { flex: none; margin: 16px 0 6px; }
+.duty-search { display: flex; flex: none; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px; }
 .duty-search svg { flex: none; }
 .duty-search input { width: 100%; min-width: 0; min-height: 44px; }
 .duty-result-count { margin: 10px 0; }
-.duty-candidates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
-.duty-candidates button { display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 10px; text-align: left; }
+.duty-candidates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.duty-candidates button { position: relative; display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: center; padding: 14px 6px 8px; border-radius: 10px; text-align: center; }
 .duty-candidates button span { overflow-wrap: anywhere; }
-.duty-candidates button svg { flex: none; }
+.duty-candidates button svg { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; }
 .duty-candidates > p { grid-column: 1 / -1; padding: 20px 0; font-size: 13px; }
 .duty-picker-heading button { place-items: center; }
 }

@@ -71,6 +71,20 @@ beforeEach(() => {
   listCalendarPrivateItems.mockResolvedValue({ items: [] })
 })
 
+it('今日值守沿用当前账号游戏，切账号同步更新，游客不限定游戏', async () => {
+  signIn()
+  listAccounts.mockResolvedValue([
+    { id: 'a', name: '如鸢账号', game: '如鸢' },
+    { id: 'b', name: '代号鸢账号', game: '代号鸢' }
+  ])
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.getComponent(TodayLobby).props('game')).toBe('如鸢')
+  activeAccount.set('b'); await flushPromises()
+  expect(wrapper.getComponent(TodayLobby).props('game')).toBe('代号鸢')
+  auth.isLoggedIn = false; await flushPromises()
+  expect(wrapper.getComponent(TodayLobby).props('game')).toBe('')
+})
+
 it('今日历练待办与养成预览各保留一份状态，隐藏模块不删除或重复加载', async () => {
   installViewport(390); signIn()
   listAccounts.mockResolvedValueOnce([{ id: 'a', name: '合成账号', game: '如鸢' }])

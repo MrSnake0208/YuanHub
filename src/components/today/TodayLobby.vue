@@ -35,18 +35,19 @@
           <button type="button" aria-label="关闭值守选择" @click="pickerOpen = false"><X :size="20" aria-hidden="true" /></button>
         </header>
         <p id="duty-picker-note">选定一位陪你看今日事项，选择会保留在此浏览器。</p>
-        <label class="duty-search">
+        <label class="duty-search-label" for="duty-search-input">选择值守密探</label>
+        <div class="duty-search">
           <Search :size="17" aria-hidden="true" />
-          <span class="sr-only">搜索值守密探</span>
-          <input ref="searchInput" v-model="query" type="search" placeholder="名字、拼音或首字母" autocomplete="off" />
-        </label>
-        <p class="duty-result-count" role="status">{{ candidates.length }} 位可选</p>
+          <input id="duty-search-input" ref="searchInput" v-model="query" type="search" placeholder="名字、拼音或首字母" autocomplete="off" />
+        </div>
+        <p v-if="catalogError && game" class="duty-result-count" role="alert">密探目录读取失败：{{ catalogError }} <button type="button" class="duty-retry" @click="loadCatalog">重试</button></p>
+        <p v-else class="duty-result-count" role="status">{{ catalogLoading && game ? '正在读取密探目录…' : candidates.length + ' 位可选' }}</p>
         <div class="duty-candidates">
           <button v-for="entry in candidates" :key="entry.id" type="button" :aria-label="'选择' + entry.name + '值守'" :aria-pressed="entry.id === companion.id" @click="selectCompanion(entry.id)">
             <span>{{ entry.name }}</span>
             <Check v-if="entry.id === companion.id" :size="16" aria-hidden="true" />
           </button>
-          <p v-if="!candidates.length">没有找到密探，试试名字或拼音。</p>
+          <p v-if="!candidates.length && !(game && (catalogLoading || catalogError))">没有找到密探，试试名字或拼音。</p>
         </div>
       </section>
     </div>
@@ -57,19 +58,24 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, Search, X } from '@lucide/vue'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
+import { getOperatorCatalog } from '../../api/operator.js'
 import portraits from '../../data/operatorPortraits.json'
 import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { calendarDateLabel, serverToday } from '../../data/activityCalendar.js'
 
-const props = defineProps({ ownerId: { type: String, default: '' }, status: { type: String, required: true } })
-const roster = AGENT_CATALOG.filter(entry => portraits[entry.id])
+const props = defineProps({ ownerId: { type: String, default: '' }, status: { type: String, required: true }, game: { type: String, default: '' } })
+const localRoster = AGENT_CATALOG.filter(entry => portraits[entry.id])
+const catalog = ref(null), catalogLoading = ref(false), catalogError = ref('')
+const roster = computed(() => (catalog.value || (props.game ? [] : localRoster))
+  .filter(entry => portraits[entry.id] && agentMatchesGame(entry, props.game)))
 const defaultId = 'char_014_achan'
 const storageKey = computed(() => 'yh_today_companion:' + (props.ownerId ? 'user:' + props.ownerId : 'guest'))
 const companionId = ref(defaultId), pickerOpen = ref(false), query = ref(''), saveNotice = ref(''), imageFailed = ref(false)
 const panel = ref(null), searchInput = ref(null), now = ref(new Date())
-const companion = computed(() => roster.find(entry => entry.id === companionId.value) || roster.find(entry => entry.id === defaultId))
-const candidates = computed(() => roster.filter(entry => matchesOperatorSearch(entry, query.value)))
+const companion = computed(() => roster.value.find(entry => entry.id === companionId.value) || localRoster.find(entry => entry.id === defaultId))
+const candidates = computed(() => roster.value.filter(entry => matchesOperatorSearch(entry, query.value)))
 const greeting = computed(() => {
   const hour = now.value.getHours()
   return hour < 6 ? '夜深了' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'
@@ -83,14 +89,29 @@ watch(storageKey, () => {
   imageFailed.value = false
   let saved
   try { saved = localStorage.getItem(storageKey.value) } catch { /* The default remains usable without storage. */ }
-  companionId.value = roster.some(entry => entry.id === saved) ? saved : defaultId
+  companionId.value = Object.prototype.hasOwnProperty.call(portraits, saved) ? saved : defaultId
 }, { immediate: true, flush: 'sync' })
-watch(companionId, () => { imageFailed.value = false })
+watch(() => props.game, game => { if (game && !catalog.value) loadCatalog() }, { immediate: true })
+watch(companion, () => { imageFailed.value = false })
 useModalFocus(pickerOpen, panel, { initialFocus: () => searchInput.value, onEscape: () => { pickerOpen.value = false } })
 
+async function loadCatalog() {
+  if (catalogLoading.value) return
+  catalogLoading.value = true
+  catalogError.value = ''
+  try {
+    const data = await getOperatorCatalog()
+    if (!Array.isArray(data?.operators)) throw new Error('目录数据不完整')
+    catalog.value = data.operators
+  } catch (error) {
+    catalogError.value = error?.message || '请稍后重试'
+  } finally {
+    catalogLoading.value = false
+  }
+}
 function openPicker() { query.value = ''; pickerOpen.value = true }
 function selectCompanion(id) {
-  if (!roster.some(entry => entry.id === id)) return
+  if (!roster.value.some(entry => entry.id === id)) return
   companionId.value = id
   imageFailed.value = false
   try {
@@ -136,7 +157,9 @@ onBeforeUnmount(() => {
 .duty-picker-heading button { border: 0; background: transparent; color: var(--tea); cursor: pointer; }
 #duty-picker-note, .duty-result-count { color: var(--ink-60); line-height: 1.7; }
 .duty-search { border: 1px solid var(--line); background: var(--cream); }
+.duty-search-label { color: var(--tea); font: 700 13px/1.5 var(--font-b); }
 .duty-search input { border: 0; background: transparent; color: var(--ink); font: 14px var(--font-b); }
+.duty-retry { border: 0; background: transparent; color: var(--tea); text-decoration: underline; cursor: pointer; }
 .duty-candidates button { border: 1px solid var(--line); background: var(--surface); color: var(--tea); font: 700 14px/1.5 var(--font-b); cursor: pointer; }
 .duty-candidates button:hover, .duty-candidates button[aria-pressed="true"] { background: var(--cream); border-color: var(--tea); }
 .duty-candidates > p { line-height: 1.7; }
