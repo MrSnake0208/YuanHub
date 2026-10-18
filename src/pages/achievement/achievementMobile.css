@@ -1,6 +1,6 @@
 @media (max-width: 767px) {
   .achievement-main { min-width: 0; min-height: 100dvh; margin-left: 0; }
-  .achievement-page .wrap, .achievement-page main.achievement-main .compact-tool-header > .wrap { box-sizing: border-box; width: 100%; min-width: 0; padding-inline: 14px; }
+  .achievement-page .wrap, .achievement-page main.achievement-main .compact-tool-header > .wrap { box-sizing: border-box; width: 100%; min-width: 0; padding-inline: 16px; }
   .achievement-page .compact-tool-header { padding-bottom: 4px; }
   .achievement-workspace { padding-block: 10px 26px; }
   .achievement-main button, .achievement-dialog button { min-height: 36px; padding: 7px 9px; font: inherit; font-size: 13px; }
