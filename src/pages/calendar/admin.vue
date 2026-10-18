@@ -34,12 +34,13 @@
                 <label>搜索标题<input v-model.trim="filters.search" type="search" maxlength="120" placeholder="输入活动标题"></label>
                 <label>日期范围起点<input v-model="filters.from" type="date"></label>
                 <label>日期范围终点<input v-model="filters.to" type="date" :min="filters.from || undefined"></label>
+                <label>排序<select v-model="sortOrder"><option value="desc">开始日期：由新到旧</option><option value="asc">开始日期：由旧到新</option></select></label>
               </div>
               <div class="calendar-actions"><button type="submit" :disabled="loading">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button><button type="button" :disabled="loading" @click="clearFilters">清空筛选</button></div>
             </form>
             <p v-if="loading" role="status">正在读取活动目录…</p>
             <p v-else-if="!entries.length && !error" class="calendar-panel">没有符合条件的活动。</p>
-            <article v-for="entry in entries" :key="entry.item.id" class="calendar-panel">
+            <article v-for="entry in sortedEntries" :key="entry.item.id" class="calendar-panel">
               <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
               <h3>{{ entry.item.title }}</h3>
               <p class="calendar-range">{{ calendarRangeLabel(entry.item) }}<span v-if="entry.item.start_time"> · {{ entry.item.time_zone }}</span></p>
@@ -120,6 +121,11 @@ const filters = reactive({ game: '', category: '', enabled: '', from: '', to: ''
 const workspace = ref('directory'), suggestionsReview = ref(null)
 const importing = ref(false)
 const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled = ref(true)
+const sortOrder = ref('desc')
+const sortedEntries = computed(() => [...entries.value].sort((a, b) => {
+  const order = a.item.start_date.localeCompare(b.item.start_date) || (a.item.start_time || '').localeCompare(b.item.start_time || '')
+  return order * (sortOrder.value === 'asc' ? 1 : -1) || a.item.id.localeCompare(b.item.id)
+}))
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
 const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
 const dirty = computed(() => !!form.value && JSON.stringify(form.value) !== baseline.value)
@@ -166,7 +172,7 @@ async function open(entry = null) {
 }
 const openNew = () => open()
 const openEdit = entry => open(entry)
-async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); await load() }
+async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); sortOrder.value = 'desc'; await load() }
 async function load() {
   if (!permitted.value || form.value || workspace.value !== 'directory') return
   const token = capture(), read = ++readGeneration
