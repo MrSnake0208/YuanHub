@@ -1,7 +1,7 @@
 <template>
   <TodayLayout :show-overview="calendarEnabled || trainingEnabled">
     <template #lobby>
-      <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
+      <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus" :game="calendarGame">
         <template #actions>
           <button v-if="auth.isLoggedIn" type="button" class="today-customize" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /> 自定义首页</button>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
