@@ -1,6 +1,16 @@
 # YuanStar embed 同步说明
 
-## Import Draft 图片持久化修复（2026-10-18）
+## Import Draft 恢复与已验收 UI 正式来源（2026-10-18）
+
+- 权威源码分支 `feature/yuanhub-embed`，source commit `e86a05aa2508e14b9a1e6907de19359cfdb78bfb`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed`，再由 `scripts/sync-yuanstar-embed.mjs` 完整同步 12 个资源；manifest 记录最新 clean 来源和逐文件 SHA-256。
+- 包含此前 `598ed0e52ef2147e32e753635edb61ea782e805e` 的 Import Draft 修复：首次 Blob 保存成功后才更新分类 metadata；首次失败保留异常与阶段，并在原 File 仍可用时安全重试；追加失败保护已有草稿。
+- 包含已人工验收的桌面养成路线/组编辑区纵向收紧、等级/小数量/资源数量快捷编辑器，以及仅在 initializing 状态显示的 16px 旋转圆环。等级保留滑条，资源支持 ±100；浮层靠近字段，保留原业务确认和保存阶段，关闭不提交草稿，恢复后可继续编辑。
+- 本次只有生成 JS、CSS 和对应 manifest 哈希更新；Worker、OCR 模型、ORT 及规则资源与此前正式资源字节一致。保留约 10 秒 / 首图预热、幂等准备、原超时和取消逻辑；不增加模型未就绪时的识别按钮门禁。
+- 修复分支通过正常 merge 吸收 YuanHub main `e20e7fd362baa5a06bcdcbc718fccd20979d2528`，无冲突；最新上游的星石宿主页及桌面/移动样式保持不变。不修改 Backend 接口或 YuanStar-public UI。
+- 华为 QQ 浏览器底层首次 Blob 写入失败仍需真机验证；本轮交付的是可复现的错误处理与恢复路径。临时预览工具、演示页、环境配置和用户数据不进入正式提交。
+
+
+## Import Draft 纯修复来源（历史阶段，2026-10-18）
 
 - 权威源码分支 `feature/yuanhub-embed`，source commit `598ed0e52ef2147e32e753635edb61ea782e805e`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由现有同步脚本完整同步 12 个资源；manifest 记录 clean 来源及逐文件 SHA-256。
 - 首次 Blob 写入完成后才保存分类 metadata；失败时保留原始异常与阶段，原 File 仍在页面时可重试。保留追加原子性、账号隔离、清空及 CaptureBatch/OCR 提交流程。
