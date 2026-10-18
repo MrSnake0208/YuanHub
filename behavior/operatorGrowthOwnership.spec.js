@@ -23,8 +23,21 @@ vi.mock('../src/api/operator.js', () => ({ getOperatorGrowthTargets: vi.fn(), pu
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listRecords: vi.fn() }))
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
 
+// 仅模拟拖拽库边界；真实节点移动、Vue 更新和保存仍由挂载的组件完成。
+const rosterSortables = vi.hoisted(() => [])
+vi.mock('sortablejs', () => ({ default: class {
+  constructor(element, options) {
+    this.el = element; this.options = options; rosterSortables.push(this)
+    this.drop = event => options.onEnd({ ...this.indices, originalEvent: event })
+    document.addEventListener('mouseup', this.drop)
+  }
+  option(key, value) { this.options[key] = value }
+  destroy() { document.removeEventListener('mouseup', this.drop) }
+} }))
+
 beforeEach(() => {
   vi.clearAllMocks()
+  rosterSortables.length = 0
   // jsdom 不实现布局滚动；这里仅验证步骤切换和原有数据事件。
   HTMLElement.prototype.scrollIntoView = vi.fn()
   plannerApi.putTrainingWorkspace.mockReset()
@@ -40,6 +53,76 @@ beforeEach(() => {
   getOperatorGrowthTargets.mockResolvedValue({ items: [] })
   getCurrent.mockResolvedValue([])
   listRecords.mockResolvedValue({ items: [] })
+})
+
+async function mountRoster() {
+  const ids = ['op', 'op2', 'op3']
+  plannerApi.getTrainingWorkspace.mockResolvedValue({
+    schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ids, excluded_operator_ids: [], targets: {} }],
+  })
+  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }))
+  const wrapper = mount(Tracker, {
+    props: { accountId: 'acc', isLoggedIn: true,
+      currentEntries: ids.map(id => ({ id, level: 1, elite: 1, starLevel: 1 })),
+      catalogEntries: ids.map(id => ({ id, name: id, rarity: 3 })),
+    },
+    global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
+  })
+  await flushPromises()
+  await wrapper.vm.editSchedule('conditions')
+  await flushPromises()
+  return wrapper
+}
+const rosterIds = wrapper => wrapper.findAll('[data-roster-id]').map(row => row.attributes('data-roster-id'))
+function previewRosterMove(from, to) {
+  const sortable = rosterSortables.at(-1), item = sortable.el.children[from]
+  sortable.indices = { oldDraggableIndex: from, newDraggableIndex: to }
+  sortable.options.onStart({ item })
+  item.remove()
+  sortable.el.insertBefore(item, sortable.el.children[to] || null)
+  return sortable
+}
+
+it('培养清单拖动中预览位置但不保存，松手保存一次，连续反向移动保持卡片与目标输入对应', async () => {
+  const wrapper = await mountRoster()
+  const sortable = previewRosterMove(0, 2)
+  expect(sortable.options).toMatchObject({ animation: 160, forceFallback: true, ghostClass: 'roster-drag-gap' })
+  expect(rosterIds(wrapper)).toEqual(['op2', 'op3', 'op'])
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  sortable.drop(new Event('mouseup'))
+  await flushPromises()
+  expect(rosterIds(wrapper)).toEqual(['op2', 'op3', 'op'])
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule.mock.calls[0][2].agent_order).toEqual(['op2', 'op3', 'op'])
+  previewRosterMove(2, 0).drop(new Event('mouseup'))
+  await flushPromises()
+  expect(rosterIds(wrapper)).toEqual(['op', 'op2', 'op3'])
+  wrapper.findAll('[data-roster-id]').forEach(row => expect(row.get('input').attributes('aria-label')).toBe(row.attributes('data-roster-id') + '目标等级'))
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(2)
+})
+
+it.each(['Escape', 'touchcancel', 'unchanged'])('培养清单拖动 %s 不保存且恢复原顺序', async reason => {
+  const wrapper = await mountRoster()
+  const sortable = previewRosterMove(0, reason === 'unchanged' ? 0 : 2)
+  if (reason === 'Escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+  else sortable.drop(new Event(reason === 'unchanged' ? 'mouseup' : reason))
+  await flushPromises()
+  expect(rosterIds(wrapper)).toEqual(['op', 'op2', 'op3'])
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+})
+
+it('拖动时离开规划条件会取消；卸载清理拖拽实例', async () => {
+  const wrapper = await mountRoster()
+  await wrapper.vm.editSchedule('conditions')
+  const sortable = previewRosterMove(0, 2)
+  const destroy = vi.spyOn(sortable, 'destroy')
+  await wrapper.vm.editSchedule('daily')
+  await flushPromises()
+  expect(rosterIds(wrapper)).toEqual(['op', 'op2', 'op3'])
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  wrapper.unmount()
+  expect(destroy).toHaveBeenCalledOnce()
 })
 
 it('规划首页仅保留三模块，按需保存策略/偏好/关卡；两种模式及原培养清单、后两步保留', async () => {
