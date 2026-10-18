@@ -116,6 +116,7 @@ import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
 import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
+import { CALENDAR_DISPLAY_GROUPS } from '@/data/activityCalendarTypes.js'
 import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_TIME_FILTERS, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, filterCalendarItems, millisecondsUntilServerMidnight, nextCalendarBoundary, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
 
 const route = useRoute(), router = useRouter()
@@ -147,6 +148,7 @@ const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.valu
 const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null), agendaView = ref(null)
 const activeFilters = computed(() => [
   !mine.value && filters.value.game && { key: 'game', label: filters.value.game, clear: '' },
+  filters.value.display_group && { key: 'display_group', label: CALENDAR_DISPLAY_GROUPS[filters.value.display_group], clear: '' },
   filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
   filters.value.exclude_recruitment && { key: 'exclude_recruitment', label: '不含招募', clear: false },
   filters.value.status && { key: 'status', label: CALENDAR_TIME_FILTERS[filters.value.status], clear: '' },
@@ -167,10 +169,10 @@ const privateItems = useCalendarPrivateItems(subscriptions, requestRange, mine)
 watch(privateItems.dirty, value => { privateDirty.value = value }, { immediate: true, flush: 'sync' })
 // A committed query update has already passed the shared leave confirmation.
 watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss(); monthView.value?.resetDetail(); timelineView.value?.resetDetail(); agendaView.value?.resetDetail() }, { flush: 'sync' })
-const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
+const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, display_group: filters.value.display_group, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
-const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.status || (mine.value && taskStatus.value === 'completed')))
+const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.display_group || filters.value.status || (mine.value && taskStatus.value === 'completed')))
 const visibleItems = computed(() => {
   const values = mine.value
     ? normalizeCalendarItems(subscriptions.records.value.filter(record => subscriptionMatchesTask(record, taskStatus.value)).map(record => record.item))
@@ -269,7 +271,7 @@ async function removeFilter(condition) {
   filterTrigger.value?.focus({ preventScroll: true })
 }
 async function resetFilters() {
-  const query = calendarFilterQuery(route.query, { ...(mine.value ? {} : { game: '' }), category: '', exclude_recruitment: false, status: '' })
+  const query = calendarFilterQuery(route.query, { ...(mine.value ? {} : { game: '' }), category: '', display_group: '', exclude_recruitment: false, status: '' })
   if (mine.value && !route.query.task && taskStatus.value === 'all') query.task = 'all'
   delete query.pending
   const failure = await router.replace({ query })

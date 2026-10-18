@@ -770,6 +770,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:write": "导入并更新密探数据",
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
+  "operator:daily-tasks:write": "在手机小组件中记录今日历练完成",
   "star:capture:write": "上传星石截图",
   "calendar:read": "查看活动日历与订阅",
 };

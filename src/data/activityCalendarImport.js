@@ -11,9 +11,9 @@ export function checkCalendarImportText(text) {
   return text
 }
 
-export async function readCalendarImportFile(file) {
+export async function readCalendarImportFile(file, maxBytes = CALENDAR_IMPORT_MAX_BYTES) {
   if (!file || !/\.json$/i.test(file.name)) throw new Error('请选择 .json 文件。')
-  if (file.size > CALENDAR_IMPORT_MAX_BYTES) throw new Error('文件最多 1 MiB，请拆分后导入。')
+  if (file.size > maxBytes) throw new Error(`文件最多 ${maxBytes / 1024 / 1024} MiB，请缩小文件后重试。`)
   let buffer
   try { buffer = await file.arrayBuffer() } catch { throw new Error('文件读取失败，请重新选择或直接粘贴 JSON。') }
   try { return new TextDecoder('utf-8', { fatal: true }).decode(buffer) }

@@ -9,12 +9,13 @@ import { suggestionPayload } from '../src/data/activityCalendarSuggestions.js'
 
 const event = patch => ({ id: 'sample', game: '如鸢', category: 'ACTIVITY', title: '限定星图家具地宫', start_date: '2026-10-09', end_date: '2026-10-15', ...patch })
 
-test('业务映射：四组、全部已确认细类及神秘洞窟三级语义', () => {
+test('业务映射：四组、全部已确认细类及神秘洞窟旧三级映射到两级', () => {
   const cases = [
-    ['ACTIVITY', 'LARGE_EVENT', 'ACTIVITY', '大型活动', 'rouge'], ['ACTIVITY', 'MEDIUM_EVENT', 'ACTIVITY', '中型活动', 'rouge'],
-    ['ACTIVITY', 'UNDERGROUND', 'ACTIVITY', '地宫', 'purple'], ['ACTIVITY', 'TAISHAN_FU', 'ACTIVITY', '泰山府', 'purple'],
-    ['ACTIVITY', 'SIGN_IN', 'ACTIVITY', '签到', 'blue'], ['ACTIVITY', 'FURNITURE', 'ACTIVITY', '家具', 'yellow'],
-    ['SHOP', 'RECRUITMENT_SHOP', 'SHOP', '卡池商店', 'gray'], ['SHOP', 'ACTIVITY_SHOP', 'SHOP', '活动商店', 'gray'],
+    ['ACTIVITY', 'LARGE_EVENT', 'ACTIVITY', '大型/周年', 'rouge'], ['ACTIVITY', 'MEDIUM_EVENT', 'ACTIVITY', '中型活动（待归类）', 'rouge'],
+    ['ACTIVITY', 'UNDERGROUND', 'ACTIVITY', '地宫', 'purple'], ['ACTIVITY', 'TAISHAN_FU', 'ACTIVITY', '泰山府（待归类）', 'purple'],
+    ['ACTIVITY', 'SIGN_IN', 'ACTIVITY', '签到/楼主查岗', 'blue'], ['ACTIVITY', 'FURNITURE', 'FURNITURE', '家具（待归类）', 'yellow'],
+    ['SHOP', 'RECRUITMENT_SHOP', 'OTHER', '商店', 'gray'], ['SHOP', 'ACTIVITY_SHOP', 'OTHER', '商店', 'gray'],
+    ['ACTIVITY', 'FIRST_MEETING_ROULETTE', 'ACTIVITY', '初见日/转盘', 'blue'], ['ACTIVITY', 'FURNITURE_TRIAL', 'FURNITURE', '历练', 'yellow'], ['ACTIVITY', 'MYSTERIOUS_CAVE', 'FURNITURE', '神秘洞窟', 'yellow'],
     ['OTHER', 'MAINTENANCE', 'OTHER', '维护', 'gray'], ['OTHER', 'STAR_POOL', 'OTHER', '星池', 'orange'],
   ]
   for (const [category, subtype, group, label, color] of cases) {
@@ -23,13 +24,13 @@ test('业务映射：四组、全部已确认细类及神秘洞窟三级语义',
     assert.deepEqual(validateCalendarClassification({ category, subtype }), {})
   }
   const cave = calendarDisplay(event({ subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE' }))
-  assert.equal(cave.path, '活动 · 家具 · 神秘洞窟')
+  assert.equal(cave.path, '家具 · 神秘洞窟')
   assert.equal(cave.color, 'yellow')
   assert.equal(calendarDisplay(event({ subtype: 'UNDERGROUND' })).association, calendarDisplay(event({ subtype: 'TAISHAN_FU' })).association)
 })
 
 test('旧分类不改写、不按标题猜类型；未知字段仍保留条目并回退', () => {
-  const cases = [['ACTIVITY', 'ACTIVITY', 'neutral'], ['LOGIN', 'ACTIVITY', 'blue'], ['MAINTENANCE', 'OTHER', 'gray'], ['SHOP', 'SHOP', 'gray'], ['OTHER', 'OTHER', 'neutral']]
+  const cases = [['ACTIVITY', 'ACTIVITY', 'neutral'], ['LOGIN', 'ACTIVITY', 'blue'], ['MAINTENANCE', 'OTHER', 'gray'], ['SHOP', 'OTHER', 'gray'], ['OTHER', 'OTHER', 'neutral']]
   for (const [category, group, color] of cases) {
     const item = normalizeCalendarItem(event({ category }))
     assert.equal(item.category, category)

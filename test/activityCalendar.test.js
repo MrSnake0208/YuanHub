@@ -84,9 +84,9 @@ test('分组排除历史、跨日只出现一次，结束提醒优先、未来7�
 })
 
 test('URL filters白名单、重复参数与清空处理保留无关query', () => {
-  assert.deepEqual(calendarFilters({}), { game: '', category: '', exclude_recruitment: false, status: '' })
-  assert.deepEqual(calendarFilters({ game: ['如鸢', '代号鸢'], category: ['SHOP'] }), { game: '如鸢', category: 'SHOP', exclude_recruitment: false, status: '' })
-  assert.deepEqual(calendarFilters({ game: 'invalid', category: 'toString' }), { game: '', category: '', exclude_recruitment: false, status: '' })
+  assert.deepEqual(calendarFilters({}), { game: '', category: '', display_group: '', exclude_recruitment: false, status: '' })
+  assert.deepEqual(calendarFilters({ game: ['如鸢', '代号鸢'], category: ['SHOP'] }), { game: '如鸢', category: 'SHOP', display_group: '', exclude_recruitment: false, status: '' })
+  assert.deepEqual(calendarFilters({ game: 'invalid', category: 'toString' }), { game: '', category: '', display_group: '', exclude_recruitment: false, status: '' })
   assert.deepEqual(calendarFilterQuery({ game: '如鸢', category: 'SHOP', ref: 'shared' }, { game: '' }), { category: 'SHOP', ref: 'shared' })
 })
 
@@ -156,9 +156,9 @@ test('冲突最后操作生效，分享矛盾链接招募优先，非法/重复�
   assert.deepEqual(excluded, { game: '如鸢', view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep', exclude_recruitment: '1' })
   assert.deepEqual(calendarFilterQuery(excluded, { category: 'RECRUITMENT' }), query)
   assert.equal(calendarFilters({ category: 'RECRUITMENT', exclude_recruitment: '1' }).exclude_recruitment, false)
-  assert.deepEqual(calendarFilters({ exclude_recruitment: ['1', '0'], status: ['ending', 'ongoing'] }), { game: '', category: '', exclude_recruitment: true, status: 'ending' })
+  assert.deepEqual(calendarFilters({ exclude_recruitment: ['1', '0'], status: ['ending', 'ongoing'] }), { game: '', category: '', display_group: '', exclude_recruitment: true, status: 'ending' })
   assert.deepEqual(calendarFilters({ game: 'no', category: 'toString', exclude_recruitment: 'true', status: 'toString' }), calendarFilters())
-  assert.deepEqual(calendarFilterQuery({ ...excluded, status: 'ending' }, { game: '', category: '', exclude_recruitment: false, status: '' }), { view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep' })
+  assert.deepEqual(calendarFilterQuery({ ...excluded, status: 'ending' }, { game: '', category: '', display_group: '', exclude_recruitment: false, status: '' }), { view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep' })
 })
 
 test('服务器精确时间：开始闭区间、结束开区间；仅日期覆盖整个结束日', () => {
