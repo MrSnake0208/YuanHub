@@ -26,16 +26,16 @@
 
       <section class="quick-content">
         <div class="wrap">
+          <!-- 重读养成会重建表单；工作区不使用滚动显现，避免返回修改后仍透明。 -->
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" :target="tutorialTarget" />
           <!-- 未登录 / 未建账号 -->
-          <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
+          <div v-if="!auth.isLoggedIn" class="state err">
             请先登录后再使用快捷录入
             <router-link class="link" to="/login">去登录</router-link>
           </div>
           <div
             v-else-if="accountsLoading || catalogLoading"
             class="state"
-            v-reveal
           >
             正在加载快捷录入数据…
           </div>
@@ -43,7 +43,7 @@
             {{ accountError }}
             <button class="link" type="button" @click="loadAccounts().then(reloadCurrent)">重试读取账号</button>
           </div>
-          <div v-else-if="!accounts.length" class="state err" v-reveal>
+          <div v-else-if="!accounts.length" class="state err">
             尚未创建游戏账号，请先前往个人中心统一创建
             <router-link class="link" to="/user/profile#game-accounts">去创建</router-link>
           </div>
@@ -54,7 +54,6 @@
           <div
             v-else-if="catalogError && !catalogOperators.length"
             class="state err"
-            v-reveal
           >
             {{ catalogError
             }}<button class="link" @click="loadCatalog">重试</button>
@@ -73,7 +72,7 @@
               <button class="btn" type="button" :aria-pressed="supplementMode" :disabled="busy" @click="setMode('supplement')">快速补录</button>
             </div>
             <!-- 步骤条 -->
-            <div class="stepper" v-reveal>
+            <div class="stepper">
               <button
                 v-for="s in steps"
                 :key="s.key"
@@ -135,13 +134,13 @@
             </div>
 
             <!-- 单页：勾选某星阶密探 + 批量修为/等级，逐页即存 -->
-            <div v-if="completed" class="wiz-card quick-complete" role="status" v-reveal>
+            <div v-if="completed" class="wiz-card quick-complete" role="status">
               <h2>快捷录入已完成</h2>
               <p>本次共保存 {{ sessionSavedCount }} 位密探到「{{ accountName }}」。</p>
               <p v-if="quickDirty">其他步骤仍有未保存选择；返回密探页前会再次确认。</p>
               <button class="btn primary" type="button" @click="goBack">返回密探页查看养成</button>
             </div>
-            <div v-else class="wiz-card" v-reveal>
+            <div v-else class="wiz-card">
               <div class="wiz-head">
                 <h2>{{ currentStep.title }}</h2>
                 <p class="wiz-sub">
@@ -256,7 +255,7 @@
               </div>
 
               <!-- 品质 / 属性 / 职业筛选（随翻页重置） -->
-              <div class="prof-filter" v-reveal>
+              <div class="prof-filter">
                 <div class="pf-row">
                   <span class="pf-label">品质</span>
                   <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选快捷录入密探">

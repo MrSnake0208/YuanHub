@@ -55,10 +55,10 @@ afterEach(() => {
   wrappers.clear()
   vi.useRealTimers()
 })
-const render = () => {
+const render = (reveal = () => {}) => {
   const wrapper = mount(QuickPage, { global: {
   stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RouterLink: true },
-  directives: { reveal: () => {} },
+  directives: { reveal },
 } })
   wrappers.add(wrapper)
   return wrapper
@@ -241,6 +241,41 @@ it('补录跨星阶保留草稿，取消保存预览不写入', async () => {
   await flushPromises()
   expect(importOperator).not.toHaveBeenCalled()
   expect(wrapper.get('.op-check').element.checked).toBe(true)
+})
+
+it.each([390, 1440])('连续两次返回修改后表单不等待滚动显现，草稿保留且不提交：%ipx', async width => {
+  installViewport(width)
+  // 模拟滚动观察器尚未通知：显现指令挂载后先透明，不派发滚动事件。
+  const hidden = []
+  const wrapper = render({ mounted(element) { element.style.opacity = '0'; hidden.push(element) } })
+  document.body.append(wrapper.element)
+  await flushPromises()
+  hidden.forEach(element => { element.style.opacity = '1' })
+  await wrapper.get('.op-check').setValue(true)
+  await wrapper.get('input[name="level"]').setValue('37')
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const read = deferred(), confirmation = deferred()
+    getOperatorCurrent.mockReturnValueOnce(read.promise)
+    dialog.confirm.mockReturnValueOnce(confirmation.promise)
+    await wrapper.get('.wiz-actions .primary').trigger('click')
+    expect(wrapper.get('[role="status"]').text()).toContain('正在读取已有养成')
+    read.resolve([])
+    await flushPromises()
+    expect(dialog.confirm.mock.calls.at(-1)[0].cancelText).toBe('返回修改')
+    confirmation.resolve(false)
+    await flushPromises()
+
+    for (const selector of ['.stepper', '.wiz-card', '.prof-filter', '.op-check']) {
+      for (let element = wrapper.get(selector).element; element; element = element.parentElement) {
+        expect(getComputedStyle(element).opacity, selector).not.toBe('0')
+      }
+    }
+    expect(wrapper.get('.op-check').element.checked).toBe(true)
+    expect(wrapper.get('input[name="level"]').element.value).toBe('37')
+    expect(importOperator).not.toHaveBeenCalled()
+  }
+  expect(dialog.confirm).toHaveBeenCalledTimes(2)
 })
 
 it('主动选择覆盖练度后才提交批量等级修为', async () => {
