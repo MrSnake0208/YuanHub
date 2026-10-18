@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import { routeLocationKey } from 'vue-router'
+import { createMemoryHistory, createRouter, routeLocationKey, RouterView } from 'vue-router'
 import AchievementPage from '../src/pages/achievement/index.vue'
 import AchievementDetail from '../src/pages/achievement/AchievementDetail.vue'
 import AchievementExchange from '../src/pages/achievement/AchievementExchange.vue'
@@ -103,13 +103,13 @@ it('选择本页只含50条，过滤清空选择，确认期间切账号不写�
   confirmation.resolve(true); await flushPromises()
   expect(api.writeAchievements).toHaveBeenCalledTimes(1)
 })
-it('一键完成在未完成筛选下成功才移除，撤销保持筛选与恢复原记录', async () => {
+it('三段状态在未完成筛选下成功才移除，撤销保持筛选与恢复原记录', async () => {
   const record = { achievement_id: 'yh_fixture_dhy_1', status: 'incomplete', favorite: false, note: '', progress: null, completed_on: null }
   api.getAchievementArchive.mockResolvedValue(achievementArchive('a', { revision: 1, records: [record] }))
   const wrapper = page(); await flushPromises()
   await wrapper.get('select[aria-label="成就状态筛选"]').setValue('incomplete')
   const wait = deferredAchievement(); api.writeAchievements.mockReturnValueOnce(wait.promise)
-  await wrapper.get('.achievement-row-actions input').setValue(true)
+  await wrapper.get('.achievement-row-actions .status-completed').trigger('click')
   expect(wrapper.findAll('.achievement-row')).toHaveLength(1)
   wait.resolve(achievementArchive('a', { revision: 2, records: [{ ...record, status: 'completed' }] })); await flushPromises()
   expect(wrapper.findAll('.achievement-row')).toHaveLength(0)
@@ -176,4 +176,223 @@ it('导入成功才发出已保存事件，409保留文件并要求重新预览'
   waiting.resolve(achievementArchive('a', { revision: 1 })); await flushPromises()
   expect(wrapper.emitted('committed')[0][0].revision).toBe(1)
   expect(api.importAchievements).toHaveBeenLastCalledWith('a', 'owner', expect.any(Object), plan, false)
+})
+
+function dockedViewport() {
+  const media = new EventTarget()
+  media.matches = true
+  media.media = '(min-width: 1440px)'
+  vi.stubGlobal('matchMedia', vi.fn(() => media))
+  return matches => { media.matches = matches; media.dispatchEvent(Object.assign(new Event('change'), { matches })) }
+}
+function mockArchiveWrites(records = []) {
+  let archive = achievementArchive('a', { revision: 1, records })
+  api.getAchievementArchive.mockImplementation(id => Promise.resolve(id === 'a' ? archive : achievementArchive(id)))
+  api.writeAchievements.mockImplementation(async (id, owner, revision, patches) => {
+    const next = new Map(archive.records.map(record => [record.achievement_id, record]))
+    for (const patch of patches) next.set(patch.achievement_id, { ...next.get(patch.achievement_id) || { achievement_id: patch.achievement_id, status: 'pending', favorite: false, note: '', progress: null, completed_on: null }, ...patch })
+    archive = achievementArchive(id, { revision: revision + 1, records: [...next.values()] })
+    return archive
+  })
+}
+it('每行三态互斥且仅提交状态，关注独立保存；详情和统计同步、备注进度不清空', async () => {
+  dockedViewport()
+  const record = { achievement_id: 'yh_fixture_dhy_1', status: 'pending', favorite: true, note: '已有备注', progress: 3, completed_on: null }
+  mockArchiveWrites([record])
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'integer', target: 10 })
+  api.getAchievementCatalog.mockResolvedValue(catalog)
+  const wrapper = page(); await flushPromises()
+  const row = () => wrapper.findAll('.achievement-row')[0]
+  await row().get('.achievement-title').trigger('click'); await flushPromises()
+  for (const status of ['incomplete', 'completed', 'pending']) {
+    await row().get('.status-' + status).trigger('click'); await flushPromises()
+    expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', expect.any(Number), [{ achievement_id: record.achievement_id, status }])
+    expect(row().findAll('.achievement-status [aria-pressed="true"]')).toHaveLength(1)
+    expect(row().get('.status-' + status).attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.achievement-detail .status-' + status).attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.achievement-detail textarea').element.value).toBe('已有备注')
+    expect(wrapper.get('.achievement-detail input[type="number"]').element.value).toBe('3')
+  }
+  expect(wrapper.get('.stat-pending b').text()).toBe('3')
+  await row().get('.achievement-favorite').trigger('click'); await flushPromises()
+  expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 4, [{ achievement_id: record.achievement_id, favorite: false }])
+  expect(row().get('.status-pending').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.stat-favorite b').text()).toBe('0')
+  expect(wrapper.get('.achievement-detail .achievement-favorite').attributes('aria-pressed')).toBe('false')
+  expect(wrapper.get('.achievement-detail h2').text()).toBe('测试成就 1')
+})
+it('保存期间阻止重复提交，失败保留实际状态且不误开详情', async () => {
+  const wrapper = page(); await flushPromises()
+  const waiting = deferredAchievement(); api.writeAchievements.mockReturnValueOnce(waiting.promise)
+  await wrapper.findAll('.achievement-row')[0].get('.status-completed').trigger('click')
+  expect(wrapper.findAll('.achievement-row')[0].get('.status-pending').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.findAll('.achievement-row')[0].get('.status-completed').element.disabled).toBe(true)
+  await wrapper.findAll('.achievement-row')[0].get('.status-completed').trigger('click')
+  expect(api.writeAchievements).toHaveBeenCalledTimes(1)
+  waiting.reject(new Error('保存失败测试')); await flushPromises()
+  expect(wrapper.findAll('.achievement-row')[0].get('.status-pending').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.find('.achievement-detail').exists()).toBe(false)
+  expect(wrapper.text()).toContain('保存失败测试')
+})
+it('奖励/分类/状态/关注组合与分组计数来自真实目录，清除恢复全部', async () => {
+  const catalog = achievementCatalog(3)
+  catalog.categories.push({ category_id: 'other', name: '另一测试分类' })
+  catalog.entries[0].reward = '测试资源 × 1'
+  catalog.entries[1].reward = '测试资源 × 2'
+  catalog.entries[2].category_id = 'other'; catalog.entries[2].reward = '测试凭证'
+  api.getAchievementCatalog.mockResolvedValue(catalog)
+  mockArchiveWrites([{ achievement_id: catalog.entries[0].achievement_id, status: 'completed', favorite: true, note: '', progress: null, completed_on: null }])
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.findAll('.achievement-group-heading').map(item => item.text())).toEqual(['测试分类1 / 2', '另一测试分类0 / 1'])
+  expect(wrapper.findAll('datalist option').map(item => item.attributes('value'))).toEqual(['测试资源 × 1', '测试资源 × 2', '测试凭证'])
+  await wrapper.get('[aria-label="成就奖励筛选"]').setValue('测试资源')
+  await wrapper.get('[aria-label="游戏分类筛选"]').setValue('test')
+  await wrapper.get('[aria-label="成就状态筛选"]').setValue('completed')
+  await wrapper.get('.achievement-toolbar input[type="checkbox"]').setValue(true)
+  expect(wrapper.findAll('.achievement-row')).toHaveLength(1)
+  expect(wrapper.get('.achievement-group-heading').text()).toBe('测试分类1 / 2')
+  await wrapper.get('[aria-label="成就奖励筛选"]').setValue('未收录奖励')
+  expect(wrapper.findAll('.achievement-row')).toHaveLength(0)
+  expect(wrapper.get('.achievement-empty').text()).toContain('没有匹配')
+  await button(wrapper, '清除条件并查看全部').trigger('click')
+  expect(wrapper.findAll('.achievement-row')).toHaveLength(3)
+})
+it('桌面行内变更保留备注草稿，切换成就及账号守卫可取消，保存备注后面板保留', async () => {
+  dockedViewport(); mockArchiveWrites()
+  const wrapper = page(); await flushPromises()
+  await wrapper.findAll('.achievement-title')[0].trigger('click'); await flushPromises()
+  expect(document.body.style.overflow).not.toBe('hidden')
+  await wrapper.get('.achievement-detail textarea').setValue('未保存备注')
+  await wrapper.findAll('.achievement-row')[0].get('.status-completed').trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('未保存备注')
+  expect(wrapper.get('.achievement-detail .status-completed').attributes('aria-pressed')).toBe('true')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.findAll('.achievement-title')[1].trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail h2').text()).toBe('测试成就 1')
+  dialog.confirm.mockResolvedValueOnce(false)
+  expect(await wrapper.findComponent({ name: 'DataAccountContextBar' }).props('beforeSwitch')()).toBe(false)
+  await wrapper.get('.achievement-detail form').trigger('submit'); await flushPromises()
+  expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 2, [{ achievement_id: 'yh_fixture_dhy_1', note: '未保存备注' }])
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('未保存备注')
+  expect(wrapper.get('.achievement-detail .achievement-save').element.disabled).toBe(true)
+  await wrapper.findAll('.achievement-title')[1].trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail h2').text()).toBe('测试成就 2')
+})
+it('断点变化移动同一编辑器，模态滚动锁与焦点陷阱仅在抽屉生效', async () => {
+  const resize = dockedViewport()
+  const wrapper = page(); await flushPromises()
+  const opener = wrapper.findAll('.achievement-title')[0]
+  opener.element.focus(); await opener.trigger('click'); await flushPromises()
+  const detail = wrapper.getComponent(AchievementDetail)
+  const editor = wrapper.get('.achievement-detail textarea').element
+  await wrapper.get('.achievement-detail textarea').setValue('跨断点草稿')
+  expect(detail.get('section').attributes('role')).toBe('region')
+  expect(detail.get('section').attributes('aria-modal')).toBeUndefined()
+  expect(document.activeElement).toBe(opener.element)
+  resize(false); await flushPromises()
+  expect(document.querySelector('.achievement-detail textarea')).toBe(editor)
+  expect(document.querySelector('.achievement-detail').getAttribute('role')).toBe('dialog')
+  expect(document.body.style.overflow).toBe('hidden')
+  opener.element.focus(); expect(document.querySelector('.achievement-detail').contains(document.activeElement)).toBe(true)
+  resize(true); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element).toBe(editor)
+  expect(editor.value).toBe('跨断点草稿')
+  expect(document.body.style.overflow).not.toBe('hidden')
+  opener.element.focus(); expect(document.activeElement).toBe(opener.element)
+})
+it('详情409保留草稿并采用服务器真实状态，不把进度达标判为完成', async () => {
+  dockedViewport()
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'integer', target: 10 })
+  api.getAchievementCatalog.mockResolvedValue(catalog)
+  const wrapper = page(); await flushPromises()
+  await wrapper.findAll('.achievement-title')[0].trigger('click'); await flushPromises()
+  await wrapper.get('.achievement-detail textarea').setValue('冲突草稿')
+  await wrapper.get('.achievement-detail input[type="number"]').setValue('10')
+  api.writeAchievements.mockRejectedValueOnce(Object.assign(new Error('冲突'), { status: 409 }))
+  api.getAchievementArchive.mockResolvedValueOnce(achievementArchive('a', { revision: 9, records: [{ achievement_id: 'yh_fixture_dhy_1', status: 'incomplete', favorite: true, progress: 4, note: '另一设备备注', completed_on: null }] }))
+  await wrapper.get('.achievement-detail form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('冲突草稿')
+  expect(wrapper.get('.achievement-detail input[type="number"]').element.value).toBe('10')
+  expect(wrapper.get('.achievement-detail .status-incomplete').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.achievement-detail .achievement-error').text()).toContain('已变化')
+  expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 0, [{ achievement_id: 'yh_fixture_dhy_1', note: '冲突草稿', progress: 10 }])
+})
+it('游客三态和关注只读，非量化条目没有进度条，空目录不生成假成就', async () => {
+  auth.accessToken = ''; auth.userInfo = null
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.findAll('.achievement-row .achievement-status button')).toHaveLength(9)
+  expect(wrapper.findAll('.achievement-row .achievement-status button').every(item => item.element.disabled)).toBe(true)
+  expect(wrapper.findAll('.achievement-favorite').every(item => item.element.disabled)).toBe(true)
+  expect(wrapper.find('progress').exists()).toBe(false)
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+  wrapper.unmount()
+  api.getAchievementCatalog.mockResolvedValue(achievementCatalog(0))
+  const empty = page(); await flushPromises()
+  expect(empty.findAll('.achievement-row')).toHaveLength(0)
+  expect(empty.get('.achievement-empty').text()).toContain('暂无可发布成就资料')
+  expect(empty.get('.stat-total b').text()).toBe('0')
+})
+
+
+it('冲突时目录读取失败也保留详情实例和草稿，重试后可继续保存', async () => {
+  dockedViewport()
+  const wrapper = page(); await flushPromises()
+  await wrapper.findAll('.achievement-title')[0].trigger('click'); await flushPromises()
+  const editor = wrapper.get('.achievement-detail textarea').element
+  await wrapper.get('.achievement-detail textarea').setValue('网络失败仍保留')
+  api.writeAchievements.mockRejectedValueOnce(Object.assign(new Error('冲突'), { status: 409 }))
+  api.getAchievementCatalog.mockRejectedValueOnce(new Error('目录暂时无法读取'))
+  await wrapper.get('.achievement-detail form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element).toBe(editor)
+  expect(editor.value).toBe('网络失败仍保留')
+  expect(wrapper.text()).toContain('目录暂时无法读取')
+  expect(wrapper.get('.achievement-detail .achievement-save').element.disabled).toBe(true)
+  await button(wrapper, '重新读取').trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element).toBe(editor)
+  expect(editor.value).toBe('网络失败仍保留')
+  expect(wrapper.get('.achievement-detail .achievement-save').element.disabled).toBe(false)
+})
+it('右栏未保存备注通过真实路由守卫阻止离开，确认放弃后才离开', async () => {
+  dockedViewport()
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/achievement', component: AchievementPage }, { path: '/next', component: defineComponent({ template: '<p>下一页</p>' }) }] })
+  await router.push('/achievement'); await router.isReady()
+  const wrapper = mount(RouterView, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true } } })
+  await flushPromises()
+  await wrapper.findAll('.achievement-title')[0].trigger('click'); await flushPromises()
+  await wrapper.get('.achievement-detail textarea').setValue('离开前的草稿')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await router.push('/next'); await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/achievement')
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('离开前的草稿')
+  dialog.confirm.mockResolvedValueOnce(true)
+  await router.push('/next'); await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/next')
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+})
+it('切换游戏账号清除旧详情和草稿归属，页面采用新账号目录与状态', async () => {
+  dockedViewport()
+  listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '如鸢' }])
+  api.getAchievementCatalog.mockImplementation(game => Promise.resolve({ ...achievementCatalog(), game, entries: [achievementEntry(1, { game, name: game + '测试条目' })] }))
+  api.getAchievementArchive.mockImplementation(id => Promise.resolve(achievementArchive(id, { game: id === 'a' ? '代号鸢' : '如鸢', records: [{ achievement_id: 'yh_fixture_dhy_1', status: id === 'a' ? 'completed' : 'incomplete', favorite: false, note: id === 'a' ? '甲的备注' : '乙的备注', progress: null, completed_on: null }] })))
+  const wrapper = page(); await flushPromises()
+  await wrapper.get('.achievement-title').trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('甲的备注')
+  activeAccount.set('b'); await flushPromises()
+  expect(wrapper.find('.achievement-detail').exists()).toBe(false)
+  expect(wrapper.get('.achievement-title').text()).toBe('如鸢测试条目')
+  expect(wrapper.get('.achievement-row .status-incomplete').attributes('aria-pressed')).toBe('true')
+  await wrapper.get('.achievement-title').trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-detail textarea').element.value).toBe('乙的备注')
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+})
+
+
+it('账号档案读取失败时无伪造选中状态，所有写入控件禁用', async () => {
+  api.getAchievementArchive.mockRejectedValue(new Error('档案读取失败测试'))
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.get('.stat-completed b').text()).toBe('—')
+  expect(wrapper.findAll('.achievement-row .achievement-status button').every(item => item.element.disabled && item.attributes('aria-pressed') === 'false')).toBe(true)
+  await wrapper.findAll('.achievement-row')[0].get('.status-completed').trigger('click')
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('档案读取失败测试')
 })

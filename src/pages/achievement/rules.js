@@ -5,23 +5,33 @@ export const emptyRecord = id => ({ achievement_id: id, status: 'pending', favor
 
 export function summarizeAchievements(entries, records) {
   const byId = new Map(records.map(record => [record.achievement_id, record]))
-  const result = { total: entries.length, pending: 0, incomplete: 0, completed: 0 }
-  for (const entry of entries) result[byId.get(entry.achievement_id)?.status || 'pending']++
+  const result = { total: entries.length, pending: 0, incomplete: 0, completed: 0, favorite: 0 }
+  for (const entry of entries) {
+    const record = byId.get(entry.achievement_id)
+    result[record?.status || 'pending']++
+    if (record?.favorite) result.favorite++
+  }
   return result
 }
 
 export function filterAchievements(entries, records, filters) {
   const byId = new Map(records.map(record => [record.achievement_id, record]))
   const query = filters.query.trim().toLocaleLowerCase()
+  const reward = (filters.reward || '').trim().toLocaleLowerCase()
   return entries.filter(entry => {
     const record = byId.get(entry.achievement_id) || emptyRecord(entry.achievement_id)
     return (!filters.category || entry.category_id === filters.category) &&
       (!filters.status || record.status === filters.status) &&
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
+      (!reward || (entry.reward || '').toLocaleLowerCase().includes(reward)) &&
       (!query || [entry.name, entry.condition, ...(entry.aliases || []), ...(entry.operators || []).map(operator => operator.name)]
         .join(' ').toLocaleLowerCase().includes(query))
   }).sort((a, b) => a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
+}
+
+export function hasQuantifiedProgress(entry) {
+  return ['integer', 'number'].includes(entry?.progress_kind) && Number.isFinite(entry.target) && entry.target > 0
 }
 
 export function readAchievementBackup(text) {

@@ -17,7 +17,7 @@ export function useAchievement() {
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy)
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const entries = computed(() => state.catalog?.entries || [])
-  const filters = reactive({ query: '', category: '', status: '', favorite: false, hidden: false })
+  const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false })
   const page = ref(0), batchMode = ref(false), selected = ref([])
   const filtered = computed(() => filterAchievements(entries.value, records.value, filters))
   const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
@@ -104,7 +104,7 @@ export function useAchievement() {
     if (!pageEntries.value.some(entry => entry.achievement_id === id)) return
     selected.value = selected.value.includes(id) ? selected.value.filter(value => value !== id) : [...selected.value, id]
   }
-  function resetFilters() { Object.assign(filters, { query: '', category: '', status: '', favorite: false, hidden: false }) }
+  function resetFilters() { Object.assign(filters, { query: '', category: '', reward: '', status: '', favorite: false, hidden: false }) }
   watch(filters, () => { page.value = 0; selected.value = [] }, { flush: 'sync' })
   watch(page, () => { selected.value = [] }, { flush: 'sync' })
   watch(pageEntries, values => { selected.value = selected.value.filter(id => values.some(entry => entry.achievement_id === id)) })
