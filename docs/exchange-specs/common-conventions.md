@@ -1,6 +1,6 @@
 # 数据交换公共约定
 
-本文适用于库存 v2、密探 v2/v3、作业 v1 和公共目录 v1。单项协议另有更严格规定时，以单项协议为准。
+本文适用于库存 v2、密探 v2/v3/v4/v5、作业 v1 和公共目录 v1。招募备份使用独立 schema 标识，见[招募 V1](../developers/recruitment-v1.md)。单项协议另有更严格规定时，以单项协议为准。
 
 ## 1. JSON 与字段命名
 
@@ -24,7 +24,8 @@
 |---|---|---:|
 | 库存交换 | `myshare-inventory-exchange` | 2 |
 | 密探交换（兼容） | `myshare-operator-exchange` | 2 |
-| 密探交换（推荐） | `myshare-operator-exchange` | 3 |
+| 密探交换（兼容） | `myshare-operator-exchange` | 3 / 4 |
+| 密探交换（完整备份推荐） | `myshare-operator-exchange` | 5 |
 | 自动战斗作业 | `yuanhub-work` | 1 |
 | 实体目录 | `myshare-entity-catalog` | 1 |
 | 密探目录 | `myshare-operator-catalog` | 1 |
@@ -91,10 +92,10 @@
 普通业务接口通常返回：
 
 ```json
-{"success": true, "code": 200, "message": "success", "data": {}}
+{"status_code": 200, "data": {}}
 ```
 
-库存和密探导出是例外，直接返回原始交换文档。领域错误通常为：
+`message` 为 null 时省略。库存和密探导出是例外，直接返回原始交换文档；招募导出仍套 ApiResult。领域错误通常为：
 
 ```json
 {

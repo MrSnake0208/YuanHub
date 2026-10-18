@@ -2,6 +2,10 @@
 
 复刻自 `/Users/mrsnake/Desktop/yituliu/app`（静态 HTML 版），使用 **Vite + Vue 3 + Vue Router** 重写。
 
+## 站内开发者中心
+
+公开入口 `/developers`，包括快速接入、经代码核实的 API 参考、协议支持矩阵与独立协议更新记录。完整密探备份推荐 V5；第三方 Token export 仍是 V2。正式协议沿用现有权威正文，只有明确白名单的 Markdown、Schema 和示例随前端独立构建自动发布。维护与验证见 [docs/developers/README.md](docs/developers/README.md)。
+
 ## 运行
 
 ```bash

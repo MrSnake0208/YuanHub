@@ -58,6 +58,7 @@
                 <h2>应用与数据连接</h2>
                 <p class="card-sub">
                   连接码类似一把只供某个工具使用的钥匙，不是你的登录密码。你可以查看它能做什么，并随时停止访问。
+                  <router-link to="/developers/guide">开发者接入文档</router-link>
                 </p>
               </div>
             </div>

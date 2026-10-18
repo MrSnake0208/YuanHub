@@ -1,0 +1,7 @@
+@media (min-width: 1200px) {
+  .developer-layout { grid-template-columns: 210px minmax(0, 1fr); gap: 24px; }
+  .developer-directory { position: sticky; top: calc(20px + var(--version-update-banner-height, 0px)); max-height: calc(100dvh - 40px - var(--version-update-banner-height, 0px)); overflow-y: auto; }
+  .developer-directory > summary { display: none; }
+  .developer-reading { padding: 24px 28px; }
+  .page-developers .page-header-back { min-height: 0; margin-block: 4px 8px; }
+}

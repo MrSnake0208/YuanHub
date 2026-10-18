@@ -373,7 +373,7 @@ it.each([false, true])('软下线后游客/管理员双端均无大饼入口（�
   for (const selector of ['.sidebar-more', '.mobile-more']) {
     const detail = wrapper.get(selector)
     await detail.get('summary').trigger('click')
-    expect(detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/changelog', '/beta', '/install'])
+    expect(detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/developers', '/changelog', '/beta', '/install'])
   }
   wrapper.unmount()
 })
@@ -404,7 +404,7 @@ it('反馈直达入口不显示管理员未读，更多不重复展示反馈，�
     await detail.get('summary').trigger('click')
     expect(detail.attributes('open')).toBeDefined()
     const paths = detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    expect(paths).toEqual(['/changelog', '/beta', '/install'])
+    expect(paths).toEqual(['/developers', '/changelog', '/beta', '/install'])
   }
   feedbackUnreadState.count = 0
   await flushPromises()

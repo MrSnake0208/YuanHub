@@ -1,0 +1,13 @@
+{
+  "schema": "yuanhub.recruitment.v1",
+  "exported_at": "2026-10-18T00:00:00Z",
+  "source_account": {"account_id": "example_source"},
+  "game": "如鸢",
+  "archive_revision": 0,
+  "baseline": 0,
+  "current_pool_id": null,
+  "pools": [],
+  "temporary_agents": [],
+  "events": [],
+  "batches": []
+}

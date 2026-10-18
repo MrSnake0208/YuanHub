@@ -27,6 +27,7 @@
     "driver.js": "^1.8.0",
     "html2canvas": "^1.4.1",
     "image-blob-reduce": "^5.0.1",
+    "marked": "18.1.1",
     "pica": "^10.0.3",
     "pinia": "^3.0.4",
     "sortablejs": "1.15.7",

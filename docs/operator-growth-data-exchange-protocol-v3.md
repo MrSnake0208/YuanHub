@@ -1,8 +1,8 @@
 # 密探养成数据交换协议 v3
 
-> 第三方接入导航、其他交换版本和 HTTP 传输方式统一收录在 [`exchange-specs/`](./exchange-specs/README.md)。本文继续作为密探 v3 的完整权威规范。
+> 第三方接入导航、其他交换版本和 HTTP 传输方式统一收录在[开发者协议中心](./developers/protocols.md)。本文继续作为密探 v3 的完整权威规范。
 
-状态：当前正式版本，浏览器导入/导出与自动采集 OpenAPI 已接入
+状态：兼容旧版，浏览器导入/导出与受限自动采集 OpenAPI 已接入；完整备份推荐[V5](./operator-growth-data-exchange-protocol-v5.md)，第三方 Token 导出仍为 V2
 
 格式标识：`myshare-operator-exchange`  
 协议版本：`3`  
@@ -192,7 +192,7 @@ v2/v3 `star_level`保留旧标量编码：普通0未拥有、1..30旧星级节�
 
 服务端通过统一适配器写入独立huaji：普通1..24对应stage，25..30全部五星stage25（包括26..29，30永久接收）；缺失觉醒字段保留已确认true/false。31只确认觉醒，保留已知stage，否则stage=null并保raw/source，不推25或26。隐密rarity3的25..31为异常候选，保原值复核，不映射合法进度；同批合法项继续处理。SP仅映射0/1..5到0/1/7/13/19/25，觉醒/材料仍未开放。
 
-化极与觉醒独立；五星没有第五颗星的小节点，隐密24终点。v3单标量不能无损表达独立事实，export warnings会提示具体信息损失，无损备份用[v4](./operator-growth-data-exchange-protocol-v4.md)。Current/PATCH能力、懒兼容、签名与迁移预案同见v4规范。
+化极与觉醒独立；五星没有第五颗星的小节点，隐密24终点。v3单标量不能无损表达独立事实，export warnings会提示具体信息损失，完整备份用[v5](./operator-growth-data-exchange-protocol-v5.md)。独立化极的字段与兼容规则见[v4](./operator-growth-data-exchange-protocol-v4.md)。
 
 ### 4.5 奇闻和攻生
 
@@ -407,7 +407,7 @@ favorite = true
 - 同一 document 可以包含多个 record；每个 record 独立判定 accepted、duplicate、partial、review 或 rejected；
 - 某条客观 record 的命盘分区 review，不妨碍其 basic/huaji 等 ready 分区导入；
 - annotation record 不做 OCR 推断，Schema 或语义错误时整条 annotation record 拒绝；
-- commit 必须重新验证 preview token、record revision 和目标账号权限。
+- commit 重新进行文档、当前状态与目标账号权限校验；本接口不使用招募恢复的 preview_token。客户端保持预览与提交正文一致，复核项按接口 confirm_review 约定处理。
 
 ## 8. Schema 校验与语义校验
 
@@ -495,5 +495,3 @@ v3 导出统一写 snake_case `star_level`，不再写旧 camelCase `starLevel`�
 `discarded` 表示已弃置，保留资料且可恢复；仅用于主观 annotation，不允许 scan 写回。三种旧值保留，skip 不迁移；缺失状态才使用既有默认值，未知非空值拒绝。listed 按字段合并，full 必须提供完整主观字段且文档外恢复默认；预览明确显示状态差异。
 
 本扩展保持 version=3，两份 schema 同步；旧 v3 校验器会拒绝含 discarded 的备份，不能声称完全向后兼容。示例 `discarded-listed.valid.json` 展示局部主观备份。
-
-发布顺序：先部署官方读取界面及 MaaYuan 读取兼容，再部署接受新值的后端，最后开放写入入口。沿用 VersionUpdateBanner 要求旧标签页刷新（不能保证长期标签页全部升级）。已有 discarded 数据后，回滚仍须保留后端读写兼容，不能批量转换为 skip/active。MaaYuan 原白名单会拒绝新值；本次本地兼容修改后仍仅精确匹配 active 扫描，不写回主观状态。最小兼容 PR 已提交至 syoius/MaaYuan #529（目标 v5，三文件），合并及发布由 MaaYuan 维护者执行。

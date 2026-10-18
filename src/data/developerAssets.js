@@ -1,0 +1,55 @@
+// Exact public allowlist: no directory globs, raw imports or cross-repository sources.
+const urls = import.meta.glob([
+  "../../docs/developers/index.md",
+  "../../docs/developers/guide.md",
+  "../../docs/developers/api.md",
+  "../../docs/developers/api-inventory.md",
+  "../../docs/developers/api-operator.md",
+  "../../docs/developers/api-recruitment.md",
+  "../../docs/developers/api-calendar.md",
+  "../../docs/developers/api-star.md",
+  "../../docs/developers/api-work.md",
+  "../../docs/developers/protocols.md",
+  "../../docs/exchange-specs/inventory-v2.md",
+  "../../docs/exchange-specs/schemas/inventory-exchange-v2.schema.json",
+  "../../docs/exchange-specs/examples/inventory-full-snapshot.json",
+  "../../docs/exchange-specs/examples/inventory-listed-agent-snapshot.json",
+  "../../docs/exchange-specs/examples/inventory-reward-delta.json",
+  "../../docs/operator-growth-data-exchange-protocol-v5.md",
+  "../../docs/schemas/operator-growth-exchange-v5.schema.json",
+  "../../docs/examples/operator-growth-exchange-v5/boundary.valid.json",
+  "../../docs/developers/examples/operator-scan-v5.json",
+  "../../docs/developers/recruitment-v1.md",
+  "../../docs/developers/schemas/recruitment-exchange-v1.schema.json",
+  "../../docs/developers/examples/recruitment-v1.json",
+  "../../docs/exchange-specs/work-v1.md",
+  "../../docs/exchange-specs/schemas/work-protocol-v1.schema.json",
+  "../../docs/exchange-specs/examples/work-v1.json",
+  "../../docs/exchange-specs/work-adapters-v1.md",
+  "../../docs/operator-growth-data-exchange-protocol-v4.md",
+  "../../docs/schemas/operator-growth-exchange-v4.schema.json",
+  "../../docs/examples/operator-growth-exchange-v4/independent.valid.json",
+  "../../docs/examples/operator-growth-exchange-v4/legacy31.valid.json",
+  "../../docs/examples/operator-growth-exchange-v4/unowned-stage.invalid.json",
+  "../../docs/operator-growth-data-exchange-protocol-v3.md",
+  "../../docs/schemas/operator-growth-exchange-v3.schema.json",
+  "../../docs/examples/operator-growth-exchange-v3/full-backup.valid.json",
+  "../../docs/examples/operator-growth-exchange-v3/scan-sp.valid.json",
+  "../../docs/examples/operator-growth-exchange-v3/schema-invalid.json",
+  "../../docs/examples/operator-growth-exchange-v3/semantic-review.json",
+  "../../docs/examples/operator-growth-exchange-v3/discarded-listed.valid.json",
+  "../../docs/exchange-specs/operator-v2.md",
+  "../../docs/exchange-specs/schemas/operator-exchange-v2-import.schema.json",
+  "../../docs/exchange-specs/examples/operator-v2-listed-snapshot.json",
+  "../../docs/exchange-specs/common-conventions.md",
+  "../../docs/exchange-specs/transport.md",
+  "../../docs/exchange-specs/catalogs.md",
+  "../../docs/developers/changelog.md",
+  "../../docs/developers/gaps.md"
+], { query: '?url&no-inline', import: 'default', eager: true })
+
+export function developerAssetUrl(source) {
+  const url = urls['../../docs/' + source]
+  if (!url) throw new Error('Document resource is not public: ' + source)
+  return url
+}

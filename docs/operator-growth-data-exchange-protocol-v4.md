@@ -1,6 +1,6 @@
 # 密探独立化极与 operator exchange v4
 
-当前完整备份推荐[v5（含等级突破与观测快照）](./operator-growth-data-exchange-protocol-v5.md)。
+状态：兼容旧版。当前完整备份推荐[v5（含等级突破与观测快照）](./operator-growth-data-exchange-protocol-v5.md)。
 ## 1. 权威事实与能力
 
 当前 API、持久化和 v4 使用 `huaji:{owned:boolean,stage:0..25|null,awakened:boolean|null}`。`true` 确认已觉醒，`false` 确认未觉醒，`null` 待确认。`owned=true` 可以阶段未知；不能用共享等级/修为推导拥有。未拥有必须 stage=0，觉醒不得 true；拥有时 stage 不能为0。
@@ -59,22 +59,6 @@ PATCH支持部分huaji；缺失对象/子字段保留，显式null将stage或awa
 
 浏览器 `/v1/operator/import/preview`、`/import` 接收v3/v4原始或映射包装体；`/export?version=4`无损导出独立事实和追溯字段。OpenAPI旧v2/v3端点继续兼容，没有改成多领域v4。前端完整备份默认v4。
 
-v2输出继续camelCase `starLevel/subProf/starStones`；v3继续snake_case。二者单一标量不能同时表达任意stage+awakened、已确认未觉醒与未知、owned且stage未知。v3会在条目warnings明确提醒；v2以响应头`X-Operator-Exchange-Warning`提醒信息损失，接入端须展示此限制并优先选v4备份。不要将旧字段解释成无损备份；导入独立未知事实必须使用v4。
+v2输出继续camelCase `starLevel/subProf/starStones`；v3继续snake_case。二者单一标量不能同时表达任意stage+awakened、已确认未觉醒与未知、owned且stage未知。v3会在条目warnings明确提醒；v2以响应头`X-Operator-Exchange-Warning`提醒信息损失，接入端须展示此限制并优先选v4备份。不要将旧字段解释成无损备份；导入独立独立化极未知事实至少使用v4，完整备份使用v5。
 
 Schema：[正式v4 JSON Schema](./schemas/operator-growth-exchange-v4.schema.json)。样例：[正常独立状态](./examples/operator-growth-exchange-v4/independent.valid.json)、[旧31未知stage](./examples/operator-growth-exchange-v4/legacy31.valid.json)、[非法未拥有五星](./examples/operator-growth-exchange-v4/unowned-stage.invalid.json)。catalog约束由服务端补充，Schema不能凭目录外信息证明SP可觉醒。
-
-## 5. 懒迁移与显式迁移预案（不执行）
-
-发布不会批量UPDATE/DELETE历史数据，读时适配、合法写入时保存新事实。历史隐密异常只复核，不清理、不猜到24/25。升级旧版本时不得回滚到只认识标量的业务代码再写新数据。
-
-生产迁移必须另立任务、先取得用户授权，明确环境，再只读按rarity/spOf核对候选计数和来源；不输出用户标识。2026-10-12的2405条是待核实异常entry基线，不是用户数，也未由本专项复核。确认真实进度、备份和回滚方案后再决定逐条校正；旧raw/source和导入审计永久保留。
-
-本专项未访问生产或共享开发数据库。27018测试转发不证明目标可用于本任务测试，事务测试仅用本进程owned disposable Mongo。
-
-## 6. 规则证据及计算边界
-
-2026-10-13读取Cal副本并实际核对`m_components.csv`（SHA-256 `3cd225accd05475cbab8b142eff06a91414f9a401d11f8cc9b9319acca3ae275`）：126密探、19994组件，124普通密探star1..25，史子眇·赴烛/陈登·黍王仅1/7/13/19/25；awake是独立组件。隐密的理论star25及SP的awake行不能证明游戏可达性或素材。
-
-公开结合版§6与组件支持普通已完成觉醒独立增加生命/攻击10%，加入百分比总和，固定值不变。公开版末尾“按钮能点”不作为完成证据；已解锁不等于已完成。新公式仅在stage和觉醒已确认时计算；SP规则或stage未知保留观测并提示不足计算。原Wiki白值与Cal组件口径存在差异，未在本修复中换整套白值、宣称全部面板精度验证。
-
-[BWIKI公共图鉴干吉](https://wiki.biligame.com/yuan/干吉)与[招募商店](https://wiki.biligame.com/yuan/招募商店)交叉支持普通五星25%、觉醒独立、隐密四星终点。普通觉醒表列100心纸/1素材/30万钱，与既有材料表及[装金玻璃目录](https://wiki.biligame.com/yuan/装金玻璃)交叉确认，开放普通紫/金五星快捷觉醒；不添加未经证实的等级前置条件。SP觉醒与素材仍未核实。

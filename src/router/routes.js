@@ -13,6 +13,31 @@ import { FEATURE_KEYS } from '../config/features.js'
 
 export const routes = [
     {
+        path: '/developers', name: 'developers', text: '开发者中心', display: false, module: 'developers', icon: 'book-open',
+        component: () => import('/src/pages/developers/index.vue'), props: { documentId: 'home' },
+        meta: { title: '开发者中心 — YuanHub' }
+    },
+    ...['guide', 'api', 'protocols', 'changelog', 'gaps'].map(section => ({
+        path: `/developers/${section}`, name: `developers-${section}`, display: false, module: 'developers',
+        component: () => import('/src/pages/developers/index.vue'), props: { documentId: section },
+        meta: { title: '开发者文档 — YuanHub' }
+    })),
+    {
+        path: '/developers/api/:slug', name: 'developers-api-detail', display: false, module: 'developers',
+        component: () => import('/src/pages/developers/index.vue'), props: route => ({ documentId: `api-${route.params.slug}` }),
+        meta: { title: 'API 参考 — YuanHub' }
+    },
+    {
+        path: '/developers/protocols/:slug', name: 'developers-protocol-detail', display: false, module: 'developers',
+        component: () => import('/src/pages/developers/index.vue'), props: route => ({ documentId: route.params.slug }),
+        meta: { title: '数据交换协议 — YuanHub' }
+    },
+    {
+        path: '/developers/:pathMatch(.*)*', name: 'developers-not-found', display: false, module: 'developers',
+        component: () => import('/src/pages/developers/index.vue'), props: { documentId: 'missing' },
+        meta: { title: '文档不存在 — YuanHub' }
+    },
+    {
         path: '/beta', name: 'beta', text: '参与内测', display: false, module: 'user', icon: 'ticket',
         component: () => import('/src/pages/beta/index.vue'),
         meta: { title: '参与内测 — 鸢鸢相抱 · YuanHub' }

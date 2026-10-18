@@ -1,0 +1,11 @@
+@media (max-width: 1199px) {
+  .developer-layout { grid-template-columns: minmax(0, 1fr); }
+  .developer-directory nav { max-height: 60dvh; overflow-y: auto; border-top: 1px solid var(--line); }
+  .developer-reading { padding: 18px; }
+  .document-table-scroll table { min-width: 480px; }
+}
+@media (max-width: 767px) {
+  .developer-layout { padding-inline: 16px; gap: 12px; }
+  .developer-reading { padding: 16px 12px; }
+  .page-developers .page-header-back { min-height: 0; margin-block: 4px 8px; }
+}
