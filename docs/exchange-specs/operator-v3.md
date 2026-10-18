@@ -1,6 +1,6 @@
 # 密探养成数据交换协议 v3 接入指南
 
-状态：当前推荐版本  
+状态：兼容旧版；完整备份推荐[V5](../operator-growth-data-exchange-protocol-v5.md)，Token export仍为V2
 格式：`myshare-operator-exchange@3`
 
 完整规范以 [密探养成数据交换协议 v3](../operator-growth-data-exchange-protocol-v3.md) 为准。本页帮助第三方开发者选择记录类型和传输流程，不重复定义全部字段。

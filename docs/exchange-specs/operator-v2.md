@@ -66,7 +66,7 @@ v2 导入 DTO 混用了两种命名风格：
 
 当前v2导出已按历史camelCase边界输出`subProf/starLevel/starStones`，可以再次交给v2导入。读取更早的snake_case导出文件时客户端仍需转换这三个字段。
 
-v2导出响应头`X-Operator-Exchange-Warning`说明独立化极/觉醒的信息损失；v2没有独立觉醒或未知阶段信息；无损备份必须用[密探v4](./operator-v4.md)。普通25..30永久适配五星，31只确认觉醒，不猜阶段；隐密25..31保留原值并warning。旧结构和record_id幂等契约保留。
+v2导出响应头`X-Operator-Exchange-Warning`说明独立化极/觉醒及等级突破的信息损失；完整备份使用[密探V5](../operator-growth-data-exchange-protocol-v5.md)。普通25..30永久适配五星，31只确认觉醒，不猜阶段；隐密25..31保留原值并warning。旧结构和record_id幂等契约保留，Token export 仍为V2。
 
 ## 4. 导入结果
 

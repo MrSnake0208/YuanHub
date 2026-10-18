@@ -1,6 +1,6 @@
 # BackEndV3-Share API 接口契约（前端接入参考）
 
-> 后端源码基线：`BackEndV3-Share` commit `f8303ad`（2026-09-07），并包含当前工作区反馈附件、操作身份、密探分享与公共关卡目录实现。
+> 2026-10-18 开放接口核对基线：`BackEndV3-Share` commit `0b28a4d`。本文含站内与管理员契约，不整体公开；外部接入入口见[开发者中心文档](./developers/index.md)。静态 backend-openapi.json 是历史快照，不代表全部当前接口。
 > 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理、公共关卡目录和广陵账房接口。
 > 后端继续演进后，以源码与 Swagger 为最终依据，并同步更新本文顶部 commit。
 
@@ -33,7 +33,6 @@
 ```json
 {
   "status_code": 200,
-  "message": null,
   "data": {}
 }
 ```
@@ -655,7 +654,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - [`operator-growth-exchange-v3.schema.json`](./schemas/operator-growth-exchange-v3.schema.json)
 - [`examples/operator-growth-exchange-v3/`](./examples/operator-growth-exchange-v3/)
 
-`version=3` 导出包含客观档案、annotation、favorite 与 targets；默认 `version=2`。
+`version=3|4|5` 导出包含客观档案、annotation、favorite 与 targets；完整备份推荐 `version=5`，包含独立化极和突破。服务端默认仍为 `version=2`；Token export 固定 V2。
 
 ### 5.6 密探只读分享
 
@@ -833,7 +832,6 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 ```json
 {
   "status_code": 200,
-  "message": null,
   "data": {
     "catalog_version": "2026-09-07T14:01:04.991Z",
     "levels": [{
@@ -1033,7 +1031,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | 方法与路径 | 认证 | 请求 | 成功 data |
 |---|---|---|---|
 | `GET /user/open-api/permissions` | 公开 | 无 | `[{scope,description}]` |
-| `POST /user/open-api/token` | JWT | `{account_id,scopes,remark}` | 新 Token，明文仅返回一次 |
+| `POST /user/open-api/token` | JWT | `{account_id,scopes,remark}` | 新 Token，创建返回明文；后续可按需复制本人连接码 |
 | `GET /user/open-api/tokens` | JWT | 无 | 当前用户 Token 列表，不含明文 |
 | `DELETE /user/open-api/tokens/{tokenId}` | JWT | 无 | 无业务数据 |
 
@@ -1047,7 +1045,10 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `operator:read` | 密探读取 |
 | `operator:write` | 密探 v2 写入 |
 | `operator:export` | 密探 v2 导出 |
-| `operator:scan:write` | 密探 v3 自动采集 preview/commit |
+| `operator:scan:write` | 密探 v3/v4/v5 自动采集 preview/commit |
+| `operator:daily-tasks:write` | 每日历练读取与完成勾选 |
+| `star:capture:write` | 星石临时 PNG 采集上传 |
+| `calendar:read` | 活动与订阅读取 |
 
 生成结果：
 
@@ -1089,8 +1090,8 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `GET /open-api/operator/current` | `operator:read` | query `game` 可选 | 当前养成数组 |
 | `POST /open-api/operator/import` | `operator:write` | 密探 v2 文档 | v2 导入结果 |
 | `GET /open-api/operator/export` | `operator:export` | 无 | 原始密探 v2 文档 |
-| `POST /open-api/operator/scan-import/preview` | `operator:scan:write` | 原始密探 v3 文档 | v3 preview 结果 |
-| `POST /open-api/operator/scan-import/commit` | `operator:scan:write` | 原始密探 v3 文档 | v3 commit 结果；产生 `operator_scan_import` SSE |
+| `POST /open-api/operator/scan-import/preview` | `operator:scan:write` | 原始密探 v3/v4/v5 文档 | preview 结果 |
+| `POST /open-api/operator/scan-import/commit` | `operator:scan:write` | 原始密探 v3/v4/v5 文档 | commit 结果；产生 `operator_scan_import` SSE |
 
 自动采集限制：
 
@@ -1098,6 +1099,10 @@ error_count / conflict_count / conflicts / errors / catalog_version
 - `source_kind=scan`、`snapshot_scope=listed`。
 - 来源账号始终强制映射到 Token 绑定账号。
 - 不接受 annotation/full/manual，不扣减库存。
+
+### 11.3 日历、历练、星石与其他已实现能力
+
+以[公开 API 参考](./developers/api.md)及其功能分页为准：包含 calendar subscriptions/events、operator annotations/daily-tasks/completion、star captures/init/images/finalize。招募 V1 使用 JWT 备份恢复，Work V1 已有实际服务端接口；二者没有 OpenAPI Token Scope。详见[支持矩阵](./developers/protocols.md)。
 
 ## 12. 广陵账房方案（/hub/ledger/plan）
 

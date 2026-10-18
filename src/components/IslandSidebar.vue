@@ -98,6 +98,9 @@
               <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
             </summary>
             <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
+              <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }">
+                <BookOpen :size="20" aria-hidden="true" /><span>开发者中心</span>
+              </router-link>
               <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
                 <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
               </router-link>
@@ -195,6 +198,9 @@
           <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
         </summary>
         <nav id="desktop-service-nav" class="sidebar-more-panel" aria-label="YuanHub 服务">
+          <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }">
+            <BookOpen :size="18" aria-hidden="true" /><span>开发者中心</span>
+          </router-link>
           <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
             <ScrollText :size="18" aria-hidden="true" /><span>更新日志</span>
           </router-link>
@@ -238,6 +244,7 @@ import {
   Bell,
   BookUser,
   CalendarDays,
+  BookOpen,
   ChevronDown,
   Download,
   Gem,
@@ -297,7 +304,7 @@ const router = useRouter();
 const route = useRoute();
 const managementActive = computed(() => isManagementRoute(route.path));
 const moreActive = computed(() => !managementActive.value && (
-  ["/beta", "/changelog", "/install"].includes(route.path)
+  ["/beta", "/changelog", "/install"].includes(route.path) || route.path.startsWith('/developers')
 ));
 const desktopMore = ref(null);
 const menuOpen = ref(false);

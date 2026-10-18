@@ -1,61 +1,22 @@
 # YuanHub 数据交换规范中心
 
-更新时间：2026-09-18  
-面向对象：YuanHub 前后端、自动采集器、备份工具与第三方集成开发者
+更新时间：2026-10-18。公开入口：[站内开发者中心](/developers)。
 
-本目录集中说明 YuanHub 当前可对外交换的 JSON 文档、公共目录和 HTTP 传输约定。接口的完整清单仍以 [`../api-contract.md`](../api-contract.md) 为准；本目录只关注跨程序交换时必须共同遵守的契约。
+本目录保留协议权威正文、兼容说明、Schema 和示例；统一接入指引及支持状态见[开发者协议矩阵](../developers/protocols.md)，HTTP 接入见[公开 API 参考](../developers/api.md)。内部完整接口契约仍为[api-contract.md](../api-contract.md)，不整体发布。
 
-## 1. 应该使用哪一种格式
+| 用途 | 推荐格式 | 权威正文 |
+|---|---|---|
+| 库存、心纸与奖励 | myshare-inventory-exchange@2 | [库存 V2](./inventory-v2.md) |
+| 完整密探备份 | myshare-operator-exchange@5 | [密探 V5](../operator-growth-data-exchange-protocol-v5.md) |
+| 招募备份恢复 | yuanhub.recruitment.v1 | [招募 V1](../developers/recruitment-v1.md) |
+| 原生自动战斗作业 | yuanhub-work@1 | [Work V1](./work-v1.md) |
 
-| 需求 | 格式标识与版本 | 建议 | 规范 |
-|---|---|---|---|
-| 导入/导出物品库存、心纸数量、奖励流水 | `myshare-inventory-exchange@2` | 当前正式版本 | [库存交换 v2](./inventory-v2.md) |
-| 导入旧版密探养成快照 | `myshare-operator-exchange@2` | 仅兼容旧客户端；新接入不建议使用 | [密探交换 v2](./operator-v2.md) |
-| 密探完整备份、双命盘、战斗数值、标注和目标 | `myshare-operator-exchange@3` | 新接入首选 | [密探交换 v3 接入指南](./operator-v3.md) |
-| 自动战斗作业跨 MaaYuan/YuanAssist 交换 | `yuanhub-work@1` | Draft，供作业系统实现 | [作业协议 v1](./work-v1.md) |
-| 获取合法物品/密探 ID 与元数据 | catalog v1 | 导入前先同步目录 | [公共目录](./catalogs.md) |
-| 通过浏览器 JWT 或 OpenAPI Token 传输 | HTTP API | 按调用场景选认证方式 | [传输与鉴权](./transport.md) |
+## 历史兼容
 
-所有格式共同遵守 [公共约定](./common-conventions.md)。
+[密探 V2](./operator-v2.md)、[V3](../operator-growth-data-exchange-protocol-v3.md)、[V4](../operator-growth-data-exchange-protocol-v4.md)继续支持，不能无损表达 V5 全部事实。完整备份默认推荐 V5，不改变服务端 export 旧默认 V2。Token export 固定 V2，V3/V4/V5 Token 写入仅 scan+listed 单来源客观记录。
 
-## 2. 文件索引
+Work V1 协议和实际服务端接口已实现；[Adapter](./work-adapters-v1.md)部分支持，exact 才提供目标文档，不承诺通用 Pipeline 转换。
 
-- [`common-conventions.md`](./common-conventions.md)：命名、时间、账号、幂等、版本及错误约定。
-- [`inventory-v2.md`](./inventory-v2.md)：库存记录、奖励增量、全量/局部快照和合并语义。
-- [`operator-v2.md`](./operator-v2.md)：旧版密探快照及其字段命名兼容事项。
-- [`operator-v3.md`](./operator-v3.md)：v3 使用场景、接入流程和自动采集限制。
-- [`work-v1.md`](./work-v1.md)：YuanHub 自动战斗作业语义协议 v1。
-- [`work-adapters-v1.md`](./work-adapters-v1.md)：MAAYUAN / YUANASSIST Adapter 映射与兼容性规则。
-- [`catalogs.md`](./catalogs.md)：实体目录 v1 与密探目录 v1。
-- [`transport.md`](./transport.md)：JWT/OpenAPI 端点、scope、包装体及响应封装。
-- [`schemas/`](./schemas/)：可用于开发期校验的 JSON Schema。
-- [`examples/`](./examples/)：可复制的最小交换文档。
+## 配套约定
 
-密探 v3 的完整规范、机器 Schema 和测试样例已经存在，继续作为权威正文使用：
-
-- [密探养成数据交换协议 v3](../operator-growth-data-exchange-protocol-v3.md)
-- [密探 v3 JSON Schema](../schemas/operator-growth-exchange-v3.schema.json)
-- [密探 v3 示例目录](../examples/operator-growth-exchange-v3/)
-
-作业协议 v1 当前只表示协议与 Adapter 契约已经冻结到 Draft；它不代表 Work HTTP API 已经实现。实际接口上线后再补充到 `api-contract.md` 与本节支持矩阵。
-
-## 3. 当前支持矩阵
-
-| 能力 | 库存 v2 | 密探 v2 | 密探 v3 |
-|---|---:|---:|---:|
-| 浏览器 JWT 导入 | 是 | 是 | 是，支持 preview/commit |
-| 浏览器 JWT 导出 | 是 | 是 | 是 |
-| OpenAPI Token 导入 | 是 | 是 | 是，仅自动采集约束 |
-| OpenAPI Token 导出 | 是 | 是 | 否 |
-| 多来源账号文档 | 是 | 是 | 浏览器可映射；采集 OpenAPI 仅单来源 |
-| 全量与局部快照 | 是 | 是 | 是；采集 OpenAPI 仅 `listed` |
-| 主观标注/目标 | 否 | 否 | 是 |
-| 独立 JSON Schema | 本目录提供 | 本目录提供导入 Schema | 已有正式 Schema |
-
-## 4. 兼容性承诺
-
-- 同一 `format` 的版本独立演进，调用方必须同时检查 `format` 与 `version`。
-- v2 兼容读取暂时保留，但新的密探工具应直接生成 v3。
-- `catalog_version` 用于记录生产文档时参考的目录版本，不代替服务端导入时的实时目录校验。
-- 本目录不移动旧文件，以保证仓库内已有链接继续有效。
-
+[公共约定](./common-conventions.md)、[传输与鉴权](./transport.md)、[公共目录](./catalogs.md)、[Schema](./schemas/README.md)、[示例](./examples/README.md)。版本、权限、覆盖边界不能根据前端显示猜测。后续公开变化记录在[协议更新记录](../developers/changelog.md)。

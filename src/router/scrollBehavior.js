@@ -1,4 +1,6 @@
 export function scrollBehavior(to, from, savedPosition) {
+  // Developer headings arrive after the selected Markdown has loaded.
+  if (to.path?.startsWith('/developers') && to.hash) return false
   if (to.hash) return { el: to.hash, behavior: 'smooth', top: 0 }
   if (savedPosition) return savedPosition
   const event = Array.isArray(to.query.event) ? to.query.event[0] : to.query.event
