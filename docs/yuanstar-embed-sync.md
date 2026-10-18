@@ -1,5 +1,13 @@
 # YuanStar embed 同步说明
 
+## Import Draft 图片持久化修复（2026-10-18）
+
+- 权威源码分支 `feature/yuanhub-embed`，source commit `598ed0e52ef2147e32e753635edb61ea782e805e`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由现有同步脚本完整同步 12 个资源；manifest 记录 clean 来源及逐文件 SHA-256。
+- 首次 Blob 写入完成后才保存分类 metadata；失败时保留原始异常与阶段，原 File 仍在页面时可重试。保留追加原子性、账号隔离、清空及 CaptureBatch/OCR 提交流程。
+- 本次正式产物仅交付 Import Draft 修复；不包含尚待验收的养成计划紧凑化、等级快捷弹窗及 OCR 加载动画。CSS 与此前正式产物字节一致。
+- 华为 QQ 浏览器 IndexedDB 兼容性仍需真机验证；失败注入专项不代表真机验证。本地 UI 预览独立于本正式分支，不提交或推送预览资源。
+
+
 ## 宿主明确拒绝恢复适配（2026-10-14）
 
 PR #23 合并后，仅在 YuanHub 宿主增加明确拒绝的继承标记回退，详见
