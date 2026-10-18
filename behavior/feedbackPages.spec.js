@@ -1522,3 +1522,23 @@ it.each([MyFeedback, ManagedFeedback])('全部板块隐藏时历史列表仍可�
   }
   wrapper.unmount()
 })
+
+it.each([[MyFeedback, 'getFeedback'], [ManagedFeedback, 'getManagedFeedback']])('实时刷新对应反馈时保留正在编辑的回复及焦点 (%s)', async (component, detailApi) => {
+  const realtime = await import('../src/store/notificationRealtime.js')
+  const subscribe = vi.spyOn(realtime, 'subscribeFeedbackNotificationRefresh')
+  const wrapper = render(component, { attachTo: document.body })
+  try {
+    await flushPromises(); await choose(wrapper, 'rpt_a'); await compose(wrapper, '不能丢失的草稿')
+    const input = wrapper.get('.feedback-reply-form textarea').element
+    input.focus()
+    const handler = subscribe.mock.calls.at(-1)[0]
+    expect(await handler({ refId: 'other' })).toBe(false)
+    api[detailApi].mockResolvedValueOnce({ ...ticket('rpt_a'), messages: [...ticket('rpt_a').messages, { id: 'live-message', senderKind: 'ADMIN', isAdmin: true, content: '实时沟通更新', author: { id: 'admin' } }] })
+    expect(await handler({ refId: 'rpt_a' })).toBe(true)
+    await flushPromises()
+    expect(wrapper.text()).toContain('实时沟通更新')
+    expect(wrapper.get('.feedback-reply-form textarea').element).toBe(input)
+    expect(input.value).toBe('不能丢失的草稿')
+    expect(document.activeElement).toBe(input)
+  } finally { wrapper.unmount(); subscribe.mockRestore() }
+})

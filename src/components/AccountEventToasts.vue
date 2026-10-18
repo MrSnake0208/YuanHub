@@ -1,5 +1,6 @@
 <template>
   <div class="account-event-toasts" aria-live="polite" aria-atomic="false">
+    <FeedbackNotificationToasts />
     <details v-if="accountEvents.history.length" class="account-event-history" aria-live="off">
       <summary>最近事件（{{ accountEvents.history.length }}）</summary>
       <ul>
@@ -51,6 +52,7 @@
 
 <script setup>
 import { CircleAlert, PackageOpen, Star, X } from '@lucide/vue'
+import FeedbackNotificationToasts from './FeedbackNotificationToasts.vue'
 import { accountEvents, dismissAccountEventToast, previewAccountEvent } from '../store/accountEvents.js'
 
 const previewEnabled = import.meta.env.DEV && new URLSearchParams(location.search).get('event_preview') === '1'

@@ -12,8 +12,10 @@ import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
 import { routeLoadingState } from '../src/router/index.js'
 import { initializeOnboardingTour } from '../src/utils/onboardingTour.js'
+import { startNotificationRealtime } from '../src/store/notificationRealtime.js'
 
 const hooks = vi.hoisted(() => ({ stop: vi.fn() }))
+const notifications = vi.hoisted(() => ({ stop: vi.fn() }))
 vi.mock('../src/utils/onboardingTour.js', () => ({ initializeOnboardingTour: vi.fn(() => hooks.stop), destroyOnboardingTour: vi.fn() }))
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -29,7 +31,7 @@ vi.mock('../src/router/index.js', async () => {
 })
 vi.mock('../src/store/activeAccount.js', () => ({ activeAccount: { id: 'account-a' } }))
 vi.mock('../src/store/accountEvents.js', () => ({ stopAccountEventStream: vi.fn(), subscribeAccountEvents: () => vi.fn(), syncAccountEventStream: vi.fn() }))
-vi.mock('../src/store/notificationUnread.js', () => ({ subscribeNotificationUnread: () => vi.fn() }))
+vi.mock('../src/store/notificationRealtime.js', () => ({ startNotificationRealtime: vi.fn(() => notifications.stop) }))
 vi.mock('../src/components/VersionUpdateBanner.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/AccountEventToasts.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/beta/BetaCommunityDialog.vue', () => ({ default: { template: '<div />' } }))
@@ -73,6 +75,15 @@ async function render() {
   const host = mount(App, { global: { plugins: [router] } })
   return { router, host }
 }
+
+it('全局通知订阅跨路由保持单例，App卸载时清理', async () => {
+  const { router, host } = await render()
+  expect(startNotificationRealtime).toHaveBeenCalledOnce()
+  await router.push('/changelog'); await nextTick()
+  expect(startNotificationRealtime).toHaveBeenCalledOnce()
+  host.unmount()
+  expect(notifications.stop).toHaveBeenCalledOnce()
+})
 
 it('App不挂载全局教程UI；控制器跨业务页、帮助页和登录交接持续存在', async () => {
   const { router, host } = await render()

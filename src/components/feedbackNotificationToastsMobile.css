@@ -1,0 +1,11 @@
+@media (max-width: 767px) {
+  .feedback-notification-toasts { display: flex; width: 100%; flex-direction: column; gap: 8px; }
+  .feedback-notification-toasts:empty { display: none; }
+  .feedback-notification-toast { display: grid; grid-template-columns: 20px minmax(0, 1fr) 36px; align-items: start; gap: 6px; padding: 10px 6px 10px 10px; }
+  .feedback-toast-icon { margin-top: 4px; }
+  .feedback-toast-copy { min-width: 0; overflow-wrap: anywhere; }
+  .feedback-toast-copy strong { display: block; font-size: 14px; line-height: 1.45; }
+  .feedback-toast-copy p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 4px 0; font-size: 13px; line-height: 1.5; }
+  .feedback-toast-copy a { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; font-size: 13px; font-weight: 700; }
+  .feedback-notification-toast button { display: grid; width: 36px; height: 36px; place-items: center; }
+}
