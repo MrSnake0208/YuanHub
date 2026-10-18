@@ -1,6 +1,6 @@
 /* 仅密探完整编辑弹窗：独立标签共用固定页头、正文与底栏。 */
 @media (min-width: 641px) {
-  .editor-panel.editor-workspace { width: min(1200px, 100%); height: min(92dvh, 780px); border-radius: 16px; background: #fcf9f0; }
+  .editor-panel.editor-workspace { width: min(960px, 100%); height: min(92dvh, 780px); border-radius: 16px; background: #fcf9f0; }
   .editor-workspace .editor-head { grid-template-columns: minmax(0, 1fr) minmax(280px, .95fr) 32px; gap: 16px; padding: 18px 24px 16px; border-bottom: 0; background: var(--surface); }
   .editor-workspace .editor-kicker { font-size: 12px; overflow-wrap: anywhere; }
   .editor-workspace .editor-head h3 { font-size: 32px; }
