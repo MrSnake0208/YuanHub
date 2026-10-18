@@ -166,6 +166,52 @@ it('局部分组不能通过全零确认建立整个库存的基准', async () =
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
 
+it.each([390, 1440])('首次只填两项也必须勾选完整盘点确认：%ipx', async width => {
+  installViewport(width)
+  const wrapper = render()
+  await enterStockEditor(wrapper)
+  const fields = wrapper.findAll('.stock-count-input')
+  await fields[0].setValue('11')
+  await fields[1].setValue('22')
+  expect(confirmation(wrapper).element.checked).toBe(false)
+  expect(save(wrapper).element.disabled).toBe(true)
+  await save(wrapper).trigger('click')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  await confirmation(wrapper).setValue(true)
+  expect(save(wrapper).element.disabled).toBe(false)
+  await confirmation(wrapper).setValue(false)
+  expect(save(wrapper).element.disabled).toBe(true)
+  await confirmation(wrapper).setValue(true)
+  await save(wrapper).trigger('click')
+  await flushPromises()
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+  expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({
+    snapshot_scope: 'full', entries: [expect.objectContaining({ count: 11 }), expect.objectContaining({ count: 22 })],
+  })
+})
+
+it.each([null, fullBaseline])('分类录入只发送该分类 listed 快照，不建立完整基准：%s', async baseline => {
+  inventoryApi.getCurrent.mockResolvedValue([{ ...fullStock('acc-a', { mazi: { count: 6 }, zhuangjinboli: { count: 15 } })[0], full_baseline_at: baseline }])
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('[aria-label="编辑鸟食礼包的库存"]').trigger('click')
+  const fields = wrapper.findAll('.stock-count-input')
+  expect(fields.length).toBeGreaterThan(1)
+  await fields[0].setValue('17')
+  await wrapper.get('[aria-label="麻籽当前库存"]').setValue('0')
+  expect(wrapper.find('.stock-baseline-confirmation').exists()).toBe(false)
+  expect(save(wrapper).element.disabled).toBe(false)
+  await save(wrapper).trigger('click')
+  await flushPromises()
+  const record = inventoryApi.importInventory.mock.calls[0][0].records[0]
+  expect(record.snapshot_scope).toBe('listed')
+  expect(record.entries).toHaveLength(fields.length)
+  expect(record.entries.filter(entry => entry.count === 0)).toHaveLength(fields.length - 1)
+  expect(record.entries).toContainEqual(expect.objectContaining({ id: 'mazi', count: 0 }))
+  expect(record.entries.some(entry => entry.id === 'zhuangjinboli')).toBe(false)
+  expect(wrapper.find('.inventory-freshness time').exists()).toBe(Boolean(baseline))
+})
+
 it('取消已确认盘点需要确认丢弃，拒绝留草稿，同意后不写入并清掉勾选', async () => {
   const wrapper = render()
   await enterStockEditor(wrapper)
@@ -760,8 +806,8 @@ it.each([[390, 0], [390, 3], [1440, 0], [1440, 3]])('背包搜索玻璃能找到
     await save(wrapper).trigger('click'); await flushPromises()
     expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
     expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({
-      account_id: 'acc-a', entity_type: 'item', record_type: 'stock_snapshot', snapshot_scope: 'full',
-      entries: [expect.objectContaining({ id: 'zhuangjinboli', count: 7 })],
+      account_id: 'acc-a', entity_type: 'item', record_type: 'stock_snapshot', snapshot_scope: 'listed',
+      entries: expect.arrayContaining([expect.objectContaining({ id: 'zhuangjinboli', count: 7 })]),
     })
   } finally { wrapper.unmount() }
 })

@@ -98,13 +98,23 @@ function deferred() {
 
 it('空背包直接引导导入，养成计划只改变展示，不新增持久化页签', async () => {
   localStorage.setItem('star-tabs', 'review')
-  const wrapper = render()
+  const wrapper = render({ attachTo: document.body })
   await flushPromises()
   await loadStylesheet()
   expect(wrapper.get('.star-empty').text()).toContain('建立你的星石背包')
   expect(wrapper.get('.star-empty').text()).toContain('图片识别过程仅在本机完成')
   expect(wrapper.get('#product-root').classes()).toContain('is-empty-view')
+  const root = wrapper.get('#product-root').element
+  root.innerHTML = '<p class="review-overview"><span class="inconsistent-warning">未能确认截图中的背包数量或容量，请核对后填写。</span></p>'
+  expect(wrapper.get('#product-root').isVisible()).toBe(false)
+  expect(wrapper.get('.inconsistent-warning').isVisible()).toBe(false)
+  await wrapper.get('.star-empty .link:last-child').trigger('click')
+  expect(wrapper.find('.star-empty').exists()).toBe(false)
+  expect(wrapper.get('#product-root').element).toBe(root)
   expect(wrapper.get('#product-root').isVisible()).toBe(true)
+  expect(wrapper.get('.inconsistent-warning').isVisible()).toBe(true)
+  expect(embedMount).toHaveBeenCalledTimes(1)
+  expect(importInventory).not.toHaveBeenCalled()
   const options = embedMount.mock.calls[0][1]
   options.onSummaryChange({ currentCount: 3, planCount: 1, gameVersion: '如鸢' })
   await flushPromises()
@@ -152,11 +162,33 @@ it('默认进入背包，导入不再显示冗余标题且保留识别教程与�
   document.getElementById('yuanstar-embed-styles')?.remove()
 })
 
+it('手动核对空背包后切换账号，新账号重新显示导入引导', async () => {
+  auth.isLoggedIn = true
+  activeAccount.set('acc-1')
+  listAccounts.mockResolvedValue([
+    { id: 'acc-1', name: '账号 A', game: '如鸢' },
+    { id: 'acc-2', name: '账号 B', game: '如鸢' },
+  ])
+  const wrapper = render({ attachTo: document.body })
+  await flushPromises(); await loadStylesheet()
+  await wrapper.get('.star-empty .link:last-child').trigger('click')
+  expect(wrapper.get('#product-root').isVisible()).toBe(true)
+  activeAccount.set('acc-2')
+  await flushPromises()
+  expect(wrapper.get('.star-empty').isVisible()).toBe(true)
+  expect(wrapper.get('#product-root').isVisible()).toBe(false)
+  expect(embedMount).toHaveBeenCalledTimes(1)
+  expect(importInventory).not.toHaveBeenCalled()
+  expect(rebuildStarState).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
 it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 embed', async () => {
-  const wrapper = render()
+  const wrapper = render({ attachTo: document.body })
   await flushPromises()
   await loadStylesheet()
   await wrapper.get('.star-import-action').trigger('click')
+  wrapper.get('#product-root').element.innerHTML = '<span class="inconsistent-warning">请核对识别结果</span>'
   const options = embedMount.mock.calls[0][1]
   options.onActiveTabChange('review')
   await flushPromises()
@@ -165,6 +197,9 @@ it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 
   expect(backpack.classes()).toContain('on')
   expect(wrapper.find('.star-import-stage').exists()).toBe(false)
   expect(localStorage.getItem('star-tabs')).toBe('review')
+  expect(wrapper.find('.star-empty').exists()).toBe(false)
+  expect(wrapper.get('#product-root').isVisible()).toBe(true)
+  expect(wrapper.get('.inconsistent-warning').isVisible()).toBe(true)
   const handle = embedMount.mock.results[0].value
   handle.setActiveTab.mockClear()
   await wrapper.get('.star-import-action').trigger('click')

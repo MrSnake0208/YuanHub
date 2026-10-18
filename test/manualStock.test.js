@@ -80,3 +80,18 @@ test('完整全零盘点保留有效快照，entries为空不代表没有录入'
   assert.equal(doc.records[0].snapshot_scope, 'full')
   assert.deepEqual(doc.records[0].entries, [])
 })
+
+test('分类 listed 快照保留明确零值，不替代完整基准', function () {
+  const doc = buildManualStockSnapshot({ accountId: 'acc_partial', snapshotScope: 'listed', entries: [
+    { id: 'jizhi', count: 17 }, { id: 'mazi', count: 0 },
+  ] })
+  assert.equal(doc.records[0].snapshot_scope, 'listed')
+  assert.deepEqual(doc.records[0].entries, [
+    { id: 'jizhi', name: 'jizhi', count: 17 }, { id: 'mazi', name: 'mazi', count: 0 },
+  ])
+})
+
+test('手动快照拒绝非法范围和空 listed 快照', function () {
+  assert.throws(() => buildManualStockSnapshot({ snapshotScope: 'other', entries: [] }), /snapshotScope/)
+  assert.throws(() => buildManualStockSnapshot({ snapshotScope: 'listed', entries: [] }), /listed/)
+})
