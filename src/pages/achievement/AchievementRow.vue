@@ -37,9 +37,8 @@
       <p v-if="record.status !== 'completed' && editor.completed_on !== editor.baseDate" class="achievement-hint">完成日期草稿已保留，标记完成后可保存，或取消编辑。</p>
       <div class="achievement-editor-actions"><small>{{ editor.note.length }} / 500</small><button class="achievement-save" type="submit" :disabled="!writable || (editor.note === editor.baseNote && (editor.completed_on === editor.baseDate || record.status !== 'completed'))">保存备注</button><button type="button" :disabled="saving" @click="$emit('cancel', 'note')">取消</button></div>
     </form>
-    <details v-if="entry.method || entry.chapter || entry.spoiler" class="achievement-supplement">
-      <summary>完成说明</summary><p v-if="entry.chapter">章节：{{ entry.chapter }}</p><p v-if="entry.method">{{ entry.method }}</p>
-      <details v-if="entry.spoiler"><summary>注意事项与剧透</summary><p>{{ entry.spoiler }}</p></details>
+    <details v-if="entry.spoiler" class="achievement-supplement">
+      <summary>注意事项与剧透</summary><p>{{ entry.spoiler }}</p>
     </details>
   </li>
 </template>

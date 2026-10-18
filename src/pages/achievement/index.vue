@@ -28,7 +28,7 @@
             <div class="achievement-list-column">
               <template v-if="state.catalog">
                 <div class="achievement-toolbar">
-                  <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就名称、别名、条件或关联密探" placeholder="搜索成就、条件或关键词"></label>
+                  <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就名称、条件或关联密探" placeholder="搜索成就、条件或关键词"></label>
                   <label class="achievement-reward-filter">奖励<input v-model="filters.reward" type="search" list="achievement-rewards" aria-label="成就奖励筛选" placeholder="全部奖励"><datalist id="achievement-rewards"><option v-for="reward in rewardOptions" :key="reward" :value="reward" /></datalist></label>
                   <label>状态<select v-model="filters.status" aria-label="成就状态筛选"><option value="">全部状态</option><option v-for="(label, value) in STATUS_LABELS" :key="value" :value="value">{{ label }}</option></select></label>
                   <label>游戏分类<select v-model="filters.category" aria-label="游戏分类筛选"><option value="">全部分类</option><option v-for="category in state.catalog.categories" :key="category.category_id" :value="category.category_id">{{ category.name }}</option></select></label>

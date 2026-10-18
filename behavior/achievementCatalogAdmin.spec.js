@@ -182,20 +182,24 @@ it('导入先预览，非法项禁用确认；策略变化必须重做预览，�
   expect(api.achievementCatalogCommand.mock.calls.some(c => c[2] === 'publish')).toBe(false)
 })
 
-it('别名允许连续多行输入，数值目标清空后可保存为不完整草稿', async () => {
-  const initial = state(); initial.draft.entries[0].progress_kind = 'integer'
+it('无别名、方法或章节表单和别名搜索，保存其他字段保留历史内容', async () => {
+  const initial = state(); initial.draft.entries[0].progress_kind = 'integer'; initial.draft.entries[0].target = 10
+  Object.assign(initial.draft.entries[0], { aliases: ['历史别名'], method: '历史完成方法', chapter: '历史章节' })
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
-  const w = await page(); await w.get('.entry-row').trigger('click')
-  const aliases = w.get('.entry-editor textarea[rows="2"]')
-  await aliases.setValue('别名一\n')
-  expect(aliases.element.value).toBe('别名一\n')
-  await aliases.setValue('别名一\n别名二'); await aliases.trigger('blur')
+  const w = await page()
+  const search = w.get('input[type="search"]')
+  await search.setValue('历史别名')
+  expect(w.find('.entry-row').exists()).toBe(false)
+  await search.setValue('测试成就'); await w.get('.entry-row').trigger('click')
+  const editorText = w.get('.entry-editor').text()
+  for (const label of ['别名', '完成方法', '章节']) expect(editorText).not.toContain(label)
   const target = w.get('.entry-editor input[min="0.000000001"]')
   await target.setValue('10'); await target.setValue('')
   api.achievementCatalogCommand.mockImplementation((g, u, a, r, fields) => Promise.resolve({ ...initial, revision: 4, draft: fields.catalog }))
   await button(w, '保存草稿').trigger('click'); await flushPromises()
   const e = api.achievementCatalogCommand.mock.calls[0][4].catalog.entries[0]
-  expect(e.aliases).toEqual(['别名一', '别名二']); expect(e.target).toBeNull()
+  expect(e.aliases).toEqual(['历史别名']); expect(e.method).toBe('历史完成方法'); expect(e.chapter).toBe('历史章节')
+  expect(e.target).toBeNull()
 })
 
 it('未保存编辑离开时可取消，版本冲突后可导出本地内容再恢复', async () => {

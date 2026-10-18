@@ -23,7 +23,7 @@
             <p class="catalog-summary">已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 编辑修订 {{ data.revision }}</p>
             <p class="version">当前发布：{{ data.published.version }}<br>{{ data.published.published_at }} · {{ data.published.published_by }}</p>
             <div class="toolbar">
-              <label>搜索成就<input v-model="search" type="search" placeholder="名称、别名或 ID"></label>
+              <label>搜索成就<input v-model="search" type="search" placeholder="名称或 ID"></label>
               <label>分类<select v-model="categoryFilter"><option value="">全部分类</option><option v-for="c in draft.categories" :key="c.category_id" :value="c.category_id">{{ c.name }}</option></select></label>
               <label>编辑状态<select v-model="stateFilter"><option value="">全部</option><option value="add">新增</option><option value="update">已修改</option><option value="retired">已退役</option></select></label>
               <button :disabled="busy || dirty || !draft.categories.some(c => c.enabled)" @click="addEntry">新增成就</button>
@@ -69,18 +69,13 @@
                     <label>游戏原生分类<select v-model="entry.category_id"><option v-for="c in draft.categories.filter(c => c.enabled || c.category_id === entry.category_id)" :key="c.category_id" :value="c.category_id">{{ c.name }}</option></select></label>
                     <label>原始显示顺序<input v-model.number="entry.sort" type="number" step="1"></label>
                     <label>隐藏成就<select v-model="entry.is_hidden"><option :value="null">未知</option><option :value="false">否</option><option :value="true">是</option></select></label>
-                    <label class="full">别名（每行一个）<textarea :value="entry.aliases.join('\n')" rows="2" @input="entry.aliases = $event.target.value.split('\n')" @blur="entry.aliases = entry.aliases.map(a => a.trim()).filter(Boolean)"></textarea></label>
                     <label class="check full"><input type="checkbox" :checked="retired(entry)" @change="setRetired(entry.achievement_id, $event.target.checked)">退役（从玩家当前目录移出，保留全部个人记录）</label>
                   </div>
                 </fieldset>
                 <fieldset :disabled="busy">
                   <legend>完成信息与奖励</legend>
                   <label>完成条件（选填）<textarea v-model="entry.condition" rows="3" maxlength="4000"></textarea></label>
-                  <label>完成方法（选填）<textarea v-model="entry.method" rows="3" maxlength="4000"></textarea></label>
-                  <div class="fields">
-                    <label>章节（可选）<input v-model="entry.chapter" maxlength="4000"></label>
-                    <label>奖励文本（选填）<input v-model="entry.reward" maxlength="4000" placeholder="可留空"></label>
-                  </div>
+                  <label>奖励文本（选填）<input v-model="entry.reward" maxlength="4000" placeholder="可留空"></label>
                   <label>剧透或注意事项（可选）<textarea v-model="entry.spoiler" rows="2" maxlength="4000"></textarea></label>
                 </fieldset>
                 <fieldset :disabled="busy">
@@ -200,7 +195,7 @@ const publicationIssues = computed(() => {
 })
 const filtered = computed(() => (draft.value?.entries || []).filter(e => {
   if (categoryFilter.value && e.category_id !== categoryFilter.value) return false
-  if (search.value && ![e.name, e.achievement_id, ...e.aliases].join(' ').toLowerCase().includes(search.value.toLowerCase())) return false
+  if (search.value && ![e.name, e.achievement_id].join(' ').toLowerCase().includes(search.value.toLowerCase())) return false
   const old = publishedEntries.value.find(p => p.achievement_id === e.achievement_id)
   const status = stateFilter.value
   if (status === 'retired') return retired(e)

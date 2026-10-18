@@ -23,9 +23,10 @@ test('历史三态映射两态、目录分母固定，关注和移出目录记�
   assert.deepEqual(summarizeAchievements(updated, records), summarizeAchievements(entries, records))
   assert.equal(achievementArchive().records.length, 0)
 })
-test('搜索仅使用已有名称、别名、条件和关联密探，隐藏属性独立于状态', () => {
+test('搜索使用名称、条件和关联密探，不使用历史别名，隐藏属性独立于状态', () => {
   const { entries } = achievementCatalog()
-  for (const query of ['测试别名', '测试密探', '条件 1']) assert.deepEqual(filterAchievements(entries, [], filters({ query })).map(entry => entry.achievement_id), [entries[0].achievement_id])
+  for (const query of ['测试成就 1', '测试密探', '条件 1']) assert.deepEqual(filterAchievements(entries, [], filters({ query })).map(entry => entry.achievement_id), [entries[0].achievement_id])
+  assert.deepEqual(filterAchievements(entries, [], filters({ query: '测试别名' })), [])
   assert.deepEqual(filterAchievements(entries, [], filters({ hidden: true })).map(entry => entry.achievement_id), [entries[1].achievement_id])
   assert.equal(filterAchievements(entries, [], filters({ query: '不存在的条件' })).length, 0)
 })
@@ -58,7 +59,7 @@ test('资料未准备时生产开关关闭、开发不注入样例、路由允�
 test('奖励文本支持真实选项和关键词，与分类/状态/关注/搜索共同筛选', () => {
   const entries = achievementCatalog().entries.map((entry, index) => ({ ...entry, reward: index === 2 ? null : '测试资源 × ' + (index + 1) }))
   const records = [{ ...emptyRecord(entries[0].achievement_id), status: 'completed', favorite: true }, { ...emptyRecord('removed'), favorite: true }]
-  assert.deepEqual(filterAchievements(entries, records, filters({ reward: '  测试资源  ', category: 'test', status: 'completed', favorite: true, query: '别名' })).map(item => item.achievement_id), [entries[0].achievement_id])
+  assert.deepEqual(filterAchievements(entries, records, filters({ reward: '  测试资源  ', category: 'test', status: 'completed', favorite: true, query: '测试成就 1' })).map(item => item.achievement_id), [entries[0].achievement_id])
   assert.equal(filterAchievements(entries, records, filters({ reward: '测试资源', hidden: true })).length, 1)
   assert.equal(filterAchievements(entries, records, filters({ reward: '不存在' })).length, 0)
   assert.equal(filterAchievements(entries, records, filters({ reward: '   ' })).length, 3)
