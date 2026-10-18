@@ -749,8 +749,7 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', 
 .whitecoin-shortcuts { border-bottom: 1px solid var(--line); }
 .shortcut-options [aria-pressed="true"], .training-group-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
 .whitecoin-purpose select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-.monthly-tier-field { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
-.monthly-tier-field select { min-width: 0; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; }
+.monthly-tier-field select { border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); }
 .shortcut-note { color: var(--ink-60); }
 .training-mode-section { border-bottom: 1px solid var(--line); }
 .training-replace { border: 1px solid var(--reward-gold); border-radius: 9px; background: var(--cream); }
