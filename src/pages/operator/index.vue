@@ -915,7 +915,6 @@
                 </button>
               </template>
               <template #footer>
-                <details><summary>排序说明</summary><p>置顶密探优先，其余按分组顺序、品质、等级、化极、属性与实装顺序排列。</p></details>
                 <OperatorOrganizationManager
                   ref="organizationManager"
                   v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
