@@ -1,0 +1,26 @@
+.achievement-page { color: var(--ink); background: var(--paper); }
+.achievement-page button, .achievement-dialog button { color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--surface); cursor: pointer; }
+.achievement-page button:hover:not(:disabled), .achievement-dialog button:hover:not(:disabled) { border-color: var(--tea); }
+.achievement-page button[aria-pressed="true"] { color: var(--tea); border-color: var(--tea); background: var(--cream); }
+.achievement-page button:disabled, .achievement-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.achievement-page :is(button, input, select, summary, a):focus-visible, .achievement-dialog :is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.achievement-page input, .achievement-page select, .achievement-dialog :is(input:not([type="checkbox"]), select, textarea) { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.achievement-page a, .achievement-dialog a { color: var(--tea); }
+.achievement-summary, .achievement-coverage, .achievement-hint, .achievement-results, .achievement-catalog-info, .achievement-dialog small { color: var(--ink-60); }
+.achievement-summary b, .achievement-dialog h2 { color: var(--tea); }
+.achievement-error { color: var(--rouge); }
+.achievement-list { list-style: none; }
+.achievement-row { border-bottom: 1px solid var(--line); }
+.achievement-title { font-weight: 600; text-align: left; }
+.achievement-row .achievement-title { border: 0; background: transparent; color: var(--tea); }
+.achievement-row-copy p { color: var(--ink); }
+.achievement-row-copy small { color: var(--ink-60); }
+.achievement-toolbar, .achievement-batch { border-block: 1px solid var(--line); }
+.achievement-search { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.achievement-search input { border: 0; background: transparent; }
+.achievement-more-filters summary, .achievement-catalog-info summary, .achievement-dialog summary { cursor: pointer; }
+.achievement-more-filters > div { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.achievement-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); background: rgb(38 31 25 / .45); }
+.achievement-dialog { background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 48px rgb(38 31 25 / .15); }
+.achievement-dialog header, .achievement-dialog footer { background: var(--surface); border-color: var(--line); }
+.achievement-dialog p, .achievement-dialog li, .achievement-dialog small { overflow-wrap: anywhere; white-space: pre-wrap; }

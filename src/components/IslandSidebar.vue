@@ -72,6 +72,9 @@
             <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }">
               <ScrollText :size="20" aria-hidden="true" /><span>招募档案</span>
             </router-link>
+            <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }">
+              <BookCheck :size="20" aria-hidden="true" /><span>成就档案</span>
+            </router-link>
             <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
               <PackageOpen :size="20" aria-hidden="true" /><span>库存追踪</span>
             </router-link>
@@ -183,6 +186,9 @@
       <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
         <CalendarDays :size="18" aria-hidden="true" />活动日历
       </router-link>
+      <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }">
+        <BookCheck :size="18" aria-hidden="true" />成就档案
+      </router-link>
       <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
         <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
       </router-link>
@@ -253,6 +259,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  BookCheck,
   MessageSquareText,
   MoreHorizontal,
   PackageOpen,
@@ -287,6 +294,7 @@ const showManagement = computed(() =>
 );
 const showCalendar = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR));
 const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE));
+const showAchievement = computed(() => isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
 const showBetaCommunityEntry = computed(
   () =>
     !!isLoggedIn.value &&
