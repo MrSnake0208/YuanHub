@@ -1411,7 +1411,7 @@ describe('奖励补录工作台弹层', () => {
     expect(inventoryApi.importInventory.mock.calls[0][0].records[0].account_id).toBe('acc-1')
   })
 
-  it('已选图标可原位减少，普通道具步进 1、白金币步进 10，减至零后移除', async () => {
+  it('已选图标可原位减少，白金币首次添加 10 后与普通道具均步进 1，减至零后移除', async () => {
     const wrapper = mountWorkspace()
     await button(wrapper, '添加奖励流水').trigger('click')
     await flushPromises()
@@ -1434,10 +1434,15 @@ describe('奖励补录工作台弹层', () => {
     await clickElement(tile('白金币'))
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
     await clickElement(tile('白金币'))
-    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 20')
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 11')
     await clickElement(minus('白金币'))
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
     await clickElement(minus('白金币'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 9')
+    for (let remaining = 8; remaining >= 0; remaining--) {
+      await clickElement(minus('白金币'))
+      expect(tile('白金币').getAttribute('aria-label')).toContain(`当前已选 ${remaining}`)
+    }
     expect(minus('白金币')).toBeNull()
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 0')
   })
