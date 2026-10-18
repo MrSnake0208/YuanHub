@@ -2534,61 +2534,62 @@
             </button>
           </div>
 
-          <OperatorEditorNav :scroll-root="editorShortViewport ? editorPanelEl : editorBodyEl" />
+          <OperatorEditorNav v-model="editorSection" />
 
           <div ref="editorBodyEl" class="editor-body">
-            <section class="editor-row editor-growth-section" aria-labelledby="operator-editor-growth" data-editor-section="growth">
-              <div class="editor-section-head">
-                <h4 id="operator-editor-growth" class="editor-label" tabindex="-1"><Sparkles :size="20" aria-hidden="true" />基础养成</h4>
-                <OperatorLevelBreakthroughSelect v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
-              </div>
+            <section v-show="editorSection === 'growth'" id="operator-editor-growth" class="editor-row editor-growth-section" role="tabpanel" aria-labelledby="operator-editor-tab-growth" tabindex="0" data-editor-section="growth">
               <div class="num-fields">
-                <div class="level-row">
-                  <label
-                    >等级
-                    <input
-                      type="number"
-                      v-model.number="editForm.level"
-                      @input="editForm.levelBreakthroughStage = inferredLevelBreakthroughStage(editForm.level)"
-                      inputmode="numeric"
-                      min="0"
-                      max="100"
-                  /></label>
-                  <label
-                    >修为
-                    <input
-                      type="number"
-                      v-model.number="editForm.elite"
-                      inputmode="numeric"
-                      min="0"
-                      :max="maxEliteForLevel"
-                  /></label>
-                  <span class="elite-hint"
-                    >最高修为：{{ maxEliteForLevel }}</span
-                  >
-                </div>
-                <div class="editor-growth-actions">
-                  <button
-                    type="button"
-                    class="btn ghost editor-growth-preset"
-                    :disabled="savingEdit"
-                    title="仅填入等级和修为；点击保存后生效"
-                    @click="applyEditGrowthPreset(100, 17)"
-                  >100级 / 修为17</button>
-                  <button
-                    type="button"
-                    class="btn ghost editor-growth-preset"
-                    :disabled="savingEdit"
-                    title="仅填入等级和修为；点击保存后生效"
-                    @click="applyEditGrowthPreset(90, 15)"
-                  >90级 / 修为15</button>
-                  <button
-                    type="button"
-                    class="btn ghost editor-fill-max"
-                    :disabled="savingEdit"
-                    title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
-                    @click="fillEditToMax()"
-                  >一键拉满等级/修为/漆园蝶</button>
+                <div class="editor-level-block">
+                  <p class="editor-growth-note">记录游戏现状；保存不扣除库存。本体与 SP 共享。</p>
+                  <div class="level-row">
+                    <div class="level-input-group">
+                      <label
+                        >等级
+                        <input
+                          type="number"
+                          v-model.number="editForm.level"
+                          inputmode="numeric"
+                          min="0"
+                          max="100"
+                      /></label>
+                      <OperatorLevelBreakthroughSelect inline v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
+                    </div>
+                    <label
+                      >修为
+                      <input
+                        type="number"
+                        v-model.number="editForm.elite"
+                        inputmode="numeric"
+                        min="0"
+                        :max="maxEliteForLevel"
+                    /></label>
+                    <span class="elite-hint"
+                      >最高修为：{{ maxEliteForLevel }}</span
+                    >
+                  </div>
+                  <div class="editor-growth-actions">
+                    <button
+                      type="button"
+                      class="btn ghost editor-growth-preset"
+                      :disabled="savingEdit"
+                      title="仅填入等级和修为；点击保存后生效"
+                      @click="applyEditGrowthPreset(100, 17)"
+                    >100级 / 修为17</button>
+                    <button
+                      type="button"
+                      class="btn ghost editor-growth-preset"
+                      :disabled="savingEdit"
+                      title="仅填入等级和修为；点击保存后生效"
+                      @click="applyEditGrowthPreset(90, 15)"
+                    >90级 / 修为15</button>
+                    <button
+                      type="button"
+                      class="btn ghost editor-fill-max"
+                      :disabled="savingEdit"
+                      title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
+                      @click="fillEditToMax()"
+                    >一键拉满等级/修为/漆园蝶</button>
+                  </div>
                 </div>
                 <div
                   class="star-card"
@@ -2599,12 +2600,13 @@
                   "
                 >
                   <div class="star-row">
-                    <span class="star-caption">化极</span>
+                    <span class="star-caption"><Star :size="19" aria-hidden="true" />化极</span>
                     <span class="star-groups">
                       <button
                         type="button"
                         class="star-pill"
                         :class="{ on: starGroupName === 'none' }"
+                        :aria-pressed="starGroupName === 'none'"
                         @click="pickStarGroup('none')"
                       >
                         未拥有
@@ -2615,6 +2617,7 @@
                         type="button"
                         class="star-pill"
                         :class="{ on: starGroupName === s }"
+                        :aria-pressed="starGroupName === s"
                         @click="pickStarGroup(s)"
                       >
                         {{ s }}星
@@ -2649,17 +2652,19 @@
                         type="button"
                         class="node-chip"
                         :class="{ on: starNode === n }"
+                        :aria-pressed="starNode === n"
                         @click="pickStarNode(n)"
                       >
                         {{ starGroupName }}-{{ n }}
                       </button>
                     </span>
                   </div>
-                  <small v-if="operatorAwakeningSupported(editingOp)" class="star-awakening-hint">{{ editForm.awakened == null && Number(editForm.starLevel) === 25 ? '觉醒待确认；' : '' }}五星后可开启觉醒记录，仅记录游戏内状态，不扣库存；保存后生效。</small>
+                  <small v-if="operatorAwakeningSupported(editingOp) && editForm.awakened == null && Number(editForm.starLevel) === 25" class="star-awakening-hint">觉醒待确认；五星后可记录。</small>
+                  <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" class="huaji-review-note" role="status"><CircleAlert :size="16" aria-hidden="true" />历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 </div>
-                <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" role="status">历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 <div class="oddity-editor">
                   <strong class="oddity-caption">
+                    <BookOpen :size="19" aria-hidden="true" />
                     奇闻属性
                     <small v-if="oddityCatalogIncomplete">图鉴待维护</small>
                   </strong>
@@ -2708,8 +2713,8 @@
               </div>
             </section>
 
-            <section class="editor-row disc-editor-row" aria-labelledby="operator-editor-discs" data-editor-section="discs">
-              <h4 id="operator-editor-discs" class="editor-label" tabindex="-1"><Target :size="20" aria-hidden="true" />命盘</h4>
+            <section v-show="editorSection === 'discs'" id="operator-editor-discs" class="editor-row disc-editor-row" role="tabpanel" aria-labelledby="operator-editor-tab-discs" tabindex="0" data-editor-section="discs">
+              <div class="editor-section-head"><h4 class="editor-label"><Target :size="23" aria-hidden="true" />命盘</h4><p>配置命盘组合，提升密探的战斗能力。</p></div>
               <div class="disc-loadout-editor">
                 <div
                   class="disc-loadout-tabs"
@@ -2734,8 +2739,9 @@
                       selectDiscLoadoutTab(index + 1, true)
                     "
                   >
-                    <span>组合 {{ index + 1 }}</span>
-                    <strong>{{ loadout.name || "未命名组合" }}</strong>
+                    <CircleDot v-if="selectedDiscLoadoutIndex === index" class="disc-combination-mark" :size="22" aria-hidden="true" /><Circle v-else class="disc-combination-mark" :size="22" aria-hidden="true" />
+                    <span class="disc-combination-label">组合 {{ index + 1 }}</span>
+                    <strong>{{ loadout.name || "未命名组合" }}</strong><ChevronRight class="disc-combination-arrow" :size="18" aria-hidden="true" />
                   </button>
                 </div>
 
@@ -2764,7 +2770,8 @@
                       </span>
                       <input
                         :id="'disc-loadout-name-' + selectedDiscLoadoutIndex"
-                        :value="selectedDiscLoadout.name"
+                        :value="selectedDiscLoadout.nameMode !== 'manual' && !selectedDiscLoadout.discNames.length ? '' : selectedDiscLoadout.name"
+                        placeholder="选择命盘后自动命名"
                         type="text"
                         maxlength="64"
                         autocomplete="off"
@@ -2829,8 +2836,7 @@
               </div>
             </section>
 
-            <section class="editor-row editor-stars-section" aria-labelledby="operator-editor-stars" data-editor-section="stars">
-              <h4 id="operator-editor-stars" class="editor-label" tabindex="-1"><Star :size="20" aria-hidden="true" />星石</h4>
+            <section v-show="editorSection === 'stars'" id="operator-editor-stars" class="editor-row editor-stars-section" role="tabpanel" aria-labelledby="operator-editor-tab-stars" tabindex="0" data-editor-section="stars">
               <div class="stone-editor">
                 <StarLoadoutEditor
                   v-if="editingOp"
@@ -2963,8 +2969,11 @@ import {
   Calculator,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
+  Circle,
   CircleAlert,
+  CircleDot,
   Download,
   Heart,
   Eye,
@@ -3345,6 +3354,7 @@ const discTooltip = ref({
 const editing = ref(false);
 const editingId = ref("");
 const editingOp = ref(null);
+const editorSection = ref('growth');
 const editGame = ref("");
 const editForm = ref({
   elite: 1,
@@ -3367,7 +3377,7 @@ const editConflictDraft = ref(null);
 const editBaseline = ref("");
 const editorDirty = computed(function () {
   return editing.value &&
-    JSON.stringify([editForm.value, combatDisplayMode.value]) !== editBaseline.value;
+    (JSON.stringify([editForm.value, combatDisplayMode.value]) !== editBaseline.value || starLoadoutIsDirty());
 });
 const confirmEditorDiscard = useUnsavedChanges(editorDirty, "密探编辑内容");
 // C2 source of truth: Current Inventory + Current Star Loadout only.
@@ -4194,6 +4204,12 @@ watch(
   },
 );
 
+watch(editorSection, async function () {
+  hideDiscTooltip();
+  await nextTick();
+  if (editorBodyEl.value) editorBodyEl.value.scrollTop = 0;
+});
+
 watch(editing, async function (isOpen) {
   if (isOpen) {
     bodyOverflowBeforeEditor = document.body.style.overflow;
@@ -4546,6 +4562,7 @@ function boundedOddityValue(rawValue, maxValue) {
 }
 
 function showEditOddityError(key, message) {
+  editorSection.value = 'growth';
   editOddityErrorKey.value = key;
   editNotice.value = oddityFieldName(key) + message;
   editNoticeError.value = true;
@@ -7765,6 +7782,7 @@ async function openEdit(id) {
   const existing = currentMap.value[id] || {};
   editingId.value = id;
   editingOp.value = op;
+  editorSection.value = 'growth';
   applyEditorEntry(existing, op, id, Object.keys(existing).length > 0);
   editConflictDraft.value = null;
   editNotice.value = "";
@@ -7912,16 +7930,19 @@ async function saveEdit() {
     !validInteger(rawStarLevel, starLevel)
   ) {
     editNotice.value = "等级、修为和星级必须填写整数";
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
   if (level < 0 || level > OPERATOR_LEVEL_MAX) {
     editNotice.value = "等级需在 0.." + OPERATOR_LEVEL_MAX + " 之间";
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
   if (elite < 0 || elite > OPERATOR_ELITE_MAX) {
     editNotice.value = "修为需在 0.." + OPERATOR_ELITE_MAX + " 之间";
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
@@ -7932,6 +7953,7 @@ async function saveEdit() {
   if (editForm.value.awakened === true && oldHuaji.awakened !== true &&
       (!operatorAwakeningSupported(editingOp.value) || !editorCanConfirmAwakening.value)) {
     editNotice.value = '请先核实五星化极，再确认游戏中已完成觉醒';
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
@@ -7940,12 +7962,14 @@ async function saveEdit() {
     editNotice.value = editingOp.value.spOf
       ? "SP 密探星级需在 0..5 之间"
       : "星级需在 0.." + MAX_STAR_LEVEL + " 之间（0=未拥有，觉醒独立确认）";
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
   const maxElite = getMaxEliteForLevel(level);
   if (elite > maxElite) {
     editNotice.value = "修为不能超过当前等级上限 " + maxElite;
+    editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
   }
