@@ -1,14 +1,15 @@
-export const STATUS_LABELS = Object.freeze({ pending: '待核对', incomplete: '未完成', completed: '已完成' })
+export const STATUS_LABELS = Object.freeze({ incomplete: '未完成', completed: '已完成' })
+export const completionStatus = record => record?.status === 'completed' ? 'completed' : 'incomplete'
 export const PAGE_SIZE = 50
 export const MAX_IMPORT_BYTES = 1048576
 export const emptyRecord = id => ({ achievement_id: id, status: 'pending', favorite: false, note: '', progress: null, completed_on: null })
 
 export function summarizeAchievements(entries, records) {
   const byId = new Map(records.map(record => [record.achievement_id, record]))
-  const result = { total: entries.length, pending: 0, incomplete: 0, completed: 0, favorite: 0 }
+  const result = { total: entries.length, incomplete: 0, completed: 0, favorite: 0 }
   for (const entry of entries) {
     const record = byId.get(entry.achievement_id)
-    result[record?.status || 'pending']++
+    result[completionStatus(record)]++
     if (record?.favorite) result.favorite++
   }
   return result
@@ -21,7 +22,7 @@ export function filterAchievements(entries, records, filters) {
   return entries.filter(entry => {
     const record = byId.get(entry.achievement_id) || emptyRecord(entry.achievement_id)
     return (!filters.category || entry.category_id === filters.category) &&
-      (!filters.status || record.status === filters.status) &&
+      (!filters.status || completionStatus(record) === filters.status) &&
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
       (!reward || (entry.reward || '').toLocaleLowerCase().includes(reward)) &&
@@ -32,6 +33,15 @@ export function filterAchievements(entries, records, filters) {
 
 export function hasQuantifiedProgress(entry) {
   return ['integer', 'number'].includes(entry?.progress_kind) && Number.isFinite(entry.target) && entry.target > 0
+}
+
+export function progressValidationError(entry, value) {
+  if (!hasQuantifiedProgress(entry)) return '此成就不支持数值进度。'
+  if (value === '') return ''
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < 0 || number > Number.MAX_SAFE_INTEGER) return '请输入 0 到 9007199254740991 之间的有效数值。'
+  if (entry.progress_kind === 'integer' && !Number.isSafeInteger(number)) return '此成就的进度必须为整数。'
+  return ''
 }
 
 export function readAchievementBackup(text) {

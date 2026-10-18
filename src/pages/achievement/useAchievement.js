@@ -4,10 +4,10 @@ import { listAccounts } from '../../api/accounts.js'
 import { activeAccount, DEFAULT_ACCOUNT_GAME } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { useAccountListUpdates } from '../../store/accountList.js'
-import { emptyRecord, filterAchievements, PAGE_SIZE, summarizeAchievements } from './rules.js'
+import { completionStatus, emptyRecord, filterAchievements, PAGE_SIZE, summarizeAchievements } from './rules.js'
 
 export function useAchievement() {
-  const state = reactive({ accounts: [], accountsLoading: false, archive: null, catalog: null, loading: false, busy: false, error: '', catalogError: '', notice: '', contextVersion: 0, undo: null })
+  const state = reactive({ accounts: [], accountsLoading: false, archive: null, catalog: null, loading: false, busy: false, error: '', catalogError: '', notice: '', contextVersion: 0, undo: null, savingIds: [], savedIds: [], failedIds: [], pendingRemoval: [] })
   const publicGame = ref(DEFAULT_ACCOUNT_GAME)
   const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
   const accountId = computed(() => activeAccount.id)
@@ -19,16 +19,18 @@ export function useAchievement() {
   const entries = computed(() => state.catalog?.entries || [])
   const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false })
   const page = ref(0), batchMode = ref(false), selected = ref([])
-  const filtered = computed(() => filterAchievements(entries.value, records.value, filters))
+  const filtered = computed(() => filterAchievements(entries.value, records.value.map(record =>
+    filters.status === 'incomplete' && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters))
   const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
   const summary = computed(() => summarizeAchievements(entries.value, records.value))
   const recordFor = id => records.value.find(record => record.achievement_id === id) || emptyRecord(id)
-  let generation = 0, read = 0, accountRead = 0, alive = true
+  let generation = 0, read = 0, accountRead = 0, alive = true, removalTimer
+  function clearRemoval() { clearTimeout(removalTimer); state.pendingRemoval = []; state.savedIds = [] }
   const capture = () => ({ generation, identity: identity.value, accountId: accountId.value, game: game.value })
   const matches = token => alive && token.generation === generation && token.identity === identity.value && token.accountId === accountId.value && token.game === game.value
   function reset() {
-    generation++; read++
-    Object.assign(state, { archive: null, catalog: null, loading: false, busy: false, error: '', catalogError: '', notice: '', undo: null, contextVersion: state.contextVersion + 1 })
+    generation++; read++; clearRemoval()
+    Object.assign(state, { archive: null, catalog: null, loading: false, busy: false, error: '', catalogError: '', notice: '', undo: null, savingIds: [], failedIds: [], contextVersion: state.contextVersion + 1 })
     selected.value = []; batchMode.value = false; page.value = 0
   }
   async function refresh() {
@@ -75,10 +77,16 @@ export function useAchievement() {
       if ('status' in patch) fields.completed_on = current.completed_on
       return fields
     })
-    state.busy = true; state.error = ''; state.notice = ''; read++
+    const completing = patches.filter(patch => patch.status === 'completed' && completionStatus(recordFor(patch.achievement_id)) !== 'completed').map(patch => patch.achievement_id)
+    state.busy = true; state.savingIds = patches.map(patch => patch.achievement_id); state.failedIds = []; state.error = ''; state.notice = ''; read++
     try {
       const result = await api.writeAchievements(token.accountId, token.identity, revision, patches)
       if (!matches(token)) return false
+      if (result.account_id !== token.accountId || result.game !== token.game) throw new Error('档案归属不一致，请重新读取账号。')
+      clearRemoval()
+      state.savedIds = patches.map(patch => patch.achievement_id)
+      state.pendingRemoval = filters.status === 'incomplete' ? completing : []
+      removalTimer = setTimeout(clearRemoval, 6000)
       state.archive = result
       state.undo = undoing ? null : { patches: before, revision: result.revision, token }
       state.notice = undoing ? '已撤销，恢复到本次操作之前。' : '已保存到当前账号。'
@@ -86,6 +94,7 @@ export function useAchievement() {
     } catch (error) {
       if (matches(token)) {
         state.undo = null
+        state.failedIds = patches.map(patch => patch.achievement_id)
         if (error.status === 409) {
           state.busy = false
           await refresh()
@@ -93,7 +102,7 @@ export function useAchievement() {
         } else state.error = error.message || '保存失败，请重试。'
       }
       return false
-    } finally { if (matches(token)) state.busy = false }
+    } finally { if (matches(token)) { state.busy = false; state.savingIds = [] } }
   }
   async function undo() {
     const operation = state.undo
@@ -105,12 +114,12 @@ export function useAchievement() {
     selected.value = selected.value.includes(id) ? selected.value.filter(value => value !== id) : [...selected.value, id]
   }
   function resetFilters() { Object.assign(filters, { query: '', category: '', reward: '', status: '', favorite: false, hidden: false }) }
-  watch(filters, () => { page.value = 0; selected.value = [] }, { flush: 'sync' })
+  watch(filters, () => { clearRemoval(); page.value = 0; selected.value = [] }, { flush: 'sync' })
   watch(page, () => { selected.value = [] }, { flush: 'sync' })
   watch(pageEntries, values => { selected.value = selected.value.filter(id => values.some(entry => entry.achievement_id === id)) })
   useAccountListUpdates(next => { state.accounts = next; activeAccount.syncAccounts(next) })
   watch(identity, () => { state.accounts = []; state.accountsLoading = false; accountRead++; loadAccounts() }, { flush: 'sync', immediate: true })
   watch([identity, accountId, game, available], () => { reset(); refresh() }, { immediate: true, flush: 'sync' })
-  onScopeDispose(() => { alive = false; generation++; accountRead++ })
+  onScopeDispose(() => { alive = false; generation++; accountRead++; clearRemoval() })
   return { state, identity, accountId, account, game, publicGame, available, writable, entries, records, filters, page, batchMode, selected, filtered, pageEntries, summary, recordFor, capture, matches, refresh, loadAccounts, save, undo, toggleSelection, resetFilters }
 }
