@@ -45,7 +45,7 @@ curl --fail-with-body \
   "$BASE_URL/open-api/inventory/export" -o inventory-backup.json
 ```
 
-示例变量定义见[快速接入](./guide.md)。导入前用下载示例构造自己的文件、替换账号及合法 ID，不直接把示例当作生产库存。
+示例变量定义见[第三方接入指南](./guide.md)。导入前用下载示例构造自己的文件、替换账号及合法 ID，不直接把示例当作生产库存。
 
 ## JWT 备份接口
 

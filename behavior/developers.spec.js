@@ -164,16 +164,24 @@ it('directory responds to breakpoints without refresh, retains search, and relea
 
 it('home offers four real scenarios without the Markdown directory, downloads or network requests', async () => {
   const { wrapper, router } = await render('/developers')
-  expect(wrapper.get('h1').text()).toBe('让你的工具连接 YuanHub')
+  expect(wrapper.get('h1').text()).toBe('将 YuanHub 数据接入你的应用')
   expect(wrapper.findAll('.developer-scenario').map(link => link.attributes('href'))).toEqual(developerUseCases.map(item => item.path))
   expect(wrapper.find('.developer-directory, .document-body, a[download]').exists()).toBe(false)
   expect(fetch).not.toHaveBeenCalled()
+  expect(wrapper.findAll('.developer-scenario-access').map(label => label.text())).toEqual([
+    '用户授权 · operator:read', '用户授权 · inventory:read', '用户授权 · calendar:read', '公开数据 · 无需用户授权'
+  ])
   await wrapper.get('.developer-scenario').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.path).toBe('/developers/use-cases/operator-read')
-  expect(wrapper.get('h1').text()).toBe('读取我的密探')
-  expect(wrapper.get('a[href="/user/profile"]').text()).toContain('前往创建连接码')
+  expect(wrapper.get('h1').text()).toBe('第三方应用密探数据接入指南')
+  expect(wrapper.get('a[href="/user/profile"]').text()).toContain('为测试账号创建连接码')
   expect(wrapper.find('a[href="/developers/api/operator"]').exists()).toBe(true)
-  expect(wrapper.findAll('.developer-tutorial section h2')).toHaveLength(4)
+  expect(wrapper.findAll('.developer-tutorial section h2').map(heading => heading.text())).toEqual([
+    '功能与权限', '开发者调试：先用自己的测试账号', '应用用户授权：每位用户独立连接', '接入与上线安全', '将完整集成需求交给 AI'
+  ])
+  expect(wrapper.text()).toContain('500 名玩家各自授权')
+  expect(wrapper.text()).toContain('不能显示“YuanHub Token 已撤销”')
+  expect(wrapper.text()).toContain('每个游戏子账号最多 5 个 Token')
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -190,7 +198,7 @@ it('copies the full AI task and public API address without touching user secrets
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('connection creation follows the existing login guard with a return path', async () => {
+it('test-account connection creation follows the existing login guard with a return path', async () => {
   const { wrapper, router } = await render('/developers/use-cases/operator-read')
   await wrapper.get('a[href="/user/profile"]').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.path).toBe('/login')
@@ -232,5 +240,5 @@ it('old homepage anchors still load the original Markdown and return to the new 
   expect(fetch.mock.calls[0][0]).toContain('developers/index.md')
   await router.push('/developers'); await flushPromises()
   expect(wrapper.find('.document-body').exists()).toBe(false)
-  expect(wrapper.get('h1').text()).toBe('让你的工具连接 YuanHub')
+  expect(wrapper.get('h1').text()).toBe('将 YuanHub 数据接入你的应用')
 })

@@ -9,6 +9,7 @@
 .developer-scenario { display: flex; align-items: start; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-decoration: none; }
 .developer-scenario > svg { flex-shrink: 0; margin-top: 2px; }
 .developer-scenario p { margin: 0; color: var(--ink-60); font-size: 14px; }
+.developer-scenario .developer-scenario-access { margin-top: 8px; color: var(--tea); font-size: 13px; font-weight: 700; }
 .developer-scenario-action { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .developer-scenario:hover, .developer-scenario:active { border-color: var(--tea); background: var(--cream); }
 .developer-connect { padding: 20px 0; border-block: 1px solid var(--line); }

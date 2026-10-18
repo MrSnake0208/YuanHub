@@ -12,7 +12,7 @@
         <details ref="directory" class="developer-directory" :open="wideLayout">
           <summary>文档目录 · {{ current?.title || '选择文档' }}</summary>
           <nav aria-label="开发者文档目录">
-            <router-link class="developer-tutorial-link" to="/developers/use-cases/operator-read">新手接入：读取我的密探</router-link>
+            <router-link class="developer-tutorial-link" to="/developers/use-cases/operator-read">第三方应用接入：用户密探养成</router-link>
             <label class="developer-search">查找文档
               <input v-model="query" type="search" placeholder="标题、协议版本或能力" />
             </label>
