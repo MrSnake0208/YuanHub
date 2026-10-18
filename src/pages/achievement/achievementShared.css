@@ -61,6 +61,5 @@
 .achievement-supplement { color: var(--ink-60); }
 .achievement-supplement summary { cursor: pointer; }
 .achievement-supplement p { white-space: pre-wrap; }
-.achievement-supplement a svg { margin-left: 4px; }
 .achievement-row-feedback { color: var(--tea); }
 .achievement-feedback:empty { display: none; }
