@@ -121,9 +121,16 @@ it('actual embed plain name filter cannot impersonate a drill, while already-mat
 
 it.each(['resource','route','unchanged'])('actual embed confirmed %s input does not permanently latch tutorial navigation',async kind=>{
   const committed=await setup()
-  const field=edit(kind==='route'?'[data-growth-route-id]':'#growth-experience-orange',kind==='route'?'2':kind==='resource'?'610':'500')
-  if(kind==='route')field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))
-  else field.dispatchEvent(new Event('change',{bubbles:true}))
+  // JSDOM has no layout; only provide the anchored editor's geometry.
+  vi.spyOn(HTMLInputElement.prototype,'getBoundingClientRect').mockReturnValue({left:200,top:300,right:320,bottom:332,width:120,height:32})
+  const field=root.querySelector(kind==='route'?'[data-growth-route-id]':'#growth-experience-orange')
+  expect(field.readOnly).toBe(true);field.click()
+  const picker=document.querySelector('.yuanstar-level-picker')
+  picker.querySelector('[data-level-value]').click()
+  const direct=picker.querySelector('[data-level-direct]')
+  direct.value=kind==='route'?'2':kind==='resource'?'610':'500';direct.dispatchEvent(new Event('input',{bubbles:true}))
+  expect(viewButton().dataset.growthSaveState).toBe('saved');expect(committed).not.toHaveBeenCalled()
+  picker.querySelector('[data-level-confirm]').click()
   if(kind!=='unchanged'){
     expect(viewButton().dataset.growthSaveState).toBe('saving')
     const guard=createGrowthTutorialViewGuard(root);expect(guard.switchTo('summary')).toBe('blocked');guard.dispose()

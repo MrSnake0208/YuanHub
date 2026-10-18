@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import { IDBObjectStore } from 'fake-indexeddb'
 import { setImmediate as waitForTask } from 'node:timers/promises'
 import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
@@ -280,8 +281,7 @@ describe('vendored OCR prewarming', () => {
     }
   }
 
-  function importManual(root, entrance) {
-    const files = [pngFile('first-screenshot.png')]
+  function importManual(root, entrance, files = [pngFile('first-screenshot.png')]) {
     if (entrance === 'select') {
       const input = root.querySelector('#image-file-input')
       Object.defineProperty(input, 'files', { value: files })
@@ -292,6 +292,147 @@ describe('vendored OCR prewarming', () => {
       ;(entrance === 'drop' ? root.querySelector('#file-drop-zone') : document).dispatchEvent(event)
     }
   }
+
+  async function storedDraft(accountId) {
+    const request = indexedDB.open('yuanstar-static')
+    const db = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+    try {
+      const tx = db.transaction(['importDrafts', 'importDraftImages'], 'readonly')
+      const result = request => new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+      const done = new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onabort = () => reject(tx.error) })
+      const [draft, images] = await Promise.all([result(tx.objectStore('importDrafts').get(accountId)), result(tx.objectStore('importDraftImages').getAll())])
+      await done
+      return { draft, images: await Promise.all(images.filter(image => image.accountId === accountId).map(async ({ blob, ...metadata }) => ({ ...metadata, bytes: [...new Uint8Array(await blob.arrayBuffer())] }))) }
+    } finally { db.close() }
+  }
+
+  it('first three-image Blob failure preserves the original diagnostic and retries the retained Files across remount', async () => {
+    let embed, put
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      embed = await clockedEmbed()
+      const decode = vi.fn(async () => { throw new Error('synthetic image has no pixels') })
+      vi.stubGlobal('createImageBitmap', decode)
+      const original = IDBObjectStore.prototype.put
+      const error = new DOMException('injected first Blob quota failure', 'QuotaExceededError')
+      put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (...args) {
+        if (this.name === 'importDraftImages') throw error
+        return original.apply(this, args)
+      })
+      const files = ['main.png', 'support.png', 'experience.png'].map(pngFile)
+      importManual(embed.root, 'select', files)
+      await settleDom(() => embed.root.querySelector('[data-retry-import-draft]'))
+      expect(embed.root.querySelector('.import-error').textContent).toContain('存储空间不足')
+      expect(warning).toHaveBeenCalledWith('[Import Draft]', { phase: 'save', name: error.name, message: error.message, code: error.code })
+      expect(warning).toHaveBeenCalledTimes(1)
+      expect(decode).not.toHaveBeenCalled()
+      expect(await storedDraft(embed.account.accountId)).toEqual({ draft: undefined, images: [] })
+      put.mockRestore()
+      embed.root.querySelector('[data-retry-import-draft]').click()
+      await settleDom(() => !embed.root.querySelector('[data-retry-import-draft]') && !embed.root.querySelector('.is-classifying'))
+      const saved = await storedDraft(embed.account.accountId)
+      expect(saved.draft.images.map(image => image.filename)).toEqual(files.map(file => file.name))
+      expect(saved.images).toHaveLength(3)
+      expect(saved.images.every(image => image.bytes.join() === '137,80,78,71')).toBe(true)
+      expect(decode).toHaveBeenCalledTimes(3)
+      const account = embed.account
+      await cleanup(embed)
+      embed = await clockedEmbed({ account })
+      expect(embed.root.querySelector('#file-summary').textContent).toContain('3 张')
+      expect(await storedDraft(account.accountId)).toEqual(saved)
+    } finally { put?.mockRestore(); warning.mockRestore(); await cleanup(embed) }
+  }, 60000)
+
+  it.each(['blob', 'metadata'])('append %s write failure rolls back the whole transaction and protects another account', async failure => {
+    let embed, put
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      embed = await clockedEmbed()
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      const first = embed.account
+      const before = await storedDraft(first.accountId)
+      const second = { ...first, accountId: first.accountId + '-other', displayName: first.displayName + ' Other' }
+      await embed.handle.setHostAccount(second)
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      const otherBefore = await storedDraft(second.accountId)
+      await embed.handle.setHostAccount(first)
+      const original = IDBObjectStore.prototype.put
+      let writes = 0
+      put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (...args) {
+        if ((failure === 'metadata' && this.name === 'importDrafts') || (failure === 'blob' && this.name === 'importDraftImages' && ++writes === 2)) throw new DOMException('injected append transaction failure', 'UnknownError')
+        return original.apply(this, args)
+      })
+      importManual(embed.root, 'select', ['append-1.png', 'append-2.png'].map(pngFile))
+      await settleDom(() => embed.root.querySelector('[data-retry-import-draft]'))
+      expect(embed.root.querySelector('[data-retry-import-draft]')).toBeTruthy()
+      expect(await storedDraft(first.accountId)).toEqual(before)
+      expect(await storedDraft(second.accountId)).toEqual(otherBefore)
+      put.mockRestore()
+      embed.root.querySelector('[data-retry-import-draft]').click()
+      await settleDom(() => !embed.root.querySelector('[data-retry-import-draft]') && !embed.root.querySelector('.is-classifying'))
+      expect((await storedDraft(first.accountId)).images).toHaveLength(5)
+      expect(await storedDraft(second.accountId)).toEqual(otherBefore)
+    } finally { put?.mockRestore(); warning.mockRestore(); await cleanup(embed) }
+  }, 60000)
+
+  it('clearing a failed first save discards retained Files and cannot resurrect them in another account or remount', async () => {
+    let embed, put
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      embed = await clockedEmbed()
+      const first = embed.account
+      const original = IDBObjectStore.prototype.put
+      put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (...args) {
+        if (this.name === 'importDraftImages') throw new Error('injected first save failure')
+        return original.apply(this, args)
+      })
+      importManual(embed.root, 'select')
+      await settleDom(() => embed.root.querySelector('[data-retry-import-draft]'))
+      put.mockRestore()
+      embed.root.querySelector('[data-clear-import-images]').click()
+      await settleDom(() => !embed.root.querySelector('[data-retry-import-draft]'))
+      expect(await storedDraft(first.accountId)).toEqual({ draft: undefined, images: [] })
+      await embed.handle.setHostAccount({ ...first, accountId: first.accountId + '-after-clear', displayName: first.displayName + ' Cleared' })
+      expect(embed.root.querySelector('#file-summary').textContent).toContain('0 张')
+      await cleanup(embed)
+      embed = await clockedEmbed({ account: first })
+      expect(embed.root.querySelector('#file-summary').textContent).toContain('0 张')
+    } finally { put?.mockRestore(); warning.mockRestore(); await cleanup(embed) }
+  }, 60000)
+
+  it.each(['clear', 'replace', 'account switch'])('late classification after %s cannot overwrite the current Draft or another account', async action => {
+    let embed, rejectDecode
+    try {
+      embed = await clockedEmbed()
+      const first = embed.account
+      const pending = new Promise((resolve, reject) => { rejectDecode = reject })
+      const decode = vi.fn(() => pending)
+      vi.stubGlobal('createImageBitmap', decode)
+      importManual(embed.root, 'select')
+      await settleDom(() => decode.mock.calls.length > 0)
+      expect(decode).toHaveBeenCalledTimes(1)
+      let active = first
+      if (action === 'clear') {
+        embed.root.querySelector('[data-clear-import-images]').click()
+        await settleDom(() => embed.root.querySelector('#file-summary').textContent.includes('0 张'))
+        expect(embed.root.querySelector('#file-summary').textContent).toContain('0 张')
+      } else {
+        if (action === 'account switch') {
+          active = { ...first, accountId: first.accountId + '-late', displayName: first.displayName + ' Late' }
+          await embed.handle.setHostAccount(active)
+        }
+        await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      }
+      const before = await storedDraft(active.accountId)
+      const firstBefore = await storedDraft(first.accountId)
+      rejectDecode(new Error('late classification failure'))
+      await waitForTask(); await vi.advanceTimersByTimeAsync(0)
+      expect(await storedDraft(active.accountId)).toEqual(before)
+      expect(await storedDraft(first.accountId)).toEqual(firstBefore)
+      expect(embed.root.querySelector('[data-retry-import-draft]')).toBeNull()
+      expect(embed.root.querySelector('#file-summary').textContent).toContain(action === 'clear' ? '0 张' : '3 张')
+    } finally { rejectDecode?.(new Error('test cleanup')); await cleanup(embed) }
+  }, 60000)
 
   it('step tutorial targets resolve against the actual vendored import and bag workspaces', async () => {
     let embed

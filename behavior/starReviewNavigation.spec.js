@@ -13,6 +13,16 @@ const list = () => root.querySelector('#plan-scroll, #current-scroll')
 const row = key => [...root.querySelectorAll('[data-summary-group-key]')].find(item => item.dataset.summaryGroupKey === key)
 const drill = key => row(key).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
 const back = () => root.querySelector('#view-mode-toggle').click()
+function confirmLevel(value) {
+  const field = root.querySelector('[data-current-field="level"]')
+  expect(field.readOnly).toBe(true)
+  field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  const picker = document.querySelector('.yuanstar-level-picker')
+  picker.querySelector('[data-level-value]').click()
+  const direct = picker.querySelector('[data-level-direct]')
+  direct.value = value; direct.dispatchEvent(new Event('input', { bubbles: true }))
+  picker.querySelector('[data-level-confirm]').click()
+}
 const originalHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')
 const originalClient = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight')
 
@@ -23,6 +33,7 @@ beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get() { return this === document.body || this === document.documentElement ? 2400 : listExtent } })
   Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get() { return 200 } })
   vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => pageY)
+  vi.spyOn(HTMLInputElement.prototype, 'getBoundingClientRect').mockReturnValue({ left: 200, top: 300, right: 320, bottom: 332, width: 120, height: 32 })
   window.scrollTo = vi.fn(options => { pageY = options.top })
   URL.createObjectURL ||= () => 'blob:navigation'; URL.revokeObjectURL ||= () => {}
 })
@@ -60,7 +71,7 @@ it.each(['bag', 'plan'])('%s: back restores summary, applied filters, selection 
   drill('主星|武曲'); await settle()
   list().scrollTop = 23; pageY = 75
   if (view === 'plan') { fire('#growth-current-level', '45', 'input'); root.querySelector('#growth-save').click() }
-  else { fire('[data-current-field="level"]', '45', 'input'); root.querySelector('[data-current-field="level"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) }
+  else confirmLevel('45')
   await settle(); back(); await settle()
   expect(root.querySelector('#view-mode-toggle').textContent).toBe('名称汇总')
   expect(root.querySelector('#kind-filter').value).toBe('主星'); if (view === 'bag') expect(root.querySelector('#quality-filter').value).toBe('橙')
@@ -187,7 +198,7 @@ it.each(['bag', 'plan'])('%s business edit still supports undo and redo from the
   const value = async () => { const snapshot = await handle.getCloudBusinessSnapshot(); return from === 'plan' ? snapshot.planTargets.c : snapshot.inventory.find(star => star.starInstanceId === 'c').level }
   const changed = from === 'plan' ? 50 : 45, original = from === 'plan' ? 60 : 40
   if (from === 'plan') { fire('#growth-target-level', '50', 'input'); root.querySelector('#growth-save').click() }
-  else { fire('[data-current-field="level"]', '45', 'input'); root.querySelector('[data-current-field="level"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) }
+  else confirmLevel('45')
   await settle(); expect(await value()).toBe(changed)
   handle.setReviewView(from === 'plan' ? 'bag' : 'plan'); await settle(); list().scrollTop = 320; pageY = 360
   const view = root.querySelector('#view-mode-toggle').textContent
