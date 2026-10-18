@@ -96,7 +96,7 @@
                   </label>
                 </div>
               </fieldset>
-              <p v-if="mode === 'edit'" class="form-hint">已有活动订阅历史或招募档案的账号不能修改所属游戏。</p>
+              <p v-if="mode === 'edit'" class="form-hint">已有活动订阅、私人日历事项、招募或成就档案的账号不能修改所属游戏。</p>
               <p v-if="loadError" class="error" role="alert">{{ loadError }}</p>
               <div v-if="mode === 'edit'" class="danger-zone"><span>危险操作</span><button type="button" class="text-button danger" :disabled="busy || contextDisabled" @click="remove">删除这个游戏账号</button></div>
               <p v-if="localError" class="error" role="alert">{{ localError }}</p>
@@ -257,7 +257,7 @@ async function remove() {
     if (account.id === activeAccount.id && !(await allowContextChange(version, context))) return
     const ok = await dialog.confirm({
       title: '删除游戏账号',
-      message: '删除“' + account.name + '”后，该账号的库存、密探、特别关注、星石数据、活动订阅及个人关卡进度和所有 API Token 都会一并清除，且不可恢复。',
+      message: '删除“' + account.name + '”后，该账号的库存、密探、特别关注、星石数据、招募档案、成就档案、活动订阅、私人日历事项及个人关卡进度和所有 API Token 都会一并清除，且不可恢复。',
       type: 'danger', confirmText: '确认删除',
     })
     if (!ok || !valid(version) || context !== contextVersion || props.contextDisabled || props.loading || props.loadError || !props.accounts.some(item => item.id === account.id)) return

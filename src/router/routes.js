@@ -67,6 +67,11 @@ export const routes = [
         }
     },
     {
+        path: '/achievement', name: 'achievement', text: '成就档案', display: true, module: 'tools', icon: 'book-check',
+        component: () => import('/src/pages/achievement/index.vue'),
+        meta: { feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
         path: '/calendar', name: 'calendar', text: '活动日历', display: true, module: 'tools', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/index.vue'),
         meta: { requiresAuth: true, requiresBeta: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历 — 鸢鸢相抱 · YuanHub' }

@@ -24,6 +24,12 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
+`achievementArchive` is enabled only in ordinary Vite development and disabled
+in production. Its route, navigation and page controller follow the same flag.
+Both real game catalogs currently contain zero verified publishable entries;
+keep production closed until source verification and manual acceptance finish.
+See [achievement archive](../achievement-archive.md) for scope and manual checks.
+
 `starCompletion` is a public feature with the explicit boolean value `true` in
 both ordinary Vite development and production builds. The real completion workflow
 requires no separate environment variable, user setting, URL parameter or demo.
