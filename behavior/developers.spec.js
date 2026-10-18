@@ -2,8 +2,8 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { nextTick } from 'vue'
-import Developers from '../src/pages/developers/index.vue'
 import { developerDocuments } from '../src/data/developerManifest.js'
+import { developerUseCases, operatorReadPrompt } from '../src/data/developerUseCases.js'
 import { routes } from '../src/router/routes.js'
 import { authGuard } from '../src/router/index.js'
 import { beta } from '../src/store/beta.js'
@@ -18,11 +18,13 @@ let mediaListeners
 let copy
 const response = body => ({ ok: true, text: async () => body })
 function makeRouter() {
-  const router = createRouter({ history: createMemoryHistory(), routes: routes.filter(route => route.path.startsWith('/developers')).map(route => ({ ...route, component: Developers })) })
+  const router = createRouter({ history: createMemoryHistory(), routes: routes
+    .filter(route => route.path.startsWith('/developers') || ['/user/profile', '/login'].includes(route.path))
+    .map(route => route.path.startsWith('/developers') ? route : { ...route, component: { template: '<div />' } }) })
   router.beforeEach(authGuard)
   return router
 }
-async function render(path = '/developers', attachTo) {
+async function render(path = '/developers/guide', attachTo) {
   const router = makeRouter()
   await router.push(path)
   const wrapper = mount({ template: '<RouterView />' }, { attachTo, global: { plugins: [router] } })
@@ -46,6 +48,8 @@ it('all registered documents pass the actual guard anonymously without Beta refr
     await router.push(doc.path)
     expect(router.currentRoute.value.path).toBe(doc.path)
   }
+  await router.push('/developers/use-cases/operator-read')
+  expect(router.currentRoute.value.name).toBe('developers-operator-read')
   expect(beta.refresh).not.toHaveBeenCalled()
   expect(auth.refreshAdminAccess).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
@@ -108,9 +112,9 @@ it('switching documents aborts the previous load and ignores its late response',
   fetch.mockReturnValueOnce(new Promise(resolve => { finishOld = resolve }))
   const { wrapper, router } = await render()
   const oldSignal = fetch.mock.calls[0][1].signal
-  await router.push('/developers/guide'); await flushPromises()
+  await router.push('/developers/api'); await flushPromises()
   expect(oldSignal.aborted).toBe(true)
-  expect(wrapper.get('h1').text()).toBe('快速接入')
+  expect(wrapper.get('h1').text()).toBe('API 参考')
   finishOld(response('# 旧文档\n\n## 迟到\n\n不能覆盖')); await flushPromises()
   expect(wrapper.get('.document-body').text()).toContain('正文内容')
   expect(wrapper.text()).not.toContain('不能覆盖')
@@ -156,4 +160,77 @@ it('directory responds to breakpoints without refresh, retains search, and relea
   expect(directory.element.open).toBe(false)
   wrapper.unmount()
   expect(mediaListeners.size).toBe(0)
+})
+
+it('home offers four real scenarios without the Markdown directory, downloads or network requests', async () => {
+  const { wrapper, router } = await render('/developers')
+  expect(wrapper.get('h1').text()).toBe('让你的工具连接 YuanHub')
+  expect(wrapper.findAll('.developer-scenario').map(link => link.attributes('href'))).toEqual(developerUseCases.map(item => item.path))
+  expect(wrapper.find('.developer-directory, .document-body, a[download]').exists()).toBe(false)
+  expect(fetch).not.toHaveBeenCalled()
+  await wrapper.get('.developer-scenario').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/developers/use-cases/operator-read')
+  expect(wrapper.get('h1').text()).toBe('读取我的密探')
+  expect(wrapper.get('a[href="/user/profile"]').text()).toContain('前往创建连接码')
+  expect(wrapper.find('a[href="/developers/api/operator"]').exists()).toBe(true)
+  expect(wrapper.findAll('.developer-tutorial section h2')).toHaveLength(4)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('copies the full AI task and public API address without touching user secrets', async () => {
+  localStorage.setItem('access_token', 'PRIVATE_JWT_SENTINEL')
+  sessionStorage.setItem('openapi_token', 'PRIVATE_TOKEN_SENTINEL')
+  const { wrapper } = await render('/developers/use-cases/operator-read')
+  const expected = `${operatorReadPrompt}\n本次站点的 API 后端根地址（BASE_URL）：http://127.0.0.1\n`
+  expect(wrapper.get('textarea').element.value).toBe(expected)
+  await wrapper.get('.developer-copy-prompt').trigger('click'); await flushPromises()
+  expect(copy).toHaveBeenCalledExactlyOnceWith(expected)
+  expect(copy.mock.calls[0][0]).not.toMatch(/PRIVATE_(JWT|TOKEN)_SENTINEL/)
+  expect(wrapper.get('.developer-copy-feedback').text()).toContain('已复制')
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('connection creation follows the existing login guard with a return path', async () => {
+  const { wrapper, router } = await render('/developers/use-cases/operator-read')
+  await wrapper.get('a[href="/user/profile"]').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(router.currentRoute.value.query.redirect).toBe('/user/profile')
+  expect(copy).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each(['denied', 'unavailable'])('failed clipboard %s opens a selected manual-copy fallback', async failure => {
+  const { wrapper } = await render('/developers/use-cases/operator-read', document.body)
+  if (failure === 'denied') copy.mockRejectedValueOnce(new Error('denied'))
+  else Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })
+  await wrapper.get('.developer-copy-prompt').trigger('click'); await flushPromises()
+  const textarea = wrapper.get('textarea').element
+  expect(wrapper.get('.developer-copy-feedback').text()).toContain('复制失败')
+  expect(wrapper.get('.developer-prompt-preview').element.open).toBe(true)
+  expect(document.activeElement).toBe(textarea)
+  expect(textarea.selectionEnd - textarea.selectionStart).toBe(textarea.value.length)
+  expect(wrapper.get('.developer-copy-prompt').element.disabled).toBe(false)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('shows pending copy state and allows retry after failure', async () => {
+  let reject
+  copy.mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
+  const { wrapper } = await render('/developers/use-cases/operator-read')
+  await wrapper.get('.developer-copy-prompt').trigger('click')
+  expect(wrapper.get('.developer-copy-prompt').element.disabled).toBe(true)
+  expect(wrapper.get('.developer-copy-feedback').text()).toContain('正在复制')
+  reject(new Error('denied')); await flushPromises()
+  await wrapper.get('.developer-copy-prompt').trigger('click'); await flushPromises()
+  expect(wrapper.get('.developer-copy-feedback').text()).toContain('已复制')
+})
+
+it('old homepage anchors still load the original Markdown and return to the new homepage', async () => {
+  const { wrapper, router } = await render('/developers#doc-开始', document.body)
+  await flushPromises()
+  expect(wrapper.get('.document-body').text()).toContain('正文内容')
+  expect(fetch.mock.calls[0][0]).toContain('developers/index.md')
+  await router.push('/developers'); await flushPromises()
+  expect(wrapper.find('.document-body').exists()).toBe(false)
+  expect(wrapper.get('h1').text()).toBe('让你的工具连接 YuanHub')
 })

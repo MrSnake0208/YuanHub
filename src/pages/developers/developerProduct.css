@@ -1,0 +1,46 @@
+.developer-product { color: var(--ink); }
+.developer-product-content { display: grid; gap: 28px; padding-top: 8px; padding-bottom: 36px; line-height: 1.75; overflow-wrap: anywhere; }
+.developer-product-content :where(section, nav, div, li) { min-width: 0; }
+.developer-product-content h2 { margin: 0 0 12px; font: 800 22px/1.5 var(--font-s); }
+.developer-product-content h3 { margin: 0 0 4px; font: 700 17px/1.5 var(--font-b); }
+.developer-product-content p { margin: 6px 0 12px; }
+.developer-product-content a { color: var(--tea); text-underline-offset: 3px; }
+.developer-scenarios { display: grid; gap: 12px; }
+.developer-scenario { display: flex; align-items: start; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-decoration: none; }
+.developer-scenario > svg { flex-shrink: 0; margin-top: 2px; }
+.developer-scenario p { margin: 0; color: var(--ink-60); font-size: 14px; }
+.developer-scenario-action { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.developer-scenario:hover, .developer-scenario:active { border-color: var(--tea); background: var(--cream); }
+.developer-connect { padding: 20px 0; border-block: 1px solid var(--line); }
+.developer-connect-steps { display: grid; gap: 12px; margin: 0; padding-left: 24px; }
+.developer-connect-steps li { padding-left: 2px; }
+.developer-connect-steps p { margin: 3px 0 0; font-size: 14px; color: var(--ink-60); }
+.developer-technical > p { font-size: 14px; color: var(--ink-60); }
+.developer-reference-links { display: grid; gap: 12px 24px; }
+.developer-reference-links a { padding: 8px 0; text-decoration: none; }
+.developer-reference-links strong { display: flex; align-items: center; gap: 8px; }
+.developer-reference-links span { display: block; font-size: 13px; color: var(--ink-60); }
+.developer-reference-links a:hover strong { text-decoration: underline; }
+.developer-tutorial section + section { border-top: 1px solid var(--line); padding-top: 24px; }
+.developer-tutorial ul, .developer-tutorial ol { padding-left: 22px; margin: 12px 0 16px; }
+.developer-tutorial li + li { margin-top: 8px; }
+.developer-tutorial code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9em; }
+.developer-product-content .developer-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; max-width: 100%; padding: 10px 16px; border: 1px solid var(--tea); border-radius: 6px; background: var(--tea); color: var(--cream); font: 700 14px/1.6 var(--font-b); text-decoration: none; cursor: pointer; }
+.developer-button svg { flex-shrink: 0; }
+.developer-button:hover, .developer-button:active { background: var(--ink); }
+.developer-button:disabled { opacity: .7; cursor: wait; }
+.developer-help, .developer-copy-feedback { color: var(--ink-60); font-size: 13px; }
+.developer-security { padding: 12px 14px; background: var(--cream); border-radius: 6px; font-size: 14px; }
+.developer-prompt-preview summary, .developer-faqs summary { padding: 10px 0; font-weight: 700; cursor: pointer; }
+.developer-prompt-preview label { display: block; margin-bottom: 6px; font-size: 13px; }
+.developer-prompt-preview textarea { display: block; width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); resize: vertical; font: 14px/1.75 var(--font-b); }
+.developer-field-list { margin: 16px 0; font-size: 14px; }
+.developer-field-list dt { font-weight: 700; margin-top: 12px; }
+.developer-field-list dd { margin: 4px 0 0; color: var(--ink-60); }
+.developer-faqs { margin-top: 20px; }
+.developer-faqs details { border-bottom: 1px solid var(--line); }
+.developer-faqs p { font-size: 14px; }
+.developer-product-footer { display: flex; flex-wrap: wrap; gap: 12px 24px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
+.developer-product-footer a { display: inline-flex; align-items: center; gap: 6px; }
+.developer-product :where(a, button, summary, textarea, [tabindex]):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.developer-product .page-header-back { min-height: 0; margin-block: 4px 8px; }

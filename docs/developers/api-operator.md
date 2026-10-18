@@ -1,5 +1,7 @@
 # 密探及养成 API
 
+第一次接入？从[读取我的密探：新手引导](/developers/use-cases/operator-read)开始，按步骤创建只读连接码并复制 AI 接入说明。
+
 状态：Token 受限扫描正式支持，旧 V2 兼容保留；完整 V5 备份使用站内 JWT。版本与字段说明见[密探 V5](../operator-growth-data-exchange-protocol-v5.md)及其继承的[V4](../operator-growth-data-exchange-protocol-v4.md)、[V3](../operator-growth-data-exchange-protocol-v3.md)。
 
 ## Token 读取和旧版兼容
@@ -24,6 +26,10 @@ curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
 curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
   "$BASE_URL/open-api/operator/export" -o operator-v2.json
 ```
+
+## 公共密探目录
+
+`GET /v1/operator/catalog` 无需 Token。当前 HTTP 响应使用 `ApiResult` 包装，密探列表位于 `data.operators` 数组，按每项 `id` / `name` 为当前档案补充名称；目录加载失败或 ID 未找到时保留原始 ID。当前目录 DTO 的列表字段是 `operators`，不要将旧交换规范示例中的 `entries` 直接当作 HTTP 目录字段，也不要与 `/open-api/operator/current` 的 `data[].entries` 映射混淆。
 
 ## Token 自动采集
 

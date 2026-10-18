@@ -4,6 +4,7 @@
 .developer-directory { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .developer-directory > summary { padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; overflow-wrap: anywhere; }
 .developer-directory nav { padding: 12px; }
+.developer-tutorial-link { display: block; margin-bottom: 12px; font-size: 13px; color: var(--tea); }
 .developer-search { display: grid; gap: 6px; font-size: 12px; color: var(--ink-60); }
 .developer-search input { min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--cream); color: var(--ink); font: inherit; }
 .developer-nav-group { margin-top: 16px; }
