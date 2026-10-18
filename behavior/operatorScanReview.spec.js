@@ -277,6 +277,39 @@ it('非法命盘可用原有复选控件取消并替换，预览不需要编辑 
   expect(api.importOperator).not.toHaveBeenCalled()
 })
 
+it('识别错字置顶提示，错误摘要定位异常项，手动替换后只预览修正值', async () => {
+  fixture = operatorScanReviewFixture('disc')
+  fixture.catalog.discs = [{ ot_name: '初始能量+3' }, { ot_name: '攻击力小幅提升' }]
+  const original = fixture.entry.disc_loadouts[0]
+  original.name = '命盘一'
+  original.discs = [{ ot_name: '攻击力小幅提升' }, { ot_name: '初是能量+3' }]
+  const page = await render()
+  const field = page.get('#scan-review-field-disc_loadouts')
+  const invalid = field.get('.invalid-disc input')
+  expect(field.get('.loadout .check').text()).toContain('初是能量+3')
+  expect(field.get('.invalid-disc-hint').text()).toContain('请取消勾选，再对照游戏选择正确命盘')
+  expect(invalid.attributes('aria-invalid')).toBe('true')
+  expect(invalid.element.checked).toBe(true)
+  await field.get('[aria-label="确认本次保存命盘"]').setValue(true)
+  await preview(page)
+  expect(page.get('.errors').text()).toContain('组合 1：命盘「初是能量+3」不在该密探图鉴中')
+  expect(page.get('.errors').text()).not.toContain('请填写组合名')
+  expect(document.activeElement).toBe(page.get('.errors').element)
+  expect(api.previewOperatorImport).not.toHaveBeenCalled()
+  await page.get('.errors a').trigger('click')
+  expect(document.activeElement).toBe(invalid.element)
+  await invalid.setValue(false)
+  expect(field.find('.invalid-disc').exists()).toBe(false)
+  await field.findAll('.check').find(label => label.text() === '初始能量+3').get('input').setValue(true)
+  await preview(page)
+  expect(page.find('.errors').exists()).toBe(false)
+  expect(api.previewOperatorImport.mock.calls[0][0].document.records[0].entries[0].disc_loadouts[0].discs).toEqual([
+    { ot_name: '攻击力小幅提升' }, { ot_name: '初始能量+3' },
+  ])
+  expect(original.discs).toEqual([{ ot_name: '攻击力小幅提升' }, { ot_name: '初是能量+3' }])
+  expect(api.importOperator).not.toHaveBeenCalled()
+})
+
 it('安全：切账号后的旧文件读取不能替换新的字段复核稿', async () => {
   const readers = []
   vi.stubGlobal('FileReader', class { constructor() { readers.push(this) } readAsText() {} })

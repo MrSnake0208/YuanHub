@@ -16,6 +16,8 @@ legend { font-weight: 700; }
 legend small { margin-left: 8px; font-weight: 400; }
 .check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .check input { min-height: 0; width: 20px; height: 20px; flex: none; }
+.invalid-disc { align-items: flex-start; padding: 8px; }
+.invalid-disc-hint { display: block; }
 .number-field, .huaji-fields label, .loadout > label:first-child { display: grid; gap: 6px; min-width: 0; }
 input:not([type="checkbox"]), select { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; }
 .number-field { max-width: 320px; }
