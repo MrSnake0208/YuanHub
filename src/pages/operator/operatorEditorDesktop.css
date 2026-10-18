@@ -1,6 +1,6 @@
 /* 仅密探完整编辑弹窗：内容自适应高度，共用页头、正文与底栏。 */
 @media (min-width: 641px) {
-  .editor-panel.editor-workspace { width: min(960px, 100%); height: auto; max-height: min(92dvh, 780px, calc(var(--modal-viewport-height, 100dvh) - 48px)); border-radius: 16px; background: #fcf9f0; }
+  .editor-panel.editor-workspace { width: min(880px, 100%); height: auto; max-height: min(92dvh, 780px, calc(var(--modal-viewport-height, 100dvh) - 48px)); border-radius: 16px; background: #fcf9f0; }
   .editor-workspace .editor-head { flex: none; grid-template-columns: minmax(0, 1fr) minmax(280px, .95fr) 32px; gap: 16px; padding: 14px 24px 10px; border-bottom: 0; background: var(--surface); }
   .editor-workspace .editor-kicker { font-size: 12px; overflow-wrap: anywhere; }
   .editor-workspace .editor-head h3 { font-size: 32px; }
