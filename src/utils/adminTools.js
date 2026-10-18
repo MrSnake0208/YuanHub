@@ -61,6 +61,11 @@ const ADMIN_TOOLS = Object.freeze([
     isVisible: access => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && hasPermission(access, ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE)
   },
   {
+    key: 'achievement-catalog', to: '/achievement/admin', label: '成就目录管理',
+    description: '导入或编辑成就，发布后玩家可记录完成状态', group: 'content', icon: BookOpen,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE)
+  },
+  {
     key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',
     description: '维护公共卡池、UP 名单和占位密探对应关系', group: 'content', icon: Layers3,
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE)

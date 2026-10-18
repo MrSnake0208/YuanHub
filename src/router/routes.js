@@ -67,6 +67,11 @@ export const routes = [
         }
     },
     {
+        path: '/achievement/admin', name: 'achievement-admin', text: '成就目录管理', display: false, module: 'tools', icon: 'book-check',
+        component: () => import('/src/pages/achievement/admin.vue'),
+        meta: { requiresAuth: true, requiredPermission: 'achievement_catalog:write', title: '成就目录管理 — YuanHub' }
+    },
+    {
         path: '/achievement', name: 'achievement', text: '成就档案', display: true, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/index.vue'),
         meta: { feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }

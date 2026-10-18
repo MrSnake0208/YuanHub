@@ -1,0 +1,29 @@
+.catalog-admin { padding-block: 24px 64px; color: var(--ink); }
+.catalog-admin .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.catalog-admin h2 { overflow-wrap: anywhere; font-size: 20px; margin: 0 0 16px; }
+.catalog-admin h3 { font-size: 17px; }
+.catalog-admin h2 small, .hint, .version { color: var(--ink-60); font-size: 13px; }
+.catalog-admin .version { overflow-wrap: anywhere; }
+.catalog-admin button, .catalog-admin input, .catalog-admin select, .catalog-admin textarea { font: inherit; }
+.catalog-admin button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.catalog-admin button:hover:not(:disabled), .catalog-admin button[aria-pressed="true"] { border-color: var(--tea); background: var(--paper); }
+.catalog-admin button.primary { background: var(--tea); color: var(--cream); }
+.catalog-admin button:disabled { opacity: .55; cursor: default; }
+.catalog-admin :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.catalog-admin label { display: grid; gap: 6px; min-width: 0; font-size: 14px; }
+.catalog-admin input:not([type="checkbox"]), .catalog-admin select, .catalog-admin textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); }
+.catalog-admin textarea { resize: vertical; }
+.catalog-admin fieldset { min-width: 0; margin: 20px 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); }
+.catalog-admin legend { padding: 0 8px 0 0; font-weight: 700; }
+.catalog-admin fieldset > label { margin-bottom: 12px; }
+.catalog-admin .check { display: flex; align-items: center; flex-wrap: wrap; }
+.catalog-admin .message { padding: 12px; border: 1px solid var(--line); background: var(--surface); }
+.catalog-admin .error { color: var(--rouge); overflow-wrap: anywhere; }
+.catalog-admin details > summary { cursor: pointer; padding-block: 8px; font-weight: 600; }
+.catalog-admin .source-row { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.catalog-admin .entry-row { display: grid; gap: 6px; text-align: left; width: 100%; margin-top: 8px; }
+.catalog-admin .entry-row span, .catalog-admin .entry-row small { color: var(--ink-60); font-size: 13px; overflow-wrap: anywhere; }
+.catalog-admin .entry-row strong { overflow-wrap: anywhere; }
+.catalog-admin .file-input { display: none; }
+.catalog-admin .verification { margin-top: 16px; }
+.catalog-admin .publication p, .catalog-admin .import-preview p { overflow-wrap: anywhere; }

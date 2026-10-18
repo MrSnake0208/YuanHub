@@ -28,6 +28,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/feedback/admin',
     '/operator/admin',
     '/calendar/admin',
+    '/achievement/admin',
     '/recruitment/admin',
     '/level/admin',
     '/admin/changelog',
@@ -124,7 +125,7 @@ test('keeps notification private and provides a guest feedback entry in more', f
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
   const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || route.meta?.requiredPermission || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 12)
+  assert.equal(managementPaths.length, 13)
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)
     assert.equal(isManagementRoute(path + '/'), true, path + '/')
