@@ -5,7 +5,11 @@ import {
   createDiscLoadout,
   createDiscLoadoutState,
   discSelectionSignature,
-  normalizeDiscNames
+  normalizeDiscNames,
+  discLoadoutPayload,
+  discTargetDifference,
+  discTargetSummary,
+  hasRerollDisc
 } from '../src/utils/operatorDiscLoadouts.js'
 
 test('命盘组合名称根据当前选择自动生成', function () {
@@ -40,4 +44,43 @@ test('旧单命盘数据迁移到第一套并补齐第二套', function () {
 
 test('命盘签名忽略选择顺序，便于核对云端当前组合', function () {
   assert.equal(discSelectionSignature(['洪胀', '山神丰恰']), discSelectionSignature(['山神丰恰', '洪胀']))
+})
+
+test('双盘状态与目标往返独立，旧数据默认未标记，目标不参与自动命名', () => {
+  const state = createDiscLoadoutState([
+    { discs: [{ ot_name: 'A' }], status: 'reroll', target_discs: [{ ot_name: 'B' }] },
+    { discNames: ['B'], status: 'perfect', targetDiscs: [{ otName: 'C' }] }
+  ])
+  assert.equal(state.loadouts[0].name, 'A')
+  const payload = state.loadouts.map(discLoadoutPayload)
+  assert.deepEqual(payload[0].discs, [{ ot_name: 'A' }])
+  assert.deepEqual(payload[0].target_discs, [{ ot_name: 'B' }])
+  const reread = createDiscLoadoutState(JSON.parse(JSON.stringify(payload)))
+  assert.deepEqual(reread, state)
+  assert.deepEqual(reread.loadouts[1].targetDiscNames, ['C'])
+  reread.loadouts[0].status = 'unmarked'
+  assert.deepEqual(reread.loadouts[0].targetDiscNames, ['B'])
+  assert.equal(createDiscLoadout(0, { discNames: ['A'] }).status, 'unmarked')
+})
+
+test('差异按无序合法词条比较，去重且部分目标不报告替换数量', () => {
+  assert.equal(discTargetDifference(['A', 'B', 'C'], ['C', 'A', 'B']).count, 0)
+  assert.deepEqual(discTargetDifference(['A', 'B', 'C'], ['B', 'A', 'D']), {
+    removed: ['C'], added: ['D'], complete: true, count: 1, targetCount: 3
+  })
+  assert.equal(discTargetDifference(['A', 'B', 'C'], ['A', 'A', 'D']).count, null)
+  assert.equal(discTargetDifference(['A', 'B', 'C'], []).targetCount, 0)
+})
+
+test('紧凑摘要覆盖双待洗、混合状态、双完美与未完整目标', () => {
+  const one = { discNames: ['A', 'B', 'C'], status: 'reroll', targetDiscNames: ['A', 'B', 'D'] }
+  const two = { discNames: ['A', 'B', 'C'], status: 'reroll', targetDiscNames: ['A', 'D', 'E'] }
+  assert.equal(discTargetSummary([one, two]), '① 待洗·改1处　② 待洗·改2处')
+  assert.equal(discTargetSummary([{ ...one, status: 'perfect' }, two]), '① ✓ 完美　② 待洗·改2处')
+  assert.equal(discTargetSummary([{ status: 'perfect' }, { status: 'perfect' }]), '✓ 两套完美')
+  assert.equal(discTargetSummary([{ ...one, status: 'unmarked' }, { status: 'unmarked' }]), '')
+  assert.equal(discTargetSummary([{}, { status: 'reroll' }]), '② 待洗·目标未设置')
+  assert.equal(discTargetSummary([{ ...one, targetDiscNames: ['A', 'B'] }]), '① 待洗·目标 2/3')
+  assert.equal(hasRerollDisc([{}, two]), true)
+  assert.equal(hasRerollDisc([{ status: 'perfect' }]), false)
 })
