@@ -8,15 +8,21 @@ export function nextManualSnapshotTime(fullBaselineAt, listedBaselineTimes, now)
   return new Date(timestamp).toISOString()
 }
 
-export function buildManualStockSnapshot({ accountId, entityType = 'item', catalogVersion, effectiveAt, recordId, entries }) {
+export function buildManualStockSnapshot({ accountId, entityType = 'item', catalogVersion, effectiveAt, recordId, snapshotScope = 'full', entries }) {
   if (entityType !== 'item' && entityType !== 'agent') {
     throw new TypeError('entityType must be item or agent')
   }
+  if (snapshotScope !== 'full' && snapshotScope !== 'listed') {
+    throw new TypeError('snapshotScope must be full or listed')
+  }
   const snapshotEntries = (Array.isArray(entries) ? entries : []).filter(function (entry) {
-    return Number(entry && entry.count) > 0
+    return snapshotScope === 'listed' || Number(entry && entry.count) > 0
   }).map(function (entry) {
     return { id: entry.id, name: entry.name || entry.id, count: Number(entry.count) }
   })
+  if (snapshotScope === 'listed' && !snapshotEntries.length) {
+    throw new TypeError('listed snapshot requires entries')
+  }
   return {
     format: 'myshare-inventory-exchange',
     version: 2,
@@ -30,7 +36,7 @@ export function buildManualStockSnapshot({ accountId, entityType = 'item', catal
       entity_type: entityType,
       acquisition_channel: '手动调整',
       effective_at: effectiveAt,
-      snapshot_scope: 'full',
+      snapshot_scope: snapshotScope,
       entries: snapshotEntries
     }]
   }

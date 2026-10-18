@@ -19,7 +19,7 @@
 .cart-filter-empty p{margin-bottom:12px}
 .cart-export-view{position:fixed;left:-10000px;top:0;width:420px}
 @media(min-width:1181px){.cart-mbar{display:none}}
-@media(max-width:1180px){.cart-layout{grid-template-columns:minmax(0,1fr)}.cart-mbar{display:flex}.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}}
+@media(max-width:1180px){.cart-layout{grid-template-columns:minmax(0,1fr)}.cart-mbar{display:flex;left:292px}.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}}
 .cart-version-hint{margin:8px 0 14px;font-size:12px}
 .cart-operation-message{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:var(--z-toast);width:max-content;max-width:calc(100vw - 32px);margin:0;padding:10px 12px;font-size:13px}
 @media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}

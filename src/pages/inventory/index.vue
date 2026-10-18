@@ -2647,6 +2647,7 @@ const canSaveStock = computed(function () {
     stockEditContext.value === stockContext.value &&
     currentLoadedContext.value === stockContext.value &&
     !loading.value && !error.value && !savingStock.value && !stockDraftError.value &&
+    (!needsFullStockConfirmation.value || stockBaselineConfirmed.value) &&
     (stockChangedCount.value > 0 || (needsFullStockConfirmation.value && stockBaselineConfirmed.value));
 });
 const stockEditDirty = computed(function () {
@@ -3193,10 +3194,11 @@ async function saveStockEdit() {
   savingStock.value = true;
   try {
     if (!pendingStockDocument.value) {
-      const visibleDraftEntries = stockEditEntries.value.map(function (item) {
+      const snapshotScope = stockEditScopeIds.value ? "listed" : "full";
+      const visibleDraftEntries = stockEditorEntries.value.map(function (item) {
         return { id: item.id, name: item.name || item.id, count: Number(stockDraft.value[item.id]) };
       });
-      const draftEntries = targetType === "item"
+      const draftEntries = targetType === "item" && snapshotScope === "full"
         ? preserveHiddenStockEntries(visibleDraftEntries, currentEntries.value, FRONTEND_HIDDEN_ITEM_IDS)
         : visibleDraftEntries;
       pendingStockDocument.value = buildManualStockSnapshot({
@@ -3205,6 +3207,7 @@ async function saveStockEdit() {
         catalogVersion: CATALOG_VERSION,
         effectiveAt: manualSnapshotTime(),
         recordId: manualRecordId(),
+        snapshotScope,
         entries: draftEntries,
       });
     }

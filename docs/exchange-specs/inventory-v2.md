@@ -53,6 +53,8 @@ Schema：[`schemas/inventory-exchange-v2.schema.json`](./schemas/inventory-excha
 - `count` 是 0..2147483647 的整数，0 表示明确记录为零。
 - `entity_type=agent` 用于交换密探心纸数量，不表示拥有或养成密探。
 
+网页手动盘点首次建立 `full` 基准时，即使已填写数量也必须勾选“核对全部库存”；分类编辑使用 `listed`，包含该分类明确为 0 的条目，不建立完整基准或覆盖其它分类。已有完整基准后的全量编辑继续使用 `full`。
+
 示例：[物品全量快照](./examples/inventory-full-snapshot.json)、[心纸局部快照](./examples/inventory-listed-agent-snapshot.json)。
 
 ## 3. Entry
