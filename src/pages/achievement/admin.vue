@@ -92,18 +92,6 @@
                   </div>
                   <p class="hint">已发布的类型与单位不可变，目标仅可增加；不会重置或裁剪玩家进度。</p>
                 </fieldset>
-                <details>
-                  <summary>资料来源（选填）</summary>
-                  <fieldset :disabled="busy">
-                    <div v-for="(source, index) in entry.sources" :key="index" class="source-row">
-                      <label>来源名称<input v-model="source.title" maxlength="200"></label>
-                      <label>HTTPS 原始链接<input v-model="source.url" type="url" maxlength="2000"></label>
-                      <label>使用依据或授权说明<textarea v-model="source.usage" rows="2" maxlength="2000"></textarea></label>
-                      <button type="button" @click="entry.sources.splice(index, 1)">移除此来源 {{ index + 1 }}</button>
-                    </div>
-                    <button type="button" :disabled="entry.sources.length >= 10" @click="entry.sources.push({ title: '', url: '', usage: '' })">添加来源</button>
-                  </fieldset>
-                </details>
                 <button class="primary" :disabled="busy || !dirty" @click="save">保存草稿</button>
               </section>
               <p v-else class="editor-placeholder panel">选择成就开始维护。玩家只会看到已发布目录。</p>

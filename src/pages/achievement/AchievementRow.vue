@@ -37,17 +37,16 @@
       <p v-if="record.status !== 'completed' && editor.completed_on !== editor.baseDate" class="achievement-hint">完成日期草稿已保留，标记完成后可保存，或取消编辑。</p>
       <div class="achievement-editor-actions"><small>{{ editor.note.length }} / 500</small><button class="achievement-save" type="submit" :disabled="!writable || (editor.note === editor.baseNote && (editor.completed_on === editor.baseDate || record.status !== 'completed'))">保存备注</button><button type="button" :disabled="saving" @click="$emit('cancel', 'note')">取消</button></div>
     </form>
-    <details v-if="entry.method || entry.chapter || entry.spoiler || entry.sources?.length" class="achievement-supplement">
-      <summary>完成说明与来源</summary><p v-if="entry.chapter">章节：{{ entry.chapter }}</p><p v-if="entry.method">{{ entry.method }}</p>
+    <details v-if="entry.method || entry.chapter || entry.spoiler" class="achievement-supplement">
+      <summary>完成说明</summary><p v-if="entry.chapter">章节：{{ entry.chapter }}</p><p v-if="entry.method">{{ entry.method }}</p>
       <details v-if="entry.spoiler"><summary>注意事项与剧透</summary><p>{{ entry.spoiler }}</p></details>
-      <ul v-if="entry.sources?.length"><li v-for="source in entry.sources" :key="source.url"><a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}<ExternalLink :size="12" aria-hidden="true" /></a></li></ul>
     </details>
   </li>
 </template>
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { ExternalLink, Gift, ListChecks, NotebookPen, Pencil, Star } from '@lucide/vue'
+import { Gift, ListChecks, NotebookPen, Pencil, Star } from '@lucide/vue'
 import { completionStatus, hasQuantifiedProgress, progressValidationError, STATUS_LABELS } from './rules.js'
 const props = defineProps({ entry: Object, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, saved: Boolean, saveNotice: String, error: String, pendingRemoval: Boolean, canUndo: Boolean, batchMode: Boolean, selected: Boolean })
 defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save', 'undo'])

@@ -98,13 +98,14 @@ it('发布错误按名称合并且可定位编辑，不丢失未知错误', asyn
   expect(api.achievementCatalogCommand.mock.calls.map(c => c[2])).toEqual(['preview'])
 })
 
-it('已有未核验草稿可直接预览确认发布，来源范围选填且不显示核验表单', async () => {
+it('已有未核验草稿可直接预览确认发布，不显示来源或核验表单', async () => {
   const initial = state(); initial.draft.data_status = 'empty'; initial.draft.coverage = '暂无已核验资料'
   initial.draft.entries[0].condition = ''; initial.draft.entries[0].reward = null
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
   const w = await page(); await w.get('.entry-row').trigger('click')
   expect(w.find('.coverage').attributes('open')).toBeUndefined()
-  expect(w.text()).toContain('资料来源（选填）')
+  expect(w.text()).not.toContain('资料来源')
+  expect(w.find('input[type="url"]').exists()).toBe(false)
   expect(w.text()).not.toContain('核验日期'); expect(w.text()).not.toContain('核验状态')
   expect(w.find('input[type="date"]').exists()).toBe(false)
   api.achievementCatalogCommand.mockResolvedValueOnce({ expected_revision: 3, changes: [{ achievement_id: 'yh_test_1', name: '测试成就', kind: 'add' }], category_changes: [], errors: [], progress_changes: [], restored_from: null })
@@ -144,8 +145,9 @@ it('退出或切换登录身份丢弃旧请求结果，不把旧管理员草稿�
   expect(w.text()).not.toContain('测试成就')
 })
 
-it('切换进度为不支持会清空目标和单位，新增草稿不自动核验或伪造来源', async () => {
+it('切换进度为不支持会清空目标和单位，保留历史来源且不自动核验', async () => {
   const initial = state(); initial.draft.entries[0].progress_kind = 'integer'; initial.draft.entries[0].target = 10; initial.draft.entries[0].unit = '次'
+  initial.draft.entries[0].sources = [{ title: '历史资料来源', url: 'https://example.test/legacy', usage: '测试资料' }]
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
   const w = await page(); await w.get('.entry-row').trigger('click')
   const kind = w.findAll('select').find(s => s.text().includes('不支持数值进度'))
@@ -154,7 +156,9 @@ it('切换进度为不支持会清空目标和单位，新增草稿不自动核�
   await button(w, '保存草稿').trigger('click'); await flushPromises()
   const e = api.achievementCatalogCommand.mock.calls[0][4].catalog.entries[0]
   expect(e.progress_kind).toBeNull(); expect(e.target).toBeNull(); expect(e.unit).toBeNull()
-  expect(e.sources).toEqual([]); expect(e.data_status).toBe('unverified'); expect(e.verified_at).toBe('')
+  expect(e.sources).toEqual(initial.draft.entries[0].sources)
+  expect(w.text()).not.toContain('历史资料来源')
+  expect(e.data_status).toBe('unverified'); expect(e.verified_at).toBe('')
 })
 
 it('导入先预览，非法项禁用确认；策略变化必须重做预览，确认只写草稿', async () => {
