@@ -2601,7 +2601,7 @@
                 >
                   <div class="star-row">
                     <span class="star-caption"><Star :size="19" aria-hidden="true" />化极</span>
-                    <span class="star-groups">
+                    <span class="star-groups" role="group" aria-label="化极星级">
                       <button
                         type="button"
                         class="star-pill"
@@ -2622,18 +2622,21 @@
                       >
                         {{ s }}星
                       </button>
+                    </span>
+                    <div v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="editor-awakening">
+                      <span>觉醒</span>
                       <button
-                        v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true"
                         type="button"
-                        class="star-pill awaken"
+                        class="editor-awakening-switch"
                         :class="{ on: editForm.owned && editForm.awakened === true }"
-                        :aria-pressed="editForm.owned && editForm.awakened === true"
-                        aria-label="觉醒确认"
+                        role="switch"
+                        :aria-checked="editForm.owned && editForm.awakened === true"
+                        :aria-label="editForm.awakened == null ? '觉醒确认，当前待确认' : '觉醒确认'"
                         :disabled="savingEdit || !operatorAwakeningSupported(editingOp) || editForm.owned === false || !editorCanConfirmAwakening"
                         :title="!editorCanConfirmAwakening ? '达到五星后可记录觉醒' : '仅记录游戏内觉醒状态，不扣库存；点击切换，保存后生效'"
                         @click="toggleEditAwakening"
-                      >觉醒</button>
-                    </span>
+                      ><span>{{ editForm.awakened == null ? '待确认' : editForm.owned && editForm.awakened === true ? 'ON' : 'OFF' }}</span><span class="editor-awakening-thumb" aria-hidden="true"></span></button>
+                    </div>
                   </div>
                   <div
                     v-if="
@@ -2815,6 +2818,7 @@
                         :checked="isDiscSelected(d)"
                         @change="toggleDiscSelection(d, $event)"
                       />
+                      <Check v-if="isDiscSelected(d)" class="disc-selected-check" :size="16" aria-hidden="true" />
                       <span
                         class="disc-name disc-term-label"
                         tabindex="0"
@@ -2873,12 +2877,12 @@
               </div>
             </div>
             <div
-              v-if="editNotice"
+              v-if="!editConflictDraft"
               class="editor-action-status"
-              :class="{ err: editNoticeError }"
+              :class="{ err: editNoticeError, 'is-idle': !savingEdit && !editNotice && !editorDirty }"
               role="status"
             >
-              {{ editNotice }}
+              {{ editorActionStatus }}
             </div>
             <div class="editor-action-buttons">
               <button
@@ -3378,6 +3382,12 @@ const editBaseline = ref("");
 const editorDirty = computed(function () {
   return editing.value &&
     (JSON.stringify([editForm.value, combatDisplayMode.value]) !== editBaseline.value || starLoadoutIsDirty());
+});
+const editorActionStatus = computed(function () {
+  if (savingEdit.value) return '正在保存到云端…';
+  if (editNoticeError.value) return editNotice.value;
+  if (editorDirty.value && editNotice.value === '养成资料已保存') return '有未保存的修改，请确认后保存';
+  return editNotice.value || (editorDirty.value ? '有未保存的修改，请确认后保存' : '尚未修改');
 });
 const confirmEditorDiscard = useUnsavedChanges(editorDirty, "密探编辑内容");
 // C2 source of truth: Current Inventory + Current Star Loadout only.
@@ -12028,19 +12038,54 @@ onBeforeUnmount(function () {
   border-color: var(--yellow-deep);
   color: var(--ink);
 }
-.star-pill.awaken:focus-visible {
+.editor-awakening {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  color: var(--ink);
+  font: 800 14px var(--font-b);
+}
+.editor-awakening-switch {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 80px;
+  min-height: 32px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--ink-60);
+  font: 700 12px var(--font-b);
+  cursor: pointer;
+}
+.editor-awakening-thumb {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.editor-awakening-switch:focus-visible {
   outline: 2px solid var(--tea);
   outline-offset: 2px;
 }
-.star-pill.awaken:disabled {
+.editor-awakening-switch:disabled {
   border-color: var(--line);
   color: var(--ink-60);
   cursor: not-allowed;
   opacity: 0.55;
 }
-.star-pill.awaken.on {
-  background: var(--tea);
-  border-color: var(--tea);
+.editor-awakening-switch.on {
+  flex-direction: row;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: var(--cream);
 }
 .node-chip {
@@ -12216,6 +12261,22 @@ onBeforeUnmount(function () {
   background: var(--yellow);
   border-color: var(--yellow-deep);
   color: var(--ink);
+}
+.editor-workspace .disc-option {
+  position: relative;
+  transition: color .2s, background-color .2s, border-color .2s;
+}
+.editor-workspace .disc-options .disc-option { padding-inline-start: 30px; }
+.disc-selected-check {
+  position: absolute;
+  left: 8px;
+  color: inherit;
+  pointer-events: none;
+}
+.editor-workspace .disc-option .disc-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 /* 命盘品级色：金 / 紫 / 蓝（未选中=淡色底，选中=实色） */
 .disc-option.c-gold {
@@ -12403,6 +12464,11 @@ onBeforeUnmount(function () {
 .editor-action-status.err {
   background: rgba(166, 81, 74, 0.14);
   color: var(--rouge);
+}
+.editor-action-status.is-idle {
+  background: transparent;
+  color: var(--ink-60);
+  font-weight: 500;
 }
 .editor-cancel {
   border: 0;

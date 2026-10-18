@@ -96,7 +96,7 @@ const decoratedCandidates = computed(function () {
     return Object.assign({}, candidate, { disabled: !result.allowed, disabledReason: result.reason })
   })
 })
-const selectionLabel = computed(function () { return replacementSlot.value ? (slotEntry(replacementSlot.value) ? '正在替换：' : '正在选择：') + slotLabel(replacementSlot.value) : '正在选择：' + (activeKind.value === 'main' ? '主星' : '辅星') + '（' + filledCount(activeKind.value) + '/3）' })
+const selectionLabel = computed(function () { return targetSlot.value ? (slotEntry(targetSlot.value) ? '正在替换：' : '正在选择：') + slotLabel(targetSlot.value) : (activeKind.value === 'main' ? '主星' : '辅星') + '已选满，请选择要替换的槽位' })
 
 watch(function () { return [props.targetOperator?.id, props.initialSlot] }, function () {
   const kind = slotKind(props.initialSlot)
