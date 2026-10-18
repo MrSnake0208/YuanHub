@@ -1,4 +1,4 @@
-import { validateCalendarClassification } from './activityCalendarTypes.js'
+import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, validateCalendarClassification } from './activityCalendarTypes.js'
 
 export const CALENDAR_GAMES = Object.freeze(['代号鸢', '如鸢'])
 export const CALENDAR_CATEGORIES = Object.freeze({ ACTIVITY: '活动', RECRUITMENT: '卡池', LOGIN: '签到', SHOP: '商店', MAINTENANCE: '维护', OTHER: '其他' })
@@ -105,22 +105,28 @@ export function groupCalendarItems(items, today) {
 export function calendarFilters(query = {}) {
   const first = value => Array.isArray(value) ? value[0] : value
   const game = first(query.game), category = first(query.category), status = first(query.status)
+  const displayGroup = Object.hasOwn(CALENDAR_DISPLAY_GROUPS, first(query.display_group)) ? first(query.display_group) : ''
   return {
     game: CALENDAR_GAMES.includes(game) ? game : '',
-    category: Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '',
+    category: !displayGroup && Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '',
+    display_group: displayGroup,
     // A contradictory shared URL gives the explicit recruitment category priority.
-    exclude_recruitment: category !== 'RECRUITMENT' && ['1', true].includes(first(query.exclude_recruitment)),
+    exclude_recruitment: category !== 'RECRUITMENT' && displayGroup !== 'RECRUITMENT' && ['1', true].includes(first(query.exclude_recruitment)),
     status: Object.hasOwn(CALENDAR_TIME_FILTERS, status) ? status : '',
   }
 }
 
 export function calendarFilterQuery(query, patch) {
   const next = { ...calendarFilters(query), ...patch }
+  if (patch.display_group) next.category = ''
+  if (patch.category) next.display_group = ''
+  if (patch.display_group === 'RECRUITMENT') next.exclude_recruitment = false
+  if (patch.exclude_recruitment === true && next.display_group === 'RECRUITMENT') next.display_group = ''
   if (patch.category === 'RECRUITMENT') next.exclude_recruitment = false
   else if (patch.exclude_recruitment === true && next.category === 'RECRUITMENT') next.category = ''
   const filters = calendarFilters(next)
   const result = { ...query }
-  for (const key of ['game', 'category', 'exclude_recruitment', 'status']) {
+  for (const key of ['game', 'category', 'display_group', 'exclude_recruitment', 'status']) {
     if (filters[key]) result[key] = key === 'exclude_recruitment' ? '1' : filters[key]
     else delete result[key]
   }
@@ -138,6 +144,7 @@ export function filterCalendarItems(items, filters, now = Date.now()) {
   return items.filter(item => {
     if (filters.game && item.game !== filters.game) return false
     if (filters.category && item.category !== filters.category) return false
+    if (filters.display_group && calendarDisplay(item).group !== filters.display_group) return false
     if (filters.exclude_recruitment && item.category === 'RECRUITMENT') return false
     if (!filters.status) return true
     const { start, end } = calendarTimeBounds(item)
@@ -353,7 +360,7 @@ export function calendarRangeLabel(item) {
 
 export function calendarForm(entry = null) {
   const item = entry?.item || {}
-  return { id: item.id || '', version: entry?.version ?? null, game: item.game || CALENDAR_GAMES[0], title: item.title || '', category: item.category || 'ACTIVITY', subtype: item.subtype || '', subtype_detail: item.subtype_detail || '', start_date: item.start_date || '', end_date: item.end_date || '', precise: !!(item.start_time || item.end_time), start_time: item.start_time || '', end_time: item.end_time || '', time_zone: item.time_zone || SERVER_TIME_ZONE, description: item.description || '', source_url: item.source_url || '', source_note: entry?.source_note || '', enabled: entry?.enabled !== false }
+  return { id: item.id || '', version: entry?.version ?? null, game: item.game || CALENDAR_GAMES[0], title: item.title || '', category: item.category || 'ACTIVITY', subtype: item.subtype || (entry ? '' : 'LARGE_EVENT'), subtype_detail: item.subtype_detail || '', start_date: item.start_date || '', end_date: item.end_date || '', precise: !!(item.start_time || item.end_time), start_time: item.start_time || '', end_time: item.end_time || '', time_zone: item.time_zone || SERVER_TIME_ZONE, description: item.description || '', source_url: item.source_url || '', source_note: entry?.source_note || '', enabled: entry?.enabled !== false }
 }
 
 export function validateCalendarForm(form) {

@@ -48,7 +48,7 @@ it('列表筛选提交API，独立编辑器与列表互斥，保存携带version
   await filter(wrapper, '日期范围终点').setValue('2026-10-15')
   await filter(wrapper, '搜索标题').setValue('活动')
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(api.listAdminActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', category: 'ACTIVITY', enabled: 'true', from: '2026-10-01', to: '2026-10-15', search: '活动' })
+  expect(api.listAdminActivityCalendar.mock.lastCall[0]).toEqual({ game: '如鸢', category: '', enabled: 'true', from: '2026-10-01', to: '2026-10-15', search: '活动' })
   await button(wrapper, '编辑活动').trigger('click')
   expect(wrapper.find('.calendar-list').exists()).toBe(false)
   expect(document.activeElement).toBe(wrapper.get('.calendar-editor').element)
@@ -59,6 +59,29 @@ it('列表筛选提交API，独立编辑器与列表互斥，保存携带version
   expect(wrapper.find('.calendar-editor').exists()).toBe(false)
   expect(filter(wrapper, '搜索标题').element.value).toBe('活动')
   expect(wrapper.text()).toContain('活动已保存')
+})
+it('目录默认开始日期由新到旧，可即时反向排序，刷新保留顺序，清空筛选恢复默认', async () => {
+  api.listAdminActivityCalendar.mockResolvedValue({ items: [
+    entry({ item: item({ id: 'old', title: '较早活动', start_date: '2026-10-01' }) }),
+    entry({ item: item({ id: 'early-b', title: '同刻活动B', start_time: '08:00', end_time: '23:00' }) }),
+    entry({ item: item({ id: 'all-day', title: '日期活动', end_date: null }) }),
+    entry({ item: item({ id: 'recruitment:late', title: '晚间卡池', category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL', start_time: '20:00', end_time: '23:00' }), read_only: true }),
+    entry({ item: item({ id: 'early-a', title: '同刻活动A', start_time: '08:00', end_time: '23:00' }) }),
+  ] })
+  const wrapper = render(); await flushPromises()
+  const titles = () => wrapper.findAll('article h3').map(node => node.text())
+  const newestFirst = ['晚间卡池', '同刻活动A', '同刻活动B', '日期活动', '较早活动']
+  const oldestFirst = ['较早活动', '日期活动', '同刻活动A', '同刻活动B', '晚间卡池']
+  expect(filter(wrapper, '排序').element.value).toBe('desc')
+  expect(titles()).toEqual(newestFirst)
+  await filter(wrapper, '排序').setValue('asc')
+  expect(titles()).toEqual(oldestFirst)
+  expect(api.listAdminActivityCalendar).toHaveBeenCalledTimes(1)
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(titles()).toEqual(oldestFirst)
+  await button(wrapper, '清空筛选').trigger('click'); await flushPromises()
+  expect(filter(wrapper, '排序').element.value).toBe('desc')
+  expect(titles()).toEqual(newestFirst)
 })
 it('只读招募永不显示编辑按钮；仅双权限提供管理跳转', async () => {
   api.listAdminActivityCalendar.mockResolvedValue({ items: [entry({ item: item({ id: 'recruitment:pool', source_type: 'RECRUITMENT_POOL', category: 'RECRUITMENT' }), read_only: true, version: null })] })
@@ -183,11 +206,11 @@ it('列表网络错误可刷新，倒置日期范围不发送请求，保存网�
 it('管理员编辑家具及神秘洞窟往返分类并保持原活动ID版本日期', async () => {
   const wrapper = render(); await flushPromises()
   await button(wrapper, '编辑活动').trigger('click')
-  await wrapper.get('#calendar-subtype').setValue('FURNITURE')
-  await wrapper.get('#calendar-subtype_detail').setValue('MYSTERIOUS_CAVE')
+  await wrapper.get('#calendar-category').setValue('FURNITURE')
+  await wrapper.get('#calendar-subtype').setValue('MYSTERIOUS_CAVE')
   await wrapper.get('form').trigger('submit'); await flushPromises()
   expect(api.updateActivityCalendar).toHaveBeenCalledWith('evt-a', expect.objectContaining({
-    category: 'ACTIVITY', subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE', expected_version: 0,
+    category: 'ACTIVITY', subtype: 'MYSTERIOUS_CAVE', subtype_detail: null, expected_version: 0,
     start_date: '2026-10-03', end_date: '2026-10-10',
   }))
 })

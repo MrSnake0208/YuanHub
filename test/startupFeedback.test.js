@@ -148,3 +148,12 @@ test('字体改为非阻塞加载，不再拖住首次绘制', function () {
   assert.match(html, /media="print" onload="this\.media='all'"/)
   assert.match(html, /<noscript>[\s\S]*fonts\.loli\.net[\s\S]*<\/noscript>/)
 })
+
+test('首屏提前声明仅支持浅色，避免浏览器自动深色化与站点配色混用', function () {
+  const html = readSource('../index.html')
+  const declaration = '<meta name="color-scheme" content="only light">'
+  assert.ok(html.includes(declaration))
+  assert.ok(html.indexOf(declaration) < html.indexOf('<link'))
+  assert.ok(html.indexOf(declaration) < html.indexOf('<style'))
+  assert.match(readSource('../src/styles/main.css'), /:root\s*\{[^}]*color-scheme:\s*only light\s*;/)
+})

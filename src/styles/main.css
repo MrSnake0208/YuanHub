@@ -8,6 +8,7 @@
    蜜黄/金橙/绛红/海盐蓝 点缀色；思源宋体标题 + Archivo 数字
    ============================================================ */
 :root{
+  color-scheme:only light;
   --yellow:#EFD28E;--yellow-deep:#DFB863;
   --cream:#FFF8EC;--paper:#F6EDD0;--surface:#FFFDF6;
   --mist:#C3CFDA;--brand-blue:#5B6A8C;--slate:#5B6A8C;--slate-deep:#49546F;

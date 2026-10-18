@@ -39,7 +39,7 @@ it('访客默认读取全部游戏和服务器90天范围；双来源统一展�
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledWith({ game: '', category: '', from: today(), to: addCalendarDays(today(), 90) })
   expect(wrapper.text()).toContain('招募项')
-  expect(wrapper.get('[data-event-id="pool"] .calendar-category').text()).toBe('卡池 · 类型未标注')
+  expect(wrapper.get('[data-event-id="pool"] .calendar-category').text()).toBe('卡池 · 类型未标注（待归类）')
   expect(wrapper.text()).toContain('今日结束')
   expect(wrapper.text()).toContain('今日开始')
   expect(wrapper.text()).not.toContain('已结束项')

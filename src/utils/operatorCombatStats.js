@@ -457,7 +457,7 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     observedInputs.level != null && Number(observedInputs.level) === Number(input && input.level) &&
     observedInputs.elite != null && Number(observedInputs.elite) === Number(input && input.elite) &&
     observedInputs.starLevel != null && Number(observedInputs.starLevel) === Number(input && input.starLevel)
-  const independentHuajiChanged = !localReferenceSignature && (Object.keys(observedInputs).length > 0 || Boolean(backendReferenceSignature)) && Boolean(input?.huaji) && JSON.stringify(observedInputs.huaji || null) !== JSON.stringify(input.huaji)
+  const independentHuajiChanged = !localReferenceSignature && (Object.keys(rawInputs).length > 0 || Boolean(backendReferenceSignature)) && Boolean(input?.huaji) && JSON.stringify(observedInputs.huaji || null) !== JSON.stringify(input.huaji)
   const capturedStage = operatorLevelBreakthroughStage(observedInputs)
   const currentStage = operatorLevelBreakthroughStage(input)
   const breakthroughUnverified = currentStage == null || (capturedStage == null && !(localReferenceSignature === signature && currentStage != null)) || normalized.observedStatus === 'unverified'

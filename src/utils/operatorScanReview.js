@@ -155,7 +155,17 @@ export function operatorReviewRowError(row, rows, catalog, current) {
   if (row.kind === 'discs') {
     if (!Array.isArray(value) || value.length > DISC_LOADOUT_LIMIT) return '最多保留两组命盘，请核对原始记录'
     const names = (catalog?.discs || []).map(discNameOf)
-    if (value.some(item => !item.id || !item.name?.trim() || item.name.length > 64 || !Array.isArray(item.discs) || item.discs.length > DISC_SELECTION_LIMIT || new Set(item.discs.map(discNameOf)).size !== item.discs.length || item.discs.some(disc => !names.includes(discNameOf(disc))))) return '请填写组合名，并从图鉴选择每组最多三个命盘'
+    for (const [index, item] of value.entries()) {
+      const group = '组合 ' + (index + 1)
+      if (!item?.id || !Array.isArray(item.discs)) return group + ' 数据不完整，请删除该组合后重新添加'
+      if (typeof item.name !== 'string' || !item.name.trim()) return group + '：请填写组合名'
+      if (item.name.length > 64) return group + '：组合名不能超过 64 个字符'
+      const discNames = item.discs.map(discNameOf)
+      const unknownNames = [...new Set(discNames.filter(name => !names.includes(name)))]
+      if (unknownNames.length) return group + '：命盘' + unknownNames.map(name => '「' + (name || '空命盘名') + '」').join('、') + '不在该密探图鉴中，可能是识别错误。请取消勾选，再对照游戏选择正确命盘'
+      if (discNames.length > DISC_SELECTION_LIMIT) return group + '：最多选择三个命盘，请取消多余选项'
+      if (new Set(discNames).size !== discNames.length) return group + '：命盘重复，请取消重复项后重新选择'
+    }
     return ''
   }
   if (row.key) return operatorOddityCurrentError(row.key, value, row.max)

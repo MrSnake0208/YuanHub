@@ -244,8 +244,8 @@
               </div>
               <section id="planner-roster-content" class="side-section">
                 <div class="side-title"><span>培养清单</span><span class="side-hint">当前 → 目标</span></div>
-                <div class="edit-roster">
-                  <div v-for="(row, rowIndex) in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)">
+                <div ref="rosterList" class="edit-roster">
+                  <div v-for="(row, rowIndex) in orderedPlanRows" :key="row.id" :data-roster-id="row.id" class="edit-roster-item">
                     <div class="drag-handle" aria-hidden="true">⋮⋮</div>
                     <OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" />
                     <div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div>
@@ -409,6 +409,7 @@ import { isMovieOperator } from '../../utils/operatorForms.js'
 import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import Sortable from 'sortablejs'
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
@@ -540,7 +541,7 @@ function togglePastSchedule() {
   try { localStorage.setItem('yuanhub:planner:hide-past', String(hidePastSchedule.value)) } catch (_) {}
   if (hidePastSchedule.value && selectedDate.value < plannerToday.value) selectedDate.value = plannerDates.value[0]
 }
-const rosterDragId = ref('')
+const rosterList = ref(null)
 const starTargetId = ref('')
 const starTargetDraft = ref(0)
 const starTargetGroup = computed(() => starTargetDraft.value === 'awakening' ? 'awakening' : starTargetDraft.value == null ? -1 : starGroup(starTargetDraft.value))
@@ -1219,8 +1220,63 @@ function moveRosterMember(id, delta) {
   plannerOrder.value = ids
   persistPlannerSnapshot()
 }
-function onRosterDragStart(id) { rosterDragId.value = id }
-function onRosterDrop(targetId) { if (cloudBlocked.value) return; const ids = [...orderedRosterIds.value]; const from = ids.indexOf(rosterDragId.value); const to = ids.indexOf(targetId); if (from < 0 || to < 0 || from === to) return; ids.splice(from, 1); ids.splice(to, 0, rosterDragId.value); plannerOrder.value = ids; rosterDragId.value = ''; persistPlannerSnapshot() }
+let rosterSortable, rosterDrag, rosterDragCancelled = false
+const rosterDragBlocked = computed(() => cloudBlocked.value || schedulePending.value)
+const rosterDragContext = computed(() => JSON.stringify([props.accountId, activePlan.value?.id, viewMode.value, plannerStep.value, orderedRosterIds.value]))
+const rosterMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+function updateRosterMotion() { rosterSortable?.option('animation', rosterMotion?.matches ? 0 : 160) }
+function cancelRosterDrag() {
+  if (!rosterDrag) return
+  rosterDragCancelled = true
+  document.dispatchEvent(new Event('mouseup', { bubbles: true }))
+}
+function onRosterDragKeydown(event) {
+  if (event.key !== 'Escape' || !rosterDrag) return
+  event.preventDefault()
+  cancelRosterDrag()
+}
+function finishRosterDrag(event) {
+  if (!rosterDrag) return
+  const before = rosterDrag
+  // 先还原 Sortable 移动的节点，再交给 Vue 按新顺序更新，保留卡片与输入的对应关系。
+  if (before.item.parentNode === rosterSortable.el) rosterSortable.el.insertBefore(before.item, before.next?.parentNode === rosterSortable.el ? before.next : null)
+  rosterDrag = null
+  document.removeEventListener('keydown', onRosterDragKeydown)
+  if (event.newDraggableIndex !== event.oldDraggableIndex && !rosterDragCancelled && !/cancel$/.test(event.originalEvent?.type || '') && !rosterDragBlocked.value && before.context === rosterDragContext.value) {
+    moveRosterMember(before.item.dataset.rosterId, event.newDraggableIndex - event.oldDraggableIndex)
+  }
+  rosterDragCancelled = false
+}
+watch(rosterList, element => {
+  cancelRosterDrag()
+  rosterSortable?.destroy()
+  rosterSortable = element ? new Sortable(element, {
+    draggable: '[data-roster-id]', handle: '.drag-handle, .operator-avatar, .edit-roster-name',
+    filter: 'button, input, select, textarea, a', preventOnFilter: false,
+    disabled: rosterDragBlocked.value, forceFallback: true, supportPointer: false,
+    delay: 200, delayOnTouchOnly: true, touchStartThreshold: 5, fallbackTolerance: 4,
+    animation: rosterMotion?.matches ? 0 : 160,
+    ghostClass: 'roster-drag-gap', chosenClass: 'roster-drag-chosen', fallbackClass: 'roster-drag-floating',
+    scroll: true, forceAutoScrollFallback: true, scrollSensitivity: 60, scrollSpeed: 12,
+    onStart(event) {
+      rosterDrag = { item: event.item, next: event.item.nextSibling, context: rosterDragContext.value }
+      document.addEventListener('keydown', onRosterDragKeydown)
+    },
+    onMove: () => !rosterDragBlocked.value,
+    onEnd: finishRosterDrag,
+  }) : null
+}, { flush: 'post' })
+watch([rosterDragBlocked, rosterDragContext], () => {
+  cancelRosterDrag()
+  rosterSortable?.option('disabled', rosterDragBlocked.value)
+}, { flush: 'sync' })
+rosterMotion?.addEventListener?.('change', updateRosterMotion)
+onBeforeUnmount(() => {
+  cancelRosterDrag()
+  rosterSortable?.destroy()
+  document.removeEventListener('keydown', onRosterDragKeydown)
+  rosterMotion?.removeEventListener?.('change', updateRosterMotion)
+})
 function selectDate(date) { if (fixedSchedule.value?.context.displayStartDate && date < fixedSchedule.value.context.displayStartDate) return; selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
 function ensureManualPlan() { const date = selectedDate.value; const current = currentDay.value; const next = clonePlannerValue(manualPlans.value); if (!next[date]) next[date] = normalizePlannerPlan(clonePlannerValue(current.planned)); return { next, plan: next[date] } }
 function commitManualPlan(next) {
@@ -1696,6 +1752,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 @media (hover: hover) { .roster-add:hover:not(:disabled) { border-color: var(--accent); background: var(--paper); } }
 .roster-move-actions button { border: 0; border-radius: 7px; background: transparent; color: var(--tea); cursor: pointer; }
 .roster-move-actions button:disabled { opacity: .3; cursor: default; }
+.edit-roster-item.roster-drag-gap { border: 2px dashed var(--accent); background: var(--cream); }
+.roster-drag-gap > * { opacity: .25; }
+.edit-roster-item.roster-drag-chosen { border-color: var(--accent); }
+.edit-roster-item.roster-drag-floating { opacity: .96 !important; box-shadow: 0 12px 28px rgba(70, 50, 32, .2); cursor: grabbing; }
+.roster-drag-floating > * { opacity: 1; }
+.edit-roster-name { cursor: grab; }
 .roster-toggle:focus-visible, .routine-gains-toggle:focus-visible, .roster-move-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .target-fields .target-field-label { color: var(--ink-60); }
 .target-field-label small { color: var(--ink-60); }

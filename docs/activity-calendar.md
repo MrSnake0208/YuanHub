@@ -157,6 +157,8 @@ npm run test:behavior -- behavior/activityCalendarFilters.spec.js behavior/activ
 
 `/calendar/admin` 新增“活动目录 / 用户建议”切换，原活动目录行为保留。用户建议默认待审核，支持游戏、状态与分页。审核区先显示只读原始资料，再显示预填的正式活动编辑器；宽屏可并排对照，窄屏顺序阅读。私人说明不自动复制到公开说明或管理备注。审核员可主动按游戏与日期重叠检查已有活动；采纳和不采纳均需确认，不采纳原因必填。采纳创建启用的 MANUAL 活动，不采纳是终态。已处理详情只读。
 
+活动目录默认按活动开始日期由新到旧展示，筛选区“排序”可即时切换为由旧到新，无需重新请求。日期相同时按开始时间同向排序，未填时间视为当日最早位置；日期与时间均相同则按活动 ID 稳定排序。排序同时适用于手工活动和只读招募卡池，筛选刷新及编辑保存后保留当前顺序，“清空筛选”恢复由新到旧；不持久化排序偏好。
+
 审核 409 保留全部草稿并禁用旧版本提交。“保留草稿并刷新状态”只读取最新状态；“放弃草稿，打开最新结果”确认后才替换编辑器。成功处理后刷新队列并保留筛选，最后一页为空时回到最后有效页。有改动时返回列表、切换工作区或离开页面使用未保存确认。身份退出/切换与审核权限丢失清空私有数据及草稿，旧响应不得覆盖新身份或选中项；所有私有 API 绑定 `expectedUserId`，阻止 401 刷新后向另一个身份重放。
 
 本轮风险 L3（新增登录路由、私有 API 与跨页面身份隔离）。新增 pure/API/页面与审核行为测试；回归由用户/CI执行，Agent仅执行定向 Vue/JavaScript 语法编译检查。最小前端回归（cwd YuanHub）：
@@ -297,33 +299,28 @@ npm run test:behavior -- behavior/activityCalendarImport.spec.js behavior/activi
 
 三视图共享同一过滤结果及各自原有请求日期窗口。今日摘要仍按当前游戏、类型及招募条件统计公开活动的日历日覆盖，不应用时间状态或个人活动状态，不表示个人订阅数；原“进行中”统计仍指严格跨越今天的活动。
 
-## 细分类别与共享语义色（2026-10-09）
+## 两级分类与历史兼容（2026-10-18）
 
-`src/data/activityCalendarTypes.js` 是四组展示、细类、细目的单一映射；`eventTypeColors.js` 集中定义浅背景、深文字、描边、窄色条和招募封面色。`activityCalendar.js` 保留 category 原值，规范化时透传可选 `subtype/subtype_detail/pool_type`，未知细类保留事件并使用中性兜底。不会使用活动标题或“星图”等历史名称重新分类。
+`src/data/activityCalendarTypes.js` 统一定义展示分类；`eventTypeColors.js` 保持共享语义色。一级分类按活动、卡池、家具、其他排列，斜杠名称是一项，不拆开。
 
-| 展示一级 | 二级 / 细目 | 持久化 category | subtype / subtype_detail | 色彩及标记色 |
-| --- | --- | --- | --- | --- |
-| 活动 | 大型活动 | ACTIVITY | LARGE_EVENT | 绛红 #A6514A |
-| 活动 | 中型活动 | ACTIVITY | MEDIUM_EVENT | 绛红 #A6514A |
-| 活动 | 地宫 | ACTIVITY | UNDERGROUND | 紫 #88669F |
-| 活动 | 泰山府 | ACTIVITY | TAISHAN_FU | 紫 #88669F |
-| 活动 | 签到 | ACTIVITY 或旧 LOGIN | SIGN_IN；旧 LOGIN 缺字段也映射签到 | 蓝 #597D9B |
-| 活动 | 家具 | ACTIVITY | FURNITURE | 黄 #97762A |
-| 活动 | 家具 → 神秘洞窟 | ACTIVITY | FURNITURE / MYSTERIOUS_CAVE | 黄 #97762A |
-| 活动 | 未细分（旧 ACTIVITY） | ACTIVITY | null 或未知值 | 中性 #887B68 |
-| 卡池 | 限定 | RECRUITMENT（派生） | 目录 pool_type | 金 #98722A |
-| 卡池 | 复刻 | RECRUITMENT（派生） | 目录 pool_type | 蓝 #597D9B |
-| 卡池 | 照影 | RECRUITMENT（派生） | 目录 pool_type | 紫 #88669F |
-| 卡池 | 自选 | RECRUITMENT（派生） | 目录 pool_type | 绛红 #A6514A |
-| 卡池 | 常驻 / 类型未知 | RECRUITMENT（派生） | 目录 pool_type；缺字段也回退 | 中性 #887B68 |
-| 商店 | 卡池商店 | SHOP | RECRUITMENT_SHOP | 灰 #7D7972 |
-| 商店 | 活动商店 | SHOP | ACTIVITY_SHOP | 灰 #7D7972 |
-| 商店 | 未细分（旧 SHOP） | SHOP | null | 灰 #7D7972 |
-| 其他 | 维护 | OTHER 或旧 MAINTENANCE | MAINTENANCE；旧 MAINTENANCE 缺字段也映射维护 | 灰 #7D7972 |
-| 其他 | 星池 | OTHER | STAR_POOL | 橙 #AC672E |
-| 其他 | 未细分（旧 OTHER） | OTHER | null 或未知值 | 中性 #887B68 |
+| 一级 | 二级 | 持久化 category / subtype |
+| --- | --- | --- |
+| 活动 | 大型/周年 | ACTIVITY / LARGE_EVENT |
+| 活动 | 地宫 | ACTIVITY / UNDERGROUND |
+| 活动 | 签到/楼主查岗 | ACTIVITY / SIGN_IN |
+| 活动 | 初见日/转盘 | ACTIVITY / FIRST_MEETING_ROULETTE |
+| 卡池 | 限定、复刻、照影、自选 | RECRUITMENT；权威招募目录 pool_type，只读 |
+| 家具 | 历练 | ACTIVITY / FURNITURE_TRIAL |
+| 家具 | 神秘洞窟 | ACTIVITY / MYSTERIOUS_CAVE |
+| 其他 | 维护 | OTHER / MAINTENANCE |
+| 其他 | 商店 | SHOP / null |
+| 其他 | 星池 | OTHER / STAR_POOL |
 
-所有未知非空细类（包括商店的未知细类）或类别不匹配均回退中性，不删除条目。中文文案不是存储主键。`subtype_detail` 只有 MYSTERIOUS_CAVE，必须位于 FURNITURE 下；表单分组仅活动/商店/其他，卡池只在招募目录维护。旧 LOGIN/MAINTENANCE 编辑时初始展示四组和对应细类，但不改写原 category；用户主动改分组/细类才调整。PUT 的两个可选字段为完整替换，null 清空。建议提交、原始资料、审核、采纳快照和 JSON 预览都显示完整层级。批量导入示例同时包含家具细目与旧 LOGIN 格式。
+表单只提供一级、二级；卡池在招募目录维护。中文是分类交换文件的目标值，单条 API 仍使用代码。旧 LOGIN 映射签到/楼主查岗，旧 MAINTENANCE 映射维护，旧 SHOP 及其两种细类映射商店，旧 ACTIVITY/FURNITURE/MYSTERIOUS_CAVE 映射家具·神秘洞窟。读取不写库，编辑其他资料时保留旧分类编码；主动选新分类才采用新编码。
+
+旧中型活动、泰山府、无细目家具，以及常驻/未知卡池保留并提示待归类，不按标题猜测，不删除、合并或改日期。家具和神秘洞窟仍是独立记录、独立订阅。其他未知值保留中性兜底。
+
+筛选按钮采用四组。新 URL 参数 `display_group` 按展示映射过滤，后端查询仍使用旧 category 契约；家具不会作为 category 发给后端。旧 `category=ACTIVITY/LOGIN/SHOP/...` 链接保持按原存储类别筛选。公开日历、今日统计和我的订阅使用相同展示映射；类型筛选时隐藏私人事项。
 
 后端直接将权威目录 `pool_type` 附到日历派生响应，`recruitmentPoolTypes.js` 同时供日历和 `RecruitmentTimeline.vue` 使用。规范化先 trim、英文 lowercase：明确别名为 limited、rerun、zhaoying、choice/select、permanent/standard，以及历史已知“傅融地宫”“重逢限定”。接受由“自选/照影/复刻/限定”组成的类型及可选“卡池/招募”后缀，按自选 > 照影 > 复刻 > 限定的既有优先级判定；常驻及可选后缀单独识别。“常驻限定”“并非限定”或未审查的自由文本均回退中性。仅解析 pool_type，不解析活动标题；招募封面保留原淡金 #F2DFAD、淡蓝 #D9E8F5、淡紫 #E7DCF4、淡红 #F1D5D1。常驻与未知不强标限定。前端不会恢复后端已过滤的隐藏/停用卡池。
 
@@ -512,3 +509,29 @@ npm run test:behavior -- behavior/calendarDetailDialog.spec.js
 ```
 
 人工验收（约 2 分钟）：手机 390px 与平板横屏（宽度 ≥768px）分别从月历／时间轴打开活动，编辑已有待办或添加一条，确认键盘上方能看到当前输入；添加最后一条后仍可输入，正文可滚动到保存按钮。收起键盘、移出表单焦点后底栏恢复，草稿保留；关闭时取消弃稿应继续编辑。桌面 1440px 检查居中详情与键盘导航，关闭后背景位置不跳动。浏览器、真机软键盘和响应式效果由用户验收。
+
+## 全量导出与按 ID 更新分类（2026-10-18）
+
+活动目录提供“导出全部”和“导入更新分类”；原“批量导入”仍只新增活动。导出不受页面筛选、游戏或日期范围限制，包含全部手工活动（历史、停用也包含）及当前可派生的只读卡池参考。它是分类整理文件，不替代数据库备份，不包含用户个人事项或订阅资料。
+
+三个管理接口复用现有 JWT + `activity_calendar:write` 权限，不新增内测资格门槛；公开/个人日历的内测限制保持原义：
+
+- `GET /v1/admin/activity-calendar/export`：返回完整分类交换文档。
+- `POST /v1/admin/activity-calendar/classification-import/preview`：请求 `{"json":"导出文件原文"}`，无写入。
+- `POST /v1/admin/activity-calendar/classification-import/commit`：请求同一原文及 `preview_token`，重新校验当前数据后事务提交。
+
+文档协议为 `document_type="activity-calendar-classification"`、整数 `schema_version=1`，含 `exported_at`、`classification_options`、`items`、`reference_items`。与新增型 JSON v1 不互通。容量为两数组合计最多10000条、原文UTF-8最多20 MiB；超限整份拒绝，不截断。下载通常带缩进，临近容量时使用紧凑JSON以保证往返；代理需允许转义后请求体，应用包裹上限为 `20 MiB * 6 + 4096` 字节。
+
+手工行是 `{id, expected_version, original, classification}`。`original` 保留完整管理资料供核对；只修改 `classification`，例如：
+
+```json
+{"level1":"家具","level2":"历练"}
+```
+
+使用导出文件中的真实ID和版本；历史缺version按0导出。`classification: null` 表示不更新，省略整个活动行也不删除。`original`、`classification_options`、`reference_items` 均是参考，不参与写入，也不能扩展服务端允许的分类。卡池不允许移入手工items或在此修改，请到招募目录维护。空目录示例为 `public/examples/activity-calendar-classification-v1.json`（前端仓）。
+
+预览报告包含 `total/ready/unchanged/skipped/invalid/conflicts/reference_count/rows/preview_token/updated`。行状态为 READY、UNCHANGED、SKIPPED、INVALID、CONFLICT，成功后 READY 变为 UPDATED。无效/重复/不存在/只读ID、非法分类或版本冲突阻止整批提交。只有实际分类变更才检查期望版本和写入；未修改导出文件重传应为零更新，旧编码不会被隐式规范化。
+
+提交使用 Hub Mongo 事务与逐条版本CAS，只更新 category、subtype、subtype_detail、修改审计及version。ID、标题、日期、说明、来源、启用状态、创建审计及订阅引用保持。任意一行失败整批回滚，缺少/过期令牌返回409。文件变化即废弃旧预览；超时或结果不明保留文件，必须重新预览实际结果，不复用旧令牌。重复提交相同目标不再增版本。
+
+生产使用步骤：先部署匹配的前后端，再从生产管理页导出并保留原文件；复制一份只改classification，上传预览、核对差异、勾选确认后提交；重新导出核对结果。代码发布本身不自动批改生产记录。旧后端不认识新增subtype，回滚版本前需评估已写入的新编码。上线前核实生产条数、文件体积、代理限制和Mongo事务能力。

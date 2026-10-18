@@ -23,6 +23,16 @@ const FILE_MIME_TYPES = {
   zip: new Set(['application/zip', 'application/x-zip-compressed'])
 }
 
+function normalizeSelectedFile(file) {
+  const mime = String(file?.type || '').toLowerCase().split(';', 1)[0].trim()
+  if (!['', 'application/octet-stream', 'image/jpg'].includes(mime) || typeof File !== 'function') return file
+  const extension = String(file?.name || '').toLowerCase().split('.').pop()
+  const type = [...ACCEPTED_MIME_TYPES].find(type => IMAGE_EXTENSIONS[type].has(extension))
+  if (!type || mime === 'image/jpg' && type !== 'image/jpeg') return file
+  // 部分手机选图只提供后缀；服务端仍校验实际文件头。
+  return new File([file], file.name, { type, lastModified: file.lastModified })
+}
+
 function classifyFile(file) {
   const mime = String(file?.type || '').toLowerCase().split(';', 1)[0].trim()
   const extension = String(file?.name || '').toLowerCase().split('.').pop()
@@ -81,7 +91,7 @@ export function useFeedbackMedia() {
 
   async function addFiles(files) {
     if (uploading.value || optimizing.value) return
-    const nextFiles = Array.from(files || [])
+    const nextFiles = Array.from(files || [], normalizeSelectedFile)
     if (!nextFiles.length) return
 
     error.value = ''

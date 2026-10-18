@@ -38,7 +38,7 @@
           <div v-else-if="row.kind === 'discs'" class="loadouts">
             <div v-for="(loadout, index) in row.value || []" :key="index" class="loadout">
               <label>组合 {{ index + 1 }} 名称<input v-model="loadout.name" maxlength="64" :aria-label="'复核命盘组合' + (index + 1) + '名称'" @input="row.included = true" /></label>
-              <label v-for="name in discOptions(loadout)" :key="name" class="check"><input type="checkbox" :checked="loadout.discs.some(disc => discNameOf(disc) === name)" :disabled="!loadout.discs.some(disc => discNameOf(disc) === name) && loadout.discs.length >= DISC_SELECTION_LIMIT" @change="toggleDisc(row, loadout, name, $event.target.checked)" />{{ name }}<small v-if="!catalogDiscNames.includes(name)">（不在图鉴中，请取消）</small></label>
+              <label v-for="name in discOptions(loadout)" :key="name" class="check" :class="{ 'invalid-disc': !catalogDiscNames.includes(name) }"><input type="checkbox" :aria-invalid="!catalogDiscNames.includes(name)" :checked="loadout.discs.some(disc => discNameOf(disc) === name)" :disabled="!loadout.discs.some(disc => discNameOf(disc) === name) && loadout.discs.length >= DISC_SELECTION_LIMIT" @change="toggleDisc(row, loadout, name, $event.target.checked)" /><span>{{ name || '空命盘名' }}<strong v-if="!catalogDiscNames.includes(name)" class="invalid-disc-hint">不在该密探图鉴中，可能是识别错误。请取消勾选，再对照游戏选择正确命盘。</strong></span></label>
               <button type="button" @click="row.value.splice(index, 1); row.included = true">删除组合 {{ index + 1 }}</button>
             </div>
             <p v-if="!catalogDiscNames.length">暂无可选命盘，请更新图鉴后重试；原始采集保留在技术详情。</p>
@@ -110,7 +110,7 @@ watch(() => props.current, () => { if (selectedCount.value) emitChange() }, { de
 function focusField(id) {
   const field = panel.value?.querySelector('#scan-review-field-' + id)
   field?.scrollIntoView?.({ block: 'nearest' })
-  ;(field?.querySelector('input:not([type="checkbox"]), select') || field)?.focus()
+  ;(field?.querySelector('.invalid-disc input') || field?.querySelector('input:not([type="checkbox"]), select') || field)?.focus()
 }
 async function preview() {
   submitted.value = true
@@ -123,7 +123,7 @@ function changeOwned(row) {
   if (row.value.owned === false) { row.value.stage = 0; row.value.awakened = null }
   else if (row.value.stage === 0) row.value.stage = null
 }
-const discOptions = loadout => [...new Set([...catalogDiscNames.value, ...(loadout.discs || []).map(discNameOf)])]
+const discOptions = loadout => [...new Set([...(loadout.discs || []).map(discNameOf).filter(name => !catalogDiscNames.value.includes(name)), ...catalogDiscNames.value])]
 function toggleDisc(row, loadout, name, selected) {
   loadout.discs = selected ? [...loadout.discs, { ot_name: name }] : loadout.discs.filter(disc => discNameOf(disc) !== name)
   row.included = true
@@ -159,6 +159,7 @@ a { color: var(--tea); text-decoration: underline; }
 fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .check input { accent-color: var(--tea); }
 .field-error, .errors { color: var(--rouge); }
+.invalid-disc { color: var(--rouge); border: 1px solid var(--rouge); border-radius: 8px; }
 .errors { border: 1px solid var(--rouge); border-radius: 8px; }
 .technical { border-top: 1px solid var(--line); }
 summary { cursor: pointer; }

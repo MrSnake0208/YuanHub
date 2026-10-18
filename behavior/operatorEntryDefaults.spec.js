@@ -226,8 +226,10 @@ it('清单触发全量刷新时，干净草稿采用最新独立化极、双命�
   expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).toMatchObject({
     expected_revision: 4, level: 56, elite: 8,
     disc_loadouts: [{ discs: [{ ot_name: '新命盘甲' }] }, { discs: [{ ot_name: '新命盘乙' }] }],
-    combat_stats: { manual_attack: 222, manual_hp: 2222, observed_inputs: { huaji: { stage: 20 } } },
+    combat_stats: { manual_attack: 222, manual_hp: 2222 },
   })
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).not.toHaveProperty('observed_inputs')
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).not.toHaveProperty('combat_input_signature')
   expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch).not.toHaveProperty('huaji')
 })
 
@@ -1077,7 +1079,7 @@ it.each([
   [25, 25, false],
   [19, 19, null],
   [31, null, true],
-])('快捷觉醒：选择后预览，保存stage25+true并同步面板观测：%s/%s/%s', async (starLevel, stage, awakened) => {
+])('快捷觉醒：保存stage25+true且不重写既有面板观测：%s/%s/%s', async (starLevel, stage, awakened) => {
   const current = { level: 100, elite: 17, starLevel, revision: 3, huaji: { owned: true, stage, awakened }, combat_stats: { manual_attack: 1000 } }
   const wrapper = await openCardStarEditor(current)
   await wrapper.get('[aria-label="快捷设置星级与觉醒"]').setValue('awakening')
@@ -1091,8 +1093,9 @@ it.each([
   const patch = operatorApi.patchOperatorCurrent.mock.lastCall[0].patch
   expect(patch).toMatchObject({ expected_revision: 3, reason: 'manual_correction', level: 100, elite: 17, huaji: { owned: true, stage: 25, awakened: true } })
   expect(patch).not.toHaveProperty('star_level')
-  expect(patch.combat_stats.observed_inputs.huaji).toEqual(patch.huaji)
-  expect(patch.combat_stats.combat_input_signature).toContain('"awakened":true')
+  expect(patch.combat_stats.manual_attack).toBe(1000)
+  expect(patch.combat_stats).not.toHaveProperty('observed_inputs')
+  expect(patch.combat_stats).not.toHaveProperty('combat_input_signature')
   expect(operatorApi.previewOperatorUpgrade).not.toHaveBeenCalled()
   expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
   expect(wrapper.get('.ledger-huaji-value').text()).toBe('已觉醒')

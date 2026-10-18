@@ -66,6 +66,49 @@ test('奇闻超限与小数精度、非法命盘必须修正，部分奇闻只�
   assert.equal(operatorReviewRowError(discs, [discs], catalog, current), '')
 })
 
+test('命盘识别错字明确指出组合和原文，不误报组合名或自动替换', () => {
+  const { review, catalog, current, entry } = operatorScanReviewFixture('disc')
+  catalog.discs = ['初始能量+3', '攻击力小幅提升']
+  entry.disc_loadouts = [
+    { id: 'disc_1', name: '命盘一', discs: ['攻击力小幅提升'] },
+    { id: 'disc_2', name: '命盘二', discs: ['初是能量+3'] },
+  ]
+  const original = JSON.stringify(entry)
+  const rows = operatorReviewRows(review, catalog)
+  const row = rows.find(item => item.id === 'disc_loadouts')
+  row.included = true
+  const error = operatorReviewRowError(row, rows, catalog, current)
+  assert.match(error, /组合 2：命盘「初是能量\+3」不在该密探图鉴中/)
+  assert.doesNotMatch(error, /填写组合名|最多三个/)
+  assert.throws(() => buildOperatorReviewCorrection(review, rows, 'new', review.correctedAt, catalog, current), /初是能量\+3/)
+  row.value[1].discs = ['初始能量+3']
+  assert.equal(operatorReviewRowError(row, rows, catalog, current), '')
+  assert.equal(JSON.stringify(entry), original)
+})
+
+test('命盘校验分别说明名称、数量、重复与结构问题，未勾选项不阻塞', () => {
+  const { review, catalog, current } = operatorScanReviewFixture('disc')
+  catalog.discs = ['甲', '乙', '丙', '丁']
+  const row = operatorReviewRows(review, catalog).find(item => item.id === 'disc_loadouts')
+  const valid = { id: 'disc_1', name: '命盘一', discs: ['甲'] }
+  row.included = true
+  for (const [value, message] of [
+    [[{ ...valid, name: ' ' }], /组合 1：请填写组合名/],
+    [[{ ...valid, name: '字'.repeat(65) }], /组合名不能超过 64/],
+    [[{ ...valid, discs: catalog.discs }], /最多选择三个命盘/],
+    [[{ ...valid, discs: ['甲', '甲'] }], /命盘重复/],
+    [[{ ...valid, discs: [''] }], /「空命盘名」不在该密探图鉴中/],
+    [[{ ...valid, id: '' }], /数据不完整/],
+    [[{ ...valid, discs: null }], /数据不完整/],
+    [[valid, valid, valid], /最多保留两组/],
+  ]) {
+    row.value = value
+    assert.match(operatorReviewRowError(row, [row], catalog, current), message)
+  }
+  row.included = false
+  assert.equal(operatorReviewRowError(row, [row], catalog, current), '')
+})
+
 test('安全：部分成功、全部拒绝、旧回执或不匹配身份不能关闭原提醒', () => {
   const { review } = operatorScanReviewFixture()
   const document = { records: [{ record_id: 'review:synthetic', entries: [{ operator_id: 'review-op' }] }] }

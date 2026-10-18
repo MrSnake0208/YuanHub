@@ -24,22 +24,23 @@
           <section v-if="!form" ref="listRegion" class="calendar-list" aria-labelledby="calendar-list-title" tabindex="-1">
             <header class="calendar-workspace-head">
               <h2 id="calendar-list-title">活动目录</h2>
-              <div class="calendar-actions"><button type="button" :disabled="loading" @click="importing = true">批量导入</button><button type="button" class="calendar-primary" :disabled="loading" @click="openNew">新建活动</button></div>
+              <div class="calendar-actions"><button type="button" :disabled="exporting" @click="exportAll">{{ exporting ? '导出中…' : '导出全部' }}</button><button type="button" :disabled="loading" @click="classificationImporting = true">导入更新分类</button><button type="button" :disabled="loading" @click="importing = true">批量导入</button><button type="button" class="calendar-primary" :disabled="loading" @click="openNew">新建活动</button></div>
             </header>
             <form class="calendar-panel calendar-form" @submit.prevent="load">
               <div class="calendar-fields">
                 <label>游戏<select v-model="filters.game"><option value="">全部游戏</option><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select></label>
-                <label>类型<select v-model="filters.category"><option value="">全部类型</option><option v-for="(label, key) in CALENDAR_CATEGORIES" :key="key" :value="key">{{ label }}</option></select></label>
+                <label>类型<select v-model="displayGroup"><option value="">全部类型</option><option v-for="(label, key) in CALENDAR_DISPLAY_GROUPS" :key="key" :value="key">{{ label }}</option></select></label>
                 <label>启用状态<select v-model="filters.enabled"><option value="">全部状态</option><option value="true">已启用</option><option value="false">已停用</option></select></label>
                 <label>搜索标题<input v-model.trim="filters.search" type="search" maxlength="120" placeholder="输入活动标题"></label>
                 <label>日期范围起点<input v-model="filters.from" type="date"></label>
                 <label>日期范围终点<input v-model="filters.to" type="date" :min="filters.from || undefined"></label>
+                <label>排序<select v-model="sortOrder"><option value="desc">开始日期：由新到旧</option><option value="asc">开始日期：由旧到新</option></select></label>
               </div>
               <div class="calendar-actions"><button type="submit" :disabled="loading">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button><button type="button" :disabled="loading" @click="clearFilters">清空筛选</button></div>
             </form>
             <p v-if="loading" role="status">正在读取活动目录…</p>
-            <p v-else-if="!entries.length && !error" class="calendar-panel">没有符合条件的活动。</p>
-            <article v-for="entry in entries" :key="entry.item.id" class="calendar-panel">
+            <p v-else-if="!sortedEntries.length && !error" class="calendar-panel">没有符合条件的活动。</p>
+            <article v-for="entry in sortedEntries" :key="entry.item.id" class="calendar-panel">
               <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
               <h3>{{ entry.item.title }}</h3>
               <p class="calendar-range">{{ calendarRangeLabel(entry.item) }}<span v-if="entry.item.start_time"> · {{ entry.item.time_zone }}</span></p>
@@ -89,6 +90,7 @@
         </template>
       </div>
       <SiteFooter />
+      <CalendarClassificationImportDialog v-if="permitted && classificationImporting" :key="identity" @close="classificationImporting = false" @updated="load" />
       <CalendarImportDialog v-if="permitted && importing" :key="identity" @close="importing = false" @imported="load" />
     </main>
   </div>
@@ -102,15 +104,17 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import CalendarSuggestionsReview from '@/components/calendar/CalendarSuggestionsReview.vue'
 import CalendarClassificationFields from '@/components/calendar/CalendarClassificationFields.vue'
-import { calendarDisplay } from '@/data/activityCalendarTypes.js'
+import { CALENDAR_DISPLAY_GROUPS, calendarDisplay } from '@/data/activityCalendarTypes.js'
+import CalendarClassificationImportDialog from '@/components/calendar/CalendarClassificationImportDialog.vue'
+import { downloadClassification } from '@/data/activityCalendarClassificationExchange.js'
 import CalendarImportDialog from '@/components/calendar/CalendarImportDialog.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
-import { createActivityCalendar, listAdminActivityCalendar, updateActivityCalendar } from '@/api/activityCalendar.js'
-import { CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarForm, calendarPayload, calendarRangeLabel, isCalendarDate, normalizeCalendarItem, validateCalendarForm } from '@/data/activityCalendar.js'
+import { createActivityCalendar, listAdminActivityCalendar, updateActivityCalendar, exportActivityCalendar } from '@/api/activityCalendar.js'
+import { CALENDAR_GAMES, calendarForm, calendarPayload, calendarRangeLabel, isCalendarDate, normalizeCalendarItem, validateCalendarForm } from '@/data/activityCalendar.js'
 
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
@@ -118,8 +122,13 @@ const permitted = computed(() => enabled && !!identity.value && hasPermission(au
 const canManageRecruitment = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE))
 const filters = reactive({ game: '', category: '', enabled: '', from: '', to: '', search: '' })
 const workspace = ref('directory'), suggestionsReview = ref(null)
-const importing = ref(false)
+const importing = ref(false), classificationImporting = ref(false), exporting = ref(false), displayGroup = ref('')
 const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled = ref(true)
+const sortOrder = ref('desc')
+const sortedEntries = computed(() => entries.value.filter(entry => !displayGroup.value || calendarDisplay(entry.item).group === displayGroup.value).sort((a, b) => {
+  const order = a.item.start_date.localeCompare(b.item.start_date) || (a.item.start_time || '').localeCompare(b.item.start_time || '')
+  return order * (sortOrder.value === 'asc' ? 1 : -1) || a.item.id.localeCompare(b.item.id)
+}))
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
 const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
 const dirty = computed(() => !!form.value && JSON.stringify(form.value) !== baseline.value)
@@ -166,7 +175,17 @@ async function open(entry = null) {
 }
 const openNew = () => open()
 const openEdit = entry => open(entry)
-async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); await load() }
+async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); sortOrder.value = 'desc'; displayGroup.value = ''; await load() }
+async function exportAll() {
+  if (!permitted.value || exporting.value) return
+  const token = capture()
+  exporting.value = true; error.value = ''
+  try {
+    const result = await exportActivityCalendar()
+    if (current(token)) downloadClassification(result)
+  } catch (err) { if (current(token)) await showError(err.message || '导出失败，请重试。') }
+  finally { if (current(token)) exporting.value = false }
+}
 async function load() {
   if (!permitted.value || form.value || workspace.value !== 'directory') return
   const token = capture(), read = ++readGeneration
@@ -212,7 +231,7 @@ async function save() {
   } finally { if (current(token)) saving.value = false }
 }
 watch([identity, permitted], () => {
-  importing.value = false
+  importing.value = false; classificationImporting.value = false; exporting.value = false
   generation++; readGeneration++
   entries.value = []; form.value = null; baseline.value = ''; loading.value = false; saving.value = false; error.value = ''; notice.value = ''; fieldErrors.value = {}; conflict.value = false
   if (permitted.value) void load()

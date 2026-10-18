@@ -1,3 +1,4 @@
+import { CALENDAR_DISPLAY_GROUPS } from '../src/data/activityCalendarTypes.js'
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -49,10 +50,10 @@ it('Controls完整展示选项，只发出单维度patch且不修改输入', asy
   const filters = { game: '如鸢', category: 'RECRUITMENT' }
   const wrapper = mount(CalendarFilterControls, { props: { filters, games: CALENDAR_GAMES, categories: CALENDAR_CATEGORIES } })
   expect(wrapper.findAll('fieldset')).toHaveLength(3)
-  expect(wrapper.findAll('button').map(button => button.text())).toEqual(['全部游戏', ...CALENDAR_GAMES, '全部类型', ...Object.values(CALENDAR_CATEGORIES), ...Object.values(CALENDAR_TIME_FILTERS)])
+  expect(wrapper.findAll('button').map(button => button.text())).toEqual(['全部游戏', ...CALENDAR_GAMES, '全部类型', ...Object.values(CALENDAR_DISPLAY_GROUPS), ...Object.values(CALENDAR_TIME_FILTERS)])
   await wrapper.findAll('button').find(button => button.text() === '代号鸢').trigger('click')
   await wrapper.findAll('button').find(button => button.text() === '活动').trigger('click')
-  expect(wrapper.emitted('change')).toEqual([[{ game: '代号鸢' }], [{ category: 'ACTIVITY' }]])
+  expect(wrapper.emitted('change')).toEqual([[{ game: '代号鸢' }], [{ display_group: 'ACTIVITY' }]])
   expect(filters).toEqual({ game: '如鸢', category: 'RECRUITMENT' })
 })
 
@@ -173,8 +174,8 @@ it('Sheet即时应用并保持打开，只有一组筛选控件，重置保留vi
   await open(wrapper)
   await clickSheet('如鸢')
   await clickSheet('卡池')
-  expect(router.currentRoute.value.query).toEqual({ view: 'month', date: '2026-09-15', ref: 'share', game: '如鸢', category: 'RECRUITMENT' })
-  expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game: '如鸢', category: 'RECRUITMENT' })
+  expect(router.currentRoute.value.query).toEqual({ view: 'month', date: '2026-09-15', ref: 'share', game: '如鸢', display_group: 'RECRUITMENT' })
+  expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game: '如鸢', category: '' })
   expect(summaryText(wrapper)).toBe('如鸢 · 卡池')
   expect(wrapper.get('.calendar-filter-count').text()).toBe('2')
   expect(dialog()).not.toBeNull()
@@ -299,7 +300,7 @@ it('不含招募与类型招募最后操作生效，URL/Sheet/摘要同步且本
   expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).not.toContain('RECRUITMENT')
   expect(listActivityCalendar).toHaveBeenCalledTimes(reads + 1) // Clearing category widens the API scope once.
   await clickSheet('卡池')
-  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', category: 'RECRUITMENT' })
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', display_group: 'RECRUITMENT' })
   expect(dialog().querySelector('input[type=checkbox]').checked).toBe(false)
   expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).toEqual(['RECRUITMENT'])
   await clickSheet('全部类型')

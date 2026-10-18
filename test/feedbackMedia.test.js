@@ -80,6 +80,47 @@ test('LOG 接受浏览器常见 MIME 声明', () => {
   }
 })
 
+test('手机选图补齐缺失或通用 MIME，兼容 image/jpg，保留文件名及图片字节', async () => {
+  for (const [name, type, expectedType] of [
+    ['截图.PNG', '', 'image/png'],
+    ['camera.jpeg', 'application/octet-stream', 'image/jpeg'],
+    ['camera.jpg', 'image/jpg', 'image/jpeg'],
+    ['screen.webp', '', 'image/webp']
+  ]) {
+    const media = useFeedbackMedia()
+    const input = { files: [new File(['image-bytes'], name, { type, lastModified: 123 })], value: name }
+    await media.selectFiles({ target: input })
+    assert.equal(input.value, '')
+    assert.equal(media.error, '')
+    assert.equal(media.items.length, 1, `${name}: ${type}`)
+    const file = media.items[0].file
+    assert.equal(file.type, expectedType)
+    assert.equal(file.name, name)
+    assert.equal(file.lastModified, 123)
+    assert.equal(await file.text(), 'image-bytes')
+    await withFetch(async (_url, options) => {
+      assert.equal(options.body.get('file').type, expectedType)
+      return apiResponse('med_phone')
+    }, async () => assert.deepEqual(await media.uploadAll(), ['med_phone']))
+    media.clear()
+  }
+})
+
+test('图片 MIME 与后缀明确冲突或格式不支持时仍拒绝', async () => {
+  for (const [name, type] of [
+    ['screen.png', 'image/jpeg'],
+    ['screen.png', 'image/jpg'],
+    ['script.js', 'image/jpg'],
+    ['camera.heic', 'image/heic'],
+    ['script.js', 'application/octet-stream']
+  ]) {
+    const media = useFeedbackMedia()
+    await media.addFiles([new File(['invalid'], name, { type })])
+    assert.equal(media.items.length, 0)
+    assert.match(media.error, /仅支持/)
+  }
+})
+
 test('图片和普通文件粘贴会入队，纯文本粘贴不拦截', () => {
   const media = useFeedbackMedia()
   let prevented = 0
