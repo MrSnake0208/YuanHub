@@ -1,0 +1,16 @@
+@media (max-width: 1023px) {
+  .catalog-admin .panel { padding: 16px; margin-top: 16px; }
+  .catalog-admin .game-switch, .catalog-admin .save-bar, .catalog-admin .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .catalog-admin .toolbar, .catalog-admin .fields, .catalog-admin .category-row, .catalog-admin .category-add { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-block: 16px; }
+  .catalog-admin .catalog-workspace.editing .entry-list { display: none; }
+  .catalog-admin .editor-placeholder { display: none; }
+  .catalog-admin .entry-editor { min-width: 0; }
+  .catalog-admin .category-row { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .catalog-admin .category-row small { overflow-wrap: anywhere; }
+  .catalog-admin .save-bar span { flex-basis: 100%; font-size: 13px; }
+  .catalog-admin .maintenance-body { display: grid; gap: 12px; }
+}
+@media (min-width: 600px) and (max-width: 1023px) {
+  .catalog-admin .toolbar, .catalog-admin .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-admin .fields .full { grid-column: 1 / -1; }
+}
