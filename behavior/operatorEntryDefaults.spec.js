@@ -119,6 +119,44 @@ async function openCardStarEditor(existing, catalog = { ...operator, rarity: 4 }
 const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
 
+it('编辑分区导航保留两套命盘、养成和星石草稿，统一交给原保存流程', async () => {
+  getCurrentStarState.mockResolvedValue({ generation: 0, entries: [{ instance_id: 'stone-a', kind: 'main', name: '天府', level: 10 }] })
+  const wrapper = await openEditor({ level: 50, elite: 7, star_level: 7, revision: 2 }, {
+    ...operator, rarity: 4, discs: [{ ot_name: '测试命盘甲', color: '金' }, { ot_name: '测试命盘乙', color: '紫' }],
+  })
+  wrapper.get('.editor-body').element.scrollTo = vi.fn()
+  const starEditor = wrapper.getComponent({ name: 'StarLoadoutEditor' })
+  const initialStarEditor = starEditor.vm.$
+  await wrapper.findAll('.level-row input')[0].setValue('60')
+  await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
+  await wrapper.findAll('.disc-option input')[0].setValue(true)
+  await wrapper.get('.disc-loadout-name input').setValue('命盘一草稿')
+  await wrapper.get('#disc-loadout-tab-1').trigger('click')
+  await wrapper.findAll('.disc-option input')[1].setValue(true)
+  await wrapper.get('.disc-loadout-name input').setValue('命盘二草稿')
+  await wrapper.get('[aria-controls="operator-editor-stars"]').trigger('click')
+  starEditor.vm.$emit('update:draft-loadouts', { op: { main1: 'stone-a' } })
+  await wrapper.get('[aria-controls="operator-editor-growth"]').trigger('click')
+  await wrapper.get('[aria-controls="operator-editor-discs"]').trigger('click')
+  await wrapper.get('#disc-loadout-tab-0').trigger('click')
+  expect(wrapper.get('.disc-loadout-name input').element.value).toBe('命盘一草稿')
+  expect(wrapper.findAll('.disc-option input').map(input => input.element.checked)).toEqual([true, false])
+  expect(growthValues(wrapper)).toEqual(['60', '7'])
+  expect(wrapper.getComponent({ name: 'StarLoadoutEditor' }).vm.$).toBe(initialStarEditor)
+  expect(starEditor.props('draftLoadouts').op.main1).toBe('stone-a')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(putCurrentStarLoadout).not.toHaveBeenCalled()
+  operatorApi.patchOperatorCurrent.mockResolvedValueOnce({ level: 60, elite: 7, star_level: 7, revision: 3 })
+  putCurrentStarLoadout.mockResolvedValueOnce({ generation: 0, revision: 1, loadouts: { op: { main1: 'stone-a' } } })
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  const patch = operatorApi.patchOperatorCurrent.mock.lastCall[0].patch
+  expect(patch).toMatchObject({ level: 60, elite: 7, expected_revision: 2 })
+  expect(patch.disc_loadouts.map(loadout => ({ name: loadout.name, discs: loadout.discs.map(disc => disc.ot_name) }))).toEqual([
+    { name: '命盘一草稿', discs: ['测试命盘甲'] }, { name: '命盘二草稿', discs: ['测试命盘乙'] },
+  ])
+  expect(putCurrentStarLoadout).toHaveBeenCalledWith('acc', expect.objectContaining({ loadouts: expect.objectContaining({ op: expect.objectContaining({ main1: 'stone-a' }) }) }))
+})
+
 it.each([
   ['旧星级与单套命盘', { star_level: 19, discs: [{ ot_name: '测试命盘甲' }] }, [['测试命盘甲'], []]],
   ['独立化极与两套命盘', { huaji: { owned: true, stage: 19, awakened: false }, disc_loadouts: [

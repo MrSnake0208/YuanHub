@@ -2355,7 +2355,7 @@
         <div
           ref="editorPanelEl"
           @focusin="revealEditorControl"
-          class="editor-panel"
+          class="editor-panel editor-workspace"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="'operator-editor-title-' + editingId"
@@ -2534,10 +2534,14 @@
             </button>
           </div>
 
+          <OperatorEditorNav :scroll-root="editorShortViewport ? editorPanelEl : editorBodyEl" />
+
           <div ref="editorBodyEl" class="editor-body">
-            <OperatorLevelBreakthroughSelect v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
-            <div class="editor-row">
-              <span class="editor-label">基础养成</span>
+            <section class="editor-row editor-growth-section" aria-labelledby="operator-editor-growth" data-editor-section="growth">
+              <div class="editor-section-head">
+                <h4 id="operator-editor-growth" class="editor-label" tabindex="-1"><Sparkles :size="20" aria-hidden="true" />基础养成</h4>
+                <OperatorLevelBreakthroughSelect v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
+              </div>
               <div class="num-fields">
                 <div class="level-row">
                   <label
@@ -2563,27 +2567,29 @@
                     >最高修为：{{ maxEliteForLevel }}</span
                   >
                 </div>
-                <button
-                  type="button"
-                  class="btn ghost editor-growth-preset"
-                  :disabled="savingEdit"
-                  title="仅填入等级和修为；点击保存后生效"
-                  @click="applyEditGrowthPreset(100, 17)"
-                >100级 / 修为17</button>
-                <button
-                  type="button"
-                  class="btn ghost editor-growth-preset"
-                  :disabled="savingEdit"
-                  title="仅填入等级和修为；点击保存后生效"
-                  @click="applyEditGrowthPreset(90, 15)"
-                >90级 / 修为15</button>
-                <button
-                  type="button"
-                  class="btn ghost editor-fill-max"
-                  :disabled="savingEdit"
-                  title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
-                  @click="fillEditToMax()"
-                >一键拉满等级/修为/漆园蝶</button>
+                <div class="editor-growth-actions">
+                  <button
+                    type="button"
+                    class="btn ghost editor-growth-preset"
+                    :disabled="savingEdit"
+                    title="仅填入等级和修为；点击保存后生效"
+                    @click="applyEditGrowthPreset(100, 17)"
+                  >100级 / 修为17</button>
+                  <button
+                    type="button"
+                    class="btn ghost editor-growth-preset"
+                    :disabled="savingEdit"
+                    title="仅填入等级和修为；点击保存后生效"
+                    @click="applyEditGrowthPreset(90, 15)"
+                  >90级 / 修为15</button>
+                  <button
+                    type="button"
+                    class="btn ghost editor-fill-max"
+                    :disabled="savingEdit"
+                    title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
+                    @click="fillEditToMax()"
+                  >一键拉满等级/修为/漆园蝶</button>
+                </div>
                 <div
                   class="star-card"
                   :title="
@@ -2700,10 +2706,10 @@
                   >奇闻全部拉满</button>
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div class="editor-row disc-editor-row">
-              <span class="editor-label">命盘</span>
+            <section class="editor-row disc-editor-row" aria-labelledby="operator-editor-discs" data-editor-section="discs">
+              <h4 id="operator-editor-discs" class="editor-label" tabindex="-1"><Target :size="20" aria-hidden="true" />命盘</h4>
               <div class="disc-loadout-editor">
                 <div
                   class="disc-loadout-tabs"
@@ -2821,10 +2827,10 @@
                   两套命盘组合和名称都会同步到云端；这里不区分当前装备。
                 </p>
               </div>
-            </div>
+            </section>
 
-            <div class="editor-row">
-              <span class="editor-label">星石</span>
+            <section class="editor-row editor-stars-section" aria-labelledby="operator-editor-stars" data-editor-section="stars">
+              <h4 id="operator-editor-stars" class="editor-label" tabindex="-1"><Star :size="20" aria-hidden="true" />星石</h4>
               <div class="stone-editor">
                 <StarLoadoutEditor
                   v-if="editingOp"
@@ -2837,7 +2843,7 @@
                   @update:draft-loadouts="starLoadoutDrafts = $event"
                 />
               </div>
-            </div>
+            </section>
           </div>
 
           <div class="editor-actions">
@@ -2996,6 +3002,7 @@ import OperatorBoxViewer from "../../components/operator/OperatorBoxViewer.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
+import OperatorEditorNav from "./OperatorEditorNav.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
 import operatorPortraits from "../../data/operatorPortraits.json";
@@ -12508,6 +12515,8 @@ onBeforeUnmount(function () {
 </style>
 <style scoped src="./operatorWorkspaceDesktop.css"></style>
 <style scoped src="./operatorWorkspaceMobile.css"></style>
+<style scoped src="./operatorEditorDesktop.css"></style>
+<style scoped src="./operatorEditorMobile.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1Desktop.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1Mobile.css"></style>
