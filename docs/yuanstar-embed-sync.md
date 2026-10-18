@@ -1,5 +1,11 @@
 # YuanStar embed 同步说明
 
+## PR #25 维护者集成补丁（2026-10-18）
+
+- 背包导航与养成教程回归改为实际数字浮层的打开、输入和确认操作，保留等级保存、筛选/滚动恢复、跨页撤销重做及保存期间教程保护断言。
+- 宿主使用实际 embed、`fake-indexeddb` 和虚构 File 验证首次三图 Blob 写入失败的原异常、阶段与分类顺序，原 File 重试和重载恢复，追加 Blob/metadata 写入失败的整事务回滚、其他账号保护，以及清空/替换/切账号后的迟到分类。
+- 补丁不修改生成 JS/CSS、模型或 manifest 来源；本页下方 source commit 仍对应原作者交付。私有源码未独立重建，华为 QQ 浏览器首次写入及真实浮层视觉/触控仍需人工验收。
+
 ## Import Draft 恢复与已验收 UI 正式来源（2026-10-18）
 
 - 权威源码分支 `feature/yuanhub-embed`，source commit `e86a05aa2508e14b9a1e6907de19359cfdb78bfb`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed`，再由 `scripts/sync-yuanstar-embed.mjs` 完整同步 12 个资源；manifest 记录最新 clean 来源和逐文件 SHA-256。
