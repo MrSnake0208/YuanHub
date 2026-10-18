@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { emptyRecord, filterAchievements, readAchievementBackup, summarizeAchievements } from '../src/pages/achievement/rules.js'
+import { emptyRecord, filterAchievements, hasQuantifiedProgress, readAchievementBackup, summarizeAchievements } from '../src/pages/achievement/rules.js'
 import { requiresBetaApi } from '../src/utils/betaAccess.js'
 import { achievementArchive, achievementBackup, achievementCatalog } from '../test-support/achievement.js'
 
@@ -13,7 +13,7 @@ test('三态互斥、目录分母固定，关注备注和历史记录不冒充�
     { ...emptyRecord(entries[1].achievement_id), status: 'completed' },
     { ...emptyRecord('removed'), status: 'completed' }
   ]
-  assert.deepEqual(summarizeAchievements(entries, records), { total: 3, completed: 1, incomplete: 0, pending: 2 })
+  assert.deepEqual(summarizeAchievements(entries, records), { total: 3, completed: 1, incomplete: 0, pending: 2, favorite: 1 })
   assert.equal(filterAchievements(entries, records, filters({ favorite: true })).length, 1)
   assert.equal(filterAchievements(entries, records, filters({ status: 'incomplete' })).length, 0)
   assert.equal(filterAchievements(entries, records, filters({ status: 'pending' })).length, 2)
@@ -50,4 +50,23 @@ test('资料未准备时生产开关关闭、开发不注入样例、路由允�
   const route = routes.find(item => item.path === '/achievement')
   assert.equal(route.meta.feature, 'achievementArchive')
   assert.equal(route.meta.requiresAuth, undefined)
+})
+
+
+test('奖励文本支持真实选项和关键词，与分类/状态/关注/搜索共同筛选', () => {
+  const entries = achievementCatalog().entries.map((entry, index) => ({ ...entry, reward: index === 2 ? null : '测试资源 × ' + (index + 1) }))
+  const records = [{ ...emptyRecord(entries[0].achievement_id), status: 'completed', favorite: true }, { ...emptyRecord('removed'), favorite: true }]
+  assert.deepEqual(filterAchievements(entries, records, filters({ reward: '  测试资源  ', category: 'test', status: 'completed', favorite: true, query: '别名' })).map(item => item.achievement_id), [entries[0].achievement_id])
+  assert.equal(filterAchievements(entries, records, filters({ reward: '测试资源', hidden: true })).length, 1)
+  assert.equal(filterAchievements(entries, records, filters({ reward: '不存在' })).length, 0)
+  assert.equal(filterAchievements(entries, records, filters({ reward: '   ' })).length, 3)
+  assert.equal(filterAchievements([{ ...entries[0], reward: 'Fixture TOKEN' }], [], filters({ reward: 'token' })).length, 1)
+  const summary = summarizeAchievements(entries, records)
+  assert.equal(summary.favorite, 1)
+  assert.equal(summary.pending + summary.incomplete + summary.completed, summary.total)
+})
+test('只有明确的数值类型和正目标可展示进度，不虚构0/1', () => {
+  for (const entry of [{}, { target: 1 }, { progress_kind: 'boolean', target: 1 }, { progress_kind: 'integer' }, { progress_kind: 'integer', target: 0 }, { progress_kind: 'number', target: '10' }]) assert.equal(hasQuantifiedProgress(entry), false)
+  assert.equal(hasQuantifiedProgress({ progress_kind: 'integer', target: 10 }), true)
+  assert.equal(hasQuantifiedProgress({ progress_kind: 'number', target: 2.5 }), true)
 })
