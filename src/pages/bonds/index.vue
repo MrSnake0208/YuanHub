@@ -2,7 +2,7 @@
   <div class="bonds-page bonds-codex">
     <IslandSidebar />
     <main id="main-content" class="bonds-main">
-      <CompactToolHeader title="羁绊图鉴" description="查看羁绊组合，记录不同天气下的事件。">
+      <CompactToolHeader title="羁绊图鉴" description="作者：线线&amp;悠扬 · 独立创作">
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :error="state.accountsError" :switch-disabled="state.busy" switch-disabled-reason="正在保存或处理文件，请等待完成。" /></template>
         <template #actions>
           <button type="button" class="bond-header-action" :aria-expanded="helpOpen" aria-controls="bond-help" @click="helpOpen = !helpOpen"><Info :size="15" aria-hidden="true" />图鉴说明</button>
@@ -26,6 +26,7 @@
           <p>羁缘成就共 1、3、10、20、50、100、200 种七档。完成状态由你确认，取消收录不会撤销已确认成就，也不会自动发放库存奖励。</p>
           <router-link v-if="achievementEnabled" :to="{ path: '/achievement', query: { linked_metric: 'yuan_bond_variants' } }">查看关联成就与确认状态</router-link><p v-else>成就页面当前未开放；羁绊仍独立保存和计数。</p>
           <p v-if="state.catalog" class="bond-catalog-info">目录版本：{{ state.catalog.catalog_version }}。备份包含完整账号记录，不受筛选影响。</p>
+          <p>独立创作 · 著作权归作者 线线&amp;悠扬 所有。</p>
         </section>
         <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
           <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
