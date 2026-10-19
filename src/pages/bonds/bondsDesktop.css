@@ -1,0 +1,9 @@
+@media (min-width: 768px) {
+  .bonds-page .wrap { padding-inline: 32px; }
+  .bond-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bond-weather-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bond-toolbar input[type=search] { min-width: 210px; }
+  .bond-admin-workspace { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 20px; }
+  .bond-admin-list { max-height: 65dvh; overflow-y: auto; }
+}
+@media (min-width: 1200px) { .bond-weather-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }

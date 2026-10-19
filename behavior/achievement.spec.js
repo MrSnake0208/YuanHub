@@ -458,7 +458,7 @@ it('完成日期草稿在两态切换和备注单独保存后保留，返回已�
   expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 4, [{ achievement_id: 'yh_fixture_dhy_1', completed_on: '2026-10-17' }])
 })
 
-it('结构化奖励三态和旧奖励文本保留，联动未接入不显示伪造羁绊数值', async () => {
+it('结构化奖励三态和旧奖励文本保留，指标缺失不伪造零进度', async () => {
   const catalog = achievementCatalog(4)
   catalog.entries[0].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 10 }]
   catalog.entries[1].rewards = []
@@ -468,7 +468,24 @@ it('结构化奖励三态和旧奖励文本保留，联动未接入不显示伪�
   const w = page(); await flushPromises()
   expect(w.text()).toContain('白金币 × 10'); expect(w.text()).toContain('无奖励')
   expect(w.text()).toContain('奖励资料未补齐'); expect(w.text()).toContain('旧奖励内容（旧文本，未结构化）')
-  expect(w.text()).toContain('羁绊联动尚未接入')
+  expect(w.text()).toContain('羁绊进度未读取')
   expect(w.findAll('progress')).toHaveLength(0)
-  expect(w.findAll('.achievement-progress-edit')[0].text()).toContain('进度未记录')
+  expect(w.findAll('.achievement-progress-edit')).toHaveLength(0)
+})
+
+it('羁绊只读进度达标提示和取消不反向修改人工完成状态', async () => {
+  const catalog = achievementCatalog(1)
+  catalog.entries[0].target = 20; catalog.entries[0].linked_metric = 'yuan_bond_variants'
+  api.getAchievementCatalog.mockResolvedValue(catalog)
+  const current = { ...achievementArchive('a'), linked_metrics: [{ metric: 'yuan_bond_variants', value: 25, source_revision: 3, source_catalog_version: 'fixture-bonds' }], records: [{ achievement_id: catalog.entries[0].achievement_id, status: 'pending', progress: 7, note: '' }] }
+  api.getAchievementArchive.mockResolvedValue(current)
+  const w = page(); await flushPromises()
+  expect(w.text()).toContain('羁绊已记录进度 20 / 20'); expect(w.text()).toContain('记录已达标，可确认完成'); expect(w.text()).toContain('历史人工进度 7')
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+  api.writeAchievements.mockResolvedValue({ ...current, revision: 1, records: [{ ...current.records[0], status: 'completed' }] })
+  await w.get('.status-completed').trigger('click'); await flushPromises()
+  api.getAchievementArchive.mockResolvedValue({ ...current, revision: 1, linked_metrics: [{ ...current.linked_metrics[0], value: 19 }], records: [{ ...current.records[0], status: 'completed' }] })
+  await button(w, '刷新档案').trigger('click'); await flushPromises()
+  expect(w.text()).toContain('羁绊已记录进度 19 / 20'); expect(w.get('.status-completed').attributes('aria-pressed')).toBe('true')
+  expect(api.writeAchievements).toHaveBeenCalledTimes(1)
 })

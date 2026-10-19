@@ -23,6 +23,7 @@ export function filterAchievements(entries, records, filters, categories = [], l
   return entries.filter(entry => {
     const record = byId.get(entry.achievement_id) || emptyRecord(entry.achievement_id)
     return (!filters.category || entry.category_id === filters.category) &&
+      (!filters.metric || entry.linked_metric === filters.metric) &&
       (!filters.status || completionStatus(record) === filters.status) &&
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
@@ -34,6 +35,13 @@ export function filterAchievements(entries, records, filters, categories = [], l
 
 export function hasQuantifiedProgress(entry) {
   return Number.isSafeInteger(entry?.target) && entry.target > 0 && entry.target <= 1e12
+}
+
+export function linkedProgress(entry, metrics = []) {
+  if (!entry.linked_metric || !hasQuantifiedProgress(entry)) return null
+  const source = metrics.find(item => item.metric === entry.linked_metric)
+  if (!source || !Number.isSafeInteger(source.value) || source.value < 0) return null
+  return { value: source.value, displayed: Math.min(source.value, entry.target), reached: source.value >= entry.target }
 }
 
 export function progressValidationError(entry, value) {

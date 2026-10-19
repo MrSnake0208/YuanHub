@@ -32,6 +32,7 @@
                   <label class="achievement-reward-filter">奖励<input v-model="filters.reward" type="search" list="achievement-rewards" aria-label="成就奖励筛选" placeholder="全部奖励"><datalist id="achievement-rewards"><option v-for="reward in rewardOptions" :key="reward" :value="reward" /></datalist></label>
                   <label>状态<select v-model="filters.status" aria-label="成就状态筛选"><option value="">全部状态</option><option v-for="(label, value) in STATUS_LABELS" :key="value" :value="value">{{ label }}</option></select></label>
                   <label>游戏分类<select v-model="filters.category" aria-label="游戏分类筛选"><option value="">全部分类</option><option v-for="category in state.catalog.categories" :key="category.category_id" :value="category.category_id">{{ category.name }}</option></select></label>
+                  <label>进度来源<select v-model="filters.metric"><option value="">全部来源</option><option value="yuan_bond_variants">羁绊已记录种数</option></select></label>
                   <label class="achievement-check"><input v-model="filters.favorite" type="checkbox">仅看关注</label>
                   <details class="achievement-more-filters"><summary>更多筛选{{ filters.hidden ? ' · 隐藏成就' : '' }}</summary><div><label class="achievement-check"><input v-model="filters.hidden" type="checkbox">仅隐藏成就</label><small>隐藏属性尚未核验的条目不纳入。</small></div></details>
                   <button class="achievement-mobile-filters" type="button" aria-haspopup="dialog" @click="openMoreFilters">更多筛选{{ filters.hidden ? ' · 隐藏成就' : '' }}</button>
@@ -46,7 +47,7 @@
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
                     <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>{{ available && !state.archive ? '—' : group.completed }} / {{ group.total }}</span><span class="achievement-group-rule" aria-hidden="true" /></header>
                     <ul class="achievement-list">
-                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
+                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
                     </ul>
                   </section>
                 </div>
@@ -68,7 +69,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { Award, Check, Clock, Search, Star } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -83,11 +84,13 @@ import { useAchievement } from './useAchievement.js'
 import { PAGE_SIZE, progressValidationError, STATUS_LABELS, summarizeAchievements } from './rules.js'
 
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE)
+const route = useRoute()
 const model = enabled ? useAchievement() : null
 // 路由会阻断关闭的入口；模板仍保留关闭状态，避免测试/直接挂载触发私有请求。
 const { state, identity, accountId, account, game, publicGame, available, writable, entries, filters, page, batchMode, selected, filtered, pageEntries, summary, recordFor, capture, matches, refresh, loadAccounts, save, undo, toggleSelection, resetFilters } = model || {
   state: {}, summary: {}, filters: {}, entries: [], filtered: [], pageEntries: [], selected: [], recordFor() {}
 }
+watch(() => route?.query?.linked_metric, value => { if (enabled) filters.metric = value === 'yuan_bond_variants' ? value : '' }, { immediate: true })
 const summaryItems = [
   { key: 'total', label: '已收录成就', icon: Award },
   { key: 'completed', label: '已完成', icon: Check },
