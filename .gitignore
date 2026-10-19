@@ -1,11 +1,28 @@
+# Dependencies and build output
 node_modules
 dist
+.pnpm-store
+
+# OS and local configuration
 .DS_Store
 *.local
-.pnpm-store
 .env
 .env.*
 !.env.example
+!.env.*.example
+!.env.template
+!.env.*.template
+
+# Local agent session records
+/.agent-teams/
+
+# Package-manager debug logs
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+/coverage/
+/promo-site/coverage/
 
 # Local UX audit reports/screenshots may contain authenticated UI state.
 .ux/audits/
