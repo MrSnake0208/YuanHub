@@ -6,7 +6,7 @@ import { activeAccount, DEFAULT_ACCOUNT_GAME } from '../../store/activeAccount.j
 import { auth } from '../../store/auth.js'
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { operatorHuaji } from '../../utils/operatorHuaji.js'
-import { filterBonds, groupBonds } from './rules.js'
+import { filterBonds, groupBonds, groupBondsByOperator } from './rules.js'
 
 export function useBonds() {
   const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0 })
@@ -17,12 +17,13 @@ export function useBonds() {
   const available = computed(() => !!identity.value && !!account.value)
   const game = computed(() => available.value ? account.value.game : publicGame.value)
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy && !state.catalogError && !state.error)
-  const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', hideRecorded: false, onlyOwned: false })
+  const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', recorded: '', hideRecorded: false, onlyOwned: false })
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const filtered = computed(() => filterBonds(state.catalog?.entries || [], records.value, state.operators, filters, state.owned))
   const groups = computed(() => groupBonds(filtered.value))
   const selected = ref([]), page = ref(0)
-  const pageGroups = computed(() => groups.value.slice(page.value * 20, (page.value + 1) * 20))
+  const operatorGroups = computed(() => groupBondsByOperator(filtered.value, state.catalog?.entries || [], records.value))
+  const pageGroups = computed(() => operatorGroups.value.slice(page.value * 20, (page.value + 1) * 20))
   const summary = computed(() => state.archive?.summary || null)
   const recorded = id => records.value.some(r => r.bond_id === id && r.triggered)
   let alive = true, read = 0, accountRead = 0
@@ -31,7 +32,7 @@ export function useBonds() {
   function reset() {
     state.generation++; read++
     Object.assign(state, { catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, error: '', catalogError: '', operatorError: '', ownedError: '', notice: '' })
-    selected.value = []; page.value = 0; filters.onlyOwned = false
+    selected.value = []; page.value = 0; filters.onlyOwned = false; filters.recorded = ''
   }
   async function refresh() {
     if (state.busy) return false
@@ -109,5 +110,5 @@ export function useBonds() {
   watch(identity, () => { state.accounts = []; accountRead++; loadAccounts() }, { flush: 'sync', immediate: true })
   watch([identity, accountId, game, available], () => { reset(); refresh() }, { flush: 'sync', immediate: true })
   onScopeDispose(() => { alive = false; state.generation++; accountRead++; read++ })
-  return { state, identity, accountId, account, available, game, publicGame, writable, filters, records, filtered, groups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, select }
+  return { state, identity, accountId, account, available, game, publicGame, writable, filters, records, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, select }
 }

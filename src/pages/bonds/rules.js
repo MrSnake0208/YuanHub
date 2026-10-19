@@ -1,3 +1,5 @@
+import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
+
 export const ACTIONS = Object.freeze({ arson: '纵火', rumor: '传谣', poison: '下毒', undercover: '卧底', gather: '搜集', extinguish: '灭火', purify: '净水', rescue: '营救' })
 export const WEATHERS = Object.freeze({ sunny: '晴天', rain: '雨天', fog: '大雾', wind: '狂风', light_snow: '小雪', heavy_snow: '大雪', hurricane: '飓风', thunder: '雷鸣' })
 export const STATUS = Object.freeze({ active: '当前', retired: '历史下架', invalid: '误录，不计数' })
@@ -7,12 +9,39 @@ export const MAX_BYTES = 8 * 1024 * 1024
 export function filterBonds(entries, records, operators, filters, owned) {
   const triggered = new Set(records.filter(r => r.triggered).map(r => r.bond_id))
   const byId = new Map(operators.map(op => [op.id, op]))
-  const query = filters.query.trim().toLocaleLowerCase()
+  const queries = filters.query.trim().toLocaleLowerCase().split(/[\s、，,+＋&]+/).filter(Boolean)
   return entries.filter(e => (!filters.status || e.status === filters.status) &&
     (!filters.action || e.action === filters.action) && (!filters.weather || e.weather === filters.weather) &&
     (!filters.effect || e.effect === filters.effect) && (!filters.hideRecorded || !triggered.has(e.bond_id)) &&
+    (!filters.recorded || (filters.recorded === 'collected') === triggered.has(e.bond_id)) &&
     (!filters.onlyOwned || !owned || e.members.every(id => owned.get(id) === true)) &&
-    (!query || e.members.some(id => [byId.get(id)?.name, byId.get(id)?.alias, id].filter(Boolean).join(' ').toLocaleLowerCase().includes(query))))
+    queries.every(query => e.members.some(id => matchesOperatorSearch(byId.get(id) || { id }, query) || String(byId.get(id)?.alias || '').toLocaleLowerCase().includes(query))))
+}
+
+export function groupBondsByOperator(entries, catalog, records) {
+  const triggered = new Set(records.filter(r => r.triggered).map(r => r.bond_id))
+  const totals = new Map(), groups = new Map()
+  // 分组可重复展示同一条目；进度始终取完整当前目录的唯一 bond_id。
+  for (const entry of catalog) {
+    if (entry.status !== 'active') continue
+    for (const id of entry.members) {
+      if (!totals.has(id)) totals.set(id, new Set())
+      totals.get(id).add(entry.bond_id)
+    }
+  }
+  for (const entry of entries) {
+    for (const id of entry.members) {
+      if (!groups.has(id)) {
+        const ids = [...(totals.get(id) || [])]
+        groups.set(id, { id, total: ids.length, collected: ids.filter(key => triggered.has(key)).length, pairs: new Map() })
+      }
+      const pairs = groups.get(id).pairs
+      const key = [...entry.members].sort().join('|') + ':' + entry.effect
+      if (!pairs.has(key)) pairs.set(key, { key, members: entry.members.filter(member => member !== id), effect: entry.effect, entries: [] })
+      pairs.get(key).entries.push(entry)
+    }
+  }
+  return [...groups.values()].map(group => ({ ...group, pairs: [...group.pairs.values()] }))
 }
 
 export function groupBonds(entries) {
