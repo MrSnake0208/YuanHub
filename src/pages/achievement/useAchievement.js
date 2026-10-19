@@ -20,7 +20,7 @@ export function useAchievement() {
   const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false })
   const page = ref(0), batchMode = ref(false), selected = ref([])
   const filtered = computed(() => filterAchievements(entries.value, records.value.map(record =>
-    filters.status === 'incomplete' && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters))
+    filters.status === 'incomplete' && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters, state.catalog?.categories || [], state.catalog?.legacy_rewards || {}))
   const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
   const summary = computed(() => summarizeAchievements(entries.value, records.value))
   const recordFor = id => records.value.find(record => record.achievement_id === id) || emptyRecord(id)

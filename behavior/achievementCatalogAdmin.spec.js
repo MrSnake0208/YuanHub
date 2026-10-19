@@ -13,11 +13,11 @@ vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).react
 vi.mock('../src/api/achievementCatalogAdmin.js', () => ({ getAchievementCatalogAdmin: vi.fn(), achievementCatalogCommand: vi.fn(), exportAchievementCatalog: vi.fn() }))
 const clone = v => JSON.parse(JSON.stringify(v))
 function content(game = '代号鸢') {
-  return { game, data_status: 'partial', coverage: '测试范围', categories: [{ category_id: 'cat_fixture', name: '分类', sort: 0, enabled: true }], retired_ids: [], catalog_version: '', entries: [{ achievement_id: 'yh_test_1', game, category_id: 'cat_fixture', name: '测试成就', condition: '条件', sort: 0, is_hidden: null, aliases: [], operators: [], chapter: null, reward: '无奖励', method: null, spoiler: null, sources: [], verified_at: '', data_status: 'unverified', progress_kind: null, target: null, unit: null }] }
+  return { game, data_status: 'partial', coverage: '测试范围', categories: [{ category_id: 'cat_fixture', name: '分类', sort: 0, enabled: true }], retired_ids: [], catalog_version: '', entries: [{ achievement_id: 'yh_test_1', game, category_id: 'cat_fixture', name: '测试成就', condition: '条件', sort: 0, is_hidden: null, rewards: null, target: null, linked_metric: null }] }
 }
 function state(game = '代号鸢') {
   const draft = content(game)
-  return { revision: 3, draft, published: { version: 'v1', content: { ...clone(draft), entries: [], data_status: 'empty' }, published_at: '2026-10-18', published_by: 'admin' }, history: [] }
+  return { revision: 3, draft, published: { version: 'v1', content: { ...clone(draft), entries: [], data_status: 'empty' }, published_at: '2026-10-18', published_by: 'admin' }, history: [], compatibility_issues: [], reward_items: [{ item_key: 'baijinbi', name: '白金币', games: ['代号鸢', '如鸢'] }] }
 }
 const button = (w, label) => w.findAll('button').find(b => b.text() === label)
 let wrappers = []
@@ -100,7 +100,7 @@ it('发布错误按名称合并且可定位编辑，不丢失未知错误', asyn
 
 it('已有未核验草稿可直接预览确认发布，不显示来源或核验表单', async () => {
   const initial = state(); initial.draft.data_status = 'empty'; initial.draft.coverage = '暂无已核验资料'
-  initial.draft.entries[0].condition = ''; initial.draft.entries[0].reward = null
+  initial.draft.entries[0].condition = ''; initial.draft.entries[0].rewards = null
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
   const w = await page(); await w.get('.entry-row').trigger('click')
   expect(w.find('.coverage').attributes('open')).toBeUndefined()
@@ -116,8 +116,7 @@ it('已有未核验草稿可直接预览确认发布，不显示来源或核验�
   await button(w, '确认发布').trigger('click'); await flushPromises()
   expect(api.achievementCatalogCommand.mock.calls.map(c => c[2])).toEqual(['preview', 'publish'])
   expect(api.achievementCatalogCommand.mock.lastCall[4]).toEqual({})
-  expect(initial.draft.entries[0].data_status).toBe('unverified')
-  expect(initial.draft.entries[0].verified_at).toBe('')
+  expect(Object.keys(initial.draft.entries[0])).toHaveLength(10)
 })
 
 it('回滚错误使用历史名称且不提供编辑当前草稿的跳转', async () => {
@@ -145,20 +144,15 @@ it('退出或切换登录身份丢弃旧请求结果，不把旧管理员草稿�
   expect(w.text()).not.toContain('测试成就')
 })
 
-it('切换进度为不支持会清空目标和单位，保留历史来源且不自动核验', async () => {
-  const initial = state(); initial.draft.entries[0].progress_kind = 'integer'; initial.draft.entries[0].target = 10; initial.draft.entries[0].unit = '次'
-  initial.draft.entries[0].sources = [{ title: '历史资料来源', url: 'https://example.test/legacy', usage: '测试资料' }]
+it('清空目标保存 null，不生成旧进度类型或单位字段', async () => {
+  const initial = state(); initial.draft.entries[0].target = 10
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
   const w = await page(); await w.get('.entry-row').trigger('click')
-  const kind = w.findAll('select').find(s => s.text().includes('不支持数值进度'))
-  await kind.setValue('')
+  await w.get('.entry-editor input[max="1000000000000"]').setValue('')
   api.achievementCatalogCommand.mockImplementation((g, u, action, revision, fields) => Promise.resolve({ ...initial, revision: 4, draft: fields.catalog }))
   await button(w, '保存草稿').trigger('click'); await flushPromises()
   const e = api.achievementCatalogCommand.mock.calls[0][4].catalog.entries[0]
-  expect(e.progress_kind).toBeNull(); expect(e.target).toBeNull(); expect(e.unit).toBeNull()
-  expect(e.sources).toEqual(initial.draft.entries[0].sources)
-  expect(w.text()).not.toContain('历史资料来源')
-  expect(e.data_status).toBe('unverified'); expect(e.verified_at).toBe('')
+  expect(e.target).toBeNull(); expect(Object.keys(e)).toHaveLength(10)
 })
 
 it('导入先预览，非法项禁用确认；策略变化必须重做预览，确认只写草稿', async () => {
@@ -182,24 +176,14 @@ it('导入先预览，非法项禁用确认；策略变化必须重做预览，�
   expect(api.achievementCatalogCommand.mock.calls.some(c => c[2] === 'publish')).toBe(false)
 })
 
-it('无别名、方法或章节表单和别名搜索，保存其他字段保留历史内容', async () => {
-  const initial = state(); initial.draft.entries[0].progress_kind = 'integer'; initial.draft.entries[0].target = 10
-  Object.assign(initial.draft.entries[0], { aliases: ['历史别名'], method: '历史完成方法', chapter: '历史章节' })
+it('旧字段阻止编辑，提供原始导出和逐项问题', async () => {
+  const initial = state(); initial.compatibility_issues = ['draft/yh_test_1：旧字段 aliases 非空，须核对保留方式']
   api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
   const w = await page()
-  const search = w.get('input[type="search"]')
-  await search.setValue('历史别名')
-  expect(w.find('.entry-row').exists()).toBe(false)
-  await search.setValue('测试成就'); await w.get('.entry-row').trigger('click')
-  const editorText = w.get('.entry-editor').text()
-  for (const label of ['别名', '完成方法', '章节']) expect(editorText).not.toContain(label)
-  const target = w.get('.entry-editor input[min="0.000000001"]')
-  await target.setValue('10'); await target.setValue('')
-  api.achievementCatalogCommand.mockImplementation((g, u, a, r, fields) => Promise.resolve({ ...initial, revision: 4, draft: fields.catalog }))
-  await button(w, '保存草稿').trigger('click'); await flushPromises()
-  const e = api.achievementCatalogCommand.mock.calls[0][4].catalog.entries[0]
-  expect(e.aliases).toEqual(['历史别名']); expect(e.method).toBe('历史完成方法'); expect(e.chapter).toBe('历史章节')
-  expect(e.target).toBeNull()
+  expect(w.text()).toContain('当前只读'); expect(w.text()).toContain('旧字段 aliases 非空')
+  expect(w.get('.catalog-controls').element.disabled).toBe(true)
+  expect(button(w, '导出旧目录原始文档')).toBeDefined()
+  expect(api.achievementCatalogCommand).not.toHaveBeenCalled()
 })
 
 it('未保存编辑离开时可取消，版本冲突后可导出本地内容再恢复', async () => {
@@ -229,4 +213,36 @@ it('刷新或历史恢复移除当前选中条目时回到列表，手机不会�
   expect(w.get('.catalog-workspace').classes()).not.toContain('editing')
   expect(w.find('.entry-editor').exists()).toBe(false)
   expect(w.find('.entry-list').exists()).toBe(true)
+})
+
+it('1590条列表分页且跨页/筛选保留奖励草稿，失败保存聚焦摘要并保留行错误', async () => {
+  const initial = state(), base = clone(initial.draft.entries[0])
+  initial.draft.entries = Array.from({ length: 1590 }, (_, i) => ({ ...clone(base), achievement_id: 'yh_test_' + i, name: '测试成就' + i, sort: i }))
+  api.getAchievementCatalogAdmin.mockResolvedValueOnce(initial)
+  const w = await page()
+  expect(w.findAll('.entry-row')).toHaveLength(50)
+  await w.get('.entry-row').trigger('click')
+  await w.findAll('select').find(s => s.text().includes('资料未补齐')).setValue('known')
+  const item = w.get('#reward-item-0')
+  await item.setValue('baijinbi')
+  await w.get('[aria-label="奖励 1 数量"]').setValue('0')
+  await button(w, '保存草稿').trigger('click'); await flushPromises()
+  expect(api.achievementCatalogCommand).not.toHaveBeenCalled()
+  expect(w.get('#reward-error-0').text()).toContain('正安全整数')
+  await w.get('[aria-label="奖励 1 数量"]').setValue('1.0000000000000001')
+  expect(w.get('#reward-error-0').text()).toContain('正安全整数')
+  expect(w.get('[role="alert"]').text()).toContain('请修正奖励')
+  await w.get('[aria-label="奖励 1 数量"]').setValue('15')
+  await button(w, '下一页').trigger('click')
+  expect(w.findAll('.entry-row')).toHaveLength(50)
+  expect(w.get('.catalog-pagination').text()).toContain('第 2 / 32 页')
+  await w.get('input[type="search"]').setValue('测试成就0')
+  expect(w.findAll('.entry-row')).toHaveLength(1)
+  expect(w.get('[aria-label="奖励 1 数量"]').element.value).toBe('15')
+  api.achievementCatalogCommand.mockRejectedValueOnce(new Error('目录版本冲突'))
+  await button(w, '保存草稿').trigger('click'); await flushPromises()
+  expect(w.get('[aria-label="奖励 1 数量"]').element.value).toBe('15')
+  const submitted = api.achievementCatalogCommand.mock.lastCall[4].catalog.entries[0]
+  expect(submitted.rewards).toEqual([{ item_key: 'baijinbi', name: '白金币', quantity: 15 }])
+  expect(Object.keys(submitted)).toHaveLength(10)
 })

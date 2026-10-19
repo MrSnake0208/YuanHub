@@ -23,9 +23,9 @@ test('历史三态映射两态、目录分母固定，关注和移出目录记�
   assert.deepEqual(summarizeAchievements(updated, records), summarizeAchievements(entries, records))
   assert.equal(achievementArchive().records.length, 0)
 })
-test('搜索使用名称、条件和关联密探，不使用历史别名，隐藏属性独立于状态', () => {
+test('搜索使用名称、条件，不使用历史别名，隐藏属性独立于状态', () => {
   const { entries } = achievementCatalog()
-  for (const query of ['测试成就 1', '测试密探', '条件 1']) assert.deepEqual(filterAchievements(entries, [], filters({ query })).map(entry => entry.achievement_id), [entries[0].achievement_id])
+  for (const query of ['测试成就 1', '条件 1']) assert.deepEqual(filterAchievements(entries, [], filters({ query })).map(entry => entry.achievement_id), [entries[0].achievement_id])
   assert.deepEqual(filterAchievements(entries, [], filters({ query: '测试别名' })), [])
   assert.deepEqual(filterAchievements(entries, [], filters({ hidden: true })).map(entry => entry.achievement_id), [entries[1].achievement_id])
   assert.equal(filterAchievements(entries, [], filters({ query: '不存在的条件' })).length, 0)
@@ -35,8 +35,8 @@ test('备份解析拒绝损坏、版本、条数与 UTF-8 体积越界', () => {
   assert.deepEqual(readAchievementBackup(JSON.stringify(document)), document)
   assert.throws(() => readAchievementBackup('{'), /损坏/)
   assert.throws(() => readAchievementBackup(JSON.stringify({ ...document, schema_version: 2 })), /版本/)
-  assert.throws(() => readAchievementBackup(JSON.stringify(achievementBackup(Array(1001).fill({})))), /1000/)
-  assert.throws(() => readAchievementBackup('文'.repeat(350000)), /1MiB/)
+  assert.throws(() => readAchievementBackup(JSON.stringify(achievementBackup(Array(5001).fill({})))), /5000/)
+  assert.throws(() => readAchievementBackup('文'.repeat(5600000)), /16MiB/)
 })
 test('成就私有路径使用既有 Beta，公开目录可由游客读取', () => {
   assert.equal(requiresBetaApi('GET', '/v1/achievements/catalog?game=如鸢'), false)
@@ -57,27 +57,39 @@ test('资料未准备时生产开关关闭、开发不注入样例、路由允�
 
 
 test('奖励文本支持真实选项和关键词，与分类/状态/关注/搜索共同筛选', () => {
-  const entries = achievementCatalog().entries.map((entry, index) => ({ ...entry, reward: index === 2 ? null : '测试资源 × ' + (index + 1) }))
+  const entries = achievementCatalog().entries.map((entry, index) => ({ ...entry, rewards: index === 2 ? null : [{ item_key: 'test', name: '测试资源', quantity: index + 1 }] }))
   const records = [{ ...emptyRecord(entries[0].achievement_id), status: 'completed', favorite: true }, { ...emptyRecord('removed'), favorite: true }]
   assert.deepEqual(filterAchievements(entries, records, filters({ reward: '  测试资源  ', category: 'test', status: 'completed', favorite: true, query: '测试成就 1' })).map(item => item.achievement_id), [entries[0].achievement_id])
   assert.equal(filterAchievements(entries, records, filters({ reward: '测试资源', hidden: true })).length, 1)
   assert.equal(filterAchievements(entries, records, filters({ reward: '不存在' })).length, 0)
   assert.equal(filterAchievements(entries, records, filters({ reward: '   ' })).length, 3)
-  assert.equal(filterAchievements([{ ...entries[0], reward: 'Fixture TOKEN' }], [], filters({ reward: 'token' })).length, 1)
+  assert.equal(filterAchievements([{ ...entries[0], rewards: [{ item_key: 'test', name: 'Fixture TOKEN', quantity: 1 }] }], [], filters({ reward: 'token' })).length, 1)
   const summary = summarizeAchievements(entries, records)
   assert.equal(summary.favorite, 1)
   assert.equal(summary.incomplete + summary.completed, summary.total)
 })
-test('只有明确的数值类型和正目标可展示进度，不虚构0/1', () => {
-  for (const entry of [{}, { target: 1 }, { progress_kind: 'boolean', target: 1 }, { progress_kind: 'integer' }, { progress_kind: 'integer', target: 0 }, { progress_kind: 'number', target: '10' }]) assert.equal(hasQuantifiedProgress(entry), false)
-  assert.equal(hasQuantifiedProgress({ progress_kind: 'integer', target: 10 }), true)
-  assert.equal(hasQuantifiedProgress({ progress_kind: 'number', target: 2.5 }), true)
+test('只有明确正整数目标可展示进度，不虚构0/1', () => {
+  for (const entry of [{}, { target: null }, { target: 0 }, { target: 2.5 }, { target: '10' }, { target: 1e12 + 1 }]) assert.equal(hasQuantifiedProgress(entry), false)
+  for (const target of [1, 10, 1e12]) assert.equal(hasQuantifiedProgress({ target }), true)
 })
 
-test('行内进度校验允许未知、零、超目标及小数，拒绝负数、非数和整数口径小数', () => {
-  const integer = { progress_kind: 'integer', target: 10 }, number = { progress_kind: 'number', target: 2.5 }
-  for (const value of ['', '0', '15']) assert.equal(progressValidationError(integer, value), '')
-  assert.equal(progressValidationError(number, '1.5'), '')
-  for (const value of ['-1', 'NaN', 'Infinity', '9007199254740992', '1.5']) assert.ok(progressValidationError(integer, value))
+test('行内进度只接受安全整数，允许留空、零和超目标', () => {
+  const entry = { target: 10 }
+  for (const value of ['', '0', '15']) assert.equal(progressValidationError(entry, value), '')
+  for (const value of ['-1', 'NaN', 'Infinity', '9007199254740992', '1.5', '1.0000000000000001', '9007199254740990.9']) assert.ok(progressValidationError(entry, value))
   assert.ok(progressValidationError({}, '1'))
+})
+
+test('分类先后优先于组内顺序，稳定ID解决排序相同，5000条长中文备份可读取', () => {
+  const entries = [
+    { ...achievementCatalog().entries[0], achievement_id: 'yh_late', category_id: 'late', sort: 1 },
+    { ...achievementCatalog().entries[0], achievement_id: 'yh_b', sort: 2 },
+    { ...achievementCatalog().entries[0], achievement_id: 'yh_a', sort: 2 }
+  ]
+  const categories = [{ category_id: 'test' }, { category_id: 'late' }]
+  assert.deepEqual(filterAchievements(entries, [], filters({}), categories).map(e => e.achievement_id), ['yh_a', 'yh_b', 'yh_late'])
+  const backup = achievementBackup(Array.from({ length: 5000 }, (_, i) => ({ ...emptyRecord('yh_' + i), note: '文'.repeat(500) })))
+  const text = JSON.stringify(backup)
+  assert.ok(new TextEncoder().encode(text).length > 1024 * 1024)
+  assert.equal(readAchievementBackup(text).records.length, 5000)
 })

@@ -8,13 +8,14 @@
         <p class="achievement-condition">{{ entry.condition }}</p>
         <small v-if="entry.is_hidden === true">隐藏成就</small>
       </div>
-      <div class="achievement-reward"><Gift v-if="entry.reward" :size="17" aria-hidden="true" /><span>{{ entry.reward || '奖励未核验' }}</span></div>
+      <div class="achievement-reward"><Gift v-if="entry.rewards?.length || legacyReward" :size="17" aria-hidden="true" /><span>{{ rewardText(entry, legacyReward) }}</span></div>
       <div class="achievement-progress">
         <template v-if="hasQuantifiedProgress(entry)">
-          <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target + (entry.unit ? ' ' + entry.unit : '') }}</span><Pencil :size="13" aria-hidden="true" /></button>
+          <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
           <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
         </template>
-        <span v-else class="achievement-hint">无数值进度</span>
+        <span v-else class="achievement-hint">无数值进度<template v-if="record.progress != null">；历史人工进度 {{ record.progress }}（待核对）</template></span>
+        <small v-if="entry.linked_metric" class="achievement-hint">羁绊联动尚未接入；当前仅记录人工进度</small>
       </div>
       <div class="achievement-row-actions">
         <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
@@ -27,7 +28,7 @@
     <p v-if="saving || saved" class="achievement-row-feedback" role="status">{{ saving ? '正在保存…' : pendingRemoval ? '已标记完成，将从未完成列表移出。' : saveNotice }} <button v-if="saved && canUndo" type="button" :disabled="!writable || !canUndo" @click="$emit('undo')">撤销</button></p>
     <p v-if="error" class="achievement-row-feedback achievement-error" role="alert">{{ error }}</p>
     <form v-if="editor.progressOpen" :id="'progress-' + entry.achievement_id" class="achievement-inline-editor achievement-progress-form" @submit.prevent="$emit('save', 'progress')">
-      <label>数值进度（目标 {{ entry.target }}{{ entry.unit ? ' ' + entry.unit : '' }}）<input ref="progressInput" :value="editor.progress" type="number" min="0" max="9007199254740991" :step="entry.progress_kind === 'integer' ? 1 : 'any'" :inputmode="entry.progress_kind === 'integer' ? 'numeric' : 'decimal'" :disabled="!writable" :aria-invalid="!!progressError" :aria-describedby="'progress-hint-' + entry.achievement_id" placeholder="未记录" @input="editor.progress = $event.target.value"></label>
+      <label>数值进度（目标 {{ entry.target }}）<input ref="progressInput" :value="editor.progress" type="number" min="0" max="9007199254740991" step="1" inputmode="numeric" :disabled="!writable" :aria-invalid="!!progressError" :aria-describedby="'progress-hint-' + entry.achievement_id" placeholder="未记录" @input="editor.progress = $event.target.value"></label>
       <div class="achievement-editor-actions"><button class="achievement-save" type="submit" :disabled="!writable || !!progressError || editor.progress === editor.baseProgress">保存进度</button><button type="button" :disabled="saving" @click="$emit('cancel', 'progress')">取消</button></div>
       <p :id="'progress-hint-' + entry.achievement_id" :class="progressError ? 'achievement-error' : 'achievement-hint'">{{ progressError || '进度独立保存，达到目标不会自动标记完成；留空表示未记录。' }}</p>
     </form>
@@ -37,17 +38,14 @@
       <p v-if="record.status !== 'completed' && editor.completed_on !== editor.baseDate" class="achievement-hint">完成日期草稿已保留，标记完成后可保存，或取消编辑。</p>
       <div class="achievement-editor-actions"><small>{{ editor.note.length }} / 500</small><button class="achievement-save" type="submit" :disabled="!writable || (editor.note === editor.baseNote && (editor.completed_on === editor.baseDate || record.status !== 'completed'))">保存备注</button><button type="button" :disabled="saving" @click="$emit('cancel', 'note')">取消</button></div>
     </form>
-    <details v-if="entry.spoiler" class="achievement-supplement">
-      <summary>注意事项与剧透</summary><p>{{ entry.spoiler }}</p>
-    </details>
   </li>
 </template>
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { Gift, ListChecks, NotebookPen, Pencil, Star } from '@lucide/vue'
-import { completionStatus, hasQuantifiedProgress, progressValidationError, STATUS_LABELS } from './rules.js'
-const props = defineProps({ entry: Object, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, saved: Boolean, saveNotice: String, error: String, pendingRemoval: Boolean, canUndo: Boolean, batchMode: Boolean, selected: Boolean })
+import { completionStatus, hasQuantifiedProgress, progressValidationError, rewardText, STATUS_LABELS } from './rules.js'
+const props = defineProps({ entry: Object, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, saved: Boolean, saveNotice: String, error: String, pendingRemoval: Boolean, canUndo: Boolean, batchMode: Boolean, selected: Boolean })
 defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save', 'undo'])
 const progressInput = ref(null), noteInput = ref(null), progressTrigger = ref(null), noteTrigger = ref(null)
 watch(() => props.editor.progressOpen, async open => { await nextTick(); (open ? progressInput.value : progressTrigger.value)?.focus({ preventScroll: !open }) })

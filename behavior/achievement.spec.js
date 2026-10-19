@@ -177,14 +177,14 @@ it('保存期间阻止重复提交，失败保留实际状态且不误开详情'
 it('奖励/分类/状态/关注组合与分组计数来自真实目录，清除恢复全部', async () => {
   const catalog = achievementCatalog(3)
   catalog.categories.push({ category_id: 'other', name: '另一测试分类' })
-  catalog.entries[0].reward = '测试资源 × 1'
-  catalog.entries[1].reward = '测试资源 × 2'
-  catalog.entries[2].category_id = 'other'; catalog.entries[2].reward = '测试凭证'
+  catalog.entries[0].rewards = [{ item_key: 'test', name: '测试资源', quantity: 1 }]
+  catalog.entries[1].rewards = [{ item_key: 'test', name: '测试资源', quantity: 2 }]
+  catalog.entries[2].category_id = 'other'; catalog.entries[2].rewards = [{ item_key: 'token', name: '测试凭证', quantity: 1 }]
   api.getAchievementCatalog.mockResolvedValue(catalog)
   mockArchiveWrites([{ achievement_id: catalog.entries[0].achievement_id, status: 'completed', favorite: true, note: '', progress: null, completed_on: null }])
   const wrapper = page(); await flushPromises()
   expect(wrapper.findAll('.achievement-group-heading').map(item => item.text())).toEqual(['测试分类1 / 2', '另一测试分类0 / 1'])
-  expect(wrapper.findAll('datalist option').map(item => item.attributes('value'))).toEqual(['测试资源 × 1', '测试资源 × 2', '测试凭证'])
+  expect(wrapper.findAll('datalist option').map(item => item.attributes('value'))).toEqual(['测试资源', '测试凭证'])
   await wrapper.get('[aria-label="成就奖励筛选"]').setValue('测试资源')
   await wrapper.get('[aria-label="游戏分类筛选"]').setValue('test')
   await wrapper.get('[aria-label="成就状态筛选"]').setValue('completed')
@@ -251,7 +251,7 @@ it('历史待核对、未完成和无记录映射两态，四项统计不写回�
 it('两态仅提交状态，关注独立，进度和备注不随状态清空或填满', async () => {
   const record = { achievement_id: 'yh_fixture_dhy_1', status: 'pending', favorite: true, note: '已有备注', progress: 3, completed_on: null }
   mockArchiveWrites([record])
-  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'integer', target: 10 })
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { target: 10 })
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const row = wrapper.findAll('.achievement-row')[0]
@@ -287,7 +287,7 @@ it('未完成筛选中保存成功提示停留6秒后移出，撤销恢复历史
   } finally { vi.useRealTimers() }
 })
 
-it('历史来源、完成方法和章节不显示或留下空补充区，剧透仍默认折叠', async () => {
+it('历史来源、完成方法和章节不显示或留下空补充区，不保留剧透入口', async () => {
   const catalog = achievementCatalog(2)
   catalog.entries.forEach(entry => {
     entry.sources = [{ title: '历史资料来源', url: 'https://example.test/legacy', usage: '测试资料' }]
@@ -298,9 +298,8 @@ it('历史来源、完成方法和章节不显示或留下空补充区，剧透�
   const wrapper = page(); await flushPromises()
   const rows = wrapper.findAll('.achievement-row')
   expect(rows[0].find('.achievement-supplement').exists()).toBe(false)
-  expect(rows[1].get('.achievement-supplement > summary').text()).toBe('注意事项与剧透')
-  expect(rows[1].get('.achievement-supplement').attributes('open')).toBeUndefined()
-  expect(rows[1].text()).toContain('测试剧透')
+  expect(rows[1].find('.achievement-supplement').exists()).toBe(false)
+  expect(rows[1].text()).not.toContain('测试剧透')
   expect(wrapper.text()).not.toContain('历史资料来源')
   expect(wrapper.text()).not.toContain('历史完成方法')
   expect(wrapper.text()).not.toContain('历史章节')
@@ -308,13 +307,13 @@ it('历史来源、完成方法和章节不显示或留下空补充区，剧透�
 })
 
 it('进度未知无假0或进度条；行内合法进度和备注分别保存、不自动完成', async () => {
-  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'integer', target: 10, method: '测试说明', spoiler: '测试剧透' })
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { target: 10, method: '测试说明', spoiler: '测试剧透' })
   api.getAchievementCatalog.mockResolvedValue(catalog); mockArchiveWrites()
   const wrapper = page(); await flushPromises()
   const row = wrapper.findAll('.achievement-row')[0]
   expect(row.get('.achievement-progress-edit').text()).toContain('进度未记录')
   expect(row.find('progress').exists()).toBe(false)
-  expect(row.get('.achievement-supplement').attributes('open')).toBeUndefined()
+  expect(row.find('.achievement-supplement').exists()).toBe(false)
   await row.get('.achievement-progress-edit').trigger('click')
   await row.get('input[type="number"]').setValue('1.5')
   expect(row.get('[type="submit"]').element.disabled).toBe(true)
@@ -409,16 +408,16 @@ it('保存响应归属不匹配时拒绝更新当前账号', async () => {
 })
 
 it('进度保存失败保留草稿与原数值，在当前行提示错误，取消确认后返回入口焦点', async () => {
-  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'number', target: 2.5 })
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { target: 10 })
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const row = wrapper.findAll('.achievement-row')[0]
   await row.get('.achievement-progress-edit').trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(row.get('input[type="number"]').element)
-  await row.get('input[type="number"]').setValue('1.5')
+  await row.get('input[type="number"]').setValue('2')
   api.writeAchievements.mockRejectedValueOnce(new Error('进度网络失败'))
   await row.get('form').trigger('submit'); await flushPromises()
-  expect(row.get('input[type="number"]').element.value).toBe('1.5')
+  expect(row.get('input[type="number"]').element.value).toBe('2')
   expect(row.get('.achievement-progress-edit').text()).toContain('进度未记录')
   expect(row.get('[role="alert"]').text()).toBe('进度网络失败')
   await button(row, '取消').trigger('click'); await flushPromises()
@@ -427,7 +426,7 @@ it('进度保存失败保留草稿与原数值，在当前行提示错误，取�
 })
 
 it('进度和备注同时编辑，分别保存不会丢弃另一个字段的草稿', async () => {
-  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { progress_kind: 'integer', target: 10 })
+  const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { target: 10 })
   api.getAchievementCatalog.mockResolvedValue(catalog); mockArchiveWrites()
   const wrapper = page(); await flushPromises()
   const row = wrapper.findAll('.achievement-row')[0]
@@ -457,4 +456,19 @@ it('完成日期草稿在两态切换和备注单独保存后保留，返回已�
   await row.get('.status-completed').trigger('click'); await flushPromises()
   await row.get('.achievement-note-form').trigger('submit'); await flushPromises()
   expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 4, [{ achievement_id: 'yh_fixture_dhy_1', completed_on: '2026-10-17' }])
+})
+
+it('结构化奖励三态和旧奖励文本保留，联动未接入不显示伪造羁绊数值', async () => {
+  const catalog = achievementCatalog(4)
+  catalog.entries[0].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 10 }]
+  catalog.entries[1].rewards = []
+  catalog.entries[2].target = 20; catalog.entries[2].linked_metric = 'yuan_bond_variants'
+  catalog.legacy_rewards = { [catalog.entries[3].achievement_id]: '旧奖励内容' }
+  api.getAchievementCatalog.mockResolvedValue(catalog)
+  const w = page(); await flushPromises()
+  expect(w.text()).toContain('白金币 × 10'); expect(w.text()).toContain('无奖励')
+  expect(w.text()).toContain('奖励资料未补齐'); expect(w.text()).toContain('旧奖励内容（旧文本，未结构化）')
+  expect(w.text()).toContain('羁绊联动尚未接入')
+  expect(w.findAll('progress')).toHaveLength(0)
+  expect(w.findAll('.achievement-progress-edit')[0].text()).toContain('进度未记录')
 })
