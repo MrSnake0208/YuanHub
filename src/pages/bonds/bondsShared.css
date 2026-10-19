@@ -1,0 +1,36 @@
+.bonds-page { color: var(--ink); }
+.bonds-main { min-width: 0; }
+.bond-workspace { padding-block: 16px 40px; }
+.bonds-page .wrap { width: 100%; max-width: 1180px; margin-inline: auto; box-sizing: border-box; min-width: 0; }
+.bonds-page button, .bonds-page input, .bonds-page select, .bonds-page textarea { font: inherit; }
+.bonds-page button, .bonds-page select, .bonds-page input:not([type=checkbox]), .bonds-page textarea { border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; color: var(--ink); background: var(--surface); max-width: 100%; min-width: 0; box-sizing: border-box; }
+.bonds-page button { cursor: pointer; }
+.bonds-page button:disabled { opacity: .55; cursor: default; }
+.bonds-page button[aria-pressed=true] { background: var(--tea); color: var(--cream); border-color: var(--tea); }
+.bonds-page :is(button, input, select, textarea, summary, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.bond-error { color: var(--rouge); }
+.bond-toolbar, .bond-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block: 14px; }
+.bond-toolbar label, .bond-exchange > label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.bond-tabs { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.bond-summary { display: grid; gap: 12px; }
+.bond-summary > div { padding: 16px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; min-width: 0; }
+.bond-summary :is(span, strong, small) { display: block; }
+.bond-summary strong { font: 700 24px var(--font-n, sans-serif); margin-block: 6px; }
+.bond-summary small, .bond-weather-cell small { color: var(--ink-60); }
+.bond-groups { display: grid; gap: 12px; }
+.bond-group { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.bond-group > summary { padding: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.bond-group > summary > strong, .bond-group > summary > small { margin-inline: 10px; }
+.bond-members { display: inline-flex; flex-wrap: wrap; vertical-align: middle; gap: 12px; }
+.bond-members > span { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.bond-weather-grid { display: grid; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.bond-weather-cell { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+.bond-weather-cell label { font-size: 12px; }
+.bond-weather-cell button { white-space: normal; }
+.bond-exchange { line-height: 1.7; }
+.bond-exchange > label { margin-block: 12px; }
+.bond-import-items, .bond-catalog-info, .bond-admin-id { overflow-wrap: anywhere; }
+.bond-achievements { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 8px; }
+.bond-catalog-info { margin-block: 20px; }
+.bond-admin-editor { display: grid; gap: 12px; min-width: 0; }
+.bond-admin-editor textarea { width: 100%; }

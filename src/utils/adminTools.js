@@ -66,6 +66,11 @@ const ADMIN_TOOLS = Object.freeze([
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE)
   },
   {
+    key: 'bond-catalog', to: '/bonds/admin', label: '羁绊目录管理',
+    description: '维护成员、行动与天气，预览并发布公共羁绊目录', group: 'content', icon: Link2,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE)
+  },
+  {
     key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',
     description: '维护公共卡池、UP 名单和占位密探对应关系', group: 'content', icon: Layers3,
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE)
