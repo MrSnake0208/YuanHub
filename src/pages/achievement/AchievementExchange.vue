@@ -6,7 +6,7 @@
         <div ref="scrollBody" class="achievement-dialog-body">
           <p>目标账号：<strong>{{ accountName }}</strong> · {{ game }}</p>
           <button type="button" :disabled="!canRecord || working" @click="exportFile">下载当前账号完整备份（JSON）</button>
-          <p class="achievement-hint">完整备份包含历史目录记录，不受页面筛选影响。最多1000条、1MiB；仅支持 YuanHub 成就 JSON v1。</p>
+          <p class="achievement-hint">完整备份包含历史目录记录，不受页面筛选影响。最多5000条、16MiB；仅支持 YuanHub 成就 JSON v1。</p>
           <label class="achievement-file-label">选择成就备份<input ref="fileInput" type="file" accept=".json,application/json" :disabled="!canRecord || working" @change="selectFile"></label>
           <template v-if="documentData">
             <p>{{ filename }}<span v-if="documentData.source_account?.name"> · 文件来源账号：{{ documentData.source_account.name }}（仅提示）</span></p>
@@ -76,7 +76,7 @@ async function selectFile(event) {
   clearPreview(); error.value = ''; notice.value = ''; documentData.value = null
   busy(true)
   try {
-    if (file.size > MAX_IMPORT_BYTES) throw new Error('文件最多1MiB。')
+    if (file.size > MAX_IMPORT_BYTES) throw new Error('文件最多16MiB。')
     const data = readAchievementBackup(await file.text())
     if (!matches(token)) return
     if (data.game !== props.game) throw new Error('备份游戏与目标账号不匹配。')

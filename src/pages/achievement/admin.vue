@@ -12,7 +12,7 @@
       <div class="wrap catalog-admin">
         <p v-if="!permitted" role="alert">需要成就目录管理权限。</p>
         <template v-else>
-          <p v-if="error" ref="errorSummary" class="message error" role="alert" tabindex="-1">{{ error }}</p>
+          <div v-if="error" ref="errorSummary" class="message error" role="alert" tabindex="-1">{{ error }}<a v-if="firstRewardError" :href="'#reward-item-' + firstRewardError.index" @click.prevent="openRewardError">检查「{{ firstRewardError.entry.name || '未命名成就' }}」奖励第 {{ firstRewardError.index + 1 }} 行</a></div>
           <p v-if="notice" class="message" role="status">{{ notice }}</p>
           <div class="game-switch" role="group" aria-label="选择目录游戏">
             <button v-for="name in games" :key="name" :aria-pressed="game === name" :disabled="busy" @click="switchGame(name)">{{ name }}</button>
@@ -20,6 +20,12 @@
             <span v-if="busy" role="status">处理中…</span>
           </div>
           <template v-if="data && draft">
+            <section v-if="compatibilityIssues.length" class="message error" role="alert">
+              <p>旧目录含待核对资料，当前只读。请导出原始文档，核对旧奖励、扩展字段或小数口径后另行迁移；不会自动删除资料。</p>
+              <details><summary>兼容问题 {{ compatibilityIssues.length }} 项</summary><p v-for="(issue, i) in compatibilityIssues" :key="i">{{ issue }}</p></details>
+              <button :disabled="busy" @click="download('legacy')">导出旧目录原始文档</button>
+            </section>
+            <fieldset class="catalog-controls" :disabled="compatibilityIssues.length > 0">
             <p class="catalog-summary">已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 编辑修订 {{ data.revision }}</p>
             <p class="version">当前发布：{{ data.published.version }}<br>{{ data.published.published_at }} · {{ data.published.published_by }}</p>
             <div class="toolbar">
@@ -52,11 +58,16 @@
               <section ref="listPanel" class="entry-list panel" aria-labelledby="list-title" tabindex="-1">
                 <h2 id="list-title">成就列表 <small>{{ filtered.length }} 条</small></h2>
                 <p v-if="!filtered.length">暂无符合条件的成就。先新增分类，再新增成就。</p>
-                <button v-for="e in filtered" :key="e.achievement_id" class="entry-row" :aria-pressed="selected === e.achievement_id" :disabled="busy" @click="selectEntry(e.achievement_id)">
+                <button v-for="e in pageEntries" :key="e.achievement_id" class="entry-row" :aria-pressed="selected === e.achievement_id" :disabled="busy" @click="selectEntry(e.achievement_id)">
                   <strong>{{ e.name || '未命名成就' }}</strong>
                   <span>{{ categoryLabel(e.category_id) }}<template v-if="retired(e)"> · 已退役</template></span>
                   <small>{{ e.condition || '尚未填写完成条件' }}</small>
                 </button>
+                <nav v-if="filtered.length" class="catalog-pagination" aria-label="成就列表分页">
+                  <button :disabled="busy || page === 0" @click="page--">上一页</button>
+                  <span role="status">第 {{ page + 1 }} / {{ pageCount }} 页 · 每页 {{ PAGE_SIZE }} 条</span>
+                  <button :disabled="busy || page + 1 >= pageCount" @click="page++">下一页</button>
+                </nav>
               </section>
               <section v-if="entry" ref="editor" class="entry-editor panel" aria-labelledby="editor-title" tabindex="-1">
                 <button class="return-list" :disabled="busy" @click="closeEditor">返回列表</button>
@@ -75,17 +86,20 @@
                 <fieldset :disabled="busy">
                   <legend>完成信息与奖励</legend>
                   <label>完成条件（选填）<textarea v-model="entry.condition" rows="3" maxlength="4000"></textarea></label>
-                  <label>奖励文本（选填）<input v-model="entry.reward" maxlength="4000" placeholder="可留空"></label>
-                  <label>剧透或注意事项（可选）<textarea v-model="entry.spoiler" rows="2" maxlength="4000"></textarea></label>
+                  <label>奖励资料<select :value="rewardState" @change="setRewardState($event.target.value)"><option value="unknown">资料未补齐</option><option value="none">确认无奖励</option><option value="known">已知奖励</option></select></label>
+                  <div v-for="(reward, i) in entry.rewards || []" :key="i" class="reward-editor-row">
+                    <label>物品 {{ i + 1 }}<select :id="'reward-item-' + i" :value="reward.item_key" :aria-invalid="!!rewardError(i)" :aria-describedby="rewardError(i) ? 'reward-error-' + i : undefined" @change="setRewardItem(i, $event.target.value)"><option value="">请选择物品</option><option v-for="item in rewardItems" :key="item.item_key" :value="item.item_key">{{ item.name }}</option></select></label>
+                    <label>数量<input :value="reward.quantity" @input="reward.quantity = integerInput($event.target.value)" type="number" min="1" max="9007199254740991" step="1" inputmode="numeric" :aria-label="'奖励 ' + (i + 1) + ' 数量'" :aria-invalid="!!rewardError(i)" :aria-describedby="rewardError(i) ? 'reward-error-' + i : undefined"></label>
+                    <button type="button" :aria-label="'删除奖励 ' + (i + 1)" @click="entry.rewards.splice(i, 1)">删除</button>
+                    <p v-if="rewardError(i)" :id="'reward-error-' + i" class="error">{{ rewardError(i) }}</p>
+                  </div>
+                  <button v-if="entry.rewards !== null" type="button" :disabled="(entry.rewards?.length || 0) >= rewardItems.length" @click="addReward">添加奖励</button>
                 </fieldset>
                 <fieldset :disabled="busy">
                   <legend>进度规则</legend>
-                  <label>记录口径<select :value="entry.progress_kind" @change="setProgressKind($event.target.value)"><option value="">不支持数值进度</option><option value="integer">整数累计进度</option><option value="number">数值进度</option></select></label>
-                  <div v-if="entry.progress_kind" class="fields">
-                    <label>目标数量<input :value="entry.target" @input="entry.target = $event.target.value === '' ? null : $event.target.valueAsNumber" type="number" min="0.000000001" :step="entry.progress_kind === 'integer' ? 1 : 'any'"></label>
-                    <label>单位（选填）<input v-model="entry.unit" maxlength="40" placeholder="例如：次"></label>
-                  </div>
-                  <p class="hint">已发布的类型与单位不可变，目标仅可增加；不会重置或裁剪玩家进度。</p>
+                  <label>目标数量（留空则不提供数值进度）<input :value="entry.target" @input="entry.target = $event.target.value === '' ? null : integerInput($event.target.value)" type="number" min="1" max="1000000000000" step="1" inputmode="numeric"></label>
+                  <label>联动来源<select v-model="entry.linked_metric"><option :value="null">无联动</option><option value="yuan_bond_variants">鸢报羁绊种数（尚未接入）</option></select></label>
+                  <p class="hint">已发布目标仅可增加；从无目标补充目标会保留人工状态。羁绊联动仅支持目标 1、3、10、20、50、100、200，本阶段不提供自动进度。</p>
                 </fieldset>
                 <button class="primary" :disabled="busy || !dirty" @click="save">保存草稿</button>
               </section>
@@ -144,6 +158,7 @@
                 <div class="actions"><button :disabled="busy || dirty || !restoreVersion" @click="previewPublication(restoreVersion)">对比并预览回滚</button><button :disabled="busy || dirty" @click="discard">放弃已保存草稿</button></div>
               </div>
             </details>
+            </fieldset>
           </template>
         </template>
       </div>
@@ -155,11 +170,13 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import '../../styles/page-header.css'
+import { PAGE_SIZE, rewardValidationError } from './rules.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { achievementCatalogCommand, exportAchievementCatalog, getAchievementCatalogAdmin } from '../../api/achievementCatalogAdmin.js'
 
+const page = ref(0)
 const games = ['代号鸢', '如鸢']
 const changeLabels = { add: '新增', update: '修改', retire: '退役 / 移除' }
 const game = ref(games[0]), data = ref(null), draft = ref(null), selected = ref('')
@@ -193,17 +210,33 @@ const publicationIssues = computed(() => {
   }
   return [...groups.values()]
 })
+const compatibilityIssues = computed(() => data.value?.compatibility_issues || [])
+const rewardItems = computed(() => (data.value?.reward_items || []).filter(item => item.games.includes(game.value)))
+const rewardState = computed(() => entry.value?.rewards == null ? 'unknown' : entry.value.rewards.length ? 'known' : 'none')
+const firstRewardError = computed(() => {
+  for (const entry of draft.value?.entries || []) {
+    const index = (entry.rewards || []).findIndex((reward, i, rewards) => rewardValidationError(reward, i, rewards, rewardItems.value, game.value))
+    if (index >= 0) return { entry, index }
+  }
+  return null
+})
+const publishedById = computed(() => new Map(publishedEntries.value.map(entry => [entry.achievement_id, entry])))
+const categoryOrder = computed(() => new Map([...(draft.value?.categories || [])].sort((a, b) => a.sort - b.sort).map((c, i) => [c.category_id, i])))
 const filtered = computed(() => (draft.value?.entries || []).filter(e => {
   if (categoryFilter.value && e.category_id !== categoryFilter.value) return false
   if (search.value && ![e.name, e.achievement_id].join(' ').toLowerCase().includes(search.value.toLowerCase())) return false
-  const old = publishedEntries.value.find(p => p.achievement_id === e.achievement_id)
+  const old = publishedById.value.get(e.achievement_id)
   const status = stateFilter.value
   if (status === 'retired') return retired(e)
   if (status && retired(e)) return false
   if (status === 'add') return !old
   if (status === 'update') return !!old && JSON.stringify(old) !== JSON.stringify(e)
   return true
-}).sort((a, b) => a.sort - b.sort))
+}).sort((a, b) => (categoryOrder.value.get(a.category_id) ?? 100) - (categoryOrder.value.get(b.category_id) ?? 100) || a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id)))
+const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
+const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
+watch([search, categoryFilter, stateFilter], () => { page.value = 0 })
+watch(pageCount, count => { page.value = Math.min(page.value, count - 1) })
 const clone = value => JSON.parse(JSON.stringify(value))
 let generation = 0
 function retired(e) { return draft.value?.retired_ids.includes(e.achievement_id) }
@@ -245,7 +278,7 @@ async function switchGame(value) {
 function reset() {
   generation++; busy.value = false; data.value = null; draft.value = null; selected.value = ''; publication.value = null
   importDocument.value = null; importPlan.value = null; restoreVersion.value = ''; error.value = ''; notice.value = ''
-  search.value = ''; categoryFilter.value = ''; stateFilter.value = ''; categoryName.value = ''; showCategories.value = false
+  page.value = 0; search.value = ''; categoryFilter.value = ''; stateFilter.value = ''; categoryName.value = ''; showCategories.value = false
 }
 async function command(action, fields = {}, message = '') {
   const revision = data.value.revision
@@ -253,6 +286,7 @@ async function command(action, fields = {}, message = '') {
   return result
 }
 async function save() {
+  if (firstRewardError.value) { error.value = '请修正奖励物品与数量后再保存。'; await nextTick(); errorSummary.value?.focus(); return }
   const value = await command('draft', { catalog: clone(draft.value) }, '草稿已保存，尚未发布。')
   if (value) accept(value)
 }
@@ -268,9 +302,23 @@ async function addCategory() {
   if (value) { accept(value); categoryName.value = '' }
 }
 function setRetired(id, value) { draft.value.retired_ids = value ? [...new Set([...draft.value.retired_ids, id])] : draft.value.retired_ids.filter(i => i !== id) }
-function setProgressKind(value) {
-  entry.value.progress_kind = value || null
-  if (!value) { entry.value.target = null; entry.value.unit = null }
+function integerInput(value) { return /^\d+$/.test(value) ? Number(value) : value }
+function setRewardState(value) {
+  if (value === 'unknown') entry.value.rewards = null
+  else if (value === 'none') entry.value.rewards = []
+  else if (!entry.value.rewards?.length) entry.value.rewards = [{ item_key: '', name: '', quantity: 1 }]
+}
+function addReward() { (entry.value.rewards ||= []).push({ item_key: '', name: '', quantity: 1 }) }
+function setRewardItem(index, key) {
+  const item = rewardItems.value.find(item => item.item_key === key)
+  Object.assign(entry.value.rewards[index], { item_key: key, name: item?.name || '' })
+}
+function rewardError(index) { return rewardValidationError(entry.value.rewards[index], index, entry.value.rewards, rewardItems.value, game.value) }
+async function openRewardError() {
+  const issue = firstRewardError.value
+  if (!issue) return
+  await selectEntry(issue.entry.achievement_id)
+  document.getElementById('reward-item-' + issue.index)?.focus()
 }
 async function previewPublication(restore = null) {
   const result = await command('preview', restore ? { restore_version: restore } : {})

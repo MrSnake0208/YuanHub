@@ -2,8 +2,7 @@
 export const achievementEntry = (index = 1, extra = {}) => ({
   achievement_id: 'yh_fixture_dhy_' + index, game: '代号鸢', category_id: 'test', name: '测试成就 ' + index,
   condition: '仅用于测试的条件 ' + index, sort: index, is_hidden: index === 2,
-  aliases: index === 1 ? ['测试别名'] : [], operators: index === 1 ? [{ id: 'test_agent', name: '测试密探' }] : [],
-  verified_at: '2026-10-18', data_status: 'fixture', ...extra
+  rewards: null, target: null, linked_metric: null, ...extra
 })
 export const achievementCatalog = (count = 3) => ({ catalog_version: 'fixture-v1', game: '代号鸢', data_status: 'fixture', coverage: '合成测试数据', categories: [{ category_id: 'test', name: '测试分类' }], entries: Array.from({ length: count }, (_, index) => achievementEntry(index + 1)) })
 export const achievementArchive = (accountId = 'a', extra = {}) => ({ account_id: accountId, game: '代号鸢', revision: 0, records: [], ...extra })

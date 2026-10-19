@@ -46,7 +46,7 @@
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
                     <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>{{ available && !state.archive ? '—' : group.completed }} / {{ group.total }}</span><span class="achievement-group-rule" aria-hidden="true" /></header>
                     <ul class="achievement-list">
-                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
+                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
                     </ul>
                   </section>
                 </div>
@@ -94,7 +94,7 @@ const summaryItems = [
   { key: 'incomplete', label: '未完成', icon: Clock },
   { key: 'favorite', label: '我的关注', icon: Star }
 ]
-const rewardOptions = computed(() => [...new Set((entries.value || []).map(entry => entry.reward?.trim()).filter(Boolean))])
+const rewardOptions = computed(() => [...new Set((entries.value || []).flatMap(entry => entry.rewards?.map(item => item.name) || []).filter(Boolean))])
 const pageGroups = computed(() => (state.catalog?.categories || []).map(category => {
   const categoryEntries = entries.value.filter(entry => entry.category_id === category.category_id)
   return { ...category, ...summarizeAchievements(categoryEntries, categoryEntries.map(entry => recordFor(entry.achievement_id))), entries: pageEntries.value.filter(entry => entry.category_id === category.category_id) }

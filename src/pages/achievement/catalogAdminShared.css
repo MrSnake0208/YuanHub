@@ -26,3 +26,9 @@
 .catalog-admin .file-input { display: none; }
 .catalog-admin .verification { margin-top: 16px; }
 .catalog-admin .publication p, .catalog-admin .import-preview p { overflow-wrap: anywhere; }
+
+.catalog-admin .catalog-controls { margin: 0; padding: 0; border: 0; }
+.catalog-admin .reward-editor-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-block: 12px; }
+.catalog-admin .reward-editor-row .error { grid-column: 1 / -1; margin: 0; }
+.catalog-admin .catalog-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.catalog-admin .message a { display: block; color: inherit; }
