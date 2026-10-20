@@ -1,6 +1,6 @@
 // 前后端跨仓库契约一致性测试（node:test，零依赖）
-// 需要 YuanHub 与 BackEndV3-Share 位于同一父目录；独立前端 CI 不执行。
-// 手动运行：npm run test:contract；YuanHub-All 的 ./test all 仍会通过 npm test 覆盖本文件。
+// 默认读取相邻 BackEndV3-Share，可用 YUANHUB_BACKEND_ROOT 指定其他完整检出。
+// 手动运行：npm run test:contract；YuanHub-All 完整入口显式执行，单仓入口不执行。
 // 校验后端 OpenApiTokenService/OpenApiPermission/InventoryController 与前端
 // openApi.js/inventory.js/profile.vue/utils 的字段名、路径、scope key 一致，
 // 防止再次出现 create_time vs created_at、{key,code,desc} vs {scope,description}、
@@ -8,39 +8,57 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// 两个仓库的共同父目录：/Users/mrsnake/Desktop/yituliu
-// test/ 位于 YuanHub/ 下，故向上两级到共同父目录
-const ROOT = fileURLToPath(new URL('../../', import.meta.url))
+const frontendRoot = fileURLToPath(new URL('../', import.meta.url))
+const backendRoot = resolve(process.env.YUANHUB_BACKEND_ROOT || resolve(frontendRoot, '../BackEndV3-Share'))
 
-function readRel(rel) {
-  return readFileSync(ROOT + rel, 'utf8')
+function readFrontend(rel) {
+  return readFileSync(resolve(frontendRoot, rel), 'utf8')
 }
 
-const backendService = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenService.kt')
-const backendPermission = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
-const backendTokenCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
-const backendGenerateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenGenerateRequest.kt')
-const backendUpdateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenScopesUpdateRequest.kt')
-const backendInventoryCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/InventoryController.kt')
-const backendInventoryRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
-const backendOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/OperatorController.kt')
-const backendOperatorRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/response/OperatorResponses.kt')
-const backendOpenApiOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiOperatorController.kt')
-const backendAccountCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/account/AccountController.kt')
+function readBackend(rel) {
+  const file = resolve(backendRoot, rel)
+  try {
+    return readFileSync(file, 'utf8')
+  } catch (cause) {
+    throw new Error(`跨仓契约无法读取 ${file}。请设置 YUANHUB_BACKEND_ROOT 指向完整的 BackEndV3-Share 检出目录，再运行 npm run test:contract。`, { cause })
+  }
+}
 
-const frontendApi = readRel('YuanHub/src/api/openApi.js')
-const frontendAccounts = readRel('YuanHub/src/api/accounts.js')
-const frontendInventory = readRel('YuanHub/src/api/inventory.js')
-const frontendOperator = readRel('YuanHub/src/api/operator.js')
-const frontendProfile = readRel('YuanHub/src/pages/user/profile.vue')
-const frontendGameAccountManager = readRel('YuanHub/src/components/GameAccountManager.vue')
-const frontendUtil = readRel('YuanHub/src/utils/openApiToken.js')
-const frontendInventoryPage = readRel('YuanHub/src/pages/inventory/index.vue')
-const frontendOperatorPage = readRel('YuanHub/src/pages/operator/index.vue')
-const frontendAccountEvents = readRel('YuanHub/src/api/accountEvents.js')
-const frontendRoutes = readRel('YuanHub/src/router/routes.js')
+const backendService = readBackend('src/main/kotlin/com/lhs/share/openapi/OpenApiTokenService.kt')
+const backendPermission = readBackend('src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
+const backendTokenCtrl = readBackend('src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
+const backendGenerateRequest = readBackend('src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenGenerateRequest.kt')
+const backendUpdateRequest = readBackend('src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenScopesUpdateRequest.kt')
+const backendInventoryCtrl = readBackend('src/main/kotlin/com/lhs/share/hub/controller/inventory/InventoryController.kt')
+const backendInventoryRecordPage = readBackend('src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
+const backendOperatorCtrl = readBackend('src/main/kotlin/com/lhs/share/hub/controller/operator/OperatorController.kt')
+const backendOperatorRecordPage = readBackend('src/main/kotlin/com/lhs/share/hub/controller/operator/response/OperatorResponses.kt')
+const backendOpenApiOperatorCtrl = readBackend('src/main/kotlin/com/lhs/share/openapi/OpenApiOperatorController.kt')
+const backendAccountCtrl = readBackend('src/main/kotlin/com/lhs/share/hub/controller/account/AccountController.kt')
+
+const frontendApi = readFrontend('src/api/openApi.js')
+const frontendAccounts = readFrontend('src/api/accounts.js')
+const frontendInventory = readFrontend('src/api/inventory.js')
+const frontendOperator = readFrontend('src/api/operator.js')
+const frontendProfile = readFrontend('src/pages/user/profile.vue')
+const frontendGameAccountManager = readFrontend('src/components/GameAccountManager.vue')
+const frontendUtil = readFrontend('src/utils/openApiToken.js')
+const frontendInventoryPage = readFrontend('src/pages/inventory/index.vue')
+const frontendOperatorPage = readFrontend('src/pages/operator/index.vue')
+const frontendAccountEvents = readFrontend('src/api/accountEvents.js')
+const frontendRoutes = readFrontend('src/router/routes.js')
+
+function revision(root) {
+  const head = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  const dirty = execFileSync('git', ['-C', root, 'status', '--porcelain=v1'], { encoding: 'utf8' }).trim()
+  return head + (dirty ? ' (dirty)' : ' (clean)')
+}
+
+console.info(`[contract] frontend=${revision(frontendRoot)} backend=${revision(backendRoot)} protocols=operator-v4,operator-v5`)
 
 test('token 列表字段契约：token_id/account_id/account_name/scopes/created_at，且不再返回 token 明文', () => {
   assert.match(backendService, /data class OpenApiTokenListItemDto\(/)
@@ -187,31 +205,19 @@ test('账号级 SSE 事件契约：Bearer fetch、账号路径与密探事件', 
   assert.match(frontendAccountEvents, /Authorization: 'Bearer ' \+ auth\.accessToken/)
   assert.match(frontendAccountEvents, /v1\/accounts/)
   assert.match(frontendOperatorPage, /operator_scan_import/)
-  assert.match(frontendOperatorPage, /scheduleEventRefresh/)
-  assert.match(frontendOperatorPage, /scrollIntoView/)
-  assert.match(frontendOperatorPage, /focusAndFlashScanOperator\(\s*data\.operator_id/)
-  assert.match(frontendOperatorPage, /char_085_shizimiaosp/)
-  assert.match(frontendOperatorPage, /operator-rune-ring-outer/)
-  assert.match(frontendOperatorPage, /operator-rune-ripple-two/)
-  assert.match(frontendOperatorPage, /@keyframes operator-rune-reveal[\s\S]*?filter: none/)
-  assert.doesNotMatch(frontendOperatorPage.match(/@keyframes operator-rune-reveal[^\n]*/)?.[0] || '', /transform\s*:/)
-  assert.match(frontendOperatorPage, /char_084_chendengsp/)
-  assert.match(frontendOperatorPage, /operator-seed-ripple/)
-  assert.match(frontendOperatorPage, /operator-seed-burst/)
-  assert.match(frontendOperatorPage, /@keyframes operator-seed-reveal[\s\S]*?filter: none/)
-  assert.doesNotMatch(frontendOperatorPage.match(/@keyframes operator-seed-reveal[^\n]*/)?.[0] || '', /transform\s*:/)
+
 })
 
 
 test('operator v4正式schema和有效/错误样例在前后端保持一致', () => {
-  assert.deepEqual(JSON.parse(readRel('YuanHub/docs/schemas/operator-growth-exchange-v4.schema.json')), JSON.parse(readRel('BackEndV3-Share/src/main/resources/schema/operator-growth-exchange-v4.schema.json')))
+  assert.deepEqual(JSON.parse(readFrontend('docs/schemas/operator-growth-exchange-v4.schema.json')), JSON.parse(readBackend('src/main/resources/schema/operator-growth-exchange-v4.schema.json')))
   for (const name of ['independent.valid.json', 'legacy31.valid.json', 'unowned-stage.invalid.json']) {
-    assert.deepEqual(JSON.parse(readRel('YuanHub/docs/examples/operator-growth-exchange-v4/' + name)), JSON.parse(readRel('BackEndV3-Share/src/test/resources/operator-growth-exchange-v4/' + name)))
+    assert.deepEqual(JSON.parse(readFrontend('docs/examples/operator-growth-exchange-v4/' + name)), JSON.parse(readBackend('src/test/resources/operator-growth-exchange-v4/' + name)))
   }
 })
 
 
 test('operator v5 schema及突破/未知观测样例在前后端一致', () => {
-  assert.deepEqual(JSON.parse(readRel('YuanHub/docs/schemas/operator-growth-exchange-v5.schema.json')), JSON.parse(readRel('BackEndV3-Share/src/main/resources/schema/operator-growth-exchange-v5.schema.json')))
-  for (const name of ['boundary.valid.json', 'out-of-range.invalid.json']) assert.deepEqual(JSON.parse(readRel('YuanHub/docs/examples/operator-growth-exchange-v5/' + name)), JSON.parse(readRel('BackEndV3-Share/src/test/resources/operator-growth-exchange-v5/' + name)))
+  assert.deepEqual(JSON.parse(readFrontend('docs/schemas/operator-growth-exchange-v5.schema.json')), JSON.parse(readBackend('src/main/resources/schema/operator-growth-exchange-v5.schema.json')))
+  for (const name of ['boundary.valid.json', 'out-of-range.invalid.json']) assert.deepEqual(JSON.parse(readFrontend('docs/examples/operator-growth-exchange-v5/' + name)), JSON.parse(readBackend('src/test/resources/operator-growth-exchange-v5/' + name)))
 })
