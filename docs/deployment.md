@@ -237,6 +237,10 @@ ln -sfn releases/0.0.1-beta.1 .current-tmp && mv -T .current-tmp current
 
 独立前端仓库：
 
+`npm test` 与 `npm run test:repo` 都只执行本仓 Node 测试（含递归 property 与宣传站测试），不读取后端源码。
+`npm run test:all` 聚合本仓 static、repo、behavior、build 四阶段；跨仓契约不在其中。
+以下沿用现有 CI 的 npm 命令；统一 pnpm/npm 与锁文件属于后续 F01，本批没有改变安装路径。
+
 ```bash
 npm ci
 npm run test:static
@@ -245,11 +249,23 @@ npm run test:behavior
 npm run build
 ```
 
-如果当前目录位于 `YuanHub-All` 且相邻的 `BackEndV3-Share` 存在，可额外运行跨仓库契约测试：
+跨仓契约使用 Node 和 Git，默认读取相邻的完整 `BackEndV3-Share` 检出；前端目录可重命名。缺少后端或所需文件会失败，不会跳过：
 
 ```bash
 npm run test:contract
 ```
+
+后端不在默认位置时，显式指定目录（相对路径以命令工作目录为准）：
+
+```bash
+YUANHUB_BACKEND_ROOT=/path/to/BackEndV3-Share npm run test:contract
+```
+
+日志输出前后端 HEAD、clean/dirty 状态及 operator v4/v5 协议版本。dirty 表示当前文件树有未提交修改，不能把 HEAD 单独当成可复现的验证版本。
+此入口只读取源码、schema/fixture 与 Git 元数据，不启动应用或连接数据库；它保留既有源码契约，不代替真实 API/权限验证。
+
+YuanHub-All 的 `./test all` 和保守全量回退显式执行 `test:repo` 与 `test:contract`，定向选择契约时也单独执行一次。
+两仓现有 CI 仍未接入专门的双仓兼容 job；新增 job 的归属和固定 revision 配置留待后续，不把本地入口当作 CI 已接入。
 
 ## 8. OCR 资源传输压缩
 
