@@ -1,11 +1,12 @@
 <template>
   <section class="relationships" aria-label="信赖与传闻">
     <header class="relationships-heading">
-      <div><h2>信赖与传闻</h2><p>记录游戏内当前进度，查看下一档与未解锁奖励。已达标但未领取的奖励不在此统计。</p></div>
+      <div><h2>信赖与传闻</h2><p>点击头像上的铅笔选择信赖节点，查看下一档与未解锁奖励。</p></div>
       <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
     </header>
     <p v-if="loading" role="status">正在读取信赖与传闻…</p>
     <p v-if="error || localError" role="alert">{{ localError || error }}</p>
+    <p v-if="favoriteError" role="alert">{{ favoriteError }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="!scope.enabled">请登录并选择游戏账号。</p>
     <template v-if="data && catalog">
@@ -28,29 +29,25 @@
       <p v-if="!operators.length">当前账号没有已拥有密探，请先在名册录入。</p>
       <p v-else-if="!visible.length">没有符合筛选的密探。</p>
       <ul class="relationships-list">
-        <li v-for="operator in visible" :key="operator.id" class="relationship-row">
-          <div class="relationship-name"><h3>{{ operator.name }}</h3><button type="button" :disabled="!ready || !!preview" @click="edit(operator.id)">编辑进度</button></div>
-          <div v-for="kind in RELATIONSHIP_KINDS" :key="kind" class="relationship-progress">
-            <strong>{{ labels[kind] }}</strong>
-            <span>{{ kind === 'trust' && trustState(operator.id).conflict ? '待核对' : value(operator.id, kind) ?? '未记录' }}<template v-if="domain(operator.id, kind)"> / {{ domain(operator.id, kind).max }}</template><template v-else> · {{ kind === 'trust' ? '上限' : '总数' }}待核准</template></span>
-            <small v-if="kind === 'trust' && owner(operator.id) !== operator.id">与 {{ operatorMap[owner(operator.id)]?.name || owner(operator.id) }} 共享，汇总只计一次</small>
-            <small v-if="kind === 'trust' && trustState(operator.id).conflict">历史记录冲突：{{ trustSourcesText(operator.id) }}。请编辑核对。</small>
-            <small v-else>{{ progressText(operator.id, kind) }}</small>
-            <details v-if="domain(operator.id, kind)"><summary>奖励档位与依据</summary>
-              <p>{{ domain(operator.id, kind).complete ? '已核准完整规则' : '资料未补齐，不计入收益' }} · {{ domain(operator.id, kind).verified_on }}</p>
-              <p>{{ domain(operator.id, kind).source }}</p>
-              <ul><li v-for="milestone in domain(operator.id, kind).milestones" :key="milestone.at">{{ milestone.at }}：{{ rewardText(milestone.rewards) || '无物品奖励' }} · {{ value(operator.id, kind) == null ? '进度未知' : value(operator.id, kind) >= milestone.at ? '已达标（不代表已领取）' : '未解锁' }}</li></ul>
-            </details>
+        <li v-for="operator in visible" :key="operator.id" class="relationship-card" :class="'rarity-r' + (operator.rarity || 3)">
+          <div class="relationship-portrait">
+            <img v-if="operator.avatar" class="relationship-avatar" :src="avatarUrl(operator.avatar)" :alt="operator.name" loading="lazy" />
+            <span v-else class="relationship-placeholder">{{ operator.name?.slice(0, 1) }}</span>
+            <img v-if="profIcon(operator.prof)" class="relationship-prof" :src="profIcon(operator.prof)" :alt="'属性：' + operator.prof" />
+            <button type="button" class="relationship-favorite" :aria-label="(favoriteIds.has(operator.id) ? '取消特别关注' : '特别关注') + operator.name" :aria-pressed="favoriteIds.has(operator.id)" :disabled="favoriteLoading || favoriteBusyIds.has(operator.id)" @click="$emit('favorite', operator)"><Star :size="16" :fill="favoriteIds.has(operator.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+            <span class="relationship-badge" :class="{ unknown: value(operator.id, 'trust') == null }">{{ trustState(operator.id).conflict ? '待核对' : value(operator.id, 'trust') == null ? '未记录' : '信赖 ' + value(operator.id, 'trust') }}</span>
+            <button type="button" class="relationship-edit" :disabled="!ready || !!preview" :aria-label="'编辑' + operator.name + '的进度'" aria-haspopup="dialog" @click="edit(operator.id)"><Pencil :size="17" aria-hidden="true" /></button>
           </div>
-          <form v-if="editing === operator.id" class="relationship-editor" @submit.prevent="saveDraft">
-            <label v-for="kind in RELATIONSHIP_KINDS" :key="kind">{{ labels[kind] }}<input v-model="draft[kind]" type="text" inputmode="numeric" :disabled="saving" placeholder="未记录" /></label>
-            <p v-if="localError || error" role="alert">{{ localError || error }}</p>
-            <label v-if="trustState(operator.id).conflict" class="relationship-trust-confirm"><input v-model="resolveTrust" type="checkbox" :disabled="saving" />已核对，按填写值统一共享信赖（留空将清除本组信赖记录）</label>
-            <p>留空保存为未记录；填写 0 表示明确为零。传闻录入不会自动增加信赖值。差距不含突破材料要求。</p>
-            <div><button type="submit" :disabled="!ready || !dirty">{{ saving ? '保存中…' : '保存进度' }}</button><button type="button" :disabled="saving" @click="cancel">取消</button></div>
-          </form>
+          <h3>{{ operator.name }}</h3>
+          <small v-if="trustState(operator.id).conflict" class="relationship-conflict">历史记录冲突：{{ trustSourcesText(operator.id) }}</small>
         </li>
       </ul>
+      <OperatorRelationshipDialog v-if="editing" :key="scope.key + editing" :name="operatorMap[editing]?.name || editing"
+        :draft="draft" :baseline="baseline" :trust-rule="domain(editing, 'trust')" :rumor-rule="domain(editing, 'rumors')"
+        :saving="saving" :ready="ready" :dirty="dirty" :error="localError || error"
+        :shared-name="owner(editing) !== editing ? operatorMap[owner(editing)]?.name || owner(editing) : ''"
+        :conflict="trustState(editing).conflict" :conflict-sources="trustSourcesText(editing)" :resolve-trust="resolveTrust"
+        @trust="draft.trust = $event" @rumors="draft.rumors = $event" @resolve="resolveTrust = $event" @save="saveDraft" @close="cancel" @reload="refresh" />
       <details class="relationships-exchange"><summary>更多 · 信赖与传闻备份</summary>
         <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
         <button type="button" :disabled="!ready" @click="download">导出信赖与传闻备份</button>
@@ -74,10 +71,14 @@
 </template>
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { Pencil, Star } from '@lucide/vue'
+import { avatarUrl } from '../../api/request.js'
+import OperatorRelationshipDialog from '../../components/operator/OperatorRelationshipDialog.vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
-import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, relationshipProgress, relationshipSummary, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
-const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
+import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, relationshipSummary, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
+const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, profIcon: { type: Function, default: () => '' }, favoriteIds: { type: Set, default: () => new Set() }, favoriteBusyIds: { type: Set, default: () => new Set() }, favoriteLoading: Boolean, favoriteError: String, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
+defineEmits(['favorite'])
 const scope = computed(() => ({ key: JSON.stringify([props.userId, props.loggedIn, props.accountId, props.game]), accountId: props.accountId, game: props.game, enabled: !!props.loggedIn && !!props.accountId }))
 const { data, catalog, loading, saving, error, ready, reload, save } = useOperatorRelationships(scope)
 const rules = computed(() => catalog.value?.operators || {}), records = computed(() => data.value?.entries || {})
@@ -99,14 +100,6 @@ const rewardText = rewards => rewards.map(item => item.name + ' × ' + item.quan
 const visible = computed(() => props.operators.filter(op => op.id === editing.value ||
   ((!search.value.trim() || op.name.includes(search.value.trim())) && (!rarity.value || String(op.rarity) === rarity.value) &&
   (filter.value === 'all' || (filter.value === 'unknown' ? RELATIONSHIP_KINDS.some(kind => value(op.id, kind) == null) : value(op.id, filter.value) != null && domain(op.id, filter.value) && value(op.id, filter.value) < domain(op.id, filter.value).max)))))
-function progressText(id, kind) {
-  const progress = relationshipProgress(value(id, kind), domain(id, kind))
-  if (progress.status === 'unknown') return '录入后查看下一档奖励'
-  if (progress.status === 'missing') return '奖励资料待补，不参与收益计算'
-  if (progress.status === 'invalid') return '记录超过当前规则上限，请核对'
-  const level = kind === 'trust' ? '信赖等级 ' + progress.level + ' / ' + progress.maxLevel + ' · ' : ''
-  return progress.next ? level + '距下一档还差 ' + (progress.next.at - value(id, kind)) + (kind === 'trust' ? ' 信赖：' : ' 条：') + (rewardText(progress.next.rewards) || '无物品奖励') : level + '已达到全部已收录奖励条件'
-}
 async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key

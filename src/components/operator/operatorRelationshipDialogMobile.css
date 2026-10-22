@@ -1,0 +1,42 @@
+.relationship-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 8px; background: var(--theme-overlay, rgba(73,59,44,.38)); }
+.relationship-editor { width: min(680px, 100%); max-height: calc(var(--modal-viewport-height, 100dvh) - 16px); min-height: 0; display: flex; flex-direction: column; box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); overflow: hidden; box-shadow: 0 12px 40px #0002; }
+.relationship-editor header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; }
+.relationship-editor h2 { margin: 0; font-size: 21px; overflow-wrap: anywhere; }
+.relationship-editor button, .relationship-editor input { font: inherit; color: inherit; }
+.relationship-editor button { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 8px 12px; cursor: pointer; }
+.relationship-editor button:disabled { opacity: .55; cursor: default; }
+.relationship-editor :focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+.relationship-editor header button { display: grid; place-items: center; flex: none; border: 0; }
+.relationship-tabs, .relationship-ranges, .relationship-special, .relationship-actions { display: flex; gap: 6px; }
+.relationship-tabs { margin: 0 16px; border-bottom: 1px solid var(--line); }
+.relationship-tabs button { flex: 1; border: 0; border-radius: 0; border-bottom: 2px solid transparent; }
+.relationship-tabs button[aria-pressed="true"] { border-bottom-color: var(--tea); font-weight: 700; }
+.relationship-dialog-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px 16px; scroll-padding-block: 12px; }
+.relationship-dialog-body p { line-height: 1.6; overflow-wrap: anywhere; }
+.relationship-values { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 12px; background: var(--cream); border-radius: 8px; }
+.relationship-values b { margin-left: 6px; font-family: var(--font-d); font-size: 22px; }
+.relationship-ranges { margin: 14px 0 8px; flex-wrap: wrap; }
+.relationship-ranges button { flex: 1; padding: 8px 5px; white-space: nowrap; font-size: 13px; }
+.relationship-ranges button[aria-pressed="true"], .relationship-special button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong, #fffdf6); }
+.relationship-nodes { border: 1px solid var(--line); border-radius: 8px; padding: 0; margin: 0; min-width: 0; }
+.relationship-node { display: grid; grid-template-columns: 18px 50px minmax(0,1fr); gap: 8px; align-items: center; padding: 11px 10px; cursor: pointer; font-size: 13px; line-height: 1.5; }
+.relationship-node + .relationship-node { border-top: 1px solid var(--line); }
+.relationship-node.selected { background: var(--cream); box-shadow: inset 3px 0 var(--tea); }
+.relationship-node input { margin: 0; accent-color: var(--tea); }
+.relationship-node strong { font: 700 16px var(--font-d); }
+.relationship-node span { overflow-wrap: anywhere; }
+.relationship-hint, .relationship-source { font-size: 13px; color: var(--ink); }
+.relationship-source { margin-top: 16px; }
+.relationship-source summary { cursor: pointer; padding: 6px 0; }
+.relationship-field { display: grid; gap: 8px; margin-top: 16px; }
+.relationship-field input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.relationship-trust-confirm { display: flex; align-items: start; gap: 8px; margin-top: 16px; line-height: 1.6; }
+.relationship-error { color: var(--theme-danger-text, var(--rouge)); }
+.relationship-editor footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 12px 16px max(12px, env(safe-area-inset-bottom)); background: var(--surface); }
+.relationship-next { flex: 1 1 220px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.relationship-actions { margin-left: auto; }
+.relationship-editor .primary { background: var(--tea); color: var(--on-strong, #fffdf6); }
+.relationship-editor footer small { font-size: 12px; }
+.relationship-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.relationship-editor.is-short { overflow-y: auto; }
+.relationship-editor.is-short .relationship-dialog-body { overflow: visible; flex-shrink: 0; }

@@ -1,0 +1,9 @@
+@media (min-width: 641px) {
+  .relationship-mask { padding: 24px; }
+  .relationship-editor { max-height: calc(var(--modal-viewport-height, 100dvh) - 48px); }
+  .relationship-editor header { padding: 20px 24px; }
+  .relationship-tabs { margin-inline: 24px; }
+  .relationship-dialog-body { padding-inline: 24px; }
+  .relationship-node { grid-template-columns: 18px 64px minmax(0,1fr); padding: 10px 14px; font-size: 14px; }
+  .relationship-editor footer { padding-inline: 24px; }
+}

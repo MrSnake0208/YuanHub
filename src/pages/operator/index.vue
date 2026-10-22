@@ -2253,7 +2253,8 @@
             v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
             <OperatorRelationships ref="relationshipWorkspace" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
               :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
-              :operators="ownedCurrentEntries.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" />
+              :operators="ownedCurrentEntries.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))"
+              :prof-icon="profIcon" :favorite-ids="favoriteAgentIds" :favorite-busy-ids="favoriteBusyIds" :favorite-loading="favoriteLoading" :favorite-error="favoriteError" @favorite="toggleAgentFavorite" />
           </div>
           <div
             v-if="growthTrackingEnabled && visitedTabs.has('tracking')"
