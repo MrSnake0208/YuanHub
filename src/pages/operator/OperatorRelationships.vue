@@ -10,13 +10,14 @@
     <p v-if="!scope.enabled">请登录并选择游戏账号。</p>
     <template v-if="data && catalog">
       <div class="relationships-summary" aria-label="全账号未解锁奖励汇总">
-        <p>全账号已拥有 {{ summary.total }} 位 · 已录入 {{ summary.recorded }} 位 · 两项均可计算 {{ summary.covered }} 位</p>
+        <p>全账号已拥有 {{ summary.total }} 位 · 已录入 {{ summary.recorded }} 位 · 信赖可计算 {{ summary.trustCovered }} / {{ summary.trustTotal }} 组（共享只计一次）</p>
+        <p v-if="summary.trustConflicts" role="alert">{{ summary.trustConflicts }} 组历史信赖值不一致，请编辑核对；冲突组暂不计入奖励。</p>
         <p v-if="summary.overflow">奖励数量超过可精确计算范围，请核对规则。</p>
         <p v-else-if="summary.rewards.length">已知部分未解锁奖励：{{ rewardText(summary.rewards) }}</p>
         <p v-else-if="summary.missing">未录入或奖励资料不完整，暂不能给出完整奖励总额。</p>
         <p v-else>已达到全部已收录奖励条件。</p>
         <p v-if="summary.missing">{{ summary.missing }} 项信赖／传闻未纳入计算。搜索与筛选不改变全账号汇总。</p>
-        <p v-if="!Object.keys(rules).length">当前游戏奖励资料待核准；可先记录进度，不套用旧攻略或另一游戏的数据。</p>
+        <p v-if="!Object.keys(rules).length">当前游戏奖励资料待核准；可先记录进度，资料补齐后再计算奖励。</p>
       </div>
       <div class="relationships-filters">
         <label>搜索密探<input v-model="search" type="search" placeholder="密探名称" /></label>
@@ -31,9 +32,10 @@
           <div class="relationship-name"><h3>{{ operator.name }}</h3><button type="button" :disabled="!ready || !!preview" @click="edit(operator.id)">编辑进度</button></div>
           <div v-for="kind in RELATIONSHIP_KINDS" :key="kind" class="relationship-progress">
             <strong>{{ labels[kind] }}</strong>
-            <span>{{ value(operator.id, kind) ?? '未记录' }}<template v-if="domain(operator.id, kind)"> / {{ domain(operator.id, kind).max }}</template><template v-else> · {{ kind === 'trust' ? '上限' : '总数' }}待核准</template></span>
+            <span>{{ kind === 'trust' && trustState(operator.id).conflict ? '待核对' : value(operator.id, kind) ?? '未记录' }}<template v-if="domain(operator.id, kind)"> / {{ domain(operator.id, kind).max }}</template><template v-else> · {{ kind === 'trust' ? '上限' : '总数' }}待核准</template></span>
             <small v-if="kind === 'trust' && owner(operator.id) !== operator.id">与 {{ operatorMap[owner(operator.id)]?.name || owner(operator.id) }} 共享，汇总只计一次</small>
-            <small>{{ progressText(operator.id, kind) }}</small>
+            <small v-if="kind === 'trust' && trustState(operator.id).conflict">历史记录冲突：{{ trustSourcesText(operator.id) }}。请编辑核对。</small>
+            <small v-else>{{ progressText(operator.id, kind) }}</small>
             <details v-if="domain(operator.id, kind)"><summary>奖励档位与依据</summary>
               <p>{{ domain(operator.id, kind).complete ? '已核准完整规则' : '资料未补齐，不计入收益' }} · {{ domain(operator.id, kind).verified_on }}</p>
               <p>{{ domain(operator.id, kind).source }}</p>
@@ -43,6 +45,7 @@
           <form v-if="editing === operator.id" class="relationship-editor" @submit.prevent="saveDraft">
             <label v-for="kind in RELATIONSHIP_KINDS" :key="kind">{{ labels[kind] }}<input v-model="draft[kind]" type="text" inputmode="numeric" :disabled="saving" placeholder="未记录" /></label>
             <p v-if="localError || error" role="alert">{{ localError || error }}</p>
+            <label v-if="trustState(operator.id).conflict" class="relationship-trust-confirm"><input v-model="resolveTrust" type="checkbox" :disabled="saving" />已核对，按填写值统一共享信赖（留空将清除本组信赖记录）</label>
             <p>留空保存为未记录；填写 0 表示明确为零。传闻录入不会自动增加信赖值。差距不含突破材料要求。</p>
             <div><button type="submit" :disabled="!ready || !dirty">{{ saving ? '保存中…' : '保存进度' }}</button><button type="button" :disabled="saving" @click="cancel">取消</button></div>
           </form>
@@ -60,7 +63,7 @@
           <p>恢复到 {{ accountName }} · {{ game }}；将修改 {{ preview.changes }} 个进度值，发现 {{ preview.conflicts }} 个冲突。</p>
           <p>{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</p>
           <details v-if="preview.changes"><summary>查看将修改的进度</summary><ul>
-            <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ records[id]?.[kind] ?? '未记录' }} → {{ next }}</li></template>
+            <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ value(id, kind) ?? '未记录' }} → {{ next }}</li></template>
           </ul></details>
           <button type="button" :disabled="!ready || !preview.changes" @click="restore">确认恢复到当前账号</button>
           <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
@@ -73,7 +76,7 @@
 import { computed, ref, watch } from 'vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
-import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipValue, relationshipProgress, relationshipSummary, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
+import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, relationshipProgress, relationshipSummary, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
 const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
 const scope = computed(() => ({ key: JSON.stringify([props.userId, props.loggedIn, props.accountId, props.game]), accountId: props.accountId, game: props.game, enabled: !!props.loggedIn && !!props.accountId }))
 const { data, catalog, loading, saving, error, ready, reload, save } = useOperatorRelationships(scope)
@@ -83,10 +86,13 @@ const summary = computed(() => relationshipSummary(props.operators, records.valu
 const labels = { trust: '信赖值', rumors: '传闻数量' }
 const search = ref(''), rarity = ref(''), filter = ref('all'), editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref({ trust: '', rumors: '' })
 const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
-const dirty = computed(() => !!editing.value && RELATIONSHIP_KINDS.some(kind => draft.value[kind] !== baseline.value[kind]))
+const resolveTrust = ref(false)
+const dirty = computed(() => !!editing.value && (resolveTrust.value || RELATIONSHIP_KINDS.some(kind => draft.value[kind] !== baseline.value[kind])))
 const hasUnsaved = computed(() => dirty.value || !!importText.value.trim() || saving.value)
 const confirmDiscard = useUnsavedChanges(hasUnsaved, '信赖与传闻草稿')
 const value = (id, kind) => relationshipValue(id, kind, records.value, rules.value)
+const trustState = id => relationshipTrustState(id, records.value, rules.value)
+const trustSourcesText = id => trustState(id).sources.map(source => (operatorMap.value[source.id]?.name || source.id) + ' ' + source.value).join('、')
 const owner = id => relationshipOwner(id, 'trust', rules.value)
 const domain = (id, kind) => rules.value[relationshipOwner(id, kind, rules.value)]?.[kind]
 const rewardText = rewards => rewards.map(item => item.name + ' × ' + item.quantity).join('、')
@@ -98,13 +104,14 @@ function progressText(id, kind) {
   if (progress.status === 'unknown') return '录入后查看下一档奖励'
   if (progress.status === 'missing') return '奖励资料待补，不参与收益计算'
   if (progress.status === 'invalid') return '记录超过当前规则上限，请核对'
-  return progress.next ? '距下一档还差 ' + (progress.next.at - value(id, kind)) + (kind === 'trust' ? ' 信赖：' : ' 条：') + (rewardText(progress.next.rewards) || '无物品奖励') : '已达到全部已收录奖励条件'
+  const level = kind === 'trust' ? '信赖等级 ' + progress.level + ' / ' + progress.maxLevel + ' · ' : ''
+  return progress.next ? level + '距下一档还差 ' + (progress.next.at - value(id, kind)) + (kind === 'trust' ? ' 信赖：' : ' 条：') + (rewardText(progress.next.rewards) || '无物品奖励') : level + '已达到全部已收录奖励条件'
 }
 async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key
   if (!await confirmDiscard() || key !== scope.value.key || saving.value) return false
-  fileSequence++; editing.value = ''; importText.value = ''; preview.value = null; return true
+  fileSequence++; editing.value = ''; resolveTrust.value = false; importText.value = ''; preview.value = null; return true
 }
 async function edit(id) {
   if (!ready.value || !await beforeLeave()) return
@@ -117,12 +124,13 @@ async function saveDraft() {
   localError.value = ''; notice.value = ''
   const key = scope.value.key, id = editing.value, patch = {}
   try {
-    for (const kind of RELATIONSHIP_KINDS) if (draft.value[kind] !== baseline.value[kind]) {
+    for (const kind of RELATIONSHIP_KINDS) if (draft.value[kind] !== baseline.value[kind] || (kind === 'trust' && resolveTrust.value)) {
+      if (kind === 'trust' && trustState(id).conflict && !resolveTrust.value) throw new Error('请先勾选已核对，再统一共享信赖值')
       patch[kind] = parseRelationshipValue(draft.value[kind])
       if (patch[kind] != null && domain(id, kind) && patch[kind] > domain(id, kind).max) throw new Error(labels[kind] + '超过已核准上限')
     }
     if (!Object.keys(patch).length) return
-    if (await save({ [id]: patch }) && key === scope.value.key) { editing.value = ''; notice.value = '进度已保存'; preview.value = null }
+    if (await save({ [id]: patch }) && key === scope.value.key) { editing.value = ''; resolveTrust.value = false; notice.value = '进度已保存'; preview.value = null }
   } catch (err) { if (key === scope.value.key) localError.value = err.message }
 }
 async function refresh() { if (await beforeLeave()) { localError.value = ''; notice.value = ''; await reload() } }
@@ -156,7 +164,7 @@ async function restore() {
   if (await save(pending.entries, pending.revision) && pending.key === scope.value.key) { importText.value = ''; preview.value = null; notice.value = '信赖与传闻备份已恢复' }
 }
 watch(() => scope.value.key, () => {
-  fileSequence++; editing.value = ''; localError.value = ''; notice.value = ''; importText.value = ''; preview.value = null; overwrite.value = false
+  fileSequence++; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; preview.value = null; overwrite.value = false
 }, { flush: 'sync' })
 defineExpose({ beforeLeave, saving })
 </script>
