@@ -93,6 +93,21 @@
                     <div class="growth-track"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
                     <OperatorGrowthActionPopover v-if="growthActionPopoverKey === row.id + ':level'" v-bind="growthActionPopoverProps(row, 'level', 5)" @retry="requestQuickUpgrade(row, 'level', 5)" @execute="executeGrowthAction(row, 'level')" @breakthrough-change="changeGrowthBreakthrough(row, $event)" />
                     <small>{{ experienceSummary(row.calculation.experienceGap) }}</small>
+                    <details v-if="row.calculation.breakthroughMaterials.length" class="growth-materials growth-breakthrough-materials">
+                      <summary>突破材料 <span>{{ row.calculation.breakthroughMaterials.length }} 项<ChevronDown :size="13" aria-hidden="true" /></span></summary>
+                      <div class="growth-material-chips">
+                        <div v-for="material in row.calculation.breakthroughMaterials" :key="material.id" class="growth-material-chip growth-breakthrough-chip">
+                          <img class="growth-material-icon" :src="resourceIcon(material.id)" alt="" loading="lazy" />
+                          <b>{{ itemName(material.id) }}</b>
+                          <dl class="growth-breakthrough-counts">
+                            <div><dt>需要</dt><dd>{{ formatNumber(material.required) }}</dd></div>
+                            <div><dt>已有</dt><dd>{{ formatNumber(material.owned) }}</dd></div>
+                            <div><dt>缺少</dt><dd>{{ formatNumber(material.gap) }}</dd></div>
+                          </dl>
+                        </div>
+                      </div>
+                      <p class="growth-material-note">已有为共用库存分配给该密探的数量。突破材料不计入体力排期。</p>
+                    </details>
                   </div>
                   <div class="growth-progress-row">
                     <div class="growth-progress-label"><span>修为</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ row.elite }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /><button v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).className" :disabled="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).disabled" :aria-label="row.name + '快捷提升修为：' + quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).label" :title="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).title" @click="requestQuickUpgrade(row, 'elite', 1)"><ChevronUp v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
@@ -698,7 +713,11 @@ const planRows = computed(() => {
   return requirementPlanRows.value.map(row => {
     const remaining = allocated[row.id] || {}
     const gaps = Object.entries(remaining).filter(([id, gap]) => id !== '__xp__' && gap > 0).map(([id, gap]) => ({ id, gap }))
-    return { ...row, calculation: { ...row.calculation, gaps, experienceGap: remaining.__xp__ || 0,
+    const breakthroughMaterials = Object.entries(row.calculation.level.items).map(([id, required]) => {
+      const gap = remaining[id] || 0
+      return { id, required, owned: required - gap, gap }
+    })
+    return { ...row, calculation: { ...row.calculation, gaps, breakthroughMaterials, experienceGap: remaining.__xp__ || 0,
       materialEtas: trainingMaterialEtas(gaps, workspace.value.trainingLevels) } }
   })
 })
@@ -1619,6 +1638,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-materials { border-top: 0; }
 .growth-materials summary { color: var(--ink); cursor: pointer; }
 .growth-materials summary span { color: var(--planner-muted); }
+.growth-breakthrough-materials summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.growth-breakthrough-materials .growth-breakthrough-chip { grid-template-columns: 16px minmax(0, 1fr); }
+.growth-breakthrough-materials .growth-breakthrough-chip b { white-space: normal; overflow-wrap: anywhere; }
+.growth-breakthrough-counts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 0; font-size: 12px; }
+.growth-breakthrough-counts dt { color: var(--planner-muted); }
+.growth-breakthrough-counts dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
 .growth-material-chip { border-radius: 8px; background: #f8f0e4; color: var(--ink); }
 .growth-material-icon { border-radius: 4px; }
 .growth-material-chip em { color: var(--rouge); }
