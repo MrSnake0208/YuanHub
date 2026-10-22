@@ -97,28 +97,28 @@ onBeforeUnmount(() => { observer?.disconnect(); drag.dispose(); document.removeE
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .date-caption { color: var(--ink-60); }
 .planner-dates { border-bottom: 1px solid var(--line); }
-.date-context { color: var(--tea); }
-.date-month > svg { color: var(--accent-strong); }
+.date-context { color: var(--theme-strong-text, var(--tea)); }
+.date-month > svg { color: var(--theme-accent-text, var(--accent-strong)); }
 .date-context small { color: var(--ink-60); }
-.date-step, .date-today { border: 0; border-radius: 9px; background: transparent; color: var(--tea); cursor: pointer; }
+.date-step, .date-today { border: 0; border-radius: 9px; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .date-step:disabled { opacity: .3; cursor: default; }
 .date-tabs { cursor: grab; user-select: none; }
 .date-tabs.dragging, .date-tabs.dragging * { cursor: grabbing; }
 .date-tab { border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
 .day-number { color: var(--ink-60); }
 .date-status { color: var(--ink-60); }
-.date-tab.selected { background: var(--paper); color: var(--tea); box-shadow: inset 0 -2px var(--accent); }
-.date-tab.today .day-number, .date-status.manual { color: var(--accent-strong); }
+.date-tab.selected { background: var(--paper); color: var(--theme-strong-text, var(--tea)); box-shadow: inset 0 -2px var(--accent); }
+.date-tab.today .day-number, .date-status.manual { color: var(--theme-accent-text, var(--accent-strong)); }
 .date-tab.past:not(.selected) time { color: var(--ink-60); }
 @media (hover: hover) { button:hover:not(:disabled) { background: var(--cream); }.date-tab.selected:hover { background: var(--paper); } }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 1px; }
 button:active:not(:disabled) { background: var(--paper); }
 @media (max-width: 640px) {
-  .date-menu > summary { border-radius: 8px; color: var(--tea); cursor: pointer; }
-  .date-menu > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .date-menu > summary { border-radius: 8px; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
+  .date-menu > summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
   .date-menu[open] > summary { background: var(--paper); }
-  .date-menu-options { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .12); }
-  .date-menu-options button { border: 0; border-radius: 6px; background: transparent; color: var(--tea); cursor: pointer; }
+  .date-menu-options { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12); }
+  .date-menu-options button { border: 0; border-radius: 6px; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
   .date-menu-options button:hover:not(:disabled) { background: var(--cream); }
   .date-menu-options button:disabled { opacity: .4; cursor: default; }
 }

@@ -1,18 +1,18 @@
 @media not all and (max-width: 1080px) {.feedback-page {
   --feedback-bg: var(--paper);
-  --feedback-panel-deep: var(--cream);
-  --feedback-panel: var(--surface);
-  --feedback-panel-hover: rgba(239, 210, 142, .16);
+  --feedback-panel-deep: var(--on-strong);
+  --feedback-panel: var(--on-surface);
+  --feedback-panel-hover: var(--theme-wash-strong, rgba(239, 210, 142, .16));
   --feedback-line: var(--line);
-  --feedback-line-strong: rgba(156, 122, 77, .46);
+  --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));
   --feedback-text: var(--ink);
   --feedback-text-muted: var(--ink-60);
   --feedback-text-dim: var(--ink-35);
-  --feedback-accent: var(--tea);
-  --feedback-accent-soft: rgba(239, 210, 142, .28);
-  --feedback-success: #5f7f61;
-  --feedback-warn: var(--accent-strong);
-  --feedback-danger: var(--rouge);
+  --feedback-accent: var(--theme-strong-text, var(--tea));
+  --feedback-accent-soft: var(--theme-wash-strong, rgba(239, 210, 142, .28));
+  --feedback-success: var(--theme-muted, #5f7f61);
+  --feedback-warn: var(--theme-accent-text, var(--accent-strong));
+  --feedback-danger: var(--theme-danger-text, var(--rouge));
   min-height: 100vh; min-height: 100dvh;
 }
 
@@ -100,16 +100,16 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
 
 .feedback-modal,
 .access-modal {
-  --feedback-panel-deep: var(--cream);
-  --feedback-panel: var(--surface);
+  --feedback-panel-deep: var(--on-strong);
+  --feedback-panel: var(--on-surface);
   --feedback-line: var(--line);
-  --feedback-line-strong: rgba(156, 122, 77, .46);
+  --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));
   --feedback-text: var(--ink);
   --feedback-text-muted: var(--ink-60);
   --feedback-text-dim: var(--ink-35);
-  --feedback-accent: var(--tea);
-  --feedback-accent-soft: rgba(239, 210, 142, .28);
-  --feedback-danger: var(--rouge);
+  --feedback-accent: var(--theme-strong-text, var(--tea));
+  --feedback-accent-soft: var(--theme-wash-strong, rgba(239, 210, 142, .28));
+  --feedback-danger: var(--theme-danger-text, var(--rouge));
 }
 .feedback-modal .modal-head h2,
 .access-modal .modal-head h2 { font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: .04em; }

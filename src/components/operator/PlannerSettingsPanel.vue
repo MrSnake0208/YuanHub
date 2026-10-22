@@ -71,8 +71,8 @@ function save() { if (!props.busy && !props.saveDisabled && !confirming.value &&
 </script>
 
 <style scoped>
-.planner-settings-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; justify-content: flex-end; background: rgba(73, 59, 44, .38); }
-.planner-settings-panel { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; max-height: 100dvh; background: var(--surface); color: var(--ink); box-shadow: -8px 0 32px rgba(73, 59, 44, .12); }
+.planner-settings-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; justify-content: flex-end; background: var(--theme-overlay, rgba(73, 59, 44, .38)); }
+.planner-settings-panel { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; max-height: 100dvh; background: var(--surface); color: var(--ink); box-shadow: -8px 0 32px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12); }
 .settings-panel-heading { display: flex; align-items: flex-start; gap: 12px; padding: calc(18px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); }
 .settings-panel-heading > div { flex: 1; min-width: 0; }
 h3 { margin: 0; font: 800 20px/1.4 var(--font-s); }
@@ -84,9 +84,9 @@ p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere;
 .settings-panel-footer > span { flex: 1 0 100%; color: var(--ink-60); font-size: 12px; }
 button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 600 13px/1.5 var(--font-b); cursor: pointer; }
 .settings-close { display: grid; flex: none; place-items: center; width: 38px; padding: 0; }
-.settings-save { background: var(--tea); border-color: var(--tea); color: var(--cream); }
-.settings-panel-error { color: var(--rouge); }
-:is(button, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-save { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
+.settings-panel-error { color: var(--theme-danger-text, var(--rouge)); }
+:is(button, [tabindex]):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 button:disabled { opacity: .55; cursor: default; }
 .is-short-viewport .planner-settings-panel { overflow-y: auto; }
 .is-short-viewport :is(.settings-panel-form, .settings-panel-body) { flex: none; overflow: visible; }

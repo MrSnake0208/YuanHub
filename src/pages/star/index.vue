@@ -948,7 +948,7 @@ onBeforeUnmount(function () {
   cursor: pointer;
 }
 .star-help-examples button { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); cursor: pointer; }
-.star-help-examples button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.star-help-examples button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .archive-toggle {
   border: 1.5px solid var(--line);
   border-radius: 999px;
@@ -964,7 +964,7 @@ onBeforeUnmount(function () {
 .star-exchange-import { border-top: 1px dashed var(--line); }
 .star-exchange-import .tip { color: var(--ink-60); }
 .star-exchange-import .file-label { cursor: pointer; }
-.star-exchange-error { color: var(--rouge); }
+.star-exchange-error { color: var(--theme-danger-text, var(--rouge)); }
 .star-exchange-preview { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .star-exchange-preview dt { color: var(--ink-60); }
 .star-exchange-preview dd { color: var(--ink); }
@@ -972,26 +972,26 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .star-sync-state.is-error {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 .star-sync-retry {
   border: 0;
   background: transparent;
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
 }
-.star-sync-retry:hover:not(:disabled) { color: var(--accent); }
-.star-sync-retry:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; border-radius: 2px; }
+.star-sync-retry:hover:not(:disabled) { color: var(--theme-accent-text, var(--accent)); }
+.star-sync-retry:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; border-radius: 2px; }
 .star-sync-retry:disabled { opacity: .55; cursor: wait; }
 #product-root {
   background: transparent;
 }
 .yuanstar-mount-error {
-  border: 1px solid rgba(166, 81, 74, 0.45);
+  border: 1px solid var(--theme-danger-line, rgba(166, 81, 74, 0.45));
   border-radius: 14px;
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
   background: var(--surface);
 }
 .yuanstar-mount-loading { color: var(--ink-60); }
@@ -1002,22 +1002,22 @@ onBeforeUnmount(function () {
   color: inherit;
   cursor: pointer;
 }
-.yuanstar-mount-error button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.yuanstar-mount-error button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .star-import-action { border-radius: 8px; }
 .page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; }
 .page-star #product-root :deep(.is-bag-view .bag-filters) { border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); }
 .page-star #product-root :deep(.filter-strip) { border: 0; }
 .page-star #product-root :deep(.filter-strip #name-filter) { background: var(--surface); }
-.page-star #product-root :deep(.filter-strip #clear-filter) { border: 0; background: transparent; color: var(--tea); }
+.page-star #product-root :deep(.filter-strip #clear-filter) { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); }
 .page-star #product-root:not(.filters-open) :deep(.inventory-facts) { border: 0; background: transparent; }
 .page-star #product-root :deep(.review-workspace-card) { border: 0; border-radius: 0; background: transparent; }
 .page-star #product-root :deep(.review-overview) { border-radius: 8px; background: var(--surface); }
 .page-star #product-root :deep(.inventory-facts .save-state) { border-radius: 4px; background: var(--surface); }
-.page-star #product-root :deep(.inventory-panel > header h2) { color: var(--tea); }
+.page-star #product-root :deep(.inventory-panel > header h2) { color: var(--theme-strong-text, var(--tea)); }
 /* Star actions keep the same compact height for mouse and touch input.
    Inline name tooltips, image previews and modal backdrops are content surfaces. */
 .star-sync-state.is-error, .star-sync-state.is-warning { border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
-.star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
+.star-sync-state.is-warning:not(.is-error) { color: var(--theme-accent-text, var(--accent-strong)); }
 </style>
 <style scoped src="./starHostDesktop.css"></style>
 <style scoped src="./starHostMobile.css"></style>

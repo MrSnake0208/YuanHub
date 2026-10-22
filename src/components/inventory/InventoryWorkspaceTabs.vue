@@ -77,7 +77,7 @@ defineEmits(['select'])
 .inventory-tabs button[aria-selected="true"] {
   border-bottom-color: var(--tea);
   background: color-mix(in srgb, var(--yellow) 45%, var(--surface));
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 @media (hover: hover) {
   .inventory-tabs button:hover:not([aria-selected="true"]):not(:disabled) {
@@ -86,7 +86,7 @@ defineEmits(['select'])
   }
 }
 .inventory-tabs button:focus-visible {
-  outline: 2px solid var(--tea);
+  outline: 2px solid var(--theme-focus, var(--tea));
   outline-offset: -3px;
 }
 .inventory-tabs button:disabled {

@@ -19,6 +19,6 @@ label,.star-share-field { display: grid; gap: 3px; min-width: 0; color: var(--in
 input { min-width: 0; width: 100%; min-height: 44px; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); color: var(--ink); font: 14px var(--font-b) }
 .star-share-field :deep(.soft-select) { color: var(--ink); font-size: 14px }
 .star-share-search { grid-column: 1 / -1; grid-row: 2 }
-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+input:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 @container star-inventory (min-width: 500px) { .star-share-controls { grid-template-columns: minmax(100px,.8fr) minmax(0,1.4fr) minmax(140px,1fr) }.star-share-search { grid-column: auto; grid-row: auto } }
 </style>

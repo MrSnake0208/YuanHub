@@ -103,7 +103,7 @@ function toggle(event) {
 }
 .share-stats-toggle:active { transform: none; }
 .share-stats-toggle:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
 .share-stats-next {
@@ -118,7 +118,7 @@ function toggle(event) {
   /* Reserve 2px on each side of the divider without shifting the label. */
   width: 20px;
   padding-left: 1px;
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .share-stats-next::before {
   position: absolute;

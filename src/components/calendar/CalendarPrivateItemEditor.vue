@@ -93,18 +93,18 @@ onBeforeUnmount(() => restoreScroll?.())
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.calendar-private-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
+.calendar-private-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 45%, transparent)); color: var(--ink); }
 .calendar-private-dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 22px 22px 0 0; }
-header h2 { color: var(--tea); }
-button { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); cursor: pointer; }
+header h2 { color: var(--theme-strong-text, var(--tea)); }
+button { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
-:is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+:is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 input, textarea, select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 summary { cursor: pointer; }
-.calendar-private-error { color: var(--rouge); }
+.calendar-private-error { color: var(--theme-danger-text, var(--rouge)); }
 .calendar-private-error a { color: inherit; }
 footer { border-top: 1px solid var(--line); }
-.calendar-private-save { background: var(--tea); color: var(--surface); }
+.calendar-private-save { background: var(--tea); color: var(--on-surface); }
 @media (min-width: 768px) {
   .calendar-private-dialog { border-radius: 20px; }
 }

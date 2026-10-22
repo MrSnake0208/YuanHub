@@ -19,10 +19,10 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .not-found-panel { border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:8px; background:var(--surface); }
-.eyebrow { color:var(--accent-strong); }
+.eyebrow { color:var(--theme-accent-text, var(--accent-strong)); }
 h1 { color:var(--ink); }
 p { color:var(--ink-60); }
-.home-link { border-radius:8px; background:var(--tea); color:var(--cream); text-decoration:none; }
+.home-link { border-radius:8px; background:var(--tea); color:var(--on-strong); text-decoration:none; }
 </style>
 <style scoped src="./notFoundPageDesktop.css"></style>
 <style scoped src="./notFoundPageMobile.css"></style>

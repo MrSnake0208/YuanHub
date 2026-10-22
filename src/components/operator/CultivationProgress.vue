@@ -34,12 +34,12 @@ function number(value) { return Number(value || 0).toLocaleString('zh-CN', { max
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .cultivation-progress { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
 .resource + .resource { border-top: 1px dashed var(--line); }
-.resource-icon { border-radius: 8px; color: var(--tea); }
+.resource-icon { border-radius: 8px; color: var(--theme-strong-text, var(--tea)); }
 .resource-percent { color: var(--ink-60); }
 .resource-summary { color: var(--ink-60); }
-.resource-summary strong { color: #517654; }.resource-summary b { color: var(--ink); }
-.complete .resource-percent { color: #517654; }.resource-empty { color: var(--ink-60); }
-.track { border-radius: 999px; background: var(--paper); }.before { background: #c48b4d; }.today { background: #e8bc6c; }
+.resource-summary strong { color: var(--theme-success-text, #517654); }.resource-summary b { color: var(--ink); }
+.complete .resource-percent { color: var(--theme-success-text, #517654); }.resource-empty { color: var(--ink-60); }
+.track { border-radius: 999px; background: var(--paper); }.before { background: var(--theme-accent-bg, #c48b4d); }.today { background: var(--theme-highlight, #e8bc6c); }
 </style>
 <style scoped src="./cultivationProgressDesktop.css"></style>
 <style scoped src="./cultivationProgressMobile.css"></style>

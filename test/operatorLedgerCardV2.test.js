@@ -92,13 +92,13 @@ test('v2 收紧战斗面板与养成面板的垂直间距', () => {
   assert.match(v2Styles, /\.ledger-combat \+ \.ledger-growth \{\s*margin-top: -6\.75px;/)
 })
 
-test('v2 固定使用 A 浅底色并按单个命盘条目应用稀有度', () => {
+test('v2 保留 A 浅色回退并支持深色文字，按单个命盘条目应用稀有度', () => {
   assert.match(operatorPage, /class="ledger-destiny fate-trait-style-a"/)
   assert.doesNotMatch(operatorPage, /fateTraitStyleToggleVisible|FATE_TRAIT_STYLE_OPTIONS/)
   assert.match(operatorPage, /cardDiscRarityClass\(e, disc\)/)
   assert.match(operatorPage, /const DISC_RARITY_CLASS = Object\.freeze\(/)
-  assert.match(v2Styles, /--trait-text: #55483c;/)
-  assert.match(v2Styles, /--fate2-trait-text: #4e4752;/)
+  assert.match(v2Styles, /--trait-text: var\(--theme-text, #55483c\);/)
+  assert.match(v2Styles, /--fate2-trait-text: var\(--theme-text, #4e4752\);/)
   assert.match(v2Styles, /--rarity-gold: #b9852d;/)
   assert.match(v2Styles, /--rarity-purple: #8c70a4;/)
   assert.match(v2Styles, /--rarity-blue: #65879f;/)

@@ -188,7 +188,7 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="exportSnapshot" class="cart-export-view" aria-hidden="true" inert>
+      <div v-if="exportSnapshot" class="cart-export-view" data-theme="light" aria-hidden="true" inert>
         <ReceiptPanel ref="exportPanel" v-bind="exportSnapshot" export-only />
       </div>
     </Teleport>
@@ -1125,35 +1125,35 @@ function openPlanSave() {
 .cart-percent-input{position:relative;display:block}
 .cart-percent-input input{padding-right:32px}
 .cart-percent-input>span{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--ink-60)}
-.cart-discount-actions button[aria-pressed="true"]{background:var(--accent-strong);border-color:var(--accent-strong);color:var(--surface)}
+.cart-discount-actions button[aria-pressed="true"]{background:var(--accent-strong);border-color:var(--accent-strong);color:var(--on-surface)}
 .cart-catalog{background:var(--surface);border:1px solid var(--line);border-radius:14px}
 .page-cart{background:color-mix(in srgb,var(--cream) 90%,transparent)}
 .cart-pricing-settings label{display:flex;flex-direction:column;gap:5px;flex:1 1 160px;min-width:0;font-size:13px}
 .cart-pricing-settings input,.cart-pricing-settings select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);color:var(--ink)}
 .cart-discount-actions{display:flex;flex-wrap:wrap;gap:6px}
 .cart-discount-actions button{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px;cursor:pointer}
-.cart-pricing-settings :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.cart-rate-error{color:var(--rouge)}
+.cart-pricing-settings :focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:2px}
+.cart-rate-error{color:var(--theme-danger-text, var(--rouge))}
 .cart-filter-empty{border:1px dashed var(--line);border-radius:18px;background:var(--surface)}
 .cart-export-view{pointer-events:none}
 .cart-version-hint{color:var(--ink-60)}
-.cart-operation-message{border-radius:10px;background:var(--yellow);color:var(--ink);box-shadow:0 8px 24px rgba(73,59,44,.2)}
-.cart-operation-message[role="alert"]{background:var(--surface);color:var(--rouge);border:1px solid var(--rouge)}
+.cart-operation-message{border-radius:10px;background:var(--yellow);color:var(--ink);box-shadow:0 8px 24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.2)}
+.cart-operation-message[role="alert"]{background:var(--surface);color:var(--theme-danger-text, var(--rouge));border:1px solid var(--rouge)}
 .tool-utility { border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
-.tool-utility:hover { color: var(--tea); }
-.tool-utility:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tool-utility:hover { color: var(--theme-strong-text, var(--tea)); }
+.tool-utility:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-version-selector { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); color: var(--ink-60); cursor: pointer; }
-.cart-version-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cart-version-selector:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-currency { color: var(--ink-60); }
 .cart-rate-settings { color: var(--ink-60); }
 .cart-rate-settings > summary, .cart-more-filters > summary { cursor: pointer; }
 .cart-rate-modify { text-decoration: underline; text-underline-offset: 3px; }
 .cart-more-filters > summary::after { content: '⌄'; }
-.cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-category select,.cart-source select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .cart-advanced-content { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }
 .cart-layout :deep(.receipt) { border-radius: 14px; box-shadow: none; }
-.cart-layout :deep(.receipt-head) { border-bottom: 1px solid var(--line); background: var(--cream); color: var(--tea); }
+.cart-layout :deep(.receipt-head) { border-bottom: 1px solid var(--line); background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .cart-layout :deep(.receipt-head .en) { color: var(--ink-60); }
 .cart-layout :deep(.cart-actions .btn) { border-radius: 8px; }
 
@@ -1163,7 +1163,7 @@ function openPlanSave() {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.cart-catalog-status{color:var(--ink-60)}.cart-catalog-status [role="alert"]{color:var(--rouge)}
+.cart-catalog-status{color:var(--ink-60)}.cart-catalog-status [role="alert"]{color:var(--theme-danger-text, var(--rouge))}
 </style>
 <style scoped src="./cartPageOverrides1Desktop.css"></style>
 <style scoped src="./cartPageOverrides1Mobile.css"></style>

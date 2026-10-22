@@ -47,7 +47,7 @@ const formatAmount = value => Number(value).toLocaleString('zh-CN', { maximumFra
 .custom-entry { border: 1px solid var(--planner-line, var(--line)); border-radius: 8px; background: var(--cream); color: var(--ink); }
 .custom-entry-heading { color: var(--ink-60); }
 .custom-entry-total b { color: var(--planner-gain); }
-.spend .custom-entry-total b { color: var(--rouge); }
+.spend .custom-entry-total b { color: var(--theme-danger-text, var(--rouge)); }
 .custom-entry-remove { border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer; }
 .custom-entry-fields label { color: var(--ink-60); }
 .custom-entry input { border: 1px solid var(--planner-line, var(--line)); border-radius: 6px; background: var(--surface); color: var(--ink); }
@@ -56,9 +56,9 @@ const formatAmount = value => Number(value).toLocaleString('zh-CN', { maximumFra
 .custom-entry-yields { border-top: 1px dashed var(--planner-line, var(--line)); }
 .custom-yields-heading { color: var(--ink-60); }
 .custom-yield-row > label { color: var(--ink); }
-.custom-entry :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom-entry :is(button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .custom-entry :is(button, input):disabled { opacity: .5; cursor: default; }
-@media (hover: hover) { .custom-entry-remove:hover:not(:disabled) { color: var(--rouge); background: var(--surface); } }
+@media (hover: hover) { .custom-entry-remove:hover:not(:disabled) { color: var(--theme-danger-text, var(--rouge)); background: var(--surface); } }
 </style>
 <style scoped src="./plannerCustomEntryDesktop.css"></style>
 <style scoped src="./plannerCustomEntryMobile.css"></style>

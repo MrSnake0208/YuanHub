@@ -329,24 +329,24 @@
 
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny {
   --ledger-destiny-column-gap: 8px;
-  --trait-text: #55483c;
-  --fate2-trait-text: #4e4752;
-  --trait-disabled-text: #969087;
-  --trait-neutral-border: rgba(73, 59, 44, 0.2);
-  --trait-neutral-bg: #fffdf6;
-  --fate1-accent: #b8772c;
-  --fate1-soft: #f7e8d6;
-  --fate2-accent: #7e7886;
-  --fate2-soft: #eeebf2;
+  --trait-text: var(--theme-text, #55483c);
+  --fate2-trait-text: var(--theme-text, #4e4752);
+  --trait-disabled-text: var(--theme-muted, #969087);
+  --trait-neutral-border: var(--theme-line, rgba(73, 59, 44, 0.2));
+  --trait-neutral-bg: var(--theme-surface, #fffdf6);
+  --fate1-accent: var(--theme-accent-text, #b8772c);
+  --fate1-soft: var(--theme-surface, #f7e8d6);
+  --fate2-accent: var(--theme-muted, #7e7886);
+  --fate2-soft: var(--theme-purple-bg, #eeebf2);
   --rarity-gold: #b9852d;
-  --rarity-gold-border: #dfc287;
-  --rarity-gold-bg: #fbf2df;
+  --rarity-gold-border: var(--theme-line, #dfc287);
+  --rarity-gold-bg: var(--theme-surface, #fbf2df);
   --rarity-purple: #8c70a4;
-  --rarity-purple-border: #c4b0d1;
-  --rarity-purple-bg: #f4eef8;
+  --rarity-purple-border: var(--theme-purple-line, #c4b0d1);
+  --rarity-purple-bg: var(--theme-purple-bg, #f4eef8);
   --rarity-blue: #65879f;
-  --rarity-blue-border: #a9bfd0;
-  --rarity-blue-bg: #eef4f8;
+  --rarity-blue-border: var(--theme-info-line, #a9bfd0);
+  --rarity-blue-bg: var(--theme-info-bg, #eef4f8);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
@@ -542,7 +542,7 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-card-head {
-    --ledger-tab-shadow: 0 -1px 3px rgba(73, 59, 44, .04);
+    --ledger-tab-shadow: 0 -1px 3px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.04);
     --ledger-tab-radius: 6px 6px 0 0;
     --ledger-tab-paper: linear-gradient(var(--cream), color-mix(in srgb, var(--paper) 65%, var(--cream)));
     flex-wrap: nowrap;
@@ -643,8 +643,8 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-status-menu {
-    --ledger-status-bg: color-mix(in srgb, #bfdcc0 34%, var(--cream));
-    --ledger-status-line: rgba(111, 159, 118, .3);
+    --ledger-status-bg: color-mix(in srgb, var(--theme-success-bg, #bfdcc0) 34%, var(--cream));
+    --ledger-status-line: var(--theme-success-line, rgba(111, 159, 118, .3));
     top: 0;
     max-width: none;
     margin-left: auto;
@@ -682,7 +682,7 @@
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .status-inactive {
     --ledger-status-bg: color-mix(in srgb, var(--ink) 4%, var(--cream));
-    --ledger-status-line: rgba(73, 59, 44, .22);
+    --ledger-status-line: var(--theme-line, rgba(73, 59, 44, .22));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-status-chevron {
@@ -1029,7 +1029,7 @@
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-disc-option {
     --option-border: var(--line);
     --option-bg: var(--cream);
-    --option-accent: var(--tea);
+    --option-accent: var(--theme-strong-text, var(--tea));
     min-height: 44px;
     gap: 8px;
     padding: 8px;

@@ -78,7 +78,7 @@ defineExpose({ reload: load })
 .goal-criteria li { color: var(--feedback-text-muted); }
 .goal-links h3 { color: var(--feedback-text); }
 .goal-links p { color: var(--feedback-text-muted); }
-.goal-links a { color: var(--accent-strong); text-decoration: underline; }
+.goal-links a { color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; }
 .goal-card footer { color: var(--feedback-text-dim); }
 .goal-pagination { color: var(--feedback-text-muted); }
 </style>

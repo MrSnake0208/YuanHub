@@ -127,12 +127,12 @@ function save() {
 .admin-public-panel.dialog .admin-public-body { border-top: 0; }
 .admin-public-trigger { border: 0; background: transparent; color: var(--feedback-text); cursor: pointer; }
 .admin-public-trigger:hover { background: var(--feedback-panel-hover); }
-.admin-public-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.admin-public-trigger:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -2px; }
 .admin-public-trigger:disabled { cursor: wait; }
-.admin-public-kicker { color: var(--accent-strong); }
+.admin-public-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 .admin-public-heading strong { color: var(--feedback-text); }
 .admin-public-summary-text { color: var(--feedback-text-muted); }
-.admin-public-flag { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--brand-blue); }
+.admin-public-flag { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--theme-info-text, var(--brand-blue)); }
 .admin-public-chevron { color: var(--feedback-text-dim); transition: transform .16s ease; }
 .admin-public-body { border-top: 1px solid var(--feedback-line); }
 .admin-public-hint { color: var(--feedback-text-muted); }

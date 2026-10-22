@@ -116,41 +116,41 @@ defineEmits(['create-account'])
 
 <style scoped>
 /* 刻意共享的字段外观，不持有双端布局。 */
-.data-onboarding { border: 1px solid rgba(156, 122, 77, .3); background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); }
-.onboarding-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
+.data-onboarding { border: 1px solid var(--theme-line, rgba(156, 122, 77, .3)); background: linear-gradient(145deg, var(--theme-surface, rgba(255, 253, 246, .94)), var(--theme-wash, rgba(239, 210, 142, .12))); }
+.onboarding-kicker { color: var(--theme-accent-text, var(--accent)); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
 .onboarding-heading h2 { font-family: var(--font-s); font-weight: 900; }
-.onboarding-heading p { color: rgba(73, 59, 44, .68); line-height: 1.75; }
+.onboarding-heading p { color: var(--theme-muted, rgba(73, 59, 44, .68)); line-height: 1.75; }
 .onboarding-note { color: var(--ink-60); line-height: 1.6; }
-.auth-onboarding-card { border: 1px solid rgba(156, 122, 77, .24); background: rgba(255, 253, 246, .9); }
+.auth-onboarding-card { border: 1px solid var(--theme-line, rgba(156, 122, 77, .24)); background: var(--theme-surface, rgba(255, 253, 246, .9)); }
 .auth-onboarding-copy h3 { font-family: var(--font-s); font-weight: 900; }
-.auth-onboarding-copy p { color: rgba(73, 59, 44, .61); line-height: 1.65; }
-.inline-account-card { border: 1px solid rgba(215, 137, 53, .36); background: rgba(255, 253, 246, .9); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .32); }
+.auth-onboarding-copy p { color: var(--theme-muted, rgba(73, 59, 44, .61)); line-height: 1.65; }
+.inline-account-card { border: 1px solid var(--theme-line, rgba(215, 137, 53, .36)); background: var(--theme-surface, rgba(255, 253, 246, .9)); box-shadow: inset 0 3px 0 rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.32); }
 .inline-account-intro h3 { font-family: var(--font-s); font-weight: 900; }
-.inline-account-intro p { color: rgba(73, 59, 44, .61); line-height: 1.65; }
+.inline-account-intro p { color: var(--theme-muted, rgba(73, 59, 44, .61)); line-height: 1.65; }
 .account-management-action { white-space: normal; }
-.data-readiness-card { border: 1px solid rgba(215, 137, 53, .34); background: rgba(255, 253, 246, .9); }
-.data-readiness-card.is-ready { border-color: rgba(98, 128, 93, .28); background: rgba(98, 128, 93, .07); }
-.data-readiness-card.is-unknown { border-style: dashed; border-color: rgba(91, 106, 140, .28); }
-.readiness-icon { background: rgba(215, 137, 53, .1); color: var(--accent); }
-.is-ready .readiness-icon { background: rgba(98, 128, 93, .12); color: #587253; }
+.data-readiness-card { border: 1px solid var(--theme-line, rgba(215, 137, 53, .34)); background: var(--theme-surface, rgba(255, 253, 246, .9)); }
+.data-readiness-card.is-ready { border-color: var(--theme-line, rgba(98, 128, 93, .28)); background: var(--theme-wash, rgba(98, 128, 93, .07)); }
+.data-readiness-card.is-unknown { border-style: dashed; border-color: var(--theme-info-line, rgba(91, 106, 140, .28)); }
+.readiness-icon { background: var(--theme-wash, rgba(215, 137, 53, .1)); color: var(--theme-accent-text, var(--accent)); }
+.is-ready .readiness-icon { background: var(--theme-wash, rgba(98, 128, 93, .12)); color: var(--theme-text, #587253); }
 .readiness-card-head h3 { font-family: var(--font-s); font-weight: 900; }
-.readiness-status { color: var(--accent); font-weight: 900; }
-.is-ready .readiness-status { color: #587253; }
-.is-unknown .readiness-status { color: var(--brand-blue); }
-.data-readiness-card > p { color: rgba(73, 59, 44, .6); line-height: 1.65; }
-.readiness-action { background: rgba(156, 122, 77, .08); color: var(--ink); font-weight: 900; text-decoration: none; }
-.readiness-action:hover { background: rgba(239, 210, 142, .22); }
-.sync-recommendation { border: 1px solid rgba(215, 137, 53, .36); background: rgba(239, 210, 142, .11); }
+.readiness-status { color: var(--theme-accent-text, var(--accent)); font-weight: 900; }
+.is-ready .readiness-status { color: var(--theme-text, #587253); }
+.is-unknown .readiness-status { color: var(--theme-info-text, var(--brand-blue)); }
+.data-readiness-card > p { color: var(--theme-muted, rgba(73, 59, 44, .6)); line-height: 1.65; }
+.readiness-action { background: var(--theme-wash, rgba(156, 122, 77, .08)); color: var(--ink); font-weight: 900; text-decoration: none; }
+.readiness-action:hover { background: var(--theme-wash-strong, rgba(239, 210, 142, .22)); }
+.sync-recommendation { border: 1px solid var(--theme-line, rgba(215, 137, 53, .36)); background: var(--theme-wash, rgba(239, 210, 142, .11)); }
 .sync-recommendation h3 { font-family: var(--font-s); font-weight: 900; }
-.sync-recommendation p { color: rgba(73, 59, 44, .62); line-height: 1.65; }
-.sync-recommendation small { color: rgba(73, 59, 44, .52); line-height: 1.55; }
-.entry-icon { background: rgba(215, 137, 53, .1); color: var(--accent); }
-.recommend-badge { background: rgba(239, 210, 142, .48); color: var(--tea); }
+.sync-recommendation p { color: var(--theme-muted, rgba(73, 59, 44, .62)); line-height: 1.65; }
+.sync-recommendation small { color: var(--theme-muted, rgba(73, 59, 44, .52)); line-height: 1.55; }
+.entry-icon { background: var(--theme-wash, rgba(215, 137, 53, .1)); color: var(--theme-accent-text, var(--accent)); }
+.recommend-badge { background: var(--theme-wash-strong, rgba(239, 210, 142, .48)); color: var(--theme-strong-text, var(--tea)); }
 .entry-primary-action, .entry-secondary-action { font-weight: 900; text-decoration: none; }
-.entry-primary-action { background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); }
-.entry-secondary-action { border: 1px solid rgba(73, 59, 44, .22); color: var(--ink); }
+.entry-primary-action { background: var(--tea); color: var(--on-strong); box-shadow: 0 8px 18px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12); }
+.entry-secondary-action { border: 1px solid var(--theme-line, rgba(73, 59, 44, .22)); color: var(--ink); }
 
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 </style>
 <style scoped src="./todayOnboardingDesktop.css"></style>
 <style scoped src="./todayOnboardingMobile.css"></style>

@@ -278,38 +278,38 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .plan-title-trigger { border: 0; border-radius: 8px; background: transparent; color: inherit; }
 .plan-title-trigger:hover:not(:disabled) { background: color-mix(in srgb, var(--paper) 62%, transparent); color: var(--ink); }
 .plan-title-trigger > svg { color: var(--ink-60); transition: transform 160ms ease; }
-.plan-switcher-menu { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 38px rgba(73,59,44,.2); }
+.plan-switcher-menu { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 38px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.2); }
 .plan-switcher-menu button { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); }
 .plan-switcher-menu button:hover, .plan-switcher-menu button:focus-visible { background: var(--cream); color: var(--ink); }
-.plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--tea); }
-.plan-switcher-check { color: var(--accent-strong); }
+.plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--theme-strong-text, var(--tea)); }
+.plan-switcher-check { color: var(--theme-accent-text, var(--accent-strong)); }
 .plan-title-empty { color: var(--ink-60); }
 .plan-source-note, .plan-picker-help { color: var(--ink-60); }
-.plan-member-add { border-color: var(--tea); background: var(--tea); color: var(--cream); }
-.plan-member-add:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--cream); }
+.plan-member-add { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
+.plan-member-add:hover:not(:disabled) { border-color: var(--ink); background: var(--theme-control-bg, var(--ink)); color: var(--on-strong); }
 .plan-text-action { border-color: transparent; background: transparent; color: var(--ink-60); }
-.plan-text-action:hover:not(:disabled) { background: var(--paper); color: var(--tea); }
+.plan-text-action:hover:not(:disabled) { background: var(--paper); color: var(--theme-strong-text, var(--tea)); }
 button, select, input { color: var(--ink); }
 button, select { border: 1px solid var(--line); border-radius: 9px; background: var(--cream); }
 button { cursor: pointer; }
-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
-:is(button, input, select, summary):focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+button:hover:not(:disabled) { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
+:is(button, input, select, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 :disabled { opacity: .55; cursor: wait; }
 
-.plan-dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(73,59,44,.28); }
-.plan-dialog::backdrop { background: rgba(73,59,44,.38); backdrop-filter: blur(2px); }
+.plan-dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28); }
+.plan-dialog::backdrop { background: var(--theme-wash-strong, rgba(73,59,44,.38)); backdrop-filter: blur(2px); }
 .plan-dialog-head { border-bottom: 1px solid var(--line); background: linear-gradient(105deg, color-mix(in srgb, var(--yellow) 18%, var(--surface)), var(--surface) 58%); border-radius: 18px 18px 0 0; }
-.plan-dialog-mark { border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 10px; background: var(--cream); color: var(--accent-strong); }
+.plan-dialog-mark { border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 10px; background: var(--cream); color: var(--theme-accent-text, var(--accent-strong)); }
 .plan-dialog-kicker { color: var(--ink-60); }
 .plan-dialog-close { border: 0; border-radius: 10px; background: transparent; color: var(--ink-60); cursor: pointer; }
-.plan-dialog-close:hover { background: rgba(73,59,44,.07); color: var(--ink); }
+.plan-dialog-close:hover { background: var(--theme-wash, rgba(73,59,44,.07)); color: var(--ink); }
 .plan-delete-confirm { border: 1px solid color-mix(in srgb, var(--rouge) 38%, var(--line)); border-radius: 11px; background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); }
-.plan-delete-copy > span { border-radius: 8px; background: color-mix(in srgb, var(--rouge) 10%, var(--surface)); color: var(--rouge); }
+.plan-delete-copy > span { border-radius: 8px; background: color-mix(in srgb, var(--rouge) 10%, var(--surface)); color: var(--theme-danger-text, var(--rouge)); }
 .plan-delete-copy p { color: var(--ink-60); }
-.plan-delete-confirm .plan-delete-danger { border-color: var(--rouge); background: var(--rouge); color: var(--cream); }
+.plan-delete-confirm .plan-delete-danger { border-color: var(--rouge); background: var(--rouge); color: var(--on-strong); }
 
 .plan-source-choice { border: 1px solid var(--line); border-radius: 12px; }
-.plan-source-choice legend { color: var(--tea); }
+.plan-source-choice legend { color: var(--theme-strong-text, var(--tea)); }
 .plan-source-choice label { border: 1px solid transparent; border-radius: 9px; background: color-mix(in srgb, var(--cream) 72%, var(--surface)); cursor: pointer; }
 .plan-source-choice label.selected { border-color: var(--accent); background: color-mix(in srgb, var(--yellow) 26%, var(--surface)); }
 .plan-source-choice input { accent-color: var(--accent-strong); }
@@ -317,12 +317,12 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 
 .plan-name-row { border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--cream) 58%, var(--surface)); }
 .plan-name-meta small { color: var(--ink-60); }
-.plan-name-control > svg { color: var(--tea); pointer-events: none; }
-.plan-name-control input { border: 1.5px solid color-mix(in srgb, var(--tea) 48%, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: inset 0 1px 2px rgba(73,59,44,.06); }
+.plan-name-control > svg { color: var(--theme-strong-text, var(--tea)); pointer-events: none; }
+.plan-name-control input { border: 1.5px solid color-mix(in srgb, var(--tea) 48%, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: inset 0 1px 2px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.06); }
 .plan-name-control input:hover:not([readonly]) { border-color: var(--tea); }
-.plan-name-control input[readonly] { border-color: var(--line); background: color-mix(in srgb, var(--paper) 70%, var(--surface)); color: var(--tea); }
-.plan-inline-delete { border-color: color-mix(in srgb, var(--rouge) 38%, var(--line)); background: var(--surface); color: var(--rouge); }
-.plan-inline-delete:hover:not(:disabled) { border-color: var(--rouge); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); color: var(--rouge); }
+.plan-name-control input[readonly] { border-color: var(--line); background: color-mix(in srgb, var(--paper) 70%, var(--surface)); color: var(--theme-strong-text, var(--tea)); }
+.plan-inline-delete { border-color: color-mix(in srgb, var(--rouge) 38%, var(--line)); background: var(--surface); color: var(--theme-danger-text, var(--rouge)); }
+.plan-inline-delete:hover:not(:disabled) { border-color: var(--rouge); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); color: var(--theme-danger-text, var(--rouge)); }
 .plan-search > svg { color: var(--ink-60); pointer-events: none; }
 .plan-search input { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .plan-picker-help small { color: var(--ink-60); }
@@ -332,44 +332,44 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 
 .plan-selection-tabs { border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--paper) 54%, var(--surface)); }
 .plan-selection-tabs button { border: 0; background: transparent; color: var(--ink-60); }
-.plan-selection-tabs button.on { background: var(--surface); color: var(--tea); box-shadow: 0 1px 4px rgba(73,59,44,.09); }
-.plan-selection-tabs button span { color: var(--accent-strong); }
+.plan-selection-tabs button.on { background: var(--surface); color: var(--theme-strong-text, var(--tea)); box-shadow: 0 1px 4px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.09); }
+.plan-selection-tabs button span { color: var(--theme-accent-text, var(--accent-strong)); }
 
 .plan-filters { border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--cream) 65%, var(--surface)); }
-.plan-filter-head { color: var(--tea); }
+.plan-filter-head { color: var(--theme-strong-text, var(--tea)); }
 .plan-filter-reset { border: 0; background: transparent; color: var(--ink-60); }
-.plan-filter-label { color: var(--tea); }
-.plan-filter-options button { border: 0; border-radius: 999px; background: rgba(73,59,44,.06); color: var(--ink-60); }
+.plan-filter-label { color: var(--theme-strong-text, var(--tea)); }
+.plan-filter-options button { border: 0; border-radius: 999px; background: var(--theme-wash, rgba(73,59,44,.06)); color: var(--ink-60); }
 .plan-filter-options button.on { background: var(--yellow); color: var(--ink); }
-.plan-filter-options .rarity-option.rarity-r3.on { background: color-mix(in srgb, #99b5cf 34%, var(--surface)); color: #47647d; }
-.plan-filter-options .rarity-option.rarity-r4.on { background: color-mix(in srgb, #8672b2 25%, var(--surface)); color: #62508b; }
-.plan-filter-options .rarity-option.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--accent-strong); }
+.plan-filter-options .rarity-option.rarity-r3.on { background: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 34%, var(--surface)); color: var(--theme-info-text, #47647d); }
+.plan-filter-options .rarity-option.rarity-r4.on { background: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 25%, var(--surface)); color: var(--theme-purple-text, #62508b); }
+.plan-filter-options .rarity-option.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--theme-accent-text, var(--accent-strong)); }
 
 .plan-roster-meta { color: var(--ink-60); }
-.plan-roster-meta strong { color: var(--accent-strong); }
-.plan-picker-invalid { color: var(--rouge); }
-.plan-picker-error { border-radius: 8px; background: color-mix(in srgb, var(--rouge) 7%, var(--surface)); color: var(--rouge); }
+.plan-roster-meta strong { color: var(--theme-accent-text, var(--accent-strong)); }
+.plan-picker-invalid { color: var(--theme-danger-text, var(--rouge)); }
+.plan-picker-error { border-radius: 8px; background: color-mix(in srgb, var(--rouge) 7%, var(--surface)); color: var(--theme-danger-text, var(--rouge)); }
 .plan-candidates > p { color: var(--ink-60); }
 .plan-candidate { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; }
 .plan-candidate:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); background: var(--cream); }
-.plan-candidate:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.plan-candidate:focus-within { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .plan-candidate.selected { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); }
 .plan-candidate input { accent-color: var(--accent-strong); }
 .plan-candidate-prof { filter: drop-shadow(0 1px 1px rgba(73,59,44,.22)); }
-.plan-candidate-favorite { color: var(--accent); }
+.plan-candidate-favorite { color: var(--theme-accent-text, var(--accent)); }
 .plan-candidate-label { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); }
 .plan-candidate-label.profession { background: var(--paper); }
-.plan-candidate-label.status.is-growing { border-color: rgba(111,159,118,.45); background: #bfdcc0; color: #315f38; }
-.plan-candidate-label.status.is-graduated { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--yellow) 35%, var(--surface)); color: var(--accent-strong); }
+.plan-candidate-label.status.is-growing { border-color: var(--theme-success-line, rgba(111,159,118,.45)); background: var(--theme-success-bg, #bfdcc0); color: var(--theme-success-text, #315f38); }
+.plan-candidate-label.status.is-graduated { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--yellow) 35%, var(--surface)); color: var(--theme-accent-text, var(--accent-strong)); }
 .plan-candidate-label.status.is-inactive { background: color-mix(in srgb, var(--paper) 62%, var(--surface)); color: var(--ink-60); }
 :deep(.plan-candidate .operator-avatar) { border-radius: 8px; }
 :deep(.plan-candidate .operator-avatar img) { border-radius: 6px; }
 
 .plan-dialog-actions { border-top: 1px solid var(--line); background: var(--surface); border-radius: 0 0 18px 18px; }
 .plan-dialog-actions > p { color: var(--ink-60); }
-.plan-dialog-actions > p strong { color: var(--accent-strong); }
+.plan-dialog-actions > p strong { color: var(--theme-accent-text, var(--accent-strong)); }
 .plan-dialog-actions .plan-cancel { border-color: transparent; background: transparent; color: var(--ink-60); }
-.plan-dialog-actions button[type=submit] { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.plan-dialog-actions button[type=submit] { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 @media (max-width: 560px) {
   .plan-dialog { border-radius: 15px; }
   .plan-dialog-head { border-radius: 15px 15px 0 0; }
@@ -377,13 +377,13 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
   .plan-candidate:hover { background: color-mix(in srgb, var(--cream) 72%, transparent); }
   .plan-candidate.selected { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); background: color-mix(in srgb, var(--yellow) 18%, var(--surface)); }
   .plan-candidate-status-mark:not(.is-favorite)::before { border-radius: 50%; content: ''; }
-  .plan-candidate-status-mark.is-growing:not(.is-favorite)::before { border: 1px solid #56805d; background: #6f9f76; }
+  .plan-candidate-status-mark.is-growing:not(.is-favorite)::before { border: 1px solid var(--theme-success-line, #56805d); background: var(--theme-success-bg, #6f9f76); }
   .plan-candidate-status-mark.is-graduated:not(.is-favorite)::before { border: 1px solid var(--accent-strong); background: var(--accent); }
   .plan-candidate-status-mark.is-inactive:not(.is-favorite)::before { border: 1px solid var(--ink-60); background: var(--ink-35); }
-  .plan-candidate-status-mark.is-favorite.is-growing { color: #56805d; }
-  .plan-candidate-status-mark.is-favorite.is-graduated { color: var(--accent); }
+  .plan-candidate-status-mark.is-favorite.is-growing { color: var(--theme-success-text, #56805d); }
+  .plan-candidate-status-mark.is-favorite.is-graduated { color: var(--theme-accent-text, var(--accent)); }
   .plan-candidate-status-mark.is-favorite.is-inactive { color: var(--ink-60); }
-  .plan-selected-check { border-radius: 50%; background: var(--tea); color: var(--cream); }
+  .plan-selected-check { border-radius: 50%; background: var(--tea); color: var(--on-strong); }
   .plan-dialog-actions { border-radius: 0 0 15px 15px; }
 }
 </style>

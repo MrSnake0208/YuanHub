@@ -14,7 +14,7 @@
   .state { margin-top: 4px; padding: 28px 14px; border-radius: 16px; text-align: center; font-size: 13px; }
   .inventory-inline-state { padding: 10px 12px; border-radius: 12px; font-size: 12px; }
   .inventory-inline-state .link, .state .link { min-height: 32px; padding: 5px 8px; }
-  .records-filter-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .records-filter-select:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
   @media (max-width: 360px) {
     .inventory-records-workspace { gap: 6px 4px; }
     .records-count { padding-inline: 5px; }

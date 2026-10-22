@@ -282,29 +282,29 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 .search-box input { border: 0; outline: 0; background: transparent; color: var(--ink) }
 .count { color: var(--ink-60) }
 .command,.icon-command { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
-.command:focus-visible,.icon-command:focus-visible,.candidate:focus-visible,.role-options input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.search-box:focus-within { outline: 2px solid var(--accent); outline-offset: 3px }
+.command:focus-visible,.icon-command:focus-visible,.candidate:focus-visible,.role-options input:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
+.search-box:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 .icon-command { background: var(--surface); color: var(--ink) }
-.command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.command.primary { background: var(--tea); border-color: var(--tea); color: var(--on-strong) }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command:disabled,.icon-command:disabled { opacity: .5; cursor: default }
 .state { color: var(--ink-60) }
-.state.error,.editor-error { color: var(--rouge) }
-.role-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.state.error,.editor-error { color: var(--theme-danger-text, var(--rouge)) }
+.role-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 .role-table .ops { background: var(--surface) }
 .role-table th:last-child { background: var(--tea) }
 .role-table { border-collapse: collapse; background: var(--surface) }
 .role-table th,.role-table td { border-bottom: 1px solid var(--line) }
-.role-table th { background: var(--tea); color: var(--cream) }
+.role-table th { background: var(--tea); color: var(--on-strong) }
 .role-table td code,.role-table td time { color: var(--ink-60) }
 .role-tag,.status-tag { border-radius: 6px; background: var(--yellow); color: var(--ink) }
-.role-tag.super { color: var(--accent-strong); background: transparent; border: 1px solid var(--accent) }
-.status-tag { background: rgba(191,220,192,.6) }
-.status-tag.inactive { color: var(--rouge); background: rgba(240,207,200,.55) }
+.role-tag.super { color: var(--theme-accent-text, var(--accent-strong)); background: transparent; border: 1px solid var(--accent) }
+.status-tag { background: var(--theme-success-wash, rgba(191,220,192,.6)) }
+.status-tag.inactive { color: var(--theme-danger-text, var(--rouge)); background: var(--theme-danger-wash, rgba(240,207,200,.55)) }
 .empty-row { color: var(--ink-60) }
-.modal-layer { background: rgba(73,59,44,.28) }
-.role-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(73,59,44,.28) }
-.eyebrow { color: var(--accent-strong) }
+.modal-layer { background: var(--theme-wash-strong, rgba(73,59,44,.28)) }
+.role-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28) }
+.eyebrow { color: var(--theme-accent-text, var(--accent-strong)) }
 .user-picker>label { color: var(--ink-60) }
 .picker-state { color: var(--ink-60) }
 .candidate { border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
@@ -313,7 +313,7 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 .selected-user { background: var(--cream); border: 1px solid var(--line); border-radius: 8px }
 .role-options { border: 0 }
 .role-options label { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
-.role-options label.selected { background: rgba(239,210,142,.28); border-color: var(--accent) }
+.role-options label.selected { background: var(--theme-wash-strong, rgba(239,210,142,.28)); border-color: var(--accent) }
 .role-options input { accent-color: var(--accent) }
 .role-options small { color: var(--ink-60) }
 </style>

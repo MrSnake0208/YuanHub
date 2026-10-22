@@ -7,7 +7,7 @@
 .account-event-history ul { max-height: 34vh; overflow: auto; margin: 0; padding: 0 12px 12px 28px; }
 .account-event-history li { margin-top: 8px; }
 .account-event-history small { display: block; overflow-wrap: anywhere; }
-.account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 44px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; font-size: 12.5px; line-height: 1.35 }
+.account-event-toast { --toast-accent: var(--theme-accent-text, var(--yellow-deep)); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 44px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; font-size: 12.5px; line-height: 1.35 }
 .account-event-toast::after { position: absolute; right: 17px; bottom: -8px; width: 14px; height: 14px; transform: skewY(34deg) rotate(20deg) }
 .account-event-toast.is-capsule::after { display: none }
 .toast-badge { display: grid; width: 38px; height: 38px; place-items: center }
@@ -22,9 +22,9 @@
 .account-event-toast.is-capsule .toast-copy { gap: 1px; }
 .account-event-toast.is-capsule .toast-copy { max-width: 154px; }
 .account-event-toast.is-capsule .toast-copy b { font-size: 13px; }
-.account-event-toast.is-capsule.rarity-r5 { --toast-accent: var(--accent); }
-.account-event-toast.is-capsule.rarity-r4 { --toast-accent: var(--brand-blue); }
-.account-event-toast.is-capsule.rarity-r3 { --toast-accent: var(--mist); }
+.account-event-toast.is-capsule.rarity-r5 { --toast-accent: var(--theme-accent-text, var(--accent)); }
+.account-event-toast.is-capsule.rarity-r4 { --toast-accent: var(--theme-info-text, var(--brand-blue)); }
+.account-event-toast.is-capsule.rarity-r3 { --toast-accent: var(--theme-info-text, var(--mist)); }
 .account-event-toast.is-inventory { grid-template-columns: 48px minmax(0, 1fr) 44px; width: min(330px, calc(100vw - 40px)); min-height: 0; padding: 14px }
 .account-event-toast.is-inventory::after { display: none }
 .account-event-toast.is-inventory .toast-badge { width: 48px; height: 48px }
@@ -34,7 +34,7 @@
 .inventory-entries { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; line-height: 1.4 }
 .inventory-entry { display: inline-flex; gap: 2px; padding: 1px 5px }
 .inventory-entry b { font-weight: 800 }
-.account-event-toast.is-warning { --toast-accent: rgba(166, 81, 74, .55) }
+.account-event-toast.is-warning { --toast-accent: var(--theme-danger-text, rgba(166, 81, 74, .55)) }
 .account-event-toast.is-warning .toast-copy small { white-space: normal }
 .account-event-toast a, .account-event-history a { font-weight: 800 }
 .account-event-toast button { display: grid; width: 44px; height: 44px; place-items: center }

@@ -215,13 +215,13 @@ defineEmits(['filter', 'load', 'restore', 'open-report'])
 }
 .inventory-inline-state.is-error {
   border-color: var(--rouge);
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 .inventory-inline-state .link,
 .state .link {
   background: none;
   border: none;
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -231,11 +231,11 @@ defineEmits(['filter', 'load', 'restore', 'open-report'])
 .records-overview {
   border: 1px solid var(--line);
   background:
-    linear-gradient(118deg, rgba(255, 248, 236, 0.92), rgba(255, 253, 246, 0.98));
-  box-shadow: 0 14px 34px -32px rgba(73, 59, 44, 0.48);
+    linear-gradient(118deg, var(--theme-surface, rgba(255, 248, 236, 0.92)), var(--theme-surface, rgba(255, 253, 246, 0.98)));
+  box-shadow: 0 14px 34px -32px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.48);
 }
 .records-kicker {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   font-weight: 800;
   letter-spacing: 0.13em;
 }
@@ -278,13 +278,13 @@ defineEmits(['filter', 'load', 'restore', 'open-report'])
 }
 .records-filter button.on {
   background: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .records-filter button:hover:not(.on):not(:disabled) {
   color: var(--ink);
 }
 .records-filter button:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 1px;
 }
 .records-filter button:disabled {

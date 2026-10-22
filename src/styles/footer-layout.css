@@ -1,11 +1,11 @@
 @import './footer-layoutDesktop.css';
 @import './footer-layoutMobile.css';
-.footer{background:var(--tea);color:var(--cream);border-radius:40px 40px 0 0}
+.footer{background:var(--tea);color:var(--on-strong);border-radius:40px 40px 0 0}
 .footer.tone-slate{background:var(--slate)}
-.footer .big span{color:var(--yellow)}
+.footer .big span{color:var(--theme-accent-text, var(--yellow))}
 .footer .fine{color:rgba(255,248,236,.7)}
-.footer .fine b{color:var(--cream)}
-.footer .fine a{color:var(--cream);text-decoration:none;border-bottom:1px solid rgba(255,248,236,.4)}
+.footer .fine b{color:var(--on-strong)}
+.footer .fine a{color:var(--on-strong);text-decoration:none;border-bottom:1px solid var(--theme-line, rgba(255,248,236,.4))}
 
 @media (max-width:767px){
   .footer{border-radius:24px 24px 0 0}

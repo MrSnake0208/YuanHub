@@ -241,12 +241,12 @@
 }
 .slot.is-shizimiao-sp.is-scan-new .slot-ic,
 .slot.is-shizimiao-sp.is-scan-updated .slot-ic {
-  --operator-rune-accent: #9483bf;
-  --operator-rune-deep: #6f5688;
+  --operator-rune-accent: var(--theme-purple-text, #9483bf);
+  --operator-rune-deep: var(--theme-purple-text, #6f5688);
 }
 .slot.is-fazheng.is-scan-new .slot-ic,
 .slot.is-fazheng.is-scan-updated .slot-ic {
-  --operator-pixel-purple: #6f5688;
+  --operator-pixel-purple: var(--theme-purple-text, #6f5688);
 }
 .slot.is-fazheng.is-scan-new .slot-ic::before,
 .slot.is-fazheng.is-scan-updated .slot-ic::before {
@@ -1053,15 +1053,15 @@
 }
 .agent-ledger-card.is-scan-new,
 .agent-ledger-card.is-scan-updated {
-  --ledger-scan-accent: var(--accent);
+  --ledger-scan-accent: var(--theme-accent-text, var(--accent));
 }
 .agent-ledger-card.rarity-r4.is-scan-new,
 .agent-ledger-card.rarity-r4.is-scan-updated {
-  --ledger-scan-accent: #8672b2;
+  --ledger-scan-accent: var(--theme-purple-text, #8672b2);
 }
 .agent-ledger-card.rarity-r3.is-scan-new,
 .agent-ledger-card.rarity-r3.is-scan-updated {
-  --ledger-scan-accent: #99b5cf;
+  --ledger-scan-accent: var(--theme-info-text, #99b5cf);
 }
 .agent-ledger-card.is-scan-new::before,
 .agent-ledger-card.is-scan-updated::before {

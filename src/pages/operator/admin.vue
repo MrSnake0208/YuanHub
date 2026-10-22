@@ -811,14 +811,14 @@ load()
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* —— 复用全局 CSS 变量，对齐密探页（operator/index.vue）版式与配色规范 —— */
 .catalog-summary { color: var(--ink-60) }
-.catalog-summary .warn { color: var(--rouge) }
-.catalog-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.catalog-summary .warn { color: var(--theme-danger-text, var(--rouge)) }
+.catalog-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 
-.banner { background: rgba(166, 81, 74, .08) }
+.banner { background: var(--theme-danger-wash, rgba(166, 81, 74, .08)) }
 
 .admin-bar { border-block: 1px solid var(--line) }
 .adm-search-wrap { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35); background: var(--paper); transition: border-color .25s, box-shadow .25s }
-.adm-search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
+.adm-search-wrap:focus-within { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.14) }
 .adm-search { border: 0; color: var(--ink); background: transparent; outline: none }
 .adm-search::placeholder { color: var(--ink-35) }
 .result-count { color: var(--ink-60) }
@@ -826,10 +826,10 @@ load()
 .catalog-table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
 .catalog-table { border-collapse: separate; border-spacing: 0 }
 .catalog-table th { color: var(--ink-60); border-bottom: 1px dashed var(--line) }
-.catalog-table td { border-bottom: 1px solid rgba(156, 122, 77, .12) }
+.catalog-table td { border-bottom: 1px solid var(--theme-line, rgba(156, 122, 77, .12)) }
 .catalog-table tbody tr:last-child td { border-bottom: none }
-.catalog-table tbody tr:hover { background: rgba(156, 122, 77, .05) }
-.op-ph { border-radius: 10px; color: var(--cream) }
+.catalog-table tbody tr:hover { background: var(--theme-wash, rgba(156, 122, 77, .05)) }
+.op-ph { border-radius: 10px; color: var(--on-strong) }
 .op-avatar { border-radius: 10px; background: var(--paper); border: 1.5px solid var(--line) }
 .op-ph.s3 { background: var(--yellow-deep); color: var(--ink) }
 .op-ph.s4 { background: var(--accent) }
@@ -840,29 +840,29 @@ load()
 .avatar-placeholder { border-radius: 14px; background: var(--paper); border: 1.5px dashed var(--line); color: var(--ink-35) }
 .op-name small { color: var(--ink-35) }
 .op-name em { color: var(--ink-60) }
-.rarity.s3 { color: var(--yellow-deep) }
-.rarity.s4 { color: var(--accent) }
-.rarity.s5 { color: var(--tea) }
+.rarity.s3 { color: var(--theme-accent-text, var(--yellow-deep)) }
+.rarity.s4 { color: var(--theme-accent-text, var(--accent)) }
+.rarity.s5 { color: var(--theme-strong-text, var(--tea)) }
 .tag-prof { border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)) }
 .tag-subprof { border: 1px solid var(--yellow-deep); border-radius: 6px; background: var(--yellow); color: var(--ink) }
 .tag-station { border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px }
-.tag-sp { background: var(--tea); color: var(--cream); border-radius: 6px }
+.tag-sp { background: var(--tea); color: var(--on-strong); border-radius: 6px }
 .cell-oddity small { color: var(--ink-35) }
-.oddity-missing { color: var(--rouge) }
+.oddity-missing { color: var(--theme-danger-text, var(--rouge)) }
 .oddity-ready { color: var(--ink) }
 .muted { color: var(--ink-35) }
 .cell-ver code { color: var(--ink-60) }
 .cell-ver small { color: var(--ink-35) }
-.ops-col { background: var(--surface); box-shadow: -10px 0 16px -16px rgba(73, 59, 44, .72) }
+.ops-col { background: var(--surface); box-shadow: -10px 0 16px -16px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.72) }
 .catalog-table tbody tr:hover .ops-col { background: color-mix(in srgb, var(--surface) 95%, var(--tea)) }
 .ops-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; cursor: pointer; transition: all .25s }
 .ops-btn:hover { border-color: var(--ink); color: var(--ink) }
-.ops-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
-.ops-btn.danger:hover { background: rgba(166, 81, 74, .1) }
+.ops-btn.danger { border-color: var(--theme-danger-line, rgba(166, 81, 74, .35)); color: var(--theme-danger-text, var(--rouge)) }
+.ops-btn.danger:hover { background: var(--theme-danger-wash, rgba(166, 81, 74, .1)) }
 
 /* —— 弹窗 —— */
-.editor-mask { background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px) }
-.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
+.editor-mask { background: var(--theme-overlay, rgba(73, 59, 44, .34)); backdrop-filter: blur(2px) }
+.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.4) }
 .editor-head { border-bottom: 1px dashed var(--line) }
 .editor-head h3 { color: var(--ink) }
 .editor-sub { color: var(--ink-60) }
@@ -871,20 +871,20 @@ load()
 .editor-label { color: var(--ink-60) }
 .fields-2col label, .spof-input { color: var(--ink-60) }
 .fields-2col input, .fields-2col select, .spof-input { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
-.fields-2col input:focus, .fields-2col select:focus, .spof-input:focus { border-color: var(--accent) }
+.fields-2col input:focus, .fields-2col select:focus, .spof-input:focus { border-color: var(--theme-focus, var(--accent)) }
 .fields-2col input[readonly] { opacity: .55 }
 .oddity-choice-field { border: 0; color: var(--ink-60) }
-.oddity-choice-field legend b { color: var(--rouge) }
+.oddity-choice-field legend b { color: var(--theme-danger-text, var(--rouge)) }
 .oddity-choice-grid label { border: 1.5px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink-60); cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
 .oddity-choice-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
-.oddity-choice-grid label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.oddity-choice-grid label:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .oddity-choice-grid input { accent-color: var(--accent) }
 .oddity-custom-field input { border: 1.5px solid var(--line); border-radius: 10px; outline: none; background: var(--paper); color: var(--ink); transition: border-color .25s, box-shadow .25s }
-.oddity-custom-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
+.oddity-custom-field input:focus { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.14) }
 .oddity-custom-field input[aria-invalid="true"] { border-color: var(--rouge) }
-.field-error { color: var(--rouge) }
+.field-error { color: var(--theme-danger-text, var(--rouge)) }
 .oddity-schema-preview > span { border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
-.oddity-schema-preview code { color: var(--accent) }
+.oddity-schema-preview code { color: var(--theme-accent-text, var(--accent)) }
 .oddity-schema-preview b { color: var(--ink) }
 .oddity-schema-preview em { color: var(--ink-35) }
 .multi-field { border: 0 }
@@ -892,7 +892,7 @@ load()
 .multi-field legend small { color: var(--ink-35) }
 .multi-pick label { border: 1.5px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink-60); cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
 .multi-pick label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
-.multi-pick label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.multi-pick label:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .fields-2col .multi-pick input { border: 0; background: transparent; accent-color: var(--accent) }
 .multi-pick .prof-option { border-color: var(--line); border-left: 3px solid var(--element-color, var(--yellow-deep)); background: var(--paper); color: var(--element-text-color, var(--ink)) }
 .multi-pick .prof-option.on { border-color: var(--line); border-left-color: var(--element-color, var(--yellow-deep)); background: var(--paper); color: var(--element-text-color, var(--ink)) }
@@ -901,36 +901,36 @@ load()
 .games-pick label.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow-deep) }
 .games-pick input { accent-color: var(--accent) }
 .sub-row input, .sub-row select { border: 1.5px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
-.sub-row input:focus, .sub-row select:focus { border-color: var(--accent) }
+.sub-row input:focus, .sub-row select:focus { border-color: var(--theme-focus, var(--accent)) }
 .sub-del { border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
-.sub-del:hover { color: var(--rouge) }
+.sub-del:hover { color: var(--theme-danger-text, var(--rouge)) }
 .hint { color: var(--ink-35) }
 
-.editor-notice { border-radius: 12px; background: rgba(167, 209, 169, .25); color: var(--ink) }
-.editor-notice.err { background: rgba(166, 81, 74, .1); color: var(--rouge) }
+.editor-notice { border-radius: 12px; background: var(--theme-success-wash, rgba(167, 209, 169, .25)); color: var(--ink) }
+.editor-notice.err { background: var(--theme-danger-wash, rgba(166, 81, 74, .1)); color: var(--theme-danger-text, var(--rouge)) }
 .editor-actions { border-top: 1px dashed var(--line) }
 
 .btn { border-radius: 12px; cursor: pointer; transition: all .35s var(--ease); border: none }
 .btn:disabled { opacity: .45; cursor: not-allowed }
 .btn.ghost { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink) }
 .btn.ghost:hover:not(:disabled) { background: var(--cream); color: var(--ink) }
-.btn.primary { background: var(--tea); color: var(--cream) }
+.btn.primary { background: var(--tea); color: var(--on-strong) }
 .btn.primary:hover:not(:disabled) { background: var(--tea-deep) }
 
 .state { color: var(--ink-60); background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
-.state.err { color: var(--rouge) }
-.state-retry { border: 0; background: transparent; color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
-.state-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.state.err { color: var(--theme-danger-text, var(--rouge)) }
+.state-retry { border: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
+.state-retry:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 
 .admin-bar button:focus-visible,
 .ops-btn:focus-visible,
 .mobile-actions button:focus-visible,
-.editor-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.editor-panel button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 
 @media (max-width: 767px) {
   .admin-bar {
     background: var(--paper);
-    box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58);
+    box-shadow: 0 12px 28px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.58);
   }
   .adm-search-wrap { border-radius: 11px }
   .mobile-entry {
@@ -949,18 +949,18 @@ load()
   .mobile-data > div:last-child { border-right: 0 }
   .mobile-data dt { color: var(--ink-35) }
   .mobile-data dd { color: var(--ink) }
-  .mobile-oddity dd.missing { color: var(--rouge) }
+  .mobile-oddity dd.missing { color: var(--theme-danger-text, var(--rouge)) }
   .mobile-actions button { border-radius: 9px; cursor: pointer }
-  .mobile-actions .mobile-edit { border: 0; background: var(--tea); color: var(--cream) }
-  .mobile-delete { border: 1.5px solid rgba(166, 81, 74, .35); background: transparent; color: var(--rouge) }
+  .mobile-actions .mobile-edit { border: 0; background: var(--tea); color: var(--on-strong) }
+  .mobile-delete { border: 1.5px solid var(--theme-danger-line, rgba(166, 81, 74, .35)); background: transparent; color: var(--theme-danger-text, var(--rouge)) }
   .mobile-actions button:active { opacity: .72 }
 
   .state { border-radius: 14px }
   .editor-panel { border-width: 1px 0 0; border-radius: 20px 20px 0 0 }
   .editor-head { background: var(--surface) }
   .sub-row { border: 1px solid var(--line); border-radius: 12px; background: var(--cream) }
-  .sub-del { color: var(--rouge) }
-  .editor-actions { background: var(--surface); box-shadow: 0 -12px 28px -24px rgba(73, 59, 44, .58) }
+  .sub-del { color: var(--theme-danger-text, var(--rouge)) }
+  .editor-actions { background: var(--surface); box-shadow: 0 -12px 28px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.58) }
 }
 </style>
 <style scoped src="./operatorAdminDesktop.css"></style>

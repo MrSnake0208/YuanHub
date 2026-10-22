@@ -97,17 +97,17 @@ load()
 </script>
 
 <style scoped>
-.milestone-panel { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 8px 28px rgba(73,59,44,.12); }
+.milestone-panel { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 8px 28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12); }
 h2 { font: 900 24px/1.5 var(--font-s); margin: 0; overflow-wrap: anywhere; }
 h3 { font: 700 14px/1.6 var(--font-b); margin: 0; }
 p, span, label, input, button { font: 14px/1.6 var(--font-b); }
 button, input { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); }
 button { cursor: pointer; padding: 6px 10px; }
-button.primary { background: var(--tea); color: var(--cream); }
+button.primary { background: var(--tea); color: var(--on-strong); }
 button.primary:disabled { background: var(--line); color: var(--ink-60); opacity: 1; }
 button:disabled { opacity: .6; cursor: default; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-.error { color: var(--rouge); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
+.error { color: var(--theme-danger-text, var(--rouge)); }
 .hint, .elapsed { color: var(--ink-60); }
 .elapsed strong { color: var(--ink); font-weight: 600; }
 .milestone-list { list-style: none; padding: 0; }
@@ -120,7 +120,7 @@ label { font-weight: 700; font-size: 16px; }
 .close-button { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .clear-button { border-color: transparent; background: transparent; color: var(--ink-60); }
 .observations, .save-actions { border-top: 1px solid var(--line); }
-.unsaved { color: var(--tea); }
+.unsaved { color: var(--theme-strong-text, var(--tea)); }
 </style>
 <style scoped src="./operatorMilestoneDialogMobile.css"></style>
 <style scoped src="./operatorMilestoneDialogDesktop.css"></style>

@@ -85,9 +85,9 @@ defineEmits(['updated', 'unpublished'])
 .public-detail-section { border-top: 1px solid var(--feedback-line); }
 .public-detail-section h3 { color: var(--feedback-text); }
 .public-detail-section p { color: var(--feedback-text-muted); }
-.public-detail-merged { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .2); color: var(--feedback-text); }
+.public-detail-merged { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: var(--theme-wash-strong, rgba(239, 210, 142, .2)); color: var(--feedback-text); }
 .public-detail-merged p { color: var(--feedback-text-muted); }
-.public-detail-merged a { color: var(--accent-strong); }
+.public-detail-merged a { color: var(--theme-accent-text, var(--accent-strong)); }
 .public-detail-versions span { color: var(--feedback-text-dim); }
 .public-detail-versions strong { color: var(--feedback-text); }
 .public-detail-done { color: var(--feedback-success); }

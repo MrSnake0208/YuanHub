@@ -34,7 +34,7 @@ import { ArrowLeft } from '@lucide/vue'
 
 .admin-back-link:focus-visible {
   border-radius: 3px;
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--theme-focus, var(--accent));
   outline-offset: 4px;
 }
 

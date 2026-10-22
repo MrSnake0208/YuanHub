@@ -99,7 +99,7 @@ button { cursor: pointer; }
 .training-level-select { width: 100%; }
 .routine-help, .routine-notice { color: var(--ink-60); font-size: 12px; line-height: 1.6; margin: 0; }
 .routine-notice { margin-top: 8px; }
-:is(input, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(input, button):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 :disabled { opacity: .55; cursor: default; }
 fieldset:disabled { opacity: 1; }
 @media (max-width: 767px) {

@@ -156,16 +156,16 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .today-training { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-h2 { color: var(--tea); font: 800 20px/1.5 var(--font-s); }
-h3 { color: var(--tea); font: 700 15px/1.5 var(--font-b); }
+h2 { color: var(--theme-strong-text, var(--tea)); font: 800 20px/1.5 var(--font-s); }
+h3 { color: var(--theme-strong-text, var(--tea)); font: 700 15px/1.5 var(--font-b); }
 p { line-height: 1.7; }
 .training-hint { color: var(--ink-60); font-weight: 400; }
 .training-plan { border-top: 1px solid var(--line); }
-.training-current { border: 1px solid #a8c6b3; background: #e5eee5; color: #365b43; font-weight: 600; }
+.training-current { border: 1px solid var(--theme-success-line, #a8c6b3); background: var(--theme-success-bg, #e5eee5); color: var(--theme-success-text, #365b43); font-weight: 600; }
 .training-count, .training-target, .training-chevron { color: var(--ink-60); font-weight: 400; }
 .training-target { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .training-list { list-style: none; }
-a, button { color: var(--tea); font-weight: 700; }
+a, button { color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
 .training-manage, .training-member { text-decoration: none; }
 .training-manage { font-weight: 500; }
 .training-member:focus-visible { background: var(--cream); }
@@ -174,10 +174,10 @@ a, button { color: var(--tea); font-weight: 700; }
   .training-manage:hover { text-decoration: underline; text-underline-offset: 3px; }
   .training-member:hover { background: var(--cream); }
 }
-.training-error { color: var(--rouge); }
+.training-error { color: var(--theme-danger-text, var(--rouge)); }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 </style>
 <style scoped src="./todayTrainingDesktop.css"></style>
 <style scoped src="./todayTrainingMobile.css"></style>

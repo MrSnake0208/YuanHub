@@ -136,8 +136,8 @@ onBeforeUnmount(() => { mounted = false; session += 1; searchId += 1 })
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .goal-workspace-toolbar { border-bottom: 1px solid var(--feedback-line); }
-.goal-workspace-toolbar h2 { color: var(--tea); }
-.goal-public-view { color: var(--accent-strong); text-decoration: underline; }
+.goal-workspace-toolbar h2 { color: var(--theme-strong-text, var(--tea)); }
+.goal-public-view { color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; }
 .goal-admin-context { color: var(--feedback-warn); }
 .goal-save-notice { color: var(--feedback-success); }
 .goal-editor { border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); }
@@ -147,7 +147,7 @@ onBeforeUnmount(() => { mounted = false; session += 1; searchId += 1 })
 .goal-editor h3 { color: var(--feedback-text); }
 .criteria-editor > p,.link-editor > p { color: var(--feedback-text-muted); }
 .linked-row { color: var(--feedback-text); }
-.feedback-content :is(button,a,summary):focus-visible,.feedback-content :deep(:is(button,a,summary):focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.feedback-content :is(button,a,summary):focus-visible,.feedback-content :deep(:is(button,a,summary):focus-visible) { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 </style>
 <style scoped src="./coCreationAdminDesktop.css"></style>
 <style scoped src="./coCreationAdminMobile.css"></style>

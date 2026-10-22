@@ -58,7 +58,7 @@ useModalFocus(() => props.open, dialogPanel, {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.public-detail-kicker { color: var(--accent-strong); }
+.public-detail-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 </style>
 <style scoped src="./publicFeedbackDetailModalDesktop.css"></style>
 <style scoped src="./publicFeedbackDetailModalMobile.css"></style>

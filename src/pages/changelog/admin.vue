@@ -400,45 +400,45 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 .entry-button.active { box-shadow: inset 3px 0 var(--accent) }
 .entry-button span:last-child { color: var(--ink-60) }
 .entry-button i,.status { border: 1px solid var(--line); border-radius: 999px; color: var(--ink) }
-.status-待审核 { border-color: var(--accent) !important; color: var(--accent) !important }
+.status-待审核 { border-color: var(--accent) !important; color: var(--theme-accent-text, var(--accent)) !important }
 .status-已发布 { background: var(--yellow); border-color: transparent !important }
-.status-已撤回 { color: var(--rouge) !important }
+.status-已撤回 { color: var(--theme-danger-text, var(--rouge)) !important }
 .list-state,.empty-panel { color: var(--ink-60) }
 .pager { color: var(--ink-60) }
 .pager button { border: 0; background: transparent; color: var(--ink); cursor: pointer }
 .pager button:disabled { opacity: .4; cursor: default }
 .panel-head { border-bottom: 1px solid var(--line) }
-.editor-title { color: var(--tea) }
+.editor-title { color: var(--theme-strong-text, var(--tea)) }
 .panel-head small { color: var(--ink-60) }
 .fields label { color: var(--ink-60) }
 .fields input { border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); outline: none }
-.fields input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215,137,53,.16) }
+.fields input:focus { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.16) }
 .editor-label { color: var(--ink-60) }
 .preview-toggle { border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer }
 .preview-toggle[aria-pressed=true] { background: var(--paper); border-color: var(--accent) }
 .toolbar { border-radius: 0; box-shadow: none; border-block: 1px solid var(--line); background: var(--paper) }
 .toolbar button { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
-.toolbar button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
+.toolbar button[aria-pressed=true] { background: var(--tea); color: var(--on-strong) }
 .toolbar button:disabled { opacity: .45; cursor: default }
 .editor-surface { border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
 .editor-surface :deep(.tiptap) { color: var(--ink); outline: none }
-.editor-surface :deep(.tiptap:focus) { box-shadow: 0 0 0 3px rgba(215,137,53,.18) }
+.editor-surface :deep(.tiptap:focus) { box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.18) }
 .editor-surface :deep(blockquote) { border-left: 3px solid var(--accent) }
 .editor-surface :deep(img) { border-radius: 10px }
 .notice { border-radius: 8px; background: var(--paper); color: var(--ink-60) }
-.notice.error { border: 1px solid var(--rouge); color: var(--rouge) }
+.notice.error { border: 1px solid var(--rouge); color: var(--theme-danger-text, var(--rouge)) }
 .notice.rejected { border-left: 3px solid var(--accent) }
 .preview { border: 1px dashed var(--accent); border-radius: 12px; background: var(--paper) }
 .preview header { border-bottom: 1px solid var(--line) }
 .preview header span { border-radius: 999px; background: var(--yellow) }
 .actions { border-bottom: 1px solid var(--line); background: var(--paper) }
 .button { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
-.button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream) }
+.button.primary { border-color: var(--tea); background: var(--tea); color: var(--on-strong) }
 .button.secondary { background: var(--surface); color: var(--ink) }
-.button.danger { border-color: var(--rouge); background: var(--rouge); color: var(--cream) }
-.button.danger.ghost { background: transparent; color: var(--rouge) }
+.button.danger { border-color: var(--rouge); background: var(--rouge); color: var(--on-strong) }
+.button.danger.ghost { background: transparent; color: var(--theme-danger-text, var(--rouge)) }
 .button:disabled { opacity: .5; cursor: default }
-.entry-button:focus-visible,.button:focus-visible,.pager button:focus-visible,.preview-toggle:focus-visible,.toolbar button:focus-visible,.list-state button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px }
+.entry-button:focus-visible,.button:focus-visible,.pager button:focus-visible,.preview-toggle:focus-visible,.toolbar button:focus-visible,.list-state button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -3px }
 .visually-hidden { border: 0 }
 </style>
 <style scoped src="./changelogAdminDesktop.css"></style>

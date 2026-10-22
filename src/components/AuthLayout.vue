@@ -61,7 +61,7 @@ defineProps({
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 24px;
-  box-shadow: 0 30px 60px -28px rgba(73, 59, 44, 0.3);
+  box-shadow: 0 30px 60px -28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3);
 }
 
 /* ---- 一行式页脚 ---- */

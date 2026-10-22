@@ -42,7 +42,7 @@ defineEmits(['support', 'error'])
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.similar-list { border: 1px dashed var(--yellow-deep); border-radius: 8px; background: rgba(239, 210, 142, .16); }
+.similar-list { border: 1px dashed var(--yellow-deep); border-radius: 8px; background: var(--theme-wash-strong, rgba(239, 210, 142, .16)); }
 .similar-title { color: var(--ink); }
 .similar-state { color: var(--ink-60); }
 .similar-list li { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }

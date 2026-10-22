@@ -351,14 +351,14 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 
 <style scoped>
 #today-training-todos:empty { display: none; }
-.today-customize { border: 1px solid var(--line); border-radius: 8px; color: var(--tea); background: var(--cream); cursor: pointer; font: inherit; font-size: 13px; }
-.today-customize:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.today-customize { border: 1px solid var(--line); border-radius: 8px; color: var(--theme-strong-text, var(--tea)); background: var(--cream); cursor: pointer; font: inherit; font-size: 13px; }
+.today-customize:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 /* 刻意共享的字段外观，不持有双端布局。 */
 
-.today-alert { border: 1px solid var(--rouge); color: var(--rouge); line-height: 1.7; }
+.today-alert { border: 1px solid var(--rouge); color: var(--theme-danger-text, var(--rouge)); line-height: 1.7; }
 .today-alert button { border: 1px solid currentColor; background: var(--surface); color: inherit; cursor: pointer; }
-.today-loading { color: var(--tea); line-height: 1.7; }
-a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.today-loading { color: var(--theme-strong-text, var(--tea)); line-height: 1.7; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 </style>
 <style scoped src="../../components/today/todayAccountDesktop.css"></style>
 <style scoped src="../../components/today/todayAccountMobile.css"></style>

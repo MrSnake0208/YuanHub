@@ -67,7 +67,7 @@ defineEmits(['add', 'remove', 'remove-custom', 'edit-custom', 'copy-custom', 'di
 .pkg-card.sel{background:var(--cream);box-shadow:none}
 .pkg-card:hover{box-shadow:none}
 .pkg-tag.pts{background:var(--cream);border:1px solid var(--line)}
-.pkg-personal-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pkg-personal-actions button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:2px}
 
 </style>
 <style scoped src="./packageCardDesktop.css"></style>

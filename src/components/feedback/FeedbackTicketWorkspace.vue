@@ -206,11 +206,11 @@ async function copyId(id) {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .ticket-detail-dialog .ticket-detail-scroll :deep(textarea) { min-height: min(120px, max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px))); max-height: max(48px, calc(var(--modal-viewport-height, 100dvh) - 180px)); }
-.ticket-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); box-shadow: 0 16px 36px -32px rgba(73, 59, 44, .42); }
+.ticket-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); box-shadow: 0 16px 36px -32px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.42); }
 .ticket-table { border-collapse: collapse; }
 .ticket-table th,
 .ticket-table td { border-bottom: 1px solid var(--feedback-line); color: var(--feedback-text-muted); }
-.ticket-table th { background: var(--tea); color: var(--cream); }
+.ticket-table th { background: var(--tea); color: var(--on-strong); }
 .ticket-table tbody tr { outline: 0; transition: background-color .16s ease, box-shadow .16s ease; cursor: pointer; }
 .ticket-table tbody tr:last-child td { border-bottom: 0; }
 .ticket-table tbody tr:hover,
@@ -222,26 +222,26 @@ async function copyId(id) {
 .ticket-copy-message { color: var(--feedback-text); }
 .ticket-summary-cell code { color: var(--feedback-text-dim); }
 .ticket-summary-cell summary { color: var(--feedback-text-muted); cursor: pointer; }
-.ticket-unread-marker { border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); }
+.ticket-unread-marker { border: 1px solid var(--rouge); border-radius: 5px; color: var(--theme-danger-text, var(--rouge)); }
 .ticket-operator { border: 1px solid var(--feedback-line-strong); border-radius: 5px; color: var(--feedback-text-muted); }
 .ticket-reply-marker { color: var(--feedback-warn); }
-.ticket-status.stage-PROCESSING { border-color: var(--brand-blue); color: var(--brand-blue); }
-.ticket-status.stage-DEV_HANDOFF { border-color: var(--tea); color: var(--tea); }
+.ticket-status.stage-PROCESSING { border-color: var(--brand-blue); color: var(--theme-info-text, var(--brand-blue)); }
+.ticket-status.stage-DEV_HANDOFF { border-color: var(--tea); color: var(--theme-strong-text, var(--tea)); }
 .ticket-table time { color: var(--feedback-text-dim); }
 .ticket-operation button { border: 0; background: transparent; color: var(--feedback-text); cursor: pointer; }
-.ticket-operation button:hover { color: var(--accent-strong); }
+.ticket-operation button:hover { color: var(--theme-accent-text, var(--accent-strong)); }
 .ticket-type,
 .ticket-category,
 .ticket-status { border: 1px solid var(--feedback-line-strong); border-radius: 5px; color: var(--feedback-text-muted); }
 .ticket-type { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
-.ticket-category { border-color: var(--brand-blue); background: transparent; color: var(--brand-blue); }
+.ticket-category { border-color: var(--brand-blue); background: transparent; color: var(--theme-info-text, var(--brand-blue)); }
 .ticket-status { border-color: transparent; }
-.ticket-status.status-OPEN { border-color: var(--accent); color: var(--accent-strong); }
+.ticket-status.status-OPEN { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .ticket-status.status-RESOLVED { border-color: var(--feedback-success); color: var(--feedback-success); }
 .ticket-status.status-DISMISSED { border-color: var(--feedback-line-strong); color: var(--feedback-text-dim); }
 .ticket-state { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .ticket-state.error { color: var(--feedback-danger); }
-.ticket-state button { border: 0; background: transparent; color: var(--accent-strong); cursor: pointer; }
+.ticket-state button { border: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); cursor: pointer; }
 .ticket-state.empty strong { color: var(--feedback-text); }
 .ticket-pagination { color: var(--feedback-text-dim); }
 .ticket-pagination > div { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
@@ -250,15 +250,15 @@ async function copyId(id) {
 .ticket-pagination button:disabled { opacity: .3; cursor: default; }
 .ticket-pagination strong { color: var(--feedback-text); }
 .ticket-detail-mask {
-  background: rgba(73, 59, 44, .52);
+  background: var(--theme-overlay, rgba(73, 59, 44, .52));
   backdrop-filter: blur(10px);
 }
-.ticket-detail-dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--feedback-panel-deep); box-shadow: 0 30px 90px rgba(73, 59, 44, .32); }
+.ticket-detail-dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--feedback-panel-deep); box-shadow: 0 30px 90px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.32); }
 .ticket-detail-head { border-bottom: 1px solid var(--feedback-line); }
-.ticket-detail-kicker { color: var(--accent-strong); }
+.ticket-detail-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 .ticket-detail-head h2 { color: var(--feedback-text); }
 .ticket-detail-head > button { border: 1px solid var(--feedback-line-strong); border-radius: 7px; background: transparent; color: var(--feedback-text); cursor: pointer; }
-.ticket-detail-head > button:hover { border-color: var(--accent); color: var(--accent-strong); }
+.ticket-detail-head > button:hover { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .ticket-detail-overview { border-bottom: 1px solid var(--feedback-line); }
 .ticket-detail-fact { color: var(--feedback-text-muted); }
 .ticket-detail-fact > span { color: var(--feedback-text-dim); }

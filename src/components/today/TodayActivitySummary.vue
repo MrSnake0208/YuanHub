@@ -130,29 +130,29 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .today-activity-summary { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-.activity-heading h2 { color: var(--tea); font: 800 20px/1.5 var(--font-s); }
+.activity-heading h2 { color: var(--theme-strong-text, var(--tea)); font: 800 20px/1.5 var(--font-s); }
 .activity-heading p, .activity-message, .activity-detail { color: var(--ink-60); line-height: 1.6; }
-.activity-link { color: var(--tea); font-weight: 500; text-decoration: none; }
+.activity-link { color: var(--theme-strong-text, var(--tea)); font-weight: 500; text-decoration: none; }
 .activity-link:hover { text-decoration: underline; }
 .activity-counts { background: var(--cream); border: 1px solid var(--line); }
-.activity-counts button { border: 0; background: transparent; color: var(--tea); font: 500 12px/1.5 var(--font-b); cursor: pointer; }
-.activity-counts button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
+.activity-counts button { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); font: 500 12px/1.5 var(--font-b); cursor: pointer; }
+.activity-counts button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
 .activity-counts strong { font-family: var(--font-d); font-weight: 700; }
 .activity-preview { list-style: none; }
 .activity-preview li { border-bottom: 1px solid var(--line); }
 .activity-preview li:last-child { border-bottom: 0; }
-.activity-emblem { border: 1px solid var(--line); color: var(--tea); background: var(--cream); }
-.activity-preview .is-ending .activity-emblem { color: var(--rouge); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); }
-.activity-title { color: var(--tea); text-decoration: none; font-weight: 750; }
-.activity-title:hover { color: var(--accent-strong); }
-.activity-status { color: #365b43; background: #e5eee5; border: 1px solid #c6dacd; font-weight: 500; }
-.activity-status.is-ending { color: var(--rouge); border-color: color-mix(in srgb, var(--rouge) 25%, var(--line)); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); }
-.activity-status.is-upcoming { color: var(--brand-blue); background: color-mix(in srgb, var(--brand-blue) 8%, var(--surface)); border-color: color-mix(in srgb, var(--brand-blue) 20%, var(--line)); }
+.activity-emblem { border: 1px solid var(--line); color: var(--theme-strong-text, var(--tea)); background: var(--cream); }
+.activity-preview .is-ending .activity-emblem { color: var(--theme-danger-text, var(--rouge)); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); }
+.activity-title { color: var(--theme-strong-text, var(--tea)); text-decoration: none; font-weight: 750; }
+.activity-title:hover { color: var(--theme-accent-text, var(--accent-strong)); }
+.activity-status { color: var(--theme-success-text, #365b43); background: var(--theme-success-bg, #e5eee5); border: 1px solid var(--theme-success-line, #c6dacd); font-weight: 500; }
+.activity-status.is-ending { color: var(--theme-danger-text, var(--rouge)); border-color: color-mix(in srgb, var(--rouge) 25%, var(--line)); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); }
+.activity-status.is-upcoming { color: var(--theme-info-text, var(--brand-blue)); background: color-mix(in srgb, var(--brand-blue) 8%, var(--surface)); border-color: color-mix(in srgb, var(--brand-blue) 20%, var(--line)); }
 .activity-detail { font-variant-numeric: tabular-nums; }
-.activity-error p { color: var(--rouge); }
-.activity-error button, .activity-next { border: 1px solid var(--line); background: var(--cream); color: var(--tea); cursor: pointer; }
+.activity-error p { color: var(--theme-danger-text, var(--rouge)); }
+.activity-error button, .activity-next { border: 1px solid var(--line); background: var(--cream); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .activity-next span { color: var(--ink-60); }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 </style>
 <style scoped src="./todayActivityDesktop.css"></style>
 <style scoped src="./todayActivityMobile.css"></style>

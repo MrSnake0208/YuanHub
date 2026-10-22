@@ -98,15 +98,15 @@ onBeforeUnmount(() => restoreScroll?.())
 </script>
 
 <style scoped>
-.calendar-detail-mask { box-sizing: border-box; background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
+.calendar-detail-mask { box-sizing: border-box; background: var(--theme-overlay, color-mix(in srgb, var(--ink) 45%, transparent)); color: var(--ink); }
 .calendar-detail-dialog { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 16%, transparent); }
-.calendar-detail-dialog h2 { margin: 0; color: var(--tea); font: 800 22px/1.4 var(--font-s); overflow-wrap: anywhere; }
+.calendar-detail-dialog h2 { margin: 0; color: var(--theme-strong-text, var(--tea)); font: 800 22px/1.4 var(--font-s); overflow-wrap: anywhere; }
 .calendar-detail-mask.is-editing-todo h2 { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .calendar-detail-mask.is-editing-todo header .calendar-hint { display: none; }
 .calendar-detail-dialog p { margin: 6px 0; overflow-wrap: anywhere; }
 .calendar-detail-dialog button { font: inherit; cursor: pointer; }
-.calendar-detail-dialog :is(button, a, input):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
-.calendar-detail-done { margin-left: auto; background: var(--tea); color: var(--surface); }
+.calendar-detail-dialog :is(button, a, input):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+.calendar-detail-done { margin-left: auto; background: var(--tea); color: var(--on-surface); }
 .calendar-detail-dialog :deep(.calendar-event.is-detail) { border: 0; border-radius: 0; padding: 0; background: transparent; }
 .calendar-detail-dialog :deep(.calendar-event.is-day) { padding: 12px; border-radius: 12px; background: var(--cream); }
 .calendar-detail-dialog :deep(.calendar-event-heading) { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -116,13 +116,13 @@ onBeforeUnmount(() => restoreScroll?.())
 .calendar-detail-dialog :deep(.calendar-game) { padding: 0; border: 0; border-radius: 0; font-weight: 600; }
 .calendar-detail-dialog :deep(.calendar-badges) { align-items: center; gap: 6px 10px; }
 .calendar-detail-dialog :deep(.calendar-category.is-muted) { padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-60); }
-.calendar-detail-dialog :deep(.calendar-range) { margin: 10px 0 6px; color: var(--tea); line-height: 1.6; }
+.calendar-detail-dialog :deep(.calendar-range) { margin: 10px 0 6px; color: var(--theme-strong-text, var(--tea)); line-height: 1.6; }
 .calendar-detail-dialog :deep(.calendar-description) { margin: 8px 0; font-size: 14px; line-height: 1.65; }
 .calendar-detail-dialog :deep(.calendar-association) { margin: 6px 0; font-size: 12px; }
 .calendar-detail-dialog :deep(.calendar-event-foot) { justify-content: flex-start; gap: 6px 12px; margin-top: 6px; font-size: 12px; }
 .calendar-detail-dialog :deep(.calendar-event-foot a) { min-height: 32px; font-size: 12px; }
 .calendar-detail-dialog :deep(.calendar-subscription.is-dialog) { margin-top: 12px; padding-top: 12px; }
-.calendar-detail-dialog :deep(.calendar-operation-heading) { margin: 0 0 8px; color: var(--tea); font: 700 14px/1.5 var(--font-b); }
+.calendar-detail-dialog :deep(.calendar-operation-heading) { margin: 0 0 8px; color: var(--theme-strong-text, var(--tea)); font: 700 14px/1.5 var(--font-b); }
 .calendar-detail-dialog :deep(.calendar-activity-status) { flex: 1; margin: 0; font-size: 13px; }
 .calendar-detail-dialog :deep(.calendar-subscription-actions) { gap: 8px; }
 .calendar-detail-dialog :deep(.calendar-personal-todos) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -130,7 +130,7 @@ onBeforeUnmount(() => restoreScroll?.())
 .calendar-detail-dialog :deep(.calendar-todos-heading .calendar-operation-heading) { margin: 0; }
 .calendar-detail-dialog :deep(.calendar-subscription .calendar-hint) { margin: 6px 0 0; font-size: 12px; line-height: 1.6; }
 .calendar-detail-dialog :deep(.calendar-subscription button) { font-size: 14px; line-height: 1.4; }
-.calendar-detail-dialog :deep(button.calendar-completion-primary:not(:disabled)) { color: var(--cream); background: var(--tea); border-color: var(--tea); }
+.calendar-detail-dialog :deep(button.calendar-completion-primary:not(:disabled)) { color: var(--on-strong); background: var(--tea); border-color: var(--tea); }
 .calendar-detail-dialog :deep(.calendar-subscription-secondary) { margin-top: 8px; }
 .calendar-detail-dialog :deep(.calendar-subscription .calendar-subscription-secondary button) { padding-inline: 0; border-color: transparent; background: transparent; color: var(--ink-60); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .calendar-detail-dialog :deep(.calendar-checklist) { margin-top: 8px; }

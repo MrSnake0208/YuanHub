@@ -92,16 +92,16 @@ onBeforeUnmount(() => { sequence++ })
 .share-entry,.share-state { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 28px; color: var(--ink) }
 .share-entry { max-width: 780px; margin: 0 auto }.share-state { text-align: center }
 .share-entry h2,.share-state h2 { font: 900 24px var(--font-s) }.share-entry p,.share-state p { margin-top: 8px; color: var(--ink-60); font-size: 13px; line-height: 1.8 }
-.section-kicker { display: block; margin-bottom: 8px; color: var(--accent-strong); font-size: 12px; font-weight: 800 }
+.section-kicker { display: block; margin-bottom: 8px; color: var(--theme-accent-text, var(--accent-strong)); font-size: 12px; font-weight: 800 }
 .share-entry label { display: block; margin-top: 24px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .share-entry-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; margin-top: 8px }
 .share-entry input { min-width: 0; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--paper); color: var(--ink); font: 16px var(--font-b) }
-button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 16px; background: var(--tea); color: var(--cream); font: 700 13px var(--font-b); cursor: pointer }
-button:focus-visible,input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 16px; background: var(--tea); color: var(--on-strong); font: 700 13px var(--font-b); cursor: pointer }
+button:focus-visible,input:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 button:disabled { opacity: .6; cursor: wait }
 .state-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 16px }
 .share-toolbar { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--line) }
 .share-toolbar p,.share-empty-note { color: var(--ink-60); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere }.share-empty-note { margin-bottom: 12px }
-.share-entry .entry-error { color: var(--rouge) }
+.share-entry .entry-error { color: var(--theme-danger-text, var(--rouge)) }
 @media(max-width:640px) { .share-entry,.share-state { padding: 20px 16px }.share-entry-row { grid-template-columns: 1fr }.share-toolbar { grid-template-columns: repeat(2,minmax(0,1fr)) }.share-toolbar p { grid-column: 1 / -1 }.share-content { padding-bottom: calc(16px + env(safe-area-inset-bottom)) } }
 </style>

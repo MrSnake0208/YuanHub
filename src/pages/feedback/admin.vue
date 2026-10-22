@@ -538,28 +538,28 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .category-list li { border: 1px solid var(--feedback-line-strong) }
 .category-list button { border: 0; background: transparent; color: var(--feedback-accent); cursor: pointer }
 .category-list button:disabled { opacity: .5; cursor: default }
-.access-heading h2 { color: var(--tea) }
+.access-heading h2 { color: var(--theme-strong-text, var(--tea)) }
 .access-search { border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }
 .access-search input { border: 0; outline: 0; background: transparent; color: var(--ink) }
 .access-search input::placeholder { color: var(--feedback-text-dim) }
 .access-count { color: var(--feedback-text-dim) }
 .icon-command { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
-.icon-command.primary { background: var(--tea); color: var(--cream); border-color: var(--tea) }
-.icon-command.danger { color: var(--rouge) }
+.icon-command.primary { background: var(--tea); color: var(--on-strong); border-color: var(--tea) }
+.icon-command.danger { color: var(--theme-danger-text, var(--rouge)) }
 .state { color: var(--ink-60) }
-.state.error,.editor-error { color: var(--rouge) }
-.access-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42) }
+.state.error,.editor-error { color: var(--theme-danger-text, var(--rouge)) }
+.access-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.42) }
 .access-table { border-collapse: collapse; background: var(--feedback-panel) }
 .access-preview { color: var(--ink-60) }
 .legacy-permissions summary { color: var(--ink); cursor: pointer }
 .access-table th,.access-table td { border-bottom: 1px solid var(--line) }
-.access-table th { background: var(--tea); color: var(--cream) }
+.access-table th { background: var(--tea); color: var(--on-strong) }
 .access-table tbody tr:hover { background: var(--feedback-panel-hover) }
 .access-table td small { color: var(--ink-60) }
 .access-table td code { color: var(--ink-35) }
 .area-tag { border: 1px solid var(--yellow-deep); border-radius: 5px; background: var(--yellow); color: var(--ink) }
-.area-tag.manage { border-color: var(--brand-blue); background: transparent; color: var(--brand-blue) }
+.area-tag.manage { border-color: var(--brand-blue); background: transparent; color: var(--theme-info-text, var(--brand-blue)) }
 .muted,.empty-row { color: var(--ink-35) }
 .user-picker label { color: var(--ink-60) }
 .user-picker input { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
@@ -574,7 +574,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .area-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .command { border: 1px solid var(--line); border-radius: 7px; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
-.command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.command.primary { background: var(--tea); border-color: var(--tea); color: var(--on-strong) }
 .command:disabled { opacity: .5; cursor: default }
 </style>
 <style scoped src="./feedbackAdminDesktop.css"></style>

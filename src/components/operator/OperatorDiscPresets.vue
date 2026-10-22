@@ -71,19 +71,19 @@ watch(() => [props.operatorId, props.destination], () => { undoNames.value = nul
 <style scoped>
 .disc-presets { min-width: 0; margin-top: 14px; }
 .disc-presets h5 { margin: 0; color: var(--ink); font-size: 15px; }
-.disc-presets p { margin: 5px 0 10px; color: var(--tea); font-size: 12px; line-height: 1.5; }
+.disc-presets p { margin: 5px 0 10px; color: var(--theme-strong-text, var(--tea)); font-size: 12px; line-height: 1.5; }
 .disc-preset-list { display: grid; gap: 8px; }
 .disc-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .disc-preset.is-matched { border-color: var(--accent); background: var(--cream); }
 .disc-preset-terms { display: flex; flex-wrap: wrap; gap: 5px 10px; min-width: 0; font-size: 13px; line-height: 1.6; }
 .disc-preset-terms > span { max-width: 100%; padding: 2px 6px; box-sizing: border-box; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 5px; overflow-wrap: anywhere; }
-.disc-preset-terms .is-gold { color: #8a5a1f; background: rgba(215, 137, 53, .1); }
-.disc-preset-terms .is-purple { color: #6d56a0; background: rgba(151, 130, 199, .1); }
-.disc-preset-terms .is-blue { color: #4f6387; background: rgba(110, 135, 184, .1); }
-.disc-preset-action { color: var(--tea); font-size: 12px; white-space: nowrap; }
-.disc-preset-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--tea); font-size: 12px; }
-.disc-preset-feedback button { min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--tea); font: inherit; text-decoration: underline; cursor: pointer; }
-.disc-presets button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-preset-terms .is-gold { color: var(--theme-accent-text, #8a5a1f); background: var(--theme-wash, rgba(215, 137, 53, .1)); }
+.disc-preset-terms .is-purple { color: var(--theme-purple-text, #6d56a0); background: var(--theme-purple-wash, rgba(151, 130, 199, .1)); }
+.disc-preset-terms .is-blue { color: var(--theme-info-text, #4f6387); background: var(--theme-info-wash, rgba(110, 135, 184, .1)); }
+.disc-preset-action { color: var(--theme-strong-text, var(--tea)); font-size: 12px; white-space: nowrap; }
+.disc-preset-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--theme-strong-text, var(--tea)); font-size: 12px; }
+.disc-preset-feedback button { min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); font: inherit; text-decoration: underline; cursor: pointer; }
+.disc-presets button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .disc-presets button:disabled { opacity: .6; cursor: not-allowed; }
 @media (hover: hover) { .disc-preset:not(:disabled):hover { border-color: var(--accent); } }
 </style>

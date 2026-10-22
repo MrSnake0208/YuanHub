@@ -136,21 +136,21 @@ function onInitialInput(e) {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .receipt-price-note{color:var(--ink-60)}
-.receipt-pricing-error{color:var(--rouge)}
+.receipt-pricing-error{color:var(--theme-danger-text, var(--rouge))}
 .receipt{box-shadow:none;border-radius:14px}
-.receipt-head{background:var(--cream);color:var(--tea);border-bottom:1px solid var(--line)}
+.receipt-head{background:var(--cream);color:var(--theme-strong-text, var(--tea));border-bottom:1px solid var(--line)}
 .receipt-count{color:var(--ink-60)}
 .receipt .grand-total{border:0}
-.receipt .grand-total .v{color:var(--tea);overflow-wrap:anywhere}
+.receipt .grand-total .v{color:var(--theme-strong-text, var(--tea));overflow-wrap:anywhere}
 .receipt-summary{background:var(--cream);border-radius:10px}
-.receipt-metrics strong{color:var(--tea);font-family:var(--font-d)}
+.receipt-metrics strong{color:var(--theme-strong-text, var(--tea));font-family:var(--font-d)}
 .receipt-metrics span,.receipt-average{color:var(--ink-60)}
 .receipt-metrics>div+div{border-left:1px solid var(--line)}
 .receipt-pricing-details{border-top:1px solid var(--line)}
 .receipt-pricing-details summary{cursor:pointer;color:var(--ink)}
-.receipt-pricing-details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.cart-actions .receipt-save{background:var(--accent-strong);border:1px solid var(--accent-strong);color:var(--surface)}
-.cart-actions .receipt-export,.cart-actions .receipt-clear{background:var(--surface);border:1px solid var(--line);color:var(--tea)}
+.receipt-pricing-details summary:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:2px}
+.cart-actions .receipt-save{background:var(--accent-strong);border:1px solid var(--accent-strong);color:var(--on-surface)}
+.cart-actions .receipt-export,.cart-actions .receipt-clear{background:var(--surface);border:1px solid var(--line);color:var(--theme-strong-text, var(--tea))}
 .cart-actions .btn:hover:not(:disabled){filter:brightness(.96)}
 </style>
 <style scoped src="./receiptPanelDesktop.css"></style>

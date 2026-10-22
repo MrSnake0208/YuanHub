@@ -141,9 +141,9 @@ watch(function () { return route.query.page }, function (value) {
 .works-summary { color: var(--ink-60); }
 .works-state { border: 1.5px dashed var(--line); border-radius: 22px; background: var(--surface); color: var(--ink-60); }
 .works-state strong { color: var(--ink); }
-.works-state.error { border-color: rgba(166, 81, 74, .45); }
-.works-state button, .works-pagination button { border: 1px solid var(--line); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
-.works-state a {border-radius:999px;background:var(--tea);color:var(--cream);text-decoration:none; }
+.works-state.error { border-color: var(--theme-danger-line, rgba(166, 81, 74, .45)); }
+.works-state button, .works-pagination button { border: 1px solid var(--line); border-radius: 999px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
+.works-state a {border-radius:999px;background:var(--tea);color:var(--on-strong);text-decoration:none; }
 .loading-mark { border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: works-spin .8s linear infinite; }
 .works-pagination span { color: var(--ink-60); }
 .works-pagination button:disabled { opacity: .45; cursor: default; }

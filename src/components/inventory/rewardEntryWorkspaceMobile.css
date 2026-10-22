@@ -2,7 +2,7 @@
 @media (max-width: 767px) {
 .monthly-tier-field { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .monthly-tier-field select { min-width: 0; max-width: 100%; padding: 6px 8px; font: inherit; }
-.reward-workspace, .reward-dialog-mask { --reward-gold: #af884d; --reward-gold-soft: rgba(175,136,77,.2); font-family: var(--font-b); }
+.reward-workspace, .reward-dialog-mask { --reward-gold: var(--theme-muted, #af884d); --reward-gold-soft: var(--theme-overlay, rgba(175,136,77,.2)); font-family: var(--font-b); }
 .reward-workspace *, .reward-workspace *::before, .reward-workspace *::after { box-sizing: border-box; }
 .reward-dialog-mask, .reward-dialog-mask *, .reward-dialog-mask *::before, .reward-dialog-mask *::after { box-sizing: border-box; }
 .workspace-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }

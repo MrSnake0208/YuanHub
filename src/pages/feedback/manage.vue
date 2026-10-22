@@ -1034,17 +1034,17 @@ onBeforeUnmount(() => {
 .feedback-merge-relations { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .feedback-merge-relations strong { color: var(--feedback-text); }
 .feedback-merge-relations a { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--surface); color: var(--feedback-text); text-decoration: underline; text-underline-offset: 2px; }
-.feedback-merge-relations a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-merge-relations a:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .feedback-management-summary { color: var(--feedback-text-muted); }
 .feedback-queue-note, .feedback-read-tools { color: var(--feedback-text-muted); }
 .feedback-reply-tools code { color: var(--feedback-text-muted); }
-.feedback-reply-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-reply-tools button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .feedback-workflow-options { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .feedback-workflow-form { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .feedback-workflow-form > strong { color: var(--feedback-text); }
 .feedback-workflow-form label { color: var(--feedback-text); }
 .feedback-workflow-form select, .feedback-workflow-form textarea { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); color: var(--feedback-text); }
-.feedback-workflow-form select:focus-visible, .feedback-workflow-form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-workflow-form select:focus-visible, .feedback-workflow-form textarea:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .feedback-workflow-hint, .feedback-workflow-error { color: var(--feedback-text-muted); }
 .feedback-workflow-error { color: var(--feedback-danger); }
 .feedback-workflow-error button { border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }
@@ -1060,7 +1060,7 @@ onBeforeUnmount(() => {
 .feedback-work-queues button { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text); cursor: pointer; }
 .feedback-work-queues button:hover { background: var(--feedback-panel-hover); }
 .feedback-work-queues button.on { border-color: var(--yellow-deep); background: var(--feedback-accent-soft); box-shadow: inset 0 -2px var(--yellow-deep); }
-.feedback-work-queues button:focus-visible, .feedback-management-settings summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-work-queues button:focus-visible, .feedback-management-settings summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .feedback-management-settings { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .feedback-management-settings summary { cursor: pointer; }
 </style>

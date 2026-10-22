@@ -224,11 +224,11 @@ function pointInfo(r, p) {
 
 .resource-report { border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
 .report-heading { border-bottom: 1px solid var(--line) }
-.report-heading-copy > span { color: var(--accent-strong); font-weight: 900 }
+.report-heading-copy > span { color: var(--theme-accent-text, var(--accent-strong)); font-weight: 900 }
 h2, h3 { font-family: var(--font-s); font-weight: 900 }
 .report-heading-copy h2 { color: var(--ink); letter-spacing: 0 }
 .coin-basis button { border: 1px solid var(--line); background: var(--surface); }
-.coin-basis button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
+.coin-basis button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
 .report-heading p, .explanation, .resource-summary small { color: var(--ink-60); line-height: 1.7 }
 .resource-summary { border-bottom: 1px solid var(--line); background: var(--cream) }
 .resource-summary article { background: var(--surface) }
@@ -237,15 +237,15 @@ h2, h3 { font-family: var(--font-s); font-weight: 900 }
 .summary-values > strong { color: var(--ink); font: 900 24px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
 .summary-foot { line-height: 1.2; white-space: nowrap }
 .summary-foot span { color: var(--ink-60) }
-.summary-foot b { color: var(--accent-strong); font: 900 12px var(--font-d) }
-.summary-foot b.is-increase { color: #527658 }
-.summary-foot b.is-decrease { color: var(--rouge) }
+.summary-foot b { color: var(--theme-accent-text, var(--accent-strong)); font: 900 12px var(--font-d) }
+.summary-foot b.is-increase { color: var(--theme-success-text, #527658) }
+.summary-foot b.is-decrease { color: var(--theme-danger-text, var(--rouge)) }
 .summary-meta { white-space: normal }
 button { color: var(--ink); font: inherit; cursor: pointer }
 button:disabled { opacity: .4; cursor: default }
 .view-switch { border: 1px solid var(--line); background: var(--paper) }
 .view-switch button { border: 0; background: transparent; font-weight: 800 }
-.view-switch button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
+.view-switch button[aria-pressed=true] { background: var(--tea); color: var(--on-strong) }
 button:focus-visible, circle:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px }
 button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
 .legend i.dashed { border-top: 2px dashed var(--ink-60) }
@@ -255,15 +255,15 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
 .calendar-state-legend { color: var(--ink-60); line-height: 1.6 }
 .day { border: 0; border-top: 2px solid transparent; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface) }
 .day.blank { background: var(--cream) }
-.day.is-month-start { border-top: 2px solid var(--accent); background: linear-gradient(180deg, rgba(239,210,142,.18), var(--surface) 28%) }
+.day.is-month-start { border-top: 2px solid var(--accent); background: linear-gradient(180deg, var(--theme-wash-strong, rgba(239,210,142,.18)), var(--surface) 28%) }
 .day.is-range-start:not(.is-month-start) { border-top: 2px solid var(--brand-blue) }
 .day[aria-pressed=true] { background: var(--paper); box-shadow: inset 0 0 0 2px var(--accent) }
-.month-marker { color: var(--accent-strong); font: 900 10px/1.3 var(--font-s) }
+.month-marker { color: var(--theme-accent-text, var(--accent-strong)); font: 900 10px/1.3 var(--font-s) }
 .day time { font: 800 13px/1.3 var(--font-d); text-overflow: ellipsis; white-space: nowrap }
-.day.is-month-start time, .day.is-range-start time { color: var(--accent-strong); font-weight: 900 }
+.day.is-month-start time, .day.is-range-start time { color: var(--theme-accent-text, var(--accent-strong)); font-weight: 900 }
 .resource-row { font: 600 11px var(--font-d) }
-.resource-row .is-increase { color: var(--resource-increase, #527658) }
-.resource-row .is-decrease { color: var(--rouge) }
+.resource-row .is-increase { color: var(--resource-increase, var(--theme-success-text, #527658)) }
+.resource-row .is-decrease { color: var(--theme-danger-text, var(--rouge)) }
 .resource-row .is-stock { color: var(--ink-60); font-weight: 600 }
 .range-title { line-height: 1.6 }
 .resource-row small { color: var(--ink-60) }
@@ -272,17 +272,17 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
 .trend svg { background: var(--cream); border: 1px solid var(--line) }
 .grid-line { stroke: var(--line) }
 .trend text { fill: var(--ink-60); font: 12px var(--font-d) }
-.trend circle { cursor: pointer; stroke: var(--surface); stroke-width: 2px }
+.trend circle { cursor: pointer; stroke: var(--on-surface); stroke-width: 2px }
 .trend circle:focus { outline: none }
 .trend circle:focus-visible { stroke: currentColor; stroke-width: 2px; paint-order: stroke }
 .trend circle.point-halo { stroke: none; pointer-events: none }
-.point-tooltip { pointer-events: none; border: 1px solid var(--line); border-top: 3px solid var(--point-color); background: var(--surface); box-shadow: 0 5px 18px rgba(73, 59, 44, .12) }
+.point-tooltip { pointer-events: none; border: 1px solid var(--line); border-top: 3px solid var(--point-color); background: var(--surface); box-shadow: 0 5px 18px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12) }
 .point-tooltip-heading time { color: var(--ink-60); font: 11px var(--font-d) }
 .point-stock span, .point-tooltip dt { color: var(--ink-60) }
 .point-stock strong { color: var(--ink); font: 900 25px/1.1 var(--font-d) }
 .point-tooltip dd { font: 700 12px var(--font-d) }
-.point-tooltip .is-increase { color: #527658 }
-.point-tooltip .is-decrease { color: var(--rouge) }
+.point-tooltip .is-increase { color: var(--theme-success-text, #527658) }
+.point-tooltip .is-decrease { color: var(--theme-danger-text, var(--rouge)) }
 .point-note { color: var(--ink-60); line-height: 1.6 }
 .report-state, .point-detail { background: var(--cream); line-height: 1.7 }
 </style>

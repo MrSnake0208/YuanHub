@@ -182,31 +182,31 @@ h2 { color: var(--ink); }
 .beta-admin-content p { color: var(--ink); }
 .beta-admin-content .beta-state-context { color: var(--ink-60); }
 .capacity-summary dt { color: var(--ink-60); }
-.capacity-summary dd { color: var(--tea); }
+.capacity-summary dd { color: var(--theme-strong-text, var(--tea)); }
 .admissions-panel,.access-mode-panel { border-top: 1px solid var(--line); }
-.admissions-panel h3,.access-mode-panel h3 { color: var(--tea); }
+.admissions-panel h3,.access-mode-panel h3 { color: var(--theme-strong-text, var(--tea)); }
 .reason-hint { color: var(--ink-60); }
 textarea { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); }
-.admin-btn { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
-.admin-btn.secondary { background: transparent; color: var(--tea); }
+.admin-btn { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
+.admin-btn.secondary { background: transparent; color: var(--theme-strong-text, var(--tea)); }
 .admin-btn:disabled { opacity: .45; cursor: default; }
-.admin-btn:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.admin-btn:focus-visible, textarea:focus-visible { outline: 3px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .admin-message { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; }
 .admin-message.local-mode { border-style: dashed; border-color: var(--accent); }
-.admin-message.local-mode b { color: var(--accent); }
-.admin-btn.local-reset { border-color: var(--rouge); background: transparent; color: var(--rouge); }
-.error { color: var(--rouge); }
+.admin-message.local-mode b { color: var(--theme-accent-text, var(--accent)); }
+.admin-btn.local-reset { border-color: var(--rouge); background: transparent; color: var(--theme-danger-text, var(--rouge)); }
+.error { color: var(--theme-danger-text, var(--rouge)); }
 .capacity-panel { border: 1px dashed var(--line); border-radius: 14px; background: transparent; }
 .capacity-head h3 { color: var(--ink); }
 .capacity-current { color: var(--ink-60); }
-.capacity-current b { color: var(--tea); }
+.capacity-current b { color: var(--theme-strong-text, var(--tea)); }
 .capacity-input input { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
-.capacity-input input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.capacity-input input:focus-visible { outline: 3px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .capacity-input input[aria-invalid='true'] { border-color: var(--rouge); }
 .capacity-input span { color: var(--ink-60); }
 .capacity-hint { color: var(--ink-60); }
-.capacity-hint b { color: var(--accent); }
-.capacity-error { color: var(--rouge); }
+.capacity-hint b { color: var(--theme-accent-text, var(--accent)); }
+.capacity-error { color: var(--theme-danger-text, var(--rouge)); }
 .capacity-note { color: var(--ink-60); }
 </style>
 <style scoped src="./betaAdminDesktop.css"></style>

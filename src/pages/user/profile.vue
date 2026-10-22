@@ -1247,17 +1247,17 @@ onBeforeUnmount(function () {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.tutorial-target { outline: 2px solid var(--tea); outline-offset: 3px; }
+.tutorial-target { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .maayuan-other-tasks summary, details.paste-steps summary { cursor: pointer; }
-.capability-note { color: var(--rouge); }
+.capability-note { color: var(--theme-danger-text, var(--rouge)); }
 .game-account-summary { border-bottom: 1px solid var(--line); }
-.account-summary-copy h2 { color: var(--tea); }
+.account-summary-copy h2 { color: var(--theme-strong-text, var(--tea)); }
 .account-summary-copy p { color: var(--ink-60); }
 .account-summary-copy .account-summary-current { color: var(--ink); }
-.account-summary-error p { color: var(--rouge); }
-.account-summary-manage:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.account-summary-error p { color: var(--theme-danger-text, var(--rouge)); }
+.account-summary-manage:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .section-kicker {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .connection-card {
   background: var(--surface);
@@ -1277,7 +1277,7 @@ onBeforeUnmount(function () {
 }
 .app-pass::after {
   content: "MAAYUAN";
-  color: rgba(73, 59, 44, 0.045);
+  color: var(--theme-muted, rgba(73, 59, 44, 0.045));
   pointer-events: none;
 }
 .app-seal {
@@ -1286,7 +1286,7 @@ onBeforeUnmount(function () {
   border-radius: 28px 28px 28px 10px;
 }
 .brand-outline {
-  color: var(--brand-blue);
+  color: var(--theme-info-text, var(--brand-blue));
   border: 1.5px solid var(--brand-blue);
   border-radius: 7px;
 }
@@ -1299,7 +1299,7 @@ onBeforeUnmount(function () {
   color: var(--ink);
 }
 .app-capabilities .no-read {
-  background: rgba(191, 220, 192, 0.45);
+  background: var(--theme-success-wash, rgba(191, 220, 192, 0.45));
 }
 .connect-panel {
   background: var(--paper);
@@ -1313,15 +1313,15 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .today-connect-note {
-  border: 1px solid rgba(215, 137, 53, 0.24);
+  border: 1px solid var(--theme-line, rgba(215, 137, 53, 0.24));
   border-radius: 10px;
-  background: rgba(239, 210, 142, 0.14);
+  background: var(--theme-wash, rgba(239, 210, 142, 0.14));
   color: var(--ink-60);
 }
 .step-mark {
   background: var(--tea);
   border-radius: 9px;
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .grant-title {
   border-top: 1px dashed var(--line);
@@ -1346,7 +1346,7 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .field-help a {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   text-underline-offset: 3px;
 }
 .account-inline-state {
@@ -1356,8 +1356,8 @@ onBeforeUnmount(function () {
   border-radius: 12px;
 }
 .account-inline-state.error {
-  color: var(--rouge);
-  border-color: rgba(166, 81, 74, 0.35);
+  color: var(--theme-danger-text, var(--rouge));
+  border-color: var(--theme-danger-line, rgba(166, 81, 74, 0.35));
 }
 .quick-account {
   background: var(--surface);
@@ -1393,7 +1393,7 @@ onBeforeUnmount(function () {
   border-color: var(--yellow-deep);
 }
 .game-options label:focus-within {
-  outline: 3px solid rgba(91, 106, 140, 0.3);
+  outline: 3px solid var(--theme-info-line, rgba(91, 106, 140, 0.3));
   outline-offset: 2px;
 }
 .game-options input {
@@ -1403,7 +1403,7 @@ onBeforeUnmount(function () {
   opacity: 0.5;
 }
 .field-error {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 .grant-column {
   background: var(--surface);
@@ -1423,14 +1423,14 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .grant-column.allow p svg {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .grant-column.deny p svg {
-  color: var(--brand-blue);
+  color: var(--theme-info-text, var(--brand-blue));
 }
 .stable-token-note {
   color: var(--ink);
-  background: rgba(239, 210, 142, 0.45);
+  background: var(--theme-wash-strong, rgba(239, 210, 142, 0.45));
   border-radius: 11px;
 }
 .act-btn {
@@ -1446,12 +1446,12 @@ onBeforeUnmount(function () {
     transform 0.3s var(--ease);
 }
 .act-btn.primary {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--tea);
   border-color: transparent;
 }
 .act-btn.primary:hover:not(:disabled) {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--accent);
 }
 .act-btn.ghost:hover:not(:disabled) {
@@ -1465,15 +1465,15 @@ onBeforeUnmount(function () {
 }
 .new-token {
   background: var(--yellow);
-  border: 1px solid rgba(73, 59, 44, 0.14);
+  border: 1px solid var(--theme-line, rgba(73, 59, 44, 0.14));
   border-radius: 18px;
 }
 .new-token:focus {
-  outline: 3px solid rgba(215, 137, 53, 0.55);
+  outline: 3px solid var(--theme-line, rgba(215, 137, 53, 0.55));
   outline-offset: 3px;
 }
 .success-icon {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--tea);
   border-radius: 11px;
 }
@@ -1485,14 +1485,14 @@ onBeforeUnmount(function () {
 }
 .paste-steps li {
   color: var(--ink);
-  background: rgba(255, 253, 246, 0.68);
+  background: var(--theme-surface, rgba(255, 253, 246, 0.68));
   border-radius: 10px;
 }
 .paste-step-copy small {
   color: var(--ink-60);
 }
 .paste-steps li span {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--tea);
   border-radius: 50%;
 }
@@ -1506,7 +1506,7 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .text-btn {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -1522,8 +1522,8 @@ onBeforeUnmount(function () {
 .failure-history { color: var(--ink-60); }
 .failure-history summary { cursor: pointer; }
 .notice-line.err {
-  color: var(--rouge);
-  background: rgba(166, 81, 74, 0.14);
+  color: var(--theme-danger-text, var(--rouge));
+  background: var(--theme-danger-wash, rgba(166, 81, 74, 0.14));
 }
 .connections-section {
   border-top: 1px dashed var(--line);
@@ -1535,7 +1535,7 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .connection-reminder {
-  border: 1px solid rgba(215, 137, 53, 0.48);
+  border: 1px solid var(--theme-line, rgba(215, 137, 53, 0.48));
   border-left: 4px solid var(--accent);
   background: var(--yellow);
 }
@@ -1549,7 +1549,7 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
 }
 .state .link {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -1569,8 +1569,8 @@ onBeforeUnmount(function () {
     transform 0.35s var(--ease);
 }
 .token-item:hover {
-  border-color: rgba(73, 59, 44, 0.24);
-  box-shadow: 0 16px 30px -24px rgba(73, 59, 44, 0.3);
+  border-color: var(--theme-line, rgba(73, 59, 44, 0.24));
+  box-shadow: 0 16px 30px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3);
 }
 .connection-icon {
   color: var(--ink-60);
@@ -1590,8 +1590,8 @@ onBeforeUnmount(function () {
   border-radius: 6px;
 }
 .status-tag.ready {
-  color: var(--accent-strong);
-  background: rgba(239, 210, 142, 0.58);
+  color: var(--theme-accent-text, var(--accent-strong));
+  background: var(--theme-wash-strong, rgba(239, 210, 142, 0.58));
 }
 .connection-account {
   color: var(--ink-60);
@@ -1610,7 +1610,7 @@ onBeforeUnmount(function () {
 }
 .technical-details summary {
   cursor: pointer;
-  color: var(--brand-blue);
+  color: var(--theme-info-text, var(--brand-blue));
 }
 .technical-details code {
   color: var(--ink);
@@ -1632,25 +1632,25 @@ onBeforeUnmount(function () {
     border-color 0.3s var(--ease);
 }
 .t-btn.copy {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--tea);
   border-color: var(--tea);
 }
 .t-btn.copy:hover:not(:disabled) {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--accent);
   border-color: var(--accent);
 }
 .t-btn.update {
-  color: var(--accent-strong);
-  background: rgba(239, 210, 142, 0.25);
+  color: var(--theme-accent-text, var(--accent-strong));
+  background: var(--theme-wash-strong, rgba(239, 210, 142, 0.25));
 }
 .t-btn.update:hover:not(:disabled) {
   background: var(--yellow);
   border-color: var(--yellow-deep);
 }
 .t-btn.del:hover:not(:disabled) {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
   border-color: var(--rouge);
 }
 .t-btn:disabled {
@@ -1666,7 +1666,7 @@ onBeforeUnmount(function () {
   cursor: pointer;
 }
 .advanced-icon {
-  color: var(--brand-blue);
+  color: var(--theme-info-text, var(--brand-blue));
   border: 1.5px solid var(--brand-blue);
   border-radius: 12px;
 }
@@ -1704,7 +1704,7 @@ onBeforeUnmount(function () {
   cursor: pointer;
 }
 .scope-option:has(input:checked) {
-  background: rgba(239, 210, 142, 0.32);
+  background: var(--theme-wash-strong, rgba(239, 210, 142, 0.32));
   border-color: var(--yellow-deep);
 }
 .scope-option input {
@@ -1723,7 +1723,7 @@ onBeforeUnmount(function () {
   border-radius: 11px;
 }
 .permission-state.error {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 
 @media (max-width: 820px) {

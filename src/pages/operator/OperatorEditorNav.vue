@@ -27,10 +27,10 @@ const sections = [
 <style scoped>
 .editor-section-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: none; min-width: 0; margin: 0; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
 button { display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ink-60); font: 800 16px var(--font-b); cursor: pointer; white-space: nowrap; }
-button:hover { color: var(--tea); background: var(--cream); }
-button[aria-selected="true"] { color: var(--tea); border-bottom-color: var(--accent); background: var(--cream); }
-button[aria-selected="true"] svg { color: var(--accent-strong); }
-button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: -3px; }
+button:hover { color: var(--theme-strong-text, var(--tea)); background: var(--cream); }
+button[aria-selected="true"] { color: var(--theme-strong-text, var(--tea)); border-bottom-color: var(--accent); background: var(--cream); }
+button[aria-selected="true"] svg { color: var(--theme-accent-text, var(--accent-strong)); }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: -3px; }
 @media (max-width: 640px) {
   .editor-section-nav { padding-inline: 12px; }
   button { gap: 6px; min-height: 42px; padding-inline: 4px; font-size: 14px; }

@@ -1098,7 +1098,7 @@ async function submit() {
 .editor-header {
   background: linear-gradient(105deg, var(--cream), var(--surface));
 }
-.editor-eyebrow { color: var(--accent-strong); }
+.editor-eyebrow { color: var(--theme-accent-text, var(--accent-strong)); }
 .pool-confirmation { color: var(--ink-60); }
 .close-button { border-radius: 50%; }
 .progress-card {
@@ -1109,33 +1109,33 @@ async function submit() {
 .progress-number small { color: var(--ink-60); }
 .progress-rail { background: var(--line); border-radius: 2px; }
 .progress-rail > span { background: var(--editor-green); }
-.progress-error { color: var(--rouge); }
+.progress-error { color: var(--theme-danger-text, var(--rouge)); }
 .entry-section { border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--cream) 35%, var(--surface)); }
 .quick-up-button, .add-record {
   border-color: transparent;
   background: transparent;
 }
 .other-agent-placeholder { border: 1px dashed var(--line); border-radius: 8px; }
-.quick-up-mark { border-radius: 3px; background: var(--tea); color: var(--cream); }
-.quick-up-check { border-radius: 50%; background: var(--editor-green); color: var(--surface); }
-.quick-up-button.is-selected, .add-record.is-selected { border-color: var(--editor-green); background: color-mix(in srgb, var(--editor-green) 7%, var(--surface)); }
+.quick-up-mark { border-radius: 3px; background: var(--tea); color: var(--on-strong); }
+.quick-up-check { border-radius: 50%; background: var(--theme-success-control, var(--editor-green)); color: var(--on-surface); }
+.quick-up-button.is-selected, .add-record.is-selected { border-color: var(--editor-green); background: color-mix(in srgb, var(--theme-success-control, var(--editor-green)) 7%, var(--surface)); }
 .pull-stepper { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .pull-stepper button { border: 0; background: transparent; }
 .pull-stepper input { border: 0; border-radius: 0; appearance: textfield; }
 .pull-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .unknown-pulls { color: var(--ink-60); }
-.unknown-pulls[aria-pressed="true"] { border-color: var(--tea); background: var(--cream); color: var(--tea); }
+.unknown-pulls[aria-pressed="true"] { border-color: var(--tea); background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .composer-note, .unknown-progress-note { color: var(--ink-60); }
 .entry-cancel, .entry-delete { background: transparent; }
-.entry-delete { border-color: transparent; color: var(--rouge); }
+.entry-delete { border-color: transparent; color: var(--theme-danger-text, var(--rouge)); }
 .records-heading h3 span { color: var(--ink-60); }
 .record-search svg { color: var(--ink-60); }
 .record-view-switch { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .record-view-switch button { border-color: transparent; border-radius: 5px; background: transparent; color: var(--ink-60); }
-.record-view-switch button.is-selected { color: var(--tea); background: var(--surface); border-color: var(--line); }
+.record-view-switch button.is-selected { color: var(--theme-strong-text, var(--tea)); background: var(--surface); border-color: var(--line); }
 .progress-label-switch { border-color: var(--ink-35); }
-.progress-label-switch button { color: var(--tea); }
-.progress-label-switch button.is-selected { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.progress-label-switch button { color: var(--theme-strong-text, var(--tea)); }
+.progress-label-switch button.is-selected { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .progress-label-switch button.is-selected:not(:disabled):hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 90%, var(--surface)); }
 .sort-help { color: var(--ink-60); }
 .sort-help button { background: transparent; }
@@ -1147,11 +1147,11 @@ async function submit() {
 .drag-grip { color: var(--ink-60); }
 .record-detail { border: 0; border-radius: 7px; background: transparent; }
 .record-detail:not(:disabled):hover { background: transparent; }
-.pull-result small { color: color-mix(in srgb, var(--surface) 88%, transparent); }
+.pull-result small { color: color-mix(in srgb, var(--on-surface) 88%, transparent); }
 .status-pill, .pending-mark { border-radius: 999px; }
-.status-pill { border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent-strong); }
+.status-pill { border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--theme-accent-text, var(--accent-strong)); }
 .status-pill.is-neutral { border-color: var(--line); color: var(--ink-60); }
-.pending-mark { background: var(--yellow); color: var(--tea); }
+.pending-mark { background: var(--yellow); color: var(--theme-strong-text, var(--tea)); }
 .saved-mark { color: var(--editor-green); }
 .gacha-record.is-sortable, .gacha-record.is-sortable .record-detail { cursor: grab; user-select: none; }
 .gacha-record:hover { background: var(--cream); }
@@ -1159,32 +1159,32 @@ async function submit() {
 .agent-non-up { background: var(--surface); }
 .agent-record-detail { border-color: transparent; background: transparent; }
 .agent-record-flag { color: var(--ink-60); }
-.agent-record-flag.is-pending { color: var(--tea); background: var(--yellow); border-radius: 3px; }
+.agent-record-flag.is-pending { color: var(--theme-strong-text, var(--tea)); background: var(--yellow); border-radius: 3px; }
 .records-empty { border-block: 1px dashed var(--line); }
 .records-empty p { color: var(--ink-60); }
 .bar-legend { color: var(--ink-60); }
 footer { border-top: 1px solid var(--line); background: var(--cream); }
 .footer-state { color: var(--ink-60); }
-.footer-state strong { color: var(--tea); }
+.footer-state strong { color: var(--theme-strong-text, var(--tea)); }
 button { border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); cursor: pointer; }
 button:not(:disabled):hover { border-color: var(--ink-35); background: var(--cream); }
-.primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.primary { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .primary:not(:disabled):hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 90%, var(--surface)); }
 input { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 input[aria-invalid="true"] { border-color: var(--rouge); }
 button:disabled, input:disabled { cursor: not-allowed; opacity: .55; }
-button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-.form-error { color: var(--rouge); }
+button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
+.form-error { color: var(--theme-danger-text, var(--rouge)); }
 .state-note, .change-note, .save-result { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .save-result p, .daily-entry p { color: var(--ink-60); }
 .is-saved { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); }
-.daily-choices button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
-:deep([data-guide-active]) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.daily-choices button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
+:deep([data-guide-active]) { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .sr-only, .sort-announcement { border: 0; }
 /* 避免 disabled 按钮吞掉松手事件，让容器接收拖动结束。 */
 .pool-editor.is-dragging button, .pool-editor.is-dragging input { pointer-events: none; }
 .record-drag-chosen { background: var(--cream); }
-.record-drag-gap { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--cream); }
+.record-drag-gap { outline: 2px dashed var(--theme-focus, var(--accent)); outline-offset: -2px; background: var(--cream); }
 .record-drag-gap > * { opacity: .22; }
 .record-drag-floating { pointer-events: none; border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 22%, transparent); opacity: .95 !important; }
 
@@ -1200,7 +1200,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:foc
 }
 
 .agent-filter-head b {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .agent-filter-reset {
@@ -1213,7 +1213,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:foc
 }
 
 .agent-filter-label {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .agent-filter-options {
@@ -1230,7 +1230,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:foc
 
 .agent-filter-options button.on {
   background: var(--surface);
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   box-shadow: 0 1px 4px color-mix(in srgb, var(--tea) 18%, transparent);
 }
 

@@ -30,7 +30,7 @@ const canManage = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIO
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .creation-context { color: var(--feedback-text-muted); }
-.creation-context a { color: var(--accent-strong); }
+.creation-context a { color: var(--theme-accent-text, var(--accent-strong)); }
 </style>
 <style scoped src="./coCreationPageDesktop.css"></style>
 <style scoped src="./coCreationPageMobile.css"></style>

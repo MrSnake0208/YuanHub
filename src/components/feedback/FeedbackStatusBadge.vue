@@ -27,9 +27,9 @@ const label = computed(() => publicStatusLabel(props.status))
   font-weight: 800;
   white-space: nowrap;
 }
-.feedback-status-badge.is-CONFIRMED { border-color: var(--brand-blue); color: var(--brand-blue); }
+.feedback-status-badge.is-CONFIRMED { border-color: var(--brand-blue); color: var(--theme-info-text, var(--brand-blue)); }
 .feedback-status-badge.is-PLANNED { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
-.feedback-status-badge.is-IN_PROGRESS { border-color: var(--accent); color: var(--accent-strong); }
+.feedback-status-badge.is-IN_PROGRESS { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .feedback-status-badge.is-COMPLETED { border-color: var(--feedback-success); color: var(--feedback-success); }
 .feedback-status-badge.is-NOT_PLANNED { color: var(--feedback-text-dim); }
 </style>

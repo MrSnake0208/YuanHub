@@ -75,9 +75,9 @@ function submitSave(overwrite) {
 .save-tip{
   background:var(--paper);border:1px solid var(--line);border-radius:12px;color:var(--ink-60);
 }
-.save-tip svg{color:var(--brand-blue)}
+.save-tip svg{color:var(--theme-info-text, var(--brand-blue))}
 .save-tip.guest{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
-.save-tip.guest svg{color:var(--accent-strong)}
+.save-tip.guest svg{color:var(--theme-accent-text, var(--accent-strong))}
 </style>
 <style scoped src="./planSaveDialogDesktop.css"></style>
 <style scoped src="./planSaveDialogMobile.css"></style>

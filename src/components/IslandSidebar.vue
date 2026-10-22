@@ -135,6 +135,7 @@
           </section>
         </nav>
 
+        <ThemeSelector class="mobile-theme-selector" />
         <footer class="mobile-drawer-foot">
           <router-link
             class="mobile-account-link"
@@ -241,6 +242,7 @@
           </button>
         </nav>
       </details>
+      <ThemeSelector />
       <div class="sidebar-utilities">
         <router-link class="sidebar-account" :to="isLoggedIn ? '/user/profile' : '/login'">
           <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
@@ -266,6 +268,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import MobileHeader from "./MobileHeader.vue";
+import ThemeSelector from "./ThemeSelector.vue";
 import {
   Bell,
   BookUser,
@@ -467,7 +470,7 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 12px 32px -12px rgba(73, 59, 44, .3);
+  box-shadow: 0 12px 32px -12px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3);
 }
 .sidebar-more-panel > a,
 .sidebar-more-panel > button {
@@ -497,7 +500,7 @@ onBeforeUnmount(function () {
 .sidebar-notifications.active,
 .sidebar-notifications:hover { background: var(--yellow); }
 :where(.sidebar-more-trigger, .sidebar-more-panel > a, .sidebar-more-panel > button, .sidebar-account, .sidebar-notifications, .foot-logout, .mobile-more > summary):focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
 .foot-logout {
@@ -510,7 +513,7 @@ onBeforeUnmount(function () {
   transition: color 0.25s;
 }
 .foot-logout:hover {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 .sidebar-badge {
   background: var(--rouge);
@@ -535,7 +538,7 @@ onBeforeUnmount(function () {
   .mobile-header-action.active {
     border-color: var(--line);
     background: var(--surface);
-    color: var(--accent-strong);
+    color: var(--theme-accent-text, var(--accent-strong));
   }
   .mobile-page-title {
     color: var(--ink);
@@ -547,13 +550,13 @@ onBeforeUnmount(function () {
     color: #fff;
   }
   .mobile-drawer-scrim {
-    background: rgba(73, 59, 44, .34);
+    background: var(--theme-overlay, rgba(73, 59, 44, .34));
     backdrop-filter: blur(2px);
   }
   .mobile-drawer {
     border-right: 1px solid var(--line);
     background: var(--surface);
-    box-shadow: 22px 0 58px -30px rgba(73, 59, 44, .52);
+    box-shadow: 22px 0 58px -30px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.52);
     outline: 0;
   }
   .mobile-drawer-head {
@@ -593,7 +596,7 @@ onBeforeUnmount(function () {
   }
   .mobile-drawer-section > a svg,
   .mobile-drawer-link svg {
-    color: var(--tea);
+    color: var(--theme-strong-text, var(--tea));
   }
   .mobile-drawer-section > a:hover,
   .mobile-drawer-section > a.active,
@@ -619,7 +622,7 @@ onBeforeUnmount(function () {
     border: 0;
     border-radius: 11px;
     background: transparent;
-    color: var(--rouge);
+    color: var(--theme-danger-text, var(--rouge));
     cursor: pointer;
   }
   .mobile-drawer-enter-active,
@@ -651,10 +654,10 @@ onBeforeUnmount(function () {
   transition: color .25s var(--ease);
 }
 .foot-version:hover {
-  color: var(--accent);
+  color: var(--theme-accent-text, var(--accent));
 }
 .foot-version:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
   border-radius: 4px;
 }

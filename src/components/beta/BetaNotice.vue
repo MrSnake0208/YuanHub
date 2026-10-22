@@ -17,7 +17,7 @@ onMounted(() => { void beta.loadPublic() })
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .beta-notice { border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--yellow-deep)); border-radius: 14px; background: var(--cream); color: var(--ink); }
 .beta-notice p { color: var(--ink-60); }
-.beta-notice a { color: var(--tea); text-underline-offset: 4px; }
+.beta-notice a { color: var(--theme-strong-text, var(--tea)); text-underline-offset: 4px; }
 </style>
 <style scoped src="./betaNoticeDesktop.css"></style>
 <style scoped src="./betaNoticeMobile.css"></style>

@@ -54,24 +54,24 @@ const emit = defineEmits(['retry', 'execute', 'breakthrough-change'])
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.growth-action-popover { border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 25px rgba(73, 59, 44, .22); }
+.growth-action-popover { border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 25px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.22); }
 .growth-action-popover::before { border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); background: var(--surface); content: ''; }
-.growth-action-popover p { color: var(--brand-blue); }
+.growth-action-popover p { color: var(--theme-info-text, var(--brand-blue)); }
 .ledger-breakthrough-toggle { border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink-60); cursor: pointer; }
 .ledger-breakthrough-toggle small { color: var(--ink-35); }
 .ledger-breakthrough-toggle input { accent-color: var(--accent); }
-.ledger-breakthrough-toggle:has(input:checked) { border-color: rgba(215, 137, 53, .45); background: rgba(239, 210, 142, .3); color: var(--tea); }
+.ledger-breakthrough-toggle:has(input:checked) { border-color: var(--theme-line, rgba(215, 137, 53, .45)); background: var(--theme-wash-strong, rgba(239, 210, 142, .3)); color: var(--theme-strong-text, var(--tea)); }
 .ledger-breakthrough-toggle:has(input:disabled) { cursor: wait; opacity: .68; }
 .growth-action-popover button { border: 0; border-radius: 4px; background: var(--accent); color: #fff; cursor: pointer; }
 .growth-action-popover button:disabled { cursor: wait; opacity: .6; }
-.ledger-material-list span { border: 1px solid rgba(73, 59, 44, .12); border-radius: 4px; background: var(--cream); color: var(--ink); }
-.ledger-material-list span.is-lack { border-color: rgba(166, 81, 74, .35); background: rgba(240, 207, 200, .35); color: var(--rouge); }
+.ledger-material-list span { border: 1px solid var(--theme-line, rgba(73, 59, 44, .12)); border-radius: 4px; background: var(--cream); color: var(--ink); }
+.ledger-material-list span.is-lack { border-color: var(--theme-danger-line, rgba(166, 81, 74, .35)); background: var(--theme-danger-wash, rgba(240, 207, 200, .35)); color: var(--theme-danger-text, var(--rouge)); }
 .ledger-material-list small { color: var(--ink-60); }
-.ledger-material-list .is-lack small { color: var(--rouge); }
+.ledger-material-list .is-lack small { color: var(--theme-danger-text, var(--rouge)); }
 .ledger-material-list em { color: var(--ink-35); }
 .ledger-popover-state { border: 1px dashed var(--line); border-radius: 7px; color: var(--ink-60); }
-.ledger-popover-state.is-error { border-color: rgba(166, 81, 74, .35); background: rgba(240, 207, 200, .24); color: var(--rouge); }
-.ledger-popover-blocked { color: var(--rouge); }
+.ledger-popover-state.is-error { border-color: var(--theme-danger-line, rgba(166, 81, 74, .35)); background: var(--theme-danger-wash, rgba(240, 207, 200, .24)); color: var(--theme-danger-text, var(--rouge)); }
+.ledger-popover-blocked { color: var(--theme-danger-text, var(--rouge)); }
 </style>
 <style scoped src="./operatorGrowthActionPopoverDesktop.css"></style>
 <style scoped src="./operatorGrowthActionPopoverMobile.css"></style>

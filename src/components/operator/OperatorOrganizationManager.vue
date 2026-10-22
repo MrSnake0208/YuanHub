@@ -157,7 +157,7 @@ async function applyBatch(add) {
 .organization-batch, .organization-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
 .organization-batch { margin: 0 14px 12px; }
 button, select, input { font: inherit; }
-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--tea); padding: 5px 9px; cursor: pointer; }
+button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); padding: 5px 9px; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
 button:hover:not(:disabled) { background: var(--cream); border-color: var(--tea); }
 summary { padding: 5px 0; cursor: pointer; font-weight: 600; }
@@ -183,7 +183,7 @@ h3 { font-size: 14px; font-weight: 650; line-height: 1.5; }
 .organization-tag-field input { min-height: 36px; }
 .organization-tag-meta { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; align-items: center; justify-content: end; }
 .organization-tag-meta small { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.organization-delete { min-height: 36px; min-width: 44px; color: var(--rouge); background: transparent; border-color: transparent; }
+.organization-delete { min-height: 36px; min-width: 44px; color: var(--theme-danger-text, var(--rouge)); background: transparent; border-color: transparent; }
 .organization-add { justify-self: stretch; width: 100%; min-height: 36px; border-style: dashed; background: transparent; }
 input:not([type="file"]), select { width: 100%; min-width: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); padding: 7px 9px; }
 .organization-batch select { width: auto; }
@@ -192,15 +192,15 @@ p, small { margin: 0; color: var(--ink-60); overflow-wrap: anywhere; }
 small { font-size: 12px; }
 .organization-empty { padding: 9px 0; }
 .organization-save-area { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
-.organization-save { background: var(--tea); color: var(--cream); border-color: var(--tea); padding: 7px 14px; font-weight: 600; }
-.organization-save:hover:not(:disabled) { background: var(--tea-deep); color: var(--cream); }
+.organization-save { background: var(--tea); color: var(--on-strong); border-color: var(--tea); padding: 7px 14px; font-weight: 600; }
+.organization-save:hover:not(:disabled) { background: var(--tea-deep); color: var(--on-strong); }
 .organization-feedback { color: var(--ink-60); font-size: 12px; }
 .operator-organization > .organization-feedback { margin: 0 14px 10px; }
-.organization-error, .organization-field-error { color: var(--rouge); font-size: 12px; }
+.organization-error, .organization-field-error { color: var(--theme-danger-text, var(--rouge)); font-size: 12px; }
 .organization-error { margin: 8px 0; }
 .operator-organization > .organization-error { margin: 0 14px 12px; }
 .organization-warning { padding: 9px 12px; background: var(--paper); border-radius: 7px; }
-button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
 @container operator-organization (min-width: 700px) {
   .organization-editor-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; }
 }

@@ -1,5 +1,5 @@
 import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
 import { resetCartDraft } from '../src/store/cartDraft.js'
@@ -23,6 +23,7 @@ beforeEach(() => {
   }
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
+afterEach(() => { delete document.documentElement.dataset.theme })
 const render = () => mount(CartPage, { attachTo: document.body, global: {
   stubs: { IslandSidebar: true, SiteFooter: true }, directives: { reveal: () => {} },
 } })
@@ -93,11 +94,14 @@ it('nested save dialog owns focus and Escape closes only the top layer', async (
   expect(document.activeElement).toBe(saveButton.element)
 })
 
-it('a closed compact drawer can export and export-only markup has no input/actions', async () => {
+it('a dark compact drawer exports an isolated light snapshot without changing the page theme', async () => {
+  document.documentElement.dataset.theme = 'dark'
   const wrapper = render()
   await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
   html2canvas.mockImplementationOnce(async element => {
     expect(element).toBe(document.querySelector('.cart-export-view .receipt'))
+    expect(element.closest('[data-theme]').dataset.theme).toBe('light')
+    expect(document.documentElement.dataset.theme).toBe('dark')
     expect(element.querySelector('input')).toBeNull()
     expect(element.textContent).toContain('年卡')
     expect(document.querySelector('.cart-export-view .cart-actions')).toBeNull()

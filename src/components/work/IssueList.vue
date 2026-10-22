@@ -30,8 +30,8 @@ defineProps({
 .issue-empty { color: var(--ink-60); }
 .issue-list li { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .severity { border: 1px solid currentColor; border-radius: 6px; }
-.severity-partial { color: var(--accent-strong); }
-.severity-unsupported { color: var(--rouge); }
+.severity-partial { color: var(--theme-accent-text, var(--accent-strong)); }
+.severity-unsupported { color: var(--theme-danger-text, var(--rouge)); }
 .issue-tech summary {color:var(--ink-60);cursor:pointer; }
 dt { color: var(--ink-35); }
 dd { color: var(--ink-60); }

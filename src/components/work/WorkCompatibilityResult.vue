@@ -47,18 +47,18 @@ async function copyDocument() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .state-note { color: var(--ink-60); }
-.target-error { color: var(--rouge); }
-button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.target-error { color: var(--theme-danger-text, var(--rouge)); }
+button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
 .compat-summary { border: 1px solid currentColor; border-radius: 14px; background: var(--surface); }
 .compat-summary span, .compat-summary p { color: var(--ink-60); }
-.status-exact { color: #47704b; }
-.status-partial { color: var(--accent-strong); }
-.status-unsupported, .status-unknown { color: var(--rouge); }
+.status-exact { color: var(--theme-success-text, #47704b); }
+.status-partial { color: var(--theme-accent-text, var(--accent-strong)); }
+.status-unsupported, .status-unknown { color: var(--theme-danger-text, var(--rouge)); }
 .document-viewer { border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
 .document-viewer summary { cursor: pointer; }
 .document-viewer pre { border-radius: 10px; background: var(--paper); color: var(--ink); }
 .document-note { color: var(--ink-60); }
-.copy-feedback { color: var(--accent-strong); }
+.copy-feedback { color: var(--theme-accent-text, var(--accent-strong)); }
 </style>
 <style scoped src="./workCompatibilityResultDesktop.css"></style>
 <style scoped src="./workCompatibilityResultMobile.css"></style>

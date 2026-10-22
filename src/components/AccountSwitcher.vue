@@ -157,27 +157,27 @@ onBeforeUnmount(() => { alive = false; cleanup?.() })
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.context-selector { border: 0; border-radius: 6px; background: var(--cream); color: var(--tea); cursor: pointer; }
+.context-selector { border: 0; border-radius: 6px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .context-selector:disabled { cursor: wait; opacity: .65; }
-.switch-error { color: var(--rouge); }
-.account-switch-mask { background: color-mix(in srgb, var(--ink) 35%, transparent); }
+.switch-error { color: var(--theme-danger-text, var(--rouge)); }
+.account-switch-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 35%, transparent)); }
 .account-switch-panel { border: 1px solid var(--line); border-radius: 18px 18px 0 0; background: var(--surface); color: var(--ink); }
 .account-switch-panel::before { content: ''; border-radius: 4px; background: var(--line); }
-h2 { color: var(--tea); }
+h2 { color: var(--theme-strong-text, var(--tea)); }
 .switch-close { border: 0; background: transparent; color: inherit; cursor: pointer; }
 h3 { color: var(--ink-60); }
 .switch-option { border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
-.switch-option small { color: var(--tea); }
+.switch-option small { color: var(--theme-strong-text, var(--tea)); }
 .switch-option[aria-pressed="true"] { background: color-mix(in srgb, var(--yellow) 28%, var(--surface)); }
 .switch-option:hover, footer button:hover { background: var(--cream); }
 footer { border-top: 1px solid var(--line); }
-footer button { border: 0; border-radius: 6px; background: transparent; color: var(--tea); cursor: pointer; }
+footer button { border: 0; border-radius: 6px; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .switch-search { color: var(--ink-60); }
 .switch-search input { border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 @media (min-width: 768px) {
   .account-switch-mask { background: transparent; }
-  .account-switch-panel { border-radius: 10px; box-shadow: 0 4px 16px rgba(73, 59, 44, .08); }
+  .account-switch-panel { border-radius: 10px; box-shadow: 0 4px 16px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.08); }
 }
 </style>
 <style scoped src="./accountSwitcherDesktop.css"></style>

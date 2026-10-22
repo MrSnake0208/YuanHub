@@ -95,19 +95,19 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .today-private-items { border: 1px solid var(--line); background: var(--cream); color: var(--ink); }
-h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
+h2 { color: var(--theme-strong-text, var(--tea)); font: 900 20px/1.5 var(--font-s); }
 p { line-height: 1.7; }
 .private-hint { color: var(--ink-60); }
 .private-list { list-style: none; }
 .private-list li { border-top: 1px solid var(--line); }
 .private-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-a, button { color: var(--tea); font-weight: 700; }
+a, button { color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
 .private-heading a { font-size: 12px; font-weight: 500; text-decoration: none; }
 .private-heading a:hover { text-decoration: underline; }
-.private-error { color: var(--rouge); }
+.private-error { color: var(--theme-danger-text, var(--rouge)); }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 </style>
 <style scoped src="./todayPrivateItemsDesktop.css"></style>
 <style scoped src="./todayPrivateItemsMobile.css"></style>

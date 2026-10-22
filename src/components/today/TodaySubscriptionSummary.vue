@@ -263,8 +263,8 @@ onBeforeUnmount(() => { alive = false; generation++; clearTimeout(timer); clearI
 /* 刻意共享的字段外观，不持有双端布局。 */
 
 .today-subscriptions { border: 1px solid var(--line); background: var(--surface); }
-h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
-p, span, time { color: var(--tea); line-height: 1.7; }
+h2 { color: var(--theme-strong-text, var(--tea)); font: 900 20px/1.5 var(--font-s); }
+p, span, time { color: var(--theme-strong-text, var(--tea)); line-height: 1.7; }
 ul { list-style: none; }
 .todo-check { cursor: pointer; }
 .todo-check input { accent-color: var(--tea); cursor: inherit; }
@@ -274,15 +274,15 @@ ul { list-style: none; }
 .todo-event { font-weight: 400; }
 .todo-subscription-status { border-top: 1px solid var(--line); }
 .todo-subscription-status > summary { color: var(--ink-60); font-weight: 400; }
-summary { color: var(--tea); font-weight: 700; cursor: pointer; }
-time { color: var(--accent-strong); }
-time.is-urgent, .todo-error p { color: var(--rouge); }
-a, button { color: var(--tea); font-weight: 700; }
+summary { color: var(--theme-strong-text, var(--tea)); font-weight: 700; cursor: pointer; }
+time { color: var(--theme-accent-text, var(--accent-strong)); }
+time.is-urgent, .todo-error p { color: var(--theme-danger-text, var(--rouge)); }
+a, button { color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
 .todo-heading a, .todo-event-link, .todo-add { font-size: 12px; font-weight: 500; text-decoration: none; }
 .todo-heading a:hover, .todo-event-link:hover, .todo-add:hover { text-decoration: underline; }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
-a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 </style>
 <style scoped src="./todaySubscriptionDesktop.css"></style>
 <style scoped src="./todaySubscriptionMobile.css"></style>

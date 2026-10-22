@@ -44,11 +44,11 @@ onBeforeUnmount(() => editor.value?.destroy())
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.changelog-body-error { color: var(--rouge); }
-.changelog-body-error button { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--tea); cursor: pointer; }
+.changelog-body-error { color: var(--theme-danger-text, var(--rouge)); }
+.changelog-body-error button { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .changelog-rich-text :deep(.tiptap) { color: var(--ink); }
 .changelog-rich-text :deep(blockquote) { border-left: 3px solid var(--accent); color: var(--ink-60); }
-.changelog-rich-text :deep(a) { color: var(--brand-blue); text-underline-offset: 3px; }
+.changelog-rich-text :deep(a) { color: var(--theme-info-text, var(--brand-blue)); text-underline-offset: 3px; }
 .changelog-rich-text :deep(img) { border: 1px solid var(--line); border-radius: 12px; }
 </style>
 <style scoped src="./changelogContentDesktop.css"></style>

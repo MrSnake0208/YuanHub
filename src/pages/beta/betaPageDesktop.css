@@ -185,7 +185,7 @@
 }
 
 .invite-card {
-  --tone: var(--yellow-deep);
+  --tone: var(--theme-accent-text, var(--yellow-deep));
   position: relative;
   z-index: 3;
   min-width: 0;
@@ -194,21 +194,21 @@
 
 .invite-card.tone-join,
 .invite-card.tone-reserved {
-  --tone: var(--accent);
+  --tone: var(--theme-accent-text, var(--accent));
 }
 
 .invite-card.tone-granted,
 .invite-card.tone-open {
-  --tone: var(--tea);
+  --tone: var(--theme-strong-text, var(--tea));
 }
 
 .invite-card.tone-waiting,
 .invite-card.tone-paused {
-  --tone: var(--yellow-deep);
+  --tone: var(--theme-accent-text, var(--yellow-deep));
 }
 
 .invite-card.tone-error {
-  --tone: var(--rouge);
+  --tone: var(--theme-danger-text, var(--rouge));
 }
 
 .invite-card.tone-closed,

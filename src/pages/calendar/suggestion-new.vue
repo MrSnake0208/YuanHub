@@ -84,7 +84,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
 <style src="./calendarMobile.css"></style>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.calendar-community .calendar-header h1 { color: var(--tea); }
+.calendar-community .calendar-header h1 { color: var(--theme-strong-text, var(--tea)); }
 .calendar-community .calendar-header > p { color: var(--ink-60); }
 .calendar-community .calendar-header > .calendar-source-link { color: var(--ink-60); }
 </style>

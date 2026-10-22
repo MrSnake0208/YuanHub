@@ -180,18 +180,18 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .guide-card { border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
-.eyebrow { color: var(--accent-strong); }
+.eyebrow { color: var(--theme-accent-text, var(--accent-strong)); }
 .install-overview img { border-radius: 18px; }
 .guide-card p,.guide-preference p { color: var(--ink-60); }
 .install-now,.install-secondary { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; }
-.install-now { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.install-now { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .install-now:disabled { opacity: .55; cursor: wait; }
 button:hover:not(:disabled),a:hover { border-color: var(--accent); }
-button:focus-visible,a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:focus-visible,a:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .task-exit { border-radius: 20px; background: var(--surface); }
 .install-feedback { border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
 .install-feedback p { color: var(--ink); }
-.installed-banner > svg,.shortcut-permission-help > svg { color: var(--accent-strong); }
+.installed-banner > svg,.shortcut-permission-help > svg { color: var(--theme-accent-text, var(--accent-strong)); }
 .shortcut-permission-help { border: 1px dashed var(--accent); border-radius: 16px; }
 details.shortcut-permission-help summary { cursor: pointer; }
 @media (max-width: 640px) {

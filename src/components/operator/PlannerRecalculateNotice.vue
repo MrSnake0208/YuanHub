@@ -20,11 +20,11 @@ defineEmits(['recalculate'])
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .recalculate-notice { border-left: 3px solid var(--accent); background: var(--cream); color: var(--ink); }
-strong { color: var(--tea); }
-button { border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--cream); cursor: pointer; }
+strong { color: var(--theme-strong-text, var(--tea)); }
+button { border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
 button:hover:not(:disabled) { filter: brightness(1.1); }
 button:active:not(:disabled) { filter: brightness(.95); }
-button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 3px; }
 button:disabled { opacity: .6; cursor: wait; }
 </style>
 <style scoped src="./plannerRecalculateNoticeDesktop.css"></style>

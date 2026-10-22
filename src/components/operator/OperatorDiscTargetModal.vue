@@ -50,20 +50,20 @@ watch(visible, (open, _, onCleanup) => {
 </script>
 
 <style scoped>
-.disc-target-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: end center; padding: 12px; background: rgba(73, 59, 44, .38); }
+.disc-target-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: end center; padding: 12px; background: var(--theme-overlay, rgba(73, 59, 44, .38)); }
 .disc-target-modal { box-sizing: border-box; width: min(880px, 100%); min-width: 0; max-height: min(85dvh, 760px); overflow-y: auto; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .disc-target-modal header, .disc-target-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .disc-target-modal header h3 { min-width: 0; margin: 0; font-size: 20px; overflow-wrap: anywhere; }
-.disc-target-modal button { display: inline-flex; align-items: center; justify-content: center; gap: 2px; flex: none; padding: 7px 6px; border: 0; border-radius: 5px; background: transparent; color: var(--tea); font: inherit; font-size: 12px; cursor: pointer; }
+.disc-target-modal button { display: inline-flex; align-items: center; justify-content: center; gap: 2px; flex: none; padding: 7px 6px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-strong-text, var(--tea)); font: inherit; font-size: 12px; cursor: pointer; }
 .disc-target-modal button:hover { background: var(--paper); }
-.disc-target-modal button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-target-modal button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .disc-target-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; gap: 12px; margin-top: 14px; }
 .disc-target-detail { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
 .disc-target-detail-heading { justify-content: flex-start; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; }
 .disc-target-detail-heading button { margin-left: auto; }
 .disc-target-detail h4 { margin: 0; font-size: 15px; }
 .disc-target-status { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 5px; color: var(--ink-60); font: 12px var(--font-s); white-space: nowrap; }
-.disc-target-status.is-perfect { color: #52694e; background: #edf3e7; }
-.disc-target-status.is-reroll { color: #8a5a1f; background: #fcf0d9; }
+.disc-target-status.is-perfect { color: var(--theme-text, #52694e); background: var(--theme-success-bg, #edf3e7); }
+.disc-target-status.is-reroll { color: var(--theme-accent-text, #8a5a1f); background: var(--theme-surface, #fcf0d9); }
 @media (min-width: 769px) { .disc-target-mask { place-items: center; } .disc-target-modal { padding: 20px; } }
 </style>

@@ -157,7 +157,7 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .share-description { grid-column: 1 / -1 }
 .share-manager h2 { font: 900 18px/1.3 var(--font-s); letter-spacing: .04em }
 .share-manager p { color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
-.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
+.section-kicker { display: block; margin-bottom: 6px; color: var(--theme-accent-text, var(--accent-strong)); font-size: 11px; font-weight: 800; letter-spacing: .14em }
 .share-scopes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 14px }
 .share-scope { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12.5px; color: var(--ink); cursor: pointer }
 .share-scope input { flex: none; width: 18px; height: 18px; accent-color: var(--tea) }
@@ -165,7 +165,7 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .share-scope-description { display: block; margin-top: 2px; color: var(--ink-60); font-size: 12px; font-weight: 400; line-height: 1.6 }
 .share-scope-status { display: block; margin-top: 2px; color: var(--ink-60); font-size: 11px; font-weight: 400 }
 .share-tag-sharing { margin-top: 8px }
-.share-scope:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.share-scope:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .share-private { margin-top: 8px }
 .share-scope-note { margin-top: 4px }
 .share-values { display: grid; gap: 8px; margin-top: 14px; min-width: 0 }
@@ -173,15 +173,15 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .share-values input { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); font: 12px var(--font-d) }
 .share-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px }
 .share-code-actions { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line) }
-.share-button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 12px; color: var(--cream); background: var(--tea); font: 700 12.5px var(--font-b); cursor: pointer }
-.share-button.visit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; border-color: var(--accent); color: var(--accent-strong); background: transparent }
+.share-button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 12px; color: var(--on-strong); background: var(--tea); font: 700 12.5px var(--font-b); cursor: pointer }
+.share-button.visit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); background: transparent }
 .share-button.subtle { border-color: var(--line); color: var(--ink-60); background: transparent }
-.share-button.danger { border-color: var(--rouge); color: var(--rouge); background: transparent }
-.share-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.share-button.danger { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); background: transparent }
+.share-button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .share-button:disabled { opacity: .5; cursor: not-allowed }
 .share-state,.share-message { margin-top: 14px }
-.share-state.is-error { color: var(--rouge) }
-.share-message { color: var(--accent-strong) }
+.share-state.is-error { color: var(--theme-danger-text, var(--rouge)) }
+.share-message { color: var(--theme-accent-text, var(--accent-strong)) }
 @media(max-width:640px) {
   .share-manager { padding: 14px 16px }
   .share-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)) }
@@ -195,7 +195,7 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .is-compact .share-summary { display: grid; gap: 4px; margin: 0; }
 .is-compact .share-summary strong { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; }
 .is-compact .share-summary strong::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ink-35); }
-.is-compact .share-summary.is-active strong { color: #257348; }
+.is-compact .share-summary.is-active strong { color: var(--theme-success-text, #257348); }
 .is-compact .share-summary.is-active strong::before { background: currentColor; }
 .is-compact .share-summary > span { padding-left: 17px; font-size: 12px; }
 .is-compact .share-overview > button { flex: none; margin-left: auto; }
@@ -204,11 +204,11 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .is-compact .share-scopes { margin-top: 10px; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .is-compact .share-scope { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; box-sizing: border-box; min-height: 80px; padding: 12px 14px; border-radius: 10px; background: linear-gradient(110deg, var(--surface), var(--cream)); font-size: 14px; line-height: 1.5; }
 .is-compact .share-scope:hover { border-color: var(--accent); }
-.is-compact .share-scope-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--paper); color: var(--tea); }
+.is-compact .share-scope-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--paper); color: var(--theme-strong-text, var(--tea)); }
 .is-compact .share-scope-copy { min-width: 0; font-weight: 700; }
 .is-compact .share-scope-description { display: block; margin-top: 2px; color: var(--ink-60); font-size: 12px; font-weight: 400; }
 .is-compact .share-scope-status { font-size: 11px; }
-.is-compact .share-scope-status.is-enabled { color: #257348; }
+.is-compact .share-scope-status.is-enabled { color: var(--theme-success-text, #257348); }
 .is-compact .share-scope input { appearance: none; position: relative; margin: 0; width: 40px; height: 24px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; background: var(--ink-35); cursor: pointer; }
 .is-compact .share-scope input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
 .is-compact .share-scope input:checked { background: var(--tea); }
@@ -218,20 +218,20 @@ onBeforeUnmount(() => { requestSeq++; loadSeq++ })
 .is-compact .share-values { grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px; box-sizing: border-box; min-height: 72px; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
 .is-compact .share-values label { grid-template-columns: minmax(0, 1fr); gap: 4px; color: var(--ink); font-size: 13px; }
 .is-compact .share-values input { display: block; min-height: 22px; height: 22px; padding: 0; text-overflow: ellipsis; border: 0; border-radius: 3px; background: transparent; color: var(--ink-60); font: 12px/1.6 var(--font-b); }
-.is-compact .share-values input:focus { text-overflow: clip; outline: 2px solid var(--accent); outline-offset: 2px; }
+.is-compact .share-values input:focus { text-overflow: clip; outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .is-compact .share-values .share-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; }
 .is-compact .share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 36px; padding: 6px 10px; border-color: var(--line); border-radius: 8px; color: var(--ink); background: transparent; white-space: nowrap; }
-.is-compact .share-button.danger { border-color: var(--rouge); color: var(--rouge); }
+.is-compact .share-button.danger { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); }
 .is-compact .share-button:hover:not(:disabled) { background: var(--paper); }
 .is-compact .share-code-actions { display: block; margin-top: 10px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
-.is-compact .share-code-actions summary { display: flex; align-items: center; gap: 10px; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border-radius: 10px; list-style: none; color: var(--tea); font-size: 13px; line-height: 1.8; cursor: pointer; }
+.is-compact .share-code-actions summary { display: flex; align-items: center; gap: 10px; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border-radius: 10px; list-style: none; color: var(--theme-strong-text, var(--tea)); font-size: 13px; line-height: 1.8; cursor: pointer; }
 .is-compact .share-code-actions summary::-webkit-details-marker { display: none; }
 .is-compact .share-code-actions summary::marker { content: ''; }
 .is-compact .share-code-actions summary > span { flex: 1; min-width: 0; font-weight: 700; }
 .is-compact .share-code-actions summary > svg { flex: none; }
 .is-compact .share-code-actions summary:hover,.is-compact .share-code-actions[open] summary { background: var(--paper); }
 .is-compact .share-code-actions[open] .share-management-chevron { transform: rotate(180deg); }
-.is-compact .share-code-actions summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.is-compact .share-code-actions summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .is-compact .share-management-label { margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; }
 .is-compact .share-code-actions > .share-button { margin: 0 0 12px 14px; }
 .is-compact .share-code-actions > .share-button + .share-button { margin-left: 8px; }

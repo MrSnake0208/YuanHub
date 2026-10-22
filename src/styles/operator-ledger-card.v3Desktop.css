@@ -15,7 +15,7 @@
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 {
     --ledger-control-paper: color-mix(in srgb, var(--surface) 82%, transparent);
-    --ledger-favorite-gold: #C49A32;
+    --ledger-favorite-gold: var(--theme-accent-text, #C49A32);
     --ledger-corner-radius: 14px;
     --ledger-card-padding-top: 10px;
     --ledger-card-padding-inline: 8px;
@@ -307,8 +307,8 @@
     --share-summary-inset: clamp(10px, 8cqw, 18px);
     --ledger-portrait-bottom-fade: linear-gradient(180deg,
       transparent 36%,
-      color-mix(in srgb, var(--surface) 78%, transparent) 70%,
-      var(--surface) 92%);
+      color-mix(in srgb, var(--on-surface) 78%, transparent) 70%,
+      var(--on-surface) 92%);
     container-type: inline-size;
     gap: 10px;
     padding: var(--share-card-padding);

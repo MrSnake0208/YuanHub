@@ -141,15 +141,15 @@ onBeforeUnmount(() => {
 /* 刻意共享的字段外观，不持有双端布局。 */
 
 .today-lobby { border-bottom: 1px solid var(--line); background: linear-gradient(110deg, var(--surface), color-mix(in srgb, var(--cream) 90%, transparent)); color: var(--ink); }
-.lobby-heading h1 { color: var(--tea); font: 900 14px/1.5 var(--font-s); letter-spacing: .08em; }
+.lobby-heading h1 { color: var(--theme-strong-text, var(--tea)); font: 900 14px/1.5 var(--font-s); letter-spacing: .08em; }
 .lobby-heading time { color: var(--ink-60); line-height: 1.5; }
-.lobby-greeting { color: var(--tea); font: 900 clamp(21px, 5.5vw, 26px)/1.5 var(--font-s); }
+.lobby-greeting { color: var(--theme-strong-text, var(--tea)); font: 900 clamp(21px, 5.5vw, 26px)/1.5 var(--font-s); }
 .lobby-status { line-height: 1.7; }
 .lobby-duty { line-height: 1.6; }
 .lobby-duty strong { font-weight: 750; }
-.lobby-duty button { border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--tea); font: 700 12px/1.5 var(--font-b); cursor: pointer; }
-.lobby-duty button:hover { color: var(--accent-strong); border-color: currentColor; }
-.lobby-save-notice { color: var(--rouge); line-height: 1.6; }
+.lobby-duty button { border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--theme-strong-text, var(--tea)); font: 700 12px/1.5 var(--font-b); cursor: pointer; }
+.lobby-duty button:hover { color: var(--theme-accent-text, var(--accent-strong)); border-color: currentColor; }
+.lobby-save-notice { color: var(--theme-danger-text, var(--rouge)); line-height: 1.6; }
 .lobby-portrait { pointer-events: none; }
 /* 遮罩相交只淡化边缘，人物中心保持清晰。 */
 .lobby-portrait:has(img) {
@@ -161,13 +161,13 @@ onBeforeUnmount(() => {
 .lobby-art-error { color: var(--ink-60); line-height: 1.8; }
 .duty-picker { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .duty-picker-heading h2 { font: 900 22px/1.5 var(--font-s); }
-.duty-picker-heading button { border: 0; background: transparent; color: var(--tea); cursor: pointer; }
+.duty-picker-heading button { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 #duty-picker-note, .duty-result-count { color: var(--ink-60); line-height: 1.7; }
 .duty-search { border: 1px solid var(--line); background: var(--cream); }
-.duty-search-label { color: var(--tea); font: 700 13px/1.5 var(--font-b); }
+.duty-search-label { color: var(--theme-strong-text, var(--tea)); font: 700 13px/1.5 var(--font-b); }
 .duty-search input { border: 0; background: transparent; color: var(--ink); font: 14px var(--font-b); }
-.duty-retry { border: 0; background: transparent; color: var(--tea); text-decoration: underline; cursor: pointer; }
-.duty-candidates button { border: 1px solid var(--line); background: var(--surface); color: var(--tea); font: 700 14px/1.5 var(--font-b); cursor: pointer; }
+.duty-retry { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); text-decoration: underline; cursor: pointer; }
+.duty-candidates button { border: 1px solid var(--line); background: var(--surface); color: var(--theme-strong-text, var(--tea)); font: 700 14px/1.5 var(--font-b); cursor: pointer; }
 .duty-candidates button:hover, .duty-candidates button[aria-pressed="true"] { background: var(--cream); border-color: var(--tea); }
 .duty-candidates > p { line-height: 1.7; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }

@@ -127,14 +127,14 @@ function commitRename(p) {
 .guest-banner{background:var(--yellow);
   border:1px solid var(--yellow-deep);border-radius:12px;color:var(--ink);
 }
-.guest-banner svg{color:var(--accent-strong)}
-.guest-banner .banner-login{border:none;background:var(--tea);color:var(--cream);
+.guest-banner svg{color:var(--theme-accent-text, var(--accent-strong))}
+.guest-banner .banner-login{border:none;background:var(--tea);color:var(--on-strong);
   border-radius:999px;cursor:pointer;transition:background .3s var(--ease);
 }
 .guest-banner .banner-login:hover{background:var(--accent)}
 .sec-head{color:var(--ink);
 }
-.sec-head svg{color:var(--accent)}
+.sec-head svg{color:var(--theme-accent-text, var(--accent))}
 .sec-head .cnt{background:var(--paper);border:1px solid var(--line);
   border-radius:999px;color:var(--ink-60);
 }
@@ -153,7 +153,7 @@ function commitRename(p) {
 }
 .plan-main b{color:var(--ink);
 }
-.plan-main:hover b{color:var(--accent-strong)}
+.plan-main:hover b{color:var(--theme-accent-text, var(--accent-strong))}
 .plan-main .meta{color:var(--ink-60)}
 .pbtn{border-radius:9px;
   background:var(--paper);border:1px solid var(--line);color:var(--ink-60);
@@ -161,11 +161,11 @@ function commitRename(p) {
 }
 .pbtn:hover{color:var(--ink);border-color:var(--ink)}
 .pbtn.ok{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
-.pbtn.danger:hover{color:var(--rouge);border-color:var(--rouge);background:rgba(166,81,74,.08)}
+.pbtn.danger:hover{color:var(--theme-danger-text, var(--rouge));border-color:var(--rouge);background:var(--theme-danger-wash, rgba(166,81,74,.08))}
 .rename-input{border:1.5px solid var(--line);border-radius:9px;color:var(--ink);
   background:var(--paper);outline:none;
 }
-.rename-input:focus{border-color:var(--accent)}
+.rename-input:focus{border-color:var(--theme-focus, var(--accent))}
 
 .upload-hint{
   background:var(--cream);border:1px dashed var(--line);border-radius:12px;color:var(--ink-60);

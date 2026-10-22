@@ -414,7 +414,7 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-status-menu {
-    --ledger-seal-ink: var(--tea);
+    --ledger-seal-ink: var(--theme-strong-text, var(--tea));
     --ledger-seal-paper: var(--surface);
     grid-column: 3;
     grid-row: 2;
@@ -425,12 +425,12 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-status-menu.status-growing {
-    --ledger-seal-ink: #315f38;
-    --ledger-seal-paper: color-mix(in srgb, #bfdcc0 26%, var(--surface));
+    --ledger-seal-ink: var(--theme-success-text, #315f38);
+    --ledger-seal-paper: color-mix(in srgb, var(--theme-success-bg, #bfdcc0) 26%, var(--surface));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-status-menu.status-graduated {
-    --ledger-seal-ink: var(--accent-strong);
+    --ledger-seal-ink: var(--theme-accent-text, var(--accent-strong));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-status-menu.status-inactive {

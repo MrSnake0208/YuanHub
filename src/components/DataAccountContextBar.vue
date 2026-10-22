@@ -104,7 +104,7 @@ const currentPath = computed(function () {
   border-left: 4px solid var(--accent);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 8px 24px rgba(73, 59, 44, .045);
+  box-shadow: 0 8px 24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.045);
 }
 .context-icon {
   border-radius: 11px;
@@ -112,7 +112,7 @@ const currentPath = computed(function () {
   color: var(--ink);
 }
 .context-kicker {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .context-copy > strong {
   color: var(--ink);
@@ -120,7 +120,7 @@ const currentPath = computed(function () {
 .context-copy small {
   color: var(--ink-60);
 }
-.context-copy .context-error { color: var(--rouge); }
+.context-copy .context-error { color: var(--theme-danger-text, var(--rouge)); }
 .context-action {
   border: 1.5px solid var(--line);
   border-radius: 999px;
@@ -131,7 +131,7 @@ const currentPath = computed(function () {
 }
 .context-action:hover,
 .context-action:focus-visible {
-  border-color: var(--accent);
+  border-color: var(--theme-focus, var(--accent));
   color: var(--ink);
   background: var(--cream);
   outline: none;
@@ -145,10 +145,10 @@ const currentPath = computed(function () {
 .data-account-context-bar.is-compact { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .context-selector { border-radius: 6px; color: var(--ink-60); text-decoration: none; }
 .context-selector::before { content: ''; border-radius: 6px; background: color-mix(in srgb, var(--cream) 75%, transparent); }
-.context-selector:hover { color: var(--tea); }
+.context-selector:hover { color: var(--theme-strong-text, var(--tea)); }
 .context-selector:hover::before { background: var(--cream); }
-.context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.is-compact .context-error { color: var(--rouge); }
+.context-selector:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.is-compact .context-error { color: var(--theme-danger-text, var(--rouge)); }
 </style>
 <style scoped src="./dataAccountContextBarDesktop.css"></style>
 <style scoped src="./dataAccountContextBarMobile.css"></style>

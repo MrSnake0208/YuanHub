@@ -75,7 +75,7 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 .act-btn:disabled { cursor: not-allowed; opacity: 0.45; }
 .archive-workspace { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
 .archive-heading p { color: var(--ink-60); }
-.section-kicker { color: var(--accent-strong); }
+.section-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 .archive-format { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); }
 .archive-actions { border-top: 1px dashed var(--line); }
 .archive-import { border-radius: 12px; background: var(--surface); }
@@ -86,8 +86,8 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 .export-option input { accent-color: var(--accent); }
 .export-option b { color: var(--ink); }
 .export-option small { color: var(--ink-60); }
-.export-submit { border-color: var(--tea); background: var(--tea); color: var(--cream); }
-.export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--cream); }
+.export-submit { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
+.export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--on-strong); }
 </style>
 <style scoped src="./archiveExchangePanelDesktop.css"></style>
 <style scoped src="./archiveExchangePanelMobile.css"></style>

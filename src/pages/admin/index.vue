@@ -104,16 +104,16 @@ const toolGroups = computed(function () {
 .workbench-pin-hint { color: var(--ink-60); }
 .workbench-pin { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font: inherit; }
 .workbench-pin[aria-pressed="true"] { background: var(--yellow); }
-.workbench-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.workbench-pin:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .workbench-state {
   color: var(--ink-60);
-  background: rgba(255, 253, 246, .68);
+  background: var(--theme-surface, rgba(255, 253, 246, .68));
   border: 1px dashed var(--line);
   border-radius: 8px;
 }
 
 .workbench-state svg {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .workbench-state strong {
@@ -121,7 +121,7 @@ const toolGroups = computed(function () {
 }
 
 .workbench-state.error svg {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 
 .workbench-group {
@@ -129,7 +129,7 @@ const toolGroups = computed(function () {
 }
 
 .section-kicker {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .workbench-group h2 {
@@ -147,17 +147,17 @@ const toolGroups = computed(function () {
 
 .workbench-tool:hover {
   border-color: var(--accent);
-  box-shadow: 0 16px 30px -24px rgba(73, 59, 44, .52);
+  box-shadow: 0 16px 30px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.52);
 }
 
 .workbench-tool:focus-visible,
 .workbench-state .command:focus-visible {
-  outline: 3px solid rgba(91, 106, 140, .38);
+  outline: 3px solid var(--theme-info-line, rgba(91, 106, 140, .38));
   outline-offset: 3px;
 }
 
 .workbench-tool-icon {
-  color: var(--cream);
+  color: var(--on-strong);
   background: var(--tea);
   border-radius: 8px;
 }
@@ -167,7 +167,7 @@ const toolGroups = computed(function () {
 }
 
 .workbench-tool > svg {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 </style>
 <style scoped src="./adminWorkbenchDesktop.css"></style>

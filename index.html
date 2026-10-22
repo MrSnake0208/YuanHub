@@ -5,6 +5,47 @@
 <meta name="color-scheme" content="only light">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#F6EDD0">
+<script id="theme-init">
+// 首次绘制与运行时共用此控制器，避免刷新闪白或两套偏好解析规则。
+(() => {
+  const key = 'yh_theme'
+  const valid = value => ['light', 'dark', 'system'].includes(value)
+  let preference = 'light'
+  try {
+    const saved = localStorage.getItem(key)
+    if (valid(saved)) preference = saved
+  } catch (_) { /* 存储不可用时仍可在本次会话切换。 */ }
+  const media = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null
+  let resolved
+  function apply() {
+    resolved = preference === 'system' ? (media?.matches ? 'dark' : 'light') : preference
+    const root = document.documentElement
+    root.dataset.theme = resolved
+    root.style.colorScheme = resolved === 'dark' ? 'dark' : 'only light'
+    root.style.backgroundColor = resolved === 'dark' ? '#211e1a' : '#F6EDD0'
+    document.querySelector('meta[name="color-scheme"]').content = root.style.colorScheme
+    document.querySelector('meta[name="theme-color"]').content = root.style.backgroundColor
+    window.dispatchEvent(new Event('yuanhub:theme-change'))
+  }
+  window.yuanhubTheme = {
+    get preference() { return preference },
+    get resolved() { return resolved },
+    setPreference(value) {
+      if (!valid(value)) return
+      preference = value
+      try { localStorage.setItem(key, value) } catch (_) { /* 保留内存中的选择。 */ }
+      apply()
+    },
+    listen() {
+      const onChange = () => { if (preference === 'system') apply() }
+      media?.addEventListener('change', onChange)
+      onChange()
+      return () => media?.removeEventListener('change', onChange)
+    }
+  }
+  apply()
+})()
+</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -29,17 +70,18 @@
    因此看起来是「网站正在启动」，而不是另一屏。
    首次导航完成后由 src/utils/startupFeedback.js 立即从 DOM 移除，
    并且 pointer-events:none、z-index 低于所有应用浮层，绝不会遮挡已渲染页面。 */
+html[data-theme="dark"] #startup-splash{--theme-text:#f2e7d8;--theme-muted:#d2c4b2;--theme-wash-strong:rgba(242,231,216,.12)}
 #startup-splash{
   position:fixed;inset:0;z-index:5;display:grid;place-content:center;justify-items:center;
   gap:14px;pointer-events:none;opacity:0;
   animation:startup-splash-in .3s ease-out .4s both;
-  color:#493B2C;
+  color:var(--theme-text,#493B2C);
   font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
 }
 #startup-splash img{width:64px;height:64px;border-radius:16px}
-#startup-splash p{font-size:14px;font-weight:600;letter-spacing:.08em;color:rgba(73,59,44,.78)}
+#startup-splash p{font-size:14px;font-weight:600;letter-spacing:.08em;color:var(--theme-muted,rgba(73,59,44,.78))}
 #startup-splash i{display:block;width:132px;height:4px;border-radius:999px;overflow:hidden;
-  background:rgba(255,248,236,.75);box-shadow:0 2px 8px rgba(73,59,44,.1)}
+  background:var(--theme-wash-strong,rgba(255,248,236,.75));box-shadow:0 2px 8px rgba(73,59,44,.1)}
 #startup-splash i::after{content:'';display:block;width:42%;height:100%;border-radius:999px;
   background:linear-gradient(90deg,transparent,#D78935,#DFB863,transparent);
   animation:startup-splash-sweep .9s linear infinite}

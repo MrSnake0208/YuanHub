@@ -46,12 +46,12 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 3px 12px rgb(73 59 44 / 15%);
+  box-shadow: 0 3px 12px rgba(var(--theme-shadow-rgb, 73, 59, 44), .15);
   cursor: pointer;
 }
 .back-to-top:hover,
 .back-to-top:active { background: var(--yellow); }
-.back-to-top:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.back-to-top:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 @media (min-width: 1081px) {
   .back-to-top { right: calc(28px + env(safe-area-inset-right, 0px)); }
 }

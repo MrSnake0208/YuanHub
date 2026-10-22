@@ -134,13 +134,13 @@ onMounted(function () { load(1) })
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .audit-toolbar { border-block: 1px solid var(--line); color: var(--ink-60) }
 .icon-command { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
-.command:focus-visible,.icon-command:focus-visible,.state button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.command:focus-visible,.icon-command:focus-visible,.state button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 .state { color: var(--ink-60) }
-.state.error { color: var(--rouge) }
-.audit-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.state.error { color: var(--theme-danger-text, var(--rouge)) }
+.audit-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 .audit-table { border-collapse: collapse; background: var(--surface) }
 .audit-table th,.audit-table td { border-bottom: 1px solid var(--line) }
-.audit-table th { background: var(--tea); color: var(--cream) }
+.audit-table th { background: var(--tea); color: var(--on-strong) }
 .audit-table code,.audit-table time { color: var(--ink-60) }
 .audit-table time { color: var(--ink) }
 .action-tag { background: var(--yellow); border-radius: 6px }

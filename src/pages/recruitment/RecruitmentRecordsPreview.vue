@@ -63,9 +63,9 @@ const rows = computed(() => {
 <style scoped src="./recruitmentRecordColors.css"></style>
 <style scoped>
 .pool-preview { height: auto; overflow-y: auto; min-width: 0; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--cream) 45%, var(--surface)); border-radius: 0 0 16px 16px; }
-.pool-preview:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pool-preview:focus-visible, button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -2px; }
 .preview-note, .preview-error { margin: 0 0 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; color: var(--ink-60); }
-.preview-error { color: var(--rouge); }
+.preview-error { color: var(--theme-danger-text, var(--rouge)); }
 button { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); padding: 6px 10px; font: inherit; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 .preview-more { margin-top: 12px; font-size: 12px; }

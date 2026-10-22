@@ -244,8 +244,8 @@ onBeforeUnmount(() => { alive = false; generation++; readGeneration++ })
 <style src="./calendarMobile.css"></style>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.calendar-editor-identity h2 { color: var(--tea); }
-.calendar-admin :is(button,a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.calendar-editor-identity h2 { color: var(--theme-strong-text, var(--tea)); }
+.calendar-admin :is(button,a):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 </style>
 <style scoped src="./calendarAdminDesktop.css"></style>
 <style scoped src="./calendarAdminMobile.css"></style>
