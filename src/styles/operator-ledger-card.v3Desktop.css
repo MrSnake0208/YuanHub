@@ -101,6 +101,11 @@
     text-shadow: 0 0 4px var(--surface), 0 0 12px var(--surface);
   }
 
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3:not(.is-long-name) {
+    max-height: none;
+    white-space: nowrap;
+  }
+
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
     max-height: 104px;
     max-width: 52px;
