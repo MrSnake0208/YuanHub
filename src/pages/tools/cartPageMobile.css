@@ -37,10 +37,10 @@
 .cart-version-hint { margin: 0 0 8px; }
 .cart-filters { margin-top: 8px; }
 .cart-search-row { position: relative; gap: 8px 12px; }
-.cart-category { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.cart-category select { min-height: 44px; max-width: 100%; padding: 8px 12px; font: inherit; }
-.cart-sort, .cart-category { flex: 0 1 auto; min-width: 0; }
-.cart-sort select, .cart-category select { min-width: 0; }
+:is(.cart-category,.cart-source) { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+:is(.cart-category,.cart-source) select { min-height: 44px; max-width: 100%; padding: 8px 12px; font: inherit; }
+.cart-sort, :is(.cart-category,.cart-source) { flex: 0 1 auto; min-width: 0; }
+.cart-sort select, :is(.cart-category,.cart-source) select { min-width: 0; }
 .cart-more-filters { position: static; }
 .cart-advanced-content { position: absolute; inset: calc(100% + 6px) 0 auto auto; z-index: var(--z-popover); width: max-content; max-width: min(360px, calc(100vw - 32px)); padding: 12px; }
 .cart-more-filters .row { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
@@ -60,11 +60,11 @@
   .cart-rate-settings > summary { min-height: 36px; flex-wrap: wrap; }
   .cart-filters { margin-block: 6px 10px; }
   .cart-search-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .cart-search, .cart-more-filters { grid-column: 1 / -1; }
+  .cart-search, .cart-more-filters, .cart-source { grid-column: 1 / -1; }
   .cart-search { width: auto; }
-  .cart-sort, .cart-category { width: auto; flex: 1 1 140px; }
-  .cart-sort, .cart-category { gap: 6px; font-size: 12px; }
-  .cart-sort select, .cart-category select { flex: 1; width: 0; min-height: 40px; padding: 6px 8px; }
+  .cart-sort, :is(.cart-category,.cart-source) { width: auto; flex: 1 1 140px; }
+  .cart-sort, :is(.cart-category,.cart-source) { gap: 6px; font-size: 12px; }
+  .cart-sort select, :is(.cart-category,.cart-source) select { flex: 1; width: 0; min-height: 40px; padding: 6px 8px; }
   .cart-more-filters > summary { min-height: 36px; }
   .cart-mbar { flex-wrap: nowrap; gap: 8px; padding-block: 8px calc(8px + env(safe-area-inset-bottom)); }
   .cart-mbar .sum { min-width: 0; }

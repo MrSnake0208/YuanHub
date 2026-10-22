@@ -12,18 +12,19 @@ export function parseReferenceRate(value) {
   return Number.isFinite(rate) && rate >= 0 ? rate : null
 }
 
-export function displayPackages(packages, { query, category, drawFilter, selectedOnly, sortMode, cart, customIds }) {
+export function displayPackages(packages, { query, category, drawFilter, selectedOnly, sortMode, cart, customIds, customOnly = false }) {
   const name = query.trim().toLocaleLowerCase()
   const visible = packages.filter(pkg => {
+    if (customOnly && !customIds.has(pkg.id)) return false
     if (name && !pkg.name.toLocaleLowerCase().includes(name)) return false
     if (category === '自定义' ? !customIds.has(pkg.id) : category !== '全部' && pkg.category !== category) return false
     if (drawFilter === 'hasDraws' && !(pkg.draws > 0)) return false
     if (drawFilter === 'noDraws' && pkg.draws !== 0) return false
     return !selectedOnly || cart[pkg.id] > 0
   })
-  if (sortMode === 'price') visible.sort((a, b) => a.calculatedPriceCny - b.calculatedPriceCny)
+  if (sortMode === 'price') visible.sort((a, b) => (a.calculatedPriceCny ?? Infinity) - (b.calculatedPriceCny ?? Infinity))
   if (sortMode === 'drawCost') visible.sort((a, b) => {
-    const aHasDraws = a.draws > 0, bHasDraws = b.draws > 0
+    const aHasDraws = a.draws > 0 && a.calculatedPriceCny != null, bHasDraws = b.draws > 0 && b.calculatedPriceCny != null
     if (aHasDraws !== bHasDraws) return aHasDraws ? -1 : 1
     if (!aHasDraws) return 0
     return a.calculatedPriceCny / a.draws - b.calculatedPriceCny / b.draws

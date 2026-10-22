@@ -39,7 +39,7 @@
                     <b>{{ p.name }}</b>
                     <span class="meta">
                       {{ p.version === 'daihao' ? '代号鸢' : '如鸢' }}
-                      <template v-if="p.summary"> · ¥{{ Number(p.summary.total_cny || 0).toFixed(2) }} · {{ p.summary.total_draws || 0 }} 抽</template>
+                      <template v-if="p.summary"> · {{ formatMoney(p.summary.total_amount ?? p.summary.total_cny ?? 0, p.summary.currency || 'CNY') }} · {{ p.summary.total_draws || 0 }} 抽</template>
                     </span>
                   </button>
                   <button type="button" class="pbtn plan-load" :aria-label="`加载方案「${p.name}」`" @click="$emit('load', p)">加载</button>
@@ -84,6 +84,7 @@
 import { ref } from 'vue'
 import { X, Cloud, HardDrive, LogIn, Loader2, Pencil, Trash2, Check } from '@lucide/vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
+import { formatMoney } from '../../utils/ledgerPricing.js'
 
 defineProps({
   plans: { type: Array, default: () => [] },
