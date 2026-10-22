@@ -637,7 +637,7 @@
                     <input
                       v-model="stockDraft[e.id]"
                       class="stock-count-input"
-                      type="number"
+                      :type="e.id === 'baijinbi' ? 'text' : 'number'"
                       inputmode="numeric"
                       min="0"
                       max="2147483647"
@@ -3060,7 +3060,8 @@ function isValidStockCount(value) {
 function adjustStockCount(id, delta) {
   const current = Number(stockDraft.value[id]);
   if (!Number.isInteger(current)) return;
-  stockDraft.value[id] = Math.min(2147483647, Math.max(0, current + delta));
+  const step = id === "baijinbi" ? 10 : 1;
+  stockDraft.value[id] = Math.min(2147483647, Math.max(0, current + delta * step));
 }
 
 function startSubsectionStockEdit(subcategory) {
