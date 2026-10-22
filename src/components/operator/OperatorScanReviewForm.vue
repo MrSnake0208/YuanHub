@@ -51,7 +51,7 @@
       </fieldset>
       <p v-if="!rows.some(row => row.pending)">当前响应没有可定位的待核字段，请重新读回档案并核对技术详情。</p>
       <p role="status">本次选中 {{ selectedCount }} 项 · 仍待核 {{ pendingCount - selectedCount }} 项。预览不会写入档案。</p>
-      <div class="actions"><button class="primary" type="submit" :disabled="busy || currentLoading || !!currentError || !selectedCount">{{ busy ? '处理中…' : '校验并预览' }}</button><button type="button" :disabled="busy" @click="$emit('close')">取消复核</button><button type="button" :disabled="busy" @click="$emit('dismiss')">已另行处理，关闭提醒</button></div>
+      <div class="actions"><button class="primary" type="submit" :disabled="busy || currentLoading || !!currentError || !selectedCount">{{ busy ? '处理中…' : '校验并预览' }}</button><button type="button" :disabled="busy" @click="$emit('close')">取消复核</button><button type="button" :disabled="busy" @click="$emit('dismiss')">已完成复核</button></div>
     </form>
     <details class="technical"><summary>技术详情</summary>
       <p>记录：{{ review.record_id }} · 密探标识：{{ review.operator_id }}</p>

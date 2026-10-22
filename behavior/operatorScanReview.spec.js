@@ -74,7 +74,7 @@ beforeEach(async () => {
 })
 afterEach(() => { for (const wrapper of wrappers) wrapper.unmount(); document.body.innerHTML = ''; vi.useRealTimers(); vi.unstubAllGlobals() })
 
-async function render() {
+async function render(openReview = true) {
   const { default: OperatorPage } = await import('../src/pages/operator/index.vue')
   const { default: AppDialog } = await import('../src/components/AppDialog.vue')
   const host = mount({ components: { OperatorPage, AppDialog }, template: '<OperatorPage /><AppDialog />' }, { attachTo: document.body, global: {
@@ -84,8 +84,10 @@ async function render() {
   wrappers.push(host)
   await flushPromises()
   const page = host.getComponent(OperatorPage)
-  await page.get('.scan-review-panel button').trigger('click')
-  await flushPromises()
+  if (openReview) {
+    await page.get('.scan-review-panel button').trigger('click')
+    await flushPromises()
+  }
   return page
 }
 const button = (page, text) => page.findAll('button').find(item => item.text() === text)
@@ -141,7 +143,7 @@ it('关闭提醒失败在复核区展示原因，重试成功后退出且不写�
   api.closeOperatorScanReview.mockRejectedValueOnce(new Error('连接中断'))
   const page = await render()
   const dismiss = async () => {
-    await button(page, '已另行处理，关闭提醒').trigger('click'); await flushPromises()
+    await button(page.get('.scan-review-form'), '已完成复核').trigger('click'); await flushPromises()
     document.querySelector('.dlg-btn.primary').click(); await flushPromises()
   }
   await dismiss()
@@ -407,4 +409,56 @@ it('安全：退出登录及卸载后旧请求不产生关闭提醒或后续写�
   pending.resolve(receipt(body)); await flushPromises()
   expect(api.importOperator).not.toHaveBeenCalled()
   expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
+})
+
+
+it('列表直接完成复核，只关闭指定记录；下一次新扫描仍显示', async () => {
+  const page = await render(false)
+  const nextReview = { ...fixture.review, record_id: 'scan-next' }
+  api.listOperatorScanReviews.mockResolvedValue([nextReview])
+  await button(page.get('.scan-review-panel'), '已完成复核').trigger('click')
+  await flushPromises()
+  document.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  expect(api.closeOperatorScanReview).toHaveBeenCalledExactlyOnceWith({
+    accountId: fixture.review.account_id, recordId: fixture.review.record_id, operatorId: fixture.review.operator_id,
+  })
+  expect(api.importOperator).not.toHaveBeenCalled()
+  expect(page.find('.scan-review-form').exists()).toBe(false)
+  expect(page.get('.scan-review-panel h2').text()).toContain('1')
+  api.listOperatorScanReviews.mockResolvedValue([])
+  await button(page.get('.scan-review-panel'), '已完成复核').trigger('click')
+  await flushPromises()
+  document.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  expect(api.closeOperatorScanReview).toHaveBeenLastCalledWith({
+    accountId: nextReview.account_id, recordId: 'scan-next', operatorId: nextReview.operator_id,
+  })
+  expect(page.find('.scan-review-panel').exists()).toBe(false)
+})
+
+it('列表完成复核失败保留提醒，重试后消除', async () => {
+  const page = await render(false)
+  api.closeOperatorScanReview.mockRejectedValueOnce(new Error('连接中断'))
+  const complete = async () => {
+    await button(page.get('.scan-review-panel'), '已完成复核').trigger('click')
+    await flushPromises()
+    document.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  }
+  await complete()
+  expect(page.get('.scan-review-panel').text()).toContain('连接中断')
+  expect(page.get('.scan-review-panel li').exists()).toBe(true)
+  api.listOperatorScanReviews.mockResolvedValue([])
+  await complete()
+  expect(page.find('.scan-review-panel').exists()).toBe(false)
+  expect(api.importOperator).not.toHaveBeenCalled()
+})
+
+it('列表完成复核确认期间切换 A→B→A，不关闭旧账号提醒', async () => {
+  const page = await render(false)
+  await button(page.get('.scan-review-panel'), '已完成复核').trigger('click')
+  await flushPromises()
+  activeAccount.id = 'acc-review-b'; await flushPromises()
+  activeAccount.id = 'acc-review-a'; await flushPromises()
+  document.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
+  expect(page.find('.scan-review-panel').exists()).toBe(true)
 })
