@@ -4,6 +4,8 @@
 适用页面：`/operator`、`/operator/quick`，以及库存页的密探心纸流水联动  
 更新时间：2026-10-05
 
+> 2026-10-22：新增[命盘快捷选择](./operator-disc-presets.md)，一盘、二盘共用两款游戏合并统计的完整 Top 3，支持填入当前/目标草稿及撤销。
+
 > **当前养成专项更新：**「当前养成」Tab 的最新职责、养成状态、任意人数委托、双命盘、已装备星石及快捷提升方案，以 [`operator-current-workbench-implementation-plan.md`](./operator-current-workbench-implementation-plan.md) 为准；正式数据格式见 [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md)，后端配合见 [`backend-operator-current-workbench-spec.md`](./backend-operator-current-workbench-spec.md)，自动采集行动规划见 [`operator-auto-scan-integration-plan.md`](./operator-auto-scan-integration-plan.md)。当前养成展示并允许快捷卸除已装备星石，但不在此处进行替换、升级或多方案管理；双命盘仍无“当前盘”语义。
 
 ## 1. 产品定位

@@ -9,14 +9,14 @@
   .lobby-context { margin-left: auto; min-width: 0; max-width: 100%; }
   .lobby-actions { flex: none; }
   .lobby-scene { position: relative; display: flex; align-items: center; min-height: 106px; }
-  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 220px); min-width: 0; padding: 16px 0; }
+  .lobby-copy { position: relative; z-index: 2; width: calc(100% - 262px); min-width: 0; padding: 16px 0; }
   .lobby-greeting { font-size: 28px; letter-spacing: .05em; }
   .lobby-status { margin-top: 3px; font-size: 12px; overflow-wrap: anywhere; }
   .lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin-top: 4px; font-size: 12px; }
   .lobby-duty button { min-height: 28px; padding: 3px 2px; }
   .lobby-save-notice { margin-top: 4px; font-size: 12px; }
-  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 210px; height: 122px; overflow: hidden; }
-  .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
+  .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 252px; height: 122px; overflow: hidden; }
+  .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 0; transform: scale(1.15); transform-origin: center top; }
   .lobby-art-error { padding: 20px 4px; font-size: 12px; text-align: center; }
 .duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border-radius: 20px; }
 .duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

@@ -2,6 +2,7 @@ import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import discPresets from '../src/data/operatorDiscPresets.json'
 
 const events = vi.hoisted(() => ({ handler: null }))
 vi.mock('vue-router', () => ({
@@ -103,6 +104,48 @@ async function render() {
 }
 const discs = ['A', 'B', 'C', 'D', 'E'].map(ot_name => ({ ot_name, abbreviation: ot_name, color: '金' }))
 const loadout = (id, names, status = 'unmarked', targets = []) => ({ id, name: id, discs: names.map(ot_name => ({ ot_name })), status, target_discs: targets.map(ot_name => ({ ot_name })) })
+it('快捷命盘只填入选中组合和编辑对象，保留手动名称与标记，保存前不写接口', async () => {
+  const id = 'char_001_yangxiu'
+  const choices = discPresets[id]
+  const names = [...new Set(choices.flat())]
+  api.getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator(id), discs: names.map(ot_name => ({ ot_name, color: '金' })) }] })
+  api.getOperatorCurrent.mockResolvedValue(response({ [id]: entry(undefined, {
+    disc_loadouts: [loadout('手动名称', [names[0]], 'perfect'), loadout('另一盘', [names[1]], 'reroll', [names[2]])],
+  }) }))
+  const wrapper = await render()
+  await wrapper.findAll('[role="tab"]').find(tab => tab.text() === '养成总览').trigger('click')
+  await flushPromises()
+  await wrapper.get('[aria-label="编辑' + id + '"]').trigger('click'); await flushPromises()
+  await wrapper.get('#operator-editor-tab-discs').trigger('click')
+  await wrapper.findAll('.disc-preset')[0].trigger('click')
+  expect(wrapper.vm.editForm.discLoadouts[0].discNames).toEqual(choices[0])
+  expect(wrapper.vm.editForm.discLoadouts[0].name).toBe('手动名称')
+  expect(wrapper.vm.editForm.discLoadouts[0].status).toBe('perfect')
+  await wrapper.get('.disc-preset-feedback button').trigger('click')
+  expect(wrapper.vm.editForm.discLoadouts[0].discNames).toEqual([names[0]])
+  await wrapper.findAll('.disc-preset')[0].trigger('click')
+  await wrapper.get('#disc-loadout-tab-1').trigger('click')
+  expect(wrapper.find('.disc-preset-feedback button').exists()).toBe(false)
+  await wrapper.get('.disc-auto-name').trigger('click')
+  await wrapper.findAll('.disc-preset')[1].trigger('click')
+  expect(wrapper.vm.editForm.discLoadouts[1].discNames).toEqual(choices[1])
+  expect(wrapper.vm.editForm.discLoadouts[1].name).toBe(choices[1].join(' · '))
+  await wrapper.findAll('.disc-pick-mode button').find(button => button.text() === '编辑目标命盘').trigger('click')
+  expect(wrapper.find('.disc-preset-feedback button').exists()).toBe(false)
+  await wrapper.findAll('.disc-preset')[2].trigger('click')
+  expect(wrapper.vm.editForm.discLoadouts.map(l => l.discNames)).toEqual([choices[0], choices[1]])
+  expect(wrapper.vm.editForm.discLoadouts.map(l => l.targetDiscNames)).toEqual([[], choices[2]])
+  expect(wrapper.vm.editForm.discLoadouts[1].status).toBe('reroll')
+  expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
+  api.patchOperatorCurrent.mockImplementation(async ({ patch }) => ({ entry: entry(undefined, { ...patch, revision: 2 }) }))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  expect(api.patchOperatorCurrent).toHaveBeenCalledTimes(1)
+  const patch = api.patchOperatorCurrent.mock.calls[0][0].patch
+  expect(patch.disc_loadouts.map(l => l.discs.map(d => d.ot_name))).toEqual([choices[0], choices[1]])
+  expect(patch.disc_loadouts.map(l => l.target_discs.map(d => d.ot_name))).toEqual([[], choices[2]])
+  wrapper.unmount()
+})
+
 async function showRoster(entries) {
   api.getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator(), discs }, { ...operator('other'), discs }] })
   api.getOperatorCurrent.mockResolvedValue(response(entries))
