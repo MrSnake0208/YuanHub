@@ -938,25 +938,6 @@
                   class="batch-status-bar"
                   aria-label="批量设置养成状态"
                 >
-                <div class="batch-quick-filters" aria-label="批量快捷选中">
-                  <span class="batch-quick-title">批量快捷选中</span>
-                  <button
-                    v-for="filter in BATCH_QUICK_FILTERS"
-                    :key="filter.key"
-                    type="button"
-                    :class="{ on: activeQuickFilterKeys.has(filter.key) }"
-                    :aria-pressed="activeQuickFilterKeys.has(filter.key)"
-                    :disabled="
-                      (!quickFilterCounts[filter.key] &&
-                        !activeQuickFilterKeys.has(filter.key)) ||
-                      annotationBusyIds.size > 0
-                    "
-                    @click="batchQuickSelect(filter.key)"
-                  >
-                    {{ filter.label
-                    }}<small>{{ quickFilterCounts[filter.key] }}</small>
-                  </button>
-                </div>
                 <label
                   class="batch-select-all"
                   :class="{
@@ -3171,7 +3152,6 @@ import {
   matchesOperatorGrowthFilters,
   matchesOperatorSearch,
   matchesProfSubFilter,
-  operatorStarNumber,
   subProfList,
   subProfOptions as deriveSubProfOptions,
 } from "../../utils/operatorFilters.js";
@@ -3387,37 +3367,6 @@ const batchStatusBusy = ref(false);
 const subjectiveRefreshKey = ref(0);
 const batchSelectMode = ref(false);
 const batchSelectionBase = ref(new Set());
-const activeQuickFilterKeys = ref(new Set());
-const BATCH_QUICK_FILTERS = [
-  {
-    key: "level100",
-    label: "等级 100",
-    match: function (entry) {
-      return Number(entry.level) === 100;
-    },
-  },
-  {
-    key: "elite17",
-    label: "修为 17",
-    match: function (entry) {
-      return Number(entry.elite) === 17;
-    },
-  },
-  {
-    key: "star2",
-    label: "二星以上",
-    match: function (entry) {
-      return operatorStarNumber(entry) >= 2;
-    },
-  },
-  {
-    key: "star4",
-    label: "四星以上",
-    match: function (entry) {
-      return operatorStarNumber(entry) >= 4;
-    },
-  },
-];
 let annotationLoadSeq = 0;
 let annotationScopeSeq = 0;
 const cardCombatDrafts = ref({});
@@ -3655,7 +3604,6 @@ watch(
     upgradeReadyFilter.value = "";
     batchSelectMode.value = false;
     batchSelectionBase.value = new Set();
-    activeQuickFilterKeys.value = new Set();
     annotationBusyIds.value = new Set();
     loadOperatorAnnotations();
     if (
@@ -5201,25 +5149,10 @@ function matchesCurrentFilters(entry) {
   );
 }
 
-const currentQuickFilterCandidates = computed(function () {
-  return ownedCurrentEntries.value.filter(matchesCurrentFilters);
-});
-
 const filteredCurrent = computed(function () {
-  const quickKeys = Array.from(activeQuickFilterKeys.value);
-  return currentQuickFilterCandidates.value
+  return ownedCurrentEntries.value
+    .filter(matchesCurrentFilters)
     .filter(entry => !onlyReroll.value || hasRerollDisc(entry.discLoadouts))
-    .filter(function (entry) {
-      return (
-        quickKeys.length === 0 ||
-        quickKeys.every(function (key) {
-          const filter = BATCH_QUICK_FILTERS.find(function (item) {
-            return item.key === key;
-          });
-          return Boolean(filter && filter.match(entry));
-        })
-      );
-    })
     .sort(compareCurrentEntries);
 });
 
@@ -5247,15 +5180,6 @@ const batchAllSelected = computed(function () {
 });
 const batchIndeterminate = computed(function () {
   return batchSelectedCount.value > 0 && !batchAllSelected.value;
-});
-const quickFilterCounts = computed(function () {
-  const counts = {};
-  BATCH_QUICK_FILTERS.forEach(function (filter) {
-    counts[filter.key] = currentQuickFilterCandidates.value.filter(
-      filter.match,
-    ).length;
-  });
-  return counts;
 });
 
 function growthFilterParts(filters) {
@@ -5286,15 +5210,6 @@ const currentFilterSuffix = computed(function () {
   parts.push(...growthFilterParts(growthFilters.value));
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
   if (upgradeReadyFilter.value === "huaji") parts.push("「可提升化极」");
-  const quickLabels = Array.from(activeQuickFilterKeys.value)
-    .map(function (key) {
-      const filter = BATCH_QUICK_FILTERS.find(function (item) {
-        return item.key === key;
-      });
-      return filter ? filter.label : "";
-    })
-    .filter(Boolean);
-  if (quickLabels.length) parts.push("快捷「" + quickLabels.join(" + ") + "」");
   return parts.length ? parts.join(" · ") : "当前条件";
 });
 
@@ -5312,8 +5227,7 @@ const hasCurrentFilters = computed(function () {
     subProfFilter.value !== "all" ||
     workbenchStatusFilter.value !== defaultStatusFilter ||
     hasGrowthDrafts.value ||
-    Boolean(upgradeReadyFilter.value) ||
-    activeQuickFilterKeys.value.size > 0
+    Boolean(upgradeReadyFilter.value)
   );
 });
 
@@ -5327,7 +5241,6 @@ function resetCurrentFilters() {
   workbenchStatusFilter.value = defaultStatusFilter;
   growthFilters.value = emptyGrowthFilters();
   upgradeReadyFilter.value = "";
-  activeQuickFilterKeys.value = new Set();
   batchSelectionBase.value = new Set();
 }
 
@@ -6890,32 +6803,10 @@ function setOperatorStatusAndClose(entry, value, event) {
   if (details) details.open = false;
 }
 
-function batchQuickSelect(key) {
-  const filter = BATCH_QUICK_FILTERS.find(function (item) {
-    return item.key === key;
-  });
-  if (!filter) return;
-  const nextKeys = new Set(activeQuickFilterKeys.value);
-  if (nextKeys.has(key)) {
-    nextKeys.delete(key);
-  } else {
-    if (batchSelectionBase.value.size === 0) {
-      batchSelectionBase.value = new Set(
-        filteredCurrent.value.map(function (entry) {
-          return entry.id;
-        }),
-      );
-    }
-    nextKeys.add(key);
-  }
-  activeQuickFilterKeys.value = nextKeys;
-}
-
 function toggleBatchSelectMode() {
   batchSelectMode.value = !batchSelectMode.value;
   if (!batchSelectMode.value) {
     batchSelectionBase.value = new Set();
-    activeQuickFilterKeys.value = new Set();
   }
 }
 
@@ -6940,7 +6831,6 @@ function batchToggleAll(event) {
 
 function clearBatchSelected() {
   batchSelectionBase.value = new Set();
-  activeQuickFilterKeys.value = new Set();
 }
 
 async function batchSetStatus(value) {
@@ -6958,7 +6848,6 @@ async function batchSetStatus(value) {
   const failedIds = entries.filter((entry, index) => !results[index]).map(entry => entry.id);
   const succeededCount = entries.length - failedIds.length;
   batchSelectionBase.value = new Set(failedIds);
-  activeQuickFilterKeys.value = new Set();
   annotationNotice.value = "成功 " + succeededCount + " 位，失败 " + failedIds.length + " 位；" +
     (value === "discarded" ? "成功项已移至已弃置，练度保留" : "成功项已设为" + statusLabel(value));
   annotationNoticeTarget.value = succeededCount ? value : "";
@@ -10837,40 +10726,6 @@ onBeforeUnmount(function () {
 .batch-status-bar {
   border-top: 1px dashed var(--line);
   background: color-mix(in srgb, var(--cream) 65%, var(--surface));
-}
-.batch-quick-title {
-  color: var(--tea);
-}
-.batch-quick-filters button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--tea);
-  cursor: pointer;
-  transition:
-    border-color 0.2s var(--ease),
-    background 0.2s var(--ease),
-    color 0.2s var(--ease);
-}
-.batch-quick-filters button small {
-  color: var(--ink-60);
-}
-.batch-quick-filters button:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--cream);
-  color: var(--accent-strong);
-}
-.batch-quick-filters button.on {
-  border-color: var(--tea);
-  background: var(--tea);
-  color: var(--cream);
-}
-.batch-quick-filters button.on small {
-  color: var(--cream);
-}
-.batch-quick-filters button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 .batch-select-all {
   color: var(--ink-60);

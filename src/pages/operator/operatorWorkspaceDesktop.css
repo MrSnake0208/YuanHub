@@ -923,41 +923,6 @@
   gap: 8px;
   padding: 10px 14px;
 }
-.batch-quick-filters {
-  display: flex;
-  min-width: 100%;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-bottom: 4px;
-}
-.batch-quick-title {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  padding-right: 4px;
-  font-size: 11px;
-  font-weight: 800;
-}
-.batch-quick-filters button {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font: 800 11.5px var(--font-b);
-  white-space: nowrap;
-}
-.batch-quick-filters button small {
-  display: inline-grid;
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-  place-items: center;
-  padding: 0;
-  font: 800 10px var(--font-d);
-}
 .batch-select-all {
   display: inline-flex;
   min-height: 30px;
