@@ -92,3 +92,40 @@ it('restore requires preview, defaults to preserve, and account change invalidat
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   expect(wrapper.find('.relationships-preview').exists()).toBe(false); expect(wrapper.find('textarea').element.value).toBe('')
 })
+const sharedRules = {
+  op: { trust_owner_id: 'op', trust: { max: 2000, complete: true, verified_on: '2026-10-22', source: 'fixture', milestones: Array.from({ length: 15 }, (_, i) => ({ at: i < 10 ? (i + 1) * 100 : 1200 + (i - 10) * 200, rewards: [{ item_key: 'coin', name: '测试币', quantity: 1 }] })) }, rumors: null },
+  sp: { trust_owner_id: 'op', rumors: null },
+}
+const sharedProps = { ...props, operators: [...props.operators, { id: 'sp', name: '电影形态', rarity: 5 }], allOperators: [...props.allOperators, { id: 'sp', name: '电影形态', rarity: 5 }] }
+it('legacy movie-only trust displays the common 15-level profile and counts rewards once', async () => {
+  getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: sharedRules })
+  getRelationships.mockResolvedValue(remote('a', 1, { sp: { trust: 1800 } }))
+  const wrapper = mount(OperatorRelationships, { props: sharedProps }); wrappers.push(wrapper); await flushPromises()
+  expect(wrapper.text()).toContain('信赖等级 14 / 15')
+  expect(wrapper.text()).toContain('信赖可计算 1 / 1 组')
+  expect(wrapper.get('.relationships-summary').text()).toContain('测试币 × 1')
+  expect(patchRelationships).not.toHaveBeenCalled()
+  await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
+  expect(wrapper.find('.relationship-editor input').element.value).toBe('1800')
+})
+it('legacy conflicts need explicit confirmation, failed saves retain drafts, successful clear is explicit null', async () => {
+  getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: sharedRules })
+  getRelationships.mockResolvedValue(remote('a', 1, { op: { trust: 100 }, sp: { trust: 200, rumors: 3 } }))
+  const wrapper = mount(OperatorRelationships, { props: sharedProps }); wrappers.push(wrapper); await flushPromises()
+  expect(wrapper.text()).toContain('历史记录冲突'); expect(wrapper.text()).toContain('测试密探 100、电影形态 200')
+  expect(wrapper.text()).toContain('信赖可计算 0 / 1 组')
+  await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
+  await wrapper.find('.relationship-editor input').setValue('150')
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(patchRelationships).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('请先勾选已核对')
+  await wrapper.find('.relationship-editor input[type="checkbox"]').setValue(true)
+  patchRelationships.mockRejectedValueOnce(new Error('offline'))
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(wrapper.find('.relationship-editor input').element.value).toBe('150')
+  expect(wrapper.find('.relationship-editor input[type="checkbox"]').element.checked).toBe(true)
+  await wrapper.find('.relationship-editor input').setValue('')
+  patchRelationships.mockResolvedValueOnce(remote('a', 2, { sp: { rumors: 3 } }))
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(patchRelationships.mock.calls.at(-1)[1].entries).toEqual({ op: { trust: null } })
+  expect(wrapper.text()).not.toContain('历史记录冲突')
+})

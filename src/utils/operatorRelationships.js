@@ -3,8 +3,15 @@ export const RELATIONSHIP_BACKUP_LIMIT = 1024 * 1024
 export function relationshipOwner(id, kind, rules) {
   return kind === 'trust' ? rules[id]?.trust_owner_id || id : id
 }
+export function relationshipTrustState(id, records, rules) {
+  const owner = relationshipOwner(id, 'trust', rules)
+  const ids = new Set([owner, ...Object.keys(rules).filter(key => relationshipOwner(key, 'trust', rules) === owner)])
+  const sources = [...ids].filter(key => records[key]?.trust != null).map(key => ({ id: key, value: records[key].trust }))
+  const conflict = new Set(sources.map(source => source.value)).size > 1
+  return { sources, conflict, value: conflict ? null : sources[0]?.value ?? null }
+}
 export function relationshipValue(id, kind, records, rules) {
-  return records[relationshipOwner(id, kind, rules)]?.[kind] ?? null
+  return kind === 'trust' ? relationshipTrustState(id, records, rules).value : records[id]?.[kind] ?? null
 }
 export function parseRelationshipValue(value) {
   if (value === '' || value == null) return null
@@ -16,22 +23,24 @@ export function relationshipProgress(value, rule) {
   if (!rule || !rule.complete) return { status: 'missing', remaining: null, next: null }
   if (!Number.isSafeInteger(value) || value < 0 || value > rule.max) return { status: 'invalid', remaining: null, next: null }
   const pending = rule.milestones.filter(item => item.at > value)
-  return { status: 'ready', remaining: pending.flatMap(item => item.rewards), next: pending[0] || null }
+  return { status: 'ready', remaining: pending.flatMap(item => item.rewards), next: pending[0] || null, level: rule.milestones.length - pending.length, maxLevel: rule.milestones.length }
 }
 export function relationshipSummary(operators, records, rules) {
   const seen = new Set(), rewards = new Map()
-  let recorded = 0, covered = 0, missing = 0, overflow = false
+  let recorded = 0, covered = 0, missing = 0, overflow = false, trustTotal = 0, trustCovered = 0, trustConflicts = 0
   for (const operator of operators) {
     let hasValue = false, complete = true
     for (const kind of RELATIONSHIP_KINDS) {
       const owner = relationshipOwner(operator.id, kind, rules)
-      const value = records[owner]?.[kind] ?? null
+      const trust = kind === 'trust' ? relationshipTrustState(operator.id, records, rules) : null
+      const value = relationshipValue(operator.id, kind, records, rules)
       const progress = relationshipProgress(value, rules[owner]?.[kind])
-      if (value != null) hasValue = true
+      if (value != null || trust?.sources.length) hasValue = true
       if (progress.status !== 'ready') complete = false
       const key = kind + ':' + owner
       if (seen.has(key)) continue
       seen.add(key)
+      if (kind === 'trust') { trustTotal++; if (progress.status === 'ready') trustCovered++; if (trust.conflict) trustConflicts++ }
       if (progress.status !== 'ready') { missing++; continue }
       for (const reward of progress.remaining) {
         const old = rewards.get(reward.item_key)
@@ -43,7 +52,7 @@ export function relationshipSummary(operators, records, rules) {
     if (hasValue) recorded++
     if (complete) covered++
   }
-  return { total: operators.length, recorded, covered, missing, overflow, rewards: overflow ? [] : [...rewards.values()] }
+  return { total: operators.length, recorded, covered, missing, overflow, trustTotal, trustCovered, trustConflicts, rewards: overflow ? [] : [...rewards.values()] }
 }
 export function makeRelationshipBackup(game, records) {
   return { format: 'yuanhub-relationships', schema_version: 1, game, entries: Object.entries(records).map(([operator_id, values]) => ({ operator_id, ...values })) }
@@ -83,7 +92,9 @@ export function previewRelationshipImport(incoming, current, rules, overwrite = 
     }
   }
   for (const [id, values] of Object.entries(normalized)) for (const [kind, value] of Object.entries(values)) {
-    const old = current[id]?.[kind]
+    const shared = kind === 'trust' ? relationshipTrustState(id, current, rules) : null
+    if (shared?.conflict) throw new Error('当前账号存在共享信赖冲突，请先在进度编辑中核对')
+    const old = relationshipValue(id, kind, current, rules)
     if (old === value) continue
     if (old != null) { conflicts++; if (!overwrite) continue }
     entries[id] ||= {}; entries[id][kind] = value; changes++
