@@ -27,7 +27,9 @@ it.each([390, 768, 1440])('月卡保存60+20、自定义与单独商店，摘要
   expect(wrapper.findAll('.condition-summary-card')[0].text()).toContain('未启用月卡')
   expect(button(wrapper, '查看将修改的日程').element.closest('fieldset').disabled).toBe(true)
   await save(wrapper)
-  const [sources, revision, done] = wrapper.emitted('save')[0]
+  const [sources, revision, done, scope] = wrapper.emitted('save')[0]
+  expect(scope).toBe('monthly')
+  expect(wrapper.get('.settings-save').text()).toBe('保存中…')
   expect(sources.monthlyCard).toMatchObject({ tier: 'zhaoyang', dailyEnabled: false, shopEnabled: true, dailyAmount: 60, shopAmount: 19 })
   expect(revision).toBe(1)
   await wrapper.setProps({ revision: 2, sources }); await done(true); await flushPromises()
