@@ -4,7 +4,7 @@
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
-            :switch-disabled="savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
+            :switch-disabled="mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
@@ -50,6 +50,8 @@
               <button class="link" type="button" @click="inventoryBrowseCatalog = true; setTab('manifest')">先查看道具与心纸目录</button>
             </template>
           </ToolTaskPrompt>
+
+          <MailboxReserve v-if="inventoryAccountReady" ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')" @busy="mailboxBusy = $event" />
 
           <RewardEntryWorkspace
             ref="rewardEntryWorkspace"
@@ -1631,6 +1633,7 @@ import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodRepor
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
 import InventoryRecordsWorkspace from '../../components/inventory/InventoryRecordsWorkspace.vue';
 import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
+import MailboxReserve from "../../components/inventory/MailboxReserve.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
 import InventoryLayout from "../../components/inventory/InventoryLayout.vue";
 import InventoryWorkspaceTabs from "../../components/inventory/InventoryWorkspaceTabs.vue";
@@ -1842,6 +1845,8 @@ const stockOriginal = ref({});
 const stockEditError = ref("");
 const stockSaveNotice = ref("");
 const rewardEntryWorkspace = ref(null);
+const mailboxReserve = ref(null);
+const mailboxBusy = ref(false);
 const stockBaselineConfirmed = ref(false);
 const pendingStockDocument = ref(null);
 const stockInputsLocked = computed(() => savingStock.value || !!pendingStockDocument.value);
@@ -3737,9 +3742,10 @@ function entrySummary(entries, recordType) {
 
 // ---- 导入档案 ----
 async function beforeAccountSwitch() {
-  if (savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
+  if (mailboxBusy.value || savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
   const contextSeq = inventoryContextSeq;
-  if (!(await confirmStockDiscard()) || contextSeq !== inventoryContextSeq) return false;
+  if (mailboxReserve.value && !(await mailboxReserve.value.confirmDiscard())) return false;
+  if (contextSeq !== inventoryContextSeq || !(await confirmStockDiscard()) || contextSeq !== inventoryContextSeq) return false;
   if (rewardEntryWorkspace.value?.hasDraft?.() || (importText.value.trim() && !importResult.value)) {
     return dialog.confirm({ title: '放弃当前账号的录入草稿？', message: '切换账号会关闭录入工作台与导入预览。已保存的数据不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
   }
