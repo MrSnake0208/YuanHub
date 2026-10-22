@@ -29,30 +29,34 @@
               <template v-if="state.catalog">
                 <div class="achievement-toolbar">
                   <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就名称、条件或关联密探" placeholder="搜索成就、条件或关键词"></label>
-                  <label class="achievement-reward-filter">奖励<input v-model="filters.reward" type="search" list="achievement-rewards" aria-label="成就奖励筛选" placeholder="全部奖励"><datalist id="achievement-rewards"><option v-for="reward in rewardOptions" :key="reward" :value="reward" /></datalist></label>
                   <label>状态<select v-model="filters.status" aria-label="成就状态筛选"><option value="">全部状态</option><option v-for="(label, value) in STATUS_LABELS" :key="value" :value="value">{{ label }}</option></select></label>
                   <label>游戏分类<select v-model="filters.category" aria-label="游戏分类筛选"><option value="">全部分类</option><option v-for="category in state.catalog.categories" :key="category.category_id" :value="category.category_id">{{ category.name }}</option></select></label>
-                  <label>进度来源<select v-model="filters.metric"><option value="">全部来源</option><option value="yuan_bond_variants">羁绊已记录种数</option></select></label>
                   <label class="achievement-check"><input v-model="filters.favorite" type="checkbox">仅看关注</label>
-                  <details class="achievement-more-filters"><summary>更多筛选{{ filters.hidden ? ' · 隐藏成就' : '' }}</summary><div><label class="achievement-check"><input v-model="filters.hidden" type="checkbox">仅隐藏成就</label><small>隐藏属性尚未核验的条目不纳入。</small></div></details>
-                  <button class="achievement-mobile-filters" type="button" aria-haspopup="dialog" @click="openMoreFilters">更多筛选{{ filters.hidden ? ' · 隐藏成就' : '' }}</button>
-                  <button type="button" @click="resetFilters">清除筛选</button>
+                  <details class="achievement-more-filters"><summary><SlidersHorizontal :size="16" aria-hidden="true" />更多筛选<span v-if="filters.reward || filters.metric || filters.hidden">（已启用）</span></summary><div>
+                    <label class="achievement-reward-filter">奖励<input v-model="filters.reward" type="search" list="achievement-rewards" aria-label="成就奖励筛选" placeholder="全部奖励"><datalist id="achievement-rewards"><option v-for="reward in rewardOptions" :key="reward" :value="reward" /></datalist></label>
+                    <label>进度来源<select v-model="filters.metric" aria-label="进度来源筛选"><option value="">全部来源</option><option value="yuan_bond_variants">羁绊已记录种数</option></select></label>
+                    <label class="achievement-check"><input v-model="filters.hidden" type="checkbox">仅隐藏成就</label><small>隐藏属性尚未核验的条目不纳入。</small>
+                  </div></details>
+                </div>
+                <div class="achievement-list-toolbar">
+                  <p class="achievement-results">当前筛选 {{ filtered.length }} 项</p>
+                  <button class="achievement-reset" type="button" @click="resetFilters">清除筛选</button>
                   <button class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []">{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
                   <span>目标：{{ account?.name }} · 已选 {{ selected.length }} 条</span><button type="button" :disabled="!writable || !pageEntries.length" @click="selected = pageEntries.map(entry => entry.achievement_id)">选择本页（{{ pageEntries.length }} 条）</button><button type="button" :disabled="!selected.length || state.busy" @click="selected = []">取消选择</button><button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :disabled="!writable || !selected.length" @click="bulkSave(value)">标记{{ label }}</button>
                 </div>
-                <p class="achievement-results">当前筛选命中 {{ filtered.length }} 条 · 每页最多 {{ PAGE_SIZE }} 条</p>
                 <div v-if="pageEntries.length" class="achievement-groups" tabindex="-1" aria-label="成就列表">
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
-                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>{{ available && !state.archive ? '—' : group.completed }} / {{ group.total }}</span><span class="achievement-group-rule" aria-hidden="true" /></header>
+                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
+                    <div class="achievement-column-headings" aria-hidden="true"><span>成就</span><span>奖励</span><div><span>完成状态</span><span>操作</span></div></div>
                     <ul class="achievement-list">
                       <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
                     </ul>
                   </section>
                 </div>
                 <div v-else class="achievement-empty"><p v-if="!entries.length">暂无可发布成就资料。资料核验后才会收录，当前不是完整游戏成就库。</p><template v-else><p>没有匹配的成就：{{ filterDescription }}。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></template></div>
-                <nav v-if="filtered.length > PAGE_SIZE" class="achievement-pagination" aria-label="成就分页"><button type="button" :disabled="page === 0" @click="page--">上一页</button><span>第 {{ page + 1 }} / {{ pageCount }} 页</span><button type="button" :disabled="page + 1 >= pageCount" @click="page++">下一页</button></nav>
+                <nav v-if="filtered.length > PAGE_SIZE" class="achievement-pagination" aria-label="成就分页"><button type="button" :disabled="page === 0" @click="page--">上一页</button><span>第 {{ page + 1 }} / {{ pageCount }} 页 · 每页最多 {{ PAGE_SIZE }} 条</span><button type="button" :disabled="page + 1 >= pageCount" @click="page++">下一页</button></nav>
                 <details class="achievement-catalog-info"><summary>目录版本与资料范围</summary><p>{{ state.catalog.catalog_version }} · {{ state.catalog.data_status }} · {{ state.catalog.coverage }}</p><p>目录修订不会重置个人记录。未收录或已移出的记录仍包含在完整备份中。</p></details>
               </template>
             </div>
@@ -71,7 +75,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
-import { Award, Check, Clock, Search, Star } from '@lucide/vue'
+import { Award, Check, Clock, Search, SlidersHorizontal, Star } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -115,11 +119,6 @@ const confirmDiscard = useUnsavedChanges(dirty, '成就档案草稿')
 async function beforeContextChange() {
   const token = capture()
   return !state.busy && await confirmDiscard() && matches(token) && !state.busy
-}
-async function openMoreFilters() {
-  const version = state.contextVersion
-  const choice = await dialog.choose({ title: '更多筛选', message: '当前：' + (filters.hidden ? '仅隐藏成就' : '所有成就') + '。隐藏属性尚未核验的条目不纳入隐藏筛选。', choices: [{ value: 'all', label: '所有成就' }, { value: 'hidden', label: '仅隐藏成就' }] })
-  if (version === state.contextVersion && choice.value) filters.hidden = choice.value === 'hidden'
 }
 onBeforeRouteLeave(() => !state.busy)
 watch(() => state.contextVersion, () => { for (const id of Object.keys(editors)) delete editors[id]; exchangeOpen.value = false }, { flush: 'sync' })

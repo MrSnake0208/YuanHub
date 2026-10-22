@@ -1,5 +1,5 @@
 /* 字段外观共享；两端布局由独立样式持有。 */
-.achievement-page { color: var(--ink); background: var(--paper); }
+.achievement-page { --achievement-complete: #276749; color: var(--ink); background: var(--paper); }
 .achievement-main button, .achievement-dialog button { color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--surface); cursor: pointer; }
 .achievement-main button:hover:not(:disabled), .achievement-dialog button:hover:not(:disabled) { border-color: var(--tea); }
 .achievement-main button:disabled, .achievement-dialog button:disabled { opacity: .5; cursor: not-allowed; }
@@ -9,25 +9,21 @@
 .achievement-summary, .achievement-coverage, .achievement-hint, .achievement-results, .achievement-catalog-info, .achievement-dialog small { color: var(--ink-60); }
 .achievement-stat { background: color-mix(in srgb, var(--surface) 86%, transparent); border: 1px solid var(--line); border-radius: 8px; }
 .achievement-stat > svg { color: var(--accent-strong); }
-.achievement-stat.stat-completed > svg { color: var(--tea); }
-.achievement-stat.stat-incomplete > svg { color: var(--rouge); }
+.achievement-stat.stat-completed > svg { color: var(--achievement-complete); }
+.achievement-stat.stat-incomplete > svg { color: var(--tea); }
 .achievement-stat.stat-favorite > svg { fill: var(--yellow); }
 .achievement-stat b { color: var(--tea); font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .achievement-error { color: var(--rouge); }
 .achievement-list { list-style: none; }
-.achievement-row { border: 1px solid transparent; border-radius: 8px; background: var(--surface); }
-.achievement-row-icon { color: var(--accent-strong); border-radius: 50%; background: color-mix(in srgb, var(--yellow) 23%, var(--surface)); }
+.achievement-row { border-bottom: 1px solid var(--line); background: var(--surface); }
+.achievement-row:last-child { border-bottom: 0; border-radius: 0 0 7px 7px; }
 .achievement-row .achievement-title { border: 0; background: transparent; color: var(--tea); font-family: var(--font-s); font-weight: 700; text-align: left; }
-.achievement-row-copy p { color: var(--ink-60); }
+.achievement-row-copy p { color: var(--ink); }
 .achievement-row-copy small { color: var(--ink-60); }
 .achievement-group-heading h2 { font-family: var(--font-s); color: var(--tea); }
 .achievement-group-heading > span { color: var(--ink-60); font-variant-numeric: tabular-nums; }
-.achievement-group-rule { border-top: 1px solid var(--line); }
 .achievement-search { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 .achievement-main .achievement-search input { border: 0; background: transparent; }
-.achievement-status { border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--paper) 26%, var(--surface)); }
-.achievement-status button { border: 1px solid transparent; background: transparent; color: var(--ink-60); white-space: nowrap; }
-.achievement-status button[aria-pressed="true"] { background: var(--rouge); border-color: var(--rouge); color: var(--surface); }
 .achievement-main .achievement-favorite, .achievement-dialog .achievement-favorite { color: var(--accent-strong); border-color: transparent; background: transparent; }
 .achievement-favorite[aria-pressed="true"] svg { fill: currentColor; }
 .achievement-main .achievement-batch-toggle, .achievement-main .achievement-save, .achievement-dialog .achievement-save { background: var(--tea); border-color: var(--tea); color: var(--cream); }
@@ -44,7 +40,6 @@
 .achievement-dialog header, .achievement-dialog footer { border-color: var(--line); }
 .achievement-dialog p, .achievement-dialog li, .achievement-dialog small { overflow-wrap: anywhere; white-space: pre-wrap; }
 /* 稳定行结构跨端复用；排列与间距分别由两端 CSS 持有。 */
-.achievement-row { border-color: color-mix(in srgb, var(--line) 65%, transparent); }
 .achievement-row-main > *, .achievement-inline-editor, .achievement-supplement { min-width: 0; }
 .achievement-title { margin: 0; }
 .achievement-condition { white-space: pre-wrap; }
@@ -63,3 +58,20 @@
 .achievement-supplement p { white-space: pre-wrap; }
 .achievement-row-feedback { color: var(--tea); }
 .achievement-feedback:empty { display: none; }
+
+.achievement-status .achievement-status-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; background: var(--cream); }
+.achievement-status .achievement-status-toggle[aria-pressed="true"] { color: var(--achievement-complete); background: color-mix(in srgb, var(--achievement-complete) 7%, var(--surface)); border-color: color-mix(in srgb, var(--achievement-complete) 28%, var(--surface)); }
+.achievement-row-copy { position: relative; }
+.achievement-row-copy:has(.achievement-selection) { padding-left: 24px; }
+.achievement-selection { position: absolute; left: 0; top: 3px; }
+.achievement-list { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.achievement-list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-block: 6px 10px; }
+.achievement-list-toolbar .achievement-results { margin: 0; color: var(--ink); }
+.achievement-main .achievement-reset { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--accent-strong); }
+.achievement-list-toolbar .achievement-batch-toggle { margin-left: auto; }
+.achievement-more-filters summary { display: flex; align-items: center; gap: 6px; list-style: none; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.achievement-more-filters summary::-webkit-details-marker { display: none; }
+.achievement-more-filters[open] summary { border-color: var(--tea); }
+.achievement-more-filters > div > label:not(.achievement-check) { display: grid; gap: 6px; }
+.achievement-more-filters > div input:not([type="checkbox"]), .achievement-more-filters > div select { width: 100%; }
+.achievement-main .achievement-note-toggle { display: inline-flex; justify-content: center; align-items: center; gap: 6px; white-space: nowrap; }
