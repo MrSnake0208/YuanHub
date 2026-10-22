@@ -1075,6 +1075,24 @@ describe('历练按次数补录', () => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it('白金币日常与月卡按钮每次加减10，保留月卡65的个位', async () => {
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    const select = document.body.querySelector('[aria-label="月卡奖励档位"]')
+    select.value = 'xingguang'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    await clickElement(bodyButton('密探日常 50'))
+    for (const [channel, initial] of [['月卡奖励', 65], ['密探日常', 50]]) {
+      const input = document.querySelector(`input[aria-label="${channel}白金币数量"]`)
+      expect(input.value).toBe(String(initial))
+      await clickElement(document.querySelector(`[aria-label="增加白金币 · ${channel}"]`))
+      expect(input.value).toBe(String(initial + 10))
+      await clickElement(document.querySelector(`[aria-label="减少白金币 · ${channel}"]`))
+      expect(input.value).toBe(String(initial))
+    }
+  })
+
   it.each([['xingguang', 65], ['yuehua', 80], ['zhaoyang', 90]])('月卡档位%s可与日常50同时录入，保留来源游戏日ID', async (tier, count) => {
     inventoryApi.importInventory.mockResolvedValue({ accepted: 2, duplicates: 0, history_only: 0, superseded: 0 })
     const wrapper = mountWorkspace()
@@ -1411,11 +1429,12 @@ describe('奖励补录工作台弹层', () => {
     expect(inventoryApi.importInventory.mock.calls[0][0].records[0].account_id).toBe('acc-1')
   })
 
-  it('已选图标可原位减少，白金币首次添加 10 后与普通道具均步进 1，减至零后移除', async () => {
+  it.each(['派遣 · 洛阳', '其他奖励'])('%s白金币图标和数量按钮步进 10，普通道具步进 1，减至零后移除', async channel => {
     const wrapper = mountWorkspace()
     await button(wrapper, '添加奖励流水').trigger('click')
     await flushPromises()
 
+    await clickElement(bodyButton(channel))
     const tile = name => document.body.querySelector(`.reward-tile[aria-label^="添加${name}，"]`)
     const minus = name => document.body.querySelector(`.tile-minus[aria-label^="减少${name}，"]`)
 
@@ -1434,15 +1453,24 @@ describe('奖励补录工作台弹层', () => {
     await clickElement(tile('白金币'))
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
     await clickElement(tile('白金币'))
-    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 11')
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 20')
     await clickElement(minus('白金币'))
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
+    await clickElement(document.querySelector('.quantity-control [aria-label="增加白金币"]'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 20')
+    await clickElement(document.querySelector('.quantity-control [aria-label="减少白金币"]'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
+    const quantity = document.querySelector('input[aria-label="白金币数量"]')
+    quantity.value = '65'
+    quantity.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 65')
     await clickElement(minus('白金币'))
-    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 9')
-    for (let remaining = 8; remaining >= 0; remaining--) {
-      await clickElement(minus('白金币'))
-      expect(tile('白金币').getAttribute('aria-label')).toContain(`当前已选 ${remaining}`)
-    }
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 55')
+    quantity.value = '10'
+    quantity.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    await clickElement(minus('白金币'))
     expect(minus('白金币')).toBeNull()
     expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 0')
   })

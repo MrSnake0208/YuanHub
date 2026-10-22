@@ -623,7 +623,8 @@ function addReward(entity) {
 }
 function adjustReward(entry, delta) {
   const value = Number(entry.count)
-  const next = (Number.isInteger(value) ? value : 0) + delta
+  const step = entry.id === 'baijinbi' || WHITE_COIN_PRESETS.some(preset => preset.id === entry.id) ? 10 : 1
+  const next = (Number.isInteger(value) ? value : 0) + delta * step
   if (next <= 0) removeReward(entry.id)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
 }
