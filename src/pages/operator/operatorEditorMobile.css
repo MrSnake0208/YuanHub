@@ -3,6 +3,17 @@
   .editor-workspace .editor-head { flex: none; gap: 6px 10px; padding: calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); border-bottom: 0; background: var(--surface); }
   .editor-workspace .editor-kicker { font-size: 11px; overflow-wrap: anywhere; }
   .editor-workspace .editor-head h3 { font-size: 25px; }
+  .editor-panel-controls { display: grid; gap: 5px; min-width: 0; }
+  .editor-workspace .editor-panel-source { font-size: 12px; }
+  .editor-workspace .editor-panel-source select { flex: 1; width: 0; }
+  .editor-workspace .editor-head-stats-toolbar { justify-content: start; flex-wrap: wrap; }
+  .editor-workspace .editor-panel-comparison { font-size: 12px; }
+  .editor-panel-notice { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 4px 8px; grid-column: 1 / -1; padding: 8px 10px; border: 1px solid var(--yellow-deep); border-radius: 8px; background: var(--cream); color: var(--accent-strong); font-size: 12px; line-height: 1.5; }
+  .editor-panel-notice span { grid-column: 2; color: var(--tea); }
+  .editor-growth-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; margin-bottom: 8px; }
+  .editor-growth-heading h4 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 15px; color: var(--ink); }
+  .editor-growth-heading h4::before { content: ''; width: 3px; height: 16px; flex: none; border-radius: 2px; background: var(--accent-strong); }
+  .editor-growth-heading .ledger-history-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
   .editor-workspace .editor-head-stats { gap: 4px; }
   .editor-workspace .editor-head-stat { min-height: 58px; padding: 6px 10px; gap: 0; background: var(--cream); }
   .editor-workspace .editor-head-stat input { min-height: 32px; --input-font-size: 22px; }
@@ -19,7 +30,7 @@
   .editor-workspace .editor-growth-section { padding: 0; background: transparent; }
   .editor-workspace .num-fields { display: grid; min-width: 0; width: 100%; gap: 10px; }
   .editor-level-block, .editor-workspace .num-fields .star-card, .editor-workspace .oddity-editor { min-width: 0; padding: 12px; border: 0; border-radius: 10px; background: var(--surface); }
-  .editor-growth-note { margin: 0 0 8px; color: var(--ink-60); font-size: 11px; line-height: 1.5; }
+  .editor-growth-note { margin: 0; color: var(--ink-60); font-size: 11px; line-height: 1.5; }
   .editor-workspace .num-fields .level-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; align-items: start; }
   .level-input-group { display: flex; grid-column: 1 / -1; align-items: center; gap: 8px; min-width: 0; }
   .level-input-group :deep(.level-breakthrough-check) { gap: 5px; color: var(--ink-60); font-weight: 500; }
@@ -31,26 +42,28 @@
   .editor-workspace .num-fields .elite-hint { grid-column: 2; align-self: center; font-size: 11px; color: var(--ink-60); }
   .editor-growth-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
   .editor-workspace .editor-growth-actions .btn { min-width: 0; min-height: 38px; padding: 7px 8px; font-size: 12px; white-space: normal; }
-  .editor-workspace .editor-growth-actions .editor-fill-max { grid-column: 1 / -1; border-color: var(--yellow-deep); background: var(--yellow); color: var(--tea); }
+  .editor-workspace .editor-growth-actions .editor-fill-max { grid-column: 1 / -1; border-color: var(--line); background: transparent; color: var(--tea); }
   .editor-workspace .num-fields .star-card { gap: 8px; }
   .editor-workspace .star-row { flex-wrap: wrap; align-items: start; gap: 8px; }
   .editor-workspace .editor-awakening { margin-left: auto; padding-left: 0; border-left: 0; }
-  .editor-workspace .star-caption { display: flex; flex: none; align-items: center; gap: 4px; width: auto; padding-top: 8px; font-size: 14px; }
+  .editor-workspace .star-caption { display: flex; flex: none; align-items: center; gap: 4px; width: 56px; padding-top: 8px; font-size: 14px; }
   .editor-workspace .star-caption svg { color: var(--accent-strong); }
   .editor-workspace .star-groups { display: flex; flex-basis: calc(100% - 64px); flex-wrap: wrap; gap: 6px; }
-  .editor-workspace .star-pill { flex: 1 0 54px; min-height: 36px; padding: 6px 8px; border-radius: 999px; font-size: 13px; }
+  .editor-workspace .star-pill { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 1 0 54px; min-height: 36px; padding: 6px 8px; border-radius: 8px; font-size: 13px; }
+  .editor-workspace .star-nodes { flex: 1; min-width: 0; }
+  .editor-workspace .node-chip { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 44px; height: 32px; }
   .editor-workspace .star-awakening-hint { font-size: 11px; line-height: 1.5; }
   .huaji-review-note { display: flex; align-items: start; gap: 6px; margin: 2px 0 0; padding: 0; color: var(--ink-60); font-size: 11px; line-height: 1.5; }
   .huaji-review-note svg { flex: none; margin-top: 1px; }
   .editor-workspace .oddity-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .editor-workspace .oddity-caption { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; font-size: 14px; color: var(--ink); }
+  .editor-workspace .oddity-caption { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; color: var(--ink); }
   .editor-workspace .oddity-caption svg { flex: none; color: var(--accent-strong); }
   .editor-workspace .oddity-field { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 0; border: 0; background: transparent; }
   .editor-workspace .oddity-name { font-size: 12px; text-align: left; }
   .editor-workspace .oddity-control { flex-wrap: wrap; justify-content: start; gap: 3px; }
   .editor-workspace .oddity-control input { min-width: 0; width: 100%; min-height: 38px; text-align: left; font-size: 16px; }
   .editor-workspace .oddity-limit { color: var(--ink-60); }
-  .editor-workspace .oddity-fill-max { grid-column: 1 / -1; min-height: 36px; font-size: 12px; }
+  .editor-workspace .oddity-fill-max { min-height: 32px; padding: 6px 8px; font-size: 12px; background: transparent; }
   .editor-workspace .oddity-hint { font-size: 11px; margin: 0; }
   .editor-workspace .disc-loadout-tabs { padding: 0; gap: 8px; background: transparent; }
   .editor-workspace .disc-loadout-tabs button { grid-template-columns: 18px minmax(0, 1fr); min-height: 60px; padding: 8px; gap: 4px 7px; border: 1px solid var(--line); border-radius: 9px; background: #f7f4eb; }
