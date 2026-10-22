@@ -36,14 +36,18 @@ function release(state) {
 export const batchImageDirective = {
   mounted(image, binding) {
     if (!binding.value) return
-    image.hidden = true
-    image.parentElement?.classList.add('has-icon-error')
+    const eager = binding.modifiers?.eager
+    if (eager) image.loading = 'eager'
+    else {
+      image.hidden = true
+      image.parentElement?.classList.add('has-icon-error')
+    }
     const state = { image, url: binding.value, active: false, done: false }
     state.release = () => release(state)
     states.set(image, state)
     image.addEventListener('load', state.release)
     image.addEventListener('error', state.release)
-    if (observer && image.parentElement) {
+    if (!eager && observer && image.parentElement) {
       observed.set(image.parentElement, state)
       observer.observe(image.parentElement)
     } else {

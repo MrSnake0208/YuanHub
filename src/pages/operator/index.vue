@@ -1067,11 +1067,10 @@
                     aria-hidden="true"
                   >
                     <img
-                      :src="operatorPortraits[e.id]"
+                      v-batch-image.eager="operatorPortraits[e.id]"
                       alt=""
                       width="480"
                       height="350"
-                      loading="lazy"
                       decoding="async"
                       @error="failedPortraitIds.add(e.id)"
                     />
@@ -3083,6 +3082,7 @@ import OperatorDiscTargetModal from "../../components/operator/OperatorDiscTarge
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
 import operatorPortraits from "../../data/operatorPortraits.json";
+import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from "../../config/features.js";
 import {
