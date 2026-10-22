@@ -1355,6 +1355,7 @@
                       }}</small
                       >
                       <label class="ledger-oddity"
+                        :class="{ 'is-full': cardOddityMax(e, kind) > 0 && cardOddityValue(e, kind) >= cardOddityMax(e, kind) }"
                         ><Sparkles class="ledger-oddity-icon" aria-hidden="true" /><input
                           type="number"
                           inputmode="numeric"
@@ -11239,6 +11240,11 @@ onBeforeUnmount(function () {
 }
 .ledger-oddity span {
   color: var(--ink-35);
+}
+.ledger-oddity.is-full {
+  --ink-60: #276749;
+  --ink-35: #276749;
+  color: #276749;
 }
 .ledger-growth {
   border: 1px solid var(--line);
