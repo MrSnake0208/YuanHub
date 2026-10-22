@@ -26,7 +26,7 @@ function mountPage() {
   return w
 }
 beforeEach(() => {
-  vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; activeAccount.set('a')
+  vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }; activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }])
   api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', entries: [entry] })
   api.getBondArchive.mockImplementation(id => Promise.resolve(archive(id)))
@@ -38,7 +38,7 @@ it('匿名及无账号只读目录，账号切换和退出立即清除旧档案'
   auth.accessToken = ''; auth.userInfo = null
   const m = model(); await flushPromises()
   expect(api.getBondArchive).not.toHaveBeenCalled(); expect(listAccounts).not.toHaveBeenCalled(); expect(m.summary.value).toBeNull()
-  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; await flushPromises()
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }; await flushPromises()
   expect(m.state.archive.account_id).toBe('a')
   activeAccount.set('b'); expect(m.state.archive).toBeNull(); await flushPromises(); expect(m.state.archive.account_id).toBe('b')
   auth.accessToken = ''; expect(m.state.archive).toBeNull(); expect(m.records.value).toEqual([])
@@ -119,7 +119,7 @@ it('天气卡失败不高亮，账号切换清除状态，拥有统计读取真�
   expect(w.get('[data-testid=collection-progress]').text()).toBe('0 / 1')
   expect(w.get('[data-testid=owned-progress]').text()).toBe('— / 2')
 })
-it('历史天气只能取消已有收录，匿名天气卡只读且不显示旧账号收录筛选', async () => {
+it('历史天气只能取消已有收录，退出后隐藏整个羁绊内容', async () => {
   api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', entries: [{ ...entry, status: 'retired' }] })
   const w = mountPage(); await flushPromises()
   await button(w, '展开筛选').trigger('click')
@@ -130,9 +130,9 @@ it('历史天气只能取消已有收录，匿名天气卡只读且不显示旧�
   expect(w.findAll('.bond-condition').every(b => !b.element.disabled && b.attributes('aria-pressed') === 'true')).toBe(true)
   await w.get('.bond-common-filters select').setValue('collected')
   auth.accessToken = ''; auth.userInfo = null; await flushPromises()
-  expect(w.get('.bond-common-filters select').element.value).toBe('')
-  expect(w.findAll('.bond-condition').every(b => b.element.disabled && b.attributes('aria-pressed') === 'false')).toBe(true)
-  expect(w.get('[data-testid=collection-progress]').text()).toBe('— / 0')
+  expect(w.find('.bond-common-filters').exists()).toBe(false)
+  expect(w.find('.bond-condition').exists()).toBe(false)
+  expect(w.text()).toContain('当前账号没有成就与羁绊访问权限')
   expect(api.writeBonds).not.toHaveBeenCalled()
 })
 it('旧文件显式选择来源和缺失游戏，切目标后预览失效且迟到确认不串号', async () => {

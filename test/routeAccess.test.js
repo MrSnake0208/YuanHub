@@ -85,3 +85,21 @@ test('日历使用内测准入且不等待管理权限；内容管理仍要求�
   assert.equal(isRouteAccessAllowed(admin, access({ permissions: ['beta:manage'] })), false)
   assert.equal(isRouteAccessAllowed(admin, access({ permissions: ['activity_calendar:write'] })), true)
 })
+
+
+test('成就羁绊访问与目录编辑权限独立，普通角色不能绕过', async () => {
+  const { routes } = await import('../src/router/routes.js')
+  for (const path of ['/achievement', '/bonds']) {
+    const meta = routes.find(route => route.path === path).meta
+    assert.equal(needsAdminAccess(meta), true)
+    assert.equal(meta.requiresAuth, true)
+    for (const permissions of [[], ['operator_panel:use'], ['achievement_catalog:write', 'bond_catalog:write']]) {
+      assert.equal(isRouteAccessAllowed(meta, { permissions }), false)
+    }
+    assert.equal(isRouteAccessAllowed(meta, { permissions: ['archive:access'] }), true)
+    const admin = routes.find(route => route.path === path + '/admin').meta
+    assert.equal(isRouteAccessAllowed(admin, { permissions: [admin.requiredPermission] }), false)
+    assert.equal(isRouteAccessAllowed(admin, { permissions: ['archive:access'] }), false)
+    assert.equal(isRouteAccessAllowed(admin, { permissions: [admin.requiredPermission, 'archive:access'] }), true)
+  }
+})

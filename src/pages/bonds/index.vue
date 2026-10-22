@@ -1,7 +1,7 @@
 <template>
   <div class="bonds-page bonds-codex">
     <IslandSidebar />
-    <main id="main-content" class="bonds-main">
+    <main v-if="canAccessArchive" id="main-content" class="bonds-main">
       <CompactToolHeader title="羁绊图鉴" description="作者：线线&amp;悠扬 · 独立创作">
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :error="state.accountsError" :switch-disabled="state.busy" switch-disabled-reason="正在保存或处理文件，请等待完成。" /></template>
         <template #actions>
@@ -106,6 +106,7 @@
         </section>
       </div><SiteFooter />
     </main>
+    <main v-else id="main-content" class="bonds-main"><p role="status">当前账号没有成就与羁绊访问权限。</p></main>
   </div>
 </template>
 
@@ -118,6 +119,8 @@ import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { activeAccount } from '../../store/activeAccount.js'
+import { auth } from '../../store/auth.js'
+import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { OPERATOR_RARITY_LABELS, subProfList, tokens } from '../../utils/operatorFilters.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
@@ -126,6 +129,7 @@ import BondExchange from './BondExchange.vue'
 import { useBonds } from './useBonds.js'
 import { ACTIONS, STATUS, THRESHOLDS, WEATHERS } from './rules.js'
 
+const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
 const view = ref('codex'), helpOpen = ref(false), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIcons = { sunny: Sun, rain: CloudRain, fog: CloudFog, wind: Wind, light_snow: CloudSnow, heavy_snow: Snowflake, hurricane: Tornado, thunder: CloudLightning }

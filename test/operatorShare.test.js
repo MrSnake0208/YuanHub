@@ -233,7 +233,7 @@ test('分享 API 方法、路径、参数与认证边界符合固定契约', asy
   calls.slice(0, 4).forEach(function (call) {
     assert.equal(call.options.headers.Authorization, 'Bearer share-test-token')
   })
-  assert.equal(calls[4].options.headers.Authorization, undefined)
+  assert.equal(calls[4].options.headers.Authorization, 'Bearer share-test-token')
 })
 
 test('公开分享路由懒加载且不要求登录', () => {

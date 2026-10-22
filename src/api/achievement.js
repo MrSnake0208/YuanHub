@@ -3,7 +3,7 @@ import { request } from './request.js'
 const PATH = '/v1/achievements'
 const privateRequest = (path, identity, options = {}) => request(PATH + path, { ...options, auth: true, expectedUserId: identity })
 
-export const getAchievementCatalog = game => request(PATH + '/catalog?game=' + encodeURIComponent(game))
+export const getAchievementCatalog = game => request(PATH + '/catalog?game=' + encodeURIComponent(game), { auth: true })
 export const getAchievementArchive = (accountId, identity) => privateRequest('/archive?account_id=' + encodeURIComponent(accountId), identity)
 export const exportAchievements = (accountId, identity) => privateRequest('/export?account_id=' + encodeURIComponent(accountId), identity)
 export const writeAchievements = (accountId, identity, revision, records) => privateRequest('/batch', identity, {

@@ -63,12 +63,12 @@ const ADMIN_TOOLS = Object.freeze([
   {
     key: 'achievement-catalog', to: '/achievement/admin', label: '成就目录管理',
     description: '导入或编辑成就，发布后玩家可记录完成状态', group: 'content', icon: BookOpen,
-    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE)
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && hasPermission(access, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE)
   },
   {
     key: 'bond-catalog', to: '/bonds/admin', label: '羁绊目录管理',
     description: '维护成员、行动与天气，预览并发布公共羁绊目录', group: 'content', icon: Link2,
-    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE)
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && hasPermission(access, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE)
   },
   {
     key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',

@@ -24,11 +24,19 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
-`achievementArchive` is enabled only in ordinary Vite development and disabled
-in production. Its route, navigation and page controller follow the same flag.
-Both real game catalogs currently contain zero verified publishable entries;
-keep production closed until source verification and manual acceptance finish.
-See [achievement archive](../achievement-archive.md) for scope and manual checks.
+`achievementArchive` and `bondArchive` are enabled in development and production,
+but their navigation and routes require `archive:access`. SUPER_ADMIN has this
+permission automatically; other users need the ARCHIVE_USER role, granted in
+`/admin/roles`. PLATFORM_ADMIN alone does not grant access. Catalog management
+also requires the existing catalog-write permission. The backend enforces the
+same access boundary, including catalog reads and admin endpoints.
+
+Automatic operator panels require `operator_panel:use` (OPERATOR_PANEL_USER or
+SUPER_ADMIN). Unauthorized users retain manual/observed values and do not request
+automatic panels. Public BOX views also omit automatic results for unauthorized
+viewers. These two usage roles do not grant administrative capability or Beta
+bypass; existing Beta/account ownership requirements still apply. Deploy the
+paired backend authorization changes before the enabled frontend.
 
 `starCompletion` is a public feature with the explicit boolean value `true` in
 both ordinary Vite development and production builds. The real completion workflow

@@ -25,7 +25,7 @@ function model() {
 function page() { return mount(AchievementPage, { attachTo: document.body, global: { provide: { [routeLocationKey]: { fullPath: '/achievement' } }, stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RouterLink: RouterLinkStub } } }) }
 beforeEach(() => {
   vi.clearAllMocks()
-  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }
   activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }])
   api.getAchievementCatalog.mockResolvedValue(achievementCatalog())
@@ -39,7 +39,7 @@ it('游客和空账号只读公开目录，退出登录清空所有私人记录'
   const { result } = model(); await flushPromises()
   expect(api.getAchievementArchive).not.toHaveBeenCalled(); expect(listAccounts).not.toHaveBeenCalled()
   expect(result.entries.value).toHaveLength(3); expect(result.writable.value).toBe(false)
-  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; await flushPromises()
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }; await flushPromises()
   expect(result.state.archive.account_id).toBe('a')
   auth.accessToken = ''; await flushPromises()
   expect(result.state.archive).toBeNull(); expect(result.records.value).toEqual([])
@@ -197,8 +197,8 @@ it('奖励/分类/状态/关注组合与分组计数来自真实目录，清除�
   await button(wrapper, '清除条件并查看全部').trigger('click')
   expect(wrapper.findAll('.achievement-row')).toHaveLength(3)
 })
-it('游客两态和关注只读，非量化条目没有进度条，空目录不生成假成就', async () => {
-  auth.accessToken = ''; auth.userInfo = null
+it('授权但无账号时两态和关注只读，非量化条目没有进度条，空目录不生成假成就', async () => {
+  listAccounts.mockResolvedValue([])
   const wrapper = page(); await flushPromises()
   expect(wrapper.findAll('.achievement-row .achievement-status button')).toHaveLength(6)
   expect(wrapper.findAll('.achievement-row .achievement-status button').every(item => item.element.disabled)).toBe(true)
@@ -488,4 +488,15 @@ it('羁绊只读进度达标提示和取消不反向修改人工完成状态', a
   await button(w, '刷新档案').trigger('click'); await flushPromises()
   expect(w.text()).toContain('羁绊已记录进度 19 / 20'); expect(w.get('.status-completed').attributes('aria-pressed')).toBe('true')
   expect(api.writeAchievements).toHaveBeenCalledTimes(1)
+})
+
+
+it('未授权或撤销授权时不展示成就内容和导入导出', async () => {
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.find('.achievement-row').exists()).toBe(true)
+  auth.adminAccess = { permissions: [] }; await flushPromises()
+  expect(wrapper.find('.achievement-row').exists()).toBe(false)
+  expect(wrapper.findComponent(AchievementExchange).exists()).toBe(false)
+  expect(wrapper.text()).toContain('当前账号没有成就与羁绊访问权限')
+  wrapper.unmount()
 })

@@ -25,7 +25,7 @@
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
-              <button type="button" class="act-btn" role="switch" :aria-checked="panelAutoFillEnabled"
+              <button v-if="canUseAutomaticPanel" type="button" class="act-btn" role="switch" :aria-checked="panelAutoFillEnabled"
                 aria-label="当前账号自动补全面板" :disabled="!currentPanelAccount || panelPreferenceSaving || accountsLoading"
                 @click="togglePanelAutoFill">
                 <Calculator :size="15" aria-hidden="true" />自动补全面板：{{ panelPreferenceSaving ? '保存中' : panelAutoFillEnabled ? '开' : '关' }}
@@ -45,8 +45,8 @@
         <template #help>
           <p>图鉴更新于 {{ catalogVersion || '本地兜底' }}；完整目录版本也可在「更多筛选」中选中复制。</p>
           <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
-          <p>自动补全只填未录入的血攻，已有手填或采集值优先；在「更多」中按账号开关，也可在密探编辑中单独选择来源。切换来源保留原值。</p>
-          <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
+          <p v-if="canUseAutomaticPanel">自动补全只填未录入的血攻，已有手填或采集值优先；在「更多」中按账号开关，也可在密探编辑中单独选择来源。切换来源保留原值。</p>
+          <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。<span v-if="canUseAutomaticPanel">面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</span></p>
         </template>
       </CompactToolHeader>
       <p v-if="panelPreferenceNotice" class="panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
@@ -2427,7 +2427,7 @@
               </div>
             </div>
             <div class="editor-head-stats">
-              <label class="editor-panel-source">
+              <label v-if="canUseAutomaticPanel" class="editor-panel-source">
                 <span>面板来源</span>
                 <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
                   <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
@@ -3121,6 +3121,7 @@ import {
 import OperatorLevelBreakthroughSelect from "../../components/operator/OperatorLevelBreakthroughSelect.vue";
 import StarBreakthroughEditor from "../../components/operator/StarBreakthroughEditor.vue";
 import { auth } from "../../store/auth.js";
+import { ADMIN_PERMISSIONS, hasPermission } from "@/utils/authPermissions.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import { operatorUpdateFromEvent, publishOperatorCurrentRead } from "../../utils/operatorEvents.js";
@@ -3680,8 +3681,9 @@ const currentAccountName = computed(function () {
   });
   return account ? account.name : "当前账号";
 });
+const canUseAutomaticPanel = computed(() => auth.isLoggedIn && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.OPERATOR_PANEL_USE));
 const currentPanelAccount = computed(() => auth.isLoggedIn ? accounts.value.find(account => account.id === accountId.value) : null);
-const panelAutoFillEnabled = computed(() => currentPanelAccount.value?.operator_panel_auto_fill !== false);
+const panelAutoFillEnabled = computed(() => canUseAutomaticPanel.value && currentPanelAccount.value?.operator_panel_auto_fill !== false);
 const panelPreferenceSaving = ref(false);
 const panelPreferenceNotice = ref("");
 const panelPreferenceError = ref(false);
@@ -3693,7 +3695,7 @@ watch(() => [accountId.value, auth.userInfo?.id, auth.isLoggedIn], () => {
   panelPreferenceError.value = false;
 }, { flush: 'sync' });
 async function togglePanelAutoFill() {
-  if (!currentPanelAccount.value || panelPreferenceSaving.value) return;
+  if (!canUseAutomaticPanel.value || !currentPanelAccount.value || panelPreferenceSaving.value) return;
   const sequence = ++panelPreferenceSequence;
   const target = accountId.value;
   const enabled = !panelAutoFillEnabled.value;
@@ -4498,7 +4500,7 @@ const panelBatchRequest = createOperatorPanelRequest({
   publish: value => { panelBatchState.value = value; },
 });
 const panelBatchInput = computed(() => {
-  if (!auth.isLoggedIn || !accountId.value || currentLoadedKey.value !== accountId.value + ':' + gameFilter.value) return null;
+  if (!canUseAutomaticPanel.value || !accountId.value || currentLoadedKey.value !== accountId.value + ':' + gameFilter.value) return null;
   const operatorIds = currentEntries.value.filter(isOperatorOwned).map(entry => entry.id);
   if (!operatorIds.length) return null;
   return {
@@ -4509,7 +4511,7 @@ const panelBatchInput = computed(() => {
   };
 });
 const panelPreviewInput = computed(() => {
-  if (!auth.isLoggedIn || !editing.value || !editingOp.value?.id || !accountId.value || starLoadoutLoading.value) return null;
+  if (!canUseAutomaticPanel.value || !editing.value || !editingOp.value?.id || !accountId.value || starLoadoutLoading.value) return null;
   const draft = starLoadoutAccountId.value === accountId.value ? starLoadoutDrafts.value[editingOp.value.id] : undefined;
   const loadout = Object.hasOwn(starLoadoutCurrent.value, editingOp.value.id) || Object.values(draft || {}).some(Boolean) ? draft : undefined;
   const input = operatorPanelPreviewBody(accountId.value, editingOp.value.id, combatStatsInput.value, loadout);
@@ -4517,8 +4519,8 @@ const panelPreviewInput = computed(() => {
 });
 watch(() => panelBatchInput.value?.key, () => panelBatchRequest.update(panelBatchInput.value), { immediate: true });
 watch(() => panelPreviewInput.value?.key, () => panelPreviewRequest.update(panelPreviewInput.value), { immediate: true });
-const editorPanelResult = computed(() => panelPreviewState.value.key === panelPreviewInput.value?.key ? panelPreviewState.value.result : null);
-const editorPanelHint = computed(() => operatorPanelHint(editorPanelResult.value, panelPreviewState.value.status));
+const editorPanelResult = computed(() => canUseAutomaticPanel.value && panelPreviewState.value.key === panelPreviewInput.value?.key ? panelPreviewState.value.result : null);
+const editorPanelHint = computed(() => canUseAutomaticPanel.value ? operatorPanelHint(editorPanelResult.value, panelPreviewState.value.status) : "");
 
 function cardPanelDraftChanged(entry) {
   const draft = operatorPanelPreviewBody(accountId.value, entry.id, cardCombatInput(entry));
@@ -4529,10 +4531,11 @@ function cardPanelDraftChanged(entry) {
   return JSON.stringify(draft) !== JSON.stringify(saved);
 }
 function cardPanelResult(entry) {
-  if (cardPanelDraftChanged(entry) || panelBatchState.value.key !== panelBatchInput.value?.key) return null;
+  if (!canUseAutomaticPanel.value || cardPanelDraftChanged(entry) || panelBatchState.value.key !== panelBatchInput.value?.key) return null;
   return panelBatchState.value.result?.[entry.id];
 }
 function cardPanelHint(entry) {
+  if (!canUseAutomaticPanel.value) return "";
   if (cardPanelDraftChanged(entry)) return "保存养成后更新自动面板";
   return operatorPanelHint(cardPanelResult(entry), panelBatchState.value.status);
 }
@@ -7466,6 +7469,7 @@ function cardCombatSimpleValue(entry, kind) {
 }
 
 function cardCombatSource(entry, kind) {
+  if (!canUseAutomaticPanel.value) return "手填／采集面板";
   const mode = cardCombatMode(entry, kind);
   const result = cardCombatResult(entry);
   const stale =
@@ -7481,6 +7485,7 @@ function cardCombatSource(entry, kind) {
 
 function combatModeLabel(entry, kind) {
   const name = kind === "attack" ? "攻击力" : "生命力";
+  if (!canUseAutomaticPanel.value) return name + "使用手填／采集值";
   const mode = cardCombatMode(entry, kind);
   if (!cardCombatAutoAvailable(entry, kind))
     return name + "使用手动校正（暂无自动计算）";
