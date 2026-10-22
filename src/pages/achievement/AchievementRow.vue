@@ -1,33 +1,32 @@
 <template>
   <li class="achievement-row" :aria-busy="saving">
     <div class="achievement-row-main">
-      <label v-if="batchMode" class="achievement-selection"><input type="checkbox" :checked="selected" :disabled="!writable" :aria-label="'选择 ' + entry.name" @change="$emit('select')"></label>
-      <span class="achievement-row-icon" aria-hidden="true"><ListChecks :size="20" /></span>
       <div class="achievement-row-copy">
+        <label v-if="batchMode" class="achievement-selection"><input type="checkbox" :checked="selected" :disabled="!writable" :aria-label="'选择 ' + entry.name" @change="$emit('select')"></label>
         <h3 class="achievement-title">{{ entry.name }}</h3>
         <p class="achievement-condition">{{ entry.condition }}</p>
         <small v-if="entry.is_hidden === true">隐藏成就</small>
+        <div v-if="entry.linked_metric || hasQuantifiedProgress(entry) || record.progress != null" class="achievement-progress">
+          <template v-if="entry.linked_metric">
+            <span>{{ linked ? '羁绊已记录进度 ' + linked.displayed + ' / ' + entry.target : '羁绊进度未读取' }}</span>
+            <progress v-if="linked" :value="linked.displayed" :max="entry.target" :aria-label="entry.name + ' 羁绊已记录进度'" />
+            <small v-if="linked?.reached && completionStatus(record) !== 'completed'">记录已达标，可确认完成</small>
+            <small v-if="record.progress != null">历史人工进度 {{ record.progress }}（单独保留）</small>
+          </template>
+          <template v-else-if="hasQuantifiedProgress(entry)">
+            <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
+            <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
+          </template>
+          <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
+        </div>
       </div>
       <div class="achievement-reward"><Gift v-if="entry.rewards?.length || legacyReward" :size="17" aria-hidden="true" /><span>{{ rewardText(entry, legacyReward) }}</span></div>
-      <div class="achievement-progress">
-        <template v-if="entry.linked_metric">
-          <span>{{ linked ? '羁绊已记录进度 ' + linked.displayed + ' / ' + entry.target : '羁绊进度未读取' }}</span>
-          <progress v-if="linked" :value="linked.displayed" :max="entry.target" :aria-label="entry.name + ' 羁绊已记录进度'" />
-          <small v-if="linked?.reached && completionStatus(record) !== 'completed'">记录已达标，可确认完成</small>
-          <small v-if="record.progress != null">历史人工进度 {{ record.progress }}（单独保留）</small>
-        </template>
-        <template v-else-if="hasQuantifiedProgress(entry)">
-          <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
-          <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
-        </template>
-        <span v-else class="achievement-hint">无数值进度<template v-if="record.progress != null">；历史人工进度 {{ record.progress }}（待核对）</template></span>
-      </div>
       <div class="achievement-row-actions">
         <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
-          <button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :class="'status-' + value" :aria-pressed="recordReady && completionStatus(record) === value" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: value })">{{ label }}</button>
+          <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (recordReady ? (completed ? ' 已完成' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><Check v-if="recordReady && completed" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ recordReady ? (completed ? '已完成' : '未完成') : '未读取' }}</span></button>
         </div>
         <button class="achievement-favorite" type="button" :aria-pressed="record.favorite" :aria-label="(record.favorite ? '取消关注 ' : '关注 ') + entry.name" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, favorite: !record.favorite })"><Star :size="20" :fill="record.favorite ? 'currentColor' : 'none'" aria-hidden="true" /></button>
-        <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /></button>
+        <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /><span>备注</span></button>
       </div>
     </div>
     <p v-if="saving || saved" class="achievement-row-feedback" role="status">{{ saving ? '正在保存…' : pendingRemoval ? '已标记完成，将从未完成列表移出。' : saveNotice }} <button v-if="saved && canUndo" type="button" :disabled="!writable || !canUndo" @click="$emit('undo')">撤销</button></p>
@@ -48,9 +47,10 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Gift, ListChecks, NotebookPen, Pencil, Star } from '@lucide/vue'
-import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText, STATUS_LABELS } from './rules.js'
+import { Check, Circle, Gift, NotebookPen, Pencil, Star } from '@lucide/vue'
+import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText } from './rules.js'
 const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, saved: Boolean, saveNotice: String, error: String, pendingRemoval: Boolean, canUndo: Boolean, batchMode: Boolean, selected: Boolean })
+const completed = computed(() => completionStatus(props.record) === 'completed')
 const linked = computed(() => linkedProgress(props.entry, props.linkedMetrics))
 defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save', 'undo'])
 const progressInput = ref(null), noteInput = ref(null), progressTrigger = ref(null), noteTrigger = ref(null)
