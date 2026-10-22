@@ -2,7 +2,7 @@
 .record-bar.bar-low { --bar-color: #367447; }
 .record-bar.bar-high { --bar-color: var(--rouge); }
 .record-bar.bar-unknown, .record-bar.bar-count { --bar-color: var(--slate-deep); }
-.agent-pull-badge { --badge-color: #F3AB36; border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--theme-strong-text, var(--tea-deep)); }
+.agent-pull-badge { --badge-color: var(--theme-accent-bg, #F3AB36); border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--theme-strong-text, var(--tea-deep)); }
 .agent-pull-badge.bar-low { --badge-color: #087F5B; color: var(--on-surface); }
 .agent-pull-badge.bar-high { --badge-color: #C6473B; color: var(--on-surface); }
 .agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { --badge-color: var(--slate-deep); color: var(--on-surface); }
