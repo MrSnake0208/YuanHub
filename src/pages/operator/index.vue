@@ -383,6 +383,7 @@
                   {{ importing ? "保存中…" : "确认保存" }}
                 </button>
               </div>
+              <p v-if="selectedScanReview && importPreview?.unchanged && canCommitV3Import" class="tip">与现值一致也可确认复核，无需修改成其他数值。</p>
               <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm">
                 <input
                   v-model="importConfirmReview"
@@ -472,7 +473,7 @@
               class="import-result"
               role="status"
             >
-              {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
+              {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : importResult.unchanged ? '已收到无变化回执，档案未改写；请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
               <button class="ok" @click="afterImport">{{ importing ? '处理中…' : '查看养成总览' }}</button>
             </div>
           </div>
@@ -3676,14 +3677,14 @@ const importDocumentVersion = computed(function () {
 });
 
 const canCommitV3Import = computed(function () {
-  if (
-    !importPreview.value ||
-    operatorV3CommittableCount(importPreview.value) === 0
-  )
-    return false;
+  if (!importPreview.value) return false;
   try {
     const document = parseImportDocument();
     if (selectedScanReview.value && !isOperatorScanReviewDraft(selectedScanReview.value, document)) return false;
+    const item = selectedScanReview.value && operatorReviewReceiptItem(importPreview.value, selectedScanReview.value, document);
+    const confirmedUnchanged = item?.status === 'unchanged' && !item.blockingErrors.length &&
+      !item.warnings.some(issue => /requires_review/.test(issue.code));
+    if (operatorV3CommittableCount(importPreview.value) === 0 && !confirmedUnchanged) return false;
     return (
       importPreviewKey.value ===
       JSON.stringify(
@@ -3825,6 +3826,7 @@ async function closeSelectedScanReview() {
   });
   if (!confirmed || contextSeq !== currentContextSeq || review.account_id !== accountId.value || selectedScanReview.value !== review) return;
   importing.value = true;
+  importError.value = '';
   try {
     await closeOperatorScanReview({ accountId: review.account_id, recordId: review.record_id, operatorId: review.operator_id });
     if (contextSeq !== currentContextSeq || operatorPageDisposed) return;
@@ -3838,7 +3840,9 @@ async function closeSelectedScanReview() {
     }
     await loadScanReviews();
   } catch (err) {
-    if (contextSeq === currentContextSeq) scanReviewError.value = humanErr(err, "关闭提醒失败");
+    if (contextSeq === currentContextSeq && selectedScanReview.value === review && !operatorPageDisposed) {
+      importError.value = "关闭提醒失败：" + humanErr(err, "请稍后重试");
+    }
   } finally {
     if (contextSeq === currentContextSeq) importing.value = false;
   }

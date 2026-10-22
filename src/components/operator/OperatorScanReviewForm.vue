@@ -5,7 +5,7 @@
       <div><h2 id="scan-review-title">复核 {{ catalog.name || '未知密探' }}</h2><p>{{ accountName }} · {{ review.status === 'rejected' ? '本条采集被拒绝，尚未写入' : '部分内容可能已保存，以下内容仍需核对' }}</p></div>
       <button type="button" class="close" :disabled="busy" aria-label="关闭扫描复核" @click="$emit('close')"><X :size="20" aria-hidden="true" /></button>
     </header>
-    <p>对照游戏核对采集值，修改后点「校验并预览」。只有你勾选的待核字段会提交，确认保存后才生效。</p>
+    <p>对照游戏核对采集值，勾选「本次保存此项」后点「校验并预览」。与现值一致也可确认复核，无需故意改成其他数值。</p>
     <ul v-if="issues.length" class="reasons" aria-label="待核原因">
       <li v-for="(issue, index) in issues" :key="index">
         {{ operatorReviewIssueText(issue) }}
@@ -34,6 +34,7 @@
             <label>化极星级与节点<select v-model="row.value.stage" aria-label="复核化极星级与节点" :disabled="row.value.owned !== true" @change="row.included = true; row.stageEdited = true"><option :value="null">未知，请核对</option><option v-if="row.value.stage === 0" :value="0">未拥有</option><option v-for="stage in stages" :key="stage" :value="stage">{{ valueLabel({ owned: true, stage, awakened: null }, 'huaji').split(' · 觉醒')[0] }}</option></select></label>
             <label>觉醒确认<select v-model="row.value.awakened" aria-label="复核觉醒确认" :disabled="row.value.owned !== true" @change="row.included = true; row.awakenedEdited = true"><option :value="null">待确认</option><option :value="false">确认未觉醒</option><option v-if="awakeningSupported" :value="true">确认已觉醒</option></select></label>
             <small>未修改的未知化极或觉醒值，不会清除现值中已确认的记录。</small>
+            <small v-if="Number(catalog.rarity) === 3 && !isMovieOperator(catalog)">蓝卡（隐密）最高为 4 星，满星后没有小节点，也不支持觉醒。旧记录中的额外节点需按游戏实际状态重新确认。</small>
           </div>
           <div v-else-if="row.kind === 'discs'" class="loadouts">
             <div v-for="(loadout, index) in row.value || []" :key="index" class="loadout">
