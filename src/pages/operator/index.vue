@@ -2406,7 +2406,7 @@
                   class="editor-identity-tags"
                 >
                   <span class="editor-identity-tag rarity"
-                    >{{ editingOp.rarity }} 星</span
+                    >稀有度 {{ editingOp.rarity }} 星</span
                   >
                   <span v-if="editingOp.prof" class="editor-identity-tag">
                     <img
@@ -2422,38 +2422,34 @@
                     class="editor-identity-tag profession"
                     >{{ firstSubProf(editingOp) }}</span
                   >
-                  <span
-                    v-if="editingObservedStatus === 'stale'"
-                    class="editor-identity-tag stale"
-                    >观测已过期</span
-                  >
                 </div>
               </div>
             </div>
             <div class="editor-head-stats">
-              <label v-if="canUseAutomaticPanel" class="editor-panel-source">
-                <span>面板来源</span>
-                <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
-                  <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
-                  <option value="manual">使用手填／采集</option>
-                  <option value="auto" :disabled="!calculatedCombatStats.automaticResultAvailable && editorPanelSource !== 'auto'">使用自动计算</option>
-                  <option v-if="editorPanelSource === 'mixed'" value="mixed" disabled>攻击／生命分别设置</option>
-                </select>
-              </label>
-              <p v-if="calculatedCombatStats.changedSinceObservation" class="editor-head-stats-note">养成信息已变化，原面板仍保留，请按游戏内数值核对。</p>
-              <details v-if="editorPanelDifference" class="editor-panel-comparison">
-                <summary>录入值与自动结果有差异，查看对比</summary>
-                <p>{{ editorPanelDifference }}</p>
-                <p>切换来源不会删除原值；星石尚未录全时可继续使用录入值。</p>
-              </details>
-              <div
-                v-if="editorPanelHint"
-                class="editor-head-stats-toolbar"
-              >
-                <span class="editor-head-stats-note">{{
-                  editorPanelHint
-                }}</span>
-                <button v-if="panelPreviewState.status === 'failed'" type="button" class="btn small" @click="panelPreviewRequest.retry()">重试计算</button>
+              <div class="editor-panel-controls">
+                <label v-if="canUseAutomaticPanel" class="editor-panel-source">
+                  <span>面板来源</span>
+                  <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
+                    <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
+                    <option value="manual">使用手填／采集</option>
+                    <option value="auto" :disabled="!calculatedCombatStats.automaticResultAvailable && editorPanelSource !== 'auto'">使用自动计算</option>
+                    <option v-if="editorPanelSource === 'mixed'" value="mixed" disabled>攻击／生命分别设置</option>
+                  </select>
+                </label>
+                <details v-if="editorPanelDifference" class="editor-panel-comparison">
+                  <summary>录入值与自动结果有差异，查看对比</summary>
+                  <p>{{ editorPanelDifference }}</p>
+                  <p>切换来源不会删除原值；星石尚未录全时可继续使用录入值。</p>
+                </details>
+                <div
+                  v-if="editorPanelHint"
+                  class="editor-head-stats-toolbar"
+                >
+                  <span class="editor-head-stats-note">{{
+                    editorPanelHint
+                  }}</span>
+                  <button v-if="panelPreviewState.status === 'failed'" type="button" class="btn small" @click="panelPreviewRequest.retry()">重试计算</button>
+                </div>
               </div>
               <div class="editor-head-values">
                 <span
@@ -2577,6 +2573,11 @@
             >
               <X :size="19" aria-hidden="true" />
             </button>
+            <div v-if="calculatedCombatStats.changedSinceObservation || editingObservedStatus === 'stale'" class="editor-panel-notice" role="status">
+              <CircleAlert :size="20" aria-hidden="true" />
+              <strong>面板待核对</strong>
+              <span>养成信息已变化，原录入值仍保留；请按游戏内面板核对。</span>
+            </div>
           </div>
 
           <OperatorEditorNav v-model="editorSection" />
@@ -2585,7 +2586,10 @@
             <section v-show="editorSection === 'growth'" id="operator-editor-growth" class="editor-row editor-growth-section" role="tabpanel" aria-labelledby="operator-editor-tab-growth" tabindex="0" data-editor-section="growth">
               <div class="num-fields">
                 <div class="editor-level-block">
-                  <p class="editor-growth-note">记录游戏现状；保存不扣除库存。本体与 SP 共享。</p>
+                  <div class="editor-growth-heading">
+                    <h4>等级与修为</h4>
+                    <p class="editor-growth-note">记录游戏现状；保存不扣除库存。本体与 SP 共享。</p>
+                  </div>
                   <div class="level-row">
                     <div class="level-input-group">
                       <label
@@ -2644,9 +2648,12 @@
                       : '1~4星及节点 → 五星 → 觉醒；人工记录不扣库存'
                   "
                 >
+                  <div class="editor-growth-heading">
+                    <h4>化极</h4>
+                    <button type="button" class="ledger-history-link" :disabled="savingEdit || !accountId" :aria-label="(editingOp.name || editingOp.id) + '的化极历程'" title="查看或补录化极日期" @click="milestoneEntry = editingOp">查看历程 <ChevronRight :size="14" aria-hidden="true" /></button>
+                  </div>
                   <div class="star-row">
-                    <span class="star-caption"><Star :size="19" aria-hidden="true" />化极</span>
-                    <button type="button" class="ledger-history-link" :disabled="savingEdit || !accountId" :aria-label="(editingOp.name || editingOp.id) + '的化极历程'" title="查看或补录化极日期" @click="milestoneEntry = editingOp">历程</button>
+                    <span class="star-caption">星级</span>
                     <span class="star-groups" role="group" aria-label="化极星级">
                       <button
                         type="button"
@@ -2656,6 +2663,7 @@
                         @click="pickStarGroup('none')"
                       >
                         未拥有
+                        <Check v-if="starGroupName === 'none'" :size="14" aria-hidden="true" />
                       </button>
                       <button
                         v-for="s in STAR_RANGE.filter(value => editingOp.spOf || value < 5 || Number(editingOp.rarity) !== 3)"
@@ -2667,6 +2675,7 @@
                         @click="pickStarGroup(s)"
                       >
                         {{ s }}星
+                        <Check v-if="starGroupName === s" :size="14" aria-hidden="true" />
                       </button>
                     </span>
                     <div v-if="operatorAwakeningSupported(editingOp) && editorCanConfirmAwakening" class="editor-awakening">
@@ -2693,7 +2702,7 @@
                     "
                     class="star-row"
                   >
-                    <span class="star-caption">节点</span>
+                    <span class="star-caption">化极节点</span>
                     <span class="star-nodes">
                       <button
                         v-for="n in NODE_RANGE"
@@ -2705,6 +2714,7 @@
                         @click="pickStarNode(n)"
                       >
                         {{ starGroupName }}-{{ n }}
+                        <Check v-if="starNode === n" :size="14" aria-hidden="true" />
                       </button>
                     </span>
                   </div>
@@ -2712,11 +2722,19 @@
                   <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" class="huaji-review-note" role="status"><CircleAlert :size="16" aria-hidden="true" />历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 </div>
                 <div class="oddity-editor">
-                  <strong class="oddity-caption">
-                    <BookOpen :size="19" aria-hidden="true" />
-                    奇闻属性
-                    <small v-if="oddityCatalogIncomplete">图鉴待维护</small>
-                  </strong>
+                  <div class="editor-growth-heading">
+                    <h4 class="oddity-caption">
+                      奇闻属性
+                      <small v-if="oddityCatalogIncomplete">图鉴待维护</small>
+                    </h4>
+                    <button
+                      type="button"
+                      class="btn ghost editor-fill-max oddity-fill-max"
+                      :disabled="savingEdit"
+                      title="仅将三项奇闻属性设为图鉴上限，保留等级、修为和化极；点击保存后生效"
+                      @click="fillEditToMax(true)"
+                    >奇闻全部拉满</button>
+                  </div>
                   <label
                     v-for="key in ODDITY_KEYS"
                     :key="key"
@@ -2745,19 +2763,12 @@
                         class="oddity-limit"
                         :title="oddityLimitTitle(key)"
                         aria-hidden="true"
-                        >/ {{ oddityLimitLabel(key) }}</span
+                        >上限 {{ oddityLimitLabel(key) }}</span
                       >
                     </span>
                   </label>
                   <small id="operator-oddity-precision" class="oddity-hint">{{ oddityFieldName('special') }}最多一位小数</small>
                   <small v-if="editOddityErrorKey" id="operator-oddity-error" class="oddity-hint oddity-error" role="alert">{{ editNotice }}</small>
-                  <button
-                    type="button"
-                    class="btn ghost editor-fill-max oddity-fill-max"
-                    :disabled="savingEdit"
-                    title="仅将三项奇闻属性设为图鉴上限，保留等级、修为和化极；点击保存后生效"
-                    @click="fillEditToMax(true)"
-                  >奇闻全部拉满</button>
                 </div>
               </div>
             </section>
@@ -2960,7 +2971,8 @@
               <button
                 class="btn primary editor-save"
                 type="button"
-                :disabled="savingEdit"
+                :disabled="savingEdit || !editorDirty"
+                :title="editorDirty ? '保存当前修改到云端' : '暂无需要保存的修改'"
                 @click="saveEdit"
               >
                 <Save :size="16" aria-hidden="true" />
@@ -12656,6 +12668,13 @@ onBeforeUnmount(function () {
 }
 .editor-save {
   border-radius: 10px;
+}
+.editor-save:disabled {
+  border-color: var(--line);
+  background: var(--line);
+  color: var(--ink-60);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .edit-btn {
