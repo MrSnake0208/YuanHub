@@ -2384,6 +2384,7 @@
           ref="editorPanelEl"
           @focusin="revealEditorControl"
           class="editor-panel editor-workspace"
+          :class="{ 'is-disc-editor': editorSection === 'discs' }"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="'operator-editor-title-' + editingId"
@@ -2787,9 +2788,9 @@
                       selectDiscLoadoutTab(index + 1, true)
                     "
                   >
-                    <CircleDot v-if="selectedDiscLoadoutIndex === index" class="disc-combination-mark" :size="22" aria-hidden="true" /><Circle v-else class="disc-combination-mark" :size="22" aria-hidden="true" />
+                    <CircleCheck v-if="selectedDiscLoadoutIndex === index" class="disc-combination-mark" :size="22" aria-hidden="true" /><Circle v-else class="disc-combination-mark" :size="22" aria-hidden="true" />
                     <span class="disc-combination-label">组合 {{ index + 1 }} · {{ DISC_STATUSES[loadout.status] }}</span>
-                    <strong>{{ loadout.name || "未命名组合" }}</strong><ChevronRight class="disc-combination-arrow" :size="18" aria-hidden="true" />
+                    <strong :title="loadout.name">{{ loadout.name || "未命名组合" }}</strong>
                   </button>
                 </div>
 
@@ -2809,12 +2810,6 @@
                     >
                       <span class="disc-loadout-name-head">
                         <span>组合名称</span>
-                        <span
-                          v-if="selectedDiscLoadout.nameMode !== 'manual'"
-                          class="disc-auto-status"
-                          title="随命盘选择自动生成名称"
-                          >自动命名 ON</span
-                        >
                       </span>
                       <input
                         :id="'disc-loadout-name-' + selectedDiscLoadoutIndex"
@@ -2829,71 +2824,76 @@
                         @blur="ensureDiscLoadoutName(selectedDiscLoadoutIndex)"
                       />
                     </label>
-                    <button
-                      v-if="selectedDiscLoadout.nameMode === 'manual'"
-                      class="disc-auto-name"
-                      type="button"
-                      aria-label="根据已选命盘恢复自动命名"
-                      @click="resetDiscLoadoutName(selectedDiscLoadoutIndex)"
-                    >
-                      <RotateCcw :size="14" aria-hidden="true" /><span
-                        >恢复自动命名</span
-                      >
-                    </button>
+                    <label class="disc-auto-toggle">
+                      <input type="checkbox" role="switch"
+                        :checked="selectedDiscLoadout.nameMode !== 'manual'"
+                        @change="$event.target.checked ? resetDiscLoadoutName(selectedDiscLoadoutIndex) : selectedDiscLoadout.nameMode = 'manual'" />
+                      <span class="disc-toggle-track" aria-hidden="true"></span>
+                      <span>自动命名</span>
+                    </label>
+                    <div class="disc-status-field">
+                      <span>组合标记</span>
+                      <div class="disc-status-controls" role="group" aria-label="组合标记">
+                        <button v-for="(label, status) in DISC_STATUSES" :key="status" type="button" :aria-pressed="selectedDiscLoadout.status === status"
+                          :class="{ on: selectedDiscLoadout.status === status }" @click="selectedDiscLoadout.status = status">{{ label }}</button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="disc-target-toolbar">
-                    <div class="disc-status-controls" role="group" :aria-label="'命盘' + (selectedDiscLoadoutIndex + 1) + '状态'">
-                      <button v-for="(label, status) in DISC_STATUSES" :key="status" type="button" :aria-pressed="selectedDiscLoadout.status === status"
-                        :class="{ on: selectedDiscLoadout.status === status }" @click="selectedDiscLoadout.status = status">{{ label }}</button>
+                  <OperatorDiscComparison class="disc-editor-comparison" :current="selectedDiscLoadout.discNames" :target="selectedDiscLoadout.targetDiscNames" :catalog="editingDiscs" editable
+                    @copy="copyCurrentDiscTarget" @remove="removeDiscTarget">
+                    <template #current-action>
+                      <button type="button" class="disc-edit-action" :aria-pressed="!editingDiscTarget" @click="editingDiscTarget = false">编辑当前</button>
+                    </template>
+                    <template #target-action>
+                      <button type="button" class="disc-edit-action" :aria-pressed="editingDiscTarget" @click="editingDiscTarget = true">编辑目标</button>
+                    </template>
+                  </OperatorDiscComparison>
+                  <div class="disc-editing-workspace">
+                    <div class="disc-options">
+                      <div class="disc-options-head">
+                        <h5>组合 {{ selectedDiscLoadoutIndex + 1 }} · {{ editingDiscTarget ? '编辑目标命盘' : '编辑当前命盘' }}</h5>
+                        <strong
+                          >已选 {{ selectedDiscNames.length }} / 3</strong
+                        >
+                      </div>
+                      <p class="disc-options-help">最多选择 3 项，再次点击可取消</p>
+                      <div class="disc-options-grid">
+                        <p v-if="!editingDiscs.length" class="hint">
+                          该密探暂无命盘目录数据，可直接留空保存。
+                        </p>
+                        <label
+                          v-for="d in editingDiscs"
+                          :key="discKey(d)"
+                          class="disc-option"
+                          :class="[discColorClass(d), { on: isDiscSelected(d) }]"
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="isDiscSelected(d)"
+                            @change="toggleDiscSelection(d, $event)"
+                          />
+                          <Check v-if="isDiscSelected(d)" class="disc-selected-check" :size="16" aria-hidden="true" />
+                          <span
+                            class="disc-name disc-term-label"
+                            tabindex="0"
+                            @mouseenter="
+                              showDiscTooltip($event, discDescription(d))
+                            "
+                            @mouseleave="hideDiscTooltip"
+                            @focus="showDiscTooltip($event, discDescription(d))"
+                            @blur="hideDiscTooltip"
+                            >{{ discKey(d) }}</span
+                          >
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  <OperatorDiscComparison :current="selectedDiscLoadout.discNames" :target="selectedDiscLoadout.targetDiscNames" :catalog="editingDiscs" editable
-                    @copy="copyCurrentDiscTarget" @remove="removeDiscTarget" />
-                  <div class="disc-pick-mode" role="group" aria-label="词条编辑对象">
-                    <button type="button" :aria-pressed="!editingDiscTarget" :class="{ on: !editingDiscTarget }" @click="editingDiscTarget = false">编辑当前命盘</button>
-                    <button type="button" :aria-pressed="editingDiscTarget" :class="{ on: editingDiscTarget }" @click="editingDiscTarget = true">编辑目标命盘</button>
-                  </div>
-                  <OperatorDiscPresets
-                    :key="editingId + ':' + selectedDiscLoadoutIndex + ':' + editingDiscTarget"
-                    :operator-id="editingId" :catalog="editingDiscs" :model-value="selectedDiscNames"
-                    :destination="'组合 ' + (selectedDiscLoadoutIndex + 1) + ' 的' + (editingDiscTarget ? '目标命盘' : '当前命盘')"
-                    :disabled="savingEdit" @update:model-value="applyDiscPresetNames"
-                  />
-                  <div class="disc-options">
-                    <div class="disc-options-head">
-                      <span>{{ editingDiscTarget ? '选择目标词条' : '选择命盘' }}</span>
-                      <strong
-                        >{{ selectedDiscNames.length }} / 3</strong
-                      >
-                    </div>
-                    <p v-if="!editingDiscs.length" class="hint">
-                      该密探暂无命盘目录数据，可直接留空保存。
-                    </p>
-                    <label
-                      v-for="d in editingDiscs"
-                      :key="discKey(d)"
-                      class="disc-option"
-                      :class="[discColorClass(d), { on: isDiscSelected(d) }]"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="isDiscSelected(d)"
-                        @change="toggleDiscSelection(d, $event)"
-                      />
-                      <Check v-if="isDiscSelected(d)" class="disc-selected-check" :size="16" aria-hidden="true" />
-                      <span
-                        class="disc-name disc-term-label"
-                        tabindex="0"
-                        @mouseenter="
-                          showDiscTooltip($event, discDescription(d))
-                        "
-                        @mouseleave="hideDiscTooltip"
-                        @focus="showDiscTooltip($event, discDescription(d))"
-                        @blur="hideDiscTooltip"
-                        >{{ discKey(d) }}</span
-                      >
-                    </label>
+                    <OperatorDiscPresets
+                      :key="editingId + ':' + selectedDiscLoadoutIndex + ':' + editingDiscTarget"
+                      :operator-id="editingId" :catalog="editingDiscs" :model-value="selectedDiscNames"
+                      :destination="'组合 ' + (selectedDiscLoadoutIndex + 1) + ' 的' + (editingDiscTarget ? '目标命盘' : '当前命盘')"
+                      :disabled="savingEdit" @update:model-value="applyDiscPresetNames"
+                    />
                   </div>
                 </div>
 
@@ -3046,7 +3046,7 @@ import {
   ChevronUp,
   Circle,
   CircleAlert,
-  CircleDot,
+  CircleCheck,
   Download,
   Heart,
   Eye,
@@ -12780,12 +12780,38 @@ onBeforeUnmount(function () {
 .ledger-disc-target-arrow { color: var(--ink-35); }
 .ledger-disc-target-state + .ledger-disc-target-state + .ledger-disc-target-arrow { display: none; }
 .ledger-disc-target-summary ~ .ledger-stones > .stone-slot.is-empty:not(:hover):not(:focus-visible) { border-color: color-mix(in srgb, var(--line) 65%, transparent); }
-.disc-target-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-.disc-status-controls, .disc-pick-mode { display: flex; flex-wrap: wrap; gap: 6px; }
-.disc-status-controls button, .disc-pick-mode button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--tea); font: 600 12px var(--font-s); cursor: pointer; }
-.disc-status-controls button.on, .disc-pick-mode button.on { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
-.disc-status-controls button:focus-visible, .disc-pick-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.disc-pick-mode { margin-top: 12px; }
+.editor-workspace .disc-editor-row { font-family: var(--font-b); }
+.editor-workspace .disc-loadout-toolbar { border: 0; }
+.disc-auto-toggle { display: inline-flex; position: relative; align-items: center; gap: 8px; color: var(--tea); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.disc-auto-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.disc-toggle-track { width: 34px; height: 20px; padding: 3px; box-sizing: border-box; border-radius: 12px; background: var(--ink-60); }
+.disc-toggle-track::after { content: ''; display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); }
+.disc-auto-toggle input:checked + .disc-toggle-track { background: var(--accent-strong); }
+.disc-auto-toggle input:checked + .disc-toggle-track::after { transform: translateX(14px); }
+.disc-auto-toggle input:focus-visible + .disc-toggle-track { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
+.disc-status-field, .disc-status-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.disc-status-field { color: var(--ink); font-size: 13px; font-weight: 600; }
+.disc-status-controls button, .disc-edit-action { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--tea); font: 600 12px var(--font-b); cursor: pointer; }
+.disc-status-controls button.on, .disc-edit-action[aria-pressed="true"] { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
+.disc-status-controls button:focus-visible, .disc-edit-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-editor-comparison :deep(.disc-comparison-arrow) { display: none; }
+.disc-editor-comparison :deep(.disc-comparison-side:has([aria-pressed="true"])) { border-color: var(--accent); background: var(--cream); }
+.disc-editor-comparison :deep(.disc-comparison-term) { border-radius: 7px; }
+.disc-editing-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+.editor-workspace .disc-editing-workspace .disc-options, .disc-editing-workspace :deep(.disc-presets) { display: block; margin: 0; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; box-sizing: border-box; }
+.editor-workspace .disc-options-head { gap: 8px; flex-wrap: wrap; color: var(--ink); }
+.disc-options-head h5 { margin: 0; font: inherit; }
+.disc-options-help { margin: 6px 0 12px; font-size: 12px; color: var(--ink-60); line-height: 1.5; }
+.disc-options-grid > .hint { grid-column: 1 / -1; }
+.disc-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 8px; }
+.editor-workspace .disc-options-grid .disc-option { min-height: 40px; padding: 8px 10px 8px 30px; border-radius: 8px; }
+.editor-workspace .disc-options-grid .disc-option.on { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.editor-workspace .disc-options-grid .disc-option.c-gold.on { color: #8a5a1f; background: var(--cream); }
+.editor-workspace .disc-options-grid .disc-option.c-purple.on { color: #6d56a0; background: rgba(151, 130, 199, .16); }
+.editor-workspace .disc-options-grid .disc-option.c-blue.on { color: #4f6387; background: rgba(110, 135, 184, .16); }
+.disc-editing-workspace :deep(.disc-preset-action) { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; }
+.disc-editing-workspace :deep(.disc-preset) { padding: 9px; gap: 8px; }
+.disc-editing-workspace :deep(.disc-preset-terms) { gap: 3px 8px; }
 @media (max-width: 640px) {
   :is(.agent-ledger-card--v2, .agent-ledger-card--v3) .ledger-loadouts > .ledger-disc-target-summary { grid-row: 3; }
 }
