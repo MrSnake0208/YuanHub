@@ -725,8 +725,10 @@ it('库存输入与在途保存期间Esc退出，不丢草稿、不取消保存�
   const page = host.findComponent(InventoryPage)
   await page.get('.inventory-entry').trigger('click')
   await page.get('input[aria-label="白金币当前库存"]').setValue('120')
+  await page.get('.stock-baseline-confirmation input').setValue(true)
   const pending = deferred(); inventoryApi.importInventory.mockReturnValueOnce(pending.promise)
   await page.get('.manifest-edit-actions .primary').trigger('click')
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
   expect(page.get('input[aria-label="白金币当前库存"]').element.value).toBe('120')
   stock = [{ account_id: 'acc', entity_type: 'item', full_baseline_at: '2026-10-08T00:00:00Z', entries: { baijinbi: { count: 120 } } }]

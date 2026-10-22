@@ -1199,7 +1199,7 @@ describe('奖励补录工作台弹层', () => {
     const labelButton = label => receipt.querySelector(`button[aria-label="${label}"]`)
     expect(document.body.querySelector('.reward-tile').disabled).toBe(true)
     await clickElement(labelButton('增加白金币 · 月卡奖励'))
-    expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('61')
+    expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('70')
     await clickElement(labelButton('减少白金币 · 月卡奖励'))
     expect(receipt.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('60')
     await clickElement(labelButton('移除白金币 · 月卡奖励'))
