@@ -10,8 +10,16 @@
 .relationship-badge { box-sizing: border-box; max-width: calc(100% - 30px); padding-inline: 4px; font-size: 11px; white-space: nowrap; }
 .relationship-conflict { display: block; margin-top: 6px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.5; }
 .relationships details summary { cursor: pointer; padding-block: 8px; }
-.relationships-exchange { margin: 24px 0; }
+.relationships-exchange { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 20px; }
 .relationships-exchange > label, .relationships-exchange > button { margin: 12px 0; }
 .relationships-exchange label:has(input[type="checkbox"]) { display: flex; align-items: center; }
 .relationships-preview { border: 1px solid var(--theme-border, #cdbfa9); padding: 12px; }
 .relationships-preview button { margin: 4px; }
+
+.relationship-backup-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 12px; background: var(--theme-overlay, rgba(73,59,44,.38)); }
+.relationship-backup-panel { display: flex; flex-direction: column; box-sizing: border-box; width: min(640px, 100%); max-height: calc(var(--modal-viewport-height, 100dvh) - 24px); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
+.relationship-backup-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; }
+.relationship-backup-panel h2 { font-size: 20px; }
+.relationship-backup-panel header button { display: grid; place-items: center; }
+.relationship-backup-panel.is-short { overflow-y: auto; }
+.relationship-backup-panel.is-short .relationships-exchange { overflow: visible; flex-shrink: 0; }
