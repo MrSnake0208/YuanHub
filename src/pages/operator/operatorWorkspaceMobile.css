@@ -4297,3 +4297,7 @@
 .is-short-viewport .editor-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 .is-short-viewport .editor-body { overflow: visible; }
 }
+
+@media (max-width: 1080px) {
+  .ledger-milestone-label { width: auto; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; }
+}

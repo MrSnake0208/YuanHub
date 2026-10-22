@@ -1768,7 +1768,7 @@
                       </div>
                     </div>
                     <div class="ledger-growth-row">
-                      <span class="ledger-grow-label">化极</span>
+                      <span class="ledger-grow-label ledger-milestone-label">化极 <button type="button" class="ledger-history-link" :aria-label="(e.name || e.id) + '的化极历程'" @click="milestoneEntry = e">历程</button></span>
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         :class="{ 'is-terminal': operatorHuajiAction(e).kind !== 'upgrade' || cardGrowthValue(e, 'star') >= operatorHuajiMax(e) }"
@@ -3004,6 +3004,7 @@
         @request-close="requestCloseStarLoadout"
         @update:draft-loadouts="starLoadoutDrafts = $event"
       />
+      <OperatorMilestoneDialog v-if="milestoneEntry && auth.isLoggedIn && accountId" :entry="milestoneEntry" :account-id="accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" @close="milestoneEntry = null" />
       <OperatorAwakeningDialog v-if="awakeningEntry" :key="accountId + ':' + awakeningEntry.id"
         :entry="awakeningEntry" :account-id="accountId" :game="saveGame" :refresh="refreshAwakeningEntry"
         @close="awakeningId = ''" @saved="onAwakeningSaved" />
@@ -3013,6 +3014,7 @@
 
 <script setup>
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
+import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates, publishAccountList } from '../../store/accountList.js'
 import { updateAccount } from '../../api/accounts.js'
@@ -3355,6 +3357,7 @@ const quickDrafts = ref({});
 const quickSavingIds = ref(new Set());
 const quickNotices = ref({});
 const awakeningId = ref('');
+const milestoneEntry = ref(null);
 const awakeningEntry = computed(() => currentMap.value[awakeningId.value] || null);
 const workbenchStatuses = ref({});
 const workbenchRemarks = ref({});
@@ -3545,6 +3548,7 @@ const organizationTagOptions = computed(() => {
   const owned = new Set(ownedCurrentEntries.value.map(entry => entry.id));
   return organizationData.value.tags.map(tag => ({ value: tag.id, label: tag.name, count: tag.operator_ids.filter(id => owned.has(id)).length }));
 });
+watch(() => [accountId.value, gameFilter.value, auth.userInfo?.id, auth.isLoggedIn], () => { milestoneEntry.value = null; }, { flush: "sync" });
 watch([accountId, gameFilter], () => { organizationTagFilter.value = ""; }, { flush: "sync" });
 watch(() => organizationData.value.tags, tags => {
   if (organizationTagFilter.value && !tags.some(tag => tag.id === organizationTagFilter.value)) organizationTagFilter.value = "";
@@ -11243,6 +11247,8 @@ onBeforeUnmount(function () {
 .ledger-grow-label {
   color: var(--ink-60);
 }
+.ledger-history-link { border: 0; background: transparent; color: var(--accent-strong); font: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+.ledger-history-link:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
 .ledger-editable {
   border: 0;
   border-bottom: 1px dashed var(--accent);
