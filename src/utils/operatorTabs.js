@@ -1,6 +1,6 @@
 export const OPERATOR_TAB_STORAGE_KEY = 'operator-tabs'
 export const OPERATOR_ACTIVE_TAB_SESSION_KEY = 'yuanhub:operator-active-tab:v1'
-export const OPERATOR_TABS = Object.freeze(['catalog', 'current', 'tracking'])
+export const OPERATOR_TABS = Object.freeze(['catalog', 'current', 'relationships', 'tracking'])
 
 export function setActiveOperatorTab(tab) {
   if (!OPERATOR_TABS.includes(tab)) return

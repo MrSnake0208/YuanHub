@@ -2,6 +2,7 @@ import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
+import * as relationshipApi from '../src/api/operatorRelationships.js'
 import * as operatorApi from '../src/api/operator.js'
 import * as accountShareApi from '../src/api/accountShare.js'
 import { updateAccount } from '../src/api/accounts.js'
@@ -36,6 +37,7 @@ vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
   const actual = await importOriginal()
   return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
 })
+vi.mock('../src/api/operatorRelationships.js', () => ({ getRelationshipCatalog: vi.fn(), getRelationships: vi.fn(), patchRelationships: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/accountShare.js', () => ({ getAccountShare: vi.fn(), setAccountShareScope: vi.fn(), regenerateAccountShare: vi.fn(), revokeAccountShare: vi.fn() }))
 vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), updateAccount: vi.fn() }))
@@ -1623,4 +1625,27 @@ it('只修改星石也会在取消时确认，拒绝放弃保留原草稿', asyn
   expect(starEditor.props('draftLoadouts').op.main1).toBe('stone-a')
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
   expect(putCurrentStarLoadout).not.toHaveBeenCalled()
+})
+
+
+it('信赖与传闻在名册内懒加载，草稿阻止取消的页签切换', async () => {
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ account_id: 'acc', game: '如鸢', entries: { op: { elite: 1, level: 1, star_level: 1, huaji: { owned: true, stage: 1, awakened: false } } } }])
+  relationshipApi.getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: {} })
+  relationshipApi.getRelationships.mockResolvedValue({ account_id: 'acc', game: '如鸢', catalog_version: 'test', revision: 0, entries: {} })
+  const wrapper = renderPage(); await flushPromises()
+  expect(relationshipApi.getRelationships).not.toHaveBeenCalled()
+  await wrapper.get('#operator-tab-relationships').trigger('click'); await flushPromises()
+  expect(wrapper.get('#operator-tab-relationships').attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('#operator-panel-relationships').text()).toContain('信赖与传闻')
+  expect(relationshipApi.getRelationships).toHaveBeenCalledWith('acc')
+  const edit = wrapper.findAll('#operator-panel-relationships button').find(button => button.text() === '编辑进度')
+  expect(edit).toBeTruthy()
+  await edit.trigger('click'); await flushPromises()
+  await wrapper.get('.relationship-editor input').setValue('100')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  expect(wrapper.get('#operator-tab-relationships').attributes('aria-selected')).toBe('true')
+  dialog.confirm.mockResolvedValueOnce(true)
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  expect(wrapper.get('#operator-tab-current').attributes('aria-selected')).toBe('true')
 })

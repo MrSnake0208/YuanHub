@@ -116,6 +116,9 @@
               >
                 养成总览
               </button>
+              <button class="operator-tab-button" type="button" role="tab" id="operator-tab-relationships" aria-controls="operator-panel-relationships"
+                :tabindex="activeTab === 'relationships' ? 0 : -1" :aria-selected="activeTab === 'relationships'"
+                :class="{ on: activeTab === 'relationships' }" @click="setTab('relationships')">信赖与传闻</button>
               <button
                 v-if="growthTrackingEnabled"
                 type="button"
@@ -2245,6 +2248,13 @@
             </div>
           </div>
 
+          <div v-if="!visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
+          <div v-if="visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
+            v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
+            <OperatorRelationships ref="relationshipWorkspace" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
+              :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
+              :operators="ownedCurrentEntries.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" />
+          </div>
           <div
             v-if="growthTrackingEnabled && visitedTabs.has('tracking')"
             id="operator-panel-tracking"
@@ -3025,6 +3035,7 @@ import {
   defineAsyncComponent,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import OperatorRelationships from "./OperatorRelationships.vue";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import { buildOperatorV2BrowserPreview } from "../../utils/operatorV2ImportPreview.js";
 import {
@@ -3236,8 +3247,9 @@ const router = useRouter();
 const activeTab = usePersistedTab(
   OPERATOR_TAB_STORAGE_KEY,
   "catalog",
-  growthTrackingEnabled ? ["catalog", "current", "tracking"] : ["catalog", "current"],
+  growthTrackingEnabled ? ["catalog", "current", "relationships", "tracking"] : ["catalog", "current", "relationships"],
 );
+const relationshipWorkspace = ref(null);
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
 watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
@@ -8222,13 +8234,25 @@ async function openGrowthPlanningPreview() {
 }
 
 function setTab(t) {
+  if (t !== activeTab.value && relationshipWorkspace.value) return leaveRelationshipsThenSetTab(t);
+  return activateTab(t);
+}
+
+async function leaveRelationshipsThenSetTab(t) {
+  const navigationKey = accountId.value + ":" + gameFilter.value;
+  if (!(await relationshipWorkspace.value.beforeLeave())) return;
+  if (navigationKey !== accountId.value + ":" + gameFilter.value) return;
+  return activateTab(t);
+}
+
+function activateTab(t) {
   if (t === "tracking" && !growthTrackingEnabled) return;
   if (!visitedTabs.value.has(t))
     visitedTabs.value = new Set(visitedTabs.value).add(t);
   activeTab.value = t;
   const currentKey = accountId.value + ":" + gameFilter.value;
   let currentLoad = Promise.resolve();
-  if ((t === "current" || t === "tracking") && currentLoadedKey.value !== currentKey)
+  if ((t === "current" || t === "tracking" || t === "relationships") && currentLoadedKey.value !== currentKey)
     currentLoad = reloadCurrent();
   if ((t === "current" || t === "tracking") && cardMaterialLoadedAccount.value !== accountId.value)
     loadCardMaterialStock();
@@ -8290,12 +8314,13 @@ async function loadAccounts() {
   }
 }
 
-const accountSwitchBusy = computed(() => savingEdit.value || importing.value || starLoadoutSaving.value || organizationSaving.value ||
+const accountSwitchBusy = computed(() => relationshipWorkspace.value?.saving || savingEdit.value || importing.value || starLoadoutSaving.value || organizationSaving.value ||
   batchStatusBusy.value || quickSavingIds.value.size > 0 || cardCombatSavingIds.value.size > 0 ||
   growthExecuteBusyKeys.value.size > 0 || annotationBusyIds.value.size > 0 || favoriteBusyIds.value.size > 0);
 async function beforeAccountSwitch() {
   if (accountSwitchBusy.value) return false;
   const contextSeq = currentContextSeq;
+  if (relationshipWorkspace.value && !(await relationshipWorkspace.value.beforeLeave())) return false;
   if (editorDirty.value && !(await confirmEditorDiscard())) return false;
   if (scanReviewDirty.value && !(await confirmScanReviewDiscard())) return false;
   if (organizationDirty.value && !(await confirmOrganizationDiscard())) return false;
