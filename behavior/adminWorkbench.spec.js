@@ -9,7 +9,7 @@ vi.mock('../src/store/auth.js', async () => {
 })
 
 const render = () => mount(Workbench, { global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
-beforeEach(() => Object.assign(auth, { adminAccess: null, adminAccessLoaded: false, adminAccessLoading: false, adminAccessError: '' }))
+beforeEach(() => Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'workbench-user' }, adminAccess: null, adminAccessLoaded: false, adminAccessLoading: false, adminAccessError: '' }))
 
 it('管理工作台作为独立页面聚合授权工具，不再将个人中心作为父级', () => {
   Object.assign(auth, { adminAccessLoaded: true, adminAccess: { permissions: ['recruitment_catalog:write', 'admin:audit:read'], operatorAreas: ['UI'] } })
@@ -40,5 +40,21 @@ it.each([
   expect(wrapper.get('.workbench-state').text()).toContain(message)
   expect(wrapper.find('.workbench-tool').exists()).toBe(false)
   if (state.adminAccessError) expect(wrapper.get('[role="alert"]').text()).toContain(state.adminAccessError)
+  wrapper.unmount()
+})
+
+
+it('固定按钮独立于工具链接，可固定和取消且反馈状态即时更新', async () => {
+  Object.assign(auth, { adminAccessLoaded: true, adminAccess: { operatorAreas: ['UI'] } })
+  const wrapper = render()
+  const button = wrapper.get('button[aria-label="固定到导航：待处理反馈"]')
+  expect(button.element.closest('a')).toBeNull()
+  await button.trigger('click')
+  expect(button.attributes('aria-pressed')).toBe('true')
+  expect(button.text()).toContain('取消固定')
+  expect(JSON.parse(localStorage.getItem('yh_admin_nav_pins:workbench-user'))).toEqual(['feedback-manage'])
+  await button.trigger('click')
+  expect(button.attributes('aria-pressed')).toBe('false')
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage'])
   wrapper.unmount()
 })

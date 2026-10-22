@@ -32,28 +32,35 @@
           </div>
 
           <div v-else class="workbench-groups">
+            <p class="workbench-pin-hint">固定常用工具后，可从导航直接进入。设置仅保存在当前浏览器，按登录账号区分。</p>
+            <p v-if="storageError" class="workbench-pin-hint" role="status">{{ storageError }}</p>
             <section v-for="group in toolGroups" :key="group.key" class="workbench-group" :aria-labelledby="'group-' + group.key">
               <header class="workbench-group-head">
                 <span class="section-kicker">{{ group.key.toUpperCase() }}</span>
                 <h2 :id="'group-' + group.key">{{ group.label }}</h2>
               </header>
               <div class="workbench-tools">
-                <router-link
-                  v-for="tool in group.tools"
-                  :key="tool.key"
-                  class="workbench-tool"
-                  :to="tool.to"
-                  :aria-label="tool.label + '：' + tool.description"
-                >
-                  <span class="workbench-tool-icon" aria-hidden="true">
-                    <component :is="tool.icon" :size="21" />
-                  </span>
-                  <span class="workbench-tool-copy">
-                    <strong>{{ tool.label }}</strong>
-                    <small>{{ tool.description }}</small>
-                  </span>
-                  <ArrowUpRight :size="19" aria-hidden="true" />
-                </router-link>
+                <div v-for="tool in group.tools" :key="tool.key" class="workbench-tool-entry">
+                  <router-link
+                    class="workbench-tool"
+                    :to="tool.to"
+                    :aria-label="tool.label + '：' + tool.description"
+                  >
+                    <span class="workbench-tool-icon" aria-hidden="true">
+                      <component :is="tool.icon" :size="21" />
+                    </span>
+                    <span class="workbench-tool-copy">
+                      <strong>{{ tool.label }}</strong>
+                      <small>{{ tool.description }}</small>
+                    </span>
+                    <ArrowUpRight :size="19" aria-hidden="true" />
+                  </router-link>
+                  <button class="workbench-pin" type="button"
+                    :aria-label="(isPinned(tool.key) ? '取消固定：' : '固定到导航：') + tool.label"
+                    :aria-pressed="isPinned(tool.key)" @click="togglePin(tool.key)">
+                    <Pin :size="15" aria-hidden="true" />{{ isPinned(tool.key) ? '取消固定' : '固定到导航' }}
+                  </button>
+                </div>
               </div>
             </section>
           </div>
@@ -71,11 +78,15 @@
 <script setup>
 import { computed } from 'vue'
 import '../../styles/page-header.css'
-import { ArrowUpRight, LoaderCircle, ShieldAlert } from '@lucide/vue'
+import { ArrowUpRight, LoaderCircle, ShieldAlert, Pin } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
+import { useAdminNavPins } from '../../composables/useAdminNavPins.js'
 import { auth } from '../../store/auth.js'
 import { getVisibleAdminToolGroups, hasManagementCapability } from '../../utils/adminTools.js'
+
+const { pinnedTools, storageError, togglePin } = useAdminNavPins()
+const isPinned = key => pinnedTools.value.some(tool => tool.key === key)
 
 const permissionLoading = computed(function () {
   return auth.adminAccessLoading || !auth.adminAccessLoaded
@@ -90,6 +101,10 @@ const toolGroups = computed(function () {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.workbench-pin-hint { color: var(--ink-60); }
+.workbench-pin { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font: inherit; }
+.workbench-pin[aria-pressed="true"] { background: var(--yellow); }
+.workbench-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .workbench-state {
   color: var(--ink-60);
   background: rgba(255, 253, 246, .68);
