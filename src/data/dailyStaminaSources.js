@@ -39,6 +39,17 @@ export function sourcesForDate(preferences, date) {
   return (preferences?.sourcePeriods || []).filter(period => period.fromDate <= date).at(-1)?.sources
 }
 
+export function withMonthlyCardPeriod(preferences, monthlyCard, fromDate) {
+  const card = validateStaminaSources({ monthlyCard, fixedSources: [] }).monthlyCard
+  const periods = preferences.sourcePeriods || []
+  const update = sources => ({ ...(sources || emptyStaminaSources()), monthlyCard: { ...card } })
+  return { ...preferences, sourcePeriods: [
+    ...periods.filter(period => period.fromDate < fromDate),
+    { fromDate, sources: update(sourcesForDate(preferences, fromDate)) },
+    ...periods.filter(period => period.fromDate > fromDate).map(period => ({ ...period, sources: update(period.sources) })),
+  ] }
+}
+
 // 规则按ID替换推荐来源；整日手工覆盖由调用方优先处理。
 export function resolveDailyStaminaGains(gains, preferences, date) {
   const sources = sourcesForDate(preferences, date)

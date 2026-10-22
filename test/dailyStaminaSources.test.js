@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { monthlyCardTiers } from '../src/data/monthlyCard.js'
-import { emptyStaminaSources, resolveDailyStaminaGains, validateStaminaSources, withSourcePeriod } from '../src/data/dailyStaminaSources.js'
+import { emptyStaminaSources, resolveDailyStaminaGains, validateStaminaSources, withSourcePeriod, withMonthlyCardPeriod } from '../src/data/dailyStaminaSources.js'
 import { buildRecommendedPlan, clonePlannerValue, createGain, createSpend, normalizePlannerPreferences, normalizePlannerSnapshot, planTotals, simulatePlanner } from '../src/data/cultivationPlanner.js'
 import { prepareExactPlanner } from '../src/data/exactPlanner.js'
 import { applyDailySourcesToSchedule, createFixedSchedule, fixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
@@ -13,6 +13,47 @@ const dates = ['2026-10-17', '2026-10-18', '2026-10-19', '2026-10-20']
 const context = () => ({ date: today, initialState: { a: { shuijing: 99999 } }, requiredState: { a: { shuijing: 99999 } }, stock: {}, goals: { a: [100, 17, 0] }, levels: { yy: 12 }, strategy: 'overall', agentOrder: ['a'], preferences: normalizePlannerPreferences() })
 const cardSources = () => ({ ...emptyStaminaSources(), monthlyCard: { tier: 'zhaoyang', dailyEnabled: true, shopEnabled: true, dailyAmount: 60, shopAmount: 20, startDate: today, endDate: '2026-10-18' } })
 const free = () => [createGain('natural'), createGain('meal')]
+
+test('月卡同步保留分期固定来源、手工收入支出及历史；有效期含首尾且重复同步不累加', () => {
+  const oldSources = emptyStaminaSources()
+  oldSources.fixedSources = [{ id: 'event', label: '活动', value: 11, enabled: true }]
+  const futureSources = clonePlannerValue(oldSources)
+  futureSources.fixedSources[0].value = 22
+  const preferences = withSourcePeriod(withSourcePeriod({}, oldSources, '2026-10-16'), futureSources, '2026-10-18')
+  const manual = clonePlannerValue({ gains: [createGain('natural', { value: 123 }), createGain('gift', { value: 7 }), createGain('monthly-card-daily', { value: 9 })], spends: [createSpend('luoyang', { value: 1 })] })
+  const plans = { '2026-10-16': manual, [today]: manual, '2026-10-19': manual }
+  const original = createFixedSchedule({ ...context(), date: '2026-10-16', preferences }, plans)
+  original.context.planBaselines = { [today]: clonePlannerValue(manual) }
+  const before = JSON.stringify({ original, plans })
+  const apply = (schedule, manualPlans, sources = cardSources()) => applyDailySourcesToSchedule(schedule, manualPlans, sources, today, today, false, { monthlyOnly: true })
+  const next = apply(original, plans)
+  assert.equal(JSON.stringify({ original, plans }), before)
+  assert.deepEqual(next.schedule.history, original.result.timeline.filter(day => day.date < today))
+  assert.deepEqual(next.manualPlans['2026-10-16'], manual)
+  assert.deepEqual(next.manualPlans[today].spends, manual.spends)
+  assert.deepEqual(next.manualPlans[today].gains.filter(g => !g.id.startsWith('monthly-card')), manual.gains.filter(g => !g.id.startsWith('monthly-card')))
+  assert.equal(planTotals(next.manualPlans[today]).gains, 210)
+  assert.equal(planTotals(next.manualPlans['2026-10-19']).gains, 130)
+  assert.deepEqual(next.preferences.sourcePeriods.map(p => p.sources.fixedSources[0].value), [11, 11, 22])
+  assert.equal(next.schedule.result.timeline.find(d => d.date === '2026-10-18').totals.gains, 510)
+  assert.deepEqual(next.schedule.context.planBaselines[today].spends, manual.spends)
+  assert.deepEqual(apply(next.schedule, next.manualPlans), next)
+  const stopped = apply(next.schedule, next.manualPlans, emptyStaminaSources())
+  assert.equal(planTotals(stopped.manualPlans[today]).gains, 130)
+  assert.equal(stopped.schedule.result.timeline.find(d => d.date === '2026-10-18').totals.gains, 430)
+  const wire = scheduleBody({ ...normalizePlannerSnapshot(null, 'a'), schedule: next.schedule, preferences: next.preferences, manualPlans: next.manualPlans })
+  const restored = scheduleFromRemote({ ...wire, account_id: 'a', revision: 3 }, 'a')
+  assert.deepEqual(restored.schedule, next.schedule)
+  assert.deepEqual(restored.manualPlans, next.manualPlans)
+})
+
+test('未到生效日的月卡不提前增加收入，到期后移除', () => {
+  const sources = cardSources(); sources.monthlyCard.startDate = '2026-10-18'
+  const preferences = withMonthlyCardPeriod({}, sources.monthlyCard, today)
+  assert.equal(planTotals({ gains: resolveDailyStaminaGains(free(), preferences, today) }).gains, 408)
+  assert.equal(planTotals({ gains: resolveDailyStaminaGains(free(), preferences, '2026-10-18') }).gains, 488)
+  assert.equal(planTotals({ gains: resolveDailyStaminaGains(free(), preferences, '2026-10-19') }).gains, 408)
+})
 
 test('两个游戏分别持有可编辑预设，无月卡默认不增体力，四档每日奖励与商店分开', () => {
   assert.notEqual(monthlyCardTiers('如鸢'), monthlyCardTiers('代号鸢'))
@@ -127,4 +168,21 @@ test('workspace云端往返按账号共享；旧数据不产生月卡，日程�
   const remote = scheduleFromRemote({ ...body, account_id: 'a', revision: 1 }, 'a')
   assert.deepEqual(remote.preferences, next.preferences)
   assert.deepEqual(fixedScheduleTimeline(remote.schedule), fixedScheduleTimeline(next.schedule))
+})
+
+test('停用月卡导致手工日超支时保留支出，暂停的后续日也显示新月卡体力', () => {
+  const sources = cardSources(); sources.monthlyCard.endDate = ''
+  const preferences = withSourcePeriod({}, sources, today)
+  const manual = clonePlannerValue({ gains: resolveDailyStaminaGains(free(), preferences, today), spends: [createSpend('luoyang', { value: 6 })] })
+  const plans = { [today]: manual, '2026-10-18': manual }
+  const original = createFixedSchedule({ ...context(), preferences }, plans)
+  const next = applyDailySourcesToSchedule(original, plans, emptyStaminaSources(), today, today, false, { monthlyOnly: true })
+  assert.equal(next.schedule.result.status, 'invalid')
+  assert.deepEqual(next.manualPlans[today].spends, manual.spends)
+  assert.equal(next.schedule.result.timeline[0].totals.gains, 408)
+  for (const day of next.schedule.result.timeline.slice(1)) {
+    assert.equal(day.paused, true)
+    assert.equal(planTotals(day.planned).gains, 408)
+    assert.equal(day.totals.gains, 408)
+  }
 })

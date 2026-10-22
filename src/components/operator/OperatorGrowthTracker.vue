@@ -1110,13 +1110,42 @@ function applyPlannerSnapshot(snapshot) {
   plannerStartDate.value = snapshot?.schedule?.startDate || plannerToday.value
   if (!plannerDates.value.includes(selectedDate.value)) selectedDate.value = plannerDates.value.includes(plannerToday.value) ? plannerToday.value : plannerDates.value[0]
 }
-async function saveDailySources(sources, revision, done) {
-  if (revision !== workspace.value.revision || cloudBlocked.value || schedulePending.value) { done(false); return }
+async function saveDailySources(sources, revision, done, scope) {
+  if (revision !== workspace.value.revision || scheduleActionBlocked.value) { done(false); return }
+  const context = { accountId: props.accountId, planId: workspace.value.activePlanId }
+  const session = workspaceSession.value
+  let application
+  try {
+    if (scope === 'monthly') {
+      if (!context.planId) throw new Error('请先选择培养清单')
+      if (scheduleDifferences.value.goalsChanged) throw new Error('培养目标已变化，请先更新当前日程，再保存月卡')
+      const schedule = fixedSchedule.value || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
+      const fromDate = schedule.baselineDate > plannerToday.value ? schedule.baselineDate : plannerToday.value
+      application = applyDailySourcesToSchedule(schedule, manualPlans.value, sources, fromDate, plannerToday.value, false, { monthlyOnly: true })
+    }
+  } catch (err) { done(false, err.message); return }
   const next = workspaceCopy(); next.staminaSources = sources
   const same = JSON.stringify(workspace.value.staminaSources) === JSON.stringify(sources)
-  const saved = same || await commitWorkspace(next, '子账号固定来源已保存；已保存清单请预览并应用')
-  if (saved && !fixedSchedule.value) plannerPreferences.value = withSourcePeriod(plannerPreferences.value, sources, plannerToday.value)
-  done(saved)
+  const saved = same || await commitWorkspace(next, scope === 'monthly' ? '' : '子账号固定来源已保存；已保存清单请预览并应用')
+  if (!sameRoutineContext(context) || session !== workspaceSession.value) { done(false); return }
+  if (!saved) { done(false); return }
+  if (!application) {
+    if (!fixedSchedule.value) plannerPreferences.value = withSourcePeriod(plannerPreferences.value, sources, plannerToday.value)
+    done(true); return
+  }
+  const finish = success => {
+    if (success) planNotice.value = '月卡设置已保存，已同步当前方案今天及未来的体力'
+    done(success, success ? '' : '月卡设置已保存，方案同步未成功。请关闭面板处理页面的同步提示，再保存月卡重试；无需修改数值。')
+  }
+  const previous = { schedule: fixedSchedule.value, manualPlans: manualPlans.value, preferences: plannerPreferences.value }
+  fixedSchedule.value = application.schedule; manualPlans.value = application.manualPlans; plannerPreferences.value = application.preferences
+  dailySourcePreview.value = null
+  if (!persistPlannerSnapshot(false)) {
+    fixedSchedule.value = previous.schedule; manualPlans.value = previous.manualPlans; plannerPreferences.value = previous.preferences
+    finish(false); return
+  }
+  if (!schedulePending.value) { finish(!scheduleState.value.error); return }
+  pendingRoutineSave.value = { context, done: finish, session }
 }
 function previewDailySources({ fromDate, overwrite }) {
   dailySourcePreview.value = null

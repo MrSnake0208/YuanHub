@@ -28,7 +28,7 @@
       <p v-if="!sources" class="source-note">请先打开上方任一来源设置，保存为这个账号的日常设置。</p>
       <p v-if="applicationError" class="source-error" role="alert">{{ applicationError }}</p>
     </details>
-    <PlannerSettingsPanel :open="Boolean(editor)" :title="editor === 'monthly' ? '月卡与商店体力' : '其他每日固定来源'" description="保存为这个账号的日常设置，以后规划自动沿用。已有日程需要单独更新。" save-label="保存为这个账号的日常设置" :dirty="dirty" :busy="busy" :error="localError || (stale && !busy ? '云端配置已更新，请关闭后重新打开，再进行修改。' : '')" :save-disabled="disabled || stale || (!dirty && Boolean(sources))" @close="close" @save="save">
+    <PlannerSettingsPanel :open="Boolean(editor)" :title="editor === 'monthly' ? '月卡与商店体力' : '其他每日固定来源'" :description="editor === 'monthly' ? '保存后直接同步当前方案今天及未来的月卡体力，保留其他收入和手工支出。' : '保存为这个账号的日常设置，以后规划自动沿用。已有日程需要单独更新。'" :save-label="editor === 'monthly' ? '保存并同步当前方案' : '保存为这个账号的日常设置'" :dirty="dirty" :busy="busy" :error="localError || (stale && !busy ? '云端配置已更新，请关闭后重新打开，再进行修改。' : '')" :save-disabled="disabled || stale || (editor !== 'monthly' && !dirty && Boolean(sources))" @close="close" @save="save">
       <fieldset v-if="editor === 'monthly'" class="source-editor" :disabled="disabled || busy || stale">
         <legend class="sr-only">月卡与商店编辑</legend>
         <label>月卡权益档位<select v-model="draft.monthlyCard.tier" aria-label="月卡权益档位" @change="changeTier"><option v-for="tier in tiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
@@ -125,14 +125,19 @@ function addCustom() {
 function save() {
   if (props.disabled || busy.value || stale.value) return
   try {
-    const sources = validateStaminaSources(draft.value), token = generation
+    const sources = validateStaminaSources(draft.value), token = generation, scope = editor.value
     busy.value = true
-    emit('save', sources, loadedRevision.value, async saved => {
+    emit('save', sources, loadedRevision.value, async (saved, message) => {
       if (token !== generation) return
       busy.value = false
-      if (saved) { await nextTick(); if (token === generation) { close(); notice.value = props.allowApplication ? '日常设置已保存。已有日程可在下方查看影响后更新。' : '日常设置已保存。已有日程请回到常规模式查看影响后更新。' } }
-      else localError.value = '保存未成功，修改仍保留在这里。请处理页面的同步提示后重试。'
-    })
+      if (saved) { await nextTick(); if (token === generation) { close(); notice.value = scope === 'monthly' ? '月卡设置已保存，已同步当前方案今天及未来的体力。' : props.allowApplication ? '日常设置已保存。已有日程可在下方查看影响后更新。' : '日常设置已保存。已有日程请回到常规模式查看影响后更新。' } }
+      else {
+        if (JSON.stringify(normalizeStaminaSources(props.sources)) === JSON.stringify(sources)) {
+          loadedRevision.value = props.revision; base.value = JSON.stringify(sources)
+        }
+        localError.value = message || '保存未成功，修改仍保留在这里。请处理页面的同步提示后重试。'
+      }
+    }, scope)
   } catch (err) { localError.value = err.message }
 }
 function previewSchedule() {

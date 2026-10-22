@@ -230,11 +230,11 @@ it('规划首页仅保留三模块，按需保存策略/偏好/关卡；两种�
   expect(wrapper.get('#planner-step-daily').isVisible()).toBe(true)
 })
 
-it('真实追踪工作台保存月卡后预览并确认应用，初始化、保存来源与预览均不写云端日程', async () => {
-  let confirm
-  vi.spyOn(dialog, 'confirm').mockImplementation(() => new Promise(resolve => { confirm = resolve }))
+it.each([false, true])('月卡保存直接同步并等待云端确认，目标天数模式=%s', async goalMode => {
+  vi.spyOn(dialog, 'confirm').mockResolvedValue(true)
   plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: 2 }))
-  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }))
+  let finish, sent
+  plannerApi.putStaminaSchedule.mockImplementation((_account, _plan, body) => { sent = body; return new Promise(resolve => { finish = resolve }) })
   const wrapper = mount(Tracker, { attachTo: document.body,
     props: { accountId: 'acc', isLoggedIn: true, game: '如鸢', currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
@@ -242,25 +242,29 @@ it('真实追踪工作台保存月卡后预览并确认应用，初始化、保�
   await flushPromises()
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
-  await wrapper.findAll('button').find(button => button.text().includes('调整设置')).trigger('click'); await flushPromises()
+  await wrapper.vm.editSchedule('conditions'); await flushPromises()
+  if (goalMode) { await wrapper.findAll('button').find(b => b.text().includes('按目标天数规划')).trigger('click'); await flushPromises() }
   const settings = wrapper.getComponent(PlannerDailySources)
   await settings.findAll('.condition-summary-card')[0].trigger('click'); await flushPromises()
   await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
   await settings.get('form').trigger('submit'); await flushPromises()
   expect(plannerApi.putTrainingWorkspace.mock.calls[0][1].stamina_sources.monthly_card).toMatchObject({ tier: 'zhaoyang', daily_amount: 60, shop_amount: 20 })
-  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
-  settings.get('.source-application-region').element.open = true
-  await settings.findAll('button').find(button => button.text() === '查看将修改的日程').trigger('click'); await flushPromises()
-  expect(settings.text()).toContain('过去不变')
-  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
-  await settings.findAll('button').find(button => button.text() === '应用到未来日程').trigger('click'); await flushPromises()
-  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
-  confirm(true); await flushPromises()
   expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
-  const [account, plan, body] = plannerApi.putStaminaSchedule.mock.calls[0]
-  expect([account, plan]).toEqual(['acc', 'plan'])
-  expect(body.schedule.result.timeline[0].totals.gains).toBe(488)
-  expect(body.preferences.source_periods[0].sources.monthly_card.tier).toBe('zhaoyang')
+  expect(settings.get('.settings-save').text()).toBe('保存中…')
+  expect(settings.find('.source-note[role="status"]').exists()).toBe(false)
+  expect(plannerApi.putStaminaSchedule.mock.calls[0].slice(0, 2)).toEqual(['acc', 'plan'])
+  expect(sent.schedule.result.timeline[0].totals.gains).toBe(488)
+  expect(sent.preferences.source_periods[0].sources.monthly_card.tier).toBe('zhaoyang')
+  finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 1 }); await flushPromises()
+  expect(settings.find('form').exists()).toBe(false)
+  expect(settings.text()).toContain('已同步当前方案')
+  expect(dialog.confirm).not.toHaveBeenCalled()
+  await settings.findAll('.condition-summary-card')[0].trigger('click'); await flushPromises()
+  expect(settings.get('.settings-save').element.disabled).toBe(false)
+  await settings.get('form').trigger('submit'); await flushPromises()
+  expect(plannerApi.putTrainingWorkspace).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(settings.find('form').exists()).toBe(false)
 })
 
 it('偏好云端保存失败后结束忙碌状态，保留草稿并显示可恢复错误', async () => {
@@ -516,4 +520,88 @@ it.each([390, 1440])('培养卡化极保留完整数值单位，并解释当前�
   expect(card.find('.growth-limit-note').exists()).toBe(false)
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+})
+
+async function openMonthlyTracker() {
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
+  })
+  await flushPromises()
+  await wrapper.vm.editSchedule('conditions'); await flushPromises()
+  const settings = wrapper.getComponent(PlannerDailySources)
+  await settings.findAll('.condition-summary-card')[0].trigger('click'); await flushPromises()
+  return { wrapper, settings }
+}
+
+it('月卡设置失败不提交日程，草稿保留', async () => {
+  plannerApi.putTrainingWorkspace.mockRejectedValue(new Error('网络中断'))
+  const { settings } = await openMonthlyTracker()
+  await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
+  await settings.get('form').trigger('submit'); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  expect(settings.get('[role="alert"]').text()).toContain('保存未成功')
+  expect(settings.get('[aria-label="月卡权益档位"]').element.value).toBe('zhaoyang')
+})
+
+it('月卡设置成功但日程失败：提示部分成功，重试后刷新仍为488，原值可再次同步', async () => {
+  let workspace = await plannerApi.getTrainingWorkspace('acc')
+  let schedule = await plannerApi.getStaminaSchedule('acc', 'plan')
+  plannerApi.getTrainingWorkspace.mockImplementation(async () => workspace)
+  plannerApi.getStaminaSchedule.mockImplementation(async () => schedule)
+  plannerApi.putTrainingWorkspace.mockImplementation(async (_a, body) => (workspace = { ...body, account_id: 'acc', revision: 2 }))
+  plannerApi.putStaminaSchedule.mockRejectedValueOnce(new Error('网络中断'))
+    .mockImplementation(async (_a, _p, body) => (schedule = { ...body, account_id: 'acc', revision: 1 }))
+  const { wrapper, settings } = await openMonthlyTracker()
+  await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
+  await settings.get('form').trigger('submit'); await flushPromises()
+  expect(settings.get('[role="alert"]').text()).toContain('月卡设置已保存，方案同步未成功')
+  expect(settings.get('[aria-label="关闭设置"]').element.disabled).toBe(false)
+  await settings.get('[aria-label="关闭设置"]').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(b => b.text() === '重试保存').trigger('click'); await flushPromises()
+  expect(plannerApi.putTrainingWorkspace).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(2)
+  expect(schedule.schedule.result.timeline[0].totals.gains).toBe(488)
+  wrapper.unmount()
+  const reloaded = await openMonthlyTracker()
+  expect(reloaded.settings.get('[aria-label="月卡权益档位"]').element.value).toBe('zhaoyang')
+  expect(reloaded.wrapper.vm.currentDay.planned.gains.reduce((sum, g) => sum + g.value, 0)).toBe(488)
+  expect(reloaded.settings.get('.settings-save').element.disabled).toBe(false)
+  await reloaded.settings.get('form').trigger('submit'); await flushPromises()
+  expect(reloaded.settings.find('form').exists()).toBe(false)
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(2)
+})
+
+it('日程保存的迟到响应不更新另一个账号，也不显示旧账号同步成功', async () => {
+  const base = await plannerApi.getTrainingWorkspace('acc')
+  plannerApi.getTrainingWorkspace.mockImplementation(async account => ({ ...base, account_id: account }))
+  plannerApi.getStaminaSchedule.mockImplementation(async account => ({ schema_version: 1, rules_version: PLANNER_RULES.version, account_id: account, revision: 0 }))
+  plannerApi.putTrainingWorkspace.mockImplementation(async (_a, body) => ({ ...body, account_id: 'acc', revision: 2 }))
+  let finish, sent
+  plannerApi.putStaminaSchedule.mockImplementation((_a, _p, body) => { sent = body; return new Promise(resolve => { finish = resolve }) })
+  const { wrapper, settings } = await openMonthlyTracker()
+  await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
+  await settings.get('form').trigger('submit'); await flushPromises()
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  finish({ ...sent, account_id: 'acc', revision: 1 }); await flushPromises()
+  expect(wrapper.getComponent(PlannerDailySources).props('accountId')).toBe('b')
+  expect(wrapper.getComponent(PlannerDailySources).findAll('.condition-summary-card')[0].text()).toContain('未启用月卡')
+  expect(wrapper.text()).not.toContain('已同步当前方案')
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule.mock.calls[0].slice(0, 2)).toEqual(['acc', 'plan'])
+})
+
+it('两次保存之间中断后重开月卡，用已保存的原值补同步，不重复写账号设置', async () => {
+  const base = await plannerApi.getTrainingWorkspace('acc')
+  plannerApi.getTrainingWorkspace.mockResolvedValue({ ...base, stamina_sources: {
+    monthly_card: { tier: 'zhaoyang', daily_enabled: true, shop_enabled: true, daily_amount: 60, shop_amount: 20, start_date: '', end_date: '' }, fixed_sources: [],
+  } })
+  plannerApi.putStaminaSchedule.mockImplementation(async (_a, _p, body) => ({ ...body, account_id: 'acc', revision: 1 }))
+  const { settings } = await openMonthlyTracker()
+  expect(settings.get('[aria-label="月卡权益档位"]').element.value).toBe('zhaoyang')
+  await settings.get('form').trigger('submit'); await flushPromises()
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule.mock.calls[0][2].schedule.result.timeline[0].totals.gains).toBe(488)
+  expect(settings.text()).toContain('已同步当前方案')
 })
