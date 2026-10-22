@@ -195,6 +195,7 @@
   .pf-prof-row .mf-filter { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .pf-subprof-row .mf-filter { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .pf-status-row .mf-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-disc-row .mf-filter { display: flex; flex-wrap: wrap; }
   .mf-filter button {
     width: 100%;
     min-width: 0;
@@ -207,6 +208,7 @@
     touch-action: manipulation;
   }
   .current-status-filter .status-group-break { grid-column: 1 / -1; }
+  .pf-disc-row .mf-filter button { flex: 1 1 auto; width: auto; padding-inline: 8px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
   .current-status-filter button, .current-tag-filter button { min-height: 34px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
   .pf-tag-row .mf-filter { display: flex; flex-wrap: wrap; }
   .current-tag-filter button { width: auto; padding-inline: 10px; }
