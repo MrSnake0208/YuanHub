@@ -1,0 +1,252 @@
+/* Shared by the catalog and trust portraits; dimensions come from the catalog. */
+.slot-grid {
+  list-style: none;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 14px 12px;
+}
+.slot {
+  display: flex;
+  flex-direction: column;
+}
+.slot-ic {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+.slot-avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.slot-ph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slot-ph .ph-seal {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 21px;
+  height: 21px;
+  font-size: 11px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-b);
+  line-height: 1;
+}
+.slot-ph .ph-mono {
+  font-family: var(--font-s);
+  font-weight: 900;
+  font-size: clamp(26px, 4vw, 34px);
+}
+.slot-count {
+  position: absolute;
+  left: 1px;
+  bottom: 1px;
+  min-width: 24px;
+  padding: 3px 8px;
+  font-family: var(--font-d);
+  font-weight: 900;
+  font-size: 12.5px;
+  line-height: 1.25;
+  text-align: center;
+}
+.slot-name {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.45;
+  min-height: calc(2 * 1.45em);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+.prof-badge {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  z-index: 3;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+}
+.prof-badge::before {
+  position: absolute;
+  inset: 8px;
+}
+.prof-badge img {
+  position: relative;
+  z-index: 1;
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+}
+.favorite-btn,
+.edit-icon-btn {
+  position: absolute;
+  z-index: 4;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.favorite-btn {
+  top: -7px;
+  right: -7px;
+}
+.edit-icon-btn {
+  right: -7px;
+  bottom: -7px;
+}
+.favorite-btn::before,
+.edit-icon-btn::before {
+  position: absolute;
+  inset: 8px;
+}
+.favorite-btn svg,
+.edit-icon-btn svg {
+  position: relative;
+  z-index: 1;
+}
+.favorite-btn:hover:not(:disabled)::before,
+.edit-icon-btn:hover::before {
+  transform: scale(1.06);
+}
+.slot-ic {
+  border-radius: 8px;
+  border: 2px solid var(--theme-line, rgba(73, 59, 44, 0.22));
+  background: var(--cream);
+  box-shadow:
+    inset 0 2px 0 rgba(var(--theme-shadow-rgb, 255, 255, 255), 0.7),
+    inset 0 -10px 18px -10px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.22);
+  transition:
+    border-color 0.3s,
+    box-shadow 0.45s var(--ease);
+}
+.slot.rarity-r5 .slot-ic {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(var(--theme-shadow-rgb, 239, 210, 142), 0.5);
+}
+.slot.rarity-r4 .slot-ic {
+  border-color: var(--theme-purple-line, #8672b2);
+}
+.slot.rarity-r3 .slot-ic {
+  border-color: var(--theme-info-line, #99b5cf);
+}
+.slot:hover .slot-ic {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 2px 0 rgba(var(--theme-shadow-rgb, 255, 255, 255), 0.7),
+    0 14px 26px -14px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.4);
+}
+.slot-ph {
+  background: linear-gradient(
+    168deg,
+    var(--surface) 0%,
+    var(--cream) 62%,
+    var(--paper) 100%
+  );
+}
+.slot-ph .ph-seal {
+  border: 1.5px solid var(--brand-blue);
+  border-radius: 6px;
+  color: var(--theme-info-text, var(--brand-blue));
+  opacity: 0.8;
+}
+.slot-ph .ph-mono {
+  color: var(--ink-35);
+  user-select: none;
+}
+.slot-count {
+  border-radius: 999px;
+  background: var(--tea);
+  color: var(--on-strong);
+  box-shadow: 0 2px 6px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28);
+}
+.slot-count.zero {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--theme-strong-text, var(--tea));
+  box-shadow: none;
+}
+.slot-name {
+  color: var(--ink);
+  transition: color 0.3s;
+}
+.slot:hover .slot-name {
+  color: var(--theme-accent-text, var(--accent-strong));
+}
+.prof-badge::before {
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 7px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18);
+  content: "";
+}
+.slot.is-favorite .slot-name {
+  color: var(--theme-strong-text, var(--tea));
+}
+.favorite-btn,
+.edit-icon-btn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-35);
+}
+.favorite-btn::before,
+.edit-icon-btn::before {
+  content: "";
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 7px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18);
+  transition:
+    transform 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+.favorite-btn.on {
+  color: var(--theme-accent-text, var(--accent));
+}
+.edit-icon-btn {
+  color: var(--theme-strong-text, var(--tea));
+}
+.favorite-btn:hover:not(:disabled)::before,
+.edit-icon-btn:hover::before {
+  border-color: var(--accent);
+}
+.favorite-btn:focus-visible,
+.edit-icon-btn:focus-visible {
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
+  outline-offset: 1px;
+  border-radius: 50%;
+}
+.favorite-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.favorite-btn.busy svg {
+  opacity: 0.4;
+}
+
+.backpack.catalog-portrait-grid { margin-top: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.catalog-portrait-grid .slot-grid { margin: 0; padding: 0; gap: 16px 12px; }
+@media (min-width: 768px) { .backpack.catalog-portrait-grid { margin-inline: -17px; padding: 16px; } }
+@media (max-width: 767px) {
+  .backpack.catalog-portrait-grid { margin-top: 10px; }
+  .catalog-portrait-grid .slot-name { margin-top: 6px; min-height: 1.45em; }
+  .catalog-portrait-grid .slot-count { left: 3px; bottom: 3px; padding: 3px 4px; font-size: 11px; }
+}
+@media (max-width: 640px) { .catalog-portrait-grid .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; } }

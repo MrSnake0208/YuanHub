@@ -7,7 +7,7 @@
 .relationship-editor button:disabled { opacity: .55; cursor: default; }
 .relationship-editor :focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
 .relationship-editor header button { display: grid; place-items: center; flex: none; border: 0; }
-.relationship-tabs, .relationship-ranges, .relationship-special, .relationship-actions { display: flex; gap: 6px; }
+.relationship-tabs, .relationship-special, .relationship-actions { display: flex; gap: 6px; }
 .relationship-tabs { margin: 0 16px; border-bottom: 1px solid var(--line); }
 .relationship-tabs button { flex: 1; border: 0; border-radius: 0; border-bottom: 2px solid transparent; }
 .relationship-tabs button[aria-pressed="true"] { border-bottom-color: var(--tea); font-weight: 700; }
@@ -15,9 +15,7 @@
 .relationship-dialog-body p { line-height: 1.6; overflow-wrap: anywhere; }
 .relationship-values { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 12px; background: var(--cream); border-radius: 8px; }
 .relationship-values b { margin-left: 6px; font-family: var(--font-d); font-size: 22px; }
-.relationship-ranges { margin: 14px 0 8px; flex-wrap: wrap; }
-.relationship-ranges button { flex: 1; padding: 8px 5px; white-space: nowrap; font-size: 13px; }
-.relationship-ranges button[aria-pressed="true"], .relationship-special button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong, #fffdf6); }
+.relationship-special button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong, #fffdf6); }
 .relationship-nodes { border: 0; padding: 6px 0; margin: 0; min-width: 0; }
 .relationship-node { position: relative; display: grid; grid-template-columns: 20px 50px minmax(0,1fr); gap: 10px; align-items: center; min-height: 58px; box-sizing: border-box; padding: 12px 10px; cursor: pointer; font-size: 13px; line-height: 1.5; border-radius: 8px; }
 .relationship-node::before, .relationship-node::after { content: ''; position: absolute; left: 19px; width: 2px; background: var(--line); pointer-events: none; }
