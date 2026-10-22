@@ -4,6 +4,7 @@ import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
 import * as accountShareApi from '../src/api/accountShare.js'
+import { updateAccount } from '../src/api/accounts.js'
 import * as plannerApi from '../src/api/operatorPlanner.js'
 import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
 import { getCurrentStarState } from '../src/api/starState.js'
@@ -37,6 +38,7 @@ vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
 })
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/accountShare.js', () => ({ getAccountShare: vi.fn(), setAccountShareScope: vi.fn(), regenerateAccountShare: vi.fn(), revokeAccountShare: vi.fn() }))
+vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), updateAccount: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
 vi.mock('../src/store/activeAccount.js', async importOriginal => {
@@ -87,7 +89,7 @@ it('今日历练链接不会绕过养成规划功能开关', async () => {
 })
 
 const wrappers = new Set()
-afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear() })
+afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear(); vi.useRealTimers() })
 function renderPage(options = {}, stubs = {}) {
   const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true, RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
@@ -118,6 +120,110 @@ async function openCardStarEditor(existing, catalog = { ...operator, rarity: 4 }
 }
 const growthValues = wrapper => wrapper.findAll('.level-row input[type="number"]').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
+
+it('面板来源默认保留过期手填，切换和养成变动均不删除原值', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  operatorApi.previewOperatorPanel.mockResolvedValue({ status: 'calculated', attack: 1000, hp: 2000 })
+  operatorApi.getCurrentOperatorPanels.mockResolvedValue({ op: { status: 'calculated', attack: 1000, hp: 2000 } })
+  const stored = { manual_attack: 9000, manual_hp: 30000, observed_status: 'stale' }
+  const wrapper = await openEditor({ level: 50, elite: 7, star_level: 7, revision: 2, combat_stats: stored })
+  await vi.advanceTimersByTimeAsync(300); await flushPromises()
+  const source = wrapper.get('[aria-label="密探面板来源"]')
+  expect(source.element.value).toBe('follow')
+  expect(wrapper.get('.editor-head-live').text()).toContain('9,000')
+  expect(wrapper.get('.editor-panel-comparison').text()).toContain('自动 1,000')
+  await source.setValue('auto')
+  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 1,000')
+  await wrapper.findAll('.level-row input[type="number"]')[0].setValue('51')
+  expect(source.element.value).toBe('auto')
+  expect(wrapper.get('.editor-head-live').text()).toContain('9,000')
+  await vi.advanceTimersByTimeAsync(300); await flushPromises()
+  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 1,000')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).toMatchObject({
+    manual_attack: 9000, manual_hp: 30000, display_mode: { attack: 'auto', hp: 'auto' }
+  })
+  await source.setValue('follow')
+  expect(wrapper.get('.editor-head-live').text()).toContain('9,000')
+  await source.setValue('manual')
+  operatorApi.patchOperatorCurrent.mockImplementationOnce(async ({ patch }) => ({ ...patch, revision: 3 }))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  await vi.advanceTimersByTimeAsync(850); await flushPromises()
+  expect(wrapper.find('.editor-panel').exists()).toBe(false)
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="密探面板来源"]').element.value).toBe('manual')
+  expect(wrapper.get('.editor-head-live').text()).toContain('9,000')
+})
+
+it('账号关闭补全保留缺失值，单密探显式自动仍可用且不伪造手填', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  operatorApi.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: 'test', game: '如鸢', operator_panel_auto_fill: false }])
+  operatorApi.previewOperatorPanel.mockResolvedValue({ status: 'calculated', attack: 1000, hp: 2000 })
+  const wrapper = await openEditor({ level: 50, elite: 7, star_level: 7, revision: 2, combat_stats: { manual_hp: 30000 } })
+  await vi.advanceTimersByTimeAsync(300); await flushPromises()
+  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 —，生命力 30,000')
+  await wrapper.get('[aria-label="密探面板来源"]').setValue('auto')
+  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 1,000，生命力 2,000')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).toMatchObject({
+    manual_attack: null, manual_hp: 30000, display_mode: { attack: 'auto', hp: 'auto' }
+  })
+})
+
+it('账号自动补全失败保持原设置，成功仅保存账号偏好', async () => {
+  const wrapper = renderPage(); await flushPromises()
+  const toggle = wrapper.get('[aria-label="当前账号自动补全面板"]')
+  expect(toggle.attributes('aria-checked')).toBe('true')
+  updateAccount.mockRejectedValueOnce(new Error('synthetic preference failure'))
+  await toggle.trigger('click'); await flushPromises()
+  expect(toggle.attributes('aria-checked')).toBe('true')
+  expect(wrapper.get('.panel-preference-notice').attributes('role')).toBe('alert')
+  updateAccount.mockResolvedValueOnce({ id: 'acc', name: 'test', game: '如鸢', operator_panel_auto_fill: false })
+  await toggle.trigger('click'); await flushPromises()
+  expect(updateAccount).toHaveBeenLastCalledWith('acc', { operator_panel_auto_fill: false })
+  expect(toggle.attributes('aria-checked')).toBe('false')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(putCurrentStarLoadout).not.toHaveBeenCalled()
+})
+
+it('账号偏好保存中切换账号，迟到响应不改变新账号的设置', async () => {
+  operatorApi.listOperatorAccounts.mockResolvedValue([
+    { id: 'acc', name: 'A', game: '如鸢' }, { id: 'other', name: 'B', game: '如鸢' }
+  ])
+  const wrapper = renderPage(); await flushPromises()
+  let resolve
+  updateAccount.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+  await wrapper.get('[aria-label="当前账号自动补全面板"]').trigger('click')
+  activeAccount.id = 'other'; await flushPromises()
+  resolve({ id: 'acc', name: 'A', game: '如鸢', operator_panel_auto_fill: false }); await flushPromises()
+  expect(wrapper.get('[aria-label="当前账号自动补全面板"]').attributes('aria-checked')).toBe('true')
+  expect(wrapper.find('.panel-preference-notice').exists()).toBe(false)
+  expect(updateAccount).toHaveBeenCalledTimes(1)
+})
+
+it.each([null, 'auto'])('卡片遵循手填优先，保存不伪造手填或丢失另一项偏好：hp=%s', async hpMode => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  operatorApi.getCurrentOperatorPanels.mockResolvedValue({ op: { status: 'calculated', attack: 1000, hp: 2000 } })
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: {
+    level: 50, elite: 7, star_level: 7, revision: 2,
+    combat_stats: { observed_attack: 123, manual_attack: 9000, manual_hp: null, observed_status: 'stale', display_mode: { attack: null, hp: hpMode } }
+  } } }])
+  const wrapper = renderPage(); await flushPromises()
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  await vi.advanceTimersByTimeAsync(300); await flushPromises()
+  expect(wrapper.get('input[aria-label="测试密探攻击力"]').element.value).toBe('9000')
+  expect(wrapper.get('input[aria-label="测试密探生命力"]').element.value).toBe('2000')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  await wrapper.get('input[aria-label="测试密探攻击力"]').setValue('9500')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click'); await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).toMatchObject({
+    manual_attack: 9500, manual_hp: null, display_mode: { attack: 'manual', hp: hpMode }
+  })
+  expect(wrapper.get('input[aria-label="测试密探攻击力"]').element.value).toBe('9500')
+})
 
 it('底栏按真实草稿和保存结果反馈，失败保留输入，保存后再改不沿用成功提示', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -1031,7 +1137,7 @@ it('觉醒衔接：SP历史觉醒事实不随人工星级校正重新确认或�
 it('觉醒衔接：补录stage与觉醒后的面板观测使用同一组独立事实', async () => {
   const wrapper = await openEditor({ level: 80, elite: 12, starLevel: 31, huaji: { owned: true, stage: null, awakened: true } }, { ...operator, rarity: 4 })
   await pickStar(wrapper, '5星')
-  await wrapper.get('[aria-label="校正攻击力，清空后恢复自动计算"]').setValue('1000')
+  await wrapper.get('[aria-label="校正攻击力，清空后按面板来源显示"]').setValue('1000')
   operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
   await wrapper.get('.editor-save').trigger('click'); await flushPromises()
   const patch = operatorApi.patchOperatorCurrent.mock.lastCall[0].patch

@@ -193,6 +193,16 @@ export function operatorShareCombatInput(entry) {
 
 export function operatorShareCombatResult(entry) {
   const growth = shareGrowth(entry)
+  const display = growth.display_panel || growth.displayPanel
+  if (display) {
+    const label = value => value == null ? '—' : Number(value).toLocaleString('zh-CN')
+    return {
+      attack: display.attack, hp: display.hp,
+      attackLabel: label(display.attack), hpLabel: label(display.hp),
+      attackSource: display.attack_source || display.attackSource,
+      hpSource: display.hp_source || display.hpSource
+    }
+  }
   return calculateOperatorCombatStats({
     stored: growth.combat_stats || growth.combatStats || {},
     input: operatorShareCombatInput(entry),
@@ -207,6 +217,11 @@ export function operatorShareCombatValue(entry, key) {
 
 export function operatorShareCombatSource(entry, key) {
   const result = operatorShareCombatResult(entry)
+  const selectedSource = result[key === 'hp' ? 'hpSource' : 'attackSource']
+  if (selectedSource === 'manual') return '手动校正'
+  if (selectedSource === 'calculated') return '自动计算'
+  if (selectedSource === 'observed') return '观测记录'
+  if (selectedSource === 'missing') return '暂无可用面板数据'
   const automaticAvailable = key === 'hp' ? result.automaticHpAvailable : result.automaticAttackAvailable
   if (result.status === 'manual') return '手动校正'
   if (automaticAvailable && result.status === 'calculated') return '自动计算'

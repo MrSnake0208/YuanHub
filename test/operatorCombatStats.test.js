@@ -317,7 +317,7 @@ test('手动覆盖值仍在当前输入生效时，提供自动计算切换提�
   assert.equal(stats.manualFallbackAvailable, false)
 })
 
-test('养成输入变化后自动计算优先，并保留手动值回退入口', function () {
+test('养成输入变化后仍保留手填面板，差异只作待核对提示', function () {
   const input = { operatorName: '杨修', level: 100, elite: 17, starLevel: 25, huaji: { owned: true, stage: 25, awakened: false } }
   const signature = combatInputSignature(input)
   const stats = calculateOperatorCombatStats({
@@ -332,10 +332,39 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
     serverResult: { status: 'calculated', attack: 1000, hp: 2000 },
     input: Object.assign({}, input, { level: 90, levelBreakthroughStage: 8, elite: 15 })
   })
-  assert.equal(stats.status, 'calculated')
-  assert.notEqual(stats.attack, 9999)
-  assert.notEqual(stats.hp, 8888)
+  assert.equal(stats.status, 'manual')
+  assert.equal(stats.attack, 9999)
+  assert.equal(stats.hp, 8888)
+  assert.equal(stats.changedSinceObservation, true)
   assert.equal(stats.manualFallbackAvailable, true)
+})
+
+test('自动补全逐项保留录入值，账号关闭不影响显式单项选择', () => {
+  const serverResult = { status: 'calculated', attack: 1000, hp: 2000 }
+  const stored = { manualAttack: 0, observed_hp: 3000 }
+  const defaults = calculateOperatorCombatStats({ stored, serverResult })
+  assert.deepEqual([defaults.attack, defaults.hp], [0, 3000])
+  const partial = calculateOperatorCombatStats({ stored: { manualHp: 3000 }, serverResult })
+  assert.deepEqual([partial.attack, partial.hp, partial.attackSource, partial.hpSource], [1000, 3000, 'calculated', 'manual'])
+  const off = calculateOperatorCombatStats({ stored: { manualHp: 3000 }, serverResult, allowAutomatic: false })
+  assert.deepEqual([off.attack, off.hp], [null, 3000])
+  const explicit = calculateOperatorCombatStats({ stored, serverResult, allowAutomatic: false, displayMode: { attack: 'auto', hp: 'manual' } })
+  assert.deepEqual([explicit.attack, explicit.hp], [1000, 3000])
+  assert.deepEqual(stored, { manualAttack: 0, observed_hp: 3000 })
+  const manual = calculateOperatorCombatStats({ stored: {}, serverResult, displayMode: { attack: 'manual', hp: 'manual' } })
+  assert.deepEqual([manual.attack, manual.hp], [null, null])
+})
+
+test('显式自动在失败或资料不足时保留原值和偏好，恢复后才展示计算值', () => {
+  const stored = { manualAttack: 5000, manualHp: 9000, display_mode: { attack: 'auto', hp: 'auto' } }
+  for (const serverResult of [null, { status: 'incomplete' }, { status: 'calculated', attack: -1, hp: 1 }]) {
+    const result = calculateOperatorCombatStats({ stored, serverResult })
+    assert.deepEqual([result.attack, result.hp], [5000, 9000])
+    assert.equal(result.automaticResultAvailable, false)
+  }
+  const recovered = calculateOperatorCombatStats({ stored, serverResult: { status: 'calculated', attack: 100, hp: 200 } })
+  assert.deepEqual([recovered.attack, recovered.hp], [100, 200])
+  assert.equal(stored.manualAttack, 5000)
 })
 
 test('尚未取得后端结果时保留观测，前端不自行推算面板', () => {

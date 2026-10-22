@@ -272,7 +272,7 @@ function valueLabel(value) {
   return value == null ? '—' : Math.max(0, Math.round(value)).toLocaleString('zh-CN')
 }
 
-export function calculateOperatorCombatStats({ stored, input, serverResult, allowAutomatic = true } = {}) {
+export function calculateOperatorCombatStats({ stored, input, serverResult, allowAutomatic = true, displayMode } = {}) {
   const normalized = normalizeOperatorCombatStats(stored)
   const signature = combatInputSignature(input)
   const localReferenceSignature = normalized.frontendObservedSignature || (normalized.observedInputs && (normalized.observedInputs.signature || normalized.observedInputs.inputSignature))
@@ -302,53 +302,47 @@ export function calculateOperatorCombatStats({ stored, input, serverResult, allo
     : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature)))
   const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
 
-  if (allowAutomatic && serverResult?.status === 'calculated' &&
-      Number.isSafeInteger(serverResult.attack) && serverResult.attack >= 0 &&
-      Number.isSafeInteger(serverResult.hp) && serverResult.hp >= 0) {
-    const result = serverResult
-    const useManual = hasManualCorrection && !changedSinceObservation
+  const automaticAvailable = serverResult?.status === 'calculated' &&
+    Number.isSafeInteger(serverResult.attack) && serverResult.attack >= 0 &&
+    Number.isSafeInteger(serverResult.hp) && serverResult.hp >= 0
+  const modes = normalizeDisplayMode(displayMode === undefined ? normalized.displayMode : displayMode)
+  const select = (key, manual) => {
+    const saved = manual ?? normalized[key]
+    const automatic = automaticAvailable && (modes[key] === 'auto' ||
+      (modes[key] !== 'manual' && allowAutomatic && saved == null))
     return {
-      attack: useManual && normalized.manualAttack != null ? normalized.manualAttack : finiteOrNull(result.attack),
-      hp: useManual && normalized.manualHp != null ? normalized.manualHp : finiteOrNull(result.hp),
-      attackLabel: valueLabel(useManual && normalized.manualAttack != null ? normalized.manualAttack : result.attack),
-      hpLabel: valueLabel(useManual && normalized.manualHp != null ? normalized.manualHp : result.hp),
-      automaticAttack: finiteOrNull(result.attack),
-      automaticHp: finiteOrNull(result.hp),
-      automaticAttackLabel: valueLabel(result.attack),
-      automaticHpLabel: valueLabel(result.hp),
-      status: useManual ? 'manual' : (result.status || 'calculated'),
-      source: useManual ? 'manual' : (result.source || 'calculated'),
-      reason: result.reason,
-      changedSinceObservation: changedSinceObservation,
-      inputSignature: signature,
-      manualFallbackAvailable: hasManualCorrection && changedSinceObservation,
-      automaticResultAvailable: finiteOrNull(result.attack) != null || finiteOrNull(result.hp) != null,
-      automaticAttackAvailable: finiteOrNull(result.attack) != null,
-      automaticHpAvailable: finiteOrNull(result.hp) != null
+      value: automatic ? serverResult[key] : saved,
+      source: automatic ? 'calculated' : manual != null ? 'manual' : saved != null ? 'observed' : 'missing'
     }
   }
-
-  const hasObservedValue = normalized.manualAttack != null || normalized.manualHp != null || normalized.attack != null || normalized.hp != null
+  const attack = select('attack', normalized.manualAttack)
+  const hp = select('hp', normalized.manualHp)
+  const sources = [attack.source, hp.source]
+  const status = sources.includes('manual') ? 'manual' : sources.includes('observed')
+    ? (changedSinceObservation ? 'stale' : breakthroughUnverified ? 'unverified' : 'observed')
+    : sources.includes('calculated') ? 'calculated' : 'missing'
   return {
-    attack: normalized.manualAttack != null && !changedSinceObservation ? normalized.manualAttack : normalized.attack,
-    hp: normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp,
-    attackLabel: valueLabel(normalized.manualAttack != null && !changedSinceObservation ? normalized.manualAttack : normalized.attack),
-    hpLabel: valueLabel(normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp),
+    attack: attack.value,
+    hp: hp.value,
+    attackSource: attack.source,
+    hpSource: hp.source,
+    attackLabel: valueLabel(attack.value),
+    hpLabel: valueLabel(hp.value),
     panelStatus: serverResult?.status || 'idle',
     missingFields: serverResult?.missing_fields || [],
     reason: serverResult?.reason,
-    automaticAttack: null,
-    automaticHp: null,
-    automaticAttackLabel: '—',
-    automaticHpLabel: '—',
-    status: hasObservedValue && !changedSinceObservation && breakthroughUnverified ? 'unverified' : hasManualCorrection && !changedSinceObservation ? 'manual' : (hasObservedValue ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
-    source: hasManualCorrection && !changedSinceObservation ? 'manual' : normalized.source,
+    automaticAttack: automaticAvailable ? serverResult.attack : null,
+    automaticHp: automaticAvailable ? serverResult.hp : null,
+    automaticAttackLabel: valueLabel(automaticAvailable ? serverResult.attack : null),
+    automaticHpLabel: valueLabel(automaticAvailable ? serverResult.hp : null),
+    status,
+    source: status === 'manual' ? 'manual' : status === 'calculated' ? 'calculated' : normalized.source,
     changedSinceObservation: changedSinceObservation,
     inputSignature: signature,
     manualFallbackAvailable: hasManualCorrection && changedSinceObservation,
-    automaticResultAvailable: false,
-    automaticAttackAvailable: false,
-    automaticHpAvailable: false
+    automaticResultAvailable: Boolean(automaticAvailable),
+    automaticAttackAvailable: Boolean(automaticAvailable),
+    automaticHpAvailable: Boolean(automaticAvailable)
   }
 }
 

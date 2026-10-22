@@ -226,7 +226,7 @@ Authorization: Bearer <open-api-token>
 |---|---|---|
 | `POST /v1/accounts` | `{name,game?}` | 账号对象 |
 | `GET /v1/accounts` | 无 | 账号对象数组，按创建时间升序 |
-| `PATCH /v1/accounts/{accountId}` | `{name?,game?}` | 更新后的账号对象 |
+| `PATCH /v1/accounts/{accountId}` | `{name?,game?,operator_panel_auto_fill?}` | 更新后的账号对象 |
 | `DELETE /v1/accounts/{accountId}` | 无 | `true` |
 | `GET /v1/accounts/{accountId}/events` | `Accept: text/event-stream` | SSE 流 |
 
@@ -237,6 +237,7 @@ Authorization: Bearer <open-api-token>
   "id": "acc_0123456789abcdef0123456789abcdef",
   "name": "大号",
   "game": "代号鸢",
+  "operator_panel_auto_fill": true,
   "created_at": "2026-08-24T08:00:00Z",
   "updated_at": "2026-08-24T08:00:00Z"
 }
@@ -247,6 +248,7 @@ Authorization: Bearer <open-api-token>
 - `name` 长度 1..64、不可为空白，同一用户内不可重名。
 - `game` 只允许 `代号鸢`、`如鸢`；创建时缺省为 `代号鸢`。
 - PATCH 至少提供一个字段。
+- `operator_panel_auto_fill` 是每个游戏账号独立的面板自动补全设置，新账号与缺少该字段的旧账号均默认 `true`；PATCH 缺失或 `null` 保留原设置，`false` 明确关闭。改名、切换账号与密探导入不会重置此设置；它不属于密探 JSON 备份。页面入口为密探页「更多 → 自动补全面板」。
 - 每个用户最多 10 个子账号，超限为 409 `account_limit_reached`。
 - 删除账号会级联删除库存、密探、特别关注、标注、目标及全部绑定 Token，不可恢复。
 - 账号不存在或不属于当前用户统一返回 404 `account_not_found`。
@@ -534,6 +536,7 @@ PATCH 使用乐观锁，`expected_revision` 与 `reason` 必填：
 - 普通密探 `star_level` 为 0..31；SP 密探为 0..5。
 - `disc_loadouts` 最多两套；`star_stones` 是六槽完整替换，缺失保留，空数组清空。
 - 六槽只允许 `main1..main3`、`assist1..assist3`。
+- `combat_stats.display_mode.attack/hp` 各自支持 `null`（跟随账号）、`manual`（使用手填／采集）、`auto`（明确使用自动计算，不受账号补全开关影响）。内部字段缺失保留，显式 `null` 恢复跟随。跟随账号时逐项优先使用 `manual_*`，其次 `observed_*`；只有未录入且账号开启补全时才显示自动结果，`0` 视为已录入。自动计算暂不可用时保留录入值；切换来源、养成变化和账号开关均不覆盖或清除录入值。编辑中的来源选择与密探一起保存。
 - `combat_stats.combat_input_signature` 及 `observed_inputs` 中的 `oddities_signature`、`equipped_star_stones_signature` 最多 256 字符。前端 PATCH 适配层将超长签名按 UTF-8 编码后计算 SHA-256，提交为 71 字符的 `sha256:<hex>`；短签名和本地完整配置指纹保持原样。优先使用浏览器 Web Crypto；HTTP 局域网访问等缺少 `crypto.subtle` 的环境使用等价的 JavaScript SHA-256 实现，化极、觉醒及面板观测保存仍可正常序列化。Web Crypto 已可用但执行失败时继续报错且不发出保存请求。
 - entry 不存在时只允许 `expected_revision=0` 创建。
 - revision 冲突返回 HTTP 409 `operator_revision_conflict`。
@@ -673,6 +676,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
   `disc_loadouts`、`star_stones`，以及 `combat_stats` 中的 `observed_attack`、`observed_hp`、
   `manual_attack`、`manual_hp`、`oddities`；不包含备注、关注、目标、库存或登录信息，也不包含
   `revision`、`listed_baseline_at`、观测来源/时间、签名和 `display_mode`。`entries` 的公共密探 ID 仅用于合并图鉴，页面不展示该 ID。
+- 每条分享密探另含 `display_panel: {attack,hp,attack_source,hp_source}`，后端按该账号与密探的来源偏好选择最终显示值；来源为 `manual`、`observed`、`calculated`、`missing`，空值保持为空，分享页不再自行补全。`panel` 继续提供原始计算结果供兼容使用；两者均不包含计算规则或系数。旧服务未提供 `display_panel` 时，前端回退为录入值优先。
 - 尚无 current 数据时返回 200、空 `entries` 和空 `updated_at`；成功响应设置 `Cache-Control: no-store`；
   无效、撤销或已删除代码统一返回 404 `share_not_found`。
 
