@@ -65,8 +65,10 @@ const button = (wrapper, text) => wrapper.findAll('button').find(x => text === '
 const uiMount = options => mount(OperatorRelationships, { ...options, global: { stubs: { teleport: true } } })
 it('real form preserves zero, failed drafts, null clear, and never invents rewards', async () => {
   const wrapper = uiMount({ props }); wrappers.push(wrapper); await flushPromises()
-  expect(wrapper.text()).toContain('奖励资料待核准'); expect(wrapper.text()).toContain('未记录')
+  expect(wrapper.text()).toContain('未记录')
+  expect(wrapper.find('.relationships-summary').exists()).toBe(false)
   await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('奖励节点资料待补')
   const fields = wrapper.findAll('.relationship-editor input')
   await fields[0].setValue('0'); await fields[1].setValue('3')
   patchRelationships.mockRejectedValueOnce(new Error('offline'))
@@ -98,13 +100,12 @@ const sharedRules = {
   sp: { trust_owner_id: 'op', rumors: null },
 }
 const sharedProps = { ...props, operators: [...props.operators, { id: 'sp', name: '电影形态', rarity: 5 }], allOperators: [...props.allOperators, { id: 'sp', name: '电影形态', rarity: 5 }] }
-it('legacy movie-only trust displays the common 15-level profile and counts rewards once', async () => {
+it('legacy movie-only trust displays shared values and the common 15-node profile', async () => {
   getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: sharedRules })
   getRelationships.mockResolvedValue(remote('a', 1, { sp: { trust: 1800 } }))
   const wrapper = uiMount({ props: sharedProps }); wrappers.push(wrapper); await flushPromises()
   expect(wrapper.text()).toContain('信赖 1800')
-  expect(wrapper.text()).toContain('信赖可计算 1 / 1 组')
-  expect(wrapper.get('.relationships-summary').text()).toContain('测试币 × 1')
+  expect(wrapper.findAll('.relationship-badge').map(x => x.text())).toEqual(['信赖 1800', '信赖 1800'])
   expect(patchRelationships).not.toHaveBeenCalled()
   await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
   expect(wrapper.find('input[name="trust-node"][value="1800"]').element.checked).toBe(true)
@@ -114,7 +115,7 @@ it('legacy conflicts need explicit confirmation, failed saves retain drafts, suc
   getRelationships.mockResolvedValue(remote('a', 1, { op: { trust: 100 }, sp: { trust: 200, rumors: 3 } }))
   const wrapper = uiMount({ props: sharedProps }); wrappers.push(wrapper); await flushPromises()
   expect(wrapper.text()).toContain('历史记录冲突'); expect(wrapper.text()).toContain('测试密探 100、电影形态 200')
-  expect(wrapper.text()).toContain('信赖可计算 0 / 1 组')
+  expect(wrapper.findAll('.relationship-badge').map(x => x.text())).toEqual(['待核对', '待核对'])
   await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
   await wrapper.find('input[name="trust-node"][value="300"]').setValue(true)
   await wrapper.find('form').trigger('submit'); await flushPromises()
@@ -190,21 +191,16 @@ it('a pending discard confirmation cannot open an editor in another account', as
   expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   expect(patchRelationships).not.toHaveBeenCalled()
 })
-it('40-node profiles expose all ranges and preserve choices across tabs', async () => {
+it('40-node profiles render one continuous list and preserve choices across tabs', async () => {
   const thresholds = [...Array.from({ length: 10 }, (_, i) => (i + 1) * 100), ...Array.from({ length: 20 }, (_, i) => 1200 + i * 200), ...Array.from({ length: 10 }, (_, i) => 5500 + i * 500)]
   const fullRule = { ...sharedRules.op.trust, max: 10000, milestones: thresholds.map(at => ({ at, rewards: [{ item_key: 'fixture', name: '节点奖励', quantity: at / 100 }] })) }
   getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: { op: { trust: fullRule } } })
   getRelationships.mockResolvedValue(remote('a', 1, { op: { trust: 9500 } }))
   const wrapper = uiMount({ props }); wrappers.push(wrapper); await flushPromises()
   await button(wrapper, '编辑进度').trigger('click'); await flushPromises()
-  expect(button(wrapper, '5500–10000').attributes('aria-pressed')).toBe('true')
   expect(wrapper.get('input[value="9500"]').element.checked).toBe(true)
-  const seen = []
-  for (const label of ['100–1000', '1200–5000', '5500–10000']) {
-    await button(wrapper, label).trigger('click')
-    seen.push(...wrapper.findAll('input[name="trust-node"]').map(input => Number(input.element.value)))
-  }
-  expect(seen).toEqual(thresholds)
+  expect(wrapper.findAll('input[name="trust-node"]').map(input => Number(input.element.value))).toEqual(thresholds)
+  expect(wrapper.find('[aria-label="信赖节点区间"]').exists()).toBe(false)
   await wrapper.get('input[value="10000"]').setValue(true)
   await button(wrapper, '传闻数量').trigger('click')
   await button(wrapper, '信赖节点').trigger('click')

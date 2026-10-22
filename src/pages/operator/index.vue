@@ -546,7 +546,7 @@
               {{ catalogError
               }}<button class="link" @click="loadCatalog">重试</button>
             </div>
-            <div v-else class="backpack" v-reveal>
+            <div v-else class="backpack catalog-portrait-grid" v-reveal>
               <div v-if="hasManifestFilters || !auth.isLoggedIn || error || favoriteError" class="bp-head">
                 <span class="bp-tip">
                   <template v-if="rarityFilter !== 'all'">
@@ -2251,9 +2251,24 @@
           <div v-if="!visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
           <div v-if="visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
             v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
+            <OperatorFilterDossier compact searchable context-label="信赖与传闻"
+              v-model:search-query="currentSearch" :result-count="filteredCurrent.length" :total-count="ownedCurrentEntries.length"
+              :rarity-options="rarityOptions" :prof-options="profOptions" :sub-prof-options="subProfOptions"
+              :status-options="workbenchStatusOptions" :status-counts="currentStatusCounts" :tag-options="organizationTagOptions"
+              v-model:tag-filter="organizationTagFilter" v-model:rarity-filter="rarityFilter" v-model:prof-filter="profFilter"
+              v-model:sub-prof-filter="subProfFilter" :status-filter="workbenchStatusFilter" :prof-icon="profIcon"
+              :has-filters="hasCurrentFilters" v-model:growth-filters="growthFilters" v-model:disc-status-filter="discStatusFilter"
+              show-disc-filter show-growth-filters @update:status-filter="setWorkbenchStatusFilter" @reset="resetCurrentFilters">
+              <template #primary-tool>
+                <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
+              </template>
+              <template v-if="upgradeReadyFilter" #extra-filters>
+                <button type="button" class="btn ghost" @click="upgradeReadyFilter = ''">{{ upgradeReadyFilter === 'huaji' ? '可提升化极' : '等级/修为可提升' }} · 取消筛选</button>
+              </template>
+            </OperatorFilterDossier>
             <OperatorRelationships ref="relationshipWorkspace" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
               :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
-              :operators="ownedCurrentEntries.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))"
+              :operators="filteredCurrent.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" :owned-count="ownedCurrentEntries.length"
               :prof-icon="profIcon" :favorite-ids="favoriteAgentIds" :favorite-busy-ids="favoriteBusyIds" :favorite-loading="favoriteLoading" :favorite-error="favoriteError" @favorite="toggleAgentFavorite" />
           </div>
           <div
@@ -11670,121 +11685,6 @@ onBeforeUnmount(function () {
 .bp-num {
   color: var(--theme-accent-text, var(--accent-strong));
 }
-.slot-ic {
-  border-radius: 8px;
-  border: 2px solid var(--theme-line, rgba(73, 59, 44, 0.22));
-  background: var(--cream);
-  box-shadow:
-    inset 0 2px 0 rgba(var(--theme-shadow-rgb, 255, 255, 255), 0.7),
-    inset 0 -10px 18px -10px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.22);
-  transition:
-    border-color 0.3s,
-    box-shadow 0.45s var(--ease);
-}
-.slot.rarity-r5 .slot-ic {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px rgba(var(--theme-shadow-rgb, 239, 210, 142), 0.5);
-}
-.slot.rarity-r4 .slot-ic {
-  border-color: var(--theme-purple-line, #8672b2);
-}
-.slot.rarity-r3 .slot-ic {
-  border-color: var(--theme-info-line, #99b5cf);
-}
-.slot:hover .slot-ic {
-  border-color: var(--accent);
-  box-shadow:
-    inset 0 2px 0 rgba(var(--theme-shadow-rgb, 255, 255, 255), 0.7),
-    0 14px 26px -14px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.4);
-}
-.slot-ph {
-  background: linear-gradient(
-    168deg,
-    var(--surface) 0%,
-    var(--cream) 62%,
-    var(--paper) 100%
-  );
-}
-.slot-ph .ph-seal {
-  border: 1.5px solid var(--brand-blue);
-  border-radius: 6px;
-  color: var(--theme-info-text, var(--brand-blue));
-  opacity: 0.8;
-}
-.slot-ph .ph-mono {
-  color: var(--ink-35);
-  user-select: none;
-}
-.slot-count {
-  border-radius: 999px;
-  background: var(--tea);
-  color: var(--on-strong);
-  box-shadow: 0 2px 6px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28);
-}
-.slot-count.zero {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--theme-strong-text, var(--tea));
-  box-shadow: none;
-}
-.slot-name {
-  color: var(--ink);
-  transition: color 0.3s;
-}
-.slot:hover .slot-name {
-  color: var(--theme-accent-text, var(--accent-strong));
-}
-.prof-badge::before {
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 2px 7px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18);
-  content: "";
-}
-.slot.is-favorite .slot-name {
-  color: var(--theme-strong-text, var(--tea));
-}
-.favorite-btn,
-.edit-icon-btn {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: var(--ink-35);
-}
-.favorite-btn::before,
-.edit-icon-btn::before {
-  content: "";
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 2px 7px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18);
-  transition:
-    transform 0.2s var(--ease),
-    border-color 0.2s var(--ease);
-}
-.favorite-btn.on {
-  color: var(--theme-accent-text, var(--accent));
-}
-.edit-icon-btn {
-  color: var(--theme-strong-text, var(--tea));
-}
-.favorite-btn:hover:not(:disabled)::before,
-.edit-icon-btn:hover::before {
-  border-color: var(--accent);
-}
-.favorite-btn:focus-visible,
-.edit-icon-btn:focus-visible {
-  outline: 2px solid var(--theme-focus, var(--brand-blue));
-  outline-offset: 1px;
-  border-radius: 50%;
-}
-.favorite-btn:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-.favorite-btn.busy svg {
-  opacity: 0.4;
-}
 .slot-tag {
   color: var(--ink-60);
   background: var(--paper);
@@ -12722,10 +12622,10 @@ onBeforeUnmount(function () {
 .roster-share small::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-60); }
 .roster-share small.is-sharing::before { background: var(--theme-success-bg, #6f9f76); box-shadow: 0 0 0 3px rgba(111, 159, 118, .14); }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
-.panel > .catalog-tools ~ .backpack { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
 .catalog-version-copy { color: var(--ink-60); }
 </style>
+<style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorWorkspaceDesktop.css"></style>
 <style scoped src="./operatorWorkspaceMobile.css"></style>
 <style scoped src="./operatorEditorDesktop.css"></style>

@@ -15,11 +15,8 @@
             <div class="relationship-values"><span>当前记录 <b>{{ conflict ? '待核对' : baseline.trust || '未记录' }}</b></span><span>待保存 <b>{{ draft.trust || '未记录' }}</b></span></div>
             <p v-if="offNode" class="relationship-hint">当前记录 {{ baseline.trust }} 不在奖励节点上；未主动选择时保留原值。</p>
             <template v-if="milestones.length">
-              <div class="relationship-ranges" role="group" aria-label="信赖节点区间">
-                <button v-for="group in groups" :key="group.key" type="button" :aria-pressed="range === group.key" @click="range = group.key">{{ group.label }}</button>
-              </div>
               <fieldset class="relationship-nodes" :disabled="saving"><legend class="relationship-sr-only">选择信赖节点</legend>
-                <label v-for="(node, index) in shownNodes" :key="node.at" class="relationship-node" :class="{ selected: draft.trust === String(node.at), reached: draft.trust !== '' && Number(draft.trust) >= node.at, connected: index < shownNodes.length - 1 && Number(draft.trust) >= shownNodes[index + 1].at }">
+                <label v-for="(node, index) in milestones" :key="node.at" class="relationship-node" :class="{ selected: draft.trust === String(node.at), reached: draft.trust !== '' && Number(draft.trust) >= node.at, connected: index < milestones.length - 1 && Number(draft.trust) >= milestones[index + 1].at }">
                   <input type="radio" name="trust-node" :value="String(node.at)" :checked="draft.trust === String(node.at)" @change="$emit('trust', String(node.at))" />
                   <strong>{{ node.at }}</strong><span>{{ rewardText(node.rewards) || '无物品奖励' }}</span>
                 </label>
@@ -63,13 +60,6 @@ const labels = { trust: '信赖节点', rumors: '传闻数量' }
 const panel = ref(null), body = ref(null), closeButton = ref(null), errorEl = ref(null), tab = ref('trust')
 const visible = ref(true)
 const milestones = computed(() => props.trustRule?.milestones || [])
-const groupKey = value => value <= 1000 ? 0 : value <= 5000 ? 1 : 2
-const groups = computed(() => [0, 1, 2].map(key => {
-  const nodes = milestones.value.filter(node => groupKey(node.at) === key)
-  return { key, nodes, label: nodes.length ? nodes[0].at + '–' + nodes.at(-1).at : '' }
-}).filter(group => group.nodes.length))
-const range = ref(groups.value.find(group => group.key === groupKey(Number(props.draft.trust)))?.key ?? groups.value[0]?.key)
-const shownNodes = computed(() => groups.value.find(group => group.key === range.value)?.nodes || [])
 const offNode = computed(() => props.baseline.trust !== '' && Number(props.baseline.trust) !== 0 && milestones.value.length && !milestones.value.some(node => node.at === Number(props.baseline.trust)))
 const activeRule = computed(() => tab.value === 'trust' ? props.trustRule : props.rumorRule)
 const rewardText = rewards => rewards.map(item => item.name + ' × ' + item.quantity).join('、')
@@ -89,7 +79,6 @@ const previousOverflow = document.body.style.overflow
 document.body.style.overflow = 'hidden'
 onScopeDispose(() => { document.body.style.overflow = previousOverflow })
 watch(() => props.error, async message => { if (message) { await nextTick(); errorEl.value?.focus() } })
-watch(range, () => { if (body.value) body.value.scrollTop = 0 })
 </script>
 <style scoped src="./operatorRelationshipDialogMobile.css"></style>
 <style scoped src="./operatorRelationshipDialogDesktop.css"></style>

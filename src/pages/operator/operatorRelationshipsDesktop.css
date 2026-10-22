@@ -1,6 +1,0 @@
-@media (min-width: 768px) {
-  .relationships-filters { grid-template-columns: minmax(160px, 2fr) minmax(110px, 1fr) minmax(180px, 1fr) auto; }
-  .relationships-filters label:first-child { grid-column: auto; }
-  .relationships-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 24px 16px; padding: 20px; }
-  .relationship-badge { font-size: 12px; }
-}
