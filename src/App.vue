@@ -17,6 +17,7 @@
       <component :is="Component" />
     </Transition>
   </RouterView>
+  <BackToTop />
   <AccountEventToasts />
   <MobileInstallPrompt
     v-if="TUTORIALS_ENABLED"
@@ -32,6 +33,7 @@
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
 import CalendarReminderDialog from '@/components/calendar/CalendarReminderDialog.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
