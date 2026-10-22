@@ -89,7 +89,7 @@ it('editing and per-item exemptions update spend without changing quantity or re
   await modal.get('form').trigger('submit')
   expect(total(w)).toBe('¥700.00')
   expect(customCard(w).get('.qty').text()).toBe('1')
-  expect(w.get('.receipt').text()).toContain('2.0 抽')
+  expect(w.findAll('.receipt-metrics strong')[1].text()).toBe('2.0')
   const plan = await save(w)
   expect(plan.custom_packages[0].discount_eligible).toBe(false)
   expect(plan.cart_items[0].package_snapshot.price_amount).toBe(700)

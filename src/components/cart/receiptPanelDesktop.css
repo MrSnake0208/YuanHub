@@ -3,4 +3,27 @@
 .receipt-price-note{font-size:11px;line-height:1.6;margin:8px 0;overflow-wrap:anywhere}
 .cart-line{gap:12px;flex-wrap:wrap}
 .cart-line .nm{min-width:0;overflow-wrap:anywhere}
+.receipt .receipt-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px}
+.receipt-head h2{font-size:20px;letter-spacing:0}
+.receipt-count{font-size:12px;white-space:nowrap}
+.receipt .grand-total{display:flex;flex-direction:column;align-items:center;gap:12px;margin:0;padding:4px 0 20px;text-align:center}
+.receipt .grand-total .lb{font-size:13px;font-weight:500}
+.receipt .grand-total .v{font-size:clamp(30px,3vw,42px);line-height:1.15;max-width:100%}
+.receipt-summary{padding:16px 10px;margin-bottom:14px;text-align:center}
+.receipt-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.receipt-metrics>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:0 8px}
+.receipt-metrics strong{font-size:24px;overflow-wrap:anywhere}
+.receipt-metrics span{font-size:12px}
+.receipt-average{font-size:12px;margin-top:12px}
+.receipt-summary .receipt-price-note{margin:4px 0 0;font-size:10px}
+.initial-row{gap:8px;padding:10px;margin-bottom:16px}
+.initial-row input{width:90px;min-width:0;min-height:38px}
+.receipt-pricing-details{padding-top:10px;margin-top:12px}
+.receipt-pricing-details summary{font-size:12px;padding:4px 0 12px}
+.receipt-pricing-details .tot-row{gap:12px;flex-wrap:wrap}
+.cart-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cart-actions .receipt-save{grid-column:1/-1;grid-row:1}
+.cart-actions .receipt-export{grid-column:1;grid-row:2}
+.cart-actions .receipt-clear{grid-column:2;grid-row:2}
+.cart-actions .btn{min-width:0;min-height:42px;padding:8px;font-size:13px}
 }

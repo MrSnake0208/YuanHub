@@ -10,4 +10,21 @@
 .pkg-foot{flex-wrap:wrap;gap:8px;padding-top:8px}
 .stepper{flex-shrink:0;gap:2px;padding:2px}
 .stepper .qty{width:28px;font-size:14px}
+.pkg-card{padding:16px;gap:12px}
+.pkg-top{flex-wrap:nowrap}
+.pkg-top>div:first-child{flex:1 1 0;padding-right:0}
+.pkg-name{font-size:16px}
+.pkg-original{font-size:11px;margin-top:5px}
+.pkg-price{flex:0 1 auto;max-width:50%}
+.pkg-price .main{font-size:20px;line-height:1.3}
+.pkg-tags{margin-top:0;gap:6px}
+.pkg-tag{font-size:11px;padding:4px 7px}
+.pkg-foot{gap:8px;padding-top:12px}
+.pkg-personal-actions{flex:1 1 100%;font-size:12px;gap:6px}
+.pkg-personal-actions button{padding:4px 6px}
+.pkg-personal-actions input{width:16px;height:16px}
+.pkg-limit{font-size:11px}
+.stepper{gap:0;padding:2px}
+.stepper button{width:34px;height:34px;min-width:34px;min-height:34px}
+.stepper .qty{width:28px;font-size:14px}
 }
