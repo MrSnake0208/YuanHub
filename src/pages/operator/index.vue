@@ -25,6 +25,10 @@
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
+              <button v-if="activeTab === 'relationships'" type="button" class="act-btn" aria-haspopup="dialog"
+                :disabled="!relationshipWorkspace?.ready" @click="relationshipWorkspace?.openBackup()">
+                <Archive :size="15" aria-hidden="true" />信赖与传闻备份
+              </button>
               <button v-if="canUseAutomaticPanel" type="button" class="act-btn" role="switch" :aria-checked="panelAutoFillEnabled"
                 aria-label="当前账号自动补全面板" :disabled="!currentPanelAccount || panelPreferenceSaving || accountsLoading"
                 @click="togglePanelAutoFill">

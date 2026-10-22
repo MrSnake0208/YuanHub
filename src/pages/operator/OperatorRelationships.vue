@@ -3,7 +3,6 @@
     <p v-if="loading" role="status">正在读取信赖与传闻…</p>
     <p v-if="error || localError" role="alert">{{ localError || error }} <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button></p>
     <p v-if="favoriteError" role="alert">{{ favoriteError }}</p>
-    <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="!scope.enabled">请登录并选择游戏账号。</p>
     <template v-if="data && catalog">
       <p v-if="(ownedCount ?? operators.length) === 0">当前账号没有已拥有密探，请先在名册录入。</p>
@@ -30,7 +29,13 @@
         :shared-name="owner(editing) !== editing ? operatorMap[owner(editing)]?.name || owner(editing) : ''"
         :conflict="trustState(editing).conflict" :conflict-sources="trustSourcesText(editing)" :resolve-trust="resolveTrust"
         @trust="draft.trust = $event" @rumors="draft.rumors = $event" @resolve="resolveTrust = $event" @save="saveDraft" @close="cancel" @reload="refresh" />
-      <details class="relationships-exchange"><summary>更多 · 信赖与传闻备份</summary>
+      <Teleport to="body">
+        <div v-if="backupOpen" class="relationship-backup-mask" :style="backupViewportStyle" @click.self="cancel">
+          <section ref="backupPanel" class="relationships relationship-backup-panel" :class="{ 'is-short': backupShortViewport }" role="dialog" aria-modal="true" aria-labelledby="relationship-backup-title" tabindex="-1" @focusin="revealBackupControl">
+            <header><h2 id="relationship-backup-title">信赖与传闻备份</h2><button ref="backupClose" type="button" :disabled="saving" aria-label="关闭信赖备份" @click="cancel"><X :size="18" aria-hidden="true" /></button></header>
+            <div ref="backupBody" class="relationships-exchange">
+        <p v-if="notice" role="status">{{ notice }}</p>
+        <p v-if="error" role="alert">{{ error }}</p>
         <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
         <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
         <button type="button" :disabled="!ready" @click="download">导出信赖与传闻备份</button>
@@ -48,16 +53,21 @@
           <button type="button" :disabled="!ready || !preview.changes" @click="restore">确认恢复到当前账号</button>
           <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
         </div>
-      </details>
+            </div>
+          </section>
+        </div>
+      </Teleport>
     </template>
   </section>
 </template>
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Pencil, Star } from '@lucide/vue'
+import { Pencil, Star, X } from '@lucide/vue'
 import { avatarUrl } from '../../api/request.js'
 import OperatorRelationshipDialog from '../../components/operator/OperatorRelationshipDialog.vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
+import { useModalFocus } from '../../composables/useModalFocus.js'
+import { useModalViewport } from '../../composables/useModalViewport.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
 const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, profIcon: { type: Function, default: () => '' }, favoriteIds: { type: Set, default: () => new Set() }, favoriteBusyIds: { type: Set, default: () => new Set() }, favoriteLoading: Boolean, favoriteError: String, ownedCount: { type: Number, default: null }, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
@@ -70,6 +80,16 @@ const labels = { trust: '信赖值', rumors: '传闻数量' }
 const editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref({ trust: '', rumors: '' })
 const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
 const resolveTrust = ref(false)
+const backupOpen = ref(false), backupPanel = ref(null), backupClose = ref(null), backupBody = ref(null)
+useModalFocus(backupOpen, backupPanel, { initialFocus: () => backupClose.value, onEscape: cancel, preventRestoreScroll: true })
+const { viewportStyle: backupViewportStyle, shortViewport: backupShortViewport, revealFocusedControl: revealBackupControl } = useModalViewport(backupOpen, backupBody, backupPanel)
+watch(backupOpen, (open, _, onCleanup) => {
+  if (!open) return
+  const overflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  onCleanup(() => { document.body.style.overflow = overflow })
+})
+async function openBackup() { if (ready.value && await beforeLeave()) backupOpen.value = true }
 const dirty = computed(() => !!editing.value && (resolveTrust.value || RELATIONSHIP_KINDS.some(kind => draft.value[kind] !== baseline.value[kind])))
 const hasUnsaved = computed(() => dirty.value || !!importText.value.trim() || saving.value)
 const confirmDiscard = useUnsavedChanges(hasUnsaved, '信赖与传闻草稿')
@@ -82,7 +102,7 @@ async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key
   if (!await confirmDiscard() || key !== scope.value.key || saving.value) return false
-  fileSequence++; editing.value = ''; resolveTrust.value = false; importText.value = ''; preview.value = null; return true
+  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; importText.value = ''; preview.value = null; return true
 }
 async function edit(id) {
   if (!ready.value || !await beforeLeave()) return
@@ -101,7 +121,7 @@ async function saveDraft() {
       if (patch[kind] != null && domain(id, kind) && patch[kind] > domain(id, kind).max) throw new Error(labels[kind] + '超过已核准上限')
     }
     if (!Object.keys(patch).length) return
-    if (await save({ [id]: patch }) && key === scope.value.key) { editing.value = ''; resolveTrust.value = false; notice.value = '进度已保存'; preview.value = null }
+    if (await save({ [id]: patch }) && key === scope.value.key) { editing.value = ''; resolveTrust.value = false; preview.value = null }
   } catch (err) { if (key === scope.value.key) localError.value = err.message }
 }
 async function refresh() { if (await beforeLeave()) { localError.value = ''; notice.value = ''; await reload() } }
@@ -135,9 +155,9 @@ async function restore() {
   if (await save(pending.entries, pending.revision) && pending.key === scope.value.key) { importText.value = ''; preview.value = null; notice.value = '信赖与传闻备份已恢复' }
 }
 watch(() => scope.value.key, () => {
-  fileSequence++; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; preview.value = null; overwrite.value = false
+  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; preview.value = null; overwrite.value = false
 }, { flush: 'sync' })
-defineExpose({ beforeLeave, saving })
+defineExpose({ beforeLeave, saving, openBackup, ready })
 </script>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorRelationshipsMobile.css"></style>
