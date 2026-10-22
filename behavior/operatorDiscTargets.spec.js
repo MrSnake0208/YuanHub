@@ -155,7 +155,7 @@ it('快捷命盘只填入选中组合和编辑对象，保留手动名称与标�
 })
 
 async function showRoster(entries) {
-  api.getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator(), discs }, { ...operator('other'), discs }] })
+  api.getOperatorCatalog.mockResolvedValue({ operators: Object.keys(entries).map(id => ({ ...operator(id, 5), discs })) })
   api.getOperatorCurrent.mockResolvedValue(response(entries))
   const wrapper = await render()
   await wrapper.findAll('[role="tab"]').find(tab => tab.text() === '养成总览').trigger('click')
@@ -204,7 +204,7 @@ it('名册筛选任意待洗盘，详情精简完美盘并保留待洗目标，�
     op: entry(undefined, { disc_loadouts: [loadout('one', ['A'], 'perfect'), loadout('two', ['B'], 'reroll', ['D'])] }),
     other: entry(undefined, { disc_loadouts: [loadout('one', ['A'])] }),
   })
-  await wrapper.findAll('button').find(button => button.text() === '只看待洗').trigger('click')
+  await wrapper.findAll('button').find(button => button.text() === '有待洗盘').trigger('click')
   expect(wrapper.findAll('.agent-ledger-card')).toHaveLength(1)
   expect(wrapper.get('.ledger-disc-target-summary').text()).toBe('一盘完美二盘待洗')
   wrapper.get('.ledger-disc-target-summary').element.focus()
@@ -230,7 +230,7 @@ it('名册筛选任意待洗盘，详情精简完美盘并保留待洗目标，�
   activeAccount.id = 'accB'; await flushPromises()
   expect(document.querySelector('.disc-target-modal')).toBeNull()
   expect(wrapper.find('.ledger-disc-target-summary').exists()).toBe(false)
-  expect(wrapper.vm.onlyReroll).toBe(false)
+  expect(wrapper.vm.discStatusFilter).toBe('all')
   expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
   wrapper.unmount()
 })
@@ -262,6 +262,30 @@ it('账号A的迟到目标响应不能覆盖已经读取的账号B', async () =>
   await reload; await flushPromises()
   expect(wrapper.get('.ledger-disc-target-summary').text()).toBe('一盘完美')
   expect(wrapper.vm.currentEntries[0].discLoadouts[0].target_discs).toEqual([])
+  expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('总览命盘单选筛选与觉醒取交集，未标记排除且重置恢复全部', async () => {
+  const wrapper = await showRoster({
+    op: entry(undefined, { huaji: { owned: true, stage: 25, awakened: true }, disc_loadouts: [loadout('one', ['A'], 'reroll'), loadout('two', ['B'], 'perfect')] }),
+    other: entry(undefined, { huaji: { owned: true, stage: 25, awakened: false }, disc_loadouts: [loadout('one', ['A'], 'perfect')] }),
+    legacy: entry(),
+  })
+  const group = wrapper.get('.current-prof-filter .pf-disc-row')
+  await group.findAll('button').find(button => button.text() === '有完美盘').trigger('click')
+  expect(wrapper.findAll('.agent-ledger-card')).toHaveLength(2)
+  expect(group.findAll('[aria-pressed="true"]')).toHaveLength(1)
+  await wrapper.get('[aria-label="筛选当前养成"]').findAll('button').find(button => button.text() === '只看觉醒').trigger('click')
+  expect(wrapper.findAll('.agent-ledger-card')).toHaveLength(1)
+  expect(wrapper.get('.agent-ledger-card').text()).toContain('测试密探')
+  await group.findAll('button').find(button => button.text() === '有待洗盘').trigger('click')
+  expect(wrapper.findAll('.agent-ledger-card')).toHaveLength(1)
+  expect(group.findAll('[aria-pressed="true"]')).toHaveLength(1)
+  await wrapper.get('[aria-label="筛选当前养成"] .current-filter-reset').trigger('click')
+  expect(wrapper.vm.discStatusFilter).toBe('all')
+  expect(wrapper.get('[aria-label="筛选当前养成"]').findAll('button').find(button => button.text() === '只看觉醒').attributes('aria-pressed')).toBe('false')
+  expect(wrapper.findAll('.agent-ledger-card')).toHaveLength(3)
   expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
   wrapper.unmount()
 })

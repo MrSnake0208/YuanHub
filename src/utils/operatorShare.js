@@ -1,3 +1,4 @@
+import { matchesDiscStatus } from './operatorDiscLoadouts.js'
 import { operatorHuaji } from './operatorHuaji.js'
 import { operatorAnnotationStatus, operatorAnnotationApiState } from './operatorAnnotations.js'
 import { matchesProfSubFilter } from './operatorFilters.js'
@@ -106,10 +107,12 @@ export function mergeOperatorShareEntries(share, catalog) {
   }).sort(compareOperatorShareEntries)
 }
 
-export function filterOperatorShareEntries(entries, search, prof, subProf, status = 'all', tagId = '') {
+export function filterOperatorShareEntries(entries, search, prof, subProf, status = 'all', tagId = '', { discStatus = 'all', awakenedOnly = false } = {}) {
   const query = text(search).toLowerCase()
   return (Array.isArray(entries) ? entries : []).filter(function (entry) {
     if (!matchesProfSubFilter(entry, prof, subProf)) return false
+    if (!matchesDiscStatus(entry.growth?.disc_loadouts || entry.growth?.discLoadouts, discStatus)) return false
+    if (awakenedOnly && operatorHuaji({ ...entry, ...entry.growth }).awakened !== true) return false
     if (tagId && !entry.tags?.some(tag => tag.id === tagId)) return false
     const growthState = operatorShareGrowthState(entry)
     const displayStatus = operatorAnnotationStatus(growthState)

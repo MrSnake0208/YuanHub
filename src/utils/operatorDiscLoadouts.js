@@ -99,6 +99,12 @@ export function discTargetSummary(loadouts) {
   return discTargetSummaryItems(loadouts).map(item => item.label).join(' │ ')
 }
 
-export function hasRerollDisc(loadouts) {
-  return (Array.isArray(loadouts) ? loadouts : []).some(item => item.status === 'reroll')
+export const DISC_FILTER_OPTIONS = [
+  { value: 'all', label: '全部' },
+  { value: 'perfect', label: '有完美盘' },
+  { value: 'reroll', label: '有待洗盘' },
+]
+
+export function matchesDiscStatus(loadouts, status = 'all') {
+  return status === 'all' || (Array.isArray(loadouts) ? loadouts : []).some(item => item?.status === status)
 }

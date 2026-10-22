@@ -881,6 +881,8 @@
               :prof-icon="profIcon"
               :has-filters="hasCurrentFilters"
               v-model:growth-filters="growthFilters"
+              v-model:disc-status-filter="discStatusFilter"
+              show-disc-filter
               show-growth-filters
               description="置顶优先，其余按分组与养成排序"
               @update:status-filter="setWorkbenchStatusFilter"
@@ -890,9 +892,6 @@
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               </template>
               <template #secondary-tool>
-                <button class="current-favorite-sort" :class="{ on: onlyReroll }" type="button" :aria-pressed="onlyReroll" @click="onlyReroll = !onlyReroll">
-                  <Target :size="13" aria-hidden="true" />只看待洗
-                </button>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -3163,7 +3162,8 @@ import {
   discLoadoutPayload,
   discTargetSummary,
   discTargetSummaryItems,
-  hasRerollDisc,
+  matchesDiscStatus,
+  DISC_FILTER_OPTIONS,
 } from "../../utils/operatorDiscLoadouts.js";
 import {
   starCardFallback,
@@ -3417,7 +3417,7 @@ const editForm = ref({
 const combatDisplayMode = ref({ attack: null, hp: null });
 const selectedDiscLoadoutIndex = ref(0);
 const editingDiscTarget = ref(false);
-const onlyReroll = ref(false);
+const discStatusFilter = ref("all");
 const discTargetEntryId = ref("");
 const discTargetEntry = computed(() => {
   const entry = currentEntries.value.find(item => item.id === discTargetEntryId.value);
@@ -3535,7 +3535,7 @@ watch(
     currentLoadedKey.value = "";
     currentEntries.value = [];
     discTargetEntryId.value = "";
-    onlyReroll.value = false;
+    discStatusFilter.value = "all";
     awakeningId.value = '';
     quickEditorKey.value = "";
     quickConfirmKey.value = "";
@@ -5152,7 +5152,7 @@ function matchesCurrentFilters(entry) {
 const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value
     .filter(matchesCurrentFilters)
-    .filter(entry => !onlyReroll.value || hasRerollDisc(entry.discLoadouts))
+    .filter(entry => matchesDiscStatus(entry.discLoadouts, discStatusFilter.value))
     .sort(compareCurrentEntries);
 });
 
@@ -5208,6 +5208,7 @@ const currentFilterSuffix = computed(function () {
   if (organizationTag) parts.push("标签「" + organizationTag.name + "」");
   parts.push("分组「" + (group ? group.label : workbenchStatusFilter.value) + "」");
   parts.push(...growthFilterParts(growthFilters.value));
+  if (discStatusFilter.value !== "all") parts.push("命盘「" + DISC_FILTER_OPTIONS.find(option => option.value === discStatusFilter.value).label + "」");
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
   if (upgradeReadyFilter.value === "huaji") parts.push("「可提升化极」");
   return parts.length ? parts.join(" · ") : "当前条件";
@@ -5219,7 +5220,7 @@ const hasGrowthDrafts = computed(function () {
 
 const hasCurrentFilters = computed(function () {
   return (
-    onlyReroll.value ||
+    discStatusFilter.value !== "all" ||
     Boolean(currentSearch.value.trim()) ||
     Boolean(organizationTagFilter.value) ||
     rarityFilter.value !== "all" ||
@@ -5232,7 +5233,7 @@ const hasCurrentFilters = computed(function () {
 });
 
 function resetCurrentFilters() {
-  onlyReroll.value = false;
+  discStatusFilter.value = "all";
   currentSearch.value = "";
   organizationTagFilter.value = "";
   rarityFilter.value = "all";

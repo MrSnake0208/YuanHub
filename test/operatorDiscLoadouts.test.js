@@ -10,7 +10,7 @@ import {
   discTargetDifference,
   discTargetSummary,
   discTargetSummaryItems,
-  hasRerollDisc
+  matchesDiscStatus
 } from '../src/utils/operatorDiscLoadouts.js'
 
 test('命盘组合名称根据当前选择自动生成', function () {
@@ -92,6 +92,18 @@ test('紧凑摘要覆盖双待洗、混合状态、双完美与未完整目标',
   assert.deepEqual(discTargetSummaryItems([{ status: 'perfect' }, { status: 'perfect' }]), [
     { status: 'perfect', label: '两盘完美' }
   ])
-  assert.equal(hasRerollDisc([{}, two]), true)
-  assert.equal(hasRerollDisc([{ status: 'perfect' }]), false)
+  assert.equal(matchesDiscStatus([{}, two], 'reroll'), true)
+  assert.equal(matchesDiscStatus([{ status: 'perfect' }], 'reroll'), false)
+})
+
+test('命盘筛选按任意一套手动标记命中，旧数据和未标记不推断完美', () => {
+  const mixed = [{ status: 'reroll' }, { status: 'perfect' }]
+  assert.equal(matchesDiscStatus(mixed, 'perfect'), true)
+  assert.equal(matchesDiscStatus(mixed, 'reroll'), true)
+  assert.equal(matchesDiscStatus([{ status: 'perfect' }, { status: 'perfect' }], 'perfect'), true)
+  for (const value of [undefined, [], [null], [{}], [{ status: 'unmarked' }], [{ discs: ['A', 'B', 'C'], target_discs: ['A', 'B', 'C'] }]]) {
+    assert.equal(matchesDiscStatus(value, 'all'), true)
+    assert.equal(matchesDiscStatus(value, 'perfect'), false)
+    assert.equal(matchesDiscStatus(value, 'reroll'), false)
+  }
 })
