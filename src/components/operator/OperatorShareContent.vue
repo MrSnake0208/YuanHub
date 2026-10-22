@@ -138,7 +138,7 @@
               class="ledger-portrait"
               aria-hidden="true"
             >
-              <img :src="operatorPortraits[entry.id]" alt="" width="480" height="350" loading="lazy" decoding="async" @error="failedPortraitIds.add(entry.id)" />
+              <img v-batch-image.eager="operatorPortraits[entry.id]" alt="" width="480" height="350" decoding="async" @error="failedPortraitIds.add(entry.id)" />
             </picture>
             <header
               class="ledger-card-head"
@@ -297,6 +297,7 @@ import OperatorFilterDossier from './OperatorFilterDossier.vue'
 import { ACTIVE_OPERATOR_LEDGER_CARD_VERSION, OPERATOR_LEDGER_CARD_VERSIONS, operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
+import { batchImageDirective as vBatchImage } from '../../utils/batchImage.js'
 import { parseShareLink, sharePath } from '../../utils/shareLink.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
