@@ -2774,7 +2774,7 @@
 .inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .inventory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .inventory-entry,
-.reward-entry { min-height: 44px; flex: none; padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+.reward-entry, .daily-entry { min-height: 44px; flex: none; padding: 8px 16px; font-size: 13px; white-space: nowrap; }
 .inventory-setup { margin-top: 8px; }
 .manifest-toolbar { position: static; display: flex; margin-top: 0; padding: 0; gap: 8px 16px; }
 .manifest-toolbar .manifest-type-switch { position: static; width: fit-content; margin: 0; padding: 0; gap: 4px; }

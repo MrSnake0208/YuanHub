@@ -13,6 +13,7 @@ import { installViewport } from '../test-support/viewport.js'
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
   getCurrent: vi.fn(),
+  listRecords: vi.fn(),
 }))
 vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('../src/api/rewardCatalog.js', () => ({
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn() }))
 
 const catalog = [
+  { entity_type: 'item', id: 'zhuyu', name: '茱萸', rarity: 3 },
   { entity_type: 'item', id: 'baijinbi', name: '白金币', rarity: 3 },
   { entity_type: 'item', id: 'jizhi', name: '鸡汁', rarity: 3 },
   { entity_type: 'agent', id: 'agent_test', name: '测试密探', rarity: 5 },
@@ -150,7 +152,7 @@ async function openQuickCoin(wrapper, purpose = '') {
   datetime.vm.$emit('update:date', '2026-09-30')
   datetime.vm.$emit('update:clock', '10:00:00')
   await flushPromises()
-  const select = document.body.querySelector('select[aria-label="白金币记录用途"]')
+  const select = document.body.querySelector('select[aria-label="日常记录用途"]')
   select.value = purpose
   select.dispatchEvent(new Event('change', { bubbles: true }))
   await flushPromises()
@@ -1209,7 +1211,7 @@ describe('奖励补录工作台弹层', () => {
     await clickElement(receipt.querySelector('.text-button'))
     expect(receipt.querySelector('.basket-empty')).not.toBeNull()
     expect(receipt.querySelector('.preview-button').disabled).toBe(true)
-    expect(document.body.querySelector('select[aria-label="白金币记录用途"]')).toBeNull()
+    expect(document.body.querySelector('select[aria-label="日常记录用途"]')).toBeNull()
     const coin = document.body.querySelector('.reward-tile[aria-label^="添加白金币"]')
     expect(coin.disabled).toBe(false)
     await clickElement(coin)
@@ -1235,7 +1237,7 @@ describe('奖励补录工作台弹层', () => {
     datetime.vm.$emit('update:date', '2026-09-30')
     datetime.vm.$emit('update:clock', '10:00:01')
     await flushPromises()
-    const select = document.body.querySelector('select[aria-label="白金币记录用途"]')
+    const select = document.body.querySelector('select[aria-label="日常记录用途"]')
     select.value = 'income'; select.dispatchEvent(new Event('change', { bubbles: true }))
     await flushPromises()
     await clickElement(bodyButton('预览本次流水'))
@@ -1269,7 +1271,7 @@ describe('奖励补录工作台弹层', () => {
     const payload = inventoryApi.importInventory.mock.calls[0][0]
     expect(payload.records[0].effective_at).toBe(new Date(2026, 8, 30, 10).toISOString())
     expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
-    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-1', entityType: 'item' })
+    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-1', entityType: 'item', fresh: true })
     await clickElement(bodyButton('原样重试补录'))
     expect(inventoryApi.importInventory.mock.calls[1][0]).toBe(payload)
     expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)

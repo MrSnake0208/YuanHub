@@ -4,27 +4,33 @@ import { isHiddenAgent } from './agentManifest.js'
 import { isDispatchReward, staminaCostOf } from './exchange.js'
 import { businessDate } from '../../utils/businessDay.js'
 
-export const WHITE_COIN_PRESETS = Object.freeze([
-  { id: 'agent-daily', channel: '密探日常', count: 50 },
-  { id: 'monthly-card', channel: '月卡奖励', count: 60 },
+export const DAILY_REWARD_PRESETS = Object.freeze([
+  { id: 'daily-zhuyu', channel: '每日茱萸', itemId: 'zhuyu', itemName: '茱萸', count: 1 },
+  { id: 'agent-daily', channel: '密探日常', itemId: 'baijinbi', itemName: '白金币', count: 50 },
+  { id: 'monthly-card', channel: '月卡奖励', itemId: 'baijinbi', itemName: '白金币', count: 60 },
 ])
 
-export function dailyWhiteCoinRecordId(presetId, effectiveAt) {
-  if (!WHITE_COIN_PRESETS.some(preset => preset.id === presetId) || !Number.isFinite(Date.parse(effectiveAt))) {
+export function dailyRewardRecordId(presetId, effectiveAt) {
+  if (!DAILY_REWARD_PRESETS.some(preset => preset.id === presetId) || !Number.isFinite(Date.parse(effectiveAt))) {
     throw new TypeError('请选择有效的日常来源和发生时间')
   }
-  return `yuanhub:daily-whitecoin:${presetId}:${businessDate(effectiveAt)}`
+  // 已有白金币来源保留记录键，避免升级后重复入账。
+  const namespace = presetId === 'daily-zhuyu' ? 'daily-reward' : 'daily-whitecoin'
+  return `yuanhub:${namespace}:${presetId}:${businessDate(effectiveAt)}`
 }
 
-export function validateWhiteCoinAnnotation(current, effectiveAt) {
-  if (!Array.isArray(current)) throw new TypeError('白金币库存盘点加载失败，请重试')
+export function validateDailyAnnotation(current, effectiveAt, itemIds) {
+  if (!Array.isArray(current)) throw new TypeError('库存盘点加载失败，请重试')
   const inventory = current.find(entry => entry.entity_type === 'item')
-  const baselines = [inventory?.full_baseline_at, inventory?.entries?.baijinbi?.listed_baseline_at]
-    .map(value => Date.parse(value)).filter(Number.isFinite)
-  if (!baselines.length) throw new TypeError('尚无白金币库存盘点，请先同步或盘点库存，再补标来源')
-  const time = Date.parse(effectiveAt)
-  if (!Number.isFinite(time) || time > Math.max(...baselines)) {
-    throw new TypeError('奖励发生时间晚于白金币库存盘点，请填写实际发生时间，或选择新增收入')
+  for (const id of new Set(itemIds)) {
+    const name = ITEM_CATALOG.find(item => item.id === id)?.name || id
+    const baselines = [inventory?.full_baseline_at, inventory?.entries?.[id]?.listed_baseline_at]
+      .map(value => Date.parse(value)).filter(Number.isFinite)
+    if (!baselines.length) throw new TypeError(`尚无${name}库存盘点，请先同步或盘点库存，再补标来源`)
+    const time = Date.parse(effectiveAt)
+    if (!Number.isFinite(time) || time > Math.max(...baselines)) {
+      throw new TypeError(`奖励发生时间晚于${name}库存盘点，请填写实际发生时间，或选择新增收入`)
+    }
   }
 }
 
