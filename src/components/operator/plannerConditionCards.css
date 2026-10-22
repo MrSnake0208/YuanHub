@@ -4,7 +4,7 @@
 .condition-module-heading p { margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.5; }
 .condition-summary-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .condition-summary-card { display: flex; align-items: center; gap: 12px; min-width: 0; width: 100%; padding: 14px 12px; text-align: left; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 10px; font: inherit; cursor: pointer; }
-.condition-summary-icon { display: grid; flex: none; place-items: center; width: 38px; height: 38px; color: var(--accent-strong, var(--theme-strong-text, var(--tea))); }
+.condition-summary-icon { display: grid; flex: none; place-items: center; width: 38px; height: 38px; color: var(--theme-accent-text, var(--accent-strong, var(--tea))); }
 .condition-summary-copy { display: grid; flex: 1; gap: 5px; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
 .condition-summary-copy b { font-size: 14px; font-weight: 700; }
 .condition-summary-copy small { color: var(--ink-60); font-size: 12px; }
@@ -15,7 +15,7 @@
 .strategy-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .strategy-cards button { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px 12px; text-align: left; border: 1px solid var(--line); border-radius: 10px; color: var(--theme-strong-text, var(--tea)); background: var(--cream); cursor: pointer; }
 .strategy-cards button.active { border-color: var(--accent); background: var(--paper); box-shadow: inset 0 0 0 1px var(--accent); }
-.strategy-cards button > svg { flex: none; color: var(--accent-strong, var(--theme-strong-text, var(--tea))); }
+.strategy-cards button > svg { flex: none; color: var(--theme-accent-text, var(--accent-strong, var(--tea))); }
 .strategy-cards button > span { display: grid; flex: 1; gap: 6px; min-width: 0; }
 .strategy-cards b { font-size: 16px; font-weight: 800; }
 .strategy-cards small { font: 12px/1.5 var(--font-b); color: var(--ink-60); }
