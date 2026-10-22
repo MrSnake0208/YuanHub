@@ -19,7 +19,7 @@
                 <button v-for="group in groups" :key="group.key" type="button" :aria-pressed="range === group.key" @click="range = group.key">{{ group.label }}</button>
               </div>
               <fieldset class="relationship-nodes" :disabled="saving"><legend class="relationship-sr-only">选择信赖节点</legend>
-                <label v-for="node in shownNodes" :key="node.at" class="relationship-node" :class="{ selected: draft.trust === String(node.at) }">
+                <label v-for="(node, index) in shownNodes" :key="node.at" class="relationship-node" :class="{ selected: draft.trust === String(node.at), reached: draft.trust !== '' && Number(draft.trust) >= node.at, connected: index < shownNodes.length - 1 && Number(draft.trust) >= shownNodes[index + 1].at }">
                   <input type="radio" name="trust-node" :value="String(node.at)" :checked="draft.trust === String(node.at)" @change="$emit('trust', String(node.at))" />
                   <strong>{{ node.at }}</strong><span>{{ rewardText(node.rewards) || '无物品奖励' }}</span>
                 </label>
