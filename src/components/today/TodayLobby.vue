@@ -151,6 +151,13 @@ onBeforeUnmount(() => {
 .lobby-duty button:hover { color: var(--accent-strong); border-color: currentColor; }
 .lobby-save-notice { color: var(--rouge); line-height: 1.6; }
 .lobby-portrait { pointer-events: none; }
+/* 遮罩相交只淡化边缘，人物中心保持清晰。 */
+.lobby-portrait:has(img) {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 90%, transparent), linear-gradient(to bottom, #000 82%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 14%, #000 90%, transparent), linear-gradient(to bottom, #000 82%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
 .lobby-art-error { color: var(--ink-60); line-height: 1.8; }
 .duty-picker { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .duty-picker-heading h2 { font: 900 22px/1.5 var(--font-s); }

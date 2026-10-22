@@ -2850,6 +2850,12 @@
                     <button type="button" :aria-pressed="!editingDiscTarget" :class="{ on: !editingDiscTarget }" @click="editingDiscTarget = false">编辑当前命盘</button>
                     <button type="button" :aria-pressed="editingDiscTarget" :class="{ on: editingDiscTarget }" @click="editingDiscTarget = true">编辑目标命盘</button>
                   </div>
+                  <OperatorDiscPresets
+                    :key="editingId + ':' + selectedDiscLoadoutIndex + ':' + editingDiscTarget"
+                    :operator-id="editingId" :catalog="editingDiscs" :model-value="selectedDiscNames"
+                    :destination="'组合 ' + (selectedDiscLoadoutIndex + 1) + ' 的' + (editingDiscTarget ? '目标命盘' : '当前命盘')"
+                    :disabled="savingEdit" @update:model-value="applyDiscPresetNames"
+                  />
                   <div class="disc-options">
                     <div class="disc-options-head">
                       <span>{{ editingDiscTarget ? '选择目标词条' : '选择命盘' }}</span>
@@ -3074,6 +3080,7 @@ import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import OperatorEditorNav from "./OperatorEditorNav.vue";
 import OperatorDiscComparison from "../../components/operator/OperatorDiscComparison.vue";
+import OperatorDiscPresets from "../../components/operator/OperatorDiscPresets.vue";
 import OperatorDiscTargetModal from "../../components/operator/OperatorDiscTargetModal.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
@@ -4197,6 +4204,17 @@ function resetDiscLoadoutName(index) {
 function isDiscSelected(disc) {
   const loadout = selectedDiscLoadout.value;
   return !!loadout && selectedDiscNames.value.indexOf(discKey(disc)) !== -1;
+}
+
+function applyDiscPresetNames(names) {
+  const loadout = selectedDiscLoadout.value;
+  if (!loadout || savingEdit.value) return;
+  loadout[editingDiscTarget.value ? 'targetDiscNames' : 'discNames'] = names.slice();
+  if (!editingDiscTarget.value) syncDiscLoadoutAutoName(loadout);
+  if (editNotice.value === "每套命盘组合最多选择 3 个") {
+    editNotice.value = "";
+    editNoticeError.value = false;
+  }
 }
 
 function toggleDiscSelection(disc, event) {
