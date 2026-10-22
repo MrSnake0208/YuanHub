@@ -119,6 +119,75 @@ it('全部明确成功后才关闭原提醒；写入回执与预览分开', asyn
   expect(page.text()).toContain('已保存')
 })
 
+it('蓝卡按已保存的满阶现值复核，无变化也能确认并关闭提醒', async () => {
+  fixture.catalog.rarity = 3
+  fixture.current.huaji = { owned: true, stage: 19, awakened: false }
+  fixture.review.warnings = [{ code: 'legacy_huaji_requires_review', field: 'star_level' }]
+  api.previewOperatorImport.mockImplementation(async body => receipt(body, 'unchanged', { changes: {} }))
+  api.importOperator.mockImplementation(async body => receipt(body, 'unchanged', { changes: {} }))
+  const page = await render(); await setStage(page, 19); await preview(page)
+  expect(button(page, '确认保存').attributes('disabled')).toBeUndefined()
+  await save(page)
+  expect(api.previewOperatorImport).toHaveBeenCalledTimes(2)
+  expect(api.importOperator.mock.calls[0][0].document.records[0].entries).toEqual([
+    { operator_id: 'review-op', huaji: { owned: true, stage: 19, awakened: false } },
+  ])
+  expect(api.closeOperatorScanReview).toHaveBeenCalledOnce()
+  expect(page.find('.scan-review-form').exists()).toBe(false)
+  expect(page.text()).toContain('已收到无变化回执，档案未改写')
+})
+
+it('关闭提醒失败在复核区展示原因，重试成功后退出且不写档案', async () => {
+  api.closeOperatorScanReview.mockRejectedValueOnce(new Error('连接中断'))
+  const page = await render()
+  const dismiss = async () => {
+    await button(page, '已另行处理，关闭提醒').trigger('click'); await flushPromises()
+    document.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  }
+  await dismiss()
+  expect(page.get('.import-box [role="alert"]').text()).toContain('连接中断')
+  expect(page.find('.scan-review-form').exists()).toBe(true)
+  await dismiss()
+  expect(api.closeOperatorScanReview).toHaveBeenCalledTimes(2)
+  expect(page.find('.scan-review-form').exists()).toBe(false)
+  expect(page.find('.import-box').exists()).toBe(false)
+  expect(api.importOperator).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['缺少逐项回执', () => ({ unchanged: 1 })],
+  ['回执属于其他账号', body => receipt(body, 'unchanged', { account_id: 'acc-review-b' })],
+  ['仍有待核原因', body => receipt(body, 'unchanged', { warnings: [{ code: 'legacy_huaji_requires_review' }] })],
+  ['仍有阻断错误', body => receipt(body, 'unchanged', { blocking_errors: [{ code: 'invalid_huaji' }] })],
+])('无变化但%s时不能确认保存或关闭提醒', async (_, response) => {
+  api.previewOperatorImport.mockImplementation(async body => response(body))
+  const page = await render(); await setStage(page); await preview(page)
+  expect(button(page, '确认保存').attributes('disabled')).toBeDefined()
+  await save(page)
+  expect(api.importOperator).not.toHaveBeenCalled()
+  expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
+})
+
+it('蓝卡旧采集31与历史额外节点不自动拉满，可人工确认4星', async () => {
+  fixture.catalog.rarity = 3
+  fixture.current.huaji = { owned: true, stage: 24, awakened: null }
+  fixture.review.document.version = 3
+  delete fixture.entry.huaji
+  fixture.entry.star_level = 31
+  fixture.entry.section_status.huaji = 'ready'
+  fixture.review.warnings = [{ code: 'legacy_huaji_requires_review', field: 'star_level' }]
+  const page = await render()
+  const stage = page.get('[aria-label="复核化极星级与节点"]')
+  expect(stage.element.selectedOptions[0]._value).toBeNull()
+  expect(stage.findAll('option').at(-1).text()).toBe('4 星')
+  expect(page.text()).toContain('满星后没有小节点，也不支持觉醒')
+  await setStage(page, 19); await preview(page); await save(page)
+  expect(api.importOperator.mock.calls[0][0].document.records[0].entries).toEqual([
+    { operator_id: 'review-op', huaji: { owned: true, stage: 19, awakened: null } },
+  ])
+  expect(api.closeOperatorScanReview).toHaveBeenCalledOnce()
+})
+
 it('部分成功保留未支持分区、原提醒和逐项原因', async () => {
   fixture = operatorScanReviewFixture('unsupported')
   api.importOperator.mockImplementation(async body => receipt(body, 'partial', { warnings: [{ code: 'producer_warning', message: '待补充采集证据' }] }))
