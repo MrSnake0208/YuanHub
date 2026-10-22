@@ -134,6 +134,22 @@
         </div>
       </div>
 
+      <div v-if="showDiscFilter" class="pf-row pf-disc-row">
+        <span class="pf-label">命盘</span>
+        <div class="mf-filter" role="group" :aria-label="`按命盘标记筛选${contextLabel}`">
+          <button v-for="option in DISC_FILTER_OPTIONS" :key="option.value" type="button"
+            :aria-pressed="discStatusFilter === option.value" :class="{ on: discStatusFilter === option.value }"
+            @click="$emit('update:discStatusFilter', option.value)">{{ option.label }}</button>
+        </div>
+      </div>
+      <div v-if="showAwakenedFilter" class="pf-row">
+        <span class="pf-label">觉醒</span>
+        <div class="mf-filter" role="group" :aria-label="`按觉醒筛选${contextLabel}`">
+          <button type="button" :aria-pressed="awakenedOnly" :class="{ on: awakenedOnly }"
+            @click="$emit('update:awakenedOnly', !awakenedOnly)">只看觉醒</button>
+        </div>
+      </div>
+
       <div v-if="tagOptions.length" class="pf-row pf-tag-row">
         <span class="pf-label">标签</span>
         <div class="mf-filter current-tag-filter" role="group" :aria-label="`按自定义标签筛选${contextLabel}`">
@@ -154,6 +170,7 @@
 import { ref, useId } from 'vue'
 import { RotateCcw, Search } from '@lucide/vue'
 import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
+import { DISC_FILTER_OPTIONS } from '../../utils/operatorDiscLoadouts.js'
 
 const filtersOpen = ref(false)
 const filtersId = useId()
@@ -187,6 +204,10 @@ const props = defineProps({
   advancedFilterCount: { type: Number, default: null },
   growthFilters: { type: Object, default: function () { return {} } },
   showGrowthFilters: Boolean,
+  showDiscFilter: Boolean,
+  discStatusFilter: { type: String, default: 'all' },
+  showAwakenedFilter: Boolean,
+  awakenedOnly: Boolean,
 })
 
 const emit = defineEmits([
@@ -197,6 +218,8 @@ const emit = defineEmits([
   'update:tagFilter',
   'update:searchQuery',
   'update:growthFilters',
+  'update:discStatusFilter',
+  'update:awakenedOnly',
   'reset',
 ])
 

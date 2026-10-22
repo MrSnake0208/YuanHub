@@ -299,3 +299,20 @@ test('公开分享直接采用后端选定面板，关闭补全产生的空值�
   assert.equal(operatorShareCombatSource(entry, 'attack'), '自动计算')
   assert.equal(operatorShareCombatSource(entry, 'hp'), '暂无可用面板数据')
 })
+
+test('分享命盘和觉醒筛选与原条件取交集，混合两盘分别命中且兼容旧数据', () => {
+  const base = { name: '甲', prof: ['阳'], sub_prof: ['龙盾'], rarity: 5, tags: [{ id: 'main' }] }
+  const entries = [
+    { ...base, id: 'mixed', growth: { growth_state: 'active', huaji: { owned: true, stage: 25, awakened: true }, disc_loadouts: [{ status: 'reroll' }, { status: 'perfect' }] } },
+    { ...base, id: 'perfect', growth: { huaji: { owned: true, stage: 25, awakened: false }, disc_loadouts: [{ status: 'perfect' }] } },
+    { ...base, id: 'legacy', growth: { star_level: 31, disc_loadouts: [{ discs: [{ ot_name: 'A' }] }] } },
+    { ...base, id: 'camel', growth: { huaji: { owned: true, stage: 25, awakened: true }, discLoadouts: [{ status: 'perfect' }] } },
+  ]
+  const filter = options => filterOperatorShareEntries(entries, '', 'all', 'all', 'all', '', options).map(entry => entry.id)
+  assert.deepEqual(filter({ discStatus: 'perfect' }), ['mixed', 'perfect', 'camel'])
+  assert.deepEqual(filter({ discStatus: 'reroll' }), ['mixed'])
+  assert.deepEqual(filter({ discStatus: 'perfect', awakenedOnly: true }), ['mixed', 'camel'])
+  assert.deepEqual(filter({}), ['mixed', 'perfect', 'legacy', 'camel'])
+  assert.deepEqual(filterOperatorShareEntries(entries, '甲', '阳', '龙盾', 'growing', 'main', { discStatus: 'reroll', awakenedOnly: true }).map(entry => entry.id), ['mixed'])
+  assert.deepEqual(filterOperatorShareEntries(entries, '', '阴', 'all', 'all', '', { discStatus: 'perfect' }), [])
+})

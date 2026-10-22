@@ -87,6 +87,10 @@
         v-model:sub-prof-filter="subProfFilter"
         v-model:status-filter="statusFilter"
         v-model:tag-filter="tagFilter"
+        v-model:disc-status-filter="discStatusFilter"
+        v-model:awakened-only="awakenedOnly"
+        show-disc-filter
+        show-awakened-filter
         class="share-filter-dossier"
         context-label="分享密探"
         description="筛选后按品质、等级、化极、属性与实装顺序排列"
@@ -257,6 +261,7 @@
                 </div>
               </div>
             </div>
+            <p v-if="discTargetSummary(loadouts(entry))" class="share-disc-status">{{ discTargetSummary(loadouts(entry)) }}</p>
             <div v-if="entry.tags.length" class="share-ledger-tags" aria-label="公开自定义标签">
               <span v-for="tag in entry.tags" :key="tag.id">{{ tag.name }}</span>
             </div>
@@ -296,7 +301,7 @@ import { parseShareLink, sharePath } from '../../utils/shareLink.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { operatorEditableStatusOptions, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
-import { normalizeDiscNames } from '../../utils/operatorDiscLoadouts.js'
+import { normalizeDiscNames, discTargetSummary } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { starCardFallback, starCardHasIcon, starCardNode, starCardNumber } from '../../utils/operatorStarDisplay.js'
 import {
@@ -336,6 +341,8 @@ const profFilter = ref('all')
 const subProfFilter = ref('all')
 const statusFilter = ref('all')
 const tagFilter = ref('')
+const discStatusFilter = ref('all')
+const awakenedOnly = ref(false)
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 const profOptions = AGENT_PROFS
 const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
@@ -352,7 +359,7 @@ const shareStatusCounts = computed(function () {
   }, { growing: 0, graduated: 0, inactive: 0, discarded: 0 })
 })
 const filteredEntries = computed(function () {
-  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value, tagFilter.value)
+  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value, tagFilter.value, { discStatus: discStatusFilter.value, awakenedOnly: awakenedOnly.value })
 })
 const shareTagOptions = computed(function () {
   const tags = new Map()
@@ -365,7 +372,7 @@ const shareTagOptions = computed(function () {
   return Array.from(tags.values())
 })
 const hasFilters = computed(function () {
-  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all' || statusFilter.value !== 'all' || tagFilter.value)
+  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all' || statusFilter.value !== 'all' || tagFilter.value || discStatusFilter.value !== 'all' || awakenedOnly.value)
 })
 let loadSeq = 0
 
@@ -394,6 +401,8 @@ function clearFilters() {
   subProfFilter.value = 'all'
   statusFilter.value = 'all'
   tagFilter.value = ''
+  discStatusFilter.value = 'all'
+  awakenedOnly.value = false
 }
 
 async function loadShare() {
@@ -499,9 +508,11 @@ function loadouts(entry) {
   const growth = entry && entry.growth ? entry.growth : {}
   const source = Array.isArray(growth.disc_loadouts) && growth.disc_loadouts.length
     ? growth.disc_loadouts
-    : Array.isArray(growth.discs) && growth.discs.length
-      ? [{ discs: growth.discs }]
-      : []
+    : Array.isArray(growth.discLoadouts) && growth.discLoadouts.length
+      ? growth.discLoadouts
+      : Array.isArray(growth.discs) && growth.discs.length
+        ? [{ discs: growth.discs }]
+        : []
   return [source[0] || null, source[1] || null]
 }
 
@@ -633,6 +644,8 @@ watch(status, async value => {
 </script>
 
 <style scoped>
+.share-disc-status { margin: 4px 0 0; color: var(--tea); font-size: 11px; overflow-wrap: anywhere; }
+
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .share-entry,.share-state { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 22px 44px -34px rgba(73, 59, 44, .42) }
 .section-kicker { color: var(--accent-strong) }

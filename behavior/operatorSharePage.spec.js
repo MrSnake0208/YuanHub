@@ -209,3 +209,38 @@ it('公开分享显示已弃置及未知状态，保留全部成员', async () =
   expect(fetch).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+it('分享命盘单选与觉醒筛选可叠加、重置和换码，状态只读展示', async () => {
+  const operators = ['mixed', 'perfect', 'legacy'].map(id => ({ ...operator, id, name: id, rarity: 5 }))
+  getOperatorCatalog.mockResolvedValue({ operators })
+  viewOperatorShare.mockResolvedValue({ ...share, entries: {
+    mixed: { ...operator.growth, huaji: { owned: true, stage: 25, awakened: true }, disc_loadouts: [{ status: 'reroll', discs: [] }, { status: 'perfect', discs: [] }] },
+    perfect: { ...operator.growth, huaji: { owned: true, stage: 25, awakened: false }, disc_loadouts: [{ status: 'perfect', discs: [] }] },
+    legacy: { ...operator.growth, disc_loadouts: [{ discs: [] }] },
+  } })
+  const wrapper = render({ OperatorFilterDossier: false, ShareCardStats: false })
+  await flushPromises()
+  const cards = () => wrapper.findAll('article[role="listitem"]')
+  const click = async label => wrapper.findAll('button').find(button => button.text() === label).trigger('click')
+  expect(cards()).toHaveLength(3)
+  await click('有完美盘')
+  expect(cards()).toHaveLength(2)
+  await click('只看觉醒')
+  expect(cards()).toHaveLength(1)
+  expect(cards()[0].text()).toContain('mixed')
+  expect(wrapper.get('.share-disc-status').text()).toBe('一盘待洗 │ 二盘完美')
+  await click('有待洗盘')
+  expect(cards()).toHaveLength(1)
+  expect(wrapper.findAll('.pf-disc-row [aria-pressed="true"]')).toHaveLength(1)
+  await click('重置')
+  expect(cards()).toHaveLength(3)
+  await click('有完美盘')
+  await click('只看觉醒')
+  useRoute().params.token = tokenB
+  await flushPromises()
+  expect(cards()).toHaveLength(3)
+  expect(wrapper.findAll('.pf-disc-row [aria-pressed="true"]')[0].text()).toBe('全部')
+  expect(wrapper.findAll('button').find(button => button.text() === '只看觉醒').attributes('aria-pressed')).toBe('false')
+  expect(fetch).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
