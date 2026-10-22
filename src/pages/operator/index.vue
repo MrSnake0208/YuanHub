@@ -56,12 +56,14 @@
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" />
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
+            <p class="tip">手动处理后可标记「已完成复核」消除本条提醒；后续扫描有新的待核结果时会再次提示。</p>
             <p>{{ currentAccountName }} · 部分内容仍待确认，请点「查看并修改」对照游戏核对；已保存内容可在档案查看。</p>
             <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
             <ul>
               <li v-for="review in scanReviews" :key="review.record_id + ':' + review.operator_id">
                 <span>{{ importOperatorName(review.operator_id) }} · {{ review.status === 'rejected' ? '采集未录入' : '需要复核' }}</span>
                 <button type="button" :disabled="importing" @click="openScanReview(review)">查看并修改</button>
+                <button type="button" :disabled="importing" @click="completeScanReview(review)">已完成复核</button>
               </li>
             </ul>
           </section>
@@ -3881,21 +3883,27 @@ async function closeScanReview() {
 }
 
 async function closeSelectedScanReview() {
-  const review = selectedScanReview.value;
+  await completeScanReview(selectedScanReview.value);
+}
+
+async function completeScanReview(review) {
   if (!review || review.account_id !== accountId.value || importing.value) return;
   const contextSeq = currentContextSeq;
+  const selected = selectedScanReview.value;
+  const completingSelected = selected?.record_id === review.record_id && selected?.operator_id === review.operator_id;
   const confirmed = await dialog.confirm({
-    title: "关闭待复核提醒？",
-    message: "仅关闭这条提醒，不会写入尚未录入的采集字段。",
-    confirmText: "关闭提醒",
+    title: "标记为已完成复核？",
+    message: "请确认已核对并保存所需修改。此操作仅消除本条提醒，不会保存未提交的字段；后续扫描有新的待核结果时仍会提示。",
+    confirmText: "已完成复核",
   });
-  if (!confirmed || contextSeq !== currentContextSeq || review.account_id !== accountId.value || selectedScanReview.value !== review) return;
+  if (!confirmed || importing.value || operatorPageDisposed || contextSeq !== currentContextSeq || review.account_id !== accountId.value || selectedScanReview.value !== selected) return;
   importing.value = true;
-  importError.value = '';
+  scanReviewError.value = '';
+  if (completingSelected) importError.value = '';
   try {
     await closeOperatorScanReview({ accountId: review.account_id, recordId: review.record_id, operatorId: review.operator_id });
     if (contextSeq !== currentContextSeq || operatorPageDisposed) return;
-    if (selectedScanReview.value === review) {
+    if (completingSelected && selectedScanReview.value === selected) {
       selectedScanReview.value = null;
       scanReviewDirty.value = false;
       importText.value = "";
@@ -3905,8 +3913,9 @@ async function closeSelectedScanReview() {
     }
     await loadScanReviews();
   } catch (err) {
-    if (contextSeq === currentContextSeq && selectedScanReview.value === review && !operatorPageDisposed) {
-      importError.value = "关闭提醒失败：" + humanErr(err, "请稍后重试");
+    if (contextSeq === currentContextSeq && !operatorPageDisposed) {
+      scanReviewError.value = "完成复核失败：" + humanErr(err, "请稍后重试");
+      if (completingSelected) importError.value = scanReviewError.value;
     }
   } finally {
     if (contextSeq === currentContextSeq) importing.value = false;
