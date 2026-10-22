@@ -117,6 +117,13 @@
     font-size: 11px;
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-milestone-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1;
+  }
+
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value.is-terminal:not(:has(+ .ledger-next-action)) {
     grid-column: 2 / -1;
   }
