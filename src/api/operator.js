@@ -13,6 +13,20 @@ import { sha256 } from '../utils/sha256.js'
 
 const PATH = '/v1/operator'
 
+export function previewOperatorPanel(body) {
+  return request(PATH + '/panel/preview', { method: 'POST', auth: true, body })
+}
+
+export async function getCurrentOperatorPanels(accountId, operatorIds) {
+  const results = {}
+  for (let start = 0; start < operatorIds.length; start += 100) {
+    Object.assign(results, await request(PATH + '/panel/current', {
+      method: 'POST', auth: true, body: { account_id: accountId, operator_ids: operatorIds.slice(start, start + 100) }
+    }))
+  }
+  return results
+}
+
 export function getOperatorOrganization(accountId) {
   return request(PATH + '/organization?' + new URLSearchParams({ account_id: accountId }), { auth: true })
 }

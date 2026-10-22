@@ -1003,6 +1003,10 @@
             <div v-if="annotationError" class="state err slim" role="alert">
               {{ annotationError }}
             </div>
+            <div v-if="panelBatchState.status === 'failed'" class="state err slim" role="status">
+              自动面板暂未加载。
+              <button type="button" class="link" @click="panelBatchRequest.retry()">重试计算</button>
+            </div>
             <div v-if="loading" class="state">正在加载养成状态…</div>
             <div v-else-if="error" class="state err">
               {{ error }}
@@ -2416,12 +2420,13 @@
             </div>
             <div class="editor-head-stats">
               <div
-                v-if="calculatedCombatStats.reason"
+                v-if="editorPanelHint"
                 class="editor-head-stats-toolbar"
               >
                 <span class="editor-head-stats-note">{{
-                  calculatedCombatStats.reason
+                  editorPanelHint
                 }}</span>
+                <button v-if="panelPreviewState.status === 'failed'" type="button" class="btn small" @click="panelPreviewRequest.retry()">重试计算</button>
               </div>
               <div class="editor-head-values">
                 <span
@@ -2877,6 +2882,7 @@
                   :operator-display-name-map="starOperatorDisplayNames"
                   @update:draft-loadouts="starLoadoutDrafts = $event"
                 />
+                <StarBreakthroughEditor :account-id="accountId" :state="starStateSnapshot" :loadout="starLoadoutDrafts[editingOp?.id]" @saved="acceptStarBreakthroughState" />
               </div>
             </section>
           </div>
@@ -3073,7 +3079,10 @@ import {
   listOperatorScanReviews,
   closeOperatorScanReview,
   exportOperator,
+  previewOperatorPanel,
+  getCurrentOperatorPanels,
 } from "../../api/operator.js";
+import { createOperatorPanelRequest, operatorPanelHint, operatorPanelPreviewBody } from "../../utils/operatorPanelRequest.js";
 import { avatarUrl } from "../../api/request.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import {
@@ -3086,6 +3095,7 @@ import {
   reconcileOperatorAnnotations,
 } from "../../utils/operatorAnnotations.js";
 import OperatorLevelBreakthroughSelect from "../../components/operator/OperatorLevelBreakthroughSelect.vue";
+import StarBreakthroughEditor from "../../components/operator/StarBreakthroughEditor.vue";
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
@@ -3438,6 +3448,7 @@ const starLoadoutTarget = ref(null);
 const starLoadoutActiveSlot = ref("main1");
 const starLoadoutInlineSlot = ref("main1");
 const starInventoryEntries = ref([]);
+const starStateSnapshot = ref(null);
 const starLoadoutCurrent = ref({});
 const starLoadoutDrafts = ref({});
 const starLoadoutRevision = ref(0);
@@ -3572,6 +3583,7 @@ watch(
     starLoadoutTarget.value = null;
     starLoadoutError.value = "";
     starInventoryEntries.value = [];
+    starStateSnapshot.value = null;
     starLoadoutCurrent.value = {};
     starLoadoutDrafts.value = {};
     starLoadoutRevision.value = 0;
@@ -4428,17 +4440,65 @@ const combatStatsInput = computed(function () {
     elite: editForm.value.elite,
     starLevel: editForm.value.starLevel,
     huaji: { ...huaji, awakened: huaji.owned ? editForm.value.awakened : null },
-    stones: editForm.value.stones,
+    stones: inventoryPanelStones(editingOp.value?.id, starLoadoutDrafts.value) ?? editForm.value.stones,
     oddities: editForm.value.combatStats && editForm.value.combatStats.oddities,
   };
 });
+
+const panelPreviewState = ref({ key: "", status: "idle", result: null });
+const panelBatchState = ref({ key: "", status: "idle", result: null });
+const panelPreviewRequest = createOperatorPanelRequest({
+  request: previewOperatorPanel, publish: value => { panelPreviewState.value = value; },
+});
+const panelBatchRequest = createOperatorPanelRequest({
+  request: value => getCurrentOperatorPanels(value.accountId, value.operatorIds),
+  publish: value => { panelBatchState.value = value; },
+});
+const panelBatchInput = computed(() => {
+  if (!auth.isLoggedIn || !accountId.value || currentLoadedKey.value !== accountId.value + ':' + gameFilter.value) return null;
+  const operatorIds = currentEntries.value.filter(isOperatorOwned).map(entry => entry.id);
+  if (!operatorIds.length) return null;
+  return {
+    key: JSON.stringify([starPresetUserScope(), accountId.value, gameFilter.value,
+      currentEntries.value.map(entry => [entry.id, entry.revision, entry.level, entry.elite, entry.huaji, entry.starLevel, entry.combatStats?.oddities]),
+      starStateGeneration.value, starInventoryEntries.value, starLoadoutCurrent.value]),
+    input: { accountId: accountId.value, operatorIds },
+  };
+});
+const panelPreviewInput = computed(() => {
+  if (!auth.isLoggedIn || !editing.value || !editingOp.value?.id || !accountId.value || starLoadoutLoading.value) return null;
+  const draft = starLoadoutAccountId.value === accountId.value ? starLoadoutDrafts.value[editingOp.value.id] : undefined;
+  const loadout = Object.hasOwn(starLoadoutCurrent.value, editingOp.value.id) || Object.values(draft || {}).some(Boolean) ? draft : undefined;
+  const input = operatorPanelPreviewBody(accountId.value, editingOp.value.id, combatStatsInput.value, loadout);
+  return { key: JSON.stringify([starPresetUserScope(), gameFilter.value, input, starInventoryEntries.value]), input };
+});
+watch(() => panelBatchInput.value?.key, () => panelBatchRequest.update(panelBatchInput.value), { immediate: true });
+watch(() => panelPreviewInput.value?.key, () => panelPreviewRequest.update(panelPreviewInput.value), { immediate: true });
+const editorPanelResult = computed(() => panelPreviewState.value.key === panelPreviewInput.value?.key ? panelPreviewState.value.result : null);
+const editorPanelHint = computed(() => operatorPanelHint(editorPanelResult.value, panelPreviewState.value.status));
+
+function cardPanelDraftChanged(entry) {
+  const draft = operatorPanelPreviewBody(accountId.value, entry.id, cardCombatInput(entry));
+  const saved = operatorPanelPreviewBody(accountId.value, entry.id, {
+    level: entry.level, levelBreakthroughStage: operatorLevelBreakthroughStage(entry), elite: entry.elite,
+    huaji: operatorHuaji(entry), oddities: entry.combatStats?.oddities,
+  });
+  return JSON.stringify(draft) !== JSON.stringify(saved);
+}
+function cardPanelResult(entry) {
+  if (cardPanelDraftChanged(entry) || panelBatchState.value.key !== panelBatchInput.value?.key) return null;
+  return panelBatchState.value.result?.[entry.id];
+}
+function cardPanelHint(entry) {
+  if (cardPanelDraftChanged(entry)) return "保存养成后更新自动面板";
+  return operatorPanelHint(cardPanelResult(entry), panelBatchState.value.status);
+}
 
 const calculatedCombatStats = computed(function () {
   return calculateOperatorCombatStats({
     stored: editForm.value.combatStats,
     input: combatStatsInput.value,
-    // 临时不向密探编辑页开放攻击 / 生命自动计算。
-    allowAutomatic: false,
+    serverResult: editorPanelResult.value,
   });
 });
 
@@ -4486,7 +4546,7 @@ const combatAttackSource = computed(function () {
     editForm.value.combatStats.manualAttack != null
   )
     return "手动校正";
-  if (calculatedCombatStats.value.breakdown) return "自动计算";
+  if (calculatedCombatStats.value.automaticAttackAvailable) return "自动计算";
   return calculatedCombatStats.value.attack == null
     ? "可手动校正"
     : combatStatsSource.value;
@@ -4496,7 +4556,7 @@ const combatHpSource = computed(function () {
   if (combatHpAutoVisible.value) return "自动计算";
   if (editForm.value.combatStats && editForm.value.combatStats.manualHp != null)
     return "手动校正";
-  if (calculatedCombatStats.value.breakdown) return "自动计算";
+  if (calculatedCombatStats.value.automaticHpAvailable) return "自动计算";
   return calculatedCombatStats.value.hp == null
     ? "可手动校正"
     : combatStatsSource.value;
@@ -6948,6 +7008,12 @@ function starSnapshotEntries(snapshot) {
   });
 }
 
+function acceptStarBreakthroughState(state) {
+  if (state.account_id !== accountId.value) return;
+  starStateSnapshot.value = state;
+  starInventoryEntries.value = starSnapshotEntries(state);
+}
+
 function normalizeCloudLoadouts(snapshot) {
   const row = Array.isArray(snapshot) ? snapshot[0] : snapshot || {};
   const source = (row && (row.loadouts || row.entries)) || {};
@@ -7024,6 +7090,7 @@ async function prepareStarLoadout(operator, slot) {
     if (operatorPageDisposed || seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
       return false;
     starInventoryEntries.value = starSnapshotEntries(inventory);
+    starStateSnapshot.value = inventory;
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
     starLoadoutDrafts.value = validStarLoadoutDrafts(starLoadoutCurrent.value, starInventoryEntries.value);
     starStateGeneration.value = Number(inventory?.generation || 0);
@@ -7065,6 +7132,7 @@ async function loadStarLoadoutSnapshot(targetAccount) {
     const keepCurrentDraft = starLoadoutOpen.value && starStateGeneration.value === generation;
     const nextRevision = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
     starInventoryEntries.value = starSnapshotEntries(inventory);
+    starStateSnapshot.value = inventory;
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
     starLoadoutDrafts.value = validStarLoadoutDrafts(keepCurrentDraft ? starLoadoutDrafts.value : starLoadoutCurrent.value, starInventoryEntries.value);
     starStateGeneration.value = generation;
@@ -7245,7 +7313,18 @@ function saveOperatorRemark(entry) {
   if (draft) draft.remark = operatorRemark(entry);
 }
 
+function inventoryPanelStones(operatorId, loadouts) {
+  if (!Object.hasOwn(loadouts, operatorId)) return null;
+  const byId = new Map(starInventoryEntries.value.map(star => [star.instance_id || star.instanceId, star]));
+  return Object.fromEntries(Object.entries(loadouts[operatorId] || {}).filter(([, id]) => id && byId.has(id)).map(([slot, id]) => {
+    const star = byId.get(id);
+    return [slot, { name: star.name, level: star.level, quality: star.quality, breakthroughStage: star.breakthrough_stage ?? null }];
+  }));
+}
+
 function cardCombatStones(entry) {
+  const equipped = inventoryPanelStones(entry.id, starLoadoutCurrent.value);
+  if (equipped) return equipped;
   const draft = ensureCardDraft(entry);
   const stones =
     draft && Array.isArray(draft.starStones)
@@ -7323,8 +7402,7 @@ function cardCombatResult(entry) {
       }),
     }),
     input: cardCombatInput(entry),
-    // 临时不向密探卡片开放攻击 / 生命自动计算。
-    allowAutomatic: false,
+    serverResult: cardPanelResult(entry),
   });
 }
 
@@ -7410,7 +7488,7 @@ function cardCombatSource(entry, kind) {
   if (mode === "manual") {
     return cardCombatAutoAvailable(entry, kind)
       ? "可切换为自动计算值" + stale
-      : "暂不支持自动计算" + stale;
+      : (cardPanelHint(entry) || "自动面板暂无结果") + stale;
   }
   return combatStatsSourceLabel(result.source, result.status);
 }
@@ -9318,6 +9396,8 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  panelPreviewRequest.dispose();
+  panelBatchRequest.dispose();
   importOperationSeq += 1;
   scanReviewCurrentSeq += 1;
   scanReviewLoadSeq += 1;

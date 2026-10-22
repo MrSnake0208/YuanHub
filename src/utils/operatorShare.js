@@ -196,8 +196,7 @@ export function operatorShareCombatResult(entry) {
   return calculateOperatorCombatStats({
     stored: growth.combat_stats || growth.combatStats || {},
     input: operatorShareCombatInput(entry),
-    // 与密探页保持一致：当前前端暂不开放自动面板计算。
-    allowAutomatic: false
+    serverResult: growth.panel
   })
 }
 

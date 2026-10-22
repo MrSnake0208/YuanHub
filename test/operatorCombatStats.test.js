@@ -2,7 +2,6 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   calculateOperatorCombatStats,
-  calculateWikiOperatorCombatStats,
   combatInputSignature,
   combatStatsSourceLabel,
   fillOperatorDraftToMax,
@@ -279,91 +278,17 @@ test('接入计算器后返回自动计算结果', function () {
   const stats = calculateOperatorCombatStats({
     stored: {},
     input: { level: 100 },
-    calculator: function ({ input }) { return { attack: input.level * 10, hp: input.level * 20 } }
+    serverResult: { status: 'calculated', attack: 1000, hp: 2000 }
   })
   assert.equal(stats.attack, 1000)
   assert.equal(stats.hp, 2000)
   assert.equal(stats.status, 'calculated')
 })
 
-test('使用 Wiki 规则根据等级、修为、化极、星石和奇闻自动计算', function () {
-  const stats = calculateOperatorCombatStats({
-    stored: {},
-    input: {
-      operatorName: '杨修',
-      level: 100,
-      elite: 17,
-      starLevel: 25, huaji: { owned: true, stage: 25, awakened: false },
-      stones: {
-        main1: { name: '太阳', level: 60 },
-        main2: { name: '武曲', level: 60 },
-        main3: { name: '天府', level: 60 }
-      },
-      oddities: {
-        attack: { current: 10, max: 500 },
-        hp: { current: 20, max: 2600 },
-        special: { current: 15, max: 15 }
-      }
-    }
-  })
-  assert.equal(stats.status, 'calculated')
-  assert.ok(stats.attack > 0)
-  assert.ok(stats.hp > 0)
-  assert.ok(stats.breakdown.curiosAttack === 10)
-  assert.ok(stats.breakdown.curiosHp === 20)
-})
-
-test('职业或特殊奇闻属性不会误计入攻击力和生命值', function () {
-  const base = calculateOperatorCombatStats({
-    stored: {},
-    input: {
-      operatorName: '杨修',
-      level: 100,
-      elite: 17,
-      starLevel: 0,
-      oddities: {
-        attack: { current: 10, max: 500 },
-        hp: { current: 20, max: 2600 },
-        special: { current: 0, max: 15 }
-      }
-    }
-  })
-  const changedThirdStat = calculateOperatorCombatStats({
-    stored: {},
-    input: {
-      operatorName: '杨修',
-      level: 100,
-      elite: 17,
-      starLevel: 0,
-      oddities: {
-        attack: { current: 10, max: 500 },
-        hp: { current: 20, max: 2600 },
-        special: { current: 15, max: 15 }
-      }
-    }
-  })
-  assert.equal(changedThirdStat.attack, base.attack)
-  assert.equal(changedThirdStat.hp, base.hp)
-})
-
-test('旧 curios 攻生命字段仍可参与计算', function () {
-  const stats = calculateOperatorCombatStats({
-    stored: {},
-    input: {
-      operatorName: '杨修',
-      level: 100,
-      elite: 17,
-      starLevel: 0,
-      curios: [{ name: '旧奇闻', attack: 10, hp: 20 }]
-    }
-  })
-  assert.equal(stats.breakdown.curiosAttack, 10)
-  assert.equal(stats.breakdown.curiosHp, 20)
-})
-
 test('手动覆盖值优先于规则计算，可清空恢复自动计算', function () {
   const stats = calculateOperatorCombatStats({
     stored: { manualAttack: 1234, manualHp: 5678 },
+    serverResult: { status: 'calculated', attack: 1000, hp: 2000 },
     input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 25, huaji: { owned: true, stage: 25, awakened: false } }
   })
   assert.equal(stats.attack, 1234)
@@ -382,6 +307,7 @@ test('手动覆盖值仍在当前输入生效时，提供自动计算切换提�
       observedInputs: { signature: signature },
       observedStatus: 'valid'
     },
+    serverResult: { status: 'calculated', attack: 1000, hp: 2000 },
     input: input
   })
   assert.equal(stats.status, 'manual')
@@ -403,6 +329,7 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
       observedInputs: { signature: signature },
       observedStatus: 'valid'
     },
+    serverResult: { status: 'calculated', attack: 1000, hp: 2000 },
     input: Object.assign({}, input, { level: 90, levelBreakthroughStage: 8, elite: 15 })
   })
   assert.equal(stats.status, 'calculated')
@@ -411,74 +338,32 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
   assert.equal(stats.manualFallbackAvailable, true)
 })
 
-test('Wiki 修为阶段与化极节点按原页面顺序计入攻生命', function () {
-  const wikiDefault = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '庞德', level: 90, levelBreakthroughStage: 8, elite: 15, starLevel: 7 }
-  })
-  assert.equal(wikiDefault.attack, 5447.0999)
-  assert.equal(wikiDefault.hp, 18381.3003)
-
-  const tierTwo = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '杨修', level: 60, levelBreakthroughStage: 5, elite: 9, starLevel: 0 }
-  })
-  assert.equal(tierTwo.attack, 1798.435)
-  assert.equal(tierTwo.hp, 10698.45)
-
-  const promotion = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 3 }
-  })
-  assert.equal(promotion.breakdown.promotionAttack, 23)
-  assert.equal(promotion.breakdown.promotionHp, 115)
-})
-
-test('星石等级使用 Wiki 突破槽位，11级会跳过10级突破项', function () {
-  const levelTen = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 0, stones: { main1: { name: '太阳', level: 10 } } }
-  })
-  const levelEleven = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 0, stones: { main1: { name: '太阳', level: 11 } } }
-  })
-  assert.equal(levelTen.breakdown.stoneAttack, 46)
-  assert.equal(levelEleven.breakdown.stoneAttack, 75)
-})
-
-test('Wiki 未提供中间等级时不做伪精确插值', function () {
-  const stats = calculateOperatorCombatStats({
-    stored: {},
-    input: { operatorName: '杨修', level: 99, elite: 17, starLevel: 0 }
-  })
-  assert.equal(stats.status, 'missing')
-  assert.equal(stats.attack, null)
-  assert.match(stats.reason, /仅提供/)
-})
-
 test('stage或觉醒未知时保留观测，不推五星或自动面板', () => {
   for (const huaji of [{ owned: true, stage: null, awakened: true }, { owned: true, stage: 25, awakened: null }]) {
     const result = calculateOperatorCombatStats({ stored: { observed_attack: 4001, observed_hp: 20245 }, input: { operatorName: '杨修', level: 100, elite: 17, huaji } })
     assert.equal(result.automaticResultAvailable, false)
     assert.equal(result.attack, 4001)
     assert.equal(result.hp, 20245)
-    assert.match(result.reason, /待确认|待核实/)
+    assert.equal(result.panelStatus, 'idle')
   }
 })
 
 
-test('普通独立觉醒只增加百分比，不修改四星节点或重复乘1.1', () => {
-  const input = { operatorName: '张飞', level: 100, elite: 17, huaji: { owned: true, stage: 22, awakened: false }, oddities: { attack: { current: 325 }, hp: { current: 0 } }, stones: { main1: { name: '天府', level: 60, rarity: 1 }, main2: { name: '武曲', level: 60, rarity: 1 }, aux1: { name: '破军', level: 60, rarity: 1 } } }
-  const before = calculateWikiOperatorCombatStats(input)
-  const after = calculateWikiOperatorCombatStats({ ...input, huaji: { ...input.huaji, awakened: true } })
-  assert.equal(before.attackPercent, 0.4225)
-  assert.equal(after.attackPercent, 0.5225)
-  assert.deepEqual(before.breakdown, after.breakdown)
-  assert.equal(after.attack, 11253.884565)
-  assert.notEqual(after.attack, before.attack * 1.1)
-  assert.equal(input.huaji.stage, 22)
-  const sp = calculateOperatorCombatStats({ stored: { observed_attack: 4001 }, input: { ...input, spOf: 'base' } })
-  assert.equal(sp.automaticResultAvailable, false)
-  assert.equal(sp.attack, 4001)
+
+test('后端未就绪、缺信息和异常响应不产生本地估值，保留观测记录', () => {
+  for (const serverResult of [null, { status: 'incomplete', missing_fields: ['huaji.stage'] }, { status: 'unsupported' }, { status: 'calculated', attack: 12.5, hp: 100 }]) {
+    const result = calculateOperatorCombatStats({ stored: { observed_attack: 100, observed_hp: 200 }, input: { level: 100 }, serverResult })
+    assert.equal(result.automaticResultAvailable, false)
+    assert.equal(result.attack, 100)
+    assert.equal(result.hp, 200)
+  }
+})
+
+test('后端最终值原样显示，不再次应用星石、奇闻或觉醒加成', () => {
+  const serverResult = { status: 'calculated', attack: 12345, hp: 54321, rule_version: 'test' }
+  const input = { level: 100, elite: 17, huaji: { owned: true, stage: 25, awakened: true }, oddities: { attack: { current: 500 } } }
+  const result = calculateOperatorCombatStats({ stored: {}, input, serverResult })
+  assert.equal(result.attack, 12345)
+  assert.equal(result.hp, 54321)
+  assert.equal(result.breakdown, undefined)
 })

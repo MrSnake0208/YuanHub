@@ -1,6 +1,7 @@
 import { getCurrentStarState, patchCurrentStarState, rebuildStarState, listStarRecoveryPoints, restoreStarRecoveryPoint } from '../../api/starState.js'
 import { createPlannerSnapshotWriter } from '../../data/plannerSnapshotWriter.js'
 import { rollbackRejectedStarPlanIntent } from './starPlanIntentRecovery.js'
+import { starBreakthroughOptions } from '../../domain/starBreakthrough.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
 const uncertainRebuild = message => Object.assign(new Error(message), { code: 'star_rebuild_uncertain' })
@@ -19,6 +20,7 @@ export function cloudInventory(snapshot) {
   return snapshot.inventory.map(item => ({
     instance_id: item.starInstanceId, kind: inventoryKind[item.kind], name: item.name,
     quality: inventoryQuality[item.quality], level: item.level,
+    ...(Object.hasOwn(item, 'breakthroughStage') ? { breakthrough_stage: item.breakthroughStage } : {}),
   })).sort((left, right) => left.instance_id.localeCompare(right.instance_id))
 }
 
@@ -29,6 +31,8 @@ function businessState(remote) {
     inventory: (Array.isArray(remote?.inventory) ? remote.inventory : []).map(item => ({
       starInstanceId: String(item.instance_id ?? item.instanceId ?? ''), kind: localKind[item.kind],
       name: String(item.name ?? ''), quality: localQuality[item.quality], level: item.level,
+      ...(Object.hasOwn(item, 'breakthrough_stage') ? { breakthroughStage: item.breakthrough_stage }
+        : Object.hasOwn(item, 'breakthroughStage') ? { breakthroughStage: item.breakthroughStage } : {}),
     })),
     planTargets: clone(record(remote?.plan_targets ?? remote?.planTargets)),
     experience: { orange: experience.orange ?? null, purple: experience.purple ?? null, white: experience.white ?? null },
@@ -42,7 +46,13 @@ function draftState(snapshot, generation, revision) {
 }
 
 function businessSame(a, b) {
-  return a.generation === b.generation && stable([a.inventory, a.planTargets, a.experience, a.bag]) === stable([b.inventory, b.planTargets, b.experience, b.bag])
+  // Rebuilds infer only unambiguous levels; compare that canonical reply with old snapshots too.
+  const inventory = state => cloudInventory(state).map(star => {
+    const options = starBreakthroughOptions(star)
+    return { ...star, breakthrough_stage: Object.hasOwn(star, 'breakthrough_stage') ? star.breakthrough_stage
+      : options.length === 1 ? options[0] : null }
+  })
+  return a.generation === b.generation && stable([inventory(a), a.planTargets, a.experience, a.bag]) === stable([inventory(b), b.planTargets, b.experience, b.bag])
 }
 
 // CAS metadata belongs to the coordinator; the product receives business only.

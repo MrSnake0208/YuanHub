@@ -1,12 +1,6 @@
 // 密探攻击力 / 生命力的前端适配层。
-// 规则数据来自本地保存的代号鸢 WIKI 面板计算器页面；扫描值和手动覆盖值仍保持独立，
-// 这样后续接入扫描 JSON 时不会把观测值误当成官方公式的输入。
+// 自动面板只消费后端结果；扫描值和手动覆盖值保持独立。
 
-import {
-  OPERATOR_PANEL_ROLES,
-  OPERATOR_PANEL_STONES,
-  OPERATOR_PANEL_STONE_GROUPS
-} from '../data/operatorPanelCalculator.js'
 import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX, operatorLevelBreakthroughStage } from './operatorGrowthRules.js'
 
 const MAX_CURIOS = 24
@@ -242,7 +236,9 @@ export function createOperatorCombatStats(raw) {
 function normalizeStoneInputs(stones) {
   return Object.keys(stones || {}).sort().map(function (type) {
     const stone = stones[type] || {}
-    return [type, textOrEmpty(stone.name), Math.max(0, Math.trunc(Number(stone.level) || 0))]
+    return [type, textOrEmpty(stone.name), Math.max(0, Math.trunc(Number(stone.level) || 0)),
+      ...(stone.quality !== undefined || stone.breakthroughStage !== undefined
+        ? [stone.quality ?? null, stone.breakthroughStage ?? null] : [])]
   })
 }
 
@@ -276,168 +272,7 @@ function valueLabel(value) {
   return value == null ? '—' : Math.max(0, Math.round(value)).toLocaleString('zh-CN')
 }
 
-const PANEL_LEVELS = [50, 60, 80, 90, 100]
-const PANEL_ELITE_CAPS = [7, 9, 13, 15, 17]
-
-function panelTierForLevel(level) {
-  const index = PANEL_LEVELS.indexOf(Math.trunc(Number(level) || 0))
-  return index === -1 ? 0 : index + 1
-}
-
-function finiteArrayValue(values, index) {
-  if (!Array.isArray(values) || index < 0 || index >= values.length) return 0
-  const value = Number(values[index])
-  return Number.isFinite(value) ? value : 0
-}
-
-function stoneLevelIndex(level) {
-  const value = Math.max(0, Math.min(60, Math.trunc(Number(level) || 0)))
-  if (!value) return -1
-  // Wiki select values reserve one slot after each 10/20/30/40/50 level.
-  return value + Math.floor((value - 1) / 10)
-}
-
-function normalizePanelStones(stones) {
-  const list = []
-  Object.keys(stones || {}).forEach(function (type) {
-    const stone = stones[type] || {}
-    const name = textOrEmpty(stone.name)
-    if (!name) return
-    const rarity = Math.max(1, Math.min(3, Math.trunc(Number(stone.rarity != null ? stone.rarity : stone.levelType) || 1)))
-    const level = Math.max(0, Math.min(60, Math.trunc(Number(stone.level) || 0)))
-    if (!level) return
-    const data = OPERATOR_PANEL_STONES.find(function (item) {
-      return item.StoneName === name && item.Level === rarity
-    })
-    if (!data) return
-    list.push({ type: type, name: name, rarity: rarity, level: level, data: data })
-  })
-  return list
-}
-
-function calculatePanelStoneValues(stones) {
-  const entries = normalizePanelStones(stones)
-  let hpFlat = 0
-  let hpPercent = 0
-  let attackFlat = 0
-  let attackPercent = 0
-  const names = []
-  entries.forEach(function (entry) {
-    const index = stoneLevelIndex(entry.level) - 1
-    const data = entry.data
-    hpFlat += finiteArrayValue(data.HP_Value, index)
-    hpPercent += finiteArrayValue(data.HP_Percent, index)
-    attackFlat += finiteArrayValue(data.ATK_Value, index)
-    attackPercent += finiteArrayValue(data.ATK_Percent, index)
-    if (names.indexOf(entry.name) === -1) names.push(entry.name)
-  })
-  if (entries.length) {
-    const maxRarity = Math.max.apply(null, entries.map(function (entry) { return entry.rarity }))
-    const groupIndex = Math.max(0, Math.min(4, 5 - maxRarity))
-    OPERATOR_PANEL_STONE_GROUPS.Group.forEach(function (group) {
-      if (!Array.isArray(group.StoneNames) || !group.StoneNames.every(function (name) { return names.indexOf(name) !== -1 })) return
-      const value = finiteArrayValue(group.values, groupIndex)
-      if (group.valueType === '生命值') hpFlat += value
-      if (group.valueType === '生命率') hpPercent += value
-      if (group.valueType === '攻击值') attackFlat += value
-      if (group.valueType === '攻击率') attackPercent += value
-    })
-  }
-  return { hpFlat: hpFlat, hpPercent: hpPercent, attackFlat: attackFlat, attackPercent: attackPercent, entries: entries }
-}
-
-function panelStarValues(starLevel) {
-  const value = Math.max(0, Math.trunc(Number(starLevel) || 0))
-  if (!value) return { pay: 0, multiplier: 0 }
-  const star = Math.floor((value - 1) / 6) + 1
-  const node = (value - 1) % 6
-  const multiplier = star >= 5 ? 0.25 : Math.max(0, (star - 1) * 0.05)
-  return { pay: Math.min(20, (star - 1) * 5 + node), multiplier: multiplier }
-}
-
-function sumPromotion(values, pay, parity) {
-  let total = 0
-  const count = Math.min(20, Math.max(0, Math.trunc(Number(pay) || 0)))
-  for (let step = 1; step <= count; step += 1) {
-    if (step % 2 !== parity) continue
-    const index = parity === 1 ? Math.floor(step / 2) : Math.floor(step / 2) - 1
-    total += finiteArrayValue(values, index)
-  }
-  return total
-}
-
-function panelRoleForInput(input) {
-  const name = textOrEmpty(input && (input.operatorName || input.name))
-  return OPERATOR_PANEL_ROLES.find(function (role) { return role.roleName === name }) || null
-}
-
-// 代号鸢 WIKI 面板公式：
-//   （等级基础值 + 化极固定值 + 星石固定值 + 奇闻）×（1 + 化极百分比 + 独立觉醒百分比 + 星石百分比 + 修为百分比）
-// Wiki 数据只给出 50+7 / 60+9 / 80+13 / 90+15 / 100+17 五个完整节点；
-// 中间等级不做插值，以免把阶段白值伪装成精确面板。
-export function calculateWikiOperatorCombatStats(input) {
-  input = input || {}
-  const role = panelRoleForInput(input)
-  if (!role) return { status: 'unsupported', source: 'rules', reason: '暂时无法计算该密探的面板数据' }
-  if (operatorLevelBreakthroughStage(input) !== Math.floor((Number(input.level) - 1) / 10)) return { status: 'unsupported', source: 'rules', reason: '等级突破未知或暂无对应基础值，请保留观测记录' }
-  const levelTier = panelTierForLevel(input.level)
-  if (!levelTier || Math.trunc(Number(input.elite) || 0) !== PANEL_ELITE_CAPS[levelTier - 1]) {
-    return { status: 'unsupported', source: 'rules', reason: '仅提供完整等级·修为节点，暂时无法计算当前组合' }
-  }
-  const tier = levelTier
-  const baseIndex = tier - 1
-  const baseHp = finiteArrayValue(role.Level_HP, baseIndex)
-  const baseAttack = finiteArrayValue(role.Level_ATK, baseIndex)
-  if (baseHp === 0 && baseAttack === 0) {
-    return { status: 'unsupported', source: 'rules', reason: '该密探在当前养成节点尚无基础面板数据' }
-  }
-  if ((input.huaji && (input.huaji.stage == null || input.huaji.awakened == null)) || (!input.huaji && Number(input.starLevel) === 31)) {
-    return { status: 'unsupported', source: 'rules', reason: '化极或觉醒待确认，无法计算面板' }
-  }
-  if (input.spOf || input.sp_of) return { status: 'unsupported', source: 'rules', reason: 'SP独立面板规则待核实，保留观测值' }
-  if (input.huaji?.owned === false) return { status: 'unsupported', source: 'rules', reason: '未拥有形态不计算战斗面板' }
-  const star = panelStarValues(input.huaji?.stage ?? input.starLevel)
-  const promotionsHp = sumPromotion(role.Pay_HP, star.pay, 1)
-  const promotionsAttack = sumPromotion(role.Pay_ATK, star.pay, 0)
-  const stone = calculatePanelStoneValues(input.stones)
-  const curios = Array.isArray(input.curios) ? input.curios : []
-  const hasOddities = input.oddities && typeof input.oddities === 'object' && !Array.isArray(input.oddities)
-  const oddities = hasOddities ? normalizeOperatorOddities(input.oddities, []) : null
-  const curioHp = oddities
-    ? (finiteOrNull(oddities.hp && oddities.hp.current) || 0)
-    : curios.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.hp) || 0) }, 0)
-  const curioAttack = oddities
-    ? (finiteOrNull(oddities.attack && oddities.attack.current) || 0)
-    : curios.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.attack) || 0) }, 0)
-  // Cal公开结合版§6：仅已完成觉醒加10%，不改变固定值，也不再乘1.1。
-  const awakePercent = input.huaji?.awakened === true ? 0.1 : 0
-  const hpPercent = star.multiplier + awakePercent + stone.hpPercent + (tier >= 2 ? 0.05 : 0)
-  const attackPercent = star.multiplier + awakePercent + stone.attackPercent + (tier >= 4 ? 0.05 : 0)
-  const hp = (baseHp + promotionsHp + stone.hpFlat + curioHp) * (1 + hpPercent)
-  const attack = (baseAttack + promotionsAttack + stone.attackFlat + curioAttack) * (1 + attackPercent)
-  return {
-    attack: Number(attack.toFixed(6)),
-    hp: Number(hp.toFixed(6)),
-    status: 'calculated',
-    source: 'rules',
-    tier: tier,
-    attackPercent: attackPercent,
-    hpPercent: hpPercent,
-    breakdown: {
-      baseAttack: baseAttack,
-      baseHp: baseHp,
-      promotionAttack: promotionsAttack,
-      promotionHp: promotionsHp,
-      stoneAttack: stone.attackFlat,
-      stoneHp: stone.hpFlat,
-      curiosAttack: curioAttack,
-      curiosHp: curioHp,
-      stoneEntries: stone.entries
-    }
-  }
-}
-
-export function calculateOperatorCombatStats({ stored, input, calculator, allowAutomatic = true } = {}) {
+export function calculateOperatorCombatStats({ stored, input, serverResult, allowAutomatic = true } = {}) {
   const normalized = normalizeOperatorCombatStats(stored)
   const signature = combatInputSignature(input)
   const localReferenceSignature = normalized.frontendObservedSignature || (normalized.observedInputs && (normalized.observedInputs.signature || normalized.observedInputs.inputSignature))
@@ -467,37 +302,10 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature)))
   const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
 
-  // 临时关闭前端密探自动面板时，由调用方传 allowAutomatic: false。
-  // 保留 Wiki 计算器实现，后续恢复时只需移除调用方的禁用参数。
-  const compute = allowAutomatic ? (calculator || calculateWikiOperatorCombatStats) : null
-  if (compute && typeof compute === 'function') {
-    const result = calculator
-      ? (compute({ stored: normalized, input: input || {}, signature: signature }) || {})
-      : (compute(input || {}) || {})
-    if (result.status === 'unsupported') {
-      const useManual = hasManualCorrection
-      return {
-        attack: useManual && normalized.manualAttack != null ? normalized.manualAttack : normalized.attack,
-        hp: useManual && normalized.manualHp != null ? normalized.manualHp : normalized.hp,
-        attackLabel: valueLabel(useManual && normalized.manualAttack != null ? normalized.manualAttack : normalized.attack),
-        hpLabel: valueLabel(useManual && normalized.manualHp != null ? normalized.manualHp : normalized.hp),
-        automaticAttack: null,
-        automaticHp: null,
-        automaticAttackLabel: '—',
-        automaticHpLabel: '—',
-        status: hasManualCorrection || normalized.attack != null || normalized.hp != null
-          ? (changedSinceObservation ? 'stale' : breakthroughUnverified ? 'unverified' : useManual ? 'manual' : 'observed')
-          : 'missing',
-        source: useManual ? 'manual' : normalized.source,
-        reason: result.reason,
-        changedSinceObservation: changedSinceObservation,
-        inputSignature: signature,
-        manualFallbackAvailable: false,
-        automaticResultAvailable: false,
-        automaticAttackAvailable: false,
-        automaticHpAvailable: false
-      }
-    }
+  if (allowAutomatic && serverResult?.status === 'calculated' &&
+      Number.isSafeInteger(serverResult.attack) && serverResult.attack >= 0 &&
+      Number.isSafeInteger(serverResult.hp) && serverResult.hp >= 0) {
+    const result = serverResult
     const useManual = hasManualCorrection && !changedSinceObservation
     return {
       attack: useManual && normalized.manualAttack != null ? normalized.manualAttack : finiteOrNull(result.attack),
@@ -510,7 +318,6 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
       automaticHpLabel: valueLabel(result.hp),
       status: useManual ? 'manual' : (result.status || 'calculated'),
       source: useManual ? 'manual' : (result.source || 'calculated'),
-      breakdown: result.breakdown,
       reason: result.reason,
       changedSinceObservation: changedSinceObservation,
       inputSignature: signature,
@@ -527,6 +334,9 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     hp: normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp,
     attackLabel: valueLabel(normalized.manualAttack != null && !changedSinceObservation ? normalized.manualAttack : normalized.attack),
     hpLabel: valueLabel(normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp),
+    panelStatus: serverResult?.status || 'idle',
+    missingFields: serverResult?.missing_fields || [],
+    reason: serverResult?.reason,
     automaticAttack: null,
     automaticHp: null,
     automaticAttackLabel: '—',

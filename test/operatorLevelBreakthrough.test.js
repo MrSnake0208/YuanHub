@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { inferredLevelBreakthroughStage, operatorLevelBreakthroughStage, validLevelBreakthroughStage } from '../src/utils/operatorGrowthRules.js'
-import { calculateOperatorCombatStats, combatInputSignature, calculateWikiOperatorCombatStats } from '../src/utils/operatorCombatStats.js'
+import { calculateOperatorCombatStats, combatInputSignature } from '../src/utils/operatorCombatStats.js'
 
 test('1–100合法阶段：整十级保留两态与未知，100只有9，0未知', () => {
   assert.equal(inferredLevelBreakthroughStage(0), null)
@@ -36,5 +36,5 @@ test('整十级旧观测无法由今天的确认补成可靠样本', () => {
     assert.equal(result.status, 'unverified')
     assert.equal(result.attack, 1234)
   }
-  assert.equal(calculateWikiOperatorCombatStats({ operatorName: '张辽', level: 90, elite: 15 }).status, 'unsupported')
+  assert.equal(calculateOperatorCombatStats({ input: { operatorName: '张辽', level: 90, elite: 15 } }).automaticResultAvailable, false)
 })

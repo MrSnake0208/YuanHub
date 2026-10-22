@@ -45,3 +45,7 @@ curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
 ## 错误与边界
 
 401 无效 Token；403 Scope；404 账号或上传会话不存在/过期；409 同 capture_id 不同内容、同图片ID不同内容或缺图；422 manifest、图片签名、文件名、完整性或顺序错误。反向重试不能改写已上传图片事实，应保留原采集ID或发起真实的新批次。具体大小及有效期受目标部署配置限制，本页不编造统一数值配额。
+
+## 站内 StarState 突破字段
+
+站内 JWT StarState 当前档案、恢复和完成回执已支持可空 `inventory[].breakthrough_stage`，表示实际完成突破次数，不改变上面的截图采集协议。缺失、null、整数及CAS语义见[Backend 契约](../../../BackEndV3-Share/docs/star-breakthrough-state.md)；私有嵌入源码同步见[交接清单](../yuanstar-panel-handoff.md)。

@@ -77,6 +77,7 @@ export function normalizeStarInventoryEntry(entry) {
     name: typeof source.name === 'string' ? source.name.trim() : '',
     quality: source.quality == null ? null : source.quality,
     level: source.level == null ? null : source.level,
+    breakthroughStage: source.breakthrough_stage ?? source.breakthroughStage ?? null,
   }
 }
 
