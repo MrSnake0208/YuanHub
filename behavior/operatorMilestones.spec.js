@@ -12,7 +12,7 @@ afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
 it('读取不写入；补录使用账号和revision，保存后可清空', async () => {
   const w = render(); await flushPromises()
   expect(putOperatorMilestones).not.toHaveBeenCalled()
-  expect(w.text()).toContain('距首次获得：未知')
+  expect(w.find('.elapsed').exists()).toBe(false)
   await w.get('#milestone-star_2').setValue('2026-02-01')
   expect(w.text()).toContain('31 天')
   await w.get('form').trigger('submit'); await flushPromises()
@@ -21,6 +21,22 @@ it('读取不写入；补录使用账号和revision，保存后可清空', async
   await w.get('[aria-label="清空2 星日期"]').trigger('click')
   await w.get('form').trigger('submit'); await flushPromises()
   expect(putOperatorMilestones.mock.lastCall[4]).toEqual({ expected_revision: 3, dates: { star_1: '2026-01-01', star_2: null } })
+})
+it('只显示可计算的耗时，保留同日零天；参考记录按北京时间日期合并', async () => {
+  getOperatorMilestones.mockResolvedValue({ revision: 2, milestones: [
+    { key: 'star_1', date: '2026-01-01' },
+    { key: 'star_2', date: null, observed_at: '2026-02-01T16:00:00Z' },
+    { key: 'star_3', date: '2026-01-01', observed_at: '2026-02-02T01:00:00Z' },
+    { key: 'star_4', date: null, observed_at: '2026-02-03T01:00:00Z' },
+  ] })
+  const w = render(); await flushPromises()
+  expect(w.findAll('.elapsed')).toHaveLength(1)
+  expect(w.get('.elapsed').text()).toBe('累计 0 天')
+  expect(w.get('.observations').text()).toContain('截至 2026/02/02，已记录达到 2 星、3 星。')
+  expect(w.get('.observations').text()).toContain('截至 2026/02/03，已记录达到 4 星。')
+  await w.get('#milestone-star_2').setValue('2026-01-01')
+  expect(w.findAll('.elapsed')).toHaveLength(2)
+  expect(w.findAll('.elapsed')[1].text()).toContain('距上一阶段 0 天')
 })
 it.each([{ accountId: 'b' }, { userId: 'v' }, { accountId: '' }])('切换上下文后丢弃旧响应并禁止保存 %s', async props => {
   const pending = deferred(); getOperatorMilestones.mockReturnValue(pending.promise)

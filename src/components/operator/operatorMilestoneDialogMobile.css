@@ -1,14 +1,25 @@
 @media (max-width: 640px) {
-.milestone-mask { display: grid; place-items: center; padding: 12px; }
-.milestone-panel { box-sizing: border-box; width: min(100%, 640px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 20px; }
-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-header button { flex-shrink: 0; }
-.milestone-list li { padding: 14px 0; }
-.milestone-date, .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.milestone-date { margin-top: 6px; }
-input { box-sizing: border-box; min-width: 0; max-width: 100%; padding: 6px 8px; }
-.elapsed, .observed { margin: 6px 0 0; }
-p { overflow-wrap: anywhere; }
-.actions { margin-top: 12px; }
-.source { flex-basis: 100%; }
+  .milestone-mask { display: grid; place-items: center; padding: 12px; }
+  .milestone-panel { box-sizing: border-box; width: min(100%, 720px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; padding: 20px; }
+  header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+  .intro { margin: 10px 0 2px; }
+  .date-help { margin: 0; }
+  .milestone-list { margin: 20px 0 0; }
+  .milestone-list li { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 6px; padding: 16px 0 16px 28px; }
+  label { padding-top: 0; }
+  .milestone-fields { min-width: 0; }
+  .milestone-date, .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  input { box-sizing: border-box; width: min(100%, 220px); min-width: 0; max-width: 100%; min-height: 40px; padding: 7px 12px; font-size: 16px; }
+  .elapsed { display: flex; flex-wrap: wrap; gap: 0 4px; margin: 6px 0 0; }
+  .elapsed > span { white-space: nowrap; }
+  p { overflow-wrap: anywhere; }
+  .observations { padding-top: 18px; }
+  .observations p { margin: 6px 0 0; }
+  .export-hint { margin: 16px 0 20px; }
+  .actions { margin-top: 12px; }
+  .save-actions { justify-content: flex-end; gap: 12px; padding-top: 16px; }
+  .save-actions p { margin: 0; }
+  .save-actions .primary { flex-shrink: 0; padding: 9px 20px; font-size: 16px; }
+  h2 { font-size: 20px; }
+  .save-actions > div { flex-basis: 100%; }
 }
