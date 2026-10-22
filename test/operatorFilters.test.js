@@ -34,12 +34,14 @@ test('图鉴拥有状态只由 starLevel 决定', function () {
 test('觉醒与星数独立筛选且未知阶段不伪装为第六星', function () {
   const ordinary = { level: 80, elite: 12, starLevel: 19 }
   const sp = { level: 80, elite: 12, star_level: 4, sp_of: 'char_base' }
-  const unknown = { level: 80, elite: 12, starLevel: 31 }
-  const known = { ...unknown, huaji: { owned: true, stage: 19, awakened: true } }
+  const unknown = { level: 80, elite: 12, starLevel: 32 }
+  const legacyAwakened = { ...unknown, starLevel: 31 }
+  const known = { ...unknown, huaji: { owned: true, stage: 25, awakened: true } }
   assert.equal(operatorStarNumber(ordinary), 4)
   assert.equal(operatorStarNumber(sp), 4)
   assert.equal(operatorStarNumber(unknown), null)
-  assert.equal(operatorStarNumber(known), 4)
+  assert.equal(operatorStarNumber(legacyAwakened), 5)
+  assert.equal(operatorStarNumber(known), 5)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '80', levelEnabled: true, eliteMax: '12', eliteEnabled: true, starMin: '4', starMax: '4', starEnabled: true }), true)
   assert.equal(matchesOperatorGrowthFilters(sp, { starMin: '4', starMax: '4', starEnabled: true }), true)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81', levelEnabled: true }), false)
@@ -47,10 +49,13 @@ test('觉醒与星数独立筛选且未知阶段不伪装为第六星', function
   assert.equal(matchesOperatorGrowthFilters(ordinary, { starMax: '3', starEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { starMin: '5', starEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(unknown, { starMin: '5', starEnabled: true }), false)
-  assert.equal(matchesOperatorGrowthFilters(unknown, { awakened: 'true' }), true)
+  assert.equal(matchesOperatorGrowthFilters(unknown, { awakened: 'true' }), false)
+  assert.equal(matchesOperatorGrowthFilters(legacyAwakened, { starMin: '5', starMax: '5', starEnabled: true, awakened: 'true' }), true)
+  assert.equal(matchesOperatorGrowthFilters(legacyAwakened, { starMax: '4', starEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { awakened: 'true' }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { awakened: 'unknown' }), true)
-  assert.equal(matchesOperatorGrowthFilters(known, { starMin: '4', starMax: '4', starEnabled: true, awakened: 'true' }), true)
+  assert.equal(matchesOperatorGrowthFilters(known, { starMin: '5', starMax: '5', starEnabled: true, awakened: 'true' }), true)
+  assert.equal(matchesOperatorGrowthFilters(known, { awakened: 'false' }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: false }), true)
   assert.equal(hasActiveOperatorGrowthFilters({ awakened: 'true' }), true)

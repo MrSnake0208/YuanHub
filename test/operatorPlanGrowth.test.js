@@ -76,8 +76,11 @@ test('五星目标与觉醒目标分别完成；视觉第26步不写进stage，�
   assert.equal(growthHuajiProgress(five, onlyFive), 100)
   assert.deepEqual(normalizeGrowthTarget(five, { starLevel: 31 }).huaji, target.huaji)
   const historical = { ...five, starLevel: 31, huaji: null }
-  assert.equal(growthHuajiProgress(historical, target), 0)
-  assert.equal(growthTargetReached(historical, target), false)
+  assert.equal(growthHuajiProgress(historical, target), 100)
+  assert.equal(growthTargetReached(historical, target), true)
+  const unknown = { ...historical, starLevel: 32 }
+  assert.equal(growthHuajiProgress(unknown, target), 0)
+  assert.equal(growthTargetReached(unknown, target), false)
 })
 
 test('觉醒材料未知仍保留24→25已知成本，共享等级修为不重复计费', () => {

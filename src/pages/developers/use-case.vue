@@ -118,7 +118,9 @@ async function copyPrompt() {
 }
 </script>
 
-<style src="./developers.css"></style>
-<style src="./developerProduct.css"></style>
-<style src="./developerProductMobile.css"></style>
-<style src="./developerProductDesktop.css"></style>
+<style>
+@import './developers.css';
+@import './developerProduct.css';
+@import './developerProductMobile.css';
+@import './developerProductDesktop.css';
+</style>

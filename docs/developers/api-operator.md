@@ -83,7 +83,7 @@ curl --fail-with-body -H 'Authorization: Bearer REPLACE_WITH_USER_JWT' \
 
 ## 站内登录面板计算
 
-新增 `POST /v1/operator/panel/preview` 和 `/current`，使用站内 JWT，不是 OpenAPI Token 接口。前者接收本人账号、密探养成和本人星石实例草稿；后者最多100个不同密探ID。只返回最终攻击/生命、状态、缺失字段和规则版本，禁止客户端系数。详情与示例见[Backend 面板契约](../../../BackEndV3-Share/docs/operator-panel-rules.md)。公开分享在已授权条目中附加 `panel`，不开放匿名任意输入计算。
+新增 `POST /v1/operator/panel/preview` 和 `/current`，使用站内 JWT，不是 OpenAPI Token 接口。前者接收本人账号、密探养成和本人星石实例草稿；后者最多100个不同密探ID。只返回最终攻击/生命、状态、缺失字段和规则版本，禁止客户端系数。面板计算由后端执行，客户端不包含计算规则。公开分享在已授权条目中附加 `panel`，不开放匿名任意输入计算。
 
 
 ### 觉醒默认值（2026-10-22）
