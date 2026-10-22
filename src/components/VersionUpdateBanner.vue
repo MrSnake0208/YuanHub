@@ -31,17 +31,17 @@ const versionLine = computed(() =>
 /* 顶部信息条：暖茶棕底 + 奶油字 + 蜜黄按钮，属“更新提示”而非错误告警。 */
 .version-update {
   background: var(--tea);
-  color: var(--cream);
-  border-bottom: 1px solid rgba(255, 248, 236, 0.18);
+  color: var(--on-strong);
+  border-bottom: 1px solid var(--theme-line, rgba(255, 248, 236, 0.18));
 }
 .version-update__icon {
-  color: var(--yellow);
+  color: var(--theme-accent-text, var(--yellow));
 }
 .version-update__text {
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .version-update__versions {
-  border: 1px solid rgba(255, 248, 236, 0.4);
+  border: 1px solid var(--theme-line, rgba(255, 248, 236, 0.4));
   border-radius: 999px;
 }
 .version-update__action {

@@ -689,10 +689,10 @@ onBeforeUnmount(() => {
 .page-header-action { cursor: pointer; }
 .feedback-empty-secondary { color: var(--feedback-text-muted); text-decoration: underline; text-underline-offset: 3px; }
 
-.feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); }
+.feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: var(--theme-wash, rgba(95, 127, 97, .1)); color: var(--feedback-text); }
 .feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
 .feedback-optional-settings { color: var(--feedback-text-muted); }
-.feedback-optional-settings summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-optional-settings summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .feedback-form-grid em { color: var(--feedback-danger); font-style: normal; }
 .feedback-modal .modal-head h2 { color: var(--feedback-text); }
 .feedback-modal .modal-head button { color: var(--feedback-text-muted); }

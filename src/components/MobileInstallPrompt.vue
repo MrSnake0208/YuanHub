@@ -122,8 +122,8 @@ onBeforeUnmount(() => {
 .pwa-install-card {
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: rgba(255, 253, 246, .98);
-  box-shadow: 0 18px 48px rgba(73, 59, 44, .22);
+  background: var(--theme-surface, rgba(255, 253, 246, .98));
+  box-shadow: 0 18px 48px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.22);
   pointer-events: auto;
   backdrop-filter: blur(14px);
 }
@@ -150,10 +150,10 @@ onBeforeUnmount(() => {
 }
 .pwa-install-guide p { color: var(--ink); }
 .pwa-install-task-link { color: var(--ink); }
-.pwa-install-card :focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.pwa-install-card :focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -3px; }
 .pwa-install-actions {
   border-top: 1px solid var(--line);
-  background: rgba(246, 237, 208, .35);
+  background: var(--theme-wash-strong, rgba(246, 237, 208, .35));
 }
 .pwa-install-primary,
 .pwa-install-secondary {
@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
 .pwa-install-primary {
   border: 1px solid var(--tea);
   background: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .pwa-install-primary:hover:not(:disabled) { border-color: var(--accent); background: var(--accent); }
 .pwa-install-primary:disabled { opacity: .55; cursor: wait; }
@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
   background: var(--surface);
   color: var(--ink);
 }
-.pwa-install-secondary:hover { border-color: var(--accent); color: var(--accent-strong); }
+.pwa-install-secondary:hover { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .pwa-install-enter-active,
 .pwa-install-leave-active { transition: opacity .25s var(--ease), transform .25s var(--ease); }
 .pwa-install-enter-from,

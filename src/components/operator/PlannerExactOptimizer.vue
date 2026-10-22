@@ -144,30 +144,30 @@ onBeforeUnmount(() => runner.cancel())
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.alternative-dialog { border: 1px solid var(--planner-line); border-radius: 18px; background: var(--surface); color: var(--ink); }.alternative-dialog::backdrop { background: rgba(73,59,44,.5); }
+.alternative-dialog { border: 1px solid var(--planner-line); border-radius: 18px; background: var(--surface); color: var(--ink); }.alternative-dialog::backdrop { background: var(--theme-wash-strong, rgba(73,59,44,.5)); }
 
 .exact-planner { border: 1px solid var(--planner-line); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .exact-planner.embedded { border: 0; border-top: 1px solid var(--planner-line); border-radius: 0; background: transparent; }
-.exact-result-tag { border: 1px solid var(--planner-line); border-radius: 5px; color: var(--accent-strong); background: var(--surface); }
+.exact-result-tag { border: 1px solid var(--planner-line); border-radius: 5px; color: var(--theme-accent-text, var(--accent-strong)); background: var(--surface); }
 .exact-proof { color: var(--ink-60); }
-.exact-proof.optimal { color: var(--tea); }
-.exact-proof.infeasible, .exact-error { color: var(--rouge); }
-.exact-proof.feasible, .exact-proof.pending { color: var(--accent-strong); }
+.exact-proof.optimal { color: var(--theme-strong-text, var(--tea)); }
+.exact-proof.infeasible, .exact-error { color: var(--theme-danger-text, var(--rouge)); }
+.exact-proof.feasible, .exact-proof.pending { color: var(--theme-accent-text, var(--accent-strong)); }
 .exact-proof::before { content: ''; border-radius: 50%; background: currentColor; }
 .exact-result.featured { border: 1px solid var(--accent); border-left: 3px solid var(--accent); }
-h4 { color: var(--tea); }
-h3 { color: var(--tea); }
-button { border: 1px solid var(--planner-line); border-radius: 8px; background: var(--cream); color: var(--tea); }
+h4 { color: var(--theme-strong-text, var(--tea)); }
+h3 { color: var(--theme-strong-text, var(--tea)); }
+button { border: 1px solid var(--planner-line); border-radius: 8px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 button { cursor: pointer; }
-button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+button.primary { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 @media (hover: hover) and (pointer: fine) { button:hover:not(:disabled) { filter: brightness(1.1); } }
 button:disabled { opacity: .55; cursor: default; }
-button:focus-visible, summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 3px; }
 .exact-status, .exact-result { background: var(--cream); border-left: 3px solid var(--accent); }
 .exact-metrics dt { color: var(--ink-60); }
-.exact-metrics dd { color: var(--tea); }
+.exact-metrics dd { color: var(--theme-strong-text, var(--tea)); }
 .exact-metrics .exact-extra { border-top: 1px dashed var(--planner-line); }
-.exact-extra dd { color: var(--accent-strong); }
+.exact-extra dd { color: var(--theme-accent-text, var(--accent-strong)); }
 summary { cursor: pointer; }
 .exact-days li { border-bottom: 1px solid var(--planner-line); }
 @media (max-width: 640px) {
@@ -175,7 +175,7 @@ summary { cursor: pointer; }
   button:active:not(:disabled) { filter: brightness(.95); }
   .exact-info { color: var(--ink-60); }
   .exact-status { border-left-width: 2px; border-radius: 0 6px 6px 0; color: var(--ink-60); }
-  .exact-status.is-computing { color: var(--accent-strong); }
+  .exact-status.is-computing { color: var(--theme-accent-text, var(--accent-strong)); }
   .exact-estimate-note { color: var(--ink-60); }
   .exact-result { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--surface); }
   .exact-result.featured { border: 1px solid var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
@@ -185,7 +185,7 @@ summary { cursor: pointer; }
   .exact-metrics { border-radius: 6px; background: color-mix(in srgb, var(--paper) 48%, var(--surface)); }
   .exact-metrics > div + div:not(.exact-extra) { border-left: 1px solid var(--planner-line); }
   .exact-result-actions { border-top: 1px solid var(--planner-line); }
-  .exact-schedule > summary { color: var(--tea); }
+  .exact-schedule > summary { color: var(--theme-strong-text, var(--tea)); }
   .exact-schedule summary small { color: var(--ink-60); }
   .reserve-summary { border-top: 1px dashed var(--planner-line); }
   .exact-days li > small { color: var(--ink-60); }

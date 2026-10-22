@@ -39,18 +39,18 @@
 .ticket-pagination button { width: 44px; height: 44px; display: grid; place-items: center; }
 .ticket-pagination strong { min-width: 70px; font-weight: 700; text-align: center; }
 .ticket-detail-mask {
-  --feedback-panel-deep: var(--surface);
-  --feedback-panel: var(--cream);
-  --feedback-panel-hover: rgba(239, 210, 142, .16);
+  --feedback-panel-deep: var(--on-surface);
+  --feedback-panel: var(--on-strong);
+  --feedback-panel-hover: var(--theme-wash-strong, rgba(239, 210, 142, .16));
   --feedback-line: var(--line);
-  --feedback-line-strong: rgba(156, 122, 77, .46);
+  --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));
   --feedback-text: var(--ink);
   --feedback-text-muted: var(--ink-60);
   --feedback-text-dim: var(--ink-35);
-  --feedback-accent: var(--tea);
-  --feedback-success: #5f7f61;
-  --feedback-warn: var(--accent-strong);
-  --feedback-danger: var(--rouge);
+  --feedback-accent: var(--theme-strong-text, var(--tea));
+  --feedback-success: var(--theme-muted, #5f7f61);
+  --feedback-warn: var(--theme-accent-text, var(--accent-strong));
+  --feedback-danger: var(--theme-danger-text, var(--rouge));
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay-panel, 90);

@@ -317,3 +317,5 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   white-space: nowrap;
 }
 }
+
+@media(max-width:1080px){.mobile-theme-selector{flex:none;margin:8px 16px}}

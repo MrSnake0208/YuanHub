@@ -243,24 +243,24 @@ function submitCreate() {
 /* —— 统一子账号「数据归属」工作区（库存 / 密探共用一套样式） —— */
 .account-workspace { background: var(--surface); border: 1px solid var(--line); border-radius: 20px }
 .account-heading p { color: var(--ink-60) }
-.section-kicker { color: var(--accent-strong) }
+.section-kicker { color: var(--theme-accent-text, var(--accent-strong)) }
 .ac-label { color: var(--ink-60) }
 .account-selector select { border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); outline: none; cursor: pointer; transition: border-color .3s, box-shadow .3s }
-.account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
+.account-selector select:focus { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.13) }
 .account-soft-trigger { border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-soft-trigger::after { border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ''; opacity: .72; transition: transform .2s var(--ease) }
-.account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
+.account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--theme-focus, var(--accent)); background: var(--cream); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.13); outline: 0 }
 .account-soft-trigger:disabled { cursor: not-allowed; opacity: .55 }
-.account-soft-listbox { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); scrollbar-color: var(--yellow-deep) transparent }
+.account-soft-listbox { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.16); scrollbar-color: var(--yellow-deep) transparent }
 .account-soft-option { border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer }
 .account-soft-option:hover:not(:disabled),.account-soft-option:focus-visible,.account-soft-option[aria-selected='true'] { background: var(--cream); outline: 0 }
 .account-soft-option:disabled { cursor: not-allowed; opacity: .55 }
-.ac-warn { color: var(--rouge) }
+.ac-warn { color: var(--theme-danger-text, var(--rouge)) }
 .account-game { border: 0 }
 .account-game-options { border: 1.5px solid var(--line); border-radius: 11px; background: var(--paper) }
 .account-game-options label { border-radius: 7px; color: var(--ink-60); cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-game-options label.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
-.account-game-options label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.account-game-options label:focus-within { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 1px }
 .account-game-options input { opacity: 0; pointer-events: none }
 .account-game small { color: var(--ink-35) }
 .account-game-readonly strong { border: 1.5px solid var(--line); border-radius: 11px; background: var(--cream); color: var(--ink) }
@@ -274,7 +274,7 @@ function submitCreate() {
 .account-mgr-head p { color: var(--ink-60) }
 .account-count { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60) }
 .ac-new input { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
-.ac-new input:focus { border-color: var(--accent) }
+.ac-new input:focus { border-color: var(--theme-focus, var(--accent)) }
 .ac-item { border: 1px solid var(--line); border-radius: 12px; background: var(--paper) }
 .ac-item.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent) }
 .ac-item .ac-dot { border-radius: 50%; background: var(--yellow-deep) }
@@ -283,14 +283,14 @@ function submitCreate() {
 
 .ac-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; cursor: pointer; transition: color .25s, background-color .25s, border-color .25s }
 .ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
-.ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
-.ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
+.ac-btn.danger { border-color: var(--theme-danger-line, rgba(166, 81, 74, .35)); color: var(--theme-danger-text, var(--rouge)) }
+.ac-btn.danger:hover:not(:disabled) { background: var(--theme-danger-wash, rgba(166, 81, 74, .1)) }
 .ac-btn:disabled { opacity: .45; cursor: not-allowed }
 
 .ac-empty { color: var(--ink-35) }
 .workspace-status { color: var(--ink-60) }
-.workspace-toggle:hover, .workspace-toggle:focus-visible { border-color: var(--accent); color: var(--ink) }
-.workspace-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.workspace-toggle:hover, .workspace-toggle:focus-visible { border-color: var(--theme-focus, var(--accent)); color: var(--ink) }
+.workspace-toggle:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .workspace-panels { border-top: 1px solid var(--line) }
 @media (min-width: 1024px) {
   .workspace-side { border-left: 1px solid var(--line); background: var(--cream) }

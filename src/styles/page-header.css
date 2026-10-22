@@ -2,11 +2,11 @@
 @import './page-headerMobile.css';
 /* Shared design language; each page owns its structure and behavior. */
 .page-header { color: var(--ink); }
-.page-header-title { color: var(--tea); }
+.page-header-title { color: var(--theme-strong-text, var(--tea)); }
 .page-header-description { color: var(--ink-60); }
 .page-header-context { color: var(--ink-60); }
 .page-header-back { color: var(--ink-60); text-decoration: none; }
-.page-header-action { border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--cream); text-decoration: none; }
-.page-header-back:hover { color: var(--tea); text-decoration: underline; }
+.page-header-action { border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--on-strong); text-decoration: none; }
+.page-header-back:hover { color: var(--theme-strong-text, var(--tea)); text-decoration: underline; }
 .page-header-action:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
-.page-header-back:focus-visible, .page-header-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.page-header-back:focus-visible, .page-header-action:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }

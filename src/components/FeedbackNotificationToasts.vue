@@ -27,13 +27,13 @@ function target(item) {
 </script>
 
 <style scoped>
-.feedback-notification-toast { border: 1.5px solid var(--yellow-deep); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18); pointer-events: auto; }
-.feedback-toast-icon { color: var(--accent-strong); }
+.feedback-notification-toast { border: 1.5px solid var(--yellow-deep); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18); pointer-events: auto; }
+.feedback-toast-icon { color: var(--theme-accent-text, var(--accent-strong)); }
 .feedback-toast-copy p { color: var(--ink-60); }
-.feedback-toast-copy a { color: var(--brand-blue); text-decoration: underline; text-underline-offset: 3px; }
+.feedback-toast-copy a { color: var(--theme-info-text, var(--brand-blue)); text-decoration: underline; text-underline-offset: 3px; }
 .feedback-notification-toast button { border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer; }
 .feedback-notification-toast button:hover, .feedback-notification-toast button:active { background: var(--cream); color: var(--ink); }
-.feedback-notification-toast a:focus-visible, .feedback-notification-toast button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.feedback-notification-toast a:focus-visible, .feedback-notification-toast button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .feedback-toast-enter-active, .feedback-toast-leave-active { transition: opacity .2s ease, transform .2s var(--ease); }
 .feedback-toast-enter-from, .feedback-toast-leave-to { opacity: 0; transform: translateY(-8px); }
 @media (prefers-reduced-motion: reduce) { .feedback-toast-enter-active, .feedback-toast-leave-active { transition: none; } }

@@ -56,20 +56,20 @@ defineEmits(['open', 'updated'])
   border: 1px solid var(--feedback-line);
   border-radius: 8px;
   background: var(--feedback-panel);
-  box-shadow: 0 16px 36px -34px rgba(73, 59, 44, .42);
+  box-shadow: 0 16px 36px -34px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.42);
   cursor: pointer;
   outline: 0;
   transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 .public-card:hover,
-.public-card:focus-visible { border-color: var(--accent); box-shadow: inset 3px 0 var(--yellow-deep); }
+.public-card:focus-visible { border-color: var(--theme-focus, var(--accent)); box-shadow: inset 3px 0 var(--yellow-deep); }
 .public-card-category { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); }
 .public-card-title { color: var(--feedback-text); }
 .public-card-summary {
   color: var(--feedback-text-muted);
 }
 .public-card-version { color: var(--feedback-text-dim); }
-.public-card-support { color: var(--rouge); }
+.public-card-support { color: var(--theme-danger-text, var(--rouge)); }
 .public-card-foot time { color: var(--feedback-text-dim); }
 </style>
 <style scoped src="./publicFeedbackCardDesktop.css"></style>

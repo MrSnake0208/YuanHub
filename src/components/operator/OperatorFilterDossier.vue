@@ -244,7 +244,7 @@ function statusCount(value) {
   text-decoration: none;
 }
 .current-filter-title strong {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 .current-filter-title span {
   color: var(--ink-35);
@@ -253,7 +253,7 @@ function statusCount(value) {
   color: var(--ink-60);
 }
 .current-filter-result b {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .current-filter-search {
   border: 1px solid var(--line);
@@ -262,8 +262,8 @@ function statusCount(value) {
   color: var(--ink-35);
 }
 .current-filter-search:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(215, 137, 53, 0.13);
+  border-color: var(--theme-focus, var(--accent));
+  box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.13);
 }
 .current-filter-search input {
   border: 0;
@@ -280,20 +280,20 @@ function statusCount(value) {
 }
 .current-filter-reset:hover {
   border-color: var(--accent);
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .current-filter-reset:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
 .pf-label {
   border: 0;
   background: transparent;
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 .mf-filter {
   border-radius: 10px;
-  background: rgba(73, 59, 44, 0.06);
+  background: var(--theme-wash, rgba(73, 59, 44, 0.06));
 }
 .mf-filter button {
   border: 0;
@@ -306,25 +306,25 @@ function statusCount(value) {
 .mf-filter button:hover:not(.on) { color: var(--ink); }
 .mf-filter button.on {
   background: var(--surface);
-  color: var(--accent-strong);
-  box-shadow: 0 1px 4px rgba(73, 59, 44, 0.16);
+  color: var(--theme-accent-text, var(--accent-strong));
+  box-shadow: 0 1px 4px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.16);
 }
-.rarity-filter button.rarity-r3.on { background: color-mix(in srgb, #99b5cf 34%, var(--surface)); color: #47647d; }
-.rarity-filter button.rarity-r4.on { background: color-mix(in srgb, #8672b2 25%, var(--surface)); color: #62508b; }
-.rarity-filter button.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--accent-strong); }
+.rarity-filter button.rarity-r3.on { background: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 34%, var(--surface)); color: var(--theme-info-text, #47647d); }
+.rarity-filter button.rarity-r4.on { background: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 25%, var(--surface)); color: var(--theme-purple-text, #62508b); }
+.rarity-filter button.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--theme-accent-text, var(--accent-strong)); }
 .mf-filter button:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 1px;
 }
 .status-group-break { border-top: 1px dashed var(--line); }
-.current-status-filter button.status-discarded.on { background: var(--cream); color: var(--tea); box-shadow: inset 0 0 0 1px var(--tea); }
+.current-status-filter button.status-discarded.on { background: var(--cream); color: var(--theme-strong-text, var(--tea)); box-shadow: inset 0 0 0 1px var(--tea); }
 .current-status-filter button small {
   color: var(--ink-35);
 }
 .current-status-filter button.on small { color: currentColor; opacity: 0.72; }
-.current-status-filter button.status-growing.on { background: #bfdcc0; color: #315f38; }
+.current-status-filter button.status-growing.on { background: var(--theme-success-bg, #bfdcc0); color: var(--theme-success-text, #315f38); }
 .current-status-filter button.status-graduated.on { background: var(--yellow); color: var(--ink); }
-.current-status-filter button.status-inactive.on { background: rgba(73, 59, 44, 0.13); color: var(--ink-60); }
+.current-status-filter button.status-inactive.on { background: var(--theme-wash, rgba(73, 59, 44, 0.13)); color: var(--ink-60); }
 
 @media (max-width: 640px) {
   .mf-filter button {

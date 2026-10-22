@@ -7,11 +7,11 @@
   p, span, time { font-size: 13px; overflow-wrap: anywhere; }
   p { margin: 0; }
   .todo-scope { margin-top: 3px; font-size: 12px; color: var(--ink-60); }
-  .todo-scope strong { color: var(--tea); font: 800 17px var(--font-d); }
+  .todo-scope strong { color: var(--theme-strong-text, var(--tea)); font: 800 17px var(--font-d); }
   .todo-hint { font-size: 12px; color: var(--ink-60); }
   .todo-empty { margin: 12px 0; padding: 10px 12px; background: var(--cream); border-radius: 8px; }
   .todo-empty.is-cleared { display: flex; align-items: center; gap: 10px; }
-  .todo-empty svg { flex: none; color: var(--tea); }
+  .todo-empty svg { flex: none; color: var(--theme-strong-text, var(--tea)); }
   .todo-empty small { display: block; color: var(--ink-60); font-size: 11px; }
   ul { list-style: none; margin: 10px 0 4px; padding: 0; }
   .todo-list.is-expanded { max-height: min(300px, 50dvh); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
@@ -24,7 +24,7 @@
   .todo-event { max-width: 100%; font-size: 11px; line-height: 1.5; color: var(--ink-60); font-weight: 400; text-decoration: none; overflow-wrap: anywhere; }
   .todo-event-link { display: flex; align-items: center; justify-content: flex-end; max-width: 90px; min-height: 36px; text-align: right; }
   .todo-event-link time { font-size: 11px; line-height: 1.5; color: var(--ink-60); }
-  .todo-event-link time.is-urgent { color: var(--rouge); }
+  .todo-event-link time.is-urgent { color: var(--theme-danger-text, var(--rouge)); }
   .todo-heading a, .todo-add { display: inline-flex; align-items: center; min-height: 30px; }
   .todo-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; padding-top: 5px; border-top: 1px solid var(--line); }
   .todo-subscription-status { flex: 1; min-width: 0; border: 0; }

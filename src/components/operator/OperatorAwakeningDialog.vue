@@ -85,11 +85,11 @@ async function save() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .awakening-panel { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); }
-.awakening-error { color: var(--rouge); }
+.awakening-error { color: var(--theme-danger-text, var(--rouge)); }
 button { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); cursor: pointer; }
-button.primary { background: var(--tea); color: var(--cream); }
+button.primary { background: var(--tea); color: var(--on-strong); }
 button:disabled { cursor: default; opacity: .6; }
-button:focus-visible, .awakening-error:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
+button:focus-visible, .awakening-error:focus { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 button:active:not(:disabled) { opacity: .8; }
 </style>
 <style scoped src="./operatorAwakeningDialogDesktop.css"></style>

@@ -53,21 +53,21 @@ watch(() => [props.items.map(entry => entry.id), loading.value, errors.value.len
 </script>
 
 <style scoped>
-.todo-reminders { border: 1px solid color-mix(in srgb, var(--rouge) 45%, var(--line)); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); color: var(--tea); }
-summary { color: var(--rouge); font: 800 16px/1.5 var(--font-s); cursor: pointer; list-style: none; }
+.todo-reminders { border: 1px solid color-mix(in srgb, var(--rouge) 45%, var(--line)); background: color-mix(in srgb, var(--rouge) 5%, var(--surface)); color: var(--theme-strong-text, var(--tea)); }
+summary { color: var(--theme-danger-text, var(--rouge)); font: 800 16px/1.5 var(--font-s); cursor: pointer; list-style: none; }
 summary::-webkit-details-marker { display: none; }
 .todo-reminders[open] .highlight-chevron { transform: rotate(180deg); }
 summary span { font-weight: 400; }
-.reminder-scope, .highlight-pending, time { color: var(--tea); font-size: 12px; line-height: 1.6; }
+.reminder-scope, .highlight-pending, time { color: var(--theme-strong-text, var(--tea)); font-size: 12px; line-height: 1.6; }
 .reminder-list { list-style: none; }
 .reminder-list li + li { border-top: 1px solid var(--line); }
-.highlight-link { color: var(--tea); text-decoration: none; }
+.highlight-link { color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
 .highlight-title { font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
-.highlight-meta { color: var(--tea); font-size: 12px; line-height: 1.6; }
-.is-urgent, .highlight-error { color: var(--rouge); }
-button { font: inherit; color: var(--tea); background: var(--cream); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.highlight-meta { color: var(--theme-strong-text, var(--tea)); font-size: 12px; line-height: 1.6; }
+.is-urgent, .highlight-error { color: var(--theme-danger-text, var(--rouge)); }
+button { font: inherit; color: var(--theme-strong-text, var(--tea)); background: var(--cream); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
-a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 @media (hover: hover) { .highlight-link:hover .highlight-title { text-decoration: underline; } }
 </style>
 <style scoped src="./todayHighlightsDesktop.css"></style>

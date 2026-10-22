@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .deadline-journey { border: 1px solid var(--planner-line); border-radius: 20px; background: var(--cream); color: var(--ink); }
-h4 { color: var(--tea); }
+h4 { color: var(--theme-strong-text, var(--tea)); }
 .deadline-count { border: 1px solid var(--planner-line); border-radius: 20px; background: var(--surface); }
 .deadline-track { scrollbar-color: var(--accent) transparent; }
 .deadline-node:not(:last-child)::after { content: ''; border-top: 1px dashed var(--accent); opacity: .5; }
@@ -95,10 +95,10 @@ h4 { color: var(--tea); }
 .computing .deadline-square { border-color: var(--accent); }
 .computing .deadline-state svg { animation: deadline-thinking 900ms ease-in-out 3; }
 .infeasible .deadline-square { background: transparent; box-shadow: none; border-style: dashed; }
-.deadline-chip { border: 1px solid var(--planner-line); border-radius: 13px; background: var(--surface); color: var(--tea); cursor: pointer; transition: transform 160ms var(--deadline-ease), background-color 160ms ease-out; }
+.deadline-chip { border: 1px solid var(--planner-line); border-radius: 13px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); cursor: pointer; transition: transform 160ms var(--deadline-ease), background-color 160ms ease-out; }
 .deadline-chip[aria-pressed='true'] { border-color: var(--accent); background: var(--cream); box-shadow: inset 3px 0 0 var(--accent); }
 .deadline-chip:active { transition-duration: 0ms; }
-.deadline-chip:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; transition: none; }
+.deadline-chip:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 3px; transition: none; }
 @media (hover: hover) and (pointer: fine) { .deadline-chip:hover { background: var(--cream); } }
 .deadline-step-enter-active, .deadline-option-enter-active { transition: opacity 240ms var(--deadline-ease), transform 240ms var(--deadline-ease); }
 .deadline-step-leave-active, .deadline-option-leave-active { transition: opacity 120ms ease-out; }

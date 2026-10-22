@@ -141,14 +141,14 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .merge-lead { color: var(--ink); }
-.merge-selected { color: var(--tea); }
+.merge-selected { color: var(--theme-strong-text, var(--tea)); }
 .merge-list li button { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .merge-list li.on button { border-color: var(--yellow-deep); background: var(--yellow); }
 .merge-item-main small { color: var(--ink-60); }
-.merge-pick { color: var(--tea); }
+.merge-pick { color: var(--theme-strong-text, var(--tea)); }
 .merge-state { color: var(--ink-60); }
-.merge-state.error { color: var(--rouge); }
-.merge-warning { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .22); color: var(--ink-60); }
+.merge-state.error { color: var(--theme-danger-text, var(--rouge)); }
+.merge-warning { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: var(--theme-wash-strong, rgba(239, 210, 142, .22)); color: var(--ink-60); }
 </style>
 <style scoped src="./adminFeedbackMergeDialogDesktop.css"></style>
 <style scoped src="./adminFeedbackMergeDialogMobile.css"></style>

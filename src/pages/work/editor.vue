@@ -380,44 +380,44 @@ onBeforeUnmount(function () { window.removeEventListener('beforeunload', beforeU
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .editor-state { border: 1px dashed var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-60); }
-.editor-state button, .form-actions button, .command, .add-action { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.editor-state button, .form-actions button, .command, .add-action { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
 .notice { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink-60); }
-.notice.error, .notice.conflict { border-color: rgba(166,81,74,.45); color: var(--rouge); }
-.notice.conflict button { border: 1px solid var(--rouge); border-radius: 999px; background: var(--surface); color: var(--rouge); cursor: pointer; }
-.validation-list { border: 1px solid rgba(166,81,74,.45); border-radius: 14px; background: var(--surface); color: var(--rouge); }
+.notice.error, .notice.conflict { border-color: var(--theme-danger-line, rgba(166,81,74,.45)); color: var(--theme-danger-text, var(--rouge)); }
+.notice.conflict button { border: 1px solid var(--rouge); border-radius: 999px; background: var(--surface); color: var(--theme-danger-text, var(--rouge)); cursor: pointer; }
+.validation-list { border: 1px solid var(--theme-danger-line, rgba(166,81,74,.45)); border-radius: 14px; background: var(--surface); color: var(--theme-danger-text, var(--rouge)); }
 .validation-list code { color: var(--ink-60); }
-.validation-list button {border:0;background:transparent;color:var(--rouge);text-decoration:underline;cursor:pointer; }
+.validation-list button {border:0;background:transparent;color:var(--theme-danger-text, var(--rouge));text-decoration:underline;cursor:pointer; }
 .has-issue { border-color:var(--rouge) !important; }
 .has-issue input, .has-issue select, .has-issue textarea { border-color:var(--rouge); }
-.level-load-error {color:var(--rouge); }
-.level-load-error button {border:0;background:transparent;color:var(--rouge);text-decoration:underline;cursor:pointer; }
+.level-load-error {color:var(--theme-danger-text, var(--rouge)); }
+.level-load-error button {border:0;background:transparent;color:var(--theme-danger-text, var(--rouge));text-decoration:underline;cursor:pointer; }
 .editor-section, .preview-section { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .section-head { border-bottom: 1px solid var(--line); }
 .section-head > span { border-radius: 50%; background: var(--yellow); }
 .section-head p { color: var(--ink-60); }
 label, fieldset { color: var(--ink-60); }
 input, select, textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); }
-input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .round-editor { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
 .action-editor { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .action-order { border-radius: 50%; background: var(--yellow); }
 .action-buttons button, .danger-link { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink-60); cursor: pointer; }
-.danger-link { color: var(--rouge) !important; }
+.danger-link { color: var(--theme-danger-text, var(--rouge)) !important; }
 button:disabled { opacity: .45; cursor: default; }
-.add-action { background: var(--surface); color: var(--tea); }
+.add-action { background: var(--surface); color: var(--theme-strong-text, var(--tea)); }
 .extension-panel { border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
 .extension-panel summary { cursor: pointer; }
 .offset-field { border: 0; }
-.form-actions { border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,246,.96); box-shadow: 0 8px 28px rgba(73,59,44,.12); }
-.form-actions .secondary { background: var(--surface); color: var(--tea); }
-.form-actions .danger { border-color: var(--rouge); background: var(--surface); color: var(--rouge); }
+.form-actions { border: 1px solid var(--line); border-radius: 16px; background: var(--theme-surface, rgba(255,253,246,.96)); box-shadow: 0 8px 28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12); }
+.form-actions .secondary { background: var(--surface); color: var(--theme-strong-text, var(--tea)); }
+.form-actions .danger { border-color: var(--rouge); background: var(--surface); color: var(--theme-danger-text, var(--rouge)); }
 .target-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .target-card > header { background: var(--cream); }
 .target-card header span { color: var(--ink-60); }
 @media (max-width: 767px) {
   .editor-section, .preview-section { border-radius: 16px; }
   .form-action-message {color:var(--ink); }
-  .form-action-message.error { color:var(--rouge); }
+  .form-action-message.error { color:var(--theme-danger-text, var(--rouge)); }
 }
 </style>
 <style scoped src="./workEditorDesktop.css"></style>

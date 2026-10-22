@@ -135,13 +135,13 @@ onBeforeUnmount(() => { alive = false; restoreScroll() })
 <style src="../../pages/calendar/calendarMobile.css"></style>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.calendar-import-mask { background: rgba(73, 59, 44, .35); }
+.calendar-import-mask { background: var(--theme-overlay, rgba(73, 59, 44, .35)); }
 .calendar-import-dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
 .calendar-import-head { border-bottom: 1px solid var(--line); }
-.calendar-import-body a { color: var(--brand-blue); text-underline-offset: 3px; }
+.calendar-import-body a { color: var(--theme-info-text, var(--brand-blue)); text-underline-offset: 3px; }
 .calendar-import-rows summary { cursor: pointer; }
 .calendar-import-footer { border-top: 1px solid var(--line); }
-.calendar-import-dialog :is(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.calendar-import-dialog :is(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 </style>
 <style scoped src="./calendarImportDialogDesktop.css"></style>
 <style scoped src="./calendarImportDialogMobile.css"></style>

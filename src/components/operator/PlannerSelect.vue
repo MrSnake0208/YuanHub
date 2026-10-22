@@ -166,15 +166,15 @@ onBeforeUnmount(() => { close(); stopPositioning() })
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.planner-select-trigger { border: 1px solid var(--planner-line, var(--line)); border-radius: 7px; background: var(--surface); color: var(--tea); cursor: pointer; }
+.planner-select-trigger { border: 1px solid var(--planner-line, var(--line)); border-radius: 7px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .planner-select-value.placeholder { color: var(--ink-60); }
 .planner-select-trigger > svg { color: var(--ink-60); }
 .planner-select-trigger[aria-expanded="true"] { border-color: var(--accent); background: var(--cream); }
-.planner-select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.planner-select-trigger:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .planner-select-trigger:disabled { opacity: .5; cursor: default; }
-.planner-select-menu { border: 1px solid var(--planner-line, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .14); color: var(--tea); scrollbar-color: var(--line) transparent; }
+.planner-select-menu { border: 1px solid var(--planner-line, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.14); color: var(--theme-strong-text, var(--tea)); scrollbar-color: var(--line) transparent; }
 .planner-select-option { border-radius: 5px; cursor: pointer; }
-.planner-select-option[aria-selected="true"] { color: var(--accent-strong); }
+.planner-select-option[aria-selected="true"] { color: var(--theme-accent-text, var(--accent-strong)); }
 .planner-select-option.active { background: var(--cream); }
 .planner-select-option[aria-disabled="true"] { opacity: .45; cursor: default; }
 @media (hover: hover) { .planner-select-trigger:hover:not(:disabled) { border-color: var(--accent); } }

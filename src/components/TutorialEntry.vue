@@ -17,6 +17,6 @@ function start() {
 
 <style scoped>
 .tutorial-entry { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: 12px/1.5 var(--font-b); white-space: nowrap; cursor: pointer; }
-.tutorial-entry:hover { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
-.tutorial-entry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tutorial-entry:hover { color: var(--theme-strong-text, var(--tea)); background: color-mix(in srgb, var(--tea) 5%, transparent); }
+.tutorial-entry:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 </style>

@@ -1,32 +1,32 @@
 /* 日历共享外观；实际几何由双端文件持有。 */
 
-.calendar-page .calendar-kicker { color: var(--tea); }
+.calendar-page .calendar-kicker { color: var(--theme-strong-text, var(--tea)); }
 .calendar-page .calendar-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
 .calendar-page .calendar-hint { color: var(--ink-60); }
 .calendar-page button, .calendar-page select, .calendar-page input:not([type=checkbox]), .calendar-page textarea { color: var(--ink); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .calendar-page button { cursor: pointer; }
 .calendar-page button:hover { border-color: var(--tea); }
 .calendar-page button:disabled { opacity: .6; cursor: default; }
-.calendar-page button.calendar-primary { background: var(--tea); color: var(--cream); border-color: var(--tea); }
+.calendar-page button.calendar-primary { background: var(--tea); color: var(--on-strong); border-color: var(--tea); }
 .calendar-page fieldset { border: 0; }
 .calendar-page .calendar-chips button { border-radius: 999px; }
 .calendar-page .calendar-chips button[aria-pressed=true] { background: var(--yellow); border-color: var(--tea); }
-.calendar-page .calendar-date-group > h3 { color: var(--tea); }
+.calendar-page .calendar-date-group > h3 { color: var(--theme-strong-text, var(--tea)); }
 .calendar-page .calendar-game, .calendar-page .calendar-category, .calendar-page .calendar-state { border: 1px solid var(--line); border-radius: 999px; }
 .calendar-page .calendar-game { border-color: var(--tea); }
 .calendar-page .calendar-category { background: var(--yellow); }
-.calendar-page .calendar-event-foot a, .calendar-page .calendar-source-link { color: var(--brand-blue); text-decoration: underline; }
-.calendar-page .calendar-error { color: var(--rouge); }
-.calendar-page .calendar-fields small { color: var(--rouge); }
+.calendar-page .calendar-event-foot a, .calendar-page .calendar-source-link { color: var(--theme-info-text, var(--brand-blue)); text-decoration: underline; }
+.calendar-page .calendar-error { color: var(--theme-danger-text, var(--rouge)); }
+.calendar-page .calendar-fields small { color: var(--theme-danger-text, var(--rouge)); }
 .calendar-page .calendar-fields [aria-invalid=true] { border-color: var(--rouge); }
 .calendar-page .calendar-checkbox input { accent-color: var(--tea); }
 .calendar-page .calendar-error a { color: inherit; }
 .calendar-page .calendar-actions [aria-pressed=true] { background: var(--yellow); border-color: var(--tea); }
 
 /* 社区补充：沿用日历色彩，单独约束表单、队列及审核面板。 */
-.calendar-page .calendar-submission-nav a { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); text-decoration: none; }
+.calendar-page .calendar-submission-nav a { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
 .calendar-page .calendar-submission-nav a:hover { border-color: var(--tea); background: var(--cream); }
-.calendar-page .calendar-submission-nav .calendar-primary-link { background: var(--tea); border-color: var(--tea); color: var(--cream); }
+.calendar-page .calendar-submission-nav .calendar-primary-link { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
 .calendar-page .calendar-submission-nav .calendar-primary-link:hover { background: var(--tea-deep); }
 .calendar-page .calendar-workspace-nav { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
 .calendar-page .calendar-workspace-nav button { border-color: transparent; background: transparent; }
@@ -34,17 +34,17 @@
 .calendar-community .calendar-header p { color: var(--ink-60); }
 .calendar-community .calendar-fields :is(input, select, textarea) { background: var(--cream); }
 .calendar-community .calendar-checkbox { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
-.calendar-community .calendar-hint a { color: var(--brand-blue); text-underline-offset: 3px; }
+.calendar-community .calendar-hint a { color: var(--theme-info-text, var(--brand-blue)); text-underline-offset: 3px; }
 .calendar-community .calendar-form > .calendar-actions { border-top: 1px solid var(--line); }
 .calendar-community .calendar-suggestion-duplicates { border-radius: 14px; background: var(--cream); }
-.calendar-community .calendar-suggestion-duplicates [role=alert] { color: var(--rouge); }
+.calendar-community .calendar-suggestion-duplicates [role=alert] { color: var(--theme-danger-text, var(--rouge)); }
 .calendar-community .calendar-overlap-list li + li { border-top: 1px solid var(--line); }
 .calendar-community .calendar-private-note { border-left: 3px solid var(--line); border-radius: 0 12px 12px 0; background: var(--cream); }
 .calendar-community .calendar-suggestion-result { border-top: 3px solid var(--tea); }
 .calendar-community .calendar-suggestion-result[data-status=PENDING] { border-top-color: var(--accent-strong); }
 .calendar-community .calendar-suggestion-result[data-status=REJECTED] { border-top-color: var(--ink-35); }
 .calendar-community .calendar-state[data-status=PENDING] { background: var(--yellow); border-color: var(--yellow-deep); }
-.calendar-community .calendar-state[data-status=ACCEPTED] { background: var(--tea); border-color: var(--tea); color: var(--cream); }
+.calendar-community .calendar-state[data-status=ACCEPTED] { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
 .calendar-community .calendar-state[data-status=REJECTED] { background: var(--cream); color: var(--ink-60); }
 .calendar-community .calendar-suggestion-pagination { border-top: 1px solid var(--line); }
 .calendar-community .calendar-pagination { color: var(--ink-60); }

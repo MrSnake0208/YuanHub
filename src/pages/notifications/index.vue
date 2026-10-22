@@ -396,39 +396,39 @@ onBeforeUnmount(function () {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.page-header-description a { color: var(--accent-strong); }
+.page-header-description a { color: var(--theme-accent-text, var(--accent-strong)); }
 .notification-toolbar { backdrop-filter: none; border: 0; background: none; box-shadow: none; }
-.notification-actions button { cursor: pointer; color: var(--tea); background: var(--surface); border-color: var(--line); }
+.notification-actions button { cursor: pointer; color: var(--theme-strong-text, var(--tea)); background: var(--surface); border-color: var(--line); }
 .notification-actions button:hover:not(:disabled) { background: var(--cream); border-color: var(--tea); }
 .notification-actions button:disabled { opacity: .45; cursor: not-allowed; }
 .retention-note { color: var(--ink-60) }
-.ntf-open-link, .empty-action { color: var(--accent-strong); text-underline-offset: 3px }
+.ntf-open-link, .empty-action { color: var(--theme-accent-text, var(--accent-strong)); text-underline-offset: 3px }
 .empty-action { border: 1px solid var(--line); border-radius: 10px; background: var(--paper); cursor: pointer }
-.action-error{color:var(--rouge)}
+.action-error{color:var(--theme-danger-text, var(--rouge))}
 
 .unread-badge { background: var(--rouge); color: #fff; border-radius: 999px }
 .state { color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px }
 .state.err { color: var(--ink-60) }
-.notification-list .link { color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.notification-list .link { color: var(--theme-accent-text, var(--accent-strong)); background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
 .empty-state { color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px }
 .empty-state strong { color: var(--ink) }
 
 .notification-item { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; cursor: pointer; transition: all .3s var(--ease) }
-.notification-item:hover { border-color: rgba(73, 59, 44, .24); box-shadow: 0 8px 20px -16px rgba(73, 59, 44, .25) }
-.notification-item.unread { background: rgba(239, 210, 142, .18); border-color: rgba(239, 210, 142, .5) }
+.notification-item:hover { border-color: var(--theme-line, rgba(73, 59, 44, .24)); box-shadow: 0 8px 20px -16px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.25) }
+.notification-item.unread { background: var(--theme-wash-strong, rgba(239, 210, 142, .18)); border-color: var(--theme-line, rgba(239, 210, 142, .5)) }
 
 .ntf-icon { border-radius: 12px }
-.ntf-icon.reply { background: rgba(215, 137, 53, .15); color: var(--accent-strong) }
-.ntf-icon.status { background: rgba(91, 106, 140, .12); color: var(--brand-blue) }
+.ntf-icon.reply { background: var(--theme-wash-strong, rgba(215, 137, 53, .15)); color: var(--theme-accent-text, var(--accent-strong)) }
+.ntf-icon.status { background: var(--theme-info-wash, rgba(91, 106, 140, .12)); color: var(--theme-info-text, var(--brand-blue)) }
 .ntf-title { color: var(--ink) }
 .ntf-text { color: var(--ink-60) }
 .ntf-meta time { color: var(--ink-35) }
 .ntf-unread-dot { border-radius: 50%; background: var(--rouge) }
 
-.ntf-read-btn { color: var(--accent-strong); background: rgba(239, 210, 142, .3); border: 1px solid transparent; border-radius: 8px; cursor: pointer; transition: all .25s var(--ease) }
+.ntf-read-btn { color: var(--theme-accent-text, var(--accent-strong)); background: var(--theme-wash-strong, rgba(239, 210, 142, .3)); border: 1px solid transparent; border-radius: 8px; cursor: pointer; transition: all .25s var(--ease) }
 .ntf-read-btn:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow-deep) }
 .ntf-read-btn:disabled { opacity: .45; cursor: not-allowed }
-.btn-more { background: var(--tea); color: var(--cream); border: none; border-radius: 999px; cursor: pointer; transition: all .3s var(--ease) }
+.btn-more { background: var(--tea); color: var(--on-strong); border: none; border-radius: 999px; cursor: pointer; transition: all .3s var(--ease) }
 .btn-more:hover:not(:disabled) { background: var(--accent); color: #fff }
 .btn-more:disabled { opacity: .45; cursor: default }
 

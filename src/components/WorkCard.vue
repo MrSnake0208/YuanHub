@@ -55,12 +55,12 @@ const status = computed(function () { return statusInfo(props.work.conversion_st
   border-radius: 18px;
   background: linear-gradient(160deg, var(--surface) 0%, var(--surface) 72%, var(--cream) 100%);
 }
-.work .rank { color: var(--yellow-deep); }
+.work .rank { color: var(--theme-accent-text, var(--yellow-deep)); }
 .work .rank small { color: var(--ink-35); }
 .status { border: 1px solid currentColor; background: transparent; }
-.status-exact { color: #47704b; }
-.status-partial { color: var(--accent-strong); }
-.status-unsupported { color: var(--rouge); }
+.status-exact { color: var(--theme-success-text, #47704b); }
+.status-partial { color: var(--theme-accent-text, var(--accent-strong)); }
+.status-unsupported { color: var(--theme-danger-text, var(--rouge)); }
 .work-id { color: var(--ink-35); }
 .stage-line { border-top: 1px solid var(--line); }
 .stage-line span { color: var(--ink-35); }
@@ -70,7 +70,7 @@ const status = computed(function () { return statusInfo(props.work.conversion_st
 .w-meta span:first-child { border-left: 0; }
 .w-meta small { color: var(--ink-35); }
 .work-byline { color: var(--ink-60); }
-.go { color: var(--accent-strong); }
+.go { color: var(--theme-accent-text, var(--accent-strong)); }
 .go b { transition: transform .3s var(--ease); }
 @media (prefers-reduced-motion: reduce) { .go b { transition: none; } }
 </style>

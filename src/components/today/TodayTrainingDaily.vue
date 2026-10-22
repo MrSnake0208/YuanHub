@@ -186,37 +186,37 @@ onBeforeUnmount(() => { alive = false; generation++; clearTimeout(refreshTimer);
 .daily-heading, .daily-item-name, .daily-details, .daily-cloud, .daily-footnote { display: flex; align-items: center; gap: 8px; }
 .daily-heading { justify-content: space-between; flex-wrap: wrap; }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
-h2, h3 { color: var(--tea); font-family: var(--font-s); }
+h2, h3 { color: var(--theme-strong-text, var(--tea)); font-family: var(--font-s); }
 h2 { display: flex; align-items: center; gap: 8px; font-weight: 800; }
 .daily-heading time, .daily-hint, .daily-cloud, .daily-footnote, small { color: var(--ink-60); }
 ul { list-style: none; padding: 0; }
 .daily-source-row, .daily-task-list li { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.daily-source-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-left: 4px solid #668fa7; }
+.daily-source-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-left: 4px solid var(--theme-info-line, #668fa7); }
 .daily-item-name { flex-wrap: wrap; min-width: 0; }
-.daily-stage { padding: 3px 7px; border: 1px solid #c2d2d6; border-radius: 6px; background: #edf2f3; color: #466c80; white-space: nowrap; }
-.daily-count { color: #466c80; font-weight: 700; white-space: nowrap; }
-.daily-cost, .daily-total strong, .daily-summary strong { color: var(--rouge); font-variant-numeric: tabular-nums; }
+.daily-stage { padding: 3px 7px; border: 1px solid var(--theme-info-line, #c2d2d6); border-radius: 6px; background: var(--theme-info-bg, #edf2f3); color: var(--theme-info-text, #466c80); white-space: nowrap; }
+.daily-count { color: var(--theme-info-text, #466c80); font-weight: 700; white-space: nowrap; }
+.daily-cost, .daily-total strong, .daily-summary strong { color: var(--theme-danger-text, var(--rouge)); font-variant-numeric: tabular-nums; }
 .daily-total { border-top: 1px dashed var(--line); text-align: center; }
-.daily-adopt { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; background: var(--tea); color: var(--surface); font-weight: 700; }
-.daily-adopt.is-added { background: #e5eee5; color: #365b43; border-color: #b4cbb5; }
-.daily-details { justify-content: center; color: var(--tea); text-decoration: none; }
+.daily-adopt { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; background: var(--tea); color: var(--on-surface); font-weight: 700; }
+.daily-adopt.is-added { background: var(--theme-success-bg, #e5eee5); color: var(--theme-success-text, #365b43); border-color: var(--theme-success-line, #b4cbb5); }
+.daily-details { justify-content: center; color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
 .daily-cloud { justify-content: center; border-top: 1px dashed var(--line); flex-wrap: wrap; }
 .daily-task-row { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
 .daily-task-row input { flex: none; width: 22px; height: 22px; accent-color: #527d5b; margin: 2px 0 0; cursor: pointer; }
 .daily-task-row input:disabled { cursor: default; }
 .daily-task-copy { flex: 1; min-width: 0; }
 .daily-task-copy small { display: block; margin-top: 5px; line-height: 1.6; }
-.daily-done { color: #365b43; white-space: nowrap; }
+.daily-done { color: var(--theme-success-text, #365b43); white-space: nowrap; }
 .is-completed .daily-item-name > b { color: var(--ink-60); text-decoration: line-through; }
-.daily-notice { border: 1px solid #b4cbb5; border-radius: 8px; background: #eef4e9; color: #365b43; padding: 8px 10px; }
-.daily-error { color: var(--rouge); }
-.daily-warning { color: #815b2e; }
+.daily-notice { border: 1px solid var(--theme-success-line, #b4cbb5); border-radius: 8px; background: var(--theme-success-bg, #eef4e9); color: var(--theme-success-text, #365b43); padding: 8px 10px; }
+.daily-error { color: var(--theme-danger-text, var(--rouge)); }
+.daily-warning { color: var(--theme-text, #815b2e); }
 button { border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
-button:not(.daily-adopt) { background: var(--cream); color: var(--tea); padding: 6px 10px; }
+button:not(.daily-adopt) { background: var(--cream); color: var(--theme-strong-text, var(--tea)); padding: 6px 10px; }
 button:disabled { cursor: default; opacity: .65; }
 .daily-adopt.is-added:disabled { opacity: 1; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
-.daily-progress { font-family: var(--font-d); color: var(--tea); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+.daily-progress { font-family: var(--font-d); color: var(--theme-strong-text, var(--tea)); }
 @media (hover: hover) { .daily-details:hover { text-decoration: underline; text-underline-offset: 3px; } }
 </style>
 <style scoped src="./todayTrainingDailyMobile.css"></style>

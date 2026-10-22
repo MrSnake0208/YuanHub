@@ -109,24 +109,24 @@ function toggleRange(key, event) {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .growth-filter-presets { border-top: 1px dashed var(--line); }
-.growth-filter-presets > span { color: var(--tea); }
-.growth-filter-presets button { border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--tea); cursor: pointer; }
-.growth-filter-presets button:hover:not(.on) { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
-.growth-filter-presets button.on { border-color: var(--tea); background: var(--tea); color: var(--cream); }
-.growth-filter-presets button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-.current-growth-filter summary { color: var(--tea); cursor: pointer; }
-.current-growth-filter summary span { color: var(--accent-strong); }
-.current-growth-filter summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
+.growth-filter-presets > span { color: var(--theme-strong-text, var(--tea)); }
+.growth-filter-presets button { border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
+.growth-filter-presets button:hover:not(.on) { border-color: var(--accent); background: var(--cream); color: var(--theme-accent-text, var(--accent-strong)); }
+.growth-filter-presets button.on { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
+.growth-filter-presets button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
+.current-growth-filter summary { color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
+.current-growth-filter summary span { color: var(--theme-accent-text, var(--accent-strong)); }
+.current-growth-filter summary:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 3px; }
 .growth-filter-range { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .growth-filter-range.is-enabled { border-color: var(--accent); background: var(--cream); }
-.growth-filter-range legend { color: var(--tea); }
+.growth-filter-range legend { color: var(--theme-strong-text, var(--tea)); }
 .growth-filter-range legend small { color: var(--ink-60); }
-.growth-filter-enable { color: var(--tea); cursor: pointer; }
+.growth-filter-enable { color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .growth-filter-enable input { accent-color: var(--accent); }
 .growth-filter-bounds label { color: var(--ink-60); }
 .growth-filter-bounds input { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
-.growth-filter-range input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; }
-.growth-filter-error { color: var(--rouge); }
+.growth-filter-range input:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 1px; }
+.growth-filter-error { color: var(--theme-danger-text, var(--rouge)); }
 </style>
 <style scoped src="./operatorGrowthFiltersDesktop.css"></style>
 <style scoped src="./operatorGrowthFiltersMobile.css"></style>

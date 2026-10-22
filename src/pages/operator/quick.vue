@@ -1458,10 +1458,10 @@ onBeforeUnmount(() => {
 /* —— 复用全局 CSS 变量（不新增色值），对齐密探页版式 —— */
 .quick-mode-context { color: var(--ink-60); }
 .quick-save-guidance { color: var(--ink-60); }
-.quick-main button:focus-visible, .quick-main input:focus-visible, .quick-main summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.quick-main button:focus-visible, .quick-main input:focus-visible, .quick-main summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .quick-session-summary { color: var(--ink-60); }
-.entry-mode .btn { border: 1px solid var(--line); background: var(--surface); color: var(--tea); }
-.entry-mode .btn[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
+.entry-mode .btn { border: 1px solid var(--line); background: var(--surface); color: var(--theme-strong-text, var(--tea)); }
+.entry-mode .btn[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
 .supplement-option { color: var(--ink); }
 .quick-preview { border: 1px solid var(--line); border-radius: 12px; }
 .quick-preview summary { cursor: pointer; }
@@ -1503,7 +1503,7 @@ onBeforeUnmount(() => {
   color: var(--ink-35);
 }
 .step .step-txt small.saved {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .step.done {
   border-color: var(--yellow-deep);
@@ -1516,12 +1516,12 @@ onBeforeUnmount(() => {
 .step.on {
   background: var(--tea);
   border-color: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .step.on .step-no {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: var(--cream);
+  background: var(--theme-wash-strong, rgba(255, 255, 255, 0.16));
+  border-color: var(--theme-line, rgba(255, 255, 255, 0.35));
+  color: var(--on-strong);
 }
 .step.on .step-txt small {
   color: rgba(255, 248, 236, 0.8);
@@ -1550,8 +1550,8 @@ onBeforeUnmount(() => {
 /* ---- 本页保存状态 ---- */
 .page-save {
   border-radius: 12px;
-  background: rgba(215, 137, 53, 0.14);
-  border: 1.5px solid rgba(215, 137, 53, 0.45);
+  background: var(--theme-wash, rgba(215, 137, 53, 0.14));
+  border: 1.5px solid var(--theme-line, rgba(215, 137, 53, 0.45));
   color: var(--ink);
 }
 .page-save.ok-static {
@@ -1560,14 +1560,14 @@ onBeforeUnmount(() => {
   color: var(--ink-60);
 }
 .page-save.err {
-  background: rgba(166, 81, 74, 0.14);
-  border: 1.5px solid rgba(166, 81, 74, 0.4);
-  color: var(--rouge);
+  background: var(--theme-danger-wash, rgba(166, 81, 74, 0.14));
+  border: 1.5px solid var(--theme-danger-line, rgba(166, 81, 74, 0.4));
+  color: var(--theme-danger-text, var(--rouge));
 }
 .page-save .link {
   background: none;
   border: none;
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -1587,7 +1587,7 @@ onBeforeUnmount(() => {
   color: var(--ink);
 }
 .batch-count b {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .bf {
   color: var(--ink-60);
@@ -1639,7 +1639,7 @@ onBeforeUnmount(() => {
   transition: border-color 0.3s;
 }
 .op-search-input:focus {
-  border-color: var(--accent);
+  border-color: var(--theme-focus, var(--accent));
 }
 .op-search-count {
   color: var(--ink-35);
@@ -1655,7 +1655,7 @@ onBeforeUnmount(() => {
   color: var(--ink);
 }
 .mf-filter {
-  background: rgba(73, 59, 44, 0.06);
+  background: var(--theme-wash, rgba(73, 59, 44, 0.06));
   border-radius: 10px;
 }
 .mf-filter button {
@@ -1668,20 +1668,20 @@ onBeforeUnmount(() => {
 }
 .mf-filter button.on {
   background: var(--surface);
-  color: var(--accent-strong);
-  box-shadow: 0 1px 4px rgba(73, 59, 44, 0.16);
+  color: var(--theme-accent-text, var(--accent-strong));
+  box-shadow: 0 1px 4px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.16);
 }
 .rarity-filter button.rarity-r3.on {
-  background: color-mix(in srgb, #99b5cf 34%, var(--surface));
-  color: #47647d;
+  background: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 34%, var(--surface));
+  color: var(--theme-info-text, #47647d);
 }
 .rarity-filter button.rarity-r4.on {
-  background: color-mix(in srgb, #8672b2 25%, var(--surface));
-  color: #62508b;
+  background: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 25%, var(--surface));
+  color: var(--theme-purple-text, #62508b);
 }
 .rarity-filter button.rarity-r5.on {
   background: color-mix(in srgb, var(--yellow) 62%, var(--surface));
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 .mf-filter button:hover:not(.on) {
   color: var(--ink);
@@ -1697,7 +1697,7 @@ onBeforeUnmount(() => {
 }
 .op-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 10px 22px -14px rgba(73, 59, 44, 0.3);
+  box-shadow: 0 10px 22px -14px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3);
 }
 .op-card.on {
   background: var(--yellow);
@@ -1771,7 +1771,7 @@ onBeforeUnmount(() => {
 }
 .btn.primary {
   background: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .btn.primary:hover:not(:disabled) {
   background: var(--accent);
@@ -1790,7 +1790,7 @@ onBeforeUnmount(() => {
 .state .link {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--theme-accent-text, var(--accent));
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;

@@ -9,7 +9,7 @@
 
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-stat {
   border-radius: 7px;
-  background: rgba(255, 253, 246, 0.76);
+  background: var(--theme-surface, rgba(255, 253, 246, 0.76));
 }
 
 .agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-value {
@@ -29,7 +29,7 @@
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button:focus-visible,
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action:focus-visible,
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
 
@@ -95,7 +95,7 @@
   .ledger-destiny-row
   em.rarity-gold {
   border-color: var(--rarity-gold-border);
-  background: linear-gradient(180deg, #fffdf9 0%, var(--rarity-gold-bg) 100%);
+  background: linear-gradient(180deg, var(--theme-surface, #fffdf9) 0%, var(--rarity-gold-bg) 100%);
   box-shadow: inset 0 -3px 0 var(--rarity-gold);
 }
 
@@ -106,7 +106,7 @@
   border-color: var(--rarity-purple-border);
   background: linear-gradient(
     180deg,
-    #fffdf9 0%,
+    var(--theme-surface, #fffdf9) 0%,
     var(--rarity-purple-bg) 100%
   );
   box-shadow: inset 0 -3px 0 var(--rarity-purple);
@@ -117,7 +117,7 @@
   .ledger-destiny-row
   em.rarity-blue {
   border-color: var(--rarity-blue-border);
-  background: linear-gradient(180deg, #fffdf9 0%, var(--rarity-blue-bg) 100%);
+  background: linear-gradient(180deg, var(--theme-surface, #fffdf9) 0%, var(--rarity-blue-bg) 100%);
   box-shadow: inset 0 -3px 0 var(--rarity-blue);
 }
 
@@ -138,7 +138,7 @@
     border: 1px solid var(--ledger-card-border);
     border-radius: 12px;
     background: var(--surface);
-    box-shadow: 0 3px 10px rgba(73, 59, 44, .05);
+    box-shadow: 0 3px 10px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.05);
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2.is-batch-selected,
@@ -157,7 +157,7 @@
     border-bottom: 0;
     border-radius: 12px 12px 0 0;
     background: linear-gradient(var(--surface) 4px, transparent 4px);
-    box-shadow: 0 -2px 3px rgba(73, 59, 44, .04);
+    box-shadow: 0 -2px 3px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.04);
     content: "";
     pointer-events: none;
   }
@@ -187,7 +187,7 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-prof-tab {
-    color: var(--tea);
+    color: var(--theme-strong-text, var(--tea));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-status-menu {
@@ -198,7 +198,7 @@
     border: 0;
     border-radius: var(--ledger-tab-radius);
     background: transparent;
-    color: #315f38;
+    color: var(--theme-success-text, #315f38);
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-status-button::before {
@@ -211,7 +211,7 @@
     pointer-events: none;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .status-graduated .ledger-status-button { color: var(--tea); }
+  .agent-ledger-card--editable.agent-ledger-card--v2 .status-graduated .ledger-status-button { color: var(--theme-strong-text, var(--tea)); }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .status-inactive .ledger-status-button { color: var(--ink-60); }
 
@@ -287,11 +287,11 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth .ledger-editable:focus {
-    border-bottom-color: var(--accent);
+    border-bottom-color: var(--theme-focus, var(--accent));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth .ledger-editable:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--theme-focus, var(--accent));
     outline-offset: 1px;
     border-radius: 4px;
   }
@@ -309,11 +309,11 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth :is(.ledger-step-actions button, .ledger-smart-action, .ledger-next-action).is-ready {
-    color: #4d7654;
+    color: var(--theme-success-text, #4d7654);
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth :is(.ledger-step-actions button, .ledger-smart-action, .ledger-next-action).is-lack {
-    color: var(--accent-strong);
+    color: var(--theme-accent-text, var(--accent-strong));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth :is(.ledger-step-actions button, .ledger-smart-action, .ledger-next-action):disabled {
@@ -339,7 +339,7 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--theme-focus, var(--accent));
     outline-offset: 2px;
   }
 
@@ -378,7 +378,7 @@
     border-color: var(--line);
     border-radius: 12px;
     background: var(--surface);
-    box-shadow: 0 12px 32px rgba(73, 59, 44, .18), 0 2px 6px rgba(73, 59, 44, .08);
+    box-shadow: 0 12px 32px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18), 0 2px 6px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.08);
     cursor: default;
   }
 
@@ -455,11 +455,11 @@
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-loadout-editor-actions .ledger-loadout-editor-done {
     background: var(--tea);
-    color: var(--cream);
+    color: var(--on-strong);
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-loadouts :is(button, select, input):focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--theme-focus, var(--accent));
     outline-offset: 2px;
   }
 
@@ -472,14 +472,14 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-card-actions button:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--theme-focus, var(--accent));
     outline-offset: 2px;
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-card-actions .ledger-full-edit {
     border: 1px solid var(--line);
     background: var(--cream);
-    color: var(--tea);
+    color: var(--theme-strong-text, var(--tea));
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-card-actions .ledger-card-cancel {

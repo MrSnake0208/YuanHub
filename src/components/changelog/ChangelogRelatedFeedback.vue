@@ -37,8 +37,8 @@ onMounted(async () => {
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .changelog-related { border-top: 1px dashed var(--line); }
 .changelog-related h3 { color: var(--ink-60); }
-.changelog-related a { color: var(--tea); text-decoration: none; }
-.changelog-related a:hover { color: var(--accent-strong); text-decoration: underline; }
+.changelog-related a { color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
+.changelog-related a:hover { color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; }
 .changelog-related span { color: var(--ink-35); }
 </style>
 <style scoped src="./changelogRelatedFeedbackDesktop.css"></style>

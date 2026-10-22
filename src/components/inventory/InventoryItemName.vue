@@ -44,13 +44,13 @@ const elementLock = computed(function () {
   margin: 0 1px;
   border-radius: 3px;
   background: var(--element-color);
-  color: var(--cream);
+  color: var(--on-strong);
   font-family: var(--font-b);
   font-size: .92em;
   font-weight: 900;
   line-height: 1;
-  box-shadow: inset 0 0 0 1px rgba(73, 59, 44, .12);
+  box-shadow: inset 0 0 0 1px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12);
 }
 
-.element-seal.dark-ink { color: var(--ink) }
+.element-seal.dark-ink { color: var(--on-pastel) }
 </style>

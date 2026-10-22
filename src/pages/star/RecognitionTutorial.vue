@@ -273,19 +273,19 @@ watch(() => modalFocusState.active, () => { void nextTick(scheduleUpdate) })
 </script>
 
 <style>
-.recognition-tutorial-related { outline: 2px solid var(--accent) !important; outline-offset: 4px; }
+.recognition-tutorial-related { outline: 2px solid var(--theme-focus, var(--accent)) !important; outline-offset: 4px; }
 </style>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .recognition-tour { pointer-events: none; }
 .recognition-tour-shade { pointer-events: none; }
 .recognition-tour-ring { border: 2px solid var(--accent); border-radius: 12px; pointer-events: none; }
-.recognition-tour-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 36px rgb(73 59 44 / 22%); pointer-events: auto; }
+.recognition-tour-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 36px rgba(var(--theme-shadow-rgb, 73, 59, 44), .22); pointer-events: auto; }
 button { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); cursor: pointer; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 button:disabled { opacity: .45; cursor: default; }
 .recognition-tour-example { border: 0; text-decoration: underline; background: transparent; }
-.recognition-tour-next { background: var(--tea); color: var(--cream); }
+.recognition-tour-next { background: var(--tea); color: var(--on-strong); }
 .recognition-tour-handle { border: 0; background: transparent; user-select: none; cursor: ns-resize; }
 .recognition-tour-handle span { border-radius: 4px; background: var(--tea); opacity: .55; }
 </style>

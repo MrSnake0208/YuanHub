@@ -149,7 +149,7 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 }
 
 .community-mask {
-  background: rgba(73, 59, 44, .52);
+  background: var(--theme-overlay, rgba(73, 59, 44, .52));
   backdrop-filter: blur(4px);
 }
 
@@ -157,18 +157,18 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--surface);
-  box-shadow: 0 42px 90px -34px rgba(73, 59, 44, .5);
+  box-shadow: 0 42px 90px -34px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.5);
   color: var(--ink);
 }
 
 .community-heading p {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .community-icon {
   border-radius: 13px;
   background: var(--yellow);
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .community-close {
@@ -202,7 +202,7 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 
 .copy-button {
   background: var(--paper);
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .copy-button:hover {
@@ -217,21 +217,21 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 }
 
 .community-note svg {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .community-note a {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-underline-offset: 3px;
 }
 
 .community-primary {
   border-color: var(--tea);
   background: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 .join-steps, .join-result { color: var(--ink-60); }
-.join-result { color: var(--tea); }
+.join-result { color: var(--theme-strong-text, var(--tea)); }
 
 .copy-button:active,
 .community-primary:active {
@@ -242,7 +242,7 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 .copy-button:focus-visible,
 .community-primary:focus-visible,
 .community-note a:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
 

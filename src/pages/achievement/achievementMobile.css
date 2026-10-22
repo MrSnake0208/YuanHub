@@ -57,7 +57,7 @@
   .achievement-row-copy p { margin: 3px 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
   .achievement-row-copy small { font-size: 11px; }
   .achievement-reward { display: flex; align-items: center; gap: 5px; flex: 1 1 140px; font-size: 12px; line-height: 1.5; }
-  .achievement-reward svg { color: var(--accent-strong); flex-shrink: 0; }
+  .achievement-reward svg { color: var(--theme-accent-text, var(--accent-strong)); flex-shrink: 0; }
   .achievement-progress { display: grid; gap: 5px; margin-top: 6px; font-size: 12px; }
   .achievement-main .achievement-progress-edit { display: flex; justify-content: space-between; align-items: center; gap: 5px; padding: 3px 0; font-size: 12px; }
   .achievement-progress progress { width: 100%; height: 5px; }

@@ -55,7 +55,7 @@ watch(identity, () => { picker.value = false; recordGuide.value = false }, { flu
 </script>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-button,a{color:var(--ink)}.guide-entry-wrap>button{border:0;background:transparent;cursor:pointer}.access-note button{border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button,a{color:var(--ink)}.guide-entry-wrap>button{border:0;background:transparent;cursor:pointer}.access-note button{border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
 </style>
 <style scoped src="./recruitmentRouteDesktop.css"></style>
 <style scoped src="./recruitmentRouteMobile.css"></style>

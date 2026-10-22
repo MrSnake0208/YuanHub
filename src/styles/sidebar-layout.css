@@ -2,17 +2,17 @@
 @import './sidebar-layoutMobile.css';
 .island{
   background:var(--cream);border:1px solid var(--line);border-radius:26px;
-  box-shadow:0 24px 60px -24px rgba(73,59,44,.28),0 2px 8px rgba(73,59,44,.05);
+  box-shadow:0 24px 60px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28),0 2px 8px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.05);
   transition:box-shadow .5s var(--ease);
 }
-.island:hover{box-shadow:0 32px 80px -24px rgba(73,59,44,.36),0 2px 8px rgba(73,59,44,.06)}
+.island:hover{box-shadow:0 32px 80px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.36),0 2px 8px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.06)}
 .brand{border-bottom:1px dashed var(--line)}
 a.brand{color:inherit;text-decoration:none;cursor:pointer}
 .nav a{border-radius:12px;text-decoration:none;color:var(--ink-60);transition:color .35s var(--ease),background-color .35s var(--ease);
 }
 .nav a .no{color:var(--ink-35);transition:color .35s}
 .nav a::before{content:'';border-radius:50%;background:var(--yellow-deep);transition:transform .4s var(--ease)}
-.nav a:hover{color:var(--ink);background:rgba(232,193,91,.22)}
+.nav a:hover{color:var(--ink);background:var(--theme-wash-strong, rgba(232,193,91,.22))}
 .nav a.active,.nav a.router-link-active{color:var(--ink);background:var(--yellow)}
 .nav a.active .no,.nav a.router-link-active .no{color:var(--ink)}
 .nav-lb{color:var(--ink-35)}

@@ -91,15 +91,15 @@ async function retry() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .forbidden-panel { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--rouge); border-radius: 8px }
-.forbidden-panel>svg { color: var(--rouge) }
-.eyebrow { color: var(--accent-strong) }
+.forbidden-panel>svg { color: var(--theme-danger-text, var(--rouge)) }
+.eyebrow { color: var(--theme-accent-text, var(--accent-strong)) }
 h1 { color: var(--ink) }
 p { color: var(--ink-60) }
 .command { border: 1px solid var(--line); border-radius: 8px; color: var(--ink); text-decoration: none; cursor: pointer }
 .command:disabled { opacity: .6; cursor: wait }
-.command:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.retry-error { color: var(--rouge) }
-.command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.command:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
+.retry-error { color: var(--theme-danger-text, var(--rouge)) }
+.command.primary { background: var(--tea); border-color: var(--tea); color: var(--on-strong) }
 .command.secondary { background: var(--surface) }
 </style>
 <style scoped src="./forbiddenPageDesktop.css"></style>

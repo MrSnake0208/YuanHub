@@ -154,13 +154,13 @@ defineExpose({ focus: () => panel.value?.focus(), focusField, hasField: id => ro
 button, input, select { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 button { cursor: pointer; }
 button:disabled { opacity: .55; cursor: not-allowed; }
-.primary { background: var(--tea); color: var(--cream); }
-a { color: var(--tea); text-decoration: underline; }
-:is(a, button, input, select, summary):focus-visible, fieldset:focus-visible, .errors:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.primary { background: var(--tea); color: var(--on-strong); }
+a { color: var(--theme-strong-text, var(--tea)); text-decoration: underline; }
+:is(a, button, input, select, summary):focus-visible, fieldset:focus-visible, .errors:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .check input { accent-color: var(--tea); }
-.field-error, .errors { color: var(--rouge); }
-.invalid-disc { color: var(--rouge); border: 1px solid var(--rouge); border-radius: 8px; }
+.field-error, .errors { color: var(--theme-danger-text, var(--rouge)); }
+.invalid-disc { color: var(--theme-danger-text, var(--rouge)); border: 1px solid var(--rouge); border-radius: 8px; }
 .errors { border: 1px solid var(--rouge); border-radius: 8px; }
 .technical { border-top: 1px solid var(--line); }
 summary { cursor: pointer; }

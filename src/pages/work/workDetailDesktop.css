@@ -3,8 +3,8 @@
 .work-detail-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 .page-detail{
-  --yellow:#E8C15B;
-  --yellow-deep:#D9A93B;
+  --yellow:var(--theme-accent-bg, #E8C15B);
+  --yellow-deep:var(--theme-accent-bg, #D9A93B);
 }
 .sec-head{display:flex;align-items:baseline;gap:18px;padding-bottom:16px}
 .sec-head .idx{font-family:var(--font-d);font-weight:900;font-size:15px;padding:5px 10px}

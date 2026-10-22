@@ -321,46 +321,46 @@ onBeforeUnmount(() => { alive = false; cleanup?.() })
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .game-account-manager { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .manager-head { border-bottom: 1px solid var(--line); }
-.manager-title h2 { color: var(--tea); }
+.manager-title h2 { color: var(--theme-strong-text, var(--tea)); }
 .account-count { color: var(--ink-60); }
 .account-row + .account-row { border-top: 1px solid var(--line); }
 .account-name { color: var(--ink); }
 .account-identity p { color: var(--ink-60); }
-.account-identity p span { color: var(--tea); }
-.more-trigger, .panel-close { border: 0; border-radius: 8px; background: transparent; color: var(--tea); cursor: pointer; }
+.account-identity p span { color: var(--theme-strong-text, var(--tea)); }
+.more-trigger, .panel-close { border: 0; border-radius: 8px; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .more-trigger:hover, .panel-close:hover { background: var(--cream); }
 .primary-action, .secondary-action { border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .primary-action { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
-.secondary-action { background: var(--surface); color: var(--tea); }
+.secondary-action { background: var(--surface); color: var(--theme-strong-text, var(--tea)); }
 button:disabled { opacity: .55; cursor: not-allowed; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
 .manager-state, .empty-state { color: var(--ink-60); }
-.empty-state h3 { color: var(--tea); }
-.text-button { border: 0; background: transparent; color: var(--tea); cursor: pointer; text-decoration: underline; }
-.manager-message { border-top: 1px solid var(--line); color: var(--tea); }
-.error { color: var(--rouge); }
+.empty-state h3 { color: var(--theme-strong-text, var(--tea)); }
+.text-button { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; text-decoration: underline; }
+.manager-message { border-top: 1px solid var(--line); color: var(--theme-strong-text, var(--tea)); }
+.error { color: var(--theme-danger-text, var(--rouge)); }
 .account-panel { border-radius: 18px 18px 0 0; box-shadow: none; color: var(--ink); }
-.panel-identity { color: var(--tea); }
+.panel-identity { color: var(--theme-strong-text, var(--tea)); }
 .panel-identity small { color: var(--ink-60); }
-.name-field > span, .game-choice legend { color: var(--tea); }
+.name-field > span, .game-choice legend { color: var(--theme-strong-text, var(--tea)); }
 .game-choice { border: 0; }
 .account-panel .game-options label { color: var(--ink); cursor: pointer; }
 .account-panel .game-options input { accent-color: var(--tea); }
 .form-hint, .id-content > p:not(.panel-identity) { color: var(--ink-60); }
-.more-actions button { border: 0; border-radius: 6px; background: transparent; color: var(--tea); cursor: pointer; }
+.more-actions button { border: 0; border-radius: 6px; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .more-actions button:hover { background: var(--cream); }
-.more-actions .danger { border-top: 1px solid var(--line); border-radius: 0; color: var(--rouge); }
+.more-actions .danger { border-top: 1px solid var(--line); border-radius: 0; color: var(--theme-danger-text, var(--rouge)); }
 .id-content code { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); user-select: text; }
 .dialog-list-head p { color: var(--ink-60); }
-.manager-settings { border-top: 1px solid var(--line); color: var(--tea); text-decoration: none; }
-a:focus-visible { outline: 2px solid var(--tea); outline-offset: -3px; }
+.manager-settings { border-top: 1px solid var(--line); color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
+a:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: -3px; }
 .danger-zone { border-top: 1px solid var(--line); color: var(--ink-60); }
-.danger-zone .danger { color: var(--rouge); }
+.danger-zone .danger { color: var(--theme-danger-text, var(--rouge)); }
 /* The shared danger confirmation is opened above this manager's panel. */
 @media (min-width: 768px) {
   .account-panel { border-radius: 16px; }
   .account-panel-mask.is-more { background: transparent; }
-  .more-panel { box-shadow: 0 4px 16px rgba(73,59,44,.08); border-radius: 10px; }
+  .more-panel { box-shadow: 0 4px 16px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.08); border-radius: 10px; }
 }
 </style>
 <style scoped src="./gameAccountManagerDesktop.css"></style>

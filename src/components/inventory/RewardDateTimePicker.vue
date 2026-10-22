@@ -108,32 +108,32 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', outside); do
 .field-label small { color: var(--ink-60); }
 .date-input, .clock-input { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; transition: border-color .16s, box-shadow .16s; }
 input { appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; }
-.date-input:focus-within, .clock-input:focus-within { border-color: var(--tea); outline: 2px solid var(--tea); outline-offset: 2px; }
+.date-input:focus-within, .clock-input:focus-within { border-color: var(--theme-focus, var(--tea)); outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
 button { appearance: none; border: 0; border-radius: 8px; color: var(--ink); background: transparent; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--paper); }
-button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 1px; }
 button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
-.calendar, .time-popover { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 18px 48px -16px rgba(73,59,44,.25), 0 3px 10px -5px rgba(73,59,44,.1); }
+.calendar, .time-popover { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 18px 48px -16px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.25), 0 3px 10px -5px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.1); }
 .calendar-week { color: var(--ink-60); }
 .calendar-days .today { box-shadow: inset 0 0 0 1px var(--line); }
-.calendar-days .selected { background: var(--tea); color: var(--cream); }
+.calendar-days .selected { background: var(--tea); color: var(--on-strong); }
 .today-button { border-top: 1px solid var(--line); border-radius: 0; }
-.clock-input button[aria-expanded="true"] { background: var(--tea); color: var(--cream); }
+.clock-input button[aria-expanded="true"] { background: var(--tea); color: var(--on-strong); }
 .clock-input:has(input[aria-invalid="true"]) { border-color: var(--rouge); }
 .time-popover { animation: time-reveal .16s ease-out; }
 .time-title small { border: 1px solid var(--line); border-radius: 99px; color: var(--ink-60); }
 .time-description, .time-hint, .time-column small { color: var(--ink-60); }
 .time-column { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); transition: border-color .16s, box-shadow .16s; }
-.time-column:focus-within { border-color: var(--tea); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--tea); }
+.time-column:focus-within { border-color: var(--theme-focus, var(--tea)); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--tea); }
 .time-column input { text-align: center; caret-color: var(--tea); }
-.time-column input::selection, .clock-segments input::selection { color: var(--cream); background: var(--tea); }
+.time-column input::selection, .clock-segments input::selection { color: var(--on-strong); background: var(--tea); }
 .time-column:has(input[aria-invalid="true"]) { border-color: var(--rouge); }
 .time-column-label { color: var(--ink); }
-.time-hint.is-invalid { color: var(--rouge); }
+.time-hint.is-invalid { color: var(--theme-danger-text, var(--rouge)); }
 .time-foot { border-top: 1px solid var(--line); }
 .now-button { color: var(--ink); }
-.done-button { background: var(--tea); color: var(--cream); }
-.done-button:hover:not(:disabled) { background: var(--ink); }
+.done-button { background: var(--tea); color: var(--on-strong); }
+.done-button:hover:not(:disabled) { background: var(--theme-control-bg, var(--ink)); }
 @keyframes time-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { button, .date-input, .clock-input, .time-column { transition: none; } .time-popover { animation: none; } }
 </style>

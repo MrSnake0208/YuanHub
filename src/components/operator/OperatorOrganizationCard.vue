@@ -30,14 +30,14 @@ function changeTag(tag, event) {
 
 <style scoped>
 .operator-organization-card { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; min-width: 0; }
-.organization-pin { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--tea); padding: 4px 7px; cursor: pointer; }
+.organization-pin { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--theme-strong-text, var(--tea)); padding: 4px 7px; cursor: pointer; }
 .organization-pin.on, .organization-tag { background: var(--cream); color: var(--ink); }
 .organization-tag { border-radius: 5px; padding: 3px 6px; font-size: 12px; overflow-wrap: anywhere; }
-.organization-tag-menu { color: var(--tea); font-size: 12px; }
+.organization-tag-menu { color: var(--theme-strong-text, var(--tea)); font-size: 12px; }
 .organization-tag-menu[open] { flex-basis: 100%; }
 summary { cursor: pointer; padding: 4px; }
 .organization-tag-options { display: grid; gap: 8px; max-height: 240px; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 label { display: flex; gap: 7px; align-items: start; overflow-wrap: anywhere; }
 button:disabled { opacity: .5; cursor: default; }
-button:focus-visible, summary:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
 </style>

@@ -533,83 +533,83 @@ load()
 .level-toolbar { border-block: 1px solid var(--line) }
 .level-toolbar label { color: var(--ink-60) }
 .level-toolbar select, .level-search input { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper) }
-.level-toolbar select:focus, .level-search:focus-within { outline: 2px solid var(--accent); outline-offset: 3px }
+.level-toolbar select:focus, .level-search:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 .level-search { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35) !important; background: var(--paper) }
 .level-search input { border: 0; background: transparent; outline: none }
 .command { border: 0; border-radius: 10px; cursor: pointer; text-decoration: none; transition: background-color .25s, transform .25s, opacity .25s }
 .command:disabled { opacity: .45; cursor: not-allowed }
-.command.primary { color: var(--cream); background: var(--tea) }
+.command.primary { color: var(--on-strong); background: var(--tea) }
 .command.primary:hover:not(:disabled) { background: var(--tea-deep) }
 .command.secondary { color: var(--ink); background: var(--paper); border: 1.5px solid var(--line) }
 .command.secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--cream) }
 .state { color: var(--ink-60); background: var(--surface); border: 1px solid var(--line); border-radius: 16px }
-.state.error { color: var(--rouge) }
-.state-retry { border: 0; color: var(--accent-strong); background: transparent; text-decoration: underline; cursor: pointer }
+.state.error { color: var(--theme-danger-text, var(--rouge)) }
+.state-retry { border: 0; color: var(--theme-accent-text, var(--accent-strong)); background: transparent; text-decoration: underline; cursor: pointer }
 .list-summary { color: var(--ink-60) }
 .archive-note { color: var(--ink-60) }
-.level-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.notice-text { color: var(--accent-strong) }
+.level-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
+.notice-text { color: var(--theme-accent-text, var(--accent-strong)) }
 .level-table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
 .level-table { border-collapse: separate; border-spacing: 0 }
 .level-table th { color: var(--ink-60); border-bottom: 1px dashed var(--line) }
-.level-table td { border-bottom: 1px solid rgba(156, 122, 77, .13) }
+.level-table td { border-bottom: 1px solid var(--theme-line, rgba(156, 122, 77, .13)) }
 .level-table tbody tr:last-child td { border-bottom: 0 }
-.level-table tbody tr:hover { background: rgba(156, 122, 77, .05) }
+.level-table tbody tr:hover { background: var(--theme-wash, rgba(156, 122, 77, .05)) }
 .level-table code, .level-mobile-card code { color: var(--ink-60) }
 .game-tag, .status-tag, .open-tag { border-radius: 7px }
 .game-tag { color: var(--ink); background: var(--yellow) }
-.status-tag { color: var(--ink); background: rgba(191, 220, 192, .85) }
-.status-tag.archived { color: var(--rouge); background: rgba(166, 81, 74, .12) }
-.open-tag { color: var(--accent-strong); background: rgba(215, 137, 53, .12) }
-.open-tag.closed { color: var(--ink-60); background: rgba(73, 59, 44, .08) }
+.status-tag { color: var(--ink); background: var(--theme-success-bg, rgba(191, 220, 192, .85)) }
+.status-tag.archived { color: var(--theme-danger-text, var(--rouge)); background: var(--theme-danger-wash, rgba(166, 81, 74, .12)) }
+.open-tag { color: var(--theme-accent-text, var(--accent-strong)); background: var(--theme-wash, rgba(215, 137, 53, .12)) }
+.open-tag.closed { color: var(--ink-60); background: var(--theme-wash, rgba(73, 59, 44, .08)) }
 .time-cell { color: var(--ink-60) }
-.ops-col { background: var(--surface); box-shadow: -10px 0 16px -17px rgba(73, 59, 44, .8) }
+.ops-col { background: var(--surface); box-shadow: -10px 0 16px -17px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.8) }
 .level-table tbody tr:hover .ops-col { background: color-mix(in srgb, var(--surface) 95%, var(--tea)) }
 .table-action { border: 1.5px solid var(--line); border-radius: 8px; color: var(--ink-60); background: transparent; cursor: pointer }
 .table-action:hover { color: var(--ink); border-color: var(--ink) }
-.table-action.danger { color: var(--rouge); border-color: rgba(166, 81, 74, .35) }
+.table-action.danger { color: var(--theme-danger-text, var(--rouge)); border-color: var(--theme-danger-line, rgba(166, 81, 74, .35)) }
 .empty-row { color: var(--ink-35) }
 .tree-panel, .import-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
 .panel-head { border-bottom: 1px dashed var(--line) }
 .panel-head h2 { color: var(--ink) }
 .panel-head > span { color: var(--ink-35) }
-.eyebrow { color: var(--accent-strong) }
+.eyebrow { color: var(--theme-accent-text, var(--accent-strong)) }
 .panel-hint { color: var(--ink-60) }
-.panel-hint code { color: var(--accent-strong) }
+.panel-hint code { color: var(--theme-accent-text, var(--accent-strong)) }
 .catalog-tree ul { border-left: 1px solid var(--line) }
 .catalog-tree > ul { border-left: 0 }
 .catalog-tree li { color: var(--ink) }
 .catalog-tree small { color: var(--ink-35) }
 .panel-empty { color: var(--ink-35) }
 .import-panel textarea { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); outline: none }
-.import-panel textarea:focus { border-color: var(--accent) }
-.inline-error, .editor-error { color: var(--rouge) }
+.import-panel textarea:focus { border-color: var(--theme-focus, var(--accent)) }
+.inline-error, .editor-error { color: var(--theme-danger-text, var(--rouge)) }
 .import-stat { border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
 .import-stat strong { color: var(--ink) }
 .import-stat span { color: var(--ink-60) }
-.import-details { color: var(--rouge) }
-.editor-mask { background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px) }
-.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
+.import-details { color: var(--theme-danger-text, var(--rouge)) }
+.editor-mask { background: var(--theme-overlay, rgba(73, 59, 44, .34)); backdrop-filter: blur(2px) }
+.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.4) }
 .editor-head { border-bottom: 1px dashed var(--line) }
 .editor-head h2 { color: var(--ink) }
 .editor-head p { color: var(--ink-60) }
 .icon-command { border: 0; border-radius: 10px; color: var(--ink-60); background: transparent; cursor: pointer }
 .icon-command:hover { color: var(--ink); background: var(--paper) }
-.editor-error { border-radius: 10px; background: rgba(166, 81, 74, .1) }
-.editor-error button { border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; color: var(--rouge); background: transparent; cursor: pointer }
+.editor-error { border-radius: 10px; background: var(--theme-danger-wash, rgba(166, 81, 74, .1)) }
+.editor-error button { border: 1px solid var(--theme-danger-line, rgba(166, 81, 74, .35)); border-radius: 8px; color: var(--theme-danger-text, var(--rouge)); background: transparent; cursor: pointer }
 .editor-fields label { color: var(--ink-60) }
 .editor-fields input, .editor-fields select { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); outline: none }
-.editor-fields input:focus, .editor-fields select:focus { border-color: var(--accent) }
+.editor-fields input:focus, .editor-fields select:focus { border-color: var(--theme-focus, var(--accent)) }
 .revision-note { color: var(--ink-35) }
 .editor-actions { border-top: 1px dashed var(--line) }
-.table-action:focus-visible, .command:focus-visible, .icon-command:focus-visible, .editor-error button:focus-visible, .level-toolbar select:focus-visible, .editor-fields input:focus-visible, .editor-fields select:focus-visible, .import-panel textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.table-action:focus-visible, .command:focus-visible, .icon-command:focus-visible, .editor-error button:focus-visible, .level-toolbar select:focus-visible, .editor-fields input:focus-visible, .editor-fields select:focus-visible, .import-panel textarea:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 
 @media (max-width: 767px) {
   .level-mobile-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px }
   .level-mobile-card dl { border-top: 1px dashed var(--line) }
   .level-mobile-card dt { color: var(--ink-35) }
   .level-mobile-card dd { color: var(--ink) }
-  .level-mobile-card footer { border-top: 1px solid rgba(156, 122, 77, .13) }
+  .level-mobile-card footer { border-top: 1px solid var(--theme-line, rgba(156, 122, 77, .13)) }
 }
 </style>
 <style scoped src="./levelAdminDesktop.css"></style>

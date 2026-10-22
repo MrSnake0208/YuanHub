@@ -1334,7 +1334,7 @@
 }
 .resource-equivalent.is-tianji,
 .resource-equivalent.is-zhuyu {
-  --resource-color: var(--accent-strong);
+  --resource-color: var(--theme-accent-text, var(--accent-strong));
 }
 .resource-equivalent span {
   font-family: var(--font-b);

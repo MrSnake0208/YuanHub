@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { calendarDisplay, validateCalendarClassification } from '../src/data/activityCalendarTypes.js'
-import { EVENT_TYPE_COLORS } from '../src/data/eventTypeColors.js'
+import { EVENT_TYPE_COLORS, eventTypeColor, eventTypeStyle } from '../src/data/eventTypeColors.js'
 import { normalizeRecruitmentPoolType, recruitmentCoverStyle } from '../src/data/recruitmentPoolTypes.js'
 import { calendarForm, calendarPayload, normalizeCalendarItem, summarizeCalendarDay, validateCalendarForm } from '../src/data/activityCalendar.js'
 import { suggestionPayload } from '../src/data/activityCalendarSuggestions.js'
@@ -61,7 +61,8 @@ test('权威pool_type规范化：已知组合优先级、别名、常驻和未�
     assert.equal(normalizeRecruitmentPoolType(value), code)
     const item = normalizeCalendarItem(event({ category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL', pool_type: value }))
     assert.equal(calendarDisplay(item).color, color)
-    assert.equal(recruitmentCoverStyle(value)['--cover-tone'], EVENT_TYPE_COLORS[color].cover)
+    assert.equal(recruitmentCoverStyle(value)['--cover-tone'], eventTypeColor(color, 'cover'))
+    assert.ok(recruitmentCoverStyle(value)['--cover-tone'].endsWith(`${EVENT_TYPE_COLORS[color].cover})`))
   }
   assert.equal(normalizeCalendarItem(event({ pool_type: '限定' })).pool_type, null)
 })
@@ -98,4 +99,15 @@ test('下载JSON v1示例同时保持新家具细目与缺字段旧LOGIN格式�
   assert.equal(sample.items[1].category, 'LOGIN')
   assert.equal(Object.hasOwn(sample.items[1], 'subtype'), false)
   for (const item of sample.items) assert.deepEqual(validateCalendarForm(calendarForm({ item })), {})
+})
+
+ test('calendar themed colours keep their semantic family and exact light fallback', () => {
+  assert.deepEqual(eventTypeStyle('rouge'), {
+    '--event-bg': 'var(--theme-danger-bg, #FAEEEB)', '--event-text': 'var(--theme-danger-text, #833F3D)',
+    '--event-border': 'var(--theme-danger-line, #D9AAA4)', '--event-mark': 'var(--theme-danger-text, #A6514A)'
+  })
+  assert.equal(eventTypeColor('gold', 'cover'), 'var(--theme-accent-bg, #F2DFAD)')
+  for (const unknown of ['unknown', 'toString', '__proto__', null]) {
+    assert.deepEqual(eventTypeStyle(unknown), eventTypeStyle('neutral'))
+  }
 })

@@ -82,8 +82,8 @@ async function toggle() {
   cursor: pointer;
   transition: border-color .18s ease, background-color .18s ease, color .18s ease;
 }
-.support-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
-.support-button.on { border-color: var(--rouge); color: var(--rouge); }
+.support-button:hover:not(:disabled) { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
+.support-button.on { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); }
 .support-button:disabled { opacity: .6; cursor: default; }
 .support-count { font: 11px var(--font-d); color: var(--feedback-text-muted); }
 .support-error { color: var(--feedback-danger); font-size: 11px; }

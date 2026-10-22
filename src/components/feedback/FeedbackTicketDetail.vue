@@ -226,8 +226,8 @@ watch(() => props.item?.id, () => {
 .detail-content,.detail-message p { color: var(--feedback-text); }
 .detail-message { background: transparent; }
 .detail-message header strong { color: var(--feedback-text); }
-.detail-admin-label { color: var(--tea); }
-.detail-message.is-admin header strong { color: var(--tea); }
+.detail-admin-label { color: var(--theme-strong-text, var(--tea)); }
+.detail-message.is-admin header strong { color: var(--theme-strong-text, var(--tea)); }
 .detail-message header time { color: var(--feedback-text-dim); }
 .detail-message > p { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
 .detail-message.is-reporter > p { border-color: var(--feedback-line); background: var(--surface); }
@@ -236,7 +236,7 @@ watch(() => props.item?.id, () => {
   border-right: 2px solid color-mix(in srgb, var(--tea) 58%, var(--feedback-line-strong));
   background: color-mix(in srgb, var(--feedback-panel) 86%, var(--tea) 14%);
 }
-.detail-message.is-reporter.is-self header > strong { color: var(--tea); }
+.detail-message.is-reporter.is-self header > strong { color: var(--theme-strong-text, var(--tea)); }
 .detail-message.is-admin > p { border-color: var(--yellow-deep); background: var(--yellow); }
 .detail-message.is-admin.is-self > p { border-right: 3px solid var(--tea); }
 .detail-message.is-admin.is-other > p { border-left: 3px solid var(--tea); }
@@ -260,7 +260,7 @@ watch(() => props.item?.id, () => {
 .detail-closure-meta span { color: var(--feedback-text-dim); }
 .detail-closure-meta strong { color: var(--feedback-text); }
 .detail-closure-meta time { color: var(--feedback-text-dim); }
-.detail-action-area { background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
+.detail-action-area { background: var(--theme-surface, rgba(255, 253, 246, .96)); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
 </style>
 <style scoped src="./feedbackTicketDetailDesktop.css"></style>
 <style scoped src="./feedbackTicketDetailMobile.css"></style>

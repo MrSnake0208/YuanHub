@@ -1,4 +1,4 @@
-import { EVENT_TYPE_COLORS } from './eventTypeColors.js'
+import { eventTypeColor } from './eventTypeColors.js'
 
 export const RECRUITMENT_POOL_TYPES = Object.freeze({
   limited: { label: '限定', color: 'gold', coverTone: 'limited' },
@@ -28,7 +28,7 @@ export function normalizeRecruitmentPoolType(value) {
 }
 
 export function recruitmentPoolType(value) { return RECRUITMENT_POOL_TYPES[normalizeRecruitmentPoolType(value)] }
-export function recruitmentCoverStyle(value) { return { '--cover-tone': EVENT_TYPE_COLORS[recruitmentPoolType(value).color].cover } }
+export function recruitmentCoverStyle(value) { return { '--cover-tone': eventTypeColor(recruitmentPoolType(value).color, 'cover') } }
 
 export function isPermanentRecruitmentPool(pool) {
   return normalizeRecruitmentPoolType(pool?.pool_type) === 'permanent' && !pool?.end_date

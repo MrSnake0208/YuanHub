@@ -91,17 +91,17 @@ async function reloadLatest() {
 </script>
 
 <style scoped>
-.today-preferences { color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(73, 59, 44, .18); }
-.preferences-heading h2 { margin: 0; font: 800 22px/1.5 var(--font-s); color: var(--tea); }
+.today-preferences { color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.18); }
+.preferences-heading h2 { margin: 0; font: 800 22px/1.5 var(--font-s); color: var(--theme-strong-text, var(--tea)); }
 .preferences-heading button { border: 0; background: transparent; }
 p { margin: 0; font-size: 13px; line-height: 1.7; }
-button { color: var(--tea); background: var(--cream); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font: inherit; }
+button { color: var(--theme-strong-text, var(--tea)); background: var(--cream); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font: inherit; }
 button:hover:not(:disabled) { border-color: var(--tea); }
 button:disabled { opacity: .55; cursor: default; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .preferences-modes { border: 1px solid var(--line); background: var(--cream); border-radius: 8px; }
 .preferences-modes button { border: 0; background: transparent; }
-.preferences-modes button[aria-pressed="true"], .preferences-save { color: var(--cream); background: var(--tea); }
+.preferences-modes button[aria-pressed="true"], .preferences-save { color: var(--on-strong); background: var(--tea); }
 .preferences-draft { font-size: 11px; }
 .preferences-modules { border: 1px solid var(--line); border-radius: 10px; margin: 0; padding: 0; }
 .preferences-module { cursor: pointer; }
@@ -110,9 +110,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outli
 .preferences-module small { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .preferences-module input { accent-color: var(--tea); cursor: pointer; }
 .preferences-modules:disabled { opacity: .6; }
-.preferences-error { color: var(--rouge); }
+.preferences-error { color: var(--theme-danger-text, var(--rouge)); }
 .preferences-error button { padding: 6px 10px; }
-.preferences-notice { color: var(--tea); }
+.preferences-notice { color: var(--theme-strong-text, var(--tea)); }
 .preferences-help { font-size: 12px; color: var(--muted); }
 </style>
 <style scoped src="./todayPreferencesDesktop.css"></style>

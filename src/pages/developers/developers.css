@@ -4,7 +4,7 @@
 .developer-directory { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .developer-directory > summary { padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; overflow-wrap: anywhere; }
 .developer-directory nav { padding: 12px; }
-.developer-tutorial-link { display: block; margin-bottom: 12px; font-size: 13px; color: var(--tea); }
+.developer-tutorial-link { display: block; margin-bottom: 12px; font-size: 13px; color: var(--theme-strong-text, var(--tea)); }
 .developer-search { display: grid; gap: 6px; font-size: 12px; color: var(--ink-60); }
 .developer-search input { min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--cream); color: var(--ink); font: inherit; }
 .developer-nav-group { margin-top: 16px; }
@@ -18,7 +18,7 @@
 .developer-downloads { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .developer-downloads a { display: inline-flex; align-items: start; gap: 5px; min-width: 0; font-size: 12px; }
 .developer-downloads svg { flex-shrink: 0; margin-top: 3px; }
-.developer-reading a { color: var(--brand-blue); text-decoration: underline; text-underline-offset: 3px; }
+.developer-reading a { color: var(--theme-info-text, var(--brand-blue)); text-decoration: underline; text-underline-offset: 3px; }
 .document-body { font-size: 15px; line-height: 1.85; }
 .document-body p { margin: 14px 0; }
 .document-body h2, .document-body h3, .document-body h4, .document-body h5, .document-body h6 { color: var(--ink); line-height: 1.5; scroll-margin-top: calc(80px + var(--version-update-banner-height, 0px)); }
@@ -38,12 +38,12 @@
 .document-table-scroll th { background: var(--cream); font-weight: 700; }
 .document-code { min-width: 0; margin: 16px 0; border: 1px solid var(--line); border-radius: 5px; background: var(--cream); }
 .document-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-60); }
-.document-code-toolbar button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--tea); font: inherit; cursor: pointer; }
+.document-code-toolbar button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); font: inherit; cursor: pointer; }
 .document-code pre { margin: 0; padding: 14px; overflow-x: auto; max-width: 100%; line-height: 1.7; white-space: pre; overflow-wrap: normal; }
 .document-code pre code { padding: 0; background: transparent; }
 .document-body .document-copy-status { margin: 0; padding: 0 12px 8px; font-size: 12px; }
 .developer-state { margin: 0; line-height: 1.8; }
 .developer-state button { margin-right: 16px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
-.developer-anchor-status { font-size: 13px; color: var(--rouge); }
+.developer-anchor-status { font-size: 13px; color: var(--theme-danger-text, var(--rouge)); }
 .developer-reading-footer { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; }
-.page-developers :where(a, button, input, summary, [tabindex]):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.page-developers :where(a, button, input, summary, [tabindex]):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }

@@ -1,4 +1,4 @@
-// Shared calendar accents and recruitment cover colors; keep the warm paper surfaces.
+// Shared calendar accents and recruitment covers; hex values remain the light palette.
 export const EVENT_TYPE_COLORS = Object.freeze({
   tea: { background: '#F3EFE9', text: '#5A4633', border: '#CDBEAC', mark: '#806B55', cover: '#E8DFD2' },
   rouge: { background: '#FAEEEB', text: '#833F3D', border: '#D9AAA4', mark: '#A6514A', cover: '#F1D5D1' },
@@ -11,7 +11,18 @@ export const EVENT_TYPE_COLORS = Object.freeze({
   neutral: { background: '#F4F0E7', text: '#645A4B', border: '#D4C9B8', mark: '#887B68', cover: '#F6EDD0' },
 })
 
+const themeFamilies = { tea: 'accent', rouge: 'danger', purple: 'purple', blue: 'info', yellow: 'accent', gold: 'accent', gray: 'neutral', orange: 'accent', neutral: 'neutral' }
+
+export function eventTypeColor(color, part) {
+  const key = Object.hasOwn(EVENT_TYPE_COLORS, color) ? color : 'neutral'
+  const token = EVENT_TYPE_COLORS[key]
+  const family = themeFamilies[key]
+  const role = { background: 'bg', cover: 'bg', text: 'text', border: 'line', mark: 'text' }[part]
+  const variable = family === 'neutral' ? ({ bg: 'surface', text: 'text', line: 'line' }[role])
+    : family === 'accent' && role === 'line' ? 'line' : `${family}-${role}`
+  return `var(--theme-${variable}, ${token[part]})`
+}
+
 export function eventTypeStyle(color) {
-  const token = EVENT_TYPE_COLORS[color] || EVENT_TYPE_COLORS.neutral
-  return { '--event-bg': token.background, '--event-text': token.text, '--event-border': token.border, '--event-mark': token.mark }
+  return { '--event-bg': eventTypeColor(color, 'background'), '--event-text': eventTypeColor(color, 'text'), '--event-border': eventTypeColor(color, 'border'), '--event-mark': eventTypeColor(color, 'mark') }
 }

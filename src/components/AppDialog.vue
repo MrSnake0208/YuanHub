@@ -154,14 +154,14 @@ useModalFocus(() => state.visible, dialogEl, {
 }
 
 .dialog-mask {
-  background: rgba(73, 59, 44, .5);
+  background: var(--theme-overlay, rgba(73, 59, 44, .5));
   backdrop-filter: blur(3px);
 }
 .dialog {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
-  box-shadow: 0 40px 80px -30px rgba(73, 59, 44, .45);
+  box-shadow: 0 40px 80px -30px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.45);
   outline: none;
 }
 .dialog-title {
@@ -170,9 +170,9 @@ useModalFocus(() => state.visible, dialogEl, {
 .dialog-ic {
   border-radius: 10px;
 }
-.dialog-ic.ic-info { background: rgba(73, 59, 44, .08); color: var(--ink-60) }
-.dialog-ic.ic-danger { background: rgba(166, 81, 74, .14); color: var(--rouge) }
-.dialog-ic.ic-success { background: rgba(215, 137, 53, .16); color: var(--accent-strong) }
+.dialog-ic.ic-info { background: var(--theme-wash, rgba(73, 59, 44, .08)); color: var(--ink-60) }
+.dialog-ic.ic-danger { background: var(--theme-danger-wash, rgba(166, 81, 74, .14)); color: var(--theme-danger-text, var(--rouge)) }
+.dialog-ic.ic-success { background: var(--theme-wash-strong, rgba(215, 137, 53, .16)); color: var(--theme-accent-text, var(--accent-strong)) }
 .dialog-close {
   border: none;
   background: none;
@@ -194,8 +194,8 @@ useModalFocus(() => state.visible, dialogEl, {
   transition: transform .16s var(--ease), border-color .2s ease, background-color .2s ease, color .2s ease;
 }
 .dialog-choice:active { transition-duration: 0s; }
-.dialog-choice:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-.dialog-choice.is-primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.dialog-choice:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
+.dialog-choice.is-primary { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .dialog-choice.is-quiet { background: var(--paper); color: var(--ink-60); }
 .dialog-choice-copy small { color: inherit; opacity: .72; }
 .dialog-check {
@@ -203,7 +203,7 @@ useModalFocus(() => state.visible, dialogEl, {
   cursor: pointer;
 }
 .dialog-check input { accent-color: var(--accent); }
-.dialog-check input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.dialog-check input:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .dialog-choice:hover { border-color: var(--accent); background: var(--surface); }
   .dialog-choice.is-primary:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
@@ -219,7 +219,7 @@ useModalFocus(() => state.visible, dialogEl, {
   outline: none;
   transition: border-color .2s ease, background-color .2s ease;
 }
-.dialog-field input:focus { border-color: var(--accent); background: var(--surface) }
+.dialog-field input:focus { border-color: var(--theme-focus, var(--accent)); background: var(--surface) }
 .dlg-btn {
   border-radius: 12px;
   cursor: pointer;
@@ -230,7 +230,7 @@ useModalFocus(() => state.visible, dialogEl, {
 .dlg-btn:active:not(:disabled) { transition-duration: 0s; }
 .dlg-btn.ghost { background: var(--paper); border-color: var(--line); color: var(--ink) }
 .dlg-btn.ghost:hover:not(:disabled) { background: var(--cream); border-color: var(--ink) }
-.dlg-btn.primary { background: var(--tea); color: var(--cream) }
+.dlg-btn.primary { background: var(--tea); color: var(--on-strong) }
 .dlg-btn.primary:hover:not(:disabled) { background: var(--accent); color: #fff }
 .dlg-btn.primary.danger { background: var(--rouge) }
 .dlg-btn.primary.danger:hover:not(:disabled) { background: var(--rouge); filter: brightness(.94) }

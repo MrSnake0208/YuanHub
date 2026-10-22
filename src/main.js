@@ -6,6 +6,10 @@ import { init as authInit } from '@/store/auth.js'
 import { initPwaInstall } from '@/utils/pwaInstall.js'
 import { watchStartupReadiness } from '@/utils/startupFeedback.js'
 import './styles/main.css'
+import { initTheme } from '@/store/theme.js'
+
+const stopTheme = initTheme()
+if (import.meta.hot) import.meta.hot.dispose(stopTheme)
 
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
 const reveal = {

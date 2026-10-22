@@ -1,6 +1,6 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 900px) {
-.growth-tracker { --planner-page: #f5efe7; --planner-card: #fffaf3; --planner-line: #eadfce; --planner-muted: #988575; --planner-deep: #6c533e; --planner-gold: #b79050; --planner-gain: #6d9474; --planner-spend: #b75c53; min-width: 0; max-width: 100%; margin-top: 18px; padding: 22px; overflow-x: clip; }
+.growth-tracker { --planner-page: var(--theme-surface, #f5efe7); --planner-card: var(--theme-surface, #fffaf3); --planner-line: var(--theme-line, #eadfce); --planner-muted: var(--theme-muted, #988575); --planner-deep: var(--theme-text, #6c533e); --planner-gold: var(--theme-accent-text, #b79050); --planner-gain: var(--theme-success-text, #6d9474); --planner-spend: var(--theme-danger-text, #b75c53); min-width: 0; max-width: 100%; margin-top: 18px; padding: 22px; overflow-x: clip; }
 .planner-cloud-fields { min-width: 0; margin: 0; padding: 0; }
 .cloud-status { margin-top: 12px; font-size: 12px; }
 .cloud-recovery, .cloud-migration { margin-top: 12px; padding: 16px; font-size: 13px; line-height: 1.7; }
@@ -60,8 +60,8 @@ button { touch-action: manipulation; }
 .growth-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 14px; margin-top: 0; }
 .growth-card { --growth-rarity-accent: var(--yellow-deep); --growth-rarity-border: var(--yellow-deep); --growth-rarity-start: var(--cream); position: relative; align-self: start; min-width: 0; padding: 12px; }
 .growth-card.rarity-r5 { --growth-rarity-accent: var(--yellow-deep); }
-.growth-card.rarity-r4 { --growth-rarity-accent: #a996c5; --growth-rarity-border: color-mix(in srgb, #a996c5 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, #8672b2 8%, var(--cream)); }
-.growth-card.rarity-r3 { --growth-rarity-accent: #bfcee0; --growth-rarity-border: color-mix(in srgb, #bfcee0 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, #99b5cf 8%, var(--cream)); }
+.growth-card.rarity-r4 { --growth-rarity-accent: #a996c5; --growth-rarity-border: color-mix(in srgb, var(--theme-purple-line, #a996c5) 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 8%, var(--cream)); }
+.growth-card.rarity-r3 { --growth-rarity-accent: #bfcee0; --growth-rarity-border: color-mix(in srgb, var(--theme-info-line, #bfcee0) 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 8%, var(--cream)); }
 .tracker-remove { display: flex; min-height: 36px; align-items: center; justify-content: center; gap: 5px; width: 100%; margin-top: 12px; padding: 6px 8px; font-size: 11px; font-weight: 700; }
 .tracker-dialog-enter-from .tracker-remove-dialog, .tracker-dialog-leave-to .tracker-remove-dialog { transform: translateY(12px) scale(.98); }
 .tracker-remove-dialog-mask { position: fixed; z-index: var(--z-overlay-blocking); inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; }

@@ -164,14 +164,14 @@ async function onSubmit() {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .back a { color: var(--ink-60); text-decoration: none; }
-.back a:hover { color: var(--accent); }
+.back a:hover { color: var(--theme-accent-text, var(--accent)); }
 .field label { color: var(--ink-60); }
-.field label em { color: var(--rouge); }
+.field label em { color: var(--theme-danger-text, var(--rouge)); }
 .input-wrap {
   background: var(--cream); border: 1.5px solid var(--line); border-radius: 12px;
   transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
 }
-.input-wrap.focus { border-color: var(--yellow-deep); box-shadow: 0 0 0 3px rgba(239,210,142,.35); }
+.input-wrap.focus { border-color: var(--yellow-deep); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 239, 210, 142), 0.35); }
 .input-wrap input { border: none; outline: none; background: transparent; color: var(--ink);
 }
 .input-wrap input::placeholder { color: var(--ink-35); }
@@ -181,14 +181,14 @@ async function onSubmit() {
 }
 .code-btn:hover:not(:disabled) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .code-btn:disabled { opacity: .5; cursor: default; }
-.field-err { color: var(--rouge); }
-.field-err.grn { color: var(--accent-strong); }
+.field-err { color: var(--theme-danger-text, var(--rouge)); }
+.field-err.grn { color: var(--theme-accent-text, var(--accent-strong)); }
 .form-err {
-  background: rgba(166,81,74,.08); border: 1px solid rgba(166,81,74,.28);
-  color: var(--rouge); border-radius: 10px;
+  background: var(--theme-danger-wash, rgba(166,81,74,.08)); border: 1px solid var(--theme-danger-line, rgba(166,81,74,.28));
+  color: var(--theme-danger-text, var(--rouge)); border-radius: 10px;
 }
 .form-err .dot { border-radius: 50%; background: var(--rouge); }
-.btn-submit { background: var(--tea); color: var(--cream);
+.btn-submit { background: var(--tea); color: var(--on-strong);
   border: none; border-radius: 999px; cursor: pointer;
   transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
@@ -198,7 +198,7 @@ async function onSubmit() {
 }
 .auth-switch a { text-decoration: none; color: var(--ink-60); }
 .auth-switch a b { color: var(--ink); border-bottom: 1.5px solid var(--yellow); }
-.auth-switch a:hover b { color: var(--accent); }
+.auth-switch a:hover b { color: var(--theme-accent-text, var(--accent)); }
 </style>
 <style scoped src="./forgotPageDesktop.css"></style>
 <style scoped src="./forgotPageMobile.css"></style>

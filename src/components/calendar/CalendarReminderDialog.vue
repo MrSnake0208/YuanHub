@@ -173,21 +173,21 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.calendar-reminder-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.calendar-reminder-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 45%, transparent)); }
 .calendar-reminder { min-width: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 16%, transparent); }
 .calendar-reminder-heading { min-width: 0; }
-.calendar-reminder h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--tea); font: 800 20px/1.4 var(--font-s); }
+.calendar-reminder h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--theme-strong-text, var(--tea)); font: 800 20px/1.4 var(--font-s); }
 .calendar-reminder h2 svg { flex: none; }
 .calendar-reminder .calendar-reminder-account { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-60); font-size: 13px; }
 .calendar-reminder p { margin: 0; line-height: 1.6; }
-.calendar-reminder button { font: inherit; color: var(--tea); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
-.calendar-reminder :is(button, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.calendar-reminder button { font: inherit; color: var(--theme-strong-text, var(--tea)); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.calendar-reminder :is(button, a):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .calendar-reminder-group + .calendar-reminder-group { margin-top: 14px; }
-.calendar-reminder-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--tea); font-size: 13px; line-height: 1.5; }
+.calendar-reminder-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--theme-strong-text, var(--tea)); font-size: 13px; line-height: 1.5; }
 .calendar-reminder-group h3 span { color: var(--ink-60); font-size: 12px; font-weight: 400; }
 .calendar-reminder ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .calendar-reminder li { min-width: 0; }
-.calendar-reminder-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--tea); background: var(--cream); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; }
+.calendar-reminder-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--theme-strong-text, var(--tea)); background: var(--cream); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; }
 .calendar-reminder-card-content { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .calendar-reminder-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; line-height: 1.5; }
 .calendar-reminder-card-date { color: var(--ink-60); font-size: 12px; line-height: 1.5; }
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
 .calendar-reminder-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .calendar-reminder-actions > button:only-child { grid-column: 1 / -1; }
 .calendar-reminder button:active, .calendar-reminder-card:active { filter: brightness(.96); }
-.calendar-reminder button.calendar-reminder-primary { color: var(--cream); background: var(--tea); }
+.calendar-reminder button.calendar-reminder-primary { color: var(--on-strong); background: var(--tea); }
 @media (hover: hover) {
   .calendar-reminder-card:hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, var(--cream)); }
   .calendar-reminder button:hover { border-color: var(--tea); }

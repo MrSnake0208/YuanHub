@@ -5,14 +5,14 @@
 .feedback-page .feedback-hero {
   border-radius: 0 0 36px 36px;
   background:
-    linear-gradient(110deg, rgba(239, 210, 142, .98), rgba(223, 184, 99, .9)),
+    linear-gradient(110deg, var(--theme-highlight, rgba(239, 210, 142, .98)), var(--theme-accent-bg, rgba(223, 184, 99, .9))),
     url('/maayuan/maayuan-pattern.webp');
   background-position: center;
   background-size: auto, 1700px;
 }
-.feedback-page .feedback-hero::before { content: ''; pointer-events: none; background: linear-gradient(90deg, rgba(255, 253, 246, .18), rgba(255, 253, 246, .06) 52%, rgba(255, 253, 246, .12)); }
+.feedback-page .feedback-hero::before { content: ''; pointer-events: none; background: linear-gradient(90deg, var(--theme-wash-strong, rgba(255, 253, 246, .18)), var(--theme-wash, rgba(255, 253, 246, .06)) 52%, var(--theme-wash, rgba(255, 253, 246, .12))); }
 .feedback-page .feedback-hero::after { content: var(--wm, '反馈'); color: rgba(255, 253, 246, .18); pointer-events: none; }
-.feedback-hero-kicker { color: var(--tea); }
+.feedback-hero-kicker { color: var(--theme-strong-text, var(--tea)); }
 .feedback-page .feedback-hero h1 { color: var(--ink); }
 .feedback-page .feedback-hero .hero-sub { color: var(--ink-60); }
 .feedback-center .feedback-hero { border-radius: 0 0 20px 20px; }
@@ -20,8 +20,8 @@
 .feedback-command-bar {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 253, 246, .9);
-  box-shadow: 0 14px 34px -28px rgba(73, 59, 44, .42);
+  background: var(--theme-surface, rgba(255, 253, 246, .9));
+  box-shadow: 0 14px 34px -28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.42);
   backdrop-filter: blur(10px);
 }
 .feedback-primary-action,
@@ -33,33 +33,33 @@
   cursor: pointer;
   transition: border-color .18s ease, background-color .18s ease, color .18s ease;
 }
-.feedback-primary-action { border-color: var(--tea); background: var(--tea); color: var(--cream); }
-.feedback-button.danger { border-color: rgba(166, 81, 74, .45); color: var(--rouge); }
+.feedback-primary-action { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
+.feedback-button.danger { border-color: var(--theme-danger-line, rgba(166, 81, 74, .45)); color: var(--theme-danger-text, var(--rouge)); }
 .feedback-primary-action:hover:not(:disabled) { border-color: var(--accent); background: var(--accent); }
-.feedback-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
+.feedback-button:hover:not(:disabled) { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .feedback-primary-action:disabled,
 .feedback-button:disabled { opacity: .5; cursor: default; }
 
 .feedback-search { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-35); }
-.feedback-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .12); }
+.feedback-search:focus-within { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.12); }
 .feedback-search input { border: 0; outline: 0; background: transparent; color: var(--ink); }
 .feedback-search input::placeholder { color: var(--ink-35); }
 .feedback-search button { border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer; }
-.feedback-search button:hover { background: var(--paper); color: var(--accent-strong); }
+.feedback-search button:hover { background: var(--paper); color: var(--theme-accent-text, var(--accent-strong)); }
 .feedback-status-tabs button { border: 1px solid transparent; border-radius: 7px; background: var(--paper); color: var(--ink-60); cursor: pointer; }
 .feedback-status-tabs button:hover { border-color: var(--yellow-deep); color: var(--ink); }
 .feedback-status-tabs button.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .feedback-filter { color: var(--ink-60); }
 .feedback-filter select { border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); }
-.feedback-filter select:focus { border-color: var(--accent); }
+.feedback-filter select:focus { border-color: var(--theme-focus, var(--accent)); }
 .feedback-result-meta { color: var(--ink-35); }
 .feedback-mark-read-count { border-radius: 999px; background: var(--yellow); color: var(--ink); }
 
 .feedback-form-control { border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); }
-.feedback-form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .1); }
+.feedback-form-control:focus { border-color: var(--theme-focus, var(--accent)); box-shadow: 0 0 0 3px rgba(var(--theme-shadow-rgb, 215, 137, 53), 0.1); }
 .feedback-form-control::placeholder { color: var(--ink-35); }
 .feedback-media-field { border-radius: 7px; transition: background-color .16s ease, outline-color .16s ease; }
-.feedback-media-field.is-dragging { background: rgba(239, 210, 142, .2); outline: 2px solid var(--accent); outline-offset: 4px; }
+.feedback-media-field.is-dragging { background: var(--theme-wash-strong, rgba(239, 210, 142, .2)); outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 4px; }
 .feedback-media-heading { color: var(--ink-60); }
 .feedback-media-heading small { color: var(--ink-35); }
 .feedback-media-picker-actions .feedback-media-picker-button { border: 1px dashed var(--accent); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; }
@@ -68,10 +68,10 @@
 .feedback-attachment-copy strong { color: var(--ink); }
 .feedback-attachment-copy small { color: var(--ink-35); }
 .feedback-attachment-item button { border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); cursor: pointer; }
-.feedback-attachment-item.is-image button { background: rgba(73, 59, 44, .82); color: var(--cream); }
+.feedback-attachment-item.is-image button { background: rgba(73, 59, 44, .82); color: var(--on-strong); }
 .feedback-attachment-item button:disabled { opacity: .45; cursor: default; }
 .feedback-media-error,
-.feedback-form-error { color: var(--rouge); }
+.feedback-form-error { color: var(--theme-danger-text, var(--rouge)); }
 
 .feedback-modal,
 .access-modal {

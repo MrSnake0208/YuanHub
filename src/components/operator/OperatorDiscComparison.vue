@@ -74,20 +74,20 @@ const differenceText = computed(() => {
 .disc-comparison h5 { margin: 0; color: var(--ink); font-size: 15px; }
 .disc-comparison h5 small { font: 12px var(--font-s); color: var(--ink-60); }
 .disc-comparison-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.disc-copy-current { margin-top: 10px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--tea); font: inherit; font-size: 12px; cursor: pointer; }
+.disc-copy-current { margin-top: 10px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); font: inherit; font-size: 12px; cursor: pointer; }
 .disc-copy-current:disabled { opacity: .5; cursor: not-allowed; }
 .disc-comparison-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .disc-comparison-terms > small { color: var(--ink-60); font-size: 12px; }
 .disc-comparison-term { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
-.disc-comparison-term.is-gold { color: #8a5a1f; background: rgba(215, 137, 53, .14); }
-.disc-comparison-term.is-purple { color: #6d56a0; background: rgba(151, 130, 199, .16); }
-.disc-comparison-term.is-blue { color: #4f6387; background: rgba(110, 135, 184, .16); }
+.disc-comparison-term.is-gold { color: var(--theme-accent-text, #8a5a1f); background: var(--theme-wash, rgba(215, 137, 53, .14)); }
+.disc-comparison-term.is-purple { color: var(--theme-purple-text, #6d56a0); background: var(--theme-purple-wash, rgba(151, 130, 199, .16)); }
+.disc-comparison-term.is-blue { color: var(--theme-info-text, #4f6387); background: var(--theme-info-wash, rgba(110, 135, 184, .16)); }
 .disc-comparison-term.is-changed { border-color: var(--accent); }
-.disc-comparison-term > small { flex: none; font-size: 10px; color: var(--tea); }
+.disc-comparison-term > small { flex: none; font-size: 10px; color: var(--theme-strong-text, var(--tea)); }
 .disc-comparison-term > button { flex: none; border: 0; padding: 0 3px; background: transparent; color: inherit; font-size: 18px; cursor: pointer; }
-.disc-comparison-difference { margin: 10px 0 0; color: var(--tea); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.disc-comparison-difference { margin: 10px 0 0; color: var(--theme-strong-text, var(--tea)); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .disc-comparison-arrow { display: none; }
-.disc-comparison button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-comparison button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 @media (min-width: 769px) {
   .disc-comparison { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; }
   .disc-comparison-arrow { display: block; align-self: center; color: var(--ink-60); font-size: 24px; }

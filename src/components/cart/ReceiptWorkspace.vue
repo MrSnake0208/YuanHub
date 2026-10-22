@@ -58,8 +58,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.cart-receipt-mask{background:rgba(73,59,44,.5)}
-.cart-receipt-drawer{background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 20px 44px -24px rgba(73,59,44,.3)}
+.cart-receipt-mask{background:var(--theme-overlay, rgba(73,59,44,.5))}
+.cart-receipt-drawer{background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 20px 44px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3)}
 .cart-receipt-heading{background:var(--surface)}
 .cart-receipt-heading h2{color:var(--ink)}
 </style>

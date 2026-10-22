@@ -113,7 +113,7 @@ function submit() {
 
 <style scoped>
 .custom-price-hint{font-size:12px;color:var(--ink-60);margin-top:12px}
-.custom-error{color:var(--rouge)}
+.custom-error{color:var(--theme-danger-text, var(--rouge))}
 .custom-discount{display:flex;align-items:center;gap:6px}
 .custom-discount input{width:auto}
 .fgrid select{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);color:var(--ink)}

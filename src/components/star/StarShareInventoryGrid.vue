@@ -56,7 +56,7 @@ watch(() => props.inventory, () => { failed.value = new Set() })
 /* Extend the existing viewport-based range by about 1.5 mobile rows;
    desktop adds about two rows. Short lists still shrink to their content. */
 .star-share-list { --list-extra-height: 132px; max-height: calc(clamp(280px,52dvh,560px) + var(--list-extra-height)); overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; padding: 3px 1px; border-radius: 8px }
-.star-share-list:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.star-share-list:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .star-share-list::-webkit-scrollbar { width: 6px }
 .star-share-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px }
 .star-share-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px 6px; margin: 0; padding: 0; list-style: none }

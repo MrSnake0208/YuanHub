@@ -65,11 +65,11 @@ h3 { font-size: 15px }
 .point-note { margin: 8px 0 0; font-size: 11px }
 .report-state, .point-detail { padding: 14px; margin: 12px 20px 0; font-size: 12px }
 @media (min-width: 761px) {
-  .calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(73, 59, 44, .05) }
+  .calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.05) }
   .calendar-content::after { content: ''; display: block; height: 16px; background: var(--cream) }
   .weekdays { background: var(--cream) }
   .weekdays span { padding: 11px 8px; font-family: var(--font-s); font-weight: 900 }
-  .weekdays span:first-child, .weekdays span:last-child { color: var(--accent-strong) }
+  .weekdays span:first-child, .weekdays span:last-child { color: var(--theme-accent-text, var(--accent-strong)) }
   .calendar { overflow: hidden; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: var(--surface) }
   .day { position: relative; height: 108px; min-height: 108px; grid-template-rows: 18px repeat(3, 18px); gap: 3px; padding: 12px 14px }
   .day:nth-child(7n) { border-right: 0 }

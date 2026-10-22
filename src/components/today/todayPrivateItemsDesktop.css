@@ -9,7 +9,7 @@
   .private-scope { margin-top: 2px; }
   .private-list { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; }
   .private-list li { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; padding-top: 10px; }
-  .private-date { display: flex; flex-direction: column; align-items: center; gap: 2px; border-right: 1px solid var(--line); padding-right: 8px; color: var(--tea); }
+  .private-date { display: flex; flex-direction: column; align-items: center; gap: 2px; border-right: 1px solid var(--line); padding-right: 8px; color: var(--theme-strong-text, var(--tea)); }
   .private-date strong { font: 600 15px/1.5 var(--font-d); font-variant-numeric: tabular-nums; }
   .private-date span { font-size: 11px; color: var(--ink-60); }
   .private-body { min-width: 0; }

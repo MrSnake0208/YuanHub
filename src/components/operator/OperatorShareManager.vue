@@ -81,8 +81,8 @@ watch(open, (visible, _, onCleanup) => {
 defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? false })
 </script>
 <style scoped>
-.operator-share-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 24px; background: rgba(73, 59, 44, .5); }
-.operator-share-dialog { display: flex; flex-direction: column; min-width: 0; overflow: hidden; box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4); }
+.operator-share-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 24px; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
+.operator-share-dialog { display: flex; flex-direction: column; min-width: 0; overflow: hidden; box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 32px 80px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.4); }
 .operator-share-dialog:focus { outline: none; }
 .operator-share-header { display: flex; align-items: flex-start; justify-content: space-between; flex: none; gap: 16px; border-bottom: 1px solid var(--line); }
 .operator-share-header > div { min-width: 0; }
@@ -90,13 +90,13 @@ defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? fals
 .operator-share-header p { margin: 4px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .operator-share-close { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .operator-share-close:hover { background: var(--paper); }
-.operator-share-close:focus-visible,.operator-share-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.operator-share-close:focus-visible,.operator-share-help summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .operator-share-body { min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 .operator-share-content { border: 0; background: transparent; }
 .operator-share-content h3 { margin: 0; font: 800 16px/1.4 var(--font-s); }
 .operator-share-help { margin-top: 14px; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
 .operator-share-privacy { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
-.operator-share-privacy summary { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; list-style: none; cursor: pointer; color: var(--tea); border-radius: 10px; }
+.operator-share-privacy summary { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; list-style: none; cursor: pointer; color: var(--theme-strong-text, var(--tea)); border-radius: 10px; }
 .operator-share-privacy summary::-webkit-details-marker { display: none; }
 .operator-share-privacy summary::marker { content: ''; }
 .operator-share-privacy summary > svg { flex: none; margin-top: 2px; }
@@ -113,11 +113,11 @@ defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? fals
 .operator-share-footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .operator-share-footer-note { color: var(--ink-60); font-size: 12px; white-space: nowrap; }
 .operator-share-footer-button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font: 700 12px/1.5 var(--font-b); cursor: pointer; }
-.operator-share-footer-button.is-danger { border-color: var(--rouge); color: var(--rouge); }
-.operator-share-footer-button.is-primary { flex: none; min-width: 76px; background: var(--tea); border-color: var(--tea); color: var(--cream); }
+.operator-share-footer-button.is-danger { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); }
+.operator-share-footer-button.is-primary { flex: none; min-width: 76px; background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
 .operator-share-footer-button:hover:not(:disabled) { background: var(--paper); }
-.operator-share-footer-button.is-primary:hover { background: var(--ink); }
-.operator-share-footer-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.operator-share-footer-button.is-primary:hover { background: var(--theme-control-bg, var(--ink)); }
+.operator-share-footer-button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .operator-share-footer-button:disabled { opacity: .5; cursor: not-allowed; }
 .is-short-viewport .operator-share-header { padding-block: 8px; }
 .is-short-viewport .operator-share-dialog { max-height: 100%; }

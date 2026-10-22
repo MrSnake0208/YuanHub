@@ -10,7 +10,7 @@
 .pool-editor {
   --keyboard-inset: 0px;
   --editor-body-bottom-space: 24px;
-  --editor-green: #426451;
+  --editor-green: var(--theme-success-text, #426451);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -341,8 +341,8 @@ input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; font: inheri
 .is-header-compact .progress-card { display: none; }
 .is-header-compact .compact-progress { display: block; flex: none; min-width: 0; padding: 6px 2px; border: 0; background: transparent; color: var(--editor-green); font-size: 12px; }
 .editor-header .close-button { min-width: 36px; min-height: 36px; padding: 7px; }
-.composer-actions > .primary:not(:disabled), .footer-actions > .primary:not(:disabled) { border-color: var(--editor-green); background: var(--editor-green); color: var(--surface); }
-.composer-actions > .primary:not(:disabled):hover, .footer-actions > .primary:not(:disabled):hover { background: color-mix(in srgb, var(--editor-green) 90%, var(--ink)); }
+.composer-actions > .primary:not(:disabled), .footer-actions > .primary:not(:disabled) { border-color: var(--editor-green); background: var(--theme-success-control, var(--editor-green)); color: var(--on-surface); }
+.composer-actions > .primary:not(:disabled):hover, .footer-actions > .primary:not(:disabled):hover { background: color-mix(in srgb, var(--theme-success-control, var(--editor-green)) 90%, var(--theme-control-bg, var(--ink))); }
 footer { gap: 8px; padding-block: 10px max(10px, env(safe-area-inset-bottom)); background: var(--surface); }
 .footer-state { flex: 1; min-width: 0; font-size: 11px; }
 .footer-actions { flex: none; gap: 6px; }

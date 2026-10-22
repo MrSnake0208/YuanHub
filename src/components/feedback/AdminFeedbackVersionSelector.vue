@@ -127,9 +127,9 @@ onMounted(loadVersions)
 .admin-version-panel.dialog .admin-version-body { border-top: 0; }
 .admin-version-trigger { border: 0; background: transparent; color: var(--feedback-text); cursor: pointer; }
 .admin-version-trigger:hover { background: var(--feedback-panel-hover); }
-.admin-version-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.admin-version-trigger:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -2px; }
 .admin-version-trigger:disabled { cursor: wait; }
-.admin-version-kicker { color: var(--accent-strong); }
+.admin-version-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 .admin-version-heading strong { color: var(--feedback-text); }
 .admin-version-summary-text { color: var(--feedback-text-muted); }
 .admin-version-chevron { color: var(--feedback-text-dim); transition: transform .16s ease; }

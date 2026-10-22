@@ -107,7 +107,7 @@ onBeforeUnmount(cleanup)
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.calendar-filter-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.calendar-filter-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 45%, transparent)); }
 .calendar-filter-sheet { background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0; color: var(--ink); }
 .calendar-filter-sheet-header button { background: transparent; border-color: transparent; font-weight: 600; }
 .calendar-filter-sheet-header button:active { background: var(--cream); }
@@ -118,7 +118,7 @@ onBeforeUnmount(cleanup)
   .calendar-filter-sheet-footer button:hover { background: var(--tea-deep); }
 }
 @media (min-width: 1024px) {
-  .calendar-filter-mask { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+  .calendar-filter-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 18%, transparent)); }
   .calendar-filter-sheet { border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 18%, transparent); }
 }
 </style>

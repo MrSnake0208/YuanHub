@@ -102,14 +102,14 @@ onBeforeUnmount(function () { mounted = false; requestId += 1 })
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .changelog-highlights { color: var(--ink-60); }
-.changelog-full summary { color: var(--tea); cursor: pointer; }
-.changelog-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
+.changelog-full summary { color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
+.changelog-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.45); }
 .changelog-card header { border-bottom: 1px solid var(--line); }
 .version { background: var(--yellow); border-radius: 999px; }
 .changelog-card time { color: var(--ink-60); }
-.state { color: var(--ink-60); background: rgba(255,253,246,.7); border: 1px dashed var(--line); border-radius: 18px; }
-.state button, .load-more { border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); cursor: pointer; }
-.inline-error { color: var(--rouge); }
+.state { color: var(--ink-60); background: var(--theme-surface, rgba(255,253,246,.7)); border: 1px dashed var(--line); border-radius: 18px; }
+.state button, .load-more { border: 0; border-radius: 999px; color: var(--on-strong); background: var(--tea); cursor: pointer; }
+.inline-error { color: var(--theme-danger-text, var(--rouge)); }
 .anchor-status { color: var(--ink-60); }
 .load-more:disabled { opacity: .55; cursor: wait; }
 @media (max-width: 640px) { .changelog-card { border-radius: 14px; } }

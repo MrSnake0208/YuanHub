@@ -151,10 +151,10 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .tutorial-guide { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
-.tutorial-guide button, .tutorial-actions a { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--tea); cursor: pointer; text-decoration: none; }
+.tutorial-guide button, .tutorial-actions a { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); cursor: pointer; text-decoration: none; }
 .tutorial-note { color: var(--ink-60); }
-.tutorial-error { color: var(--rouge); }
-.tutorial-guide :focus-visible { outline: 2px solid var(--tea); outline-offset: -2px; }
+.tutorial-error { color: var(--theme-danger-text, var(--rouge)); }
+.tutorial-guide :focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: -2px; }
 </style>
 <style scoped src="./onboardingGuideDesktop.css"></style>
 <style scoped src="./onboardingGuideMobile.css"></style>

@@ -534,27 +534,27 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .beta-main {
-  background: #f7f2e8;
+  background: var(--theme-surface, #f7f2e8);
 }
 
 .beta-page {
   background:
-    radial-gradient(circle at 14% 8%, rgba(231, 196, 111, .18), transparent 31rem),
-    radial-gradient(circle at 88% 19%, rgba(176, 138, 86, .08), transparent 25rem),
-    linear-gradient(180deg, #fbf8f1 0%, #f7f2e8 58%, #f5efe4 100%);
+    radial-gradient(circle at 14% 8%, var(--theme-wash-strong, rgba(231, 196, 111, .18)), transparent 31rem),
+    radial-gradient(circle at 88% 19%, var(--theme-wash, rgba(176, 138, 86, .08)), transparent 25rem),
+    linear-gradient(180deg, var(--theme-surface, #fbf8f1) 0%, var(--theme-surface, #f7f2e8) 58%, var(--theme-surface, #f5efe4) 100%);
 }
 
 .beta-page::before,
 .beta-page::after {
-  border: 1px solid rgba(97, 74, 50, .07);
+  border: 1px solid var(--theme-line, rgba(97, 74, 50, .07));
   border-radius: 50%;
   content: '';
   pointer-events: none;
 }
 
 .beta-topbar-wrap {
-  border-bottom: 1px solid rgba(73, 59, 44, .1);
-  background: rgba(251, 248, 241, .86);
+  border-bottom: 1px solid var(--theme-line, rgba(73, 59, 44, .1));
+  background: var(--theme-surface, rgba(251, 248, 241, .86));
   backdrop-filter: blur(16px);
 }
 
@@ -568,7 +568,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-topbar-divider {
-  background: rgba(73, 59, 44, .16);
+  background: var(--theme-wash-strong, rgba(73, 59, 44, .16));
 }
 
 .beta-topbar-label {
@@ -576,7 +576,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-home-link {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-decoration: none;
 }
 
@@ -586,9 +586,9 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .local-inline {
-  border: 1px solid rgba(215, 137, 53, .32);
+  border: 1px solid var(--theme-line, rgba(215, 137, 53, .32));
   border-radius: 999px;
-  background: rgba(255, 253, 246, .72);
+  background: var(--theme-surface, rgba(255, 253, 246, .72));
   color: var(--ink-60);
 }
 
@@ -601,8 +601,8 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .local-inline-reset {
   border: 0;
   border-radius: 999px;
-  background: rgba(73, 59, 44, .07);
-  color: var(--tea);
+  background: var(--theme-wash, rgba(73, 59, 44, .07));
+  color: var(--theme-strong-text, var(--tea));
   cursor: pointer;
 }
 
@@ -612,19 +612,19 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-intro-section {
-  border-bottom: 1px solid rgba(73, 59, 44, .1);
+  border-bottom: 1px solid var(--theme-line, rgba(73, 59, 44, .1));
 }
 
 .beta-intro-section::after {
-  border-top: 1px solid rgba(73, 59, 44, .08);
-  border-bottom: 1px solid rgba(73, 59, 44, .06);
+  border-top: 1px solid var(--theme-line, rgba(73, 59, 44, .08));
+  border-bottom: 1px solid var(--theme-line, rgba(73, 59, 44, .06));
   content: '';
   pointer-events: none;
 }
 
 .beta-kicker,
 .section-kicker {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .beta-title {
@@ -634,37 +634,37 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .beta-title-tag {
   border-radius: 10px;
   background: var(--tea);
-  color: var(--cream);
+  color: var(--on-strong);
 }
 
 .beta-intro-copy {
-  color: rgba(73, 59, 44, .72);
+  color: var(--theme-muted, rgba(73, 59, 44, .72));
 }
 
 .beta-redirect-note { border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--ink); }
 
 .beta-promises {
-  color: rgba(73, 59, 44, .68);
+  color: var(--theme-muted, rgba(73, 59, 44, .68));
 }
 
 .beta-promises svg {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .invite-paper {
-  border: 1px solid rgba(73, 59, 44, .14);
+  border: 1px solid var(--theme-line, rgba(73, 59, 44, .14));
   border-radius: 28px 10px 28px 12px;
-  background: rgba(255, 253, 246, .56);
-  box-shadow: 0 28px 50px -38px rgba(73, 59, 44, .52);
+  background: var(--theme-wash-strong, rgba(255, 253, 246, .56));
+  box-shadow: 0 28px 50px -38px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.52);
 }
 
 .invite-card-inner {
-  border: 1px solid rgba(73, 59, 44, .18);
+  border: 1px solid var(--theme-line, rgba(73, 59, 44, .18));
   border-radius: 26px 12px 26px 12px;
   background:
-    linear-gradient(rgba(255, 253, 246, .95), rgba(255, 253, 246, .95)),
-    repeating-linear-gradient(0deg, rgba(73, 59, 44, .02) 0 1px, transparent 1px 5px);
-  box-shadow: 0 30px 70px -48px rgba(73, 59, 44, .62);
+    linear-gradient(var(--theme-surface, rgba(255, 253, 246, .95)), var(--theme-surface, rgba(255, 253, 246, .95))),
+    repeating-linear-gradient(0deg, var(--theme-wash, rgba(73, 59, 44, .02)) 0 1px, transparent 1px 5px);
+  box-shadow: 0 30px 70px -48px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.62);
 }
 
 .invite-card-inner::after {
@@ -726,7 +726,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-error {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 
 .invite-action {
@@ -737,7 +737,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
   border: 1px solid var(--tea);
   border-radius: 999px;
   background: transparent;
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-decoration: none;
   cursor: pointer;
   transition: transform .25s var(--ease), background-color .25s var(--ease), border-color .25s var(--ease), color .25s var(--ease);
@@ -746,8 +746,8 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .beta-button.primary {
   border-color: var(--tea);
   background: var(--tea);
-  color: var(--cream);
-  box-shadow: 0 16px 30px -24px rgba(73, 59, 44, .8);
+  color: var(--on-strong);
+  box-shadow: 0 16px 30px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.8);
 }
 
 .beta-button:hover:not(:disabled) {
@@ -770,7 +770,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .beta-text-button {
   border: 0;
   background: transparent;
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-decoration: underline;
   text-underline-offset: 4px;
   cursor: pointer;
@@ -798,7 +798,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .waiting-note svg {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .preference-details summary {
@@ -830,11 +830,11 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-feedback {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
 }
 
 .beta-feedback.is-error {
-  color: var(--rouge);
+  color: var(--theme-danger-text, var(--rouge));
 }
 
 .spinning {
@@ -859,13 +859,13 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
   border: 1px solid var(--line);
   border-radius: 19px;
   background: color-mix(in srgb, var(--surface) 88%, var(--cream));
-  box-shadow: 0 20px 50px -42px rgba(73, 59, 44, .45);
+  box-shadow: 0 20px 50px -42px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.45);
 }
 
 .experience-icon {
   border-radius: 15px;
   background: var(--yellow);
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .experience-card h3 {
@@ -886,7 +886,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .step-number {
-  color: var(--accent-strong);
+  color: var(--theme-accent-text, var(--accent-strong));
 }
 
 .beta-steps b {
@@ -937,7 +937,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-links a {
-  color: var(--tea);
+  color: var(--theme-strong-text, var(--tea));
   text-underline-offset: 4px;
 }
 
@@ -952,7 +952,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .faq-list summary:focus-visible,
 .beta-interest:focus-within,
 .beta-links a:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--theme-focus, var(--accent));
   outline-offset: 4px;
 }
 
@@ -964,7 +964,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 
   .invite-card-inner {
     border-radius: 22px;
-    box-shadow: 0 20px 48px -38px rgba(73, 59, 44, .5);
+    box-shadow: 0 20px 48px -38px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.5);
   }
 
   .invite-seal {

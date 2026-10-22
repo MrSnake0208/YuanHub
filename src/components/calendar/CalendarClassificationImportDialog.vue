@@ -106,7 +106,7 @@ onBeforeUnmount(() => { alive = false; document.body.style.overflow = bodyOverfl
 <style src="../../pages/calendar/calendarDesktop.css"></style>
 <style src="../../pages/calendar/calendarMobile.css"></style>
 <style scoped>
-.calendar-import-mask { background: rgba(73, 59, 44, .35); }
+.calendar-import-mask { background: var(--theme-overlay, rgba(73, 59, 44, .35)); }
 .calendar-import-dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
 .calendar-import-head, .calendar-import-footer { border-color: var(--line); }
 .calendar-import-rows p { overflow-wrap: anywhere; }

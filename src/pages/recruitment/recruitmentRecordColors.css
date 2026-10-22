@@ -1,10 +1,10 @@
-.record-bar { --bar-color: var(--accent-strong); border-radius: 6px; color: var(--surface); background-color: var(--bar-color); background-image: repeating-linear-gradient(115deg, transparent 0 14px, rgba(255, 255, 255, .12) 14px 27px); }
+.record-bar { --bar-color: var(--accent-strong); border-radius: 6px; color: var(--on-surface); background-color: var(--bar-color); background-image: repeating-linear-gradient(115deg, transparent 0 14px, var(--theme-wash, rgba(255, 255, 255, .12)) 14px 27px); }
 .record-bar.bar-low { --bar-color: #367447; }
 .record-bar.bar-high { --bar-color: var(--rouge); }
 .record-bar.bar-unknown, .record-bar.bar-count { --bar-color: var(--slate-deep); }
-.agent-pull-badge { --badge-color: #F3AB36; border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--tea-deep); }
-.agent-pull-badge.bar-low { --badge-color: #087F5B; color: var(--surface); }
-.agent-pull-badge.bar-high { --badge-color: #C6473B; color: var(--surface); }
-.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { --badge-color: var(--slate-deep); color: var(--surface); }
-.non-up-stamp { border: 2px solid var(--rouge); border-radius: 50%; color: var(--rouge); }
-.agent-order-badge { border: 1px solid var(--accent); border-radius: 4px; background: #F5C84C; color: var(--tea-deep); }
+.agent-pull-badge { --badge-color: #F3AB36; border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--theme-strong-text, var(--tea-deep)); }
+.agent-pull-badge.bar-low { --badge-color: #087F5B; color: var(--on-surface); }
+.agent-pull-badge.bar-high { --badge-color: #C6473B; color: var(--on-surface); }
+.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { --badge-color: var(--slate-deep); color: var(--on-surface); }
+.non-up-stamp { border: 2px solid var(--rouge); border-radius: 50%; color: var(--theme-danger-text, var(--rouge)); }
+.agent-order-badge { border: 1px solid var(--accent); border-radius: 4px; background: var(--theme-accent-bg, #F5C84C); color: var(--theme-strong-text, var(--tea-deep)); }

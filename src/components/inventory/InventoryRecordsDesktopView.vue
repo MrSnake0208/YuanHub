@@ -49,17 +49,17 @@ defineEmits(['delete-record', 'toggle-details'])
 <style scoped>
 /* 仅由平板/桌面视图挂载，状态与操作由 RecordsView 共享。 */
 .records-desktop-panel { padding: 18px 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
-h2 { display: flex; align-items: center; gap: 8px; margin: 0; padding-bottom: 14px; color: var(--tea); font: 900 22px/1.4 var(--font-s); }
-h2 svg { color: var(--accent); }
+h2 { display: flex; align-items: center; gap: 8px; margin: 0; padding-bottom: 14px; color: var(--theme-strong-text, var(--tea)); font: 900 22px/1.4 var(--font-s); }
+h2 svg { color: var(--theme-accent-text, var(--accent)); }
 .record-list { display: grid; list-style: none; margin: 0; padding: 0; }
 .record { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(150px, auto); align-items: start; gap: 8px 14px; padding: 18px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 .record:hover { transform: none; box-shadow: none; }
-.record-marker { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cream); color: var(--tea); }
-.record-reward_delta .record-marker { color: var(--accent-strong); background: color-mix(in srgb, var(--yellow) 25%, var(--surface)); }
-.record-consumption_delta .record-marker { color: var(--rouge); background: color-mix(in srgb, var(--rouge) 9%, var(--surface)); }
+.record-marker { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
+.record-reward_delta .record-marker { color: var(--theme-accent-text, var(--accent-strong)); background: color-mix(in srgb, var(--yellow) 25%, var(--surface)); }
+.record-consumption_delta .record-marker { color: var(--theme-danger-text, var(--rouge)); background: color-mix(in srgb, var(--rouge) 9%, var(--surface)); }
 .record-main { min-width: 0; }
 .record-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
-.record-top strong { color: var(--tea); font: 800 15px/1.5 var(--font-b); }
+.record-top strong { color: var(--theme-strong-text, var(--tea)); font: 800 15px/1.5 var(--font-b); }
 .rtag { padding: 2px 7px; font-size: 10px; }
 .record-entries { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 9px; font-size: 13px; }
 .record-entry { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
@@ -71,9 +71,9 @@ h2 svg { color: var(--accent); }
 .record-time svg { flex: none; }
 .record-actions { display: flex; gap: 8px; }
 .record-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; padding: 5px 10px; border-radius: 8px; font: 700 12px/1.4 var(--font-b); cursor: pointer; }
-.record-detail-toggle { border: 1px solid var(--line); background: var(--cream); color: var(--tea); }
+.record-detail-toggle { border: 1px solid var(--line); background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .record-detail-toggle[aria-expanded="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--yellow) 35%, var(--surface)); }
-.record-detail-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.record-detail-toggle:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .record-details { grid-column: 2 / -1; min-width: 0; padding: 8px 10px; border-radius: 8px; background: var(--cream); }
 .record-id { font-size: 11px; }
 @media (max-width: 900px) {

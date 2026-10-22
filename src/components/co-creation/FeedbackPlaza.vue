@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .plaza-skeleton { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.plaza-skeleton span { border-radius: 6px; background: linear-gradient(90deg, rgba(156, 122, 77, .12), rgba(156, 122, 77, .22), rgba(156, 122, 77, .12)); background-size: 200% 100%; animation: plaza-shimmer 1.3s ease-in-out infinite; }
+.plaza-skeleton span { border-radius: 6px; background: linear-gradient(90deg, var(--theme-wash, rgba(156, 122, 77, .12)), var(--theme-wash-strong, rgba(156, 122, 77, .22)), var(--theme-wash, rgba(156, 122, 77, .12))); background-size: 200% 100%; animation: plaza-shimmer 1.3s ease-in-out infinite; }
 @keyframes plaza-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .plaza-state { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .plaza-state strong { color: var(--feedback-text); }

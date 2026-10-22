@@ -44,7 +44,7 @@ defineProps({
 
 .feedback-workspace-nav a:last-child { border-right: 0; }
 
-.feedback-workspace-header a:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.feedback-workspace-header a:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -3px; }
 </style>
 <style scoped src="./feedbackWorkspaceNavDesktop.css"></style>
 <style scoped src="./feedbackWorkspaceNavMobile.css"></style>

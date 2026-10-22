@@ -323,29 +323,29 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .detail-state { border: 1.5px dashed var(--line); border-radius: 24px; background: var(--surface); color: var(--ink-60); }
 .detail-state strong { color: var(--ink); }
-.detail-state a, .detail-state button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); text-decoration: none; cursor: pointer; }
+.detail-state a, .detail-state button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--on-strong); text-decoration: none; cursor: pointer; }
 .loading-mark { border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: detail-spin .8s linear infinite; }
-.conversion-notice { color: var(--rouge); }
+.conversion-notice { color: var(--theme-danger-text, var(--rouge)); }
 .work-metrics { color: var(--ink-60); }
 .work-metrics dd { color: var(--ink); }
 .level-card { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .level-card span { color: var(--ink-60); }
-.level-card code { color: var(--brand-blue); }
+.level-card code { color: var(--theme-info-text, var(--brand-blue)); }
 .level-card.unmatched { border-style: dashed; }
 .operator-grid { border: 1px solid var(--line); border-radius: 18px; background: var(--line); }
 .operator-card { background: var(--surface); }
 .operator-card img, .operator-fallback { border-radius: 18px; background: var(--paper); }
 .operator-fallback { color: var(--ink-35); }
 .slot-number { color: var(--ink-60); }
-.slot-number b { border-radius: 50%; background: var(--slate); color: var(--cream); }
+.slot-number b { border-radius: 50%; background: var(--slate); color: var(--on-strong); }
 .operator-hint { color: var(--ink-35); }
 .work-details, .section-note { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); }
 .section-note { color: var(--ink-60); }
 .round-table-wrap { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
-.round-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.round-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .round-table { border-collapse: collapse; }
 .round-table th, .round-table td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.round-table thead th { background: var(--tea); color: var(--cream); }
+.round-table thead th { background: var(--tea); color: var(--on-strong); }
 .round-table thead th span { color: rgba(255, 248, 236, .64); }
 .round-table tbody th { background: var(--paper); }
 .action-list li > span { border-radius: 6px; background: var(--yellow); }
@@ -354,28 +354,28 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .compat-summary { border: 1px solid currentColor; border-radius: 14px; background: var(--surface); }
 .compat-summary span { color: var(--ink-60); }
 .compat-summary p { color: var(--ink-60); }
-.status-exact { color: #47704b; }
-.status-partial { color: var(--accent-strong); }
-.status-unsupported, .status-unknown { color: var(--rouge); }
+.status-exact { color: var(--theme-success-text, #47704b); }
+.status-partial { color: var(--theme-accent-text, var(--accent-strong)); }
+.status-unsupported, .status-unknown { color: var(--theme-danger-text, var(--rouge)); }
 :deep(.issue-empty) { color: var(--ink-60); }
 :deep(.issue-list li) { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 :deep(.severity) { border: 1px solid currentColor; border-radius: 6px; }
-:deep(.severity-partial) { color: var(--accent-strong); }
-:deep(.severity-unsupported) { color: var(--rouge); }
+:deep(.severity-partial) { color: var(--theme-accent-text, var(--accent-strong)); }
+:deep(.severity-unsupported) { color: var(--theme-danger-text, var(--rouge)); }
 :deep(.issue-list dt) { color: var(--ink-35); }
 :deep(.issue-list dd) { color: var(--ink-60); }
 .target-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .target-card > header { background: var(--cream); }
 .target-card header span { color: var(--ink-60); }
-.target-card button, .raw-source button, .document-viewer button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
+.target-card button, .raw-source button, .document-viewer button { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--on-strong); cursor: pointer; }
 .target-body > p:first-child { color: var(--ink-60); }
-.target-error { color: var(--rouge); }
+.target-error { color: var(--theme-danger-text, var(--rouge)); }
 .document-viewer, .raw-source { border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
 .document-viewer summary, .raw-source summary { cursor: pointer; }
 .document-viewer pre, .raw-source pre { border-radius: 10px; background: var(--paper); color: var(--ink); }
 .document-note { color: var(--ink-60); }
 .raw-source { background: var(--surface); }
-.copy-feedback { color: var(--accent-strong); }
+.copy-feedback { color: var(--theme-accent-text, var(--accent-strong)); }
 @keyframes detail-spin { to { transform: rotate(360deg); } }
 @media (max-width: 767px) {
   .detail-state { border-radius: 18px; }

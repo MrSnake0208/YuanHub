@@ -1,9 +1,9 @@
 import { localDayKey } from './acquiredStats.js'
 
 export const DRAW_RESOURCES = [
-  { id: 'baijinbi', name: '白金币', color: '#719eaf' },
-  { id: 'fuchuan', name: '符传', color: '#785454' },
-  { id: 'tianjifuchuan', name: '天机符传', color: '#d5a064' }
+  { id: 'baijinbi', name: '白金币', color: 'var(--theme-info-text, #719eaf)' },
+  { id: 'fuchuan', name: '符传', color: 'var(--theme-danger-text, #785454)' },
+  { id: 'tianjifuchuan', name: '天机符传', color: 'var(--theme-accent-text, #d5a064)' }
 ]
 
 // Reconstruct only after an observed snapshot. Reward totals alone are not stock.

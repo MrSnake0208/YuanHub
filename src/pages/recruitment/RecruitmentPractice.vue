@@ -31,7 +31,7 @@ useModalFocus(computed(() => !selected.value), panel, { initialFocus: () => pane
 </script>
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.practice-panel{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}p{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.practice-panel{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}p{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
 </style>
 <style scoped src="./recruitmentPracticeDesktop.css"></style>
 <style scoped src="./recruitmentPracticeMobile.css"></style>

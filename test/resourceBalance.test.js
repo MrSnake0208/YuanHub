@@ -27,9 +27,9 @@ test('茱萸仅有奖励不能当库存零值，必须等盘点；完整快照�
 })
 test('draw resource colors keep the report legend mapping stable', () => {
   assert.deepEqual(DRAW_RESOURCES.map(resource => [resource.id, resource.color]), [
-    ['baijinbi', '#719eaf'],
-    ['fuchuan', '#785454'],
-    ['tianjifuchuan', '#d5a064']
+    ['baijinbi', 'var(--theme-info-text, #719eaf)'],
+    ['fuchuan', 'var(--theme-danger-text, #785454)'],
+    ['tianjifuchuan', 'var(--theme-accent-text, #d5a064)']
   ])
 })
 test('requires a snapshot, preserves missing days, and calculates cross-day net changes', () => {
