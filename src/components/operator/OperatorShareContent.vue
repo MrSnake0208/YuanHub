@@ -213,7 +213,7 @@
                         <span v-if="!entry.sp_of && shareHuajiValue(entry) < 25" class="share-growth-number">{{ starCardNode(shareHuajiValue(entry)) }}</span>
                       </template>
                       <span v-else class="share-growth-number">{{ operatorHuajiLabel({ ...entry, ...entry.growth }) }}</span>
-                      <small v-if="shareHuajiValue(entry) != null && (operatorHuaji({ ...entry, ...entry.growth }).awakened === true || (shareHuajiValue(entry) === 25 && operatorAwakeningSupported(entry)))">{{ operatorHuaji({ ...entry, ...entry.growth }).awakened === true ? '已觉醒' : operatorHuaji({ ...entry, ...entry.growth }).awakened === false ? '未觉醒' : '觉醒待确认' }}</small>
+                      <small v-if="shareHuajiValue(entry) != null && (operatorHuaji({ ...entry, ...entry.growth }).awakened === true || (shareHuajiValue(entry) === 25 && operatorAwakeningSupported(entry)))">{{ operatorHuaji({ ...entry, ...entry.growth }).awakened === true ? '已觉醒' : '未觉醒' }}</small>
                     </span>
                   </div>
                 </section>

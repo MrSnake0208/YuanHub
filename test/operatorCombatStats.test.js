@@ -338,7 +338,7 @@ test('养成输入变化后自动计算优先，并保留手动值回退入口',
   assert.equal(stats.manualFallbackAvailable, true)
 })
 
-test('stage或觉醒未知时保留观测，不推五星或自动面板', () => {
+test('尚未取得后端结果时保留观测，前端不自行推算面板', () => {
   for (const huaji of [{ owned: true, stage: null, awakened: true }, { owned: true, stage: 25, awakened: null }]) {
     const result = calculateOperatorCombatStats({ stored: { observed_attack: 4001, observed_hp: 20245 }, input: { operatorName: '杨修', level: 100, elite: 17, huaji } })
     assert.equal(result.automaticResultAvailable, false)

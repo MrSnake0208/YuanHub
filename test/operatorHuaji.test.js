@@ -10,13 +10,13 @@ test('旧25..30均为五星，不展示第五颗星的小节点', () => {
   }
 })
 
-test('独立事实优先于旧值，31不猜stage，缺字段与确认false不同', () => {
-  assert.deepEqual(operatorHuaji({ starLevel: 31 }), { owned: true, stage: null, awakened: true })
+test('独立记录优先，旧31表示五星觉醒，未填觉醒按未觉醒展示', () => {
+  assert.deepEqual(operatorHuaji({ starLevel: 31 }), { owned: true, stage: 25, awakened: true })
   assert.deepEqual(operatorHuaji({ level: 100, elite: 17 }), { owned: false, stage: null, awakened: null })
   const facts = { owned: true, stage: null, awakened: false }
   assert.deepEqual(operatorHuaji({ starLevel: 31, huaji: facts }), facts)
-  assert.match(operatorHuajiLabel({ huaji: facts }), /化极待确认.*未觉醒/)
-  assert.match(operatorHuajiLabel({ starLevel: 25 }), /5 星.*觉醒待确认/)
+  assert.match(operatorHuajiLabel({ huaji: facts }), /化极待确认/)
+  assert.match(operatorHuajiLabel({ starLevel: 25 }), /5 星.*未觉醒/)
 })
 
 test('隐密异常不造合法星级，SP稀疏映射且占位不算拥有', () => {
@@ -46,7 +46,7 @@ test('五星后接手动觉醒，三态不混淆，只有确认觉醒才最终�
       assert.equal(operatorHuajiAction(entry).kind, awakened === true ? 'complete' : 'awakening')
       assert.equal(operatorHuajiComplete(entry), awakened === true)
     }
-    assert.equal(operatorHuajiAction({ ...row, starLevel: 31, huaji: null }).kind, 'unknown')
+    assert.equal(operatorHuajiAction({ ...row, starLevel: 31, huaji: null }).kind, 'complete')
   }
 })
 
@@ -61,18 +61,19 @@ test('隐密、SP、无资料、未拥有、历史异常均无觉醒快捷写入
     assert.notEqual(operatorHuajiAction(row).kind, 'awakening')
   }
   assert.doesNotMatch(operatorHuajiLabel({ rarity: 4, starLevel: 7 }), /觉醒待确认/)
-  assert.match(operatorHuajiLabel({ rarity: 4, starLevel: 31 }), /化极待确认.*已觉醒（历史确认）/)
+  assert.match(operatorHuajiLabel({ rarity: 4, starLevel: 31 }), /5 星.*已觉醒/)
 })
 
-test('草稿阶段与独立事实同步，旧31只在明确补stage时变化且保留觉醒', () => {
+test('觉醒草稿按五星读取，降星清除觉醒，未拥有保持空值', () => {
   const history = { rarity: 4, starLevel: 31, huaji: { owned: true, stage: null, awakened: true } }
-  assert.deepEqual(operatorHuajiDraft(history, 31), history.huaji)
+  assert.deepEqual(operatorHuajiDraft(history, 31), { owned: true, stage: 25, awakened: true })
   assert.deepEqual(operatorHuajiDraft(history, 25), { owned: true, stage: 25, awakened: true })
   for (const awakened of [null, false, true]) {
     assert.deepEqual(operatorHuajiDraft({ rarity: 4, starLevel: 19, huaji: { owned: true, stage: 19, awakened } }, 25), { owned: true, stage: 25, awakened })
   }
   assert.deepEqual(operatorHuajiDraft({ rarity: 4, starLevel: 30 }, 25), operatorHuaji({ rarity: 4, starLevel: 30 }))
-  assert.deepEqual(operatorHuajiDraft({ spOf: 'base', starLevel: 2, huaji: { owned: true, stage: 7, awakened: true } }, 3), { owned: true, stage: 13, awakened: true })
+  assert.deepEqual(operatorHuajiDraft({ spOf: 'base', starLevel: 2, huaji: { owned: true, stage: 7, awakened: true } }, 3), { owned: true, stage: 13, awakened: false })
+  assert.deepEqual(operatorHuajiDraft(history, 19), { owned: true, stage: 19, awakened: false })
   assert.deepEqual(operatorHuajiDraft(history, 0), { owned: false, stage: 0, awakened: null })
 })
 
@@ -83,5 +84,25 @@ test('快捷觉醒必须由后端能力明确开放，只支持普通紫金密�
   for (const rarity of [4, 5]) assert.equal(operatorAwakeningUpgradeSupported({ rarity, huaji_capabilities: { awakening_upgrade_supported: true } }), true)
   for (const entry of [{ rarity: 3 }, { rarity: 5, spOf: 'base' }, { rarity: 4, huajiCapabilities: { awakeningSupported: false, awakeningUpgradeSupported: true } }]) {
     assert.equal(operatorAwakeningUpgradeSupported({ huajiCapabilities: { awakeningUpgradeSupported: true }, ...entry }), false)
+  }
+})
+
+
+test('所有星级未填觉醒与false展示一致，普通和SP的已觉醒均为五星', () => {
+  for (const stage of [1, 7, 13, 19, 24, 25]) {
+    const entry = { rarity: 5, huaji: { owned: true, stage, awakened: false } }
+    const expected = operatorHuajiLabel(entry)
+    for (const awakened of [null, undefined]) {
+      assert.equal(operatorHuajiLabel({ ...entry, huaji: { ...entry.huaji, awakened } }), expected)
+    }
+    assert.doesNotMatch(expected, /觉醒待确认/)
+  }
+  for (const entry of [
+    { rarity: 5 },
+    { rarity: 5, spOf: 'base', id: 'char_084_chendengsp' }
+  ]) {
+    const history = { ...entry, huaji: { owned: true, stage: null, awakened: true } }
+    assert.equal(operatorHuaji(history).stage, 25)
+    assert.match(operatorHuajiLabel(history), /5 星.*已觉醒/)
   }
 })

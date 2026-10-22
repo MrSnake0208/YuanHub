@@ -19,7 +19,7 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()) })
 it.each([null, false])('stage25 + %s 只PATCH觉醒事实，不触发升级或自动改未知', async awakened => {
   const wrapper = render(entry(awakened))
   await flushPromises()
-  expect(wrapper.text()).toContain('不由 Hub 扣除材料')
+  expect(wrapper.text()).toContain('不扣除材料')
   expect(patchOperatorCurrent).not.toHaveBeenCalled()
   await confirm(wrapper).trigger('click'); await flushPromises()
   expect(patchOperatorCurrent).toHaveBeenCalledExactlyOnceWith({ accountId: 'acc', operatorId: 'op', game: '如鸢',
@@ -29,7 +29,7 @@ it.each([null, false])('stage25 + %s 只PATCH觉醒事实，不触发升级或�
   expect(executeOperatorUpgrade).not.toHaveBeenCalled()
 })
 
-it('未知可显式记录false，取消保留未知，Escape恢复入口焦点', async () => {
+it('未填觉醒默认未觉醒且无需确认false，取消不写入并恢复焦点', async () => {
   const opener = document.createElement('button'); document.body.append(opener); opener.focus()
   const wrapper = render()
   await flushPromises()
@@ -40,8 +40,10 @@ it('未知可显式记录false，取消保留未知，Escape恢复入口焦点',
   expect(document.activeElement).toBe(opener)
   opener.remove()
   const another = render()
-  await another.findAll('button').find(button => button.text() === '确认未觉醒').trigger('click'); await flushPromises()
-  expect(patchOperatorCurrent.mock.lastCall[0].patch.huaji).toEqual({ awakened: false })
+  expect(another.text()).toContain('未记录时按未觉醒计算')
+  expect(another.findAll('button').some(button => button.text() === '确认未觉醒')).toBe(false)
+  expect(another.text()).not.toContain('待确认')
+  expect(patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
 it('保存中重复点击及快速关闭不会发送第二次请求', async () => {

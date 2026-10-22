@@ -2642,7 +2642,7 @@
                         {{ s }}星
                       </button>
                     </span>
-                    <div v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="editor-awakening">
+                    <div v-if="operatorAwakeningSupported(editingOp) && editorCanConfirmAwakening" class="editor-awakening">
                       <span>觉醒</span>
                       <button
                         type="button"
@@ -2650,11 +2650,11 @@
                         :class="{ on: editForm.owned && editForm.awakened === true }"
                         role="switch"
                         :aria-checked="editForm.owned && editForm.awakened === true"
-                        :aria-label="editForm.awakened == null ? '觉醒确认，当前待确认' : '觉醒确认'"
+                        aria-label="五星后觉醒（可选）"
                         :disabled="savingEdit || !operatorAwakeningSupported(editingOp) || editForm.owned === false || !editorCanConfirmAwakening"
                         :title="!editorCanConfirmAwakening ? '达到五星后可记录觉醒' : '仅记录游戏内觉醒状态，不扣库存；点击切换，保存后生效'"
                         @click="toggleEditAwakening"
-                      ><span>{{ editForm.awakened == null ? '待确认' : editForm.owned && editForm.awakened === true ? 'ON' : 'OFF' }}</span><span class="editor-awakening-thumb" aria-hidden="true"></span></button>
+                      ><span>{{ editForm.owned && editForm.awakened === true ? '已觉醒' : '未觉醒' }}</span><span class="editor-awakening-thumb" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div
@@ -2681,7 +2681,7 @@
                       </button>
                     </span>
                   </div>
-                  <small v-if="operatorAwakeningSupported(editingOp) && editForm.awakened == null && Number(editForm.starLevel) === 25" class="star-awakening-hint">觉醒待确认；五星后可记录。</small>
+                  <small v-if="operatorAwakeningSupported(editingOp) && editorCanConfirmAwakening" class="star-awakening-hint">觉醒为五星后的可选阶段，未开启时按未觉醒计算。</small>
                   <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" class="huaji-review-note" role="status"><CircleAlert :size="16" aria-hidden="true" />历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 </div>
                 <div class="oddity-editor">
@@ -4746,7 +4746,7 @@ const starGroupName = computed(function () {
   if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1;
   return "none";
 });
-const editorCanConfirmAwakening = computed(() => editForm.value.huaji?.awakened === true || (editForm.value.owned && Number(editForm.value.starLevel) === 25));
+const editorCanConfirmAwakening = computed(() => editForm.value.owned && Number(editForm.value.starLevel) === (editingOp.value?.spOf ? 5 : 25));
 function toggleEditAwakening() {
   if (savingEdit.value || !operatorAwakeningSupported(editingOp.value) || editForm.value.owned === false || !editorCanConfirmAwakening.value) return;
   editForm.value.awakened = editForm.value.awakened !== true;
@@ -4758,8 +4758,7 @@ const starNode = computed(function () {
 });
 
 function pickStarGroup(g) {
-  // 只关闭本次新开启的草稿，历史已确认的觉醒仍独立保留。
-  if (Number(g) !== 5 && editForm.value.awakened === true && editForm.value.huaji?.awakened !== true) {
+  if (Number(g) !== 5 && editForm.value.awakened === true) {
     editForm.value.awakened = false;
   }
   editForm.value.owned = g !== "none";
@@ -6368,8 +6367,8 @@ function setGrowthDraft(entry, field, value, closePopover) {
 
 function starDraftGroup(entry) {
   const value = cardGrowthValue(entry, "star");
-  if (entry.spOf) return value;
   if (operatorAwakeningSupported(entry) && cardHuaji(entry).awakened === true) return 'awakening';
+  if (entry.spOf) return value;
   if (operatorHuaji(entry).owned && operatorHuaji(entry).stage == null && value === Number(entry.starLevel)) return -1;
   return value > 0 ? Math.floor((value - 1) / 6) + 1 : 0;
 }
@@ -6384,7 +6383,7 @@ function setStarDraftGroup(entry, event) {
   const draft = ensureCardDraft(entry);
   if (value === 'awakening') {
     if (!operatorAwakeningSupported(entry)) return;
-    setGrowthDraft(entry, "star", 25, false);
+    setGrowthDraft(entry, "star", entry.spOf ? 5 : 25, false);
     draft.awakened = true;
     return;
   }

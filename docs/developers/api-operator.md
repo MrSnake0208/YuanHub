@@ -84,3 +84,10 @@ curl --fail-with-body -H 'Authorization: Bearer REPLACE_WITH_USER_JWT' \
 ## 站内登录面板计算
 
 新增 `POST /v1/operator/panel/preview` 和 `/current`，使用站内 JWT，不是 OpenAPI Token 接口。前者接收本人账号、密探养成和本人星石实例草稿；后者最多100个不同密探ID。只返回最终攻击/生命、状态、缺失字段和规则版本，禁止客户端系数。详情与示例见[Backend 面板契约](../../../BackEndV3-Share/docs/operator-panel-rules.md)。公开分享在已授权条目中附加 `panel`，不开放匿名任意输入计算。
+
+
+### 觉醒默认值（2026-10-22）
+
+觉醒是五星后的可选阶段。面板请求中 `huaji.awakened` 省略、null 或 false 均按未觉醒计算；只有 true 叠加觉醒加成。前端仅在五星显示可选开关，默认关闭，不要求用户确认未觉醒。普通 stage25 和 SP 的第5星对应同一前置阶段。
+
+已确认觉醒（含旧 starLevel31）的有效阶段为五星；前端降星会清除觉醒，后端拒绝明确的低星+觉醒组合。PATCH 省略字段仍表示保留已有记录，不能据此清除已经保存的觉醒。此次不需要重导私有规则或迁移用户数据库。
