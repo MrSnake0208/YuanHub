@@ -1,6 +1,8 @@
 export const ADMIN_PERMISSIONS = Object.freeze({
   LEDGER_CATALOG_WRITE: 'ledger_catalog:write',
   BETA_MANAGE: 'beta:manage',
+  ARCHIVE_ACCESS: 'archive:access',
+  OPERATOR_PANEL_USE: 'operator_panel:use',
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   RECRUITMENT_CATALOG_WRITE: 'recruitment_catalog:write',
   ACHIEVEMENT_CATALOG_WRITE: 'achievement_catalog:write',
@@ -16,7 +18,7 @@ export const ADMIN_PERMISSIONS = Object.freeze({
   AUDIT_READ: 'admin:audit:read'
 })
 
-export const ADMIN_ROLES = Object.freeze(['PLATFORM_ADMIN', 'CHANGELOG_EDITOR', 'CHANGELOG_REVIEWER', 'ACTIVITY_CALENDAR_EDITOR', 'SUPER_ADMIN'])
+export const ADMIN_ROLES = Object.freeze(['PLATFORM_ADMIN', 'CHANGELOG_EDITOR', 'CHANGELOG_REVIEWER', 'ACTIVITY_CALENDAR_EDITOR', 'ARCHIVE_USER', 'OPERATOR_PANEL_USER', 'SUPER_ADMIN'])
 export const FEEDBACK_AREAS = Object.freeze([
   'INVENTORY',
   'OPERATOR',
@@ -97,6 +99,7 @@ export function canManageFeedbackArea(access, area) {
 export function hasAnyAdminCapability(access) {
   return !!(
     access &&
-    ((Array.isArray(access.permissions) && access.permissions.length > 0) || canManageAnyFeedback(access))
+    ((Array.isArray(access.permissions) && access.permissions.some(permission =>
+      permission !== ADMIN_PERMISSIONS.ARCHIVE_ACCESS && permission !== ADMIN_PERMISSIONS.OPERATOR_PANEL_USE)) || canManageAnyFeedback(access))
   )
 }

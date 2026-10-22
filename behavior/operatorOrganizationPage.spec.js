@@ -2,6 +2,7 @@ import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
+import { auth } from '../src/store/auth.js'
 import * as api from '../src/api/operator.js'
 import * as inventory from '../src/api/inventory.js'
 import { activeAccount } from '../src/store/activeAccount.js'
@@ -19,7 +20,10 @@ vi.mock('../src/api/operator.js', async original => Object.fromEntries(Object.ke
 vi.mock('../src/api/inventory.js', async original => Object.fromEntries(Object.keys(await original()).map(key => [key, vi.fn()])))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
-vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  return { auth: reactive({ isLoggedIn: true, adminAccess: null }) }
+})
 vi.mock('../src/store/activeAccount.js', async () => {
   const { reactive } = await import('vue')
   return { activeAccount: reactive({ id: 'acc', gameFor: () => '如鸢', set(value) { this.id = value }, setGame: vi.fn(), syncAccounts: vi.fn() }) }
@@ -30,6 +34,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn().mockResolv
 const catalog = ['a', 'b', 'c'].map(id => ({ id, name: id, rarity: 5, games: ['如鸢'], prof: '阳', sub_prof: '输出' }))
 let organization, wrapper
 beforeEach(() => {
+  auth.adminAccess = null;
   vi.resetAllMocks(); dialog.confirm.mockResolvedValue(true); activeAccount.id = 'acc'
   organization = { ...emptyOperatorOrganization(), account_id: 'acc', revision: 0 }
   api.getOperatorOrganization.mockImplementation(async account => ({ ...organization, account_id: account }))
@@ -288,4 +293,25 @@ it('现有文件选择入口读取分类 JSON，仅预览且迟到文件不能�
     expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
     expect(api.putOperatorOrganization).not.toHaveBeenCalled()
   } finally { vi.unstubAllGlobals() }
+})
+
+
+it('自动计算未授权不展示也不请求，授予后可用，撤销后忽略迟到结果', async () => {
+  await render()
+  expect(wrapper.find('[aria-label="当前账号自动补全面板"]').exists()).toBe(false)
+  expect(api.getCurrentOperatorPanels).not.toHaveBeenCalled()
+  expect(api.previewOperatorPanel).not.toHaveBeenCalled()
+  const pending = deferred()
+  api.getCurrentOperatorPanels.mockReturnValue(pending.promise)
+  auth.adminAccess = { permissions: ['operator_panel:use'] }
+  await flushPromises()
+  expect(wrapper.find('[aria-label="当前账号自动补全面板"]').exists()).toBe(true)
+  await vi.waitFor(() => expect(api.getCurrentOperatorPanels).toHaveBeenCalled())
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  pending.resolve({ a: { status: 'calculated', attack: 123456, hp: 654321 } })
+  await flushPromises()
+  expect(wrapper.find('[aria-label="当前账号自动补全面板"]').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('123,456')
+  noGrowthWrites()
 })

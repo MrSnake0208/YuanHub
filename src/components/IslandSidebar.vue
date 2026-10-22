@@ -278,6 +278,7 @@ import {
   X,
   Heart,
 } from "@lucide/vue";
+import { ADMIN_PERMISSIONS, hasPermission } from "@/utils/authPermissions.js";
 import { auth, logout as doLogout } from "@/store/auth.js";
 import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.js";
 import { beta } from "@/store/beta.js";
@@ -301,8 +302,8 @@ const showManagement = computed(() =>
 );
 const showCalendar = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR));
 const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE));
-const showAchievement = computed(() => isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
-const showBonds = computed(() => isFeatureEnabled(FEATURE_KEYS.BOND_ARCHIVE));
+const showAchievement = computed(() => isLoggedIn.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
+const showBonds = computed(() => isLoggedIn.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && isFeatureEnabled(FEATURE_KEYS.BOND_ARCHIVE));
 const showBetaCommunityEntry = computed(
   () =>
     !!isLoggedIn.value &&

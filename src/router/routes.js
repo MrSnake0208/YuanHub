@@ -69,22 +69,22 @@ export const routes = [
     {
         path: '/bonds/admin', name: 'bonds-admin', text: '羁绊目录管理', display: false, module: 'tools', icon: 'link',
         component: () => import('/src/pages/bonds/admin.vue'),
-        meta: { requiresAuth: true, requiredPermission: 'bond_catalog:write', title: '羁绊目录管理 — YuanHub' }
+        meta: { requiresAuth: true, requiredPermission: 'bond_catalog:write', requiredAnyPermission: ['archive:access'], title: '羁绊目录管理 — YuanHub' }
     },
     {
         path: '/bonds', name: 'bonds', text: '羁绊图鉴', display: true, module: 'tools', icon: 'link',
         component: () => import('/src/pages/bonds/index.vue'),
-        meta: { feature: FEATURE_KEYS.BOND_ARCHIVE, featureFallback: '/', title: '羁绊图鉴 — YuanHub' }
+        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.BOND_ARCHIVE, featureFallback: '/', title: '羁绊图鉴 — YuanHub' }
     },
     {
         path: '/achievement/admin', name: 'achievement-admin', text: '成就目录管理', display: false, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/admin.vue'),
-        meta: { requiresAuth: true, requiredPermission: 'achievement_catalog:write', title: '成就目录管理 — YuanHub' }
+        meta: { requiresAuth: true, requiredPermission: 'achievement_catalog:write', requiredAnyPermission: ['archive:access'], title: '成就目录管理 — YuanHub' }
     },
     {
         path: '/achievement', name: 'achievement', text: '成就档案', display: true, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/index.vue'),
-        meta: { feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar', name: 'calendar', text: '活动日历', display: true, module: 'tools', icon: 'calendar-days',

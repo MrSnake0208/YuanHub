@@ -9,14 +9,15 @@ import { ADMIN_PERMISSIONS } from '../src/utils/authPermissions.js'
 const a = { bond_id: 'bond_a', game: '代号鸢', members: ['a', 'b'], action: 'arson', weather: 'sunny', effect: 'positive', status: 'active' }
 const entries = [a, { ...a, bond_id: 'bond_b', members: ['b', 'a'], weather: 'rain' }, { ...a, bond_id: 'bond_c', action: 'poison' }]
 const filters = { query: '', action: '', weather: '', status: '', effect: '', onlyOwned: false, hideRecorded: false }
-test('玩家目录路由公开，目录管理入口复用独立权限', () => {
+test('羁绊路由需要访问授权，目录管理同时需要写权限', () => {
   const page = routes.find(r => r.path === '/bonds')
   const admin = routes.find(r => r.path === '/bonds/admin')
-  assert.equal(page.meta.requiresAuth, undefined)
+  assert.equal(page.meta.requiresAuth, true)
+  assert.equal(page.meta.requiredPermission, ADMIN_PERMISSIONS.ARCHIVE_ACCESS)
   assert.equal(admin.meta.requiresAuth, true)
   assert.equal(admin.meta.requiredPermission, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE)
   assert.equal(getVisibleAdminTools(null).some(t => t.to === '/bonds/admin'), false)
-  assert.equal(getVisibleAdminTools({ permissions: [ADMIN_PERMISSIONS.BOND_CATALOG_WRITE] }).some(t => t.to === '/bonds/admin'), true)
+  assert.equal(getVisibleAdminTools({ permissions: [ADMIN_PERMISSIONS.BOND_CATALOG_WRITE, ADMIN_PERMISSIONS.ARCHIVE_ACCESS] }).some(t => t.to === '/bonds/admin'), true)
 })
 test('无序成员分组，天气及行动保留独立记录，筛选不修改事实', () => {
   const records = [{ bond_id: 'bond_a', triggered: true }]

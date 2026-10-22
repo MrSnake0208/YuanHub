@@ -91,7 +91,7 @@ export function revokeOperatorShare(accountId) {
 }
 
 export function viewOperatorShare(shareCode) {
-  return request(PATH + '/share/view/' + encodeURIComponent(shareCode), { auth: false })
+  return request(PATH + '/share/view/' + encodeURIComponent(shareCode), { auth: true })
 }
 
 // —— 个人密探数据 ——

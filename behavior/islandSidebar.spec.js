@@ -495,3 +495,22 @@ it.each([
   const selected = wrapper.findAllComponents(RouterLinkStub).filter(link => link.classes().includes('active'))
   expect(selected.map(link => link.props('to'))).toEqual([target, target])
 })
+
+
+it('成就羁绊仅对显式授权身份展示，撤销或退出后立即隐藏', async () => {
+  isFeatureEnabled.mockReturnValue(true)
+  auth.accessToken = 'fixture'; auth.userInfo = { id: 'member' }
+  auth.adminAccess = { permissions: ['achievement_catalog:write', 'bond_catalog:write'] }
+  const wrapper = render()
+  expect(routes(wrapper)).not.toContain('/achievement')
+  expect(routes(wrapper)).not.toContain('/bonds')
+  auth.adminAccess = { permissions: ['archive:access'] }; await flushPromises()
+  expect(routes(wrapper)).toContain('/achievement')
+  expect(routes(wrapper)).toContain('/bonds')
+  auth.adminAccess = { permissions: [] }; await flushPromises()
+  expect(routes(wrapper)).not.toContain('/achievement')
+  expect(routes(wrapper)).not.toContain('/bonds')
+  auth.adminAccess = { permissions: ['archive:access'] }; auth.accessToken = ''; await flushPromises()
+  expect(routes(wrapper)).not.toContain('/achievement')
+  wrapper.unmount()
+})

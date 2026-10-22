@@ -2,7 +2,7 @@ import { request } from './request.js'
 
 const PATH = '/v1/bonds'
 const privateRequest = (path, identity, options = {}) => request(PATH + path, { ...options, auth: true, expectedUserId: identity })
-export const getBondCatalog = game => request(PATH + '/catalog?game=' + encodeURIComponent(game), { auth: false })
+export const getBondCatalog = game => request(PATH + '/catalog?game=' + encodeURIComponent(game), { auth: true })
 export const getBondArchive = (account, identity) => privateRequest('/archive?account_id=' + encodeURIComponent(account), identity)
 export const exportBonds = (account, identity) => privateRequest('/export?account_id=' + encodeURIComponent(account), identity)
 export const writeBonds = (account, identity, revision, catalogVersion, records) => privateRequest('/batch', identity, {

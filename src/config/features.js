@@ -24,10 +24,9 @@ export const FEATURE_FLAGS = Object.freeze({
   [FEATURE_KEYS.WORK_SYSTEM]: false,
   [FEATURE_KEYS.RECRUITMENT_ARCHIVE]: true,
   [FEATURE_KEYS.ACTIVITY_CALENDAR]: true,
-  // 两款游戏均无可发布目录；开发仅显示真实空目录，生产保持关闭。
-  [FEATURE_KEYS.ACHIEVEMENT_ARCHIVE]: isViteDev,
-  // 已获本地数据导入授权；正式开放与对外分发仍待确认，生产默认关闭。
-  [FEATURE_KEYS.BOND_ARCHIVE]: isViteDev
+  // 页面和后端接口另按 archive:access 授权，开启构建不代表公开访问。
+  [FEATURE_KEYS.ACHIEVEMENT_ARCHIVE]: true,
+  [FEATURE_KEYS.BOND_ARCHIVE]: true
 })
 
 export function isFeatureEnabled(key) {
