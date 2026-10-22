@@ -1,5 +1,9 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.workbench-pin-hint { font-size: 13px; line-height: 1.7; margin: 0; }
+.workbench-tool-entry { min-width: 0; }
+.workbench-pin { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px; font-size: 13px; }
+
 .page-admin-workbench > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 .page-admin-workbench {

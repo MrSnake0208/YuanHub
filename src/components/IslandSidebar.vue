@@ -122,9 +122,16 @@
             </div>
           </details>
           <section v-if="showManagement" class="mobile-drawer-section mobile-management">
-            <router-link to="/manage" :class="{ active: managementActive }" :aria-current="managementActive ? 'page' : undefined">
+            <router-link to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined">
               <LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span>
             </router-link>
+            <template v-if="pinnedTools.length">
+              <span class="admin-pins-label">常用管理</span>
+              <router-link v-for="tool in pinnedTools" :key="tool.key" :to="tool.to"
+                :class="{ active: pinnedActive(tool) }" :aria-current="pinnedActive(tool) ? 'page' : undefined">
+                <component :is="tool.icon" :size="20" aria-hidden="true" /><span>{{ tool.label }}</span>
+              </router-link>
+            </template>
           </section>
         </nav>
 
@@ -201,7 +208,14 @@
       <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
         <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
       </router-link>
-      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: managementActive }" :aria-current="managementActive ? 'page' : undefined">管理工作台</router-link>
+      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined">管理工作台</router-link>
+      <template v-if="showManagement && pinnedTools.length">
+        <span class="admin-pins-label">常用管理</span>
+        <router-link v-for="tool in pinnedTools" :key="tool.key" :to="tool.to"
+          :class="{ active: pinnedActive(tool) }" :aria-current="pinnedActive(tool) ? 'page' : undefined">
+          <component :is="tool.icon" :size="18" aria-hidden="true" /><span>{{ tool.label }}</span>
+        </router-link>
+      </template>
     </nav>
     <div class="island-foot">
       <details ref="desktopMore" class="sidebar-more" @keydown.esc.stop.prevent="closeDesktopMore(true)" @focusout="onDesktopMoreFocusOut">
@@ -287,10 +301,12 @@ import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
 import { modalFocusState, useModalFocus } from "@/composables/useModalFocus.js";
+import { useAdminNavPins } from "@/composables/useAdminNavPins.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
 
 // 已登录状态（reactive，随 auth 变化）
+const { pinnedTools } = useAdminNavPins();
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
 const showManagement = computed(() =>
@@ -320,6 +336,8 @@ const unreadCount = computed(() => notificationUnreadState.count);
 const router = useRouter();
 const route = useRoute();
 const managementActive = computed(() => isManagementRoute(route.path));
+const pinnedActive = tool => route.path.replace(/\/+$/, '') === tool.to;
+const workbenchActive = computed(() => managementActive.value && !pinnedTools.value.some(pinnedActive));
 const moreActive = computed(() => !managementActive.value && (
   ["/beta", "/changelog", "/install"].includes(route.path) || route.path.startsWith('/developers')
 ));
@@ -436,6 +454,7 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.admin-pins-label { color: var(--ink-60); }
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .sidebar-more-trigger {
   border-radius: 10px;

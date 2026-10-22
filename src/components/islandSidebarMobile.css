@@ -1,5 +1,6 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 1080px) {
+.admin-pins-label { display: block; flex-shrink: 0; padding: 12px 12px 4px; font-size: 12px; }
 .nav .calendar-nav-link { align-items: center; }
 .nav > a { flex-shrink: 0; min-height: 44px; }
 .management-nav-link { margin-top: 12px; }
