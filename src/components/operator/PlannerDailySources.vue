@@ -104,6 +104,7 @@ function open(type) {
   base.value = JSON.stringify(draft.value); loadedRevision.value = props.revision
   busy.value = false; localError.value = ''; selectedSource.value = ''; notice.value = ''
 }
+defineExpose({ openMonthly: () => open('monthly') })
 function close() { generation++; editor.value = ''; busy.value = false; localError.value = '' }
 watch(() => [props.accountId, props.planId], () => { close(); notice.value = ''; applicationGeneration++; confirming.value = false; applicationError.value = ''; emit('clear-preview') })
 watch(() => [props.accountId, props.selectedDate, props.today], () => { fromDate.value = props.selectedDate >= props.today ? props.selectedDate : props.today; overwrite.value = false; emit('clear-preview') }, { immediate: true })

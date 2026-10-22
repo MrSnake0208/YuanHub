@@ -605,3 +605,35 @@ it('两次保存之间中断后重开月卡，用已保存的原值补同步，�
   expect(plannerApi.putStaminaSchedule.mock.calls[0][2].schedule.result.timeline[0].totals.gains).toBe(488)
   expect(settings.text()).toContain('已同步当前方案')
 })
+
+it('每日账本月卡直达已有设置，6-24范围安排走原云端保存并可解除当天固定', async () => {
+  let revision = 0
+  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => {
+    const saved = { ...body, account_id: 'acc', plan_id: 'plan', revision: ++revision }
+    plannerApi.getStaminaSchedule.mockResolvedValue(saved)
+    return saved
+  })
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true, teleport: true } } })
+  await flushPromises(); await wrapper.vm.editSchedule('daily'); await flushPromises()
+  const click = async text => { const target = wrapper.findAll('button').find(button => button.text() === text); expect(target).toBeTruthy(); await target.trigger('click'); await flushPromises() }
+  await click('添加获取'); await click('月卡每日奖励')
+  await click('设置每日月卡')
+  expect(wrapper.find('[aria-label="月卡权益档位"]').exists()).toBe(true)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  await wrapper.get('.settings-close').trigger('click'); await flushPromises()
+  await click('添加支出'); await click('6-24')
+  await wrapper.get('[aria-label="6-24次数"]').setValue(6); await flushPromises()
+  await click('设为每日安排')
+  expect(wrapper.get('[aria-label="每日6-24次数"]').element.value).toBe('6')
+  await wrapper.get('.settings-panel-form').trigger('submit'); await flushPromises()
+  const body = plannerApi.putStaminaSchedule.mock.calls.at(-1)[2]
+  const plans = Object.values(body.manual_plans)
+  expect(plans).toHaveLength(7)
+  expect(plans.every(plan => plan.spends.filter(spend => spend.kind === 'stage624').length === 1 && plan.spends.find(spend => spend.kind === 'stage624').fixed === true && plan.spends.find(spend => spend.kind === 'stage624').value === 6)).toBe(true)
+  expect(wrapper.find('[aria-label="每日6-24次数"]').exists()).toBe(false)
+  await click('解除当天固定')
+  const released = Object.values(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2].manual_plans)
+  expect(released.filter(plan => plan.spends.some(spend => spend.fixed))).toHaveLength(6)
+})

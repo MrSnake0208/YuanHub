@@ -1,4 +1,4 @@
-import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, normalizePlannerSpend, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, planTotals, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
+import { createSpend, isFixedStage624, aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, normalizePlannerSpend, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, planTotals, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
 import { evaluateExactPlans, prepareExactPlanner } from './exactPlanner.js'
 import { exactComparisonScenarios, exactDeadlineAlternatives } from './exactPlannerComparison.js'
 import { MONTHLY_STAMINA_IDS, resolveDailyStaminaGains, sourcesForDate, withMonthlyCardPeriod, withSourcePeriod } from './dailyStaminaSources.js'
@@ -254,7 +254,7 @@ export function recalculateFixedScheduleFrom(schedule, date, manualPlans, option
   const day = schedule.result.timeline.find(day => day.date === date)
   if (!day || day.paused) throw new Error('请先修正此前的无效日程')
   const planned = buildRecommendedPlan({ ...options, state: day.start, gains: day.planned.gains,
-    fixedSpends: day.planned.spends.filter(spend => spend.custom || !['training', 'stage624'].includes(spend.kind)) })
+    fixedSpends: day.planned.spends.filter(spend => isFixedStage624(spend) || spend.custom || !['training', 'stage624'].includes(spend.kind)) })
   const checked = settlePlannerDay(day.start, planned, options)
   if (checked.errors.length) throw new Error(checked.errors.join('；'))
   const nextPlans = { ...clonePlannerValue(manualPlans), [date]: planned }
@@ -314,4 +314,47 @@ export function reviseFixedSchedule(schedule, { date, preferences, strategy, age
     || timeline.filter(day => day.date < baselineDate).at(-1)?.end || schedule.context.initialState
   return createFixedSchedule({ ...schedule.context, date: baselineDate, initialState,
     stock: projectedPlannerStock(schedule, baselineDate), preferences, strategy, agentOrder, levels }, manualPlans, schedule, maxDays)
+}
+
+// Materialize a bounded daily commitment in the existing per-date plans.
+export function applyFixedStage624ToSchedule(schedule, manualPlans, { fromDate, toDate, count }, today) {
+  const validDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date || '') && plannerDateAfter(date, 0) === date
+  if (!validDate(fromDate) || !validDate(toDate) || fromDate > toDate || fromDate < today || fromDate < schedule.baselineDate) throw new Error('请选择今天或未来的有效日期范围')
+  const lastDate = plannerDateAfter(schedule.baselineDate, PLANNER_RULES.maxEtaDays - 1)
+  if (toDate > lastDate) throw new Error('日期不能超出当前90天规划范围，请先更新日程')
+  if (!Number.isInteger(count) || count < 0 || count > 9999) throw new Error('每日次数须为0–9999的整数')
+  const prefix = schedule.result.timeline.filter(day => day.date < fromDate)
+  if (prefix.some(day => day.errors?.length || day.paused)) throw new Error('请先修正开始日期之前的无效日程')
+  const days = new Map(schedule.result.timeline.map(day => [day.date, day]))
+  const initialState = days.get(fromDate)?.start || prefix.at(-1)?.end || schedule.context.initialState
+  let state = clonePlannerValue(initialState)
+  const nextPlans = clonePlannerValue(manualPlans)
+  let affectedDates = 0
+  for (let date = fromDate; date <= toDate; date = plannerDateAfter(date, 1)) {
+    const base = nextPlans[date] || days.get(date)?.planned || buildRecommendedPlan({ ...schedule.context, state, date, initialExtra: 0 })
+    const fixed = { ...createSpend('stage624', { value: count }), fixed: true }
+    const other = base.spends.filter(spend => spend.id !== 'stage624' && spend.kind !== 'stage624')
+    const manualSpends = clonePlannerValue(other)
+    const originalIndex = base.spends.findIndex(spend => spend.id === 'stage624' || spend.kind === 'stage624')
+    manualSpends.splice(originalIndex < 0 ? manualSpends.length : originalIndex, 0, fixed)
+    const plan = nextPlans[date]
+      ? { gains: clonePlannerValue(base.gains), spends: manualSpends }
+      : buildRecommendedPlan({ ...schedule.context, state, date, gains: base.gains,
+        fixedSpends: [...other.filter(spend => spend.custom || spend.kind !== 'training'), fixed] })
+    const settled = settlePlannerDay(state, plan, schedule.context)
+    if (settled.errors.length) throw new Error(`${date}：${settled.errors.join('；')}；未应用任何日期`)
+    nextPlans[date] = normalizePlannerPlan(plan)
+    state = settled.end
+    affectedDates++
+  }
+  const offset = dayOffset(schedule.baselineDate, fromDate)
+  const suffix = createFixedSchedule({ ...schedule.context, date: fromDate, initialState, initialExtra: 0 }, nextPlans, schedule, PLANNER_RULES.maxEtaDays - offset)
+  const next = clonePlannerValue(schedule)
+  next.result = { ...suffix.result, timeline: prefix.concat(suffix.result.timeline.map((day, index) => ({ ...day,
+    index: offset + index, progressRows: plannerProgressRows(next.context.requiredState, next.context.initialState, day, next.context.stock) }))) }
+  if (next.result.etaDays != null) next.result.etaDays = plannerStateIsEmpty(next.context.initialState) ? 0 : dayOffset(next.baselineDate, next.result.timeline.at(-1).date) + 1
+  next.result.lastProgressDay = suffix.result.lastProgressDay ? offset + suffix.result.lastProgressDay
+    : prefix.reduce((last, day) => plannerStateRemaining(day.end) < plannerStateRemaining(day.start) ? dayOffset(next.baselineDate, day.date) + 1 : last, 0)
+  next.context.planBaselines = Object.fromEntries(Object.entries(next.context.planBaselines || {}).filter(([date]) => date < fromDate))
+  return { schedule: next, manualPlans: nextPlans, affectedDates }
 }
