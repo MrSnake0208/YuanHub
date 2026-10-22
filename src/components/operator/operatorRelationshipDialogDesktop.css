@@ -4,6 +4,6 @@
   .relationship-editor header { padding: 20px 24px; }
   .relationship-tabs { margin-inline: 24px; }
   .relationship-dialog-body { padding-inline: 24px; }
-  .relationship-node { grid-template-columns: 18px 64px minmax(0,1fr); padding: 10px 14px; font-size: 14px; }
+  .relationship-node { grid-template-columns: 20px 64px minmax(0,1fr); padding: 12px 10px; font-size: 14px; }
   .relationship-editor footer { padding-inline: 24px; }
 }
