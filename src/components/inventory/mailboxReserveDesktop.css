@@ -1,0 +1,5 @@
+@media (min-width: 768px) {
+  .mailbox-reserve summary span { margin-left: 16px; }
+  .mailbox-row { grid-template-columns: minmax(100px, 180px) minmax(100px, 180px) auto; justify-content: start; }
+  .mailbox-ticket { grid-template-columns: auto 180px auto; align-items: center; justify-content: start; margin: 12px 0; }
+}

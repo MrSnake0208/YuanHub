@@ -1,0 +1,6 @@
+@media (max-width: 767px) {
+  .mailbox-reserve summary span { display: block; margin-top: 6px; }
+  .mailbox-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mailbox-row button { justify-self: start; }
+  .mailbox-ticket { margin: 12px 0; }
+}
