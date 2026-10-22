@@ -48,4 +48,4 @@ curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
 
 ## 站内 StarState 突破字段
 
-站内 JWT StarState 当前档案、恢复和完成回执已支持可空 `inventory[].breakthrough_stage`，表示实际完成突破次数，不改变上面的截图采集协议。同代 PATCH 缺字段保留已有事实；显式 null 清除确认，整数必须与品质和等级匹配。更新沿用 generation/revision CAS 与账号隔离；该字段属于站内 JWT 接口，不属于截图采集 OpenAPI。
+站内 JWT StarState 当前档案、恢复和完成回执已支持可空 `inventory[].breakthrough_stage`，表示实际完成突破次数，不改变上面的截图采集协议。同一实例身份和等级未变时，同代 PATCH 缺字段保留已有事实；显式 null 清除确认，整数必须与品质和等级匹配。更新沿用 generation/revision CAS 与账号隔离；该字段属于站内 JWT 接口，不属于截图采集 OpenAPI。
