@@ -2,17 +2,15 @@
   <Teleport to="body">
     <div v-if="visible" class="modal-mask is-raised awakening-mask" @click.self="close">
       <section ref="panel" class="awakening-panel" role="dialog" aria-modal="true" aria-labelledby="awakening-title" aria-describedby="awakening-help" :aria-busy="pending" tabindex="-1">
-        <h2 id="awakening-title">{{ entry.name }} · {{ unknown ? '确认觉醒状态' : '记录已觉醒' }}</h2>
-        <p id="awakening-help">仅记录在游戏中已完成的状态，不由 Hub 扣除材料。觉醒材料与解锁条件尚待核实，暂不估算成本或完成日期。</p>
-        <p v-if="unknown">当前觉醒状态待确认；请选择你在游戏内核实的结果，也可以取消保留未知。</p>
+        <h2 id="awakening-title">{{ entry.name }} · 记录已觉醒</h2>
+        <p id="awakening-help">觉醒是五星后的可选阶段，未记录时按未觉醒计算。此处仅记录游戏内已完成的觉醒，不扣除材料。</p>
         <p v-if="error" ref="errorEl" class="awakening-error" role="alert" tabindex="-1">{{ error }}</p>
         <p v-if="pending" role="status">{{ syncing ? '正在同步最新养成…' : '正在保存觉醒记录…' }}</p>
         <div class="awakening-actions">
           <button ref="cancelEl" type="button" :disabled="pending" @click="close">取消</button>
           <button v-if="syncRequired" type="button" :disabled="pending" @click="syncCurrent">重新同步</button>
           <template v-else>
-            <button v-if="unknown" type="button" :disabled="pending || !canRecord" @click="save(false)">确认未觉醒</button>
-            <button type="button" class="primary" :disabled="pending || !canRecord" @click="save(true)">确认已在游戏中觉醒</button>
+            <button type="button" class="primary" :disabled="pending || !canRecord" @click="save">确认已在游戏中觉醒</button>
           </template>
         </div>
       </section>
@@ -36,7 +34,6 @@ const emit = defineEmits(['close', 'saved'])
 const pending = ref(false), syncing = ref(false), syncRequired = ref(false), error = ref('')
 const panel = ref(null), cancelEl = ref(null), errorEl = ref(null)
 const visible = computed(() => Boolean(props.entry && props.accountId))
-const unknown = computed(() => operatorHuaji(props.entry).awakened == null)
 const canRecord = computed(() => operatorHuajiAction(props.entry).kind === 'awakening')
 const account = props.accountId, game = props.game, id = props.entry.id
 let disposed = false, contextChanged = false
@@ -64,13 +61,13 @@ async function syncCurrent() {
   }
 }
 
-async function save(awakened) {
+async function save() {
   if (!current() || pending.value || syncRequired.value || !canRecord.value) return
   pending.value = true
   error.value = ''
   try {
     const payload = await patchOperatorCurrent({ accountId: account, operatorId: id, game,
-      patch: { expected_revision: Number(props.entry.revision) || 0, reason: 'manual_correction', huaji: { awakened } } })
+      patch: { expected_revision: Number(props.entry.revision) || 0, reason: 'manual_correction', huaji: { awakened: true } } })
     if (current()) emit('saved', { operatorId: id, payload })
   } catch (err) {
     if (!current()) return

@@ -8,6 +8,7 @@ export function operatorHuaji(entry = {}) {
   if (entry.huaji && typeof entry.huaji.owned === 'boolean') {
     const value = { ...entry.huaji }
     if (value.stage > operatorHuajiMax(entry)) value.stage = null
+    if (value.owned && value.awakened === true && operatorHuajiMax(entry) === 25) value.stage = 25
     return value
   }
   const raw = entry.starLevel ?? entry.star_level
@@ -17,7 +18,7 @@ export function operatorHuaji(entry = {}) {
   if (!value) return { owned: false, stage: 0, awakened: null }
   if (isMovieOperator(entry)) return { owned: true, stage: value <= 5 ? 6 * (value - 1) + 1 : null, awakened: null }
   if (Number(entry.rarity) === 3 && value > 19) return { owned: true, stage: null, awakened: null }
-  if (value === 31) return { owned: true, stage: null, awakened: true }
+  if (value === 31) return { owned: true, stage: 25, awakened: true }
   return { owned: true, stage: value <= 30 ? Math.min(value, 25) : null, awakened: null }
 }
 
@@ -27,7 +28,7 @@ export function operatorHuajiDraft(entry, starLevel) {
     : isMovieOperator(entry) && current.stage > 0 ? (current.stage - 1) / 6 + 1 : current.stage
   if (Number(starLevel) === scalar) return current
   const changed = operatorHuaji({ ...entry, huaji: null, starLevel: Number(starLevel) })
-  return { ...changed, awakened: changed.owned ? current.awakened : null }
+  return { ...changed, awakened: !changed.owned ? null : changed.stage === 25 ? current.awakened : false }
 }
 
 export function operatorHuajiLabel(entry) {
@@ -37,9 +38,7 @@ export function operatorHuajiLabel(entry) {
   const label = stage == null ? '化极待确认' : stage === operatorHuajiMax(entry) ? (Math.floor((stage - 1) / 6) + 1) + ' 星' : isMovieOperator(entry)
     ? Math.floor((stage - 1) / 6) + 1 + ' 星'
     : Math.floor((stage - 1) / 6) + 1 + ' 星 · ' + ((stage - 1) % 6) + ' 节点'
-  if (stage == null && value.awakened === true) return label + ' · 已觉醒（历史确认）'
-  return label + (value.awakened === true ? ' · 已觉醒' : stage == null || (stage === 25 && !isMovieOperator(entry) && Number(entry?.rarity) !== 3)
-    ? value.awakened === false ? ' · 未觉醒' : ' · 觉醒待确认' : '')
+  return label + (value.awakened === true ? ' · 已觉醒' : stage === 25 ? ' · 未觉醒' : '')
 }
 
 export function operatorAwakeningSupported(entry) {
@@ -62,7 +61,7 @@ export function operatorHuajiAction(entry) {
   if (value.stage == null) return { kind: 'unknown', label: value.awakened === true ? '已觉醒 · 化极待确认' : '化极待确认', disabled: true }
   if (value.stage < 1 || value.stage > operatorHuajiMax(entry)) return { kind: 'unknown', label: '化极待复核', disabled: true }
   if (value.stage < operatorHuajiMax(entry)) return { kind: 'upgrade', label: '提升至下一节点', disabled: false }
-  if (operatorAwakeningSupported(entry) && value.awakened !== true) return { kind: 'awakening', label: value.awakened == null ? '确认觉醒状态' : '记录已觉醒', disabled: false }
+  if (operatorAwakeningSupported(entry) && value.awakened !== true) return { kind: 'awakening', label: '记录已觉醒', disabled: false }
   return { kind: 'complete', label: operatorAwakeningSupported(entry) ? '养成已完成' : '化极已满阶', disabled: true }
 }
 
