@@ -1,8 +1,6 @@
 @media (min-width: 768px) {
   .relationships-filters { grid-template-columns: minmax(160px, 2fr) minmax(110px, 1fr) minmax(180px, 1fr) auto; }
   .relationships-filters label:first-child { grid-column: auto; }
-  .relationship-row { grid-template-columns: minmax(140px, 1fr) repeat(2, minmax(0, 2fr)); }
-  .relationship-name { grid-column: auto; display: flex; align-items: start; flex-direction: column; justify-content: start; }
-  .relationship-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .relationship-editor p, .relationship-editor div, .relationship-trust-confirm { grid-column: 1 / -1; }
+  .relationships-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 24px 16px; padding: 20px; }
+  .relationship-badge { font-size: 12px; }
 }

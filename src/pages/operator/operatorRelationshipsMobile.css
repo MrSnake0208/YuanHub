@@ -12,16 +12,23 @@
 .relationships-summary p { margin: 4px 0; }
 .relationships-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
 .relationships-filters label:first-child { grid-column: 1 / -1; }
-.relationships-list { list-style: none; padding: 0; }
-.relationship-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--theme-border, #cdbfa9); }
-.relationship-name { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.relationship-progress { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
-.relationship-progress small { line-height: 1.6; }
-.relationships details summary { cursor: pointer; min-height: 44px; align-content: center; }
-.relationship-progress details ul { padding-left: 18px; }
-.relationship-editor { grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px; background: var(--surface); }
-.relationship-editor div { display: flex; gap: 12px; flex-wrap: wrap; }
-.relationship-editor p { margin: 0; }
+.relationships-list { list-style: none; margin: 16px 0; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 20px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.relationship-card { min-width: 0; --portrait-border: var(--theme-info-text, #6e87b8); }
+.relationship-card.rarity-r5 { --portrait-border: var(--accent); }
+.relationship-card.rarity-r4 { --portrait-border: var(--theme-purple-text, #9782c7); }
+.relationship-portrait { position: relative; aspect-ratio: 1; border: 2px solid var(--portrait-border); border-radius: 10px; overflow: hidden; background: var(--cream); }
+.relationship-avatar { display: block; width: 100%; height: 100%; object-fit: cover; }
+.relationship-placeholder { display: grid; place-items: center; height: 100%; font: 700 32px var(--font-s); }
+.relationship-prof { position: absolute; top: 3px; left: 3px; width: 28px; height: 28px; }
+.relationships .relationship-favorite, .relationships .relationship-edit { position: absolute; right: 2px; display: grid; place-items: center; width: 29px; height: 29px; min-height: 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); }
+.relationship-favorite { top: 2px; }
+.relationship-edit { bottom: 2px; }
+.relationship-favorite[aria-pressed="true"] { color: var(--theme-accent-text, var(--tea)); }
+.relationship-badge { position: absolute; left: 2px; bottom: 3px; box-sizing: border-box; max-width: calc(100% - 35px); padding: 4px 5px; border-radius: 12px; background: var(--tea); color: var(--on-strong, #fffdf6); font: 700 11px/1.3 var(--font-b); white-space: nowrap; }
+.relationship-badge.unknown { background: var(--surface); color: var(--ink); }
+.relationship-card h3 { margin: 7px 0 0; text-align: center; font-size: 14px; overflow-wrap: anywhere; }
+.relationship-conflict { display: block; margin-top: 6px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.5; }
+.relationships details summary { cursor: pointer; padding-block: 8px; }
 .relationships-exchange { margin: 24px 0; }
 .relationships-exchange > label, .relationships-exchange > button { margin: 12px 0; }
 .relationships-exchange label:has(input[type="checkbox"]) { display: flex; align-items: center; }
