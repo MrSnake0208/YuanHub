@@ -25,6 +25,11 @@
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
+              <button type="button" class="act-btn" role="switch" :aria-checked="panelAutoFillEnabled"
+                aria-label="当前账号自动补全面板" :disabled="!currentPanelAccount || panelPreferenceSaving || accountsLoading"
+                @click="togglePanelAutoFill">
+                <Calculator :size="15" aria-hidden="true" />自动补全面板：{{ panelPreferenceSaving ? '保存中' : panelAutoFillEnabled ? '开' : '关' }}
+              </button>
               <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
             </div>
           </details>
@@ -40,9 +45,11 @@
         <template #help>
           <p>图鉴更新于 {{ catalogVersion || '本地兜底' }}；完整目录版本也可在「更多筛选」中选中复制。</p>
           <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
+          <p>自动补全只填未录入的血攻，已有手填或采集值优先；在「更多」中按账号开关，也可在密探编辑中单独选择来源。切换来源保留原值。</p>
           <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
         </template>
       </CompactToolHeader>
+      <p v-if="panelPreferenceNotice" class="panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
 
       <section>
         <div class="wrap">
@@ -2420,6 +2427,21 @@
               </div>
             </div>
             <div class="editor-head-stats">
+              <label class="editor-panel-source">
+                <span>面板来源</span>
+                <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
+                  <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
+                  <option value="manual">使用手填／采集</option>
+                  <option value="auto" :disabled="!calculatedCombatStats.automaticResultAvailable && editorPanelSource !== 'auto'">使用自动计算</option>
+                  <option v-if="editorPanelSource === 'mixed'" value="mixed" disabled>攻击／生命分别设置</option>
+                </select>
+              </label>
+              <p v-if="calculatedCombatStats.changedSinceObservation" class="editor-head-stats-note">养成信息已变化，原面板仍保留，请按游戏内数值核对。</p>
+              <details v-if="editorPanelDifference" class="editor-panel-comparison">
+                <summary>录入值与自动结果有差异，查看对比</summary>
+                <p>{{ editorPanelDifference }}</p>
+                <p>切换来源不会删除原值；星石尚未录全时可继续使用录入值。</p>
+              </details>
               <div
                 v-if="editorPanelHint"
                 class="editor-head-stats-toolbar"
@@ -2484,8 +2506,8 @@
                     inputmode="numeric"
                     min="0"
                     :placeholder="combatAttackDisplayLabel"
-                    aria-label="校正攻击力，清空后恢复自动计算"
-                    title="直接输入校正值；清空恢复自动计算"
+                    aria-label="校正攻击力，清空后按面板来源显示"
+                    title="直接输入校正值；清空后按面板来源显示"
                     @input="setManualCombatStat('manualAttack', $event)"
                   />
                 </label>
@@ -2535,8 +2557,8 @@
                     inputmode="numeric"
                     min="0"
                     :placeholder="combatHpDisplayLabel"
-                    aria-label="校正生命力，清空后恢复自动计算"
-                    title="直接输入校正值；清空恢复自动计算"
+                    aria-label="校正生命力，清空后按面板来源显示"
+                    title="直接输入校正值；清空后按面板来源显示"
                     @input="setManualCombatStat('manualHp', $event)"
                   />
                 </label>
@@ -2984,7 +3006,8 @@
 <script setup>
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
-import { useAccountListUpdates } from '../../store/accountList.js'
+import { useAccountListUpdates, publishAccountList } from '../../store/accountList.js'
+import { updateAccount } from '../../api/accounts.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
@@ -3416,7 +3439,6 @@ const editForm = ref({
   combatStats: normalizeOperatorCombatStats({}),
 });
 const combatDisplayMode = ref({ attack: null, hp: null });
-let combatDisplaySignature = "";
 const selectedDiscLoadoutIndex = ref(0);
 const editingDiscTarget = ref(false);
 const onlyReroll = ref(false);
@@ -3658,6 +3680,40 @@ const currentAccountName = computed(function () {
   });
   return account ? account.name : "当前账号";
 });
+const currentPanelAccount = computed(() => auth.isLoggedIn ? accounts.value.find(account => account.id === accountId.value) : null);
+const panelAutoFillEnabled = computed(() => currentPanelAccount.value?.operator_panel_auto_fill !== false);
+const panelPreferenceSaving = ref(false);
+const panelPreferenceNotice = ref("");
+const panelPreferenceError = ref(false);
+let panelPreferenceSequence = 0;
+watch(() => [accountId.value, auth.userInfo?.id, auth.isLoggedIn], () => {
+  panelPreferenceSequence++;
+  panelPreferenceSaving.value = false;
+  panelPreferenceNotice.value = "";
+  panelPreferenceError.value = false;
+}, { flush: 'sync' });
+async function togglePanelAutoFill() {
+  if (!currentPanelAccount.value || panelPreferenceSaving.value) return;
+  const sequence = ++panelPreferenceSequence;
+  const target = accountId.value;
+  const enabled = !panelAutoFillEnabled.value;
+  panelPreferenceSaving.value = true;
+  panelPreferenceNotice.value = "正在保存自动补全设置…";
+  panelPreferenceError.value = false;
+  try {
+    const saved = await updateAccount(target, { operator_panel_auto_fill: enabled });
+    if (sequence !== panelPreferenceSequence || operatorPageDisposed) return;
+    accounts.value = accounts.value.map(account => account.id === target ? saved : account);
+    publishAccountList(accounts.value);
+    panelPreferenceNotice.value = enabled ? "已开启自动补全，已有录入值优先。" : "已关闭自动补全，单独选择自动计算的密探不受影响。";
+  } catch (error) {
+    if (sequence !== panelPreferenceSequence || operatorPageDisposed) return;
+    panelPreferenceError.value = true;
+    panelPreferenceNotice.value = error?.message || "设置保存失败，请重试；当前设置保持不变。";
+  } finally {
+    if (sequence === panelPreferenceSequence && !operatorPageDisposed) panelPreferenceSaving.value = false;
+  }
+}
 
 const isOrganizationImport = computed(() => {
   try { return JSON.parse(importText.value).format === OPERATOR_ORGANIZATION_FORMAT; }
@@ -4216,24 +4272,7 @@ function persistCombatDisplayMode(id) {
   try {
     localStorage.setItem(
       combatDisplayModeStorageKey(id),
-      JSON.stringify({
-        attack:
-          editForm.value.combatStats &&
-          editForm.value.combatStats.manualAttack != null &&
-          calculatedCombatStats.value.automaticAttackAvailable
-            ? combatAttackAutoVisible.value
-              ? "auto"
-              : "manual"
-            : null,
-        hp:
-          editForm.value.combatStats &&
-          editForm.value.combatStats.manualHp != null &&
-          calculatedCombatStats.value.automaticHpAvailable
-            ? combatHpAutoVisible.value
-              ? "auto"
-              : "manual"
-            : null,
-      }),
+      JSON.stringify(combatDisplayMode.value),
     );
     return true;
   } catch (_) {
@@ -4503,25 +4542,35 @@ const calculatedCombatStats = computed(function () {
     stored: editForm.value.combatStats,
     input: combatStatsInput.value,
     serverResult: editorPanelResult.value,
+    allowAutomatic: panelAutoFillEnabled.value,
+    displayMode: combatDisplayMode.value,
   });
 });
 
 const combatAttackAutoVisible = computed(function () {
-  if (!calculatedCombatStats.value.automaticAttackAvailable) return false;
-  return (
-    combatDisplayMode.value.attack === "auto" ||
-    (combatDisplayMode.value.attack !== "manual" &&
-      calculatedCombatStats.value.manualFallbackAvailable)
-  );
+  return calculatedCombatStats.value.attackSource === "calculated";
 });
 
 const combatHpAutoVisible = computed(function () {
-  if (!calculatedCombatStats.value.automaticHpAvailable) return false;
-  return (
-    combatDisplayMode.value.hp === "auto" ||
-    (combatDisplayMode.value.hp !== "manual" &&
-      calculatedCombatStats.value.manualFallbackAvailable)
-  );
+  return calculatedCombatStats.value.hpSource === "calculated";
+});
+const editorPanelSource = computed(() => {
+  const { attack, hp } = combatDisplayMode.value;
+  return attack === hp ? attack || "follow" : "mixed";
+});
+function setEditorPanelSource(source) {
+  if (!["follow", "manual", "auto"].includes(source)) return;
+  if (source === "auto" && !calculatedCombatStats.value.automaticResultAvailable) return;
+  const mode = source === "follow" ? null : source;
+  combatDisplayMode.value = { attack: mode, hp: mode };
+}
+const editorPanelDifference = computed(() => {
+  const result = calculatedCombatStats.value;
+  if (!result.automaticResultAvailable) return "";
+  const stats = editForm.value.combatStats;
+  return [["攻击", stats.manualAttack ?? stats.attack, result.automaticAttack], ["生命", stats.manualHp ?? stats.hp, result.automaticHp]]
+    .filter(([, saved, automatic]) => saved != null && saved !== automatic)
+    .map(([label, saved, automatic]) => `${label}：录入 ${saved.toLocaleString('zh-CN')}，自动 ${automatic.toLocaleString('zh-CN')}`).join("；");
 });
 
 const combatAttackDisplayLabel = computed(function () {
@@ -4536,35 +4585,11 @@ const combatHpDisplayLabel = computed(function () {
     : calculatedCombatStats.value.hpLabel;
 });
 
-const combatStatsSource = computed(function () {
-  return combatStatsSourceLabel(
-    calculatedCombatStats.value.source,
-    calculatedCombatStats.value.status,
-  );
-});
-
-const combatAttackSource = computed(function () {
-  if (combatAttackAutoVisible.value) return "自动计算";
-  if (
-    editForm.value.combatStats &&
-    editForm.value.combatStats.manualAttack != null
-  )
-    return "手动校正";
-  if (calculatedCombatStats.value.automaticAttackAvailable) return "自动计算";
-  return calculatedCombatStats.value.attack == null
-    ? "可手动校正"
-    : combatStatsSource.value;
-});
-
-const combatHpSource = computed(function () {
-  if (combatHpAutoVisible.value) return "自动计算";
-  if (editForm.value.combatStats && editForm.value.combatStats.manualHp != null)
-    return "手动校正";
-  if (calculatedCombatStats.value.automaticHpAvailable) return "自动计算";
-  return calculatedCombatStats.value.hp == null
-    ? "可手动校正"
-    : combatStatsSource.value;
-});
+function selectedCombatSourceLabel(source) {
+  return { manual: "手填面板", observed: "采集记录", calculated: "自动计算", missing: "尚未填写" }[source];
+}
+const combatAttackSource = computed(() => selectedCombatSourceLabel(calculatedCombatStats.value.attackSource));
+const combatHpSource = computed(() => selectedCombatSourceLabel(calculatedCombatStats.value.hpSource));
 
 const oddityCatalogIncomplete = computed(function () {
   const op = editingOp.value;
@@ -4580,7 +4605,7 @@ function setManualCombatStat(key, event) {
   if (!editForm.value.combatStats)
     editForm.value.combatStats = normalizeOperatorCombatStats({});
   const raw = event && event.target ? event.target.value : "";
-  combatDisplayMode.value[key === "manualAttack" ? "attack" : "hp"] = "manual";
+  combatDisplayMode.value[key === "manualAttack" ? "attack" : "hp"] = raw === "" ? null : "manual";
   editForm.value.combatStats[key] = raw === "" ? null : Number(raw);
   editForm.value.combatStats.source = "manual";
   if (raw !== "") markCombatCorrectionCurrent();
@@ -4617,18 +4642,6 @@ function toggleAutomaticCombatStat(key) {
       : combatHpAutoVisible.value;
   combatDisplayMode.value[key] = currentlyAutomatic ? "manual" : "auto";
 }
-
-watch(
-  function () {
-    return combatInputSignature(combatStatsInput.value);
-  },
-  function (signature) {
-    if (combatDisplaySignature && combatDisplaySignature !== signature) {
-      combatDisplayMode.value = { attack: null, hp: null };
-    }
-    combatDisplaySignature = signature;
-  },
-);
 
 function ensureOperatorOddities(stats, op) {
   if (!stats || !stats.oddities || typeof stats.oddities !== "object") return;
@@ -7406,6 +7419,8 @@ function cardCombatResult(entry) {
     }),
     input: cardCombatInput(entry),
     serverResult: cardPanelResult(entry),
+    allowAutomatic: panelAutoFillEnabled.value,
+    displayMode: cardCombatModes.value[entry.id] || stats.displayMode,
   });
 }
 
@@ -7417,26 +7432,11 @@ function cardCombatAutoAvailable(entry, kind) {
 }
 
 function cardCombatModeSwitchAllowed(entry, kind) {
-  if (!cardCombatAutoAvailable(entry, kind)) return false;
-  const mode = cardCombatMode(entry, kind);
-  // 观测过期时，自动计算仍可用，但不能直接切换到过期观测值。
-  return !(mode === "auto" && combatObservedStatus(entry) === "stale");
+  return cardCombatAutoAvailable(entry, kind);
 }
 
 function cardCombatMode(entry, kind) {
-  const local = cardCombatModes.value[entry.id] || {};
-  if (local[kind] === "auto" || local[kind] === "manual") return local[kind];
-  const persisted =
-    entry.combatStats &&
-    entry.combatStats.displayMode &&
-    entry.combatStats.displayMode[kind];
-  if (persisted === "auto" || persisted === "manual") return persisted;
-  const stats = entry.combatStats || {};
-  const hasEffectiveValue =
-    cardCombatDraft(entry)[kind] != null || stats[kind] != null;
-  if (hasEffectiveValue) return "manual";
-  if (cardCombatAutoAvailable(entry, kind)) return "auto";
-  return "manual";
+  return cardCombatResult(entry)[kind + "Source"] === "calculated" ? "auto" : "manual";
 }
 
 function cardCombatAutoVisible(entry, kind) {
@@ -7448,16 +7448,6 @@ function cardCombatAutoVisible(entry, kind) {
 
 function cardCombatDisplay(entry, kind) {
   const result = cardCombatResult(entry);
-  const mode = cardCombatMode(entry, kind);
-  if (mode === "auto" && cardCombatAutoAvailable(entry, kind))
-    return kind === "attack"
-      ? result.automaticAttackLabel
-      : result.automaticHpLabel;
-  const effective =
-    cardCombatDraft(entry)[kind] != null
-      ? cardCombatDraft(entry)[kind]
-      : entry.combatStats && entry.combatStats[kind];
-  if (effective != null) return Number(effective).toLocaleString("zh-CN");
   return kind === "attack" ? result.attackLabel : result.hpLabel;
 }
 
@@ -7472,22 +7462,15 @@ function cardCombatSimpleValue(entry, kind) {
     const draftValue = cardCombatDraft(entry)[kind];
     return draftValue == null ? "" : draftValue;
   }
-  const stats = entry.combatStats || {};
-  const latestValue = stats[kind];
-  if (latestValue != null) return latestValue;
-  const fallbackValue = kind === "attack" ? stats.manualAttack : stats.manualHp;
-  return fallbackValue == null ? "" : fallbackValue;
+  return cardCombatResult(entry)[kind] ?? "";
 }
 
 function cardCombatSource(entry, kind) {
   const mode = cardCombatMode(entry, kind);
   const result = cardCombatResult(entry);
   const stale =
-    combatObservedStatus(entry) === "stale" ? " · 数据已过期，请重新填写" : "";
-  if (mode === "auto")
-    return combatObservedStatus(entry) === "stale"
-      ? "数值已过期，请重新填写"
-      : "可切换为观测值";
+    combatObservedStatus(entry) === "stale" ? " · 录入值待核对" : "";
+  if (mode === "auto") return "当前使用自动计算，可切回录入值" + stale;
   if (mode === "manual") {
     return cardCombatAutoAvailable(entry, kind)
       ? "可切换为自动计算值" + stale
@@ -7501,8 +7484,6 @@ function combatModeLabel(entry, kind) {
   const mode = cardCombatMode(entry, kind);
   if (!cardCombatAutoAvailable(entry, kind))
     return name + "使用手动校正（暂无自动计算）";
-  if (mode === "auto" && combatObservedStatus(entry) === "stale")
-    return name + "观测值已过期，请重新填写手动校正";
   return mode === "auto" ? "切换为手动校正" + name : "切换为自动计算" + name;
 }
 
@@ -7510,14 +7491,13 @@ function toggleCardCombatMode(entry, kind) {
   const current = cardCombatMode(entry, kind);
   const next = current === "auto" ? "manual" : "auto";
   if (next === "auto" && !cardCombatAutoAvailable(entry, kind)) return;
-  if (next === "manual" && combatObservedStatus(entry) === "stale") return;
   setCardCombatMode(entry, kind, next);
 }
 
 function setCardCombatMode(entry, kind, mode) {
   const draft = ensureCardDraft(entry);
   mode = mode === "auto" ? "auto" : "manual";
-  const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, {
+  const next = Object.assign({}, draft?.modes, cardCombatModes.value[entry.id], {
     [kind]: mode,
   });
   cardCombatModes.value = Object.assign({}, cardCombatModes.value, {
@@ -7535,9 +7515,8 @@ function setCardCombatValue(entry, kind, event) {
     ...cardCombatEditedKeys.value,
     entry.id + ":" + kind,
   ]);
-  if (ledgerCardIsV2) return;
-  const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, {
-    [kind]: "manual",
+  const next = Object.assign({}, card?.modes, cardCombatModes.value[entry.id], {
+    [kind]: raw === "" ? null : "manual",
   });
   cardCombatModes.value = Object.assign({}, cardCombatModes.value, {
     [entry.id]: next,
@@ -8007,7 +7986,6 @@ function applyEditorEntry(existing, op, id, allowCache) {
   combatDisplayMode.value = combatStats.displayModePresent
     ? combatStats.displayMode || { attack: null, hp: null }
     : loadCombatDisplayMode(id);
-  combatDisplaySignature = currentSignature;
   editOriginalStoneSignature.value = stoneSignature(stones);
 }
 
@@ -8018,7 +7996,6 @@ function restoreConflictDraft() {
     attack: null,
     hp: null,
   };
-  combatDisplaySignature = combatInputSignature(combatStatsInput.value);
   selectedDiscLoadoutIndex.value =
     editConflictDraft.value.selectedDiscLoadoutIndex;
   editOriginalStoneSignature.value =
@@ -8172,20 +8149,8 @@ async function saveEdit() {
       manual_attack: normalizedManual(combatStats.manualAttack),
       manual_hp: normalizedManual(combatStats.manualHp),
       display_mode: {
-        attack:
-          combatStats.manualAttack != null &&
-          calculatedCombatStats.value.automaticAttackAvailable
-            ? combatAttackAutoVisible.value
-              ? "auto"
-              : "manual"
-            : null,
-        hp:
-          combatStats.manualHp != null &&
-          calculatedCombatStats.value.automaticHpAvailable
-            ? combatHpAutoVisible.value
-              ? "auto"
-              : "manual"
-            : null,
+        attack: combatDisplayMode.value.attack,
+        hp: combatDisplayMode.value.hp,
       },
       oddities: ODDITY_KEYS.reduce(function (result, key) {
         const value = oddities[key] || {};
@@ -8794,6 +8759,7 @@ function handleAccountEvent(message) {
   if (!message) return;
   const eventAccount = message.data?.account_id || message.data?.accountId;
   if (eventAccount && eventAccount !== accountId.value) return;
+  if (message.event === "account_updated") { void loadAccounts(); return; }
   if (message.event === "operator_catalog_update" || message.event === "operator_catalog_updated") {
     void loadCatalog();
   }
@@ -8803,6 +8769,7 @@ function handleAccountEvent(message) {
 
   if (message.event === "account_stream_open") {
     if (!message.data?.reconnected) return;
+    void loadAccounts();
     void reloadOrganization();
     loadOperatorAnnotations();
     loadAgentFavorites();
@@ -9425,6 +9392,38 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.panel-preference-notice {
+  margin: 0 1rem 1rem;
+  color: var(--ink);
+}
+.editor-panel-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--ink);
+}
+.editor-panel-source select {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.3rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.editor-panel-source select:focus-visible,
+.editor-panel-comparison summary:focus-visible {
+  outline: 2px solid var(--tea);
+  outline-offset: 2px;
+}
+.editor-panel-comparison {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.editor-panel-comparison summary { cursor: pointer; }
+.editor-panel-comparison p { margin: 0.35rem 0; }
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* Page-owned workspaces only; other segmented controls keep their own hierarchy. */
 .page-operator .operator-tabs.tool-workspace-tabs {

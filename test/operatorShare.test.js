@@ -288,3 +288,14 @@ test('公开内容共用且无页面壳、路由或私人写操作，弹窗仅�
   assert.doesNotMatch(viewer, /router|<iframe|main-content/)
   assert.match(viewer, /token = \$event.token/)
 })
+test('公开分享直接采用后端选定面板，关闭补全产生的空值不能重新计算', () => {
+  const entry = { growth: {
+    combat_stats: { manual_attack: 123, manual_hp: 456 },
+    panel: { status: 'calculated', attack: 900, hp: 1800 },
+    display_panel: { attack: 900, hp: null, attack_source: 'calculated', hp_source: 'missing' }
+  } }
+  assert.equal(operatorShareCombatValue(entry, 'attack'), '900')
+  assert.equal(operatorShareCombatValue(entry, 'hp'), '—')
+  assert.equal(operatorShareCombatSource(entry, 'attack'), '自动计算')
+  assert.equal(operatorShareCombatSource(entry, 'hp'), '暂无可用面板数据')
+})

@@ -5,13 +5,14 @@ export interface SubAccount {
   id: string
   name: string
   game?: '代号鸢' | '如鸢'
+  operator_panel_auto_fill?: boolean
   created_at?: string
   updated_at?: string
 }
 
 export function listAccounts(): Promise<SubAccount[]>
 export function createAccount(name: string, game?: '代号鸢' | '如鸢'): Promise<SubAccount>
-export function updateAccount(accountId: string, patch: { name?: string; game?: '代号鸢' | '如鸢' }): Promise<SubAccount>
+export function updateAccount(accountId: string, patch: { name?: string; game?: '代号鸢' | '如鸢'; operator_panel_auto_fill?: boolean }): Promise<SubAccount>
 export function renameAccount(accountId: string, name: string): Promise<SubAccount>
 export function updateAccountGame(accountId: string, game: '代号鸢' | '如鸢'): Promise<SubAccount>
 export function deleteAccount(accountId: string): Promise<unknown>

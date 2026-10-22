@@ -17,7 +17,7 @@ import { accountIdentityVersion, accountListChange } from '../store/accountList.
 const PATH = '/v1/accounts'
 
 // 账号列表（需登录）——按创建时间升序
-// 返回 [{ id, name, game, created_at, updated_at }]
+// 返回 [{ id, name, game, operator_panel_auto_fill, created_at, updated_at }]
 export async function listAccounts(expectedUserId = auth.userInfo?.id) {
   const change = accountListChange.value
   const identityVersion = accountIdentityVersion
@@ -40,7 +40,7 @@ export function createAccount(name, game) {
   })
 }
 
-// 局部修改（PATCH，需登录）——body { name?, game? }
+// 局部修改（PATCH，需登录）——body { name?, game?, operator_panel_auto_fill? }
 export function updateAccount(accountId, patch) {
   return request(PATH + '/' + encodeURIComponent(accountId), {
     method: 'PATCH',

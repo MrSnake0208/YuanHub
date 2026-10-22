@@ -9,14 +9,11 @@ function read(rel) {
 const operatorPage = read('src/pages/operator/index.vue')
 const v2Styles = read('src/styles/operator-ledger-card.v2.css')
 
-test('v2 战斗面板移除模式切换与来源说明并优先展示后端最新值', () => {
+test('v2 战斗面板沿用紧凑布局，来源优先级由组件行为测试验证', () => {
   assert.match(operatorPage, /<template\s+v-if="!ledgerCardIsV2"\s*>\{\{ kind === "attack" \? "攻击" : "生命" \}\}/)
   assert.match(operatorPage, /v-if="!ledgerCardIsV2"\s+class="ledger-combat-mode"/)
   assert.match(operatorPage, /v-if="!ledgerCardIsV2"\s+class="ledger-combat-source"/)
   assert.match(operatorPage, /ledgerCardIsV2\s+\? cardCombatSimpleValue\(e, kind\)/)
-  assert.match(operatorPage, /const latestValue = stats\[kind\]/)
-  assert.match(operatorPage, /if \(latestValue != null\) return latestValue/)
-  assert.match(operatorPage, /cardCombatEditedKeys\.value = new Set\([\s\S]*?if \(ledgerCardIsV2\) return;/)
 })
 
 test('v2 将等级修为并排，并用有名称的图标按钮压缩快捷操作', () => {
