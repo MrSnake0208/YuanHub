@@ -2325,8 +2325,9 @@
 .inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .freshness-label { font-size: 12px; }
 .inventory-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.inventory-entry, .reward-entry { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 8px; border-radius: 10px; font: 800 15px/1.3 var(--font-b); white-space: nowrap; }
-.reward-entry { background: var(--cream); }
+.inventory-entry, .reward-entry, .daily-entry { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 8px; border-radius: 10px; font: 800 15px/1.3 var(--font-b); white-space: nowrap; }
+.reward-entry, .daily-entry { background: var(--cream); }
+.daily-entry { grid-column: 1 / -1; }
 .manifest-toolbar { position: static; display: grid; gap: 10px; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
 .manifest-toolbar .manifest-type-switch { position: static; display: inline-grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-self: start; width: min(100%, 218px); margin: 0; padding: 0; gap: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--cream); }
 .manifest-type-switch > button { min-width: 0; min-height: 36px; padding: 6px 14px; border: 0; border-radius: 20px; color: var(--ink-60); background: transparent; font: 700 13px/1.5 var(--font-b); white-space: nowrap; }

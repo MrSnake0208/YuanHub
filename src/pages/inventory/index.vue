@@ -28,8 +28,11 @@
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
             <div class="inventory-freshness-copy"><Clock3 :size="15" aria-hidden="true" /><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
             <div v-if="inventoryAccountReady" class="inventory-actions">
+              <button type="button" class="btn ghost daily-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
+                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual' && rewardEntryWorkspace?.dailyMode"
+                @click="openRewardEntry('daily', $event.currentTarget)"><Check :size="16" aria-hidden="true" />日常打卡</button>
               <button type="button" class="btn ghost reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
-                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual'"
+                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual' && !rewardEntryWorkspace?.dailyMode"
                 @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记录奖励</button>
               <button type="button" class="btn primary inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked"
                 @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
@@ -1953,7 +1956,8 @@ const stockActionBlocked = computed(() => rewardImportBusy.value || !!rewardEntr
 
 function openRewardEntry(mode, trigger) {
   if (rewardEntryDisabled.value || rewardImportBusy.value) return;
-  if (mode === "manual") rewardEntryWorkspace.value?.openManual(trigger);
+  if (mode === "daily") rewardEntryWorkspace.value?.openDaily(trigger);
+  else if (mode === "manual") rewardEntryWorkspace.value?.openManual(trigger);
   else rewardEntryWorkspace.value?.openReport(trigger);
 }
 

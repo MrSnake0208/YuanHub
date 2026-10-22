@@ -1,5 +1,12 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 767px) {
+.daily-mode .manual-columns { grid-template-columns: minmax(0, 1fr); }
+.daily-mode .reward-receipt { border-left: 0; }
+.daily-mode .reward-metadata { margin-top: 0; grid-template-columns: minmax(0, 1fr); }
+.daily-mode .basket-empty { min-height: 0; padding: 16px 0; }
+.daily-mode .whitecoin-purpose { align-items: stretch; }
+.daily-mode .whitecoin-purpose select { width: 100%; }
+
 .monthly-tier-field { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .monthly-tier-field select { min-width: 0; max-width: 100%; padding: 6px 8px; font: inherit; }
 .reward-workspace, .reward-dialog-mask { --reward-gold: var(--theme-muted, #af884d); --reward-gold-soft: var(--theme-overlay, rgba(175,136,77,.2)); font-family: var(--font-b); }

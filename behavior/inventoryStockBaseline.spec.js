@@ -37,20 +37,23 @@ const pending = () => {
   return { promise, resolve, reject }
 }
 const openReport = vi.fn()
+const openDaily = vi.fn()
 const rewardStub = defineComponent({
   props: ['disabled'],
   setup(_, { expose }) {
-    expose({ openReport })
+    expose({ openReport, openDaily })
     return () => h('div', { class: 'reward-workspace-stub' })
   },
 })
 function render(options = {}, realRewards = false) {
-  return mount(InventoryPage, { ...options, global: { plugins: [createPinia()],
+  const { stubs = {}, ...mountOptions } = options
+  return mount(InventoryPage, { ...mountOptions, global: { plugins: [createPinia()],
     stubs: {
       OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       AcquiredPeriodReport: true, RewardEntryWorkspace: realRewards ? false : rewardStub,
+      ...stubs,
     },
     directives: { reveal: () => {} },
   } })
@@ -834,4 +837,18 @@ it.each([[390, 0], [390, 3], [1440, 0], [1440, 3]])('背包搜索玻璃能找到
       entries: expect.arrayContaining([expect.objectContaining({ id: 'zhuangjinboli', count: 7 })]),
     })
   } finally { wrapper.unmount() }
+})
+
+
+it('资源页日常打卡直接打开同一奖励工作台，盘点编辑时禁止另一笔写入', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render({ attachTo: document.body, stubs: { MailboxReserve: true } })
+  await flushPromises()
+  await wrapper.get('.daily-entry').trigger('click')
+  expect(openDaily).toHaveBeenCalledWith(wrapper.get('.daily-entry').element)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  await enterStockEditor(wrapper)
+  expect(wrapper.get('.daily-entry').element.disabled).toBe(true)
+  await wrapper.get('.daily-entry').trigger('click')
+  expect(openDaily).toHaveBeenCalledTimes(1)
 })
