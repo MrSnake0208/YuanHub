@@ -80,3 +80,7 @@ curl --fail-with-body -H 'Authorization: Bearer REPLACE_WITH_USER_JWT' \
 ## 错误
 
 401 凭据无效；403 Scope/Beta/账号边界；404 账号不存在；409 幂等或 revision 冲突；422 结构、目录、账号映射、化极/突破/分区语义错误。查看领域 `error.code`、`operator_id`、`field_path`，并检查返回项的 rejected/review/partial 状态。完整快照可能重置未列出客观或主观内容，绝不能用残缺采集伪装完整备份。
+
+## 站内登录面板计算
+
+新增 `POST /v1/operator/panel/preview` 和 `/current`，使用站内 JWT，不是 OpenAPI Token 接口。前者接收本人账号、密探养成和本人星石实例草稿；后者最多100个不同密探ID。只返回最终攻击/生命、状态、缺失字段和规则版本，禁止客户端系数。详情与示例见[Backend 面板契约](../../../BackEndV3-Share/docs/operator-panel-rules.md)。公开分享在已授权条目中附加 `panel`，不开放匿名任意输入计算。

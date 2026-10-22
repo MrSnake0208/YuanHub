@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { starCardNumber, starCardNode } from '../src/utils/operatorStarDisplay.js'
-import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax, operatorHuajiAction, operatorHuajiComplete, operatorHuajiDraft, operatorAwakeningUpgradeSupported } from '../src/utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax, operatorHuajiAction, operatorHuajiComplete, operatorHuajiDraft, operatorAwakeningSupported, operatorAwakeningUpgradeSupported } from '../src/utils/operatorHuaji.js'
 
 test('旧25..30均为五星，不展示第五颗星的小节点', () => {
   for (let raw = 25; raw <= 30; raw++) {
@@ -20,10 +20,21 @@ test('独立事实优先于旧值，31不猜stage，缺字段与确认false不�
 })
 
 test('隐密异常不造合法星级，SP稀疏映射且占位不算拥有', () => {
-  assert.equal(operatorHuajiMax({ rarity: 3 }), 24)
-  for (const raw of [25, 30, 31]) assert.deepEqual(operatorHuaji({ rarity: 3, starLevel: raw }), { owned: true, stage: null, awakened: null })
+  assert.equal(operatorHuajiMax({ rarity: 3 }), 19)
+  for (const raw of [20, 21, 22, 23, 24, 25, 30, 31]) assert.deepEqual(operatorHuaji({ rarity: 3, starLevel: raw }), { owned: true, stage: null, awakened: null })
   for (let raw = 1; raw <= 5; raw++) assert.equal(operatorHuaji({ spOf: 'base', starLevel: raw }).stage, 6 * (raw - 1) + 1)
   assert.equal(operatorHuaji({ spOf: 'base', starLevel: 0, level: 100, elite: 17 }).owned, false)
+})
+
+test('三星满四星无节点，两名已核对 SP 可记录觉醒但没有扣料入口', () => {
+  const low = { rarity: 3, huaji: { owned: true, stage: 19, awakened: null } }
+  assert.equal(operatorHuajiLabel(low), '4 星')
+  assert.equal(operatorHuajiAction(low).kind, 'complete')
+  for (const id of ['char_084_chendengsp', 'char_085_shizimiaosp']) {
+    const sp = { id, rarity: 5, spOf: 'base' }
+    assert.equal(operatorAwakeningSupported(sp), true)
+    assert.equal(operatorAwakeningUpgradeSupported(sp), false)
+  }
 })
 
 test('五星后接手动觉醒，三态不混淆，只有确认觉醒才最终完成', () => {

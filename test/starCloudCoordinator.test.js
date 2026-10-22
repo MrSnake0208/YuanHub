@@ -300,3 +300,34 @@ test('only-plan recovery rejects inventory changes and stale scope', async () =>
   const c=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),storage:storage(),getState:async()=>remote(),patchState:async()=>{writes++;}});
   await c.enter(handle());await assert.rejects(()=>c.applyRecoveredPlan({...local(),inventory:[]},c.ocrRebuildScope()),/背包与云端数据不一致/);assert.equal(writes,0);
 });
+
+test('breakthrough hydrates and PATCH distinguishes explicit null from an old missing field', async () => {
+  let hydrated, body
+  const state = remote()
+  state.inventory[0].breakthrough_stage = 2
+  const coordinator = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: storage(),
+    getState: async () => state, patchState: async (_account, value) => {
+      body = value
+      return { state: { ...state, revision: 6, inventory: value.inventory } }
+    } })
+  await coordinator.enter({ ...handle(), applyCloudBusinessSnapshot: async value => { hydrated = value } })
+  assert.equal(hydrated.inventory[0].breakthroughStage, 2)
+  const changed = local(); changed.inventory[0].breakthroughStage = null
+  coordinator.committed({ accountId: 'a', snapshot: changed }); await tick(); await tick()
+  assert.equal(body.inventory[0].breakthrough_stage, null)
+  delete changed.inventory[0].breakthroughStage; changed.bag.currentCount = 3
+  coordinator.committed({ accountId: 'a', snapshot: changed }); await tick(); await tick()
+  assert.equal(Object.hasOwn(body.inventory[0], 'breakthrough_stage'), false)
+})
+
+for (const level of [20, 21]) test(`old rebuild response reconciles inferred or unknown breakthrough at level ${level}`, async () => {
+  const persistent = storage(), snapshot = local(); snapshot.inventory[0].level = level
+  const coordinator = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: persistent,
+    getState: async () => remote(), rebuildState: async (_account, body) => ({ state: {
+      ...remote(3, 6), inventory: body.inventory.map(star => ({ ...star, breakthrough_stage: level === 20 ? null : 2 }))
+    } }) })
+  await coordinator.enter(handle())
+  await coordinator.replaceImport(snapshot)
+  assert.equal(coordinator.needsRetry(), false)
+  assert.equal(persistent.getItem('yuanhub.star-rebuild-pending:a'), null)
+})
