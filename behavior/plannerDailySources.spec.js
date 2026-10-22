@@ -199,3 +199,14 @@ it('固定来源数值和空名称校验不会保存错误数据，修正后完�
   await wrapper.get('[aria-label="固定来源名称1"]').setValue('每日活动'); await save(wrapper)
   expect(wrapper.emitted('save')[0][0].fixedSources[0]).toMatchObject({ label: '每日活动', value: 23, enabled: true })
 })
+
+it('每日账本外部入口复用月卡设置，萤火预填30与商店20，不自动保存', async () => {
+  const wrapper = setup()
+  wrapper.vm.openMonthly(); await flushPromises()
+  await wrapper.get('[aria-label="月卡权益档位"]').setValue('yinghuo')
+  expect(wrapper.get('[aria-label="月卡每日奖励体力"]').element.value).toBe('30')
+  expect(wrapper.get('[aria-label="月卡商店免费体力"]').element.value).toBe('20')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await save(wrapper)
+  expect(wrapper.emitted('save')[0][3]).toBe('monthly')
+})

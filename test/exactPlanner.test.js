@@ -191,3 +191,13 @@ test('最优方案在推荐日将剩余体力补到 6-24，保留手工日和完
   assert.equal(empty.solution.etaDays, 0)
   assert.equal(empty.solution.timeline[0].planned.spends.length, 0)
 })
+
+test('第一天固定6-24次数不被精确方案或贪心候选追加，计算结果保留标记', () => {
+  const fixed = { ...createSpend('stage624', { value: 6 }), fixed: true }
+  const input = inputFor({ __xp__: 500000 }, { firstDay: { gains: [createGain('natural')], spends: [fixed] }, dates: dates(10) })
+  const result = solve(input)
+  assert.ok(['optimal', 'feasible'].includes(result.status))
+  const entries = result.solution.timeline[0].planned.spends.filter(spend => spend.kind === 'stage624')
+  assert.equal(entries.reduce((sum, entry) => sum + entry.value, 0), 6)
+  assert.equal(entries[0].fixed, true)
+})

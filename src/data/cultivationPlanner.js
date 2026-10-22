@@ -166,6 +166,8 @@ export function createSpend(channelId, overrides = {}) {
   })
 }
 
+export const isFixedStage624 = spend => spend?.fixed === true && (spend.id === 'stage624' || spend.kind === 'stage624')
+
 // Known channels always derive rewards from the rule table, including restored plans.
 // Saved labels/yields are presentation data, not an independent source of game rules.
 export function normalizePlannerSpend(spend, groups = TRAINING_GROUPS) {
@@ -224,7 +226,8 @@ export function normalizePlannerPlan(plan) {
     name: spend?.name == null ? undefined : String(spend.name).slice(0, 32),
     yield: spend?.yield ? clonePlannerValue(spend.yield) : undefined,
     groupId: spend?.groupId,
-    stageLevel: spend?.stageLevel
+    stageLevel: spend?.stageLevel,
+    ...(isFixedStage624(spend) ? { fixed: true } : {})
   })
   return { gains: Array.isArray(plan?.gains) ? plan.gains.map(normalizeGain) : [], spends: Array.isArray(plan?.spends) ? plan.spends.map(normalizeSpend) : [] }
 }
@@ -389,8 +392,9 @@ export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels =
   }
   // Compare every available category by useful gain per stamina, not fixed category order.
   // This remains a rolling greedy recommendation, not a proof of global optimality.
+  const fixedStage624 = plan.spends.some(isFixedStage624)
   while (energy >= PLANNER_RULES.stage624Stamina) {
-    const choices = candidates.filter(action => action.costPer <= energy &&
+    const choices = candidates.filter(action => !(fixedStage624 && action.kind === 'stage624') && action.costPer <= energy &&
       (!action.groupId || (runs[action.groupId] || 0) < PLANNER_RULES.trainingDailyLimit))
       .map(action => ({ action, score: scoreYield(working, action.yield, agentOrder, strategy) / action.costPer }))
       .filter(choice => choice.score > 0)

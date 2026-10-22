@@ -1,6 +1,6 @@
 import { TRAINING_GROUPS } from './operatorTraining.js'
 import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
-import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, createGain, createSpend,
+import { isFixedStage624, aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, createGain, createSpend,
   normalizePlannerPlan, normalizePlannerPreferences, plannerActions, plannerStateIsEmpty,
   PLANNER_RULES, PURCHASE_CUMULATIVE, planTotals, settlePlannerDay } from './cultivationPlanner.js'
 
@@ -46,7 +46,7 @@ export function prepareExactPlanner(input) {
     let plan = manual ? normalizePlannerPlan(config.manualPlans[date])
       : index === 0 && config.firstDay ? normalizePlannerPlan(config.firstDay)
         : defaultPlan(preferences, index === 0 ? config.initialExtra : 0, date)
-    if (!manual) plan.spends = plan.spends.filter(spend => spend.custom || !['training', 'stage624'].includes(spend.kind))
+    if (!manual) plan.spends = plan.spends.filter(spend => isFixedStage624(spend) || spend.custom || !['training', 'stage624'].includes(spend.kind))
     if (config.objective === 'coins' && !manual) plan.gains = plan.gains.filter(gain => gain.id !== 'buy')
     const checkPlan = config.objective === 'coins' && !manual
       ? { ...plan, gains: [...plan.gains, createGain('buy', { value: 8 })] } : plan
@@ -75,6 +75,7 @@ export function buildExactModel(problem, horizon, milestones = [], minimize = 'n
   for (let d = 0; d < horizon; d++) {
     const day = problem.days[d], energy = [], groups = {}
     if (!day.manual) problem.actions.forEach((action, a) => {
+      if (action.kind === 'stage624' && day.plan.spends.some(isFixedStage624)) return
       const maxNeeded = Math.max(...problem.resources.map(id => action.yield[id] > 0 ? Math.ceil(problem.demand[id] / action.yield[id]) : 0))
       const quota = action.groupId ? PLANNER_RULES.trainingDailyLimit - (day.counts[action.groupId] || 0) : Infinity
       const maxEnergy = Math.max(0, day.budget + day.eligibleReserves.reduce((sum, { source }) => sum + source.amount, 0) + (problem.config.objective === 'coins' ? 480 : 0) + (problem.config.objective === 'extra' ? extraCap : 0) + (problem.config.reduceDispatch ? day.plan.spends.filter(s => ['luoyang', 'shouchun'].includes(s.id)).reduce((sum, s) => sum + s.value * s.costPer, 0) : 0))
@@ -195,6 +196,9 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
     const extraGains = planned.gains.filter(gain => gain.id === 'required-extra')
     if (extraGains.some(gain => !Number.isInteger(gain.value) || gain.value < 0) ||
       extraGains.reduce((sum, gain) => sum + gain.value, 0) > PLANNER_RULES.maxDailyExtraStamina) return null
+    const fixed = spec.plan.spends.filter(isFixedStage624)
+    if (fixed.length && !planned.spends.some(isFixedStage624)) return null
+    if (fixed.length && planned.spends.filter(spend => spend.id === 'stage624' || spend.kind === 'stage624').reduce((sum, spend) => sum + spend.value, 0) !== fixed.reduce((sum, spend) => sum + spend.value, 0)) return null
     const settled = settlePlannerDay(start, planned, problem.config)
     if (settled.errors.length) return null
     state = settled.end
@@ -241,7 +245,7 @@ function fillRemainingStamina(problem, solution) {
   let state = clonePlannerValue(problem.config.initialState)
   for (let d = 0; d < plans.length && !plannerStateIsEmpty(state); d++) {
     const plan = plans[d]
-    if (!problem.days[d].manual) {
+    if (!problem.days[d].manual && !plan.spends.some(isFixedStage624)) {
       const runs = Math.floor(planTotals(plan).balance / PLANNER_RULES.stage624Stamina)
       if (runs > 0) {
         const existing = plan.spends.find(spend => !spend.custom && spend.kind === 'stage624')

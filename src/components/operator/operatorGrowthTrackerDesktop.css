@@ -1,5 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 900px) {
+.ledger-scope-note { margin: 0 0 12px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+
 .growth-tracker { --planner-page: var(--theme-surface, #f5efe7); --planner-card: var(--theme-surface, #fffaf3); --planner-line: var(--theme-line, #eadfce); --planner-muted: var(--theme-muted, #988575); --planner-deep: var(--theme-text, #6c533e); --planner-gold: var(--theme-accent-text, #b79050); --planner-gain: var(--theme-success-text, #6d9474); --planner-spend: var(--theme-danger-text, #b75c53); min-width: 0; max-width: 100%; margin-top: 18px; padding: 22px; overflow-x: clip; }
 .planner-cloud-fields { min-width: 0; margin: 0; padding: 0; }
 .cloud-status { margin-top: 12px; font-size: 12px; }
