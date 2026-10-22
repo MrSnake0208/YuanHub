@@ -2644,6 +2644,7 @@
                 >
                   <div class="star-row">
                     <span class="star-caption"><Star :size="19" aria-hidden="true" />化极</span>
+                    <button type="button" class="ledger-history-link" :disabled="savingEdit || !accountId" :aria-label="(editingOp.name || editingOp.id) + '的化极历程'" title="查看或补录化极日期" @click="milestoneEntry = editingOp">历程</button>
                     <span class="star-groups" role="group" aria-label="化极星级">
                       <button
                         type="button"

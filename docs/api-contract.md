@@ -1246,7 +1246,7 @@ Current/PATCH增加独立huaji，catalog公开huaji_capabilities；完整接口�
 
 ## 密探化极历程（2026-10-22）
 
-名册「化极 → 历程」使用 JWT 私有接口 `GET/PUT /v1/operator/{operatorId}/milestones?account_id=…&game=…`，响应禁止缓存。PUT 正文为 `{"expected_revision":0,"dates":{"star_1":"2026-06-01","star_2":"2026-07-10"}}`，完整替换该密探的确认日期；缺失／null 清除日期。
+名册卡片及密探编辑弹窗均提供「化极 → 历程」入口，使用 JWT 私有接口 `GET/PUT /v1/operator/{operatorId}/milestones?account_id=…&game=…`，响应禁止缓存。PUT 正文为 `{"expected_revision":0,"dates":{"star_1":"2026-06-01","star_2":"2026-07-10"}}`，完整替换该密探的确认日期；缺失／null 清除日期。
 
 响应 data 包含 `account_id/game/operator_id/revision/milestones`；每项含 `key/date/observed_at`（空值可能省略）。star_1 为首次获得，star_2 至 star_5 为适用大星级，awakening 仅对支持觉醒的密探开放。date 为用户确认的北京时间日历日期；拒绝无效、未来和逆序日期。observed_at 仅是已有校正审计中的精确阶段观察时间，不自动转换为实际日期，不回溯旧导入快照，也不补齐跳过的星级。
 
