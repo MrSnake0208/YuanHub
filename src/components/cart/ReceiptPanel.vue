@@ -1,10 +1,22 @@
 <template>
   <div ref="receiptElement" class="receipt">
     <div class="receipt-head">
-      <h2><Receipt :size="18" />购物清单</h2>
-      <div class="en">Purchase Receipt</div>
+      <h2><Receipt :size="18" aria-hidden="true" />预算清单</h2>
+      <span class="receipt-count">已选 {{ Object.values(cart).reduce((sum, qty) => sum + qty, 0) }} 件</span>
     </div>
     <div class="receipt-body">
+      <div class="grand-total">
+        <span class="lb">预计支出 ({{ currency }})</span>
+        <span class="v">{{ formatMoney(amount, currency) }}</span>
+      </div>
+      <div class="receipt-summary">
+        <div class="receipt-metrics">
+          <div><strong>{{ totalPoints }}</strong><span>总积分（含初始）</span></div>
+          <div><strong>{{ totalDraws.toFixed(1) }}</strong><span>总抽数</span></div>
+        </div>
+        <p class="receipt-average">平均 <b>{{ totalDraws > 0 ? formatMoney(drawCost == null ? null : drawCost / totalDraws, currency, 2) + '/抽' : '不适用' }}</b></p>
+        <p class="receipt-price-note">仅计含抽数礼包的支出</p>
+      </div>
       <div class="initial-row">
         <span class="lb"><Gift :size="14" class="ic" />已有初始积分</span>
         <input v-if="!exportOnly" type="number" min="0" aria-label="已有初始积分" :value="initialPoints || ''" @input="onInitialInput" placeholder="0" />
@@ -28,24 +40,15 @@
             <div class="amt">{{ formatMoney(itemPrice(item) == null ? null : itemPrice(item) * cart[item.id], currency) }}</div>
           </div>
         </div>
-        <div class="divider-dashed"></div>
-        <div>
-          <div class="tot-row"><span class="lb">总抽数</span><span class="v badge">{{ totalDraws.toFixed(1) }} 抽</span></div>
-          <div class="tot-row"><span class="lb">平均每抽</span><span class="v gold">{{ totalDraws > 0 ? formatMoney(drawCost == null ? null : drawCost / totalDraws, currency, 2) : '不适用' }}</span></div>
-          <p class="receipt-price-note">平均每抽仅计含抽数礼包的支出。</p>
+        <details class="receipt-pricing-details" :open="exportOnly">
+          <summary>计价明细 · 支付比例 {{ discountPercent == null ? '待填写' : discountPercent + '%' }}</summary>
           <div class="tot-row"><span class="lb">购物车积分</span><span class="v">{{ cartPoints }} 分</span></div>
-          <div class="tot-row"><span class="lb strong">总积分 (含初始)</span><span class="v gold">{{ totalPoints }} 分</span></div>
           <div v-if="hasUsdItems" class="tot-row"><span class="lb">美元标价小计（折前）</span><span class="v">{{ formatMoney(totalUsd, 'USD') }}</span></div>
           <div v-if="originalTotal !== undefined" class="tot-row"><span class="lb">折前预算 ({{ currency }})</span><span class="v">{{ formatMoney(originalTotal, currency) }}</span></div>
-          <div class="tot-row"><span class="lb">方案折扣</span><span class="v">{{ discountPercent == null ? '待填写' : discountPercent + '%' }}（原价百分比）</span></div>
           <div v-if="currency !== 'CNY'" class="tot-row"><span class="lb">折合人民币</span><span class="v">{{ formatMoney(totalCny, 'CNY') }}</span></div>
-        </div>
-        <div class="grand-total">
-          <span class="lb">预计实付 ({{ currency }})</span>
-          <span class="v">{{ formatMoney(amount, currency) }}</span>
-        </div>
-        <p v-if="rateEntries.length" class="receipt-price-note">参考汇率：{{ rateEntries.map(([code, rate]) => `1 ${code} = ${rate} CNY`).join('；') }}。</p>
-        <p class="receipt-price-note">金额仅供预算参考；当地标价、渠道优惠及累充规则请以实际商店为准。折扣不改变已录入的积分和抽数。</p>
+          <p v-if="rateEntries.length" class="receipt-price-note">参考汇率：{{ rateEntries.map(([code, rate]) => `1 ${code} = ${rate} CNY`).join('；') }}。</p>
+          <p class="receipt-price-note">金额仅供预算参考；当地标价、渠道优惠及累充规则请以实际商店为准。折扣不改变已录入的积分和抽数。</p>
+        </details>
         <p v-if="pricingMessage" class="receipt-pricing-error" role="alert">{{ pricingMessage }}</p>
       </template>
 
@@ -77,9 +80,9 @@
   </div>
 
   <div v-if="!exportOnly" class="cart-actions">
-    <button class="btn ghost" :disabled="cartItems.length === 0" @click="$emit('clear')"><Trash2 :size="16" />清空</button>
-    <button class="btn primary" :disabled="cartItems.length === 0 || exportBusy" :aria-busy="exportBusy" @click="$emit('export')"><Download :size="16" />{{ exportBusy ? '生成中…' : '导出图片' }}</button>
-    <button class="btn primary" @click="$emit('save-plan')"><Save :size="16" />保存</button>
+    <button class="btn primary receipt-save" @click="$emit('save-plan')"><Save :size="16" />保存方案</button>
+    <button class="btn ghost receipt-export" :disabled="cartItems.length === 0 || exportBusy" :aria-busy="exportBusy" @click="$emit('export')"><Download :size="16" />{{ exportBusy ? '生成中…' : '导出图片' }}</button>
+    <button class="btn ghost receipt-clear" :disabled="cartItems.length === 0" @click="$emit('clear')"><Trash2 :size="16" />清空清单</button>
   </div>
 </template>
 
@@ -134,6 +137,21 @@ function onInitialInput(e) {
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .receipt-price-note{color:var(--ink-60)}
 .receipt-pricing-error{color:var(--rouge)}
+.receipt{box-shadow:none;border-radius:14px}
+.receipt-head{background:var(--cream);color:var(--tea);border-bottom:1px solid var(--line)}
+.receipt-count{color:var(--ink-60)}
+.receipt .grand-total{border:0}
+.receipt .grand-total .v{color:var(--tea);overflow-wrap:anywhere}
+.receipt-summary{background:var(--cream);border-radius:10px}
+.receipt-metrics strong{color:var(--tea);font-family:var(--font-d)}
+.receipt-metrics span,.receipt-average{color:var(--ink-60)}
+.receipt-metrics>div+div{border-left:1px solid var(--line)}
+.receipt-pricing-details{border-top:1px solid var(--line)}
+.receipt-pricing-details summary{cursor:pointer;color:var(--ink)}
+.receipt-pricing-details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cart-actions .receipt-save{background:var(--accent-strong);border:1px solid var(--accent-strong);color:var(--surface)}
+.cart-actions .receipt-export,.cart-actions .receipt-clear{background:var(--surface);border:1px solid var(--line);color:var(--tea)}
+.cart-actions .btn:hover:not(:disabled){filter:brightness(.96)}
 </style>
 <style scoped src="./receiptPanelDesktop.css"></style>
 <style scoped src="./receiptPanelMobile.css"></style>

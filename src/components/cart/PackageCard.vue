@@ -6,29 +6,29 @@
     <div class="pkg-top">
       <div class="flex-1 min-w-0 pr-2">
         <h2 class="pkg-name" :title="pkg.name">{{ pkg.name }}</h2>
-        <div class="pkg-tags">
-          <span class="pkg-tag pts">{{ pkg.points }} 积分</span>
-          <span v-if="pkg.draws > 0" class="pkg-tag line">{{ pkg.draws }} 抽</span>
-          <span v-if="pkg.draws > 0" class="pkg-tag gold">{{ formatMoney(displayPrice == null ? null : displayPrice / pkg.draws, currency, 2) }}/抽</span>
-          <span v-else class="pkg-tag line">每抽成本不适用</span>
-          <span v-if="pkg._fromSnapshot" class="pkg-tag line">方案快照</span>
-          <span v-if="pkg.extra" class="pkg-tag line">{{ pkg.extra }}</span>
-        </div>
+        <div v-if="pkg.originalCurrency" class="pkg-original">标价 {{ formatMoney(pkg.originalPrice, pkg.originalCurrency) }}</div>
+        <div v-else-if="showUsd && pkg.priceUsd" class="pkg-original">${{ pkg.priceUsd }}</div>
       </div>
       <div class="pkg-price">
         <div class="main">{{ formatMoney(displayPrice, currency) }}</div>
-        <div v-if="pkg.originalCurrency" class="usd">标价 {{ formatMoney(pkg.originalPrice, pkg.originalCurrency) }}</div>
-        <div v-else-if="showUsd && pkg.priceUsd" class="usd">${{ pkg.priceUsd }}</div>
       </div>
     </div>
-    <div class="pkg-personal-actions">
-      <button type="button" @click="$emit(isCustom ? 'edit-custom' : 'copy-custom', pkg)">{{ isCustom ? '编辑礼包' : '复制为自定义' }}</button>
-      <label><input type="checkbox" :checked="pkg.discountEligible !== false" :aria-label="`${pkg.name}参与方案折扣`" @change="$emit('discount', $event.target.checked)" />参与方案折扣</label>
+    <div class="pkg-tags">
+      <span class="pkg-tag pts">{{ pkg.points }} 积分</span>
+      <span v-if="pkg.draws > 0" class="pkg-tag line">{{ pkg.draws }} 抽</span>
+      <span v-if="pkg.draws > 0" class="pkg-tag gold">{{ formatMoney(displayPrice == null ? null : displayPrice / pkg.draws, currency, 2) }}/抽</span>
+      <span v-else class="pkg-tag line">每抽成本不适用</span>
+      <span v-if="pkg._fromSnapshot" class="pkg-tag line">方案快照</span>
+      <span v-if="pkg.extra" class="pkg-tag line">{{ pkg.extra }}</span>
     </div>
     <div class="pkg-foot">
+      <div class="pkg-personal-actions">
+        <label><input type="checkbox" :checked="pkg.discountEligible !== false" :aria-label="`${pkg.name}参与方案折扣`" @change="$emit('discount', $event.target.checked)" />参与折扣</label>
+        <button type="button" @click="$emit(isCustom ? 'edit-custom' : 'copy-custom', pkg)">{{ isCustom ? '编辑礼包' : '复制自定义' }}</button>
+      </div>
       <div class="pkg-limit">
         <template v-if="pkg.limit === 999">不限购</template>
-        <template v-else>限购 <b :class="{ max: qty >= pkg.limit }">{{ qty }}</b>/{{ pkg.limit }}</template>
+        <template v-else>已选 <b :class="{ max: qty >= pkg.limit }">{{ qty }}</b> / 限购 {{ pkg.limit }}</template>
       </div>
       <div class="stepper">
         <button :disabled="qty === 0" :aria-label="`减少 ${pkg.name} 数量`" @click="$emit('remove')"><Minus :size="13" :stroke-width="2.5" /></button>
@@ -59,8 +59,14 @@ defineEmits(['add', 'remove', 'remove-custom', 'edit-custom', 'copy-custom', 'di
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .pkg-personal-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--ink-60)}
-.pkg-personal-actions button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 8px;cursor:pointer}
+.pkg-personal-actions button{border:0;border-radius:6px;background:transparent;color:var(--ink);padding:5px 8px;cursor:pointer}
 .pkg-personal-actions label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.pkg-original{color:var(--ink-60);font-family:var(--font-d)}
+.pkg-personal-actions input{accent-color:var(--accent-strong)}
+.pkg-card{border-radius:12px;box-shadow:none}
+.pkg-card.sel{background:var(--cream);box-shadow:none}
+.pkg-card:hover{box-shadow:none}
+.pkg-tag.pts{background:var(--cream);border:1px solid var(--line)}
 .pkg-personal-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 </style>

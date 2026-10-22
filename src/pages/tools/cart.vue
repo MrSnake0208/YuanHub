@@ -10,14 +10,13 @@
               <option value="daihao">代号鸢{{ daihaoCount ? ' · ' + daihaoCount + ' 件' : '' }}</option>
               <option value="ru">如鸢{{ ruCount ? ' · ' + ruCount + ' 件' : '' }}</option>
             </select>
-            <span class="cart-currency">· {{ currentPricing.currency }}</span>
           </div>
         </template>
         <template #primary-actions>
           <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
         </template>
         <template #actions>
-          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建空白方案</button>
+          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建方案</button>
           <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>
         <template #help>
@@ -28,40 +27,43 @@
 
       <section>
         <div class="wrap">
-          <div class="cart-pricing-settings">
-            <label>预算显示币种<select v-model="currentPricing.currency" aria-label="预算显示币种"><option v-for="currency in ledgerCurrencies" :key="currency" :value="currency">{{ currencyNames[currency] }} {{ currency }}</option></select></label>
-            <label>支付原价的百分比<input v-model="currentPricing.discount_percent" aria-label="支付原价的百分比" type="number" min="0.01" max="100" step="any" /></label>
-            <div class="cart-discount-actions"><button type="button" @click="currentPricing.discount_percent = 100">不打折</button><button type="button" @click="currentPricing.discount_percent = 95">95 折</button></div>
-          </div>
-          <p class="cart-rate-hint">折扣由你设定，仅影响预算支出；不参与优惠或已填写实付价的礼包请取消「参与方案折扣」。</p>
-          <details class="cart-rate-settings">
-            <summary>参考汇率与币种换算<span class="cart-rate-modify">修改汇率</span></summary>
-            <div
-              v-if="version === 'daihao'"
-              class="rate-bar"
-              style="border: none; background: transparent; padding: 0"
-            >
-              <Calculator :size="16" class="ic" />
-              <span class="lb" style="font-size: 12.5px">汇率 USD→CNY</span>
-              <input
-                type="number"
-                step="0.01"
-                :value="rateDraft"
-                min="0"
-                :aria-invalid="rateError ? 'true' : undefined"
-                :aria-describedby="rateError ? 'cart-rate-error' : undefined"
-                @input="updateRateDraft($event.target.value)"
-                aria-label="美元兑人民币汇率"
-              />
-              <span class="cart-rate-hint">参考汇率，可修改</span>
-            </div>
+          <div class="cart-pricing-toolbar">
             <div class="cart-pricing-settings">
-              <label v-for="currency in (version === 'daihao' ? ['HKD', 'JPY'] : ['USD', 'HKD', 'JPY'])" :key="currency">1 {{ currency }} = 多少 CNY
-                <input v-model="currentPricing.rates[currency]" :aria-label="`${currencyNames[currency]}兑人民币参考汇率`" type="number" min="0.000001" max="1000000" step="any" placeholder="手动填写" />
-              </label>
+              <label>显示币种<select v-model="currentPricing.currency" aria-label="预算显示币种"><option v-for="currency in ledgerCurrencies" :key="currency" :value="currency">{{ currencyNames[currency] }} {{ currency }}</option></select></label>
+              <label>支付比例（原价百分比）<span class="cart-percent-input"><input v-model="currentPricing.discount_percent" aria-label="支付原价的百分比" type="number" min="0.01" max="100" step="any" /><span aria-hidden="true">%</span></span></label>
+              <div class="cart-discount-actions"><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 100" @click="currentPricing.discount_percent = 100">不打折</button><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 95" @click="currentPricing.discount_percent = 95">九五折</button></div>
             </div>
-            <p class="cart-rate-hint">仅需填写选中礼包或预算币种用到的汇率；港币、日元不提供实时汇率。修改预算币种不会改写礼包标价。</p>
-          </details>
+            <details class="cart-rate-settings">
+              <summary><Calculator :size="16" aria-hidden="true" />汇率设置</summary>
+              <p class="cart-rate-hint">折扣由你设定，仅影响预算支出；不参与优惠或已填写实付价的礼包请取消「参与方案折扣」。</p>
+
+              <div
+                v-if="version === 'daihao'"
+                class="rate-bar"
+                style="border: none; background: transparent; padding: 0"
+              >
+                <Calculator :size="16" class="ic" />
+                <span class="lb" style="font-size: 12.5px">汇率 USD→CNY</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  :value="rateDraft"
+                  min="0"
+                  :aria-invalid="rateError ? 'true' : undefined"
+                  :aria-describedby="rateError ? 'cart-rate-error' : undefined"
+                  @input="updateRateDraft($event.target.value)"
+                  aria-label="美元兑人民币汇率"
+                />
+                <span class="cart-rate-hint">参考汇率，可修改</span>
+              </div>
+              <div class="cart-pricing-settings">
+                <label v-for="currency in (version === 'daihao' ? ['HKD', 'JPY'] : ['USD', 'HKD', 'JPY'])" :key="currency">1 {{ currency }} = 多少 CNY
+                  <input v-model="currentPricing.rates[currency]" :aria-label="`${currencyNames[currency]}兑人民币参考汇率`" type="number" min="0.000001" max="1000000" step="any" placeholder="手动填写" />
+                </label>
+              </div>
+              <p class="cart-rate-hint">仅需填写选中礼包或预算币种用到的汇率；港币、日元不提供实时汇率。修改预算币种不会改写礼包标价。</p>
+            </details>
+          </div>
           <p v-if="budgetError" class="cart-rate-error" role="alert">{{ budgetError }}；补全后才可保存或导出。</p>
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
@@ -69,41 +71,40 @@
           <div class="cart-catalog-status">
             <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
             <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
-            <p class="cart-draft-hint">清单在本次标签页内保留，切换页面不会清空；刷新、关闭或切换账号前，请先点「保存方案」。</p>
+            <p class="cart-draft-hint">清单仅保留在当前标签页；刷新、关闭或切换账号前请保存方案。</p>
           </div>
           <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
-          <div class="cart-filters" v-reveal>
-            <div class="cart-search-row">
-              <label class="cart-search"><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
-              <label class="cart-source">礼包来源<select v-model="currentPricing.custom_only" aria-label="礼包来源"><option :value="false">全部礼包</option><option :value="true">仅自定义</option></select></label>
-              <label class="cart-category">分类<select :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
-              <label class="cart-sort">排序<select v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
-              <details class="cart-more-filters">
-                <summary>更多筛选<span v-if="drawFilter !== 'all' || selectedOnly"> · 已启用</span></summary>
-                <div class="cart-advanced-content">
-                  <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
-                  <div class="row" role="group" aria-label="礼包抽数筛选">
-                    <span class="f-dot"></span>
-                    <button
-                      v-for="f in drawFilters"
-                      :key="f.id"
-                      class="chip"
-                      :class="{ on: drawFilter === f.id }"
-                      @click="drawFilter = f.id"
-                    >
-                      {{ f.label }}
-                    </button>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </div>
-
           <div class="cart-layout">
-            <!-- 礼包网格 -->
-            <div>
+            <div class="cart-catalog">
+              <div class="cart-filters" v-reveal>
+                <div class="cart-search-row">
+                  <label class="cart-search"><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
+                  <label class="cart-source"><select v-model="currentPricing.custom_only" aria-label="礼包来源"><option :value="false">全部礼包</option><option :value="true">仅自定义</option></select></label>
+                  <label class="cart-category"><select aria-label="分类" :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
+                  <label class="cart-sort"><select aria-label="排序" v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
+                  <details class="cart-more-filters">
+                    <summary>更多筛选<span v-if="drawFilter !== 'all' || selectedOnly"> · 已启用</span></summary>
+                    <div class="cart-advanced-content">
+                      <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
+                      <div class="row" role="group" aria-label="礼包抽数筛选">
+                        <span class="f-dot"></span>
+                        <button
+                          v-for="f in drawFilters"
+                          :key="f.id"
+                          class="chip"
+                          :class="{ on: drawFilter === f.id }"
+                          @click="drawFilter = f.id"
+                        >
+                          {{ f.label }}
+                        </button>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+
               <div class="pkg-grid">
                 <PackageCard
                   v-for="pkg in filteredPackages"
@@ -1120,7 +1121,13 @@ function openPlanSave() {
 .cart-selected{cursor:pointer}
 .cart-selected input{accent-color:var(--tea)}
 .cart-rate-hint{color:var(--ink-60);font-size:12px}
-.cart-pricing-settings{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0}
+.cart-pricing-toolbar{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cart-percent-input{position:relative;display:block}
+.cart-percent-input input{padding-right:32px}
+.cart-percent-input>span{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--ink-60)}
+.cart-discount-actions button[aria-pressed="true"]{background:var(--accent-strong);border-color:var(--accent-strong);color:var(--surface)}
+.cart-catalog{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.page-cart{background:color-mix(in srgb,var(--cream) 90%,transparent)}
 .cart-pricing-settings label{display:flex;flex-direction:column;gap:5px;flex:1 1 160px;min-width:0;font-size:13px}
 .cart-pricing-settings input,.cart-pricing-settings select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);color:var(--ink)}
 .cart-discount-actions{display:flex;flex-wrap:wrap;gap:6px}
@@ -1148,8 +1155,8 @@ function openPlanSave() {
 .cart-layout :deep(.receipt) { border-radius: 14px; box-shadow: none; }
 .cart-layout :deep(.receipt-head) { border-bottom: 1px solid var(--line); background: var(--cream); color: var(--tea); }
 .cart-layout :deep(.receipt-head .en) { color: var(--ink-60); }
-.cart-layout :deep(.cart-actions .btn) { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--tea); }
-.cart-layout :deep(.cart-actions .btn:hover:not(:disabled)) { border-color: var(--accent); background: var(--surface); }
+.cart-layout :deep(.cart-actions .btn) { border-radius: 8px; }
+
 </style>
 <style scoped src="./cartPageDesktop.css"></style>
 <style scoped src="./cartPageMobile.css"></style>

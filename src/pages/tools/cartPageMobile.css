@@ -74,4 +74,20 @@
   .cart-mbar .mbtn { min-height: 40px; padding-inline: 9px; white-space: nowrap; }
   .cart-mbar .mbtn:disabled { opacity: 1; background: var(--paper); border: 1px solid var(--line); color: var(--ink-60); box-shadow: none; }
 }
+
+.cart-pricing-toolbar{padding:12px;margin:8px 0 12px}
+.cart-pricing-settings{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:0}
+.cart-pricing-settings label{flex-basis:140px;font-size:12px}
+.cart-pricing-settings input,.cart-pricing-settings select{min-height:40px}
+.cart-discount-actions button{min-height:38px;padding:8px 12px}
+.cart-rate-settings{margin-top:8px}
+.cart-rate-settings[open]{border-top:1px solid var(--line);padding-top:6px}
+.cart-rate-settings .cart-pricing-settings{margin:10px 0}
+.cart-catalog{padding:12px;min-width:0}
+.cart-filters{margin-top:0}
+@media(max-width:767px){
+  .cart-catalog{padding:10px}
+  .cart-pricing-settings label{flex-basis:100%}
+  .cart-search-row{gap:8px}
+}
 }

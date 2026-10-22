@@ -78,7 +78,7 @@ it('Escape, Tab and backdrop restore opener focus and the previous scroll-lock v
 it('nested save dialog owns focus and Escape closes only the top layer', async () => {
   const wrapper = render()
   await openReceipt(wrapper)
-  const saveButton = bodyElement('.cart-receipt-drawer .cart-actions button:last-child')
+  const saveButton = bodyElement('.cart-receipt-drawer .cart-actions .receipt-save')
   saveButton.element.focus()
   await saveButton.trigger('click')
   await flushPromises()
@@ -139,7 +139,7 @@ it.each([390, 1440])('方案草稿在%s起步跨收据布局保持焦点、名�
     await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
     if (media.matches) await openReceipt(wrapper)
     const receipt = wrapper.getComponent(ReceiptPanel).vm.$
-    await bodyElement('.cart-actions button:last-child').trigger('click'); await flushPromises()
+    await bodyElement('.cart-actions .receipt-save').trigger('click'); await flushPromises()
     const input = document.querySelector('[aria-label="方案名称"]')
     await new DOMWrapper(input).setValue('跨布局未保存方案')
     input.focus()
@@ -162,4 +162,29 @@ it.each([390, 1440])('方案草稿在%s起步跨收据布局保持焦点、名�
     wrapper.unmount()
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
   }
+})
+
+
+it('budget summary stays visible for an empty cart and exports expanded pricing details', async () => {
+  const wrapper = mount(ReceiptPanel)
+  expect(wrapper.get('.grand-total .v').text()).toBe('¥0.00')
+  expect(wrapper.findAll('.receipt-metrics strong').map(node => node.text())).toEqual(['0', '0.0'])
+  expect(wrapper.get('.receipt-average').text()).toContain('不适用')
+  expect(wrapper.get('.receipt-clear').attributes('disabled')).toBeDefined()
+  await wrapper.get('.receipt-save').trigger('click')
+  expect(wrapper.emitted('save-plan')).toHaveLength(1)
+  await wrapper.setProps({
+    cartItems: [{ id: 'sample', name: '示例礼包', calculatedPrice: 20, originalPrice: 25, originalCurrency: 'CNY' }],
+    cart: { sample: 2 }, totalAmount: 40, totalPoints: 120, totalDraws: 4,
+    displayDrawCost: 30, originalTotal: 50, discountPercent: 80,
+  })
+  expect(wrapper.get('.receipt-count').text()).toBe('已选 2 件')
+  expect(wrapper.get('.grand-total .v').text()).toBe('¥40.00')
+  expect(wrapper.get('.receipt-average').text()).toContain('¥7.50/抽')
+  expect(wrapper.get('.receipt-pricing-details').element.open).toBe(false)
+  await wrapper.setProps({ exportOnly: true })
+  expect(wrapper.get('.receipt-pricing-details').element.open).toBe(true)
+  expect(wrapper.get('.receipt-pricing-details').text()).toContain('¥50.00')
+  expect(wrapper.get('.receipt-pricing-details').text()).toContain('80%')
+  expect(wrapper.find('.cart-actions').exists()).toBe(false)
 })
