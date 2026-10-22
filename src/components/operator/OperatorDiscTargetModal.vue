@@ -50,7 +50,7 @@ watch(visible, (open, _, onCleanup) => {
 </script>
 
 <style scoped>
-.disc-target-mask { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: end center; padding: 12px; background: rgba(73, 59, 44, .38); }
+.disc-target-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: end center; padding: 12px; background: rgba(73, 59, 44, .38); }
 .disc-target-modal { box-sizing: border-box; width: min(880px, 100%); min-width: 0; max-height: min(85dvh, 760px); overflow-y: auto; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .disc-target-modal header, .disc-target-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .disc-target-modal header h3 { min-width: 0; margin: 0; font-size: 20px; overflow-wrap: anywhere; }

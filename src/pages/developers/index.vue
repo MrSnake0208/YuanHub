@@ -60,6 +60,8 @@ const Reference = defineAsyncComponent(() => import('./reference.vue'))
 const icons = { BookUser, CalendarDays, ListChecks, PackageOpen }
 </script>
 
-<style src="@/pages/developers/developerProduct.css"></style>
-<style src="@/pages/developers/developerProductMobile.css"></style>
-<style src="@/pages/developers/developerProductDesktop.css"></style>
+<style>
+@import './developerProduct.css';
+@import './developerProductMobile.css';
+@import './developerProductDesktop.css';
+</style>
