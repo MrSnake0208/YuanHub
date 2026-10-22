@@ -35,6 +35,8 @@
     transform: translateY(-2px);
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3 { align-self: stretch; }
+
   .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-status-menu[open]) { z-index: var(--z-card-open); }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait {
@@ -287,7 +289,7 @@
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones small { margin-top: 0; font-size: 9px; line-height: 11px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stone-popover { left: 0; right: auto; width: 100%; max-width: 100%; }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-footer { gap: 6px; padding-top: 0; margin-top: -4px; }
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-footer { gap: 6px; padding-top: 0; margin-top: auto; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-footer textarea { min-height: 26px; height: 26px; padding: 3px 6px; font-size: 11px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-actions { min-height: 28px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-actions button { min-height: 28px; font-size: 11px; }
