@@ -10,25 +10,32 @@
               <option value="daihao">代号鸢{{ daihaoCount ? ' · ' + daihaoCount + ' 件' : '' }}</option>
               <option value="ru">如鸢{{ ruCount ? ' · ' + ruCount + ' 件' : '' }}</option>
             </select>
-            <span class="cart-currency">· CNY</span>
+            <span class="cart-currency">· {{ currentPricing.currency }}</span>
           </div>
         </template>
         <template #primary-actions>
           <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
         </template>
         <template #actions>
+          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建空白方案</button>
           <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>
         <template #help>
-          <p>搜索并选择礼包，按汇率换算人民币预算，累计积分抽数和累充奖励，保存方案或导出账单图片。两个版本的购物清单独立保留，切换版本不会清空。</p>
+          <p>选择公共礼包或录入当地价格，设置折扣与预算币种，累计积分抽数和累充奖励，保存方案或导出账单图片。两个版本的购物清单独立保留，切换版本不会清空。</p>
           <p>独立创作 · 著作权归作者 binary 所有；数据以游戏内商店为准。</p>
         </template>
       </CompactToolHeader>
 
       <section>
         <div class="wrap">
-          <details v-if="version === 'daihao'" class="cart-rate-settings">
-            <summary>1 USD = {{ exchangeRate }} CNY<span class="cart-rate-modify">修改汇率</span></summary>
+          <div class="cart-pricing-settings">
+            <label>预算显示币种<select v-model="currentPricing.currency" aria-label="预算显示币种"><option v-for="currency in ledgerCurrencies" :key="currency" :value="currency">{{ currencyNames[currency] }} {{ currency }}</option></select></label>
+            <label>支付原价的百分比<input v-model="currentPricing.discount_percent" aria-label="支付原价的百分比" type="number" min="0.01" max="100" step="any" /></label>
+            <div class="cart-discount-actions"><button type="button" @click="currentPricing.discount_percent = 100">不打折</button><button type="button" @click="currentPricing.discount_percent = 95">95 折</button></div>
+          </div>
+          <p class="cart-rate-hint">折扣由你设定，仅影响预算支出；不参与优惠或已填写实付价的礼包请取消「参与方案折扣」。</p>
+          <details class="cart-rate-settings">
+            <summary>参考汇率与币种换算<span class="cart-rate-modify">修改汇率</span></summary>
             <div
               v-if="version === 'daihao'"
               class="rate-bar"
@@ -48,7 +55,14 @@
               />
               <span class="cart-rate-hint">参考汇率，可修改</span>
             </div>
+            <div class="cart-pricing-settings">
+              <label v-for="currency in (version === 'daihao' ? ['HKD', 'JPY'] : ['USD', 'HKD', 'JPY'])" :key="currency">1 {{ currency }} = 多少 CNY
+                <input v-model="currentPricing.rates[currency]" :aria-label="`${currencyNames[currency]}兑人民币参考汇率`" type="number" min="0.000001" max="1000000" step="any" placeholder="手动填写" />
+              </label>
+            </div>
+            <p class="cart-rate-hint">仅需填写选中礼包或预算币种用到的汇率；港币、日元不提供实时汇率。修改预算币种不会改写礼包标价。</p>
           </details>
+          <p v-if="budgetError" class="cart-rate-error" role="alert">{{ budgetError }}；补全后才可保存或导出。</p>
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
@@ -63,6 +77,7 @@
           <div class="cart-filters" v-reveal>
             <div class="cart-search-row">
               <label class="cart-search"><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
+              <label class="cart-source">礼包来源<select v-model="currentPricing.custom_only" aria-label="礼包来源"><option :value="false">全部礼包</option><option :value="true">仅自定义</option></select></label>
               <label class="cart-category">分类<select :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
               <label class="cart-sort">排序<select v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
               <details class="cart-more-filters">
@@ -97,6 +112,10 @@
                   :qty="currentCart[pkg.id] || 0"
                   :is-custom="isCustomPkg(pkg.id)"
                   :show-usd="version === 'daihao'"
+                  :currency="currentPricing.currency"
+                  @edit-custom="openCustom(pkg, true)"
+                  @copy-custom="openCustom(pkg)"
+                  @discount="setPackageDiscount(pkg, $event)"
                   @add="addToCart(pkg)"
                   @remove="removeFromCart(pkg)"
                   @remove-custom="deleteCustom(pkg.id)"
@@ -105,7 +124,7 @@
                   <p>{{ selectedOnly ? '当前条件下没有已选礼包。' : '没有符合条件的礼包。' }}</p>
                   <button type="button" class="btn ghost" @click="resetFilters">清除筛选</button>
                 </div>
-                <button class="pkg-add-card" @click="showCustomForm = true">
+                <button class="pkg-add-card" @click="openCustom()">
                   <span class="ic"><Plus :size="22" /></span>
                   <span>自定义礼包</span>
                 </button>
@@ -142,7 +161,7 @@
     <div class="cart-mbar">
       <div class="sum" :class="{ 'is-cart-empty': cartItems.length === 0 }">
         <div class="k">合计金额</div>
-        <div class="v">¥{{ totalCny.toFixed(2) }}</div>
+        <div class="v">{{ formatMoney(totalAmount, currentPricing.currency) }}</div>
       </div>
       <div class="btns">
         <button
@@ -176,6 +195,8 @@
     <CustomPackageModal
       :show="showCustomForm"
       :version="version"
+      :initial-package="customSeed"
+      :editing="editingCustomId !== null"
       @close="showCustomForm = false"
       @submit="addCustomPackage"
     />
@@ -239,6 +260,7 @@ import {
   deletePlan,
 } from "../../api/ledger.js";
 import { auth } from "../../store/auth.js";
+import { defaultPricing, ledgerCurrencies, currencyNames, finiteNumber, packagePrice, pricePackage, referenceRate, pricingError, pricingPayload, formatMoney } from "../../utils/ledgerPricing.js";
 import { useCartDraft } from "../../store/cartDraft.js";
 import { dialog } from "../../utils/dialog.js";
 
@@ -246,8 +268,11 @@ const cloudIdentity = () => auth.isLoggedIn ? String(auth.userInfo?.id || "authe
 const {
   version, exchangeRate, rateDraft, rateError, rateOwned,
   cartDaihao, cartRu, initialPointsDaihao, initialPointsRu,
-  customPackagesDaihao, customPackagesRu, plansByVersion, builtinSnapshots,
+  customPackagesDaihao, customPackagesRu, plansByVersion, builtinSnapshots, pricingByVersion,
 } = toRefs(useCartDraft(cloudIdentity()));
+const currentPricing = computed(() => pricingByVersion.value[version.value]);
+const customSeed = ref(null);
+const editingCustomId = ref(null);
 const publicCatalog = ref(bundledLedgerCatalog);
 const catalogLoading = ref(false);
 const catalogMessage = ref("正在更新礼包信息，暂用备用资料，价格可能不是最新。");
@@ -289,6 +314,9 @@ watch(cloudIdentity, () => {
   myPlans.value = [];
   showPlanList.value = false;
   showPlanSave.value = false;
+  showCustomForm.value = false;
+  customSeed.value = null;
+  editingCustomId.value = null;
   useCartDraft(cloudIdentity());
   replaceCatalog(publicCatalog.value);
   showResult("账号已变化，当前草稿已清空；可从「我的方案」重新加载。");
@@ -333,15 +361,7 @@ const currentCustoms = computed(() =>
 const processedPackages = computed(() => {
   const raw = currentBuiltins.value.concat(currentCustoms.value);
   return raw
-    .map((pkg) => ({
-      ...pkg,
-      calculatedPriceCny:
-        version.value === "daihao"
-          ? pkg.priceUsd
-            ? pkg.priceUsd * exchangeRate.value
-            : 0
-          : pkg.priceCny || 0,
-    }))
+    .map(pkg => pricePackage(pkg, version.value, currentPricing.value, exchangeRate.value))
     .sort((a, b) => {
       if (a.sortId !== undefined && b.sortId !== undefined) {
         if (a.sortId !== b.sortId) return a.sortId - b.sortId;
@@ -354,8 +374,8 @@ const processedPackages = computed(() => {
       const isCustomB = currentCustoms.value.some((p) => p.id === b.id);
       if (isCustomA !== isCustomB) return isCustomA ? 1 : -1;
       if (a.category === "恋念" && b.category === "恋念") return a.id - b.id;
-      const priceA = a.draws > 0 ? a.calculatedPriceCny / a.draws : Infinity;
-      const priceB = b.draws > 0 ? b.calculatedPriceCny / b.draws : Infinity;
+      const priceA = a.draws > 0 && a.calculatedPriceCny != null ? a.calculatedPriceCny / a.draws : Infinity;
+      const priceB = b.draws > 0 && b.calculatedPriceCny != null ? b.calculatedPriceCny / b.draws : Infinity;
       if (priceA === priceB) return a.calculatedPriceCny - b.calculatedPriceCny;
       return priceA - priceB;
     });
@@ -372,7 +392,7 @@ const categories = computed(() => {
 const filteredPackages = computed(() => displayPackages(processedPackages.value, {
   query: query.value, category: activeCategory.value, drawFilter: drawFilter.value,
   selectedOnly: selectedOnly.value, sortMode: sortMode.value, cart: currentCart.value,
-  customIds: new Set(currentCustoms.value.map(pkg => pkg.id)),
+  customIds: new Set(currentCustoms.value.map(pkg => pkg.id)), customOnly: currentPricing.value.custom_only,
 }));
 watch(categories, values => { if (!values.includes(activeCategory.value)) activeCategory.value = "全部"; });
 function resetFilters() {
@@ -386,11 +406,11 @@ function updateRateDraft(value) {
   rateDraft.value = value;
   const rate = parseReferenceRate(value);
   rateError.value = rate === null ? "请输入有限且不小于 0 的参考汇率" : "";
-  if (rate !== null) exchangeRate.value = rate;
+  if (rate !== null) { exchangeRate.value = rate; currentPricing.value.rates.USD = rate; }
 }
 function validCurrentRate() {
-  if (version.value !== "daihao" || !rateError.value) return true;
-  showResult("请先填写有效参考汇率，再保存或导出。", true);
+  if (!budgetError.value && (version.value !== "daihao" || !rateError.value)) return true;
+  showResult(budgetError.value || "请先填写有效参考汇率，再保存或导出。", true);
   return false;
 }
 
@@ -407,27 +427,35 @@ const totalPoints = computed(
 const totalDraws = computed(() =>
   cartItems.value.reduce((s, p) => s + p.draws * currentCart.value[p.id], 0),
 );
+const budgetError = computed(() => pricingError(currentPricing.value, cartItems.value, version.value, exchangeRate.value, currentCart.value));
+const targetRate = computed(() => referenceRate(currentPricing.value.currency, currentPricing.value, exchangeRate.value));
 const totalCny = computed(() =>
-  cartItems.value.reduce(
+  cartItems.value.some(p => p.calculatedPriceCny === null) ? null : cartItems.value.reduce(
     (s, p) => s + p.calculatedPriceCny * currentCart.value[p.id],
     0,
   ),
 );
 const priceForDraws = computed(() =>
-  cartItems.value.reduce(
+  cartItems.value.some(p => p.draws > 0 && p.calculatedPriceCny === null) ? null : cartItems.value.reduce(
     (s, p) =>
       p.draws > 0 ? s + p.calculatedPriceCny * currentCart.value[p.id] : s,
     0,
   ),
 );
-const totalUsd = computed(() =>
-  version.value === "daihao"
-    ? cartItems.value.reduce(
-        (s, p) => s + (p.priceUsd || 0) * currentCart.value[p.id],
-        0,
-      )
-    : 0,
-);
+const totalUsd = computed(() => cartItems.value.reduce(
+  (sum, pkg) => sum + (pkg.originalCurrency === 'USD' ? pkg.originalPrice * currentCart.value[pkg.id] : 0), 0,
+));
+
+const totalAmount = computed(() => totalCny.value === null || !targetRate.value ? null : totalCny.value / targetRate.value);
+const originalTotal = computed(() => {
+  let total = 0;
+  for (const pkg of cartItems.value) {
+    const rate = referenceRate(pkg.originalCurrency, currentPricing.value, exchangeRate.value);
+    if (rate === null || !targetRate.value) return null;
+    total += pkg.originalPrice * rate * currentCart.value[pkg.id] / targetRate.value;
+  }
+  return total;
+});
 
 // ---- 公共目录 / 动态奖励进度 ----
 const campaigns = computed(() => ledgerCampaignProgress(publicCatalog.value.campaigns, version.value, totalPoints.value, now.value));
@@ -478,9 +506,14 @@ const receiptProps = computed(() => ({
   cartItems: cartItems.value, cart: currentCart.value, initialPoints: currentInitialPoints.value,
   totalDraws: totalDraws.value, priceForDraws: priceForDraws.value,
   cartPoints: cartPoints.value, totalPoints: totalPoints.value,
-  totalUsd: totalUsd.value, totalCny: totalCny.value,
+  totalUsd: totalUsd.value, totalCny: totalCny.value, hasUsdItems: cartItems.value.some(pkg => pkg.originalCurrency === 'USD'),
   campaigns: campaigns.value,
   version: version.value, exchangeRate: exchangeRate.value,
+  currency: currentPricing.value.currency, totalAmount: totalAmount.value, originalTotal: originalTotal.value,
+  displayDrawCost: priceForDraws.value === null || !targetRate.value ? null : priceForDraws.value / targetRate.value,
+  discountPercent: finiteNumber(currentPricing.value.discount_percent),
+  referenceRates: pricingPayload(currentPricing.value, exchangeRate.value).rates,
+  pricingMessage: budgetError.value || (version.value === 'daihao' ? rateError.value : ''),
 }));
 const { exportReceipt: captureReceipt, exportBusy, exportSnapshot, exportPanel } = useReceiptExport(receiptProps, showResult);
 function exportReceipt() { if (validCurrentRate()) return captureReceipt(); }
@@ -495,6 +528,7 @@ const drawFilters = [
 function setVersion(v) {
   planLoadSequence++;
   version.value = v;
+  showCustomForm.value = false;
 }
 function setCategory(c) {
   activeCategory.value = c;
@@ -507,6 +541,10 @@ function addToCart(pkg) {
   const cart = version.value === "daihao" ? cartDaihao : cartRu;
   const cur = cart.value[pkg.id] || 0;
   if (cur < pkg.limit) {
+    if (packagePrice(pkg, version.value).currency === 'USD' && currentPricing.value.rates.USD == null) {
+      currentPricing.value.rates.USD = exchangeRate.value;
+      rateOwned.value = true;
+    }
     if (!isCustomPkg(pkg.id) && !builtinSnapshots.value[version.value].some(p => p.id === pkg.id)) {
       const { calculatedPriceCny, ...snapshot } = pkg;
       builtinSnapshots.value[version.value].push(snapshot);
@@ -544,25 +582,81 @@ function setInitialPoints(v) {
   else initialPointsRu.value = v;
 }
 
+function openCustom(pkg = null, editing = false) {
+  customSeed.value = pkg ? { ...pkg } : null;
+  editingCustomId.value = editing ? pkg.id : null;
+  showCustomForm.value = true;
+}
+
 function addCustomPackage(form) {
-  const newPkg = {
-    id: Date.now(),
-    name: form.name,
-    category: form.category || "自定义",
-    points: parseInt(form.points) || 0,
-    draws: parseFloat(form.draws) || 0,
-    limit: parseInt(form.limit) || 999,
-    extra: form.extra || undefined,
-    sortId: form.sortId ? parseInt(form.sortId) : undefined,
-  };
-  if (version.value === "daihao") {
-    newPkg.priceUsd = parseFloat(form.price);
-    customPackagesDaihao.value = [...customPackagesDaihao.value, newPkg];
-  } else {
-    newPkg.priceCny = parseFloat(form.price);
-    customPackagesRu.value = [...customPackagesRu.value, newPkg];
+  const price = finiteNumber(form.price);
+  const points = finiteNumber(form.points) ?? 0;
+  const draws = finiteNumber(form.draws) ?? 0;
+  const limit = finiteNumber(form.limit) ?? 999;
+  const currency = form.currency || (version.value === 'daihao' ? 'USD' : 'CNY');
+  if (!form.name?.trim() || form.name.trim().length > 120 || price === null || price < 0 || price > 1e9 ||
+      !ledgerCurrencies.includes(currency) || !Number.isInteger(points) || points < 0 || points > 2147483647 ||
+      draws < 0 || draws > 1e9 || !Number.isInteger(limit) || limit < 1 || limit > 9999) {
+    showResult('请检查名称、价格、积分、抽数及限购次数。', true);
+    return;
   }
+  const packages = version.value === 'daihao' ? customPackagesDaihao : customPackagesRu;
+  const cart = version.value === 'daihao' ? cartDaihao : cartRu;
+  if (editingCustomId.value === null && packages.value.length >= 50) {
+    showResult('自定义礼包最多 50 个，请先删除不需要的礼包。', true);
+    return;
+  }
+  if (editingCustomId.value !== null && (cart.value[editingCustomId.value] || 0) > limit) {
+    showResult('限购次数不能小于当前已选数量，请先减少清单数量。', true);
+    return;
+  }
+  let id = editingCustomId.value ?? Date.now();
+  if (editingCustomId.value === null) {
+    const used = new Set(processedPackages.value.map(pkg => pkg.id));
+    while (used.has(id)) id++;
+  }
+  const newPkg = { id, name: form.name.trim(), category: form.category || '自定义', points, draws, limit,
+    extra: form.extra || undefined, sortId: form.sortId === '' || form.sortId == null ? undefined : Number(form.sortId),
+    priceAmount: price, priceCurrency: currency, discountEligible: form.discountEligible !== false };
+  packages.value = editingCustomId.value === null ? [...packages.value, newPkg] : packages.value.map(pkg => pkg.id === id ? newPkg : pkg);
   showCustomForm.value = false;
+  showResult(editingCustomId.value === null ? '已添加自定义礼包。' : '已更新自定义礼包，清单金额同步更新。');
+}
+
+function setPackageDiscount(pkg, eligible) {
+  if (isCustomPkg(pkg.id)) {
+    const packages = version.value === 'daihao' ? customPackagesDaihao : customPackagesRu;
+    packages.value = packages.value.map(p => p.id === pkg.id ? { ...p, discountEligible: eligible } : p);
+  } else {
+    const source = currentBuiltins.value.find(p => p.id === pkg.id);
+    const snapshots = builtinSnapshots.value[version.value].filter(p => p.id !== pkg.id);
+    builtinSnapshots.value[version.value] = [...snapshots, { ...source, discountEligible: eligible }];
+  }
+}
+
+async function newBlankPlan() {
+  const identity = cloudContext();
+  const game = version.value;
+  const draftState = () => JSON.stringify([buildPayload(currentPlan.value.name), currentPricing.value, rateDraft.value]);
+  const before = draftState();
+  if (cartItems.value.length || currentCustoms.value.length || currentPlan.value.id || currentInitialPoints.value ||
+      currentPricing.value.discount_percent !== 100 || currentPricing.value.currency !== 'CNY' ||
+      Object.keys(currentPricing.value.rates).length || (game === 'daihao' && rateDraft.value !== String(publicCatalog.value.exchangeRate))) {
+    if (!await dialog.confirm({ title: '新建空白方案', message: '当前游戏的未保存编辑将清空；已保存方案和另一个游戏不受影响。请先保存需要保留的编辑。', confirmText: '新建空白方案' })) return;
+  }
+  if (!alive || identity !== cloudContext() || version.value !== game || draftState() !== before) return;
+  planLoadSequence++;
+  if (game === 'daihao') {
+    cartDaihao.value = {}; customPackagesDaihao.value = []; initialPointsDaihao.value = 0;
+    exchangeRate.value = publicCatalog.value.exchangeRate; rateDraft.value = String(exchangeRate.value); rateError.value = '';
+  } else { cartRu.value = {}; customPackagesRu.value = []; initialPointsRu.value = 0; }
+  pricingByVersion.value[game] = { ...defaultPricing(), custom_only: true };
+  builtinSnapshots.value[game] = [];
+  plansByVersion.value[game] = { id: null, name: '', isLocal: false };
+  resetFilters();
+  showCustomForm.value = false;
+  showPlanSave.value = false;
+  showResult('已新建空白方案，可添加自定义礼包；需要公共礼包时切换「礼包来源」。');
 }
 
 async function deleteCustom(id) {
@@ -612,6 +706,7 @@ function snapshotOf(src, isDaihao) {
     limit: src.limit,
     sort_id: src.sortId,
     extra: src.extra || undefined,
+    price_amount: src.priceAmount, price_currency: src.priceCurrency, discount_eligible: src.discountEligible !== false,
     ...(isDaihao ? { price_usd: src.priceUsd } : { price_cny: src.priceCny }),
   };
 }
@@ -662,11 +757,13 @@ function buildPayload(name) {
       limit: p.limit,
       sort_id: p.sortId,
       extra: p.extra || undefined,
+      price_amount: p.priceAmount, price_currency: p.priceCurrency, discount_eligible: p.discountEligible !== false,
       ...(isDaihao ? { price_usd: p.priceUsd } : { price_cny: p.priceCny }),
     };
   });
 
   return {
+    pricing: pricingPayload(currentPricing.value, exchangeRate.value),
     name, // 必填 ≤50（对话框里校验非空）
     version: version.value,
     exchange_rate: isDaihao ? exchangeRate.value : null, // 汇率仅 daihao 生效
@@ -683,6 +780,7 @@ function buildPayload(name) {
 function toLedgerArgs(body) {
   return {
     name: body.name,
+    pricing: body.pricing,
     version: body.version,
     exchangeRate: body.exchange_rate,
     initialPoints: body.initial_points,
@@ -756,10 +854,12 @@ function applyPlan(plan) {
 
   // ① 版本（方案绑定单一 version）
   version.value = plan.version;
+  showCustomForm.value = false;
+  pricingByVersion.value[plan.version] = { ...defaultPricing(), ...plan.pricing, rates: { ...(plan.pricing?.rates || {}) } };
 
   // ② 汇率：仅在 daihao 生效；缺省回退 6.7
   if (isDaihao)
-    updateRateDraft(plan.exchange_rate == null ? bundledLedgerCatalog.exchangeRate : plan.exchange_rate);
+    updateRateDraft(plan.pricing?.rates?.USD ?? plan.exchange_rate ?? bundledLedgerCatalog.exchangeRate);
 
   // ③ 自定义礼包：id 以响应为准（服务端已重生成 + 回写引用）
   const customs = (plan.custom_packages || []).map(function (p) {
@@ -772,6 +872,7 @@ function applyPlan(plan) {
       limit: p.limit,
       sortId: p.sort_id,
       extra: p.extra,
+      priceAmount: p.price_amount, priceCurrency: p.price_currency, discountEligible: p.discount_eligible !== false,
     };
     if (isDaihao) o.priceUsd = p.price_usd;
     else o.priceCny = p.price_cny;
@@ -814,6 +915,7 @@ function applyPlan(plan) {
         sortId: snap.sort_id ?? builtin?.sortId,
         priceUsd: snap.price_usd ?? builtin?.priceUsd,
         priceCny: snap.price_cny ?? builtin?.priceCny,
+        priceAmount: snap.price_amount, priceCurrency: snap.price_currency, discountEligible: snap.discount_eligible !== false,
         _fromSnapshot: true,
       });
     }
@@ -836,6 +938,7 @@ function payloadFromDto(dto) {
   const isDaihao = dto.version === "daihao";
   return {
     name: dto.name,
+    pricing: dto.pricing,
     version: dto.version,
     exchange_rate: isDaihao ? dto.exchange_rate : null,
     initial_points: dto.initial_points,
@@ -891,6 +994,7 @@ function loadGuestPlan(rec) {
   applyPlan({
     id: rec._localId,
     name: rec.name,
+    pricing: rec.pricing,
     version: rec.version,
     exchange_rate: rec.exchange_rate,
     initial_points: rec.initial_points,
@@ -1015,7 +1119,13 @@ function openPlanSave() {
 .cart-search input,.cart-sort select{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
 .cart-selected{cursor:pointer}
 .cart-selected input{accent-color:var(--tea)}
-.cart-rate-hint{color:var(--ink-60)}
+.cart-rate-hint{color:var(--ink-60);font-size:12px}
+.cart-pricing-settings{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0}
+.cart-pricing-settings label{display:flex;flex-direction:column;gap:5px;flex:1 1 160px;min-width:0;font-size:13px}
+.cart-pricing-settings input,.cart-pricing-settings select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);color:var(--ink)}
+.cart-discount-actions{display:flex;flex-wrap:wrap;gap:6px}
+.cart-discount-actions button{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px;cursor:pointer}
+.cart-pricing-settings :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cart-rate-error{color:var(--rouge)}
 .cart-filter-empty{border:1px dashed var(--line);border-radius:18px;background:var(--surface)}
 .cart-export-view{pointer-events:none}
@@ -1033,7 +1143,7 @@ function openPlanSave() {
 .cart-rate-modify { text-decoration: underline; text-underline-offset: 3px; }
 .cart-more-filters > summary::after { content: '⌄'; }
 .cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.cart-category select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.cart-category select,.cart-source select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .cart-advanced-content { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }
 .cart-layout :deep(.receipt) { border-radius: 14px; box-shadow: none; }
 .cart-layout :deep(.receipt-head) { border-bottom: 1px solid var(--line); background: var(--cream); color: var(--tea); }

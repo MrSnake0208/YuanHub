@@ -9,12 +9,13 @@ import { request } from './request.js'
 const PATH = '/hub/ledger/plan'
 
 // 创建方案（POST）——返回全量快照，自定义礼包 id 以响应为准
-export function createPlan({ name, version, exchangeRate, initialPoints, cartItems, customPackages }) {
+export function createPlan({ name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing }) {
   return request(PATH, {
     method: 'POST',
     auth: true,
     body: {
       name,
+      pricing,
       version,
       exchange_rate: version === 'daihao' ? exchangeRate ?? null : null,
       initial_points: initialPoints || 0,
@@ -25,12 +26,13 @@ export function createPlan({ name, version, exchangeRate, initialPoints, cartIte
 }
 
 // 整体替换更新（PUT {id}）——请求体同创建
-export function updatePlan(id, { name, version, exchangeRate, initialPoints, cartItems, customPackages }) {
+export function updatePlan(id, { name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing }) {
   return request(PATH + '/' + id, {
     method: 'PUT',
     auth: true,
     body: {
       name,
+      pricing,
       version,
       exchange_rate: version === 'daihao' ? exchangeRate ?? null : null,
       initial_points: initialPoints || 0,

@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { bundledLedgerCatalog } from '../utils/ledgerCatalog.js'
+import { defaultPricing } from '../utils/ledgerPricing.js'
 
 function emptyDraft() {
   return {
@@ -12,6 +13,7 @@ function emptyDraft() {
     initialPointsDaihao: 0, initialPointsRu: 0,
     customPackagesDaihao: [], customPackagesRu: [],
     builtinSnapshots: { daihao: [], ru: [] },
+    pricingByVersion: { daihao: defaultPricing(), ru: defaultPricing() },
     plansByVersion: {
       daihao: { id: null, name: '', isLocal: false },
       ru: { id: null, name: '', isLocal: false },

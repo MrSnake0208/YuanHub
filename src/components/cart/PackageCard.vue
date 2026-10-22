@@ -9,16 +9,21 @@
         <div class="pkg-tags">
           <span class="pkg-tag pts">{{ pkg.points }} 积分</span>
           <span v-if="pkg.draws > 0" class="pkg-tag line">{{ pkg.draws }} 抽</span>
-          <span v-if="pkg.draws > 0" class="pkg-tag gold">¥{{ (pkg.calculatedPriceCny / pkg.draws).toFixed(2) }}/抽</span>
+          <span v-if="pkg.draws > 0" class="pkg-tag gold">{{ formatMoney(displayPrice == null ? null : displayPrice / pkg.draws, currency, 2) }}/抽</span>
           <span v-else class="pkg-tag line">每抽成本不适用</span>
           <span v-if="pkg._fromSnapshot" class="pkg-tag line">方案快照</span>
           <span v-if="pkg.extra" class="pkg-tag line">{{ pkg.extra }}</span>
         </div>
       </div>
       <div class="pkg-price">
-        <div class="main">¥{{ pkg.calculatedPriceCny.toFixed(2) }}</div>
-        <div v-if="showUsd && pkg.priceUsd" class="usd">${{ pkg.priceUsd }}</div>
+        <div class="main">{{ formatMoney(displayPrice, currency) }}</div>
+        <div v-if="pkg.originalCurrency" class="usd">标价 {{ formatMoney(pkg.originalPrice, pkg.originalCurrency) }}</div>
+        <div v-else-if="showUsd && pkg.priceUsd" class="usd">${{ pkg.priceUsd }}</div>
       </div>
+    </div>
+    <div class="pkg-personal-actions">
+      <button type="button" @click="$emit(isCustom ? 'edit-custom' : 'copy-custom', pkg)">{{ isCustom ? '编辑礼包' : '复制为自定义' }}</button>
+      <label><input type="checkbox" :checked="pkg.discountEligible !== false" :aria-label="`${pkg.name}参与方案折扣`" @change="$emit('discount', $event.target.checked)" />参与方案折扣</label>
     </div>
     <div class="pkg-foot">
       <div class="pkg-limit">
@@ -36,19 +41,27 @@
 
 <script setup>
 import { Plus, Minus, Trash2 } from '@lucide/vue'
+import { computed } from 'vue'
+import { formatMoney } from '../../utils/ledgerPricing.js'
 
-defineProps({
+const props = defineProps({
   pkg: { type: Object, required: true },
   qty: { type: Number, default: 0 },
   isCustom: { type: Boolean, default: false },
-  showUsd: { type: Boolean, default: false }
+  showUsd: { type: Boolean, default: false },
+  currency: { type: String, default: 'CNY' }
 })
 
-defineEmits(['add', 'remove', 'remove-custom'])
+const displayPrice = computed(() => props.pkg.calculatedPrice === undefined ? props.pkg.calculatedPriceCny : props.pkg.calculatedPrice)
+defineEmits(['add', 'remove', 'remove-custom', 'edit-custom', 'copy-custom', 'discount'])
 </script>
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.pkg-personal-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--ink-60)}
+.pkg-personal-actions button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 8px;cursor:pointer}
+.pkg-personal-actions label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.pkg-personal-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 </style>
 <style scoped src="./packageCardDesktop.css"></style>

@@ -22,25 +22,31 @@
           <div v-for="item in cartItems" :key="item.id" class="cart-line">
             <div class="nm">
               {{ item.name }}
-              <span class="sub">¥{{ item.calculatedPriceCny.toFixed(2) }} × {{ cart[item.id] }}</span>
+              <span class="sub">{{ formatMoney(itemPrice(item), currency) }} × {{ cart[item.id] }}</span>
+              <span v-if="item.originalCurrency" class="sub">标价 {{ formatMoney(item.originalPrice, item.originalCurrency) }} · {{ item.discountEligible === false ? '不参与折扣' : '参与方案折扣' }}</span>
             </div>
-            <div class="amt">¥{{ (item.calculatedPriceCny * cart[item.id]).toFixed(2) }}</div>
+            <div class="amt">{{ formatMoney(itemPrice(item) == null ? null : itemPrice(item) * cart[item.id], currency) }}</div>
           </div>
         </div>
         <div class="divider-dashed"></div>
         <div>
           <div class="tot-row"><span class="lb">总抽数</span><span class="v badge">{{ totalDraws.toFixed(1) }} 抽</span></div>
-          <div class="tot-row"><span class="lb">平均每抽</span><span class="v gold">{{ totalDraws > 0 ? '¥' + (priceForDraws / totalDraws).toFixed(2) : '不适用' }}</span></div>
+          <div class="tot-row"><span class="lb">平均每抽</span><span class="v gold">{{ totalDraws > 0 ? formatMoney(drawCost == null ? null : drawCost / totalDraws, currency, 2) : '不适用' }}</span></div>
           <p class="receipt-price-note">平均每抽仅计含抽数礼包的支出。</p>
           <div class="tot-row"><span class="lb">购物车积分</span><span class="v">{{ cartPoints }} 分</span></div>
           <div class="tot-row"><span class="lb strong">总积分 (含初始)</span><span class="v gold">{{ totalPoints }} 分</span></div>
-          <div v-if="version === 'daihao'" class="tot-row"><span class="lb">总价 (USD)</span><span class="v">${{ totalUsd.toFixed(2) }}</span></div>
+          <div v-if="hasUsdItems" class="tot-row"><span class="lb">美元标价小计（折前）</span><span class="v">{{ formatMoney(totalUsd, 'USD') }}</span></div>
+          <div v-if="originalTotal !== undefined" class="tot-row"><span class="lb">折前预算 ({{ currency }})</span><span class="v">{{ formatMoney(originalTotal, currency) }}</span></div>
+          <div class="tot-row"><span class="lb">方案折扣</span><span class="v">{{ discountPercent == null ? '待填写' : discountPercent + '%' }}（原价百分比）</span></div>
+          <div v-if="currency !== 'CNY'" class="tot-row"><span class="lb">折合人民币</span><span class="v">{{ formatMoney(totalCny, 'CNY') }}</span></div>
         </div>
         <div class="grand-total">
-          <span class="lb">总计 (CNY)</span>
-          <span class="v">¥{{ totalCny.toFixed(2) }}</span>
+          <span class="lb">预计实付 ({{ currency }})</span>
+          <span class="v">{{ formatMoney(amount, currency) }}</span>
         </div>
-        <p v-if="version === 'daihao'" class="receipt-price-note">参考汇率：1 USD = {{ exchangeRate }} CNY，可修改；金额以游戏内商店为准。</p>
+        <p v-if="rateEntries.length" class="receipt-price-note">参考汇率：{{ rateEntries.map(([code, rate]) => `1 ${code} = ${rate} CNY`).join('；') }}。</p>
+        <p class="receipt-price-note">金额仅供预算参考；当地标价、渠道优惠及累充规则请以实际商店为准。折扣不改变已录入的积分和抽数。</p>
+        <p v-if="pricingMessage" class="receipt-pricing-error" role="alert">{{ pricingMessage }}</p>
       </template>
 
       <template v-if="totalPoints > 0">
@@ -79,8 +85,9 @@
 
 <script setup>
 import { ShoppingCart, Receipt, Gift, Trash2, Download, Save } from '@lucide/vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatLedgerTime } from '@/utils/ledgerCatalog.js'
+import { formatMoney } from '../../utils/ledgerPricing.js'
 
 const receiptElement = ref(null)
 defineExpose({ receiptElement })
@@ -94,15 +101,28 @@ const props = defineProps({
   cartPoints: { type: Number, default: 0 },
   totalPoints: { type: Number, default: 0 },
   totalUsd: { type: Number, default: 0 },
+  hasUsdItems: { type: Boolean, default: false },
   totalCny: { type: Number, default: 0 },
   campaigns: { type: Array, default: () => [] },
   version: { type: String, default: 'daihao' },
   exportBusy: { type: Boolean, default: false },
   exchangeRate: { type: Number, default: 6.7 },
+  currency: { type: String, default: 'CNY' },
+  totalAmount: { type: Number, default: undefined },
+  originalTotal: { type: Number, default: undefined },
+  displayDrawCost: { type: Number, default: undefined },
+  discountPercent: { type: Number, default: 100 },
+  referenceRates: { type: Object, default: () => ({}) },
+  pricingMessage: { type: String, default: '' },
   exportOnly: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['clear', 'update-initial', 'save-plan', 'export'])
+const amount = computed(() => props.totalAmount === undefined ? props.totalCny : props.totalAmount)
+const drawCost = computed(() => props.displayDrawCost === undefined ? props.priceForDraws : props.displayDrawCost)
+const itemPrice = item => item.calculatedPrice === undefined ? item.calculatedPriceCny : item.calculatedPrice
+const rateEntries = computed(() => Object.entries(props.referenceRates).filter(([code]) =>
+  code === props.currency || props.cartItems.some(item => (item.originalCurrency || (props.version === 'daihao' ? 'USD' : 'CNY')) === code)))
 
 function onInitialInput(e) {
   const val = parseInt(e.target.value, 10)
@@ -113,6 +133,7 @@ function onInitialInput(e) {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .receipt-price-note{color:var(--ink-60)}
+.receipt-pricing-error{color:var(--rouge)}
 </style>
 <style scoped src="./receiptPanelDesktop.css"></style>
 <style scoped src="./receiptPanelMobile.css"></style>
