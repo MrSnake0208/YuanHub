@@ -29,7 +29,7 @@ const Harness = defineComponent({
     const open = ref(false), body = ref(null), panel = ref(null), draft = ref('')
     return { open, body, panel, draft, ...useModalViewport(open, body, panel) }
   },
-  template: `<div v-if="open" class="mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle"><section ref="panel" class="panel"><div ref="body" class="body" @focusin="revealFocusedControl"><textarea v-model="draft" /></div><button>保存</button></section></div>`
+  template: `<div v-if="open" class="mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle"><section ref="panel" class="panel" tabindex="-1" @focusin="revealFocusedControl"><div ref="body" class="body" tabindex="-1"><section class="tab-panel" role="tabpanel" tabindex="0"><textarea v-model="draft" /><p class="field-error" role="alert" tabindex="-1">请填写内容</p></section></div><button>保存</button></section></div>`
 })
 
 afterEach(() => { if (dialog._state.visible) dialog._cancel() })
@@ -98,6 +98,40 @@ describe('弹窗可视视口保护（jsdom，几何由测试提供）', () => {
     await flushPromises()
     expect(body.scrollTop).toBe(expected)
     expect(background).not.toHaveBeenCalled()
+  })
+
+  it.each([800, 200])('%ipx 视口中聚焦空白容器及视口更新均保留滚动位置', async height => {
+    const viewport = installViewport()
+    viewport.height = height
+    const wrapper = await openHarness()
+    const scroller = wrapper.get(height < 360 ? '.panel' : '.body').element
+    for (const selector of ['.panel', '.body', '.tab-panel']) {
+      const target = wrapper.get(selector).element
+      vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 260, height: 160 })
+      if (target !== scroller) {
+        vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({ top: -200, bottom: 600, height: 800 })
+      }
+      scroller.scrollTop = 300
+      target.focus({ preventScroll: true })
+      await flushPromises()
+      expect(document.activeElement).toBe(target)
+      expect(scroller.scrollTop).toBe(300)
+      viewport.dispatchEvent(new Event('resize'))
+      await flushPromises()
+      expect(scroller.scrollTop).toBe(300)
+    }
+    wrapper.unmount()
+  })
+
+  it('错误提示获得焦点时仍滚动到可见区域', async () => {
+    installViewport()
+    const wrapper = await openHarness()
+    const body = wrapper.get('.body').element, error = wrapper.get('.field-error').element
+    mockBounds(body, error)
+    error.focus()
+    await flushPromises()
+    expect(body.scrollTop).toBe(52)
+    wrapper.unmount()
   })
 
   it('上层弹窗的输入不会滚动下层正文', async () => {

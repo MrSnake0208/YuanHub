@@ -1,7 +1,10 @@
 <template>
   <div class="disc-comparison" :class="{ 'is-compact': compact, 'is-current-only': currentOnly }">
     <section class="disc-comparison-side">
-      <h5 v-if="!currentOnly">当前命盘</h5>
+      <div v-if="!currentOnly" class="disc-comparison-heading">
+        <h5>当前命盘 <small v-if="editable">{{ actual.length }} / 3</small></h5>
+        <slot name="current-action"></slot>
+      </div>
       <div class="disc-comparison-terms">
         <span v-for="name in actual" :key="name" :class="termClass(name)">{{ label(name) }}</span>
         <small v-if="!actual.length">未配置命盘</small>
@@ -11,7 +14,7 @@
     <section v-if="!currentOnly" class="disc-comparison-side">
       <div class="disc-comparison-heading">
         <h5>目标命盘 <small v-if="!compact">{{ desired.length }} / 3</small></h5>
-        <button v-if="editable" type="button" class="disc-copy-current" @click="$emit('copy')">复制当前为目标</button>
+        <slot name="target-action"></slot>
       </div>
       <div class="disc-comparison-terms">
         <span v-for="name in desired" :key="name" :class="[termClass(name), { 'is-changed': difference.added.includes(name) }]">
@@ -20,6 +23,7 @@
         </span>
         <small v-if="!desired.length">目标未设置</small>
       </div>
+      <button v-if="editable" type="button" class="disc-copy-current" :disabled="!actual.length" @click="$emit('copy')">复制当前为目标</button>
       <p v-if="differenceText" class="disc-comparison-difference" aria-live="polite">{{ differenceText }}</p>
     </section>
   </div>
@@ -70,7 +74,8 @@ const differenceText = computed(() => {
 .disc-comparison h5 { margin: 0; color: var(--ink); font-size: 15px; }
 .disc-comparison h5 small { font: 12px var(--font-s); color: var(--ink-60); }
 .disc-comparison-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.disc-copy-current { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--tea); font: inherit; font-size: 12px; cursor: pointer; }
+.disc-copy-current { margin-top: 10px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--tea); font: inherit; font-size: 12px; cursor: pointer; }
+.disc-copy-current:disabled { opacity: .5; cursor: not-allowed; }
 .disc-comparison-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .disc-comparison-terms > small { color: var(--ink-60); font-size: 12px; }
 .disc-comparison-term { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }

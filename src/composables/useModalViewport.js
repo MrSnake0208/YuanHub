@@ -8,6 +8,8 @@ export function useModalViewport(visible, scrollBody, panel) {
     nextTick(() => {
       const body = shortViewport.value ? panel.value : scrollBody.value, target = document.activeElement
       if (!toValue(visible) || !body?.contains(target)) return
+      // 点击面板空白会聚焦容器，不应把整个分区的顶部拉回视野。
+      if (target === panel.value || target === scrollBody.value || target.matches('[role="tabpanel"]')) return
       const bounds = body.getBoundingClientRect(), rect = target.getBoundingClientRect()
       // 只滚动弹窗内部，避免浏览器把背景或整个弹窗推到键盘后面。
       if (rect.top < bounds.top + 12 || rect.height > bounds.height - 24) body.scrollTop += rect.top - bounds.top - 12

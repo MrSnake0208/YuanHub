@@ -1,7 +1,7 @@
 <template>
   <section v-if="presets.length" class="disc-presets" aria-label="常用命盘">
     <h5>常用命盘</h5>
-    <p>点击替换{{ destination }}，保存后生效</p>
+    <p>填入{{ destination }}，保存后生效</p>
     <div class="disc-preset-list">
       <button v-for="names in presets" :key="discSelectionSignature(names)" type="button"
         class="disc-preset" :class="{ 'is-matched': matches(names) }"
@@ -76,10 +76,10 @@ watch(() => [props.operatorId, props.destination], () => { undoNames.value = nul
 .disc-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .disc-preset.is-matched { border-color: var(--accent); background: var(--cream); }
 .disc-preset-terms { display: flex; flex-wrap: wrap; gap: 5px 10px; min-width: 0; font-size: 13px; line-height: 1.6; }
-.disc-preset-terms > span { overflow-wrap: anywhere; }
-.disc-preset-terms .is-gold { color: #8a5a1f; }
-.disc-preset-terms .is-purple { color: #6d56a0; }
-.disc-preset-terms .is-blue { color: #4f6387; }
+.disc-preset-terms > span { max-width: 100%; padding: 2px 6px; box-sizing: border-box; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 5px; overflow-wrap: anywhere; }
+.disc-preset-terms .is-gold { color: #8a5a1f; background: rgba(215, 137, 53, .1); }
+.disc-preset-terms .is-purple { color: #6d56a0; background: rgba(151, 130, 199, .1); }
+.disc-preset-terms .is-blue { color: #4f6387; background: rgba(110, 135, 184, .1); }
 .disc-preset-action { color: var(--tea); font-size: 12px; white-space: nowrap; }
 .disc-preset-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--tea); font-size: 12px; }
 .disc-preset-feedback button { min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--tea); font: inherit; text-decoration: underline; cursor: pointer; }

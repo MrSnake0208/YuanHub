@@ -76,3 +76,17 @@ it('编辑表单默认对照展示与复制、移除操作不受紧凑模式影�
   expect(wrapper.emitted('copy')).toHaveLength(1)
   expect(wrapper.emitted('remove')).toEqual([['D']])
 })
+
+it('当前命盘为空时禁止复制，已有目标保持不变；有当前词条后恢复复制入口', async () => {
+  const target = ['D', 'E', 'F']
+  const wrapper = mount(OperatorDiscComparison, { props: { current: [], target, catalog, editable: true } })
+  expect(wrapper.get('.disc-copy-current').element.disabled).toBe(true)
+  await wrapper.get('.disc-copy-current').trigger('click')
+  expect(wrapper.emitted('copy')).toBeUndefined()
+  expect(target).toEqual(['D', 'E', 'F'])
+  await wrapper.setProps({ current: ['A'] })
+  expect(wrapper.get('.disc-copy-current').element.disabled).toBe(false)
+  await wrapper.get('.disc-copy-current').trigger('click')
+  expect(wrapper.emitted('copy')).toHaveLength(1)
+  wrapper.unmount()
+})
