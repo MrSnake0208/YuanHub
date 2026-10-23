@@ -71,9 +71,10 @@ it('普池抽数与绝密排行保留并列，并随刷新及账号切换更新'
   Object.assign(archives['acc-a'].summary, {
     permanent_known_total_pulls: 1234,
     most_obtained_gold_agents: [{ agent_id: 'char-a', name: '旧名字', count: 8 }, { agent_id: 'char-b', name: '并列绝密', count: 8 }],
-    most_non_up_gold_agents: [{ agent_id: 'char-c', name: '歪卡绝密', count: 3 }, { agent_id: 'char-d', name: '并列歪卡', count: 3 }]
+    most_non_up_gold_agents: [{ agent_id: 'char-c', name: '歪卡绝密', count: 3 }, { agent_id: 'char-d', name: '并列歪卡', count: 3 }],
+    most_permanent_gold_agents: [{ agent_id: 'char-a', name: '旧名字', count: 2 }, { agent_id: 'char-b', name: '常驻并列绝密', count: 2 }]
   })
-  Object.assign(archives['acc-b'].summary, { permanent_known_total_pulls: 0, most_obtained_gold_agents: [], most_non_up_gold_agents: [] })
+  Object.assign(archives['acc-b'].summary, { permanent_known_total_pulls: 0, most_obtained_gold_agents: [], most_non_up_gold_agents: [], most_permanent_gold_agents: [] })
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe((1234).toLocaleString())
   expect(wrapper.get('.summary-most-obtained').text()).toContain('测试绝密8 次')
@@ -81,37 +82,51 @@ it('普池抽数与绝密排行保留并列，并随刷新及账号切换更新'
   expect(wrapper.get('.summary-most-obtained').text()).toContain('并列绝密8 次')
   expect(wrapper.get('.summary-most-non-up').text()).toContain('歪卡绝密3 次')
   expect(wrapper.get('.summary-most-non-up').text()).toContain('并列歪卡3 次')
+  expect(wrapper.get('.summary-most-permanent').text()).toContain('常驻池抽中最多的绝密')
+  expect(wrapper.get('.summary-most-permanent').text()).toContain('测试绝密2 次')
+  expect(wrapper.get('.summary-most-permanent').text()).toContain('常驻并列绝密2 次')
+  expect(wrapper.get('.summary-most-permanent summary').text()).toBe('常驻榜说明')
+  expect(wrapper.get('.summary-most-permanent details').attributes('open')).toBeUndefined()
+  await wrapper.get('.summary-most-permanent summary').trigger('click')
+  expect(wrapper.get('.summary-most-permanent details').attributes('open')).toBeDefined()
+  expect(wrapper.get('.summary-most-permanent details').text()).toContain('无结束日期且类型明确为常驻')
+  expect(wrapper.get('.summary-most-permanent details').text()).toContain('未分类：卡池类型未确认的记录不计入常驻榜')
   archives['acc-a'].summary.permanent_known_total_pulls = 1250
   archives['acc-a'].summary.most_non_up_gold_agents[0].count = 4
+  archives['acc-a'].summary.most_permanent_gold_agents = [{ agent_id: 'char-b', name: '常驻并列绝密', count: 2 }]
   await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe((1250).toLocaleString())
   expect(wrapper.get('.summary-most-non-up').text()).toContain('歪卡绝密4 次')
+  expect(wrapper.get('.summary-most-permanent').findAll('li')).toHaveLength(1)
+  expect(wrapper.get('.summary-most-permanent').text()).not.toContain('测试绝密')
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe('0')
   expect(wrapper.get('.summary-most-obtained').text()).toContain('暂无记录')
   expect(wrapper.get('.summary-most-non-up').text()).toContain('暂无记录')
+  expect(wrapper.get('.summary-most-permanent').text()).toContain('暂无记录')
   expect(wrapper.text()).not.toContain('并列绝密')
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   expect(api.listRecruitmentBatches).not.toHaveBeenCalled()
   wrapper.unmount()
 })
 
-it.each([0, 1, 3])('抽中最多有 %i 位并列时全部展示且不提供展开按钮', async count => {
-  archives['acc-a'].summary.most_obtained_gold_agents = Array.from({ length: count }, (_, index) => ({ agent_id: `gold-${index}`, name: `绝密${index}`, count: 5 }))
+for (const [key, field] of [['most-obtained', 'most_obtained_gold_agents'], ['most-permanent', 'most_permanent_gold_agents']]) {
+it.each([0, 1, 3])(`${key} 有 %i 位并列时全部展示且不提供展开按钮`, async count => {
+  archives['acc-a'].summary[field] = Array.from({ length: count }, (_, index) => ({ agent_id: `gold-${index}`, name: `绝密${index}`, count: 5 }))
   const wrapper = render(); await flushPromises()
-  const highlight = wrapper.get('.summary-most-obtained')
+  const highlight = wrapper.get(`.summary-${key}`)
   expect(highlight.findAll('li')).toHaveLength(count)
   expect(highlight.find('button').exists()).toBe(false)
   if (!count) expect(highlight.text()).toContain('暂无记录')
   wrapper.unmount()
 })
 
-it.each([4, 5])('抽中最多有 %i 位并列时默认三位，可展开收起，切账号后恢复折叠', async count => {
+it.each([4, 5])(`${key} 有 %i 位并列时默认三位，可展开收起，切账号后恢复折叠`, async count => {
   const leaders = Array.from({ length: count }, (_, index) => ({ agent_id: `gold-${index}`, name: `绝密${index}`, count: 5 }))
-  archives['acc-a'].summary.most_obtained_gold_agents = leaders
-  archives['acc-b'].summary.most_obtained_gold_agents = leaders
+  archives['acc-a'].summary[field] = leaders
+  archives['acc-b'].summary[field] = leaders
   const wrapper = render(); await flushPromises()
-  const highlight = () => wrapper.get('.summary-most-obtained')
+  const highlight = () => wrapper.get(`.summary-${key}`)
   const names = () => highlight().findAll('li strong').map(item => item.text())
   expect(names()).toEqual(['绝密0', '绝密1', '绝密2'])
   expect(highlight().get('button').text()).toBe(`另有 ${count - 3} 位并列 · 展开全部`)
@@ -133,13 +148,42 @@ it.each([4, 5])('抽中最多有 %i 位并列时默认三位，可展开收起�
   expect(api.recruitmentCommand).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+}
 
-it('普池抽数与绝密排行在旧后端缺少字段时显示未知', async () => {
+it('两个折叠榜独立展开，非UP榜继续显示所有并列', async () => {
+  const leaders = Array.from({ length: 5 }, (_, index) => ({ agent_id: `gold-${index}`, name: `完整长名字绝密${index}`, count: 2 }))
+  Object.assign(archives['acc-a'].summary, { most_obtained_gold_agents: leaders, most_permanent_gold_agents: leaders, most_non_up_gold_agents: leaders })
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.summary-most-permanent button').trigger('click')
+  expect(wrapper.get('.summary-most-permanent').findAll('li')).toHaveLength(5)
+  expect(wrapper.get('.summary-most-obtained').findAll('li')).toHaveLength(3)
+  expect(wrapper.get('.summary-most-non-up').findAll('li')).toHaveLength(5)
+  expect(wrapper.get('.summary-most-non-up').find('button').exists()).toBe(false)
+  await wrapper.get('.summary-most-obtained button').trigger('click')
+  await wrapper.get('.summary-most-permanent button').trigger('click')
+  expect(wrapper.get('.summary-most-obtained').findAll('li')).toHaveLength(5)
+  expect(wrapper.get('.summary-most-permanent').findAll('li')).toHaveLength(3)
+  expect(wrapper.get('.summary-most-permanent button').attributes('aria-label')).toContain('常驻池抽中最多的绝密')
+  wrapper.unmount()
+})
+
+it.each([null, undefined])('普池抽数与绝密排行在字段缺失或null（%s）时显示未知', async value => {
+  archives['acc-a'].summary.most_permanent_gold_agents = value
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe('—')
   expect(wrapper.get('.summary-most-obtained').text()).toContain('—')
   expect(wrapper.get('.summary-most-non-up').text()).toContain('—')
+  expect(wrapper.get('.summary-most-permanent .summary-empty').text()).toBe('—')
   expect(wrapper.find('.summary-agent-toggle').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('首次读取失败保留错误，不将常驻榜伪装成空记录', async () => {
+  api.getRecruitmentArchive.mockRejectedValue(new Error('档案读取失败'))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toBe('档案读取失败')
+  expect(wrapper.find('.summary-most-permanent').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('暂无记录')
   wrapper.unmount()
 })
 
@@ -848,6 +892,8 @@ it('切账号先检查具体卡池草稿，取消保留记录；提交期间禁�
 
 
 it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存后刷新次数', async () => {
+  archives['acc-a'].summary.most_permanent_gold_agents = [{ agent_id: 'char-a', name: 'A账号常驻绝密', count: 2 }]
+  archives['acc-b'].summary.most_permanent_gold_agents = []
   const directory = recruitmentCatalog()
   directory.pools[0].up_agents = [{ id: 'slot-a', operator_id: 'char-a', name: '测试绝密' }]
   api.getRecruitmentCatalog.mockResolvedValue(directory)
@@ -864,10 +910,12 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.find('.up-count').exists()).toBe(false)
+  expect(wrapper.find('.summary-most-permanent').exists()).toBe(false)
   pendingB.resolve(structuredClone(archives['acc-b'])); await flushPromises()
   expect(wrapper.get('.up-count').text()).toBe('×0')
   late.resolve(structuredClone(archives['acc-a'])); await flushPromises()
   expect(wrapper.get('.up-count').text()).toBe('×0')
+  expect(wrapper.get('.summary-most-permanent .summary-empty').text()).toBe('暂无记录')
   expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
   expect(wrapper.text()).not.toContain('当前卡池')
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
