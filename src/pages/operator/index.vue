@@ -275,6 +275,25 @@
                 >已识别 v{{ importDocumentVersion }}</small
               >
             </div>
+            <details class="import-help">
+              <summary>导入帮助：备份文件与 Maa 自动同步</summary>
+              <p><strong>有备份文件</strong></p>
+              <ol>
+                <li>先在页面上方选择要恢复到的 Hub 子账号，核对这里的“导入目标”。</li>
+                <li>点击“选择 JSON 文件”选择密探档案或分类设置备份，也可直接粘贴 JSON 内容。</li>
+                <li>点击“校验并预览”（旧版或分类备份显示对应预览按钮），核对目标账号、每位密探的变更或分类恢复范围。预览不会保存。</li>
+                <li>核对后点击预览区的确认按钮才会写入，保存结果以服务器回执为准。更换文件、修改内容或切换账号后，需要重新预览。</li>
+              </ol>
+              <p>完整备份推荐 v5，旧 v2/v3/v4 仍可导入。一次导入一个来源账号，多来源账号的文档请先拆开。分类备份仅恢复置顶、分组顺序与标签，不包含密探养成。完整快照可能覆盖未列出的内容，请核对预览中的范围。</p>
+              <p><strong>使用 Maa 自动同步</strong>：在 Maa 侧完成采集与连接配置，回到对应 Hub 账号查看同步结果或待复核项。连接配置见<router-link class="link" to="/user/profile">“账号与连接码”</router-link>。这里的文件导入用于已有备份，不需要把连接码粘贴到 JSON 文本框。</p>
+              <details class="import-technical">
+                <summary>查看 v5 格式示例（只读）</summary>
+                <p>示例来自仓库的合成测试档案，仅用于理解格式，不是你的实际档案。请勿将示例确认保存到真实账号；推荐用自己的导出文件了解对应字段。</p>
+                <pre tabindex="0" aria-label="v5 格式示例，只读">{{ operatorV5Example }}</pre>
+              </details>
+              <p><strong>如何看回执</strong>：完整写入（accepted）、部分写入（partial）、待复核（review）、未写入（rejected）、无变化（unchanged）。请核对逐项结果，部分写入不代表整批成功；预览只说明预计影响，不代表已经保存。</p>
+              <p><strong>失败后怎么处理</strong>：解析失败时检查 JSON 语法；账号映射失败时核对来源账号与导入目标；状态冲突时重新读取当前档案后再预览；网络结果尚未确认时保留原输入，按原内容重试或读取当前档案核对，不要当作已回滚。如有“技术详情”，可展开查看原始错误信息。</p>
+            </details>
             <textarea
               id="operator-import-json"
               v-model="importText"
@@ -308,7 +327,7 @@
                   @change="onFilePick"
                 />
               </label>
-              <button class="btn ghost" type="button" :disabled="importing" @click="fillExample">
+              <button class="btn ghost" type="button" :disabled="importing" aria-describedby="operator-import-example-tip" @click="fillExample">
                 填入 v3 示例
               </button>
               <button
@@ -340,6 +359,7 @@
                 {{ importing ? "校验中…" : "校验并预览 v2" }}
               </button>
             </div>
+            <p id="operator-import-example-tip" class="tip">“填入 v3 示例”仅用于理解格式，不是你的实际档案。确认保存会改动当前账号的真实养成，请勿将示例保存到真实账号；推荐用自己的导出文件了解字段。</p>
             </div>
             <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
             <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
@@ -3056,6 +3076,7 @@
 </template>
 
 <script setup>
+import operatorV5Example from "../../../docs/examples/operator-growth-exchange-v5/boundary.valid.json?raw";
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
@@ -10325,6 +10346,21 @@ onBeforeUnmount(function () {
   border-radius: 999px;
   color: var(--theme-accent-text, var(--accent-strong));
 }
+.import-help {
+  margin: 0.75rem 0;
+  color: var(--ink);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.import-help summary { cursor: pointer; }
+.import-help summary:focus-visible,
+.import-help a:focus-visible {
+  outline: 2px solid var(--theme-focus, var(--tea));
+  outline-offset: 2px;
+}
+.import-help p { margin: 0.65rem 0; }
+.import-help ol { margin: 0.65rem 0; padding-inline-start: 1.5rem; }
+.import-help li + li { margin-top: 0.5rem; }
 .import-box textarea {
   border: 1.5px solid var(--line);
   border-radius: 12px;
