@@ -44,7 +44,7 @@
         <div class="plan-name-row" v-if="!addingMembers">
           <label class="plan-name-field" for="plan-name-input">
             <span class="plan-name-meta"><b>清单名称</b><small v-if="editingFavorites">动态跟随特别关注</small><small v-else>各清单独立保存养成目标</small></span>
-            <span class="plan-name-control"><PenLine :size="15" aria-hidden="true" /><input id="plan-name-input" ref="nameInput" v-model="name" maxlength="40" required :readonly="editingFavorites" /></span>
+            <span class="plan-name-control"><PenLine :size="15" aria-hidden="true" /><input id="plan-name-input" ref="nameInput" v-model="name" maxlength="40" required placeholder="必填，如：主队培养" :aria-describedby="!name.trim() ? 'plan-name-hint' : undefined" :readonly="editingFavorites" /></span>
           </label>
           <button v-if="!creating && activePlan && !confirmingDelete" type="button" class="plan-inline-delete" :disabled="disabled" @click="requestDelete"><Trash2 :size="15" aria-hidden="true" />删除清单</button>
         </div>
@@ -95,7 +95,7 @@
       </div>
 
       <footer v-if="!confirmingDelete" class="plan-dialog-actions">
-        <p aria-live="polite"><strong>{{ addingMembers ? addedMemberCount : validSelectedCount }}</strong> {{ addingMembers ? '位新增' : '位已选' }}<span v-if="editingFavorites && !addingMembers">· 移出不会取消特别关注</span></p>
+        <p aria-live="polite"><strong>{{ addingMembers ? addedMemberCount : validSelectedCount }}</strong> {{ addingMembers ? '位新增' : '位已选' }}<span v-if="!addingMembers && !name.trim()" id="plan-name-hint" class="plan-name-hint">· 请先填写清单名称</span><span v-if="editingFavorites && !addingMembers">· 移出不会取消特别关注</span></p>
         <div><button type="button" class="plan-cancel" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim() || (addingMembers && !addedMemberCount)">{{ addingMembers ? `添加 ${addedMemberCount} 位密探` : creating ? '创建清单' : '保存更改' }}</button></div>
       </footer>
     </form>
@@ -294,7 +294,7 @@ button, select { border: 1px solid var(--line); border-radius: 9px; background: 
 button { cursor: pointer; }
 button:hover:not(:disabled) { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 :is(button, input, select, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
-:disabled { opacity: .55; cursor: wait; }
+:disabled { opacity: .55; cursor: not-allowed; }
 
 .plan-dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.28); }
 .plan-dialog::backdrop { background: var(--theme-wash-strong, rgba(73,59,44,.38)); backdrop-filter: blur(2px); }
