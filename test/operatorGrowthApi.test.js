@@ -10,13 +10,15 @@ import {
   getOperatorAnnotations,
   getOperatorGrowthTargets,
   getOperatorOrganization,
+  getOperatorReserveWorkspace,
   importOperator,
   patchOperatorCurrent,
   previewOperatorImport,
   previewOperatorUpgrade,
   putOperatorAnnotation,
   putOperatorGrowthTarget,
-  putOperatorOrganization
+  putOperatorOrganization,
+  putOperatorReserveWorkspace
 } from '../src/api/operator.js'
 
 function success(data) {
@@ -25,6 +27,25 @@ function success(data) {
     headers: { 'Content-Type': 'application/json' }
   }))
 }
+
+test('未来储备只调用独立工作区端点，保留正文、账号编码及冲突回执', async t => {
+  const calls = []
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    calls.push({ url: String(url), options })
+    if (calls.length === 3) return new Response(JSON.stringify({ error: { code: 'reserve_workspace_revision_conflict', message: '请读回比较' } }), { status: 409, headers: { 'Content-Type': 'application/json' } })
+    return success({ account_id: 'a b', revision: 1 })
+  })
+  const body = { schema_version: 1, expected_revision: 0, active_plan_id: null, plans: [] }
+  const before = structuredClone(body)
+  await getOperatorReserveWorkspace('a b')
+  await putOperatorReserveWorkspace('a b', body)
+  await assert.rejects(() => putOperatorReserveWorkspace('a b', body), error => error.status === 409 && error.code === 'reserve_workspace_revision_conflict')
+  assert.equal(calls.length, 3)
+  calls.forEach(call => assert.match(call.url, /\/v1\/operator\/reserve-workspace\?account_id=a\+b$/))
+  assert.equal(calls[1].options.method, 'PUT')
+  assert.deepEqual(JSON.parse(calls[1].options.body), body)
+  assert.deepEqual(body, before)
+})
 
 test('分类接口按当前子账号编码，独立发送快照和revision，不写状态接口', async t => {
   const calls = []

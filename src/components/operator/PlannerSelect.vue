@@ -2,6 +2,7 @@
   <span class="planner-select" :class="{ compact, numeric }">
     <button :id="id || controlId" ref="trigger" type="button" class="planner-select-trigger" role="combobox"
       :aria-label="label" aria-haspopup="listbox" :aria-expanded="open" :aria-controls="menuId"
+      :aria-describedby="describedBy || undefined" :aria-invalid="invalid || undefined"
       :aria-activedescendant="open && activeIndex >= 0 ? optionId(activeIndex) : undefined"
       :disabled="disabled || !options.length" :title="selectedLabel || placeholder"
       @click="toggle" @keydown="onKeydown">
@@ -31,6 +32,8 @@ const props = defineProps({
   options: { type: Array, required: true },
   label: { type: String, required: true },
   id: { type: String, default: '' },
+  describedBy: { type: String, default: '' },
+  invalid: Boolean,
   placeholder: { type: String, default: '请选择' },
   disabled: Boolean,
   compact: Boolean,
