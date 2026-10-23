@@ -57,14 +57,18 @@ it('日常打卡无道具目录、不默认勾选、一次操作提交并保留�
   expect(record.account_id).toBe('acc-A')
   expect(document.querySelector('.result').textContent).toContain('1 茱萸')
 })
-it('分页查找快捷入口已有记录，禁用该项目但可录其他来源', async () => {
-  api.listRecords.mockImplementation(async ({ from, cursor }) => cursor
-    ? { items: [{ record_id: dailyRewardRecordId('daily-zhuyu', from) }], next_cursor: null }
-    : { items: [], next_cursor: 'page-2' })
+it('按后端每页上限分页查找已有记录，禁用该项目但可录其他来源', async () => {
+  api.listRecords.mockImplementation(async ({ from, cursor, limit }) => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('limit must be between 1 and 100')
+    return cursor
+      ? { items: [{ record_id: dailyRewardRecordId('daily-zhuyu', from) }], next_cursor: null }
+      : { items: Array.from({ length: 100 }, (_, i) => ({ record_id: `other-record-${i}` })), next_cursor: 'page-2' }
+  })
   const wrapper = create(); await open(wrapper)
   expect(button('每日茱萸').disabled).toBe(true)
   expect(button('每日茱萸').textContent).toContain('已记录')
   expect(api.listRecords.mock.calls.some(([args]) => args.cursor === 'page-2')).toBe(true)
+  expect(api.listRecords.mock.calls.every(([args]) => args.limit === 100)).toBe(true)
   await click('密探日常'); await purpose('income'); await click('一键记录')
   expect(api.importInventory.mock.calls[0][0].records.map(r => r.acquisition_channel)).toEqual(['密探日常'])
 })
