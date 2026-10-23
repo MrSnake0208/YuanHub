@@ -347,7 +347,7 @@ playwright-cli -s=input-zoom close
 1. 读取 `docs/standards/design-system.md`。
 2. 读取本文 `docs/standards/responsive-development.md`。
 3. 判断本次 UI 改动属于 L0–L3 哪一档。
-4. 涉及页面新增或结构调整时，再读取 `docs/standards/page-development.md`。
+4. 按任务范围读取 `docs/standards/page-development.md` 的玩家体验章节；新页面或流程变化先写简短交互说明，仅新增页面/路由时读取目录与注册说明。
 5. 只有当布局/信息层级实际受影响时，才需要提前比较 390px 与 1440px 的差异。
 6. 复用必要的业务数据、权限和操作逻辑；可按页面目标采用不同的桌面/移动视图与控件表现，不为外观统一复制或改写既有工作流。
 
