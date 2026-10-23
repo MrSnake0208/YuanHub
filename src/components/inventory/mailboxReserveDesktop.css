@@ -3,3 +3,11 @@
   .mailbox-row { grid-template-columns: minmax(100px, 180px) minmax(100px, 180px) auto; justify-content: start; }
   .mailbox-ticket { grid-template-columns: auto 180px auto; align-items: center; justify-content: start; margin: 12px 0; }
 }
+
+@media not all and (max-width: 1080px) {
+  .compact-mailbox { padding-left: 16px; border-left: 1px solid var(--line); }
+  .mail-quick { display: grid; gap: 6px; margin-bottom: 8px; }
+  .mail-quick button { justify-self: start; min-height: 36px; padding: 7px 12px; }
+  .compact-mailbox .mailbox-row { grid-template-columns: 1fr 1fr; }
+  .compact-mailbox .mailbox-row > button { grid-column: 1 / -1; justify-self: start; }
+}

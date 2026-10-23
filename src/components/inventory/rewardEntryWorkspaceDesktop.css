@@ -312,4 +312,42 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 
 .is-short-viewport .reward-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 .is-short-viewport .reward-dialog-scroll { overflow: visible; }
+.daily-quick fieldset { min-width: 0; margin: 0; padding: 0; }
+.daily-quick-heading strong { font: 800 17px/1.4 var(--font-s); }
+.daily-quick-heading time { font: 12px/1.5 var(--font-d); }
+.daily-quick-heading small, .daily-quick-option small { font-size: 12px; }
+.daily-quick-option b { font-size: 13px; }
+.daily-quick-settings summary { font-size: 12px; }
+.daily-quick-settings input, .daily-quick-settings select { width: 100%; min-width: 0; padding: 7px; font: inherit; }
+.daily-quick-settings label { font-size: 13px; }
+.quick-feedback { margin: 6px 0 0; font-size: 13px; }
+.entry-operations button { font: 700 14px/1.5 var(--font-b); }
+.compact-entry .channel-section > summary { font-size: 13px; }
+.compact-entry .basket-empty { font-size: 13px; }
+.compact-entry .basket-empty > svg, .compact-entry .basket-empty > small, .compact-entry .baseline-note { display: none; }
+  .daily-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .daily-quick-heading { display: grid; gap: 2px; flex: 0 0 106px; }
+  .daily-quick > fieldset { display: flex; flex: 1 1 500px; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .daily-quick-option { display: flex; align-items: center; gap: 7px; min-height: 62px; padding: 8px; flex: 1 1 120px; }
+  .daily-quick-option span { display: grid; gap: 3px; }
+  .daily-quick-option input { margin: 0; }
+  .daily-quick > fieldset > button { min-height: 38px; padding: 8px 12px; }
+  .daily-quick-settings { flex: 1 0 100%; }
+  .daily-quick-settings > fieldset { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .daily-quick-settings label { display: grid; gap: 4px; flex: 0 1 180px; }
+  .daily-quick-settings small { flex-basis: 100%; }
+  .quick-feedback { flex-basis: 100%; }
+  .reward-dialog.compact-entry { width: min(760px, 100%); }
+  .compact-entry .panel-heading { padding: 16px 20px; }
+  .compact-entry .heading-copy .eyebrow { display: none; }
+  .entry-operations { display: flex; gap: 8px; margin-bottom: 14px; }
+  .entry-operations button { flex: 1; min-height: 38px; }
+  .compact-entry .channel-section { margin-bottom: 12px; }
+  .compact-entry .channel-section[open] > summary { margin-bottom: 12px; }
+  .compact-entry .manual-columns { display: flex; flex-direction: column; gap: 12px; }
+  .compact-entry .reward-grid { max-height: 260px; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+  .compact-entry .reward-receipt { padding: 0; }
+  .compact-entry .basket-empty { min-height: 40px; padding: 8px; }
+  .compact-entry .basket-list { max-height: 220px; }
+  .compact-entry .preview-button { margin-top: 10px; }
 }

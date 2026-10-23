@@ -1,12 +1,19 @@
 <template>
   <InventoryLayout>
-      <CompactToolHeader class="inventory-header" title="背包库存" description="查看材料与心纸，掌握库存余量">
+      <CompactToolHeader class="inventory-header" title="库存" description="看总览，也能轻松记录">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
-            :switch-disabled="drawResourceLocked || mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
+            :switch-disabled="dailyBusy || drawResourceLocked || mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
+          <div class="inventory-actions">
+            <button type="button" class="btn primary reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || mailboxBusy"
+              aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="!!rewardEntryWorkspace?.mode"
+              @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
+            <button type="button" class="btn ghost inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked" @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新数量</button>
+            <button type="button" class="btn ghost records-entry" :disabled="!inventoryAccountReady || stockActionBlocked || editingStock" @click="setTab('records')"><History :size="16" aria-hidden="true" />最近记录</button>
+          </div>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
@@ -22,21 +29,12 @@
           </details>
         </template>
         <template #help>
-          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记录奖励」补录增量流水，「更新库存」盘点当前总量。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
+          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记一笔」记录获得、符传使用与兑换，「更新数量」直接填写实际库存。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
         </template>
         <template #summary>
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
             <div class="inventory-freshness-copy"><Clock3 :size="15" aria-hidden="true" /><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
-            <div v-if="inventoryAccountReady" class="inventory-actions">
-              <button type="button" class="btn ghost daily-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
-                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual' && rewardEntryWorkspace?.dailyMode"
-                @click="openRewardEntry('daily', $event.currentTarget)"><Check :size="16" aria-hidden="true" />日常打卡</button>
-              <button type="button" class="btn ghost reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
-                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual' && !rewardEntryWorkspace?.dailyMode"
-                @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记录奖励</button>
-              <button type="button" class="btn primary inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked"
-                @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
-            </div>
+
           </div>
         </template>
       </CompactToolHeader>
@@ -50,24 +48,30 @@
             <router-link v-else-if="!inventoryAccountReady && !accountsLoading" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
             <template v-else-if="inventorySetupNeeded">
               <button class="btn primary inventory-entry" type="button" @click="openStockEntry">开始首次盘点</button>
-              <button class="link" type="button" @click="inventoryBrowseCatalog = true; setTab('manifest')">先查看道具与心纸目录</button>
             </template>
           </ToolTaskPrompt>
 
-          <MailboxReserve v-if="inventoryAccountReady" ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')" @busy="mailboxBusy = $event" />
+          <div v-if="inventoryAccountReady" class="inventory-quickbar">
+            <RewardEntryWorkspace ref="dailyRewards" :key="'daily:' + (auth.userInfo?.id || '')" compact-daily
+              :account-id="accountId" :account-name="currentAccountName" :game="agentGameFilter"
+              :disabled="rewardEntryDisabled || rewardImportBusy || mailboxBusy || !!rewardEntryWorkspace?.mode"
+              @busy="dailyBusy = $event" @imported="onRewardImported" />
+            <MailboxReserve ref="mailboxReserve" compact :account-id="accountId" :user-id="String(auth.userInfo?.id || '')"
+              :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || !!rewardEntryWorkspace?.mode"
+              @busy="mailboxBusy = $event" @recorded="onRewardImported" />
+          </div>
 
-          <DrawResourceEntry v-show="inventoryAccountReady" ref="drawResourceEntry" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')" :game="agentGameFilter" :disabled="drawResourceDisabled" @busy="drawResourceLocked = $event" @recorded="onRewardImported" />
-
-          <RewardEntryWorkspace
-            ref="rewardEntryWorkspace"
-            :key="auth.userInfo?.id || ''"
-            :account-id="accountId"
-            :account-name="currentAccountName"
-            :game="agentGameFilter"
-            :disabled="rewardEntryDisabled"
-            @busy="rewardImportBusy = $event"
-            @imported="onRewardImported"
-          ><template #actions /></RewardEntryWorkspace>
+          <RewardEntryWorkspace ref="rewardEntryWorkspace" :key="auth.userInfo?.id || ''" compact
+            :account-id="accountId" :account-name="currentAccountName" :game="agentGameFilter"
+            :disabled="rewardEntryDisabled || dailyBusy || mailboxBusy" :resource-busy="drawResourceLocked" :before-close="confirmDrawDraft"
+            @busy="rewardImportBusy = $event" @imported="onRewardImported">
+            <template #actions />
+            <template #resource-entry="{ operation }">
+              <DrawResourceEntry ref="drawResourceEntry" embedded :operation="operation" :account-id="accountId"
+                :user-id="String(auth.userInfo?.id || '')" :game="agentGameFilter" :disabled="drawResourceDisabled"
+                @busy="drawResourceLocked = $event" @recorded="onRewardImported" />
+            </template>
+          </RewardEntryWorkspace>
 
           <ArchiveExchangePanel
             v-if="showArchive && !editingStock"
@@ -84,7 +88,6 @@
           />
 
           <InventoryWorkspaceTabs
-            v-show="!inventoryPromptTitle || inventoryBrowseCatalog || editingStock"
             :active-tab="activeTab" @select="setTab"
           />
 
@@ -159,7 +162,7 @@
             role="tabpanel"
             aria-labelledby="inventory-tab-manifest"
             tabindex="0"
-            v-show="activeTab === 'manifest' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
+            v-show="activeTab === 'manifest'"
             ref="manifestPanel"
             class="panel"
           >
@@ -974,7 +977,7 @@
             role="tabpanel"
             aria-labelledby="inventory-tab-acquired"
             tabindex="0"
-            v-show="activeTab === 'acquired' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
+            v-show="activeTab === 'acquired'"
             class="panel acquired-panel"
             :aria-busy="acquiredLoading"
           >
@@ -1558,7 +1561,7 @@
             role="tabpanel"
             aria-labelledby="inventory-tab-records"
             tabindex="0"
-            v-show="activeTab === 'records' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)" class="panel">
+            v-show="activeTab === 'records'" class="panel">
             <InventoryRecordsWorkspace
               :records-list="recordsList" :account-id="accountId"
               :records-entity-type="recordsEntityType" :records-loading="recordsLoading"
@@ -1612,6 +1615,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  History,
   Info,
   Layers3,
   ListFilter,
@@ -1852,6 +1856,8 @@ const stockOriginal = ref({});
 const stockEditError = ref("");
 const stockSaveNotice = ref("");
 const rewardEntryWorkspace = ref(null);
+const dailyRewards = ref(null);
+const dailyBusy = ref(false);
 const mailboxReserve = ref(null);
 const mailboxBusy = ref(false);
 const drawResourceEntry = ref(null);
@@ -1908,7 +1914,6 @@ const accountsLoading = ref(false);
 const accountError = ref("");
 const inventoryAccountReady = computed(() => auth.isLoggedIn && !!accountId.value &&
   !accountsLoading.value && !accountError.value && accounts.value.some(account => account.id === accountId.value));
-const inventoryBrowseCatalog = ref(false);
 const inventorySetupNeeded = computed(() => inventoryAccountReady.value && !loading.value && !error.value &&
   currentLoadedContext.value === stockContext.value && !currentFullBaselineAt.value && !currentEntries.value.length);
 const inventoryPromptTitle = computed(() => {
@@ -1957,15 +1962,15 @@ let recordsLoadSeq = 0;
 const rewardImportBusy = ref(false);
 const rewardEntryDisabled = computed(() => !inventoryAccountReady.value || loading.value || !!error.value ||
   currentLoadedContext.value !== stockContext.value || editingStock.value || savingStock.value ||
-  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value || drawResourceLocked.value);
+  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value);
 const drawResourceDisabled = computed(() => !inventoryAccountReady.value || loading.value || !!error.value ||
   currentLoadedContext.value !== stockContext.value || editingStock.value || savingStock.value ||
-  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value || rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode);
-const stockActionBlocked = computed(() => rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode ||
+  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value || rewardImportBusy.value || dailyBusy.value || mailboxBusy.value);
+const stockActionBlocked = computed(() => dailyBusy.value || mailboxBusy.value || rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode ||
   importing.value || !!recordsBusyId.value || drawResourceLocked.value);
 
 function openRewardEntry(mode, trigger) {
-  if (rewardEntryDisabled.value || rewardImportBusy.value) return;
+  if (rewardEntryDisabled.value || rewardImportBusy.value || dailyBusy.value || mailboxBusy.value) return;
   if (mode === "daily") rewardEntryWorkspace.value?.openDaily(trigger);
   else if (mode === "manual") rewardEntryWorkspace.value?.openManual(trigger);
   else rewardEntryWorkspace.value?.openReport(trigger);
@@ -3749,13 +3754,17 @@ function entrySummary(entries, recordType) {
 }
 
 // ---- 导入档案 ----
+async function confirmDrawDraft() {
+  return !drawResourceEntry.value || await drawResourceEntry.value.confirmDiscard();
+}
+
 async function beforeAccountSwitch() {
-  if (drawResourceLocked.value || mailboxBusy.value || savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
+  if (dailyBusy.value || drawResourceLocked.value || mailboxBusy.value || savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
   const contextSeq = inventoryContextSeq;
   if (drawResourceEntry.value && !(await drawResourceEntry.value.confirmDiscard())) return false;
   if (mailboxReserve.value && !(await mailboxReserve.value.confirmDiscard())) return false;
   if (contextSeq !== inventoryContextSeq || !(await confirmStockDiscard()) || contextSeq !== inventoryContextSeq) return false;
-  if (rewardEntryWorkspace.value?.hasDraft?.() || (importText.value.trim() && !importResult.value)) {
+  if (rewardEntryWorkspace.value?.hasDraft?.() || dailyRewards.value?.hasDraft?.() || (importText.value.trim() && !importResult.value)) {
     return dialog.confirm({ title: '放弃当前账号的录入草稿？', message: '切换账号会关闭录入工作台与导入预览。已保存的数据不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
   }
   return true;

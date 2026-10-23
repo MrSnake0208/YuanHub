@@ -1,7 +1,7 @@
 <template>
-  <details class="draw-resource-entry" @toggle="onToggle">
-    <summary>符传快捷记账 <span>获得、使用与白金币兑换</span></summary>
-    <p>记录本次实际发生的变动；已被盘点或报告包含的操作，请勿再次入账。校准总量请使用「更新库存」。</p>
+  <component :is="embedded ? 'div' : 'details'" class="draw-resource-entry" @toggle="onToggle">
+    <summary v-if="!embedded">符传快捷记账 <span>获得、使用与白金币兑换</span></summary>
+    <p>仅记录尚未记过的实际变动；修改当前余额请用「更新数量」。</p>
     <p v-if="loading" role="status">正在读取抽卡资源库存…</p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
@@ -9,7 +9,7 @@
     <form v-if="context" @submit.prevent="submit">
       <fieldset :disabled="disabled || locked || conflict">
         <div class="draw-fields">
-          <label>操作<select v-model="action"><option value="gain">获得奖励</option><option value="use">使用符传</option><option value="exchange">白金币兑换</option></select></label>
+          <label v-if="!embedded">操作<select v-model="action"><option value="gain">获得奖励</option><option value="use">使用符传</option><option value="exchange">白金币兑换</option></select></label>
           <label>符传类型<select v-model="ticketId"><option v-for="ticket in DRAW_TICKETS" :key="ticket.id" :value="ticket.id">{{ ticket.name }}</option></select></label>
           <label v-if="action === 'exchange'">兑换渠道<select v-model="exchangeChannel"><option value="standard">常规 · 200白金币/张</option><option v-if="ticketId === 'fuchuan'" value="monthly-shop">月卡商店 · 1600白金币/10张</option></select></label>
           <label v-if="action === 'gain'">奖励来源<input v-model="source" type="text" maxlength="64" placeholder="例如：活动奖励、邮件奖励" required /></label>
@@ -22,7 +22,7 @@
       <p v-if="pending && !saving">结果尚未确认，草稿已锁定；请原样重试，确认前不要在其他入口重复记录。</p>
       <button type="submit" class="btn primary" :disabled="saving || disabled || conflict || (!pending && !!preview.error)">{{ saving ? '正在记账…' : pending ? '原样重试' : '确认记账' }}</button>
     </form>
-  </details>
+  </component>
 </template>
 
 <script setup>
@@ -33,15 +33,16 @@ import { getDrawResources, recordDrawResources } from '../../api/drawResources.j
 import { DRAW_TICKETS, drawResourcePreview, resourceEntrySummary } from '../../data/inventory/drawResources.js'
 import { dialog } from '../../utils/dialog.js'
 
-const props = defineProps({ accountId: { type: String, required: true }, userId: { type: String, required: true }, game: { type: String, required: true }, disabled: Boolean })
+const props = defineProps({ accountId: { type: String, required: true }, userId: { type: String, required: true }, game: { type: String, required: true }, disabled: Boolean, embedded: Boolean, operation: { type: String, default: 'use' } })
 const emit = defineEmits(['busy', 'recorded'])
 const context = ref(null), loading = ref(false), saving = ref(false), confirming = ref(false), pending = ref(null), conflict = ref(false)
 const action = ref('gain'), ticketId = ref('fuchuan'), quantity = ref('1'), source = ref(''), exchangeChannel = ref('standard')
 const error = ref(''), notice = ref('')
-let sequence = 0, opened = false
+let sequence = 0, opened = props.embedded
 const locked = computed(() => saving.value || confirming.value || !!pending.value)
 const channel = computed(() => action.value === 'exchange' ? exchangeChannel.value : action.value === 'use' ? 'use' : source.value.trim())
 const step = computed(() => action.value === 'exchange' && exchangeChannel.value === 'monthly-shop' ? 10 : 1)
+const draftBaseline = ref('')
 const draft = computed(() => ({ action: action.value, ticketId: ticketId.value, quantity: quantity.value, channel: channel.value }))
 const preview = computed(() => {
   try { return { rows: drawResourcePreview(draft.value, context.value?.balances), error: '' } }
@@ -93,6 +94,7 @@ async function submit() {
     if (result?.account_id !== account || result?.record_id !== `yuanhub:draw:${pending.value.operation_id}`) throw new Error('返回结果无法确认')
     notice.value = '已记录：' + resourceEntrySummary(result.entries, result.record_type)
     pending.value = null
+    draftBaseline.value = JSON.stringify(draft.value)
     context.value = null
     emit('recorded', account)
   } catch (err) {
@@ -104,16 +106,19 @@ async function submit() {
 }
 async function confirmDiscard() {
   if (locked.value) return false
-  if (!source.value && quantity.value === '1' && action.value === 'gain') return true
+  if (JSON.stringify(draft.value) === draftBaseline.value) return true
   const seq = sequence
   const confirmed = await dialog.confirm({ title: '放弃符传记账草稿？', message: '本次尚未提交的内容将清空。', confirmText: '放弃草稿', cancelText: '继续填写' })
   return confirmed && seq === sequence
 }
+watch(() => props.operation, value => { if (props.embedded && ['use', 'exchange'].includes(value)) action.value = value })
 watch(() => [props.accountId, props.userId, props.game], () => {
   ++sequence; context.value = null; pending.value = null; loading.value = false; saving.value = false; confirming.value = false; conflict.value = false
   action.value = 'gain'; ticketId.value = 'fuchuan'; quantity.value = '1'; source.value = ''; exchangeChannel.value = 'standard'; error.value = ''; notice.value = ''
+  if (props.embedded) action.value = ['use', 'exchange'].includes(props.operation) ? props.operation : 'use'
+  draftBaseline.value = JSON.stringify(draft.value)
   if (opened) load()
-}, { flush: 'sync' })
+}, { immediate: true, flush: 'sync' })
 watch(() => props.disabled, value => { if (!value && opened && !context.value && !loading.value && !locked.value && !conflict.value) load() })
 function beforeUnload(event) { if (locked.value) { event.preventDefault(); event.returnValue = '' } }
 window.addEventListener('beforeunload', beforeUnload)
