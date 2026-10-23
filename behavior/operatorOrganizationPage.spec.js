@@ -66,6 +66,149 @@ const noGrowthWrites = () => {
   expect(api.importOperator).not.toHaveBeenCalled(); expect(inventory.addAgentFavorite).not.toHaveBeenCalled(); expect(inventory.removeAgentFavorite).not.toHaveBeenCalled()
 }
 
+it('排序控件保存本机偏好，重新进入可恢复，切回默认保留特别关注设置', async () => {
+  const sortKey = 'yuanhub:operator-workbench:sort:acc:如鸢'
+  const favoriteKey = 'yuanhub:operator-workbench:favorite-first:acc:如鸢'
+  localStorage.setItem(favoriteKey, 'true')
+  organization.pinned_ids = ['c']
+  inventory.listAgentFavorites.mockResolvedValue({ agent_ids: ['a'] })
+  api.getOperatorAnnotations.mockResolvedValue({ items: catalog.map(({ id }) => ({ operator_id: id, growth_state: 'active', revision: 1 })) })
+  api.getOperatorCurrent.mockResolvedValue([{ entries: Object.fromEntries(catalog.map(({ id }) => [id, { level: id === 'a' ? 47 : 100, elite: 17, star_level: 30, revision: 1 }])) }])
+  await render()
+  const select = () => wrapper.get('.current-sort-field select')
+  expect(select().findAll('option').map(option => option.text())).toEqual(['默认', '品质', '等级', '阶级', '星级'])
+  expect(select().element.value).toBe('default')
+  expect(cardNames()).toEqual(['c', 'a', 'b'])
+  expect(wrapper.find('.current-sort-direction').exists()).toBe(false)
+  await select().setValue('level')
+  expect(cardNames()).toEqual(['b', 'c', 'a'])
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从高到低')
+  expect(wrapper.get('.current-favorite-sort').element.disabled).toBe(true)
+  await wrapper.get('.current-sort-direction').trigger('click')
+  expect(cardNames()).toEqual(['a', 'b', 'c'])
+  expect(wrapper.get('.current-sort-direction').attributes('aria-label')).toContain('当前从低到高')
+  expect(JSON.parse(localStorage.getItem(sortKey))).toEqual({ mode: 'level', direction: 'asc' })
+  wrapper.unmount(); await render()
+  expect(select().element.value).toBe('level')
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从低到高')
+  await select().setValue('default')
+  expect(cardNames()).toEqual(['c', 'a', 'b'])
+  expect(wrapper.get('.current-favorite-sort').element.disabled).toBe(false)
+  expect(wrapper.get('.current-favorite-sort').attributes('aria-pressed')).toBe('true')
+  expect(localStorage.getItem(favoriteKey)).toBe('true')
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
+})
+
+it.each([
+  ['rarity', ['c', 'a', 'b'], ['b', 'a', 'c']],
+  ['level', ['a', 'c', 'b'], ['b', 'c', 'a']],
+  ['elite', ['b', 'c', 'a'], ['a', 'c', 'b']],
+  ['star', ['c', 'a', 'b'], ['b', 'a', 'c']],
+].flatMap(([mode, asc, desc]) => ['如鸢', '代号鸢'].map(game => [mode, game, asc, desc])))('%s 排序在 %s 按完整筛选结果升降序，不改分类，切默认恢复', async (mode, game, asc, desc) => {
+  vi.spyOn(activeAccount, 'gameFor').mockReturnValue(game)
+  api.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: 'acc', game }])
+  api.getOperatorCatalog.mockResolvedValue({ operators: catalog.map((entry, index) => ({ ...entry, rarity: [4, 5, 3][index], games: ['如鸢', '代号鸢'] })) })
+  api.getOperatorCurrent.mockResolvedValue([{ entries: {
+    a: { level: 47, elite: 17, star_level: 13, revision: 1 },
+    b: { level: 100, elite: 6, star_level: 19, revision: 1 },
+    c: { level: 60, elite: 12, star_level: 7, revision: 1 },
+  } }])
+  organization.pinned_ids = ['a']
+  organization.status_order = ['skip', 'graduated', 'active', 'discarded']
+  const saved = structuredClone(organization)
+  await render()
+  expect(cardNames()).toEqual(['a', 'c', 'b'])
+  const select = wrapper.get('.current-sort-field select')
+  await select.setValue(mode)
+  expect(cardNames()).toEqual(desc)
+  await wrapper.get('.current-sort-direction').trigger('click')
+  expect(cardNames()).toEqual(asc)
+  const search = wrapper.get('#operator-panel-current .current-filter-search input')
+  await search.setValue('b')
+  await select.setValue('default')
+  expect(search.element.value).toBe('b'); expect(cardNames()).toEqual(['b'])
+  await select.setValue(mode)
+  expect(search.element.value).toBe('b'); expect(cardNames()).toEqual(['b'])
+  await search.setValue('')
+  expect(cardNames()).toEqual(asc)
+  await wrapper.get('#operator-panel-current .status-graduated').trigger('click')
+  await select.setValue('default')
+  expect(cardNames()).toEqual(['b'])
+  expect(wrapper.get('#operator-panel-current .status-graduated').attributes('aria-pressed')).toBe('true')
+  await wrapper.get('#operator-panel-current .status-all').trigger('click')
+  expect(cardNames()).toEqual(['a', 'c', 'b'])
+  expect(organization).toEqual(saved)
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
+  await wrapper.get('#operator-tab-catalog').trigger('click'); await flushPromises()
+  expect(wrapper.get('#operator-panel-catalog').find('.current-sort-controls').exists()).toBe(false)
+})
+
+it.each(['level', 'elite'])('%s 经过页面归一化后仍区分缺失值和有效零值', async mode => {
+  api.getOperatorCurrent.mockResolvedValue([{ entries: {
+    a: { level: 3, elite: 3, star_level: 13, revision: 1 },
+    b: { level: null, star_level: 19, revision: 1 },
+    c: { level: 0, elite: 0, star_level: 7, revision: 1 },
+  } }])
+  await render()
+  await wrapper.get('.current-sort-field select').setValue(mode)
+  expect(cardNames()).toEqual(['a', 'c', 'b'])
+  await wrapper.get('.current-sort-direction').trigger('click')
+  expect(cardNames()).toEqual(['c', 'a', 'b'])
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
+})
+
+it('切账号独立读取排序偏好，加载中可操作，迟到资料不重置当前偏好', async () => {
+  const sortA = 'yuanhub:operator-workbench:sort:acc:如鸢'
+  const sortB = 'yuanhub:operator-workbench:sort:b:如鸢'
+  localStorage.setItem(sortA, JSON.stringify({ mode: 'star', direction: 'asc' }))
+  localStorage.setItem(sortB, JSON.stringify({ mode: 'elite', direction: 'desc' }))
+  await render()
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('star')
+  const pending = deferred(); api.getOperatorCurrent.mockReturnValueOnce(pending.promise)
+  activeAccount.id = 'b'; await flushPromises()
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('elite')
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从高到低')
+  await wrapper.get('.current-sort-direction').trigger('click')
+  activeAccount.id = 'acc'; await flushPromises()
+  pending.resolve([{ entries: {} }]); await flushPromises()
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('star')
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从低到高')
+  expect(JSON.parse(localStorage.getItem(sortA))).toEqual({ mode: 'star', direction: 'asc' })
+  expect(JSON.parse(localStorage.getItem(sortB))).toEqual({ mode: 'elite', direction: 'asc' })
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
+})
+
+it.each(['{broken', 'null', '[]', '{"mode":"name","direction":"desc"}', '{"mode":"star","direction":"up"}', '{"mode":"level"}'])('非法排序偏好 %s 回退默认，空名册仍保留选项', async raw => {
+  localStorage.setItem('yuanhub:operator-workbench:sort:acc:如鸢', raw)
+  api.getOperatorCurrent.mockResolvedValue([])
+  await render()
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('default')
+  expect(wrapper.find('.current-sort-direction').exists()).toBe(false)
+  expect(wrapper.text()).toContain('暂无已招募的密探养成记录')
+  await wrapper.get('.current-sort-field select').setValue('rarity')
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从高到低')
+})
+
+it('排序偏好存储不可用时回退默认，仍可在本次会话切换排序', async () => {
+  const read = localStorage.getItem.bind(localStorage)
+  const write = localStorage.setItem.bind(localStorage)
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(key => {
+    if (key.startsWith('yuanhub:operator-workbench:sort:')) throw new Error('storage blocked')
+    return read(key)
+  })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
+    if (key.startsWith('yuanhub:operator-workbench:sort:')) throw new Error('storage blocked')
+    return write(key, value)
+  })
+  await render()
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('default')
+  await wrapper.get('.current-sort-field select').setValue('star')
+  await wrapper.get('.current-sort-direction').trigger('click')
+  expect(wrapper.get('.current-sort-field select').element.value).toBe('star')
+  expect(wrapper.get('.current-sort-direction').text()).toBe('从低到高')
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
+})
+
 it('养老密探置顶跨越养成中，取消后恢复默认顺序，状态筛选仍排除不匹配密探', async () => {
   await render(); expect(cardNames()).toEqual(['a', 'b', 'c'])
   expect(wrapper.get('.operator-organization').element.closest('.operator-filter-dossier')).not.toBeNull()

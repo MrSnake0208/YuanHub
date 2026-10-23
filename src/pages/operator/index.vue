@@ -870,7 +870,7 @@
               searchable
               v-model:search-query="currentSearch"
               :force-expanded="batchSelectMode"
-              v-if="currentLoadedKey === accountId + ':' + gameFilter && (ownedCurrentEntries.length > 0 || (auth.isLoggedIn && accountId))"
+              v-if="ownedCurrentEntries.length > 0 || (auth.isLoggedIn && accountId)"
               v-reveal
               :result-count="filteredCurrent.length"
               :total-count="ownedCurrentEntries.length"
@@ -891,7 +891,7 @@
               v-model:disc-status-filter="discStatusFilter"
               show-disc-filter
               show-growth-filters
-              description="置顶优先，其余按分组与养成排序"
+              :description="currentSort.mode === 'default' ? '置顶优先，其余按分组与养成排序' : '按所选字段排序，同值按稳定 ID 排列'"
               @update:status-filter="setWorkbenchStatusFilter"
               @reset="resetCurrentFilters"
             >
@@ -899,11 +899,26 @@
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               </template>
               <template #secondary-tool>
+                <div class="current-sort-controls" role="group" aria-label="当前名册排序">
+                  <label class="current-sort-field">
+                    <span>游戏排序选项</span>
+                    <select :value="currentSort.mode" @change="setCurrentSort($event.target.value)">
+                      <option v-for="option in currentSortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                    </select>
+                  </label>
+                  <button v-if="currentSort.mode !== 'default'" type="button" class="current-sort-direction"
+                    :aria-label="currentSort.direction === 'asc' ? '当前从低到高，切换为从高到低' : '当前从高到低，切换为从低到高'"
+                    @click="setCurrentSort(currentSort.mode, currentSort.direction === 'asc' ? 'desc' : 'asc')">
+                    {{ currentSort.direction === 'asc' ? '从低到高' : '从高到低' }}
+                  </button>
+                </div>
                 <button
                   class="current-favorite-sort"
-                  :class="{ on: favoriteFirst }"
+                  :class="{ on: favoriteFirst && currentSort.mode === 'default' }"
                   type="button"
-                  :aria-pressed="favoriteFirst"
+                  :disabled="currentSort.mode !== 'default'"
+                  :aria-pressed="favoriteFirst && currentSort.mode === 'default'"
+                  :title="currentSort.mode === 'default' ? '同一分组内特别关注优先' : '切回默认排序后恢复特别关注优先'"
                   @click="setFavoriteFirst(!favoriteFirst)"
                 >
                   <Star
@@ -931,6 +946,11 @@
                 </button>
               </template>
               <template #footer>
+                <details class="current-sort-help">
+                  <summary>排序说明</summary>
+                  <p>默认排序保留置顶、分组与特别关注优先。游戏排序只比较所选字段，未知值放最后，同值按稳定 ID 排列；切回默认可恢复原偏好。阶级对应 Hub 修为，星级包含化极节点。</p>
+                  <p>两款游戏共用截图中的排序选项，未核验游戏内部的隐藏排序差异。</p>
+                </details>
                 <OperatorOrganizationManager
                   ref="organizationManager"
                   v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
@@ -3037,6 +3057,7 @@
 
 <script setup>
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
+import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates, publishAccountList } from '../../store/accountList.js'
@@ -3301,6 +3322,14 @@ const growthFilters = ref(emptyGrowthFilters());
 const manifestGrowthFilters = ref(emptyGrowthFilters());
 const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
+const currentSort = ref({ mode: 'default', direction: 'desc' });
+const currentSortOptions = [
+  { value: 'default', label: '默认' },
+  { value: 'rarity', label: '品质' },
+  { value: 'level', label: '等级' },
+  { value: 'elite', label: '阶级' },
+  { value: 'star', label: '星级' },
+];
 const rarityOptions = OPERATOR_RARITY_OPTIONS;
 const rarityLabelMap = OPERATOR_RARITY_LABELS;
 const profOptions = AGENT_PROFS;
@@ -3632,6 +3661,7 @@ watch(
     cardCombatModes.value = readWorkbenchMap("combat-modes");
     cardCombatEditedKeys.value = new Set();
     favoriteFirst.value = readFavoriteFirstPreference();
+    currentSort.value = readCurrentSortPreference();
     cardLevelBreakthroughs.value = {};
     upgradeReadyFilter.value = "";
     batchSelectMode.value = false;
@@ -4460,14 +4490,14 @@ function normalizeEntry(e, odditySchema) {
     awakened: e.huaji?.awakened ?? (Number(e.starLevel ?? e.star_level) === 31 ? true : null),
     huaji: e.huaji || null,
     huajiLegacy: e.huaji_legacy || e.huajiLegacy || null,
-    elite: e.elite != null ? e.elite : 0,
+    elite: e.elite ?? null,
     starLevel:
       e.starLevel != null
         ? e.starLevel
         : e.star_level != null
           ? e.star_level
           : 0,
-    level: e.level != null ? e.level : 0,
+    level: e.level ?? null,
     levelBreakthroughStage: operatorLevelBreakthroughStage(e),
     discs: e.discs || [],
     discLoadouts: e.discLoadouts || e.disc_loadouts || [],
@@ -5185,7 +5215,8 @@ const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value
     .filter(matchesCurrentFilters)
     .filter(entry => matchesDiscStatus(entry.discLoadouts, discStatusFilter.value))
-    .sort(compareCurrentEntries);
+    .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
+      : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction));
 });
 
 const batchSelectedIds = computed(function () {
@@ -5564,6 +5595,23 @@ async function saveOperatorAnnotation(entry, fields) {
       }
     }
   }
+}
+
+function readCurrentSortPreference() {
+  try {
+    const value = JSON.parse(localStorage.getItem(workbenchStorageKey('sort')));
+    if (value && currentSortOptions.some(option => option.value === value.mode) && ['asc', 'desc'].includes(value.direction)) {
+      return { mode: value.mode, direction: value.direction };
+    }
+  } catch (_) {}
+  return { mode: 'default', direction: 'desc' };
+}
+
+function setCurrentSort(mode, direction = currentSort.value.direction) {
+  currentSort.value = { mode, direction };
+  try {
+    localStorage.setItem(workbenchStorageKey('sort'), JSON.stringify(currentSort.value));
+  } catch (_) {}
 }
 
 function readFavoriteFirstPreference() {
@@ -10706,6 +10754,8 @@ onBeforeUnmount(function () {
 .current-filter-result b {
   color: var(--theme-accent-text, var(--accent-strong));
 }
+.current-sort-field select,
+.current-sort-direction,
 .current-favorite-sort {
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -10717,7 +10767,9 @@ onBeforeUnmount(function () {
     background 0.2s var(--ease),
     color 0.2s var(--ease);
 }
-.current-favorite-sort:hover {
+.current-sort-field select:hover,
+.current-sort-direction:hover,
+.current-favorite-sort:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--theme-accent-text, var(--accent-strong));
 }
@@ -10726,7 +10778,22 @@ onBeforeUnmount(function () {
   background: var(--yellow);
   color: var(--theme-strong-text, var(--tea));
 }
+.current-sort-field select:focus-visible,
+.current-sort-direction:focus-visible,
 .current-favorite-sort:focus-visible {
+  outline: 2px solid var(--theme-focus, var(--brand-blue));
+  outline-offset: 2px;
+}
+.current-favorite-sort:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.current-sort-help {
+  border-top: 1px dashed var(--line);
+  color: var(--ink-60);
+}
+.current-sort-help summary { cursor: pointer; }
+.current-sort-help summary:focus-visible {
   outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
