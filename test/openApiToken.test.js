@@ -116,20 +116,20 @@ test('FALLBACK_DESCRIPTIONS 覆盖 MaaYuan 所需星石采集 scope', () => {
 })
 
 test('MaaYuan 默认权限包含密探读取用于养成状态筛选，不包含库存读取或导出', () => {
-  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'])
+  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write'])
   assert.equal(MAAYUAN_REQUIRED_SCOPES.some((scope) => scope === 'inventory:read' || /:export$/.test(scope)), false)
 })
 
 test('hasEveryScope 判断现有 Token 是否可供 MaaYuan 使用', () => {
-  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'], MAAYUAN_REQUIRED_SCOPES), true)
-  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write', 'star:capture:write'], MAAYUAN_REQUIRED_SCOPES), false)
+  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write'], MAAYUAN_REQUIRED_SCOPES), true)
+  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write', 'star:scan:write'], MAAYUAN_REQUIRED_SCOPES), false)
   assert.equal(hasEveryScope(['inventory:write'], MAAYUAN_REQUIRED_SCOPES), false)
 })
 
 test('mergeScopes 补全 MaaYuan 权限时保留已有权限并去重', () => {
   assert.deepEqual(
     mergeScopes(['inventory:read', 'inventory:write'], MAAYUAN_REQUIRED_SCOPES),
-    ['inventory:read', 'inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write']
+    ['inventory:read', 'inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write']
   )
 })
 

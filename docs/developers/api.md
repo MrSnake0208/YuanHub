@@ -38,6 +38,7 @@
 | `operator:scan:write` | 密探 V3/V4/V5 受限扫描预览与提交 |
 | `operator:daily-tasks:write` | 每日历练读取与完成勾选 |
 | `star:capture:write` | 临时星石 PNG 采集上传 |
+| `star:scan:write` | 上传星石本地 OCR JSON，网页核对后导入 |
 | `calendar:read` | 绑定账号游戏的活动与订阅读取 |
 
 ## 响应和错误

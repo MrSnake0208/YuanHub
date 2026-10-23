@@ -63,7 +63,7 @@ test('every status copy carries a visual tone the beta page can style', () => {
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {
   const { routes } = await import('../src/router/routes.js')
-  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment'].sort())
+  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/star/scans', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment'].sort())
   const recruitment = routes.find(route => route.path === '/recruitment')
   assert.equal(recruitment.meta.requiresRecruitmentAccess, undefined)
   assert.equal(recruitment.meta.requiresBeta, true)

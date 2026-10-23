@@ -240,6 +240,16 @@ export const routes = [
         }
     },
     {
+        path: '/star/scans',
+        text: '核对星石识别',
+        name: 'star-scans',
+        display: false,
+        module: 'tools',
+        icon: 'gem',
+        component: () => import('/src/pages/star/scans.vue'),
+        meta: { requiresBeta: true, requiresAuth: true, title: '核对星石识别 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
         path: '/star/share/:token?',
         text: '星石背包分享',
         name: 'star-share',

@@ -35,7 +35,7 @@ export function requiresBetaApi(method, rawPath) {
   if (verb === 'GET' && path.startsWith('/v1/star/share/view/')) return false
   if (verb === 'POST' && path === '/user/open-api/token') return true
   if (verb === 'PATCH' && path.startsWith('/user/open-api/tokens/') && path.endsWith('/scopes')) return true
-  return ['/v1/accounts', '/v1/activity-calendar', '/v1/recruitment', '/v1/achievements', '/v1/inventory', '/v1/operator', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/v1/star/captures', '/hub/ledger/plan']
+  return ['/v1/accounts', '/v1/activity-calendar', '/v1/recruitment', '/v1/achievements', '/v1/inventory', '/v1/operator', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/v1/star/captures', '/v1/star/scans', '/hub/ledger/plan']
     .some(prefix => path === prefix || path.startsWith(prefix + '/'))
 }
 
