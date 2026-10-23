@@ -13,6 +13,14 @@ import { sha256 } from '../utils/sha256.js'
 
 const PATH = '/v1/operator'
 
+export function getOperatorReserveWorkspace(accountId) {
+  return request(PATH + '/reserve-workspace?' + new URLSearchParams({ account_id: accountId }), { auth: true })
+}
+
+export function putOperatorReserveWorkspace(accountId, body) {
+  return request(PATH + '/reserve-workspace?' + new URLSearchParams({ account_id: accountId }), { method: 'PUT', auth: true, body })
+}
+
 export function previewOperatorPanel(body) {
   return request(PATH + '/panel/preview', { method: 'POST', auth: true, body })
 }

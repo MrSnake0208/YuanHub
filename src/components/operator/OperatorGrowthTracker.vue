@@ -11,6 +11,12 @@
       </button>
     </header>
 
+    <p class="planner-independent-note">真实清单：独立试算，未预留库存。</p>
+    <details v-if="isLoggedIn && accountId" class="planner-reserve-entry">
+      <summary>未来储备 · 为尚未确定身份的密探准备材料</summary>
+      <OperatorReserveWorkspace :account-id="accountId" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" />
+    </details>
+
     <div v-if="!isLoggedIn || !accountId" class="planner-state">
       <Info :size="18" aria-hidden="true" />
       <span>登录并选择子账号后，才能读取当前库存和培养目标。</span>
@@ -432,6 +438,7 @@ import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerClo
 import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
+import OperatorReserveWorkspace from './OperatorReserveWorkspace.vue'
 import { isOperatorOwned } from '../../utils/operatorFilters.js'
 import { TRAINING_GROUPS, bookExperience, experienceTrainingDays, normalizeTrainingLevels, trainingMaterialEtas, trainingRate, growthTargetReached } from '../../data/operatorTraining.js'
 import { FAVORITES_PLAN_ID, sanitizeTrainingWorkspaceOperators, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
@@ -469,6 +476,7 @@ const plannerRules = PLANNER_RULES
 const loading = ref(false)
 const error = ref('')
 const currentItems = ref({})
+const inventoryReady = ref(false)
 const currentAgents = ref({})
 const heartHistory = ref({})
 const heartHistoryReady = ref(false)
@@ -1511,6 +1519,7 @@ async function setTarget(row, field, event) {
 
 function flattenCurrent(data) { const result = {}; const rows = Array.isArray(data) ? data : data ? [data] : []; rows.forEach(row => Object.entries(row?.entries || {}).forEach(([id, value]) => { result[id] = Number(value?.count != null ? value.count : value) || 0 })); return result }
 async function loadInventory() {
+  inventoryReady.value = false
   if (!props.isLoggedIn || !props.accountId) {
     inventoryLoadSeq += 1
     currentItems.value = {}
@@ -1540,6 +1549,7 @@ async function loadInventory() {
     error.value = results[0].reason?.message || '当前库存加载失败'
   } else {
     currentItems.value = flattenCurrent(results[0].value[0])
+    inventoryReady.value = true
     currentAgents.value = flattenCurrent(results[0].value[1])
   }
   if (results[1].status === 'fulfilled') {
@@ -1577,7 +1587,7 @@ function handleInventoryEvent(message) {
   if (['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) scheduleInventoryRefresh(message)
 }
 
-watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false; dailySourcePreview.value = null; goalMode.value = false; goalDays.value = 10; goalInitialExtra.value = 0; goalReserveSources.value = []; closeGoalDatePicker(false) }, { immediate: true })
+watch(() => [props.accountId, props.isLoggedIn], () => { inventoryReady.value = false; currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false; dailySourcePreview.value = null; goalMode.value = false; goalDays.value = 10; goalInitialExtra.value = 0; goalReserveSources.value = []; closeGoalDatePicker(false) }, { immediate: true })
 watch(() => [props.accountId, props.isLoggedIn, props.refreshKey, props.active], () => { if (props.active) { syncPlannerClock(); emit('refresh-operators'); loadTargets(); loadInventory() } }, { immediate: true })
 watch(cloudSnapshot, applyPlannerSnapshot)
 watch(() => [plannerStep.value, goalMode.value], ([step, mode]) => { if (step !== 'conditions' || !mode) closeGoalDatePicker(false) })
