@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import InventoryRecordsView from '../src/components/inventory/InventoryRecordsView.vue'
 import { installViewport } from '../test-support/viewport.js'
+import { resourceEntrySummary } from '../src/data/inventory/drawResources.js'
 
 const row = {
   record_id: 'synthetic:' + 'long-id'.repeat(30), record_type: 'stock_snapshot', entity_type: 'item',
@@ -16,6 +17,20 @@ const props = () => ({ recordsList: [row], accountId: 'synthetic-a', deleteRecor
 })
 const render = options => mount(InventoryRecordsView, { props: props(), attachTo: document.body, ...options })
 beforeEach(() => { viewport = installViewport(390); window.scrollBy = vi.fn() })
+
+it.each([390, 1024])('符传兑换在 %ipx 组件中显示有符号两边变动并整笔删除', async width => {
+  viewport.resize(width)
+  const exchange = { ...row, record_id: 'draw:exchange', record_type: 'resource_delta', acquisition_channel: '白金币兑换',
+    entries: [{ id: 'baijinbi', name: '白金币', count: -2000 }, { id: 'tianjifuchuan', name: '天机符传', count: 10 }] }
+  const options = { ...props(), recordsList: [exchange], entrySummary: resourceEntrySummary }
+  const wrapper = mount(InventoryRecordsView, { props: options })
+  expect(wrapper.text()).toContain('符传使用 / 兑换')
+  expect(wrapper.text()).toContain('白金币−2000')
+  expect(wrapper.text()).toContain('天机符传+10')
+  await wrapper.get('.record-del').trigger('click')
+  expect(options.deleteRecord).toHaveBeenCalledWith(exchange)
+  wrapper.unmount()
+})
 
 it.each([320, 390, 430, 640, 641, 768, 1024, 1440])('%ipx 初始即只挂载对应视图，详情保留完整字段', async width => {
   viewport.resize(width)

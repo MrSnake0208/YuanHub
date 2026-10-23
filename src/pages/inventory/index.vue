@@ -4,7 +4,7 @@
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
-            :switch-disabled="mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
+            :switch-disabled="drawResourceLocked || mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
@@ -56,6 +56,8 @@
 
           <MailboxReserve v-if="inventoryAccountReady" ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')" @busy="mailboxBusy = $event" />
 
+          <DrawResourceEntry v-show="inventoryAccountReady" ref="drawResourceEntry" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')" :game="agentGameFilter" :disabled="drawResourceDisabled" @busy="drawResourceLocked = $event" @recorded="onRewardImported" />
+
           <RewardEntryWorkspace
             ref="rewardEntryWorkspace"
             :key="auth.userInfo?.id || ''"
@@ -71,7 +73,7 @@
             v-if="showArchive && !editingStock"
             :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
             :import-open="showImport"
-            :import-disabled="!auth.isLoggedIn || editingStock"
+            :import-disabled="!auth.isLoggedIn || editingStock || drawResourceLocked"
             :export-disabled="!auth.isLoggedIn || !accountId"
             :scope="exportAll ? 'all' : 'current'"
             scope-name="inventory-export-scope"
@@ -1570,7 +1572,7 @@
             >
               <InventoryRecordsView
                 :records-list="recordsList" :account-id="accountId"
-                :disabled="Boolean(recordsBusyId) || recordsLoading"
+                :disabled="Boolean(recordsBusyId) || recordsLoading || drawResourceLocked"
                 :fmt-time="fmtTime" :entry-summary="entrySummary" :icon-src="iconSrc"
                 :stock-effect-label="stockEffectLabel" :stamina-cost-of="staminaCostOf"
                 :delete-record="onDeleteRecord"
@@ -1638,6 +1640,8 @@ import InventoryRecordsWorkspace from '../../components/inventory/InventoryRecor
 import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
 import MailboxReserve from "../../components/inventory/MailboxReserve.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
+import DrawResourceEntry from "../../components/inventory/DrawResourceEntry.vue";
+import { resourceEntrySummary } from "../../data/inventory/drawResources.js";
 import InventoryLayout from "../../components/inventory/InventoryLayout.vue";
 import InventoryWorkspaceTabs from "../../components/inventory/InventoryWorkspaceTabs.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
@@ -1850,6 +1854,8 @@ const stockSaveNotice = ref("");
 const rewardEntryWorkspace = ref(null);
 const mailboxReserve = ref(null);
 const mailboxBusy = ref(false);
+const drawResourceEntry = ref(null);
+const drawResourceLocked = ref(false);
 const stockBaselineConfirmed = ref(false);
 const pendingStockDocument = ref(null);
 const stockInputsLocked = computed(() => savingStock.value || !!pendingStockDocument.value);
@@ -1867,6 +1873,7 @@ function toggleInventoryArchive() {
   if (!showArchive.value) showImport.value = false;
 }
 function toggleInventoryImport() {
+  if (drawResourceLocked.value) return;
   if (!showArchive.value || editingStock.value) {
     showImport.value = false;
     return;
@@ -1950,9 +1957,12 @@ let recordsLoadSeq = 0;
 const rewardImportBusy = ref(false);
 const rewardEntryDisabled = computed(() => !inventoryAccountReady.value || loading.value || !!error.value ||
   currentLoadedContext.value !== stockContext.value || editingStock.value || savingStock.value ||
-  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value);
+  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value || drawResourceLocked.value);
+const drawResourceDisabled = computed(() => !inventoryAccountReady.value || loading.value || !!error.value ||
+  currentLoadedContext.value !== stockContext.value || editingStock.value || savingStock.value ||
+  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value || rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode);
 const stockActionBlocked = computed(() => rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode ||
-  importing.value || !!recordsBusyId.value);
+  importing.value || !!recordsBusyId.value || drawResourceLocked.value);
 
 function openRewardEntry(mode, trigger) {
   if (rewardEntryDisabled.value || rewardImportBusy.value) return;
@@ -3658,12 +3668,12 @@ async function loadRecords(reset) {
 
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id;
-  if (!rid || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || recordsLoading.value) return;
+  if (!rid || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || recordsLoading.value || drawResourceLocked.value) return;
   const targetAccount = accountId.value;
   const contextSeq = inventoryContextSeq;
   const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && contextSeq === inventoryContextSeq && accountId.value === targetAccount;
   const summary = (rec.entity_type === "agent" ? "心纸" : "道具") +
-    " · " + (rec.record_type === "reward_delta" ? "奖励" : "库存更新") +
+    " · " + (rec.record_type === "reward_delta" ? "奖励" : rec.record_type === "resource_delta" ? "符传使用 / 兑换" : "库存更新") +
     " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
   const confirmed = await dialog.confirm({
     title: "删除库存记录？",
@@ -3671,7 +3681,7 @@ async function onDeleteRecord(rec) {
     type: "danger",
     confirmText: "删除记录",
   });
-  if (!confirmed || !isCurrent() || recordsBusyId.value || recordsLoading.value) return;
+  if (!confirmed || !isCurrent() || recordsBusyId.value || recordsLoading.value || drawResourceLocked.value) return;
   recordsBusyId.value = rid;
   recordsActionError.value = "";
   try {
@@ -3693,7 +3703,7 @@ async function onDeleteRecord(rec) {
 }
 
 async function onRestoreRecord(notice) {
-  if (!notice || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || accountId.value !== notice.accountId) return;
+  if (!notice || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || drawResourceLocked.value || accountId.value !== notice.accountId) return;
   const contextSeq = inventoryContextSeq;
   const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && contextSeq === inventoryContextSeq && accountId.value === notice.accountId;
   recordsBusyId.value = notice.recordId;
@@ -3735,19 +3745,14 @@ function fmtTime(iso) {
 }
 
 function entrySummary(entries, recordType) {
-  const list = entries || [];
-  const sign = recordType === "reward_delta" ? "+" : recordType === "consumption_delta" ? "−" : "=";
-  return list
-    .map(function (e) {
-      return (e.name || e.id) + sign + e.count;
-    })
-    .join("、");
+  return resourceEntrySummary(entries, recordType);
 }
 
 // ---- 导入档案 ----
 async function beforeAccountSwitch() {
-  if (mailboxBusy.value || savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
+  if (drawResourceLocked.value || mailboxBusy.value || savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
   const contextSeq = inventoryContextSeq;
+  if (drawResourceEntry.value && !(await drawResourceEntry.value.confirmDiscard())) return false;
   if (mailboxReserve.value && !(await mailboxReserve.value.confirmDiscard())) return false;
   if (contextSeq !== inventoryContextSeq || !(await confirmStockDiscard()) || contextSeq !== inventoryContextSeq) return false;
   if (rewardEntryWorkspace.value?.hasDraft?.() || (importText.value.trim() && !importResult.value)) {
@@ -3757,6 +3762,7 @@ async function beforeAccountSwitch() {
 }
 
 async function doImport() {
+  if (drawResourceLocked.value) return;
   if (!auth.isLoggedIn) {
     goLogin();
     return;

@@ -334,10 +334,14 @@ Authorization: Bearer <open-api-token>
 | `GET /v1/inventory/catalog` | 无，公开 | `{format,version,catalog_version,entities}` |
 | `POST /v1/inventory/import` | 完整库存交换文档 v2 | `{accepted,duplicates,history_only,superseded,warnings}` |
 | `GET /v1/inventory/current` | `account_id` 必填；`entity_type=item\|agent` 可选 | 当前库存数组 |
+| `GET /v1/inventory/draw-resources` | `account_id` 必填 | `{account_id,game,inventory_revision,balances}`；未盘点资源余额为 `null` |
+| `POST /v1/inventory/draw-resources` | `{account_id,game,operation_id,expected_inventory_revision,action,ticket_id,quantity,channel}` | 单笔库存记录；获得为 `reward_delta`，使用与兑换为内部 `resource_delta` |
 | `GET /v1/inventory/acquired` | `account_id,entity_type,from,to` 均必填 | 时段获得量，区间 `[from,to)` |
 | `GET /v1/inventory/records` | `account_id` 必填；`entity_type,from,to,cursor,limit` 可选 | `{items,next_cursor}` |
 | `DELETE /v1/inventory/records/{recordId}` | query `account_id` | `true`，删除后重放剩余记录 |
 | `GET /v1/inventory/export` | `account_id` 或 `scope=all`；`include,from,to` 可选 | 原始交换文档，无 ApiResult |
+
+符传快捷记账规则与操作边界见[库存记账说明](./inventory-reward-recovery.md#符传快捷记账)。价格由服务端校验：两种符传常规均为200白金币/张，月卡商店仅普通符传1600白金币/10张。兑换扣币与增券在同一事务完成；`operation_id` 用于原样重试，库存版本过期返回409。内部 `resource_delta` 不接收交换导入，导出通过当前库存快照保留余额。
 
 `current` 单项：
 
