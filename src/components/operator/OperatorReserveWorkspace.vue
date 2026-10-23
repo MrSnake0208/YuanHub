@@ -95,6 +95,7 @@ import PlannerSelect from './PlannerSelect.vue'
 import { getOperatorReserveWorkspace, putOperatorReserveWorkspace } from '../../api/operator.js'
 import { reservePlanRequirements, validateReserveDemand } from '../../data/operatorReservePlans.js'
 import { getMaxEliteForLevel, isLevelBreakthroughBoundary } from '../../utils/operatorGrowthRules.js'
+import { createUuid } from '../../utils/createUuid.js'
 import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 
 const props = defineProps({ accountId: { type: String, required: true }, game: { type: String, required: true }, stock: { type: Object, default: null } })
@@ -143,7 +144,7 @@ async function load() {
   } finally { if (current === session) loading.value = false }
 }
 function addPlan() {
-  const id = crypto.randomUUID()
+  const id = createUuid()
   workspace.value.plans.push({ id, name: '新储备方案', demands: [] })
   workspace.value.active_plan_id = id; notice.value = ''; confirmDelete.value = ''
   nextTick(() => focusField(nameId({ id })))
@@ -155,7 +156,7 @@ function removePlan() {
   nextTick(() => focusField(prefix + '-plan'))
 }
 function addDemand() {
-  const value = { id: crypto.randomUUID(), count: 1, attribute: '风', profession: '破军', current: { level: 0, elite: 0, breakthrough_stage: null }, target: { level: 100, elite: 17 } }
+  const value = { id: createUuid(), count: 1, attribute: '风', profession: '破军', current: { level: 0, elite: 0, breakthrough_stage: null }, target: { level: 100, elite: 17 } }
   activePlan.value.demands.push(value); notice.value = ''
   nextTick(() => focusField(controlId(value, 'count')))
 }

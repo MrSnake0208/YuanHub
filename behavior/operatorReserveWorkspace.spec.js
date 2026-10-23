@@ -86,6 +86,25 @@ it('空方案可创建、编辑属性职业目标、新建与切换方案，保�
   expect(input(wrapper, 'name').element.value).toBe('备战')
 })
 
+it('没有 randomUUID 时仍可新建方案与需求组并保存有效 UUID', async () => {
+  const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto)
+  vi.stubGlobal('crypto', { getRandomValues })
+  api.get.mockResolvedValue(workspace('a', []))
+  const wrapper = render(); await flushPromises()
+  await button(wrapper, '新建方案').trigger('click'); await flushPromises()
+  await button(wrapper, '添加需求组').trigger('click'); await flushPromises()
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(api.put).toHaveBeenCalledTimes(1)
+  const body = api.put.mock.calls[0][1]
+  const plan = body.plans[0], group = plan.demands[0]
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  expect(plan.id).toMatch(uuid)
+  expect(group.id).toMatch(uuid)
+  expect(group.id).not.toBe(plan.id)
+  expect(body.active_plan_id).toBe(plan.id)
+  expect(wrapper.text()).toContain('储备方案已保存')
+})
+
 it('删除先确认，未保存不写云端，保存最后一个删除后恢复为空', async () => {
   const wrapper = render(); await flushPromises()
   await button(wrapper, '删除方案').trigger('click')
