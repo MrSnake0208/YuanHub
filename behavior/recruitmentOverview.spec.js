@@ -4,6 +4,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useRecruitmentPreviews } from '../src/pages/recruitment/useRecruitmentPreviews.js'
 import RecruitmentRecordsPreview from '../src/pages/recruitment/RecruitmentRecordsPreview.vue'
 import RecruitmentTimeline from '../src/pages/recruitment/RecruitmentTimeline.vue'
+import RecruitmentGoldStatistics from '../src/pages/recruitment/RecruitmentGoldStatistics.vue'
+import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
 import { listRecruitmentEvents } from '../src/api/recruitment.js'
 import { deferred } from '../test-support/recruitment.js'
 
@@ -14,6 +16,45 @@ const pool = (id, year = '2026') => ({ pool_id: id, snapshot: { catalog_pool_id:
 const page = (items, next = null, revision = 1) => ({ items, next_cursor: next, archive_revision: revision })
 const entry = items => ({ items, loaded: true, loading: false, cursor: null, error: '' })
 const button = (wrapper, name) => wrapper.findAll('button').find(item => item.text() === name)
+
+it('单池三项统计区分总UP与小保底、样本与推断，并可展开口径', async () => {
+  const summary = { up_gold_count: 2, known_up_gold_count: 3, unknown_up_gold_count: 0, total_up_rate: 66.7, guaranteed_gold_count: 1, small_pity_win_rate: 50, pity_status: 'inferred' }
+  const wrapper = mount(RecruitmentGoldStatistics, { props: { summary, contextVersion: 'a' } })
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('66.7%')
+  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('1 次')
+  expect(wrapper.get('.small-pity-metric strong').text()).toBe('50%')
+  expect(wrapper.get('.pity-assumption').text()).toBe('按现有历史、首金小保底推断')
+  expect(wrapper.get('details').attributes('open')).toBeUndefined()
+  await wrapper.get('summary').trigger('click')
+  expect(wrapper.get('details').attributes('open')).toBeDefined()
+  expect(wrapper.get('details').text()).toContain('不是当前处于大保底的次数')
+  await wrapper.setProps({ contextVersion: 'b', summary: { up_gold_count: 1, known_up_gold_count: 1, unknown_up_gold_count: 1, total_up_rate: 100, guaranteed_gold_count: null, small_pity_win_rate: null, pity_status: 'insufficient_history' } })
+  expect(wrapper.get('details').attributes('open')).toBeUndefined()
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('100%')
+  expect(wrapper.get('.total-up-metric').text()).toContain('未知 1 条（未计入比例）')
+  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('—')
+  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('历史不足以推断')
+  await wrapper.setProps({ summary: { pity_status: 'not_applicable' } })
+  expect(wrapper.findAll('dd strong').map(item => item.text())).toEqual(['—', '—', '—'])
+  expect(wrapper.get('.total-up-metric').text()).toContain('不适用')
+  wrapper.unmount()
+})
+
+it('卡池编辑只用本池服务端摘要，部分明细不重算统计，换池或缺字段不闪成零', async () => {
+  const wrapper = mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: { ...pool('a'), progress: 0 }, recordsRevision: 1, records: [event('partial')], readOnly: true, poolSummary: { total_up_rate: 0, up_gold_count: 0, known_up_gold_count: 2, unknown_up_gold_count: 0, guaranteed_gold_count: null, small_pity_win_rate: null, pity_status: 'insufficient_history' } }, global: { stubs: { Teleport: true } } })
+  await flushPromises()
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('0%')
+  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('历史不足以推断')
+  await wrapper.setProps({ records: [event('partial'), event('another')] })
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('0%')
+  await wrapper.setProps({ pool: { ...pool('b'), progress: 0 }, poolSummary: undefined, records: [] })
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('—')
+  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('—')
+  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('统计尚未提供')
+  await wrapper.setProps({ poolSummary: { pity_status: 'not_applicable' } })
+  expect(wrapper.get('.total-up-metric').text()).toContain('无 UP 机制，不适用')
+  wrapper.unmount()
+})
 
 function model() {
   const state = reactive({ contextVersion: 1, requestVersion: 0, archive: { archive_revision: 1, pools: [pool('a'), pool('b'), pool('c')] }, loading: false, busy: false })

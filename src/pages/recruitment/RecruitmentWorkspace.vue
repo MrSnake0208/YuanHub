@@ -40,6 +40,7 @@
               </div>
             </div>
           </div>
+          <RecruitmentGoldStatistics :summary="state.archive.summary" account :context-version="state.contextVersion" />
           <RecruitmentTimeline ref="timeline" :guide-active="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :previews="previews.pools" @load-preview="loadPreview" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
           <div v-if="!state.archive.pools.length" class="actions"><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div>
         </template>
@@ -64,6 +65,7 @@ import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import RecruitmentPractice from './RecruitmentPractice.vue'
 import RecruitmentExchange from './RecruitmentExchange.vue'
 import RecruitmentTimeline from './RecruitmentTimeline.vue'
+import RecruitmentGoldStatistics from './RecruitmentGoldStatistics.vue'
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { dialog } from '../../utils/dialog.js'
