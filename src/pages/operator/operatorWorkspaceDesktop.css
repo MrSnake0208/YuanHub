@@ -889,6 +889,11 @@
 .current-filter-result b {
   font: 900 13px var(--font-d);
 }
+.current-sort-controls { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px; }
+.current-sort-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+.current-sort-field select { min-height: 32px; padding: 4px 8px; font: inherit; }
+.current-sort-help { padding: 8px 14px; font-size: 12px; line-height: 1.6; }
+.current-sort-help p { margin: 6px 0 0; }
 .current-favorite-sort {
   display: inline-flex;
   min-height: 30px;
