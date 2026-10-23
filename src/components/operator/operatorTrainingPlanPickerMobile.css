@@ -157,6 +157,7 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
   :deep(.plan-candidate .operator-avatar) { width: 42px; height: 42px; }
   .plan-dialog-actions { min-height: 66px; padding: 10px 12px; }
   .plan-dialog-actions > p span { display: none; }
+  .plan-dialog-actions > p .plan-name-hint { display: block; margin-left: 0; }
 }
 @media (max-width: 380px) {
   .plan-dialog-mark { display: none; }

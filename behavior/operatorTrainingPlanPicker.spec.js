@@ -10,6 +10,31 @@ function render(overrides = {}) {
   return mount(Picker, { attachTo: document.body, props: { accountId: 'a', plans: [plan], activePlan: plan, catalogEntries: [a, b], memberIds: new Set([a.id]), ...overrides } })
 }
 async function open(wrapper) { await wrapper.get('[aria-label="管理清单"]').trigger('click'); await flushPromises() }
+it.each(['custom', 'favorites'])('已有 %s 清单时，新建清单提示填写名称，填名后即可提交', async source => {
+  const existing = { ...plan, source }
+  const wrapper = render({ plans: [existing], activePlan: existing })
+  await wrapper.findAll('.plan-heading-actions button').find(button => button.text() === '新建清单').trigger('click')
+  await flushPromises()
+  const name = wrapper.get('#plan-name-input')
+  const submit = wrapper.get('button[type="submit"]')
+  expect(name.element.readOnly).toBe(false)
+  expect(submit.element.disabled).toBe(true)
+  expect(wrapper.get('.plan-dialog-actions').text()).toContain('请先填写清单名称')
+  expect(name.attributes('aria-describedby')).toBe('plan-name-hint')
+  await name.setValue('   ')
+  expect(submit.element.disabled).toBe(true)
+  expect(wrapper.find('#plan-name-hint').exists()).toBe(true)
+  await name.setValue('  第二张清单  ')
+  expect(submit.element.disabled).toBe(false)
+  expect(wrapper.find('#plan-name-hint').exists()).toBe(false)
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  await wrapper.get('form').trigger('submit')
+  const [payload, onSaved] = wrapper.emitted('save')[0]
+  expect(payload).toEqual({ id: null, name: '第二张清单', source: 'custom', operatorIds: [b.id] })
+  expect(existing).toEqual({ ...plan, source })
+  onSaved()
+  expect(wrapper.get('dialog').element.open).toBe(false)
+})
 it('候选项通过实际勾选更新草稿，保存事件携带完整成员且不修改传入 Set', async () => {
   const members = new Set([a.id]); const wrapper = render({ memberIds: members }); await open(wrapper)
   const row = wrapper.findAll('label').find(node => node.text().includes('颜良') && node.find('input[type="checkbox"]').exists())
