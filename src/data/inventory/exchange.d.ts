@@ -35,7 +35,7 @@ export interface InventoryExchangeDocument<TRecord = InventoryExchangeRecord> {
 }
 
 export interface InventoryRecordPage {
-  items: InventoryExchangeRecord[]
+  items: Array<Omit<InventoryExchangeRecord, 'record_type'> & { record_type: InventoryExchangeRecord['record_type'] | 'consumption_delta' | 'resource_delta'; resource_revision?: number | null }>
   next_cursor?: string | null
 }
 

@@ -11,6 +11,7 @@ export function buildResourceBalance(records, from, to, includeZhuyu = false) {
   const ordered = [...records].filter(r => r.entity_type === 'item' && localDayKey(r.effective_at))
     .sort((a, b) => Date.parse(a.effective_at) - Date.parse(b.effective_at)
       || Number(a.record_type === 'stock_snapshot') - Number(b.record_type === 'stock_snapshot')
+      || Number(a.resource_revision || 0) - Number(b.resource_revision || 0)
       || String(a.received_at || '').localeCompare(String(b.received_at || ''))
       || String(a.record_id || '').localeCompare(String(b.record_id || '')))
   const resources = includeZhuyu ? [...DRAW_RESOURCES, { id: 'zhuyu' }] : DRAW_RESOURCES
@@ -27,7 +28,7 @@ export function buildResourceBalance(records, from, to, includeZhuyu = false) {
       if (record.record_type === 'stock_snapshot' && (entry || record.snapshot_scope === 'full')) {
         stock = entry ? Number(entry.count) : 0
         state = '实际盘点'
-      } else if (record.record_type === 'reward_delta' && entry && stock !== null) {
+      } else if (['reward_delta', 'resource_delta'].includes(record.record_type) && entry && stock !== null) {
         stock += Number(entry.count)
         state = '盘点后推算'
       } else continue

@@ -50,6 +50,15 @@ test('same-time reward precedes snapshot, daily point uses final stock, duplicat
   assert.equal(result.latest.stock, 90)
   assert.equal(result.net, -10)
 })
+
+test('兑换与使用在收支中按有符号变动记账，同毫秒按库存版本重放且盘点最终权威', () => {
+  const rows = [record('base', '01', 'stock_snapshot', [coin(2000)], 'full'),
+    { ...record('use', '02', 'resource_delta', [{ id: 'tianjifuchuan', count: -10 }]), resource_revision: 3 },
+    { ...record('exchange', '02', 'resource_delta', [coin(-2000), { id: 'tianjifuchuan', count: 10 }]), resource_revision: 2 }]
+  assert.equal(build(rows)[0].latest.stock, 0)
+  assert.equal(build(rows)[2].latest.stock, 0)
+  assert.equal(build([...rows, record('observed', '02', 'stock_snapshot', [coin(123)], 'full')])[0].latest.stock, 123)
+})
 test('does not turn reward-only records or out-of-range snapshots into inventory', () => {
   const result = build([record('a', '01', 'reward_delta', [coin(30)]), { ...record('b', '01', 'stock_snapshot', [coin(100)], 'full'), effective_at: '2026-07-31T12:00:00+08:00' }])
   assert.equal(result[0].latest, null)

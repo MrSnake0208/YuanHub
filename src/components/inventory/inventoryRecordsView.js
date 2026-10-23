@@ -12,6 +12,7 @@ export const recordsViewProps = {
 export function recordTypeLabel(type) {
   if (type === 'reward_delta') return '实时奖励'
   if (type === 'consumption_delta') return '升级消耗'
+  if (type === 'resource_delta') return '符传使用 / 兑换'
   if (type === 'stock_snapshot') return '库存更新'
   return type ? `未知类型（${type}）` : '未知类型'
 }
