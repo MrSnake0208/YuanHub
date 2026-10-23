@@ -26,6 +26,7 @@
               <button :disabled="busy" @click="download('legacy')">导出旧目录原始文档</button>
             </section>
             <fieldset class="catalog-controls" :disabled="compatibilityIssues.length > 0">
+            <router-link to="/achievement/admin/suggestions">审核玩家投稿</router-link>
             <p class="catalog-summary">已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 编辑修订 {{ data.revision }}</p>
             <p class="version">当前发布：{{ data.published.version }}<br>{{ data.published.published_at }} · {{ data.published.published_by }}</p>
             <div class="toolbar">
@@ -76,10 +77,8 @@
                 <fieldset :disabled="busy">
                   <legend>基本资料</legend>
                   <div class="fields">
-                    <label>名称（必填）<input v-model="entry.name" maxlength="200"></label>
-                    <label>游戏原生分类<select v-model="entry.category_id"><option v-for="c in draft.categories.filter(c => c.enabled || c.category_id === entry.category_id)" :key="c.category_id" :value="c.category_id">{{ c.name }}</option></select></label>
+                    <AchievementBasicFields :candidate="entry" :categories="draft.categories.filter(c => c.enabled || c.category_id === entry.category_id)" />
                     <label>原始显示顺序<input v-model.number="entry.sort" type="number" step="1"></label>
-                    <label>隐藏成就<select v-model="entry.is_hidden"><option :value="null">未知</option><option :value="false">否</option><option :value="true">是</option></select></label>
                     <label class="check full"><input type="checkbox" :checked="retired(entry)" @change="setRetired(entry.achievement_id, $event.target.checked)">退役（从玩家当前目录移出，保留全部个人记录）</label>
                   </div>
                 </fieldset>
@@ -168,18 +167,20 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import '../../styles/page-header.css'
 import { PAGE_SIZE, rewardValidationError } from './rules.js'
+import AchievementBasicFields from '../../components/achievement/AchievementBasicFields.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { achievementCatalogCommand, exportAchievementCatalog, getAchievementCatalogAdmin } from '../../api/achievementCatalogAdmin.js'
 
+const route = useRoute()
 const page = ref(0)
 const games = ['代号鸢', '如鸢']
 const changeLabels = { add: '新增', update: '修改', retire: '退役 / 移除' }
-const game = ref(games[0]), data = ref(null), draft = ref(null), selected = ref('')
+const game = ref(games.includes(route.query.game) ? route.query.game : games[0]), data = ref(null), draft = ref(null), selected = ref('')
 const busy = ref(false), error = ref(''), notice = ref(''), search = ref(''), categoryFilter = ref(''), stateFilter = ref('')
 const showCategories = ref(false), categoryName = ref(''), publication = ref(null), restoreVersion = ref('')
 const importDocument = ref(null), importPlan = ref(null), importStrategy = ref('keep'), importName = ref('')
@@ -264,7 +265,10 @@ async function run(action, message = '') {
 }
 async function load() {
   const result = await run(getAchievementCatalogAdmin)
-  if (result) accept(result)
+  if (result) {
+    accept(result)
+    if (typeof route.query.entry === 'string' && result.draft.entries.some(e => e.achievement_id === route.query.entry)) await selectEntry(route.query.entry)
+  }
 }
 async function reload() {
   if (dirty.value && !window.confirm('重新读取会放弃当前未保存修改，继续？')) return

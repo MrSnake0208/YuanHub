@@ -77,6 +77,16 @@ export const routes = [
         meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.BOND_ARCHIVE, featureFallback: '/', title: '羁绊图鉴 — YuanHub' }
     },
     {
+        path: '/achievement/suggestions', name: 'achievement-suggestions', text: '成就资料投稿', display: false, module: 'tools', icon: 'book-check',
+        component: () => import('/src/pages/achievement/suggestions.vue'),
+        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就资料投稿 — YuanHub' }
+    },
+    {
+        path: '/achievement/admin/suggestions', name: 'achievement-suggestion-review', text: '审核成就投稿', display: false, module: 'tools', icon: 'book-check',
+        component: () => import('/src/pages/achievement/suggestions.vue'), props: { review: true },
+        meta: { requiresAuth: true, requiredPermission: 'achievement_catalog:write', requiredAnyPermission: ['archive:access'], title: '审核成就投稿 — YuanHub' }
+    },
+    {
         path: '/achievement/admin', name: 'achievement-admin', text: '成就目录管理', display: false, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/admin.vue'),
         meta: { requiresAuth: true, requiredPermission: 'achievement_catalog:write', requiredAnyPermission: ['archive:access'], title: '成就目录管理 — YuanHub' }

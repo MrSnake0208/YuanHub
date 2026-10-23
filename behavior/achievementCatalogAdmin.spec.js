@@ -21,9 +21,9 @@ function state(game = '代号鸢') {
 }
 const button = (w, label) => w.findAll('button').find(b => b.text() === label)
 let wrappers = []
-async function page() {
+async function page(query = '') {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: Page }, { path: '/away', component: { template: '<p>其他页面</p>' } }] })
-  await router.push('/'); await router.isReady()
+  await router.push('/' + query); await router.isReady()
   const w = mount(RouterView, { global: { plugins: [router], stubs: { IslandSidebar: true, RouterLink: RouterLinkStub } } })
   wrappers.push(w); await flushPromises(); return w
 }
@@ -247,4 +247,13 @@ it('1590条列表分页且跨页/筛选保留奖励草稿，失败保存聚焦�
   const submitted = api.achievementCatalogCommand.mock.lastCall[4].catalog.entries[0]
   expect(submitted.rewards).toEqual([{ item_key: 'baijinbi', name: '白金币', quantity: 15 }])
   expect(Object.keys(submitted)).toHaveLength(10)
+})
+
+
+it('采纳后的草稿链接选择正确游戏并定位系统ID条目', async () => {
+  const w = await page('?game=' + encodeURIComponent('如鸢') + '&entry=yh_test_1')
+  expect(api.getAchievementCatalogAdmin).toHaveBeenCalledWith('如鸢', 'admin')
+  expect(w.find('.entry-editor').exists()).toBe(true)
+  expect(w.get('.entry-editor').text()).toContain('yh_test_1')
+  expect(w.text()).toContain('审核玩家投稿')
 })
