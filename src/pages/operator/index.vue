@@ -60,7 +60,7 @@
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" />
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
-            <p class="tip">手动处理后可标记「已完成复核」消除本条提醒；后续扫描有新的待核结果时会再次提示。</p>
+            <p class="tip">同一密探只显示最新待核结果，新采集会替换旧的待核内容。核对并保存后，点「已完成复核」消除该结果及更早的提醒；后续新结果仍会提示。</p>
             <p>{{ currentAccountName }} · 部分内容仍待确认，请点「查看并修改」对照游戏核对；已保存内容可在档案查看。</p>
             <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
             <ul>
@@ -3891,7 +3891,7 @@ async function completeScanReview(review) {
   const completingSelected = selected?.record_id === review.record_id && selected?.operator_id === review.operator_id;
   const confirmed = await dialog.confirm({
     title: "标记为已完成复核？",
-    message: "请确认已核对并保存所需修改。此操作仅消除本条提醒，不会保存未提交的字段；后续扫描有新的待核结果时仍会提示。",
+    message: "请确认已核对并保存所需修改。此操作会消除该密探本次及更早的提醒，不会保存未提交的字段；后续采集的新待核结果仍会保留。",
     confirmText: "已完成复核",
   });
   if (!confirmed || importing.value || operatorPageDisposed || contextSeq !== currentContextSeq || review.account_id !== accountId.value || selectedScanReview.value !== selected) return;
