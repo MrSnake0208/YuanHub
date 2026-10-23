@@ -30,7 +30,7 @@ it.each(['progress', 'agents'])('截图模式保留%s结果样式，隐藏编辑
   expect(isScreenshot(wrapper)).toBe(true)
   expect(results()).toEqual(before)
   expect(wrapper.get('.non-up-stamp').text()).toBe('歪')
-  for (const selector of ['.entry-section', '.record-search', '.sort-help', '.remaining-guide', 'footer', '.close-button', '.screenshot-entry']) {
+  for (const selector of ['.entry-section', '.record-search', '.sort-help', '.remaining-guide', '.gold-statistics', 'footer', '.close-button', '.screenshot-entry']) {
     expect(wrapper.get(selector).isVisible()).toBe(false)
   }
   expect(document.activeElement).toBe(wrapper.get('.screenshot-exit').element)

@@ -70,6 +70,7 @@
             </div>
 
             </div>
+            <RecruitmentGoldStatistics v-if="!practice" v-show="!screenshotMode" :summary="poolSummary" :context-version="pool?.pool_id" />
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'read-only'" target="read-only" :message="guideMessage"><button type="button" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'practice-result'" target="practice-result" :message="guideMessage" />
             <section v-if="practiceResult" data-guide-target="practice-result" class="save-result" role="status"><strong>练习结果 · 仅示例</strong><p>已经熟悉怎么记录；需要时到自己的卡池里记一笔。</p><p>下方记录与保底都是临时示例，没有保存到账号。</p></section>
@@ -398,6 +399,7 @@ import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useRecordDrag } from './useRecordDrag.js'
 import { createRecruitmentId } from './createRecruitmentId.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
+import RecruitmentGoldStatistics from './RecruitmentGoldStatistics.vue'
 import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
