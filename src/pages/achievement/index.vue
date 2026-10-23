@@ -5,6 +5,8 @@
       <CompactToolHeader title="成就档案" description="核对游戏成就，记录完成情况。">
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeContextChange" :switch-disabled="state.busy" switch-disabled-reason="正在处理成就档案，请完成后再切换账号。" /></template>
         <template #actions>
+          <router-link v-if="identity" class="act-btn" to="/achievement/suggestions">补充资料</router-link>
+          <router-link v-if="identity" class="act-btn" to="/achievement/suggestions?mode=mine">我的投稿</router-link>
           <details class="tool-more"><summary>更多</summary><div class="tool-more-content"><button class="act-btn" type="button" :disabled="state.busy || state.loading" @click="manualRefresh">刷新档案</button><button class="act-btn" type="button" :disabled="!available || !state.archive || state.busy || state.loading" @click="openExchange">导入与导出</button></div></details>
         </template>
         <template #summary>
