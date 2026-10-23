@@ -10,10 +10,17 @@
 
 1. 涉及 UI/视觉/组件：读取前端设计规范 `docs/standards/design-system.md`。
 2. 涉及布局、响应式、移动端/桌面端呈现：读取 `docs/standards/responsive-development.md`。
-3. 只有新增页面、路由或页面级结构时，读取 `docs/standards/page-development.md`。
+3. 涉及页面、表单、交互、提示文案或样式：按范围读取 `docs/standards/page-development.md` 的玩家体验章节；仅新增页面或路由时读取其中的目录与注册说明。
 4. 只有功能延后开放、灰度/开关控制时，读取 `docs/standards/feature-flags.md`。
 
 以上规范是对应领域的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；不要为无关任务加载无关规范。
+
+## 玩家体验底线
+
+- 先明确使用者与主任务。新页面或流程变化先写简短交互说明，目标明确后直接实施；小文案或局部样式不写长方案，不新增固定审批环节。
+- 字段按必要输入、可靠默认、长期配置、情境设置和内部字段分层；配置不代表真实行为已发生，未知不得当零。
+- 保留业务能力和完整有效信息，允许在任务范围内替换旧表单；辅助录入、管理和历史不得挤走页面主体。
+- 默认、展开、零数据、加载和失败按需覆盖。真实页面由用户手动验收，构建不能替代；遵守下文 Skill、风险分级与浏览器授权约束。
 
 ## UI 设计自由度（视觉建议不等于全站强制模板）
 
@@ -110,10 +117,11 @@ npm run build
 - [ ] 已读取 `docs/standards/design-system.md`
 - [ ] 涉及任何 UI 改动时已读取 `docs/standards/responsive-development.md`
 - [ ] 涉及任何 UI 改动或 UI Review 时已读取并应用 `ui-ux-pro-max`
+- [ ] 已按范围读取 `docs/standards/page-development.md` 的玩家体验章节；新页面或流程变化有简短交互说明
 - [ ] 仅当改动属于结构性 UX / L2-L3 流程变化或明确要求完整 UX Review 时，才执行 `usability-audit`
 - [ ] 仅当实际改变已有 `.ux/cujs/` 核心旅程时，才执行 `audit-cuj`
 - [ ] 已按风险选择响应式检查范围；L0/L1 未被无理由升级为完整视口矩阵
-- [ ] 涉及页面新增或路由调整时已读取 `docs/standards/page-development.md`
+- [ ] 涉及页面新增或路由调整时已读取 `page-development.md` 的目录与注册说明
 - [ ] 新页面位于 `src/pages/<模块>/` 并注册到 `src/router/routes.js`
 - [ ] 未引入重复路由体系；局部视觉差异化不被误判为违反全站统一模板
 - [ ] 遵循本次明确设计方案，没有为统一按钮尺寸、配色或组件外观牺牲信息密度与可用性
