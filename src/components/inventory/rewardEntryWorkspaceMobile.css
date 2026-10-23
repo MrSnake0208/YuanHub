@@ -315,9 +315,6 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-quick-heading time { font: 12px/1.5 var(--font-d); }
 .daily-quick-heading small, .daily-quick-option small { font-size: 12px; }
 .daily-quick-option b { font-size: 13px; }
-.daily-quick-settings summary { font-size: 12px; }
-.daily-quick-settings input, .daily-quick-settings select { width: 100%; min-width: 0; padding: 7px; font: inherit; }
-.daily-quick-settings label { font-size: 13px; }
 .quick-feedback { margin: 6px 0 0; font-size: 13px; }
 .entry-operations button { font: 700 14px/1.5 var(--font-b); }
 .compact-entry .channel-section > summary { font-size: 13px; }
@@ -326,16 +323,11 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .daily-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .daily-quick-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; width: 100%; }
   .daily-quick > fieldset { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 6px; align-items: stretch; }
-  .daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 140px; padding: 8px; min-height: 52px; }
+  .daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 150px; padding: 4px 4px 4px 8px; min-height: 48px; }
   .daily-quick-option span { display: grid; gap: 3px; }
-  .daily-quick-option input { margin: 0; flex: none; }
+  .daily-quick-option input { appearance: auto; width: 16px; height: 16px; margin: 0; flex: none; }
   .daily-quick-option img { flex: none; }
-  .daily-quick > fieldset > button { flex: 1 1 140px; min-height: 40px; padding: 8px; }
-  .daily-quick-settings { width: 100%; }
-  .daily-quick-settings > fieldset { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
-  .daily-quick-settings label { display: grid; gap: 4px; min-width: 0; }
-  .daily-quick-settings small { grid-column: 1 / -1; }
-  .daily-quick-settings input { font-size: 16px; }
+  .daily-quick > fieldset > button { flex: 1 1 150px; min-height: 44px; padding: 8px; }
   .quick-feedback { width: 100%; }
   .compact-entry .heading-copy .eyebrow { display: none; }
   .entry-operations { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -348,4 +340,11 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .compact-entry .basket-empty { min-height: 36px; padding: 6px; }
   .compact-entry .basket-list { max-height: 28dvh; }
   .compact-entry .quantity-control input { font-size: 16px; }
+.daily-quick-option > label { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; cursor: pointer; }
+.daily-quick-option :is(b, small) { white-space: nowrap; }
+.daily-quick-option img, .daily-quick-option input { flex: none; }
+.quick-edit { display: grid; place-items: center; flex: none; width: 36px; min-height: 44px; padding: 4px; border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
+.history-rewards { display: grid; gap: 6px; }
+.history-rewards > label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.history-rewards input { appearance: auto; width: 16px; height: 16px; flex: none; }
 }

@@ -18,7 +18,7 @@ vi.mock('../src/api/inventory.js', () => ({
 vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
 }))
-vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn() }))
+vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(), putTrainingWorkspace: vi.fn() }))
 
 const catalog = [
   { entity_type: 'item', id: 'zhuyu', name: '茱萸', rarity: 3 },
@@ -1843,6 +1843,10 @@ describe('库存页紧凑录入', () => {
     expect(wrapper.findAll('.daily-quick-option input')[1].element.disabled).toBe(true)
     await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
     expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    await button(wrapper, '补记历史').trigger('click'); await flushPromises()
+    await clickElement(document.querySelector('[aria-label=关闭补记历史奖励]')); await flushPromises()
+    expect(wrapper.vm.hasDraft()).toBe(false)
+    expect(wrapper.findAll('.daily-quick-option input:checked')).toHaveLength(0)
   })
   it('今日状态读取失败可重试且不写入，未知提交只重试同一份文档', async () => {
     inventoryApi.listRecords.mockRejectedValueOnce(new Error('离线')).mockResolvedValue({ items: [], next_cursor: null })
@@ -1865,21 +1869,21 @@ describe('库存页紧凑录入', () => {
     await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
     late.resolve({ items: [{ record_id: 'old-account' }], next_cursor: null }); await flushPromises()
     expect(wrapper.findAll('.daily-quick-option input')[1].element.matches(':disabled')).toBe(false)
-    await wrapper.findAll('.daily-quick-option input')[1].setValue(true)
-    const purpose = wrapper.findAll('.daily-quick-settings select')[1]
-    await purpose.setValue('annotation')
+    await clickElement(button(wrapper, '补记历史').element)
+    await clickElement(document.querySelectorAll('.history-rewards input')[1])
     const picker = wrapper.getComponent(RewardDateTimePicker)
     picker.vm.$emit('update:date', '2026-09-30'); picker.vm.$emit('update:clock', '10:00:00'); await flushPromises()
     inventoryApi.getCurrent.mockResolvedValue(coveredCoin())
     inventoryApi.importInventory.mockResolvedValue({ ...success, history_only: 1 })
-    await wrapper.get('form').trigger('submit'); await flushPromises()
+    document.querySelector('.quick-history-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
     expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-2', entityType: 'item' }, { fresh: true })
     expect(inventoryApi.importInventory.mock.lastCall[0].records[0].effective_at).toBe(new Date(2026, 8, 30, 10).toISOString())
-    expect(wrapper.text()).toContain('未重复增加')
+    expect(document.body.textContent).toContain('未重复增加')
   })
 })
 
-it('紧凑日常等待真实月卡配置，失败时先手动选档再记录', async () => {
+it('紧凑日常等待真实月卡配置，失败后可在独立编辑面板保存档位', async () => {
+  inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
   const preference = deferred()
   plannerApi.getTrainingWorkspace.mockReturnValueOnce(preference.promise)
   const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
@@ -1888,7 +1892,37 @@ it('紧凑日常等待真实月卡配置，失败时先手动选档再记录', a
   preference.reject(new Error('离线')); await flushPromises()
   expect(wrapper.text()).toContain('云端月卡设置暂不可用')
   expect(monthly().element.disabled).toBe(true)
-  await wrapper.get('.daily-quick-settings select').setValue('none')
-  await wrapper.get('.daily-quick-settings select').setValue('yinghuo')
+  await wrapper.get('[aria-label=编辑月卡奖励]').trigger('click'); await flushPromises()
+  const select = document.querySelector('.quick-reward-editor select')
+  select.value = 'yinghuo'; select.dispatchEvent(new Event('change', { bubbles: true }))
+  plannerApi.putTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc-1', revision: 1 })
+  document.querySelector('.quick-reward-editor').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+  expect(plannerApi.putTrainingWorkspace.mock.lastCall[1].stamina_sources.monthly_card.tier).toBe('yinghuo')
+  expect(document.querySelector('.quick-reward-editor')).toBeNull()
   expect(monthly().element.disabled).toBe(false)
+})
+
+it('月卡编辑先读取最新计划并保留其他配置，版本冲突留在面板且不写库存', async () => {
+  inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+  const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+  expect(wrapper.find('.daily-quick-settings').exists()).toBe(false)
+  expect(wrapper.find('select').exists()).toBe(false)
+  await wrapper.get('[aria-label=编辑月卡奖励]').trigger('click'); await flushPromises()
+  const select = document.querySelector('.quick-reward-editor select')
+  select.value = 'yuehua'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+  plannerApi.getTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc-1', revision: 7, training_levels: { fh: 4 },
+    stamina_sources: { monthly_card: { tier: 'yinghuo', end_date: '2026-12-31' }, fixed_sources: [{ id: 'manual-gift', label: '固定补充', value: 25, enabled: true }] } })
+  plannerApi.putTrainingWorkspace.mockRejectedValueOnce(Object.assign(new Error('冲突'), { status: 409 }))
+  const submit = () => document.querySelector('.quick-reward-editor').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  submit(); await flushPromises()
+  const body = plannerApi.putTrainingWorkspace.mock.lastCall[1]
+  expect(body.expected_revision).toBe(7)
+  expect(body.training_levels.fh).toBe(4)
+  expect(body.stamina_sources.monthly_card.end_date).toBe('2026-12-31')
+  expect(body.stamina_sources.fixed_sources).toEqual([{ id: 'manual-gift', label: '固定补充', value: 25, enabled: true }])
+  expect(document.querySelector('.quick-reward-editor').textContent).toContain('设置已在其他页面变更')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  plannerApi.putTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc-1', revision: 8 })
+  submit(); await flushPromises()
+  expect(document.querySelector('.quick-reward-editor')).toBeNull()
 })

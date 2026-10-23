@@ -56,7 +56,7 @@
               :account-id="accountId" :account-name="currentAccountName" :game="agentGameFilter"
               :disabled="rewardEntryDisabled || rewardImportBusy || mailboxBusy || !!rewardEntryWorkspace?.mode"
               @busy="dailyBusy = $event" @imported="onRewardImported" />
-            <MailboxReserve ref="mailboxReserve" compact :account-id="accountId" :user-id="String(auth.userInfo?.id || '')"
+            <MailboxReserve ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')"
               :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || !!rewardEntryWorkspace?.mode"
               @busy="mailboxBusy = $event" @recorded="onRewardImported" />
           </div>
@@ -5530,6 +5530,7 @@ onBeforeUnmount(function () {
 .freshness-label { color: var(--ink-60); }
 .inventory-entry,
 .reward-entry { border-radius: 8px; }
+.inventory-actions > .reward-entry { background: var(--tea); color: var(--on-strong); }
 .manifest-toolbar { border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-toolbar .manifest-type-switch { border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-type-switch > button { border-radius: 8px; }

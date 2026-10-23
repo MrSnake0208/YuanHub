@@ -1,61 +1,82 @@
 <template>
-  <div class="mailbox-container" :class="{ 'compact-mailbox': compact }">
-    <div v-if="compact" class="mail-quick">
+  <div class="mailbox-container">
+    <div class="mail-quick">
       <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
-      <span v-if="loaded">{{ totals.coins.toLocaleString() }} 白金币 · {{ totals.tickets.toLocaleString() }} 符传</span>
-      <button type="button" class="btn ghost" :disabled="disabled || confirming || busy || conflict || !loaded || dirty || (!pendingClaim && !totals.coins && !totals.tickets)" @click="claim">{{ busy ? '记录中…' : pendingClaim ? '原样重试领取' : '记录邮件领取' }}</button>
-      <small v-if="dirty">先保存邮件修改，再记录领取。</small>
+      <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
+      <div class="mail-quick-actions"><button v-if="loaded && mailCount || pendingClaim" type="button" class="btn ghost" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button><button type="button" class="mail-manage" aria-label="管理邮件" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button></div>
     </div>
-    <p v-if="loading" role="status">正在读取邮箱储备…</p>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="pendingClaim && !busy" role="status">领取结果尚未确认，请原样重试；确认前不要重复记录。</p>
-    <button v-if="!loaded && !loading || conflict" type="button" class="btn ghost" :disabled="locked || disabled" @click="reload">重新读取</button>
-    <details class="mailbox-reserve" @invalid.capture="$event.currentTarget.open = true">
-    <summary>{{ compact ? '管理邮件' : '邮箱储备' }} <span v-if="loaded && !compact">{{ totals.coins.toLocaleString() }} 白金币 · {{ totals.tickets.toLocaleString() }} 普通符传<span v-if="dirty">（未保存）</span></span></summary>
-    <p>待领储备不计入库存。请按实际邮件填写封数和单封奖励。</p>
-    <form v-if="loaded" @submit.prevent="save">
-      <fieldset :disabled="locked || disabled || conflict">
-        <legend>白金币月卡邮件</legend>
-        <p class="mailbox-hint">不同单封奖励分行填写，单封数值以实际邮件为准。</p>
-        <div v-for="(row, index) in draft.white_coin_mails" :key="index" class="mailbox-row">
-          <label>未领取封数<input v-model.number="row.count" :aria-label="`第${index + 1}行白金币邮件封数`" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /></label>
-          <label>每封白金币<input v-model.number="row.coins_per_mail" :aria-label="`第${index + 1}行每封白金币`" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /></label>
-          <button type="button" class="btn ghost" :aria-label="`移除第${index + 1}行白金币邮件`" @click="draft.white_coin_mails.splice(index, 1)">移除</button>
-        </div>
-        <button type="button" class="btn ghost" :disabled="draft.white_coin_mails.length >= 20" @click="draft.white_coin_mails.push({ count: 0, coins_per_mail: 90 })">添加白金币邮件</button>
-      </fieldset>
-      <fieldset :disabled="locked || disabled || conflict">
-        <legend>符传月卡邮件</legend>
-        <label class="mailbox-ticket">未领取封数<input v-model.number="draft.fu_chuan_mail_count" aria-label="符传邮件封数" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /><span>每封 3 个普通符传</span></label>
-      </fieldset>
-      <p aria-live="polite">{{ valid ? `待领取合计：${totals.coins.toLocaleString()} 白金币 · ${totals.tickets.toLocaleString()} 普通符传` : '封数及每封奖励须为0至1000000的整数' }}</p>
-      <div class="mailbox-actions">
-        <button type="submit" class="btn primary" :disabled="locked || disabled || conflict || !dirty || !valid">{{ busy ? '保存中…' : '保存邮箱储备' }}</button>
-        <span role="status">{{ dirty ? '有未保存修改' : notice }}</span>
-        <span v-if="updatedAt">最近保存：<time :datetime="updatedAt">{{ new Date(updatedAt).toLocaleString() }}</time></span>
-      </div>
-    </form>
-    </details>
-    <p v-if="compact && notice" class="mail-notice" role="status">{{ notice }}</p>
+    <p v-if="loading" class="mail-feedback" role="status">正在读取邮件…</p>
+    <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
+    <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>
+    <p v-if="notice && !panel" class="mail-feedback" role="status">{{ notice }}</p>
+    <InventoryQuickDialog :open="!!panel" :title="panel === 'claim' ? '记录邮件领取' : '管理邮件储备'" :locked="locked" @close="closePanel">
+      <form v-if="panel === 'manage' && loaded" class="mailbox-manage-form" @submit.prevent="save">
+        <fieldset class="panel-fields" :disabled="locked || disabled || conflict">
+          <legend>白金币月卡邮件</legend>
+          <p class="panel-note">同一单封奖励的邮件放在一组。</p>
+          <div v-for="(row, index) in draft.white_coin_mails" :key="index" class="mailbox-row">
+            <label>每封白金币<input v-model.number="row.coins_per_mail" :aria-label="`第${index + 1}行每封白金币`" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /></label>
+            <label>未领取封数<input v-model.number="row.count" :aria-label="`第${index + 1}行白金币邮件封数`" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /></label>
+            <button type="button" class="mail-manage" :aria-label="`移除第${index + 1}行白金币邮件`" @click="draft.white_coin_mails.splice(index, 1)">移除</button>
+          </div>
+          <button type="button" class="btn ghost" :disabled="draft.white_coin_mails.length >= 20" @click="draft.white_coin_mails.push({ count: 0, coins_per_mail: 90 })">添加白金币邮件</button>
+        </fieldset>
+        <fieldset class="panel-fields" :disabled="locked || disabled || conflict"><legend>符传月卡邮件</legend><label>未领取封数<input v-model.number="draft.fu_chuan_mail_count" aria-label="符传邮件封数" type="number" min="0" :max="LIMIT" step="1" required inputmode="numeric" /></label><p class="panel-note">每封 3 个普通符传</p></fieldset>
+        <p aria-live="polite">{{ valid ? `待领取合计：${totals.coins.toLocaleString()} 白金币 · ${totals.tickets.toLocaleString()} 普通符传` : '封数及每封奖励须为0至1000000的整数' }}</p>
+        <p v-if="error" role="alert">{{ error }}</p>
+        <button v-if="conflict" type="button" class="mail-manage" @click="reload">重新读取</button>
+        <div class="panel-actions"><button type="button" class="btn ghost" :disabled="locked" @click="closePanel">取消</button><button type="submit" class="btn primary" :disabled="locked || disabled || conflict || !dirty || !valid">{{ busy ? '保存中…' : '保存邮件储备' }}</button></div>
+      </form>
+      <form v-if="panel === 'claim' && selection" class="mailbox-claim-form" @submit.prevent="claim">
+        <fieldset class="panel-fields" :disabled="locked || disabled || conflict">
+          <p class="panel-note">填写这次实际领取的封数，未领取的填 0。</p>
+          <label v-for="(row, index) in stored.white_coin_mails" v-show="row.count > 0" :key="index" class="mail-claim-row"><span>白金币邮件 · 每封 {{ row.coins_per_mail }}<small>待领 {{ row.count }} 封</small></span><span>本次领取<input v-model.number="selection.white_coin_mail_counts[index]" :aria-label="`第${index + 1}组白金币邮件本次领取封数`" type="number" min="0" :max="row.count" step="1" inputmode="numeric" required /></span></label>
+          <label v-if="stored.fu_chuan_mail_count" class="mail-claim-row"><span>符传邮件 · 每封 3 张<small>待领 {{ stored.fu_chuan_mail_count }} 封</small></span><span>本次领取<input v-model.number="selection.fu_chuan_mail_count" aria-label="符传邮件本次领取封数" type="number" min="0" :max="stored.fu_chuan_mail_count" step="1" inputmode="numeric" required /></span></label>
+        </fieldset>
+        <p v-if="!claimValid" role="alert">领取封数须为 0 至待领封数之间的整数。</p>
+        <p aria-live="polite">本次增加 {{ claimTotals.coins.toLocaleString() }} 白金币 · {{ claimTotals.tickets.toLocaleString() }} 符传</p>
+        <p class="panel-note">只记录刚领取、尚未计入当前数量的邮件。</p>
+        <p v-if="error" role="alert">{{ error }}</p>
+        <button v-if="conflict" type="button" class="mail-manage" @click="reload">重新读取</button>
+        <p v-if="pendingClaim && !busy" role="status">领取结果尚未确认，请原样重试。</p>
+        <div class="panel-actions"><button type="button" class="btn ghost" :disabled="locked" @click="closePanel">取消</button><button type="submit" class="btn primary" :disabled="busy || disabled || conflict || !claimValid || !claimTotals.coins && !claimTotals.tickets">{{ busy ? '记录中…' : pendingClaim ? '原样重试领取' : '确认记录领取' }}</button></div>
+      </form>
+    </InventoryQuickDialog>
   </div>
 </template>
-
 <script setup>
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { matchedRouteKey, onBeforeRouteLeave } from 'vue-router'
 import { getMailboxReserve, saveMailboxReserve, claimMailboxReserve } from '../../api/mailboxReserve.js'
+import InventoryQuickDialog from './InventoryQuickDialog.vue'
 import { dialog } from '../../utils/dialog.js'
 
-const props = defineProps({ accountId: { type: String, required: true }, userId: { type: String, required: true }, compact: Boolean, disabled: Boolean })
+const props = defineProps({ accountId: { type: String, required: true }, userId: { type: String, required: true }, disabled: Boolean })
 const emit = defineEmits(['busy', 'recorded'])
 const LIMIT = 1000000
 const empty = () => ({ white_coin_mails: [], fu_chuan_mail_count: 0 })
 const draft = ref(empty()), baseline = ref(''), version = ref(0), updatedAt = ref(null)
 const loading = ref(false), loaded = ref(false), busy = ref(false), conflict = ref(false), error = ref(''), notice = ref('')
-const pendingClaim = ref(null), confirming = ref(false)
-const locked = computed(() => busy.value || confirming.value || !!pendingClaim.value)
+const panel = ref(''), selection = ref(null), pendingClaim = ref(null)
+const locked = computed(() => busy.value || !!pendingClaim.value)
 watch(locked, value => emit('busy', value), { flush: 'sync' })
-const mailCount = computed(() => draft.value.white_coin_mails.reduce((sum, row) => sum + (amountValid(row.count) ? row.count : 0), 0) + (amountValid(draft.value.fu_chuan_mail_count) ? draft.value.fu_chuan_mail_count : 0))
+const stored = computed(() => baseline.value ? JSON.parse(baseline.value) : empty())
+const mailCount = computed(() => stored.value.white_coin_mails.reduce((sum, row) => sum + row.count, 0) + stored.value.fu_chuan_mail_count)
+const storedTotals = computed(() => ({ coins: stored.value.white_coin_mails.reduce((sum, row) => sum + row.count * row.coins_per_mail, 0), tickets: stored.value.fu_chuan_mail_count * 3 }))
+const claimValid = computed(() => selection.value && selection.value.white_coin_mail_counts.every((count, index) => amountValid(count) && count <= stored.value.white_coin_mails[index].count) && amountValid(selection.value.fu_chuan_mail_count) && selection.value.fu_chuan_mail_count <= stored.value.fu_chuan_mail_count)
+const claimTotals = computed(() => ({ coins: selection.value?.white_coin_mail_counts.reduce((sum, count, index) => sum + (Number(count) || 0) * stored.value.white_coin_mails[index].coins_per_mail, 0) || 0, tickets: (selection.value?.fu_chuan_mail_count || 0) * 3 }))
+function openPanel(value) {
+  if (props.disabled || locked.value || !loaded.value || conflict.value) return
+  error.value = ''; notice.value = ''
+  if (value === 'claim') selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(row => row.count), fu_chuan_mail_count: stored.value.fu_chuan_mail_count }
+  panel.value = value
+}
+async function closePanel() {
+  const seq = sequence
+  if (!(await confirmDiscard()) || seq !== sequence || locked.value) return
+  draft.value = JSON.parse(baseline.value || JSON.stringify(empty()))
+  panel.value = ''; selection.value = null; error.value = ''
+}
 let sequence = 0
 const dirty = computed(() => loaded.value && JSON.stringify(draft.value) !== baseline.value)
 const amountValid = value => Number.isInteger(value) && value >= 0 && value <= LIMIT
@@ -95,7 +116,9 @@ async function confirmDiscard() {
   return confirmed && seq === sequence
 }
 async function reload() {
-  if (await confirmDiscard()) await load()
+  if (!(await confirmDiscard())) return
+  await load()
+  if (loaded.value && panel.value === 'claim') selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(row => row.count), fu_chuan_mail_count: stored.value.fu_chuan_mail_count }
 }
 async function save() {
   if (!loaded.value || locked.value || props.disabled || conflict.value || !dirty.value || !valid.value) return
@@ -104,7 +127,7 @@ async function save() {
   error.value = ''
   try {
     const data = await saveMailboxReserve(account, user, { expected_version: version.value, ...JSON.parse(JSON.stringify(draft.value)) })
-    if (seq === sequence) { apply(data); notice.value = '已保存' }
+    if (seq === sequence) { apply(data); notice.value = '邮件储备已保存'; panel.value = '' }
   } catch (err) {
     if (seq === sequence) {
       error.value = err.message || '保存失败，草稿已保留'
@@ -115,24 +138,18 @@ async function save() {
   }
 }
 async function claim() {
-  if (props.disabled || busy.value || confirming.value || conflict.value || !loaded.value || dirty.value) return
+  if (props.disabled || busy.value || conflict.value || !loaded.value || dirty.value) return
   const seq = sequence, account = props.accountId, user = props.userId
   if (!pendingClaim.value) {
-    if (!totals.value.coins && !totals.value.tickets) return
-    confirming.value = true
-    let confirmed
-    try {
-      confirmed = await dialog.confirm({ title: '记录全部邮件领取？', message: `账号「${account}」：${mailCount.value} 封，${totals.value.coins} 白金币、${totals.value.tickets} 符传。仅记录刚领取且尚未计入当前数量的邮件；保存后待领封数归零。未全部领取请取消；部分领取可通过「记一笔」记录，并在管理邮件中更新剩余封数。`, confirmText: '已全部领取，记录', cancelText: '返回' })
-    } finally { if (seq === sequence) confirming.value = false }
-    if (!confirmed || seq !== sequence || props.disabled) return
-    pendingClaim.value = { expected_version: version.value, operation_id: crypto.randomUUID() }
+    if (!claimValid.value || !claimTotals.value.coins && !claimTotals.value.tickets) return
+    pendingClaim.value = { expected_version: version.value, operation_id: crypto.randomUUID(), selection: JSON.parse(JSON.stringify(selection.value)) }
   }
   busy.value = true; error.value = ''; notice.value = ''
   try {
     const data = await claimMailboxReserve(account, user, pendingClaim.value)
     if (seq !== sequence) return
     if (data?.account_id !== account || !Number.isSafeInteger(data.version) || data.version <= pendingClaim.value.expected_version) throw new Error('领取结果无法确认，请原样重试')
-    apply(data); pendingClaim.value = null; notice.value = '邮件领取已记录，库存与待领封数已同步。'
+    apply(data); pendingClaim.value = null; panel.value = ''; selection.value = null; notice.value = '已记录领取，库存和待领封数已同步。'
     emit('recorded', account)
   } catch (err) {
     if (seq !== sequence) return
@@ -149,7 +166,7 @@ watch(() => [props.accountId, props.userId], () => {
   loaded.value = false
   loading.value = false
   busy.value = false
-  pendingClaim.value = null; confirming.value = false
+  pendingClaim.value = null; panel.value = ''; selection.value = null
   conflict.value = false
   notice.value = ''
   error.value = ''
@@ -164,29 +181,5 @@ if (inject(matchedRouteKey, null)?.value) onBeforeRouteLeave(confirmDiscard)
 onBeforeUnmount(() => { ++sequence; window.removeEventListener('beforeunload', beforeUnload); emit('busy', false) })
 defineExpose({ confirmDiscard })
 </script>
-
-<style scoped>
-.compact-mailbox { color: var(--ink); }
-.mail-quick > strong { font: 800 15px/1.5 var(--font-b); }
-.mail-quick > strong b { color: var(--theme-accent-text, var(--tea)); font: 800 24px/1 var(--font-d); }
-.mail-quick > span, .mail-quick > small, .mail-notice { font-size: 12px; }
-.compact-mailbox .mailbox-reserve { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
-.compact-mailbox .mailbox-reserve > summary { color: var(--ink-60); font-size: 12px; font-weight: 500; }
-.compact-mailbox > p { font-size: 13px; overflow-wrap: anywhere; }
-
-.mailbox-reserve { margin: 16px 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--surface); }
-.mailbox-reserve summary { cursor: pointer; font-weight: 700; }
-.mailbox-reserve summary span { font-weight: 400; }
-.mailbox-reserve p { line-height: 1.6; }
-.mailbox-reserve fieldset { min-width: 0; margin: 12px 0; padding: 0; border: 0; }
-.mailbox-reserve legend { font-weight: 700; }
-.mailbox-hint { font-size: 13px; }
-.mailbox-reserve label { display: grid; gap: 6px; min-width: 0; }
-.mailbox-reserve input { box-sizing: border-box; min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; }
-.mailbox-reserve :is(input, button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.mailbox-row { display: grid; align-items: end; gap: 10px; margin: 12px 0; }
-.mailbox-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.mailbox-actions span { font-size: 13px; }
-</style>
-<style scoped src="./mailboxReserveMobile.css"></style>
 <style scoped src="./mailboxReserveDesktop.css"></style>
+<style scoped src="./mailboxReserveMobile.css"></style>
