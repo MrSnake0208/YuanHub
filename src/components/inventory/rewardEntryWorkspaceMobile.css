@@ -310,4 +310,42 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 
 .is-short-viewport .reward-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
 .is-short-viewport .reward-dialog-scroll { overflow: visible; }
+.daily-quick fieldset { min-width: 0; margin: 0; padding: 0; }
+.daily-quick-heading strong { font: 800 17px/1.4 var(--font-s); }
+.daily-quick-heading time { font: 12px/1.5 var(--font-d); }
+.daily-quick-heading small, .daily-quick-option small { font-size: 12px; }
+.daily-quick-option b { font-size: 13px; }
+.daily-quick-settings summary { font-size: 12px; }
+.daily-quick-settings input, .daily-quick-settings select { width: 100%; min-width: 0; padding: 7px; font: inherit; }
+.daily-quick-settings label { font-size: 13px; }
+.quick-feedback { margin: 6px 0 0; font-size: 13px; }
+.entry-operations button { font: 700 14px/1.5 var(--font-b); }
+.compact-entry .channel-section > summary { font-size: 13px; }
+.compact-entry .basket-empty { font-size: 13px; }
+.compact-entry .basket-empty > svg, .compact-entry .basket-empty > small, .compact-entry .baseline-note { display: none; }
+  .daily-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .daily-quick-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; width: 100%; }
+  .daily-quick > fieldset { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+  .daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 140px; padding: 8px; min-height: 52px; }
+  .daily-quick-option span { display: grid; gap: 3px; }
+  .daily-quick-option input { margin: 0; flex: none; }
+  .daily-quick-option img { flex: none; }
+  .daily-quick > fieldset > button { flex: 1 1 140px; min-height: 40px; padding: 8px; }
+  .daily-quick-settings { width: 100%; }
+  .daily-quick-settings > fieldset { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
+  .daily-quick-settings label { display: grid; gap: 4px; min-width: 0; }
+  .daily-quick-settings small { grid-column: 1 / -1; }
+  .daily-quick-settings input { font-size: 16px; }
+  .quick-feedback { width: 100%; }
+  .compact-entry .heading-copy .eyebrow { display: none; }
+  .entry-operations { display: flex; gap: 6px; margin-bottom: 12px; }
+  .entry-operations button { flex: 1; min-height: 40px; }
+  .compact-entry .channel-section { margin-bottom: 10px; }
+  .compact-entry .channel-section[open] > summary { margin-bottom: 10px; }
+  .compact-entry .manual-columns { display: flex; flex-direction: column; gap: 10px; }
+  .compact-entry .reward-grid { max-height: 32dvh; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+  .compact-entry .reward-receipt { padding: 0; }
+  .compact-entry .basket-empty { min-height: 36px; padding: 6px; }
+  .compact-entry .basket-list { max-height: 28dvh; }
+  .compact-entry .quantity-control input { font-size: 16px; }
 }

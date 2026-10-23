@@ -1,13 +1,40 @@
 <template>
-  <div class="reward-workspace">
-    <slot v-if="$slots.actions" name="actions" />
-    <div v-else class="workspace-actions" aria-label="新增奖励或导入库存记录">
+  <div class="reward-workspace" :class="{ 'compact-daily': compactDaily }">
+    <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
+      <div class="daily-quick-heading"><strong>今日奖励</strong><time>{{ dailyDate }}</time><small>05:00 换日</small></div>
+      <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
+        <legend class="sr-only">选择实际领取的奖励</legend>
+        <label v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
+          <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady" @change="toggleQuickPreset(preset)" />
+          <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="32" height="32" />
+          <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : `+${preset.count} ${preset.itemName}` }}</small></span>
+        </label>
+        <button class="primary-button" type="submit" :disabled="!manual.presets.length || !!result">{{ busy ? '记录中…' : '记录今日领取' }}</button>
+      </fieldset>
+      <details class="daily-quick-settings"><summary>调整奖励</summary>
+        <fieldset :disabled="disabled || locked || !!result">
+          <label>月卡档位<select v-model="monthlyTier" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
+          <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input :value="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="setCount(entry, $event.target.value)" /></label>
+          <label>领取情况<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="income">刚领取，增加库存</option><option value="annotation">已计入当前数量，只补记录</option></select></label>
+          <RewardDateTimePicker v-if="manual.whiteCoinPurpose === 'annotation'" v-model:date="manual.date" v-model:clock="manual.clock" @update:date="clearPreview" @update:clock="clearPreview" />
+          <small>补记时填写实际领取时间；已计入较新库存的奖励不会重复增加。</small>
+          <router-link v-if="monthlySettingsAvailable" to="/operator?tab=tracking">长期月卡设置：养成规划 → 月卡与商店体力</router-link>
+        </fieldset>
+      </details>
+      <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
+      <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
+      <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
+      <p v-if="error" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
+      <p v-if="result" class="quick-feedback" role="status">{{ result.history_only ? '已补记录，已计入库存的部分未重复增加。' : result.accepted ? '今日领取已记录。' : '已记录，未重复增加。' }}<button type="button" class="text-button" @click="startNext">继续选择</button></p>
+    </form>
+    <slot v-if="!compactDaily && $slots.actions" name="actions" />
+    <div v-else-if="!compactDaily" class="workspace-actions" aria-label="新增奖励或导入库存记录">
       <span v-if="disabled" class="muted">登录并选择子账号后可补录记录</span>
       <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
       <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
     </div>
 
-    <Teleport to="body">
+    <Teleport v-if="!compactDaily" to="body">
       <Transition name="reward-dialog">
         <div v-if="mode" class="reward-dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation" @click.self="requestClose">
           <section
@@ -15,14 +42,13 @@
             ref="dialogEl"
             @focusin="revealFocusedControl"
             class="reward-panel reward-dialog"
-            :class="[`mode-${mode}`, { 'daily-mode': dailyMode }]"
+            :class="[`mode-${mode}`, { 'daily-mode': dailyMode, 'compact-entry': compact && !dailyMode }]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="reward-entry-title"
             :aria-describedby="locked ? 'reward-dialog-lock-status' : undefined"
             :aria-busy="busy"
             tabindex="-1"
-            @keydown="onDialogKeydown"
           >
             <header class="panel-heading">
               <span class="heading-emblem" aria-hidden="true"><BookOpen v-if="mode === 'manual'" :size="25" /><ScrollText v-else :size="25" /></span>
@@ -39,10 +65,14 @@
               <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
               <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
 
-      <form v-if="mode === 'manual' && entities.length" class="manual-form" novalidate @submit.prevent="dailyMode ? submitDaily() : previewManual()">
+      <div v-if="compact && mode === 'manual' && !dailyMode" class="entry-operations" role="group" aria-label="记一笔操作">
+        <button v-for="item in [{ id: 'gain', name: '获得' }, { id: 'use', name: '使用' }, { id: 'exchange', name: '兑换' }]" :key="item.id" type="button" :aria-pressed="operation === item.id" :disabled="locked" @click="operation = item.id; resourceOpened ||= item.id !== 'gain'">{{ item.name }}</button>
+      </div>
+      <div v-if="resourceOpened" v-show="operation !== 'gain'"><slot name="resource-entry" :operation="operation" /></div>
+      <form v-if="mode === 'manual' && entities.length" v-show="operation === 'gain' || dailyMode" class="manual-form" novalidate @submit.prevent="dailyMode ? submitDaily() : compact ? submitQuick() : previewManual()">
         <fieldset :disabled="locked || !!result || disabled">
           <legend class="sr-only">填写奖励流水</legend>
-          <div class="whitecoin-shortcuts">
+          <div v-if="!compact || dailyMode" class="whitecoin-shortcuts">
             <p v-if="dailyMode" class="shortcut-note">游戏日 {{ dailyDate }} · 北京时间 05:00 切换。仅记录已经领取的奖励。</p>
             <p v-if="dailyMode && dailyLoading" role="status" class="shortcut-note">正在核对已记录项目…</p>
             <p v-if="dailyMode && dailyStatusError" role="alert" class="shortcut-note">{{ dailyStatusError }} <button type="button" class="text-button" @click="loadDailyStatus">重试</button></p>
@@ -56,7 +86,7 @@
             <label v-if="manual.presets.length" class="whitecoin-purpose">本次记录用途<select v-model="manual.whiteCoinPurpose" aria-label="日常记录用途" @change="clearPreview"><option value="">请选择记录用途</option><option value="income">增加库存（新增收入）</option><option value="annotation">已包含在库存中，仅补记录</option></select></label>
             <p v-if="manual.presets.length" class="shortcut-note">已被 MaaYuan 扫描或手动盘点包含的收入，请选择补标并填写实际发生时间；未经盘点的新收入才计入库存。游戏日按北京时间 05:00 划分。</p>
           </div>
-          <div class="channel-section">
+          <details class="channel-section" :open="!compact || dailyMode"><summary v-if="compact && !dailyMode">来源与历史时间 · {{ manual.channel === '手动补录' ? (manual.customChannel || '手动记录') : manual.channel }}</summary>
             <div v-if="!dailyMode" class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
               <div v-if="!dailyMode" class="channel-options" role="group" aria-label="获取渠道">
                 <button v-for="channel in REWARD_CHANNELS" :key="channel.id" type="button" class="channel-option" :class="{ selected: manual.channel === channel.id }" :aria-pressed="manual.channel === channel.id" @click="changeChannel(channel.id)">
@@ -69,7 +99,7 @@
               <label v-if="requiresStamina" class="stamina-field"><span>消耗体力<small>本次派遣</small></span><span class="stamina-input"><Flame :size="16" aria-hidden="true" /><input v-model="manual.stamina" type="text" inputmode="numeric" aria-label="消耗体力" placeholder="填写实际消耗" @input="clearPreview" /><span>点</span></span></label>
               <p class="baseline-note"><History :size="14" aria-hidden="true" /><span>{{ manualBeforeLatestSnapshot ? '这笔奖励早于最近一次已知盘点，已在盘点中计入的部分只补历史，不会再次增加库存。' : '按实际获得时间记录。已在后续盘点中计入的部分只补历史，不会再次增加库存；奖励记录不能代替完整盘点。' }}</span></p>
             </div>
-          </div>
+          </details>
           <div v-if="manual.channel === '历练'" class="training-mode-section">
             <div class="shortcut-options" role="group" aria-label="历练填写方式">
               <button type="button" class="outline-button" :aria-pressed="trainingByRuns" :disabled="!!trainingUnavailable" @click="changeTrainingMode('runs')">按次数填写</button>
@@ -121,7 +151,7 @@
               <details class="training-help"><summary><span>仅计算必得材料</span><span>掉落说明<ChevronDown :size="12" aria-hidden="true" /></span></summary><p id="training-note" class="shortcut-note">修为历练第 1、2 关各一种材料，其余各两种；经验历练新手档仅兵书残卷，其余档位计算兵书残卷与兵书全卷。额外掉落请按实际结果补录。次数可以超过 6。多条记录共用上方发生时间，不同发生时间请分别录入；确认补录后才入账。</p></details>
             </section>
             <section v-else-if="!dailyMode" class="reward-picker" aria-label="选择奖励">
-              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
+              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ compact ? '选择道具，在下方填写数量' : manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :disabled="!!manual.presets.length" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
@@ -142,12 +172,12 @@
             </section>
 
             <aside class="reward-receipt" aria-label="本次入账清单">
-              <div class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
+              <div v-if="!compact || dailyMode" class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
               <div class="basket-heading"><span>已选 <b>{{ basketEntries.length }}</b> 项</span><button v-if="trainingByRuns || basketEntries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
               <div v-if="!basketEntries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>{{ trainingByRuns ? '请选择历练类型、关卡和次数' : dailyMode ? '勾选上方已经领取的日常项目' : '从左侧选取本次奖励' }}</span><small>{{ trainingByRuns ? '必得材料将自动计算' : '选中后可在这里调整数量' }}</small></div>
               <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="entry.id"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span>{{ entry.name }}</span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + entry.itemName + '数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
               <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyRewardTotal }}，分别保存 {{ manual.presets.length }} 条来源流水。</p>
-              <button type="submit" class="primary-button preview-button" :disabled="(!trainingByRuns && !basketEntries.length) || (dailyMode && (dailyLoading || !!dailyStatusError))"><span>{{ dailyMode ? '一键记录' : previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
+              <button type="submit" class="primary-button preview-button" :disabled="(!trainingByRuns && !basketEntries.length) || (dailyMode && (dailyLoading || !!dailyStatusError))"><span>{{ dailyMode ? '一键记录' : compact ? '保存' : previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
           </div>
         </fieldset>
@@ -171,7 +201,7 @@
         </fieldset>
       </div>
 
-      <div v-if="previewed && (!dailyMode || pendingDocument)" class="preview-section">
+      <div v-if="previewed && (!compact || mode === 'report' || pendingDocument) && (!dailyMode || pendingDocument)" class="preview-section">
         <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已同步或录入过的同一笔奖励，请勿再次补录；换一种录入方式仍可能重复计数。</p>
         <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
         <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
@@ -187,7 +217,7 @@
         </li></ul>
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
               <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励记录统计获得量，盘点记录保存库存总量。导入保留原记录时间，同一条记录不会重复导入。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
@@ -198,7 +228,11 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { matchedRouteKey, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import { useModalFocus } from '../../composables/useModalFocus.js'
+import { dialog } from '../../utils/dialog.js'
+import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { getCurrent, importInventory, listRecords } from '../../api/inventory.js'
@@ -214,10 +248,11 @@ import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD
 import { businessDate, businessDayStartIso, nextBusinessDayStartIso } from '../../utils/businessDay.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
-const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
+const monthlySettingsAvailable = isFeatureEnabled(FEATURE_KEYS.OPERATOR_GROWTH_TRACKING)
+const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
 const emit = defineEmits(['imported', 'busy'])
-const mode = ref('')
-const dailyMode = ref(false)
+const mode = ref(props.compactDaily ? 'manual' : '')
+const dailyMode = ref(props.compactDaily)
 const dailyRecorded = ref(new Set())
 const dailyLoading = ref(false)
 const dailyStatusError = ref('')
@@ -225,13 +260,15 @@ let dailyStatusSeq = 0
 let catalogSeq = 0
 let ordinaryDraft = null
 let dailyDraftBaseline = ''
-const dialogTitle = computed(() => mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
-const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref('')
+const operation = ref('gain'), resourceOpened = ref(false)
+watch(operation, () => { if (result.value) { resetManual(); clearPreview() } })
+const dialogTitle = computed(() => props.compact && !dailyMode.value && mode.value === 'manual' ? '记一笔' : mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
+const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
 const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => preset.id === 'monthly-card' ? { ...preset, count: monthlyCardTier(monthlyTier.value, props.game).coins } : preset))
 function changeMonthlyTier() {
-  monthlyTierTouched = true
+  monthlyTierTouched = true; monthlyReady.value = true
   const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
   if (entry) {
     const count = monthlyCardTier(monthlyTier.value, props.game).coins
@@ -243,10 +280,12 @@ function changeMonthlyTier() {
 async function loadMonthlyPreference() {
   const token = ++monthlyPreferenceSeq, account = props.accountId, game = props.game, draft = manual.value
   monthlyPreferenceNote.value = ''
+  monthlyReady.value = monthlyTierTouched
   try {
     const workspace = workspaceFromRemote(await getTrainingWorkspace(account), account)
     if (token !== monthlyPreferenceSeq || disposed || props.accountId !== account || props.game !== game || mode.value !== 'manual' || manual.value !== draft || monthlyTierTouched) return
     if (workspace.staminaSources) monthlyTier.value = workspace.staminaSources.monthlyCard.tier
+    monthlyReady.value = true
   } catch (_) {
     if (token === monthlyPreferenceSeq && !disposed && props.accountId === account && props.game === game && mode.value === 'manual') monthlyPreferenceNote.value = '云端月卡设置暂不可用，可手动选择。'
   }
@@ -263,7 +302,7 @@ const resultBox = ref(null)
 const heading = ref(null)
 const dialogEl = ref(null)
 const scrollBody = ref(null)
-const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !!mode.value, scrollBody, dialogEl)
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !props.compactDaily && !!mode.value, scrollBody, dialogEl)
 const lockNotice = ref(null)
 const manualButton = ref(null)
 const reportButton = ref(null)
@@ -281,8 +320,10 @@ const rarity = ref(0)
 const agentProf = ref('')
 const failedImages = ref(new Set())
 const expandedRows = ref(new Set())
-const locked = computed(() => busy.value || checkingBaseline.value || !!pendingDocument.value)
+const ownLocked = computed(() => busy.value || checkingBaseline.value || !!pendingDocument.value)
+const locked = computed(() => ownLocked.value || props.resourceBusy)
 const closeLockMessage = computed(() => {
+  if (props.resourceBusy) return '正在保存使用或兑换，请先确认结果。'
   if (checkingBaseline.value) return '正在核对奖励库存盘点，请等待完成。'
   if (busy.value) return '正在提交本次入账，请等待完成后再关闭工作台。'
   if (pendingDocument.value) return '上次提交结果未确认，请先原样重试；为避免重复入账，当前工作台暂不能关闭。'
@@ -297,7 +338,7 @@ let trainingSelectionKey = 0
 function freshManual() {
   const date = new Date()
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
-  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', training: freshTraining() }
+  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: props.compact ? '手动补录' : '派遣-洛阳', customChannel: props.compact ? '手动记录' : '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', training: freshTraining() }
 }
 function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupId: '', level: '', runs: '1' } }
 function freshTraining() { return { mode: trainingRewardUnavailableReason(props.game) ? 'materials' : 'runs', selections: [], draft: freshTrainingSelection(), dirty: false, editingKey: null, notice: '', replacePrompt: false } }
@@ -307,6 +348,7 @@ function resetManual() {
   manual.value = freshManual(); monthlyTierTouched = false
   if (dailyMode.value) {
     manual.value.channel = '手动补录'
+    if (props.compactDaily) manual.value.whiteCoinPurpose = 'income'
     dailyDraftBaseline = JSON.stringify(manual.value)
   } else switchDraftBaseline = JSON.stringify(manual.value)
 }
@@ -412,8 +454,28 @@ async function loadDailyStatus() {
   } finally { if (current()) dailyLoading.value = false }
 }
 watch([dailyDate, dailyMode, mode, () => props.accountId, () => props.game], loadDailyStatus)
+function toggleQuickPreset(preset) {
+  if (result.value) startNext()
+  const purpose = manual.value.whiteCoinPurpose || 'income'
+  selectDailyPreset(preset)
+  manual.value.whiteCoinPurpose = purpose
+}
+async function submitQuick() {
+  if (locked.value || props.disabled || result.value) return
+  const draft = manual.value
+  await previewManual()
+  if (!disposed && manual.value === draft && previewed.value && selectedRecords.value.length && !error.value) await submit()
+}
 async function submitDaily() {
+  if (props.compactDaily && pendingDocument.value) return submit()
   if (dailyLoading.value || dailyStatusError.value || locked.value || props.disabled || result.value) return
+  if (props.compactDaily && manual.value.whiteCoinPurpose === 'income') {
+    const now = freshManual()
+    if (businessDate(manualRewardTimestamp(now.date, now.clock)) !== dailyDate.value) {
+      startNext(); await loadDailyStatus(); error.value = '游戏日已切换，请重新选择今天领取的奖励。'; return
+    }
+    manual.value.date = now.date; manual.value.clock = now.clock
+  }
   const draft = manual.value
   await previewManual()
   if (!disposed && manual.value === draft && dailyMode.value && previewed.value && selectedRecords.value.length && !error.value) await submit()
@@ -432,8 +494,6 @@ const counts = computed(() => new Map(manual.value.entries.map(entry => [entry.i
 const countOf = id => counts.value.get(id) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
 const iconSrc = entity => `${import.meta.env.BASE_URL}inventory-icons/${entity.entity_type === 'agent' ? 'agents' : 'items'}/${encodeURIComponent(entity.id)}.png`
-const focusableSelector = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'
-let restoreFocusEl = null
 let bodyOverflowBefore = ''
 let rootOverflowBefore = ''
 let bodyPaddingRightBefore = ''
@@ -462,39 +522,22 @@ function unlockBackgroundScroll() {
   bodyScrollLocked = false
 }
 
-function focusableDialogElements() {
-  if (!dialogEl.value) return []
-  return Array.from(dialogEl.value.querySelectorAll(focusableSelector)).filter(element => {
-    return element instanceof HTMLElement &&
-      !element.hasAttribute('hidden') &&
-      !element.disabled
-  })
-}
-
-watch(locked, value => emit('busy', value), { flush: 'sync' })
-watch(mode, async (value, previous) => {
-  if (value && !previous) {
-    lockBackgroundScroll()
-    await nextTick()
-    heading.value?.focus({ preventScroll: true })
-    return
-  }
-  if (!value && previous) {
-    unlockBackgroundScroll()
-    const trigger = restoreFocusEl || (previous === 'manual' ? manualButton.value : reportButton.value)
-    restoreFocusEl = null
-    await nextTick()
-    if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true })
-  }
+watch(ownLocked, value => emit('busy', value), { flush: 'sync' })
+useModalFocus(() => !props.compactDaily && !!mode.value, dialogEl, { initialFocus: () => heading.value, onEscape: requestClose })
+watch(mode, (value, previous) => {
+  if (props.compactDaily) return
+  if (value && !previous) lockBackgroundScroll()
+  if (!value && previous) unlockBackgroundScroll()
 })
 watch(() => [props.accountId, props.game], () => {
-  ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''
+  ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
   fileReadSeq++
   readingFile.value = false
-  mode.value = ''
+  mode.value = props.compactDaily ? 'manual' : ''
+  operation.value = 'gain'; resourceOpened.value = false
   ordinaryDraft = null
-  dailyMode.value = false
+  dailyMode.value = props.compactDaily
   entities.value = []
   ++catalogSeq; catalogLoading.value = false
   busy.value = false; checkingBaseline.value = false
@@ -505,6 +548,7 @@ watch(() => [props.accountId, props.game], () => {
   resetManual()
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
+  if (props.compactDaily && props.accountId) { void loadCatalog(); void loadDailyStatus(); void loadMonthlyPreference() }
 })
 async function showError(message) {
   error.value = /Failed to fetch|NetworkError|Load failed/i.test(message) ? '网络连接失败，请检查连接后重试。' : message
@@ -535,7 +579,8 @@ async function loadCatalog() {
 }
 async function open(nextMode, trigger, daily = false) {
   if (props.disabled || locked.value || (daily && !props.accountId)) return
-  if (!mode.value) restoreFocusEl = trigger || (nextMode === 'manual' ? manualButton.value : reportButton.value)
+  if (props.compact && !mode.value && JSON.stringify(manual.value) === switchDraftBaseline) resetManual()
+  if (!mode.value) (trigger || (nextMode === 'manual' ? manualButton.value : reportButton.value))?.focus({ preventScroll: true })
   if (mode.value !== nextMode) {
     if (mode.value === 'manual' && result.value) resetManual()
     fileReadSeq++; readingFile.value = false; clearPreview()
@@ -547,12 +592,27 @@ async function open(nextMode, trigger, daily = false) {
     manual.value = ordinaryDraft || freshManual(); ordinaryDraft = null; clearPreview()
   }
   dailyMode.value = daily
+  operation.value = 'gain'
   mode.value = nextMode
   if (nextMode === 'manual') void loadMonthlyPreference()
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
-defineExpose({ mode, dailyMode, openDaily: trigger => open('manual', trigger, true), openManual: trigger => open('manual', trigger), openReport: trigger => open('report', trigger), hasDraft: () => !!ordinaryDraft && JSON.stringify(ordinaryDraft) !== switchDraftBaseline || !result.value && (JSON.stringify(manual.value) !== (dailyMode.value ? dailyDraftBaseline : switchDraftBaseline) || !!reportText.value.trim() || readingFile.value) })
+function hasDraft() {
+  return !!ordinaryDraft && JSON.stringify(ordinaryDraft) !== switchDraftBaseline || !result.value && (JSON.stringify(manual.value) !== (dailyMode.value ? dailyDraftBaseline : switchDraftBaseline) || !!reportText.value.trim() || readingFile.value)
+}
+async function confirmLeave() {
+  if (locked.value) return false
+  if (!hasDraft()) return true
+  const account = props.accountId, draft = manual.value
+  const confirmed = await dialog.confirm({ title: '放弃未保存的记录？', message: '本次输入尚未保存，已保存的数据不受影响。', confirmText: '放弃并离开', cancelText: '继续填写' })
+  return confirmed && !locked.value && props.accountId === account && manual.value === draft
+}
+if (inject(matchedRouteKey, null)?.value) { onBeforeRouteLeave(confirmLeave); onBeforeRouteUpdate(confirmLeave) }
+function beforeUnload(event) { if (locked.value || hasDraft()) { event.preventDefault(); event.returnValue = '' } }
+window.addEventListener('beforeunload', beforeUnload)
+defineExpose({ mode, dailyMode, openDaily: trigger => open('manual', trigger, true), openManual: trigger => open('manual', trigger), openReport: trigger => open('report', trigger), hasDraft })
+
 function close() {
   if (locked.value) return
   if (mode.value === 'manual' && result.value) resetManual()
@@ -561,39 +621,13 @@ function close() {
 }
 async function requestClose() {
   if (!locked.value) {
-    close()
+    const account = props.accountId
+    if (props.beforeClose && !(await props.beforeClose())) return
+    if (!locked.value && props.accountId === account) close()
     return
   }
   await nextTick()
   lockNotice.value?.focus({ preventScroll: true })
-}
-function onDialogKeydown(event) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    requestClose()
-    return
-  }
-  if (event.key !== 'Tab') return
-  const items = focusableDialogElements()
-  if (!items.length) {
-    event.preventDefault()
-    heading.value?.focus({ preventScroll: true })
-    return
-  }
-  const first = items[0]
-  const last = items[items.length - 1]
-  const current = document.activeElement
-  if (!items.includes(current)) {
-    event.preventDefault()
-    ;(event.shiftKey ? last : first).focus()
-  } else if (event.shiftKey && current === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && current === last) {
-    event.preventDefault()
-    first.focus()
-  }
 }
 function clearPreview() { rows.value = []; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
@@ -753,7 +787,7 @@ async function previewManual() {
     records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
     if (draft.presets.length && draft.whiteCoinPurpose === 'annotation') {
       checkingBaseline.value = true
-      const current = await getCurrent({ accountId: targetAccount, entityType: 'item', fresh: true })
+      const current = await getCurrent({ accountId: targetAccount, entityType: 'item' }, { fresh: true })
       if (disposed || props.accountId !== targetAccount || manual.value !== draft || mode.value !== 'manual') return
       validateDailyAnnotation(current, effectiveAt, draft.presets.map(preset => preset.itemId))
     }
@@ -800,7 +834,7 @@ async function submit() {
   try {
     busy.value = true
     if (!pendingDocument.value && mode.value === 'manual' && manual.value.presets.length && manual.value.whiteCoinPurpose === 'annotation') {
-      const current = await getCurrent({ accountId: targetAccount, entityType: 'item', fresh: true })
+      const current = await getCurrent({ accountId: targetAccount, entityType: 'item' }, { fresh: true })
       if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
       validateDailyAnnotation(current, selectedRecords.value[0]?.effective_at, selectedRecords.value.flatMap(record => record.entries.map(entry => entry.id)))
     }
@@ -811,6 +845,7 @@ async function submit() {
     if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
     if (!response || !['accepted', 'duplicates', 'history_only', 'superseded'].every(key => Number.isInteger(response[key]) && response[key] >= 0)) throw new Error('未收到有效的补录结果，请原样重试确认状态')
     result.value = response; pendingDocument.value = null
+    if (props.compactDaily) manual.value.presets.forEach(preset => dailyRecorded.value.add(preset.id))
     emit('imported', targetAccount)
     await nextTick()
     resultBox.value?.focus({ preventScroll: true })
@@ -832,10 +867,29 @@ function warningText(warning) { return typeof warning === 'string' ? warning : w
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
 function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : ['手动添加', '补标已盘点收入'].includes(value) ? value : '待核对' }
-onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', false) })
+onMounted(() => {
+  if (props.compactDaily) { resetManual(); void loadCatalog(); void loadDailyStatus(); void loadMonthlyPreference() }
+})
+onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunload', beforeUnload); unlockBackgroundScroll(); emit('busy', false) })
 </script>
 
 <style scoped>
+.daily-quick { color: var(--ink); }
+.daily-quick fieldset { border: 0; }
+.daily-quick-heading small, .daily-quick-option small { color: var(--ink-60); }
+.daily-quick-option { border: 1px solid var(--line); border-radius: 9px; background: var(--cream); cursor: pointer; }
+.daily-quick-option:has(input:checked) { border-color: var(--theme-accent-text, var(--tea)); background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); }
+.daily-quick-option.recorded { background: var(--surface); cursor: default; }
+.daily-quick input { accent-color: var(--tea); }
+.daily-quick :is(button, input, select, summary):focus-visible, .entry-operations button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
+.daily-quick-settings summary { color: var(--ink-60); cursor: pointer; }
+.daily-quick-settings input, .daily-quick-settings select { border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); }
+.quick-feedback { overflow-wrap: anywhere; }
+.entry-operations button { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); cursor: pointer; }
+.entry-operations button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
+.compact-entry .channel-section > summary { cursor: pointer; color: var(--ink-60); }
+.compact-entry .reward-receipt { border: 0; background: transparent; box-shadow: none; }
+
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .reward-workspace, .reward-dialog-mask { color: var(--ink); }
 .whitecoin-shortcuts { border-bottom: 1px solid var(--line); }

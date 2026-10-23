@@ -1,9 +1,9 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import MailboxReserve from '../src/components/inventory/MailboxReserve.vue'
-import { getMailboxReserve, saveMailboxReserve } from '../src/api/mailboxReserve.js'
+import { getMailboxReserve, saveMailboxReserve, claimMailboxReserve } from '../src/api/mailboxReserve.js'
 import { dialog } from '../src/utils/dialog.js'
-vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxReserve: vi.fn(), saveMailboxReserve: vi.fn() }))
+vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxReserve: vi.fn(), saveMailboxReserve: vi.fn(), claimMailboxReserve: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 const record = (account = 'a', count = 20) => ({ account_id: account, white_coin_mails: [{ count, coins_per_mail: 90 }], fu_chuan_mail_count: 10, version: 1, updated_at: '2026-10-22T00:00:00Z' })
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
@@ -114,4 +114,49 @@ it('未保存离开可取消，刷新保护且卸载清理监听', async () => {
   const after = new Event('beforeunload', { cancelable: true })
   window.dispatchEvent(after)
   expect(after.defaultPrevented).toBe(false)
+})
+
+it('紧凑摘要领取一次同步库存和储备，未知结果原样重试且不能离开', async () => {
+  wrapper = mount(MailboxReserve, { props: { userId: 'owner', accountId: 'a', compact: true } }); await flushPromises()
+  expect(wrapper.get('.mail-quick').text()).toContain('30 封')
+  expect(wrapper.get('details').element.open).toBe(false)
+  dialog.confirm.mockResolvedValue(true)
+  claimMailboxReserve.mockRejectedValueOnce(new Error('断网')).mockImplementationOnce(async () => ({ ...record('a', 0), fu_chuan_mail_count: 0, version: 2 }))
+  await button('记录邮件领取').trigger('click'); await flushPromises()
+  const body = { ...claimMailboxReserve.mock.lastCall[2] }
+  expect(body.expected_version).toBe(1)
+  expect(await wrapper.vm.confirmDiscard()).toBe(false)
+  expect(wrapper.get('fieldset').element.matches(':disabled')).toBe(true)
+  await button('原样重试领取').trigger('click'); await flushPromises()
+  expect(claimMailboxReserve.mock.lastCall).toEqual(['a', 'owner', body])
+  expect(dialog.confirm).toHaveBeenCalledTimes(1)
+  expect(saveMailboxReserve).not.toHaveBeenCalled()
+  expect(wrapper.emitted('recorded')).toEqual([['a']])
+  expect(wrapper.get('.mail-quick').text()).toContain('0 封')
+})
+it('领取确认期间切换账号不会向另一账号提交；编辑中禁止领取', async () => {
+  wrapper = mount(MailboxReserve, { props: { userId: 'owner', accountId: 'a', compact: true } }); await flushPromises()
+  const confirmation = deferred(); dialog.confirm.mockReturnValueOnce(confirmation.promise)
+  await button('记录邮件领取').trigger('click'); await flushPromises()
+  getMailboxReserve.mockResolvedValueOnce(record('b', 2))
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  confirmation.resolve(true); await flushPromises()
+  expect(claimMailboxReserve).not.toHaveBeenCalled()
+  await input('符传邮件封数').setValue('3')
+  expect(button('记录邮件领取').element.disabled).toBe(true)
+})
+it('领取冲突须重读，迟到结果不能更新另一个账号', async () => {
+  wrapper = mount(MailboxReserve, { props: { userId: 'owner', accountId: 'a', compact: true } }); await flushPromises()
+  dialog.confirm.mockResolvedValue(true)
+  claimMailboxReserve.mockRejectedValueOnce(Object.assign(new Error('储备已变更'), { status: 409 }))
+  await button('记录邮件领取').trigger('click'); await flushPromises()
+  expect(button('记录邮件领取').element.disabled).toBe(true)
+  await button('重新读取').trigger('click'); await flushPromises()
+  const late = deferred(); claimMailboxReserve.mockReturnValueOnce(late.promise)
+  await button('记录邮件领取').trigger('click'); await flushPromises()
+  getMailboxReserve.mockResolvedValueOnce(record('b', 2))
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  late.resolve({ ...record('a', 0), fu_chuan_mail_count: 0, version: 2 }); await flushPromises()
+  expect(wrapper.emitted('recorded')).toBeUndefined()
+  expect(wrapper.text()).toContain('180 白金币')
 })

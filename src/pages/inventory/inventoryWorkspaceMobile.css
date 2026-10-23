@@ -2419,4 +2419,15 @@
   :deep(.inventory-header .compact-tool-actions) { align-self: center; }
   .manifest-items .slot-grid, .manifest-items .item-subsection > .slot-grid, .manifest-items .subsection-rows .item-subsection > .slot-grid, .manifest-items .subsection-shelves .item-subsection > .slot-grid, .manifest-items .cultivation-group > .slot-grid { gap: 10px 5px; }
 }
+  .inventory-quickbar { display: grid; gap: 12px; margin: 10px 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .inventory-quickbar > * { min-width: 0; }
+  .inventory-actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+  .inventory-actions > button { flex: 1 1 auto; min-height: 38px; padding: 8px 10px; font-size: 13px; }
+  :deep(.inventory-header .compact-tool-actions) { width: 100%; flex-wrap: wrap; }
+  :deep(.inventory-header .compact-tool-row) { grid-template-areas: 'heading actions' 'account account'; }
+  .inventory-freshness { margin: 0; }
+@media (max-width: 640px) {
+  :deep(.inventory-header .compact-tool-row) { grid-template-areas: 'heading heading' 'account account' 'actions actions'; }
+  .inventory-actions { flex: 1 1 100%; }
+}
 }

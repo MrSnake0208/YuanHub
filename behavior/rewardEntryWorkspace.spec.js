@@ -121,6 +121,7 @@ async function dropReport(report = snapshotReport, read = () => Promise.resolve(
 function mountWorkspace(props = {}) {
   return mount(RewardEntryWorkspace, {
     attachTo: document.body,
+    global: { stubs: { RouterLink: true } },
     props: {
       accountId: 'acc-1',
       accountName: '测试账号',
@@ -1379,7 +1380,7 @@ describe('奖励补录工作台弹层', () => {
     const payload = inventoryApi.importInventory.mock.calls[0][0]
     expect(payload.records[0].effective_at).toBe(new Date(2026, 8, 30, 10).toISOString())
     expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
-    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-1', entityType: 'item', fresh: true })
+    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-1', entityType: 'item' }, { fresh: true })
     await clickElement(bodyButton('原样重试补录'))
     expect(inventoryApi.importInventory.mock.calls[1][0]).toBe(payload)
     expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
@@ -1807,4 +1808,87 @@ it('提交成功后焦点留在结果区，实际 Escape 事件仍可关闭并�
   await flushPromises()
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   expect(document.activeElement).toBe(trigger.element)
+})
+
+describe('库存页紧凑录入', () => {
+  const success = { accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] }
+  it('普通获得选道具填数量后直接保存，来源时间仍可展开', async () => {
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compact: true })
+    await wrapper.vm.openManual(); await flushPromises()
+    expect(document.body.querySelector('.channel-section').open).toBe(false)
+    expect(document.body.querySelector('.whitecoin-shortcuts')).toBeNull()
+    await clickElement(document.querySelector('[aria-label^="添加白金币"]'))
+    const quantity = document.querySelector('[aria-label="白金币数量"]')
+    quantity.value = '65'; quantity.dispatchEvent(new Event('input', { bubbles: true }))
+    await clickElement(bodyButton('保存'))
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    const record = inventoryApi.importInventory.mock.lastCall[0].records[0]
+    expect(record.acquisition_channel).toBe('手动记录')
+    expect(record.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 65 }])
+    expect(document.querySelector('.result').textContent).toContain('奖励已入簿')
+  })
+  it('今日奖励直接提交并复用原游戏日键，已记录项目禁止重复选择', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.body.style.overflow).toBe('')
+    await wrapper.findAll('.daily-quick-option input')[1].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    const record = inventoryApi.importInventory.mock.lastCall[0].records[0]
+    expect(record.record_id).toMatch(/^yuanhub:daily-whitecoin:agent-daily:\d{4}-\d{2}-\d{2}$/)
+    expect(record.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 50 }])
+    expect(wrapper.findAll('.daily-quick-option')[1].text()).toContain('已记录')
+    expect(wrapper.findAll('.daily-quick-option input')[1].element.disabled).toBe(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+  })
+  it('今日状态读取失败可重试且不写入，未知提交只重试同一份文档', async () => {
+    inventoryApi.listRecords.mockRejectedValueOnce(new Error('离线')).mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    expect(wrapper.text()).toContain('已记录状态读取失败')
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    await wrapper.findAll('button').find(b => b.text() === '重试').trigger('click'); await flushPromises()
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    inventoryApi.importInventory.mockRejectedValueOnce(new Error('超时')).mockResolvedValueOnce(success)
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    const original = JSON.parse(JSON.stringify(inventoryApi.importInventory.mock.lastCall[0]))
+    expect(wrapper.get('fieldset').element.matches(':disabled')).toBe(true)
+    await wrapper.findAll('button').find(b => b.text() === '原样重试').trigger('click'); await flushPromises()
+    expect(inventoryApi.importInventory.mock.lastCall[0]).toEqual(original)
+  })
+  it('今日补记被较新数量包含时核对基准，账号切换忽略迟到状态', async () => {
+    const late = deferred()
+    inventoryApi.listRecords.mockReturnValueOnce(late.promise).mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
+    late.resolve({ items: [{ record_id: 'old-account' }], next_cursor: null }); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option input')[1].element.matches(':disabled')).toBe(false)
+    await wrapper.findAll('.daily-quick-option input')[1].setValue(true)
+    const purpose = wrapper.findAll('.daily-quick-settings select')[1]
+    await purpose.setValue('annotation')
+    const picker = wrapper.getComponent(RewardDateTimePicker)
+    picker.vm.$emit('update:date', '2026-09-30'); picker.vm.$emit('update:clock', '10:00:00'); await flushPromises()
+    inventoryApi.getCurrent.mockResolvedValue(coveredCoin())
+    inventoryApi.importInventory.mockResolvedValue({ ...success, history_only: 1 })
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-2', entityType: 'item' }, { fresh: true })
+    expect(inventoryApi.importInventory.mock.lastCall[0].records[0].effective_at).toBe(new Date(2026, 8, 30, 10).toISOString())
+    expect(wrapper.text()).toContain('未重复增加')
+  })
+})
+
+it('紧凑日常等待真实月卡配置，失败时先手动选档再记录', async () => {
+  const preference = deferred()
+  plannerApi.getTrainingWorkspace.mockReturnValueOnce(preference.promise)
+  const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+  const monthly = () => wrapper.findAll('.daily-quick-option input')[2]
+  expect(monthly().element.disabled).toBe(true)
+  preference.reject(new Error('离线')); await flushPromises()
+  expect(wrapper.text()).toContain('云端月卡设置暂不可用')
+  expect(monthly().element.disabled).toBe(true)
+  await wrapper.get('.daily-quick-settings select').setValue('none')
+  await wrapper.get('.daily-quick-settings select').setValue('yinghuo')
+  expect(monthly().element.disabled).toBe(false)
 })

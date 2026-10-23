@@ -4,3 +4,13 @@
   .mailbox-row button { justify-self: start; }
   .mailbox-ticket { margin: 12px 0; }
 }
+
+@media (max-width: 1080px) {
+  .compact-mailbox { padding-top: 10px; border-top: 1px solid var(--line); }
+  .mail-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 6px; }
+  .mail-quick > span { flex: 1 1 160px; }
+  .mail-quick button { min-height: 38px; padding: 7px 10px; }
+  .compact-mailbox .mailbox-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .compact-mailbox .mailbox-row > button { grid-column: 1 / -1; justify-self: start; }
+  .compact-mailbox input { font-size: 16px; }
+}
