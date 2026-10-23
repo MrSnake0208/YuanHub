@@ -389,7 +389,7 @@ async function loadDailyStatus() {
     const ids = new Set(), cursors = new Set()
     let cursor
     do {
-      const page = await listRecords({ accountId: account, entityType: 'item', from: businessDayStartIso(day), to: nextBusinessDayStartIso(day), cursor, limit: 200 })
+      const page = await listRecords({ accountId: account, entityType: 'item', from: businessDayStartIso(day), to: nextBusinessDayStartIso(day), cursor, limit: 100 })
       if (!current()) return
       if (!Array.isArray(page?.items)) throw new Error('无法读取日常记录')
       page.items.forEach(record => ids.add(record.record_id))
