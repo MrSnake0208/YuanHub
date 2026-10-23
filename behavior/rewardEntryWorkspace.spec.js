@@ -26,7 +26,7 @@ const catalog = [
   { entity_type: 'item', id: 'jizhi', name: '鸡汁', rarity: 3 },
   { entity_type: 'agent', id: 'agent_test', name: '测试密探', rarity: 5 },
 ]
-const trainingCatalog = [...catalog, ...ITEM_CATALOG.filter(item => item.category === '修为进阶材料').map(item => ({ ...item, entity_type: 'item' }))]
+const trainingCatalog = [...catalog, ...ITEM_CATALOG.filter(item => item.category === '修为进阶材料' || ['bingshucanjuan', 'bingshuquanjuan'].includes(item.id)).map(item => ({ ...item, entity_type: 'item' }))]
 
 async function setTrainingField(id, value) {
   if (id === 'group') {
@@ -433,6 +433,114 @@ it('手工和报告外部入口在账号不可写时同样禁用', async () => {
 
 describe('历练按次数补录', () => {
   beforeEach(() => rewardCatalogApi.getRewardCatalog.mockResolvedValue(trainingCatalog))
+
+  it.each(['代号鸢', '如鸢'])('%s经验展示八个具名档位，绝境六次预览并确认后才提交兵书', async game => {
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] })
+    const write = vi.spyOn(Storage.prototype, 'setItem')
+    const wrapper = mountWorkspace({ game })
+    await openTraining(wrapper, { group: 'experience', level: 8, runs: '6' })
+    expect(visibleTrainingLevels()).toEqual([1,2,3,4,5,6,7,8])
+    expect(Array.from(document.querySelectorAll('#training-level option')).slice(1).map(option => option.textContent))
+      .toEqual(['新手历练', '初级历练', '中级历练', '高级历练', '终极历练', '实战历练', '鏖战历练', '绝境历练'])
+    expect(document.querySelector('.training-level-settings')).toBeNull()
+    expect(document.querySelector('.training-draft-rewards').textContent).toContain('兵书残卷 +600')
+    expect(document.querySelector('.training-draft-rewards').textContent).toContain('兵书全卷 +54')
+    await clickElement(bodyButton('加入本次记录'))
+    expect(document.querySelector('.training-records li').textContent).toContain('经验 · 绝境历练')
+    expect(document.querySelector('.training-records button[aria-label^="编辑"]').getAttribute('aria-label')).toBe('编辑经验 · 绝境历练')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.querySelector('.preview-record').textContent).toContain('兵书残卷')
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(write).not.toHaveBeenCalled()
+    await clickElement(bodyButton('确认补录 1 条'))
+    const documentSent = inventoryApi.importInventory.mock.calls[0][0]
+    expect(documentSent.records).toHaveLength(1)
+    expect(documentSent.records[0]).toMatchObject({ account_id: 'acc-1', record_type: 'reward_delta', entity_type: 'item', acquisition_channel: '历练' })
+    expect(documentSent.records[0].entries.map(entry => [entry.id, entry.count])).toEqual([['bingshucanjuan', 600], ['bingshuquanjuan', 54]])
+    expect(documentSent.records[0]).not.toHaveProperty('stamina_cost')
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+  })
+
+  it('经验与修为切换清空关卡、清除预览，保留清单和修为常用设置', async () => {
+    localStorage.setItem(trainingLevelKey(), JSON.stringify([12]))
+    const write = vi.spyOn(Storage.prototype, 'setItem')
+    const wrapper = mountWorkspace({ game: '代号鸢' })
+    await openTraining(wrapper, { level: 12, runs: '2' })
+    await clickElement(bodyButton('加入本次记录'))
+    await clickElement(bodyButton('预览本次流水'))
+    await setTrainingField('group', 'experience')
+    expect(document.getElementById('training-level').value).toBe('')
+    expect(visibleTrainingLevels()).toEqual([1,2,3,4,5,6,7,8])
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(document.querySelectorAll('.training-records li')).toHaveLength(1)
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.querySelector('.row-error').textContent).toContain('档位')
+    await setTrainingField('level', 1)
+    await setTrainingField('runs', '3')
+    expect(document.querySelectorAll('.training-draft-rewards .training-reward-chip')).toHaveLength(1)
+    expect(document.querySelector('.training-draft-rewards').textContent).toContain('兵书残卷 +75')
+    await clickElement(bodyButton('加入本次记录'))
+    await setTrainingField('group', 'ds')
+    expect(document.getElementById('training-level').value).toBe('')
+    expect(visibleTrainingLevels()).toEqual([12])
+    expect(document.querySelector('.training-level-settings')).not.toBeNull()
+    expect(document.querySelectorAll('.training-records li')).toHaveLength(2)
+    await setTrainingField('level', 12)
+    await setTrainingField('group', 'yy')
+    expect(document.getElementById('training-level').value).toBe('12')
+    expect(localStorage.getItem(trainingLevelKey())).toBe('[12]')
+    expect(write).not.toHaveBeenCalled()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('混合清单可编辑经验档位、合并相同档位和删除，切材料模式保留准确数量', async () => {
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] })
+    const wrapper = mountWorkspace({ game: '代号鸢' })
+    await openTraining(wrapper, { runs: '2' })
+    await appendTraining('experience', 1, '3')
+    await clickElement(bodyButton('加入本次记录'))
+    await editTraining(1)
+    await setTrainingField('level', 8)
+    await setTrainingField('runs', '5')
+    await clickElement(bodyButton('保存修改'))
+    await setTrainingField('runs', '1')
+    await clickElement(bodyButton('加入本次记录'))
+    expect(document.querySelectorAll('.training-records li')).toHaveLength(2)
+    expect(document.querySelectorAll('.training-records li')[1].textContent).toContain('绝境历练6 次')
+    await editTraining(1)
+    await setTrainingField('runs', '7')
+    await clickElement(bodyButton('取消修改'))
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.querySelector('.preview-record').textContent).toContain('兵书全卷')
+    await deleteTraining(1)
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(document.querySelector('.basket-list').textContent).not.toContain('兵书')
+    await setTrainingField('group', 'experience')
+    await setTrainingField('level', 8)
+    await setTrainingField('runs', '6')
+    await clickElement(bodyButton('按材料填写'))
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录 1 条'))
+    const record = inventoryApi.importInventory.mock.calls[0][0].records[0]
+    expect(record.entries.map(entry => [entry.id, entry.count])).toEqual([['jinsishan', 90], ['yushan', 70], ['bingshucanjuan', 600], ['bingshuquanjuan', 54]])
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+  })
+
+  it('新手档只提交残卷，双兵书档目录缺项时阻止补录', async () => {
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] })
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue(trainingCatalog.filter(item => item.id !== 'bingshuquanjuan'))
+    const wrapper = mountWorkspace({ game: '代号鸢' })
+    await openTraining(wrapper, { group: 'experience', level: 8, runs: '6' })
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.querySelector('.error-message').textContent).toContain('bingshuquanjuan')
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    await setTrainingField('level', 1)
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录 1 条'))
+    const record = inventoryApi.importInventory.mock.calls[0][0].records[0]
+    expect(record.entries.map(entry => [entry.id, entry.count])).toEqual([['bingshucanjuan', 150]])
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+  })
 
   it('默认常用关卡初始化只读；显示全部可选十二关且不写入偏好', async () => {
     const write = vi.spyOn(Storage.prototype, 'setItem')

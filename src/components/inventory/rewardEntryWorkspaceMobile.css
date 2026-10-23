@@ -26,7 +26,7 @@
 .training-fields label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
 .training-fields input, .training-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; }
 .training-fields .row-error { margin: 0; }
-.training-group-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; }
+.training-group-options { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; padding: 4px; }
 .training-group-options .outline-button { min-width: 0; min-height: 36px; padding: 7px 8px; font-size: 12px; font-weight: 600; }
 .training-stepper { display: flex; min-width: 0; overflow: hidden; }
 .training-stepper .outline-button { flex: 0 0 32px; min-width: 32px; min-height: 42px; padding: 6px; }

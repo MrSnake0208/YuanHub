@@ -1,11 +1,11 @@
 import { TRAINING_GROUPS } from '../operatorTraining.js'
 
-export const TRAINING_REWARD_GROUPS = TRAINING_GROUPS.filter(group => ['fh', 'ds', 'yy'].includes(group.id))
+export const TRAINING_REWARD_GROUPS = TRAINING_GROUPS.filter(group => ['fh', 'ds', 'yy', 'experience'].includes(group.id))
 export const TRAINING_REWARD_LEVELS = Object.freeze(Array.from({ length: 12 }, (_, index) => index + 1))
 export const DEFAULT_TRAINING_REWARD_LEVELS = Object.freeze([4, 6, 8, 10, 12])
-export const MAX_TRAINING_SELECTIONS = TRAINING_REWARD_GROUPS.length * TRAINING_REWARD_LEVELS.length
+export const MAX_TRAINING_SELECTIONS = TRAINING_REWARD_GROUPS.reduce((total, group) => total + group.stages.length, 0)
 
-// 用户已确认两版本掉落完全一致，共用原表；养成估算的默认层数与每日额度不适用于奖励补录。
+// 共用现有掉落表；养成估算的默认层数与每日额度不适用于奖励补录。
 export function trainingRewardUnavailableReason(game) {
   if (['代号鸢', '如鸢'].includes(game)) return ''
   return '当前游戏没有已核实的历练预设，请按材料填写实际奖励。'
@@ -19,10 +19,10 @@ export function calculateTrainingRewards({ game, groupId, level, runs, entities 
   const unavailable = trainingRewardUnavailableReason(game)
   if (unavailable) invalid(unavailable, 'game')
   const group = TRAINING_REWARD_GROUPS.find(group => group.id === groupId)
-  if (!group) invalid('请选择风火、地水或阴阳历练', 'group')
-  if (!TRAINING_REWARD_LEVELS.includes(level)) invalid('请选择第 1 至 12 关', 'level')
+  if (!group) invalid('请选择风火、地水、阴阳或经验历练', 'group')
   const stage = group.stages.find(stage => stage.level === level)
-  const rewards = Object.entries(stage.rewards)
+  if (!stage) invalid(group.id === 'experience' ? '请选择有效的经验历练档位' : '请选择第 1 至 12 关', 'level')
+  const rewards = Object.entries(stage.rewards).filter(([, count]) => count > 0)
   const maxRuns = Math.floor(2147483647 / Math.max(...rewards.map(([, count]) => count)))
   if (!['string', 'number'].includes(typeof runs) || !/^\d+$/.test(String(runs)) || !Number.isSafeInteger(Number(runs)) || Number(runs) < 1) {
     invalid('完成次数必须为明确的正整数，不接受小数或科学计数文本', 'runs')
