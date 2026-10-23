@@ -1,16 +1,20 @@
 @media (max-width: 767px) {
-  .mailbox-reserve summary span { display: block; margin-top: 6px; }
-  .mailbox-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mailbox-row button { justify-self: start; }
-  .mailbox-ticket { margin: 12px 0; }
-}
-
-@media (max-width: 1080px) {
-  .compact-mailbox { padding-top: 10px; border-top: 1px solid var(--line); }
-  .mail-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 6px; }
-  .mail-quick > span { flex: 1 1 160px; }
-  .mail-quick button { min-height: 38px; padding: 7px 10px; }
-  .compact-mailbox .mailbox-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .compact-mailbox .mailbox-row > button { grid-column: 1 / -1; justify-self: start; }
-  .compact-mailbox input { font-size: 16px; }
+.mailbox-container { min-width: 0; color: var(--ink); }
+.mail-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.mail-quick > strong { font: 800 14px/1.5 var(--font-b); white-space: nowrap; }
+.mail-quick b { color: var(--theme-accent-text, var(--tea)); font-size: 20px; }
+.mail-summary, .mail-feedback { font-size: 12px; color: var(--ink-60); }
+.mail-summary { white-space: nowrap; }
+.mail-quick-actions { display: flex; align-items: center; gap: 10px; }
+.mail-quick .btn { padding: 7px 10px; min-height: 44px; }
+.mail-manage { min-height: 44px; padding: 6px; border: 0; background: transparent; color: var(--ink-60); font: inherit; font-size: 13px; cursor: pointer; }
+.mail-feedback { margin: 6px 0 0; overflow-wrap: anywhere; }
+.mailbox-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.mailbox-manage-form legend { margin-bottom: 12px; font-weight: 700; }
+.mailbox-claim-form .mail-claim-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 130px); align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.mail-claim-row > span { display: grid; gap: 6px; }
+.mail-claim-row small { color: var(--ink-60); }
+.mailbox-container :is(button,input):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.mailbox-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mailbox-row > button { grid-column: 1 / -1; justify-self: start; } .mailbox-claim-form .mail-claim-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }

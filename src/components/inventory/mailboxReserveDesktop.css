@@ -1,13 +1,20 @@
-@media (min-width: 768px) {
-  .mailbox-reserve summary span { margin-left: 16px; }
-  .mailbox-row { grid-template-columns: minmax(100px, 180px) minmax(100px, 180px) auto; justify-content: start; }
-  .mailbox-ticket { grid-template-columns: auto 180px auto; align-items: center; justify-content: start; margin: 12px 0; }
-}
+@media not all and (max-width: 767px) {
+.mailbox-container { min-width: 0; color: var(--ink); }
+.mail-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.mail-quick > strong { font: 800 14px/1.5 var(--font-b); white-space: nowrap; }
+.mail-quick b { color: var(--theme-accent-text, var(--tea)); font-size: 20px; }
+.mail-summary, .mail-feedback { font-size: 12px; color: var(--ink-60); }
+.mail-summary { white-space: nowrap; }
+.mail-quick-actions { display: flex; align-items: center; gap: 10px; }
+.mail-quick .btn { padding: 7px 10px; min-height: 44px; }
+.mail-manage { min-height: 44px; padding: 6px; border: 0; background: transparent; color: var(--ink-60); font: inherit; font-size: 13px; cursor: pointer; }
+.mail-feedback { margin: 6px 0 0; overflow-wrap: anywhere; }
+.mailbox-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.mailbox-manage-form legend { margin-bottom: 12px; font-weight: 700; }
+.mailbox-claim-form .mail-claim-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 130px); align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.mail-claim-row > span { display: grid; gap: 6px; }
+.mail-claim-row small { color: var(--ink-60); }
+.mailbox-container :is(button,input):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+button:disabled { opacity: .5; cursor: not-allowed; }
 
-@media not all and (max-width: 1080px) {
-  .compact-mailbox { padding-left: 16px; border-left: 1px solid var(--line); }
-  .mail-quick { display: grid; gap: 6px; margin-bottom: 8px; }
-  .mail-quick button { justify-self: start; min-height: 36px; padding: 7px 12px; }
-  .compact-mailbox .mailbox-row { grid-template-columns: 1fr 1fr; }
-  .compact-mailbox .mailbox-row > button { grid-column: 1 / -1; justify-self: start; }
 }

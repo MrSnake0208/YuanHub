@@ -1,0 +1,22 @@
+@media (max-width: 767px) {
+.quick-dialog-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 16px; box-sizing: border-box; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
+.quick-dialog { display: flex; flex-direction: column; min-width: 0; width: min(560px, 100%); max-height: min(90dvh, calc(var(--modal-viewport-height, 100dvh) - 32px)); border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+h3 { margin: 0; font: 800 20px/1.5 var(--font-s); }
+header button { display: grid; place-items: center; flex: none; min-width: 44px; min-height: 44px; padding: 8px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.quick-dialog-body { padding: 18px 20px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+:deep(form) { display: grid; gap: 16px; min-width: 0; }
+:deep(fieldset) { min-width: 0; margin: 0; padding: 0; border: 0; }
+:deep(label) { display: grid; gap: 6px; min-width: 0; }
+:deep(input:not([type=checkbox])), :deep(select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; font-size: 16px; }
+:deep(p) { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
+:deep(.panel-fields) { display: grid; gap: 14px; }
+:deep(.panel-actions) { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
+:deep(.panel-note) { color: var(--ink-60); font-size: 13px; }
+:deep(button) { cursor: pointer; }
+:deep(button:disabled) { cursor: not-allowed; opacity: .55; }
+:deep(:is(input,select,button,a):focus-visible) { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+.quick-dialog-mask { padding: 12px; } header { padding: 12px 16px; } .quick-dialog-body { padding: 16px; } h3 { font-size: 18px; }
+.quick-dialog.is-short-viewport { display: block; overflow-y: auto; overscroll-behavior: contain; }
+.is-short-viewport .quick-dialog-body { overflow: visible; }
+}

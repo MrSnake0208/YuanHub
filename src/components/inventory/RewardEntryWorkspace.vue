@@ -1,32 +1,50 @@
 <template>
   <div class="reward-workspace" :class="{ 'compact-daily': compactDaily }">
     <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
-      <div class="daily-quick-heading"><strong>今日奖励</strong><time>{{ dailyDate }}</time><small>05:00 换日</small></div>
+      <div class="daily-quick-heading"><strong>今日奖励</strong><time :datetime="dailyDate" title="北京时间 05:00 换日">{{ dailyDate.slice(5).replace('-', '月') }}日</time></div>
       <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
         <legend class="sr-only">选择实际领取的奖励</legend>
-        <label v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
-          <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady" @change="toggleQuickPreset(preset)" />
-          <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="32" height="32" />
-          <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : `+${preset.count} ${preset.itemName}` }}</small></span>
-        </label>
-        <button class="primary-button" type="submit" :disabled="!manual.presets.length || !!result">{{ busy ? '记录中…' : '记录今日领取' }}</button>
+        <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
+          <label>
+            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady" @change="toggleQuickPreset(preset)" />
+            <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
+            <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
+          </label>
+          <button type="button" class="quick-edit" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
+        </div>
+        <button class="primary-button" type="submit" :disabled="!manual.presets.length || !!result">{{ busy ? '记录中…' : '记录所选' }}</button>
       </fieldset>
-      <details class="daily-quick-settings"><summary>调整奖励</summary>
-        <fieldset :disabled="disabled || locked || !!result">
-          <label>月卡档位<select v-model="monthlyTier" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
-          <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input :value="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="setCount(entry, $event.target.value)" /></label>
-          <label>领取情况<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="income">刚领取，增加库存</option><option value="annotation">已计入当前数量，只补记录</option></select></label>
-          <RewardDateTimePicker v-if="manual.whiteCoinPurpose === 'annotation'" v-model:date="manual.date" v-model:clock="manual.clock" @update:date="clearPreview" @update:clock="clearPreview" />
-          <small>补记时填写实际领取时间；已计入较新库存的奖励不会重复增加。</small>
-          <router-link v-if="monthlySettingsAvailable" to="/operator?tab=tracking">长期月卡设置：养成规划 → 月卡与商店体力</router-link>
-        </fieldset>
-      </details>
+      <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
-      <p v-if="error" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
-      <p v-if="result" class="quick-feedback" role="status">{{ result.history_only ? '已补记录，已计入库存的部分未重复增加。' : result.accepted ? '今日领取已记录。' : '已记录，未重复增加。' }}<button type="button" class="text-button" @click="startNext">继续选择</button></p>
+      <p v-if="error && !quickPanel" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
+      <p v-if="result && !quickPanel" class="quick-feedback" role="status">{{ result.history_only ? '已补记录，已计入库存的部分未重复增加。' : result.accepted ? '今日领取已记录。' : '已记录，未重复增加。' }}<button type="button" class="text-button" @click="startNext">继续选择</button></p>
     </form>
+    <InventoryQuickDialog :open="!!quickPanel" :title="quickPanel === 'history' ? '补记历史奖励' : `编辑${quickEdit?.channel || '奖励'}`" :locked="locked" @close="closeQuickPanel">
+      <form v-if="quickPanel === 'edit' && quickEdit" class="quick-reward-editor" @submit.prevent="saveQuickEdit">
+        <fieldset class="panel-fields" :disabled="locked || disabled">
+          <label v-if="quickEdit.id === 'monthly-card'">月卡档位<select v-model="quickEdit.tier" @change="quickEdit.count = monthlyCardTier(quickEdit.tier, game).coins"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
+          <label>本次数量<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
+          <p v-if="quickEdit.id === 'monthly-card'" class="panel-note">月卡档位会记住，并同步到养成规划。</p>
+        </fieldset>
+        <p v-if="quickEditError" role="alert">{{ quickEditError }}</p>
+        <div class="panel-actions"><button type="button" class="outline-button" :disabled="locked" @click="closeQuickPanel">取消</button><button type="submit" class="primary-button" :disabled="locked || disabled">{{ quickSaving ? '保存中…' : '保存设置' }}</button></div>
+      </form>
+      <form v-if="quickPanel === 'history'" class="quick-history-form" @submit.prevent="submitDaily">
+        <fieldset class="panel-fields" :disabled="locked || disabled || !!result">
+          <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" @update:date="clearPreview" @update:clock="clearPreview" />
+          <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
+          <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input v-model="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="clearPreview" /></label>
+          <label>库存处理<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="annotation">已计入当前数量，只补记录</option><option value="income">尚未计入，按领取时间补入</option></select></label>
+          <p class="panel-note">填写实际领取时间；已被较新库存数量包含的奖励不会重复增加。</p>
+        </fieldset>
+        <p v-if="error || dailyStatusError" role="alert">{{ error || dailyStatusError }}</p>
+        <button v-if="dailyStatusError" type="button" class="text-button" @click="loadDailyStatus">重试读取</button>
+        <p v-if="result" role="status">历史奖励已保存，已计入库存的部分未重复增加。</p>
+        <div class="panel-actions"><button type="button" class="outline-button" :disabled="locked" @click="closeQuickPanel">{{ result ? '完成' : '取消' }}</button><button v-if="!result" type="submit" class="primary-button" :disabled="busy || checkingBaseline || disabled || dailyLoading || !!dailyStatusError || !manual.presets.length">{{ busy ? '保存中…' : pendingDocument ? '原样重试' : '保存补记' }}</button></div>
+      </form>
+    </InventoryQuickDialog>
     <slot v-if="!compactDaily && $slots.actions" name="actions" />
     <div v-else-if="!compactDaily" class="workspace-actions" aria-label="新增奖励或导入库存记录">
       <span v-if="disabled" class="muted">登录并选择子账号后可补录记录</span>
@@ -230,15 +248,16 @@
 <script setup>
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { matchedRouteKey, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import InventoryQuickDialog from './InventoryQuickDialog.vue'
+import { emptyStaminaSources } from '../../data/dailyStaminaSources.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { dialog } from '../../utils/dialog.js'
-import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { getCurrent, importInventory, listRecords } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
-import { getTrainingWorkspace } from '../../api/operatorPlanner.js'
-import { workspaceFromRemote } from '../../data/operatorPlannerRemote.js'
+import { getTrainingWorkspace, putTrainingWorkspace } from '../../api/operatorPlanner.js'
+import { workspaceFromRemote, workspaceBody } from '../../data/operatorPlannerRemote.js'
 import { monthlyCardTier, monthlyCardTiers } from '../../data/monthlyCard.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, DAILY_REWARD_PRESETS, dailyRewardRecordId, validateDailyAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
@@ -248,7 +267,6 @@ import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD
 import { businessDate, businessDayStartIso, nextBusinessDayStartIso } from '../../utils/businessDay.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
-const monthlySettingsAvailable = isFeatureEnabled(FEATURE_KEYS.OPERATOR_GROWTH_TRACKING)
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
 const emit = defineEmits(['imported', 'busy'])
 const mode = ref(props.compactDaily ? 'manual' : '')
@@ -263,10 +281,12 @@ let dailyDraftBaseline = ''
 const operation = ref('gain'), resourceOpened = ref(false)
 watch(operation, () => { if (result.value) { resetManual(); clearPreview() } })
 const dialogTitle = computed(() => props.compact && !dailyMode.value && mode.value === 'manual' ? '记一笔' : mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
+const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({})
+let quickEditBaseline = '', quickOrdinaryBaseline = ''
 const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
-const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => preset.id === 'monthly-card' ? { ...preset, count: monthlyCardTier(monthlyTier.value, props.game).coins } : preset))
+const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.count) })))
 function changeMonthlyTier() {
   monthlyTierTouched = true; monthlyReady.value = true
   const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
@@ -320,7 +340,7 @@ const rarity = ref(0)
 const agentProf = ref('')
 const failedImages = ref(new Set())
 const expandedRows = ref(new Set())
-const ownLocked = computed(() => busy.value || checkingBaseline.value || !!pendingDocument.value)
+const ownLocked = computed(() => busy.value || checkingBaseline.value || quickSaving.value || !!pendingDocument.value)
 const locked = computed(() => ownLocked.value || props.resourceBusy)
 const closeLockMessage = computed(() => {
   if (props.resourceBusy) return '正在保存使用或兑换，请先确认结果。'
@@ -454,6 +474,54 @@ async function loadDailyStatus() {
   } finally { if (current()) dailyLoading.value = false }
 }
 watch([dailyDate, dailyMode, mode, () => props.accountId, () => props.game], loadDailyStatus)
+function openQuickEdit(preset) {
+  if (locked.value || props.disabled) return
+  quickEdit.value = { ...preset, count: manual.value.presets.find(entry => entry.id === preset.id)?.count ?? preset.count, tier: monthlyTier.value }
+  quickEditBaseline = JSON.stringify(quickEdit.value); quickEditError.value = ''; quickPanel.value = 'edit'
+}
+async function saveQuickEdit() {
+  if (locked.value || props.disabled) return
+  const edit = quickEdit.value, account = props.accountId, token = monthlyPreferenceSeq
+  const count = Number(edit.count), min = edit.id === 'monthly-card' && edit.tier === 'none' ? 0 : 1
+  if (!/^\d+$/.test(String(edit.count)) || !Number.isInteger(count) || count < min || count > 2147483647 || min === 0 && count !== 0) { quickEditError.value = '请输入有效的整数数量'; return }
+  quickSaving.value = true; quickEditError.value = ''
+  try {
+    if (edit.id === 'monthly-card') {
+      const workspace = workspaceFromRemote(await getTrainingWorkspace(account), account)
+      if (disposed || props.accountId !== account || token !== monthlyPreferenceSeq) return
+      const sources = workspace.staminaSources || emptyStaminaSources()
+      const body = workspaceBody({ ...workspace, staminaSources: { ...sources, monthlyCard: { ...sources.monthlyCard, tier: edit.tier } } })
+      workspaceFromRemote(await putTrainingWorkspace(account, body), account)
+      if (disposed || props.accountId !== account || token !== monthlyPreferenceSeq) return
+      monthlyTier.value = edit.tier; monthlyTierTouched = true; monthlyReady.value = true; monthlyPreferenceNote.value = ''
+    }
+    quickCounts.value[edit.id] = count
+    const selected = manual.value.presets.find(entry => entry.id === edit.id)
+    if (selected) { if (!count) removeReward(edit.id); else selected.count = count }
+    clearPreview(); quickPanel.value = ''; quickEdit.value = null
+  } catch (err) {
+    if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) quickEditError.value = err.status === 409 ? '设置已在其他页面变更，请重试；其他设置不会被覆盖。' : err.message || '设置保存失败，请重试'
+  } finally { if (token === monthlyPreferenceSeq) quickSaving.value = false }
+}
+function openQuickHistory() {
+  if (locked.value || props.disabled) return
+  if (result.value) startNext()
+  quickOrdinaryBaseline = dailyDraftBaseline
+  ordinaryDraft = manual.value
+  resetManual(); manual.value.whiteCoinPurpose = 'annotation'; dailyDraftBaseline = JSON.stringify(manual.value)
+  clearPreview(); quickPanel.value = 'history'; void loadDailyStatus()
+}
+async function closeQuickPanel() {
+  if (locked.value) return
+  const account = props.accountId, panel = quickPanel.value
+  const dirty = panel === 'edit' ? JSON.stringify(quickEdit.value) !== quickEditBaseline : !result.value && JSON.stringify(manual.value) !== dailyDraftBaseline
+  if (dirty && !(await dialog.confirm({ title: '放弃未保存的输入？', message: '已保存的数据不受影响。', confirmText: '放弃输入', cancelText: '继续填写' }))) return
+  if (locked.value || props.accountId !== account || panel !== quickPanel.value) return
+  if (panel === 'history') {
+    manual.value = ordinaryDraft; ordinaryDraft = null; clearPreview(); dailyDraftBaseline = quickOrdinaryBaseline; void loadDailyStatus()
+  }
+  quickPanel.value = ''; quickEdit.value = null
+}
 function toggleQuickPreset(preset) {
   if (result.value) startNext()
   const purpose = manual.value.whiteCoinPurpose || 'income'
@@ -469,7 +537,7 @@ async function submitQuick() {
 async function submitDaily() {
   if (props.compactDaily && pendingDocument.value) return submit()
   if (dailyLoading.value || dailyStatusError.value || locked.value || props.disabled || result.value) return
-  if (props.compactDaily && manual.value.whiteCoinPurpose === 'income') {
+  if (props.compactDaily && quickPanel.value !== 'history' && manual.value.whiteCoinPurpose === 'income') {
     const now = freshManual()
     if (businessDate(manualRewardTimestamp(now.date, now.clock)) !== dailyDate.value) {
       startNext(); await loadDailyStatus(); error.value = '游戏日已切换，请重新选择今天领取的奖励。'; return
@@ -530,6 +598,7 @@ watch(mode, (value, previous) => {
   if (!value && previous) unlockBackgroundScroll()
 })
 watch(() => [props.accountId, props.game], () => {
+  quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; quickSaving.value = false
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
   fileReadSeq++
@@ -599,7 +668,7 @@ async function open(nextMode, trigger, daily = false) {
   await loadCatalog()
 }
 function hasDraft() {
-  return !!ordinaryDraft && JSON.stringify(ordinaryDraft) !== switchDraftBaseline || !result.value && (JSON.stringify(manual.value) !== (dailyMode.value ? dailyDraftBaseline : switchDraftBaseline) || !!reportText.value.trim() || readingFile.value)
+  return quickPanel.value === 'edit' && JSON.stringify(quickEdit.value) !== quickEditBaseline || !!ordinaryDraft && JSON.stringify(ordinaryDraft) !== (props.compactDaily ? quickOrdinaryBaseline : switchDraftBaseline) || !result.value && (JSON.stringify(manual.value) !== (dailyMode.value ? dailyDraftBaseline : switchDraftBaseline) || !!reportText.value.trim() || readingFile.value)
 }
 async function confirmLeave() {
   if (locked.value) return false
@@ -882,8 +951,6 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .daily-quick-option.recorded { background: var(--surface); cursor: default; }
 .daily-quick input { accent-color: var(--tea); }
 .daily-quick :is(button, input, select, summary):focus-visible, .entry-operations button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
-.daily-quick-settings summary { color: var(--ink-60); cursor: pointer; }
-.daily-quick-settings input, .daily-quick-settings select { border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); }
 .quick-feedback { overflow-wrap: anywhere; }
 .entry-operations button { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .entry-operations button[aria-pressed="true"] { background: var(--tea); color: var(--on-strong); }
