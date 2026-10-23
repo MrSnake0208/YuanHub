@@ -42,6 +42,7 @@ Token 由用户在 `/user/open-api/token` 创建并绑定一个子账号，创�
 | `operator:scan:write` | 密探 v3/v4/v5 自动采集 preview/commit |
 | `operator:daily-tasks:write` | 每日历练读取与完成勾选 |
 | `star:capture:write` | 星石临时 PNG 采集上传，不是结构化背包 API |
+| `star:scan:write` | 星石本地 OCR JSON 暂存，人工核对后导入 |
 | `calendar:read` | 绑定账号活动与订阅读取 |
 
 ## 4. OpenAPI 数据端点

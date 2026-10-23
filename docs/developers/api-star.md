@@ -1,8 +1,50 @@
-# 星石临时采集 API
+# 星石采集 API
 
-状态：部分支持。已开放的是短期私有 PNG 中转，不是结构化背包导入、CRUD 或完整导出。上传不直接确认识别结果，也不修改用户星石背包；用户仍需在 YuanHub 核对处理。截图会过期，不作为长期备份。
+星石支持 MaaYuan 本地 OCR 后上传结构化 JSON，网页人工核对后导入。旧 PNG 接口继续兼容已有客户端；新采集不再上传图片。
 
-## 分段上传
+## 本地识别结果（初版）
+
+需要新权限 `star:scan:write`；原 `star:capture:write` 不包含此权限。已有连接码由用户在个人中心明确补齐权限。
+
+| 方法与路径 | 请求 | 成功 data |
+|---|---|---|
+| `GET /open-api/star/scans/account` | Token | `{account_id,name,game}` |
+| `POST /open-api/star/scans` | Token + JSON | `{record_id,status}` |
+
+先读取绑定账号并校验游戏，再采集。正文协议是 `myshare-star-scan@1`，不是星石备份格式：
+
+```json
+{
+  "format": "myshare-star-scan", "version": 1,
+  "record_id": "star-example", "expected_account_id": "acc_example", "game": "如鸢",
+  "captured_at": "2026-10-23T00:00:00Z", "width": 720, "height": 1280, "dpi": 320,
+  "sections": {"main": true, "support": true, "experience": true},
+  "entries": [{"observation_id": "star-0001", "kind": "main", "name": "天府", "quality": "orange", "level": 20, "source": "main/1/col1/y355", "raw_text": "天府 / 20级"}],
+  "experience": {"orange": null, "purple": null, "white": null},
+  "bag": {"current_count": null, "capacity": null}, "warnings": []
+}
+```
+
+名称使用简体目录名；品质为 `orange/purple/blue/green/white`。原始识别的名称、品质、等级及数量允许 null，应用前必须补齐星石字段。`observation_id` 仅标识本批观察，不是云端实例 ID。不得传图片、base64、计划或佩戴字段。每批最多 1000 条，每账号最多 20 批待核对结果。
+
+`status` 为 `needs_review/applied/discarded`。相同账号、同批 ID、相同正文重传返回原状态；不同正文返回 409。上传仅暂存，不改背包。网络失败保留原文件、批次和时间，使用 MaaYuan「星石本地报告补传」。本地离线报告首次补传时绑定账号，绑定后不能换账号重传。
+
+站内 JWT 接口使用 `account_id` 查询参数，均校验用户所有权与内测权限：
+
+| 方法与路径 | 行为 |
+|---|---|
+| `GET /v1/star/scans/pending` | 待核对摘要列表 |
+| `GET /v1/star/scans/{id}` | 原报告、当前背包、佩戴版本及关联 |
+| `POST /v1/star/scans/{id}/discard` | 放弃报告，不修改背包 |
+| `POST /v1/star/scans/{id}/apply` | 人工核对后事务应用 |
+
+应用正文含 `expected_generation/expected_revision/expected_loadout_revision`，以及 `entries`、`experience`、`bag`、`confirm_removals`。条目含 `observation_id/existing_instance_id/kind/name/quality/level`；`existing_instance_id=null` 表示新增，省略观察表示排除误识别。旧实例必须具有相同分类、名称、品质，且一颗旧星石不能对应两条观察。移除旧实例必须明确确认。
+
+应用在原 generation 内更新：保留对应实例的有效计划、佩戴、突破记录；等级变化导致失效的突破不沿用。未对应旧实例及其关联被移除。数量 null 保留旧值，0 是明确清零。变更前保存现有 `import_data_safety` 恢复点，状态、关联和回执同事务写入。相同核对命令重试返回回执，不重复新增；版本变化返回 409，须重新核对。
+
+网页入口：星石背包 →「核对 MaaYuan 本地识别结果」。核对使用独立页面；返回背包时读取最新云端数据。初版不自动猜测同名重复星石的升级对应。
+
+## 旧版分段图片上传
 
 所有接口使用 OpenAPI Token，Scope 为 `star:capture:write`，账号固定为 Token 绑定账号。
 
@@ -31,7 +73,7 @@ curl --fail-with-body -X POST -H "Authorization: Bearer $OPENAPI_TOKEN" \
 
 ## 兼容一次性上传
 
-`POST /open-api/star/captures`，同 Token/Scope，multipart 字段 `manifest`（JSON文本）及重复的 `files`（所有 PNG）。可接收完整三区 manifest，也保留旧版 main 单区 manifest；新采集优先完整分段上传。
+`POST /open-api/star/captures`，同 Token/Scope，multipart 字段 `manifest`（JSON文本）及重复的 `files`（所有 PNG）。可接收完整三区 manifest，也保留旧版 main 单区 manifest；旧客户端可继续使用完整分段上传。
 
 ```bash
 curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \

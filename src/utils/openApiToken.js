@@ -9,13 +9,13 @@ export function scopeKeys(scope) {
   return [scope]
 }
 
-// MaaYuan 默认权限：上传库存、密探自动采集、读取密探养成状态，并上传星石截图采集。
+// MaaYuan 默认权限：上传库存、密探采集、读取密探养成状态和星石本地识别结果。
 // 查询 Token 绑定账号只要求 Token 有效，不需要额外 read 权限。
 export const MAAYUAN_REQUIRED_SCOPES = Object.freeze([
   'inventory:write',
   'operator:scan:write',
   'operator:read',
-  'star:capture:write'
+  'star:scan:write'
 ])
 
 export function hasEveryScope(scope, required) {
@@ -90,6 +90,7 @@ export const FALLBACK_DESCRIPTIONS = {
   // 今日历练完成记录（对应后端 OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE，code 20005）
   'operator:daily-tasks:write': '今日历练完成记录（写入）',
   'star:capture:write': '上传星石截图',
+  'star:scan:write': '上传星石本地识别结果（核对后导入）',
   // 活动日历（对应后端 OpenApiPermission.CALENDAR_READ，code 40001）
   'calendar:read': '活动日历读取'
 }

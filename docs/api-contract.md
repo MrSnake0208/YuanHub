@@ -1056,6 +1056,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `operator:scan:write` | 密探 v3/v4/v5 自动采集 preview/commit |
 | `operator:daily-tasks:write` | 每日历练读取与完成勾选 |
 | `star:capture:write` | 星石临时 PNG 采集上传 |
+| `star:scan:write` | 星石本地识别 JSON 暂存（核对后导入） |
 | `calendar:read` | 活动与订阅读取 |
 
 生成结果：

@@ -42,6 +42,9 @@
       </CompactToolHeader>
       <section>
         <div class="wrap">
+          <p v-if="!completionDemo && auth.isLoggedIn && accountId && productReady && !cloudWriteBusy && !starExchangeBusy && !captureImportBusy && !growthBottlePending">
+            <router-link class="btn ghost" :to="{ path: '/star/scans', query: { account_id: accountId } }">核对 MaaYuan 本地识别结果</router-link>
+          </p>
           <div class="tool-summary" aria-label="星石概览">
             <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
