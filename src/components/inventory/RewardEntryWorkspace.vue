@@ -85,10 +85,10 @@
           <div class="manual-columns">
             <section v-if="trainingByRuns" class="reward-picker training-picker" aria-label="按完成次数计算历练奖励">
               <div class="training-toolbar"><h4>历练奖励</h4>
-                <details class="training-level-settings">
+                <details v-if="!experienceTraining" class="training-level-settings">
                   <summary>常用关卡<ChevronDown :size="13" aria-hidden="true" /></summary>
                   <div class="training-settings-panel">
-                  <p id="training-level-help" class="shortcut-note">至少选择一关。三种历练共用此设置，按游戏账号和游戏保存在当前浏览器；取消常用不影响已填关卡。</p>
+                  <p id="training-level-help" class="shortcut-note">至少选择一关。三种修为历练共用此设置，按游戏账号和游戏保存在当前浏览器；取消常用不影响已填关卡。</p>
                   <div class="training-level-options" role="group" aria-label="常用关卡" aria-describedby="training-level-help">
                     <label v-for="level in TRAINING_REWARD_LEVELS" :key="level" :class="{ selected: commonTrainingLevels.includes(level) }"><input type="checkbox" :value="level" :checked="commonTrainingLevels.includes(level)" :disabled="commonTrainingLevels.length === 1 && commonTrainingLevels.includes(level)" @change="changeCommonTrainingLevel(level, $event.target.checked)" />第 {{ level }} 关</label>
                   </div>
@@ -98,11 +98,11 @@
               </div>
               <div class="training-selection" aria-label="历练录入区">
                 <div id="training-group" class="training-group-options" role="group" aria-label="历练类型" tabindex="-1" :aria-invalid="!!error && trainingInputError.field === 'group'" :aria-describedby="error && trainingInputError.field === 'group' ? 'training-error' : undefined">
-                  <button v-for="group in TRAINING_REWARD_GROUPS" :key="group.id" type="button" class="outline-button" :aria-pressed="manual.training.draft.groupId === group.id" @click="manual.training.draft.groupId = group.id; changeTrainingDraft()">{{ group.name }}</button>
+                  <button v-for="group in TRAINING_REWARD_GROUPS" :key="group.id" type="button" class="outline-button" :aria-pressed="manual.training.draft.groupId === group.id" @click="changeTrainingGroup(group.id)">{{ group.name }}</button>
                 </div>
                 <p v-if="error && trainingInputError.field === 'group'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</p>
                 <div class="training-fields">
-                  <label for="training-level">关卡<select id="training-level" v-model="manual.training.draft.level" :aria-invalid="!!error && trainingInputError.field === 'level'" :aria-describedby="error && trainingInputError.field === 'level' ? 'training-error' : undefined" @change="changeTrainingDraft"><option value="">请选择关卡</option><option v-for="level in trainingLevelOptions(manual.training.draft.level)" :key="level" :value="level">第 {{ level }} 关{{ !showAllTrainingLevels && !commonTrainingLevels.includes(level) ? '（当前选择）' : '' }}</option></select><span v-if="error && trainingInputError.field === 'level'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
+                  <label for="training-level">{{ experienceTraining ? '档位' : '关卡' }}<select id="training-level" v-model="manual.training.draft.level" :aria-invalid="!!error && trainingInputError.field === 'level'" :aria-describedby="error && trainingInputError.field === 'level' ? 'training-error' : undefined" @change="changeTrainingDraft"><option value="">{{ experienceTraining ? '请选择档位' : '请选择关卡' }}</option><option v-for="level in trainingLevelOptions(manual.training.draft.level)" :key="level" :value="level">{{ trainingStageLabel(manual.training.draft.groupId, level) }}{{ !experienceTraining && !showAllTrainingLevels && !commonTrainingLevels.includes(level) ? '（当前选择）' : '' }}</option></select><span v-if="error && trainingInputError.field === 'level'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
                   <label for="training-runs">完成次数<span class="training-stepper"><button type="button" class="outline-button" aria-label="减少完成次数" :disabled="!canAdjustTrainingRuns(-1)" @click="adjustTrainingRuns(-1)">−</button><input id="training-runs" v-model="manual.training.draft.runs" type="text" inputmode="numeric" :aria-invalid="!!error && trainingInputError.field === 'runs'" :aria-describedby="error && trainingInputError.field === 'runs' ? 'training-error training-note' : 'training-note'" @input="changeTrainingDraft" /><button type="button" class="outline-button" aria-label="增加完成次数" :disabled="!canAdjustTrainingRuns(1)" @click="adjustTrainingRuns(1)">+</button></span><span v-if="error && trainingInputError.field === 'runs'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
                 </div>
                 <p v-if="trainingInputError.field === 'catalog' || trainingInputError.field === 'game'" class="row-error">{{ trainingInputError.error }}</p>
@@ -117,8 +117,8 @@
                 <ul v-else><li v-for="selection in manual.training.selections" :key="selection.key"><span><b>{{ trainingSelectionLabel(selection) }}</b><small>{{ selection.runs }} 次{{ manual.training.editingKey === selection.key ? ' · 正在编辑' : '' }}</small></span><div><button type="button" class="text-button" :aria-label="'编辑' + trainingSelectionLabel(selection)" @click="editTrainingSelection(selection)">编辑</button><button type="button" class="text-button" :aria-label="'删除' + trainingSelectionLabel(selection)" @click="removeTrainingSelection(selection.key)">删除</button></div></li></ul>
               </div>
               <button v-if="trainingCalculation.field === 'catalog'" type="button" class="outline-button" @click="loadCatalog">重新加载奖励目录</button>
-              <p v-if="trainingLevelNotice" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
-              <details class="training-help"><summary><span>仅计算必得修为材料</span><span>掉落说明<ChevronDown :size="12" aria-hidden="true" /></span></summary><p id="training-note" class="shortcut-note">第 1、2 关各一种材料，其余各两种；额外掉落请按实际结果补录。次数可以超过 6。多条记录共用上方发生时间，不同发生时间请分别录入；确认补录后才入账。</p></details>
+              <p v-if="trainingLevelNotice && !experienceTraining" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
+              <details class="training-help"><summary><span>仅计算必得材料</span><span>掉落说明<ChevronDown :size="12" aria-hidden="true" /></span></summary><p id="training-note" class="shortcut-note">修为历练第 1、2 关各一种材料，其余各两种；经验历练新手档仅兵书残卷，其余档位计算兵书残卷与兵书全卷。额外掉落请按实际结果补录。次数可以超过 6。多条记录共用上方发生时间，不同发生时间请分别录入；确认补录后才入账。</p></details>
             </section>
             <section v-else-if="!dailyMode" class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
@@ -311,6 +311,7 @@ function resetManual() {
   } else switchDraftBaseline = JSON.stringify(manual.value)
 }
 const trainingUnavailable = computed(() => trainingRewardUnavailableReason(props.game))
+const experienceTraining = computed(() => manual.value.training.draft.groupId === 'experience')
 const commonTrainingLevels = ref([...DEFAULT_TRAINING_REWARD_LEVELS])
 const showAllTrainingLevels = ref(false)
 const trainingLevelNotice = ref('')
@@ -337,7 +338,14 @@ function changeCommonTrainingLevel(level, selected) {
     trainingLevelNotice.value = ''
   } catch (_) { trainingLevelNotice.value = '无法保存到当前浏览器，常用关卡仅在本次页面内生效。' }
 }
-function trainingLevelOptions(selectedLevel) { return TRAINING_REWARD_LEVELS.filter(level => showAllTrainingLevels.value || commonTrainingLevels.value.includes(level) || selectedLevel === level) }
+function trainingLevelOptions(selectedLevel) {
+  if (experienceTraining.value) return TRAINING_REWARD_GROUPS.find(group => group.id === 'experience').stages.map(stage => stage.level)
+  return TRAINING_REWARD_LEVELS.filter(level => showAllTrainingLevels.value || commonTrainingLevels.value.includes(level) || selectedLevel === level)
+}
+function trainingStageLabel(groupId, level) {
+  if (groupId === 'experience') return TRAINING_REWARD_GROUPS.find(group => group.id === groupId).stages.find(stage => stage.level === level)?.name || ''
+  return `第 ${level} 关`
+}
 loadTrainingLevelPreference()
 const trainingByRuns = computed(() => manual.value.channel === '历练' && manual.value.training.mode === 'runs')
 const trainingPending = computed(() => manual.value.training.dirty || !manual.value.training.selections.length)
@@ -609,7 +617,13 @@ function changeTrainingMode(nextMode, confirmed = false) {
 }
 function focusTrainingError() { document.getElementById(trainingErrorTarget.value)?.focus() }
 function changeTrainingDraft() { manual.value.training.dirty = true; manual.value.training.notice = ''; clearPreview() }
-function trainingSelectionLabel(selection) { return `${TRAINING_REWARD_GROUPS.find(group => group.id === selection.groupId)?.name || ''} · 第 ${selection.level} 关` }
+function changeTrainingGroup(groupId) {
+  const draft = manual.value.training.draft
+  if ((draft.groupId === 'experience') !== (groupId === 'experience')) draft.level = ''
+  draft.groupId = groupId
+  changeTrainingDraft()
+}
+function trainingSelectionLabel(selection) { return `${TRAINING_REWARD_GROUPS.find(group => group.id === selection.groupId)?.name || ''} · ${trainingStageLabel(selection.groupId, selection.level)}` }
 function canAdjustTrainingRuns(delta) {
   const runs = manual.value.training.draft.runs
   const next = Number(runs) + delta
