@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
 import RewardDateTimePicker from '../src/components/inventory/RewardDateTimePicker.vue'
@@ -9,9 +9,12 @@ import { deferred } from '../test-support/factories.js'
 import { TRAINING_REWARD_GROUPS } from '../src/data/inventory/trainingRewards.js'
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
 import { installViewport } from '../test-support/viewport.js'
+import { auth } from '../src/store/auth.js'
 
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
+  previewRewardAnnotations: vi.fn(),
+  annotateRewards: vi.fn(),
   getCurrent: vi.fn(),
   listRecords: vi.fn(),
 }))
@@ -160,6 +163,160 @@ async function openQuickCoin(wrapper, purpose = '') {
 }
 const coveredCoin = () => [{ entity_type: 'item', entries: { baijinbi: { count: 100, listed_baseline_at: new Date(2026, 8, 30, 11).toISOString() } } }]
 
+describe('寿春受保护补记', () => {
+  const agents = [
+    { entity_type: 'agent', id: 'char_001_yangxiu', name: '杨修', rarity: 5 },
+    { entity_type: 'agent', id: 'char_002_jiaxu', name: '贾诩', rarity: 5 },
+  ]
+  let previousUser
+  beforeEach(() => { previousUser = auth.userInfo; auth.userInfo = { id: 'annotation-user' } })
+  afterEach(() => { auth.userInfo = previousUser })
+  const current = () => [{ entity_type: 'agent', full_baseline_at: new Date(2026, 8, 30, 11).toISOString(), entries: {} }]
+  const receipt = { accepted: 1, duplicates: 0, history_only: 1, superseded: 0 }
+  const preview = (doc, revision = 7) => ({
+    expected_inventory_revision: revision, can_confirm: true,
+    entries: doc.records.flatMap(record => record.entries.map(entry => ({ record_id: record.record_id, entity_type: 'agent', id: entry.id, history_only: true }))),
+  })
+  async function openDispatch({ purpose = 'annotation', compact = false } = {}) {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog, ...agents])
+    inventoryApi.getCurrent.mockResolvedValue(current())
+    inventoryApi.previewRewardAnnotations.mockImplementation(async doc => preview(doc))
+    const wrapper = mountWorkspace({ compact })
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+    await clickElement(bodyButton('寿春'))
+    for (const agent of agents) await clickElement(document.querySelector(`button[aria-label="添加${agent.name}"]`) || Array.from(document.querySelectorAll('button')).find(node => node.getAttribute('aria-label')?.startsWith(`添加${agent.name}`)))
+    const date = wrapper.findComponent(RewardDateTimePicker)
+    date.vm.$emit('update:date', '2026-09-30'); date.vm.$emit('update:clock', '10:00:00')
+    const stamina = document.querySelector('input[aria-label="消耗体力"]')
+    stamina.value = '20'; stamina.dispatchEvent(new Event('input', { bubbles: true }))
+    const select = document.querySelector('select[aria-label="派遣记录用途"]')
+    select.value = purpose; select.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    return wrapper
+  }
+  async function makePreview() { await clickElement(bodyButton('预览本次流水')) }
+
+  it('发送真实时间、全部碎片和体力，成功明确不增加库存且不调用普通导入', async () => {
+    const wrapper = await openDispatch()
+    inventoryApi.annotateRewards.mockResolvedValue(receipt)
+    await makePreview()
+    const doc = inventoryApi.previewRewardAnnotations.mock.lastCall[0]
+    expect(doc.records[0]).toMatchObject({ effective_at: new Date(2026, 8, 30, 10).toISOString(), stamina_cost: 20 })
+    expect(doc.records[0].entries.map(entry => entry.id)).toEqual(agents.map(agent => agent.id))
+    expect(document.querySelector('.preview-section').textContent).toContain('库存数量不增加')
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+    await clickElement(bodyButton('确认补录 1 条'))
+    expect(inventoryApi.annotateRewards).toHaveBeenCalledWith(doc, 7, { expectedUserId: 'annotation-user' })
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(document.querySelector('.result').textContent).toContain('已补记报告，库存数量未增加')
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+  })
+
+  it('第二个碎片缺少基线时阻止预览和全部写入，并指明碎片名称', async () => {
+    await openDispatch()
+    inventoryApi.getCurrent.mockResolvedValue([{ entity_type: 'agent', entries: { [agents[0].id]: { listed_baseline_at: current()[0].full_baseline_at } } }])
+    await makePreview()
+    expect(document.querySelector('.error-message').textContent).toContain('尚无贾诩')
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(inventoryApi.previewRewardAnnotations).not.toHaveBeenCalled()
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+  })
+
+  it('结果未知冻结文档、记录键和版本，原样重试无需新预览', async () => {
+    await openDispatch()
+    inventoryApi.annotateRewards.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({ accepted: 0, duplicates: 1, history_only: 0, superseded: 0 })
+    await makePreview(); await clickElement(bodyButton('确认补录 1 条'))
+    const original = inventoryApi.annotateRewards.mock.calls[0]
+    const serialized = JSON.stringify(original)
+    expect(document.querySelector('select[aria-label="派遣记录用途"]').matches(':disabled')).toBe(true)
+    await clickElement(bodyButton('原样重试补录'))
+    expect(inventoryApi.annotateRewards.mock.calls[1][0]).toBe(original[0])
+    expect(JSON.stringify(inventoryApi.annotateRewards.mock.calls[1])).toBe(serialized)
+    expect(inventoryApi.previewRewardAnnotations).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.result').textContent).toContain('库存数量未增加')
+  })
+
+  it('基线变化明确拒绝后保留草稿、使预览失效并允许读取新基线再预览', async () => {
+    await openDispatch()
+    inventoryApi.annotateRewards.mockRejectedValueOnce(Object.assign(new Error('库存盘点已变化'), { status: 409, code: 'inventory_state_stale' }))
+    await makePreview(); await clickElement(bodyButton('确认补录 1 条'))
+    const original = inventoryApi.annotateRewards.mock.calls[0][0]
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(document.querySelector('input[aria-label="消耗体力"]').value).toBe('20')
+    expect(document.querySelector('select[aria-label="派遣记录用途"]').value).toBe('annotation')
+    expect(document.querySelector('.error-message').textContent).toContain('草稿已保留')
+    inventoryApi.previewRewardAnnotations.mockImplementation(async doc => preview(doc, 8))
+    inventoryApi.annotateRewards.mockResolvedValue(receipt)
+    await makePreview(); await clickElement(bodyButton('确认补录 1 条'))
+    const next = inventoryApi.annotateRewards.mock.calls[1]
+    expect(next[1]).toBe(8)
+    expect(next[0].records[0].entries).toEqual(original.records[0].entries)
+    expect(next[0].records[0].effective_at).toBe(original.records[0].effective_at)
+    expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['account', 'user', 'roundtrip', 'unmount'])('预览时 %s 变化，旧响应不回填也不提交', async change => {
+    const wrapper = await openDispatch()
+    const pending = deferred()
+    inventoryApi.previewRewardAnnotations.mockReturnValueOnce(pending.promise)
+    await makePreview()
+    const doc = inventoryApi.previewRewardAnnotations.mock.lastCall[0]
+    if (change === 'unmount') wrapper.unmount()
+    else if (change === 'user') auth.userInfo = { id: 'other-user' }
+    else {
+      await wrapper.setProps({ accountId: 'acc-2' })
+      if (change === 'roundtrip') await wrapper.setProps({ accountId: 'acc-1' })
+    }
+    await flushPromises()
+    pending.resolve(preview(doc)); await flushPromises()
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+    expect(wrapper.emitted('imported')).toBeUndefined()
+  })
+
+  it('修改输入会使预览失效；新增收入继续走普通导入', async () => {
+    const wrapper = await openDispatch()
+    await makePreview()
+    wrapper.findComponent(RewardDateTimePicker).vm.$emit('update:clock', '09:00:00')
+    await flushPromises()
+    expect(document.querySelector('.preview-section')).toBeNull()
+    const select = document.querySelector('select[aria-label="派遣记录用途"]')
+    select.value = 'income'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0 })
+    await makePreview(); await clickElement(bodyButton('确认补录 1 条'))
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+  })
+
+  it('紧凑入口只补记也必须先预览，确认前不发送写请求', async () => {
+    const wrapper = await openDispatch({ compact: true })
+    document.querySelector('.manual-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(document.querySelector('.preview-section').textContent).toContain('库存数量不增加')
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+    inventoryApi.annotateRewards.mockResolvedValue(receipt)
+    await clickElement(bodyButton('确认补录 1 条'))
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+  })
+
+  it('预览明细未覆盖全部碎片时不允许确认，回执不完整时保持原样重试', async () => {
+    await openDispatch()
+    inventoryApi.previewRewardAnnotations.mockResolvedValueOnce({ expected_inventory_revision: 7, can_confirm: true, entries: [{ history_only: true }] })
+    await makePreview()
+    expect(document.querySelector('.preview-section')).toBeNull()
+    expect(inventoryApi.annotateRewards).not.toHaveBeenCalled()
+    await makePreview()
+    inventoryApi.annotateRewards.mockResolvedValueOnce({ ...receipt, history_only: 0 }).mockResolvedValueOnce(receipt)
+    await clickElement(bodyButton('确认补录 1 条'))
+    expect(document.querySelector('.error-message').textContent).toContain('原样重试')
+    const original = inventoryApi.annotateRewards.mock.calls[0]
+    await clickElement(bodyButton('原样重试补录'))
+    expect(inventoryApi.annotateRewards.mock.calls[1]).toEqual(original)
+  })
+})
+
 async function openManualWithPreview(wrapper) {
   await button(wrapper, '添加奖励流水').trigger('click')
   await flushPromises()
@@ -179,6 +336,8 @@ beforeEach(() => {
   // jsdom 不提供滚动布局；此处只验证状态和焦点语义。
   Element.prototype.scrollIntoView = vi.fn()
   inventoryApi.importInventory.mockReset()
+  inventoryApi.previewRewardAnnotations.mockReset()
+  inventoryApi.annotateRewards.mockReset()
   inventoryApi.getCurrent.mockReset().mockResolvedValue([])
   plannerApi.getTrainingWorkspace.mockReset().mockResolvedValue({ schema_version: 1, account_id: 'acc-1', revision: 0 })
   rewardCatalogApi.getRewardCatalog.mockReset()

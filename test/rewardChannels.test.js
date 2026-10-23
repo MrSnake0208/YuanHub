@@ -1,12 +1,27 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ITEM_CATALOG, AGENT_CATALOG } from '../src/data/inventory/catalog.js'
-import { REWARD_CHANNELS, dailyRewardRecordId, validateDailyAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../src/data/inventory/rewardChannels.js'
+import { REWARD_CHANNELS, dailyRewardRecordId, validateRewardAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../src/data/inventory/rewardChannels.js'
 
 const entities = [
   ...ITEM_CATALOG.map(({ id, name }) => ({ entity_type: 'item', id, name })),
   ...AGENT_CATALOG.map(({ id, name }) => ({ entity_type: 'agent', id, name })),
 ]
+test('派遣补记逐个验证碎片基线，名称来自目录，完整基线与条目基线取较新者', () => {
+  const [a, b] = AGENT_CATALOG
+  const at = '2026-10-23T09:00:00Z'
+  const current = [{ entity_type: 'item', full_baseline_at: at }, {
+    entity_type: 'agent', entries: { [a.id]: { listed_baseline_at: at } },
+  }]
+  assert.throws(() => validateRewardAnnotation(current, at, 'agent', [a.id, b.id]), error => error.message.includes(`尚无${b.name}`))
+  current[1].entries[b.id] = { listed_baseline_at: '2026-10-23T08:00:00Z' }
+  assert.throws(() => validateRewardAnnotation(current, at, 'agent', [a.id, b.id]), error => error.message.includes(`晚于${b.name}`))
+  current[1].full_baseline_at = at
+  assert.doesNotThrow(() => validateRewardAnnotation(current, at, 'agent', [a.id, b.id]))
+  current[1].entries[a.id].listed_baseline_at = '2026-10-23T10:00:00Z'
+  assert.doesNotThrow(() => validateRewardAnnotation(current, '2026-10-23T09:30:00Z', 'agent', [a.id]))
+  assert.throws(() => validateRewardAnnotation(current, 'invalid', 'agent', [a.id]))
+})
 test('快捷日常 ID 按来源和北京时间 05:00 游戏日稳定，跨日或来源不同才变化', () => {
   const first = dailyRewardRecordId('monthly-card', '2026-09-30T04:59:59+08:00')
   assert.equal(first, dailyRewardRecordId('monthly-card', '2026-09-29T12:00:00+08:00'))
@@ -17,13 +32,13 @@ test('快捷日常 ID 按来源和北京时间 05:00 游戏日稳定，跨日或
 })
 test('补标必须由白金币自身的完整或列出条目基线覆盖，不能用心纸或茱萸盘点代替', () => {
   const at = '2026-09-30T10:00:00+08:00'
-  assert.throws(() => validateDailyAnnotation([], at, ['baijinbi']), /尚无白金币/)
-  assert.throws(() => validateDailyAnnotation([{ entity_type: 'agent', full_baseline_at: at }], at, ['baijinbi']), /尚无白金币/)
-  assert.throws(() => validateDailyAnnotation([{ entity_type: 'item', entries: { zhuyu: { listed_baseline_at: at } } }], at, ['baijinbi']), /尚无白金币/)
+  assert.throws(() => validateRewardAnnotation([], at, 'item', ['baijinbi']), /尚无白金币/)
+  assert.throws(() => validateRewardAnnotation([{ entity_type: 'agent', full_baseline_at: at }], at, 'item', ['baijinbi']), /尚无白金币/)
+  assert.throws(() => validateRewardAnnotation([{ entity_type: 'item', entries: { zhuyu: { listed_baseline_at: at } } }], at, 'item', ['baijinbi']), /尚无白金币/)
   const current = [{ entity_type: 'item', full_baseline_at: '2026-09-30T09:00:00+08:00', entries: { baijinbi: { listed_baseline_at: at } } }]
-  assert.doesNotThrow(() => validateDailyAnnotation(current, at, ['baijinbi']))
-  assert.throws(() => validateDailyAnnotation(current, '2026-09-30T10:00:01+08:00', ['baijinbi']), /晚于/)
-  assert.doesNotThrow(() => validateDailyAnnotation([{ entity_type: 'item', full_baseline_at: at }], at, ['baijinbi']))
+  assert.doesNotThrow(() => validateRewardAnnotation(current, at, 'item', ['baijinbi']))
+  assert.throws(() => validateRewardAnnotation(current, '2026-09-30T10:00:01+08:00', 'item', ['baijinbi']), /晚于/)
+  assert.doesNotThrow(() => validateRewardAnnotation([{ entity_type: 'item', full_baseline_at: at }], at, 'item', ['baijinbi']))
 })
 test('洛阳只提供四种鸟食及白金币，不能通过类型选择带入心纸', () => {
   assert.deepEqual(rewardOptionsForChannel('派遣-洛阳', entities, 'agent').map(entry => entry.id), ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi'])
@@ -106,10 +121,10 @@ test('每日茱萸使用独立稳定来源键，保留历史白金币键', () =>
 test('茱萸补标必须由茱萸盘点覆盖，混合奖励逐种检查', () => {
   const at = '2026-10-22T10:00:00+08:00'
   const current = [{ entity_type: 'item', entries: { baijinbi: { listed_baseline_at: at } } }]
-  assert.throws(() => validateDailyAnnotation(current, at, ['zhuyu']), /尚无茱萸/)
-  assert.throws(() => validateDailyAnnotation(current, at, ['baijinbi', 'zhuyu']), /尚无茱萸/)
+  assert.throws(() => validateRewardAnnotation(current, at, 'item', ['zhuyu']), /尚无茱萸/)
+  assert.throws(() => validateRewardAnnotation(current, at, 'item', ['baijinbi', 'zhuyu']), /尚无茱萸/)
   current[0].entries.zhuyu = { listed_baseline_at: at }
-  assert.doesNotThrow(() => validateDailyAnnotation(current, at, ['baijinbi', 'zhuyu']))
+  assert.doesNotThrow(() => validateRewardAnnotation(current, at, 'item', ['baijinbi', 'zhuyu']))
   current[0].entries.zhuyu.listed_baseline_at = '2026-10-22T09:59:59+08:00'
-  assert.throws(() => validateDailyAnnotation(current, at, ['baijinbi', 'zhuyu']), /晚于茱萸/)
+  assert.throws(() => validateRewardAnnotation(current, at, 'item', ['baijinbi', 'zhuyu']), /晚于茱萸/)
 })

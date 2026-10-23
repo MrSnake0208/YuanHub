@@ -84,7 +84,7 @@
             </header>
 
             <div ref="scrollBody" class="reward-dialog-scroll">
-              <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}<a v-if="trainingByRuns && ['group', 'level', 'runs'].includes(trainingCalculation.field)" :href="`#${trainingErrorTarget}`" @click.prevent="focusTrainingError">返回历练字段</a></span></div>
+              <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}<a v-if="dispatchAnnotation && !pendingDocument" href="#dispatch-reward-purpose" @click.prevent="dialogEl?.querySelector('#dispatch-reward-purpose')?.focus()">核对记录用途</a><a v-if="trainingByRuns && ['group', 'level', 'runs'].includes(trainingCalculation.field)" :href="`#${trainingErrorTarget}`" @click.prevent="focusTrainingError">返回历练字段</a></span></div>
               <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
               <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
 
@@ -127,6 +127,9 @@
               <label v-if="requiresStamina" class="stamina-field"><span>消耗体力<small>本次派遣</small></span><span class="stamina-input"><Flame :size="16" aria-hidden="true" /><input v-model="manual.stamina" type="text" inputmode="numeric" aria-label="消耗体力" placeholder="填写实际消耗" @input="clearPreview" /><span>点</span></span></label>
               <p class="baseline-note"><History :size="14" aria-hidden="true" /><span>{{ manualBeforeLatestSnapshot ? '这笔奖励早于最近一次已知盘点，已在盘点中计入的部分只补历史，不会再次增加库存。' : '按实际获得时间记录。已在后续盘点中计入的部分只补历史，不会再次增加库存；奖励记录不能代替完整盘点。' }}</span></p>
             </div>
+            <label v-if="manual.channel === '派遣-寿春' && !manual.presets.length" class="whitecoin-purpose">本次记录用途<select id="dispatch-reward-purpose" v-model="manual.dispatchPurpose" aria-label="派遣记录用途" :aria-describedby="error && dispatchAnnotation && !pendingDocument ? 'dispatch-purpose-help dispatch-purpose-error' : 'dispatch-purpose-help'" @change="clearPreview"><option value="income">增加库存（新增收入）</option><option value="annotation">已包含在库存中，仅补记录</option></select></label>
+            <p v-if="manual.channel === '派遣-寿春' && !manual.presets.length" id="dispatch-purpose-help" class="shortcut-note">按实际领取时间填写全部碎片与体力。只补记录需要每个碎片都有覆盖领取时间的盘点；缺少覆盖时请先核对并盘点。</p>
+            <p v-if="dispatchAnnotation && error && !pendingDocument" id="dispatch-purpose-error" class="shortcut-note">{{ error }}</p>
           </details>
           <div v-if="manual.channel === '历练'" class="training-mode-section">
             <div class="shortcut-options" role="group" aria-label="历练填写方式">
@@ -229,7 +232,8 @@
         </fieldset>
       </div>
 
-      <div v-if="previewed && (!compact || mode === 'report' || pendingDocument) && (!dailyMode || pendingDocument)" class="preview-section">
+      <div v-if="previewed && (!compact || mode === 'report' || pendingDocument || dispatchAnnotation) && (!dailyMode || pendingDocument)" class="preview-section">
+        <p v-if="dispatchAnnotation" class="shortcut-note" role="status">{{ annotationPreview?.can_confirm ? '本次仅补充历史与获得报告，库存数量不增加。' : '预览已失效，请重新预览。' }}消耗体力：{{ selectedRecords[0]?.stamina_cost }} 点。</p>
         <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已同步或录入过的同一笔奖励，请勿再次补录；换一种录入方式仍可能重复计数。</p>
         <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
         <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
@@ -243,9 +247,9 @@
           <div v-if="row.record && expandedRows.has(row.key)" class="record-details"><span>{{ row.record.effective_at }}</span><span>{{ row.status }}</span><span>{{ row.record.record_id }}</span></div>
           <p v-if="row.error" class="row-error">第 {{ row.block }} 个记录块：{{ row.error }}</p>
         </li></ul>
-        <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
+        <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : dispatchAnnotation ? '请核对实际领取时间、全部碎片和体力；本次只补记报告。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ annotationResult ? '已补记报告，库存数量未增加' : result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
               <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励记录统计获得量，盘点记录保存库存总量。导入保留原记录时间，同一条记录不会重复导入。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
@@ -264,13 +268,14 @@ import { useModalFocus } from '../../composables/useModalFocus.js'
 import { dialog } from '../../utils/dialog.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
-import { getCurrent, importInventory, listRecords } from '../../api/inventory.js'
+import { getCurrent, importInventory, listRecords, previewRewardAnnotations, annotateRewards } from '../../api/inventory.js'
+import { auth } from '../../store/auth.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { getTrainingWorkspace, putTrainingWorkspace } from '../../api/operatorPlanner.js'
 import { workspaceFromRemote, workspaceBody } from '../../data/operatorPlannerRemote.js'
 import { monthlyCardTier, monthlyCardTiers } from '../../data/monthlyCard.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
-import { REWARD_CHANNELS, DAILY_REWARD_PRESETS, dailyRewardRecordId, validateDailyAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
+import { REWARD_CHANNELS, DAILY_REWARD_PRESETS, dailyRewardRecordId, validateRewardAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD_LEVELS, calculateTrainingRewards, calculateTrainingRewardBatch, trainingRewardUnavailableReason } from '../../data/inventory/trainingRewards.js'
@@ -345,6 +350,11 @@ const dragActive = ref(false)
 const rows = ref([])
 const previewed = ref(false)
 const pendingDocument = ref(null)
+const annotationPreview = ref(null)
+const annotationDocument = ref(null)
+const pendingAnnotationRevision = ref(null)
+const annotationResult = ref(false)
+let previewSeq = 0
 const search = ref('')
 const rarity = ref(0)
 const agentProf = ref('')
@@ -360,6 +370,7 @@ const closeLockMessage = computed(() => {
   return ''
 })
 const selectedRecords = computed(() => rows.value.filter(row => row.selected && !row.error).map(row => row.record))
+const dispatchAnnotation = computed(() => mode.value === 'manual' && !manual.value.presets.length && manual.value.channel === '派遣-寿春' && manual.value.dispatchPurpose === 'annotation')
 const channelIcons = { bird: Bird, flower: Flower2, scroll: ScrollText, book: BookOpen, pencil: Pencil }
 const qualities = [{ id: 0, label: '全部' }, { id: 5, label: '金' }, { id: 4, label: '紫' }, { id: 3, label: '蓝' }]
 let fileReadSeq = 0
@@ -368,7 +379,7 @@ let trainingSelectionKey = 0
 function freshManual() {
   const date = new Date()
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
-  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: props.compact ? '手动补录' : '派遣-洛阳', customChannel: props.compact ? '手动记录' : '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', training: freshTraining() }
+  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: props.compact ? '手动补录' : '派遣-洛阳', customChannel: props.compact ? '手动记录' : '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', dispatchPurpose: 'income', training: freshTraining() }
 }
 function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupId: '', level: '', runs: '1' } }
 function freshTraining() { return { mode: trainingRewardUnavailableReason(props.game) ? 'materials' : 'runs', selections: [], draft: freshTrainingSelection(), dirty: false, editingKey: null, notice: '', replacePrompt: false } }
@@ -542,7 +553,7 @@ async function submitQuick() {
   if (locked.value || props.disabled || result.value) return
   const draft = manual.value
   await previewManual()
-  if (!disposed && manual.value === draft && previewed.value && selectedRecords.value.length && !error.value) await submit()
+  if (!disposed && manual.value === draft && previewed.value && selectedRecords.value.length && !error.value && !dispatchAnnotation.value) await submit()
 }
 async function submitDaily() {
   if (props.compactDaily && pendingDocument.value) return submit()
@@ -607,7 +618,7 @@ watch(mode, (value, previous) => {
   if (value && !previous) lockBackgroundScroll()
   if (!value && previous) unlockBackgroundScroll()
 })
-watch(() => [props.accountId, props.game], () => {
+watch(() => [props.accountId, props.game, auth.userInfo?.id], () => {
   quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; quickSaving.value = false
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
@@ -621,6 +632,7 @@ watch(() => [props.accountId, props.game], () => {
   ++catalogSeq; catalogLoading.value = false
   busy.value = false; checkingBaseline.value = false
   pendingDocument.value = null
+  pendingAnnotationRevision.value = null
   reportText.value = ''
   fileName.value = ''
   showPaste.value = false
@@ -708,7 +720,11 @@ async function requestClose() {
   await nextTick()
   lockNotice.value?.focus({ preventScroll: true })
 }
-function clearPreview() { rows.value = []; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
+function clearPreview() {
+  ++previewSeq
+  rows.value = []; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear()
+  annotationPreview.value = null; annotationDocument.value = null; annotationResult.value = false
+}
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
 function changeTrainingMode(nextMode, confirmed = false) {
   if (locked.value || result.value || props.disabled || nextMode === manual.value.training.mode) return
@@ -791,6 +807,7 @@ function changeChannel(channel) {
   if (manual.value.channel === '历练') manual.value.entries = []
   manual.value.training = freshTraining()
   manual.value.presets = []; manual.value.whiteCoinPurpose = ''
+  manual.value.dispatchPurpose = 'income'
   manual.value.channel = channel
   manual.value.entityType = REWARD_CHANNELS.find(item => item.id === channel).entityType || manual.value.entityType
   const allowed = new Set(entryOptions.value.map(entry => entry.id))
@@ -848,7 +865,9 @@ function clearBasket() {
 async function previewManual() {
   if (locked.value || props.disabled) return
   clearPreview()
+  const seq = previewSeq
   const targetAccount = props.accountId
+  const targetUser = auth.userInfo?.id
   const draft = manual.value
   try {
     if (trainingByRuns.value && trainingCalculation.value.error) throw new TypeError(trainingCalculation.value.error)
@@ -864,18 +883,31 @@ async function previewManual() {
       acquisition_channel: manualAcquisitionChannel(draft.channel, draft.customChannel),
       entries: (trainingByRuns.value ? trainingCalculation.value.entries : draft.entries).map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
     records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
-    if (draft.presets.length && draft.whiteCoinPurpose === 'annotation') {
-      checkingBaseline.value = true
-      const current = await getCurrent({ accountId: targetAccount, entityType: 'item' }, { fresh: true })
-      if (disposed || props.accountId !== targetAccount || manual.value !== draft || mode.value !== 'manual') return
-      validateDailyAnnotation(current, effectiveAt, draft.presets.map(preset => preset.itemId))
-    }
     const doc = buildRewardDocument(records, targetAccount, entities.value)
-    rows.value = doc.records.map(record => ({ key: record.record_id, block: 1, record, status: draft.whiteCoinPurpose === 'annotation' ? '补标已盘点收入' : '手动添加', selected: true, error: '' }))
+    if ((draft.presets.length && draft.whiteCoinPurpose === 'annotation') || dispatchAnnotation.value) {
+      checkingBaseline.value = true
+      const current = await getCurrent({ accountId: targetAccount, entityType: draft.entityType }, { fresh: true })
+      if (disposed || seq !== previewSeq || props.accountId !== targetAccount || auth.userInfo?.id !== targetUser || manual.value !== draft || mode.value !== 'manual') return
+      validateRewardAnnotation(current, effectiveAt, draft.entityType, doc.records.flatMap(record => record.entries.map(entry => entry.id)))
+      if (dispatchAnnotation.value) {
+        const response = await previewRewardAnnotations(doc, { expectedUserId: String(targetUser || '') })
+        if (disposed || seq !== previewSeq || props.accountId !== targetAccount || auth.userInfo?.id !== targetUser || manual.value !== draft || mode.value !== 'manual') return
+        if (!response || !Number.isSafeInteger(response.expected_inventory_revision) || response.expected_inventory_revision < 0 || !Array.isArray(response.entries)) throw new Error('未收到有效的补记预览，请重新预览')
+        const uncovered = response.entries.find(entry => !entry.history_only)
+        if (uncovered) {
+          const name = entities.value.find(entity => entity.entity_type === uncovered.entity_type && entity.id === uncovered.id)?.name || uncovered.id
+          throw new Error(`「${name}」未被盘点覆盖，请回到盘点核对后再补记`)
+        }
+        if (!response.can_confirm || response.entries.length !== doc.records.reduce((sum, record) => sum + record.entries.length, 0)) throw new Error('部分碎片未被盘点覆盖，请回到盘点核对后再补记')
+        annotationPreview.value = response
+        annotationDocument.value = doc
+      }
+    }
+    rows.value = doc.records.map(record => ({ key: record.record_id, block: 1, record, status: dispatchAnnotation.value || draft.whiteCoinPurpose === 'annotation' ? '补标已盘点收入' : '手动添加', selected: true, error: '' }))
     previewed.value = true
     await nextTick()
     heading.value?.closest('.reward-panel')?.querySelector('.preview-section')?.scrollIntoView({ block: 'nearest' })
-  } catch (err) { if (!disposed && props.accountId === targetAccount && manual.value === draft) showError(err.message) }
+  } catch (err) { if (!disposed && seq === previewSeq && props.accountId === targetAccount && auth.userInfo?.id === targetUser && manual.value === draft) showError(err.message) }
   finally { if (manual.value === draft) checkingBaseline.value = false }
 }
 function pickFile(event) { const file = event.target.files?.[0]; event.target.value = ''; readReportFile(file) }
@@ -909,31 +941,52 @@ async function submit() {
   if (busy.value || checkingBaseline.value || props.disabled || !props.accountId || result.value) return
   error.value = ''
   const targetAccount = props.accountId
+  const targetUser = auth.userInfo?.id
   const targetDraft = manual.value
   try {
     busy.value = true
     if (!pendingDocument.value && mode.value === 'manual' && manual.value.presets.length && manual.value.whiteCoinPurpose === 'annotation') {
       const current = await getCurrent({ accountId: targetAccount, entityType: 'item' }, { fresh: true })
       if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
-      validateDailyAnnotation(current, selectedRecords.value[0]?.effective_at, selectedRecords.value.flatMap(record => record.entries.map(entry => entry.id)))
+      validateRewardAnnotation(current, selectedRecords.value[0]?.effective_at, 'item', selectedRecords.value.flatMap(record => record.entries.map(entry => entry.id)))
     }
-    if (!pendingDocument.value) pendingDocument.value = mode.value === 'report'
-      ? buildReportDocument(selectedRecords.value, targetAccount, entities.value, props.game)
-      : buildRewardDocument(selectedRecords.value, targetAccount, entities.value)
-    const response = await importInventory(pendingDocument.value)
-    if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
+    if (!pendingDocument.value) {
+      if (dispatchAnnotation.value) {
+        if (!annotationPreview.value?.can_confirm || !annotationDocument.value) throw new Error('请重新预览补记，再确认提交')
+        pendingAnnotationRevision.value = annotationPreview.value.expected_inventory_revision
+        pendingDocument.value = annotationDocument.value
+      } else {
+        pendingAnnotationRevision.value = null
+        pendingDocument.value = mode.value === 'report'
+          ? buildReportDocument(selectedRecords.value, targetAccount, entities.value, props.game)
+          : buildRewardDocument(selectedRecords.value, targetAccount, entities.value)
+      }
+    }
+    const isAnnotation = pendingAnnotationRevision.value !== null
+    const response = isAnnotation
+      ? await annotateRewards(pendingDocument.value, pendingAnnotationRevision.value, { expectedUserId: String(targetUser || '') })
+      : await importInventory(pendingDocument.value)
+    if (disposed || props.accountId !== targetAccount || auth.userInfo?.id !== targetUser || manual.value !== targetDraft) return
     if (!response || !['accepted', 'duplicates', 'history_only', 'superseded'].every(key => Number.isInteger(response[key]) && response[key] >= 0)) throw new Error('未收到有效的补录结果，请原样重试确认状态')
+    if (isAnnotation && (response.accepted !== response.history_only || response.superseded !== 0)) throw new Error('补记回执未确认库存保护结果，请原样重试')
+    annotationResult.value = isAnnotation
+    pendingAnnotationRevision.value = null
     result.value = response; pendingDocument.value = null
     if (props.compactDaily) manual.value.presets.forEach(preset => dailyRecorded.value.add(preset.id))
     emit('imported', targetAccount)
     await nextTick()
     resultBox.value?.focus({ preventScroll: true })
   } catch (err) {
-    if (!disposed && props.accountId === targetAccount && manual.value === targetDraft) {
+    if (!disposed && props.accountId === targetAccount && auth.userInfo?.id === targetUser && manual.value === targetDraft) {
+      const rejectedAnnotation = pendingAnnotationRevision.value !== null && [400, 401, 403, 404, 409, 422].includes(err.status)
+      if (rejectedAnnotation) {
+        pendingAnnotationRevision.value = null
+        clearPreview()
+      }
       if ([400, 401, 403, 404, 409, 422].includes(err.status)) pendingDocument.value = null
       if (err.status === 409 && dailyMode.value) { previewed.value = false; rows.value = []; await loadDailyStatus() }
       if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
-      await showError(err.status === 409 && (dailyMode.value || manual.value.presets.length) ? '所选日常来源已有记录，未重复入账。请核对已记录项目后补录其他来源；修正时先在操作历史删除原记录。' : err.message || '补录失败，请重试')
+      await showError(rejectedAnnotation ? `${err.message || '库存盘点已变化'}。草稿已保留，请核对盘点后重新预览。` : err.status === 409 && (dailyMode.value || manual.value.presets.length) ? '所选日常来源已有记录，未重复入账。请核对已记录项目后补录其他来源；修正时先在操作历史删除原记录。' : err.message || '补录失败，请重试')
     }
   } finally { if (manual.value === targetDraft) busy.value = false }
 }
