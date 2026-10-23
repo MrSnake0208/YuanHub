@@ -68,6 +68,21 @@ export function importInventory(doc, { expectedUserId } = {}) {
   })
 }
 
+export function previewRewardAnnotations(doc, { expectedUserId } = {}) {
+  return request(PATH + '/reward-annotations/preview', {
+    method: 'POST', auth: true, body: serializeInventoryExchangeDocument(doc),
+    ...(expectedUserId === undefined ? {} : { expectedUserId }),
+  })
+}
+
+export function annotateRewards(doc, expectedInventoryRevision, { expectedUserId } = {}) {
+  return request(PATH + '/reward-annotations', {
+    method: 'POST', auth: true,
+    body: { document: serializeInventoryExchangeDocument(doc), expected_inventory_revision: expectedInventoryRevision },
+    ...(expectedUserId === undefined ? {} : { expectedUserId }),
+  })
+}
+
 // 第三方导入（Open API Token）——与登录导入共用同一份协议序列化和校验。
 export function importInventoryOpenApi(doc, token) {
   return request('/open-api/inventory/import', {

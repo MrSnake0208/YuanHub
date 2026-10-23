@@ -19,11 +19,12 @@ export function dailyRewardRecordId(presetId, effectiveAt) {
   return `yuanhub:${namespace}:${presetId}:${businessDate(effectiveAt)}`
 }
 
-export function validateDailyAnnotation(current, effectiveAt, itemIds) {
+export function validateRewardAnnotation(current, effectiveAt, entityType, entryIds) {
   if (!Array.isArray(current)) throw new TypeError('库存盘点加载失败，请重试')
-  const inventory = current.find(entry => entry.entity_type === 'item')
-  for (const id of new Set(itemIds)) {
-    const name = ITEM_CATALOG.find(item => item.id === id)?.name || id
+  if (!['item', 'agent'].includes(entityType)) throw new TypeError('请选择有效的奖励类型')
+  const inventory = current.find(entry => entry.entity_type === entityType)
+  for (const id of new Set(entryIds)) {
+    const name = (entityType === 'agent' ? AGENT_CATALOG : ITEM_CATALOG).find(entry => entry.id === id)?.name || id
     const baselines = [inventory?.full_baseline_at, inventory?.entries?.[id]?.listed_baseline_at]
       .map(value => Date.parse(value)).filter(Number.isFinite)
     if (!baselines.length) throw new TypeError(`尚无${name}库存盘点，请先同步或盘点库存，再补标来源`)
