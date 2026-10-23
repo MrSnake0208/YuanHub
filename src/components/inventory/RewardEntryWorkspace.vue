@@ -15,6 +15,11 @@
         <button class="primary-button" type="submit" :disabled="!manual.presets.length || !!result">{{ busy ? '记录中…' : '记录所选' }}</button>
       </fieldset>
       <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
+      <details class="quick-feedback shortcut-note">
+        <summary>记录领取1个茱萸，增加的是茱萸实物。</summary>
+        <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认后请查看回执。</p>
+        <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
+      </details>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
@@ -37,7 +42,7 @@
           <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
           <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input v-model="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="clearPreview" /></label>
           <label>库存处理<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="annotation">已计入当前数量，只补记录</option><option value="income">尚未计入，按领取时间补入</option></select></label>
-          <p class="panel-note">填写实际领取时间；已被较新库存数量包含的奖励不会重复增加。</p>
+          <p class="panel-note">填写实际领取时间。如果这次领取已经包含在盘点数量中，选择“已计入当前数量，只补记录”；需要对应盘点覆盖实际领取时间。未包含的领取按新增收入记录。</p>
         </fieldset>
         <p v-if="error || dailyStatusError" role="alert">{{ error || dailyStatusError }}</p>
         <button v-if="dailyStatusError" type="button" class="text-button" @click="loadDailyStatus">重试读取</button>
@@ -100,9 +105,14 @@
               <label class="monthly-tier-field">月卡档位<select v-model="monthlyTier" aria-label="月卡奖励档位" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
               <button v-if="manual.presets.length && !dailyMode" type="button" class="outline-button" @click="manual.presets = []; manual.whiteCoinPurpose = ''; clearPreview()">普通补录</button>
             </div>
+            <details class="shortcut-note">
+              <summary>记录领取1个茱萸，增加的是茱萸实物。</summary>
+              <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认前请核对奖励内容，确认后请查看回执。</p>
+              <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
+            </details>
             <p class="shortcut-note">仅勾选已经领取的来源；邮箱待领取奖励请暂勿入账。月卡数量为可编辑预设，请按实际领取核对。{{ monthlyPreferenceNote }}</p>
             <label v-if="manual.presets.length" class="whitecoin-purpose">本次记录用途<select v-model="manual.whiteCoinPurpose" aria-label="日常记录用途" @change="clearPreview"><option value="">请选择记录用途</option><option value="income">增加库存（新增收入）</option><option value="annotation">已包含在库存中，仅补记录</option></select></label>
-            <p v-if="manual.presets.length" class="shortcut-note">已被 MaaYuan 扫描或手动盘点包含的收入，请选择补标并填写实际发生时间；未经盘点的新收入才计入库存。游戏日按北京时间 05:00 划分。</p>
+            <p v-if="manual.presets.length" class="shortcut-note">如果这次领取已经包含在盘点数量中，选择“已包含在库存中，仅补记录”并填写实际领取时间；需要对应盘点覆盖实际领取时间。未包含的领取按新增收入记录。</p>
           </div>
           <details class="channel-section" :open="!compact || dailyMode"><summary v-if="compact && !dailyMode">来源与历史时间 · {{ manual.channel === '手动补录' ? (manual.customChannel || '手动记录') : manual.channel }}</summary>
             <div v-if="!dailyMode" class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
