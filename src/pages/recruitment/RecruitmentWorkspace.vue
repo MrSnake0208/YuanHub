@@ -34,8 +34,9 @@
               <div><span>{{ metric.label }}</span>
                 <p v-if="metric.agents == null" class="summary-empty">—</p>
                 <p v-else-if="!metric.agents.length" class="summary-empty">暂无记录</p>
-                <ul v-else :id="'summary-agents-' + metric.key" class="summary-agent-list"><li v-for="agent in metric.key === 'most-obtained' && !mostObtainedExpanded ? metric.agents.slice(0, 3) : metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
-                <button v-if="metric.key === 'most-obtained' && metric.agents?.length > 3" type="button" class="summary-agent-toggle" :aria-expanded="mostObtainedExpanded" aria-controls="summary-agents-most-obtained" @click="mostObtainedExpanded = !mostObtainedExpanded">{{ mostObtainedExpanded ? '收起' : `另有 ${metric.agents.length - 3} 位并列 · 展开全部` }}</button>
+                <ul v-else :id="'summary-agents-' + metric.key" class="summary-agent-list"><li v-for="agent in metric.collapsible && !expandedGoldHighlights[metric.key] ? metric.agents.slice(0, 3) : metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
+                <button v-if="metric.collapsible && metric.agents?.length > 3" type="button" class="summary-agent-toggle" :aria-expanded="!!expandedGoldHighlights[metric.key]" :aria-controls="'summary-agents-' + metric.key" :aria-label="`${metric.label}：${expandedGoldHighlights[metric.key] ? '收起' : '展开全部并列密探'}`" @click="expandedGoldHighlights[metric.key] = !expandedGoldHighlights[metric.key]">{{ expandedGoldHighlights[metric.key] ? '收起' : `另有 ${metric.agents.length - 3} 位并列 · 展开全部` }}</button>
+                <details v-if="metric.key === 'most-permanent'" class="summary-agent-help"><summary>常驻榜说明</summary><p>合计所有无结束日期且类型明确为常驻的卡池，不受当前所选卡池影响。</p><p>未分类：卡池类型未确认的记录不计入常驻榜。</p></details>
               </div>
             </div>
           </div>
@@ -73,13 +74,14 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts, previews, loadPreview } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
-const mostObtainedExpanded = ref(false)
+const expandedGoldHighlights = ref({})
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const goldAgentHighlights = computed(() => [
-  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents },
-  { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents }
+  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents, collapsible: true },
+  { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents },
+  { key: 'most-permanent', label: '常驻池抽中最多的绝密', icon: Layers3, agents: state.archive?.summary.most_permanent_gold_agents, collapsible: true }
 ])
 const canRecordPool = pool => {
   const directory = recruitmentPoolCatalog(pool, state.catalog || [])
@@ -120,7 +122,7 @@ function dismissPageGuide() {
   guidePicker.value = false; guideActive.value = false
   nextTick(() => guideEntry.value?.focus({ preventScroll: true }))
 }
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false; mostObtainedExpanded.value = false })
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false; expandedGoldHighlights.value = {} })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
   if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
@@ -186,6 +188,7 @@ async function savePool(payload) {
 button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.error{color:var(--theme-danger-text, var(--rouge))}@media(min-width:768px){.summary-item:not(:nth-child(3n+1)){border-left:1px solid var(--line)}}
 .summary-agent-list{list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary .summary-agent-list strong{font:700 15px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60)}
 .summary-agent-toggle{min-height:0;margin-top:4px;padding:4px 0;border:0;background:transparent;color:var(--theme-accent-text, var(--accent-strong));font:12px/1.5 var(--font-b);text-align:left;overflow-wrap:anywhere}
+.summary-agent-help{margin-top:6px;color:var(--ink-60);font:12px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-help summary{width:fit-content;max-width:100%;cursor:pointer}.summary-agent-help summary:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.summary-agent-help p{margin:4px 0 0}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 </style>
 <style scoped src="./recruitmentWorkspaceDesktop.css"></style>
