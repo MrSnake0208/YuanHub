@@ -23,13 +23,13 @@
       <div class="achievement-reward"><Gift v-if="entry.rewards?.length || legacyReward" :size="17" aria-hidden="true" /><span>{{ rewardText(entry, legacyReward) }}</span></div>
       <div class="achievement-row-actions">
         <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
-          <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (recordReady ? (completed ? ' 已完成' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><Check v-if="recordReady && completed" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ recordReady ? (completed ? '已完成' : '未完成') : '未读取' }}</span></button>
+          <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (saving ? ' 正在保存' : recordReady ? (completed ? ' 已完成' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><LoaderCircle v-if="saving" :size="18" aria-hidden="true" /><Check v-else-if="recordReady && completed" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ saving ? '保存中…' : recordReady ? (completed ? '已完成' : '未完成') : '未读取' }}</span></button>
         </div>
         <button class="achievement-favorite" type="button" :aria-pressed="record.favorite" :aria-label="(record.favorite ? '取消关注 ' : '关注 ') + entry.name" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, favorite: !record.favorite })"><Star :size="20" :fill="record.favorite ? 'currentColor' : 'none'" aria-hidden="true" /></button>
         <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /><span>备注</span></button>
       </div>
     </div>
-    <p v-if="saving || saved" class="achievement-row-feedback" role="status">{{ saving ? '正在保存…' : pendingRemoval ? '已标记完成，将从未完成列表移出。' : saveNotice }} <button v-if="saved && canUndo" type="button" :disabled="!writable || !canUndo" @click="$emit('undo')">撤销</button></p>
+    <p v-if="pendingRemoval" class="achievement-row-feedback">即将从未完成列表移出</p>
     <p v-if="error" class="achievement-row-feedback achievement-error" role="alert">{{ error }}</p>
     <form v-if="editor.progressOpen" :id="'progress-' + entry.achievement_id" class="achievement-inline-editor achievement-progress-form" @submit.prevent="$emit('save', 'progress')">
       <label>数值进度（目标 {{ entry.target }}）<input ref="progressInput" :value="editor.progress" type="number" min="0" max="9007199254740991" step="1" inputmode="numeric" :disabled="!writable" :aria-invalid="!!progressError" :aria-describedby="'progress-hint-' + entry.achievement_id" placeholder="未记录" @input="editor.progress = $event.target.value"></label>
@@ -47,12 +47,12 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Check, Circle, Gift, NotebookPen, Pencil, Star } from '@lucide/vue'
+import { Check, Circle, Gift, LoaderCircle, NotebookPen, Pencil, Star } from '@lucide/vue'
 import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText } from './rules.js'
-const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, saved: Boolean, saveNotice: String, error: String, pendingRemoval: Boolean, canUndo: Boolean, batchMode: Boolean, selected: Boolean })
+const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, error: String, pendingRemoval: Boolean, batchMode: Boolean, selected: Boolean })
 const completed = computed(() => completionStatus(props.record) === 'completed')
 const linked = computed(() => linkedProgress(props.entry, props.linkedMetrics))
-defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save', 'undo'])
+defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save'])
 const progressInput = ref(null), noteInput = ref(null), progressTrigger = ref(null), noteTrigger = ref(null)
 watch(() => props.editor.progressOpen, async open => { await nextTick(); (open ? progressInput.value : progressTrigger.value)?.focus({ preventScroll: !open }) })
 watch(() => props.editor.noteOpen, async open => { await nextTick(); (open ? noteInput.value : noteTrigger.value)?.focus({ preventScroll: !open }) })
