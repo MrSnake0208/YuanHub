@@ -20,7 +20,7 @@ vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ isLoggedIn: true, userInfo: { id: 'synthetic-user' } }) }
 })
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {} }))
+vi.mock('vue-router', async original => ({ ...await original(), onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {} }))
 vi.mock('../src/api/inventory.js', () => ({
   getCatalog: vi.fn(), getCurrent: vi.fn(), getAcquired: vi.fn(), exportInventory: vi.fn(),
   importInventory: vi.fn(), listRecords: vi.fn(), deleteRecord: vi.fn(), restoreRecord: vi.fn(),
@@ -588,7 +588,9 @@ it('历史报告入口连接唯一真实奖励实例，跨断点保留文本草�
   const wrapper = render({ RewardEntryWorkspace: false })
   document.body.append(wrapper.element)
   await flushPromises()
-  const reward = wrapper.getComponent(RewardEntryWorkspace).vm.$
+  const reportWorkspaces = () => wrapper.findAllComponents(RewardEntryWorkspace).filter(component => !component.props('compactDaily'))
+  expect(reportWorkspaces()).toHaveLength(1)
+  const reward = reportWorkspaces()[0].vm.$
   const opener = history(wrapper).get('.records-report-entry')
   expect(opener.element.disabled).toBe(false)
   await opener.trigger('click'); await flushPromises()
@@ -601,8 +603,9 @@ it('历史报告入口连接唯一真实奖励实例，跨断点保留文本草�
   const reads = [inventoryApi.getCatalog, getOperatorCatalog, inventoryApi.getCurrent, inventoryApi.listRecords].map(fn => fn.mock.calls.length)
   for (const next of [640, 641, 768, 1081, 390, 1440]) {
     viewport.resize(next); await flushPromises()
-    expect(wrapper.getComponent(RewardEntryWorkspace).vm.$).toBe(reward)
-    expect(wrapper.findAllComponents(RewardEntryWorkspace)).toHaveLength(1)
+    expect(reportWorkspaces()).toHaveLength(1)
+    expect(reportWorkspaces()[0].vm.$).toBe(reward)
+    expect(document.querySelectorAll('#reward-entry-panel')).toHaveLength(1)
     expect(document.querySelector('#reward-report-text textarea')).toBe(textarea)
     expect(textarea.value).toBe('尚未解析的合成报告草稿')
     expect(document.activeElement).toBe(textarea)

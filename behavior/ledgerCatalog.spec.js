@@ -25,7 +25,7 @@ it('published catalog supports both games same numeric ID decimal draws and dyna
   expect(w.findAll('.pkg-card')).toHaveLength(1)
   await w.get('.pkg-card .stepper button:last-child').trigger('click')
   expect(total(w)).toBe('¥16.00')
-  expect(w.get('.receipt').text()).toContain('0.6 抽')
+  expect(w.get('.receipt-metrics > div:nth-child(2) strong').text()).toBe('0.6')
   expect(w.get('.milestone').text()).toContain('动态活动0')
   expect(w.get('.milestone').text()).toContain('动态活动1')
   expect(w.get('.milestone').text()).not.toContain('动态活动2')
