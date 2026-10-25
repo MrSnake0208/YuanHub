@@ -26,6 +26,6 @@ test('受限目录和分享请求携带当前身份，游客仍可读取公开 B
 })
 
 test('功能使用授权不会额外授予管理能力', () => {
-  assert.equal(hasAnyAdminCapability({ permissions: ['archive:access', 'operator_panel:use'] }), false)
+  assert.equal(hasAnyAdminCapability({ permissions: ['archive:access', 'operator_panel:use', 'operator_relationship:use'] }), false)
   assert.equal(hasAnyAdminCapability({ permissions: ['archive:access', 'admin:role:manage'] }), true)
 })

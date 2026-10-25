@@ -24,19 +24,25 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
-`achievementArchive` and `bondArchive` are enabled in development and production,
-but their navigation and routes require `archive:access`. SUPER_ADMIN has this
-permission automatically; other users need the ARCHIVE_USER role, granted in
-`/admin/roles`. PLATFORM_ADMIN alone does not grant access. Catalog management
-also requires the existing catalog-write permission. The backend enforces the
-same access boundary, including catalog reads and admin endpoints.
+`achievementArchive` and `bondArchive` are built in,
+but are temporarily restricted to PLATFORM_ADMIN and SUPER_ADMIN. Archive routes
+and navigation require `archive:access`; the operator relationship tab, backup,
+content mount and persisted-tab restoration allow administrator preview via
+`operator_relationship:use` while the `operatorRelationships` public flag defaults
+to `false` in development and production. Opening that flag also requires a paired
+backend permission-policy change; it never bypasses server authorization.
+Ordinary users and Beta enrollment do not grant access. Historical ARCHIVE_USER
+and OPERATOR_PANEL_USER bindings are preserved but currently grant no feature access.
+Catalog management still requires its existing write permission.
 
-Automatic operator panels require `operator_panel:use` (OPERATOR_PANEL_USER or
-SUPER_ADMIN). Unauthorized users retain manual/observed values and do not request
-automatic panels. Public BOX views also omit automatic results for unauthorized
-viewers. These two usage roles do not grant administrative capability or Beta
-bypass; existing Beta/account ownership requirements still apply. Deploy the
-paired backend authorization changes before the enabled frontend.
+Automatic operator panels require `operator_panel:use`, also administrator-only.
+Unauthorized users keep manual/observed values and do not request automatic panels;
+public BOX views omit automatic results for unauthorized viewers. The backend enforces
+the same restrictions, including relationship catalog reads and record writes.
+Deploy the paired backend before the frontend. These are permission-gated features,
+not public rollout flags; reopening requires updating the corresponding backend
+permission policy and its role-matrix tests, then checking the frontend entry points.
+The independent archive build switches still allow disabling either archive separately.
 
 `starCompletion` is a public feature with the explicit boolean value `true` in
 both ordinary Vite development and production builds. The real completion workflow

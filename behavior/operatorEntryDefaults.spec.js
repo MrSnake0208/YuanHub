@@ -42,7 +42,10 @@ vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/accountShare.js', () => ({ getAccountShare: vi.fn(), setAccountShareScope: vi.fn(), regenerateAccountShare: vi.fn(), revokeAccountShare: vi.fn() }))
 vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), updateAccount: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn(), putCurrentStarLoadout: vi.fn() }))
-vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  return { auth: reactive({ isLoggedIn: true }) }
+})
 vi.mock('../src/store/activeAccount.js', async importOriginal => {
   const actual = await importOriginal()
   const { reactive } = await import('vue')
@@ -60,7 +63,7 @@ beforeEach(() => {
   navigation.push.mockResolvedValue()
   navigation.replace.mockResolvedValue()
   auth.isLoggedIn = true
-  auth.adminAccess = { permissions: ['operator_panel:use'] }
+  auth.adminAccess = { permissions: ['operator_panel:use', 'operator_relationship:use'] }
   activeAccount.id = 'acc'
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
   operatorApi.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: '测试账号', game: '如鸢' }])
@@ -1666,4 +1669,39 @@ it('信赖与传闻在名册内懒加载，草稿阻止取消的页签切换', a
   dialog.confirm.mockResolvedValueOnce(true)
   await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
   expect(wrapper.get('#operator-tab-current').attributes('aria-selected')).toBe('true')
+})
+
+
+it.each([
+  ['普通用户', true, []],
+  ['内测用户', true, ['unrelated:beta']],
+  ['历史使用角色', true, []],
+  ['未登录的旧权限缓存', false, ['operator_relationship:use']],
+])('%s 的旧页签和链接不会挂载信赖与传闻或发起请求', async (_, loggedIn, permissions) => {
+  auth.isLoggedIn = loggedIn
+  auth.adminAccess = { roles: ['ARCHIVE_USER', 'OPERATOR_PANEL_USER'], permissions }
+  localStorage.setItem('operator-tabs', 'relationships')
+  navigation.query = { tab: 'relationships' }
+  const wrapper = renderPage(); await flushPromises()
+  expect(wrapper.find('#operator-tab-relationships').exists()).toBe(false)
+  expect(wrapper.find('#operator-panel-relationships').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('信赖与传闻备份')
+  expect(wrapper.get('#operator-tab-catalog').attributes('aria-selected')).toBe('true')
+  expect(relationshipApi.getRelationshipCatalog).not.toHaveBeenCalled()
+  expect(relationshipApi.getRelationships).not.toHaveBeenCalled()
+  expect(relationshipApi.patchRelationships).not.toHaveBeenCalled()
+})
+
+it('管理员信赖权限撤销时卸载面板并返回图鉴', async () => {
+  relationshipApi.getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: {} })
+  relationshipApi.getRelationships.mockResolvedValue({ account_id: 'acc', game: '如鸢', revision: 0, entries: {} })
+  const wrapper = renderPage(); await flushPromises()
+  await wrapper.get('#operator-tab-relationships').trigger('click'); await flushPromises()
+  expect(relationshipApi.getRelationships).toHaveBeenCalledWith('acc')
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  expect(wrapper.find('#operator-tab-relationships').exists()).toBe(false)
+  expect(wrapper.find('#operator-panel-relationships').exists()).toBe(false)
+  expect(wrapper.get('#operator-tab-catalog').attributes('aria-selected')).toBe('true')
+  expect(relationshipApi.patchRelationships).not.toHaveBeenCalled()
 })

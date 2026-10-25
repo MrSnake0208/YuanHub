@@ -25,7 +25,7 @@
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
-              <button v-if="activeTab === 'relationships'" type="button" class="act-btn" aria-haspopup="dialog"
+              <button v-if="canUseRelationships && activeTab === 'relationships'" type="button" class="act-btn" aria-haspopup="dialog"
                 :disabled="!relationshipWorkspace?.ready" @click="relationshipWorkspace?.openBackup()">
                 <Archive :size="15" aria-hidden="true" />信赖与传闻备份
               </button>
@@ -120,7 +120,7 @@
               >
                 养成总览
               </button>
-              <button class="operator-tab-button" type="button" role="tab" id="operator-tab-relationships" aria-controls="operator-panel-relationships"
+              <button v-if="canUseRelationships" class="operator-tab-button" type="button" role="tab" id="operator-tab-relationships" aria-controls="operator-panel-relationships"
                 :tabindex="activeTab === 'relationships' ? 0 : -1" :aria-selected="activeTab === 'relationships'"
                 :class="{ on: activeTab === 'relationships' }" @click="setTab('relationships')">信赖与传闻</button>
               <button
@@ -2292,8 +2292,8 @@
             </div>
           </div>
 
-          <div v-if="!visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
-          <div v-if="visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
+          <div v-if="canUseRelationships && !visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
+          <div v-if="canUseRelationships && visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
             v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
             <OperatorFilterDossier compact searchable context-label="信赖与传闻"
               v-model:search-query="currentSearch" :result-count="filteredCurrent.length" :total-count="ownedCurrentEntries.length"
@@ -3306,6 +3306,9 @@ function syncCompactStats() {
 
 const route = useRoute();
 const router = useRouter();
+const canUseRelationships = computed(() => auth.isLoggedIn &&
+  (isFeatureEnabled(FEATURE_KEYS.OPERATOR_RELATIONSHIPS) ||
+    hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.OPERATOR_RELATIONSHIP_USE)));
 const activeTab = usePersistedTab(
   OPERATOR_TAB_STORAGE_KEY,
   "catalog",
@@ -3313,6 +3316,9 @@ const activeTab = usePersistedTab(
 );
 const relationshipWorkspace = ref(null);
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
+watch(canUseRelationships, allowed => {
+  if (!allowed && activeTab.value === "relationships") activeTab.value = "catalog";
+}, { immediate: true, flush: "sync" });
 watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
 let operatorNavigationSeq = 0;
@@ -8336,6 +8342,7 @@ async function leaveRelationshipsThenSetTab(t) {
 
 function activateTab(t) {
   if (t === "tracking" && !growthTrackingEnabled) return;
+  if (t === "relationships" && !canUseRelationships.value) return;
   if (!visitedTabs.value.has(t))
     visitedTabs.value = new Set(visitedTabs.value).add(t);
   activeTab.value = t;

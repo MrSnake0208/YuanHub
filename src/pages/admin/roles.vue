@@ -254,8 +254,8 @@ function roleLabel(role) {
 function roleDescription(role) {
   return {
     SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
-    ARCHIVE_USER: '访问成就与羁绊；目录管理仍需平台管理员角色',
-    OPERATOR_PANEL_USER: '使用密探面板自动计算与自动补全',
+    ARCHIVE_USER: '历史使用资格暂不生效，成就与羁绊目前仅管理员可用',
+    OPERATOR_PANEL_USER: '历史使用资格暂不生效，自动计算目前仅管理员可用',
     PLATFORM_ADMIN: '维护公共密探图鉴、关卡目录与开发目标',
     CHANGELOG_EDITOR: '编写更新日志并提交审核',
     ACTIVITY_CALENDAR_EDITOR: '仅维护手工活动日历；招募卡池由目录派生',
