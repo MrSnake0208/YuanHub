@@ -48,6 +48,9 @@ it('平均出绝密使用账号摘要，刷新和切换账号更新且不请求�
   archives['acc-a'].summary.average_gold_pulls = 26.73
   archives['acc-b'].summary.average_gold_pulls = 12
   const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('.summary .gold-metrics dt').map(item => item.text())).toEqual(['已知累计抽数', '密探记录', '平均出绝密抽数', '绣衣天下已知抽数', '总 UP 率', '大保底次数'])
+  expect(wrapper.findAll('.recruitment-highlights .summary-agent')).toHaveLength(3)
+  expect(wrapper.find('.account-overview details').exists()).toBe(false)
   expect(wrapper.get('.summary-average').text()).toContain('平均出绝密抽数')
   expect(wrapper.get('.summary-average strong').text()).toBe('26.73')
   archives['acc-a'].summary.average_gold_pulls = 28.5
@@ -113,12 +116,7 @@ it('普池抽数与绝密排行保留并列，并随刷新及账号切换更新'
   expect(wrapper.get('.summary-most-permanent').text()).toContain('常驻池抽中最多的绝密')
   expect(wrapper.get('.summary-most-permanent').text()).toContain('测试绝密2 次')
   expect(wrapper.get('.summary-most-permanent').text()).toContain('常驻并列绝密2 次')
-  expect(wrapper.get('.summary-most-permanent summary').text()).toBe('常驻榜说明')
-  expect(wrapper.get('.summary-most-permanent details').attributes('open')).toBeUndefined()
-  await wrapper.get('.summary-most-permanent summary').trigger('click')
-  expect(wrapper.get('.summary-most-permanent details').attributes('open')).toBeDefined()
-  expect(wrapper.get('.summary-most-permanent details').text()).toContain('无结束日期且类型明确为常驻')
-  expect(wrapper.get('.summary-most-permanent details').text()).toContain('未分类：卡池类型未确认的记录不计入常驻榜')
+  expect(wrapper.find('.summary-most-permanent details').exists()).toBe(false)
   archives['acc-a'].summary.permanent_known_total_pulls = 1250
   archives['acc-a'].summary.most_non_up_gold_agents[0].count = 4
   archives['acc-a'].summary.most_permanent_gold_agents = [{ agent_id: 'char-b', name: '常驻并列绝密', count: 2 }]
