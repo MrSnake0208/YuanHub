@@ -24,23 +24,29 @@
         <div data-guide-target="archive-state" class="feedback" aria-live="polite"><p v-if="state.error" class="error" role="alert">{{ state.error }}</p><p v-if="state.catalogError">{{ state.catalogError }}</p><p v-if="state.notice">{{ state.notice }}</p><p v-if="state.loading">正在读取档案…</p><button v-if="state.error" type="button" :disabled="state.loading || state.accountsLoading" @click="available ? refresh() : loadAccounts()">重新读取</button></div>
         <template v-if="state.archive">
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
-          <div class="summary" aria-label="当前账号招募摘要">
-            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span><div><span>已知累计抽数</span><div class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></div></div></div>
-            <div class="summary-item"><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span><div><span>密探记录</span><div class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></div></div></div>
-            <div class="summary-item summary-average"><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span><div><span>平均出绝密抽数</span><div class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small class="number-unit">抽</small></div></div></div>
-            <div class="summary-item summary-permanent"><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span><div><span>绣衣天下已知抽数</span><div class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small class="number-unit">抽</small></div></div></div>
-            <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
-              <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>
-              <div><span>{{ metric.label }}</span>
-                <p v-if="metric.agents == null" class="summary-empty">—</p>
-                <p v-else-if="!metric.agents.length" class="summary-empty">暂无记录</p>
-                <ul v-else :id="'summary-agents-' + metric.key" class="summary-agent-list"><li v-for="agent in metric.collapsible && !expandedGoldHighlights[metric.key] ? metric.agents.slice(0, 3) : metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
-                <button v-if="metric.collapsible && metric.agents?.length > 3" type="button" class="summary-agent-toggle" :aria-expanded="!!expandedGoldHighlights[metric.key]" :aria-controls="'summary-agents-' + metric.key" :aria-label="`${metric.label}：${expandedGoldHighlights[metric.key] ? '收起' : '展开全部并列密探'}`" @click="expandedGoldHighlights[metric.key] = !expandedGoldHighlights[metric.key]">{{ expandedGoldHighlights[metric.key] ? '收起' : `另有 ${metric.agents.length - 3} 位并列 · 展开全部` }}</button>
-                <details v-if="metric.key === 'most-permanent'" class="summary-agent-help"><summary>常驻榜说明</summary><p>合计所有无结束日期且类型明确为常驻的卡池，不受当前所选卡池影响。</p><p>未分类：卡池类型未确认的记录不计入常驻榜。</p></details>
+          <section class="account-overview" aria-label="当前账号招募摘要">
+            <header class="overview-heading"><h2>抽卡概览</h2><p>当前账号的招募总体情况</p></header>
+            <RecruitmentGoldStatistics class="summary" :summary="state.archive.summary" account :context-version="state.contextVersion">
+              <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span>已知累计抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></dd></div>
+              <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span>密探记录</dt><dd class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></dd></div>
+              <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span>平均出绝密抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
+              <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span>绣衣天下已知抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
+            </RecruitmentGoldStatistics>
+            <section class="recruitment-highlights" aria-label="抽卡趣闻">
+              <header class="overview-heading"><h2>抽卡趣闻</h2><p>一些有趣的抽卡数据统计</p></header>
+              <div class="highlight-grid">
+                <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
+                  <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>
+                  <div><span>{{ metric.label }}</span>
+                    <p v-if="metric.agents == null" class="summary-empty">—</p>
+                    <p v-else-if="!metric.agents.length" class="summary-empty">暂无记录</p>
+                    <ul v-else :id="'summary-agents-' + metric.key" class="summary-agent-list"><li v-for="agent in metric.collapsible && !expandedGoldHighlights[metric.key] ? metric.agents.slice(0, 3) : metric.agents" :key="agent.agent_id"><strong>{{ agents.find(item => item.id === agent.agent_id)?.name || agent.name }}</strong><small>{{ agent.count }} 次</small></li></ul>
+                    <button v-if="metric.collapsible && metric.agents?.length > 3" type="button" class="summary-agent-toggle" :aria-expanded="!!expandedGoldHighlights[metric.key]" :aria-controls="'summary-agents-' + metric.key" :aria-label="`${metric.label}：${expandedGoldHighlights[metric.key] ? '收起' : '展开全部并列密探'}`" @click="expandedGoldHighlights[metric.key] = !expandedGoldHighlights[metric.key]">{{ expandedGoldHighlights[metric.key] ? '收起' : `另有 ${metric.agents.length - 3} 位并列 · 展开全部` }}</button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <RecruitmentGoldStatistics :summary="state.archive.summary" account :context-version="state.contextVersion" />
+            </section>
+          </section>
           <RecruitmentTimeline ref="timeline" :guide-active="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :previews="previews.pools" @load-preview="loadPreview" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
           <div v-if="!state.archive.pools.length" class="actions"><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div>
         </template>
@@ -186,12 +192,16 @@ async function savePool(payload) {
 :deep([data-guide-active]){outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}
 .recruitment-tutorial-entry{border:0;border-radius:8px;background:transparent;color:var(--ink-60)}
 
-.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.summary{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-icon{color:var(--theme-accent-text, var(--accent-strong))}.summary-item>div>span,.summary-item small{color:var(--ink-60)}.summary strong{color:var(--theme-strong-text, var(--tea))}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
-button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.error{color:var(--theme-danger-text, var(--rouge))}@media(min-width:768px){.summary-item:not(:nth-child(3n+1)){border-left:1px solid var(--line)}}
-.summary-agent-list{list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary .summary-agent-list strong{font:700 15px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60)}
-.summary-agent-toggle{min-height:0;margin-top:4px;padding:4px 0;border:0;background:transparent;color:var(--theme-accent-text, var(--accent-strong));font:12px/1.5 var(--font-b);text-align:left;overflow-wrap:anywhere}
-.summary-agent-help{margin-top:6px;color:var(--ink-60);font:12px/1.6 var(--font-b);overflow-wrap:anywhere}.summary-agent-help summary{width:fit-content;max-width:100%;cursor:pointer}.summary-agent-help summary:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.summary-agent-help p{margin:4px 0 0}
+.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
+button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.error{color:var(--theme-danger-text, var(--rouge))}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
+
+.account-overview{container-type:inline-size;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--surface) 94%,transparent)}
+.overview-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:10px}.overview-heading h2{margin:0;font:900 22px/1.4 var(--font-s);color:var(--theme-strong-text,var(--tea))}.overview-heading p{margin:0;font-size:12px;color:var(--ink-60)}
+.recruitment-highlights{border-top:1px solid var(--line)}.summary-item{min-width:0}.summary-item>div{min-width:0}.summary-item dt{margin:0}.summary-item dd{margin:4px 0 0}.summary-item dt,.summary-item small{font-size:12px;line-height:1.5}.summary-icon{flex:none}.summary-number{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}.summary-number strong{color:var(--theme-strong-text,var(--tea));font:800 24px/1.25 var(--font-d);white-space:nowrap}.summary-item .number-unit{white-space:nowrap}
+.summary .summary-icon{position:absolute;left:9px;top:15px}.summary-agent{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:8px;background:color-mix(in srgb,var(--cream) 65%,var(--surface))}.summary-agent .summary-icon{padding-top:2px}.summary-agent>div{flex:1}.highlight-grid{display:grid;gap:10px}
+.summary-agent-list{display:flex;flex-wrap:wrap;gap:2px 14px;list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary-agent-list strong{font:700 16px/1.5 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60);font-size:13px}
+.summary-agent-toggle{min-height:0;margin-top:4px;padding:4px 0;border:0;background:transparent;color:var(--theme-accent-text, var(--accent-strong));font:12px/1.5 var(--font-b);text-align:left;overflow-wrap:anywhere}
 </style>
 <style scoped src="./recruitmentWorkspaceDesktop.css"></style>
 <style scoped src="./recruitmentWorkspaceMobile.css"></style>

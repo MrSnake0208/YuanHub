@@ -40,19 +40,16 @@ it('单池三项统计区分总UP与小保底、样本与推断，并可展开�
   wrapper.unmount()
 })
 
-it('卡池编辑只用本池服务端摘要，部分明细不重算统计，换池或缺字段不闪成零', async () => {
+it('卡池编辑不再展示额外UP与保底统计，更新明细或切换卡池也不恢复该区块', async () => {
   const wrapper = mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: { ...pool('a'), progress: 0 }, recordsRevision: 1, records: [event('partial')], readOnly: true, poolSummary: { total_up_rate: 0, up_gold_count: 0, known_up_gold_count: 2, unknown_up_gold_count: 0, guaranteed_gold_count: null, small_pity_win_rate: null, pity_status: 'insufficient_history' } }, global: { stubs: { Teleport: true } } })
   await flushPromises()
-  expect(wrapper.get('.total-up-metric strong').text()).toBe('0%')
-  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('历史不足以推断')
+  expect(wrapper.find('.gold-statistics').exists()).toBe(false)
   await wrapper.setProps({ records: [event('partial'), event('another')] })
-  expect(wrapper.get('.total-up-metric strong').text()).toBe('0%')
+  expect(wrapper.find('.gold-statistics').exists()).toBe(false)
   await wrapper.setProps({ pool: { ...pool('b'), progress: 0 }, poolSummary: undefined, records: [] })
-  expect(wrapper.get('.total-up-metric strong').text()).toBe('—')
-  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('—')
-  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('统计尚未提供')
+  expect(wrapper.find('.gold-statistics').exists()).toBe(false)
   await wrapper.setProps({ poolSummary: { pity_status: 'not_applicable' } })
-  expect(wrapper.get('.total-up-metric').text()).toContain('无 UP 机制，不适用')
+  expect(wrapper.find('.gold-statistics').exists()).toBe(false)
   wrapper.unmount()
 })
 
