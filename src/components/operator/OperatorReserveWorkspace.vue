@@ -14,24 +14,24 @@
           <div v-if="workspace.plans.length" class="reserve-plan-picker">
             <label :for="prefix + '-plan'">当前方案</label>
             <PlannerSelect :id="prefix + '-plan'" v-model="workspace.active_plan_id" :options="planOptions" label="当前储备方案" :disabled="saving" />
+            <button v-if="activePlan" :id="prefix + '-manage'" type="button" class="reserve-rename" aria-label="管理方案" title="修改方案名称" :aria-expanded="managementOpen" :aria-controls="prefix + '-management'" :disabled="saving" @click="managementOpen = !managementOpen"><Pencil :size="16" aria-hidden="true" /></button>
           </div>
-          <button :id="prefix + '-new'" type="button" :disabled="saving || workspace.read_only || workspace.plans.length >= 50" @click="addPlan">{{ workspace.plans.length ? '新建方案' : '新建储备方案' }}</button>
-          <button v-if="activePlan" :id="prefix + '-manage'" type="button" :aria-expanded="managementOpen" :aria-controls="prefix + '-management'" :disabled="saving" @click="managementOpen = !managementOpen">管理方案</button>
+          <button :id="prefix + '-new'" type="button" :disabled="saving || workspace.read_only || workspace.plans.length >= 50" @click="addPlan"><Plus :size="16" aria-hidden="true" />{{ workspace.plans.length ? '新建方案' : '新建储备方案' }}</button>
           <div v-if="workspace.plans.length || dirty" class="reserve-save">
-            <button type="submit" class="reserve-primary" :disabled="saving || conflict || workspace.read_only">{{ saving ? '正在保存…' : '保存更改' }}</button>
-            <span role="status">{{ saving ? '正在同步到云端…' : workspace.read_only ? '只读云端方案' : dirty ? '有未保存的修改' : notice || '已与云端同步' }}</span>
+            <button type="submit" class="reserve-primary" :disabled="saving || conflict || workspace.read_only"><Save :size="16" aria-hidden="true" />{{ saving ? '正在保存…' : '保存方案' }}</button>
+            <span role="status" :class="{ 'reserve-dirty': dirty }">{{ saving ? '正在同步到云端…' : workspace.read_only ? '只读云端方案' : dirty ? '有未保存的修改' : notice || '已与云端同步' }}</span>
           </div>
+          <button v-if="activePlan" :id="prefix + '-delete'" type="button" class="reserve-delete" :disabled="saving || workspace.read_only" @click="confirmDelete = activePlan.id"><Trash2 :size="16" aria-hidden="true" />删除方案</button>
         </div>
         <p v-if="workspace.plans.length >= 50" class="reserve-hint">已达到 50 个方案上限，删除不需要的方案后可新建。</p>
         <p v-if="error" ref="saveError" class="reserve-error" role="alert" tabindex="-1">{{ error }}</p>
         <p v-if="dirty" class="reserve-hint">页内返回会保留草稿；切换账号、切换页面区域或离开页面前，请先保存。</p>
         <p v-if="!activePlan" class="reserve-empty">还没有储备方案，新建一个方案开始估算。</p>
-        <p v-else class="reserve-hint">各方案独立试算，不占用或预留库存，不代表能同时完成；保存更改会将全部方案同步到云端。</p>
         <div v-if="conflict" class="reserve-conflict" role="alert">
           <p>云端方案已变化，当前草稿已保留。请先读回比较，再选择要保留的内容。</p>
           <button type="button" :disabled="comparing || saving" @click="compareRemote">{{ comparing ? '正在读取…' : '读回云端比较' }}</button>
           <template v-if="comparison">
-            <h3>云端方案（版本 {{ comparison.revision }}）</h3>
+            <h4>云端方案（版本 {{ comparison.revision }}）</h4>
             <p v-if="!comparison.plans.length">云端没有方案。</p>
             <div v-for="remotePlan in comparison.plans" :key="remotePlan.id" class="reserve-remote">
               <strong>{{ remotePlan.name }}{{ remotePlan.id === comparison.active_plan_id ? '（当前方案）' : '' }}</strong>
@@ -48,65 +48,71 @@
               <div class="reserve-toolbar">
                 <label :for="nameId(activePlan)">方案名称</label>
                 <input :id="nameId(activePlan)" v-model="activePlan.name" maxlength="40" autocomplete="off" :aria-invalid="!!fieldError(nameId(activePlan)) || undefined" :aria-describedby="fieldError(nameId(activePlan)) ? nameId(activePlan) + '-error' : undefined" />
-                <button type="button" @click="confirmDelete = activePlan.id">删除方案</button>
               </div>
               <p v-if="fieldError(nameId(activePlan))" :id="nameId(activePlan) + '-error'" class="reserve-error">{{ fieldError(nameId(activePlan)) }}</p>
-              <div v-if="confirmDelete === activePlan.id" class="reserve-confirm" role="alert">
-                <p>删除「{{ activePlan.name }}」及其全部培养目标？保存后从云端移除。</p>
-                <div class="reserve-actions"><button type="button" @click="removePlan">确认删除方案</button><button type="button" @click="cancelDelete">保留方案</button></div>
-              </div>
             </div>
-            <section class="reserve-targets" :aria-labelledby="prefix + '-targets'">
-              <header class="reserve-section-heading"><h3 :id="prefix + '-targets'">培养目标</h3><span>共 {{ activePlan.demands.length }} 个目标</span></header>
-              <p v-if="!activePlan.demands.length" class="reserve-empty">还没有培养目标，添加一位未来密探开始估算。</p>
-              <article v-for="(demand, index) in activePlan.demands" :id="controlId(demand, 'legacy')" :key="demand.id" class="reserve-demand" tabindex="-1" :aria-labelledby="controlId(demand, 'heading')">
-                <header><h4 :id="controlId(demand, 'heading')">培养目标 {{ index + 1 }}<small v-if="isLegacy(demand)">旧目标</small></h4><button type="button" :aria-label="'移除培养目标 ' + (index + 1)" @click="removeDemand(index)">移除此目标</button></header>
-                <template v-if="isLegacy(demand)">
-                  <p class="reserve-legacy-summary">{{ describeDemand(demand) }}</p>
-                  <p class="reserve-hint">保留旧数据与原计算。转换后每个目标代表一位密探，并统一从零培养；原有培养进度会清零，材料需求可能增加。</p>
-                  <p v-if="activePlan.demands.length - 1 + demand.count > 50" class="reserve-hint">拆分后超过 50 个目标上限，暂不能转换。原始人数、进度和计算已保留，可继续保存旧方案。</p>
-                  <button v-else :id="controlId(demand, 'convert')" type="button" @click="confirmConvert = demand.id">转为从零培养目标</button>
-                  <div v-if="confirmConvert === demand.id" class="reserve-confirm" role="alert">
-                    <p>将此旧目标转换为 {{ demand.count }} 个独立目标，保留属性、职业与目标条件，清除原有培养进度。仅修改本地草稿，确认转换？</p>
-                    <div class="reserve-actions"><button type="button" @click="convertDemand(demand)">确认转换</button><button type="button" @click="cancelConvert(demand)">保留旧目标</button></div>
+            <div v-if="confirmDelete === activePlan.id" class="reserve-confirm" role="alert">
+              <p>删除「{{ activePlan.name }}」及其全部培养目标？保存后从云端移除。</p>
+              <div class="reserve-actions"><button type="button" @click="removePlan">确认删除方案</button><button type="button" @click="cancelDelete">保留方案</button></div>
+            </div>
+            <p class="reserve-hint reserve-plan-note">各方案独立试算，不预留库存，不代表可同时完成；保存方案会同步全部方案。</p>
+            <div class="reserve-body">
+              <section class="reserve-targets" :aria-labelledby="prefix + '-targets'">
+                <header class="reserve-section-heading"><h4 :id="prefix + '-targets'"><Sparkles :size="20" aria-hidden="true" />培养目标</h4><span>共 {{ activePlan.demands.length }} 个目标</span></header>
+                <p class="reserve-hint reserve-section-description">添加未来要培养的密探，设置目标等级与修为，自动计算所需材料。</p>
+                <p v-if="!activePlan.demands.length" class="reserve-empty">还没有培养目标，添加一位未来密探开始估算。</p>
+                <article v-for="(demand, index) in activePlan.demands" :id="controlId(demand, 'legacy')" :key="demand.id" class="reserve-demand" tabindex="-1" :aria-labelledby="controlId(demand, 'heading')">
+                  <header><h5 :id="controlId(demand, 'heading')"><span class="reserve-target-number" aria-hidden="true">{{ index + 1 }}</span>培养目标 {{ index + 1 }}<small v-if="isLegacy(demand)">旧目标</small></h5><button type="button" class="reserve-remove" :aria-label="'移除培养目标 ' + (index + 1)" @click="removeDemand(index)"><Trash2 :size="15" aria-hidden="true" />移除</button></header>
+                  <template v-if="isLegacy(demand)">
+                    <p class="reserve-legacy-summary">{{ describeDemand(demand) }}</p>
+                    <p class="reserve-hint">保留旧数据与原计算。转换后每个目标代表一位密探，并统一从零培养；原有培养进度会清零，材料需求可能增加。</p>
+                    <p v-if="activePlan.demands.length - 1 + demand.count > 50" class="reserve-hint">拆分后超过 50 个目标上限，暂不能转换。原始人数、进度和计算已保留，可继续保存旧方案。</p>
+                    <button v-else :id="controlId(demand, 'convert')" type="button" @click="confirmConvert = demand.id">转为从零培养目标</button>
+                    <div v-if="confirmConvert === demand.id" class="reserve-confirm" role="alert">
+                      <p>将此旧目标转换为 {{ demand.count }} 个独立目标，保留属性、职业与目标条件，清除原有培养进度。仅修改本地草稿，确认转换？</p>
+                      <div class="reserve-actions"><button type="button" @click="convertDemand(demand)">确认转换</button><button type="button" @click="cancelConvert(demand)">保留旧目标</button></div>
+                    </div>
+                  </template>
+                  <div v-else class="reserve-fields">
+                    <div v-for="field in demandFields(demand)" :key="field.key" class="reserve-field">
+                      <label :for="controlId(demand, field.key)">{{ field.label }}</label>
+                      <PlannerSelect v-if="field.options" :id="controlId(demand, field.key)" :model-value="field.owner[field.property]" :options="field.options" :placeholder="'选择' + field.label"
+                        :label="'培养目标 ' + (index + 1) + ' ' + field.label" :invalid="!!fieldError(controlId(demand, field.key))"
+                        :described-by="fieldError(controlId(demand, field.key)) ? controlId(demand, field.key) + '-error' : ''"
+                        @update:model-value="field.owner[field.property] = $event" />
+                      <input v-else :id="controlId(demand, field.key)" type="number" inputmode="numeric" step="1" :min="field.min" :max="field.max" :value="field.owner[field.property]"
+                        :aria-invalid="!!fieldError(controlId(demand, field.key)) || undefined" :aria-describedby="fieldError(controlId(demand, field.key)) ? controlId(demand, field.key) + '-error' : undefined"
+                        @input="field.owner[field.property] = $event.target.value === '' ? null : Number($event.target.value)" />
+                      <p v-if="fieldError(controlId(demand, field.key))" :id="controlId(demand, field.key) + '-error'" class="reserve-error">{{ fieldError(controlId(demand, field.key)) }}</p>
+                    </div>
                   </div>
+                  <p v-if="!isLegacy(demand) && (!demand.attribute || !demand.profession)" class="reserve-hint">请选择属性和职业后查看材料估算。</p>
+                </article>
+                <button :id="prefix + '-add-target'" type="button" class="reserve-add-target" :disabled="activePlan.demands.length >= 50" @click="addDemand"><Plus :size="16" aria-hidden="true" />添加培养目标</button>
+                <p v-if="activePlan.demands.length >= 50" class="reserve-hint">每个方案最多 50 个培养目标，可移除不需要的目标。</p>
+              </section>
+              <section class="reserve-totals" :aria-labelledby="prefix + '-totals'">
+                <header class="reserve-section-heading"><h4 :id="prefix + '-totals'"><Layers :size="20" aria-hidden="true" />材料需求与库存缺口</h4></header>
+                <p class="reserve-hint reserve-section-description">汇总当前方案的全部目标，并按当前库存计算缺口。</p>
+                <template v-if="calculation">
+                  <div v-if="calculation.money !== null" class="reserve-metrics"><div class="reserve-metric"><Coins :size="30" aria-hidden="true" /><p><span>总五铢钱</span><strong>{{ format(calculation.money) }}</strong></p></div><div class="reserve-metric"><BookOpen :size="30" aria-hidden="true" /><p><span>总经验</span><strong>{{ format(calculation.experience) }}</strong></p></div></div>
+                  <ul v-if="calculation.unsupportedReasons.length" class="reserve-calculation-notes" aria-live="polite"><li v-for="(item, index) in calculation.unsupportedReasons" :key="index">{{ unsupportedMessage(item) }}</li></ul>
+                  <div v-if="calculation.items" class="reserve-table-scroll">
+                    <table><caption class="reserve-sr-only">当前方案全部材料需求与库存缺口</caption><thead><tr><th scope="col">材料</th><th scope="col">总需求</th><th scope="col">缺口</th></tr></thead>
+                      <tbody><tr v-for="(amount, id) in calculation.items" :key="id"><th scope="row">{{ materialName(id) }}</th><td>{{ format(amount) }}</td><td :class="{ 'reserve-shortage': calculation.shortage?.items[id] > 0 }">{{ calculation.shortage ? format(calculation.shortage.items[id]) : '待库存可用' }}</td></tr>
+                        <tr><th scope="row">经验</th><td>{{ format(calculation.experience) }}</td><td :class="{ 'reserve-shortage': calculation.shortage?.experience > 0 }">{{ calculation.shortage ? format(calculation.shortage.experience) : '待库存可用' }}</td></tr></tbody>
+                    </table>
+                  </div>
+                  <p v-else class="reserve-hint">材料需求尚不能确定，请补全目标条件或查看上方提示。</p>
                 </template>
-                <div v-else class="reserve-fields">
-                  <div v-for="field in demandFields(demand)" :key="field.key" class="reserve-field">
-                    <label :for="controlId(demand, field.key)">{{ field.label }}</label>
-                    <PlannerSelect v-if="field.options" :id="controlId(demand, field.key)" :model-value="field.owner[field.property]" :options="field.options" :placeholder="'选择' + field.label"
-                      :label="'培养目标 ' + (index + 1) + ' ' + field.label" :invalid="!!fieldError(controlId(demand, field.key))"
-                      :described-by="fieldError(controlId(demand, field.key)) ? controlId(demand, field.key) + '-error' : ''"
-                      @update:model-value="field.owner[field.property] = $event" />
-                    <input v-else :id="controlId(demand, field.key)" type="number" inputmode="numeric" step="1" :min="field.min" :max="field.max" :value="field.owner[field.property]"
-                      :aria-invalid="!!fieldError(controlId(demand, field.key)) || undefined" :aria-describedby="fieldError(controlId(demand, field.key)) ? controlId(demand, field.key) + '-error' : undefined"
-                      @input="field.owner[field.property] = $event.target.value === '' ? null : Number($event.target.value)" />
-                    <p v-if="fieldError(controlId(demand, field.key))" :id="controlId(demand, field.key) + '-error'" class="reserve-error">{{ fieldError(controlId(demand, field.key)) }}</p>
-                  </div>
-                </div>
-                <p v-if="!isLegacy(demand) && (!demand.attribute || !demand.profession)" class="reserve-hint">请选择属性和职业后查看材料估算。</p>
-              </article>
-              <button :id="prefix + '-add-target'" type="button" class="reserve-add-target" :disabled="activePlan.demands.length >= 50" @click="addDemand"><Plus :size="16" aria-hidden="true" />添加培养目标</button>
-              <p v-if="activePlan.demands.length >= 50" class="reserve-hint">每个方案最多 50 个培养目标，可移除不需要的目标。</p>
-            </section>
+                <p v-else class="reserve-empty">添加培养目标后，在这里查看材料需求与库存缺口。</p>
+              </section>
+            </div>
           </template>
         </fieldset>
 
-        <section v-if="calculation" class="reserve-totals" :aria-labelledby="prefix + '-totals'">
-          <h3 :id="prefix + '-totals'">材料需求与库存缺口</h3>
-          <div v-if="calculation.money !== null" class="reserve-metrics"><p>总五铢钱 <strong>{{ format(calculation.money) }}</strong></p><p>总经验 <strong>{{ format(calculation.experience) }}</strong></p></div>
-          <ul v-if="calculation.unsupportedReasons.length" class="reserve-calculation-notes" aria-live="polite"><li v-for="(item, index) in calculation.unsupportedReasons" :key="index">{{ unsupportedMessage(item) }}</li></ul>
-          <div v-if="calculation.items" class="reserve-table-scroll">
-            <table><caption class="reserve-sr-only">当前方案全部材料需求与库存缺口</caption><thead><tr><th scope="col">材料</th><th scope="col">总需求</th><th scope="col">缺口</th></tr></thead>
-              <tbody><tr v-for="(amount, id) in calculation.items" :key="id"><th scope="row">{{ materialName(id) }}</th><td>{{ format(amount) }}</td><td :class="{ 'reserve-shortage': calculation.shortage?.items[id] > 0 }">{{ calculation.shortage ? format(calculation.shortage.items[id]) : '待库存可用' }}</td></tr>
-                <tr><th scope="row">经验</th><td>{{ format(calculation.experience) }}</td><td :class="{ 'reserve-shortage': calculation.shortage?.experience > 0 }">{{ calculation.shortage ? format(calculation.shortage.experience) : '待库存可用' }}</td></tr></tbody>
-            </table>
-          </div>
-          <p v-else class="reserve-hint">材料需求尚不能确定，请补全目标条件或查看上方提示。</p>
-        </section>
-
         <div v-if="calculation" class="reserve-save reserve-bottom-save">
-          <button type="submit" :disabled="saving || conflict || workspace.read_only">{{ saving ? '正在保存…' : '保存更改' }}</button>
+          <button type="submit" class="reserve-primary" :disabled="saving || conflict || workspace.read_only"><Save :size="16" aria-hidden="true" />{{ saving ? '正在保存…' : '保存方案' }}</button>
           <span>{{ dirty ? '有未保存的修改' : notice || '已与云端同步' }}</span>
         </div>
       </form>
@@ -117,7 +123,7 @@
 <script setup>
 import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { matchedRouteKey, onBeforeRouteLeave } from 'vue-router'
-import { Plus } from '@lucide/vue'
+import { BookOpen, Coins, Layers, Pencil, Plus, Save, Sparkles, Trash2 } from '@lucide/vue'
 import PlannerSelect from './PlannerSelect.vue'
 import { getOperatorReserveWorkspace, putOperatorReserveWorkspace } from '../../api/operator.js'
 import { reservePlanRequirements, validateReserveDemand } from '../../data/operatorReservePlans.js'
@@ -189,7 +195,7 @@ function removePlan() {
   confirmDelete.value = ''; notice.value = ''; errors.value = []
   nextTick(() => focusField(prefix + (activePlan.value ? '-plan' : '-new')))
 }
-function cancelDelete() { confirmDelete.value = ''; nextTick(() => focusField(prefix + '-manage')) }
+function cancelDelete() { confirmDelete.value = ''; nextTick(() => focusField(prefix + '-delete')) }
 function addDemand() {
   if (saving.value || workspace.value.read_only || activePlan.value.demands.length >= 50) return
   const value = { id: createUuid(), count: 1, attribute: '', profession: '', current: { level: 0, elite: 0, breakthrough_stage: null }, target: { level: 100, elite: 17 } }
@@ -288,58 +294,89 @@ onBeforeUnmount(() => { session++; window.removeEventListener('beforeunload', be
 </script>
 
 <style scoped>
-.reserve-workspace { min-width: 0; color: var(--ink); font: 14px/1.6 var(--font-b); container-type: inline-size; }
+.reserve-workspace { --reserve-line: color-mix(in srgb, var(--planner-line, var(--line)) 70%, transparent); min-width: 0; color: var(--ink); font: 14px/1.6 var(--font-b); container: reserve-workspace / inline-size; }
 .reserve-workspace p { margin: 8px 0; overflow-wrap: anywhere; }
 .reserve-workspace fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .reserve-workspace button, .reserve-workspace input { font: inherit; color: inherit; }
-.reserve-workspace button { cursor: pointer; padding: 7px 11px; border: 1px solid var(--theme-line, var(--line)); background: var(--surface); border-radius: 7px; white-space: normal; touch-action: manipulation; }
+.reserve-workspace button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; padding: 7px 12px; border: 1px solid var(--planner-line, var(--line)); background: var(--surface); border-radius: 7px; white-space: normal; touch-action: manipulation; }
 .reserve-workspace button:disabled { cursor: default; opacity: .6; }
-.reserve-workspace .reserve-primary { background: var(--theme-control-bg, var(--tea)); color: var(--on-strong); border-color: transparent; }
-.reserve-workspace input { min-width: 0; width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--theme-line, var(--line)); border-radius: 7px; background: var(--surface); }
+.reserve-workspace .reserve-primary { background: var(--theme-control-bg, var(--accent-strong)); color: var(--on-strong); border-color: transparent; font-weight: 600; }
+.reserve-workspace input { min-width: 0; width: 100%; box-sizing: border-box; padding: 6px 10px; border: 1px solid var(--planner-line, var(--line)); border-radius: 7px; background: var(--surface); }
 .reserve-workspace :focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .reserve-workspace [tabindex="-1"] { scroll-margin-block: 24px; }
 .reserve-toolbar, .reserve-actions, .reserve-demand header, .reserve-save, .reserve-section-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.reserve-toolbar { margin: 12px 0; }
-.reserve-plan-picker { display: grid; gap: 4px; flex: 1 1 240px; min-width: 0; max-width: 480px; }
+.reserve-toolbar { margin: 0 0 12px; padding: 12px; border: 1px solid var(--reserve-line); border-radius: 10px; background: var(--cream); }
+.reserve-plan-picker { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; flex: 1 1 100%; min-width: 0; }
+.reserve-plan-picker > label { font-weight: 600; }
+.reserve-plan-picker :deep(.planner-select-trigger) { min-height: 38px; padding: 6px 10px; font-size: 14px; font-weight: 400; }
+.reserve-workspace .reserve-rename { padding: 8px; color: var(--ink-60); background: transparent; border-color: transparent; }
+.reserve-workspace .reserve-delete { margin-left: auto; color: var(--theme-danger-text, var(--rouge)); background: transparent; border-color: transparent; }
 .reserve-toolbar > input { flex: 1 1 180px; max-width: 420px; }
-.reserve-save { font-size: 13px; }
+.reserve-save { min-width: 0; gap: 8px 12px; font-size: 13px; }
 .reserve-save > span, .reserve-hint, .reserve-section-heading > span { color: var(--ink-60); }
 .reserve-workspace .reserve-hint { font-size: 13px; }
-.reserve-management { padding: 0 0 12px; border-bottom: 1px solid var(--theme-line, var(--line)); }
-.reserve-targets { margin-top: 24px; }
+.reserve-save .reserve-dirty { color: var(--theme-accent-text, var(--accent-strong)); }
+.reserve-management { padding-bottom: 4px; }
+.reserve-workspace .reserve-plan-note { margin: 0 0 12px; }
+.reserve-body { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; }
+.reserve-targets, .reserve-totals { min-width: 0; padding: 16px; border: 1px solid var(--reserve-line); border-radius: 12px; background: var(--surface); }
+.reserve-targets { container: reserve-targets / inline-size; }
+.reserve-totals { container: reserve-results / inline-size; }
 .reserve-section-heading, .reserve-demand header { justify-content: space-between; }
-.reserve-workspace h3 { font-size: 16px; margin: 0; }
+.reserve-section-heading h4 { display: flex; align-items: center; gap: 8px; font: 800 20px/1.4 var(--font-s); margin: 0; }
+.reserve-section-heading svg { color: var(--planner-gold, var(--theme-accent-text, var(--accent-strong))); }
 .reserve-section-heading > span { font-size: 13px; }
-.reserve-demand { margin: 12px 0; padding: 16px; border: 1px solid var(--theme-line, var(--line)); border-radius: 12px; }
-.reserve-demand header { margin-bottom: 12px; }
-.reserve-demand h4 { font-size: 14px; font-weight: 600; margin: 0; }
-.reserve-demand h4 small { margin-left: 8px; color: var(--ink-60); font-weight: 400; }
-.reserve-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.reserve-workspace .reserve-section-description { margin: 4px 0 16px; }
+.reserve-demand { margin: 12px 0; padding: 12px; border: 1px solid var(--reserve-line); border-radius: 10px; background: var(--cream); }
+.reserve-demand header { margin-bottom: 10px; gap: 6px; }
+.reserve-demand h5 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 700 17px/1.4 var(--font-s); margin: 0; }
+.reserve-target-number { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--theme-control-bg, var(--accent-strong)); color: var(--on-strong); font: 600 15px/1 var(--font-d); }
+.reserve-demand h5 small { color: var(--ink-60); font: 400 13px/1.5 var(--font-b); }
+.reserve-workspace .reserve-remove { padding: 5px 8px; color: var(--theme-danger-text, var(--rouge)); border-color: transparent; background: transparent; font-size: 13px; }
+.reserve-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 16px; padding: 12px; background: var(--surface); border-radius: 8px; }
 .reserve-field { min-width: 0; display: grid; align-content: start; gap: 4px; }
-.reserve-field label { color: var(--ink-60); }
+.reserve-field label { color: var(--ink); font-size: 13px; }
 .reserve-field :deep(.planner-select) { width: 100%; min-width: 0; }
-.reserve-field :deep(.planner-select-trigger) { width: 100%; }
-.reserve-field input { min-height: 44px; font-size: 16px; }
-.reserve-workspace .reserve-add-target { display: flex; justify-content: center; align-items: center; gap: 6px; width: 100%; margin-top: 12px; }
+.reserve-field :deep(.planner-select-trigger) { width: 100%; min-height: 38px; padding: 6px 10px; font-size: 14px; font-weight: 400; }
+.reserve-field input { min-height: 38px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.reserve-workspace .reserve-add-target { width: 100%; margin-top: 8px; padding: 9px 12px; border-style: dashed; background: var(--cream); color: var(--theme-accent-text, var(--accent-strong)); font-weight: 600; }
 .reserve-workspace .reserve-empty { margin: 16px 0; color: var(--ink-60); }
 .reserve-error { color: var(--theme-danger-text, var(--rouge)); }
 .reserve-error a { color: inherit; }
 .reserve-error-summary { margin-bottom: 16px; }
-.reserve-conflict, .reserve-confirm { padding: 12px; border: 1px solid var(--theme-line, var(--line)); border-radius: 7px; margin: 12px 0; }
+.reserve-conflict, .reserve-confirm { padding: 12px; border: 1px solid var(--planner-line, var(--line)); background: var(--cream); border-radius: 7px; margin: 12px 0; }
 .reserve-remote { padding: 8px 0; }
-.reserve-totals { margin-top: 24px; }
-.reserve-metrics { display: flex; flex-wrap: wrap; gap: 4px 24px; }
-.reserve-metrics strong { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
+.reserve-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.reserve-metric { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 12px; border: 1px solid var(--reserve-line); border-radius: 9px; background: var(--cream); }
+.reserve-metric > svg { color: var(--planner-gold, var(--theme-accent-text, var(--accent-strong))); }
+.reserve-metric p { min-width: 0; margin: 0; }
+.reserve-metric span { display: block; font-size: 12px; font-weight: 600; }
+.reserve-metrics strong { display: block; font: 700 22px/1.3 var(--font-d); font-variant-numeric: tabular-nums; }
 .reserve-calculation-notes { padding-left: 20px; }
 .reserve-table-scroll { max-width: 100%; overflow-x: auto; }
-.reserve-totals table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.reserve-totals th, .reserve-totals td { padding: 9px 4px; border-bottom: 1px solid var(--theme-line, var(--line)); overflow-wrap: anywhere; }
-.reserve-totals th { text-align: left; font-weight: 600; width: 36%; }
-.reserve-totals th:not(:first-child), .reserve-totals td { text-align: right; width: 32%; }
-.reserve-totals td { font-variant-numeric: tabular-nums; }
+.reserve-totals table { width: 100%; border-collapse: collapse; }
+.reserve-totals th, .reserve-totals td { padding: 4px 8px; border-bottom: 1px solid var(--reserve-line); line-height: 1.5; }
+.reserve-totals th { text-align: left; font-weight: 600; }
+.reserve-totals tbody th { font-weight: 400; }
+.reserve-totals th:not(:first-child), .reserve-totals td { text-align: right; }
+.reserve-totals td { font-family: var(--font-d); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .reserve-shortage { color: var(--theme-danger-text, var(--rouge)); font-weight: 600; }
-.reserve-bottom-save { margin-top: 20px; }
+.reserve-bottom-save { margin-top: 12px; justify-content: flex-end; }
 .reserve-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@container (min-width: 400px) { .reserve-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container reserve-targets (min-width: 340px) { .reserve-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container reserve-results (max-width: 359px) { .reserve-metrics { grid-template-columns: minmax(0, 1fr); } }
+@container reserve-workspace (min-width: 820px) {
+  .reserve-body { grid-template-columns: minmax(0, 1fr) minmax(0, .96fr); }
+  .reserve-plan-picker { flex: 0 1 380px; }
+  .reserve-save { flex: 1 1 260px; }
+}
+@container reserve-workspace (max-width: 479px) {
+  .reserve-targets, .reserve-totals { padding: 12px; }
+  .reserve-section-heading h4 { font-size: 18px; }
+  .reserve-metric { gap: 8px; padding: 10px 8px; }
+  .reserve-metric > svg { width: 20px; height: 20px; }
+  .reserve-metrics strong { font-size: 18px; }
+  .reserve-bottom-save { justify-content: flex-start; }
+}
 @media (hover: hover) { .reserve-workspace button:hover:not(:disabled) { border-color: var(--accent); } }
 </style>
