@@ -8,12 +8,14 @@
         </div>
       </div>
       <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>
+      <div class="plan-heading-actions plan-management-actions">
+        <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
+        <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
+      </div>
       <p v-if="activePlan" class="plan-source-note">{{ activePlan.source === 'favorites' ? '随特别关注同步，也可添加其他密探' : '手动管理成员，各清单独立保存养成目标' }}</p>
     </div>
     <div class="plan-heading-actions">
       <button v-if="activePlan" type="button" class="plan-member-add" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
-      <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
-      <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
       <slot name="actions" />
     </div>
   </div>

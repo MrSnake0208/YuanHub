@@ -5,18 +5,24 @@
         <h2 id="growth-tracker-title">培养计划 · 体力规划</h2>
         <p>选好要培养的密探，按材料缺口安排每日体力。</p>
       </div>
-      <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
-        <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
-        <span>{{ loading ? '同步中' : '刷新库存' }}</span>
-      </button>
+      <div class="planner-heading-actions">
+        <button v-if="canUseReserve && accountId && !reserveOpen" ref="reserveEntryRef" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace">未来储备</button>
+        <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
+          <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
+          <span>{{ loading ? '同步中' : '刷新库存' }}</span>
+        </button>
+      </div>
     </header>
 
-    <p class="planner-independent-note">真实清单：独立试算，未预留库存。</p>
-    <details v-if="canUseReserve && accountId" class="planner-reserve-entry">
-      <summary>未来储备 · 为尚未确定身份的密探准备材料</summary>
+    <section v-if="canUseReserve && accountId" v-show="reserveOpen" id="planner-reserve-workspace" ref="reserveWorkspaceRef" class="planner-reserve-workspace" tabindex="-1" aria-label="未来储备工作区">
+      <header class="reserve-workspace-heading">
+        <div><h3>未来储备</h3><p>返回培养清单会保留此处未保存的草稿。</p></div>
+        <button type="button" class="workspace-return" @click="closeReserveWorkspace"><ChevronLeft :size="16" aria-hidden="true" />返回培养清单</button>
+      </header>
       <OperatorReserveWorkspace :account-id="accountId" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" />
-    </details>
+    </section>
 
+    <div v-show="!reserveOpen">
     <div v-if="!isLoggedIn || !accountId" class="planner-state">
       <Info :size="18" aria-hidden="true" />
       <span>登录并选择子账号后，才能读取当前库存和培养目标。</span>
@@ -71,21 +77,23 @@
             >
               <template #actions>
                 <div v-if="activePlan" class="status-actions">
-                  <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />调整设置</button>
+                  <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />规划设置</button>
                   <button type="button" class="status-action secondary" @click="openPlanner('display')"><CalendarDays :size="15" aria-hidden="true" />查看体力日程</button>
                 </div>
               </template>
             </OperatorTrainingPlanPicker>
+            <p class="planner-independent-note">各清单独立试算，未预留库存；材料备齐不等于已完成养成。</p>
           </div>
         </div>
         <div v-if="activePlan" class="status-metrics" role="group" aria-label="培养进度概览">
-          <div class="status-metric status-metric-primary"><span>预计还需</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
-          <div class="status-metric"><span>刷取材料备齐度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
-          <div class="status-metric"><span>清单心纸库存</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
+          <div class="status-metric status-metric-primary"><span>预计还需</span><strong :class="{ 'metric-state': loading || Boolean(error) || hasUnknownRequirements || scheduleDifferences.goalsChanged || scheduleTiming.remainingDays == null || scheduleTiming.remainingDays === 0 }">{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
+          <div class="status-metric"><span>刷取材料备齐度</span><strong v-if="!materialProgressStatus">{{ plannerProgress }}<small>%</small></strong><strong v-else class="metric-state">{{ materialProgressStatus }}</strong></div>
+          <div class="status-metric"><span>清单心纸库存</span><strong v-if="inventoryReady && !loading && !error">{{ formatNumber(totalHeartStock) }}<small> 张</small></strong><strong v-else class="metric-state">{{ loading ? '同步中' : '库存未同步' }}</strong></div>
           <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
         </div>
         <p v-if="loading" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
         <div v-if="activePlan" class="status-rule" aria-hidden="true"><span></span><i>养成清单</i><span></span></div>
+        <p v-if="activePlan && quickUpgrade" class="roster-help">可直接修改培养目标；每项右侧图标用于快捷养成，先检查材料再确认提升。</p>
         <div v-if="activePlan" class="status-roster">
           <div class="growth-card-grid">
               <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="['rarity-r' + (row.rarity || 3), { complete: row.completed }]">
@@ -134,7 +142,7 @@
                 <div v-if="row.completed" v-show="!isRemarkEditing(row)" class="growth-materials growth-complete">
                   <button class="tracker-remove" type="button" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.size > 0" @click="removePlanMember(row)"><X :size="14" aria-hidden="true" />从清单中移除</button>
                 </div>
-                <details v-else class="growth-materials"><summary>查看材料缺口与预计耗时 <span>{{ rowGapCount(row) }} 项<ChevronDown :size="13" aria-hidden="true" /></span></summary><div v-if="row.calculation.star.unsupported || row.calculation.sharedUnsupported" class="materials-clear">部分材料规则未确认，以下仅列已知需求</div><div v-else-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-if="row.calculation.gaps.length || row.calculation.experienceGap || row.calculation.heartGap" class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip experience-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>{{ experienceEtaLabel(row.calculation.experienceGap) }}</em></span><div v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}</em><span class="heart-history" role="img" :aria-label="heartHistorySummary(row)"><span class="heart-history-label" aria-hidden="true"><span>近 30 日获取</span><small v-if="heartHistoryError">暂不可用</small><small v-else-if="!heartHistoryReady">同步中…</small></span><span v-if="heartHistoryReady && !heartHistoryError && heartHasRecentAcquisition(row)" class="heart-history-bars" aria-hidden="true"><i v-for="point in heartSeries(row)" :key="point.date" class="heart-history-bar" :style="{ height: heartBarHeight(row, point) }"></i></span><span v-else-if="heartHistoryReady && !heartHistoryError" class="heart-history-empty" aria-hidden="true">暂无心纸获取记录</span></span></div></div><p class="growth-material-note">已扣除清单共用库存。单项耗时按只刷该项材料估算。</p></details>
+                <details v-else class="growth-materials"><summary>查看材料缺口与预计耗时 <span>{{ rowGapCount(row) }} 项<ChevronDown :size="13" aria-hidden="true" /></span></summary><div v-if="row.calculation.star.unsupported || row.calculation.sharedUnsupported" class="materials-clear">部分材料规则未确认，以下仅列已知需求</div><div v-else-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-if="row.calculation.gaps.length || row.calculation.experienceGap || row.calculation.heartGap" class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip experience-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>缺 {{ formatNumber(row.calculation.experienceGap) }}<small class="growth-material-eta">{{ experienceEtaLabel(row.calculation.experienceGap) }}</small></em></span><div v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}</em><span class="heart-history" role="img" :aria-label="heartHistorySummary(row)"><span class="heart-history-label" aria-hidden="true"><span>近 30 日获取</span><small v-if="heartHistoryError">暂不可用</small><small v-else-if="!heartHistoryReady">同步中…</small></span><span v-if="heartHistoryReady && !heartHistoryError && heartHasRecentAcquisition(row)" class="heart-history-bars" aria-hidden="true"><i v-for="point in heartSeries(row)" :key="point.date" class="heart-history-bar" :style="{ height: heartBarHeight(row, point) }"></i></span><span v-else-if="heartHistoryReady && !heartHistoryError" class="heart-history-empty" aria-hidden="true">暂无心纸获取记录</span></span></div></div><p class="growth-material-note">已扣除清单共用库存。单项耗时按只刷该项材料估算。</p></details>
               </article>
             </div>
         </div>
@@ -148,11 +156,11 @@
         <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
           <div class="workspace-heading-content"><span class="section-kicker">每日刷取建议</span>
             <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
-              <button v-if="viewMode === 'display'" type="button" class="plan-icon" aria-label="编辑日程" title="编辑日程" :disabled="cloudBlocked" @click="editSchedule()"><Pencil :size="17" aria-hidden="true" /></button>
+              <button v-if="viewMode === 'display' && !reviewingHistory" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="openExactOptimizer">方案对比</button>
             </div></div>
             <p>此日程暂不支持交给 Maa 自动执行。</p>
           </div>
-          <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display')"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
+          <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display', true)"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
         </div>
 
         <div class="workspace-feedback">
@@ -179,7 +187,6 @@
             </template>
             <p v-else class="schedule-plan-note">
               <span>{{ plannerCycleNotice }}</span>
-              <button v-if="!scheduleDifferences.goalsChanged && !reviewingHistory && !globalShortestPlanAdopted && !deadlineAlternativePlanAdopted" type="button" class="schedule-optimize" :disabled="cloudBlocked" @click="openExactOptimizer">优化日程</button>
             </p>
           </div>
         </div>
@@ -195,10 +202,10 @@
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
           <div class="display-grid">
-            <section class="planner-card day-plan">
+            <section ref="dayPlanRef" class="planner-card day-plan" tabindex="-1" aria-label="当日安排">
               <div class="card-heading">
                 <div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div>
-                <span class="plan-badge" :class="{ manual: currentDay.manual, exact: deadlineAlternativePlanAdopted }">{{ planBadgeLabel }}</span>
+                <div class="day-plan-actions"><span class="plan-badge" :class="{ manual: currentDay.manual, exact: deadlineAlternativePlanAdopted }">{{ planBadgeLabel }}</span><button v-if="!reviewingHistory" ref="dayEditRef" type="button" class="status-action secondary" :disabled="scheduleActionBlocked" @click="editSchedule('daily')"><Pencil :size="15" aria-hidden="true" />编辑当日</button></div>
               </div>
               <dl class="day-totals" aria-label="当日体力与白金币概览">
                 <div class="gain"><dt>体力获取</dt><dd>{{ formatStamina(todayTotals.gains) }}</dd></div>
@@ -378,7 +385,7 @@
 </div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" title="恢复当前套用方案中的当日安排" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天方案</button></div></section>
                 <footer class="planner-step-actions">
                   <button type="button" class="workspace-link" aria-label="上一步：方案对比" title="上一步：方案对比" @click="setPlannerStep('comparison')"><ChevronLeft :size="18" aria-hidden="true" /></button>
-                  <button type="button" class="action-button primary" @click="openPlanner('display')"><Check :size="16" aria-hidden="true" />完成编辑</button>
+                  <button type="button" class="action-button primary" @click="openPlanner('display', true)"><Check :size="16" aria-hidden="true" />完成编辑</button>
                 </footer>
               </section>
             </div>
@@ -388,6 +395,7 @@
       </section>
     </template>
 
+    </div>
     <Teleport to="body">
       <dialog ref="scheduleActionDialog" class="tracker-remove-dialog schedule-action-dialog" aria-labelledby="schedule-action-title" aria-describedby="schedule-action-description" @cancel.prevent="closeScheduleAction" @click="event => { if (event.target === scheduleActionDialog) { const box = scheduleActionDialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeScheduleAction() } }">
         <div class="tracker-remove-dialog-head"><div><span class="section-kicker">日程操作</span><h3 id="schedule-action-title">{{ scheduleActionTitle }}</h3></div><button type="button" class="tracker-dialog-close" aria-label="关闭" @click="closeScheduleAction"><X :size="17" aria-hidden="true" /></button></div>
@@ -523,6 +531,18 @@ function confirmScheduleAction() {
 const undoWorkspace = ref(null)
 const viewMode = ref('display')
 const plannerOpen = ref(true)
+const reserveOpen = ref(false)
+const reserveEntryRef = ref(null)
+const reserveWorkspaceRef = ref(null)
+function openReserveWorkspace() {
+  reserveOpen.value = true
+  nextTick(() => { reserveWorkspaceRef.value?.focus({ preventScroll: true }); reserveWorkspaceRef.value?.scrollIntoView({ block: 'start' }) })
+}
+function closeReserveWorkspace() {
+  reserveOpen.value = false
+  nextTick(() => reserveEntryRef.value?.focus())
+}
+watch(canUseReserve, allowed => { if (!allowed) reserveOpen.value = false })
 const plannerSteps = [{ id: 'conditions', label: '规划条件' }, { id: 'comparison', label: '方案对比' }, { id: 'daily', label: '编辑每日' }]
 const plannerStep = ref('conditions')
 const plannerStepsRef = ref(null)
@@ -561,6 +581,8 @@ const manualPlans = ref({})
 const fixedSchedule = ref(null)
 const plannerToday = ref(plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR))
 const plannerWorkspaceRef = ref(null)
+const dayPlanRef = ref(null)
+const dayEditRef = ref(null)
 const plannerStartDate = ref(plannerToday.value)
 const selectedDate = ref(plannerStartDate.value)
 const hidePastSchedule = ref(readHidePastSchedule())
@@ -856,6 +878,8 @@ const plannerProgress = computed(() => {
   const average = entries.reduce((sum, [id, need]) => sum + (1 - (remaining[id] || 0) / need), 0) / entries.length * 100
   return Object.values(remaining).some(value => value > 0) ? Math.min(99, Math.floor(average)) : 100
 })
+const materialProgressStatus = computed(() => loading.value || targetLoading.value || cloudLoading.value || scheduleLoading.value ? '同步中' : !inventoryReady.value || error.value ? '库存未同步'
+  : scheduleDifferences.value.goalsChanged ? '旧方案待更新' : hasUnknownRequirements.value ? '部分规则未知' : '')
 const progressItems = computed(() => (currentDay.value.progressRows || plannerProgressRows(plannerRequirementState.value, plannerInitialState.value, currentDay.value,
   { ...currentItems.value, __xp__: experienceStock(currentItems.value) })).map(row => ({ ...row, name: resourceName(row.id), icon: resourceIcon(row.id) })))
 const yieldResourceOptions = computed(() => [...new Set(['__xp__', ...Object.keys(aggregatePlannerState(plannerRequirementState.value)),
@@ -1262,7 +1286,8 @@ async function setPlannerStep(step, validate = true) {
   panel.value?.focus({ preventScroll: true })
   plannerStepsRef.value?.scrollIntoView({ behavior: 'auto', block: 'start' })
 }
-function editSchedule(step = 'conditions') {
+function editSchedule(step = 'daily') {
+  if (step === 'daily' && reviewingHistory.value) return
   if (reviewingHistory.value) selectedDate.value = plannerDates.value.find(date => date >= plannerToday.value) || selectedDate.value
   viewMode.value = 'edit'
   setPlannerStep(step, false)
@@ -1446,13 +1471,14 @@ function restoreCurrentDay() {
   }
 }
 function clearFutureManualPlans() { const removed = futureManualCount.value; manualPlans.value = Object.fromEntries(Object.entries(manualPlans.value).filter(([date]) => date <= selectedDate.value)); persistPlannerSnapshot(); planNotice.value = removed ? `已清除后续 ${removed} 个固定日，推荐会自动重算` : '未来推荐本来就会随设置自动刷新' }
-function openPlanner(mode = 'display') {
+function openPlanner(mode = 'display', returnToDay = false) {
   plannerOpen.value = true
   if (mode === 'edit') { editSchedule('conditions'); return }
   viewMode.value = 'display'; goalMode.value = false
   nextTick(() => {
-    plannerWorkspaceRef.value?.focus({ preventScroll: true })
-    plannerWorkspaceRef.value?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    const target = returnToDay ? dayEditRef.value || dayPlanRef.value : plannerWorkspaceRef.value
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView({ behavior: 'auto', block: returnToDay ? 'nearest' : 'start' })
   })
 }
 function toggleSettings() { plannerOpen.value = true; editSchedule('conditions') }
@@ -1592,7 +1618,7 @@ function handleInventoryEvent(message) {
   if (['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) scheduleInventoryRefresh(message)
 }
 
-watch(() => [props.accountId, props.isLoggedIn], () => { inventoryReady.value = false; currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false; dailySourcePreview.value = null; goalMode.value = false; goalDays.value = 10; goalInitialExtra.value = 0; goalReserveSources.value = []; closeGoalDatePicker(false) }, { immediate: true })
+watch(() => [props.accountId, props.isLoggedIn], () => { reserveOpen.value = false; inventoryReady.value = false; currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false; dailySourcePreview.value = null; goalMode.value = false; goalDays.value = 10; goalInitialExtra.value = 0; goalReserveSources.value = []; closeGoalDatePicker(false) }, { immediate: true })
 watch(() => [props.accountId, props.isLoggedIn, props.refreshKey, props.active], () => { if (props.active) { syncPlannerClock(); emit('refresh-operators'); loadTargets(); loadInventory() } }, { immediate: true })
 watch(cloudSnapshot, applyPlannerSnapshot)
 watch(() => [plannerStep.value, goalMode.value], ([step, mode]) => { if (step !== 'conditions' || !mode) closeGoalDatePicker(false) })
@@ -1706,7 +1732,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-materials summary { color: var(--ink); cursor: pointer; }
 .growth-materials summary span { color: var(--planner-muted); }
 .growth-breakthrough-materials summary:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
-.growth-breakthrough-materials .growth-breakthrough-chip { grid-template-columns: 16px minmax(0, 1fr); }
+.growth-breakthrough-materials .growth-breakthrough-chip { grid-template-columns: 22px minmax(0, 1fr); }
 .growth-breakthrough-materials .growth-breakthrough-chip b { white-space: normal; overflow-wrap: anywhere; }
 .growth-breakthrough-counts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 0; font-size: 12px; }
 .growth-breakthrough-counts dt { color: var(--planner-muted); }

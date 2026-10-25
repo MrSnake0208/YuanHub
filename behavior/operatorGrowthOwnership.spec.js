@@ -166,7 +166,7 @@ it('规划首页仅保留三模块，按需保存策略/偏好/关卡；两种�
   })
   await flushPromises()
   const click = async text => { await wrapper.findAll('button').find(button => button.text().includes(text)).trigger('click'); await flushPromises() }
-  await click('调整设置')
+  await click('规划设置')
   expect(wrapper.get('#core-conditions-title').text()).toBe('你想怎么养？')
   expect(wrapper.get('#routine-settings-title').text()).toBe('我的日常安排')
   expect(wrapper.get('#daily-sources-title').text()).toBe('我的体力来源')
@@ -274,7 +274,7 @@ it('偏好云端保存失败后结束忙碌状态，保留草稿并显示可恢�
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  await wrapper.findAll('button').find(button => button.text() === '调整设置').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '规划设置').trigger('click'); await flushPromises()
   const routine = wrapper.getComponent(PlannerRoutineSettings)
   await routine.findAll('.condition-summary-card')[0].trigger('click'); await flushPromises()
   await routine.get('#pref-purchase').setValue(2)
@@ -296,7 +296,7 @@ it('A→B→A 时旧来源保存完成不能污染新会话的预测', async () 
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  await wrapper.findAll('button').find(button => button.text() === '调整设置').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '规划设置').trigger('click'); await flushPromises()
   const sources = wrapper.getComponent(PlannerDailySources)
   await sources.findAll('.condition-summary-card')[0].trigger('click'); await flushPromises()
   await sources.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
@@ -318,7 +318,7 @@ it('切换子账号清空未保存的期限与储备独立试算', async () => {
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  await wrapper.findAll('button').find(button => button.text() === '调整设置').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '规划设置').trigger('click'); await flushPromises()
   const mode = () => wrapper.findAll('button').find(button => button.text() === '按目标天数规划')
   await mode().trigger('click'); await wrapper.get('#goal-days').setValue(21)
   wrapper.get('.reserve-details').element.open = true
@@ -365,10 +365,11 @@ it('追踪页顶部直接添加密探，并将真实拥有状态传入养成中�
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  const toolbar = wrapper.get('.plan-heading-actions')
-  for (const label of ['添加密探', '新建清单', '管理清单', '调整设置', '查看体力日程']) {
+  const toolbar = wrapper.get('.plan-heading')
+  for (const label of ['添加密探', '新建清单', '管理清单', '规划设置', '查看体力日程']) {
     expect(toolbar.text()).toContain(label)
   }
+  expect(wrapper.get('.plan-identity .plan-management-actions').text()).toContain('管理清单')
   expect(wrapper.get('.status-metrics').text()).toContain('刷取材料备齐度')
   expect(wrapper.get('.status-metrics').text()).toContain('清单心纸库存')
   await wrapper.get('.plan-member-add').trigger('click')
@@ -636,4 +637,71 @@ it('每日账本月卡直达已有设置，6-24范围安排走原云端保存并
   await click('解除当天固定')
   const released = Object.values(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2].manual_plans)
   expect(released.filter(plan => plan.spends.some(spend => spend.fixed))).toHaveLength(6)
+})
+
+
+it('编辑当日直达每日步骤，按原账号和日期保存，返回保留日期并恢复编辑入口焦点', async () => {
+  let revision = 0
+  plannerApi.getTrainingWorkspace.mockResolvedValue({ schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '测试清单', source: 'custom', operator_ids: ['op'], excluded_operator_ids: [], targets: {} }] })
+  plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: ++revision }))
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }], catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true, teleport: true } } })
+  await flushPromises()
+  const date = wrapper.vm.plannerDates[1]
+  expect(date).toBeTruthy()
+  await wrapper.get(`.planner-display [data-date="${date}"]`).trigger('click')
+  await wrapper.get('.day-plan-actions button').trigger('click'); await flushPromises()
+  expect(wrapper.get('#planner-step-daily').isVisible()).toBe(true)
+  expect(wrapper.get('#planner-step-conditions').isVisible()).toBe(false)
+  expect(wrapper.vm.selectedDate).toBe(date)
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  await wrapper.get('#gain-value-0').setValue(300); await flushPromises()
+  const [account, plan, body] = plannerApi.putStaminaSchedule.mock.calls.at(-1)
+  expect([account, plan]).toEqual(['acc', 'plan'])
+  expect(body.manual_plans[date].gains[0].value).toBe(300)
+  await wrapper.findAll('button').find(button => button.text() === '完成编辑').trigger('click'); await flushPromises()
+  expect(wrapper.vm.selectedDate).toBe(date)
+  expect(wrapper.get('.planner-display [aria-pressed="true"]').attributes('data-date')).toBe(date)
+  expect(document.activeElement).toBe(wrapper.get('.day-plan-actions button').element)
+  await wrapper.findAll('button').find(button => button.text() === '规划设置').trigger('click'); await flushPromises()
+  expect(wrapper.get('#planner-step-conditions').isVisible()).toBe(true)
+  await wrapper.findAll('button').find(button => button.text() === '返回日程').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '方案对比').trigger('click'); await flushPromises()
+  expect(wrapper.get('#planner-step-comparison').isVisible()).toBe(true)
+  expect(wrapper.vm.selectedDate).toBe(date)
+})
+
+it('历史日期仍为回顾模式，编辑每日快捷路径不改写历史或切到其他日期', async () => {
+  const wrapper = await mountRoster()
+  await wrapper.vm.openPlanner('display'); await flushPromises()
+  const date = wrapper.vm.plannerToday
+  // 建立原有固定快照，再模拟业务日界线跨过当前所选日。
+  wrapper.vm.updatePlanValue('gains', 0, { target: { value: 300 } }); await flushPromises()
+  expect(wrapper.vm.fixedSchedule).toBeTruthy()
+  wrapper.vm.plannerToday = wrapper.vm.plannerDates[1]
+  await wrapper.vm.$nextTick()
+  expect(wrapper.vm.reviewingHistory).toBe(true)
+  expect(wrapper.find('.day-plan-actions button').exists()).toBe(false)
+  const writes = plannerApi.putStaminaSchedule.mock.calls.length
+  await wrapper.vm.editSchedule('daily'); await flushPromises()
+  expect(wrapper.vm.selectedDate).toBe(date)
+  expect(wrapper.vm.viewMode).toBe('display')
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(writes)
+})
+
+
+it('同步中的材料及心纸统计明确显示状态，不把未取得的库存显示为零或备齐', async () => {
+  let finish
+  getCurrent.mockImplementation(({ entityType }) => entityType === 'item' ? new Promise(resolve => { finish = resolve }) : Promise.resolve([]))
+  const wrapper = await mountRoster()
+  const metrics = wrapper.findAll('.status-metric')
+  expect(metrics[1].text()).toContain('同步中')
+  expect(metrics[1].text()).not.toContain('%')
+  expect(metrics[2].text()).toContain('同步中')
+  expect(metrics[2].text()).not.toContain('0 张')
+  finish([]); await flushPromises()
+  expect(metrics[1].text()).toContain('%')
+  expect(metrics[2].text()).toContain('0 张')
 })

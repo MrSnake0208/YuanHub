@@ -166,4 +166,9 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
   .plan-dialog-actions > div { flex: 1; justify-content: flex-end; }
   .plan-dialog-actions button { flex: 1; }
 }
+
+.plan-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.plan-management-actions { flex-wrap: wrap; }
+.plan-management-actions > button { min-height: 34px; padding: 4px 8px; flex: none; }
+.plan-source-note { flex-basis: 100%; }
 }

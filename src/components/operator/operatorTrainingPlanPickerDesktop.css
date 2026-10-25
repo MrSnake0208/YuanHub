@@ -112,4 +112,9 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .plan-dialog-actions > p span { margin-left: 5px; }
 .plan-dialog-actions > div { display: flex; flex: none; gap: 7px; }
 .plan-dialog-actions button[type=submit] { min-width: 100px; }
+
+.plan-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.plan-management-actions { flex-wrap: wrap; }
+.plan-management-actions > button { min-height: 34px; padding: 4px 8px; flex: none; }
+.plan-source-note { flex-basis: 100%; }
 }
