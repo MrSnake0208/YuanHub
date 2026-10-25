@@ -861,24 +861,33 @@ async function toggleOperator(id, event) {
   if (isCurrentContext(sequence) && checkbox) checkbox.checked = isChecked(id);
 }
 
-async function selectPageIds(ids) {
+async function selectPageIds(ids, batch = false) {
   if (busy.value || !currentReady.value) return;
   const sequence = contextSequence;
   const key = currentKey.value;
   const cur = checkedByKey[key] || [];
-  const toAdd = [];
+  let toAdd = ids.filter(id => !cur.includes(id));
+  const conflicts = toAdd.filter(id => previousStepFor(id, key));
   selectionPending.value = true;
   try {
-    for (const id of ids) {
-      if (cur.includes(id)) continue;
-      const fromKey = previousStepFor(id, key);
-      if (fromKey) {
-        const name = catalogMap.value[id]?.name || id;
-        const ok = await confirmOverwrite([name], fromKey, key);
-        if (!isCurrentContext(sequence)) return;
-        if (!ok) continue;
+    if (conflicts.length) {
+      if (batch) {
+        const names = conflicts.slice(0, 5).map(id => catalogMap.value[id]?.name || id).join('、');
+        const { value } = await dialog.choose({
+          title: '批量调整勾选',
+          message: '有 ' + conflicts.length + ' 位密探已在其他星阶勾选（' + names + (conflicts.length > 5 ? '等' : '') + '）。关闭弹窗将取消本次全选。',
+          choices: [
+            { value: 'skip', label: '跳过全部已选', description: '保留原星阶勾选，仅选中剩余未分配密探。' },
+            { value: 'overwrite', label: '覆盖全部', description: '将这些密探统一移到' + stepLabel(key) + '，同时选中其余密探。', tone: 'danger' },
+          ],
+        });
+        if (!isCurrentContext(sequence) || !value) return;
+        if (value === 'skip') toAdd = toAdd.filter(id => !conflicts.includes(id));
+      } else {
+        const id = conflicts[0];
+        const ok = await confirmOverwrite([catalogMap.value[id]?.name || id], previousStepFor(id, key), key);
+        if (!isCurrentContext(sequence) || !ok) return;
       }
-      toAdd.push(id);
     }
     if (!isCurrentContext(sequence) || !toAdd.length) return;
     removeFromOtherSteps(toAdd, key);
@@ -896,14 +905,14 @@ async function selectRarityPage(rarity) {
     .map(function (op) {
       return op.id;
     });
-  await selectPageIds(ids);
+  await selectPageIds(ids, true);
 }
 
 async function selectAllPage() {
   const ids = pageOperators.value.map(function (op) {
     return op.id;
   });
-  await selectPageIds(ids);
+  await selectPageIds(ids, true);
 }
 
 async function clearPage() {

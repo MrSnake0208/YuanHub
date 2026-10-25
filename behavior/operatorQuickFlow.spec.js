@@ -32,7 +32,7 @@ vi.mock('../src/store/activeAccount.js', async () => {
   return { activeAccount: reactive({ id: 'acc', games: { acc: '如鸢', other: '如鸢' },
     gameFor(id) { return this.games[id] || '如鸢' }, set(id) { this.id = id }, syncAccounts: vi.fn() }) }
 })
-vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn(), choose: vi.fn() } }))
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -47,6 +47,7 @@ beforeEach(() => {
   getOperatorCurrent.mockResolvedValue([])
   importOperator.mockResolvedValue({ accepted: 1 })
   dialog.confirm.mockResolvedValue(true)
+  dialog.choose.mockResolvedValue({ value: 'skip', checked: false })
 })
 
 const wrappers = new Set()
@@ -517,6 +518,84 @@ it('其他账号仍有草稿时离开也需确认，保存后不残留旧脏标�
   dialog.confirm.mockClear()
   expect(await guards.leave()).toBe(true)
   expect(dialog.confirm).not.toHaveBeenCalled()
+})
+
+it.each(['蓝卡全选', '紫卡全选', '全选本页'].flatMap(button =>
+  ['skip', 'overwrite', null].map(value => ({ button, value })),
+))('$button 遇到多星阶冲突只询问一次，处理 $value 后保留正确选择', async ({ button, value }) => {
+  route.query = { mode: 'supplement' }
+  getOperatorCatalog.mockResolvedValue({ operators: ['旧一', '旧二', '本阶', '剩余'].map(id => ({
+    id, name: id, rarity: button === '紫卡全选' ? 4 : 3, games: ['如鸢'],
+  })) })
+  const wrapper = render()
+  await flushPromises()
+  const check = name => wrapper.findAll('.op-card').find(card => card.get('.op-name').text() === name).get('.op-check')
+  const selected = () => wrapper.findAll('.op-card.on .op-name').map(name => name.text()).sort()
+  await check('旧一').setValue(true)
+  await wrapper.findAll('.step')[1].trigger('click')
+  await check('旧二').setValue(true)
+  await wrapper.findAll('.step')[5].trigger('click')
+  await check('本阶').setValue(true)
+  dialog.choose.mockResolvedValueOnce({ value, checked: false })
+  await wrapper.findAll('.mini').find(item => item.text() === button).trigger('click')
+  await flushPromises()
+  expect(dialog.choose).toHaveBeenCalledTimes(1)
+  expect(dialog.choose.mock.calls[0][0].message).toContain('2 位')
+  expect(dialog.choose.mock.calls[0][0].choices.map(choice => choice.label)).toEqual(['跳过全部已选', '覆盖全部'])
+  expect(dialog.confirm).not.toHaveBeenCalled()
+  const expected = value === 'overwrite' ? ['旧一', '旧二', '本阶', '剩余']
+    : value === 'skip' ? ['本阶', '剩余'] : ['本阶']
+  expect(selected()).toEqual(expected.sort())
+  await wrapper.findAll('.step')[0].trigger('click')
+  expect(selected()).toEqual(value === 'overwrite' ? [] : ['旧一'])
+  await wrapper.findAll('.step')[1].trigger('click')
+  expect(selected()).toEqual(value === 'overwrite' ? [] : ['旧二'])
+  expect(importOperator).not.toHaveBeenCalled()
+})
+
+it.each([false, true])('单个密探跨阶勾选仍单独确认：%s', async overwrite => {
+  route.query = { mode: 'supplement' }
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('.op-check').setValue(true)
+  await wrapper.findAll('.step')[4].trigger('click')
+  dialog.confirm.mockResolvedValueOnce(overwrite)
+  await wrapper.get('.op-check').setValue(true)
+  await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledTimes(1)
+  expect(dialog.choose).not.toHaveBeenCalled()
+  expect(wrapper.get('.op-check').element.checked).toBe(overwrite)
+  await wrapper.findAll('.step')[0].trigger('click')
+  expect(wrapper.get('.op-check').element.checked).toBe(!overwrite)
+  expect(importOperator).not.toHaveBeenCalled()
+})
+
+it.each(['skip', 'overwrite'])('批量选择的 %s 决定迟到不修改新账号或原账号草稿', async value => {
+  route.query = { mode: 'supplement' }
+  getOperatorCatalog.mockResolvedValue({ operators: ['已选', '剩余'].map(id => ({
+    id, name: id, rarity: 3, games: ['如鸢'],
+  })) })
+  const wrapper = render()
+  await flushPromises()
+  const check = name => wrapper.findAll('.op-card').find(card => card.get('.op-name').text() === name).get('.op-check')
+  await check('已选').setValue(true)
+  await wrapper.findAll('.step')[4].trigger('click')
+  const confirmation = deferred()
+  dialog.choose.mockReturnValueOnce(confirmation.promise)
+  await wrapper.findAll('.mini').find(button => button.text() === '全选本页').trigger('click')
+  expect(dialog.choose).toHaveBeenCalledTimes(1)
+  activeAccount.set('other')
+  await flushPromises()
+  confirmation.resolve({ value, checked: false })
+  await flushPromises()
+  expect(wrapper.findAll('.op-card.on')).toHaveLength(0)
+  activeAccount.set('acc')
+  await flushPromises()
+  expect(wrapper.findAll('.op-card.on')).toHaveLength(0)
+  await wrapper.findAll('.step')[0].trigger('click')
+  expect(check('已选').element.checked).toBe(true)
+  expect(check('剩余').element.checked).toBe(false)
+  expect(importOperator).not.toHaveBeenCalled()
 })
 
 it('跨星阶选择确认迟到不修改新账号的勾选', async () => {
