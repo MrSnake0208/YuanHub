@@ -3,31 +3,35 @@
 .admin-pins-label { display: block; flex-shrink: 0; padding: 12px 12px 4px; font-size: 12px; }
 .nav .calendar-nav-link { align-items: center; }
 .nav > a { flex-shrink: 0; min-height: 44px; }
-.management-nav-link { margin-top: 12px; }
+.nav svg { flex: none; }
+.nav-group-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 4px 5px;
+  font: 600 11px/1.5 var(--font-b);
+}
+.nav-group-label::after { flex: 1; height: 1px; }
+.sidebar-more { flex: none; margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 8px; }
 .island-foot { position: relative; }
 .sidebar-more-trigger {
   display: flex;
   min-height: 44px;
   align-items: center;
-  gap: 10px;
-  padding: 0 8px;
-  font-size: 13px;
-  font-weight: 700;
+  gap: 12px;
+  padding: 11px 12px;
+  font: 600 14px/1.3 var(--font-b);
   list-style: none;
 }
 summary::-webkit-details-marker { display: none; }
 .more-chevron { margin-left: auto; flex: none; }
 details[open] > summary .more-chevron { transform: rotate(180deg); }
 .sidebar-more-panel {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: -12px;
-  right: -12px;
   display: grid;
-  max-height: min(420px, calc(100dvh - 180px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 6px;
+  gap: 3px;
+  margin: 4px 0 4px 12px;
+  padding-left: 5px;
 }
 .sidebar-more-panel > a,
 .sidebar-more-panel > button {
@@ -108,7 +112,6 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   .island { overflow-y: auto; overscroll-behavior: contain; }
   .brand, .nav { flex: none; }
   .nav { overflow: visible; }
-  .sidebar-more-panel { position: static; max-height: none; margin-block: 8px; }
 }
 .foot-version {
   display: block;

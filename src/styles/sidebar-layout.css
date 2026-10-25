@@ -10,11 +10,9 @@
 a.brand{color:inherit;text-decoration:none;cursor:pointer}
 .nav a{border-radius:12px;text-decoration:none;color:var(--ink-60);transition:color .35s var(--ease),background-color .35s var(--ease);
 }
-.nav a .no{color:var(--ink-35);transition:color .35s}
 .nav a::before{content:'';border-radius:50%;background:var(--yellow-deep);transition:transform .4s var(--ease)}
 .nav a:hover{color:var(--ink);background:var(--theme-wash-strong, rgba(232,193,91,.22))}
-.nav a.active,.nav a.router-link-active{color:var(--ink);background:var(--yellow)}
-.nav a.active .no,.nav a.router-link-active .no{color:var(--ink)}
+.nav a.active{color:var(--ink);background:var(--yellow)}
 .nav-lb{color:var(--ink-35)}
 .nav a.ext .dot{border-radius:50%;background:var(--cc,var(--line))}
 .nav a.ext .who{color:var(--ink-35)}

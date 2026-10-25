@@ -250,21 +250,28 @@ it('手机登出先确认，取消不清会话，确认后显示登录结果入�
 })
 
 
-it('管理员活动日历双端下移至账房之后，密探与数据入口优先且编号保留', async () => {
+it('双端按确认方案分组排序，常用入口直达并使用相同图标', async () => {
+  isFeatureEnabled.mockReturnValue(true)
+  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'navigation-groups' }, adminAccessLoaded: true, adminAccess: { superAdmin: true, permissions: ['archive:access'] } })
   const wrapper = render()
-  auth.accessToken = 'test-only'; auth.userInfo = { id: 'admin-a' }; auth.isAdmin = true
-  await flushPromises()
-  const desktopLinks = wrapper.findAll('.island .nav a')
-  const desktopCartIndex = desktopLinks.findIndex(link => link.text().endsWith('广陵账房'))
-  expect(desktopCartIndex).toBeGreaterThan(1)
-  expect(desktopLinks[desktopCartIndex + 1].text()).toBe('活动日历')
-  expect(desktopLinks[1].text()).toBe('01密探名册')
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const links = wrapper.findAll('#mobile-main-nav .mobile-drawer-section')[0].findAll('a')
-  const mobileCartIndex = links.findIndex(link => link.text() === '广陵账房')
-  expect(mobileCartIndex).toBeGreaterThan(1)
-  expect(links[mobileCartIndex + 1].text()).toBe('活动日历')
-  expect(links[mobileCartIndex + 1].find('svg').exists()).toBe(true)
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/achievement', '/bonds', '/feedback', '/manage', '/developers', '/changelog', '/roadmap', '/beta', '/install']
+  const linksIn = selector => wrapper.get(selector).findAllComponents(RouterLinkStub)
+  expect(linksIn('.nav').map(link => link.props('to'))).toEqual(expected)
+  expect(linksIn('.mobile-drawer-nav').map(link => link.props('to'))).toEqual(expected)
+  for (const selector of ['.nav', '.mobile-drawer-nav']) {
+    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(['玩家工具', '资料与记录', '管理'])
+    for (const link of linksIn(selector).slice(0, 11)) {
+      expect(link.element.closest('details')).toBeNull()
+      expect(link.find('svg').exists()).toBe(true)
+    }
+  }
+  for (let i = 0; i < expected.length; i++) expect(linksIn('.nav')[i].get('svg').attributes('class')).toBe(linksIn('.mobile-drawer-nav')[i].get('svg').attributes('class'))
+  expect(wrapper.find('.no').exists()).toBe(false)
+  expect(wrapper.findAll('.sidebar-more')).toHaveLength(1)
+  expect(wrapper.get('.sidebar-more').element.closest('.nav')).not.toBeNull()
+  expect(wrapper.find('.island-foot details').exists()).toBe(false)
+  expect(wrapper.find('.admin-pins-label').exists()).toBe(false)
 })
 it('关闭活动flag时两处导航都没有入口', async () => {
   isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.ACTIVITY_CALENDAR)
@@ -298,7 +305,7 @@ it.each([
   expect(desktopLink.text()).toBe('管理工作台')
   const group = wrapper.get('.mobile-management')
   expect(group.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/manage'])
-  expect(wrapper.find('.nav-lb,.mobile-drawer-label').exists()).toBe(false)
+  expect(wrapper.findAll('.nav-group-label').filter(label => label.text() === '管理')).toHaveLength(2)
   expect(routes(wrapper).filter(path => path === '/manage')).toHaveLength(2)
   for (const path of ['/recruitment/admin', '/feedback/manage', '/admin/roles', '/admin/audit']) expect(routes(wrapper)).not.toContain(path)
 
@@ -349,19 +356,22 @@ it('授权异步成功后双端同步显示，刷新与失败时立即隐藏并�
   wrapper.unmount()
 })
 
-it('常用功能保持双端一致顺序和直达，不增加分类标题或账房第二行', async () => {
-  Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a' }, isAdmin: true })
-  recruitmentAccess.canAccess = true
+it('普通功能保持直达，更多默认收起且版本信息不重复跳转', async () => {
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/feedback']
-  const linksIn = selector => wrapper.get(selector).findAllComponents(RouterLinkStub).map(link => link.props('to'))
-  expect(linksIn('.island .nav')).toEqual(expected)
-  expect(linksIn('.mobile-drawer-nav > .mobile-drawer-section')).toEqual(expected)
-  expect(wrapper.find('.nav-lb,.mobile-drawer-label').exists()).toBe(false)
-  expect(wrapper.get('.mobile-drawer-nav > .mobile-drawer-section').text()).not.toContain('礼包预算')
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/feedback/plaza']
+  for (const selector of ['.nav', '.mobile-drawer-nav']) {
+    const links = wrapper.get(selector).findAllComponents(RouterLinkStub).filter(link => !link.element.closest('details'))
+    expect(links.map(link => link.props('to'))).toEqual(expected)
+    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(['玩家工具', '资料与记录'])
+  }
   expect(wrapper.get('.sidebar-more').attributes('open')).toBeUndefined()
   expect(wrapper.get('.mobile-more').attributes('open')).toBeUndefined()
+  expect(wrapper.findAll('.foot-version')).toHaveLength(2)
+  for (const version of wrapper.findAll('.foot-version')) {
+    expect(version.element.tagName).toBe('SPAN')
+    expect(version.text()).toMatch(/^YuanHub v/)
+  }
 })
 
 it.each([false, true])('软下线后游客/管理员双端均无大饼入口（管理员=%s）', async admin => {
@@ -384,7 +394,9 @@ it('访客可从双端更多进入发展规划，当前位置有明确标识', a
   await wrapper.get('.mobile-menu-button').trigger('click')
   for (const selector of ['.sidebar-more', '.mobile-more']) {
     const detail = wrapper.get(selector)
-    expect(detail.get('summary').classes()).toContain('active')
+    expect(detail.get('summary').classes()).toContain('in-current-section')
+    expect(detail.get('summary').classes()).not.toContain('active')
+    expect(detail.attributes('open')).toBeDefined()
     const link = detail.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/roadmap')
     expect(link.text()).toBe('发展规划')
     expect(link.attributes('aria-current')).toBe('page')
@@ -455,7 +467,7 @@ it.each([[false, '/feedback/plaza'], [true, '/feedback']])('反馈页只高亮�
   expect(wrapper.get('.mobile-more > summary').classes()).not.toContain('active')
 })
 
-it('桌面更多可用 Escape 关闭并恢复焦点，点击外部和路由变化也关闭', async () => {
+it('桌面流内更多可用 Escape 关闭并恢复焦点，点击外部保留展开，普通路由变化关闭', async () => {
   const wrapper = render()
   const detail = wrapper.get('.sidebar-more')
   const summary = detail.get('summary')
@@ -466,8 +478,7 @@ it('桌面更多可用 Escape 关闭并恢复焦点，点击外部和路由变�
   expect(document.activeElement).toBe(summary.element)
   await summary.trigger('click')
   document.body.click()
-  expect(detail.element.open).toBe(false)
-  await summary.trigger('click')
+  expect(detail.element.open).toBe(true)
   Object.assign(currentRoute, { path: '/cart', fullPath: '/cart' })
   await flushPromises()
   expect(detail.element.open).toBe(false)
@@ -549,4 +560,43 @@ it('固定的管理入口双端直达且单独高亮，撤权和切换账号后�
   auth.userInfo = { id: 'sidebar-pins-user' }; auth.adminAccess = { permissions: [] }; await flushPromises()
   expect(routes(wrapper)).not.toContain('/feedback/manage')
   wrapper.unmount()
+})
+
+
+it('更多随当前位置展开，允许收起；路由跳转恢复当前位置并关闭手机抽屉', async () => {
+  const wrapper = render()
+  const details = wrapper.get('.sidebar-more')
+  Object.assign(currentRoute, { path: '/developers/api/operator', fullPath: '/developers/api/operator' })
+  await flushPromises()
+  expect(details.element.open).toBe(true)
+  expect(details.get('a.active').text()).toBe('开发者中心')
+  expect(details.get('a.active').attributes('aria-current')).toBe('page')
+  await details.get('summary').trigger('click')
+  expect(details.element.open).toBe(false)
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(wrapper.get('.mobile-more').element.open).toBe(true)
+  Object.assign(currentRoute, { path: '/changelog', fullPath: '/changelog' })
+  await flushPromises()
+  expect(details.element.open).toBe(true)
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+  details.get('a.active').element.focus()
+  await details.trigger('keydown', { key: 'Escape' })
+  expect(details.element.open).toBe(false)
+  expect(document.activeElement).toBe(details.get('summary').element)
+  Object.assign(currentRoute, { path: '/achievement', fullPath: '/achievement' })
+  await flushPromises()
+  expect(details.element.open).toBe(false)
+})
+
+it('成就页双端只有成就入口高亮，首页无第二个选中态', async () => {
+  isFeatureEnabled.mockReturnValue(true)
+  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'archive-navigation' }, adminAccess: { permissions: ['archive:access'] } })
+  Object.assign(currentRoute, { path: '/achievement', fullPath: '/achievement' })
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  for (const selector of ['.nav', '.mobile-drawer-nav']) {
+    const selected = wrapper.get(selector).findAllComponents(RouterLinkStub).filter(link => link.classes().includes('active'))
+    expect(selected.map(link => link.props('to'))).toEqual(['/achievement'])
+    expect(selected[0].attributes('aria-current')).toBe('page')
+  }
 })
