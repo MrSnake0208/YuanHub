@@ -12,6 +12,14 @@ const featureConfig = readFileSync(new URL('../src/config/features.js', import.m
 const operatorPage = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../src/router/index.js', import.meta.url), 'utf8')
 
+test('roadmap relationships remain closed to ordinary users in every build', async () => {
+  for (const env of [{}, { DEV: true, PROD: false }, { DEV: false, PROD: true }]) {
+    const source = featureConfig.replaceAll('import.meta.env', JSON.stringify(env))
+    const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RELATIONSHIPS), false)
+  }
+})
+
 test('growth tracking is enabled in development and production', function () {
   const key = FEATURE_KEYS.OPERATOR_GROWTH_TRACKING
 

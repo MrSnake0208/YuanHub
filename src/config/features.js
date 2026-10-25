@@ -8,7 +8,8 @@ export const FEATURE_KEYS = Object.freeze({
   RECRUITMENT_ARCHIVE: 'recruitmentArchive',
   ACTIVITY_CALENDAR: 'activityCalendar',
   ACHIEVEMENT_ARCHIVE: 'achievementArchive',
-  BOND_ARCHIVE: 'bondArchive'
+  BOND_ARCHIVE: 'bondArchive',
+  OPERATOR_RELATIONSHIPS: 'operatorRelationships'
 })
 
 const isViteDev = import.meta.env?.DEV === true
@@ -26,7 +27,9 @@ export const FEATURE_FLAGS = Object.freeze({
   [FEATURE_KEYS.ACTIVITY_CALENDAR]: true,
   // 页面和后端接口另按 archive:access 授权，开启构建不代表公开访问。
   [FEATURE_KEYS.ACHIEVEMENT_ARCHIVE]: true,
-  [FEATURE_KEYS.BOND_ARCHIVE]: true
+  [FEATURE_KEYS.BOND_ARCHIVE]: true,
+  // 普通用户暂不开放；管理员凭服务端权限预览。
+  [FEATURE_KEYS.OPERATOR_RELATIONSHIPS]: false
 })
 
 export function isFeatureEnabled(key) {
