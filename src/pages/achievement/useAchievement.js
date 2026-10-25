@@ -89,7 +89,7 @@ export function useAchievement() {
       removalTimer = setTimeout(clearRemoval, 6000)
       state.archive = result
       state.undo = undoing ? null : { patches: before, revision: result.revision, token }
-      state.notice = undoing ? '已撤销，恢复到本次操作之前。' : '已保存到当前账号。'
+      state.notice = undoing ? '已撤销，恢复到本次操作之前。' : patches.length > 1 ? `已保存 ${patches.length} 项到当前账号。` : '已保存到当前账号。'
       return true
     } catch (error) {
       if (matches(token)) {

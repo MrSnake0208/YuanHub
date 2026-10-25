@@ -10,7 +10,7 @@
           <details class="tool-more"><summary>更多</summary><div class="tool-more-content"><button class="act-btn" type="button" :disabled="state.busy || state.loading" @click="manualRefresh">刷新档案</button><button class="act-btn" type="button" :disabled="!available || !state.archive || state.busy || state.loading" @click="openExchange">导入与导出</button></div></details>
         </template>
         <template #summary>
-          <div class="achievement-summary" aria-live="polite">
+          <div class="achievement-summary">
             <div v-for="item in summaryItems" :key="item.key" class="achievement-stat" :class="'stat-' + item.key"><component :is="item.icon" :size="23" aria-hidden="true" /><span>{{ item.label }}<b>{{ item.key === 'total' || !available || state.archive ? summary[item.key] : '—' }}</b></span></div>
           </div>
         </template>
@@ -24,25 +24,32 @@
             <p v-if="!identity">游客可以浏览目录。<router-link to="/login?redirect=/achievement">登录后记录</router-link></p>
             <p v-else-if="!state.accountsLoading && !state.accounts.length">请<router-link to="/user/profile#game-accounts">选择或创建已有游戏账号</router-link>；个人记录使用全站统一账号。</p>
           </div>
-          <p v-if="state.catalog" class="achievement-coverage">{{ game }} · {{ state.catalog.coverage }}</p>
-          <div class="achievement-feedback" aria-live="polite"><p v-if="dirtyEditors.length">有 {{ dirtyEditors.length }} 条未保存的行内修改。<button type="button" @click="revealDraft">返回编辑</button></p><p v-if="state.loading || state.accountsLoading">正在读取成就档案…</p><p v-if="state.error" class="achievement-error" role="alert">{{ state.error }} <router-link v-if="identity && !state.accounts.length" to="/beta?redirect=/achievement">查看体验资格</router-link></p><p v-if="state.catalogError" class="achievement-error" role="alert">{{ state.catalogError }}</p><button v-if="state.error || state.catalogError" type="button" :disabled="state.busy || state.loading" @click="retry">重新读取</button><p v-if="state.notice" class="achievement-save-notice" role="status">{{ state.notice }} <button v-if="state.undo" type="button" :disabled="!writable" @click="undo">撤销</button></p></div>
+          <!-- 资料范围和保存反馈共用网格位置，避免反馈出现时推移列表。 -->
+          <div class="achievement-save-feedback" :class="{ 'has-result': state.notice || state.undo }">
+            <p v-if="state.catalog" class="achievement-coverage" :class="{ 'is-concealed': state.notice || state.undo }" :aria-hidden="!!(state.notice || state.undo)">{{ game }} · {{ state.catalog.coverage }}</p>
+            <div class="achievement-save-slot">
+              <p class="achievement-save-notice" role="status" aria-atomic="true">{{ state.notice || (state.undo ? '可撤销上一次保存。' : '') }}</p>
+              <button v-if="state.undo" type="button" :disabled="!writable" @click="undo">撤销</button>
+            </div>
+          </div>
+          <div class="achievement-feedback" aria-live="polite"><p v-if="dirtyEditors.length">有 {{ dirtyEditors.length }} 条未保存的行内修改。<button type="button" @click="revealDraft">返回编辑</button></p><p v-if="state.loading || state.accountsLoading">正在读取成就档案…</p><p v-if="state.error" class="achievement-error" role="alert">{{ state.error }} <router-link v-if="identity && !state.accounts.length" to="/beta?redirect=/achievement">查看体验资格</router-link></p><p v-if="state.catalogError" class="achievement-error" role="alert">{{ state.catalogError }}</p><button v-if="state.error || state.catalogError" type="button" :disabled="state.busy || state.loading" @click="retry">重新读取</button></div>
           <div class="achievement-content">
             <div class="achievement-list-column">
               <template v-if="state.catalog">
                 <div class="achievement-toolbar">
                   <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就名称、条件或关联密探" placeholder="搜索成就、条件或关键词"></label>
-                  <label>状态<select v-model="filters.status" aria-label="成就状态筛选"><option value="">全部状态</option><option v-for="(label, value) in STATUS_LABELS" :key="value" :value="value">{{ label }}</option></select></label>
-                  <label>游戏分类<select v-model="filters.category" aria-label="游戏分类筛选"><option value="">全部分类</option><option v-for="category in state.catalog.categories" :key="category.category_id" :value="category.category_id">{{ category.name }}</option></select></label>
+                  <label class="achievement-select-filter">状态<select v-model="filters.status" aria-label="成就状态筛选"><option value="">全部状态</option><option v-for="(label, value) in STATUS_LABELS" :key="value" :value="value">{{ label }}</option></select></label>
+                  <label class="achievement-select-filter">游戏分类<select v-model="filters.category" aria-label="游戏分类筛选"><option value="">全部分类</option><option v-for="category in state.catalog.categories" :key="category.category_id" :value="category.category_id">{{ category.name }}</option></select></label>
                   <label class="achievement-check"><input v-model="filters.favorite" type="checkbox">仅看关注</label>
-                  <details class="achievement-more-filters"><summary><SlidersHorizontal :size="16" aria-hidden="true" />更多筛选<span v-if="filters.reward || filters.metric || filters.hidden">（已启用）</span></summary><div>
+                  <details class="achievement-more-filters" :class="{ 'is-active': hasAdvancedFilters }"><summary><SlidersHorizontal :size="16" aria-hidden="true" />更多筛选<span v-if="hasAdvancedFilters">（已启用）</span></summary><div>
                     <label class="achievement-reward-filter">奖励<input v-model="filters.reward" type="search" list="achievement-rewards" aria-label="成就奖励筛选" placeholder="全部奖励"><datalist id="achievement-rewards"><option v-for="reward in rewardOptions" :key="reward" :value="reward" /></datalist></label>
                     <label>进度来源<select v-model="filters.metric" aria-label="进度来源筛选"><option value="">全部来源</option><option value="yuan_bond_variants">羁绊已记录种数</option></select></label>
                     <label class="achievement-check"><input v-model="filters.hidden" type="checkbox">仅隐藏成就</label><small>隐藏属性尚未核验的条目不纳入。</small>
                   </div></details>
                 </div>
                 <div class="achievement-list-toolbar">
-                  <p class="achievement-results">当前筛选 {{ filtered.length }} 项</p>
-                  <button class="achievement-reset" type="button" @click="resetFilters">清除筛选</button>
+                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}</p>
+                  <button v-if="hasFilters" class="achievement-reset" type="button" @click="resetFilters">清除筛选</button>
                   <button class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []">{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
@@ -53,7 +60,7 @@
                     <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
                     <div class="achievement-column-headings" aria-hidden="true"><span>成就</span><span>奖励</span><div><span>完成状态</span><span>操作</span></div></div>
                     <ul class="achievement-list">
-                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :saved="state.savedIds.includes(entry.achievement_id)" :save-notice="state.notice" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :can-undo="!!state.undo" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" @undo="undo" />
+                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" />
                     </ul>
                   </section>
                 </div>
@@ -114,6 +121,8 @@ const pageGroups = computed(() => (state.catalog?.categories || []).map(category
 }).filter(group => group.entries.length))
 const exchangeOpen = ref(false), exchangePanel = ref(null), editors = reactive({})
 const pageCount = computed(() => Math.max(1, Math.ceil((filtered.value?.length || 0) / PAGE_SIZE)))
+const hasAdvancedFilters = computed(() => !!(filters.reward?.trim() || filters.metric || filters.hidden))
+const hasFilters = computed(() => !!(filters.query?.trim() || filters.status || filters.category || filters.favorite || hasAdvancedFilters.value))
 const filterDescription = computed(() => [filters.query?.trim() && '搜索“' + filters.query.trim() + '”', filters.category && state.catalog?.categories.find(item => item.category_id === filters.category)?.name, filters.reward?.trim() && '奖励“' + filters.reward.trim() + '”', filters.status && STATUS_LABELS[filters.status], filters.favorite && '仅看关注', filters.hidden && '仅隐藏成就'].filter(Boolean).join('、') || '全部条件')
 const dirtyEditors = computed(() => Object.entries(editors).filter(([, editor]) => editor.progress !== editor.baseProgress || editor.note !== editor.baseNote || editor.completed_on !== editor.baseDate).map(([id]) => id))
 const dirty = computed(() => !!dirtyEditors.value.length || !!exchangePanel.value?.hasDraft())

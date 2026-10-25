@@ -14,6 +14,10 @@
 .achievement-stat.stat-favorite > svg { fill: var(--theme-accent-text, var(--yellow)); }
 .achievement-stat b { color: var(--theme-strong-text, var(--tea)); font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .achievement-error { color: var(--theme-danger-text, var(--rouge)); }
+.achievement-save-feedback { background: var(--paper); }
+.achievement-save-feedback .is-concealed { visibility: hidden; }
+.achievement-save-slot { color: var(--theme-strong-text, var(--tea)); }
+.achievement-save-slot p { margin: 0; }
 .achievement-list { list-style: none; }
 .achievement-row { border-bottom: 1px solid var(--line); background: var(--surface); }
 .achievement-row:last-child { border-bottom: 0; border-radius: 0 0 7px 7px; }
@@ -57,6 +61,7 @@
 .achievement-supplement summary { cursor: pointer; }
 .achievement-supplement p { white-space: pre-wrap; }
 .achievement-row-feedback { color: var(--theme-strong-text, var(--tea)); }
+.achievement-row-feedback.achievement-error { color: var(--theme-danger-text, var(--rouge)); }
 .achievement-feedback:empty { display: none; }
 
 .achievement-status .achievement-status-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; background: var(--cream); }
@@ -71,7 +76,7 @@
 .achievement-list-toolbar .achievement-batch-toggle { margin-left: auto; }
 .achievement-more-filters summary { display: flex; align-items: center; gap: 6px; list-style: none; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 .achievement-more-filters summary::-webkit-details-marker { display: none; }
-.achievement-more-filters[open] summary { border-color: var(--tea); }
+.achievement-more-filters[open] summary, .achievement-more-filters.is-active summary { border-color: var(--tea); }
 .achievement-more-filters > div > label:not(.achievement-check) { display: grid; gap: 6px; }
 .achievement-more-filters > div input:not([type="checkbox"]), .achievement-more-filters > div select { width: 100%; }
 .achievement-main .achievement-note-toggle { display: inline-flex; justify-content: center; align-items: center; gap: 6px; white-space: nowrap; }
