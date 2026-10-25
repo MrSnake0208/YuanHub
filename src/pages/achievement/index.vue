@@ -11,7 +11,11 @@
         </template>
         <template #summary>
           <div class="achievement-summary">
-            <div v-for="item in summaryItems" :key="item.key" class="achievement-stat" :class="'stat-' + item.key"><component :is="item.icon" :size="23" aria-hidden="true" /><span>{{ item.label }}<b>{{ item.key === 'total' || !available || state.archive ? summary[item.key] : '—' }}</b></span></div>
+            <div v-for="item in summaryItems" :key="item.key" class="achievement-stat" :class="'stat-' + item.key">
+              <span class="achievement-stat-icon"><component :is="item.icon" :size="26" aria-hidden="true" /></span>
+              <span class="achievement-stat-copy">{{ item.label }}<b>{{ item.key === 'total' || !available || state.archive ? summary[item.key] : '—' }}</b></span>
+              <component :is="item.icon" class="achievement-stat-watermark" :size="64" aria-hidden="true" />
+            </div>
           </div>
         </template>
         <template #help><p>“未完成”表示尚未标记完成，包括历史待核对记录。关注、备注、数值进度不会自动标记完成。这里只统计当前游戏已收录的有效目录。</p><p>保存后在其它设备进入页面或刷新读取，不提供实时同步。导出包含当前账号全部个人记录，包括已移出目录的历史记录。</p></template>
@@ -28,6 +32,7 @@
           <div class="achievement-save-feedback" :class="{ 'has-result': state.notice || state.undo }">
             <p v-if="state.catalog" class="achievement-coverage" :class="{ 'is-concealed': state.notice || state.undo }" :aria-hidden="!!(state.notice || state.undo)">{{ game }} · {{ state.catalog.coverage }}</p>
             <div class="achievement-save-slot">
+              <CircleCheck v-if="state.notice || state.undo" class="achievement-save-icon" :size="17" aria-hidden="true" />
               <p class="achievement-save-notice" role="status" aria-atomic="true">{{ state.notice || (state.undo ? '可撤销上一次保存。' : '') }}</p>
               <button v-if="state.undo" type="button" :disabled="!writable" @click="undo">撤销</button>
             </div>
@@ -50,14 +55,14 @@
                 <div class="achievement-list-toolbar">
                   <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}</p>
                   <button v-if="hasFilters" class="achievement-reset" type="button" @click="resetFilters">清除筛选</button>
-                  <button class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []">{{ batchMode ? '退出批量' : '批量记录' }}</button>
+                  <button class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []"><NotebookPen :size="16" aria-hidden="true" />{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
                   <span>目标：{{ account?.name }} · 已选 {{ selected.length }} 条</span><button type="button" :disabled="!writable || !pageEntries.length" @click="selected = pageEntries.map(entry => entry.achievement_id)">选择本页（{{ pageEntries.length }} 条）</button><button type="button" :disabled="!selected.length || state.busy" @click="selected = []">取消选择</button><button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :disabled="!writable || !selected.length" @click="bulkSave(value)">标记{{ label }}</button>
                 </div>
                 <div v-if="pageEntries.length" class="achievement-groups" tabindex="-1" aria-label="成就列表">
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
-                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><span>已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
+                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><i class="achievement-chapter-rule" aria-hidden="true"></i><span>已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
                     <div class="achievement-column-headings" aria-hidden="true"><span>成就</span><span>奖励</span><div><span>完成状态</span><span>操作</span></div></div>
                     <ul class="achievement-list">
                       <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" />
@@ -84,7 +89,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
-import { Award, Check, Clock, Search, SlidersHorizontal, Star } from '@lucide/vue'
+import { Award, Check, CircleCheck, Clock, NotebookPen, Search, SlidersHorizontal, Star } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'

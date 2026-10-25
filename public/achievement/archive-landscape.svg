@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 340" fill="none">
+  <!-- Original decorative landscape for the achievement archive; no UI or text. -->
+  <defs>
+    <linearGradient id="mist" x2="0" y2="1">
+      <stop stop-color="white" stop-opacity=".38"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sun" x2="0" y2="1">
+      <stop stop-color="white" stop-opacity=".5"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <g id="blossom" fill="white">
+      <path d="M0 0C-13-3-13-13-6-12C0-13 3-7 0 0C3-13 13-13 12-6C14 0 7 3 0 0C13 3 13 13 6 12C0 14-3 7 0 0C-3 13-13 13-12 6C-14 0-7-3 0 0Z" opacity=".75"/>
+      <circle r="2"/>
+    </g>
+  </defs>
+  <circle cx="1115" cy="55" r="46" fill="url(#sun)"/>
+  <path d="M220 204 277 164 299 178 351 112 382 146 418 129 475 175 510 152 548 183 587 121 615 145 655 84 675 107 701 63 730 103 756 91 798 135 840 113 887 160 933 143 987 192 1056 146 1120 192 1173 177 1250 216V285H220Z" fill="url(#mist)"/>
+  <path d="m350 112 15 53 17-19 18 29m187-54 8 54 20-30 17 15 23-76 8 59 12-36m26-44 6 56 23-16 26 35m84-25 7 42 40 5" stroke="white" stroke-opacity=".16"/>
+  <path d="M0 180 36 146 68 161 101 131 139 184 163 173 224 213 256 207 324 250 380 235 464 272H0Zm1440-5-38-45-22 14-36-39-41 55-37-22-47 56-24-11-64 54-76-16-64 59h549Z" fill="url(#mist)"/>
+  <g stroke="white" stroke-linejoin="round" stroke-linecap="round">
+    <g opacity=".25">
+      <path d="M581 191h298M623 181h211M637 181v51m182-51v51M659 181v47m139-47v47M637 202h182M628 232h201l17 7H610Z"/>
+      <path d="M606 181c43-7 75-19 112-42 31 22 72 36 129 42ZM643 175c31-9 53-19 75-36m0 0c24 16 48 26 82 36M590 186c49 1 91-4 128-8 44 5 92 8 144 8M718 139v-10"/>
+      <path d="M850 158h98m-86 0v60m27-60v58m26-58v60m-66 1h82m-72-68c15-4 28-13 40-26 11 12 24 21 42 26Zm40-26v-10M864 175h66M869 183h9v21h-9Zm32 0h9v21h-9Z"/>
+      <path d="M591 249c104-8 238-7 357-14m-425-13c30-2 45-3 66-1m337-11 83 3"/>
+    </g>
+    <g opacity=".42" stroke-width="1.5">
+      <path d="M1440 5c-45 34-48 63-101 84-34 14-64 17-94 39m160-99c-19 6-38 3-58-10m23 50c4-22-5-32-11-48m-21 69c-22-6-42-24-54-41m11 58c-31 0-48-8-70-20m84-67c-2-10 2-20 8-30m-39 57c-19 2-28-5-39-12m84-12c17 2 29-2 38-10"/>
+      <path d="M1432 11c-24 39-41 65-75 85-17 10-26 24-35 37m40-39c5 13 4 22-1 32" opacity=".5"/>
+    </g>
+    <g opacity=".3">
+      <path d="M892 28q9-5 14 2 4-10 16-14m39 21q8 1 11 9 8-8 17-8m14 22q8-1 13 6 5-5 13-4"/>
+      <path d="M0 26c50 8 81-1 91-26M0 39C68 47 100 22 108 0M21 257c54-9 64-6 93 1m-67 9 94 7m1038-17c49-12 92-9 132-6" opacity=".4"/>
+    </g>
+  </g>
+  <g opacity=".6">
+    <use href="#blossom" x="1395" y="30"/><use href="#blossom" x="1357" y="21" transform="rotate(17 1357 21)"/>
+    <use href="#blossom" x="1343" y="83"/><use href="#blossom" x="1305" y="62" transform="rotate(25 1305 62)"/>
+    <use href="#blossom" x="1266" y="92"/><use href="#blossom" transform="translate(1370 62) scale(.75)"/>
+    <use href="#blossom" x="1328" y="123"/><use href="#blossom" x="1423" y="8"/>
+  </g>
+</svg>

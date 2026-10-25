@@ -20,7 +20,7 @@
           <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
         </div>
       </div>
-      <div class="achievement-reward"><Gift v-if="entry.rewards?.length || legacyReward" :size="17" aria-hidden="true" /><span>{{ rewardText(entry, legacyReward) }}</span></div>
+      <div class="achievement-reward"><span>{{ rewardText(entry, legacyReward) }}</span></div>
       <div class="achievement-row-actions">
         <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
           <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (saving ? ' 正在保存' : recordReady ? (completed ? ' 已完成' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><LoaderCircle v-if="saving" :size="18" aria-hidden="true" /><Check v-else-if="recordReady && completed" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ saving ? '保存中…' : recordReady ? (completed ? '已完成' : '未完成') : '未读取' }}</span></button>
@@ -47,7 +47,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Check, Circle, Gift, LoaderCircle, NotebookPen, Pencil, Star } from '@lucide/vue'
+import { Check, Circle, LoaderCircle, NotebookPen, Pencil, Star } from '@lucide/vue'
 import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText } from './rules.js'
 const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, error: String, pendingRemoval: Boolean, batchMode: Boolean, selected: Boolean })
 const completed = computed(() => completionStatus(props.record) === 'completed')
