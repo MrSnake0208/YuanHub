@@ -405,6 +405,7 @@ it('A卡片保存后切到B再回A，旧保存响应也不能覆盖重新加载�
 it('A的旧后端兼容错误迟到后，不在B重放保存请求', async () => {
   const wrapper = await render()
   await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
+  await wrapper.get('.editor-body input[type="number"]').setValue('2')
   const pending = deferred()
   api.patchOperatorCurrent.mockReturnValueOnce(pending.promise)
   await wrapper.get('.editor-save').trigger('click')

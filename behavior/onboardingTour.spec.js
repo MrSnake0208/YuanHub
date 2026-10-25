@@ -434,7 +434,7 @@ it('MaaYuan真实选择→API创建→真实复制→等待；收到服务端库
   expect(store.maaYuan.phase).toBe('token-created')
   expect(store.tutorialCompleted).toBe(false)
   expect(guide().textContent).toContain('连接码已就绪。点击「复制连接码」，继续设置同步。')
-  expect(connectionApi.generateOpenApiToken).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc', scopes: ['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'] }))
+  expect(connectionApi.generateOpenApiToken).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc', scopes: ['inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write'] }))
   expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
   await host.get('.nt-row button').trigger('click'); await flushPromises()
   expect(store.maaYuan.phase).toBe('waiting-sync')
