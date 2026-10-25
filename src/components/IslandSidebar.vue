@@ -59,72 +59,54 @@
         </header>
 
         <nav class="mobile-drawer-nav" aria-label="全部导航">
-          <section class="mobile-drawer-section">
-            <router-link to="/" :class="{ active: $route.path === '/' || $route.path === '/today' }">
+          <section class="mobile-drawer-section" aria-label="首页">
+            <router-link to="/" :class="{ active: $route.path === '/' || $route.path === '/today' }" :aria-current="($route.path === '/' || $route.path === '/today') ? 'page' : undefined">
               <House :size="20" aria-hidden="true" /><span>今日一览</span>
             </router-link>
+          </section>
+          <section class="mobile-drawer-section" aria-labelledby="mobile-player-tools">
+            <h2 id="mobile-player-tools" class="nav-group-label">玩家工具</h2>
             <router-link
               to="/operator"
               :class="{ active: !managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
+              :aria-current="(!managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share')) ? 'page' : undefined"
             >
               <BookUser :size="20" aria-hidden="true" /><span>密探名册</span>
             </router-link>
-            <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }">
+            <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }" :aria-current="($route.path === '/recruitment') ? 'page' : undefined">
               <ScrollText :size="20" aria-hidden="true" /><span>招募档案</span>
             </router-link>
-            <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }">
-              <BookCheck :size="20" aria-hidden="true" /><span>成就档案</span>
-            </router-link>
-            <router-link v-if="showBonds" to="/bonds" :class="{ active: $route.path === '/bonds' }">
-              <Link2 :size="20" aria-hidden="true" /><span>羁绊图鉴</span>
-            </router-link>
-            <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
+            <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }" :aria-current="($route.path === '/inventory') ? 'page' : undefined">
               <PackageOpen :size="20" aria-hidden="true" /><span>库存追踪</span>
             </router-link>
-            <router-link to="/star" :class="{ active: $route.path === '/star' }">
+            <router-link to="/star" :class="{ active: $route.path === '/star' }" :aria-current="($route.path === '/star') ? 'page' : undefined">
               <Gem :size="20" aria-hidden="true" /><span>星石背包</span>
             </router-link>
-            <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
+            <router-link to="/cart" :class="{ active: $route.path === '/cart' }" :aria-current="($route.path === '/cart') ? 'page' : undefined">
               <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
             </router-link>
-            <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
+          </section>
+          <section class="mobile-drawer-section" aria-labelledby="mobile-records">
+            <h2 id="mobile-records" class="nav-group-label">资料与记录</h2>
+            <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }" :aria-current="(!managementActive && $route.path.startsWith('/calendar')) ? 'page' : undefined">
               <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
             </router-link>
-            <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+            <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }" :aria-current="($route.path === '/achievement') ? 'page' : undefined">
+              <BookCheck :size="20" aria-hidden="true" /><span>成就档案</span>
+            </router-link>
+            <router-link v-if="showBonds" to="/bonds" :class="{ active: $route.path === '/bonds' }" :aria-current="($route.path === '/bonds') ? 'page' : undefined">
+              <Link2 :size="20" aria-hidden="true" /><span>羁绊图鉴</span>
+            </router-link>
+            <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }" :aria-current="(!managementActive && $route.path.startsWith('/feedback')) ? 'page' : undefined">
               <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
             </router-link>
-            <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+            <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }" :aria-current="(!managementActive && $route.path.startsWith('/feedback')) ? 'page' : undefined">
               <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
             </router-link>
           </section>
 
-          <details class="mobile-more">
-            <summary class="mobile-drawer-link" :class="{ active: moreActive }" aria-controls="mobile-service-nav" aria-label="更多">
-              <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
-              <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
-            </summary>
-            <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
-              <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }">
-                <BookOpen :size="20" aria-hidden="true" /><span>开发者中心</span>
-              </router-link>
-              <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
-                <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
-              </router-link>
-              <router-link to="/roadmap" :class="{ active: $route.path === '/roadmap' }" :aria-current="$route.path === '/roadmap' ? 'page' : undefined">
-                <Map :size="20" aria-hidden="true" /><span>发展规划</span>
-              </router-link>
-              <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
-                <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
-              </router-link>
-              <router-link to="/install" :class="{ active: $route.path === '/install' }">
-                <Download :size="20" aria-hidden="true" /><span>安装到桌面</span>
-              </router-link>
-              <button v-if="showBetaCommunityEntry" type="button" class="mobile-drawer-link" @click="openBetaCommunity">
-                <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
-              </button>
-            </div>
-          </details>
-          <section v-if="showManagement" class="mobile-drawer-section mobile-management">
+          <section v-if="showManagement" class="mobile-drawer-section mobile-management" aria-labelledby="mobile-management-label">
+            <h2 id="mobile-management-label" class="nav-group-label">管理</h2>
             <router-link to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined">
               <LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span>
             </router-link>
@@ -136,6 +118,32 @@
               </router-link>
             </template>
           </section>
+          <details class="mobile-more" :open="moreActive">
+            <summary class="mobile-drawer-link" :class="{ 'in-current-section': moreActive }" aria-controls="mobile-service-nav" aria-label="更多">
+              <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
+              <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
+            </summary>
+            <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
+              <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }" :aria-current="($route.path.startsWith('/developers')) ? 'page' : undefined">
+                <BookOpen :size="20" aria-hidden="true" /><span>开发者中心</span>
+              </router-link>
+              <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }" :aria-current="($route.path === '/changelog') ? 'page' : undefined">
+                <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
+              </router-link>
+              <router-link to="/roadmap" :class="{ active: $route.path === '/roadmap' }" :aria-current="$route.path === '/roadmap' ? 'page' : undefined">
+                <Map :size="20" aria-hidden="true" /><span>发展规划</span>
+              </router-link>
+              <router-link to="/beta" :class="{ active: $route.path === '/beta' }" :aria-current="($route.path === '/beta') ? 'page' : undefined">
+                <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
+              </router-link>
+              <router-link to="/install" :class="{ active: $route.path === '/install' }" :aria-current="($route.path === '/install') ? 'page' : undefined">
+                <Download :size="20" aria-hidden="true" /><span>安装到桌面</span>
+              </router-link>
+              <button v-if="showBetaCommunityEntry" type="button" class="mobile-drawer-link" @click="openBetaCommunity">
+                <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
+              </button>
+            </div>
+          </details>
         </nav>
 
         <ThemeSelector class="mobile-theme-selector" />
@@ -158,6 +166,7 @@
           >
             <LogOut :size="18" aria-hidden="true" /><span>退出</span>
           </button>
+          <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
         </footer>
       </aside>
     </div>
@@ -173,81 +182,94 @@
         <b>鸢鸢相抱 <Heart :size="12" aria-hidden="true" /></b>
       </div>
     </router-link>
-    <nav class="nav">
+    <nav class="nav" aria-label="全部导航">
       <router-link
         to="/"
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
-        ><span class="no">00</span>今日一览</router-link
+        :aria-current="($route.path === '/' || $route.path === '/today') ? 'page' : undefined"
       >
+        <House :size="20" aria-hidden="true" /><span>今日一览</span>
+      </router-link>
+      <h2 class="nav-group-label">玩家工具</h2>
       <router-link
         to="/operator"
         :class="{ active: !managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
-        ><span class="no">01</span>密探名册</router-link
+        :aria-current="(!managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share')) ? 'page' : undefined"
       >
+        <BookUser :size="20" aria-hidden="true" /><span>密探名册</span>
+      </router-link>
       <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }"
-        ><span class="no">02</span>招募档案</router-link>
+        :aria-current="($route.path === '/recruitment') ? 'page' : undefined">
+        <ScrollText :size="20" aria-hidden="true" /><span>招募档案</span>
+      </router-link>
       <router-link
         to="/inventory"
         :class="{ active: $route.path === '/inventory' }"
-        ><span class="no">{{ showRecruitment ? '03' : '02' }}</span>库存追踪</router-link
+        :aria-current="($route.path === '/inventory') ? 'page' : undefined"
       >
+        <PackageOpen :size="20" aria-hidden="true" /><span>库存追踪</span>
+      </router-link>
       <router-link to="/star" :class="{ active: $route.path === '/star' }"
-        ><span class="no">{{ showRecruitment ? '04' : '03' }}</span>星石背包</router-link
-      >
+        :aria-current="($route.path === '/star') ? 'page' : undefined">
+        <Gem :size="20" aria-hidden="true" /><span>星石背包</span>
+      </router-link>
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
-        ><span class="no">{{ showRecruitment ? '05' : '04' }}</span>广陵账房</router-link
-      >
-      <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
-        <CalendarDays :size="18" aria-hidden="true" />活动日历
+        :aria-current="($route.path === '/cart') ? 'page' : undefined">
+        <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
       </router-link>
-      <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }">
-        <BookCheck :size="18" aria-hidden="true" />成就档案
+      <h2 class="nav-group-label">资料与记录</h2>
+      <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }" :aria-current="(!managementActive && $route.path.startsWith('/calendar')) ? 'page' : undefined">
+        <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
       </router-link>
-      <router-link v-if="showBonds" to="/bonds" :class="{ active: $route.path === '/bonds' }">
-        <Link2 :size="18" aria-hidden="true" />羁绊图鉴
+      <router-link v-if="showAchievement" to="/achievement" :class="{ active: $route.path === '/achievement' }" :aria-current="($route.path === '/achievement') ? 'page' : undefined">
+        <BookCheck :size="20" aria-hidden="true" /><span>成就档案</span>
       </router-link>
-      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-        <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+      <router-link v-if="showBonds" to="/bonds" :class="{ active: $route.path === '/bonds' }" :aria-current="($route.path === '/bonds') ? 'page' : undefined">
+        <Link2 :size="20" aria-hidden="true" /><span>羁绊图鉴</span>
       </router-link>
-      <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
-        <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }" :aria-current="(!managementActive && $route.path.startsWith('/feedback')) ? 'page' : undefined">
+        <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
       </router-link>
-      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined">管理工作台</router-link>
+      <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }" :aria-current="(!managementActive && $route.path.startsWith('/feedback')) ? 'page' : undefined">
+        <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
+      </router-link>
+      <h2 v-if="showManagement" class="nav-group-label">管理</h2>
+      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined"><LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span></router-link>
       <template v-if="showManagement && pinnedTools.length">
         <span class="admin-pins-label">常用管理</span>
         <router-link v-for="tool in pinnedTools" :key="tool.key" :to="tool.to"
           :class="{ active: pinnedActive(tool) }" :aria-current="pinnedActive(tool) ? 'page' : undefined">
-          <component :is="tool.icon" :size="18" aria-hidden="true" /><span>{{ tool.label }}</span>
+          <component :is="tool.icon" :size="20" aria-hidden="true" /><span>{{ tool.label }}</span>
         </router-link>
       </template>
-    </nav>
-    <div class="island-foot">
-      <details ref="desktopMore" class="sidebar-more" @keydown.esc.stop.prevent="closeDesktopMore(true)" @focusout="onDesktopMoreFocusOut">
-        <summary class="sidebar-more-trigger" :class="{ active: moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" aria-label="更多">
-          <MoreHorizontal :size="18" aria-hidden="true" /><span>更多</span>
+      <details ref="desktopMore" class="sidebar-more" :open="moreActive" @keydown.esc.stop.prevent="closeDesktopMore(true)">
+        <summary class="sidebar-more-trigger" :class="{ 'in-current-section': moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" aria-label="更多">
+          <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
           <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
         </summary>
-        <nav id="desktop-service-nav" class="sidebar-more-panel" aria-label="YuanHub 服务">
-          <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }">
-            <BookOpen :size="18" aria-hidden="true" /><span>开发者中心</span>
+        <div id="desktop-service-nav" class="sidebar-more-panel" role="group" aria-label="YuanHub 服务">
+          <router-link to="/developers" :class="{ active: $route.path.startsWith('/developers') }" :aria-current="($route.path.startsWith('/developers')) ? 'page' : undefined">
+            <BookOpen :size="20" aria-hidden="true" /><span>开发者中心</span>
           </router-link>
-          <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
-            <ScrollText :size="18" aria-hidden="true" /><span>更新日志</span>
+          <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }" :aria-current="($route.path === '/changelog') ? 'page' : undefined">
+            <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
           </router-link>
           <router-link to="/roadmap" :class="{ active: $route.path === '/roadmap' }" :aria-current="$route.path === '/roadmap' ? 'page' : undefined">
-            <Map :size="18" aria-hidden="true" /><span>发展规划</span>
+            <Map :size="20" aria-hidden="true" /><span>发展规划</span>
           </router-link>
-          <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
-            <Ticket :size="18" aria-hidden="true" /><span>参与内测</span>
+          <router-link to="/beta" :class="{ active: $route.path === '/beta' }" :aria-current="($route.path === '/beta') ? 'page' : undefined">
+            <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
           </router-link>
-          <router-link to="/install" :class="{ active: $route.path === '/install' }">
-            <Download :size="18" aria-hidden="true" /><span>安装到桌面</span>
+          <router-link to="/install" :class="{ active: $route.path === '/install' }" :aria-current="($route.path === '/install') ? 'page' : undefined">
+            <Download :size="20" aria-hidden="true" /><span>安装到桌面</span>
           </router-link>
           <button v-if="showBetaCommunityEntry" type="button" @click="openBetaCommunity">
-            <UsersRound :size="18" aria-hidden="true" /><span>内测交流群</span>
+            <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
           </button>
-        </nav>
+        </div>
       </details>
+    </nav>
+    <div class="island-foot">
       <ThemeSelector />
       <div class="sidebar-utilities">
         <router-link class="sidebar-account" :to="isLoggedIn ? '/user/profile' : '/login'">
@@ -260,13 +282,7 @@
         </router-link>
         <button v-if="isLoggedIn" class="foot-logout" type="button" @click="onLogout" aria-label="退出登录"><LogOut :size="18" aria-hidden="true" /></button>
       </div>
-      <router-link
-        to="/changelog"
-        class="foot-version"
-        :title="buildInfoLine"
-        :aria-label="'YuanHub ' + productVersionLabel + '，查看更新日志'"
-        >YuanHub {{ productVersionLabel }}</router-link
-      >
+      <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
     </div>
   </aside>
 </template>
@@ -308,7 +324,7 @@ import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.j
 import { beta } from "@/store/beta.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
 import { modalFocusState, useModalFocus } from "@/composables/useModalFocus.js";
 import { useAdminNavPins } from "@/composables/useAdminNavPins.js";
@@ -340,10 +356,9 @@ const showBetaCommunityEntry = computed(
 const userName = computed(() =>
   auth.userInfo && auth.userInfo.user_name ? auth.userInfo.user_name : "用户",
 );
-// 次级区域的低干扰版本入口：完整诊断信息只放在 title 里，不占用主导航层级。
-const buildInfoLine = computed(() => formatBuildInfo() + " · 查看更新日志");
+// 版本仅作信息展示，完整诊断信息保留在 title 中。
+const buildInfoLine = computed(() => formatBuildInfo());
 const unreadCount = computed(() => notificationUnreadState.count);
-const router = useRouter();
 const route = useRoute();
 const managementActive = computed(() => isManagementRoute(route.path));
 const pinnedActive = tool => route.path.replace(/\/+$/, '') === tool.to;
@@ -361,7 +376,9 @@ const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "Yuan
 watch(() => route.fullPath, () => {
   cancelSwipe();
   menuOpen.value = false;
-  closeDesktopMore();
+  void nextTick(() => {
+    if (desktopMore.value) desktopMore.value.open = moreActive.value;
+  });
 });
 watch(menuOpen, (open) => {
   if (typeof document === "undefined") return;
@@ -431,14 +448,6 @@ function closeDesktopMore(restoreFocus = false) {
   if (restoreFocus) details.querySelector("summary")?.focus();
 }
 
-function onOutsideClick(event) {
-  if (!desktopMore.value?.contains(event.target)) closeDesktopMore();
-}
-
-function onDesktopMoreFocusOut(event) {
-  if (event.relatedTarget && !desktopMore.value?.contains(event.relatedTarget)) closeDesktopMore();
-}
-
 function openBetaCommunity() {
   closeDesktopMore();
   menuOpen.value = false;
@@ -446,7 +455,6 @@ function openBetaCommunity() {
 }
 
 onMounted(function () {
-  document.addEventListener("click", onOutsideClick);
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchmove", onTouchMove, { passive: true });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -454,7 +462,6 @@ onMounted(function () {
 });
 
 onBeforeUnmount(function () {
-  document.removeEventListener("click", onOutsideClick);
   document.removeEventListener("touchstart", onTouchStart);
   document.removeEventListener("touchmove", onTouchMove);
   document.removeEventListener("touchend", onTouchEnd);
@@ -465,19 +472,18 @@ onBeforeUnmount(function () {
 
 <style scoped>
 .admin-pins-label { color: var(--ink-60); }
+.nav-group-label { color: var(--ink-60); }
+.nav-group-label::after { content: ''; background: var(--line); }
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .sidebar-more-trigger {
   border-radius: 10px;
   color: var(--ink-60);
   cursor: pointer;
 }
-.sidebar-more-trigger:hover,
-.sidebar-more-trigger.active { background: var(--yellow); color: var(--ink); }
+.sidebar-more-trigger:hover { background: var(--theme-wash-strong, rgba(232,193,91,.22)); color: var(--ink); }
+.sidebar-more-trigger.in-current-section { color: var(--ink); }
 .sidebar-more-panel {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 12px 32px -12px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.3);
+  border-left: 1px solid var(--line);
 }
 .sidebar-more-panel > a,
 .sidebar-more-panel > button {
@@ -489,8 +495,8 @@ onBeforeUnmount(function () {
   cursor: pointer;
 }
 .sidebar-more-panel > a:hover,
-.sidebar-more-panel > a.active,
-.sidebar-more-panel > button:hover { background: var(--yellow); color: var(--ink); }
+.sidebar-more-panel > button:hover { background: var(--theme-wash-strong, rgba(232,193,91,.22)); color: var(--ink); }
+.sidebar-more-panel > a.active { background: var(--yellow); color: var(--ink); }
 .more-feedback-badge {
   border-radius: 999px;
   background: var(--rouge);
@@ -506,7 +512,7 @@ onBeforeUnmount(function () {
 }
 .sidebar-notifications.active,
 .sidebar-notifications:hover { background: var(--yellow); }
-:where(.sidebar-more-trigger, .sidebar-more-panel > a, .sidebar-more-panel > button, .sidebar-account, .sidebar-notifications, .foot-logout, .mobile-more > summary):focus-visible {
+:where(.nav a, .sidebar-more-trigger, .sidebar-more-panel > a, .sidebar-more-panel > button, .sidebar-account, .sidebar-notifications, .foot-logout, .mobile-drawer-section > a, .mobile-drawer-link, .mobile-account-link, .mobile-drawer-close, .mobile-drawer-logout):focus-visible {
   outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 2px;
 }
@@ -527,8 +533,6 @@ onBeforeUnmount(function () {
   color: #fff;
   border-radius: 999px;
 }
-
-/* 极短桌面窗口连同更新条会挤空主导航，让整座侧栏滚动并把更多菜单放回流内。 */
 
 @media (max-width: 1080px) {
   .mobile-menu-button,
@@ -587,9 +591,7 @@ onBeforeUnmount(function () {
     color: var(--ink-60);
     cursor: pointer;
   }
-  .mobile-drawer-section + .mobile-drawer-section,
-  .mobile-more,
-  .mobile-management {
+  .mobile-more {
     border-top: 1px solid var(--line);
   }
   .mobile-drawer-section > a,
@@ -606,13 +608,15 @@ onBeforeUnmount(function () {
     color: var(--theme-strong-text, var(--tea));
   }
   .mobile-drawer-section > a:hover,
-  .mobile-drawer-section > a.active,
-  .mobile-drawer-section > a.router-link-active,
-  .mobile-drawer-link.active,
   .mobile-drawer-link:hover {
+    background: var(--theme-wash-strong, rgba(232,193,91,.22));
+    color: var(--ink);
+  }
+  .mobile-drawer-section > a.active {
     background: var(--yellow);
     color: var(--ink);
   }
+  .mobile-drawer-link.in-current-section { color: var(--ink); }
   .mobile-drawer-foot {
     border-top: 1px solid var(--line);
     background: var(--cream);
@@ -654,19 +658,9 @@ onBeforeUnmount(function () {
     transition: none;
   }
 }
-/* 次级区域版本入口：低干扰、单行、可聚焦；移动端侧栏本身不渲染。 */
+/* 版本信息不再重复跳转至更新日志。 */
 .foot-version {
   color: var(--ink-60);
-  border-bottom: 0;
-  transition: color .25s var(--ease);
-}
-.foot-version:hover {
-  color: var(--theme-accent-text, var(--accent));
-}
-.foot-version:focus-visible {
-  outline: 2px solid var(--theme-focus, var(--brand-blue));
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 </style>
 <style scoped src="./islandSidebarDesktop.css"></style>
