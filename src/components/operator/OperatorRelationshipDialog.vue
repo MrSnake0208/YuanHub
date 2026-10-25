@@ -80,5 +80,6 @@ document.body.style.overflow = 'hidden'
 onScopeDispose(() => { document.body.style.overflow = previousOverflow })
 watch(() => props.error, async message => { if (message) { await nextTick(); errorEl.value?.focus() } })
 </script>
+<style scoped src="./operatorRelationshipDialogShared.css"></style>
 <style scoped src="./operatorRelationshipDialogMobile.css"></style>
 <style scoped src="./operatorRelationshipDialogDesktop.css"></style>

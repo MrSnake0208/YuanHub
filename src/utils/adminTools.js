@@ -123,7 +123,7 @@ const ADMIN_TOOLS = Object.freeze([
 
 export function isManagementRoute(path) {
   const normalizedPath = path?.replace(/\/+$/, '')
-  return normalizedPath === '/manage' || ADMIN_TOOLS.some(tool => tool.to === normalizedPath)
+  return normalizedPath === '/manage' || ADMIN_TOOLS.some(tool => tool.to === normalizedPath || normalizedPath?.startsWith(tool.to + '/'))
 }
 
 export function getVisibleAdminTools(access) {

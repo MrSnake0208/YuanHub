@@ -125,13 +125,14 @@ test('keeps notification private and provides a guest feedback entry in more', f
 })
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
-  const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || (route.meta?.requiredPermission && route.meta.requiredPermission !== ADMIN_PERMISSIONS.ARCHIVE_ACCESS) || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 14)
+  const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || (route.meta?.requiredPermission && ![ADMIN_PERMISSIONS.ARCHIVE_ACCESS, ADMIN_PERMISSIONS.STAR_SCAN_REVIEW].includes(route.meta.requiredPermission)) || route.meta?.requiredAnyPermission).map(route => route.path)
+  assert.equal(managementPaths.length, 15)
+  assert.ok(managementPaths.includes('/achievement/admin/suggestions'))
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)
     assert.equal(isManagementRoute(path + '/'), true, path + '/')
   }
-  for (const path of ['/', '/today', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/operator', '/operator/quick', '/operator/share/box', '/recruitment', '/bonds', '/feedback', '/feedback/plaza', '/co-creation', '/changelog', undefined]) {
+  for (const path of ['/', '/today', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/operator', '/operator/quick', '/operator/share/box', '/recruitment', '/bonds', '/feedback', '/feedback/plaza', '/co-creation', '/changelog', '/star/scans', '/achievement/admin-other', undefined]) {
     assert.equal(isManagementRoute(path), false, path)
   }
 })

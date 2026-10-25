@@ -241,13 +241,13 @@ onBeforeUnmount(() => { session++ })
 .reserve-workspace p { line-height: 1.6; overflow-wrap: anywhere; }
 .reserve-workspace fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .reserve-workspace button, .reserve-workspace input { font: inherit; color: inherit; }
-.reserve-workspace button { cursor: pointer; padding: 7px 11px; border: 1px solid var(--theme-border, #d7c6a6); background: var(--surface); border-radius: 7px; white-space: normal; }
+.reserve-workspace button { cursor: pointer; padding: 7px 11px; border: 1px solid var(--theme-line, #d7c6a6); background: var(--surface); border-radius: 7px; white-space: normal; }
 .reserve-workspace button:disabled { cursor: default; opacity: .6; }
-.reserve-workspace input { min-width: 0; width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--theme-border, #d7c6a6); border-radius: 6px; background: var(--surface); }
+.reserve-workspace input { min-width: 0; width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--theme-line, #d7c6a6); border-radius: 6px; background: var(--surface); }
 .reserve-workspace :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .reserve-toolbar, .reserve-demand header, .reserve-save { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
 .reserve-toolbar input { flex: 1 1 180px; max-width: 420px; }
-.reserve-demand { margin: 16px 0; padding-top: 8px; border-top: 1px solid var(--theme-border, #d7c6a6); }
+.reserve-demand { margin: 16px 0; padding-top: 8px; border-top: 1px solid var(--theme-line, #d7c6a6); }
 .reserve-demand header { justify-content: space-between; }
 .reserve-demand h3, .reserve-conflict h3 { font-size: 1rem; margin: 0; }
 .reserve-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -256,12 +256,12 @@ onBeforeUnmount(() => { session++ })
 .reserve-field :deep(.planner-select-trigger) { width: 100%; }
 .reserve-error { color: var(--theme-danger-text, var(--rouge)); }
 .reserve-error a { color: inherit; }
-.reserve-conflict, .reserve-delete { padding: 12px; border: 1px solid var(--theme-border, #d7c6a6); margin: 12px 0; }
+.reserve-conflict, .reserve-delete { padding: 12px; border: 1px solid var(--theme-line, #d7c6a6); margin: 12px 0; }
 .reserve-remote { padding: 8px 0; }
 .reserve-table-scroll { max-width: 100%; overflow-x: auto; }
 .reserve-totals table { width: 100%; border-collapse: collapse; }
 .reserve-totals caption { text-align: left; padding: 8px 0; }
-.reserve-totals th, .reserve-totals td { text-align: left; padding: 8px; border-bottom: 1px solid var(--theme-border, #d7c6a6); }
+.reserve-totals th, .reserve-totals td { text-align: left; padding: 8px; border-bottom: 1px solid var(--theme-line, #d7c6a6); }
 .reserve-totals td { white-space: nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 900px) { .reserve-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .reserve-fields { grid-template-columns: minmax(0, 1fr); } .reserve-toolbar { align-items: stretch; } .reserve-toolbar input { max-width: none; } }

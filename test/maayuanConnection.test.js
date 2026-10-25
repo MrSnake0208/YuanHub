@@ -6,7 +6,7 @@ import { MAAYUAN_REQUIRED_SCOPES, mergeScopes } from '../src/utils/openApiToken.
 const profile = readFileSync(new URL('../src/pages/user/profile.vue', import.meta.url), 'utf8')
 
 test('MaaYuan 创建连接保留密探读取并包含星石采集权限', () => {
-  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'])
+  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write'])
   assert.equal(MAAYUAN_REQUIRED_SCOPES.some(function (scope) { return scope === 'inventory:read' || /:export$/.test(scope) }), false)
   assert.match(profile, /scopes:\s*MAAYUAN_REQUIRED_SCOPES\.slice\(\)/)
   const grantReview = profile.slice(profile.indexOf('<div class="grant-review">'), profile.indexOf('</div>', profile.indexOf('<div class="grant-review">') + 1))
