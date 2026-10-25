@@ -139,7 +139,7 @@ it('顶部添加密探可将非星标成员加入特别关注清单，保留隐�
   const favorites = new Set([a.id]), members = new Set([a.id])
   const favoritePlan = { id: 'favorites', name: '特别关注', source: 'favorites' }
   const wrapper = render({ plans: [favoritePlan], activePlan: favoritePlan, favoriteIds: favorites, memberIds: members })
-  const actions = wrapper.get('.plan-heading-actions')
+  const actions = wrapper.get('.plan-heading')
   expect(actions.text()).toContain('添加密探')
   expect(actions.text()).toContain('新建清单')
   expect(actions.text()).toContain('管理清单')

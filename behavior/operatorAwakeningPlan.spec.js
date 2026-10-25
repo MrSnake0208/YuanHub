@@ -65,6 +65,8 @@ it.each(['custom', 'favorites'])('%s连续目标在保存前不写云端，保�
   expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain('96%')
   expect(wrapper.get('.growth-card').classes()).not.toContain('complete')
   expect(wrapper.get('.status-metric-primary').text()).toContain('暂不估算')
+  expect(wrapper.findAll('.status-metric')[1].text()).toContain('部分规则未知')
+  expect(wrapper.findAll('.status-metric')[1].text()).not.toContain('%')
   wrapper.unmount()
   const reopened = await render()
   expect(reopened.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')

@@ -1,5 +1,6 @@
 <template>
   <section class="cultivation-progress" :aria-label="dateLabel + '培养推进'">
+    <div class="progress-heading"><h3>全部材料预计进展</h3><div class="material-legend"><span><i class="legend-before" aria-hidden="true"></i>当日开始时已有</span><span><i class="legend-today" aria-hidden="true"></i>当日新增</span></div></div>
     <div class="resource-list" aria-live="polite">
       <article v-for="item in visibleRows" :key="item.id" class="resource" :class="{ complete: item.required > 0 && item.remaining <= 0 }">
         <span class="resource-icon" aria-hidden="true"><img v-if="item.icon && !failedIcons.has(item.icon)" :src="item.icon" alt="" width="42" height="42" loading="lazy" draggable="false" @error="failedIcons.add(item.icon)" /><span v-else>{{ (item.name || item.id).slice(0, 1) }}</span></span>
@@ -33,7 +34,12 @@ function number(value) { return Number(value || 0).toLocaleString('zh-CN', { max
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .cultivation-progress { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
-.resource + .resource { border-top: 1px dashed var(--line); }
+.resource { border-top: 1px dashed var(--line); }
+.progress-heading h3 { margin: 0; font: 800 18px/1.4 var(--font-s); }
+.material-legend { color: var(--ink-60); }
+.material-legend i { display: inline-block; width: 16px; height: 7px; border-radius: 4px; }
+.legend-before { background: var(--theme-accent-bg, #c48b4d); }
+.legend-today { background: var(--theme-highlight, #e8bc6c); }
 .resource-icon { border-radius: 8px; color: var(--theme-strong-text, var(--tea)); }
 .resource-percent { color: var(--ink-60); }
 .resource-summary { color: var(--ink-60); }

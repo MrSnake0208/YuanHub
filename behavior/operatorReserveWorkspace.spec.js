@@ -334,3 +334,27 @@ it('管理员撤销储备权限后卸载储备但保留培养规划', async () =
   expect(api.put).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+
+it('储备独立工作区返回和重开保留草稿及组件，切换不保存，退出恢复入口焦点', async () => {
+  const original = HTMLElement.prototype.scrollIntoView
+  HTMLElement.prototype.scrollIntoView = vi.fn()
+  try {
+    const wrapper = mount(OperatorGrowthTracker, { props: { accountId: 'a', game: '如鸢', isLoggedIn: true }, attachTo: document.body })
+    await flushPromises()
+    const reserve = wrapper.getComponent(OperatorReserveWorkspace)
+    const instance = reserve.vm.$
+    expect(wrapper.get('#planner-reserve-workspace').isVisible()).toBe(false)
+    await wrapper.get('.planner-reserve-entry').trigger('click'); await flushPromises()
+    expect(wrapper.get('#planner-reserve-workspace').isVisible()).toBe(true)
+    await input(reserve, 'count').setValue('3')
+    await button(wrapper, '返回培养清单').trigger('click'); await flushPromises()
+    expect(wrapper.get('#planner-reserve-workspace').isVisible()).toBe(false)
+    expect(document.activeElement).toBe(wrapper.get('.planner-reserve-entry').element)
+    await wrapper.get('.planner-reserve-entry').trigger('click'); await flushPromises()
+    expect(wrapper.getComponent(OperatorReserveWorkspace).vm.$).toBe(instance)
+    expect(input(reserve, 'count').element.value).toBe('3')
+    expect(api.put).not.toHaveBeenCalled()
+    expect(api.get).toHaveBeenCalledTimes(1)
+  } finally { HTMLElement.prototype.scrollIntoView = original }
+})
