@@ -110,6 +110,9 @@
               <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
                 <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
               </router-link>
+              <router-link to="/roadmap" :class="{ active: $route.path === '/roadmap' }" :aria-current="$route.path === '/roadmap' ? 'page' : undefined">
+                <Map :size="20" aria-hidden="true" /><span>发展规划</span>
+              </router-link>
               <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
                 <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
               </router-link>
@@ -231,6 +234,9 @@
           <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
             <ScrollText :size="18" aria-hidden="true" /><span>更新日志</span>
           </router-link>
+          <router-link to="/roadmap" :class="{ active: $route.path === '/roadmap' }" :aria-current="$route.path === '/roadmap' ? 'page' : undefined">
+            <Map :size="18" aria-hidden="true" /><span>发展规划</span>
+          </router-link>
           <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
             <Ticket :size="18" aria-hidden="true" /><span>参与内测</span>
           </router-link>
@@ -281,6 +287,7 @@ import {
   LayoutDashboard,
   LogIn,
   LogOut,
+  Map,
   Menu,
   BookCheck,
   Link2,
@@ -342,7 +349,7 @@ const managementActive = computed(() => isManagementRoute(route.path));
 const pinnedActive = tool => route.path.replace(/\/+$/, '') === tool.to;
 const workbenchActive = computed(() => managementActive.value && !pinnedTools.value.some(pinnedActive));
 const moreActive = computed(() => !managementActive.value && (
-  ["/beta", "/changelog", "/install"].includes(route.path) || route.path.startsWith('/developers')
+  ["/beta", "/changelog", "/roadmap", "/install"].includes(route.path) || route.path.startsWith('/developers')
 ));
 const desktopMore = ref(null);
 const menuOpen = ref(false);

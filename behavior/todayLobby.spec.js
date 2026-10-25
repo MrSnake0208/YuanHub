@@ -15,6 +15,15 @@ beforeEach(() => {
 
 const status = '当前账号的三项数据已录入，今日事项在下方。'
 const render = props => mount(TodayLobby, { attachTo: document.body, props: { status, ...props } })
+
+it('复用页头可覆盖页面名称，首页默认名称保持不变', async () => {
+  const wrapper = render()
+  expect(wrapper.get('h1').text()).toBe('今日一览')
+  await wrapper.setProps({ title: '发展规划' })
+  expect(wrapper.get('h1').text()).toBe('发展规划')
+  expect(wrapper.get('.lobby-greeting').text()).toContain('殿下')
+})
+
 const picker = () => document.querySelector('[role="dialog"]')
 async function open(wrapper) {
   const trigger = wrapper.get('.lobby-duty button')

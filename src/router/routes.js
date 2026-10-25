@@ -475,6 +475,16 @@ export const routes = [
         meta: { title: '反馈中心 · 反馈广场 — 鸢鸢相抱 · YuanHub' }
     },
     {
+        path: '/roadmap',
+        text: '发展规划',
+        name: 'roadmap',
+        display: false,
+        module: 'user',
+        icon: 'map',
+        component: () => import('/src/pages/roadmap/index.vue'),
+        meta: { title: '发展规划 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
         path: '/co-creation/admin',
         text: '开发目标管理',
         name: 'development-goal-admin',
