@@ -373,7 +373,21 @@ it.each([false, true])('软下线后游客/管理员双端均无大饼入口（�
   for (const selector of ['.sidebar-more', '.mobile-more']) {
     const detail = wrapper.get(selector)
     await detail.get('summary').trigger('click')
-    expect(detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/developers', '/changelog', '/beta', '/install'])
+    expect(detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/developers', '/changelog', '/roadmap', '/beta', '/install'])
+  }
+  wrapper.unmount()
+})
+
+it('访客可从双端更多进入发展规划，当前位置有明确标识', async () => {
+  Object.assign(currentRoute, { path: '/roadmap', fullPath: '/roadmap', meta: { title: '发展规划 — YuanHub' } })
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  for (const selector of ['.sidebar-more', '.mobile-more']) {
+    const detail = wrapper.get(selector)
+    expect(detail.get('summary').classes()).toContain('active')
+    const link = detail.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/roadmap')
+    expect(link.text()).toBe('发展规划')
+    expect(link.attributes('aria-current')).toBe('page')
   }
   wrapper.unmount()
 })
@@ -404,7 +418,7 @@ it('反馈直达入口不显示管理员未读，更多不重复展示反馈，�
     await detail.get('summary').trigger('click')
     expect(detail.attributes('open')).toBeDefined()
     const paths = detail.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    expect(paths).toEqual(['/developers', '/changelog', '/beta', '/install'])
+    expect(paths).toEqual(['/developers', '/changelog', '/roadmap', '/beta', '/install'])
   }
   feedbackUnreadState.count = 0
   await flushPromises()

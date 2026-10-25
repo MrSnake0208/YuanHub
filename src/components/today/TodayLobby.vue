@@ -3,7 +3,7 @@
     <div class="wrap lobby-wrap">
       <div class="lobby-header">
         <div class="lobby-heading">
-          <h1>今日一览</h1>
+          <h1>{{ title }}</h1>
           <time :datetime="dateTime" title="日历日期以北京时间为准">{{ dateLabel }}</time>
         </div>
         <div v-if="$slots.default" class="lobby-context"><slot /></div>
@@ -65,7 +65,7 @@ import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { calendarDateLabel, serverToday } from '../../data/activityCalendar.js'
 
-const props = defineProps({ ownerId: { type: String, default: '' }, status: { type: String, required: true }, game: { type: String, default: '' } })
+const props = defineProps({ title: { type: String, default: '今日一览' }, ownerId: { type: String, default: '' }, status: { type: String, required: true }, game: { type: String, default: '' } })
 const localRoster = AGENT_CATALOG.filter(entry => portraits[entry.id])
 const catalog = ref(null), catalogLoading = ref(false), catalogError = ref('')
 const roster = computed(() => (catalog.value || (props.game ? [] : localRoster))

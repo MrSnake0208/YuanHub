@@ -1,0 +1,29 @@
+@media (max-width: 767px) {
+  .roadmap-main { min-height: 100dvh; margin-left: 0; min-width: 0; }
+  .roadmap-wrap { padding: 10px 12px calc(24px + env(safe-area-inset-bottom)); }
+  .roadmap-home { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 1.6; }
+  .roadmap-home svg { flex: none; }
+  .roadmap-sheet { padding: 20px 16px 16px; }
+  .roadmap-intro { padding-bottom: 20px; }
+  .roadmap-intro h2 { display: flex; align-items: center; gap: 8px; font-size: 25px; line-height: 1.4; }
+  .roadmap-intro h2 svg { flex: none; width: 24px; height: 24px; }
+  .roadmap-intro p { margin-top: 8px; font-size: 12px; line-height: 1.8; }
+  .roadmap-intro .roadmap-timing { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 11px; }
+  .roadmap-timing svg { flex: none; }
+  .roadmap-section { padding-block: 18px; }
+  .roadmap-section-heading h3 { display: flex; align-items: center; gap: 8px; font-size: 18px; line-height: 1.5; }
+  .roadmap-section-heading h3 svg { flex: none; }
+  .roadmap-section-heading p { margin-top: 6px; font-size: 12px; line-height: 1.8; }
+  .roadmap-companionship { display: grid; gap: 6px; margin-top: 10px; }
+  .roadmap-feature { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .roadmap-feature h4 { font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; }
+  .roadmap-art { display: block; width: 90px; aspect-ratio: 1; flex: none; }
+  .roadmap-calculation { display: grid; gap: 4px; margin-top: 10px; }
+  .roadmap-dependency { margin-left: 33px; transform: rotate(90deg); }
+  .roadmap-widget { gap: 10px; margin-top: 8px; }
+  .roadmap-widget p { margin-top: 6px; font-size: 12px; line-height: 1.8; }
+  .roadmap-widget .roadmap-widget-note { font-size: 11px; }
+  .roadmap-footer { display: grid; gap: 16px; padding-top: 16px; font-size: 11px; line-height: 1.8; }
+  .roadmap-footer p > svg { vertical-align: -3px; margin-right: 5px; }
+  .roadmap-feedback { display: inline-flex; align-items: center; justify-self: end; gap: 8px; font-size: 13px; font-weight: 700; }
+}
