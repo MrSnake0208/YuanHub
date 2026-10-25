@@ -16,7 +16,7 @@
 
     <section v-if="canUseReserve && accountId" v-show="reserveOpen" id="planner-reserve-workspace" ref="reserveWorkspaceRef" class="planner-reserve-workspace" tabindex="-1" aria-label="未来储备工作区">
       <header class="reserve-workspace-heading">
-        <div><h3>未来储备</h3><p>返回培养清单会保留此处未保存的草稿。</p></div>
+        <div><h3>未来储备</h3><p>为尚未实装的密探，提前估算培养材料。</p></div>
         <button type="button" class="workspace-return" @click="closeReserveWorkspace"><ChevronLeft :size="16" aria-hidden="true" />返回培养清单</button>
       </header>
       <OperatorReserveWorkspace :account-id="accountId" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" />
