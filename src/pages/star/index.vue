@@ -43,7 +43,7 @@
       <section>
         <div class="wrap">
           <p v-if="!completionDemo && auth.isLoggedIn && accountId && productReady && !cloudWriteBusy && !starExchangeBusy && !captureImportBusy && !growthBottlePending">
-            <router-link class="btn ghost" :to="{ path: '/star/scans', query: { account_id: accountId } }">核对 MaaYuan 本地识别结果</router-link>
+            <router-link v-if="canReviewScans" class="btn ghost" :to="{ path: '/star/scans', query: { account_id: accountId } }">核对 MaaYuan 本地识别结果</router-link>
           </p>
           <div class="tool-summary" aria-label="星石概览">
             <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
@@ -200,6 +200,7 @@ import { createStarCompletionApi } from '../../api/starCompletions.js';
 import { createStarCompletionPort } from './starCompletionPort.js';
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js';
 import { auth } from "../../store/auth.js";
+import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js';
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
   disposeYuanStarHandle,
@@ -216,6 +217,8 @@ import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCaptu
 import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecycle, importAndMarkStarCapture } from "./starCaptureLifecycle.js";
 import { isStarCaptureDraftPersisted } from "./captureDraftReceipt.js";
 
+const canReviewScans = computed(() => auth.isLoggedIn &&
+  (isFeatureEnabled(FEATURE_KEYS.STAR_SCAN_REVIEW) || hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.STAR_SCAN_REVIEW)));
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
 const completionDemo = import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO);
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";

@@ -4,6 +4,8 @@ export const ADMIN_PERMISSIONS = Object.freeze({
   ARCHIVE_ACCESS: 'archive:access',
   OPERATOR_PANEL_USE: 'operator_panel:use',
   OPERATOR_RELATIONSHIP_USE: 'operator_relationship:use',
+  OPERATOR_RESERVE_USE: 'operator_reserve:use',
+  STAR_SCAN_REVIEW: 'star_scan:review',
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   RECRUITMENT_CATALOG_WRITE: 'recruitment_catalog:write',
   ACHIEVEMENT_CATALOG_WRITE: 'achievement_catalog:write',
@@ -102,6 +104,7 @@ export function hasAnyAdminCapability(access) {
     access &&
     ((Array.isArray(access.permissions) && access.permissions.some(permission =>
       permission !== ADMIN_PERMISSIONS.ARCHIVE_ACCESS && permission !== ADMIN_PERMISSIONS.OPERATOR_PANEL_USE &&
-      permission !== ADMIN_PERMISSIONS.OPERATOR_RELATIONSHIP_USE)) || canManageAnyFeedback(access))
+      permission !== ADMIN_PERMISSIONS.OPERATOR_RELATIONSHIP_USE &&
+      permission !== ADMIN_PERMISSIONS.OPERATOR_RESERVE_USE && permission !== ADMIN_PERMISSIONS.STAR_SCAN_REVIEW)) || canManageAnyFeedback(access))
   )
 }

@@ -12,7 +12,7 @@
     </header>
 
     <p class="planner-independent-note">真实清单：独立试算，未预留库存。</p>
-    <details v-if="isLoggedIn && accountId" class="planner-reserve-entry">
+    <details v-if="canUseReserve && accountId" class="planner-reserve-entry">
       <summary>未来储备 · 为尚未确定身份的密探准备材料</summary>
       <OperatorReserveWorkspace :account-id="accountId" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" />
     </details>
@@ -439,6 +439,9 @@ import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
 import OperatorReserveWorkspace from './OperatorReserveWorkspace.vue'
+import { auth } from '../../store/auth.js'
+import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
+import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { isOperatorOwned } from '../../utils/operatorFilters.js'
 import { TRAINING_GROUPS, bookExperience, experienceTrainingDays, normalizeTrainingLevels, trainingMaterialEtas, trainingRate, growthTargetReached } from '../../data/operatorTraining.js'
 import { FAVORITES_PLAN_ID, sanitizeTrainingWorkspaceOperators, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
@@ -467,6 +470,8 @@ import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, 
 const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
+const canUseReserve = computed(() => props.isLoggedIn && auth.isLoggedIn &&
+  (isFeatureEnabled(FEATURE_KEYS.OPERATOR_RESERVE) || hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.OPERATOR_RESERVE_USE)))
 const workspaceSession = ref(0)
 watch(() => [props.accountId, props.isLoggedIn], () => { workspaceSession.value++ }, { flush: 'sync' })
 const dailySourcePreview = ref(null)

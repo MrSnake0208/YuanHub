@@ -4,6 +4,12 @@ import OperatorReserveWorkspace from '../src/components/operator/OperatorReserve
 import PlannerSelect from '../src/components/operator/PlannerSelect.vue'
 import OperatorGrowthTracker from '../src/components/operator/OperatorGrowthTracker.vue'
 import * as plannerApi from '../src/api/operatorPlanner.js'
+import { auth } from '../src/store/auth.js'
+
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  return { auth: reactive({ isLoggedIn: true, adminAccess: { permissions: [] } }) }
+})
 
 const api = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), inventory: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({
@@ -35,6 +41,8 @@ async function choose(wrapper, label, value) {
   await select.findAll('[role="option"]')[index].trigger('click')
 }
 beforeEach(() => {
+  auth.isLoggedIn = true
+  auth.adminAccess = { permissions: ['operator_reserve:use'] }
   api.get.mockReset().mockImplementation(account => Promise.resolve(workspace(account)))
   api.put.mockReset().mockImplementation((account, body) => Promise.resolve({ ...copy(body), account_id: account, revision: body.expected_revision + 1, game_snapshot: '如鸢', read_only: false, updated_at: '2026-10-23T00:00:00Z' }))
   api.inventory.mockReset().mockResolvedValue([])
@@ -263,7 +271,7 @@ it('读取失败可重试，错误账号或未知 schema 不会变成空方案',
   expect(wrapper.find('form').exists()).toBe(true)
 })
 
-it('养成规划在库存加载前和失败后都保留储备入口，仅成功库存用于缺口且仍可保存', async () => {
+it('管理员养成规划在库存加载前和失败后都保留储备入口，仅成功库存用于缺口且仍可保存', async () => {
   const inventory = pending()
   api.inventory.mockImplementation(({ entityType }) => entityType === 'item' ? inventory.promise : Promise.resolve([]))
   const wrapper = mount(OperatorGrowthTracker, { props: { accountId: 'a', game: '如鸢', isLoggedIn: true }, attachTo: document.body })
@@ -295,4 +303,34 @@ it('选项校验错误关联到真实下拉按钮，切换等级不会默认确�
   expect(document.getElementById(control.attributes('aria-describedby')).textContent).toContain('突破阶段')
   await choose(wrapper, '需求组 1 当前等级突破', null)
   expect(wrapper.text()).toContain('需确认突破')
+})
+
+it.each([
+  ['普通用户', true, []],
+  ['内测用户', true, ['beta:access']],
+  ['历史使用角色', true, ['archive:access', 'operator_panel:use']],
+  ['未登录的旧权限', false, ['operator_reserve:use']],
+])('%s 看不到未来储备且不会读取或保存方案', async (_, loggedIn, permissions) => {
+  auth.isLoggedIn = loggedIn
+  auth.adminAccess = { permissions }
+  const wrapper = mount(OperatorGrowthTracker, { props: { accountId: 'a', game: '如鸢', isLoggedIn: true } })
+  await flushPromises()
+  expect(wrapper.find('.planner-reserve-entry').exists()).toBe(false)
+  expect(wrapper.findComponent(OperatorReserveWorkspace).exists()).toBe(false)
+  expect(api.get).not.toHaveBeenCalled()
+  expect(api.put).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('管理员撤销储备权限后卸载储备但保留培养规划', async () => {
+  const wrapper = mount(OperatorGrowthTracker, { props: { accountId: 'a', game: '如鸢', isLoggedIn: true } })
+  await flushPromises()
+  expect(wrapper.findComponent(OperatorReserveWorkspace).exists()).toBe(true)
+  expect(api.get).toHaveBeenCalledWith('a')
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  expect(wrapper.findComponent(OperatorReserveWorkspace).exists()).toBe(false)
+  expect(wrapper.text()).toContain('培养计划 · 体力规划')
+  expect(api.put).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

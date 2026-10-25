@@ -4,7 +4,11 @@
 
 ## 本地识别结果（初版）
 
+当前暂限平台管理员（`PLATFORM_ADMIN`）和超级管理员（`SUPER_ADMIN`）使用。背包核对入口的公开开关 `starScanReview` 默认关闭，管理员凭 `star_scan:review` 预览，直达 `/star/scans` 也要求此权限。已有报告保留；原背包、截图导入及星石补全不受影响。
+
 需要新权限 `star:scan:write`；原 `star:capture:write` 不包含此权限。已有连接码由用户在个人中心明确补齐权限。
+
+扫描 OpenAPI 还校验 Token 所属用户当前具备 `star_scan:review`；普通用户即使持有有效且带 `star:scan:write` 的 Token，也会收到 HTTP 403 `feature_forbidden`，不会读取绑定账号或暂存报告。
 
 | 方法与路径 | 请求 | 成功 data |
 |---|---|---|
@@ -29,7 +33,7 @@
 
 `status` 为 `needs_review/applied/discarded`。相同账号、同批 ID、相同正文重传返回原状态；不同正文返回 409。上传仅暂存，不改背包。网络失败保留原文件、批次和时间，使用 MaaYuan「星石本地报告补传」。本地离线报告首次补传时绑定账号，绑定后不能换账号重传。
 
-站内 JWT 接口使用 `account_id` 查询参数，均校验用户所有权与内测权限：
+站内 JWT 接口使用 `account_id` 查询参数，均校验用户所有权、既有内测准入和 `star_scan:review` 管理员权限；未登录返回 401，无该功能权限返回 403：
 
 | 方法与路径 | 行为 |
 |---|---|

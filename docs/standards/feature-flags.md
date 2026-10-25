@@ -44,6 +44,17 @@ not public rollout flags; reopening requires updating the corresponding backend
 permission policy and its role-matrix tests, then checking the frontend entry points.
 The independent archive build switches still allow disabling either archive separately.
 
+`operatorReserve` and `starScanReview` default to `false` in all environments.
+PLATFORM_ADMIN and SUPER_ADMIN preview them via `operator_reserve:use` and
+`star_scan:review` respectively. Ordinary users and Beta enrollment do not grant
+access. The reserve workspace is not mounted without permission, and `/star/scans`
+requires `star_scan:review`. Backend JWT endpoints enforce the same permissions;
+scan OpenAPI endpoints additionally require the validated Token owner to have
+`star_scan:review`, even with `star:scan:write`. Existing plans and reports are
+preserved. Training planning, the star backpack, screenshot import and completion
+remain available under their existing access rules. Reopening either feature
+requires a paired backend policy change, role-matrix tests and frontend checks.
+
 `starCompletion` is a public feature with the explicit boolean value `true` in
 both ordinary Vite development and production builds. The real completion workflow
 requires no separate environment variable, user setting, URL parameter or demo.

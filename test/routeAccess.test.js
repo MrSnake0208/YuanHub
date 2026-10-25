@@ -103,3 +103,13 @@ test('成就羁绊访问与目录编辑权限独立，普通角色不能绕过',
     assert.equal(isRouteAccessAllowed(admin, { permissions: [admin.requiredPermission, 'archive:access'] }), true)
   }
 })
+
+test('星石扫描核对直达路由需要专用管理员权限，原背包不受影响', () => {
+  const meta = metaFor('/star/scans')
+  assert.equal(meta.requiresAuth, true)
+  assert.equal(needsAdminAccess(meta), true)
+  assert.equal(isRouteAccessAllowed(meta, access()), false)
+  assert.equal(isRouteAccessAllowed(meta, access({ roles: ['PLATFORM_ADMIN'] })), false)
+  assert.equal(isRouteAccessAllowed(meta, access({ permissions: ['star_scan:review'] })), true)
+  assert.equal(needsAdminAccess(metaFor('/star')), false)
+})

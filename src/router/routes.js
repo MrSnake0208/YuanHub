@@ -257,7 +257,7 @@ export const routes = [
         module: 'tools',
         icon: 'gem',
         component: () => import('/src/pages/star/scans.vue'),
-        meta: { requiresBeta: true, requiresAuth: true, title: '核对星石识别 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresBeta: true, requiresAuth: true, requiredPermission: 'star_scan:review', title: '核对星石识别 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/star/share/:token?',
