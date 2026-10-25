@@ -58,7 +58,7 @@ test('桌面端候选项以头像属性角标、职业标签和养成状态标�
   assert.match(styles, /\.plan-candidate-label\.status\.is-growing/)
   assert.match(styles, /\.plan-candidate-label\.status\.is-graduated/)
   assert.match(styles, /\.plan-candidate-label\.status\.is-inactive/)
-  assert.match(styles, /\.plan-candidate-label\.status\.is-growing \{[^}]*background: #bfdcc0;[^}]*color: #315f38;/)
+  assert.match(styles, /\.plan-candidate-label\.status\.is-growing \{[^}]*background: var\(--theme-success-bg, #bfdcc0\);[^}]*color: var\(--theme-success-text, #315f38\);/)
   assert.match(styles, /\.plan-candidate-label\.status\.is-graduated \{[^}]*background: color-mix\(in srgb, var\(--yellow\) 35%, var\(--surface\)\);/)
 })
 

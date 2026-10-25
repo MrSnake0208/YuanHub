@@ -2,10 +2,10 @@
 .relationships h2, .relationships h3 { margin: 0; }
 .relationships p { line-height: 1.6; overflow-wrap: anywhere; }
 .relationships button:not(.favorite-btn):not(.edit-icon-btn), .relationships input, .relationships select, .relationships textarea { font: inherit; color: inherit; }
-.relationships button:not(.favorite-btn):not(.edit-icon-btn) { min-height: 44px; border: 1px solid var(--theme-border, #cdbfa9); background: var(--surface); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.relationships button:not(.favorite-btn):not(.edit-icon-btn) { min-height: 44px; border: 1px solid var(--theme-line, #cdbfa9); background: var(--surface); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
 .relationships button:not(.favorite-btn):not(.edit-icon-btn):disabled { opacity: .55; cursor: default; }
 .relationships :focus-visible:not(.favorite-btn):not(.edit-icon-btn) { outline: 2px solid var(--tea); outline-offset: 3px; }
-.relationships input:not([type="checkbox"]), .relationships select, .relationships textarea { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--theme-border, #cdbfa9); padding: 8px; border-radius: 4px; }
+.relationships input:not([type="checkbox"]), .relationships select, .relationships textarea { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--theme-line, #cdbfa9); padding: 8px; border-radius: 4px; }
 .relationships label { display: grid; gap: 6px; min-width: 0; }
 .relationship-badge { box-sizing: border-box; max-width: calc(100% - 30px); padding-inline: 4px; font-size: 11px; white-space: nowrap; }
 .relationship-conflict { display: block; margin-top: 6px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.5; }
@@ -13,7 +13,7 @@
 .relationships-exchange { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 20px; }
 .relationships-exchange > label, .relationships-exchange > button { margin: 12px 0; }
 .relationships-exchange label:has(input[type="checkbox"]) { display: flex; align-items: center; }
-.relationships-preview { border: 1px solid var(--theme-border, #cdbfa9); padding: 12px; }
+.relationships-preview { border: 1px solid var(--theme-line, #cdbfa9); padding: 12px; }
 .relationships-preview button { margin: 4px; }
 
 .relationship-backup-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; box-sizing: border-box; padding: 12px; background: var(--theme-overlay, rgba(73,59,44,.38)); }
