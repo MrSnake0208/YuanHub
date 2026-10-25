@@ -2,13 +2,26 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import StarScanInbox from '../src/pages/star/StarScanInbox.vue'
 import StarScansPage from '../src/pages/star/scans.vue'
+import { auth } from '../src/store/auth.js'
+import { listAccounts } from '../src/api/accounts.js'
 import { getStarScan, listStarScans } from '../src/api/starScans.js'
 
+vi.mock('vue-router', async original => ({ ...await original(), useRoute: () => ({ query: { account_id: 'a' } }) }))
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  return { auth: reactive({ isLoggedIn: true, userInfo: { id: 'owner' }, adminAccess: { permissions: [] } }) }
+})
+vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
+vi.mock('../src/pages/star/embedLifecycle.js', () => ({ waitForYuanStarDisposal: vi.fn().mockResolvedValue() }))
 vi.mock('../src/api/starScans.js', () => ({ listStarScans: vi.fn(), getStarScan: vi.fn(), discardStarScan: vi.fn(), applyStarScan: vi.fn() }))
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: vi.fn(() => () => {}) }))
 const fixture = () => ({ status: 'needs_review', report: { record_id: 'r', entries: [{ observation_id: 'o1', kind: 'main', name: '天府', quality: 'orange', level: 20, source: 'main/1' }], warnings: [], experience: { orange: 0, purple: null, white: null }, bag: { current_count: 1, capacity: 100 } },
   state: { generation: 1, revision: 2, inventory: [{ instance_id: 'old', kind: 'main', name: '天府', quality: 'orange', level: 20, breakthrough_stage: 2 }], plan_targets: { old: 40 } }, assignments: [], loadout_revision: 1 })
 beforeEach(() => {
+  vi.clearAllMocks()
+  auth.isLoggedIn = true
+  auth.adminAccess = { permissions: [] }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '账号', game: '如鸢' }])
   listStarScans.mockResolvedValue([{ record_id: 'r', captured_at: '2026-10-23T00:00:00Z', entry_count: 1, game: '如鸢' }])
   getStarScan.mockResolvedValue(fixture())
 })
@@ -64,5 +77,28 @@ it('shows missing levels immediately and focuses each unresolved row until both 
   expect(wrapper.findAll('.scan-row-invalid')).toHaveLength(0)
   await wrapper.find('form').trigger('submit'); await flushPromises()
   expect(apply).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it('未经授权直接挂载核对页不读取账号或报告', async () => {
+  const wrapper = mount(StarScansPage, { global: { stubs: { IslandSidebar: true, RouterLink: true } } })
+  await flushPromises()
+  expect(wrapper.text()).toContain('暂无该功能的访问权限')
+  expect(wrapper.findComponent(StarScanInbox).exists()).toBe(false)
+  expect(listAccounts).not.toHaveBeenCalled()
+  expect(listStarScans).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('管理员能读取待核对列表，撤权后立即卸载内容', async () => {
+  auth.adminAccess = { permissions: ['star_scan:review'] }
+  const wrapper = mount(StarScansPage, { global: { stubs: { IslandSidebar: true, RouterLink: true } } })
+  await flushPromises()
+  expect(listStarScans).toHaveBeenCalledWith('a')
+  expect(wrapper.findComponent(StarScanInbox).exists()).toBe(true)
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  expect(wrapper.findComponent(StarScanInbox).exists()).toBe(false)
+  expect(wrapper.text()).toContain('暂无该功能的访问权限')
   wrapper.unmount()
 })

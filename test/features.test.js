@@ -12,11 +12,13 @@ const featureConfig = readFileSync(new URL('../src/config/features.js', import.m
 const operatorPage = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../src/router/index.js', import.meta.url), 'utf8')
 
-test('roadmap relationships remain closed to ordinary users in every build', async () => {
+test('roadmap features remain closed to ordinary users in every build', async () => {
   for (const env of [{}, { DEV: true, PROD: false }, { DEV: false, PROD: true }]) {
     const source = featureConfig.replaceAll('import.meta.env', JSON.stringify(env))
     const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
     assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RELATIONSHIPS), false)
+    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RESERVE), false)
+    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.STAR_SCAN_REVIEW), false)
   }
 })
 
@@ -67,7 +69,8 @@ test('operator tracking retains lazy loading without the accuracy notice', funct
   assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 3)
   assert.doesNotMatch(operatorPage, /planning-bug-notice|规划结果可能不准确/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
-  assert.match(operatorPage, /function setTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
+  assert.match(operatorPage, /function setTab\(t\) \{[^}]*return activateTab\(t\);/)
+  assert.match(operatorPage, /function activateTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
   assert.match(operatorPage, /return import\("\.\.\/\.\.\/components\/operator\/OperatorGrowthTracker\.vue"\)/)
 })
 

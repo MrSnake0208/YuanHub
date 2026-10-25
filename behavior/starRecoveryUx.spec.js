@@ -67,6 +67,7 @@ beforeEach(() => {
   navigation.route = reactive({ path: '/star', query: {}, hash: '' })
   auth.isLoggedIn = false
   auth.userInfo = null
+  auth.adminAccess = { permissions: [] }
   activeAccount.set('')
   listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }])
   getCurrentStarState.mockResolvedValue(emptyRemote)
@@ -1020,4 +1021,25 @@ it.each([[390, 1440], [1440, 390]])('宿主 %i→%i 保持唯一嵌入、计划�
     expect([listAccounts, getCurrentStarState, importInventory, handle.setHostAccount, handle.setReviewView].map(fn => fn.mock.calls.length)).toEqual(calls)
     expect(handle.dispose).not.toHaveBeenCalled()
   } finally { wrapper.unmount(); window.innerWidth = previousWidth }
+})
+
+
+it('本地报告核对入口仅管理员可见，撤权即隐藏而背包继续可用', async () => {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: 'owner' }
+  activeAccount.set('acc-1')
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  const scanLinks = () => wrapper.findAllComponents(RouterLinkStub).filter(link => link.props('to')?.path === '/star/scans')
+  expect(scanLinks()).toHaveLength(0)
+  auth.adminAccess = { permissions: ['star_scan:review'] }
+  await flushPromises()
+  expect(scanLinks()).toHaveLength(1)
+  expect(scanLinks()[0].props('to').query.account_id).toBe('acc-1')
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  expect(scanLinks()).toHaveLength(0)
+  expect(wrapper.find('#product-root').exists()).toBe(true)
+  expect(embedMount).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
 })
