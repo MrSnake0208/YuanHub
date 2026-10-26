@@ -712,6 +712,7 @@
                   v-for="section in manifestCategorySections"
                   :key="section.id"
                   class="item-section"
+                  :class="{ 'is-legacy-resources': section.id === 'resources' }"
                 >
                   <div class="section-head">
                     <h2>{{ section.name }}</h2>
@@ -876,13 +877,10 @@
                                 @load="onImgLoad"
                                 @error="onImgError"
                               />
+                              <span v-if="section.id === 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                             </div>
                             <InventoryItemName :entry="e" />
-                            <span
-                              class="slot-count"
-                              :class="{ zero: !e.owned }"
-                              >{{ fmtCount(e.count) }}</span
-                            >
+                            <span v-if="section.id !== 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                           </li>
                         </ul>
                       </div>
