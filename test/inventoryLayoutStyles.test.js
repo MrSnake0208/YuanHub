@@ -14,7 +14,7 @@ test('inventory shell and navigation compile scoped CSS with device and slot own
     assert.deepEqual(compiled.errors, [])
     postcss.parse(source).walkRules(rule => {
       assert.equal(rule.parent.name, 'media')
-      assert.ok((end === 'Desktop' ? ['not all and (max-width: 1080px)'] : ['(max-width: 1080px)', '(max-width: 640px)']).includes(rule.parent.params))
+      assert.ok((end === 'Desktop' ? ['not all and (max-width: 1080px)'] : ['(max-width: 1080px)', '(max-width: 767px)', '(max-width: 640px)']).includes(rule.parent.params))
     })
     if (owner === 'inventoryLayout') assert.match(compiled.code, /section\[data-v-inventory-layout-test-s\]/)
   }

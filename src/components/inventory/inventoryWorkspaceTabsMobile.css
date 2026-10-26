@@ -1,8 +1,12 @@
-/* 确认稿三等分导航；保持原键盘手动激活语义。 */
+/* 仅调整库存导航外观，手动激活与持久化行为保持原实现。 */
 @media (max-width: 1080px) {
-  .inventory-tabs { position: static; inset: auto; z-index: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 3px; width: 100%; min-width: 0; max-width: 100%; margin: 12px 0 0; padding: 4px; border-radius: 12px; overflow: visible; box-shadow: 0 3px 8px color-mix(in srgb, var(--tea) 6%, transparent); }
-  .inventory-tabs button svg { display: none; }
-  .inventory-tabs button { display: inline-flex; min-width: 0; min-height: 38px; align-items: center; justify-content: center; padding: 6px 3px; border-radius: 9px; font-size: 14px; font-weight: 800; }
-  .inventory-tabs button[aria-selected="true"] { border-bottom-width: 3px; background: color-mix(in srgb, var(--yellow) 38%, var(--surface)); }
-  .inventory-tabs button[aria-haspopup="dialog"] { font-size: 13px; }
+.inventory-tabs { position: static; inset: auto; z-index: auto; display: flex; align-items: stretch; gap: 6px; width: fit-content; max-width: 100%; margin: 0; padding: 0; border-radius: 0; overflow: visible; }
+.inventory-tabs button { display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 42px; padding: 9px 22px; border: 1px solid var(--line); border-bottom: 2px solid transparent; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--surface) 65%, transparent); font-size: 14px; }
+.inventory-tabs button svg { display: inline-block; flex: none; }
+.inventory-tabs button[aria-selected="true"] { border-bottom-color: var(--tea); }
+@media (max-width: 767px) {
+  .inventory-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; width: 100%; }
+  .inventory-tabs button { min-height: 40px; padding: 8px 4px; gap: 4px; font-size: 13px; white-space: nowrap; }
+  .inventory-tabs button svg { width: 15px; height: 15px; flex: none; }
+}
 }

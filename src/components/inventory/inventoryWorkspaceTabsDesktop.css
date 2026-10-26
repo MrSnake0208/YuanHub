@@ -1,33 +1,8 @@
-/* 此端工作区导航布局独立持有；键盘与选中状态仍共享。 */
+/* 仅调整库存导航外观，手动激活与持久化行为保持原实现。 */
 @media not all and (max-width: 1080px) {
-.inventory-tabs {
-  position: static;
-  inset: auto;
-  z-index: auto;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-  min-width: 0;
-  max-width: 100%;
-  margin: 0;
-  padding: 4px;
-  border-radius: 12px;
-  overflow-x: auto;
-}
-.inventory-tabs button svg { display: none; }
-.inventory-tabs button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  flex-direction: row;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-}
-.inventory-tabs button[aria-haspopup="dialog"] {
-  font-size: 13px;
-}
+.inventory-tabs { position: static; inset: auto; z-index: auto; display: flex; align-items: stretch; gap: 6px; width: fit-content; max-width: 100%; margin: 0; padding: 0; border-radius: 0; overflow: visible; }
+.inventory-tabs button { display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 42px; padding: 9px 22px; border: 1px solid var(--line); border-bottom: 2px solid transparent; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--surface) 65%, transparent); font-size: 14px; }
+.inventory-tabs button svg { display: inline-block; flex: none; }
+.inventory-tabs button[aria-selected="true"] { border-bottom-color: var(--tea); }
+
 }
