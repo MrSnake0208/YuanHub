@@ -170,7 +170,7 @@
           </div>
           <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
           <template v-for="kind in ['workspace', 'schedule']" :key="kind">
-            <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" class="cloud-recovery" role="alert">
+            <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" :id="'planner-cloud-recovery-' + kind" class="cloud-recovery" role="alert" tabindex="-1">
               <p>{{ kind === 'workspace' ? '清单' : '日程' }}尚未确认保存：{{ (kind === 'workspace' ? workspaceState : scheduleState).error.message }}</p>
               <p v-if="(kind === 'workspace' ? workspaceState : scheduleState).latest">云端版本 {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.revision }} · {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.updatedAt }}</p>
               <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind, true); planError = ''">放弃本次修改并读取云端</button></div>
@@ -364,22 +364,48 @@
     <button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button>
   </div>
 </template><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><template v-for="(spend, index) in currentDay.planned.spends" :key="spend.id">
-  <PlannerCustomEntry v-if="spend.custom" :entry="spend" kind="spend" :index="index" :total="spend.value * spend.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || reviewingHistory"
+  <PlannerCustomEntry v-if="spend.custom" :class="{ 'spend-added': highlightedSpendId === spend.id }" :entry="spend" kind="spend" :index="index" :total="spend.value * spend.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || reviewingHistory"
     @change-name="updateCustomName('spends', index, $event)" @change-value="updatePlanValue('spends', index, $event)" @change-cost="updateSpendCost(index, $event)"
     @change-yield="(id, event) => updateSpendYield(index, id, event)" @add-yield="addSpendYield(index, $event)" @remove-yield="removeSpendYield(index, $event)" @remove="removePlanRow('spends', index)" />
-  <div v-else class="ledger-row spend-ledger-row">
+  <div v-else class="ledger-row spend-ledger-row" :class="{ 'spend-added': highlightedSpendId === spend.id }">
     <div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span><PlannerRepeatedSpend v-if="spend.kind === 'stage624'" :entry="spend" :date="selectedDate" :today="plannerToday" :last-date="repeatLastDate" :account-id="accountId" :plan-id="workspace.activePlanId" :schedule="fixedSchedule" :disabled="scheduleActionBlocked || reviewingHistory || goalMode || scheduleDifferences.goalsChanged" @apply="applyRepeatedSpend" @release="releaseFixedSpend(index)" /></div>
-    <div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div>
+    <div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" :disabled="schedulePending" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div>
     <span class="recommendation" :class="{ 'matches-plan': spend.value === recommendedValue('spends', spend) }">推荐 {{ recommendedValue('spends', spend) }}</span>
-    <button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button>
+    <button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" :disabled="schedulePending" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button>
   </div>
-</template><div class="add-wrap"><button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />添加支出</button><div v-if="addMenu === 'spend'" id="planner-spend-menu" class="add-menu" :class="{ 'stage-menu': pendingTrainingGroup }" role="menu" :aria-label="pendingTrainingGroup ? pendingTrainingGroup.name + '选择层数' : '选择支出渠道'" @keydown.esc.prevent.stop="cancelSpendMenu">
-  <template v-if="pendingTrainingGroup">
-    <div class="stage-menu-heading"><button type="button" role="menuitem" @click="pendingSpendChannel = ''; focusSpendMenu()"><ChevronLeft :size="16" aria-hidden="true" /> 返回渠道</button><span>{{ pendingTrainingGroup.name }} · 选择层数</span></div>
-    <button v-for="stage in addTrainingStages" :key="stage.level" type="button" role="menuitem" @click="addTrainingSpend(stage.level)">{{ stage.name.replace(/第\s*(\d+)\s*层/, '$1 层') }}</button>
-  </template>
-  <template v-else><button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></template>
-</div></div><div class="spend-summary">
+</template>
+<div class="spend-add-area" @keydown.esc.prevent.stop="closeSpendMenu">
+  <button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />{{ addMenu === 'spend' ? '收起添加支出' : '添加支出' }}</button>
+  <section v-if="addMenu === 'spend'" id="planner-spend-menu" ref="spendPanelRef" class="spend-add-panel" aria-labelledby="spend-panel-title" :aria-busy="schedulePending">
+    <div class="spend-panel-heading">
+      <button v-if="pendingSpendChannel" type="button" class="spend-back" :disabled="schedulePending" @click="backToSpendChannels"><ChevronLeft :size="16" aria-hidden="true" />返回渠道</button>
+      <h4 id="spend-panel-title">{{ pendingTrainingGroup ? pendingTrainingGroup.name + '历练 · 选择层数' : spendDraft ? '自定义支出' : '选择支出项目' }}</h4>
+      <button type="button" class="row-remove" aria-label="收起添加支出" @click="closeSpendMenu"><ChevronUp :size="16" aria-hidden="true" /></button>
+    </div>
+    <template v-if="pendingTrainingGroup">
+      <div v-if="addTrainingStages.length" class="spend-stage-grid" role="group" :aria-label="pendingTrainingGroup.name + '历练层数'">
+        <button v-for="stage in addTrainingStages" :key="stage.level" type="button" :aria-pressed="selectedSpendStage === stage.level" :disabled="schedulePending" @click="selectedSpendStage = stage.level">{{ stage.name.replace(/第\s*(\d+)\s*层/, '$1 层') }}</button>
+      </div>
+      <p v-else class="spend-inline-error" role="alert">当前没有可选择的层数，请先在「规划条件」核实目前能刷的关卡。</p>
+      <div class="spend-panel-actions"><span v-if="selectedTrainingSpend">预计消耗 <b>{{ formatStamina(selectedTrainingSpend.costPer) }}</b> 体力 / 次</span><span v-else>请选择层数后添加</span><button type="button" class="action-button primary" :disabled="schedulePending || !selectedTrainingSpend" @click="addTrainingSpend(selectedSpendStage)">添加到支出</button></div>
+    </template>
+    <form v-else-if="spendDraft" class="spend-draft-form" aria-label="添加自定义支出" :aria-describedby="spendAddError ? 'planner-spend-add-error' : undefined" @submit.prevent="addCustomSpend">
+      <PlannerCustomEntry :entry="spendDraft" kind="spend" :index="currentDay.planned.spends.length" :total="spendDraft.value * spendDraft.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="schedulePending" draft
+        @change-name="spendDraft.name = spendDraft.label = $event.target.value"
+        @change-value="spendDraft.value = draftNumber($event)" @change-cost="spendDraft.costPer = draftNumber($event)"
+        @change-yield="(id, event) => spendDraft.yield[id] = draftNumber(event)" @add-yield="spendDraft.yield[$event] = 1" @remove-yield="delete spendDraft.yield[$event]" />
+      <div class="spend-panel-actions"><button type="button" class="action-button" :disabled="schedulePending" @click="backToSpendChannels">取消</button><button type="submit" class="action-button primary" :disabled="schedulePending">添加到支出</button></div>
+    </form>
+    <div v-else class="spend-channel-grid">
+      <button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" :style="channelStyle(channel.colorKey)" :disabled="schedulePending" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span><ChevronRight v-if="channel.kind === 'training'" :size="14" aria-hidden="true" /><span v-if="channel.kind === 'training'" class="spend-next-label">选层数</span></button>
+    </div>
+  </section>
+  <p v-if="scheduleState.saving || (schedulePending && !scheduleState.error)" class="spend-save-status" role="status">正在核对并保存日程到云端，尚未确认…</p>
+  <p v-else-if="scheduleState.error" class="spend-inline-error" role="alert">日程尚未确认保存：{{ scheduleState.error.message }}。待保存内容仍在当前页面，请勿重复添加。<a href="#planner-cloud-recovery-schedule" @click="focusScheduleRecovery">前往重试保存或读取云端</a></p>
+  <p v-else-if="spendAddError || (addMenu === 'spend' && spendBlockedReason)" id="planner-spend-add-error" class="spend-inline-error" role="alert">{{ spendAddError || spendBlockedReason }}</p>
+  <p v-else-if="spendFeedback" class="spend-save-status" role="status">{{ spendFeedback }}</p>
+</div>
+<div class="spend-summary">
   <div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div>
   <div class="spend-balance" :class="{ negative: todayTotals.balance < 0 }" role="status" aria-live="polite" aria-atomic="true"><span>{{ todayTotals.balance < 0 ? '超出可用体力' : '未分配体力' }}</span><strong>{{ formatStamina(Math.abs(todayTotals.balance)) }}</strong></div>
 </div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" title="恢复当前套用方案中的当日安排" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天方案</button></div></section>
@@ -567,8 +593,27 @@ function addGoalReserve() { goalReserveSources.value.push({ id: 'goal-reserve-' 
 const addMenu = ref('')
 const pendingSpendChannel = ref('')
 const spendAddRef = ref(null)
+const spendPanelRef = ref(null)
+const selectedSpendStage = ref(null)
+const spendDraft = ref(null)
+const spendAddError = ref('')
+const spendFeedback = ref('')
+const pendingSpendAddition = ref(null)
+const highlightedSpendId = ref('')
+let spendHighlightTimer
+const spendBlockedReason = computed(() => {
+  if (reviewingHistory.value) return '历史日程仅供查看，不能添加支出。'
+  if (scheduleState.value.error || workspaceState.value.error) return '请先处理上方云端同步提示，再添加支出。'
+  if (cloudError.value) return cloudError.value
+  if (error.value) return error.value
+  if (loading.value || targetLoading.value || cloudLoading.value || scheduleLoading.value) return '数据正在读取，请稍后再试。'
+  if (schedulePending.value) return '正在保存日程，请等待本次保存完成。'
+  if (cloudBlocked.value) return '当前无法保存，请先完成登录、选择清单或处理上方云端提示。'
+  return ''
+})
 const pendingTrainingGroup = computed(() => trainingGroupForSpend({ id: pendingSpendChannel.value }))
 const addTrainingStages = computed(() => pendingTrainingGroup.value?.stages.filter(stage => stage.level <= plannerLevels.value[pendingTrainingGroup.value.id]) || [])
+const selectedTrainingSpend = computed(() => addTrainingStages.value.some(stage => stage.level === selectedSpendStage.value) ? createSpend(pendingSpendChannel.value, { stageLevel: selectedSpendStage.value }) : null)
 const plannerPreferences = ref(normalizePlannerPreferences())
 const strategy = ref('overall')
 const plannerConditionSummary = computed(() => [
@@ -669,7 +714,11 @@ async function saveStarTarget(row) {
   const saved = await setTarget(row, 'huaji', huaji)
   if (saved && starTargetId.value === row.id) { await nextTick(); closeStarTarget(true) }
 }
-function dismissStarTarget(event) { if (addMenu.value && !event.target.closest('.add-wrap')) { addMenu.value = ''; pendingSpendChannel.value = '' } if (starTargetId.value && !event.target.closest('.tracker-star-anchor')) closeStarTarget(); if (goalDatePickerOpen.value && !goalDatePickerWrap.value?.contains(event.target)) closeGoalDatePicker(false) }
+function dismissStarTarget(event) {
+  if (addMenu.value === 'gain' && !event.target.closest('.add-wrap')) addMenu.value = ''
+  if (starTargetId.value && !event.target.closest('.tracker-star-anchor')) closeStarTarget()
+  if (goalDatePickerOpen.value && !goalDatePickerWrap.value?.contains(event.target)) closeGoalDatePicker(false)
+}
 function quickUpgradeState(row, field, step, readyLabel) {
   if (field === 'star' && isMovieOperator(row)) return { visible: false }
   if (field === 'star' && operatorHuajiAction(row).disabled) { const action = operatorHuajiAction(row); return { visible: Boolean(row.owned), disabled: true, icon: 'check', label: action.label, title: action.label } }
@@ -1279,7 +1328,7 @@ async function setPlannerStep(step, validate = true) {
     if (invalid) { await nextTick(); invalid.reportValidity(); return }
   }
   closeGoalDatePicker(false)
-  addMenu.value = ''; pendingSpendChannel.value = ''
+  closeSpendMenu(false); addMenu.value = ''
   plannerStep.value = step
   await nextTick()
   const panel = { conditions: plannerConditionsRef, comparison: plannerComparisonRef, daily: plannerDailyRef }[step]
@@ -1386,10 +1435,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onRosterDragKeydown)
   rosterMotion?.removeEventListener?.('change', updateRosterMotion)
 })
-function selectDate(date) { if (fixedSchedule.value?.context.displayStartDate && date < fixedSchedule.value.context.displayStartDate) return; selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
+function selectDate(date) { if (fixedSchedule.value?.context.displayStartDate && date < fixedSchedule.value.context.displayStartDate) return; selectedDate.value = date; closeSpendMenu(false); addMenu.value = '' }
 function ensureManualPlan() { const date = selectedDate.value; const current = currentDay.value; const next = clonePlannerValue(manualPlans.value); if (!next[date]) next[date] = normalizePlannerPlan(clonePlannerValue(current.planned)); return { next, plan: next[date] } }
 function commitManualPlan(next) {
-  if (cloudBlocked.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return
+  if (cloudBlocked.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return false
+  spendFeedback.value = ''
   const previousPlans = manualPlans.value
   const previousSchedule = fixedSchedule.value
   const previousDay = currentDay.value
@@ -1397,17 +1447,25 @@ function commitManualPlan(next) {
   try {
     if (!fixedSchedule.value) fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, previousPlans)
     fixedSchedule.value = updateFixedSchedulePlan(fixedSchedule.value, selectedDate.value, next[selectedDate.value], previousDay)
-    if (!persistPlannerSnapshot(false)) { manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule }
+    if (!persistPlannerSnapshot(false)) { manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule; return false }
+    planError.value = ''
+    return true
   } catch (err) {
     manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule
     planError.value = '体力规划保存失败：' + err.message
+    return false
   }
 }
 function updatePlanValue(kind, index, event) { const { next, plan } = ensureManualPlan(); const value = Math.max(0, Number(event.target.value) || 0); plan[kind][index].value = value; commitManualPlan(next) }
 function updateCustomName(kind, index, event) { const { next, plan } = ensureManualPlan(); const value = String(event.target.value || '').trim().slice(0, 32) || (kind === 'gains' ? '自定义来源' : '自定义支出'); plan[kind][index].name = value; plan[kind][index].label = value; commitManualPlan(next) }
 function updateSpendCost(index, event) { const { next, plan } = ensureManualPlan(); plan.spends[index].costPer = Math.max(0, Number(event.target.value) || 0); commitManualPlan(next) }
 function removePlanRow(kind, index) { const { next, plan } = ensureManualPlan(); plan[kind].splice(index, 1); commitManualPlan(next) }
-function toggleAddMenu(kind) { pendingSpendChannel.value = ''; addMenu.value = addMenu.value === kind ? '' : kind; if (kind === 'spend' && addMenu.value) focusSpendMenu() }
+function toggleAddMenu(kind) {
+  if (addMenu.value === kind) { if (kind === 'spend') closeSpendMenu(); else addMenu.value = ''; return }
+  if (kind === 'gain') closeSpendMenu(false)
+  addMenu.value = kind
+  if (kind === 'spend') { spendAddError.value = ''; spendFeedback.value = ''; focusSpendMenu() }
+}
 function addGain(channelId) { const { next, plan } = ensureManualPlan(); const existing = plan.gains.find(gain => gain.id === channelId && !gain.custom); if (existing) existing.value += createGain(channelId).value; else plan.gains.push(createGain(channelId)); commitManualPlan(next); addMenu.value = '' }
 async function recalculateFromCurrentDay() {
   if (scheduleDifferences.value.goalsChanged || !pendingRecalculation.value || cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return
@@ -1427,26 +1485,94 @@ async function recalculateFromCurrentDay() {
 }
 function spendChannelName(spend) { const group = trainingGroupForSpend(spend); return group ? group.name + '历练' : spend.label }
 function spendStageName(spend) { const group = trainingGroupForSpend(spend); return group ? (group.id === 'experience' ? group.stages.find(stage => stage.level === spend.stageLevel)?.name || '' : spend.stageLevel + ' 层') : '' }
-function focusSpendMenu() { nextTick(() => document.querySelector('#planner-spend-menu [role="menuitem"]')?.focus()) }
-function cancelSpendMenu() { if (pendingSpendChannel.value) { pendingSpendChannel.value = ''; focusSpendMenu() } else { addMenu.value = ''; nextTick(() => spendAddRef.value?.focus()) } }
-function finishSpendAddition(next) { commitManualPlan(next); addMenu.value = ''; pendingSpendChannel.value = ''; nextTick(() => spendAddRef.value?.focus()) }
+function focusSpendMenu() {
+  nextTick(() => {
+    const panel = spendPanelRef.value
+    const selector = spendDraft.value ? 'input:not(:disabled)' : pendingTrainingGroup.value ? '.spend-stage-grid button:not(:disabled)' : '.spend-channel-grid button:not(:disabled)'
+    const target = panel?.querySelector(selector) || panel?.querySelector('button:not(:disabled)')
+    target?.focus()
+  })
+}
+function closeSpendMenu(restoreFocus = true) {
+  if (addMenu.value === 'spend') addMenu.value = ''
+  // 已入队但未确认的选择只由云端恢复结果清理，关闭不会再次提交。
+  if (!pendingSpendAddition.value) { pendingSpendChannel.value = ''; selectedSpendStage.value = null; spendDraft.value = null; spendAddError.value = '' }
+  if (restoreFocus) nextTick(() => spendAddRef.value?.focus())
+}
+function backToSpendChannels() {
+  if (pendingSpendAddition.value) { closeSpendMenu(); return }
+  pendingSpendChannel.value = ''; selectedSpendStage.value = null; spendDraft.value = null; spendAddError.value = ''; focusSpendMenu()
+}
+function focusScheduleRecovery() { nextTick(() => document.getElementById('planner-cloud-recovery-schedule')?.focus()) }
+function finishSpendAddition(next, spend, merged = false) {
+  if (pendingSpendAddition.value || spendBlockedReason.value) { spendAddError.value = spendBlockedReason.value || '本次添加尚未确认，请先恢复保存。'; return }
+  spendAddError.value = ''
+  const addition = { date: selectedDate.value, spend: clonePlannerValue(spend), merged }
+  if (!commitManualPlan(next)) {
+    // 本机草稿写入失败也可能留下待恢复请求，必须等待原请求恢复，不能再加一次。
+    if (scheduleState.value.pending?.manualPlans?.[addition.date]?.spends.some(item => item.id === spend.id && item.value === spend.value)) pendingSpendAddition.value = addition
+    spendAddError.value = planError.value || spendBlockedReason.value || '未能保存本次添加，请保留当前输入，稍后重试。'; return
+  }
+  pendingSpendAddition.value = addition
+  highlightedSpendId.value = spend.id
+  spendFeedback.value = ''
+}
 function addSpend(channelId) {
-  if (trainingGroupForSpend({ id: channelId })) { pendingSpendChannel.value = channelId; focusSpendMenu(); return }
+  if (pendingSpendAddition.value || spendBlockedReason.value) { spendAddError.value = spendBlockedReason.value || '请先恢复本次保存。'; return }
+  spendAddError.value = ''
+  if (trainingGroupForSpend({ id: channelId })) { pendingSpendChannel.value = channelId; selectedSpendStage.value = null; focusSpendMenu(); return }
+  if (channelId === 'custom') { pendingSpendChannel.value = channelId; spendDraft.value = createSpend('custom'); focusSpendMenu(); return }
+  if (!SPEND_CHANNELS.some(channel => channel.id === channelId)) { spendAddError.value = '支出渠道不可用，请重新选择。'; return }
   const { next, plan } = ensureManualPlan()
   const existing = plan.spends.find(spend => spend.id === channelId && !spend.custom)
+  const spend = existing || createSpend(channelId)
   if (existing) existing.value += 1
-  else plan.spends.push(createSpend(channelId))
-  finishSpendAddition(next)
+  else plan.spends.push(spend)
+  finishSpendAddition(next, spend, Boolean(existing))
 }
 function addTrainingSpend(stageLevel) {
   const group = pendingTrainingGroup.value
-  if (!group || !addTrainingStages.value.some(stage => stage.level === stageLevel)) return
+  if (!group || !addTrainingStages.value.some(stage => stage.level === stageLevel)) { spendAddError.value = '请选择目前能刷的历练层数。'; return }
   const { next, plan } = ensureManualPlan()
   const existing = plan.spends.find(spend => trainingGroupForSpend(spend)?.id === group.id && spend.stageLevel === stageLevel)
+  const spend = existing || { ...createSpend(pendingSpendChannel.value, { stageLevel }), id: 'training-' + group.id + '-' + stageLevel }
   if (existing) existing.value += 1
-  else plan.spends.push({ ...createSpend(pendingSpendChannel.value, { stageLevel }), id: 'training-' + group.id + '-' + stageLevel })
-  finishSpendAddition(next)
+  else plan.spends.push(spend)
+  finishSpendAddition(next, spend, Boolean(existing))
 }
+function draftNumber(event) { return event.target.value === '' ? NaN : Number(event.target.value) }
+function addCustomSpend() {
+  const draft = spendDraft.value
+  if (!draft) return
+  const name = draft.name.trim()
+  if (!name || !Number.isFinite(draft.costPer) || draft.costPer < 0 || !Number.isSafeInteger(draft.value) || draft.value < 0 || Object.values(draft.yield).some(value => !Number.isFinite(value) || value < 0)) {
+    spendAddError.value = '请填写名称；体力和材料产出须为非负数，次数须为非负整数。'; return
+  }
+  const spend = createSpend('custom', { ...draft, name, label: name })
+  const { next, plan } = ensureManualPlan()
+  plan.spends.push(spend)
+  finishSpendAddition(next, spend)
+}
+watch(() => [schedulePending.value, scheduleState.value.error, cloudSnapshot.value], () => {
+  const addition = pendingSpendAddition.value
+  if (!addition || schedulePending.value || scheduleState.value.error) return
+  const saved = cloudSnapshot.value?.manualPlans?.[addition.date]?.spends.find(spend => spend.id === addition.spend.id)
+  const confirmed = saved?.value === addition.spend.value
+  pendingSpendAddition.value = null
+  if (!confirmed) { highlightedSpendId.value = ''; spendAddError.value = ''; spendFeedback.value = '已读取云端，本次添加未保留；可重新选择并添加。'; return }
+  spendFeedback.value = `${addition.merged ? '已更新' : '已添加'}${spendChannelName(saved)}${spendStageName(saved) ? ' · ' + spendStageName(saved) : ''}，共 ${saved.value} 次，已保存到云端。`
+  highlightedSpendId.value = saved.id
+  clearTimeout(spendHighlightTimer)
+  spendHighlightTimer = setTimeout(() => { highlightedSpendId.value = '' }, 2400)
+  closeSpendMenu(addMenu.value === 'spend')
+}, { flush: 'post' })
+watch(() => [props.accountId, props.isLoggedIn, workspace.value.activePlanId, selectedDate.value], () => {
+  pendingSpendAddition.value = null
+  closeSpendMenu(false)
+  addMenu.value = ''; spendFeedback.value = ''; highlightedSpendId.value = ''
+  clearTimeout(spendHighlightTimer)
+})
+onBeforeUnmount(() => clearTimeout(spendHighlightTimer))
 function updateSpendYield(index, id, event) { const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: Math.max(0, Number(event.target.value) || 0) }; commitManualPlan(next) }
 function addSpendYield(index, id) { if (!id) return; const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: 1 }; commitManualPlan(next) }
 function removeSpendYield(index, id) { const { next, plan } = ensureManualPlan(); delete plan.spends[index].yield[id]; commitManualPlan(next) }
@@ -1840,8 +1966,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .target-fields .progress-values > b { color: var(--ink); }
 .target-fields .progress-values > span { color: var(--planner-muted); }
 .target-fields .progress-values input { border: 0; border-bottom: 1px dashed var(--accent); border-radius: 0; background: transparent; color: var(--ink); }
-.stage-menu-heading { color: var(--ink-60); }.stage-menu > button { border: 1px solid var(--planner-line); color: var(--ink); background: var(--cream); }
 .add-menu button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: -2px; }
+.spend-draft-form :deep(.custom-entry) { border: 0; background: transparent; }
+.spend-add-panel { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--cream); }
+.spend-panel-heading h4 { color: var(--ink); }
+.spend-back { border: 0; background: transparent; color: var(--planner-muted); }
+.spend-channel-grid > button, .spend-stage-grid > button { border: 1px solid var(--planner-line); border-radius: 7px; background: var(--planner-card); color: var(--ink); cursor: pointer; }
+.spend-channel-grid > button { border-color: color-mix(in srgb, var(--channel) 25%, var(--planner-line)); background: color-mix(in srgb, var(--channel) 5%, var(--planner-card)); }
+.spend-channel-grid .channel-label { border: 0; background: transparent; }
+.spend-next-label, .spend-panel-actions, .spend-save-status { color: var(--planner-muted); }
+.spend-stage-grid > button[aria-pressed="true"] { border-color: var(--theme-focus, var(--accent)); background: var(--theme-surface, #f7eddc); color: var(--ink); }
+.spend-panel-actions b { color: var(--planner-spend); }
+.spend-inline-error { color: var(--theme-danger-text, var(--rouge)); }
+.spend-inline-error a { color: inherit; text-decoration: underline; }
+.spend-added { outline: 1px solid var(--theme-focus, var(--accent)); outline-offset: -1px; background: var(--theme-surface, #f7eddc); border-radius: 8px; }
+.spend-add-area :is(button, input, a):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+.spend-add-area button:disabled, .spend-ledger-row :is(button, input):disabled { opacity: .55; cursor: default; }
+@media (hover: hover) { .spend-channel-grid > button:hover:not(:disabled), .spend-stage-grid > button:hover:not(:disabled) { border-color: var(--theme-focus, var(--accent)); } }
 .schedule-plan-note { color: var(--ink-60); }
 .schedule-optimize { border: 0; border-radius: 2px; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .schedule-optimize:disabled { opacity: .5; cursor: default; }

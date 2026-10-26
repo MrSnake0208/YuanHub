@@ -280,9 +280,7 @@ button { touch-action: manipulation; }
 .target-fields .progress-values > b { font: 700 10px/1.3 var(--font-d); white-space: nowrap; }
 .target-fields .progress-values input { width: 4ch; min-width: 28px; min-height: 28px; height: 28px; padding: 2px; font: 700 11px var(--font-d); text-align: center; }
 .edit-roster-name b { white-space: normal; overflow-wrap: anywhere; }
-.stage-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 300px; overflow-y: auto; }
-.stage-menu-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; }
-.add-menu button { min-height: 44px; }.stage-menu > button { justify-content: center; font-size: 12px; }
+.add-menu button { min-height: 44px; }
 .planner-workspace > .planner-cloud-fields { display: grid; gap: 16px; }
 .workspace-feedback { display: grid; gap: 8px; }
 .workspace-feedback .cloud-status, .workspace-feedback .cloud-recovery { margin-top: 0; }
@@ -346,4 +344,28 @@ button { touch-action: manipulation; }
 .growth-materials summary:focus-visible, .day-plan:focus-visible, .planner-reserve-workspace:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .roster-help { margin: 0 0 10px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .planner-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+
+/* 支出添加使用卡片内文档流，获取菜单仍沿用原浮层。 */
+.spend-add-area { min-width: 0; margin-top: 6px; container-type: inline-size; }
+.spend-add-panel { min-width: 0; margin-top: 8px; padding: 10px; }
+.spend-panel-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.spend-panel-heading h4 { flex: 1; min-width: 0; margin: 0; font: 750 13px/1.5 var(--font-b); }
+.spend-panel-heading > .row-remove { margin-left: auto; }
+.spend-back { display: inline-flex; align-items: center; gap: 2px; padding: 4px 0; font: 12px/1.5 var(--font-b); }
+.spend-channel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+@container (max-width: 280px) { .spend-channel-grid { grid-template-columns: minmax(0, 1fr); } }
+.spend-channel-grid > button { display: flex; min-width: 0; align-items: center; gap: 3px; padding: 5px 7px; text-align: left; }
+.spend-channel-grid .channel-label { min-width: 0; padding: 2px 0; font-size: 12px; }
+.spend-channel-grid .channel-label i { flex: none; }
+.spend-channel-grid svg { flex: none; margin-left: auto; }
+.spend-next-label { flex: none; font-size: 10px; white-space: nowrap; }
+.spend-stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
+.spend-stage-grid > button { min-width: 0; min-height: 34px; padding: 5px 3px; font: 12px/1.5 var(--font-b); }
+.spend-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; font-size: 12px; }
+.spend-panel-actions > span { flex: 1; }
+.spend-panel-actions .action-button { flex: none; padding: 7px 12px; }
+.spend-draft-form { min-width: 0; }
+.spend-draft-form :deep(.custom-entry) { margin: 0; padding: 0; }
+.spend-save-status, .spend-inline-error { margin: 8px 0 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.spend-inline-error a { display: inline-block; margin-left: 4px; }
 }

@@ -1,0 +1,244 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import OperatorGrowthTracker from '../src/components/operator/OperatorGrowthTracker.vue'
+import PlannerCustomEntry from '../src/components/operator/PlannerCustomEntry.vue'
+import PlannerSelect from '../src/components/operator/PlannerSelect.vue'
+import PlannerDateTabs from '../src/components/operator/PlannerDateTabs.vue'
+import { emptyTrainingWorkspace } from '../src/data/operatorTrainingPlans.js'
+import { createFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
+import { createGain, createSpend, normalizePlannerPreferences, planTotals } from '../src/data/cultivationPlanner.js'
+import { migrationKey, plannerDateInZone, scheduleBody, scheduleFromRemote, workspaceBody } from '../src/data/operatorPlannerRemote.js'
+import { addCalendarDays, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../src/utils/businessDay.js'
+
+const api = vi.hoisted(() => ({ workspace: vi.fn(), schedule: vi.fn(), put: vi.fn(), inventory: vi.fn() }))
+vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: api.workspace, getStaminaSchedule: api.schedule, putStaminaSchedule: api.put }))
+vi.mock('../src/api/operator.js', () => ({ getOperatorGrowthTargets: vi.fn(async () => ({ items: [] })), putOperatorGrowthTarget: vi.fn() }))
+vi.mock('../src/api/inventory.js', () => ({ getCurrent: api.inventory, listRecords: vi.fn(async () => ({ items: [] })) }))
+vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
+const today = plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR)
+const clone = value => JSON.parse(JSON.stringify(value))
+const pending = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b }); return { promise, resolve, reject } }
+const button = (wrapper, text) => wrapper.findAll('button').find(node => node.text().replace('选层数', '') === text)
+let remotes
+function initial(account) {
+  const plan = { gains: [createGain('natural', { value: 488 })], spends: [] }
+  const context = { date: today, initialState: { a: { shuijing: 2000 } }, requiredState: { a: { shuijing: 2000 } }, stock: {}, goals: {}, levels: { fh: 3, ds: 5, yy: 2, experience: 4 }, strategy: 'overall', agentOrder: ['a'], preferences: normalizePlannerPreferences() }
+  const manualPlans = { [today]: plan, [addCalendarDays(today, 1)]: clone(plan) }
+  return { ...scheduleBody({ manualPlans, schedule: createFixedSchedule(context, manualPlans), preferences: context.preferences, agentOrder: ['a'], strategy: 'overall' }), account_id: account, revision: 1 }
+}
+function commit(account, body) { remotes[account] = { ...clone(body), account_id: account, revision: body.expected_revision + 1 }; return clone(remotes[account]) }
+const savedPlan = (account = 'a') => scheduleFromRemote(remotes[account], account).manualPlans[today]
+async function setup() {
+  const wrapper = mount(OperatorGrowthTracker, { attachTo: document.body, props: { accountId: 'a', isLoggedIn: true } })
+  await flushPromises()
+  await button(wrapper, '编辑当日').trigger('click'); await flushPromises()
+  return wrapper
+}
+async function open(wrapper) { await wrapper.get('.spend-add-area > .add-button').trigger('click'); await flushPromises() }
+beforeEach(() => {
+  remotes = { a: initial('a'), b: initial('b') }
+  for (const account of ['a', 'b']) localStorage.setItem(migrationKey(account), JSON.stringify({ done: true }))
+  api.workspace.mockReset().mockImplementation(async account => ({ ...workspaceBody({ ...emptyTrainingWorkspace(account), trainingLevels: { fh: 3, ds: 5, yy: 2, experience: 4 } }), account_id: account, revision: 1 }))
+  api.schedule.mockReset().mockImplementation(async account => clone(remotes[account]))
+  api.put.mockReset().mockImplementation(async (account, plan, body) => commit(account, body))
+  api.inventory.mockReset().mockResolvedValue([])
+  Element.prototype.scrollIntoView = vi.fn()
+})
+
+it('普通支出立即入账与汇总，等待云端确认后关闭，重复添加合并且保留获取与总览', async () => {
+  const wrapper = await setup(), request = pending()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(wrapper.findComponent({ name: 'CultivationProgress' }).exists()).toBe(true)
+  await open(wrapper)
+  expect(wrapper.findAll('.spend-channel-grid > button')).toHaveLength(8)
+  api.put.mockImplementationOnce((account, plan, body) => request.promise.then(() => commit(account, body)))
+  await button(wrapper, '洛阳派遣').trigger('click'); await flushPromises()
+  expect(wrapper.get('.spend-total b').text()).toBe('72')
+  expect(wrapper.get('.spend-balance strong').text()).toBe('416')
+  expect(wrapper.get('.spend-save-status').text()).toContain('正在核对并保存')
+  expect(wrapper.text()).not.toContain('洛阳派遣，共 1 次，已保存到云端')
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(true)
+  await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click')
+  expect(api.put).toHaveBeenCalledTimes(1)
+  request.resolve(); await flushPromises()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(wrapper.get('.spend-save-status').text()).toContain('已保存到云端')
+  expect(wrapper.findAll('.spend-added')).toHaveLength(1)
+  await open(wrapper); await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click'); await flushPromises()
+  expect(savedPlan().spends).toHaveLength(1)
+  expect(savedPlan().spends[0].value).toBe(2)
+  expect(scheduleFromRemote(remotes.a, 'a').manualPlans[addCalendarDays(today, 1)].spends).toEqual([])
+  expect(wrapper.get('.spend-total b').text()).toBe('144')
+  expect(wrapper.get('.gain-total b').text()).toBe('488')
+  expect(savedPlan().gains).toEqual(clone([createGain('natural', { value: 488 })]))
+})
+
+it.each([['风火历练', 'fh', 3], ['地水历练', 'ds', 5], ['阴阳历练', 'yy', 2], ['经验历练', 'experience', 4]])('历练 %s 只显示配置内层数，选择与返回不提交，确认后按层合并', async (label, group, max) => {
+  const wrapper = await setup(); await open(wrapper)
+  await button(wrapper.get('#planner-spend-menu'), label).trigger('click')
+  expect(wrapper.findAll('.spend-stage-grid > button')).toHaveLength(max)
+  expect(api.put).not.toHaveBeenCalled()
+  await button(wrapper, '返回渠道').trigger('click')
+  expect(api.put).not.toHaveBeenCalled()
+  await button(wrapper.get('#planner-spend-menu'), label).trigger('click')
+  await wrapper.findAll('.spend-stage-grid > button')[1].trigger('click')
+  expect(wrapper.get('.spend-panel-actions').text()).toContain('20')
+  await button(wrapper, '添加到支出').trigger('click'); await flushPromises()
+  expect(savedPlan().spends[0]).toMatchObject({ groupId: group, stageLevel: 2, value: 1, costPer: 20 })
+  await open(wrapper); await button(wrapper.get('#planner-spend-menu'), label).trigger('click')
+  await wrapper.findAll('.spend-stage-grid > button')[1].trigger('click')
+  await button(wrapper, '添加到支出').trigger('click'); await flushPromises()
+  expect(savedPlan().spends).toHaveLength(1)
+  expect(savedPlan().spends[0].value).toBe(2)
+})
+
+it('自定义取消不写入；默认取模型，校验后携带材料保存，新增后仍可编辑删除', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  await button(wrapper.get('#planner-spend-menu'), '自定义支出').trigger('click')
+  expect(wrapper.getComponent(PlannerCustomEntry).props('entry').costPer).toBe(createSpend('custom').costPer)
+  await button(wrapper.get('.spend-draft-form'), '取消').trigger('click')
+  expect(api.put).not.toHaveBeenCalled()
+  await button(wrapper.get('#planner-spend-menu'), '自定义支出').trigger('click')
+  const entry = wrapper.getComponent(PlannerCustomEntry)
+  await entry.get('input[type="text"]').setValue('')
+  await wrapper.get('.spend-draft-form').trigger('submit')
+  expect(api.put).not.toHaveBeenCalled()
+  expect(wrapper.get('.spend-inline-error').text()).toContain('请填写名称')
+  entry.get('input[type="text"]').element.value = '周常副本'
+  await entry.get('input[type="text"]').trigger('input')
+  await entry.get('input[aria-label$="每次体力"]').setValue(30)
+  await entry.get('input[aria-label$="次数"]').setValue(2)
+  entry.getComponent(PlannerSelect).vm.$emit('update:modelValue', 'shuijing'); await flushPromises()
+  await entry.get('.custom-yield-row input').setValue(3)
+  await wrapper.get('.spend-draft-form').trigger('submit'); await flushPromises()
+  expect(savedPlan().spends[0]).toMatchObject({ custom: true, name: '周常副本', label: '周常副本', value: 2, costPer: 30, yield: { shuijing: 3 } })
+  expect(wrapper.find('.spend-draft-form').exists()).toBe(false)
+  const saved = wrapper.getComponent(PlannerCustomEntry)
+  await saved.get('input[aria-label$="次数"]').setValue(3); await flushPromises()
+  expect(savedPlan().spends[0].value).toBe(3)
+  await saved.get('button[aria-label="移除 周常副本"]').trigger('click'); await flushPromises()
+  expect(savedPlan().spends).toEqual([])
+})
+
+it('响应丢失保留选择与未确认提示，恢复先读取且不重复添加，刷新后保留一次', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  api.put.mockImplementationOnce(async (account, plan, body) => { commit(account, body); throw new Error('响应丢失') })
+  await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click'); await flushPromises()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(true)
+  expect(wrapper.get('.spend-add-area [role="alert"]').text()).toContain('尚未确认保存')
+  expect(wrapper.get('.spend-add-area').text()).not.toContain('已保存到云端')
+  await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click')
+  expect(api.put).toHaveBeenCalledTimes(1)
+  await wrapper.get('.spend-inline-error a').trigger('click')
+  expect(document.activeElement.id).toBe('planner-cloud-recovery-schedule')
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(true)
+  await button(wrapper, '重试保存').trigger('click'); await flushPromises()
+  expect(api.put).toHaveBeenCalledTimes(1)
+  expect(api.schedule).toHaveBeenCalledTimes(2)
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(savedPlan().spends[0].value).toBe(1)
+  wrapper.unmount()
+  const restored = await setup()
+  expect(restored.get('.spend-total b').text()).toBe('72')
+})
+
+it('明确失败可放弃并恢复云端，表单输入保留但不冒充已保存，取消不再提交', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  await button(wrapper.get('#planner-spend-menu'), '自定义支出').trigger('click')
+  await wrapper.get('.spend-draft-form input[type="text"]').setValue('保留输入')
+  api.put.mockRejectedValueOnce(new Error('离线'))
+  await wrapper.get('.spend-draft-form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.spend-draft-form input[type="text"]').element.value).toBe('保留输入')
+  expect(wrapper.get('.spend-add-area [role="alert"]').text()).toContain('离线')
+  await button(wrapper, '放弃本次修改并读取云端').trigger('click'); await flushPromises()
+  expect(wrapper.get('.spend-total b').text()).toBe('0')
+  expect(wrapper.get('.spend-draft-form input[type="text"]').element.value).toBe('保留输入')
+  expect(wrapper.get('.spend-save-status').text()).toContain('本次添加未保留')
+  await button(wrapper.get('.spend-draft-form'), '取消').trigger('click')
+  expect(api.put).toHaveBeenCalledTimes(1)
+})
+
+it('本地提交被阻止时不关面板或创建记录，Esc关闭恢复入口焦点', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  api.inventory.mockRejectedValue(new Error('库存无法读取'))
+  await wrapper.setProps({ refreshKey: 1 }); await flushPromises()
+  await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click'); await flushPromises()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(true)
+  expect(wrapper.get('.spend-add-area [role="alert"]').text()).toContain('库存')
+  expect(api.put).not.toHaveBeenCalled()
+  expect(savedPlan().spends).toEqual([])
+  await wrapper.get('#planner-spend-menu').trigger('keydown', { key: 'Escape' })
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(document.activeElement).toBe(wrapper.get('.spend-add-area > .add-button').element)
+})
+
+it('切换账号清空选择；迟到保存只写原账号，新账号无次数或成功提示污染', async () => {
+  const wrapper = await setup(), request = pending(); await open(wrapper)
+  api.put.mockImplementationOnce((account, plan, body) => request.promise.then(() => commit(account, body)))
+  await button(wrapper.get('#planner-spend-menu'), '6-24').trigger('click'); await flushPromises()
+  await wrapper.setProps({ accountId: 'b' }); await flushPromises()
+  request.resolve(); await flushPromises()
+  expect(savedPlan('a').spends[0].value).toBe(1)
+  expect(savedPlan('b').spends).toEqual([])
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(wrapper.get('.spend-add-area').text()).not.toContain('已保存到云端')
+  expect(api.put.mock.calls.every(([account]) => account === 'a')).toBe(true)
+  expect(planTotals(savedPlan('b')).spends).toBe(0)
+})
+
+it('本机草稿保存异常立即回滚账本，恢复原请求只增加一次', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  const setItem = Storage.prototype.setItem
+  const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    if (key.includes('planner-cloud-draft')) throw new Error('空间不足')
+    return setItem.call(this, key, value)
+  })
+  await button(wrapper.get('#planner-spend-menu'), '洛阳派遣').trigger('click'); await flushPromises()
+  expect(wrapper.get('.spend-total b').text()).toBe('0')
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(true)
+  expect(wrapper.get('.spend-add-area [role="alert"]').text()).toContain('空间不足')
+  expect(api.put).not.toHaveBeenCalled()
+  storage.mockRestore()
+  await button(wrapper, '重试保存').trigger('click'); await flushPromises()
+  expect(api.put).toHaveBeenCalledTimes(1)
+  expect(savedPlan().spends[0].value).toBe(1)
+  expect(wrapper.get('.spend-total b').text()).toBe('72')
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+})
+
+it('未提交到云端的失败重试使用原快照，次数和材料不重复累加', async () => {
+  const wrapper = await setup(); await open(wrapper)
+  await button(wrapper.get('#planner-spend-menu'), '地水历练').trigger('click')
+  await wrapper.findAll('.spend-stage-grid > button')[1].trigger('click')
+  api.put.mockRejectedValueOnce(new Error('断网'))
+  await button(wrapper, '添加到支出').trigger('click'); await flushPromises()
+  expect(savedPlan().spends).toEqual([])
+  expect(wrapper.get('.spend-stage-grid [aria-pressed="true"]').text()).toBe('2 层')
+  await button(wrapper, '重试保存').trigger('click'); await flushPromises()
+  expect(api.put).toHaveBeenCalledTimes(2)
+  const first = api.put.mock.calls[0][2], retry = api.put.mock.calls[1][2]
+  expect(retry).toEqual(first)
+  expect(savedPlan().spends[0]).toMatchObject({ groupId: 'ds', stageLevel: 2, value: 1 })
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+})
+
+it('获取原菜单可展开收起与添加；日期切换关闭未提交草稿，返回不产生记录', async () => {
+  const wrapper = await setup()
+  await button(wrapper, '添加获取').trigger('click')
+  expect(wrapper.find('.add-wrap .add-menu').exists()).toBe(true)
+  await button(wrapper, '添加获取').trigger('click')
+  expect(wrapper.find('.add-wrap .add-menu').exists()).toBe(false)
+  await button(wrapper, '添加获取').trigger('click')
+  await button(wrapper.get('.add-wrap .add-menu'), '活动奖励').trigger('click'); await flushPromises()
+  expect(wrapper.get('.gain-total b').text()).toBe('548')
+  expect(savedPlan().gains.find(gain => gain.id === 'event').value).toBe(60)
+  await open(wrapper); await button(wrapper.get('#planner-spend-menu'), '自定义支出').trigger('click')
+  await wrapper.get('.spend-draft-form input[type="text"]').setValue('不提交')
+  const tabs = wrapper.findAllComponents(PlannerDateTabs).at(-1)
+  tabs.vm.$emit('select', tabs.props('dates').find(date => date > today)); await flushPromises()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  tabs.vm.$emit('select', today); await flushPromises()
+  expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
+  expect(savedPlan().spends).toEqual([])
+  expect(api.put).toHaveBeenCalledTimes(1)
+})
