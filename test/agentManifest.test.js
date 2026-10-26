@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  agentBackpackOrder,
   agentMatchesGame,
   agentReleaseOrder,
   buildAgentGroups,
@@ -63,17 +62,28 @@ test('最新排序按编号降序且非法 id 排末尾', function () {
   ])
 })
 
-test('背包顺序按已知名单排列，未录入者统一置后', function () {
+test('背包顺序先按阶级降序，同阶级按编号从新到旧，新增密探无需名单', function () {
   const entries = [
-    { id: 'char_001_unknown', name: '未收录', rarity: 5 },
-    { id: 'char_099_ganti', name: '甘缇', rarity: 3 },
-    { id: 'char_125_zhaoyun', name: '赵云', rarity: 5 },
-    { id: 'char_105_simahui', name: '司马徽', rarity: 5 }
+    { id: 'char_017_ganti', name: '甘缇', rarity: 3 },
+    { id: 'char_043_xiaoqiao', name: '小乔', rarity: 4 },
+    { id: 'char_092_chengpu', name: '程普', rarity: 5 },
+    { id: 'char_037_fengshi', name: '蜂使', rarity: 3 },
+    { id: 'char_054_wangyi', name: '王异', rarity: 4 },
+    { id: 'char_112_pangde', name: '庞德', rarity: 5 },
+    { id: 'char_049_luji', name: '陆绩', rarity: 4 },
+    { id: 'char_133_new', name: '新增密探', rarity: 5 },
+    { id: 'custom_agent', name: '未编号', rarity: 3 }
   ]
-  assert.equal(agentBackpackOrder('司马徽'), 0)
-  assert.deepEqual(sortAgentEntries(entries, 'backpack').map(function (entry) { return entry.name }), [
-    '司马徽', '赵云', '甘缇', '未收录'
-  ])
+  const expected = ['新增密探', '庞德', '程普', '王异', '陆绩', '小乔', '蜂使', '甘缇', '未编号']
+  assert.deepEqual(sortAgentEntries(entries, 'backpack').map(entry => entry.name), expected)
+  assert.deepEqual(sortAgentEntries(entries, 'backpack', null, { direction: 'desc' }).map(entry => entry.name), expected)
+  assert.deepEqual(sortAgentEntries(entries, 'backpack', null, { direction: 'asc' }).map(entry => entry.name), expected.slice().reverse())
+})
+
+test('背包顺序的关注优先只在同阶级内生效，蓝卡不会穿插到金卡前', function () {
+  assert.deepEqual(sortAgentEntries(agents, 'backpack', new Set(['char_038_mid', 'custom_agent']), {
+    favoriteFirst: true
+  }).map(entry => entry.id), ['char_038_mid', 'char_102_new', 'char_009_old', 'custom_agent'])
 })
 
 test('关注、状态与目录属性筛选可以组合', function () {

@@ -274,7 +274,7 @@
                 </p>
                 <details v-if="editingStock" class="stock-edit-help">
                   <summary aria-label="库存编辑说明"><CircleHelp :size="16" aria-hidden="true" /></summary>
-                  <p>默认按游戏背包内顺序。顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
+                  <p>{{ entityType === 'agent' ? '心纸背包顺序按绝密、机密、隐密排列，同阶级按编号从新到旧。' : '道具默认按游戏背包内顺序。' }}顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
                 </details>
                 <div v-if="editingStock" class="manifest-edit-actions">
                   <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
@@ -2561,7 +2561,7 @@ function toggleAgentSortDirection() {
 function chooseAgentMenuValue(event, type, value) {
   if (type === "sort") {
     agentSort.value = value;
-    if (value === "backpack") agentSortDirection.value = "asc";
+    if (value === "backpack") agentSortDirection.value = "desc";
   }
   if (type === "group") agentGroupBy.value = value;
   const menu = event.currentTarget.closest("details");
@@ -2618,7 +2618,7 @@ const stockEditEntries = computed(function () {
       entries.push(item);
   });
   return entityType.value === "agent"
-    ? sortAgentEntries(entries, "backpack", null, { direction: "asc" })
+    ? sortAgentEntries(entries, "backpack", null, { direction: "desc" })
     : sortStockEditItems(entries);
 });
 const stockEditorEntries = computed(function () {
