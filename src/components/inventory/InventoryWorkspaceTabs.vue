@@ -59,8 +59,8 @@ defineEmits(['select'])
 /* 当前 Tab 字段外观为刻意共享契约，设备几何规则另行维护。 */
 
 .inventory-tabs {
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 0;
+  background: transparent;
   box-shadow: none;
   backdrop-filter: none;
 }

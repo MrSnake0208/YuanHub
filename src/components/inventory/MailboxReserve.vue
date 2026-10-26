@@ -1,6 +1,7 @@
 <template>
   <div class="mailbox-container">
     <div class="mail-quick">
+      <Mail :size="22" class="mail-quick-icon" aria-hidden="true" />
       <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
       <div class="mail-quick-actions"><button v-if="loaded && mailCount || pendingClaim" type="button" class="btn ghost" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button><button type="button" class="mail-manage" aria-label="管理邮件" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button></div>
@@ -29,7 +30,7 @@
       </form>
       <form v-if="panel === 'claim' && selection" class="mailbox-claim-form" @submit.prevent="claim">
         <fieldset class="panel-fields" :disabled="locked || disabled || conflict">
-          <p class="panel-note">填写这次实际领取的封数，未领取的填 0。</p>
+          <div class="mail-claim-heading"><p class="panel-note">填写这次实际领取的封数，未领取的填 0。</p><button type="button" class="mail-manage" @click="selectAllMails">全部领取</button></div>
           <label v-for="(row, index) in stored.white_coin_mails" v-show="row.count > 0" :key="index" class="mail-claim-row"><span>白金币邮件 · 每封 {{ row.coins_per_mail }}<small>待领 {{ row.count }} 封</small></span><span>本次领取<input v-model.number="selection.white_coin_mail_counts[index]" :aria-label="`第${index + 1}组白金币邮件本次领取封数`" type="number" min="0" :max="row.count" step="1" inputmode="numeric" required /></span></label>
           <label v-if="stored.fu_chuan_mail_count" class="mail-claim-row"><span>符传邮件 · 每封 3 张<small>待领 {{ stored.fu_chuan_mail_count }} 封</small></span><span>本次领取<input v-model.number="selection.fu_chuan_mail_count" aria-label="符传邮件本次领取封数" type="number" min="0" :max="stored.fu_chuan_mail_count" step="1" inputmode="numeric" required /></span></label>
         </fieldset>
@@ -46,6 +47,7 @@
 </template>
 <script setup>
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { Mail } from '@lucide/vue'
 import { matchedRouteKey, onBeforeRouteLeave } from 'vue-router'
 import { getMailboxReserve, saveMailboxReserve, claimMailboxReserve } from '../../api/mailboxReserve.js'
 import InventoryQuickDialog from './InventoryQuickDialog.vue'
@@ -68,8 +70,15 @@ const claimTotals = computed(() => ({ coins: selection.value?.white_coin_mail_co
 function openPanel(value) {
   if (props.disabled || locked.value || !loaded.value || conflict.value) return
   error.value = ''; notice.value = ''
-  if (value === 'claim') selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(row => row.count), fu_chuan_mail_count: stored.value.fu_chuan_mail_count }
+  if (value === 'claim') resetClaimSelection()
   panel.value = value
+}
+function resetClaimSelection() {
+  selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(() => 0), fu_chuan_mail_count: 0 }
+}
+function selectAllMails() {
+  if (props.disabled || locked.value || conflict.value || !loaded.value) return
+  selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(row => row.count), fu_chuan_mail_count: stored.value.fu_chuan_mail_count }
 }
 async function closePanel() {
   const seq = sequence
@@ -118,7 +127,7 @@ async function confirmDiscard() {
 async function reload() {
   if (!(await confirmDiscard())) return
   await load()
-  if (loaded.value && panel.value === 'claim') selection.value = { white_coin_mail_counts: stored.value.white_coin_mails.map(row => row.count), fu_chuan_mail_count: stored.value.fu_chuan_mail_count }
+  if (loaded.value && panel.value === 'claim') resetClaimSelection()
 }
 async function save() {
   if (!loaded.value || locked.value || props.disabled || conflict.value || !dirty.value || !valid.value) return

@@ -12,7 +12,6 @@
               aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="!!rewardEntryWorkspace?.mode"
               @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
             <button type="button" class="btn ghost inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked" @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新数量</button>
-            <button type="button" class="btn ghost records-entry" :disabled="!inventoryAccountReady || stockActionBlocked || editingStock" @click="setTab('records')"><History :size="16" aria-hidden="true" />最近记录</button>
           </div>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
@@ -30,12 +29,6 @@
         </template>
         <template #help>
           <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记一笔」记录获得、符传使用与兑换，「更新数量」直接填写实际库存。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
-        </template>
-        <template #summary>
-          <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
-            <div class="inventory-freshness-copy"><Clock3 :size="15" aria-hidden="true" /><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
-
-          </div>
         </template>
       </CompactToolHeader>
 
@@ -167,6 +160,96 @@
             class="panel"
           >
             <div v-if="TUTORIALS_ENABLED && editingStock" id="inventory-tutorial-editor" />
+            <div class="manifest-toolbar">
+              <div
+                class="type-switch manifest-type-switch"
+                role="group"
+                aria-label="库存类型"
+              >
+                <button
+                  :disabled="editingStock"
+                  :aria-pressed="entityType === 'item'"
+                  :class="{ on: entityType === 'item' }"
+                  aria-label="切换到背包道具"
+                  @click="setEntityType('item')"
+                >
+                  <span class="manifest-type-label-full">背包道具</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">道具</span>
+                </button>
+                <button
+                  :disabled="editingStock"
+                  :aria-pressed="entityType === 'agent'"
+                  :class="{ on: entityType === 'agent' }"
+                  aria-label="切换到密探心纸"
+                  @click="setEntityType('agent')"
+                >
+                  <span class="manifest-type-label-full">密探心纸</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">心纸</span>
+                </button>
+                <span class="sp"></span>
+              </div>
+              <div class="manifest-bar">
+                <span class="manifest-bar-divider" aria-hidden="true"></span>
+                <div v-if="entityType === 'agent'" class="manifest-bar-summary">
+                  <div class="mf-stats">
+                    <div class="mf-stat">
+                      <b class="mf-num">{{ agentVersionFavoriteCount }}</b
+                      ><span class="mf-k">特别关注</span>
+                    </div>
+                  </div>
+                </div>
+                <span class="manifest-bar-spacer" aria-hidden="true"></span>
+                <div v-if="entityType === 'item'" class="manifest-item-tools">
+                  <input
+                    id="manifest-search"
+                    v-model.trim="manifestSearch"
+                    :disabled="editingStock"
+                    name="manifest-search"
+                    class="mf-search"
+                    type="search"
+                    aria-label="搜索库存名称或 ID"
+                    placeholder="搜索名称 / id"
+                  />
+                  <div class="mf-filter">
+                    <button
+                      :disabled="editingStock"
+                      :aria-pressed="manifestFilter === 'all'"
+                      :class="{ on: manifestFilter === 'all' }"
+                      @click="manifestFilter = 'all'"
+                    >
+                      全部
+                    </button>
+                    <button
+                      :disabled="editingStock"
+                      :aria-pressed="manifestFilter === 'owned'"
+                      :class="{ on: manifestFilter === 'owned' }"
+                      @click="manifestFilter = 'owned'"
+                    >
+                      已持有
+                    </button>
+                    <button
+                      :disabled="editingStock"
+                      :aria-pressed="manifestFilter === 'missing'"
+                      :class="{ on: manifestFilter === 'missing' }"
+                      @click="manifestFilter = 'missing'"
+                    >
+                      未持有
+                    </button>
+                  </div>
+                </div>
+                <div v-if="inventoryAccountReady" class="inventory-freshness" aria-label="当前库存类型的完整盘点时间" role="status">
+                  <span class="freshness-label">最近完整盘点</span>
+                  <span v-if="loading || currentLoadedContext !== stockContext">{{ error ? '读取失败' : '读取中…' }}</span>
+                  <span v-else-if="error">读取失败</span>
+                  <time v-else-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time>
+                  <span v-else>尚无完整盘点</span>
+                </div>
+                <span v-if="error" class="mf-sync-error" role="status"
+                  >库存未能读取：{{ error }}。当前按 0 显示，不代表实际库存；请重试读取。</span
+                >
+              </div>
+            </div>
+
             <div
               v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
@@ -186,9 +269,13 @@
                         ? "心纸库存"
                         : "道具库存"
                   }}
-                  （默认按游戏背包内顺序，可通过筛选按钮自行更改） · 已修改
+                  · 已修改
                   <b>{{ stockChangedCount }}</b> 项
                 </p>
+                <details v-if="editingStock" class="stock-edit-help">
+                  <summary aria-label="库存编辑说明"><CircleHelp :size="16" aria-hidden="true" /></summary>
+                  <p>默认按游戏背包内顺序。顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
+                </details>
                 <div v-if="editingStock" class="manifest-edit-actions">
                   <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
                     <input
@@ -224,83 +311,6 @@
                   >{{ stockSaveNotice }}</span
                 >
               </aside>
-            </div>
-
-            <div v-if="!editingStock" class="manifest-toolbar">
-              <div
-                class="type-switch manifest-type-switch"
-                role="group"
-                aria-label="库存类型"
-              >
-                <button
-                  :aria-pressed="entityType === 'item'"
-                  :class="{ on: entityType === 'item' }"
-                  aria-label="切换到背包道具"
-                  @click="setEntityType('item')"
-                >
-                  <span class="manifest-type-label-full">背包道具</span>
-                  <span class="manifest-type-label-compact" aria-hidden="true">道具</span>
-                </button>
-                <button
-                  :aria-pressed="entityType === 'agent'"
-                  :class="{ on: entityType === 'agent' }"
-                  aria-label="切换到密探心纸"
-                  @click="setEntityType('agent')"
-                >
-                  <span class="manifest-type-label-full">密探心纸</span>
-                  <span class="manifest-type-label-compact" aria-hidden="true">心纸</span>
-                </button>
-                <span class="sp"></span>
-              </div>
-              <div class="manifest-bar">
-                <span class="manifest-bar-divider" aria-hidden="true"></span>
-                <div v-if="entityType === 'agent'" class="manifest-bar-summary">
-                  <div class="mf-stats">
-                    <div class="mf-stat">
-                      <b class="mf-num">{{ agentVersionFavoriteCount }}</b
-                      ><span class="mf-k">特别关注</span>
-                    </div>
-                  </div>
-                </div>
-                <span class="manifest-bar-spacer" aria-hidden="true"></span>
-                <div v-if="entityType === 'item'" class="manifest-item-tools">
-                  <input
-                    id="manifest-search"
-                    v-model.trim="manifestSearch"
-                    name="manifest-search"
-                    class="mf-search"
-                    type="search"
-                    aria-label="搜索库存名称或 ID"
-                    placeholder="搜索名称 / id"
-                  />
-                  <div class="mf-filter">
-                    <button
-                      :aria-pressed="manifestFilter === 'all'"
-                      :class="{ on: manifestFilter === 'all' }"
-                      @click="manifestFilter = 'all'"
-                    >
-                      全部
-                    </button>
-                    <button
-                      :aria-pressed="manifestFilter === 'owned'"
-                      :class="{ on: manifestFilter === 'owned' }"
-                      @click="manifestFilter = 'owned'"
-                    >
-                      已持有
-                    </button>
-                    <button
-                      :aria-pressed="manifestFilter === 'missing'"
-                      :class="{ on: manifestFilter === 'missing' }"
-                      @click="manifestFilter = 'missing'"
-                    >
-                      未持有
-                    </button>
-                  </div>
-                </div>
-                <span v-if="error" class="mf-sync-error" role="status"
-                  >库存未能读取：{{ error }}。当前按 0 显示，不代表实际库存；请重试读取。</span
-                >
-              </div>
             </div>
 
             <div
@@ -600,6 +610,7 @@
                   v-for="e in visibleStockEditorEntries"
                   :key="e.id"
                   class="slot stock-edit-slot"
+                  :class="{ 'is-changed': isValidStockCount(stockDraft[e.id]) && Number(stockDraft[e.id]) !== Number(stockOriginal[e.id] || 0) }"
                 >
                   <div
                     class="slot-ic"
@@ -622,6 +633,7 @@
                     />
                   </div>
                   <InventoryItemName :entry="e" />
+                  <span v-if="isValidStockCount(stockDraft[e.id]) && Number(stockDraft[e.id]) !== Number(stockOriginal[e.id] || 0)" class="stock-changed-mark" aria-label="已修改">已改</span>
                   <span
                     v-if="entityType === 'agent'"
                     class="slot-tag star"
@@ -732,11 +744,11 @@
                           @load="onImgLoad"
                           @error="onImgError"
                         />
-                        <span class="slot-count" :class="{ zero: !e.owned }">{{
-                          fmtCount(e.count)
-                        }}</span>
                       </div>
                       <InventoryItemName :entry="e" />
+                      <span class="slot-count" :class="{ zero: !e.owned }">{{
+                        fmtCount(e.count)
+                      }}</span>
                     </li>
                   </ul>
                   <template
@@ -831,13 +843,13 @@
                                     @load="onImgLoad"
                                     @error="onImgError"
                                   />
-                                  <span
-                                    class="slot-count"
-                                    :class="{ zero: !e.owned }"
-                                    >{{ fmtCount(e.count) }}</span
-                                  >
                                 </div>
                                 <InventoryItemName :entry="e" />
+                                <span
+                                  class="slot-count"
+                                  :class="{ zero: !e.owned }"
+                                  >{{ fmtCount(e.count) }}</span
+                                >
                               </li>
                             </ul>
                           </div>
@@ -864,13 +876,13 @@
                                 @load="onImgLoad"
                                 @error="onImgError"
                               />
-                              <span
-                                class="slot-count"
-                                :class="{ zero: !e.owned }"
-                                >{{ fmtCount(e.count) }}</span
-                              >
                             </div>
                             <InventoryItemName :entry="e" />
+                            <span
+                              class="slot-count"
+                              :class="{ zero: !e.owned }"
+                              >{{ fmtCount(e.count) }}</span
+                            >
                           </li>
                         </ul>
                       </div>
@@ -1615,7 +1627,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  History,
   Info,
   Layers3,
   ListFilter,
@@ -1628,7 +1639,7 @@ import {
   Star,
   Upload,
   X,
-  Clock3,
+  CircleHelp,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import TutorialEntry from "../../components/TutorialEntry.vue";

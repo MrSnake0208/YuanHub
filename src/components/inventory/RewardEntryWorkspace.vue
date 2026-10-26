@@ -12,14 +12,19 @@
           </label>
           <button type="button" class="quick-edit" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
-        <button class="primary-button" type="submit" :disabled="!manual.presets.length || !!result">{{ busy ? '记录中…' : '记录所选' }}</button>
       </fieldset>
-      <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
-      <details class="quick-feedback shortcut-note">
-        <summary>记录领取1个茱萸，增加的是茱萸实物。</summary>
-        <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认后请查看回执。</p>
-        <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
-      </details>
+      <div class="daily-quick-actions">
+        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result">{{ busy ? '记录中…' : '记录所选' }}</button>
+        <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
+        <details class="quick-rules shortcut-note">
+          <summary>领取规则</summary>
+          <div class="quick-rules-content">
+            <p>记录领取1个茱萸，增加的是茱萸实物。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
+            <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认后请查看回执。</p>
+            <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
+          </div>
+        </details>
+      </div>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
