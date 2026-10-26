@@ -3,22 +3,27 @@ import { mount, flushPromises } from '@vue/test-utils'
 import FeedbackAccess from '../src/pages/feedback/admin.vue'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
 import { createFeedbackCategory, getFeedbackAccess, listFeedbackAccessGrants, renameFeedbackCategory, reorderFeedbackCategories, setFeedbackCategoryHidden, updateFeedbackAccessGrant } from '../src/api/feedback.js'
+import { useRoute } from 'vue-router'
 import { dialog } from '../src/utils/dialog.js'
 
-const router = vi.hoisted(() => ({ replace: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => router }))
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }))
+vi.mock('vue-router', async () => {
+  const { reactive } = await import('vue')
+  const route = reactive({ query: {} })
+  return { useRouter: () => router, useRoute: () => route, onBeforeRouteUpdate: vi.fn() }
+})
 vi.mock('../src/store/auth.js', () => ({ auth: {
   userInfo: { id: 'root' }, adminAccess: { permissions: ['admin:feedback_access:manage'], manageAreas: [] }
 } }))
 vi.mock('../src/store/feedbackUnread.js', () => ({ feedbackUnreadState: { count: 0 } }))
 vi.mock('../src/api/feedback.js', () => ({
   listFeedbackAccessGrants: vi.fn(), getFeedbackAccess: vi.fn(), updateFeedbackAccessGrant: vi.fn(), deleteFeedbackAccessGrant: vi.fn(),
-  createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn(), reorderFeedbackCategories: vi.fn(), setFeedbackCategoryHidden: vi.fn()
+  createFeedbackSpace: vi.fn(), updateFeedbackSpace: vi.fn(), createFeedbackCategory: vi.fn(), renameFeedbackCategory: vi.fn(), reorderFeedbackCategories: vi.fn(), setFeedbackCategoryHidden: vi.fn()
 }))
 vi.mock('../src/api/user.js', () => ({ searchFeedbackAccessUsers: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 const render = (options = {}) => mount(FeedbackAccess, { ...options, global: { stubs: {
-  IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true
+  IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, RouterLink: true, teleport: true
 } } })
 const user = id => ({ id, userName: `测试用户 ${id}`, email: `${id}@example.test` })
 function deferred() {
@@ -31,6 +36,7 @@ async function search(wrapper, query) {
 }
 beforeEach(() => {
   vi.useFakeTimers()
+  useRoute().query = {}
   router.replace.mockReset()
   getFeedbackAccess.mockReset().mockResolvedValue({ available_categories: [{ key: 'OPERATOR', label: '密探养成' }] })
   listFeedbackAccessGrants.mockReset().mockResolvedValue([])
@@ -62,12 +68,12 @@ it('上移下移保存完整目录顺序含隐藏项，首尾禁用，重载保�
   expect(wrapper.get('[aria-label="下移 活动日历"]').attributes('disabled')).toBeDefined()
   await wrapper.get('[aria-label="下移 密探养成"]').trigger('click'); await flushPromises()
   expect(reorderFeedbackCategories).toHaveBeenLastCalledWith(
-    ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR'], ['OPERATOR', 'CUSTOM_HIDDEN', 'CALENDAR']
+    ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR'], ['OPERATOR', 'CUSTOM_HIDDEN', 'CALENDAR'], 'yuanhub'
   )
   expect(categoryNames(wrapper)).toEqual(['隐藏板块（已隐藏）', '密探养成', '活动日历'])
   await wrapper.get('[aria-label="上移 活动日历"]').trigger('click'); await flushPromises()
   expect(reorderFeedbackCategories).toHaveBeenLastCalledWith(
-    ['CUSTOM_HIDDEN', 'CALENDAR', 'OPERATOR'], ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR']
+    ['CUSTOM_HIDDEN', 'CALENDAR', 'OPERATOR'], ['CUSTOM_HIDDEN', 'OPERATOR', 'CALENDAR'], 'yuanhub'
   )
   wrapper.unmount()
   const reloaded = render(); await flushPromises()
@@ -135,8 +141,8 @@ it('超级管理员新增和改名板块后重新读取目录', async () => {
   getFeedbackAccess.mockResolvedValue({ available_categories: [
     { key: 'OPERATOR', label: '密探养成' }, { key: 'CUSTOM_TEST', label: '新板块' }
   ] })
-  await wrapper.get('.category-create').trigger('submit'); await flushPromises()
-  expect(createFeedbackCategory).toHaveBeenCalledWith('新板块')
+  await wrapper.get('#feedback-category-create').trigger('submit'); await flushPromises()
+  expect(createFeedbackCategory).toHaveBeenCalledWith('新板块', 'yuanhub')
   expect(wrapper.get('.category-list').text()).toContain('新板块')
 
   await wrapper.get('[aria-label="重命名 新板块"]').trigger('click')
@@ -303,5 +309,34 @@ it('隐藏请求处理中禁止重复提交，失败保留原状态并提示', a
   pending.resolve(Promise.reject(new Error('目录已更新，请刷新'))); await flushPromises()
   expect(wrapper.get('[role="alert"]').text()).toContain('目录已更新')
   expect(wrapper.find('[aria-label="恢复显示 密探养成"]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('当前专区授权编辑只显示本区板块，保存保留其他专区已有授权', async () => {
+  useRoute().query = { space: 'partner-a' }
+  getFeedbackAccess.mockResolvedValue({ category_catalog: [
+    { key: 'OPERATOR', label: '主站板块' }, { key: 'CUSTOM_A', label: '合作板块', space_id: 'partner-a' }
+  ], spaces: [{ id: 'yuanhub', label: 'YuanHub', active: true }, { id: 'partner-a', label: '平台 A', active: true }] })
+  listFeedbackAccessGrants.mockResolvedValue([{ userId: 'manager', userName: '测试管理员', feedbackRoles: ['OPERATOR'], operatorAreas: ['OPERATOR', 'CUSTOM_A'], developerAreas: [], receiveAreas: [], manageAreas: [] }])
+  dialog.confirm.mockResolvedValue(true)
+  const wrapper = render(); await flushPromises()
+  expect(categoryNames(wrapper)).toEqual(['合作板块'])
+  await wrapper.get('[aria-label="编辑 测试管理员"]').trigger('click')
+  expect(wrapper.get('.permission-group:nth-of-type(2)').text()).not.toContain('主站板块')
+  await wrapper.get('.modal-foot .primary').trigger('click'); await flushPromises()
+  expect(updateFeedbackAccessGrant).toHaveBeenCalledWith('manager', expect.objectContaining({ operatorAreas: ['OPERATOR', 'CUSTOM_A'] }))
+  wrapper.unmount()
+})
+
+it('浏览器切换专区时基础信息与路由同步，不能用上一专区名称误保存', async () => {
+  getFeedbackAccess.mockResolvedValue({ category_catalog: [{ key: 'OPERATOR', label: '主站板块' }], spaces: [
+    { id: 'yuanhub', label: 'YuanHub', active: true }, { id: 'partner-a', label: '平台 A', active: false }
+  ] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('#feedback-space-label').element.value).toBe('YuanHub')
+  useRoute().query = { space: 'partner-a' }; await flushPromises()
+  expect(wrapper.get('#feedback-space-label').element.value).toBe('平台 A')
+  useRoute().query = {}; await flushPromises()
+  expect(wrapper.get('#feedback-space-label').element.value).toBe('YuanHub')
   wrapper.unmount()
 })

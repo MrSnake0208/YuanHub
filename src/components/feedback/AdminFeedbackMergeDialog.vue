@@ -57,6 +57,7 @@ import { publicStatusLabel } from '@/utils/feedbackPublic.js'
 const props = defineProps({
   open: { type: Boolean, default: false },
   sourceId: { type: String, default: '' },
+  spaceId: { type: String, default: 'yuanhub' },
   sourceTitle: { type: String, default: '' },
   busy: { type: Boolean, default: false }
 })
@@ -86,6 +87,7 @@ async function search() {
   error.value = ''
   try {
     const data = await listManagedFeedback({
+      spaceId: props.spaceId,
       page: 1,
       pageSize: 8,
       q: query.value.trim() || undefined,

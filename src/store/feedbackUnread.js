@@ -11,6 +11,7 @@ const FRESH_TTL = 15000
 export const feedbackUnreadState = reactive({
   count: 0,
   ids: [],
+  bySpace: {},
   loading: false,
   loaded: false
 })
@@ -55,6 +56,7 @@ function clearFeedbackUnread() {
   managedFeedbackSnapshot = []
   feedbackUnreadState.count = 0
   feedbackUnreadState.ids = []
+  feedbackUnreadState.bySpace = {}
   feedbackUnreadState.loading = false
   feedbackUnreadState.loaded = true
 }
@@ -103,6 +105,11 @@ async function fetchFeedbackUnread() {
     ) return
     managedFeedbackSnapshot = reports
     feedbackUnreadState.ids = reports.filter(report => report.teamUnread).map(report => String(report.id))
+    feedbackUnreadState.bySpace = {}
+    for (const report of reports.filter(report => report.teamUnread)) {
+      const spaceId = report.spaceId || 'yuanhub'
+      ;(feedbackUnreadState.bySpace[spaceId] ||= []).push(String(report.id))
+    }
     feedbackUnreadState.count = feedbackUnreadState.ids.length
     feedbackUnreadState.loaded = true
     loadedAt = Date.now()
@@ -130,12 +137,17 @@ export function refreshFeedbackUnread({ force = false } = {}) {
   return trackedPromise
 }
 
-export async function markAllManagedFeedbackRead() {
+export function managedFeedbackUnreadIds(spaceId) {
+  return spaceId === 'all' ? feedbackUnreadState.ids : feedbackUnreadState.bySpace[spaceId] || []
+}
+
+export async function markAllManagedFeedbackRead({ spaceId = 'all' } = {}) {
+  const context = feedbackUnreadContext.value
   if (!canReadManagedFeedback.value) return 0
   if (!feedbackUnreadState.loaded || feedbackUnreadState.loading) await refreshFeedbackUnread()
-  if (!canReadManagedFeedback.value || !managedFeedbackSnapshot.length) return 0
+  if (context !== feedbackUnreadContext.value || !canReadManagedFeedback.value || !managedFeedbackSnapshot.length) return 0
 
-  const unreadIds = new Set(feedbackUnreadState.ids)
+  const unreadIds = new Set(managedFeedbackUnreadIds(spaceId))
   const targets = managedFeedbackSnapshot.filter(report => {
     const reportId = report && (report.id ?? report.reportId ?? report.report_id)
     return reportId != null && report.lastReporterMessageId && unreadIds.has(String(reportId))

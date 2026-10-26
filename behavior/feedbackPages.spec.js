@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import MyFeedback from '../src/pages/feedback/index.vue'
 import ManagedFeedback from '../src/pages/feedback/manage.vue'
@@ -26,7 +26,7 @@ vi.mock('vue-router', async () => {
 })
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn(), prompt: vi.fn(), choose: vi.fn() } }))
 vi.mock('../src/api/feedback.js', () => ({
-  getFeedback: vi.fn(), getManagedFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(), listWorkflowFeedback: vi.fn(), listFeedbackWorkflowEvents: vi.fn(),
+  getFeedbackSpace: vi.fn(() => Promise.resolve({ id: 'yuanhub', label: 'YuanHub（主站）', active: true })), getFeedback: vi.fn(), getManagedFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(), listWorkflowFeedback: vi.fn(), listFeedbackWorkflowEvents: vi.fn(),
   getFeedbackQueueCounts: vi.fn(),
   claimFeedback: vi.fn(), assignFeedback: vi.fn(), handoffFeedback: vi.fn(), changeFeedbackWorkArea: vi.fn(), returnFeedback: vi.fn(), listFeedbackAssignees: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
@@ -47,7 +47,7 @@ vi.mock('../src/api/changelog.js', () => ({
 }))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'tester' }, adminAccess: { superAdmin: true, permissions: [] } } }))
 vi.mock('../src/store/feedbackUnread.js', () => ({
-  feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}, refreshFeedbackUnread: vi.fn(), markAllManagedFeedbackRead: vi.fn()
+  feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}, refreshFeedbackUnread: vi.fn(), managedFeedbackUnreadIds: () => feedbackUnreadState.ids, markAllManagedFeedbackRead: vi.fn()
 }))
 vi.mock('../src/store/notificationUnread.js', () => ({
   notificationUnreadState: { feedbackRefIds: [] },
@@ -62,7 +62,7 @@ function deferred() {
   return { promise, resolve, reject }
 }
 const ticket = id => ({
-  id, type: 'BUG', category: 'OPERATOR', status: 'OPEN', content: `issue ${id}`,
+  id, spaceId: 'yuanhub', type: 'BUG', category: 'OPERATOR', status: 'OPEN', content: `issue ${id}`,
   viewerIsReporter: true, viewerCanManage: true, quota: { canAppend: true, pendingCount: 0, pendingLimit: 3 },
   messages: [{ id: `${id}-initial`, senderKind: 'REPORTER', isAdmin: false, content: `conversation ${id}`, author: { id: 'tester' } }]
 })
@@ -71,7 +71,7 @@ const render = (component, options = {}) => mount(component, {
   ...options,
   global: {
     ...(options.global || {}),
-    stubs: { IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: true, ...(options.global?.stubs || {}) }
+    stubs: { IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: RouterLinkStub, ...(options.global?.stubs || {}) }
   }
 })
 const choose = async (wrapper, id) => {
@@ -264,6 +264,7 @@ it('公开结案确认取消或确认期间账号切换时不提交', async () =
 
 it('全部已读明确包含筛选之外工单，取消或切换身份都不写入', async () => {
   feedbackUnreadState.count = 12
+  feedbackUnreadState.ids = Array.from({ length: 12 }, (_, i) => `rpt_${i}`)
   const wrapper = render(ManagedFeedback); await flushPromises()
   dialog.confirm.mockResolvedValue(false)
   await wrapper.get('.feedback-mark-read-button').trigger('click'); await flushPromises()
@@ -279,6 +280,7 @@ it('全部已读明确包含筛选之外工单，取消或切换身份都不写�
 
 it('全部已读确认后只标记阅读状态并显示结果', async () => {
   feedbackUnreadState.count = 12
+  feedbackUnreadState.ids = Array.from({ length: 12 }, (_, i) => `rpt_${i}`)
   markAllManagedFeedbackRead.mockResolvedValue(12)
   const wrapper = render(ManagedFeedback); await flushPromises()
   await wrapper.get('.feedback-mark-read-button').trigger('click'); await flushPromises()
@@ -1358,7 +1360,7 @@ it('首次无反馈收起筛选并提供提交入口', async () => {
   expect(wrapper.find('.feedback-command-bar').exists()).toBe(false)
   expect(wrapper.find('.feedback-filter-row').exists()).toBe(false)
   expect(wrapper.find('.feedback-result-meta').exists()).toBe(false)
-  expect(wrapper.get('.feedback-empty-secondary').attributes('to')).toBe('/feedback/plaza')
+  expect(wrapper.getComponent('.feedback-empty-secondary').props('to')).toEqual({ path: '/feedback/plaza', query: {} })
   await wrapper.get('.ticket-state.empty button').trigger('click')
   expect(wrapper.find('.feedback-modal').exists()).toBe(true)
   await wrapper.get('[aria-label="关闭提交反馈弹窗"]').trigger('click'); await flushPromises()
@@ -1415,7 +1417,7 @@ it('支持相似反馈保留已填写草稿，详情使用安全的新标签页�
     props: { items: [{ id: 'example/one', publicTitle: '公开问题', type: 'BUG' }] },
     global: { stubs: { FeedbackSupportButton: true } }
   })
-  expect(list.get('a').attributes()).toMatchObject({ href: '/feedback/plaza?feedback=example%2Fone', target: '_blank', rel: 'noopener noreferrer' })
+  expect(list.get('a').attributes()).toMatchObject({ href: '/feedback/plaza?feedback=example%2Fone&space=yuanhub', target: '_blank', rel: 'noopener noreferrer' })
   list.unmount()
 })
 

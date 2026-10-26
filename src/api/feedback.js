@@ -18,6 +18,7 @@ export async function createFeedback(payload) {
   const title = payload.title ? String(payload.title).trim() : ''
   const body = {
     type: legacyType,
+    space_id: payload.spaceId || 'yuanhub',
     category,
     content: payload.content,
     media_ids: payload.mediaIds || [],
@@ -56,7 +57,9 @@ export function normalizeFeedbackMessage(message) {
       ? senderKind === 'ADMIN'
       : Boolean(message.isAdmin ?? message.is_admin ?? false),
     createdAt: message.createdAt ?? message.created_at ?? null,
-    images: Array.isArray(message.images) ? message.images : [],
+    images: Array.isArray(message.images) ? message.images.map(image => ({
+      ...image, privateStorage: Boolean(image.privateStorage ?? image.private_storage)
+    })) : [],
     files: Array.isArray(message.files)
       ? message.files.map(file => ({
           ...file,
@@ -113,6 +116,7 @@ export function normalizeFeedback(report) {
     ?? null
   return {
     ...report,
+    spaceId: report.spaceId ?? report.space_id ?? 'yuanhub',
     type,
     category,
     // area remains a read-only alias for older page consumers.
@@ -183,6 +187,7 @@ export function normalizeFeedback(report) {
 // 获取反馈列表
 export async function listFeedback(params = {}) {
   const qs = new URLSearchParams()
+  if (params.spaceId) qs.set('spaceId', params.spaceId)
   if (params.page != null) qs.set('page', String(params.page))
   if (params.pageSize != null) qs.set('pageSize', String(params.pageSize))
   if (params.status) qs.set('status', params.status)
@@ -238,16 +243,16 @@ export async function getFeedbackQueueCounts(queues, params = {}) {
 }
 
 // 获取单个反馈详情
-export function getFeedbackAccess() {
-  return request('/v1/reports/access', { auth: true })
+export function getFeedbackAccess(spaceId) {
+  return request('/v1/reports/access' + (spaceId ? '?spaceId=' + encodeURIComponent(spaceId) : ''), { auth: true })
 }
 
 export function listFeedbackAccessGrants() {
   return request('/v1/admin/feedback-access', { auth: true })
 }
 
-export function createFeedbackCategory(label) {
-  return request('/v1/admin/feedback-categories', { method: 'POST', auth: true, body: { label } })
+export function createFeedbackCategory(label, spaceId = 'yuanhub') {
+  return request('/v1/admin/feedback-categories', { method: 'POST', auth: true, body: { label, space_id: spaceId } })
 }
 
 export function renameFeedbackCategory(key, label) {
@@ -256,9 +261,9 @@ export function renameFeedbackCategory(key, label) {
   })
 }
 
-export function reorderFeedbackCategories(keys, expectedKeys) {
+export function reorderFeedbackCategories(keys, expectedKeys, spaceId) {
   return request('/v1/admin/feedback-categories/order', {
-    method: 'PUT', auth: true, body: { keys, expected_keys: expectedKeys }
+    method: 'PUT', auth: true, body: { keys, expected_keys: expectedKeys, space_id: spaceId }
   })
 }
 
@@ -425,8 +430,8 @@ export async function updateFeedbackType(id, type) {
 }
 
 // 获取反馈管理可关联的版本：目标版本可包含草稿，完成版本需由调用方筛 published=true。
-export async function listFeedbackVersionOptions() {
-  const data = await request('/v1/admin/feedback/version-options', { auth: true })
+export async function listFeedbackVersionOptions(spaceId = 'yuanhub') {
+  const data = await request(`/v1/admin/feedback/version-options?${new URLSearchParams({ spaceId })}`, { auth: true })
   const items = Array.isArray(data) ? data : []
   return items
     .map(item => ({
@@ -448,4 +453,20 @@ export async function updateFeedbackVersions(id, payload = {}) {
     }
   })
   return normalizeFeedback(data)
+}
+
+export function getFeedbackSpace(id) {
+  return request('/v1/reports/public/spaces/' + encodeURIComponent(id))
+}
+
+export function createFeedbackSpace(id, label) {
+  return request('/v1/admin/feedback-spaces', { method: 'POST', auth: true, body: { id, label } })
+}
+
+export function updateFeedbackSpace(space) {
+  return request('/v1/admin/feedback-spaces/' + encodeURIComponent(space.id), { method: 'PUT', auth: true, body: space })
+}
+
+export function listFeedbackSpaces() {
+  return request('/v1/reports/public/spaces')
 }

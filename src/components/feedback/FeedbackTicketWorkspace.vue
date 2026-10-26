@@ -35,6 +35,7 @@
           >
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ item.title || truncate(item.content, 72) }}</strong>
+              <small v-if="showSpace" class="ticket-origin">{{ spaceLabel(item.spaceId) }}</small>
               <details @click.stop @keydown.stop><summary>工单编号</summary><code>{{ item.id }}</code><button class="ticket-copy" type="button" @click="copyId(item.id)">复制编号</button></details>
               <div v-if="workflow" class="ticket-workflow-tags">
                 <span v-if="item.category !== item.workArea" class="ticket-origin">来源 · {{ categoryLabel(item.category) }}</span>
@@ -87,7 +88,7 @@
         <section ref="detailPanel" @focusin="revealFocusedControl" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
           <header class="ticket-detail-head">
             <div>
-              <span class="ticket-detail-kicker">FEEDBACK / TICKET</span>
+              <span class="ticket-detail-kicker">{{ selectedItem.spaceId ? spaceLabel(selectedItem.spaceId) : 'FEEDBACK / TICKET' }}</span>
               <h2 id="ticket-detail-title">反馈工单详情</h2>
             </div>
             <button ref="detailCloseButton" type="button" aria-label="关闭工单详情" title="关闭" @click="$emit('close')">
@@ -152,6 +153,8 @@ const props = defineProps({
   pageSize: { type: Number, default: 20 },
   totalPages: { type: Number, default: 1 },
   showReporter: { type: Boolean, default: false },
+  showSpace: { type: Boolean, default: false },
+  spaceLabel: { type: Function, default: id => id === 'yuanhub' ? 'YuanHub（主站）' : id },
   workflow: { type: Boolean, default: false },
   unreadFeedbackIds: { type: Array, default: () => [] },
   categoryLabel: { type: Function, required: true },

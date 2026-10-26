@@ -2,10 +2,10 @@
 import { request } from './request.js'
 
 // 上传反馈附件（截图或普通文件）
-export function uploadMedia(file) {
+export function uploadMedia(file, feedback = false) {
   const formData = new FormData()
   formData.append('file', file)
-  return request('/v1/media/upload', {
+  return request('/v1/media/upload' + (feedback ? '?feedback=true' : ''), {
     method: 'POST',
     auth: true,
     multipart: true,

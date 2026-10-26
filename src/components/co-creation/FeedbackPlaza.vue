@@ -90,10 +90,12 @@ import { ArrowRight, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from 
 import PublicFeedbackCard from '@/components/co-creation/PublicFeedbackCard.vue'
 import PublicFeedbackDetailModal from '@/components/co-creation/PublicFeedbackDetailModal.vue'
 import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
+import { feedbackLocation } from '@/utils/feedbackSpaces.js'
 import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
-  focusId: { type: String, default: '' }
+  focusId: { type: String, default: '' },
+  spaceId: { type: String, default: 'yuanhub' }
 })
 
 const PAGE_SIZE = 12
@@ -135,6 +137,7 @@ async function load() {
   error.value = ''
   try {
     const data = await listPublicFeedback({
+      spaceId: props.spaceId,
       page: page.value,
       pageSize: PAGE_SIZE,
       status: status.value || undefined,
@@ -190,7 +193,7 @@ function scheduleSearch() {
 }
 
 function goSubmit() {
-  router.push({ path: '/feedback', query: { new: '1' } })
+  router.push(feedbackLocation('/feedback', props.spaceId, { new: '1' }))
 }
 
 function openDetail(item) {
@@ -204,7 +207,7 @@ async function openDetailById(id) {
   detailError.value = ''
   detail.value = null
   try {
-    const data = await getPublicFeedback(id)
+    const data = await getPublicFeedback(id, props.spaceId)
     if (!isMounted || requestId !== detailRequestId) return
     detail.value = data
   } catch (_) {

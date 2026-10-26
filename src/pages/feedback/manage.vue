@@ -5,7 +5,8 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <h1 class="page-header-title">反馈工作台</h1>
+          <div class="page-header-row"><h1 class="page-header-title">反馈工作台</h1>
+            <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" :disabled="loadingAccess || actionBusy || publicBusy || mergeBusy || markingAllRead" @change="changeSpace" /></div>
           <p class="page-header-description">处理、分派、回复和公开当前授权范围内的反馈。</p>
         </div>
       </header>
@@ -13,13 +14,14 @@
       <section class="feedback-content">
         <div class="wrap">
           <FeedbackWorkspaceNav active="manage" />
+          <p v-if="spaceId === 'all'" class="feedback-result-meta" role="status">所有专区：列表、统计及批量已读涵盖全部授权专区。</p>
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
             <ShieldAlert :size="24" aria-hidden="true" />
-            <strong>暂无板块管理权限</strong>
+            <strong>{{ error || '暂无板块管理权限' }}</strong>
             <span>当前账号仍可提交和跟踪自己的反馈。</span>
-            <router-link class="feedback-primary-action" to="/feedback">前往我的反馈</router-link>
+            <router-link class="feedback-primary-action" :to="feedbackLocation('/feedback', spaceId === 'all' ? 'yuanhub' : spaceId)">前往我的反馈</router-link>
           </div>
 
           <template v-else>
@@ -48,7 +50,7 @@
                 <span>负责板块</span>
                 <select :value="filterCategory" @change="changeListOption('category', $event)">
                   <option value="">全部板块</option>
-                  <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+                  <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ spaceId === 'all' ? spaceLabel(categorySpaceId(option)) + ' / ' : '' }}{{ option.label }}</option>
                 </select>
               </label>
               <label class="feedback-filter">
@@ -72,11 +74,11 @@
                     </select>
                   </label>
                   <div class="feedback-read-tools">
-                    <span>以下操作作用于全部管理范围，与当前筛选无关。</span>
-                    <button class="feedback-button feedback-mark-read-button" type="button" :disabled="markingAllRead || feedbackUnreadState.loading || feedbackUnreadState.count === 0" :title="markAllReadHint" :aria-label="markAllReadHint" @click="markAllUnreadFeedback">
+                    <span>以下操作作用于{{ spaceId === 'all' ? '所有授权专区' : '当前专区' }}，与当前筛选无关。</span>
+                    <button class="feedback-button feedback-mark-read-button" type="button" :disabled="markingAllRead || feedbackUnreadState.loading || scopedUnreadCount === 0" :title="markAllReadHint" :aria-label="markAllReadHint" @click="markAllUnreadFeedback">
                       <CheckCheck :size="15" aria-hidden="true" />
-                      <span>{{ markingAllRead ? '标记中…' : '全部管理范围已读' }}</span>
-                      <span v-if="feedbackUnreadState.count > 0" class="feedback-mark-read-count" aria-hidden="true">{{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}</span>
+                      <span>{{ markingAllRead ? '标记中…' : '全部已读' }}</span>
+                      <span v-if="scopedUnreadCount > 0" class="feedback-mark-read-count" aria-hidden="true">{{ scopedUnreadCount > 99 ? '99+' : scopedUnreadCount }}</span>
                     </button>
                   </div>
                 </div>
@@ -85,6 +87,8 @@
 
             <FeedbackTicketWorkspace
               :items="feedbacks"
+              :space-label="spaceLabel"
+              :show-space="spaceId === 'all'"
               :selected-id="selectedId"
               :selected-item="selectedDetail"
               :loading="loading"
@@ -118,8 +122,8 @@
                 >
                   <template #management>
                     <section v-if="item.mergedIntoId || item.mergedSourceIds?.length" class="feedback-admin-settings feedback-merge-relations" aria-label="反馈合并关系">
-                      <div v-if="item.mergedIntoId"><strong>已合并至</strong><router-link :to="{ path: '/feedback/manage', query: { id: item.mergedIntoId } }">{{ item.mergedIntoId }}</router-link></div>
-                      <div v-if="item.mergedSourceIds?.length"><strong>已归并 {{ item.mergedCount }} 条反馈</strong><ul><li v-for="sourceId in item.mergedSourceIds" :key="sourceId"><router-link :to="{ path: '/feedback/manage', query: { id: sourceId } }">{{ sourceId }}</router-link></li></ul></div>
+                      <div v-if="item.mergedIntoId"><strong>已合并至</strong><router-link :to="{ path: '/feedback/manage', query: { id: item.mergedIntoId, space: item.spaceId } }">{{ item.mergedIntoId }}</router-link></div>
+                      <div v-if="item.mergedSourceIds?.length"><strong>已归并 {{ item.mergedCount }} 条反馈</strong><ul><li v-for="sourceId in item.mergedSourceIds" :key="sourceId"><router-link :to="{ path: '/feedback/manage', query: { id: sourceId, space: item.spaceId } }">{{ sourceId }}</router-link></li></ul></div>
                     </section>
                     <div v-if="canManageSettings(item)" class="feedback-management-summary" aria-label="反馈管理状态">
                       <span>工单处理：{{ statusLabel(item.status, item.hasAdminReply, item) }}</span>
@@ -195,6 +199,7 @@
     <AdminFeedbackMergeDialog
       :open="mergeOpen"
       :source-id="selectedId"
+      :space-id="selectedDetail?.spaceId || spaceId"
       :source-title="selectedDetail?.title || selectedDetail?.content || selectedId"
       :busy="mergeBusy"
       @close="mergeOpen = false"
@@ -238,7 +243,7 @@
 <script setup>
 import { subscribeFeedbackNotificationRefresh } from '../../store/notificationRealtime.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
@@ -251,6 +256,8 @@ import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPi
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
+import FeedbackSpaceSelector from '@/components/feedback/FeedbackSpaceSelector.vue'
+import { categorySpaceId, feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
 import {
   appendManagedFeedbackMessage,
   claimFeedback,
@@ -289,7 +296,18 @@ const allStatusTabs = [
 const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
-const access = ref({ superAdmin: false, operatorAreas: [], developerAreas: [], availableWorkAreas: [] })
+const spaceId = computed(() => feedbackSpaceId(route.query))
+const spaces = ref([])
+const rawAccess = ref({ superAdmin: false, operatorAreas: [], developerAreas: [], availableWorkAreas: [] })
+const spaceOptions = computed(() => rawAccess.value.superAdmin ? [{ id: 'all', label: '所有专区' }, ...spaces.value] : spaces.value)
+const access = computed(() => {
+  const keys = new Set(categoryCatalog.value.filter(option => spaceId.value === 'all' || categorySpaceId(option) === spaceId.value).map(option => option.key))
+  return { ...rawAccess.value,
+    operatorAreas: rawAccess.value.operatorAreas.filter(key => keys.has(key)),
+    developerAreas: rawAccess.value.developerAreas.filter(key => keys.has(key)),
+    availableWorkAreas: rawAccess.value.availableWorkAreas.filter(option => keys.has(option.key))
+  }
+})
 const categoryCatalog = ref([])
 const loadingAccess = ref(true)
 const loading = ref(false)
@@ -346,8 +364,9 @@ const assigneesError = ref('')
 const replyMedia = useFeedbackMedia()
 const draftDirty = computed(() => Boolean(
   (replyTarget.value && (replyContent.value.trim() || replyMedia.items.length)) ||
-  (workflowMode.value && workflowNote.value.trim())
+  (workflowMode.value && workflowNote.value.trim()) || managementPanel.value?.hasDraft
 ))
+onBeforeRouteUpdate(() => !(workflowBusy.value || updatingStatus.value || replying.value || publicBusy.value || mergeBusy.value || markingAllRead.value))
 const confirmDraftDiscard = useUnsavedChanges(draftDirty, '回复或流转草稿')
 useModalFocus(() => managementDialog.value === 'public', managementPanel, {
   initialFocus: () => managementDialogCloseButton.value,
@@ -368,7 +387,7 @@ let queueCountRequestId = 0
 let feedbackRefreshTimer = null
 let stopFeedbackUnread = null
 
-const hasManagePermission = computed(() => access.value.superAdmin || access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0)
+const hasManagePermission = computed(() => spaceOptions.value.some(space => space.id === spaceId.value) && (access.value.superAdmin || access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0))
 const statusTabs = computed(() => allStatusTabs.filter(tab => {
   if (access.value.superAdmin) return true
   if (['UNASSIGNED', 'MINE', 'NEEDS_REPLY', 'CLOSED', 'ALL'].includes(tab.key)) return access.value.operatorAreas.length > 0
@@ -381,12 +400,17 @@ const categoryOptions = computed(() => {
   const all = access.value.availableWorkAreas
   return access.value.superAdmin ? all : all.filter(option => access.value.operatorAreas.includes(option.key) || access.value.developerAreas.includes(option.key))
 })
-const operatorCategoryOptions = computed(() => categoryOptions.value.filter(option => access.value.superAdmin || access.value.operatorAreas.includes(option.key)))
+const operatorCategoryOptions = computed(() => categoryOptions.value.filter(option => (!selectedDetail.value?.spaceId || categorySpaceId(option) === selectedDetail.value.spaceId) && (access.value.superAdmin || access.value.operatorAreas.includes(option.key))))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
-const unreadFeedbackIds = computed(() => feedbackUnreadState.ids)
-const markAllReadHint = computed(() => feedbackUnreadState.count > 0
-  ? `将当前管理范围内 ${feedbackUnreadState.count} 条未读反馈全部标记为已读`
+const unreadFeedbackIds = computed(() => feedbackUnreadStore.managedFeedbackUnreadIds(spaceId.value))
+const scopedUnreadCount = computed(() => unreadFeedbackIds.value.length)
+const markAllReadHint = computed(() => scopedUnreadCount.value > 0
+  ? `将${spaceId.value === 'all' ? '所有授权专区' : '当前专区'}内 ${scopedUnreadCount.value} 条未读反馈标记为已读`
   : '当前没有未读反馈')
+
+function spaceLabel(id) {
+  return spaces.value.find(space => space.id === id)?.label || (id === 'yuanhub' ? 'YuanHub（主站）' : id)
+}
 
 function categoryLabel(category) {
   return categoryCatalog.value.find(option => option.key === category)?.label || category || '其他模块'
@@ -422,6 +446,7 @@ async function loadQueueCounts() {
   queueCountError.value = ''
   try {
     const counts = await getFeedbackQueueCounts(statusTabs.value.map(tab => tab.key), {
+      spaceId: spaceId.value,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined
     })
@@ -442,11 +467,15 @@ async function loadAccess() {
     const catalog = data.categoryCatalog || data.category_catalog || rawAreas
     if (!catalog.length) throw new Error('反馈板块目录为空')
     categoryCatalog.value = catalog
-    access.value = {
+    rawAccess.value = {
       superAdmin: Boolean(data.superAdmin ?? data.super_admin),
       operatorAreas: data.operatorAreas || data.operator_areas || [],
       developerAreas: data.developerAreas || data.developer_areas || [],
-      availableWorkAreas: rawAreas.map(option => ({ key: option.key, label: option.label }))
+      availableWorkAreas: rawAreas
+    }
+    spaces.value = data.manageableSpaces || data.manageable_spaces || [{ id: 'yuanhub', label: 'YuanHub（主站）', active: true }]
+    if (!route.query.space && !route.query.id && !spaces.value.some(space => space.id === 'yuanhub') && spaces.value.length) {
+      await router.replace(feedbackLocation('/feedback/manage', spaces.value[0].id))
     }
     if (!access.value.operatorAreas.length && access.value.developerAreas.length) filterStatus.value = 'DEV'
   } catch (e) {
@@ -459,6 +488,7 @@ async function loadAccess() {
 async function loadFeedback({ background = false } = {}) {
   if (!isMounted || !hasManagePermission.value || (background && loading.value)) return
   const requestId = ++loadRequestId
+  const requestedSpace = spaceId.value
   if (!background) {
     loading.value = true
     error.value = ''
@@ -470,12 +500,13 @@ async function loadFeedback({ background = false } = {}) {
       page: page.value,
       pageSize: pageSize.value,
       queue: filterStatus.value,
+      spaceId: spaceId.value,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined,
       sortBy: sort.value === 'updated' ? 'updatedAt' : 'createdAt',
       sortOrder: sort.value === 'oldest' ? 'asc' : 'desc'
     })
-    if (requestId !== loadRequestId) return
+    if (requestId !== loadRequestId || requestedSpace !== spaceId.value) return
     totalCount.value = Number(data.total ?? data.items?.length ?? 0)
     if (page.value > totalPages.value) {
       page.value = totalPages.value
@@ -520,23 +551,24 @@ function searchFeedback() {
 }
 
 async function markAllUnreadFeedback() {
-  if (markingAllRead.value || feedbackUnreadState.loading || feedbackUnreadState.count === 0) return
+  if (markingAllRead.value || feedbackUnreadState.loading || scopedUnreadCount.value === 0) return
   const markAllRead = feedbackUnreadStore.markAllManagedFeedbackRead
   if (typeof markAllRead !== 'function') return
   const userId = currentUserId()
-  const count = feedbackUnreadState.count
+  const count = scopedUnreadCount.value
+  const currentSpace = spaceId.value
   markingAllRead.value = true
   try {
     const confirmed = await dialog.confirm({
-      title: '全部管理范围标为已读？',
-      message: `将全部管理范围内 ${count} 条未读反馈标为已读，包含当前筛选之外的工单。此操作不会完成或结案工单。`,
+      title: currentSpace === 'all' ? '所有授权专区标为已读？' : '当前专区标为已读？',
+      message: `将${currentSpace === 'all' ? '所有授权专区' : '当前专区'}内 ${count} 条未读反馈标为已读，包含当前筛选之外的工单。此操作不会完成或结案工单。`,
       confirmText: '全部标为已读', cancelText: '取消'
     })
-    if (!confirmed || !isMounted || userId !== currentUserId()) return
-    await markAllRead()
-    if (isMounted && userId === currentUserId()) pageMessage.value = '全部管理范围已标为已读，工单处理状态未改变。'
+    if (!confirmed || !isMounted || userId !== currentUserId() || currentSpace !== spaceId.value) return
+    await markAllRead({ spaceId: currentSpace })
+    if (isMounted && userId === currentUserId() && currentSpace === spaceId.value) pageMessage.value = '所选专区范围已标为已读，工单处理状态未改变。'
   } catch (e) {
-    if (isMounted && userId === currentUserId()) pageMessage.value = e.message || '标为已读失败，请重试。'
+    if (isMounted && userId === currentUserId() && currentSpace === spaceId.value) pageMessage.value = e.message || '标为已读失败，请重试。'
   } finally {
     markingAllRead.value = false
   }
@@ -574,6 +606,7 @@ async function loadFeedbackDetail(id, { background = false } = {}) {
   try {
     const detail = await getManagedFeedback(id)
     if (!isCurrentDetail(requestId, id, userId)) return
+    if (spaceId.value !== 'all' && detail.spaceId !== spaceId.value) throw new Error('该工单不属于当前专区，请从对应专区打开。')
     if (background) Object.assign(selectedDetail.value, detail)
     else replaceTicket(detail)
     await nextTick()
@@ -990,7 +1023,15 @@ onMounted(async () => {
   stopNotificationRefresh = subscribeFeedbackNotificationRefresh(refreshOpenFeedback)
   stopFeedbackUnread = subscribeFeedbackUnread()
   await loadAccess()
-  if (!isMounted || !hasManagePermission.value) return
+  if (!isMounted) return
+  if (route.query.id && !route.query.space) {
+    try {
+      const detail = await getManagedFeedback(String(route.query.id))
+      if (!isMounted) return
+      await router.replace(feedbackLocation('/feedback/manage', detail.spaceId, { id: route.query.id }))
+    } catch (e) { error.value = e.message || '工单加载失败' }
+  }
+  if (!hasManagePermission.value) return
   await loadFeedback()
   if (!isMounted) return
   ready = true
@@ -1001,12 +1042,31 @@ onMounted(async () => {
   if (reportId) await selectTicket(reportId)
 })
 
-watch(() => route.query.id, id => {
-  if (!isMounted || !ready || !hasManagePermission.value) return
-  // The route guard already confirmed discarding the draft before this update.
+async function changeSpace(id) {
+  if (actionBusy.value || publicBusy.value || mergeBusy.value || markingAllRead.value) return
+  await router.push(feedbackLocation('/feedback/manage', id))
+}
+
+watch(() => [spaceId.value, route.query.id], async ([space, id], [previousSpace]) => {
+  if (!isMounted || !ready) return
   resetDetail()
-  if (id) selectTicket(String(id))
-})
+  if (space !== previousSpace) {
+    loadRequestId += 1
+    queueCountRequestId += 1
+    loading.value = false
+    feedbacks.value = []
+    totalCount.value = 0
+    queueCounts.value = {}
+    filterCategory.value = ''
+    page.value = 1
+    pageMessage.value = ''
+    error.value = ''
+    if (!statusTabs.value.some(tab => tab.key === filterStatus.value)) filterStatus.value = statusTabs.value[0]?.key || 'ALL'
+    if (hasManagePermission.value) await loadFeedback()
+  }
+  if (space !== spaceId.value) return
+  if (id && hasManagePermission.value) await selectTicket(String(id))
+}, { flush: 'sync' })
 
 onBeforeUnmount(() => {
   if (stopNotificationRefresh) stopNotificationRefresh()

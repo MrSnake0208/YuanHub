@@ -57,7 +57,7 @@ test('超级管理员板块写接口发送名称并保留稳定标识', async ()
   })
   assert.match(calls[0].url, /\/v1\/admin\/feedback-categories$/)
   assert.equal(calls[0].method, 'POST')
-  assert.deepEqual(calls[0].body, { label: '新板块' })
+  assert.deepEqual(calls[0].body, { label: '新板块', space_id: 'yuanhub' })
   assert.match(calls[1].url, /\/v1\/admin\/feedback-categories\/CUSTOM_TEST$/)
   assert.equal(calls[1].method, 'PUT')
   assert.deepEqual(calls[1].body, { label: '新名称' })
@@ -117,7 +117,7 @@ test('反馈版本选项保留草稿/已发布状态供目标与完成版本分�
     ])
   }, () => listFeedbackVersionOptions())
 
-  assert.match(capturedUrl, /\/v1\/admin\/feedback\/version-options$/)
+  assert.match(capturedUrl, /\/v1\/admin\/feedback\/version-options\?spaceId=yuanhub$/)
   assert.deepEqual(result, [
     { id: 'chg_draft', versionLabel: 'v0.0.1-beta.8', published: false },
     { id: 'chg_pub', versionLabel: 'v0.0.1-beta.7', published: true }
@@ -152,6 +152,7 @@ test('创建反馈发送 type/category 字段', async () => {
     assertDiagnosticsPayload(body.diagnostics)
     delete body.diagnostics
     assert.deepEqual(body, {
+      space_id: 'yuanhub',
       type: 'BUG',
       category: 'INVENTORY',
       content: '坏了',
@@ -209,6 +210,7 @@ test('创建反馈兼容旧的 type/category/area 请求', async () => {
   assertDiagnosticsPayload(body.diagnostics)
   delete body.diagnostics
   assert.deepEqual(body, {
+    space_id: 'yuanhub',
     type: 'BUG',
     category: 'INVENTORY',
     content: '坏了',
@@ -773,4 +775,24 @@ test('板块隐藏和恢复发送布尔状态并编码稳定标识', async () =>
     assert.equal(calls[index].method, 'PUT')
     assert.deepEqual(calls[index].body, { hidden })
   }
+})
+
+test('专区提交列表统计与版本查询发送同一稳定标识，反馈上传选择私有存储', async () => {
+  const calls = []
+  await withFetch(async (url, options) => {
+    calls.push({ url: String(url), body: options.body })
+    if (String(url).includes('/v1/reports?') || String(url).includes('/queue?')) return apiResponse({ items: [], total: 0 })
+    if (String(url).includes('version-options')) return apiResponse([])
+    return apiResponse({ id: 'ticket-a', space_id: 'partner-a' })
+  }, async () => {
+    const result = await createFeedback({ category: 'CUSTOM_A', content: 'test', spaceId: 'partner-a' })
+    assert.equal(result.spaceId, 'partner-a')
+    await listMyFeedback({ spaceId: 'partner-a' })
+    await getFeedbackQueueCounts(['ALL'], { spaceId: 'partner-a' })
+    await listFeedbackVersionOptions('partner-a')
+    await uploadMedia(new File(['x'], 'screen.png', { type: 'image/png' }), true)
+  })
+  assert.equal(JSON.parse(calls[0].body).space_id, 'partner-a')
+  for (const call of calls.slice(1, 4)) assert.equal(new URL(call.url, 'https://example.test').searchParams.get('spaceId'), 'partner-a')
+  assert.match(calls[4].url, /\/v1\/media\/upload\?feedback=true$/)
 })
