@@ -42,8 +42,10 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
   .summary-agent-list small { font-size: 11px; }
   .summary-empty { margin: 0; }
 }
-@container (max-width: 520px) {
-  .summary .summary-icon { position: static; display: block; margin-bottom: 3px; }
-  .summary-number strong { font-size: 20px; }
-  .summary-item dt { font-size: 11px; }
+@media (max-width: 1080px) {
+  @container (max-width: 520px) {
+    .summary .summary-icon { position: static; display: block; margin-bottom: 3px; }
+    .summary-number strong { font-size: 20px; }
+    .summary-item dt { font-size: 11px; }
+  }
 }
