@@ -315,20 +315,71 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .entry-operations button { font: 700 14px/1.5 var(--font-b); }
 .compact-entry .channel-section > summary { font-size: 13px; }
 .compact-entry .basket-empty { font-size: 13px; }
-.compact-entry .basket-empty > svg, .compact-entry .basket-empty > small, .compact-entry .baseline-note { display: none; }
-  .reward-dialog.compact-entry { width: min(760px, 100%); }
-  .compact-entry .panel-heading { padding: 16px 20px; }
-  .compact-entry .heading-copy .eyebrow { display: none; }
-  .entry-operations { display: flex; gap: 8px; margin-bottom: 14px; }
-  .entry-operations button { flex: 1; min-height: 38px; }
-  .compact-entry .channel-section { margin-bottom: 12px; }
-  .compact-entry .channel-section[open] > summary { margin-bottom: 12px; }
-  .compact-entry .manual-columns { display: flex; flex-direction: column; gap: 12px; }
-  .compact-entry .reward-grid { max-height: 260px; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
-  .compact-entry .reward-receipt { padding: 0; }
-  .compact-entry .basket-empty { min-height: 40px; padding: 8px; }
-  .compact-entry .basket-list { max-height: 220px; }
-  .compact-entry .preview-button { margin-top: 10px; }
+.compact-entry .basket-empty > svg, .compact-entry .basket-empty > small { display: none; }
+.reward-dialog.compact-entry { width: min(760px, 100%); }
+.reward-dialog.compact-entry.mode-manual { width: min(1120px, 100%); container-type: inline-size; }
+.reward-dialog.compact-entry.resource-operation { width: min(760px, 100%); }
+.compact-entry .panel-heading { padding: 16px 20px; }
+.compact-entry .heading-copy .eyebrow { display: none; }
+.entry-operations { display: flex; flex: none; gap: 8px; padding: 4px 12px 0; margin-bottom: 0; }
+.entry-operations button { flex: 1; min-width: 0; min-height: 40px; }
+.compact-entry .channel-section { padding: 12px 20px; }
+.compact-entry .channel-section[open] > summary { margin-bottom: 12px; }
+.compact-entry .channel-section > summary { min-height: 24px; line-height: 24px; overflow-wrap: anywhere; }
+.compact-entry .manual-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 0 12px 12px; border-top: 0; }
+.compact-entry .reward-picker, .compact-entry .reward-receipt { min-height: 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.compact-entry .picker-heading { margin-bottom: 12px; }
+.compact-entry .picker-tools { gap: 8px; margin-bottom: 12px; }
+.compact-entry .search-field { flex-basis: 200px; }
+.compact-entry .rarity-options, .compact-entry .prof-filter { flex-shrink: 0; }
+.compact-entry .picker-caption { font-size: 12px; margin-top: 8px; }
+.compact-entry .reward-grid { max-height: min(36dvh, 340px); overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px 8px; overscroll-behavior: contain; }
+.compact-entry .reward-grid:empty { display: none; }
+.compact-entry .tile-name { font-size: 12px; }
+.compact-entry .basket-heading { flex: none; min-height: 32px; font: 700 16px/1.5 var(--font-s); }
+.compact-entry .basket-heading .text-button { font: 12px var(--font-b); }
+.compact-entry .basket-empty { min-height: 40px; padding: 8px 0; align-items: flex-start; }
+.compact-entry .basket-list { max-height: min(28dvh, 260px); margin-bottom: 12px; padding: 2px 4px; overscroll-behavior: contain; }
+.compact-entry .basket-list li { gap: 8px; padding: 10px 0; }
+.compact-entry .basket-name { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.compact-entry .basket-name > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.compact-entry .basket-name .reward-item-icon { flex-basis: 40px; width: 40px; height: 40px; }
+.compact-entry .quantity-control button { width: 28px; min-height: 36px; }
+.compact-entry .quantity-control input { width: 58px; height: 36px; font-size: 13px; }
+.compact-entry .remove-reward { flex: none; width: 28px; min-height: 36px; }
+.compact-entry .preview-button { flex: none; min-height: 48px; margin-top: 10px; font-size: 14px; }
+.compact-entry.mode-manual .panel-footnote { flex: none; padding: 10px 20px; font-size: 12px; }
+
+/* 两栏由弹窗的可用宽度决定，给数量编辑保留完整空间。 */
+@container (min-width: 920px) {
+  .compact-entry .manual-columns { grid-template-columns: minmax(0, 1fr) minmax(300px, 31%); align-items: stretch; }
+  .compact-entry .reward-receipt { display: flex; flex-direction: column; }
+  .compact-entry .basket-list { flex: 1; min-height: 0; }
+  .compact-entry .preview-button { margin-top: auto; }
+}
+
+@media (min-width: 1000px) and (min-height: 640px) {
+  .reward-dialog.compact-entry.mode-manual:not(.resource-operation) { height: min(780px, calc(var(--modal-viewport-height, 100dvh) - 48px)); }
+  .compact-entry:not(.resource-operation) .reward-dialog-scroll { display: flex; flex-direction: column; }
+  .compact-entry .manual-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .compact-entry .manual-form > fieldset { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  /* 展开来源时仍为筛选、至少一行候选和保存区留出空间。 */
+  .compact-entry .channel-section { flex: none; max-height: min(240px, max(96px, calc(var(--modal-viewport-height, 100dvh) - 520px))); overflow-y: auto; }
+  .compact-entry .manual-columns { flex: 1; min-height: 300px; }
+  .compact-entry .reward-picker { display: flex; flex-direction: column; }
+  .compact-entry .reward-picker > :not(.reward-grid) { flex-shrink: 0; }
+  .compact-entry .training-picker { overflow-y: auto; overscroll-behavior: contain; }
+  .compact-entry .reward-grid { flex: 1; min-height: 0; max-height: none; }
+  .compact-entry .basket-list { max-height: none; }
+  .compact-entry .preview-section, .compact-entry .result { flex-shrink: 0; }
+}
+
+@media (max-height: 639px) {
+  .compact-entry .reward-grid, .compact-entry .basket-list { max-height: 200px; }
+}
+.is-short-viewport .compact-entry .reward-grid, .is-short-viewport .compact-entry .basket-list { flex: none; max-height: 200px; }
+.is-short-viewport .compact-entry .channel-section { max-height: none; overflow: visible; }
+.is-short-viewport .compact-entry .training-picker { overflow: visible; }
 .history-rewards { display: grid; gap: 6px; }
 .history-rewards > label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .history-rewards input { appearance: auto; width: 16px; height: 16px; flex: none; }/* 快捷奖励保持同一表单，操作与规则集中在末列。 */
