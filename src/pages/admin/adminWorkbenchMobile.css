@@ -1,8 +1,14 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
-.workbench-pin-hint { font-size: 13px; line-height: 1.7; margin: 0; }
-.workbench-tool-entry { min-width: 0; }
-.workbench-pin { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px; font-size: 13px; }
+.admin-page-header { padding: 20px 0 8px; }
+.admin-page-header .page-header-context { margin-top: 2px; }
+.workbench-notices { display: grid; gap: 8px; }
+.workbench-pin-hint, .workbench-pin-error { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.7; margin: 0; padding: 11px 14px; }
+.workbench-pin-hint > svg, .workbench-pin-error > svg { flex: 0 0 auto; margin-top: 2px; }
+.workbench-pin-hint > span, .workbench-pin-error > span { min-width: 0; overflow-wrap: anywhere; }
+.workbench-tool-entry { min-width: 0; display: grid; grid-template-rows: 1fr auto; gap: 8px; padding: 18px 18px 12px; }
+.workbench-pin { display: inline-flex; align-items: center; justify-content: center; justify-self: end; gap: 6px; padding: 5px 10px; font-size: 13px; line-height: 1.5; }
+.workbench-pin > svg { flex: 0 0 auto; }
 
 .page-admin-workbench > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
@@ -44,24 +50,25 @@
 
 .workbench-groups {
   display: grid;
-  gap: 42px;
+  gap: 28px;
 }
 
 .workbench-group-head {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 15px 0 13px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .section-kicker {
   font-family: var(--font-d);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 500;
   letter-spacing: .13em;
 }
 
 .workbench-group h2 {
+  margin: 0;
   font-family: var(--font-s);
   font-size: 25px;
   font-weight: 900;
@@ -76,21 +83,15 @@
 
 .workbench-tool {
   min-width: 0;
-  min-height: 102px;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 20px;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 13px;
-  padding: 18px;
-}
-
-.workbench-tool:hover {
-  transform: translateY(-2px);
+  gap: 14px;
 }
 
 .workbench-tool-icon {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
 }
@@ -99,7 +100,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .workbench-tool-copy strong {
@@ -107,40 +108,54 @@
   font-family: var(--font-s);
   font-size: 17px;
   font-weight: 900;
+  line-height: 1.5;
 }
 
 .workbench-tool-copy small {
-  font-size: 12.5px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
   line-height: 1.65;
 }
 
 @media (max-width: 767px) {
+  .admin-page-header {
+    padding-top: 16px;
+  }
+
   .workbench-content {
     padding-bottom: 4px;
   }
 
   .workbench-groups {
-    gap: 30px;
+    gap: 24px;
   }
 
   .workbench-group-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-    padding-top: 13px;
+    gap: 9px;
   }
 
   .workbench-group h2 {
-    font-size: 23px;
+    font-size: 22px;
   }
 
   .workbench-tools {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-tool-entry {
+    padding: 14px;
   }
 
   .workbench-tool {
-    min-height: 94px;
-    padding: 15px;
+    gap: 10px;
+  }
+
+  .workbench-tool-copy strong {
+    font-size: 16px;
+  }
+
+  .workbench-pin {
+    padding: 8px 12px;
   }
 }
 }
