@@ -9,6 +9,7 @@ import PublicFeedbackCard from '../src/components/co-creation/PublicFeedbackCard
 import { PUBLIC_TYPE_OPTIONS } from '../src/utils/feedbackPublic.js'
 import ChangelogRelatedFeedback from '../src/components/changelog/ChangelogRelatedFeedback.vue'
 import * as api from '../src/api/coCreation.js'
+import * as spacesApi from '../src/api/feedback.js'
 
 const routing = vi.hoisted(() => ({ route: { query: {}, fullPath: '/feedback/plaza' }, push: vi.fn() }))
 vi.mock('vue-router', () => ({
@@ -23,6 +24,9 @@ vi.mock('../src/api/coCreation.js', () => ({
   supportPublicFeedback: vi.fn(),
   unsupportPublicFeedback: vi.fn(),
   normalizePublicFeedback: value => value
+}))
+vi.mock('../src/api/feedback.js', () => ({
+  listFeedbackSpaces: vi.fn(), getFeedbackSpace: vi.fn()
 }))
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'token', userInfo: { id: 'u1' } } }))
 
@@ -49,6 +53,8 @@ const render = (component, options = {}) => mount(component, {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  spacesApi.listFeedbackSpaces.mockResolvedValue([{ id: 'yuanhub', label: 'YuanHub', active: true }])
+  spacesApi.getFeedbackSpace.mockImplementation(async id => ({ id, label: id, active: true }))
   routing.route.query = {}
 })
 
@@ -84,7 +90,7 @@ describe('FeedbackPlaza', () => {
     await wrapper.get('.public-card').trigger('click')
     await flushPromises()
 
-    expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1')
+    expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1', 'yuanhub')
     expect(wrapper.get('[role="dialog"]').text()).toContain('公开说明')
   })
 
@@ -188,7 +194,7 @@ describe('SimilarFeedbackList', () => {
 
     const detailLink = wrapper.get('.similar-actions a')
     expect(detailLink.text()).toBe('查看详情（新标签页）')
-    expect(detailLink.attributes('href')).toBe('/feedback/plaza?feedback=rpt_1')
+    expect(detailLink.attributes('href')).toBe('/feedback/plaza?feedback=rpt_1&space=yuanhub')
     expect(detailLink.attributes('target')).toBe('_blank')
     expect(detailLink.attributes('rel')).toBe('noopener noreferrer')
   })
@@ -215,8 +221,8 @@ describe('反馈中心公开广场', () => {
     expect(wrapper.get('h1').text()).toBe('反馈广场')
     expect(wrapper.get('.plaza-context').text()).toContain('这里只展示管理员整理后的公开内容')
     expect(wrapper.get('.plaza-submit').text()).toBe('提交反馈')
-    expect(wrapper.get('.plaza-submit').getComponent(RouterLinkStub).props('to')).toBe('/feedback?new=1')
-    expect(api.listPublicFeedback).toHaveBeenCalled()
+    expect(wrapper.get('.plaza-submit').getComponent(RouterLinkStub).props('to')).toEqual({ path: '/feedback', query: { new: '1' } })
+    expect(api.listPublicFeedback).toHaveBeenCalledWith(expect.objectContaining({ spaceId: 'yuanhub' }))
   })
   it('旧链接忽略类型但仍打开指定公开详情', async () => {
     routing.route.query = { type: 'FEATURE', feedback: 'rpt_1' }
@@ -225,7 +231,7 @@ describe('反馈中心公开广场', () => {
     const wrapper = render(FeedbackPlazaPage)
     await flushPromises()
     expect(api.listPublicFeedback.mock.lastCall[0]).not.toHaveProperty('type')
-    expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1')
+    expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1', 'yuanhub')
     expect(wrapper.get('[role="dialog"]').text()).toContain('公开说明')
   })
   it('搜索无结果时提交直接打开普通反馈表单', async () => {
