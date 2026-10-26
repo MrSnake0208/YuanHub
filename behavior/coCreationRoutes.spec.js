@@ -5,9 +5,13 @@ import { authGuard } from '../src/router/index.js'
 import { routes } from '../src/router/routes.js'
 import { auth } from '../src/store/auth.js'
 import PlazaPage from '../src/pages/feedback/plaza.vue'
+import * as spacesApi from '../src/api/feedback.js'
 
 vi.mock('../src/store/auth.js', () => ({ init: vi.fn(), auth: { accessToken: '', userInfo: null, adminAccess: null, refreshAdminAccess: vi.fn() } }))
 vi.mock('../src/store/beta.js', () => ({ beta: { setIdentity: vi.fn(), refresh: vi.fn() } }))
+vi.mock('../src/api/feedback.js', () => ({
+  listFeedbackSpaces: vi.fn(), getFeedbackSpace: vi.fn()
+}))
 
 function guardRouter() {
   const page = { template: '<div />' }
@@ -22,6 +26,8 @@ function guardRouter() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  spacesApi.listFeedbackSpaces.mockResolvedValue([{ id: 'yuanhub', label: 'YuanHub', active: true }])
+  spacesApi.getFeedbackSpace.mockImplementation(async id => ({ id, label: id, active: true }))
   Object.assign(auth, { accessToken: '', userInfo: null, adminAccess: null, adminAccessError: '' })
 })
 
@@ -41,7 +47,8 @@ it.each([
   ['/co-creation?tab=plaza', {}],
   ['/co-creation?feedback=public_3', { feedback: 'public_3' }],
   ['/co-creation?tab=roadmap&feedback=public_4', { feedback: 'public_4' }],
-  ['/co-creation?feedback=public%2Fid%3F%26%23&sort=updated', { feedback: 'public/id?&#', sort: 'updated' }]
+  ['/co-creation?feedback=public%2Fid%3F%26%23&sort=updated', { feedback: 'public/id?&#', sort: 'updated' }],
+  ['/co-creation?tab=plaza&feedback=public_5&space=partner-a', { feedback: 'public_5', space: 'partner-a' }]
 ])('%s 兼容游客分享并将定位传给反馈广场', async (path, query) => {
   const { router } = guardRouter()
   await router.push(path)
@@ -50,11 +57,12 @@ it.each([
   const wrapper = mount(PlazaPage, {
     global: {
       plugins: [router],
-      stubs: { IslandSidebar: true, FeedbackWorkspaceNav: true, RouterLink: RouterLinkStub, FeedbackPlaza: { name: 'FeedbackPlaza', props: ['focusId'], template: '<div />' } }
+      stubs: { IslandSidebar: true, FeedbackWorkspaceNav: true, RouterLink: RouterLinkStub, FeedbackPlaza: { name: 'FeedbackPlaza', props: ['focusId', 'spaceId'], template: '<div />' } }
     }
   })
   await flushPromises()
   expect(wrapper.findComponent({ name: 'FeedbackPlaza' }).props('focusId')).toBe(query.feedback || '')
+  expect(wrapper.findComponent({ name: 'FeedbackPlaza' }).props('spaceId')).toBe(query.space || 'yuanhub')
   expect(wrapper.text()).not.toContain('大饼中心')
   expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).not.toContain('/co-creation')
   expect(auth.refreshAdminAccess).not.toHaveBeenCalled()

@@ -169,9 +169,9 @@ it('账号关闭补全保留缺失值，单密探显式自动仍可用且不伪�
   operatorApi.previewOperatorPanel.mockResolvedValue({ status: 'calculated', attack: 1000, hp: 2000 })
   const wrapper = await openEditor({ level: 50, elite: 7, star_level: 7, revision: 2, combat_stats: { manual_hp: 30000 } })
   await vi.advanceTimersByTimeAsync(300); await flushPromises()
-  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 —，生命力 30,000')
+  expect(wrapper.get('.editor-head-live').text()).toContain('生命力 30,000，攻击力 —')
   await wrapper.get('[aria-label="密探面板来源"]').setValue('auto')
-  expect(wrapper.get('.editor-head-live').text()).toContain('攻击力 1,000，生命力 2,000')
+  expect(wrapper.get('.editor-head-live').text()).toContain('生命力 2,000，攻击力 1,000')
   operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
   await wrapper.get('.editor-save').trigger('click'); await flushPromises()
   expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats).toMatchObject({
