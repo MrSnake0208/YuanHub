@@ -32,12 +32,19 @@
           </div>
 
           <div v-else class="workbench-groups">
-            <p class="workbench-pin-hint">固定常用工具后，可从导航直接进入。设置仅保存在当前浏览器，按登录账号区分。</p>
-            <p v-if="storageError" class="workbench-pin-hint" role="status">{{ storageError }}</p>
+            <div class="workbench-notices">
+              <p class="workbench-pin-hint">
+                <Lightbulb :size="19" aria-hidden="true" />
+                <span>固定常用工具后，可从导航直接进入。设置仅保存在当前浏览器，按登录账号区分。</span>
+              </p>
+              <p v-if="storageError" class="workbench-pin-error" role="status">
+                <ShieldAlert :size="19" aria-hidden="true" /><span>{{ storageError }}</span>
+              </p>
+            </div>
             <section v-for="group in toolGroups" :key="group.key" class="workbench-group" :aria-labelledby="'group-' + group.key">
               <header class="workbench-group-head">
-                <span class="section-kicker">{{ group.key.toUpperCase() }}</span>
                 <h2 :id="'group-' + group.key">{{ group.label }}</h2>
+                <span class="section-kicker" aria-hidden="true">{{ group.key.toUpperCase() }}</span>
               </header>
               <div class="workbench-tools">
                 <div v-for="tool in group.tools" :key="tool.key" class="workbench-tool-entry">
@@ -53,7 +60,7 @@
                       <strong>{{ tool.label }}</strong>
                       <small>{{ tool.description }}</small>
                     </span>
-                    <ArrowUpRight :size="19" aria-hidden="true" />
+                    <ArrowRight :size="18" aria-hidden="true" />
                   </router-link>
                   <button class="workbench-pin" type="button"
                     :aria-label="(isPinned(tool.key) ? '取消固定：' : '固定到导航：') + tool.label"
@@ -78,7 +85,7 @@
 <script setup>
 import { computed } from 'vue'
 import '../../styles/page-header.css'
-import { ArrowUpRight, LoaderCircle, ShieldAlert, Pin } from '@lucide/vue'
+import { ArrowRight, Lightbulb, LoaderCircle, ShieldAlert, Pin } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { useAdminNavPins } from '../../composables/useAdminNavPins.js'
@@ -101,9 +108,31 @@ const toolGroups = computed(function () {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.workbench-pin-hint { color: var(--ink-60); }
-.workbench-pin { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font: inherit; }
-.workbench-pin[aria-pressed="true"] { background: var(--yellow); }
+.workbench-pin-hint {
+  color: var(--ink-60);
+  background: color-mix(in srgb, var(--yellow) 22%, var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.workbench-pin-hint > svg { color: var(--theme-accent-text, var(--accent-strong)); }
+.workbench-pin-error {
+  color: var(--theme-danger-text, var(--rouge));
+  background: var(--theme-danger-wash, rgba(166, 81, 74, .08));
+  border: 1px solid var(--theme-danger-line, var(--rouge));
+  border-radius: 7px;
+}
+.workbench-pin {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color .15s var(--ease), border-color .15s var(--ease);
+}
+.workbench-pin[aria-pressed="true"] { background: var(--yellow); border-color: var(--theme-accent-text, var(--accent-strong)); }
+.workbench-pin:hover { border-color: var(--theme-accent-text, var(--accent-strong)); }
+.workbench-pin:active { background: var(--theme-accent-bg, var(--yellow)); }
 .workbench-pin:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .workbench-state {
   color: var(--ink-60);
@@ -124,37 +153,56 @@ const toolGroups = computed(function () {
   color: var(--theme-danger-text, var(--rouge));
 }
 
-.workbench-group {
-  border-top: 2px solid var(--ink);
+.workbench-group-head::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  background: var(--theme-accent-text, var(--accent-strong));
+  transform: rotate(45deg);
+}
+
+.workbench-group-head::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
 }
 
 .section-kicker {
-  color: var(--theme-accent-text, var(--accent-strong));
+  color: var(--ink-60);
 }
 
 .workbench-group h2 {
   color: var(--ink);
 }
 
-.workbench-tool {
-  color: var(--ink);
+.workbench-tool-entry {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
-  text-decoration: none;
-  transition: border-color .25s var(--ease), box-shadow .25s var(--ease), transform .25s var(--ease);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
 
-.workbench-tool:hover {
+.workbench-tool-entry:hover,
+.workbench-tool-entry:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 16px 30px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.52);
+  box-shadow: 0 4px 12px -8px rgba(var(--theme-shadow-rgb, 73, 59, 44), .3);
+}
+
+.workbench-tool {
+  color: var(--ink);
+  border-radius: 4px;
+  text-decoration: none;
 }
 
 .workbench-tool:focus-visible,
 .workbench-state .command:focus-visible {
-  outline: 3px solid var(--theme-info-line, rgba(91, 106, 140, .38));
+  outline: 2px solid var(--theme-focus, var(--accent));
   outline-offset: 3px;
 }
+
+.workbench-tool:hover strong,
+.workbench-tool:active strong { color: var(--theme-accent-text, var(--accent-strong)); }
 
 .workbench-tool-icon {
   color: var(--on-strong);
@@ -168,6 +216,10 @@ const toolGroups = computed(function () {
 
 .workbench-tool > svg {
   color: var(--theme-accent-text, var(--accent-strong));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbench-tool-entry, .workbench-pin { transition: none; }
 }
 </style>
 <style scoped src="./adminWorkbenchDesktop.css"></style>
