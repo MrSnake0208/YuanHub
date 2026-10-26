@@ -541,6 +541,7 @@ PATCH 使用乐观锁，`expected_revision` 与 `reason` 必填：
 - `disc_loadouts` 最多两套；`star_stones` 是六槽完整替换，缺失保留，空数组清空。
 - 六槽只允许 `main1..main3`、`assist1..assist3`。
 - `combat_stats.display_mode.attack/hp` 各自支持 `null`（跟随账号）、`manual`（使用手填／采集）、`auto`（明确使用自动计算，不受账号补全开关影响）。内部字段缺失保留，显式 `null` 恢复跟随。跟随账号时逐项优先使用 `manual_*`，其次 `observed_*`；只有未录入且账号开启补全时才显示自动结果，`0` 视为已录入。自动计算暂不可用时保留录入值；切换来源、养成变化和账号开关均不覆盖或清除录入值。编辑中的来源选择与密探一起保存。
+- 密探编辑器顶部面板按“生命在前、攻击在后”排列，桌面与手机一致；键盘焦点和读屏播报沿用同一顺序。
 - `combat_stats.combat_input_signature` 及 `observed_inputs` 中的 `oddities_signature`、`equipped_star_stones_signature` 最多 256 字符。前端 PATCH 适配层将超长签名按 UTF-8 编码后计算 SHA-256，提交为 71 字符的 `sha256:<hex>`；短签名和本地完整配置指纹保持原样。优先使用浏览器 Web Crypto；HTTP 局域网访问等缺少 `crypto.subtle` 的环境使用等价的 JavaScript SHA-256 实现，化极、觉醒及面板观测保存仍可正常序列化。Web Crypto 已可用但执行失败时继续报错且不发出保存请求。
 - entry 不存在时只允许 `expected_revision=0` 创建。
 - revision 冲突返回 HTTP 409 `operator_revision_conflict`。

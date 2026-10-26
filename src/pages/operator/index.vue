@@ -2506,60 +2506,9 @@
                   role="status"
                   aria-live="polite"
                   aria-atomic="true"
-                  >当前面板：攻击力 {{ combatAttackDisplayLabel }}，生命力
-                  {{ combatHpDisplayLabel }}</span
+                  >当前面板：生命力 {{ combatHpDisplayLabel }}，攻击力
+                  {{ combatAttackDisplayLabel }}</span
                 >
-                <label
-                  class="editor-head-stat"
-                  :class="{
-                    'is-manual':
-                      editForm.combatStats.manualAttack != null &&
-                      !combatAttackAutoVisible,
-                    'is-empty': calculatedCombatStats.attack == null,
-                  }"
-                >
-                  <span class="editor-head-stat-meta"
-                    ><strong>攻击</strong><small>{{ combatAttackSource }}</small
-                    ><button
-                      v-if="
-                        calculatedCombatStats.automaticAttackAvailable &&
-                        editForm.combatStats.manualAttack != null
-                      "
-                      type="button"
-                      class="manual-restore"
-                      :aria-label="
-                        combatAttackAutoVisible
-                          ? '恢复原手动攻击力校正'
-                          : '切换到自动计算攻击力'
-                      "
-                      :title="
-                        combatAttackAutoVisible
-                          ? '恢复原手动攻击力校正值'
-                          : '切换到自动计算攻击力'
-                      "
-                      @click.prevent.stop="toggleAutomaticCombatStat('attack')"
-                    >
-                      <RotateCcw
-                        v-if="combatAttackAutoVisible"
-                        :size="11"
-                        aria-hidden="true"
-                      /><Calculator
-                        v-else
-                        :size="11"
-                        aria-hidden="true"
-                      /></button
-                  ></span>
-                  <input
-                    :value="combatAttackInputValue"
-                    type="number"
-                    inputmode="numeric"
-                    min="0"
-                    :placeholder="combatAttackDisplayLabel"
-                    aria-label="校正攻击力，清空后按面板来源显示"
-                    title="直接输入校正值；清空后按面板来源显示"
-                    @input="setManualCombatStat('manualAttack', $event)"
-                  />
-                </label>
                 <label
                   class="editor-head-stat"
                   :class="{
@@ -2609,6 +2558,57 @@
                     aria-label="校正生命力，清空后按面板来源显示"
                     title="直接输入校正值；清空后按面板来源显示"
                     @input="setManualCombatStat('manualHp', $event)"
+                  />
+                </label>
+                <label
+                  class="editor-head-stat"
+                  :class="{
+                    'is-manual':
+                      editForm.combatStats.manualAttack != null &&
+                      !combatAttackAutoVisible,
+                    'is-empty': calculatedCombatStats.attack == null,
+                  }"
+                >
+                  <span class="editor-head-stat-meta"
+                    ><strong>攻击</strong><small>{{ combatAttackSource }}</small
+                    ><button
+                      v-if="
+                        calculatedCombatStats.automaticAttackAvailable &&
+                        editForm.combatStats.manualAttack != null
+                      "
+                      type="button"
+                      class="manual-restore"
+                      :aria-label="
+                        combatAttackAutoVisible
+                          ? '恢复原手动攻击力校正'
+                          : '切换到自动计算攻击力'
+                      "
+                      :title="
+                        combatAttackAutoVisible
+                          ? '恢复原手动攻击力校正值'
+                          : '切换到自动计算攻击力'
+                      "
+                      @click.prevent.stop="toggleAutomaticCombatStat('attack')"
+                    >
+                      <RotateCcw
+                        v-if="combatAttackAutoVisible"
+                        :size="11"
+                        aria-hidden="true"
+                      /><Calculator
+                        v-else
+                        :size="11"
+                        aria-hidden="true"
+                      /></button
+                  ></span>
+                  <input
+                    :value="combatAttackInputValue"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    :placeholder="combatAttackDisplayLabel"
+                    aria-label="校正攻击力，清空后按面板来源显示"
+                    title="直接输入校正值；清空后按面板来源显示"
+                    @input="setManualCombatStat('manualAttack', $event)"
                   />
                 </label>
               </div>
