@@ -14,7 +14,7 @@ test('uses 今日一览 as the default page', function () {
 
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
   assert.match(sidebar, /<House :size="20"/)
-  assert.match(sidebar, /<span class="no">00<\/span>今日一览/)
+  assert.match(sidebar, /<router-link\s+to="\/"[^>]*>[\s\S]*?<House :size="20" aria-hidden="true" \/><span>今日一览<\/span>\s*<\/router-link>/)
   assert.equal(route.text, '今日一览')
   assert.equal(route.meta.title, '今日一览 — 鸢鸢相抱 · YuanHub')
 
