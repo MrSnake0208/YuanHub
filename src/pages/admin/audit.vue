@@ -61,6 +61,7 @@ const ACTION_LABELS = {
   BETA_UPDATED: '内测配置变更',
   ROLE_GRANTED: '授予角色', ROLE_REVOKED: '回收角色', ROLE_REPLACED: '替换角色',
   FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权',
+  FEEDBACK_SPACE_UPDATED: '配置反馈专区',
   FEEDBACK_CATEGORY_CREATED: '新增反馈板块', FEEDBACK_CATEGORY_RENAMED: '重命名反馈板块',
   FEEDBACK_CATEGORY_VISIBILITY_UPDATED: '修改反馈板块显示状态',
   FEEDBACK_CATEGORY_REORDERED: '调整反馈板块顺序',
@@ -114,6 +115,8 @@ function snapshotParts(snapshot) {
   if (snapshot.roles.length) parts.push('角色：' + snapshot.roles.map(roleLabel).join('、'))
   if (snapshot.receiveAreas.length) parts.push('接收：' + snapshot.receiveAreas.map(areaLabel).join('、'))
   if (snapshot.manageAreas.length) parts.push('管理：' + snapshot.manageAreas.map(areaLabel).join('、'))
+  if (snapshot.feedbackSpaceLabel) parts.push('专区名称：' + snapshot.feedbackSpaceLabel)
+  if (snapshot.feedbackSpaceActive != null) parts.push('开放新反馈：' + (snapshot.feedbackSpaceActive ? '是' : '否'))
   if (snapshot.feedbackCategoryLabel) parts.push('板块名称：' + snapshot.feedbackCategoryLabel)
   if (snapshot.feedbackCategoryHidden != null) parts.push('板块显示：' + (snapshot.feedbackCategoryHidden ? '已隐藏' : '显示中'))
   if (snapshot.feedbackCategoryOrder?.length) parts.push('板块顺序：' + snapshot.feedbackCategoryOrder.join(' → '))

@@ -4,7 +4,8 @@
     <main id="main-content">
       <header class="page-header">
         <div class="wrap">
-          <h1 class="page-header-title">反馈权限</h1>
+          <div class="page-header-row"><h1 class="page-header-title">反馈权限</h1>
+            <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaces" :disabled="saving || categorySaving || spaceSaving || editing" @change="changeSpace" /></div>
           <p class="page-header-description">配置反馈处理范围、通知接收人与授权板块。</p>
         </div>
       </header>
@@ -12,17 +13,35 @@
       <section>
         <div class="wrap">
           <FeedbackWorkspaceNav active="admin" />
+          <details class="category-panel feedback-space-settings">
+            <summary>专区设置</summary>
+            <p>稳定标识用于合作方入口和数据归属，创建后不能修改。停用只关闭新反馈提交，保留历史和处理能力。</p>
+            <form class="category-create" @submit.prevent="addSpace">
+              <label for="feedback-space-id">新增专区</label>
+              <input id="feedback-space-id" v-model.trim="newSpaceId" pattern="[a-z][a-z0-9-]{1,39}" maxlength="40" required placeholder="稳定标识，如 partner-name" aria-label="新专区稳定标识" :disabled="spaceSaving" />
+              <input v-model.trim="newSpaceLabel" maxlength="24" required placeholder="专区名称" aria-label="新专区名称" :disabled="spaceSaving" />
+              <button class="command primary" :disabled="spaceSaving || loading" type="submit">创建专区</button>
+            </form>
+            <form v-if="selectedSpace" class="category-create" @submit.prevent="saveSpace">
+              <label for="feedback-space-label">当前专区</label>
+              <input id="feedback-space-label" v-model.trim="spaceLabel" maxlength="24" required :disabled="spaceSaving" />
+              <label><input v-model="spaceActive" type="checkbox" :disabled="spaceSaving || spaceId === 'yuanhub'" />开放新反馈</label>
+              <button class="command" :disabled="spaceSaving || loading" type="submit">保存</button>
+            </form>
+            <p v-if="selectedSpace">合作方入口：<RouterLink :to="feedbackLocation('/feedback', spaceId)">{{ feedbackEntry }}</RouterLink></p>
+            <p v-if="spaceError" class="editor-error" role="alert">{{ spaceError }}</p>
+          </details>
           <section class="category-panel" aria-labelledby="category-panel-title">
             <h2 id="category-panel-title">反馈板块</h2>
             <p>隐藏后，用户和管理员无法再从选项中选择该板块；已有反馈和授权保留，可随时恢复显示。改名不会改变归属。</p>
             <p>使用上移、下移调整显示顺序，每次调整自动保存，反馈表单和筛选项刷新后使用该顺序。</p>
-            <form class="category-create" @submit.prevent="addCategory">
+            <form id="feedback-category-create" class="category-create" @submit.prevent="addCategory">
               <label for="new-feedback-category">新增板块</label>
               <input id="new-feedback-category" v-model="newCategoryLabel" maxlength="24" required :disabled="categorySaving || loading || !!error" placeholder="板块名称" />
               <button class="command primary" type="submit" :disabled="categorySaving || loading || !!error || !newCategoryLabel.trim()">新增</button>
             </form>
-            <ul v-if="categoryCatalog.length && !error" class="category-list">
-              <li v-for="(area, index) in categoryCatalog" :key="area.key">
+            <ul v-if="spaceCategories.length && !error" class="category-list">
+              <li v-for="(area, index) in spaceCategories" :key="area.key">
                 <template v-if="editingCategoryKey === area.key">
                   <input v-model="editingCategoryLabel" :aria-label="'修改 ' + area.label + ' 名称'" maxlength="24" :disabled="categorySaving" @keydown.enter.prevent="saveCategory" @keydown.esc="cancelCategoryEdit" />
                   <button type="button" :disabled="categorySaving || !editingCategoryLabel.trim()" @click="saveCategory">保存</button>
@@ -33,7 +52,7 @@
                   <button type="button" :aria-label="'重命名 ' + area.label" :disabled="categorySaving" @click="startCategoryEdit(area)">改名</button>
                   <button type="button" :aria-label="(area.hidden ? '恢复显示 ' : '隐藏 ') + area.label" :disabled="categorySaving || loading || !!error" @click="toggleCategoryHidden(area)">{{ area.hidden ? '恢复显示' : '隐藏' }}</button>
                   <button type="button" :aria-label="'上移 ' + area.label" :disabled="index === 0 || categorySaving || loading || !!error || !!editingCategoryKey" @click="moveCategory(index, -1)">上移</button>
-                  <button type="button" :aria-label="'下移 ' + area.label" :disabled="index === categoryCatalog.length - 1 || categorySaving || loading || !!error || !!editingCategoryKey" @click="moveCategory(index, 1)">下移</button>
+                  <button type="button" :aria-label="'下移 ' + area.label" :disabled="index === spaceCategories.length - 1 || categorySaving || loading || !!error || !!editingCategoryKey" @click="moveCategory(index, 1)">下移</button>
                 </template>
               </li>
             </ul>
@@ -71,7 +90,7 @@
                   <td><strong>{{ grant.updatedBy || '未知用户' }}</strong><small>{{ formatDate(grant.updatedAt) }}</small></td>
                   <td class="ops">
                     <button class="icon-command" type="button" title="编辑授权" :aria-label="'编辑 ' + grant.userName" @click="openEdit(grant)"><Pencil :size="16" /></button>
-                    <button class="icon-command danger" type="button" title="删除授权" :aria-label="'删除 ' + grant.userName" @click="removeGrant(grant)"><Trash2 :size="16" /></button>
+                    <button class="icon-command danger" type="button" title="删除全部专区授权" :aria-label="'删除 ' + grant.userName + ' 的全部专区授权'" @click="removeGrant(grant)"><Trash2 :size="16" /></button>
                   </td>
                 </tr>
                 <tr v-if="!filteredGrants.length"><td colspan="7" class="empty-row">暂无授权记录</td></tr>
@@ -116,7 +135,7 @@
             </div>
 
             <fieldset class="permission-group" :disabled="saving">
-              <legend>反馈岗位</legend>
+              <legend>反馈岗位（此用户所有专区共用）</legend>
               <div class="area-grid">
                 <label v-for="role in ['OPERATOR', 'DEVELOPER']" :key="role" :class="{ on: form.feedbackRoles.includes(role) }">
                   <input v-model="form.feedbackRoles" type="checkbox" :value="role" />
@@ -126,7 +145,7 @@
             </fieldset>
 
             <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('OPERATOR')">
-              <legend>运营负责板块</legend>
+              <legend>运营负责板块 · {{ selectedSpace?.label }}</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'operator-' + area.key" :class="{ on: form.operatorAreas.includes(area.key) }">
                   <input v-model="form.operatorAreas" type="checkbox" :value="area.key" />
@@ -136,7 +155,7 @@
             </fieldset>
 
             <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('DEVELOPER')">
-              <legend>程序负责板块</legend>
+              <legend>程序负责板块 · {{ selectedSpace?.label }}</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'developer-' + area.key" :class="{ on: form.developerAreas.includes(area.key) }">
                   <input v-model="form.developerAreas" type="checkbox" :value="area.key" />
@@ -187,14 +206,18 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
+import FeedbackSpaceSelector from '@/components/feedback/FeedbackSpaceSelector.vue'
+import { categorySpaceId, feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
 import {
   createFeedbackCategory,
+  createFeedbackSpace,
+  updateFeedbackSpace,
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
   listFeedbackAccessGrants,
@@ -209,9 +232,25 @@ import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import '@/styles/page-header.css'
 
+const route = useRoute()
+const spaceId = computed(() => feedbackSpaceId(route.query))
+const spaces = ref([])
+const selectedSpace = computed(() => spaces.value.find(space => space.id === spaceId.value))
+const spaceCategories = computed(() => categoryCatalog.value.filter(area => categorySpaceId(area) === spaceId.value))
+const spaceSaving = ref(false)
+const spaceError = ref('')
+const newSpaceId = ref('')
+const newSpaceLabel = ref('')
+const spaceLabel = ref('')
+const spaceActive = ref(true)
+watch([spaceId, selectedSpace], () => {
+  spaceLabel.value = selectedSpace.value?.label || ''
+  spaceActive.value = selectedSpace.value?.active !== false
+}, { immediate: true })
+const feedbackEntry = computed(() => '/feedback' + (spaceId.value === 'yuanhub' ? '' : '?space=' + encodeURIComponent(spaceId.value)))
 const grants = ref([])
 const categoryCatalog = ref([])
-const areas = computed(() => categoryCatalog.value.filter(area => !area.hidden))
+const areas = computed(() => spaceCategories.value.filter(area => !area.hidden))
 const newCategoryLabel = ref('')
 const editingCategoryKey = ref('')
 const editingCategoryLabel = ref('')
@@ -268,7 +307,10 @@ function normalizeGrant(grant) {
 }
 
 function areaLabel(key) {
-  return categoryCatalog.value.find(area => area.key === key)?.label || key
+  const area = categoryCatalog.value.find(area => area.key === key)
+  if (!area) return key
+  const label = spaces.value.find(space => space.id === categorySpaceId(area))?.label || categorySpaceId(area)
+  return categorySpaceId(area) === spaceId.value ? area.label : `${label} / ${area.label}`
 }
 
 function formatDate(value) {
@@ -292,7 +334,7 @@ async function addCategory() {
   categorySaving.value = true
   categoryError.value = ''
   try {
-    await createFeedbackCategory(label)
+    await createFeedbackCategory(label, spaceId.value)
     newCategoryLabel.value = ''
     await load()
   } catch (e) {
@@ -334,9 +376,11 @@ async function toggleCategoryHidden(area) {
 
 async function moveCategory(index, offset) {
   if (categorySaving.value || loading.value || error.value || editingCategoryKey.value) return
+  const requestedSpace = spaceId.value
+  const actorId = currentUserId.value
   const target = index + offset
-  if (target < 0 || target >= categoryCatalog.value.length) return
-  const expectedKeys = categoryCatalog.value.map(area => area.key)
+  if (target < 0 || target >= spaceCategories.value.length) return
+  const expectedKeys = spaceCategories.value.map(area => area.key)
   const keys = [...expectedKeys]
   const movingKey = keys[index]
   keys[index] = keys[target]
@@ -344,13 +388,56 @@ async function moveCategory(index, offset) {
   categorySaving.value = true
   categoryError.value = ''
   try {
-    const catalog = await reorderFeedbackCategories(keys, expectedKeys)
-    if (isMounted) categoryCatalog.value = catalog
+    const reordered = await reorderFeedbackCategories(keys, expectedKeys, requestedSpace)
+    if (isMounted && requestedSpace === spaceId.value && actorId === currentUserId.value) {
+      const iterator = reordered[Symbol.iterator]()
+      categoryCatalog.value = categoryCatalog.value.map(area => categorySpaceId(area) === spaceId.value ? iterator.next().value : area)
+    }
   } catch (e) {
     if (isMounted && !await handleForbidden(e)) categoryError.value = e.message || '调整板块顺序失败'
   } finally {
     categorySaving.value = false
   }
+}
+
+async function changeSpace(id) {
+  if (editing.value || categorySaving.value || spaceSaving.value) return
+  cancelCategoryEdit()
+  await router.push(feedbackLocation('/feedback/admin', id))
+  spaceLabel.value = selectedSpace.value?.label || ''
+  spaceActive.value = selectedSpace.value?.active !== false
+}
+
+async function addSpace() {
+  if (spaceSaving.value) return
+  const actorId = currentUserId.value
+  spaceSaving.value = true
+  spaceError.value = ''
+  try {
+    const created = await createFeedbackSpace(newSpaceId.value, newSpaceLabel.value)
+    if (!isMounted || currentUserId.value !== actorId) return
+    newSpaceId.value = ''
+    newSpaceLabel.value = ''
+    await load()
+    if (!isMounted || currentUserId.value !== actorId) return
+    await router.push(feedbackLocation('/feedback/admin', created.id))
+    spaceLabel.value = selectedSpace.value?.label || ''
+    spaceActive.value = true
+  } catch (e) { spaceError.value = e.message || '创建专区失败' }
+  finally { spaceSaving.value = false }
+}
+
+async function saveSpace() {
+  if (!selectedSpace.value || spaceSaving.value) return
+  const actorId = currentUserId.value
+  spaceSaving.value = true
+  spaceError.value = ''
+  try {
+    await updateFeedbackSpace({ id: spaceId.value, label: spaceLabel.value, active: spaceActive.value })
+    if (!isMounted || currentUserId.value !== actorId) return
+    await load()
+  } catch (e) { spaceError.value = e.message || '保存专区失败' }
+  finally { spaceSaving.value = false }
 }
 
 async function load() {
@@ -365,7 +452,10 @@ async function load() {
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
     const catalog = accessData.categoryCatalog || accessData.category_catalog || rawAreas
     if (!catalog.length) throw new Error('反馈板块目录为空')
-    categoryCatalog.value = catalog.map(area => ({ key: area.key, label: area.label, hidden: area.hidden === true }))
+    categoryCatalog.value = catalog.map(area => ({ ...area, hidden: area.hidden === true }))
+    spaces.value = accessData.spaces || [{ id: 'yuanhub', label: 'YuanHub（主站）', active: true }]
+    spaceLabel.value = selectedSpace.value?.label || ''
+    spaceActive.value = selectedSpace.value?.active !== false
   } catch (e) {
     if (await handleForbidden(e)) return
     if (isMounted && requestId === loadRequestId) error.value = e.message || '权限配置加载失败'
@@ -497,7 +587,7 @@ async function saveGrant() {
 }
 
 async function removeGrant(grant) {
-  if (!confirm('删除“' + grant.userName + '”的反馈授权？')) return
+  if (!confirm('删除“' + grant.userName + '”在全部专区的反馈授权？')) return
   try {
     await deleteFeedbackAccessGrant(grant.userId)
     if (grant.userId === currentUserId.value) {
@@ -523,6 +613,9 @@ async function leaveAfterPermissionChange() {
   await router.replace({ path: '/forbidden', query: { from: '/feedback/admin' } })
 }
 
+onBeforeRouteUpdate((to, from) => {
+  if (to.query.space !== from.query.space && (categorySaving.value || spaceSaving.value || saving.value || editing.value)) return false
+})
 onMounted(() => { isMounted = true; load() })
 onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch() })
 </script>

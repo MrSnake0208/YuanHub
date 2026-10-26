@@ -209,7 +209,7 @@ export function useFeedbackMedia() {
       const mediaIds = []
       for (const item of items.value) {
         if (!item.mediaId) {
-          const uploaded = await uploadMedia(item.file)
+          const uploaded = await uploadMedia(item.file, true)
           if (!uploaded?.id) throw new Error('上传响应无效')
           item.mediaId = uploaded.id
         }

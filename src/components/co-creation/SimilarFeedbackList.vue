@@ -21,7 +21,7 @@
             @updated="$emit('support', $event)"
             @error="$emit('error', $event)"
           />
-          <a class="feedback-button" :href="'/feedback/plaza?feedback=' + encodeURIComponent(item.id)" target="_blank" rel="noopener noreferrer">查看详情（新标签页）</a>
+          <a class="feedback-button" :href="'/feedback/plaza?feedback=' + encodeURIComponent(item.id) + '&space=' + encodeURIComponent(item.spaceId || 'yuanhub')" target="_blank" rel="noopener noreferrer">查看详情（新标签页）</a>
         </div>
       </li>
     </ul>

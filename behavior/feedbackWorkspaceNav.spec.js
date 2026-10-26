@@ -14,12 +14,12 @@ const destinations = ['/feedback/plaza', '/feedback', '/feedback/manage', '/feed
 const sections = ['plaza', 'mine', 'manage', 'admin']
 const publicDestinations = destinations.slice(0, 2)
 
-async function render(active = 'plaza') {
+async function render(active = 'plaza', query = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [...destinations, '/manage'].map(path => ({ path, component: { template: '<div />' } }))
   })
-  await router.push(destinations[sections.indexOf(active)])
+  await router.push({ path: destinations[sections.indexOf(active)], query })
   return mount(FeedbackWorkspaceNav, {
     props: { active },
     global: { plugins: [router] }
@@ -58,5 +58,12 @@ it('仅有反馈处理能力也不重复展示管理入口', async () => {
   auth.adminAccess = normalizeAdminAccess({ operator_areas: ['OPERATOR'] })
   const wrapper = await render('manage')
   expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(publicDestinations)
+  wrapper.unmount()
+})
+
+it.each(['partner-a', 'all'])('用户导航保留具体专区并将总管理范围返回默认专区：%s', async space => {
+  const wrapper = await render('manage', { space })
+  const suffix = space === 'all' ? '' : '?space=partner-a'
+  expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(publicDestinations.map(path => path + suffix))
   wrapper.unmount()
 })

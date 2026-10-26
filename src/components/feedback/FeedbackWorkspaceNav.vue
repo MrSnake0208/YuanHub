@@ -1,11 +1,11 @@
 <template>
   <div class="feedback-workspace-header">
     <nav class="feedback-workspace-nav" aria-label="反馈工作区">
-      <router-link to="/feedback/plaza" :class="{ active: active === 'plaza' }">
+      <router-link :to="feedbackLocation('/feedback/plaza', spaceId)" :class="{ active: active === 'plaza' }">
         <MessageSquareText :size="17" aria-hidden="true" />
         <span>反馈广场</span>
       </router-link>
-      <router-link to="/feedback" :class="{ active: active === 'mine' }">
+      <router-link :to="feedbackLocation('/feedback', spaceId)" :class="{ active: active === 'mine' }">
         <MessageSquareText :size="17" aria-hidden="true" />
         <span>我的反馈</span>
       </router-link>
@@ -15,6 +15,11 @@
 
 <script setup>
 import { MessageSquareText } from '@lucide/vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
+const route = useRoute()
+const spaceId = computed(() => feedbackSpaceId(route.query) === 'all' ? 'yuanhub' : feedbackSpaceId(route.query))
 
 defineProps({
   active: { type: String, required: true }

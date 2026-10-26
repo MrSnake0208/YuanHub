@@ -122,3 +122,9 @@ test('feedback visibility audit preserves both true and false snapshots', () => 
   assert.equal(log.before.feedbackCategoryHidden, true)
   assert.equal(log.after.feedbackCategoryHidden, false)
 })
+
+test('专区审计兼容 snake_case 并保留停用状态', () => {
+  const log = normalizeAdminAuditLog({ action: 'FEEDBACK_SPACE_UPDATED', after: { feedback_space_label: '合作平台', feedback_space_active: false } })
+  assert.equal(log.after.feedbackSpaceLabel, '合作平台')
+  assert.equal(log.after.feedbackSpaceActive, false)
+})

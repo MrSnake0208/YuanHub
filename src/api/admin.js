@@ -46,6 +46,8 @@ function normalizeAuditSnapshot(value) {
     roles: Array.isArray(value.roles) ? value.roles.slice() : [],
     receiveAreas: Array.isArray(receiveAreas) ? receiveAreas.slice() : [],
     manageAreas: Array.isArray(manageAreas) ? manageAreas.slice() : [],
+    feedbackSpaceLabel: value.feedbackSpaceLabel ?? value.feedback_space_label ?? null,
+    feedbackSpaceActive: value.feedbackSpaceActive ?? value.feedback_space_active ?? null,
     feedbackCategoryLabel: value.feedbackCategoryLabel || value.feedback_category_label || null,
     feedbackCategoryHidden: value.feedbackCategoryHidden ?? value.feedback_category_hidden ?? null,
     feedbackCategoryOrder: Array.isArray(feedbackCategoryOrder) ? feedbackCategoryOrder.slice() : [],

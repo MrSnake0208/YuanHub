@@ -37,9 +37,10 @@
         </header>
         <p>{{ msg.content }}</p>
         <div v-if="msg.images && msg.images.length" class="detail-media-grid">
-          <a v-for="image in msg.images" :key="image.id" :href="image.url" target="_blank" rel="noopener noreferrer">
+          <a v-for="image in msg.images" :key="image.id" :href="imageSource(image) || undefined" target="_blank" rel="noopener noreferrer">
             <div v-if="failedImages.has(imageKey(msg, image))" class="detail-media-fallback" role="img" aria-label="反馈附件无法加载">图片暂时无法加载</div>
-            <img v-else :src="image.url" :alt="'反馈附件 ' + image.id" loading="lazy" @error="markImageError(imageKey(msg, image))" />
+            <span v-else-if="image.privateStorage && !imageSource(image)" role="status">正在加载截图…</span>
+            <img v-else :src="imageSource(image)" :alt="'反馈附件 ' + image.id" loading="lazy" @error="markImageError(imageKey(msg, image))" />
           </a>
         </div>
         <div v-if="msg.files && msg.files.length" class="detail-file-list">
@@ -137,6 +138,27 @@ function isOwnMessage(message) {
 }
 
 const failedImages = ref(new Set())
+const privateImageUrls = ref({})
+function imageSource(image) { return image.privateStorage ? privateImageUrls.value[image.id] : image.url }
+watch(() => [props.item?.id, ...(props.item?.messages || []).flatMap(message => (message.images || []).filter(image => image.privateStorage).map(image => image.id))], async ([id, ...imageIds], _, onCleanup) => {
+  let active = true
+  const urls = []
+  privateImageUrls.value = {}
+  onCleanup(() => { active = false; urls.forEach(url => URL.revokeObjectURL(url)) })
+  await Promise.all(imageIds.map(async mediaId => {
+    try {
+      const result = await downloadFeedbackAttachment(id, mediaId)
+      if (!active) return
+      const url = URL.createObjectURL(result.blob)
+      urls.push(url)
+      privateImageUrls.value = { ...privateImageUrls.value, [mediaId]: url }
+    } catch (_) {
+      if (!active) return
+      const image = (props.item.messages || []).flatMap(message => (message.images || []).map(image => ({ message, image }))).find(entry => entry.image.id === mediaId)
+      if (image) markImageError(imageKey(image.message, image.image))
+    }
+  }))
+}, { immediate: true })
 const downloadingId = ref('')
 const downloadErrors = ref({})
 

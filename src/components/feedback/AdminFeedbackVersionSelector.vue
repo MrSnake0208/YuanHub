@@ -101,7 +101,7 @@ async function loadVersions() {
   loadingVersions.value = true
   versionError.value = ''
   try {
-    options.value = await listFeedbackVersionOptions()
+    options.value = await listFeedbackVersionOptions(props.item.spaceId || 'yuanhub')
   } catch (e) {
     versionError.value = e.message || '版本列表加载失败'
   } finally {
