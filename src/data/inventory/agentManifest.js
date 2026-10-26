@@ -33,23 +33,6 @@ export function normalizeOperatorCatalog(entries) {
   })
 }
 
-// The order shown by the in-game agent inventory. Names missing from this list
-// have not been verified yet and are kept together at the end of the sort.
-export const AGENT_BACKPACK_ORDER = [
-  '司马徽', '黄盖', '张鲁', '张闿', '葛洪', '张角', '贾诩', '法正', '周忠', '虞翻',
-  '张绣', '满宠', '张松', '酆公玖', '酆公珠', '诸葛亮', '祢衡', '徐庶', '庞统', '杨修',
-  '董奉', '华佗', '朱然', '黄月英', '夏侯渊', '曹丕', '庞羲', '曹植', '郭嘉', '张昭',
-  '张邈', '荀彧', '赵云', '陈应', '太史慈', '张飞', '蒯良', '程昱', '张修', '钟繇',
-  '张燕', '蒯越', '诸葛诞', '甄宓', '张郃', '孟获', '孙权', '郭解', '孙静', '凌统',
-  '孙尚香', '吕蒙', '陆逊', '孙辅', '士燮', '刘繇', '甘宁', '蔡琰', '简雍', '刘豹',
-  '令狐茂', '孔融', '王粲', '周瑜', '司马孚', '郭女王', '诸葛瑾', '卢植', '戏学', '荀攸',
-  '陈群', '刘璋', '董白', '张仲景', '夏侯惇', '吕布', '马腾', '安期', '马超', '张辽',
-  '干吉', '鲁肃', '严白虎', '许曼', '陈登', '史子眇', '公孙珊', '文丑', '颜良', '许攸',
-  '阿蝉', '第五天', '山九', '绣球', '飞云', '毛玠', '李真', '李脱', '伍丹', '崔烈',
-  '鸢使', '蛾使', '甘缇'
-]
-const BACKPACK_ORDER_BY_NAME = new Map(AGENT_BACKPACK_ORDER.map(function (name, index) { return [name, index] }))
-
 function favoriteSet(favoriteIds) {
   return favoriteIds instanceof Set ? favoriteIds : new Set(favoriteIds || [])
 }
@@ -62,12 +45,6 @@ function selectedSet(value) {
 export function agentReleaseOrder(id) {
   const match = /^char_(\d+)_/.exec(String(id || ''))
   return match ? Number(match[1]) : -1
-}
-
-export function agentBackpackOrder(entry) {
-  const name = typeof entry === 'string' ? entry : entry && entry.name
-  const rank = BACKPACK_ORDER_BY_NAME.get(String(name || ''))
-  return rank == null ? AGENT_BACKPACK_ORDER.length : rank
 }
 
 export function compareAgentRelease(left, right) {
@@ -87,8 +64,12 @@ export function agentMatchesGame(entry, game) {
 export function sortAgentEntries(entries, mode, favoriteIds, options) {
   const favorites = favoriteSet(favoriteIds)
   const settings = options || {}
-  const direction = settings.direction === 'asc' ? 1 : (settings.direction === 'desc' ? -1 : ((mode === 'name' || mode === 'backpack') ? 1 : -1))
+  const direction = settings.direction === 'asc' ? 1 : (settings.direction === 'desc' ? -1 : (mode === 'name' ? 1 : -1))
   return (Array.isArray(entries) ? entries : []).slice().sort(function (left, right) {
+    if (mode === 'backpack') {
+      const rarityDiff = (Number(left.rarity) || 0) - (Number(right.rarity) || 0)
+      if (rarityDiff) return rarityDiff * direction
+    }
     if (settings.favoriteFirst || mode === 'favorite') {
       const favoriteDiff = Number(favorites.has(right.id)) - Number(favorites.has(left.id))
       if (favoriteDiff) return favoriteDiff
@@ -100,8 +81,6 @@ export function sortAgentEntries(entries, mode, favoriteIds, options) {
       primaryDiff = (Number(left.rarity) || 0) - (Number(right.rarity) || 0)
     } else if (mode === 'name') {
       primaryDiff = String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN')
-    } else if (mode === 'backpack') {
-      primaryDiff = agentBackpackOrder(left) - agentBackpackOrder(right)
     } else {
       primaryDiff = agentReleaseOrder(left && left.id) - agentReleaseOrder(right && right.id)
     }
