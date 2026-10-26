@@ -29,14 +29,33 @@
         <div class="panel-actions"><button type="button" class="btn ghost" :disabled="locked" @click="closePanel">取消</button><button type="submit" class="btn primary" :disabled="locked || disabled || conflict || !dirty || !valid">{{ busy ? '保存中…' : '保存邮件储备' }}</button></div>
       </form>
       <form v-if="panel === 'claim' && selection" class="mailbox-claim-form" @submit.prevent="claim">
-        <fieldset class="panel-fields" :disabled="locked || disabled || conflict">
-          <div class="mail-claim-heading"><p class="panel-note">填写这次实际领取的封数，未领取的填 0。</p><button type="button" class="mail-manage" @click="selectAllMails">全部领取</button></div>
-          <label v-for="(row, index) in stored.white_coin_mails" v-show="row.count > 0" :key="index" class="mail-claim-row"><span>白金币邮件 · 每封 {{ row.coins_per_mail }}<small>待领 {{ row.count }} 封</small></span><span>本次领取<input v-model.number="selection.white_coin_mail_counts[index]" :aria-label="`第${index + 1}组白金币邮件本次领取封数`" type="number" min="0" :max="row.count" step="1" inputmode="numeric" required /></span></label>
-          <label v-if="stored.fu_chuan_mail_count" class="mail-claim-row"><span>符传邮件 · 每封 3 张<small>待领 {{ stored.fu_chuan_mail_count }} 封</small></span><span>本次领取<input v-model.number="selection.fu_chuan_mail_count" aria-label="符传邮件本次领取封数" type="number" min="0" :max="stored.fu_chuan_mail_count" step="1" inputmode="numeric" required /></span></label>
+        <fieldset class="panel-fields mail-claim-fields" :disabled="locked || disabled || conflict">
+          <div class="mail-claim-heading"><p class="panel-note">填写本次实际领取的封数，未领取的填 0。</p><button type="button" class="mail-manage mail-claim-fill" @click="selectAllMails">全部填入</button></div>
+          <div class="mail-claim-list">
+            <div v-for="(row, index) in stored.white_coin_mails" v-show="row.count > 0" :key="index" class="mail-claim-row">
+              <div class="mail-claim-resource">
+                <img src="/inventory-icons/items/baijinbi.png" alt="" class="mail-claim-icon" />
+                <div><strong>白金币邮件</strong><p class="mail-claim-meta"><span>每封 {{ row.coins_per_mail }} 白金币</span><span>待领 {{ row.count }} 封</span></p></div>
+              </div>
+              <label class="mail-claim-input">本次领取（封）<input v-model.number="selection.white_coin_mail_counts[index]" :aria-label="`第${index + 1}组白金币邮件本次领取封数`" :aria-invalid="!!claimErrors.coins[index]" :aria-describedby="claimErrors.coins[index] ? `${claimId}-coin-${index}-error` : undefined" type="number" min="0" :max="row.count" step="1" inputmode="numeric" required /></label>
+              <p v-if="claimErrors.coins[index]" :id="`${claimId}-coin-${index}-error`" class="mail-claim-error" role="alert"><CircleAlert :size="14" aria-hidden="true" />{{ claimErrors.coins[index] }}</p>
+            </div>
+            <div v-if="stored.fu_chuan_mail_count" class="mail-claim-row">
+              <div class="mail-claim-resource">
+                <img src="/inventory-icons/items/fuchuan.png" alt="" class="mail-claim-icon" />
+                <div><strong>符传邮件</strong><p class="mail-claim-meta"><span>每封 3 张</span><span>待领 {{ stored.fu_chuan_mail_count }} 封</span></p></div>
+              </div>
+              <label class="mail-claim-input">本次领取（封）<input v-model.number="selection.fu_chuan_mail_count" aria-label="符传邮件本次领取封数" :aria-invalid="!!claimErrors.tickets" :aria-describedby="claimErrors.tickets ? `${claimId}-ticket-error` : undefined" type="number" min="0" :max="stored.fu_chuan_mail_count" step="1" inputmode="numeric" required /></label>
+              <p v-if="claimErrors.tickets" :id="`${claimId}-ticket-error`" class="mail-claim-error" role="alert"><CircleAlert :size="14" aria-hidden="true" />{{ claimErrors.tickets }}</p>
+            </div>
+          </div>
         </fieldset>
-        <p v-if="!claimValid" role="alert">领取封数须为 0 至待领封数之间的整数。</p>
-        <p aria-live="polite">本次增加 {{ claimTotals.coins.toLocaleString() }} 白金币 · {{ claimTotals.tickets.toLocaleString() }} 符传</p>
-        <p class="panel-note">只记录刚领取、尚未计入当前数量的邮件。</p>
+        <div class="mail-claim-result" :class="{ 'is-invalid': !claimValid, 'has-reward': claimValid && (claimTotals.coins || claimTotals.tickets) }" aria-live="polite" aria-atomic="true">
+          <Gift :size="28" aria-hidden="true" />
+          <div><p class="panel-note">本次预计增加</p><p class="mail-claim-totals"><span>{{ claimTotals.coins.toLocaleString() }} 白金币</span> · <span>{{ claimTotals.tickets.toLocaleString() }} 符传</span></p></div>
+        </div>
+        <p v-if="!claimValid" class="mail-claim-status is-invalid" role="alert"><CircleAlert :size="14" aria-hidden="true" />存在数量错误，暂不能确认记录。</p>
+        <p v-else class="panel-note mail-claim-status"><Info :size="14" aria-hidden="true" />只记录刚领取、尚未计入当前数量的邮件。</p>
         <p v-if="error" role="alert">{{ error }}</p>
         <button v-if="conflict" type="button" class="mail-manage" @click="reload">重新读取</button>
         <p v-if="pendingClaim && !busy" role="status">领取结果尚未确认，请原样重试。</p>
@@ -46,8 +65,8 @@
   </div>
 </template>
 <script setup>
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
-import { Mail } from '@lucide/vue'
+import { computed, inject, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { CircleAlert, Gift, Info, Mail } from '@lucide/vue'
 import { matchedRouteKey, onBeforeRouteLeave } from 'vue-router'
 import { getMailboxReserve, saveMailboxReserve, claimMailboxReserve } from '../../api/mailboxReserve.js'
 import InventoryQuickDialog from './InventoryQuickDialog.vue'
@@ -56,6 +75,7 @@ import { dialog } from '../../utils/dialog.js'
 const props = defineProps({ accountId: { type: String, required: true }, userId: { type: String, required: true }, disabled: Boolean })
 const emit = defineEmits(['busy', 'recorded'])
 const LIMIT = 1000000
+const claimId = useId()
 const empty = () => ({ white_coin_mails: [], fu_chuan_mail_count: 0 })
 const draft = ref(empty()), baseline = ref(''), version = ref(0), updatedAt = ref(null)
 const loading = ref(false), loaded = ref(false), busy = ref(false), conflict = ref(false), error = ref(''), notice = ref('')
@@ -67,6 +87,14 @@ const mailCount = computed(() => stored.value.white_coin_mails.reduce((sum, row)
 const storedTotals = computed(() => ({ coins: stored.value.white_coin_mails.reduce((sum, row) => sum + row.count * row.coins_per_mail, 0), tickets: stored.value.fu_chuan_mail_count * 3 }))
 const claimValid = computed(() => selection.value && selection.value.white_coin_mail_counts.every((count, index) => amountValid(count) && count <= stored.value.white_coin_mails[index].count) && amountValid(selection.value.fu_chuan_mail_count) && selection.value.fu_chuan_mail_count <= stored.value.fu_chuan_mail_count)
 const claimTotals = computed(() => ({ coins: selection.value?.white_coin_mail_counts.reduce((sum, count, index) => sum + (Number(count) || 0) * stored.value.white_coin_mails[index].coins_per_mail, 0) || 0, tickets: (selection.value?.fu_chuan_mail_count || 0) * 3 }))
+const claimErrors = computed(() => ({
+  coins: selection.value?.white_coin_mail_counts.map((count, index) => claimFieldError(count, stored.value.white_coin_mails[index].count)) || [],
+  tickets: claimFieldError(selection.value?.fu_chuan_mail_count, stored.value.fu_chuan_mail_count)
+}))
+function claimFieldError(count, max) {
+  if (Number.isInteger(count) && count > max) return `最多可领取 ${max} 封，当前多填了 ${count - max} 封`
+  return amountValid(count) ? '' : `领取封数须为 0 至 ${max} 之间的整数。`
+}
 function openPanel(value) {
   if (props.disabled || locked.value || !loaded.value || conflict.value) return
   error.value = ''; notice.value = ''
