@@ -17,9 +17,10 @@
 
 ## 玩家体验底线
 
-- 先明确使用者与主任务。新页面或流程变化先写简短交互说明，目标明确后直接实施；小文案或局部样式不写长方案，不新增固定审批环节。
+- 先明确使用者与主任务。新页面、功能扩展或流程变化先按 `docs/standards/page-development.md` 第 6 节写简短交互说明，目标明确后直接实施；小文案或局部样式不写长方案，不新增固定审批环节。
 - 字段按必要输入、可靠默认、长期配置、情境设置和内部字段分层；配置不代表真实行为已发生，未知不得当零。
 - 保留业务能力和完整有效信息，允许在任务范围内替换旧表单；辅助录入、管理和历史不得挤走页面主体。
+- **功能扩展默认增量设计，不顺手重做页面。** 一批需求先按玩家任务归类，再说明功能归属、既有任务的保护边界与界面净变化；不得逐项堆常驻卡片，也不得把一切藏进“更多”。按页面规范第 11 节区分功能实现与体验验收，保护原有常用路径。
 - 默认、展开、零数据、加载和失败按需覆盖。真实页面由用户手动验收，构建不能替代；遵守下文 Skill、风险分级与浏览器授权约束。
 
 ## UI 设计自由度（视觉建议不等于全站强制模板）
@@ -30,26 +31,26 @@
 
 ## 测试与验证：风险分级，不做无差别全量检查
 
-测试要求与**行为变化**绑定，不与“文件发生修改”绑定。先判断风险，再选择最小充分验证：
+测试要求由**具体回归风险**决定，不因“文件发生修改”“行为变化”或“修复 Bug”自动强制补测、跑测。先判断风险，再选择最小充分验证；独立 clone 时同样适用以下策略：
 
 | 等级 | 前端典型改动 | 默认处理 |
 | --- | --- | --- |
 | **L0** | 文案、注释、纯 CSS/视觉、静态资源、不会改变交互的布局微调 | 检查 diff 和相关文件；不要求测试、build、全量静态检查 |
-| **L1** | 单组件展示/局部交互，不涉及共享状态/API | 只建议直接相关的静态或定向测试 |
-| **L2** | store/composable、API、数据转换、权限、缓存/轮询、业务分支 | 同步更新相关测试；建议用户运行受影响测试与必要静态检查 |
-| **L3** | 路由、登录、全局状态、跨页面共享逻辑、关键数据持久化 | 模块级/仓库级相关检查，可使用工作区 `./test smart` |
-| **L4** | Vite/依赖/CI/测试基础设施/发布流程 | 才执行完整 CI 等价检查或 `./test all` |
+| **L1** | 单组件展示/局部交互，不涉及共享状态/API | 默认检查 diff 与相关文件；有具体风险时才做定向检查，不默认补测、跑测或 build |
+| **L2** | store/composable、API 请求、数据转换、缓存/轮询、一般业务分支 | 按具体风险选择最小定向检查；权限、跨账号或数据损坏风险上调至 L3 |
+| **L3** | API 契约、登录鉴权/权限、账号隔离、路由/全局状态、持久化/迁移、事务/并发、共享核心 | 必须取得受影响关键约束的可复核定向证据；不默认全量检查 |
+| **L4** | Vite/依赖/CI/测试基础设施/发布流程 | 按影响考虑完整 CI 等价检查或工作区 `./test all`，不机械运行无关检查 |
 
 ### 测试代码
 
-- 新增或改变用户可观察行为、业务逻辑、状态管理、API 请求/响应、校验、权限、缓存/轮询、异步竞态或错误处理时，如果现有测试不能覆盖新行为，必须同步新增/更新测试。
-- Bug 修复原则上补能复现该 Bug 的回归测试。
-- 纯文案、纯 CSS/视觉、静态资源、格式化或确定不改变外部行为的重构，默认不新增行为测试。
-- 不得为了通过 CI 删除有效测试、弱化关键断言、增加无理由的 skip/disable，或恢复已经废弃的产品行为。
+- L0/L1 默认只做相关文件/diff 自检；L2 仅为明确的回归风险选择定向检查，不为覆盖率或流程门禁创造测试。
+- 优先复用能覆盖风险的现有测试；需要时再新增/更新。合理行为变化使已有断言过时时，调整为新的正确预期，不恢复废弃行为迎合测试。
+- L3/L4 的鉴权、账号隔离、数据正确性、持久化、迁移、事务等关键约束必须取得必要的定向证据；不能以交给用户、DSH 或 CI 为由放弃开发期安全检查。验证不足时明确剩余风险。
+- 不得为了通过 CI 删除有效测试、弱化关键断言、增加无理由的 skip/disable，或破坏现有测试发现范围。
 
 ### 谁来执行验证
 
-YuanHub-All 工作区默认由**用户/CI 执行回归与全量验证**。Agent 负责把需要的测试代码补齐，并在最终汇报中列出最小必要命令；除非当前任务明确要求 Agent 代跑，否则不要自动执行完整测试套件。
+默认由**用户、用户另行安排的 DSH 或 CI 执行常规回归与全量验证**。Agent 负责实现、diff 自检及本次风险确实需要的最小开发期验证，不自动启动独立测试 Agent。只在仍有必要的待验收事项时给出简短路径或命令，不因小修改列出整套 CI；低风险任务不以等待 DSH 为完成门槛。
 
 当前仓库的 CI 等价命令仍是：
 
@@ -65,7 +66,7 @@ npm run build
 ## 浏览器自动化默认禁用（UI 由用户验收）
 
 - 当前任务未获用户明确授权时，**不运行 Playwright、Chrome DevTools、Puppeteer、Cypress、真实浏览器 E2E、自动页面截图/视觉 diff、自动登录或 320–1440px 浏览器视口矩阵**；不启动浏览器、不安装/修复浏览器测试依赖，也不以 UX 审查为由访问运行中的页面。仓库规范中的浏览器命令及完整视口矩阵仅作为用户人工验收或明确授权后的专项回归参考。
-- 仍须遵守 `ui-ux-pro-max`、设计规范与响应式约束，结合代码和非浏览器单元/组件测试做最小充分验证；行为变化需补齐必要测试，不得移除已有 E2E 或弱化 CI。
+- 仍须遵守 `ui-ux-pro-max`、设计规范与响应式约束；按上文具体风险选择代码自检或必要的非浏览器单元/组件/契约检查，不因行为变化一律补测。关键安全验证不得省略，不得移除已有 E2E 或弱化 CI。
 - 最终按改动风险向用户给出对应的桌面端/手机端人工验收路径、动作、预期与建议视口，注明真实视觉、触控、运行时交互尚未由 Agent 验证；集中回归也不隐含浏览器自动化授权。
 
 ## YuanHub-All 临时 Rapid Mode
@@ -117,7 +118,7 @@ npm run build
 - [ ] 已读取 `docs/standards/design-system.md`
 - [ ] 涉及任何 UI 改动时已读取 `docs/standards/responsive-development.md`
 - [ ] 涉及任何 UI 改动或 UI Review 时已读取并应用 `ui-ux-pro-max`
-- [ ] 已按范围读取 `docs/standards/page-development.md` 的玩家体验章节；新页面或流程变化有简短交互说明
+- [ ] 已按范围读取 `docs/standards/page-development.md`；新页面、功能扩展或流程变化有简短说明，扩展包含功能归属、页面保护与界面净变化
 - [ ] 仅当改动属于结构性 UX / L2-L3 流程变化或明确要求完整 UX Review 时，才执行 `usability-audit`
 - [ ] 仅当实际改变已有 `.ux/cujs/` 核心旅程时，才执行 `audit-cuj`
 - [ ] 已按风险选择响应式检查范围；L0/L1 未被无理由升级为完整视口矩阵
@@ -127,9 +128,9 @@ npm run build
 - [ ] 遵循本次明确设计方案，没有为统一按钮尺寸、配色或组件外观牺牲信息密度与可用性
 - [ ] 背景与吉祥物资源仍来自本仓库 `public/`
 - [ ] 没有新增指向父目录、个人绝对路径或其他本地工作区的开发依赖
-- [ ] 行为变化已同步新增/更新必要测试；非行为修改没有为了过门禁创造无意义测试
+- [ ] 验证按具体风险选择；没有因小改动自动补测、跑全量，关键安全/契约/隔离约束有必要证据
 - [ ] 最终汇报列出了用户应执行的**最小必要验证**，未无差别复制完整 CI
-- [ ] 未声称用户尚未执行的验证已经通过
+- [ ] 功能扩展同时交代新能力和受影响旧任务的检查情况；功能实现与体验验收分开，未把代码检查或用户待验收事项写成视觉通过
 
 
 ## Local risk-based verification gate (2026-09-28)
@@ -137,7 +138,7 @@ npm run build
 When this repository is edited inside YuanHub-All, follow root `TESTING.md` and only the frontend quality guideline. Trellis tasks should record `risk_level` and `verification_owner`.
 
 - `verification_owner=user`: do not require a local `quick/smart/all` report before finish/archive; keep tests/exceptions honest and report pending commands to the user.
-- `verification_owner=agent`: execute the checks justified by the task risk; L3 normally uses `smart`, L4 may use `all`.
-- L0/L1 non-behavior edits may use an exact-file test-plan exception instead of adding artificial tests.
+- `verification_owner=agent`: execute only risk-justified checks; L3 requires focused evidence for affected critical invariants, not a default full suite; L4 may use `all` when warranted.
+- For an existing Trellis task, record honest exact-file risk-based exceptions where checks are unnecessary; do not create a task or artificial tests merely because a local L0/L1 edit changes behavior.
 
 Preserve unrelated dirty files; never reset, stash, clean, or include them merely to make a gate pass.
