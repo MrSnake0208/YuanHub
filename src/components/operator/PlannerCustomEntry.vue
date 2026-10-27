@@ -1,5 +1,5 @@
 <template>
-  <article class="custom-entry" :class="kind" :aria-label="entry.label">
+  <article class="custom-entry" :class="[kind, { 'template-only': hideCount }]" :aria-label="entry.label">
     <header v-if="!draft" class="custom-entry-heading">
       <span>{{ isSpend ? '自定义支出' : '自定义来源' }}</span>
       <span class="custom-entry-total"><b>{{ isSpend ? '−' : '+' }}{{ formatAmount(total) }}</b>体力</span>
@@ -8,7 +8,7 @@
     <div class="custom-entry-fields">
       <label class="custom-entry-name"><span>名称</span><input type="text" maxlength="32" :value="entry.name || entry.label" :aria-label="(isSpend ? '体力支出' : '体力来源') + '名称，第 ' + (index + 1) + ' 项'" :disabled="disabled" @[inputEvent]="emit('change-name', $event)" /></label>
       <label v-if="isSpend"><span>每次体力</span><input type="number" min="0" step="1" :value="entry.costPer" :aria-label="entry.label + '每次体力'" :disabled="disabled" @[inputEvent]="emit('change-cost', $event)" /></label>
-      <label><span>{{ isSpend || entry.kind === 'count' ? '次数' : '获得体力' }}</span><input type="number" min="0" step="1" :value="entry.value" :aria-label="entry.label + (isSpend ? '次数' : '数量')" :disabled="disabled" @[inputEvent]="emit('change-value', $event)" /></label>
+      <label v-if="!hideCount"><span>{{ isSpend || entry.kind === 'count' ? '次数' : '获得体力' }}</span><input type="number" min="0" step="1" :value="entry.value" :aria-label="entry.label + (isSpend ? '次数' : '数量')" :disabled="disabled" @[inputEvent]="emit('change-value', $event)" /></label>
     </div>
     <section v-if="isSpend" class="custom-entry-yields" aria-label="每次产出材料">
       <div class="custom-yields-heading"><span>每次产出</span><PlannerSelect class="custom-yield-add" label="添加每次产出的材料" placeholder="添加材料" :menu-width="224" :options="availableResources" :disabled="disabled" @update:model-value="emit('add-yield', $event)" /></div>
@@ -35,6 +35,7 @@ const props = defineProps({
   total: { type: Number, required: true },
   disabled: Boolean,
   draft: Boolean,
+  hideCount: Boolean,
   resources: { type: Array, default: () => [] },
   resourceName: { type: Function, default: id => id }
 })

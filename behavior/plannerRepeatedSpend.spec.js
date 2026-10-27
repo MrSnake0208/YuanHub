@@ -70,7 +70,7 @@ it('自定义项目默认安排到规划末日，展示体力与产出并等待�
 
 it('自定义当天安排提供修改入口，禁用时说明原因', async () => {
   const wrapper = setup({ entry: { id: 'custom-spend-1', custom: true, label: '据点', value: 1, fixed: true }, disabled: true, blockedReason: '请先切换至常规日程规划' })
-  expect(wrapper.text()).toContain('修改每日安排')
+  expect(wrapper.text()).toContain('应用到日期范围')
   expect(wrapper.text()).toContain('当天安排 1 次')
   expect(wrapper.text()).toContain('请先切换至常规日程规划')
   expect(wrapper.text()).not.toContain('解除当天固定')

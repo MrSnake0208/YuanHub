@@ -30,7 +30,7 @@
         <span class="date-status" :class="{ manual: manualPlans[date] }">
           <History v-if="isPast(date)" :size="11" aria-hidden="true" />
           <PenLine v-else-if="manualPlans[date]" :size="11" aria-hidden="true" />
-          {{ isPast(date) ? '已过' : manualPlans[date] ? '自定义' : fixed ? '已保存' : '推荐方案' }}
+          {{ statusLabel(date) }}
         </span>
       </button>
     </div>
@@ -43,7 +43,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Ellipsis, History, PenLine, Ey
 import { createPlannerDateDrag, plannerDateRevealOffset } from '../../data/plannerDateDrag.js'
 const props = defineProps({ dates: { type: Array, required: true }, selected: { type: String, required: true },
   manualPlans: { type: Object, default: () => ({}) }, today: { type: String, default: '' }, fixed: Boolean, pastCount: { type: Number, default: 0 }, hidePast: Boolean, resetDisabled: Boolean,
-  label: { type: String, default: '选择日程日期' } })
+  previewDates: { type: Array, default: () => [] }, label: { type: String, default: '选择日程日期' } })
 const emit = defineEmits(['select', 'reset', 'toggle-history'])
 const scroller = ref(null)
 const dateMenu = ref(null)
@@ -57,10 +57,11 @@ const dragging = ref(false)
 const drag = createPlannerDateDrag(value => { dragging.value = value })
 const activeIndex = computed(() => props.dates.indexOf(props.selected))
 const monthLabel = computed(() => { const [year, month] = props.selected.split('-'); return `${year} 年 ${Number(month)} 月` })
-const selectedStatus = computed(() => isPast(props.selected) ? '已过' : props.manualPlans[props.selected] ? '自定义' : props.fixed ? '已保存' : '推荐方案')
+function statusLabel(date) { return props.previewDates.includes(date) ? '规则预览' : isPast(date) ? '已过' : props.manualPlans[date] ? '自定义' : props.fixed ? '已保存' : '推荐方案' }
+const selectedStatus = computed(() => statusLabel(props.selected))
 function shortDate(date) { const [, month, day] = date.split('-'); return Number(month) + '/' + Number(day) }
 function isPast(date) { return props.fixed && props.today && date < props.today }
-function dateStatus(date) { return (isPast(date) ? '已过日期，可回顾，' : '') + (props.manualPlans[date] ? '已自定义' : props.fixed ? '已保存日程' : '推荐方案') }
+function dateStatus(date) { if (props.previewDates.includes(date)) return '每日规则预览，未保存日程'; return (isPast(date) ? '已过日期，可回顾，' : '') + (props.manualPlans[date] ? '已自定义' : props.fixed ? '已保存日程' : '推荐方案') }
 function step(delta) { const date = props.dates[activeIndex.value + delta]; if (date) emit('select', date) }
 function onPointerDown(event) {
   drag.down(event)

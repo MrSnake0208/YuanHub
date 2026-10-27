@@ -1,6 +1,6 @@
 <template>
   <span class="repeat-spend" :class="{ 'repeat-spend-custom': isCustom }">
-    <button type="button" class="repeat-link" aria-haspopup="dialog" :disabled="disabled" @click="open">{{ entry.fixed ? '修改每日安排' : '设为每日安排' }}</button>
+    <button type="button" class="repeat-link" aria-haspopup="dialog" :disabled="disabled" @click="open">{{ isCustom ? '应用到日期范围' : entry.fixed ? '修改每日安排' : '设为每日安排' }}</button>
     <span v-if="entry.fixed && !isCustom">当天固定 {{ entry.value }} 次 <button type="button" class="repeat-link" :disabled="disabled" @click="emit('release')">解除当天固定</button></span>
     <span v-else-if="entry.fixed">当天安排 {{ entry.value }} 次</span>
     <span v-if="disabled && blockedReason">{{ blockedReason }}</span>
