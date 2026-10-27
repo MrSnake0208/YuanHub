@@ -745,18 +745,28 @@ it('库存草稿时奖励禁用；奖励草稿关闭与切视图后保留，账�
   wrapper.unmount()
 })
 
-it('未知结果锁定库存、账号和视图，原样重试仅发原请求，成功按原链路刷新且留在当前视图', async () => {
+it('混合获得结果未知时锁定库存、账号和视图，原样重试两条流水后刷新且留在当前视图', async () => {
   inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  getRewardCatalog.mockResolvedValue([
+    { entity_type: 'item', id: 'baijinbi', name: '白金币', rarity: 3 },
+    { entity_type: 'agent', id: 'char_001_test', name: '测试密探', rarity: 5, games: ['代号鸢'] },
+  ])
   localStorage.setItem('inventory-tabs', 'acquired')
   const wrapper = render({ attachTo: document.body }, true)
   await flushPromises()
   await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
   document.querySelector('.reward-tile[aria-label^="添加白金币"]').click()
   await flushPromises()
+  Array.from(document.querySelectorAll('#reward-entry-panel .type-options button')).find(node => node.textContent === '密探心纸').click()
+  await flushPromises()
+  document.querySelector('.reward-tile[aria-label^="添加测试密探"]').click()
+  await flushPromises()
   inventoryApi.importInventory.mockRejectedValueOnce(new TypeError('Failed to fetch'))
   await clickRewardButton('保存')
   const original = JSON.parse(JSON.stringify(inventoryApi.importInventory.mock.calls[0][0]))
   expect(original.records[0]).toMatchObject({ account_id: 'acc-a', record_type: 'reward_delta' })
+  expect(original.records.map(record => record.entity_type)).toEqual(['item', 'agent'])
+  expect(original.records.every(record => record.account_id === 'acc-a')).toBe(true)
   expect(wrapper.get('.reward-entry').element.disabled).toBe(true)
   expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
   expect(await wrapper.findComponent({ name: 'DataAccountContextBar' }).props('beforeSwitch')()).toBe(false)
@@ -767,7 +777,7 @@ it('未知结果锁定库存、账号和视图，原样重试仅发原请求，�
   const currentReads = inventoryApi.getCurrent.mock.calls.length
   const acquiredReads = inventoryApi.getAcquired.mock.calls.length
   const historyReads = inventoryApi.listRecords.mock.calls.length
-  inventoryApi.importInventory.mockResolvedValueOnce({ accepted: 1, duplicates: 0, history_only: 1, superseded: 0 })
+  inventoryApi.importInventory.mockResolvedValueOnce({ accepted: 2, duplicates: 0, history_only: 1, superseded: 0 })
   await clickRewardButton('原样重试补录')
   expect(inventoryApi.importInventory).toHaveBeenCalledTimes(2)
   expect(inventoryApi.importInventory.mock.calls[1][0]).toEqual(original)
