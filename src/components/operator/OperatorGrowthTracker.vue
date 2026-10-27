@@ -915,7 +915,7 @@ const plannerTimeline = computed(() => fixedSchedule.value ? visibleFixedSchedul
 const plannerCycleDays = computed(() => Math.min(plannerRules.maxEtaDays, Math.max(1, plannerTimeline.value.length, dateOffset(selectedDate.value) + 1)))
 const allPlannerDates = computed(() => [...new Set([
   ...(fixedSchedule.value ? plannerTimeline.value.map(day => day.date) : Array.from({ length: plannerCycleDays.value }, (_, index) => addDays(plannerStartDate.value, index))),
-  ...(customRules.value.length ? Array.from({ length: 90 }, (_, index) => addDays(plannerStartDate.value, index)) : []),
+  ...(customRules.value.length ? Array.from({ length: 90 }, (_, index) => addDays(plannerToday.value, index)) : []),
   ...Object.keys(manualPlans.value).filter(date => !fixedSchedule.value?.context.displayStartDate || date >= fixedSchedule.value.context.displayStartDate)
 ])].sort())
 const pastScheduleCount = computed(() => allPlannerDates.value.filter(date => date < plannerToday.value).length)
