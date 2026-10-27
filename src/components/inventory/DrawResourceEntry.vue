@@ -10,10 +10,11 @@
       <fieldset :disabled="disabled || locked || conflict">
         <div class="draw-fields">
           <label v-if="!embedded">操作<select v-model="action"><option value="gain">获得奖励</option><option value="use">使用符传</option><option value="exchange">白金币兑换</option></select></label>
-          <label>符传类型<select v-model="ticketId"><option v-for="ticket in DRAW_TICKETS" :key="ticket.id" :value="ticket.id">{{ ticket.name }}</option></select></label>
-          <label v-if="action === 'exchange'">兑换渠道<select v-model="exchangeChannel"><option value="standard">常规 · 200白金币/张</option><option v-if="ticketId === 'fuchuan'" value="monthly-shop">月卡商店 · 1600白金币/10张</option></select></label>
+          <label>{{ action === 'exchange' ? '兑换项目' : '符传类型' }}<select v-model="ticketId"><option v-for="ticket in DRAW_TICKETS" :key="ticket.id" :value="ticket.id">{{ ticket.name }}</option><option v-if="action === 'exchange'" value="zhuyu">茱萸兑换白金币</option></select></label>
+          <label v-if="action === 'exchange' && ticketId !== 'zhuyu'">兑换渠道<select v-model="exchangeChannel"><option value="standard">常规 · 200白金币/张</option><option v-if="ticketId === 'fuchuan'" value="monthly-shop">月卡商店 · 1600白金币/10张</option></select></label>
+          <p v-if="action === 'exchange' && ticketId === 'zhuyu'">每个茱萸兑换 50 白金币，仅记录已实际领取的白金币。</p>
           <label v-if="action === 'gain'">奖励来源<input v-model="source" type="text" maxlength="64" placeholder="例如：活动奖励、邮件奖励" required /></label>
-          <label>数量（张）<span class="draw-quantity"><button type="button" aria-label="减少符传数量" :disabled="Number(quantity) <= step" @click="adjust(-1)"><Minus :size="14" aria-hidden="true" /></button><input v-model="quantity" type="text" inputmode="numeric" aria-label="符传数量" required /><button type="button" aria-label="增加符传数量" @click="adjust(1)"><Plus :size="14" aria-hidden="true" /></button></span></label>
+          <label>数量（{{ ticketId === 'zhuyu' ? '个' : '张' }}）<span class="draw-quantity"><button type="button" :aria-label="ticketId === 'zhuyu' ? '减少茱萸数量' : '减少符传数量'" :disabled="Number(quantity) <= step" @click="adjust(-1)"><Minus :size="14" aria-hidden="true" /></button><input v-model="quantity" type="text" inputmode="numeric" :aria-label="ticketId === 'zhuyu' ? '茱萸数量' : '符传数量'" required /><button type="button" :aria-label="ticketId === 'zhuyu' ? '增加茱萸数量' : '增加符传数量'" @click="adjust(1)"><Plus :size="14" aria-hidden="true" /></button></span></label>
         </div>
         <p v-if="action === 'exchange' && exchangeChannel === 'monthly-shop'">每份10张普通符传；此处记录已实际购买的数量，不判断游戏内购买资格或剩余限购次数。</p>
       </fieldset>
@@ -50,6 +51,7 @@ const preview = computed(() => {
 })
 watch(locked, value => emit('busy', value), { flush: 'sync' })
 watch([action, ticketId, exchangeChannel], () => {
+  if (action.value !== 'exchange' && ticketId.value === 'zhuyu') ticketId.value = 'fuchuan'
   if (ticketId.value !== 'fuchuan') exchangeChannel.value = 'standard'
   if (action.value === 'exchange' && exchangeChannel.value === 'monthly-shop' && (Number(quantity.value) < 10 || Number(quantity.value) % 10 !== 0)) quantity.value = '10'
 })
@@ -82,7 +84,7 @@ async function submit() {
     confirming.value = true
     let confirmed
     try {
-      confirmed = await dialog.confirm({ title: '确认本次符传记账？', message: rows.map(row => `${row.name} ${row.count > 0 ? '+' : '−'}${Math.abs(row.count)}，余额 ${row.after}`).join('；'), confirmText: '确认记账', cancelText: '返回修改' })
+      confirmed = await dialog.confirm({ title: '确认本次资源记账？', message: rows.map(row => `${row.name} ${row.count > 0 ? '+' : '−'}${Math.abs(row.count)}，余额 ${row.after}`).join('；'), confirmText: '确认记账', cancelText: '返回修改' })
     } finally { if (seq === sequence) confirming.value = false }
     if (!confirmed || seq !== sequence || props.disabled) return
     pending.value = body
