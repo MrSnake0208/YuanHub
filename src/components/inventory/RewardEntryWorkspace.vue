@@ -176,7 +176,7 @@
                   <label for="training-runs">完成次数<span class="training-stepper"><button type="button" class="outline-button" aria-label="减少完成次数" :disabled="!canAdjustTrainingRuns(-1)" @click="adjustTrainingRuns(-1)">−</button><input id="training-runs" v-model="manual.training.draft.runs" type="text" inputmode="numeric" :aria-invalid="!!error && trainingInputError.field === 'runs'" :aria-describedby="error && trainingInputError.field === 'runs' ? 'training-error training-note' : 'training-note'" @input="changeTrainingDraft" /><button type="button" class="outline-button" aria-label="增加完成次数" :disabled="!canAdjustTrainingRuns(1)" @click="adjustTrainingRuns(1)">+</button></span><span v-if="error && trainingInputError.field === 'runs'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
                 </div>
                 <p v-if="trainingInputError.field === 'catalog' || trainingInputError.field === 'game'" class="row-error">{{ trainingInputError.error }}</p>
-                <div v-if="trainingDraftResult.entries.length" class="training-draft-rewards" aria-label="本条预计获得"><span v-for="entry in trainingDraftResult.entries" :key="entry.id" class="training-reward-chip"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="24" height="24" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }} <strong>+{{ entry.count }}</strong></span></span></div>
+                <div v-if="trainingDraftResult.entries.length" class="training-draft-rewards" aria-label="本条预计获得"><span v-for="entry in trainingDraftResult.entries" :key="entry.id" class="training-reward-chip"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc(entry)" alt="" width="24" height="24" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }} <strong>+{{ entry.count }}</strong></span></span></div>
                 <div class="training-entry-actions"><button v-if="manual.training.editingKey != null || manual.training.dirty" type="button" class="text-button" @click="cancelTrainingEdit">{{ manual.training.editingKey == null ? '清除本条' : '取消修改' }}</button><button type="button" class="outline-button add-training" :disabled="!trainingPending" @click="addTrainingSelection"><Plus v-if="manual.training.editingKey == null" :size="14" aria-hidden="true" />{{ manual.training.editingKey == null ? '加入本次记录' : '保存修改' }}</button></div>
                 <p class="shortcut-note">{{ trainingPending ? '当前输入会参与预览，加入相同关卡将合并次数。' : '已加入清单，修改后可继续添加。' }}</p>
               </div>
@@ -193,18 +193,19 @@
             <section v-else-if="!dailyMode" class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span v-if="!compact">{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :disabled="!!manual.presets.length" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
+              <p v-if="manual.channel === '手动补录' && !manual.presets.length" class="shortcut-note">可切换类型继续添加，已选内容会保留。</p>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
                 <div v-if="manual.entityType === 'agent'" class="rarity-options" role="group" aria-label="密探品质筛选"><button v-for="quality in qualities" :key="quality.id" type="button" :class="{ selected: rarity === quality.id }" :aria-pressed="rarity === quality.id" @click="rarity = quality.id">{{ quality.label }}</button></div>
                 <label v-if="manual.entityType === 'agent'" class="prof-filter">属性<select v-model="agentProf" aria-label="密探属性筛选"><option value="">全部</option><option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option></select></label>
               </div>
               <div class="reward-grid" :class="{ 'agent-grid': manual.entityType === 'agent', 'luoyang-grid': manual.channel === '派遣-洛阳' }">
-                <div v-for="entity in visibleOptions" :key="entity.id" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
-                  <button type="button" class="reward-tile" :disabled="!!manual.presets.length" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
-                    <span class="tile-image"><img v-if="!failedImages.has(entity.id)" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(entity.id)" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
-                    <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity.id)" class="tile-count">{{ countOf(entity.id) }}</span>
+                <div v-for="entity in visibleOptions" :key="rewardKey(entity)" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
+                  <button type="button" class="reward-tile" :disabled="!!manual.presets.length" :class="{ chosen: countOf(entity) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity)}`" @click="addReward(entity)">
+                    <span class="tile-image"><img v-if="!failedImages.has(rewardKey(entity))" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(rewardKey(entity))" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
+                    <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity)" class="tile-count">{{ countOf(entity) }}</span>
                   </button>
-                  <button v-if="countOf(entity.id)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity.id)}`" @click="decreaseRewardFromTile(entity.id, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
+                  <button v-if="countOf(entity)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity)}`" @click="decreaseRewardFromTile(entity, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
                 </div>
               </div>
               <p v-if="!visibleOptions.length" class="empty-search">{{ manual.entityType === 'agent' ? '没有匹配的密探，试试其他名称、品质或属性。' : '没有匹配的奖励，试试其他名称。' }}</p>
@@ -215,7 +216,7 @@
               <div v-if="!compact || dailyMode" class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
               <div class="basket-heading"><span role="status" aria-live="polite" aria-atomic="true">已选 <b>{{ basketEntries.length }}</b> 项</span><button v-if="trainingByRuns || basketEntries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
               <div v-if="!basketEntries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>{{ trainingByRuns ? '请选择历练类型、关卡和次数' : dailyMode ? '勾选上方已经领取的日常项目' : '从候选区选取本次奖励' }}</span><small>{{ trainingByRuns ? '必得材料将自动计算' : '选中后可在这里调整数量' }}</small></div>
-              <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="entry.id"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="compact && !dailyMode || manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc({ id: entry.itemId || entry.id, entity_type: entry.entity_type || manual.entityType })" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }}</span></span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + entry.itemName + '数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
+              <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="rewardKey(entry)"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="compact && !dailyMode || manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc({ id: entry.itemId || entry.id, entity_type: entry.entity_type || 'item' })" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }}</span></span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + entry.itemName + '数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id, entry.entity_type)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
               <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyRewardTotal }}，分别保存 {{ manual.presets.length }} 条来源流水。</p>
               <button type="submit" class="primary-button preview-button" :disabled="(!trainingByRuns && !basketEntries.length) || (dailyMode && (dailyLoading || !!dailyStatusError))"><span>{{ busy ? '保存中…' : checkingBaseline ? '核对中…' : dailyMode ? '一键记录' : compact ? '保存' : previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
@@ -250,7 +251,7 @@
           <div v-if="row.record" class="preview-record">
             <label v-if="mode === 'report'" class="record-checkbox"><input v-model="row.selected" type="checkbox" :disabled="!!row.error || locked || !!result" :aria-label="`选择 ${row.record.acquisition_channel || '库存记录'} ${row.record.effective_at}`" /><span class="checkbox-art"><Check :size="13" aria-hidden="true" /></span></label>
             <div class="record-date"><small>{{ new Date(row.record.effective_at).getFullYear() }}</small><b>{{ displayDay(row.record.effective_at) }}</b><time :datetime="row.record.effective_at" :title="row.record.effective_at">{{ displayClock(row.record.effective_at) }}</time></div>
-            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id"><span v-if="mode === 'manual' && row.record.acquisition_channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ (entry.name || entry.id).slice(0, 1) }}</span></span>{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
+            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id"><span v-if="mode === 'manual' && row.record.acquisition_channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ (entry.name || entry.id).slice(0, 1) }}</span></span>{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
             <button type="button" class="record-info" :aria-label="`查看${row.record.acquisition_channel || '库存记录'}记录详情`" :aria-expanded="expandedRows.has(row.key)" @click="toggleDetails(row.key)"><ChevronDown :size="16" :class="{ rotated: expandedRows.has(row.key) }" aria-hidden="true" /></button>
           </div>
           <div v-if="row.record && expandedRows.has(row.key)" class="record-details"><span>{{ row.record.effective_at }}</span><span>{{ row.status }}</span><span>{{ row.record.record_id }}</span></div>
@@ -258,7 +259,7 @@
         </li></ul>
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : dispatchAnnotation ? '请核对实际领取时间、全部碎片和体力；本次只补记报告。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ annotationResult ? '已补记报告，库存数量未增加' : result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ annotationResult ? '已补记报告，库存数量未增加' : result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="mode === 'manual' && !dailyMode && !manual.presets.length && selectedRecords.length === 2">已保存 2 条流水，可在操作历史中分别查看或撤销。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
               <footer v-if="mode === 'report' || operation === 'gain'" class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励记录统计获得量，盘点记录保存库存总量。导入保留原记录时间，同一条记录不会重复导入。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
@@ -625,8 +626,9 @@ const manualBeforeLatestSnapshot = computed(() => {
   const latest = Date.parse(props.latestInventoryAt)
   return Number.isFinite(selected) && Number.isFinite(latest) && selected < latest
 })
-const counts = computed(() => new Map(manual.value.entries.map(entry => [entry.id, entry.count])))
-const countOf = id => counts.value.get(id) || 0
+const rewardKey = entry => `${entry.entity_type || 'item'}:${entry.id}`
+const counts = computed(() => new Map(manual.value.entries.map(entry => [rewardKey(entry), entry.count])))
+const countOf = entity => counts.value.get(rewardKey(entity)) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
 const iconSrc = entity => `${import.meta.env.BASE_URL}inventory-icons/${entity.entity_type === 'agent' ? 'agents' : 'items'}/${encodeURIComponent(entity.id)}.png`
 let bodyOverflowBefore = ''
@@ -785,7 +787,7 @@ function changeTrainingMode(nextMode, confirmed = false) {
     manual.value.entries = []
   } else {
     if ((manual.value.training.dirty || manual.value.training.selections.length) && trainingCalculation.value.error) { showError(trainingCalculation.value.error); return }
-    manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count }))
+    manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count, entity_type: 'item' }))
   }
   manual.value.training.mode = nextMode
   manual.value.training.replacePrompt = false
@@ -857,8 +859,8 @@ function changeChannel(channel) {
   manual.value.dispatchPurpose = 'income'
   manual.value.channel = channel
   manual.value.entityType = REWARD_CHANNELS.find(item => item.id === channel).entityType || manual.value.entityType
-  const allowed = new Set(entryOptions.value.map(entry => entry.id))
-  manual.value.entries = manual.value.entries.filter(entry => allowed.has(entry.id))
+  const allowed = new Set(entryOptions.value.map(rewardKey))
+  manual.value.entries = manual.value.entries.filter(entry => allowed.has(rewardKey(entry)))
   manual.value.stamina = ''
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
@@ -877,29 +879,32 @@ function selectDailyPreset(preset) {
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 }
-function changeType(type) { manual.value.entityType = type; manual.value.entries = []; search.value = ''; rarity.value = 0; agentProf.value = ''; clearPreview() }
+function changeType(type) {
+  if (locked.value || type === manual.value.entityType) return
+  manual.value.entityType = type; search.value = ''; rarity.value = 0; agentProf.value = ''; clearPreview()
+}
 function addReward(entity) {
-  const entry = manual.value.entries.find(entry => entry.id === entity.id)
+  const entry = manual.value.entries.find(entry => rewardKey(entry) === rewardKey(entity))
   if (entry) adjustReward(entry, 1)
-  else { manual.value.entries.push({ id: entity.id, name: entity.name, count: entity.id === 'baijinbi' ? 10 : 1 }); clearPreview() }
+  else { manual.value.entries.push({ id: entity.id, name: entity.name, entity_type: entity.entity_type, count: entity.entity_type === 'item' && entity.id === 'baijinbi' ? 10 : 1 }); clearPreview() }
 }
 function adjustReward(entry, delta) {
   const value = Number(entry.count)
-  const step = entry.id === 'baijinbi' || entry.itemId === 'baijinbi' ? 10 : 1
+  const step = (entry.entity_type || 'item') === 'item' && (entry.id === 'baijinbi' || entry.itemId === 'baijinbi') ? 10 : 1
   const next = (Number.isInteger(value) ? value : 0) + delta * step
-  if (next <= 0) removeReward(entry.id)
+  if (next <= 0) removeReward(entry.id, entry.entity_type)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
 }
-function decreaseRewardFromTile(id, event) {
-  const entry = manual.value.entries.find(entry => entry.id === id)
+function decreaseRewardFromTile(entity, event) {
+  const entry = manual.value.entries.find(entry => rewardKey(entry) === rewardKey(entity))
   if (!entry) return
   const addButton = event.currentTarget.previousElementSibling
   adjustReward(entry, -1)
-  if (!manual.value.entries.some(entry => entry.id === id)) nextTick(() => addButton.focus())
+  if (!countOf(entity)) nextTick(() => addButton.focus())
 }
 function setCount(entry, value) { entry.count = value; clearPreview() }
-function removeReward(id) {
-  manual.value.entries = manual.value.entries.filter(entry => entry.id !== id)
+function removeReward(id, entityType = 'item') {
+  manual.value.entries = manual.value.entries.filter(entry => entry.id !== id || entry.entity_type !== entityType)
   manual.value.presets = manual.value.presets.filter(entry => entry.id !== id)
   if (!manual.value.presets.length) manual.value.whiteCoinPurpose = ''
   clearPreview()
@@ -923,12 +928,15 @@ async function previewManual() {
     const base = { record_type: 'reward_delta', entity_type: draft.entityType, effective_at: effectiveAt,
       ...(requiresStamina.value ? { stamina_cost: /^\d+$/.test(draft.stamina) ? Number(draft.stamina) : undefined } : {}) }
     const count = value => /^\d+$/.test(String(value)) ? Number(value) : NaN
+    const entries = trainingByRuns.value ? trainingCalculation.value.entries : draft.entries
+    const groups = ['item', 'agent'].map(entity_type => ({ entity_type, entries: entries.filter(entry => (entry.entity_type || draft.entityType) === entity_type) })).filter(group => group.entries.length)
+    if (requiresStamina.value && groups.length > 1) throw new TypeError('派遣奖励请按背包道具、密探心纸分别录入，并填写各自实际消耗的体力。已选内容已保留。')
     const records = draft.presets.length ? draft.presets.map(preset => ({
       ...base, record_id: dailyRewardRecordId(preset.id, effectiveAt), acquisition_channel: preset.channel,
       entries: [{ id: preset.itemId, name: preset.itemName, count: count(preset.count) }],
-    })) : [{ ...base, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
+    })) : groups.map(group => ({ ...base, entity_type: group.entity_type, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
       acquisition_channel: manualAcquisitionChannel(draft.channel, draft.customChannel),
-      entries: (trainingByRuns.value ? trainingCalculation.value.entries : draft.entries).map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
+      entries: group.entries.map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }))
     records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
     const doc = buildRewardDocument(records, targetAccount, entities.value)
     if ((draft.presets.length && draft.whiteCoinPurpose === 'annotation') || dispatchAnnotation.value) {
