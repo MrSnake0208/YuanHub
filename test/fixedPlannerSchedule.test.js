@@ -317,7 +317,7 @@ test('固定支出本身超支时重算失败，原编辑与提示保留；缩�
   assert.equal(reduced.result.etaDays, null)
 })
 
-test('周期外手工日期编辑也只更新账本，不重新推荐已有日期；天数按日期计算', () => {
+test('周期外手工日期编辑不重新推荐已有日期，也不延后材料备齐日', () => {
   const input = { ...context(), initialState: { a: { shuijing: 60 } } }
   const first = createFixedSchedule(input)
   const date = '2026-09-15'
@@ -329,11 +329,11 @@ test('周期外手工日期编辑也只更新账本，不重新推荐已有日�
   const edited = updateFixedSchedulePlan(first, date, plan, fallback)
   assert.deepEqual(edited.result.timeline[0], first.result.timeline[0])
   assert.equal(edited.result.timeline.length, 2)
-  assert.equal(edited.result.etaDays, 4)
+  assert.equal(edited.result.etaDays, 1)
   assert.equal(pendingScheduleEdits(edited, date), true)
   const next = recalculateFixedScheduleFrom(edited, date, { [date]: plan }, input)
   assert.deepEqual(next.schedule.result.timeline[0], first.result.timeline[0])
-  assert.equal(next.schedule.result.etaDays, 4)
+  assert.equal(next.schedule.result.etaDays, 1)
 })
 
 test('未来日期重算仍遵守90天期限，不能把前缀和90天后缀拼成超期完成结果', () => {

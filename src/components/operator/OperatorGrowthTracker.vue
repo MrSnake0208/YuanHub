@@ -366,7 +366,9 @@
 </template><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><template v-for="(spend, index) in currentDay.planned.spends" :key="spend.id">
   <PlannerCustomEntry v-if="spend.custom" :class="{ 'spend-added': highlightedSpendId === spend.id }" :entry="spend" kind="spend" :index="index" :total="spend.value * spend.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || reviewingHistory"
     @change-name="updateCustomName('spends', index, $event)" @change-value="updatePlanValue('spends', index, $event)" @change-cost="updateSpendCost(index, $event)"
-    @change-yield="(id, event) => updateSpendYield(index, id, event)" @add-yield="addSpendYield(index, $event)" @remove-yield="removeSpendYield(index, $event)" @remove="removePlanRow('spends', index)" />
+    @change-yield="(id, event) => updateSpendYield(index, id, event)" @add-yield="addSpendYield(index, $event)" @remove-yield="removeSpendYield(index, $event)" @remove="removePlanRow('spends', index)">
+    <PlannerRepeatedSpend :entry="spend" :date="selectedDate" :today="plannerToday" :last-date="repeatLastDate" :account-id="accountId" :plan-id="workspace.activePlanId" :schedule="fixedSchedule" :resource-name="resourceName" :disabled="scheduleActionBlocked || reviewingHistory || goalMode || scheduleDifferences.goalsChanged" :blocked-reason="reviewingHistory ? '已过日期不能修改' : goalMode ? '请先切换至常规日程规划' : scheduleDifferences.goalsChanged ? '请先更新当前日程' : ''" @apply="(request, context, done) => applyRepeatedSpend(request, context, done, spend)" />
+  </PlannerCustomEntry>
   <div v-else class="ledger-row spend-ledger-row" :class="{ 'spend-added': highlightedSpendId === spend.id }">
     <div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span><PlannerRepeatedSpend v-if="spend.kind === 'stage624'" :entry="spend" :date="selectedDate" :today="plannerToday" :last-date="repeatLastDate" :account-id="accountId" :plan-id="workspace.activePlanId" :schedule="fixedSchedule" :disabled="scheduleActionBlocked || reviewingHistory || goalMode || scheduleDifferences.goalsChanged" @apply="applyRepeatedSpend" @release="releaseFixedSpend(index)" /></div>
     <div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" :disabled="schedulePending" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div>
@@ -463,7 +465,7 @@ import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiActio
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import Sortable from 'sortablejs'
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
@@ -494,7 +496,7 @@ import PlannerDailySources from './PlannerDailySources.vue'
 import PlannerRepeatedSpend from './PlannerRepeatedSpend.vue'
 import PlannerRoutineSettings from './PlannerRoutineSettings.vue'
 import { withSourcePeriod } from '../../data/dailyStaminaSources.js'
-import { applyDailySourcesToSchedule, applyFixedStage624ToSchedule, plannerDateAfter } from '../../data/fixedPlannerSchedule.js'
+import { applyDailySourcesToSchedule, applyFixedCustomSpendToSchedule, applyFixedStage624ToSchedule, plannerDateAfter } from '../../data/fixedPlannerSchedule.js'
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
@@ -622,8 +624,8 @@ const plannerConditionSummary = computed(() => [
   `洛阳 ${plannerPreferences.value.luoyang} 次 · 寿春 ${plannerPreferences.value.shouchun} 次`
 ].join(' · '))
 const plannerOrder = ref([])
-const manualPlans = ref({})
-const fixedSchedule = ref(null)
+const manualPlans = shallowRef({})
+const fixedSchedule = shallowRef(null)
 const plannerToday = ref(plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR))
 const plannerWorkspaceRef = ref(null)
 const dayPlanRef = ref(null)
@@ -1247,15 +1249,17 @@ function previewDailySources({ fromDate, overwrite }) {
     planError.value = ''
   } catch (err) { planError.value = err.message }
 }
-function applyRepeatedSpend(request, context, done) {
+function applyRepeatedSpend(request, context, done, customSpend = null) {
   if (!sameRoutineContext(context) || context.schedule !== fixedSchedule.value || scheduleActionBlocked.value || reviewingHistory.value || goalMode.value || scheduleDifferences.value.goalsChanged) { done(false, '日程或账号已变化，请重新打开设置。'); return }
+  if (customSpend && (context.entryId !== customSpend.id || !currentDay.value.planned.spends.some(spend => spend.custom && spend.id === customSpend.id))) { done(false, '自定义项目已变化，请重新打开设置。'); return }
   const previous = { schedule: fixedSchedule.value, manualPlans: manualPlans.value }
   try {
     const schedule = previous.schedule || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
-    const next = applyFixedStage624ToSchedule(schedule, manualPlans.value, request, plannerToday.value)
+    const next = customSpend ? applyFixedCustomSpendToSchedule(schedule, manualPlans.value, request, plannerToday.value, customSpend)
+      : applyFixedStage624ToSchedule(schedule, manualPlans.value, request, plannerToday.value)
     fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
     if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous.schedule; manualPlans.value = previous.manualPlans; done(false); return }
-    planNotice.value = `已安排 ${next.affectedDates} 天，每天固定6-24 ${request.count}次；保存结果以云端提示为准`
+    planNotice.value = `已安排 ${next.affectedDates} 天，每天${customSpend ? customSpend.label : '固定6-24'} ${request.count}次；保存结果以云端提示为准`
     if (!schedulePending.value) { done(!scheduleState.value.error); return }
     pendingRoutineSave.value = { context, done, session: workspaceSession.value }
   } catch (err) { done(false, err.message) }
@@ -1586,8 +1590,9 @@ function restoreCurrentDay() {
       fixedSchedule.value = restored.schedule
       manualPlans.value = restored.manualPlans
     } else {
-      manualPlans.value = { ...previousPlans }
-      delete manualPlans.value[selectedDate.value]
+      const nextPlans = { ...previousPlans }
+      delete nextPlans[selectedDate.value]
+      manualPlans.value = nextPlans
     }
     if (persistPlannerSnapshot(false)) planNotice.value = '已恢复当前套用方案的当日安排'
     else { fixedSchedule.value = previous; manualPlans.value = previousPlans }

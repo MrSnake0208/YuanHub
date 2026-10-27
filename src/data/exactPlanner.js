@@ -199,6 +199,13 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
     const fixed = spec.plan.spends.filter(isFixedStage624)
     if (fixed.length && !planned.spends.some(isFixedStage624)) return null
     if (fixed.length && planned.spends.filter(spend => spend.id === 'stage624' || spend.kind === 'stage624').reduce((sum, spend) => sum + spend.value, 0) !== fixed.reduce((sum, spend) => sum + spend.value, 0)) return null
+    for (const spend of spec.plan.spends.filter(item => item.custom && item.fixed)) {
+      const matches = planned.spends.filter(item => item.id === spend.id)
+      if (matches.length !== 1) return null
+      const actual = matches[0], expectedYield = spend.yield || {}, actualYield = actual.yield || {}
+      if (!actual.custom || ['label', 'name', 'kind', 'value', 'costPer', 'fixed'].some(key => actual[key] !== spend[key]) ||
+        Object.keys(actualYield).length !== Object.keys(expectedYield).length || Object.entries(expectedYield).some(([id, value]) => actualYield[id] !== value)) return null
+    }
     const settled = settlePlannerDay(start, planned, problem.config)
     if (settled.errors.length) return null
     state = settled.end

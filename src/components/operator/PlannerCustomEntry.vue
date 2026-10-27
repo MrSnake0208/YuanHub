@@ -17,7 +17,9 @@
         <input :id="controlId + '-' + id" type="number" min="0" :value="amount" :aria-label="entry.label + '每次产出' + resourceName(id)" :disabled="disabled" @[inputEvent]="emit('change-yield', id, $event)" />
         <button type="button" class="custom-entry-remove" :aria-label="'移除产出' + resourceName(id)" :disabled="disabled" @click="emit('remove-yield', id)"><X :size="15" aria-hidden="true" /></button>
       </div>
+      <p v-if="Object.hasOwn(entry.yield || {}, '__xp__')" class="custom-yield-hint">经验按经验值填写：兵书残卷 100、兵书全卷 1000、六韬兵书 10000／本。</p>
     </section>
+    <div v-if="$slots.default" class="custom-entry-actions"><slot /></div>
   </article>
 </template>
 
@@ -58,6 +60,8 @@ const formatAmount = value => Number(value).toLocaleString('zh-CN', { maximumFra
 .custom-entry-yields { border-top: 1px dashed var(--planner-line, var(--line)); }
 .custom-yields-heading { color: var(--ink-60); }
 .custom-yield-row > label { color: var(--ink); }
+.custom-yield-hint { margin: 0; color: var(--ink-60); font: 12px/1.5 var(--font-b); }
+.custom-entry-actions { margin-top: 8px; }
 .custom-entry :is(button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .custom-entry :is(button, input):disabled { opacity: .5; cursor: default; }
 @media (hover: hover) { .custom-entry-remove:hover:not(:disabled) { color: var(--theme-danger-text, var(--rouge)); background: var(--surface); } }
