@@ -6,11 +6,11 @@
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
           <label>
-            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady" @change="toggleQuickPreset(preset)" />
+            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady || preset.id === 'daily-zhuyu' && !dailyZhuyuReady" @change="toggleQuickPreset(preset)" />
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
-          <button type="button" class="quick-edit" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
+          <button type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
       </fieldset>
       <div class="daily-quick-actions">
@@ -26,6 +26,7 @@
         </details>
       </div>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
+      <p v-if="dailyZhuyuPreferenceNote" class="quick-feedback" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" @click="loadDailyZhuyuPreference">重试</button></p>
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
       <p v-if="error && !quickPanel" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
@@ -36,7 +37,7 @@
         <fieldset class="panel-fields" :disabled="locked || disabled">
           <label v-if="quickEdit.id === 'monthly-card'">月卡档位<select v-model="quickEdit.tier" @change="quickEdit.count = monthlyCardTier(quickEdit.tier, game).coins"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
           <label v-if="quickEdit.id === 'daily-zhuyu'">本次记录<select v-model="quickEdit.itemId" @change="quickEdit.count = quickEdit.itemId === 'zhuyu' ? 1 : 50"><option value="zhuyu">茱萸</option><option value="baijinbi">已领取的白金币</option></select></label>
-          <p v-if="quickEdit.id === 'daily-zhuyu'" class="panel-note">每个茱萸可获得 50 白金币；仅在游戏中已领取白金币时选择该项。</p>
+          <p v-if="quickEdit.id === 'daily-zhuyu'" class="panel-note">记账方式同步到当前游戏账号；数量仅本次生效。每个茱萸可获得 50 白金币，仅在游戏中已领取白金币时选择该项。</p>
           <label>本次数量{{ quickEdit.id === 'daily-zhuyu' ? `（${quickEdit.itemId === 'zhuyu' ? '茱萸' : '白金币'}）` : '' }}<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
           <p v-if="quickEdit.id === 'monthly-card'" class="panel-note">月卡档位会记住，并同步到养成规划。</p>
         </fieldset>
@@ -46,12 +47,13 @@
       <form v-if="quickPanel === 'history'" class="quick-history-form" @submit.prevent="submitDaily">
         <fieldset class="panel-fields" :disabled="locked || disabled || !!result">
           <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" @update:date="clearPreview" @update:clock="clearPreview" />
-          <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
+          <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count || preset.id === 'daily-zhuyu' && !dailyZhuyuReady" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
           <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input v-model="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="clearPreview" /></label>
           <label>库存处理<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="annotation">已计入当前数量，只补记录</option><option value="income">尚未计入，按领取时间补入</option></select></label>
           <p class="panel-note">填写实际领取时间。如果这次领取已经包含在盘点数量中，选择“已计入当前数量，只补记录”；需要对应盘点覆盖实际领取时间。未包含的领取按新增收入记录。</p>
         </fieldset>
         <p v-if="error || dailyStatusError" role="alert">{{ error || dailyStatusError }}</p>
+        <p v-if="dailyZhuyuPreferenceNote" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" @click="loadDailyZhuyuPreference">重试</button></p>
         <button v-if="dailyStatusError" type="button" class="text-button" @click="loadDailyStatus">重试读取</button>
         <p v-if="result" role="status">历史奖励已保存，已计入库存的部分未重复增加。</p>
         <div class="panel-actions"><button type="button" class="outline-button" :disabled="locked" @click="closeQuickPanel">{{ result ? '完成' : '取消' }}</button><button v-if="!result" type="submit" class="primary-button" :disabled="busy || checkingBaseline || disabled || dailyLoading || !!dailyStatusError || !manual.presets.length">{{ busy ? '保存中…' : pendingDocument ? '原样重试' : '保存补记' }}</button></div>
@@ -280,6 +282,7 @@ import { auth } from '../../store/auth.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { getTrainingWorkspace, putTrainingWorkspace } from '../../api/operatorPlanner.js'
 import { workspaceFromRemote, workspaceBody } from '../../data/operatorPlannerRemote.js'
+import { getDailyZhuyuPreference, saveDailyZhuyuPreference } from '../../api/dailyZhuyuPreference.js'
 import { monthlyCardTier, monthlyCardTiers } from '../../data/monthlyCard.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, DAILY_REWARD_PRESETS, dailyRewardRecordId, validateRewardAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
@@ -303,12 +306,37 @@ let dailyDraftBaseline = ''
 const operation = ref('gain'), resourceOpened = ref(false)
 watch(operation, () => { if (result.value) { resetManual(); clearPreview() } })
 const dialogTitle = computed(() => props.compact && !dailyMode.value && mode.value === 'manual' ? '记一笔' : mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
-const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({}), dailyZhuyuItem = ref('zhuyu')
+const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({}), dailyZhuyuItem = ref('zhuyu'), dailyZhuyuPreferenceNote = ref('')
+const dailyZhuyuReady = ref(false), dailyZhuyuCloud = ref(null)
+let dailyZhuyuSeq = 0
 let quickEditBaseline = '', quickOrdinaryBaseline = ''
 const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
-const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.count) })))
+const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? 50 : preset.count) })))
+function dailyZhuyuPreferenceKey() {
+  return `yuanhub:inventory:daily-zhuyu:${encodeURIComponent(auth.userInfo?.id || '')}:${encodeURIComponent(props.game)}:${encodeURIComponent(props.accountId)}`
+}
+async function loadDailyZhuyuPreference() {
+  const seq = ++dailyZhuyuSeq, account = props.accountId, game = props.game, user = auth.userInfo?.id
+  dailyZhuyuReady.value = false; dailyZhuyuPreferenceNote.value = ''
+  if (!account || !user) return
+  const current = () => !disposed && seq === dailyZhuyuSeq && props.accountId === account && props.game === game && auth.userInfo?.id === user
+  try {
+    let data = await getDailyZhuyuPreference(account, user)
+    if (!current()) return
+    if (data.account_id !== account || data.game !== game || ![null, 'zhuyu', 'baijinbi'].includes(data.preference)) throw new Error('设置与账号不匹配')
+    let saved = null
+    try { saved = localStorage.getItem(dailyZhuyuPreferenceKey()) } catch (_) { /* 本机设置不可用时仍读取云端 */ }
+    if (data.preference === null && ['zhuyu', 'baijinbi'].includes(saved)) {
+      try { data = await saveDailyZhuyuPreference(account, user, game, null, saved) }
+      catch (err) { if (err.status !== 409) throw err; data = await getDailyZhuyuPreference(account, user) }
+      if (!current()) return
+      if (data.account_id !== account || data.game !== game || !['zhuyu', 'baijinbi'].includes(data.preference)) throw new Error('设置与账号不匹配')
+    }
+    dailyZhuyuCloud.value = data.preference; dailyZhuyuItem.value = data.preference || 'zhuyu'; dailyZhuyuReady.value = true
+  } catch (_) { if (current()) dailyZhuyuPreferenceNote.value = '云端茱萸记账设置读取失败，请重试。' }
+}
 function changeMonthlyTier() {
   monthlyTierTouched = true; monthlyReady.value = true
   const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
@@ -523,13 +551,23 @@ async function saveQuickEdit() {
       if (disposed || props.accountId !== account || token !== monthlyPreferenceSeq) return
       monthlyTier.value = edit.tier; monthlyTierTouched = true; monthlyReady.value = true; monthlyPreferenceNote.value = ''
     }
+    if (edit.id === 'daily-zhuyu') {
+      const user = auth.userInfo?.id, game = props.game, seq = dailyZhuyuSeq
+      if (!dailyZhuyuReady.value || !user) throw new Error('请先读取云端茱萸记账设置')
+      const saved = await saveDailyZhuyuPreference(account, user, game, dailyZhuyuCloud.value, edit.itemId)
+      if (disposed || seq !== dailyZhuyuSeq || props.accountId !== account || props.game !== game || auth.userInfo?.id !== user) return
+      if (saved.account_id !== account || saved.game !== game || saved.preference !== edit.itemId) throw new Error('设置结果无法确认，请重试')
+      dailyZhuyuCloud.value = saved.preference; dailyZhuyuItem.value = saved.preference
+    }
     quickCounts.value[edit.id] = count
-    if (edit.id === 'daily-zhuyu') dailyZhuyuItem.value = edit.itemId
     const selected = manual.value.presets.find(entry => entry.id === edit.id)
     if (selected) { if (!count) removeReward(edit.id); else { selected.count = count; selected.itemId = edit.itemId; selected.itemName = edit.id === 'daily-zhuyu' ? (edit.itemId === 'baijinbi' ? '白金币' : '茱萸') : edit.itemName; selected.name = `${selected.itemName} · ${selected.channel}` } }
     clearPreview(); quickPanel.value = ''; quickEdit.value = null
   } catch (err) {
-    if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) quickEditError.value = err.status === 409 ? '设置已在其他页面变更，请重试；其他设置不会被覆盖。' : err.message || '设置保存失败，请重试'
+    if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) {
+      quickEditError.value = err.status === 409 ? '设置已在其他页面变更，已重新读取；请核对后再保存。' : err.message || '设置保存失败，请重试'
+      if (err.status === 409 && edit.id === 'daily-zhuyu') await loadDailyZhuyuPreference()
+    }
   } finally { if (token === monthlyPreferenceSeq) quickSaving.value = false }
 }
 function openQuickHistory() {
@@ -628,6 +666,7 @@ watch(mode, (value, previous) => {
 })
 watch(() => [props.accountId, props.game, auth.userInfo?.id], () => {
   quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; dailyZhuyuItem.value = 'zhuyu'; quickSaving.value = false
+  if (props.compactDaily) void loadDailyZhuyuPreference()
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
   fileReadSeq++
@@ -1008,6 +1047,7 @@ function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', 
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
 function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : ['手动添加', '补标已盘点收入'].includes(value) ? value : '待核对' }
 onMounted(() => {
+  if (props.compactDaily && props.accountId) void loadDailyZhuyuPreference()
   if (props.compactDaily) { resetManual(); void loadCatalog(); void loadDailyStatus(); void loadMonthlyPreference() }
 })
 onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunload', beforeUnload); unlockBackgroundScroll(); emit('busy', false) })
