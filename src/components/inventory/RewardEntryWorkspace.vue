@@ -19,7 +19,7 @@
         <details class="quick-rules shortcut-note">
           <summary>领取规则</summary>
           <div class="quick-rules-content">
-            <p>记录领取1个茱萸，增加的是茱萸实物。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
+            <p>每日茱萸可选择记录茱萸或已领取的白金币；点击编辑选择本次结果。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
             <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认后请查看回执。</p>
             <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
           </div>
@@ -35,7 +35,9 @@
       <form v-if="quickPanel === 'edit' && quickEdit" class="quick-reward-editor" @submit.prevent="saveQuickEdit">
         <fieldset class="panel-fields" :disabled="locked || disabled">
           <label v-if="quickEdit.id === 'monthly-card'">月卡档位<select v-model="quickEdit.tier" @change="quickEdit.count = monthlyCardTier(quickEdit.tier, game).coins"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
-          <label>本次数量<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
+          <label v-if="quickEdit.id === 'daily-zhuyu'">本次记录<select v-model="quickEdit.itemId" @change="quickEdit.count = quickEdit.itemId === 'zhuyu' ? 1 : 50"><option value="zhuyu">茱萸</option><option value="baijinbi">已领取的白金币</option></select></label>
+          <p v-if="quickEdit.id === 'daily-zhuyu'" class="panel-note">每个茱萸可获得 50 白金币；仅在游戏中已领取白金币时选择该项。</p>
+          <label>本次数量{{ quickEdit.id === 'daily-zhuyu' ? `（${quickEdit.itemId === 'zhuyu' ? '茱萸' : '白金币'}）` : '' }}<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
           <p v-if="quickEdit.id === 'monthly-card'" class="panel-note">月卡档位会记住，并同步到养成规划。</p>
         </fieldset>
         <p v-if="quickEditError" role="alert">{{ quickEditError }}</p>
@@ -301,12 +303,12 @@ let dailyDraftBaseline = ''
 const operation = ref('gain'), resourceOpened = ref(false)
 watch(operation, () => { if (result.value) { resetManual(); clearPreview() } })
 const dialogTitle = computed(() => props.compact && !dailyMode.value && mode.value === 'manual' ? '记一笔' : mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
-const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({})
+const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({}), dailyZhuyuItem = ref('zhuyu')
 let quickEditBaseline = '', quickOrdinaryBaseline = ''
 const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
-const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.count) })))
+const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.count) })))
 function changeMonthlyTier() {
   monthlyTierTouched = true; monthlyReady.value = true
   const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
@@ -522,8 +524,9 @@ async function saveQuickEdit() {
       monthlyTier.value = edit.tier; monthlyTierTouched = true; monthlyReady.value = true; monthlyPreferenceNote.value = ''
     }
     quickCounts.value[edit.id] = count
+    if (edit.id === 'daily-zhuyu') dailyZhuyuItem.value = edit.itemId
     const selected = manual.value.presets.find(entry => entry.id === edit.id)
-    if (selected) { if (!count) removeReward(edit.id); else selected.count = count }
+    if (selected) { if (!count) removeReward(edit.id); else { selected.count = count; selected.itemId = edit.itemId; selected.itemName = edit.id === 'daily-zhuyu' ? (edit.itemId === 'baijinbi' ? '白金币' : '茱萸') : edit.itemName; selected.name = `${selected.itemName} · ${selected.channel}` } }
     clearPreview(); quickPanel.value = ''; quickEdit.value = null
   } catch (err) {
     if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) quickEditError.value = err.status === 409 ? '设置已在其他页面变更，请重试；其他设置不会被覆盖。' : err.message || '设置保存失败，请重试'
@@ -624,7 +627,7 @@ watch(mode, (value, previous) => {
   if (!value && previous) unlockBackgroundScroll()
 })
 watch(() => [props.accountId, props.game, auth.userInfo?.id], () => {
-  quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; quickSaving.value = false
+  quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; dailyZhuyuItem.value = 'zhuyu'; quickSaving.value = false
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
   fileReadSeq++

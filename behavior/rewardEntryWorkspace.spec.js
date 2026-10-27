@@ -2045,6 +2045,21 @@ describe('库存页紧凑录入', () => {
     expect(wrapper.vm.hasDraft()).toBe(false)
     expect(wrapper.findAll('.daily-quick-option input:checked')).toHaveLength(0)
   })
+  it('今日茱萸可记录已领取白金币且沿用每日来源键', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const select = document.querySelector('.quick-reward-editor select')
+    select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    await clickElement(bodyButton('保存设置')); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    const record = inventoryApi.importInventory.mock.lastCall[0].records[0]
+    expect(record.record_id).toMatch(/^yuanhub:daily-reward:daily-zhuyu:/)
+    expect(record.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 50 }])
+  })
   it('今日状态读取失败可重试且不写入，未知提交只重试同一份文档', async () => {
     inventoryApi.listRecords.mockRejectedValueOnce(new Error('离线')).mockResolvedValue({ items: [], next_cursor: null })
     const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()

@@ -3687,7 +3687,7 @@ async function onDeleteRecord(rec) {
   const contextSeq = inventoryContextSeq;
   const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && contextSeq === inventoryContextSeq && accountId.value === targetAccount;
   const summary = (rec.entity_type === "agent" ? "心纸" : "道具") +
-    " · " + (rec.record_type === "reward_delta" ? "奖励" : rec.record_type === "resource_delta" ? "符传使用 / 兑换" : "库存更新") +
+    " · " + (rec.record_type === "reward_delta" ? "奖励" : rec.record_type === "resource_delta" ? "资源使用 / 兑换" : "库存更新") +
     " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
   const confirmed = await dialog.confirm({
     title: "删除库存记录？",

@@ -24,7 +24,7 @@ it.each([390, 1024])('符传兑换在 %ipx 组件中显示有符号两边变动�
     entries: [{ id: 'baijinbi', name: '白金币', count: -2000 }, { id: 'tianjifuchuan', name: '天机符传', count: 10 }] }
   const options = { ...props(), recordsList: [exchange], entrySummary: resourceEntrySummary }
   const wrapper = mount(InventoryRecordsView, { props: options })
-  expect(wrapper.text()).toContain('符传使用 / 兑换')
+  expect(wrapper.text()).toContain('资源使用 / 兑换')
   expect(wrapper.text()).toContain('白金币−2000')
   expect(wrapper.text()).toContain('天机符传+10')
   await wrapper.get('.record-del').trigger('click')
