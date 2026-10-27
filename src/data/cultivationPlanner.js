@@ -1,5 +1,7 @@
 import { BOOK_VALUES, TRAINING_GROUPS, normalizeTrainingLevels } from './operatorTraining.js'
 import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
+import { canonicalPlannerYield, mergeCustomSpendRules, normalizeCustomSpendRules } from './customPlannerSpends.js'
+export { canonicalPlannerYield } from './customPlannerSpends.js'
 
 // 这些规则是 v13 demo 的可替换假设。真实游戏规则确认后，只需替换这里，
 // 规划器的状态传播和界面不需要跟着重写。
@@ -75,7 +77,8 @@ export function normalizePlannerPreferences(value = {}) {
     luoyang: integer(value.luoyang, 0, 0, PLANNER_RULES.maxDispatchCount),
     shouchun: integer(value.shouchun, 0, 0, PLANNER_RULES.maxDispatchCount),
     purchaseCount: integer(value.purchaseCount == null ? value.buy : value.purchaseCount, 0, 0, PLANNER_RULES.maxPurchaseCount),
-    ...(Array.isArray(value.sourcePeriods) ? { sourcePeriods: clonePlannerValue(value.sourcePeriods) } : {})
+    ...(Array.isArray(value.sourcePeriods) ? { sourcePeriods: clonePlannerValue(value.sourcePeriods) } : {}),
+    ...(value.customSpendRules?.length ? { customSpendRules: normalizeCustomSpendRules(value.customSpendRules) } : {})
   }
 }
 
@@ -192,17 +195,6 @@ export function normalizePlannerSpend(spend, groups = TRAINING_GROUPS) {
   return next
 }
 
-export function canonicalPlannerYield(resources = {}) {
-  const result = {}
-  for (const [id, value] of Object.entries(resources || {})) {
-    const amount = decimal(value)
-    if (!Number.isFinite(Number(value)) || Number(value) < 0) continue
-    const key = BOOK_VALUES[id] ? '__xp__' : id
-    result[key] = (result[key] || 0) + amount * (BOOK_VALUES[id] || 1)
-  }
-  return result
-}
-
 export function normalizePlannerPlan(plan) {
   const normalizeGain = gain => ({
     id: String(gain?.id || customId('custom-gain')),
@@ -227,9 +219,10 @@ export function normalizePlannerPlan(plan) {
     yield: spend?.yield ? clonePlannerValue(spend.yield) : undefined,
     groupId: spend?.groupId,
     stageLevel: spend?.stageLevel,
-    ...(isFixedStage624(spend) ? { fixed: true } : {})
+    ...(isFixedStage624(spend) || (spend?.custom && spend?.fixed === true) ? { fixed: true } : {})
   })
-  return { gains: Array.isArray(plan?.gains) ? plan.gains.map(normalizeGain) : [], spends: Array.isArray(plan?.spends) ? plan.spends.map(normalizeSpend) : [] }
+  return { gains: Array.isArray(plan?.gains) ? plan.gains.map(normalizeGain) : [], spends: Array.isArray(plan?.spends) ? plan.spends.map(normalizeSpend) : [],
+    ...(plan?.customSpendOverrides?.length ? { customSpendOverrides: [...new Set(plan.customSpendOverrides)] } : {}) }
 }
 
 export function energyFromGain(gain) {
@@ -365,7 +358,7 @@ function spendColor(group) {
 }
 
 
-export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, date = '', initialExtra = 0, gains, fixedSpends }) {
+export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, date = '', initialExtra = 0, gains, fixedSpends, customSpendOverrides }) {
   const prefs = normalizePlannerPreferences(preferences)
   const plan = { gains: [
     { id: 'natural', label: '自然恢复', colorKey: 'natural', kind: 'energy', value: 288, rec: 288 },
@@ -373,7 +366,8 @@ export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels =
   ], spends: [] }
   plan.gains = resolveDailyStaminaGains(plan.gains, prefs, date)
   const candidates = plannerActions(groups, levels)
-  if (gains === undefined && !candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)) return plan
+  const useful = candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)
+  if (gains === undefined && !useful && !prefs.customSpendRules?.length) return plan
   if (prefs.purchaseCount) plan.gains.push({ id: 'buy', label: '购买体力', colorKey: 'buy', kind: 'count', value: prefs.purchaseCount, rec: prefs.purchaseCount })
   if (initialExtra > 0) plan.gains.push({ id: 'reserve', label: '体力储备', colorKey: 'custom', kind: 'energy', value: decimal(initialExtra), rec: decimal(initialExtra), custom: true })
   for (const id of ['luoyang', 'shouchun']) {
@@ -383,6 +377,8 @@ export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels =
   // and purchases. Do not add the default daily budget a second time.
   if (gains !== undefined) plan.gains = clonePlannerValue(gains)
   if (fixedSpends !== undefined) plan.spends = fixedSpends.map(spend => normalizePlannerSpend(clonePlannerValue(spend), groups))
+  if (customSpendOverrides?.length) plan.customSpendOverrides = [...customSpendOverrides]
+  plan.spends = mergeCustomSpendRules(plan, prefs.customSpendRules, date).spends
   let energy = planTotals(plan).balance
   let working = clonePlannerState(state)
   const runs = {}
@@ -506,13 +502,13 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     const start = clonePlannerState(state)
     const recommended = buildRecommendedPlan({ ...options, state: start, preferences, date, initialExtra: index === 0 ? initialExtra : 0 })
     const manual = Boolean(manualPlans[date])
-    const planned = manual ? normalizePlannerPlan(manualPlans[date]) : recommended
+    const planned = manual ? mergeCustomSpendRules(normalizePlannerPlan(manualPlans[date]), preferences.customSpendRules, date) : recommended
     const settled = settlePlannerDay(start, planned, options)
     const day = { date, index, start, recommended, manual, ...settled }
     const changed = plannerStateRemaining(day.end) < plannerStateRemaining(start)
     if (changed) lastProgressDay = index + 1
     const futureManual = dates.slice(index + 1, maxDays).some(nextDate => manualPlans[nextDate])
-    const futureSourceChange = (preferences.sourcePeriods || []).some(period =>
+    const futureSourceChange = (preferences.customSpendRules || []).some(rule => rule.versions.some(version => version.fromDate > date && version.fromDate <= dates[Math.min(maxDays, dates.length) - 1])) || (preferences.sourcePeriods || []).some(period =>
       period.fromDate > date && period.fromDate <= dates[Math.min(maxDays, dates.length) - 1] ||
       period.sources.monthlyCard.startDate > date && period.sources.monthlyCard.startDate <= dates[Math.min(maxDays, dates.length) - 1])
     if (day.errors.length) {
@@ -522,7 +518,7 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     state = day.end
     if (plannerStateIsEmpty(state) && !futureManual) {
       timeline.push(day)
-      return { timeline, status: 'complete', etaDays: plannerStateIsEmpty(initialState) ? 0 : index + 1, lastProgressDay, remaining: state, blocked: [] }
+      return { timeline, status: 'complete', etaDays: plannerStateIsEmpty(initialState) ? 0 : lastProgressDay, lastProgressDay, remaining: state, blocked: [] }
     }
     if (!changed && !manual && !futureManual && !futureSourceChange) {
       if (!timeline.length) timeline.push(day)

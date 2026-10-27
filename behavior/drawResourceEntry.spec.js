@@ -5,7 +5,7 @@ import { getDrawResources, recordDrawResources } from '../src/api/drawResources.
 import { dialog } from '../src/utils/dialog.js'
 vi.mock('../src/api/drawResources.js', () => ({ getDrawResources: vi.fn(), recordDrawResources: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
-const data = (account = 'a') => ({ account_id: account, game: '代号鸢', inventory_revision: 7, balances: { baijinbi: 4000, fuchuan: 20, tianjifuchuan: 0 } })
+const data = (account = 'a') => ({ account_id: account, game: '代号鸢', inventory_revision: 7, balances: { baijinbi: 4000, fuchuan: 20, tianjifuchuan: 0, zhuyu: 3 } })
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 let wrapper
 async function open() {
@@ -18,6 +18,18 @@ const quantity = () => wrapper.get('input[aria-label="符传数量"]')
 async function submit() { await wrapper.get('form').trigger('submit'); await flushPromises() }
 afterEach(() => wrapper?.unmount())
 beforeEach(() => { vi.resetAllMocks(); getDrawResources.mockResolvedValue(data()); dialog.confirm.mockResolvedValue(true) })
+it('茱萸兑换预览双向变化，库存不足不能提交', async () => {
+  await open(); await select(0).setValue('exchange'); await select(1).setValue('zhuyu')
+  await wrapper.get('input[aria-label="茱萸数量"]').setValue('2')
+  expect(wrapper.text()).toContain('茱萸 −2')
+  expect(wrapper.text()).toContain('白金币 +100')
+  recordDrawResources.mockImplementation(async body => ({ account_id: body.account_id, record_id: `yuanhub:draw:${body.operation_id}`, entries: [] }))
+  await submit()
+  expect(recordDrawResources.mock.lastCall[0]).toMatchObject({ ticket_id: 'zhuyu', quantity: 2, channel: 'standard' })
+  await wrapper.get('input[aria-label="茱萸数量"]').setValue('4')
+  expect(wrapper.text()).toContain('库存不足')
+  await submit(); expect(recordDrawResources).toHaveBeenCalledTimes(1)
+})
 it('只读初始化、兑换预览和月卡十张步进，服务端成功后通知刷新', async () => {
   await open()
   expect(recordDrawResources).not.toHaveBeenCalled()

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import loadHighs from '../public/solver/highs-1.15.3/highs.mjs'
-import { solveExactPlanner } from '../src/data/exactPlanner.js'
+import { evaluateExactPlans, prepareExactPlanner, solveExactPlanner } from '../src/data/exactPlanner.js'
 import { createExactPlannerRunner } from '../src/data/exactPlannerRunner.js'
 import { clonePlannerValue, createGain, createSpend, normalizePlannerPlan, simulatePlanner } from '../src/data/cultivationPlanner.js'
 import { applyExactPlannerResult, createFixedSchedule, pendingScheduleEdits, plannerDateAfter, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
@@ -39,6 +39,30 @@ test('未来固定产出进入全局模型，闲置体力补经验但不改写�
   assert.equal(result.solution.timeline[0].totals.balance, 8)
   assert.ok(result.solution.timeline[0].planned.spends.every(s => s.kind === 'stage624'))
   assert.deepEqual(clonePlannerValue(result.solution.timeline[1].planned), fixed)
+})
+
+test('常规最优方案保留首日和未来日期的自定义每日安排', () => {
+  const spend = { ...createSpend('custom', { name: '据点', costPer: 0, yield: { __xp__: 1000 } }), fixed: true }
+  const plan = canonical({ gains: [createGain('natural')], spends: [spend] })
+  const result = solve(inputFor({ __xp__: 500000 }, { firstDay: plan, manualPlans: { '2026-09-16': plan } }))
+  assert.equal(result.status, 'optimal')
+  for (const day of result.solution.timeline.slice(0, 2)) {
+    assert.deepEqual(clonePlannerValue(day.planned.spends.find(item => item.id === spend.id)), clonePlannerValue(plan.spends[0]))
+  }
+})
+
+test('精确方案校验拒绝删除或改动固定的自定义项目', () => {
+  const spend = { ...createSpend('custom', { name: '据点', costPer: 0, yield: { __xp__: 1000 } }), fixed: true }
+  const input = inputFor({ __xp__: 500000 }, { firstDay: { gains: [createGain('natural')], spends: [spend] } })
+  const solution = solve(input).solution
+  const plans = clonePlannerValue(solution.timeline.map(day => day.planned))
+  const problem = prepareExactPlanner(input)
+  assert.ok(evaluateExactPlans(problem, plans))
+  const withoutSpend = clonePlannerValue(plans)
+  withoutSpend[0].spends = withoutSpend[0].spends.filter(item => item.id !== spend.id)
+  assert.equal(evaluateExactPlans(problem, withoutSpend), null)
+  plans[0].spends.find(item => item.id === spend.id).yield.__xp__ = 1
+  assert.equal(evaluateExactPlans(problem, plans), null)
 })
 
 test('未开放的获取途径可证明期限内无解；无效手工日期要求先修正', () => {
@@ -200,4 +224,21 @@ test('第一天固定6-24次数不被精确方案或贪心候选追加，计算�
   const entries = result.solution.timeline[0].planned.spends.filter(spend => spend.kind === 'stage624')
   assert.equal(entries.reduce((sum, entry) => sum + entry.value, 0), 6)
   assert.equal(entries[0].fixed, true)
+})
+
+test('真实求解保留持续每日约束及单日跳过，备齐后规则不延长ETA或费用', () => {
+  const id = 'custom-spend-lantai'
+  const rule = { id, versions: [{ fromDate: dates(1)[0], enabled: true, count: 10, item: { label: '兰台扫荡', costPer: 10, yield: { __xp__: 1000 } } }] }
+  for (const objective of ['overall', 'coins']) {
+    const input = inputFor({ __xp__: 5000 }, { objective, preferences: { customSpendRules: [rule] }, manualPlans: {
+      '2026-09-16': { gains: [createGain('natural'), createGain('meal')], spends: [], customSpendOverrides: [id] }
+    } })
+    const result = solve(input)
+    assert.equal(result.status, 'optimal')
+    assert.equal(result.solution.etaDays, 1)
+    assert.equal(result.solution.timeline[0].planned.spends.find(row => row.id === id).value, 10)
+    assert.deepEqual(result.solution.timeline[1].planned.customSpendOverrides, [id])
+    assert.equal(result.solution.timeline[1].planned.spends.some(row => row.id === id), false)
+    assert.equal(result.solution.totalCoins, 0)
+  }
 })

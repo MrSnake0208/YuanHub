@@ -10,6 +10,7 @@ import { TRAINING_REWARD_GROUPS } from '../src/data/inventory/trainingRewards.js
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
 import { installViewport } from '../test-support/viewport.js'
 import { auth } from '../src/store/auth.js'
+import * as zhuyuPreference from '../src/api/dailyZhuyuPreference.js'
 
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
 }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(), putTrainingWorkspace: vi.fn() }))
+vi.mock('../src/api/dailyZhuyuPreference.js', () => ({ getDailyZhuyuPreference: vi.fn(), saveDailyZhuyuPreference: vi.fn() }))
 
 const catalog = [
   { entity_type: 'item', id: 'zhuyu', name: '茱萸', rarity: 3 },
@@ -130,6 +132,7 @@ function mountWorkspace(props = {}) {
       accountName: '测试账号',
       latestInventoryAt: '',
       disabled: false,
+      ...(props.compactDaily ? { game: '代号鸢' } : {}),
       ...props,
     },
   })
@@ -1969,7 +1972,209 @@ it('提交成功后焦点留在结果区，实际 Escape 事件仍可关闭并�
   expect(document.activeElement).toBe(trigger.element)
 })
 
+describe('普通奖励混合录入', () => {
+  const success = { accepted: 2, duplicates: 0, history_only: 0, superseded: 0, warnings: [] }
+  const switchType = type => clickElement(Array.from(document.querySelectorAll('.type-options button')).find(node => node.textContent === type))
+  async function fillQuantity(name, value) {
+    const input = document.querySelector(`[aria-label="${name}数量"]`)
+    input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+  }
+  async function fillSource(value) {
+    const input = document.querySelector('.custom-channel-field input')
+    input.value = value; input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+  }
+  async function openMixed(compact = true) {
+    const wrapper = mountWorkspace({ compact, game: '代号鸢' })
+    await wrapper.vm.openManual(); await flushPromises()
+    if (!compact) await clickElement(bodyButton('其他奖励'))
+    await clickElement(document.querySelector('[aria-label^="添加白金币"]'))
+    await fillQuantity('白金币', 65)
+    await switchType('密探心纸')
+    await clickElement(document.querySelector('[aria-label^="添加测试密探"]'))
+    await fillQuantity('测试密探', 7)
+    return wrapper
+  }
+
+  it.each([true, false])('紧凑模式%s来回切换保留清单，一次请求按类型保存两条', async compact => {
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = await openMixed(compact)
+    await fillSource('活动邮件')
+    await switchType('密探心纸')
+    await switchType('背包道具')
+    expect(document.querySelector('.tile-count').textContent).toBe('65')
+    await switchType('密探心纸')
+    expect(document.querySelector('.tile-count').textContent).toBe('7')
+    expect(document.querySelectorAll('.basket-list li')).toHaveLength(2)
+    if (compact) expect(Array.from(document.querySelectorAll('.basket-list img')).map(img => img.getAttribute('src'))).toEqual([
+      expect.stringContaining('/items/baijinbi.png'), expect.stringContaining('/agents/agent_test.png'),
+    ])
+    await clickElement(document.querySelector('.preview-button'))
+    if (!compact) {
+      expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+      expect(document.querySelectorAll('.preview-list li')).toHaveLength(2)
+      await clickElement(bodyButton('确认补录 2 条'))
+    }
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    const { records } = inventoryApi.importInventory.mock.calls[0][0]
+    expect(records).toHaveLength(2)
+    expect(records.map(record => record.entity_type)).toEqual(['item', 'agent'])
+    expect(new Set(records.map(record => record.record_id)).size).toBe(2)
+    expect(new Set(records.map(record => record.effective_at)).size).toBe(1)
+    for (const record of records) {
+      expect(record.account_id).toBe('acc-1')
+      expect(record.record_type).toBe('reward_delta')
+      expect(record.acquisition_channel).toBe('活动邮件')
+      expect(record).not.toHaveProperty('stamina_cost')
+    }
+    expect(records[0].entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 65 }])
+    expect(records[1].entries).toEqual([{ id: 'agent_test', name: '测试密探', count: 7 }])
+    expect(document.querySelector('.result').textContent).toContain('已保存 2 条流水')
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+    await clickElement(bodyButton('再添加一条'))
+    expect(document.querySelector('.basket-list')).toBeNull()
+  })
+
+  it('只选心纸只生成一条，清空混合清单后不能提交', async () => {
+    inventoryApi.importInventory.mockResolvedValue({ ...success, accepted: 1 })
+    await openMixed()
+    await clickElement(document.querySelector('[aria-label="移除白金币"]'))
+    await clickElement(document.querySelector('.preview-button'))
+    const { records } = inventoryApi.importInventory.mock.calls[0][0]
+    expect(records).toHaveLength(1)
+    expect(records[0].entity_type).toBe('agent')
+    expect(records[0].entries).toEqual([{ id: 'agent_test', name: '测试密探', count: 7 }])
+    expect(document.querySelector('.result').textContent).not.toContain('2 条流水')
+    await clickElement(bodyButton('再添加一条'))
+    await clickElement(document.querySelector('[aria-label^="添加白金币"]'))
+    await switchType('密探心纸')
+    await clickElement(document.querySelector('[aria-label^="添加测试密探"]'))
+    await clickElement(bodyButton('清空'))
+    expect(document.querySelector('.basket-list')).toBeNull()
+    expect(document.querySelector('.preview-button').disabled).toBe(true)
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+  })
+
+  it('跨类型同ID的数量、图标失败和删除互不影响', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog, { entity_type: 'agent', id: 'baijinbi', name: '同ID密探', rarity: 5 }])
+    const wrapper = mountWorkspace({ compact: true })
+    await wrapper.vm.openManual(); await flushPromises()
+    await clickElement(document.querySelector('[aria-label^="添加白金币"]'))
+    await switchType('密探心纸')
+    expect(document.querySelector('[aria-label^="添加同ID密探"]').getAttribute('aria-label')).toContain('当前已选 0')
+    await clickElement(document.querySelector('[aria-label^="添加同ID密探"]'))
+    await clickElement(document.querySelector('[aria-label="增加同ID密探"]'))
+    await clickElement(document.querySelector('[aria-label="增加白金币"]'))
+    expect(document.querySelector('[aria-label="白金币数量"]').value).toBe('20')
+    expect(document.querySelector('[aria-label="同ID密探数量"]').value).toBe('2')
+    document.querySelector('.basket-list img[src*="/items/"]').dispatchEvent(new Event('error'))
+    await flushPromises()
+    expect(document.querySelector('.basket-list img[src*="/agents/baijinbi.png"]')).not.toBeNull()
+    await switchType('背包道具')
+    await clickElement(document.querySelector('.tile-minus[aria-label^="减少白金币"]'))
+    expect(document.querySelector('[aria-label="白金币数量"]').value).toBe('10')
+    await clickElement(document.querySelector('[aria-label="移除白金币"]'))
+    expect(document.querySelectorAll('.basket-list li')).toHaveLength(1)
+    expect(document.querySelector('[aria-label="同ID密探数量"]').value).toBe('2')
+    await clickElement(document.querySelector('[aria-label="减少同ID密探"]'))
+    await clickElement(document.querySelector('[aria-label="减少同ID密探"]'))
+    expect(document.querySelector('.basket-list')).toBeNull()
+  })
+
+  it.each(['0', '1.5', '2147483648'])('任一类型数量%s非法时整批不提交，修正后保留另一类数量', async invalid => {
+    inventoryApi.importInventory.mockResolvedValue(success)
+    await openMixed()
+    await fillQuantity('测试密探', invalid)
+    await clickElement(document.querySelector('.preview-button'))
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(document.querySelector('.error-message').textContent).toContain('测试密探')
+    expect(document.querySelector('[aria-label="白金币数量"]').value).toBe('65')
+    await fillQuantity('测试密探', 7)
+    await clickElement(document.querySelector('.preview-button'))
+    expect(inventoryApi.importInventory.mock.calls[0][0].records).toHaveLength(2)
+  })
+
+  it.each(['移除心纸', '修改来源'])('派遣混合清单阻止写入且保留草稿，通过%s可继续', async recovery => {
+    inventoryApi.importInventory.mockResolvedValue(success)
+    await openMixed()
+    await fillSource('活动派遣')
+    const stamina = document.querySelector('[aria-label="消耗体力"]')
+    stamina.value = '20'; stamina.dispatchEvent(new Event('input', { bubbles: true }))
+    await clickElement(document.querySelector('.preview-button'))
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(document.querySelector('.error-message').textContent).toContain('派遣奖励请按背包道具、密探心纸分别录入')
+    expect(document.querySelector('[aria-label="白金币数量"]').value).toBe('65')
+    expect(document.querySelector('[aria-label="测试密探数量"]').value).toBe('7')
+    if (recovery === '移除心纸') await clickElement(document.querySelector('[aria-label="移除测试密探"]'))
+    else await fillSource('活动邮件')
+    await clickElement(document.querySelector('.preview-button'))
+    const { records } = inventoryApi.importInventory.mock.calls[0][0]
+    expect(records).toHaveLength(recovery === '移除心纸' ? 1 : 2)
+    if (recovery === '移除心纸') expect(records[0].stamina_cost).toBe(20)
+    else for (const record of records) expect(record).not.toHaveProperty('stamina_cost')
+  })
+
+  it.each([['洛阳', '白金币'], ['寿春', '测试密探']])('切换固定%s渠道仅保留匹配类型和ID', async (channel, name) => {
+    await openMixed()
+    await clickElement(bodyButton(channel))
+    expect(document.querySelectorAll('.basket-list li')).toHaveLength(1)
+    expect(document.querySelector('.basket-list').textContent).toContain(name)
+    expect(document.querySelector('[aria-label="消耗体力"]').value).toBe('')
+  })
+
+  it('双击只发送一次，网络结果未知时两条流水原ID正文重试', async () => {
+    const pending = deferred()
+    inventoryApi.importInventory.mockReturnValueOnce(pending.promise).mockResolvedValueOnce({ ...success, accepted: 0, duplicates: 2 })
+    await openMixed()
+    const save = document.querySelector('.preview-button')
+    save.click(); save.click(); await flushPromises()
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    const original = JSON.parse(JSON.stringify(inventoryApi.importInventory.mock.calls[0][0]))
+    expect(original.records).toHaveLength(2)
+    pending.reject(new Error('Failed to fetch')); await flushPromises()
+    expect(document.querySelector('[aria-label="白金币数量"]').matches(':disabled')).toBe(true)
+    expect(document.querySelector('[aria-label="测试密探数量"]').matches(':disabled')).toBe(true)
+    expect(Array.from(document.querySelectorAll('.type-options button')).every(node => node.matches(':disabled'))).toBe(true)
+    await clickElement(bodyButton('原样重试补录'))
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(2)
+    expect(inventoryApi.importInventory.mock.calls[1][0]).toEqual(original)
+    expect(document.querySelector('.result').textContent).toContain('记录已存在，未重复补录')
+  })
+
+  it.each(['account', 'game', 'user'])('混合提交中切换%s，清空草稿且忽略旧结果', async change => {
+    const previousUser = auth.userInfo
+    const pending = deferred()
+    inventoryApi.importInventory.mockReturnValueOnce(pending.promise)
+    const wrapper = await openMixed()
+    try {
+      await clickElement(document.querySelector('.preview-button'))
+      if (change === 'user') auth.userInfo = { id: 'another-mixed-user' }
+      else await wrapper.setProps(change === 'account' ? { accountId: 'acc-2' } : { game: '如鸢' })
+      await flushPromises()
+      pending.resolve(success); await flushPromises()
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      expect(wrapper.emitted('imported')).toBeUndefined()
+      expect(inventoryApi.importInventory.mock.calls[0][0].records.every(record => record.account_id === 'acc-1')).toBe(true)
+      await wrapper.vm.openManual(); await flushPromises()
+      expect(document.querySelector('.basket-list')).toBeNull()
+      expect(document.querySelector('.preview-button').disabled).toBe(true)
+    } finally { auth.userInfo = previousUser }
+  })
+})
+
 describe('库存页紧凑录入', () => {
+  let previousUser, preferences
+  beforeEach(() => {
+    previousUser = auth.userInfo; auth.userInfo = { id: 'compact-user' }; preferences = new Map()
+    zhuyuPreference.getDailyZhuyuPreference.mockImplementation(async (account, user) => ({ account_id: account, game: '代号鸢', preference: preferences.get(`${user}:${account}`) ?? null }))
+    zhuyuPreference.saveDailyZhuyuPreference.mockImplementation(async (account, user, game, expected, value) => {
+      const key = `${user}:${account}`
+      if ((preferences.get(key) ?? null) !== expected) throw Object.assign(new Error('conflict'), { status: 409 })
+      preferences.set(key, value); return { account_id: account, game, preference: value }
+    })
+  })
+  afterEach(() => { auth.userInfo = previousUser })
   const success = { accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] }
   it('普通获得选道具填数量后直接保存，来源时间仍可展开', async () => {
     inventoryApi.importInventory.mockResolvedValue(success)
@@ -2044,6 +2249,213 @@ describe('库存页紧凑录入', () => {
     await clickElement(document.querySelector('[aria-label=关闭补记历史奖励]')); await flushPromises()
     expect(wrapper.vm.hasDraft()).toBe(false)
     expect(wrapper.findAll('.daily-quick-option input:checked')).toHaveLength(0)
+  })
+  it('今日茱萸可记录已领取白金币且沿用每日来源键', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const select = document.querySelector('.quick-reward-editor select')
+    select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    await clickElement(bodyButton('保存设置')); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    const record = inventoryApi.importInventory.mock.lastCall[0].records[0]
+    expect(record.record_id).toMatch(/^yuanhub:daily-reward:daily-zhuyu:/)
+    expect(record.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 50 }])
+  })
+  it('茱萸记账方式跨页面保留，按用户和子账号隔离且不自动勾选', async () => {
+    const previousUser = auth.userInfo
+    auth.userInfo = { id: 'zhuyu-preference-test' }
+    const key = 'yuanhub:inventory:daily-zhuyu:zhuyu-preference-test:%E4%BB%A3%E5%8F%B7%E9%B8%A2:acc-1'
+    localStorage.removeItem(key)
+    try {
+      inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+      let wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+      await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+      const select = document.querySelector('.quick-reward-editor select')
+      select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+      await clickElement(bodyButton('保存设置')); await flushPromises()
+      expect(preferences.get('zhuyu-preference-test:acc-1')).toBe('baijinbi')
+      wrapper.unmount()
+      wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      expect(wrapper.findAll('.daily-quick-option input')[0].element.checked).toBe(false)
+      await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      await wrapper.setProps({ accountId: 'acc-1' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      auth.userInfo = { id: 'another-user' }; await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      wrapper.unmount()
+    } finally { auth.userInfo = previousUser; localStorage.removeItem(key) }
+  })
+  it('云端无设置时迁移本机偏好，已有云端设置优先', async () => {
+    const key = 'yuanhub:inventory:daily-zhuyu:compact-user:%E4%BB%A3%E5%8F%B7%E9%B8%A2:acc-1'
+    localStorage.setItem(key, 'baijinbi')
+    try {
+      let wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+      expect(preferences.get('compact-user:acc-1')).toBe('baijinbi')
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      wrapper.unmount(); preferences.set('compact-user:acc-1', 'zhuyu')
+      wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      wrapper.unmount()
+    } finally { localStorage.removeItem(key) }
+  })
+  it('云端设置读取失败时阻止选择茱萸，重试后恢复', async () => {
+    zhuyuPreference.getDailyZhuyuPreference.mockRejectedValueOnce(new Error('offline'))
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    expect(wrapper.text()).toContain('云端茱萸记账设置读取失败')
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.disabled).toBe(true)
+    await wrapper.findAll('button').find(b => b.text() === '重试').trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.disabled).toBe(false)
+    wrapper.unmount()
+  })
+  it('账号切换忽略旧读取，保存冲突不覆盖云端', async () => {
+    const late = deferred()
+    zhuyuPreference.getDailyZhuyuPreference.mockReturnValueOnce(late.promise)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
+    late.resolve({ account_id: 'acc-1', game: '代号鸢', preference: 'baijinbi' }); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const select = document.querySelector('.quick-reward-editor select')
+    select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    preferences.set('compact-user:acc-2', 'zhuyu')
+    await clickElement(bodyButton('保存设置')); await flushPromises()
+    expect(document.body.textContent).toContain('设置已在其他页面变更')
+    expect(preferences.get('compact-user:acc-2')).toBe('zhuyu')
+    wrapper.unmount()
+  })
+  it('设置冲突后取消旧币种选择，再选择时记录新的币种', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    preferences.set('compact-user:acc-1', 'baijinbi')
+    await clickElement(bodyButton('保存设置'))
+    expect(document.body.textContent).toContain('设置已在其他页面变更')
+    await clickElement(bodyButton('取消'))
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.checked).toBe(false)
+    expect(wrapper.text()).toContain('请重新选择本次奖励')
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(inventoryApi.importInventory.mock.lastCall[0].records[0].entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 50 }])
+  })
+  it('设置冲突后读取失败时阻止提交旧币种，但允许取消选择', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    preferences.set('compact-user:acc-1', 'baijinbi')
+    zhuyuPreference.getDailyZhuyuPreference.mockRejectedValueOnce(new Error('offline'))
+    await clickElement(bodyButton('保存设置'))
+    expect(document.querySelector('.quick-reward-editor [role="alert"]').textContent).toContain('读取失败')
+    await clickElement(bodyButton('取消'))
+    expect(wrapper.text()).toContain('云端茱萸记账设置读取失败')
+    expect(wrapper.get('.daily-quick button[type="submit"]').element.disabled).toBe(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    const checkbox = wrapper.findAll('.daily-quick-option input')[0]
+    expect(checkbox.element.disabled).toBe(false)
+    await checkbox.setValue(false)
+    expect(checkbox.element.checked).toBe(false)
+  })
+  it('历史补记提交期间迟到的偏好读取不会改变保留草稿的币种', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    const save = deferred(), reading = deferred()
+    inventoryApi.importInventory.mockImplementationOnce(() => save.promise).mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    preferences.set('compact-user:acc-1', 'baijinbi')
+    zhuyuPreference.getDailyZhuyuPreference.mockRejectedValueOnce(new Error('offline'))
+    await clickElement(bodyButton('保存设置'))
+    await clickElement(bodyButton('取消'))
+    await button(wrapper, '补记历史').trigger('click'); await flushPromises()
+    zhuyuPreference.getDailyZhuyuPreference.mockReturnValueOnce(reading.promise)
+    await clickElement(document.querySelector('.quick-history-form [role="alert"] button'))
+    const history = document.querySelector('.quick-history-form')
+    const checkbox = history.querySelectorAll('.history-rewards input')[1]
+    checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true }))
+    const purpose = history.querySelector('select')
+    purpose.value = 'income'; purpose.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    history.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    reading.resolve({ account_id: 'acc-1', game: '代号鸢', preference: 'baijinbi' }); await flushPromises()
+    expect(history.textContent).toContain('请先完成当前奖励记录')
+    save.resolve(success); await flushPromises()
+    await clickElement(bodyButton('完成'))
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+    expect(wrapper.get('.daily-quick button[type="submit"]').element.disabled).toBe(true)
+    const retry = wrapper.findAll('button').find(node => node.text() === '重试')
+    await retry.trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.checked).toBe(false)
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+  })
+  it.each(['', '0'])('历史补记数量为 %s 时仍可取消该项', async value => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await button(wrapper, '补记历史').trigger('click'); await flushPromises()
+    const history = document.querySelector('.quick-history-form')
+    const checkbox = history.querySelectorAll('.history-rewards input')[1]
+    checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    const count = history.querySelector('input[type="number"]')
+    count.value = value; count.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    expect(checkbox.disabled).toBe(false)
+    checkbox.checked = false; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    expect(history.querySelector('input[type="number"]')).toBeNull()
+  })
+  it('临时数量只用于当前一次记录，继续选择恢复默认值', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockRejectedValueOnce(Object.assign(new Error('保存失败'), { status: 422 })).mockResolvedValueOnce(success)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const input = document.querySelector('.quick-reward-editor input[type="number"]')
+    input.value = '3'; input.dispatchEvent(new Event('input', { bubbles: true }))
+    await clickElement(bodyButton('保存设置'))
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+3 茱萸')
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+3 茱萸')
+    expect(wrapper.text()).toContain('保存失败')
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(inventoryApi.importInventory.mock.lastCall[0].records[0].entries[0].count).toBe(3)
+    await button(wrapper, '继续选择').trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+  })
+  it('输入历史日期时临时数量不跨游戏日沿用', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const count = document.querySelector('.quick-reward-editor input[type="number"]')
+    count.value = '3'; count.dispatchEvent(new Event('input', { bubbles: true }))
+    await clickElement(bodyButton('保存设置'))
+    await button(wrapper, '补记历史').trigger('click'); await flushPromises()
+    const date = document.querySelector('.quick-history-form input[aria-label="发生日期"]')
+    date.value = '2026'; date.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    date.value = '2025-01-01'; date.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    expect(document.querySelector('.history-rewards').textContent).toContain('每日茱萸 +1')
+  })
+  it('提交其他奖励后直接勾选茱萸时不沿用上一笔临时数量', async () => {
+    inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+    inventoryApi.importInventory.mockResolvedValue(success)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const count = document.querySelector('.quick-reward-editor input[type="number"]')
+    count.value = '3'; count.dispatchEvent(new Event('input', { bubbles: true }))
+    await clickElement(bodyButton('保存设置'))
+    await wrapper.findAll('.daily-quick-option input')[1].setValue(true)
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    await wrapper.findAll('.daily-quick-option input')[0].setValue(true); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+    await wrapper.get('.daily-quick').trigger('submit'); await flushPromises()
+    expect(inventoryApi.importInventory.mock.lastCall[0].records[0].entries[0].count).toBe(1)
   })
   it('今日状态读取失败可重试且不写入，未知提交只重试同一份文档', async () => {
     inventoryApi.listRecords.mockRejectedValueOnce(new Error('离线')).mockResolvedValue({ items: [], next_cursor: null })

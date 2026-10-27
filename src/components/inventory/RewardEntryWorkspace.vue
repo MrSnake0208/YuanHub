@@ -6,26 +6,28 @@
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
           <label>
-            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady" @change="toggleQuickPreset(preset)" />
+            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 && !manual.presets.some(entry => entry.id === preset.id) || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" />
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
-          <button type="button" class="quick-edit" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
+          <button type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
       </fieldset>
       <div class="daily-quick-actions">
-        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result">{{ busy ? '记录中…' : '记录所选' }}</button>
+        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : '记录所选' }}</button>
         <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
         <details class="quick-rules shortcut-note">
           <summary>领取规则</summary>
           <div class="quick-rules-content">
-            <p>记录领取1个茱萸，增加的是茱萸实物。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
+            <p>每日茱萸可选择记录茱萸或已领取的白金币；点击编辑选择本次结果。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
             <p>收支报告可按每个50白金币展示等价值；这不是兑换，不会额外增加白金币。确认后请查看回执。</p>
             <p>同一业务日重复确认同一来源不会重复入账；日界线为北京时间05:00。跨日更正请通过操作历史管理原记录，不要重复补记同一笔领取。</p>
           </div>
         </details>
       </div>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
+      <p v-if="dailyZhuyuSelectionNote" class="quick-feedback" role="status">{{ dailyZhuyuSelectionNote }}</p>
+      <p v-if="dailyZhuyuPreferenceNote" class="quick-feedback" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyZhuyuPreference">重试</button></p>
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
       <p v-if="error && !quickPanel" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
@@ -35,7 +37,9 @@
       <form v-if="quickPanel === 'edit' && quickEdit" class="quick-reward-editor" @submit.prevent="saveQuickEdit">
         <fieldset class="panel-fields" :disabled="locked || disabled">
           <label v-if="quickEdit.id === 'monthly-card'">月卡档位<select v-model="quickEdit.tier" @change="quickEdit.count = monthlyCardTier(quickEdit.tier, game).coins"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
-          <label>本次数量<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
+          <label v-if="quickEdit.id === 'daily-zhuyu'">本次记录<select v-model="quickEdit.itemId" @change="quickEdit.count = quickEdit.itemId === 'zhuyu' ? 1 : 50"><option value="zhuyu">茱萸</option><option value="baijinbi">已领取的白金币</option></select></label>
+          <p v-if="quickEdit.id === 'daily-zhuyu'" class="panel-note">记账方式同步到当前游戏账号；数量仅本次生效。每个茱萸可获得 50 白金币，仅在游戏中已领取白金币时选择该项。</p>
+          <label>本次数量{{ quickEdit.id === 'daily-zhuyu' ? `（${quickEdit.itemId === 'zhuyu' ? '茱萸' : '白金币'}）` : '' }}<input v-model="quickEdit.count" type="number" :min="quickEdit.id === 'monthly-card' && quickEdit.tier === 'none' ? 0 : 1" max="2147483647" step="1" inputmode="numeric" /></label>
           <p v-if="quickEdit.id === 'monthly-card'" class="panel-note">月卡档位会记住，并同步到养成规划。</p>
         </fieldset>
         <p v-if="quickEditError" role="alert">{{ quickEditError }}</p>
@@ -44,15 +48,16 @@
       <form v-if="quickPanel === 'history'" class="quick-history-form" @submit.prevent="submitDaily">
         <fieldset class="panel-fields" :disabled="locked || disabled || !!result">
           <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" @update:date="clearPreview" @update:clock="clearPreview" />
-          <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
+          <div class="history-rewards"><label v-for="preset in dailyPresets" :key="preset.id"><input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="dailyLoading || dailyRecorded.has(preset.id) || !preset.count && !manual.presets.some(entry => entry.id === preset.id) || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" /><span>{{ preset.channel }} {{ dailyRecorded.has(preset.id) ? '· 已记录' : `+${preset.count}` }}</span></label></div>
           <label v-for="entry in manual.presets" :key="entry.id">{{ entry.channel }}数量<input v-model="entry.count" type="number" min="1" max="2147483647" step="1" inputmode="numeric" @input="clearPreview" /></label>
           <label>库存处理<select v-model="manual.whiteCoinPurpose" @change="clearPreview"><option value="annotation">已计入当前数量，只补记录</option><option value="income">尚未计入，按领取时间补入</option></select></label>
           <p class="panel-note">填写实际领取时间。如果这次领取已经包含在盘点数量中，选择“已计入当前数量，只补记录”；需要对应盘点覆盖实际领取时间。未包含的领取按新增收入记录。</p>
         </fieldset>
         <p v-if="error || dailyStatusError" role="alert">{{ error || dailyStatusError }}</p>
+        <p v-if="dailyZhuyuPreferenceNote" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyZhuyuPreference">重试</button></p>
         <button v-if="dailyStatusError" type="button" class="text-button" @click="loadDailyStatus">重试读取</button>
         <p v-if="result" role="status">历史奖励已保存，已计入库存的部分未重复增加。</p>
-        <div class="panel-actions"><button type="button" class="outline-button" :disabled="locked" @click="closeQuickPanel">{{ result ? '完成' : '取消' }}</button><button v-if="!result" type="submit" class="primary-button" :disabled="busy || checkingBaseline || disabled || dailyLoading || !!dailyStatusError || !manual.presets.length">{{ busy ? '保存中…' : pendingDocument ? '原样重试' : '保存补记' }}</button></div>
+        <div class="panel-actions"><button type="button" class="outline-button" :disabled="locked" @click="closeQuickPanel">{{ result ? '完成' : '取消' }}</button><button v-if="!result" type="submit" class="primary-button" :disabled="busy || checkingBaseline || disabled || dailyLoading || !!dailyStatusError || !manual.presets.length || !pendingDocument && unconfirmedZhuyu">{{ busy ? '保存中…' : pendingDocument ? '原样重试' : '保存补记' }}</button></div>
       </form>
     </InventoryQuickDialog>
     <slot v-if="!compactDaily && $slots.actions" name="actions" />
@@ -172,7 +177,7 @@
                   <label for="training-runs">完成次数<span class="training-stepper"><button type="button" class="outline-button" aria-label="减少完成次数" :disabled="!canAdjustTrainingRuns(-1)" @click="adjustTrainingRuns(-1)">−</button><input id="training-runs" v-model="manual.training.draft.runs" type="text" inputmode="numeric" :aria-invalid="!!error && trainingInputError.field === 'runs'" :aria-describedby="error && trainingInputError.field === 'runs' ? 'training-error training-note' : 'training-note'" @input="changeTrainingDraft" /><button type="button" class="outline-button" aria-label="增加完成次数" :disabled="!canAdjustTrainingRuns(1)" @click="adjustTrainingRuns(1)">+</button></span><span v-if="error && trainingInputError.field === 'runs'" id="training-error" class="row-error" tabindex="-1">{{ trainingInputError.error }}</span></label>
                 </div>
                 <p v-if="trainingInputError.field === 'catalog' || trainingInputError.field === 'game'" class="row-error">{{ trainingInputError.error }}</p>
-                <div v-if="trainingDraftResult.entries.length" class="training-draft-rewards" aria-label="本条预计获得"><span v-for="entry in trainingDraftResult.entries" :key="entry.id" class="training-reward-chip"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="24" height="24" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }} <strong>+{{ entry.count }}</strong></span></span></div>
+                <div v-if="trainingDraftResult.entries.length" class="training-draft-rewards" aria-label="本条预计获得"><span v-for="entry in trainingDraftResult.entries" :key="entry.id" class="training-reward-chip"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc(entry)" alt="" width="24" height="24" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }} <strong>+{{ entry.count }}</strong></span></span></div>
                 <div class="training-entry-actions"><button v-if="manual.training.editingKey != null || manual.training.dirty" type="button" class="text-button" @click="cancelTrainingEdit">{{ manual.training.editingKey == null ? '清除本条' : '取消修改' }}</button><button type="button" class="outline-button add-training" :disabled="!trainingPending" @click="addTrainingSelection"><Plus v-if="manual.training.editingKey == null" :size="14" aria-hidden="true" />{{ manual.training.editingKey == null ? '加入本次记录' : '保存修改' }}</button></div>
                 <p class="shortcut-note">{{ trainingPending ? '当前输入会参与预览，加入相同关卡将合并次数。' : '已加入清单，修改后可继续添加。' }}</p>
               </div>
@@ -189,18 +194,19 @@
             <section v-else-if="!dailyMode" class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span v-if="!compact">{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :disabled="!!manual.presets.length" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
+              <p v-if="manual.channel === '手动补录' && !manual.presets.length" class="shortcut-note">可切换类型继续添加，已选内容会保留。</p>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
                 <div v-if="manual.entityType === 'agent'" class="rarity-options" role="group" aria-label="密探品质筛选"><button v-for="quality in qualities" :key="quality.id" type="button" :class="{ selected: rarity === quality.id }" :aria-pressed="rarity === quality.id" @click="rarity = quality.id">{{ quality.label }}</button></div>
                 <label v-if="manual.entityType === 'agent'" class="prof-filter">属性<select v-model="agentProf" aria-label="密探属性筛选"><option value="">全部</option><option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option></select></label>
               </div>
               <div class="reward-grid" :class="{ 'agent-grid': manual.entityType === 'agent', 'luoyang-grid': manual.channel === '派遣-洛阳' }">
-                <div v-for="entity in visibleOptions" :key="entity.id" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
-                  <button type="button" class="reward-tile" :disabled="!!manual.presets.length" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
-                    <span class="tile-image"><img v-if="!failedImages.has(entity.id)" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(entity.id)" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
-                    <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity.id)" class="tile-count">{{ countOf(entity.id) }}</span>
+                <div v-for="entity in visibleOptions" :key="rewardKey(entity)" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
+                  <button type="button" class="reward-tile" :disabled="!!manual.presets.length" :class="{ chosen: countOf(entity) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity)}`" @click="addReward(entity)">
+                    <span class="tile-image"><img v-if="!failedImages.has(rewardKey(entity))" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(rewardKey(entity))" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
+                    <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity)" class="tile-count">{{ countOf(entity) }}</span>
                   </button>
-                  <button v-if="countOf(entity.id)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity.id)}`" @click="decreaseRewardFromTile(entity.id, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
+                  <button v-if="countOf(entity)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity)}`" @click="decreaseRewardFromTile(entity, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
                 </div>
               </div>
               <p v-if="!visibleOptions.length" class="empty-search">{{ manual.entityType === 'agent' ? '没有匹配的密探，试试其他名称、品质或属性。' : '没有匹配的奖励，试试其他名称。' }}</p>
@@ -211,7 +217,7 @@
               <div v-if="!compact || dailyMode" class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
               <div class="basket-heading"><span role="status" aria-live="polite" aria-atomic="true">已选 <b>{{ basketEntries.length }}</b> 项</span><button v-if="trainingByRuns || basketEntries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
               <div v-if="!basketEntries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>{{ trainingByRuns ? '请选择历练类型、关卡和次数' : dailyMode ? '勾选上方已经领取的日常项目' : '从候选区选取本次奖励' }}</span><small>{{ trainingByRuns ? '必得材料将自动计算' : '选中后可在这里调整数量' }}</small></div>
-              <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="entry.id"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="compact && !dailyMode || manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc({ id: entry.itemId || entry.id, entity_type: entry.entity_type || manual.entityType })" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }}</span></span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + entry.itemName + '数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
+              <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="rewardKey(entry)"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="compact && !dailyMode || manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc({ id: entry.itemId || entry.id, entity_type: entry.entity_type || 'item' })" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span><span>{{ entry.name }}</span></span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + entry.itemName + '数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id, entry.entity_type)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
               <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyRewardTotal }}，分别保存 {{ manual.presets.length }} 条来源流水。</p>
               <button type="submit" class="primary-button preview-button" :disabled="(!trainingByRuns && !basketEntries.length) || (dailyMode && (dailyLoading || !!dailyStatusError))"><span>{{ busy ? '保存中…' : checkingBaseline ? '核对中…' : dailyMode ? '一键记录' : compact ? '保存' : previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
@@ -246,7 +252,7 @@
           <div v-if="row.record" class="preview-record">
             <label v-if="mode === 'report'" class="record-checkbox"><input v-model="row.selected" type="checkbox" :disabled="!!row.error || locked || !!result" :aria-label="`选择 ${row.record.acquisition_channel || '库存记录'} ${row.record.effective_at}`" /><span class="checkbox-art"><Check :size="13" aria-hidden="true" /></span></label>
             <div class="record-date"><small>{{ new Date(row.record.effective_at).getFullYear() }}</small><b>{{ displayDay(row.record.effective_at) }}</b><time :datetime="row.record.effective_at" :title="row.record.effective_at">{{ displayClock(row.record.effective_at) }}</time></div>
-            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id"><span v-if="mode === 'manual' && row.record.acquisition_channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ (entry.name || entry.id).slice(0, 1) }}</span></span>{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
+            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id"><span v-if="mode === 'manual' && row.record.acquisition_channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(rewardKey(entry))" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(rewardKey(entry))" /><span v-else>{{ (entry.name || entry.id).slice(0, 1) }}</span></span>{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
             <button type="button" class="record-info" :aria-label="`查看${row.record.acquisition_channel || '库存记录'}记录详情`" :aria-expanded="expandedRows.has(row.key)" @click="toggleDetails(row.key)"><ChevronDown :size="16" :class="{ rotated: expandedRows.has(row.key) }" aria-hidden="true" /></button>
           </div>
           <div v-if="row.record && expandedRows.has(row.key)" class="record-details"><span>{{ row.record.effective_at }}</span><span>{{ row.status }}</span><span>{{ row.record.record_id }}</span></div>
@@ -254,7 +260,7 @@
         </li></ul>
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : dispatchAnnotation ? '请核对实际领取时间、全部碎片和体力；本次只补记报告。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ annotationResult ? '已补记报告，库存数量未增加' : result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+      <div v-if="result && operation === 'gain'" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ annotationResult ? '已补记报告，库存数量未增加' : result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p v-if="dailyMode">本次提交：{{ dailyRewardTotal }}。仅历史部分不会增加库存。</p><p v-if="mode === 'manual' && !dailyMode && !manual.presets.length && selectedRecords.length === 2">已保存 2 条流水，可在操作历史中分别查看或撤销。</p><p v-if="compact">{{ result.history_only || result.superseded ? '已保存到最近记录，已计入当前数量的部分不会重复增加。' : '已保存，可在最近记录中查看或撤销。' }}</p><p v-else>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ dailyMode ? '继续打卡' : mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
               <footer v-if="mode === 'report' || operation === 'gain'" class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励记录统计获得量，盘点记录保存库存总量。导入保留原记录时间，同一条记录不会重复导入。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
@@ -278,6 +284,7 @@ import { auth } from '../../store/auth.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { getTrainingWorkspace, putTrainingWorkspace } from '../../api/operatorPlanner.js'
 import { workspaceFromRemote, workspaceBody } from '../../data/operatorPlannerRemote.js'
+import { getDailyZhuyuPreference, saveDailyZhuyuPreference } from '../../api/dailyZhuyuPreference.js'
 import { monthlyCardTier, monthlyCardTiers } from '../../data/monthlyCard.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, DAILY_REWARD_PRESETS, dailyRewardRecordId, validateRewardAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
@@ -301,12 +308,54 @@ let dailyDraftBaseline = ''
 const operation = ref('gain'), resourceOpened = ref(false)
 watch(operation, () => { if (result.value) { resetManual(); clearPreview() } })
 const dialogTitle = computed(() => props.compact && !dailyMode.value && mode.value === 'manual' ? '记一笔' : mode.value === 'report' ? '导入本地报告' : dailyMode.value ? '日常打卡' : '添加奖励流水')
-const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({})
+const quickPanel = ref(''), quickEdit = ref(null), quickEditError = ref(''), quickSaving = ref(false), quickCounts = ref({}), dailyZhuyuItem = ref('zhuyu'), dailyZhuyuPreferenceNote = ref(''), dailyZhuyuSelectionNote = ref('')
+const dailyZhuyuReady = ref(false), dailyZhuyuCloud = ref(null)
+const unconfirmedZhuyu = computed(() => props.compactDaily && !dailyZhuyuReady.value && manual.value.presets.some(entry => entry.id === 'daily-zhuyu'))
+let dailyZhuyuSeq = 0
 let quickEditBaseline = '', quickOrdinaryBaseline = ''
 const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
-const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, count: quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.count) })))
+const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: manual.value.presets.find(entry => entry.id === preset.id)?.count ?? quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? 50 : preset.count) })))
+function dailyZhuyuPreferenceKey() {
+  return `yuanhub:inventory:daily-zhuyu:${encodeURIComponent(auth.userInfo?.id || '')}:${encodeURIComponent(props.game)}:${encodeURIComponent(props.accountId)}`
+}
+async function loadDailyZhuyuPreference() {
+  const seq = ++dailyZhuyuSeq, account = props.accountId, game = props.game, user = auth.userInfo?.id
+  dailyZhuyuReady.value = false; dailyZhuyuPreferenceNote.value = ''
+  if (!account || !user) return
+  const current = () => !disposed && seq === dailyZhuyuSeq && props.accountId === account && props.game === game && auth.userInfo?.id === user
+  try {
+    let data = await getDailyZhuyuPreference(account, user)
+    if (!current()) return
+    if (data.account_id !== account || data.game !== game || ![null, 'zhuyu', 'baijinbi'].includes(data.preference)) throw new Error('设置与账号不匹配')
+    let saved = null
+    try { saved = localStorage.getItem(dailyZhuyuPreferenceKey()) } catch (_) { /* 本机设置不可用时仍读取云端 */ }
+    if (data.preference === null && ['zhuyu', 'baijinbi'].includes(saved)) {
+      try { data = await saveDailyZhuyuPreference(account, user, game, null, saved) }
+      catch (err) { if (err.status !== 409) throw err; data = await getDailyZhuyuPreference(account, user) }
+      if (!current()) return
+      if (data.account_id !== account || data.game !== game || !['zhuyu', 'baijinbi'].includes(data.preference)) throw new Error('设置与账号不匹配')
+    }
+    if (busy.value || checkingBaseline.value || pendingDocument.value || result.value) {
+      dailyZhuyuPreferenceNote.value = '请先完成当前奖励记录，再重试读取茱萸记账设置。'
+      return
+    }
+    const nextItem = data.preference || 'zhuyu'
+    if (nextItem !== dailyZhuyuItem.value) {
+      let removed = false
+      for (const draft of [manual.value, ordinaryDraft].filter(Boolean)) {
+        if (!draft.presets.some(entry => entry.id === 'daily-zhuyu')) continue
+        draft.presets = draft.presets.filter(entry => entry.id !== 'daily-zhuyu')
+        if (!draft.presets.length) draft.whiteCoinPurpose = ''
+        removed = true
+      }
+      delete quickCounts.value['daily-zhuyu']
+      if (removed) { clearPreview(); dailyZhuyuSelectionNote.value = '茱萸记账方式已变更，请重新选择本次奖励。' }
+    }
+    dailyZhuyuCloud.value = data.preference; dailyZhuyuItem.value = nextItem; dailyZhuyuReady.value = true
+  } catch (_) { if (current()) dailyZhuyuPreferenceNote.value = '云端茱萸记账设置读取失败，请重试。' }
+}
 function changeMonthlyTier() {
   monthlyTierTouched = true; monthlyReady.value = true
   const entry = manual.value.presets.find(preset => preset.id === 'monthly-card')
@@ -500,8 +549,15 @@ async function loadDailyStatus() {
   } finally { if (current()) dailyLoading.value = false }
 }
 watch([dailyDate, dailyMode, mode, () => props.accountId, () => props.game], loadDailyStatus)
+let quickCountsDay = dailyDate.value
+watch(dailyDate, day => {
+  if (!day) return
+  if (quickCountsDay && day !== quickCountsDay && !pendingDocument.value) quickCounts.value = {}
+  quickCountsDay = day
+})
 function openQuickEdit(preset) {
   if (locked.value || props.disabled) return
+  if (result.value) { startNext(); preset = dailyPresets.value.find(entry => entry.id === preset.id) }
   quickEdit.value = { ...preset, count: manual.value.presets.find(entry => entry.id === preset.id)?.count ?? preset.count, tier: monthlyTier.value }
   quickEditBaseline = JSON.stringify(quickEdit.value); quickEditError.value = ''; quickPanel.value = 'edit'
 }
@@ -521,12 +577,26 @@ async function saveQuickEdit() {
       if (disposed || props.accountId !== account || token !== monthlyPreferenceSeq) return
       monthlyTier.value = edit.tier; monthlyTierTouched = true; monthlyReady.value = true; monthlyPreferenceNote.value = ''
     }
+    if (edit.id === 'daily-zhuyu') {
+      const user = auth.userInfo?.id, game = props.game, seq = dailyZhuyuSeq
+      if (!dailyZhuyuReady.value || !user) throw new Error('请先读取云端茱萸记账设置')
+      const saved = await saveDailyZhuyuPreference(account, user, game, dailyZhuyuCloud.value, edit.itemId)
+      if (disposed || seq !== dailyZhuyuSeq || props.accountId !== account || props.game !== game || auth.userInfo?.id !== user) return
+      if (saved.account_id !== account || saved.game !== game || saved.preference !== edit.itemId) throw new Error('设置结果无法确认，请重试')
+      dailyZhuyuCloud.value = saved.preference; dailyZhuyuItem.value = saved.preference
+    }
     quickCounts.value[edit.id] = count
     const selected = manual.value.presets.find(entry => entry.id === edit.id)
-    if (selected) { if (!count) removeReward(edit.id); else selected.count = count }
+    if (selected) { if (!count) removeReward(edit.id); else { selected.count = count; selected.itemId = edit.itemId; selected.itemName = edit.id === 'daily-zhuyu' ? (edit.itemId === 'baijinbi' ? '白金币' : '茱萸') : edit.itemName; selected.name = `${selected.itemName} · ${selected.channel}` } }
     clearPreview(); quickPanel.value = ''; quickEdit.value = null
   } catch (err) {
-    if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) quickEditError.value = err.status === 409 ? '设置已在其他页面变更，请重试；其他设置不会被覆盖。' : err.message || '设置保存失败，请重试'
+    if (!disposed && props.accountId === account && token === monthlyPreferenceSeq) {
+      quickEditError.value = err.status === 409 ? '设置已在其他页面变更，已重新读取；请核对后再保存。' : err.message || '设置保存失败，请重试'
+      if (err.status === 409 && edit.id === 'daily-zhuyu') {
+        await loadDailyZhuyuPreference()
+        if (!dailyZhuyuReady.value) quickEditError.value = '设置已在其他页面变更；读取失败，请关闭后重试。'
+      }
+    }
   } finally { if (token === monthlyPreferenceSeq) quickSaving.value = false }
 }
 function openQuickHistory() {
@@ -544,12 +614,14 @@ async function closeQuickPanel() {
   if (dirty && !(await dialog.confirm({ title: '放弃未保存的输入？', message: '已保存的数据不受影响。', confirmText: '放弃输入', cancelText: '继续填写' }))) return
   if (locked.value || props.accountId !== account || panel !== quickPanel.value) return
   if (panel === 'history') {
+    if (result.value) quickCounts.value = {}
     manual.value = ordinaryDraft; ordinaryDraft = null; clearPreview(); dailyDraftBaseline = quickOrdinaryBaseline; void loadDailyStatus()
   }
   quickPanel.value = ''; quickEdit.value = null
 }
 function toggleQuickPreset(preset) {
-  if (result.value) startNext()
+  if (result.value) { startNext(); preset = dailyPresets.value.find(entry => entry.id === preset.id) }
+  if (preset.id === 'daily-zhuyu') dailyZhuyuSelectionNote.value = ''
   const purpose = manual.value.whiteCoinPurpose || 'income'
   selectDailyPreset(preset)
   manual.value.whiteCoinPurpose = purpose
@@ -562,6 +634,7 @@ async function submitQuick() {
 }
 async function submitDaily() {
   if (props.compactDaily && pendingDocument.value) return submit()
+  if (unconfirmedZhuyu.value) { error.value = '请先重新读取茱萸记账设置，或取消选择每日茱萸。'; return }
   if (dailyLoading.value || dailyStatusError.value || locked.value || props.disabled || result.value) return
   if (props.compactDaily && quickPanel.value !== 'history' && manual.value.whiteCoinPurpose === 'income') {
     const now = freshManual()
@@ -584,8 +657,9 @@ const manualBeforeLatestSnapshot = computed(() => {
   const latest = Date.parse(props.latestInventoryAt)
   return Number.isFinite(selected) && Number.isFinite(latest) && selected < latest
 })
-const counts = computed(() => new Map(manual.value.entries.map(entry => [entry.id, entry.count])))
-const countOf = id => counts.value.get(id) || 0
+const rewardKey = entry => `${entry.entity_type || 'item'}:${entry.id}`
+const counts = computed(() => new Map(manual.value.entries.map(entry => [rewardKey(entry), entry.count])))
+const countOf = entity => counts.value.get(rewardKey(entity)) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
 const iconSrc = entity => `${import.meta.env.BASE_URL}inventory-icons/${entity.entity_type === 'agent' ? 'agents' : 'items'}/${encodeURIComponent(entity.id)}.png`
 let bodyOverflowBefore = ''
@@ -624,7 +698,8 @@ watch(mode, (value, previous) => {
   if (!value && previous) unlockBackgroundScroll()
 })
 watch(() => [props.accountId, props.game, auth.userInfo?.id], () => {
-  quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; quickSaving.value = false
+  quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; dailyZhuyuItem.value = 'zhuyu'; dailyZhuyuSelectionNote.value = ''; quickSaving.value = false
+  if (props.compactDaily) void loadDailyZhuyuPreference()
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
   loadTrainingLevelPreference()
   fileReadSeq++
@@ -743,7 +818,7 @@ function changeTrainingMode(nextMode, confirmed = false) {
     manual.value.entries = []
   } else {
     if ((manual.value.training.dirty || manual.value.training.selections.length) && trainingCalculation.value.error) { showError(trainingCalculation.value.error); return }
-    manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count }))
+    manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count, entity_type: 'item' }))
   }
   manual.value.training.mode = nextMode
   manual.value.training.replacePrompt = false
@@ -815,8 +890,8 @@ function changeChannel(channel) {
   manual.value.dispatchPurpose = 'income'
   manual.value.channel = channel
   manual.value.entityType = REWARD_CHANNELS.find(item => item.id === channel).entityType || manual.value.entityType
-  const allowed = new Set(entryOptions.value.map(entry => entry.id))
-  manual.value.entries = manual.value.entries.filter(entry => allowed.has(entry.id))
+  const allowed = new Set(entryOptions.value.map(rewardKey))
+  manual.value.entries = manual.value.entries.filter(entry => allowed.has(rewardKey(entry)))
   manual.value.stamina = ''
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
@@ -835,29 +910,32 @@ function selectDailyPreset(preset) {
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 }
-function changeType(type) { manual.value.entityType = type; manual.value.entries = []; search.value = ''; rarity.value = 0; agentProf.value = ''; clearPreview() }
+function changeType(type) {
+  if (locked.value || type === manual.value.entityType) return
+  manual.value.entityType = type; search.value = ''; rarity.value = 0; agentProf.value = ''; clearPreview()
+}
 function addReward(entity) {
-  const entry = manual.value.entries.find(entry => entry.id === entity.id)
+  const entry = manual.value.entries.find(entry => rewardKey(entry) === rewardKey(entity))
   if (entry) adjustReward(entry, 1)
-  else { manual.value.entries.push({ id: entity.id, name: entity.name, count: entity.id === 'baijinbi' ? 10 : 1 }); clearPreview() }
+  else { manual.value.entries.push({ id: entity.id, name: entity.name, entity_type: entity.entity_type, count: entity.entity_type === 'item' && entity.id === 'baijinbi' ? 10 : 1 }); clearPreview() }
 }
 function adjustReward(entry, delta) {
   const value = Number(entry.count)
-  const step = entry.id === 'baijinbi' || entry.itemId === 'baijinbi' ? 10 : 1
+  const step = (entry.entity_type || 'item') === 'item' && (entry.id === 'baijinbi' || entry.itemId === 'baijinbi') ? 10 : 1
   const next = (Number.isInteger(value) ? value : 0) + delta * step
-  if (next <= 0) removeReward(entry.id)
+  if (next <= 0) removeReward(entry.id, entry.entity_type)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
 }
-function decreaseRewardFromTile(id, event) {
-  const entry = manual.value.entries.find(entry => entry.id === id)
+function decreaseRewardFromTile(entity, event) {
+  const entry = manual.value.entries.find(entry => rewardKey(entry) === rewardKey(entity))
   if (!entry) return
   const addButton = event.currentTarget.previousElementSibling
   adjustReward(entry, -1)
-  if (!manual.value.entries.some(entry => entry.id === id)) nextTick(() => addButton.focus())
+  if (!countOf(entity)) nextTick(() => addButton.focus())
 }
 function setCount(entry, value) { entry.count = value; clearPreview() }
-function removeReward(id) {
-  manual.value.entries = manual.value.entries.filter(entry => entry.id !== id)
+function removeReward(id, entityType = 'item') {
+  manual.value.entries = manual.value.entries.filter(entry => entry.id !== id || entry.entity_type !== entityType)
   manual.value.presets = manual.value.presets.filter(entry => entry.id !== id)
   if (!manual.value.presets.length) manual.value.whiteCoinPurpose = ''
   clearPreview()
@@ -881,12 +959,15 @@ async function previewManual() {
     const base = { record_type: 'reward_delta', entity_type: draft.entityType, effective_at: effectiveAt,
       ...(requiresStamina.value ? { stamina_cost: /^\d+$/.test(draft.stamina) ? Number(draft.stamina) : undefined } : {}) }
     const count = value => /^\d+$/.test(String(value)) ? Number(value) : NaN
+    const entries = trainingByRuns.value ? trainingCalculation.value.entries : draft.entries
+    const groups = ['item', 'agent'].map(entity_type => ({ entity_type, entries: entries.filter(entry => (entry.entity_type || draft.entityType) === entity_type) })).filter(group => group.entries.length)
+    if (requiresStamina.value && groups.length > 1) throw new TypeError('派遣奖励请按背包道具、密探心纸分别录入，并填写各自实际消耗的体力。已选内容已保留。')
     const records = draft.presets.length ? draft.presets.map(preset => ({
       ...base, record_id: dailyRewardRecordId(preset.id, effectiveAt), acquisition_channel: preset.channel,
       entries: [{ id: preset.itemId, name: preset.itemName, count: count(preset.count) }],
-    })) : [{ ...base, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
+    })) : groups.map(group => ({ ...base, entity_type: group.entity_type, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
       acquisition_channel: manualAcquisitionChannel(draft.channel, draft.customChannel),
-      entries: (trainingByRuns.value ? trainingCalculation.value.entries : draft.entries).map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
+      entries: group.entries.map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }))
     records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
     const doc = buildRewardDocument(records, targetAccount, entities.value)
     if ((draft.presets.length && draft.whiteCoinPurpose === 'annotation') || dispatchAnnotation.value) {
@@ -996,7 +1077,7 @@ async function submit() {
   } finally { if (manual.value === targetDraft) busy.value = false }
 }
 function startNext() {
-  clearPreview(); resetManual()
+  clearPreview(); resetManual(); quickCounts.value = {}; dailyZhuyuSelectionNote.value = ''
   if (dailyMode.value) void loadDailyStatus()
   reportText.value = ''; fileName.value = ''; search.value = ''; rarity.value = 0; agentProf.value = ''
 }
@@ -1005,6 +1086,7 @@ function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', 
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
 function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : ['手动添加', '补标已盘点收入'].includes(value) ? value : '待核对' }
 onMounted(() => {
+  if (props.compactDaily && props.accountId) void loadDailyZhuyuPreference()
   if (props.compactDaily) { resetManual(); void loadCatalog(); void loadDailyStatus(); void loadMonthlyPreference() }
 })
 onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunload', beforeUnload); unlockBackgroundScroll(); emit('busy', false) })

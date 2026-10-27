@@ -2,6 +2,7 @@ import { createSpend, isFixedStage624, aggregatePlannerState, buildRecommendedPl
 import { evaluateExactPlans, prepareExactPlanner } from './exactPlanner.js'
 import { exactComparisonScenarios, exactDeadlineAlternatives } from './exactPlannerComparison.js'
 import { MONTHLY_STAMINA_IDS, resolveDailyStaminaGains, sourcesForDate, withMonthlyCardPeriod, withSourcePeriod } from './dailyStaminaSources.js'
+import { mergeCustomSpendRules, markCustomSpendOverride, normalizeCustomSpendRules } from './customPlannerSpends.js'
 
 export function plannerDateAfter(date, days) {
   const value = new Date(date + 'T12:00:00')
@@ -58,6 +59,37 @@ export function resetFixedSchedule(context, manualPlans = {}, previous = null) {
   const pastPlans = Object.fromEntries(Object.entries(manualPlans).filter(([date]) => date < context.date))
   const schedule = createFixedSchedule({ ...context, displayStartDate: context.date }, pastPlans, previous)
   return { schedule, manualPlans: clonePlannerValue(pastPlans) }
+}
+
+// Validate the entire visible window, including dates after material completion,
+// before producing a new snapshot. Reading a rule never persists 90 manual days.
+export function applyCustomSpendRulesToSchedule(schedule, manualPlans, rules, today, fromDate = today) {
+  const preferences = { ...schedule.context.preferences, customSpendRules: normalizeCustomSpendRules(rules) }
+  const date = today > schedule.baselineDate ? today : schedule.baselineDate
+  if (fromDate < date || fromDate > plannerDateAfter(date, 89)) throw new Error('请选择当前90天内的生效日期')
+  const days = fixedScheduleTimeline(schedule)
+  const savedDays = new Map(days.map(day => [day.date, day]))
+  const initialState = days.find(day => day.date === date)?.start || days.filter(day => day.date < date).at(-1)?.end || schedule.context.initialState
+  const context = { ...schedule.context, date, initialState, initialExtra: date === schedule.baselineDate ? schedule.context.initialExtra : 0,
+    stock: projectedPlannerStock(schedule, date), preferences }
+  const nextPlans = clonePlannerValue(manualPlans)
+  let state = initialState
+  for (let index = 0; index < PLANNER_RULES.maxEtaDays; index++) {
+    const current = plannerDateAfter(date, index)
+    const plan = current < fromDate && savedDays.has(current) ? savedDays.get(current).planned
+      : nextPlans[current] ? mergeCustomSpendRules(nextPlans[current], rules, current)
+      : buildRecommendedPlan({ ...context, state, date: current, initialExtra: index === 0 ? context.initialExtra : 0 })
+    const checked = settlePlannerDay(state, plan, context)
+    if (checked.errors.length) throw new Error(`${current}：${checked.errors.join('；')}；未应用每日安排`)
+    if (nextPlans[current] && current >= fromDate) nextPlans[current] = normalizePlannerPlan(plan)
+    state = checked.end
+  }
+  const replayPlans = { ...nextPlans }
+  for (const day of days) if (day.date >= date && day.date < fromDate) replayPlans[day.date] = day.planned
+  const next = createFixedSchedule(context, replayPlans, schedule)
+  next.result.timeline = next.result.timeline.map(day => day.date < fromDate && savedDays.has(day.date)
+    ? { ...clonePlannerValue(savedDays.get(day.date)), index: day.index, progressRows: day.progressRows } : day)
+  return { schedule: next, manualPlans: nextPlans, preferences }
 }
 
 export function visibleFixedScheduleTimeline(schedule) {
@@ -134,7 +166,7 @@ export function plannerBasePlan(schedule, day) {
 export function restoreFixedScheduleDay(schedule, date, manualPlans = {}, fallbackDay = null) {
   const day = schedule.result.timeline.find(day => day.date === date) || fallbackDay
   if (!day || day.date !== date || date < schedule.baselineDate) throw new Error('该日期尚无可恢复的日程')
-  const plan = clonePlannerValue(plannerBasePlan(schedule, day))
+  const plan = mergeCustomSpendRules(plannerBasePlan(schedule, day), schedule.context.preferences.customSpendRules, date)
   if (JSON.stringify(normalizePlannerPlan(day.planned)) === JSON.stringify(normalizePlannerPlan(plan))) return { schedule, manualPlans }
   return { schedule: updateFixedSchedulePlan(schedule, date, plan, day),
     manualPlans: { ...clonePlannerValue(manualPlans), [date]: plan } }
@@ -194,7 +226,7 @@ export function updateFixedSchedulePlan(schedule, date, plan, fallbackDay = null
     status: invalid ? 'invalid' : complete ? 'complete' : 'horizon',
     awaitingRecalculation: !invalid && !complete,
     blocked: plannerBlockedResources(state, next.context.groups, next.context.levels),
-    etaDays: complete ? plannerStateIsEmpty(next.context.initialState) ? 0 : elapsedDays : null })
+    etaDays: complete ? plannerStateIsEmpty(next.context.initialState) ? 0 : lastProgressDay : null })
   delete next.result.optimization
   delete next.result.planSource
   return next
@@ -253,7 +285,7 @@ export function applyExactPlannerResult(schedule, date, outcome, input, manualPl
 export function recalculateFixedScheduleFrom(schedule, date, manualPlans, options) {
   const day = schedule.result.timeline.find(day => day.date === date)
   if (!day || day.paused) throw new Error('请先修正此前的无效日程')
-  const planned = buildRecommendedPlan({ ...options, state: day.start, gains: day.planned.gains,
+  const planned = buildRecommendedPlan({ ...options, date, state: day.start, gains: day.planned.gains, customSpendOverrides: day.planned.customSpendOverrides,
     fixedSpends: day.planned.spends.filter(spend => isFixedStage624(spend) || spend.custom || !['training', 'stage624'].includes(spend.kind)) })
   const checked = settlePlannerDay(day.start, planned, options)
   if (checked.errors.length) throw new Error(checked.errors.join('；'))
@@ -271,9 +303,9 @@ export function recalculateFixedScheduleFrom(schedule, date, manualPlans, option
   next.result = { ...suffix.result, timeline: prefix.concat(suffix.result.timeline.map((day, index) => ({ ...day,
     index: offset + index,
     progressRows: plannerProgressRows(next.context.requiredState, next.context.initialState, day, next.context.stock) }))) }
-  if (next.result.etaDays != null) next.result.etaDays = plannerStateIsEmpty(next.context.initialState) ? 0 : dayOffset(next.baselineDate, next.result.timeline.at(-1).date) + 1
   next.result.lastProgressDay = suffix.result.lastProgressDay ? offset + suffix.result.lastProgressDay
     : prefix.reduce((last, day) => plannerStateRemaining(day.end) < plannerStateRemaining(day.start) ? dayOffset(next.baselineDate, day.date) + 1 : last, 0)
+  if (next.result.etaDays != null) next.result.etaDays = plannerStateIsEmpty(next.context.initialState) ? 0 : next.result.lastProgressDay
   delete next.context.planBaselines?.[date]
   return { schedule: next, manualPlans: nextPlans }
 }
@@ -318,6 +350,16 @@ export function reviseFixedSchedule(schedule, { date, preferences, strategy, age
 
 // Materialize a bounded daily commitment in the existing per-date plans.
 export function applyFixedStage624ToSchedule(schedule, manualPlans, { fromDate, toDate, count }, today) {
+  return applyFixedSpendToSchedule(schedule, manualPlans, { fromDate, toDate, count }, today)
+}
+
+export function applyFixedCustomSpendToSchedule(schedule, manualPlans, request, today, spend) {
+  const normalized = normalizePlannerSpend(spend)
+  if (!normalized.custom || typeof normalized.id !== 'string' || !normalized.id || ['stage624', 'training'].includes(normalized.kind)) throw new Error('自定义项目已变化，请重新打开设置')
+  return applyFixedSpendToSchedule(schedule, manualPlans, request, today, normalized)
+}
+
+function applyFixedSpendToSchedule(schedule, manualPlans, { fromDate, toDate, count }, today, customSpend = null) {
   const validDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date || '') && plannerDateAfter(date, 0) === date
   if (!validDate(fromDate) || !validDate(toDate) || fromDate > toDate || fromDate < today || fromDate < schedule.baselineDate) throw new Error('请选择今天或未来的有效日期范围')
   const lastDate = plannerDateAfter(schedule.baselineDate, PLANNER_RULES.maxEtaDays - 1)
@@ -329,18 +371,28 @@ export function applyFixedStage624ToSchedule(schedule, manualPlans, { fromDate, 
   const initialState = days.get(fromDate)?.start || prefix.at(-1)?.end || schedule.context.initialState
   let state = clonePlannerValue(initialState)
   const nextPlans = clonePlannerValue(manualPlans)
+  const matches = customSpend
+    ? spend => spend.custom && spend.id === customSpend.id
+    : spend => spend.id === 'stage624' || spend.kind === 'stage624'
+  const fixed = customSpend ? { ...clonePlannerValue(customSpend), value: count, fixed: true }
+    : { ...createSpend('stage624', { value: count }), fixed: true }
+  const replace = spends => {
+    const index = spends.findIndex(matches)
+    const result = clonePlannerValue(spends.filter(spend => !matches(spend)))
+    result.splice(index < 0 ? result.length : index, 0, clonePlannerValue(fixed))
+    return result
+  }
   let affectedDates = 0
   for (let date = fromDate; date <= toDate; date = plannerDateAfter(date, 1)) {
     const base = nextPlans[date] || days.get(date)?.planned || buildRecommendedPlan({ ...schedule.context, state, date, initialExtra: 0 })
-    const fixed = { ...createSpend('stage624', { value: count }), fixed: true }
-    const other = base.spends.filter(spend => spend.id !== 'stage624' && spend.kind !== 'stage624')
-    const manualSpends = clonePlannerValue(other)
-    const originalIndex = base.spends.findIndex(spend => spend.id === 'stage624' || spend.kind === 'stage624')
-    manualSpends.splice(originalIndex < 0 ? manualSpends.length : originalIndex, 0, fixed)
+    const other = base.spends.filter(spend => !matches(spend))
+    const overridden = clonePlannerValue(base)
+    if (customSpend) markCustomSpendOverride(overridden, schedule.context.preferences.customSpendRules, customSpend.id)
     const plan = nextPlans[date]
-      ? { gains: clonePlannerValue(base.gains), spends: manualSpends }
+      ? { ...overridden, spends: replace(base.spends) }
       : buildRecommendedPlan({ ...schedule.context, state, date, gains: base.gains,
-        fixedSpends: [...other.filter(spend => spend.custom || spend.kind !== 'training'), fixed] })
+        customSpendOverrides: overridden.customSpendOverrides,
+        fixedSpends: [...other.filter(spend => isFixedStage624(spend) || spend.custom || !['training', 'stage624'].includes(spend.kind)), fixed] })
     const settled = settlePlannerDay(state, plan, schedule.context)
     if (settled.errors.length) throw new Error(`${date}：${settled.errors.join('；')}；未应用任何日期`)
     nextPlans[date] = normalizePlannerPlan(plan)
@@ -352,9 +404,13 @@ export function applyFixedStage624ToSchedule(schedule, manualPlans, { fromDate, 
   const next = clonePlannerValue(schedule)
   next.result = { ...suffix.result, timeline: prefix.concat(suffix.result.timeline.map((day, index) => ({ ...day,
     index: offset + index, progressRows: plannerProgressRows(next.context.requiredState, next.context.initialState, day, next.context.stock) }))) }
-  if (next.result.etaDays != null) next.result.etaDays = plannerStateIsEmpty(next.context.initialState) ? 0 : dayOffset(next.baselineDate, next.result.timeline.at(-1).date) + 1
   next.result.lastProgressDay = suffix.result.lastProgressDay ? offset + suffix.result.lastProgressDay
     : prefix.reduce((last, day) => plannerStateRemaining(day.end) < plannerStateRemaining(day.start) ? dayOffset(next.baselineDate, day.date) + 1 : last, 0)
-  next.context.planBaselines = Object.fromEntries(Object.entries(next.context.planBaselines || {}).filter(([date]) => date < fromDate))
+  if (next.result.etaDays != null) next.result.etaDays = plannerStateIsEmpty(next.context.initialState) ? 0 : next.result.lastProgressDay
+  if (customSpend) {
+    for (const [date, baseline] of Object.entries(next.context.planBaselines || {})) {
+      if (date >= fromDate && date <= toDate) baseline.spends = replace(baseline.spends)
+    }
+  } else next.context.planBaselines = Object.fromEntries(Object.entries(next.context.planBaselines || {}).filter(([date]) => date < fromDate))
   return { schedule: next, manualPlans: nextPlans, affectedDates }
 }

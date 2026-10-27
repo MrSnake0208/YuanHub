@@ -51,6 +51,7 @@ onBeforeUnmount(() => {
 }
 .back-to-top:hover,
 .back-to-top:active { background: var(--yellow); }
+:global(body:has(.planner-save-toast) .back-to-top) { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 .back-to-top:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 @media (min-width: 1081px) {
   .back-to-top { right: calc(28px + env(safe-area-inset-right, 0px)); }

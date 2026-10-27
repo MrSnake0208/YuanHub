@@ -20,7 +20,8 @@ import * as features from '../src/config/features.js'
 import { installViewport } from '../test-support/viewport.js'
 
 const navigation = vi.hoisted(() => ({ query: {}, path: '/operator', push: vi.fn().mockResolvedValue(), replace: vi.fn().mockResolvedValue() }))
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async importOriginal => ({
+  ...await importOriginal(),
   useRouter: () => ({ replace: navigation.replace, push: navigation.push }),
   useRoute: () => navigation,
   onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {},

@@ -1,6 +1,7 @@
 import { normalizeTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds } from './operatorTrainingPlans.js'
 import { PLANNER_RULES, normalizePlannerSnapshot, plannerStorageKey } from './cultivationPlanner.js'
 import { BUSINESS_TIMEZONE, dateInZone } from '../utils/businessDay.js'
+import { CUSTOM_DAILY_SPENDS_FEATURE } from './customPlannerSpends.js'
 
 // Only schema fields change case. Resource IDs, date keys and operator IDs stay intact.
 const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperatorIds', 'starLevel', 'agentOrder', 'purchaseCount',
@@ -8,7 +9,7 @@ const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperat
   'etaDays', 'lastProgressDay', 'costPer', 'groupId', 'stageLevel', 'colorKey', 'defaultValue', 'costCoins',
   'totalCoins', 'initialExtra', 'dailyCoins', 'beforePercent', 'todayPercent', 'startRemaining', 'planBaselines', 'awaitingRecalculation',
   'displayStartDate', 'fromDate', 'completionDays', 'agentDays', 'staminaSources', 'monthlyCard', 'fixedSources',
-  'dailyEnabled', 'shopEnabled', 'dailyAmount', 'shopAmount', 'endDate', 'sourcePeriods']
+  'dailyEnabled', 'shopEnabled', 'dailyAmount', 'shopAmount', 'endDate', 'sourcePeriods', 'customSpendRules', 'customSpendOverrides']
 const snake = Object.fromEntries(fields.map(key => [key, key.replace(/[A-Z]/g, c => '_' + c.toLowerCase())]))
 const camel = Object.fromEntries(Object.entries(snake).map(([a, b]) => [b, a]))
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -36,7 +37,7 @@ export function plannerDateInZone(timezone, value = new Date(), dayStartHour = 0
   return dateInZone(timezone, value, dayStartHour)
 }
 export function scheduleBody(snapshot, revision = snapshot.revision || 0) {
-  return { schema_version: 1, rules_version: PLANNER_RULES.version, expected_revision: revision,
+  return { schema_version: 1, rules_version: PLANNER_RULES.version, expected_revision: revision, client_features: [CUSTOM_DAILY_SPENDS_FEATURE],
     timezone: snapshot.timezone || BUSINESS_TIMEZONE, ...mapFields({ strategy: snapshot.strategy, agentOrder: snapshot.agentOrder,
       preferences: snapshot.preferences, manualPlans: snapshot.manualPlans, schedule: snapshot.schedule }, snake) }
 }

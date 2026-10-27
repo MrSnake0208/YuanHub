@@ -5,9 +5,13 @@ export const DRAW_TICKETS = [
 const MAX = 2147483647
 
 export function drawResourceChanges({ action, ticketId, quantity, channel }) {
-  if (!DRAW_TICKETS.some(ticket => ticket.id === ticketId)) throw new Error('请选择符传类型')
+  if (!DRAW_TICKETS.some(ticket => ticket.id === ticketId) && !(ticketId === 'zhuyu' && action === 'exchange' && channel === 'standard')) throw new Error('请选择有效的兑换资源')
   if (!/^[1-9]\d*$/.test(String(quantity)) || !Number.isSafeInteger(Number(quantity)) || Number(quantity) > MAX) throw new Error('数量须为有效正整数')
   const count = Number(quantity)
+  if (ticketId === 'zhuyu') {
+    if (count * 50 > MAX) throw new Error('兑换所得超过支持上限')
+    return [{ id: 'zhuyu', count: -count }, { id: 'baijinbi', count: count * 50 }]
+  }
   if (action === 'gain') {
     if (!channel.trim() || channel.length > 64 || channel.includes('派遣')) throw new Error('请填写有效的奖励来源')
     return [{ id: ticketId, count }]
@@ -23,7 +27,7 @@ export function drawResourceChanges({ action, ticketId, quantity, channel }) {
 export function drawResourcePreview(draft, balances) {
   return drawResourceChanges(draft).map(change => {
     const balance = balances?.[change.id]
-    const name = change.id === 'baijinbi' ? '白金币' : DRAW_TICKETS.find(ticket => ticket.id === change.id).name
+    const name = change.id === 'baijinbi' ? '白金币' : change.id === 'zhuyu' ? '茱萸' : DRAW_TICKETS.find(ticket => ticket.id === change.id).name
     if (!Number.isInteger(balance) || balance < 0) throw new Error(`请先盘点${name}库存`)
     const after = balance + change.count
     if (after < 0) throw new Error(`${name}库存不足`)
