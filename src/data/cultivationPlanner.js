@@ -508,7 +508,7 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     const changed = plannerStateRemaining(day.end) < plannerStateRemaining(start)
     if (changed) lastProgressDay = index + 1
     const futureManual = dates.slice(index + 1, maxDays).some(nextDate => manualPlans[nextDate])
-    const futureSourceChange = (preferences.customSpendRules || []).some(rule => rule.versions.some(version => version.enabled && version.fromDate > date && version.fromDate <= dates[Math.min(maxDays, dates.length) - 1])) || (preferences.sourcePeriods || []).some(period =>
+    const futureSourceChange = (preferences.customSpendRules || []).some(rule => rule.versions.some(version => version.fromDate > date && version.fromDate <= dates[Math.min(maxDays, dates.length) - 1])) || (preferences.sourcePeriods || []).some(period =>
       period.fromDate > date && period.fromDate <= dates[Math.min(maxDays, dates.length) - 1] ||
       period.sources.monthlyCard.startDate > date && period.sources.monthlyCard.startDate <= dates[Math.min(maxDays, dates.length) - 1])
     if (day.errors.length) {

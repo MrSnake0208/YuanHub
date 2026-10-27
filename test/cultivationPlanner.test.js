@@ -62,6 +62,17 @@ test('有未配置获取途径的缺口时明确阻塞，不追加几十天空�
   assert.equal(locked.blocked[0].reason, '所需历练层数未开放')
 })
 
+test('未来停用持续支出后恢复体力时继续推算', () => {
+  const preferences = normalizePlannerPreferences({ customSpendRules: [{ id: 'custom-spend-demo', versions: [
+    { fromDate: dates[0], enabled: true, count: 1, item: { label: '预留体力', costPer: 408, yield: {} } },
+    { fromDate: dates[1], enabled: false }
+  ] }] })
+  const result = simulatePlanner({ initialState: stateFor({ __xp__: 1000 }), dates, levels, preferences })
+  assert.equal(result.status, 'complete')
+  assert.equal(result.timeline[0].date, dates[0])
+  assert.equal(result.timeline.at(-1).date, dates[1])
+})
+
 test('手动添加和旧日程的 6-24 均恢复标准经验奖励，忽略过期奖励和体力配置', () => {
   const legacy = normalizePlannerPlan(withEnergy([{ id: 'stage624', kind: 'count', value: 2, costPer: 20 }]))
   const manual = createSpend('stage624', { value: 2, yield: { __xp__: 1 } })

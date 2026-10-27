@@ -52,6 +52,21 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
 })
 
+it('很早开始的已完成日程仍可查看当前起的每日规则预览', async () => {
+  const oldDate = addCalendarDays(today, -120)
+  const rules = [{ id: 'custom-spend-test', versions: [{ fromDate: today, enabled: true, count: 1, item: { label: '预留', costPer: 10, yield: {} } }] }]
+  const preferences = normalizePlannerPreferences({ customSpendRules: rules })
+  const context = { date: oldDate, initialState: {}, requiredState: {}, stock: {}, goals: {}, levels: {}, strategy: 'overall', agentOrder: [], preferences }
+  remotes.a = { ...scheduleBody({ manualPlans: {}, schedule: createFixedSchedule(context), preferences, agentOrder: [], strategy: 'overall' }), account_id: 'a', revision: 1 }
+  const wrapper = mount(OperatorGrowthTracker, { attachTo: document.body, props: { accountId: 'a', isLoggedIn: true } })
+  await flushPromises()
+  const tabs = wrapper.findComponent(PlannerDateTabs)
+  expect(tabs.props('dates')).toContain(today)
+  expect(tabs.props('dates')).toContain(addCalendarDays(today, 89))
+  expect(tabs.props('pastCount')).toBeGreaterThan(0)
+  wrapper.unmount()
+})
+
 it('普通支出立即入账与汇总，等待云端确认后关闭，重复添加合并且保留获取与总览', async () => {
   const wrapper = await setup(), request = pending()
   expect(wrapper.find('#planner-spend-menu').exists()).toBe(false)
