@@ -1,23 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# YuanHub 前端安全发布脚本
-#
-# 用法：
-#   ./release-frontend.sh
-#   ./release-frontend.sh 0.0.1-beta.4
-#   ./release-frontend.sh --yes 0.0.1-beta.4
-#
-# 流程：
-#   1. 检查 main / 工作区 / GitHub CLI
-#   2. 同步 origin/main 和 tags
-#   3. 更新 VERSION（必要时提交）
-#   4. push main
-#   5. 等待 CI 成功
-#   6. 创建并 push v* tag
-#   7. 等待 Release 部署成功
-#
-# 不会自动 git add 业务改动；发布前请先自行提交代码。
+# 候选分支准备 VERSION；main 发布已通过 CI 的提交。
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
@@ -40,7 +24,7 @@ usage() {
 YuanHub 前端发布
 
 用法：
-  ./release-frontend.sh [--yes] [--dry-run | --prepare-only] [版本号]
+  ./release-frontend.sh [--yes] [--dry-run] [--prepare-only] [版本号]
 
 示例：
   ./release-frontend.sh
@@ -49,14 +33,13 @@ YuanHub 前端发布
   ./release-frontend.sh --yes 0.0.1-beta.4
 
 规则：
-  - 不传版本号或传 auto：
-      * 当前 VERSION 尚未发布时，继续发布当前 VERSION
-      * 当前 VERSION 已有 tag 且形如 x.y.z-beta.N 时，自动递增到 beta.N+1
-  - 只有 CI 成功后才会创建并推送发布 tag
-  - Release 失败时不会改写或复用已有 tag
-  - --dry-run：仅预览本地计划，不同步远端、不修改版本、不提交或推送
-  - --prepare-only：更新版本并推送 main，交由统一入口等待 CI 和发布
-  - --expected-commit SHA：发布前核对准备阶段冻结的提交
+  - --prepare-only：在非 main 候选分支准备 VERSION；不提交、不推送
+  - 准备时 auto 沿用未发布 VERSION，已发布 beta.N 自动递增
+  - 正式发布只接受 main 中已准备的 VERSION；auto 沿用该版本
+  - --dry-run：只读预览，不同步远端、不修改版本或 Git 引用
+  - --expected-commit SHA：发布前核对冻结的完整提交
+  - 同 SHA main push CI 成功后才创建 tag；失败部署重跑原 Release
+
 EOF
 }
 
@@ -99,14 +82,20 @@ while [ "$#" -gt 0 ]; do
 done
 [ "$TARGET_VERSION" != auto ] || TARGET_VERSION=""
 
-for command_name in git gh; do
+for command_name in git; do
   command -v "$command_name" >/dev/null 2>&1 || die "缺少命令：$command_name"
 done
 
 [ -f VERSION ] || die "当前目录不是 YuanHub 前端仓库：缺少 VERSION"
 
 CURRENT_BRANCH="$(git branch --show-current)"
-[ "$CURRENT_BRANCH" = "main" ] || die "请先切换到 main 分支；当前分支：$CURRENT_BRANCH"
+if [ "$PREPARE_ONLY" -eq 1 ]; then
+  [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != main ] || die "请在非 main 的候选分支准备 VERSION，再提交 PR"
+  [ -z "$EXPECTED_COMMIT" ] || die "--prepare-only 不能与 --expected-commit 同用"
+else
+  [ "$CURRENT_BRANCH" = main ] || die "正式发布请先切换到 main 分支；当前分支：$CURRENT_BRANCH"
+  command -v gh >/dev/null 2>&1 || die "缺少命令：gh"
+fi
 
 if [ -n "$(git status --porcelain)" ]; then
   printf '\n当前还有未提交修改：\n' >&2
@@ -121,21 +110,21 @@ GH_REPO="${GH_REPO#ssh://git@github.com/}"
 GH_REPO="${GH_REPO%.git}"
 [[ "$GH_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "origin 必须是 GitHub 仓库"
 
+if [ -n "$EXPECTED_COMMIT" ] && [ "$(git rev-parse HEAD)" != "$EXPECTED_COMMIT" ]; then
+  die "提交已变化，拒绝发布；准备阶段 SHA：$EXPECTED_COMMIT"
+fi
+
 if [ "$DRY_RUN" -ne 1 ]; then
-  gh auth status >/dev/null 2>&1 || die "GitHub CLI 尚未登录，请先执行 gh auth login"
-
-  info "同步远端 main 与 tags"
-  git fetch --prune origin main --tags
-
-  read -r BEHIND AHEAD < <(git rev-list --left-right --count origin/main...HEAD)
-
-  if [ "$BEHIND" -gt 0 ] && [ "$AHEAD" -gt 0 ]; then
-    die "本地 main 与 origin/main 已分叉，请先手动处理后再发布"
-  fi
-
-  if [ "$BEHIND" -gt 0 ]; then
-    info "本地 main 落后远端，执行 fast-forward"
-    git merge --ff-only origin/main
+  if [ "$PREPARE_ONLY" -eq 1 ]; then
+    git fetch origin --tags
+  else
+    gh auth status >/dev/null 2>&1 || die "GitHub CLI 尚未登录，请先执行 gh auth login"
+    info "同步远端 main 与 tags"
+    git fetch --prune origin main --tags
+    read -r BEHIND AHEAD < <(git rev-list --left-right --count origin/main...HEAD)
+    [ "$BEHIND" -eq 0 ] || [ "$AHEAD" -eq 0 ] || die "本地 main 与 origin/main 已分叉，请先手动处理"
+    [ "$BEHIND" -eq 0 ] || git merge --ff-only origin/main
+    [ "$AHEAD" -eq 0 ] || die "本地 main 尚未合并到远端；请通过 PR 合并并等待 main CI"
   fi
 fi
 
@@ -153,10 +142,10 @@ tag_exists() {
 if [ -z "$TARGET_VERSION" ]; then
   if ! tag_exists "v$CURRENT_VERSION"; then
     TARGET_VERSION="$CURRENT_VERSION"
-  elif [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+-beta\.)([0-9]+)$ ]]; then
+  elif [ "$PREPARE_ONLY" -eq 1 ] && [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+-beta\.)([0-9]+)$ ]]; then
     TARGET_VERSION="${BASH_REMATCH[1]}$((BASH_REMATCH[2] + 1))"
   else
-    die "当前版本 v$CURRENT_VERSION 已发布，且无法安全推导下一版本；请显式指定版本号"
+    die "当前 VERSION 已发布；请在候选分支使用 --prepare-only 准备新版本并提交 PR"
   fi
 fi
 
@@ -170,8 +159,8 @@ if tag_exists "$TAG"; then
   die "$TAG 已存在。已发布 tag 不应删除、移动或复用，请换一个新版本号"
 fi
 
-if [ -n "$EXPECTED_COMMIT" ] && [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
-  die "准备阶段版本已变化，拒绝创建新的版本提交"
+if [ "$PREPARE_ONLY" -ne 1 ] && [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+  die "VERSION 与目标版本不一致；请在候选分支使用 --prepare-only 准备版本并提交 PR"
 fi
 
 info "发布计划"
@@ -186,7 +175,11 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 if [ "$YES" -ne 1 ]; then
-  printf '\n确认开始发布？[y/N] '
+  if [ "$PREPARE_ONLY" -eq 1 ]; then
+    printf '\n确认准备候选版本？[y/N] '
+  else
+    printf '\n确认开始发布？[y/N] '
+  fi
   read -r answer
   case "$answer" in
     y|Y|yes|YES)
@@ -198,25 +191,15 @@ if [ "$YES" -ne 1 ]; then
   esac
 fi
 
-if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
-  info "更新 VERSION"
-  printf '%s\n' "$TARGET_VERSION" > VERSION
-  git add VERSION
-  git commit -m "chore(release): 更新前端版本至 $TARGET_VERSION"
-else
-  ok "VERSION 已是 ${TARGET_VERSION}，无需额外版本提交"
+if [ "$PREPARE_ONLY" -eq 1 ]; then
+  if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+    printf '%s\n' "$TARGET_VERSION" > VERSION
+  fi
+  ok "候选版本已准备；请自行提交 VERSION 并创建 PR"
+  exit 0
 fi
 
 RELEASE_COMMIT="$(git rev-parse HEAD)"
-
-info "推送 main"
-git push origin main
-ok "main 已推送：$(git rev-parse --short HEAD)"
-
-if [ "$PREPARE_ONLY" -eq 1 ]; then
-  ok "准备完成，尚未创建发布 tag：$RELEASE_COMMIT"
-  exit 0
-fi
 
 find_workflow_run() {
   local workflow="$1"
@@ -258,7 +241,7 @@ info "创建并推送 $TAG"
   [ "$(git rev-parse HEAD)" = "$RELEASE_COMMIT" ] &&
   [ -z "$(git status --porcelain)" ] || die "等待 CI 期间工作区或提交已变化，拒绝打 tag"
 git tag -a "$TAG" "$RELEASE_COMMIT" -m "YuanHub $TAG"
-git push origin "$TAG"
+git push origin "$TAG" || die "tag 推送失败；先核对本地 $TAG 与远端状态，必要时推送原 tag，不删除或重打"
 ok "$TAG 已推送"
 
 info "等待生产 Release"
