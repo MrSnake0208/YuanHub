@@ -49,3 +49,29 @@ it('当天固定标记可解除，空账号或禁用时不能打开', async () =
   await wrapper.setProps({ accountId: 'a', disabled: true }); await open(wrapper)
   expect(wrapper.find('form').exists()).toBe(false)
 })
+
+it('自定义项目默认安排到规划末日，展示体力与产出并等待云端确认', async () => {
+  const wrapper = setup({ entry: { id: 'custom-spend-1', custom: true, label: '据点产出', costPer: 0, value: 1, yield: { __xp__: 1000 } }, resourceName: () => '经验' })
+  await open(wrapper)
+  expect(wrapper.get('[aria-label="每日安排结束日期"]').element.value).toBe('2027-01-19')
+  expect(wrapper.text()).toContain('不会自动延续到范围之外')
+  expect(wrapper.text()).toContain('每天消耗 0 体力')
+  await wrapper.get('[aria-label="每日项目次数"]').setValue(2)
+  expect(wrapper.text()).toContain('每天产出：经验 2000')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  const [request, context, done] = wrapper.emitted('apply')[0]
+  expect(request.count).toBe(2)
+  expect(context.entryId).toBe('custom-spend-1')
+  expect(wrapper.get('.settings-save').element.disabled).toBe(true)
+  done(false, '体力不足，未应用任何日期'); await flushPromises()
+  expect(wrapper.text()).toContain('体力不足')
+  expect(wrapper.get('[aria-label="每日项目次数"]').element.value).toBe('2')
+})
+
+it('自定义当天安排提供修改入口，禁用时说明原因', async () => {
+  const wrapper = setup({ entry: { id: 'custom-spend-1', custom: true, label: '据点', value: 1, fixed: true }, disabled: true, blockedReason: '请先切换至常规日程规划' })
+  expect(wrapper.text()).toContain('修改每日安排')
+  expect(wrapper.text()).toContain('当天安排 1 次')
+  expect(wrapper.text()).toContain('请先切换至常规日程规划')
+  expect(wrapper.text()).not.toContain('解除当天固定')
+})

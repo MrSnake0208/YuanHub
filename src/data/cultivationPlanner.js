@@ -227,7 +227,7 @@ export function normalizePlannerPlan(plan) {
     yield: spend?.yield ? clonePlannerValue(spend.yield) : undefined,
     groupId: spend?.groupId,
     stageLevel: spend?.stageLevel,
-    ...(isFixedStage624(spend) ? { fixed: true } : {})
+    ...(isFixedStage624(spend) || (spend?.custom && spend?.fixed === true) ? { fixed: true } : {})
   })
   return { gains: Array.isArray(plan?.gains) ? plan.gains.map(normalizeGain) : [], spends: Array.isArray(plan?.spends) ? plan.spends.map(normalizeSpend) : [] }
 }
@@ -522,7 +522,7 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     state = day.end
     if (plannerStateIsEmpty(state) && !futureManual) {
       timeline.push(day)
-      return { timeline, status: 'complete', etaDays: plannerStateIsEmpty(initialState) ? 0 : index + 1, lastProgressDay, remaining: state, blocked: [] }
+      return { timeline, status: 'complete', etaDays: plannerStateIsEmpty(initialState) ? 0 : lastProgressDay, lastProgressDay, remaining: state, blocked: [] }
     }
     if (!changed && !manual && !futureManual && !futureSourceChange) {
       if (!timeline.length) timeline.push(day)
