@@ -1,5 +1,6 @@
 import { TRAINING_GROUPS } from './operatorTraining.js'
 import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
+import { mergeCustomSpendRules } from './customPlannerSpends.js'
 import { isFixedStage624, aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, createGain, createSpend,
   normalizePlannerPlan, normalizePlannerPreferences, plannerActions, plannerStateIsEmpty,
   PLANNER_RULES, PURCHASE_CUMULATIVE, planTotals, settlePlannerDay } from './cultivationPlanner.js'
@@ -14,8 +15,8 @@ function defaultPlan(preferences, extra = 0, date = '') {
   const gains = resolveDailyStaminaGains([createGain('natural'), createGain('meal')], preferences, date)
   if (preferences.purchaseCount) gains.push(createGain('buy', { value: preferences.purchaseCount }))
   if (extra) gains.push(createGain('custom', { label: '额外体力', value: extra }))
-  return normalizePlannerPlan({ gains, spends: ['luoyang', 'shouchun'].filter(id => preferences[id])
-    .map(id => createSpend(id, { value: preferences[id] })) })
+  return mergeCustomSpendRules(normalizePlannerPlan({ gains, spends: ['luoyang', 'shouchun'].filter(id => preferences[id])
+    .map(id => createSpend(id, { value: preferences[id] })) }), preferences.customSpendRules, date)
 }
 
 export function prepareExactPlanner(input) {
@@ -46,6 +47,7 @@ export function prepareExactPlanner(input) {
     let plan = manual ? normalizePlannerPlan(config.manualPlans[date])
       : index === 0 && config.firstDay ? normalizePlannerPlan(config.firstDay)
         : defaultPlan(preferences, index === 0 ? config.initialExtra : 0, date)
+    plan = mergeCustomSpendRules(plan, preferences.customSpendRules, date)
     if (!manual) plan.spends = plan.spends.filter(spend => isFixedStage624(spend) || spend.custom || !['training', 'stage624'].includes(spend.kind))
     if (config.objective === 'coins' && !manual) plan.gains = plan.gains.filter(gain => gain.id !== 'buy')
     const checkPlan = config.objective === 'coins' && !manual
@@ -188,6 +190,15 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
     const start = state, spec = problem.days[d]
     const planned = etaDays != null && d >= etaDays && !spec.manual && !(d === 0 && problem.config.firstDay)
       ? defaultPlan({ ...normalizePlannerPreferences(), sourcePeriods: problem.preferences.sourcePeriods }, 0, spec.date) : plans[d] || spec.plan
+    const derivedAfterCompletion = etaDays != null && d >= etaDays && !spec.manual && !(d === 0 && problem.config.firstDay)
+    if (!derivedAfterCompletion) {
+      if (JSON.stringify(planned.customSpendOverrides || []) !== JSON.stringify(spec.plan.customSpendOverrides || [])) return null
+      for (const rule of problem.preferences.customSpendRules || []) {
+        const expected = spec.plan.spends.filter(spend => spend.id === rule.id)
+        const actual = planned.spends.filter(spend => spend.id === rule.id)
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) return null
+      }
+    }
     for (let index = 0; index < problem.reserves.length; index++) {
       const claims = planned.gains.filter(gain => gain.id === reserveGainId(index))
       if (claims.length && (claims.length > 1 || reserveUses.has(index) || !spec.eligibleReserves.some(item => item.index === index) || claims[0].value !== problem.reserves[index].amount)) return null
@@ -199,7 +210,7 @@ export function evaluateExactPlans(problem, plans, milestones = []) {
     const fixed = spec.plan.spends.filter(isFixedStage624)
     if (fixed.length && !planned.spends.some(isFixedStage624)) return null
     if (fixed.length && planned.spends.filter(spend => spend.id === 'stage624' || spend.kind === 'stage624').reduce((sum, spend) => sum + spend.value, 0) !== fixed.reduce((sum, spend) => sum + spend.value, 0)) return null
-    for (const spend of spec.plan.spends.filter(item => item.custom && item.fixed)) {
+    for (const spend of spec.plan.spends.filter(item => item.custom && item.fixed && !(etaDays != null && d >= etaDays && !spec.manual && !(d === 0 && problem.config.firstDay)))) {
       const matches = planned.spends.filter(item => item.id === spend.id)
       if (matches.length !== 1) return null
       const actual = matches[0], expectedYield = spend.yield || {}, actualYield = actual.yield || {}
@@ -270,7 +281,7 @@ function fillRemainingStamina(problem, solution) {
 function greedySeed(problem) {
   let state = clonePlannerValue(problem.config.initialState)
   const plans = problem.days.map(day => {
-    const plan = day.manual ? day.plan : buildRecommendedPlan({ ...problem.config, state, gains: day.plan.gains, fixedSpends: day.plan.spends })
+    const plan = day.manual ? day.plan : buildRecommendedPlan({ ...problem.config, date: day.date, state, gains: day.plan.gains, fixedSpends: day.plan.spends, customSpendOverrides: day.plan.customSpendOverrides })
     state = settlePlannerDay(state, plan, problem.config).end
     return plan
   })

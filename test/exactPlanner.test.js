@@ -225,3 +225,20 @@ test('第一天固定6-24次数不被精确方案或贪心候选追加，计算�
   assert.equal(entries.reduce((sum, entry) => sum + entry.value, 0), 6)
   assert.equal(entries[0].fixed, true)
 })
+
+test('真实求解保留持续每日约束及单日跳过，备齐后规则不延长ETA或费用', () => {
+  const id = 'custom-spend-lantai'
+  const rule = { id, versions: [{ fromDate: dates(1)[0], enabled: true, count: 10, item: { label: '兰台扫荡', costPer: 10, yield: { __xp__: 1000 } } }] }
+  for (const objective of ['overall', 'coins']) {
+    const input = inputFor({ __xp__: 5000 }, { objective, preferences: { customSpendRules: [rule] }, manualPlans: {
+      '2026-09-16': { gains: [createGain('natural'), createGain('meal')], spends: [], customSpendOverrides: [id] }
+    } })
+    const result = solve(input)
+    assert.equal(result.status, 'optimal')
+    assert.equal(result.solution.etaDays, 1)
+    assert.equal(result.solution.timeline[0].planned.spends.find(row => row.id === id).value, 10)
+    assert.deepEqual(result.solution.timeline[1].planned.customSpendOverrides, [id])
+    assert.equal(result.solution.timeline[1].planned.spends.some(row => row.id === id), false)
+    assert.equal(result.solution.totalCoins, 0)
+  }
+})

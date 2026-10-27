@@ -8,6 +8,7 @@
 .custom-entry-heading > .custom-entry-remove { margin-right: -6px; }
 .custom-entry-fields { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; }
 .spend .custom-entry-fields { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.template-only.spend .custom-entry-fields { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .custom-entry-fields label { display: grid; min-width: 0; gap: 4px; font: 12px/1.5 var(--font-b); }
 .custom-entry-fields label > span { white-space: nowrap; }
 .custom-entry input { width: 100%; min-width: 0; min-height: 40px; margin: 0; padding: 7px 8px; font: 600 14px/1.5 var(--font-b); }
