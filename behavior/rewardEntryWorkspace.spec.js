@@ -10,6 +10,7 @@ import { TRAINING_REWARD_GROUPS } from '../src/data/inventory/trainingRewards.js
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
 import { installViewport } from '../test-support/viewport.js'
 import { auth } from '../src/store/auth.js'
+import * as zhuyuPreference from '../src/api/dailyZhuyuPreference.js'
 
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
 }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(), putTrainingWorkspace: vi.fn() }))
+vi.mock('../src/api/dailyZhuyuPreference.js', () => ({ getDailyZhuyuPreference: vi.fn(), saveDailyZhuyuPreference: vi.fn() }))
 
 const catalog = [
   { entity_type: 'item', id: 'zhuyu', name: '茱萸', rarity: 3 },
@@ -130,6 +132,7 @@ function mountWorkspace(props = {}) {
       accountName: '测试账号',
       latestInventoryAt: '',
       disabled: false,
+      ...(props.compactDaily ? { game: '代号鸢' } : {}),
       ...props,
     },
   })
@@ -1970,6 +1973,17 @@ it('提交成功后焦点留在结果区，实际 Escape 事件仍可关闭并�
 })
 
 describe('库存页紧凑录入', () => {
+  let previousUser, preferences
+  beforeEach(() => {
+    previousUser = auth.userInfo; auth.userInfo = { id: 'compact-user' }; preferences = new Map()
+    zhuyuPreference.getDailyZhuyuPreference.mockImplementation(async (account, user) => ({ account_id: account, game: '代号鸢', preference: preferences.get(`${user}:${account}`) ?? null }))
+    zhuyuPreference.saveDailyZhuyuPreference.mockImplementation(async (account, user, game, expected, value) => {
+      const key = `${user}:${account}`
+      if ((preferences.get(key) ?? null) !== expected) throw Object.assign(new Error('conflict'), { status: 409 })
+      preferences.set(key, value); return { account_id: account, game, preference: value }
+    })
+  })
+  afterEach(() => { auth.userInfo = previousUser })
   const success = { accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] }
   it('普通获得选道具填数量后直接保存，来源时间仍可展开', async () => {
     inventoryApi.importInventory.mockResolvedValue(success)
@@ -2059,6 +2073,70 @@ describe('库存页紧凑录入', () => {
     const record = inventoryApi.importInventory.mock.lastCall[0].records[0]
     expect(record.record_id).toMatch(/^yuanhub:daily-reward:daily-zhuyu:/)
     expect(record.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 50 }])
+  })
+  it('茱萸记账方式跨页面保留，按用户和子账号隔离且不自动勾选', async () => {
+    const previousUser = auth.userInfo
+    auth.userInfo = { id: 'zhuyu-preference-test' }
+    const key = 'yuanhub:inventory:daily-zhuyu:zhuyu-preference-test:%E4%BB%A3%E5%8F%B7%E9%B8%A2:acc-1'
+    localStorage.removeItem(key)
+    try {
+      inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+      let wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+      await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+      const select = document.querySelector('.quick-reward-editor select')
+      select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+      await clickElement(bodyButton('保存设置')); await flushPromises()
+      expect(preferences.get('zhuyu-preference-test:acc-1')).toBe('baijinbi')
+      wrapper.unmount()
+      wrapper = mountWorkspace({ compactDaily: true, game: '代号鸢' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      expect(wrapper.findAll('.daily-quick-option input')[0].element.checked).toBe(false)
+      await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      await wrapper.setProps({ accountId: 'acc-1' }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      auth.userInfo = { id: 'another-user' }; await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      wrapper.unmount()
+    } finally { auth.userInfo = previousUser; localStorage.removeItem(key) }
+  })
+  it('云端无设置时迁移本机偏好，已有云端设置优先', async () => {
+    const key = 'yuanhub:inventory:daily-zhuyu:compact-user:%E4%BB%A3%E5%8F%B7%E9%B8%A2:acc-1'
+    localStorage.setItem(key, 'baijinbi')
+    try {
+      let wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+      expect(preferences.get('compact-user:acc-1')).toBe('baijinbi')
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+50 白金币')
+      wrapper.unmount(); preferences.set('compact-user:acc-1', 'zhuyu')
+      wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+      expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+      wrapper.unmount()
+    } finally { localStorage.removeItem(key) }
+  })
+  it('云端设置读取失败时阻止选择茱萸，重试后恢复', async () => {
+    zhuyuPreference.getDailyZhuyuPreference.mockRejectedValueOnce(new Error('offline'))
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    expect(wrapper.text()).toContain('云端茱萸记账设置读取失败')
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.disabled).toBe(true)
+    await wrapper.findAll('button').find(b => b.text() === '重试').trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option input')[0].element.disabled).toBe(false)
+    wrapper.unmount()
+  })
+  it('账号切换忽略旧读取，保存冲突不覆盖云端', async () => {
+    const late = deferred()
+    zhuyuPreference.getDailyZhuyuPreference.mockReturnValueOnce(late.promise)
+    const wrapper = mountWorkspace({ compactDaily: true }); await flushPromises()
+    await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
+    late.resolve({ account_id: 'acc-1', game: '代号鸢', preference: 'baijinbi' }); await flushPromises()
+    expect(wrapper.findAll('.daily-quick-option')[0].text()).toContain('+1 茱萸')
+    await wrapper.get('[aria-label="编辑每日茱萸"]').trigger('click'); await flushPromises()
+    const select = document.querySelector('.quick-reward-editor select')
+    select.value = 'baijinbi'; select.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    preferences.set('compact-user:acc-2', 'zhuyu')
+    await clickElement(bodyButton('保存设置')); await flushPromises()
+    expect(document.body.textContent).toContain('设置已在其他页面变更')
+    expect(preferences.get('compact-user:acc-2')).toBe('zhuyu')
+    wrapper.unmount()
   })
   it('今日状态读取失败可重试且不写入，未知提交只重试同一份文档', async () => {
     inventoryApi.listRecords.mockRejectedValueOnce(new Error('离线')).mockResolvedValue({ items: [], next_cursor: null })
