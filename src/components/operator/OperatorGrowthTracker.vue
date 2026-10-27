@@ -173,7 +173,7 @@
             <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" :id="'planner-cloud-recovery-' + kind" class="cloud-recovery" role="alert" tabindex="-1">
               <p>{{ kind === 'workspace' ? '清单' : '日程' }}尚未确认保存：{{ (kind === 'workspace' ? workspaceState : scheduleState).error.message }}</p>
               <p v-if="(kind === 'workspace' ? workspaceState : scheduleState).latest">云端版本 {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.revision }} · {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.updatedAt }}</p>
-              <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind, true); planError = ''">放弃本次修改并读取云端</button></div>
+              <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="discardCloudChanges(kind); planError = ''">放弃本次修改并读取云端</button></div>
             </div>
           </template>
           <div v-if="planRows.length || fixedSchedule" class="schedule-guidance" :class="{ 'schedule-update': scheduleNeedsUpdate }" role="status">
@@ -435,6 +435,17 @@
     <PlannerCustomSpendManager ref="templateManagerRef" :templates="commonSpendTemplates" :owner="templateOwner" :busy="templateState.saving || templatesLoading" :error="templateError" :resources="yieldResourceOptions" :resource-name="resourceName" @save="saveCommonSpends" @retry="recoverCommonSpends('retry', $event)" @discard="recoverCommonSpends('discard', $event)" />
     <PlannerCustomDailySpend ref="customDailyRef" :rules="customRules" :templates="commonSpendTemplates" :today="plannerToday" :date="selectedDate" :last-date="customDailyLastDate" :context-key="customDailyContext" :disabled="scheduleActionBlocked || goalMode" :resource-name="resourceName" @preview="previewCustomDaily" @apply="applyCustomDaily" />
     <Teleport to="body">
+      <div v-if="props.active && props.isLoggedIn && props.accountId && workspace.activePlanId && scheduleSaveStatus" class="planner-save-toast" :class="'is-' + scheduleSaveStatus">
+        <RefreshCw v-if="scheduleSaveStatus === 'saving'" class="planner-save-icon spin" :size="22" aria-hidden="true" />
+        <Check v-else-if="scheduleSaveStatus === 'saved'" class="planner-save-icon is-success" :size="22" aria-hidden="true" />
+        <CircleAlert v-else class="planner-save-icon is-error" :size="22" aria-hidden="true" />
+        <div class="planner-save-copy" :role="scheduleSaveStatus === 'error' ? 'alert' : 'status'" aria-live="polite">
+          <strong>{{ scheduleSaveStatus === 'saving' ? '正在保存到云端…' : scheduleSaveStatus === 'saved' ? '已保存到云端' : '日程尚未确认保存' }}</strong>
+          <span v-if="scheduleSaveStatus === 'saving'">请稍候</span>
+          <span v-else-if="scheduleSaveStatus === 'error'">请重试或查看云端同步提示</span>
+        </div>
+        <button v-if="scheduleSaveStatus === 'error'" type="button" class="planner-save-retry" @click="recover('schedule')">重试</button>
+      </div>
       <dialog ref="scheduleActionDialog" class="tracker-remove-dialog schedule-action-dialog" aria-labelledby="schedule-action-title" aria-describedby="schedule-action-description" @cancel.prevent="closeScheduleAction" @click="event => { if (event.target === scheduleActionDialog) { const box = scheduleActionDialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeScheduleAction() } }">
         <div class="tracker-remove-dialog-head"><div><span class="section-kicker">日程操作</span><h3 id="schedule-action-title">{{ scheduleActionTitle }}</h3></div><button type="button" class="tracker-dialog-close" aria-label="关闭" @click="closeScheduleAction"><X :size="17" aria-hidden="true" /></button></div>
         <div class="tracker-remove-dialog-body"><Info :size="18" aria-hidden="true" /><p id="schedule-action-description">{{ scheduleActionDescription }}</p></div>
@@ -546,6 +557,41 @@ const trainingPlanPickerRef = ref(null)
 const { workspace, snapshot: cloudSnapshot, workspaceState, scheduleState, cloudLoading, scheduleLoading, cloudError,
   migration, migrationBusy, cloudBlocked, workspacePending, schedulePending, loadCloud, saveWorkspace, saveSchedule,
   removeMember, prepareMigration, importLocal, keepCloud, compareMigrationAgain, recover, refreshCloud } = useOperatorPlannerCloud(props, targets, emit)
+const scheduleSaved = ref(false)
+let scheduleSavedTimer = null
+let discardingSchedule = false
+let scheduleHadDraft = false
+const scheduleSaveStatus = computed(() => {
+  if (scheduleState.value.saving || (schedulePending.value && !scheduleState.value.error)) return 'saving'
+  if (scheduleState.value.error) return 'error'
+  return scheduleSaved.value ? 'saved' : ''
+})
+watch(() => [schedulePending.value, scheduleState.value.error, props.accountId, props.isLoggedIn, workspace.value.activePlanId],
+  ([pending, failure, account, loggedIn, plan], [wasPending, , oldAccount, oldLoggedIn, oldPlan]) => {
+    if (account !== oldAccount || loggedIn !== oldLoggedIn || plan !== oldPlan) {
+      scheduleHadDraft = false
+      clearTimeout(scheduleSavedTimer)
+      scheduleSaved.value = false
+      return
+    }
+    if (pending || failure) {
+      if (scheduleState.value.pending) scheduleHadDraft = true
+      clearTimeout(scheduleSavedTimer)
+      scheduleSaved.value = false
+      return
+    }
+    if (wasPending && scheduleHadDraft && !discardingSchedule) {
+      scheduleSaved.value = true
+      clearTimeout(scheduleSavedTimer)
+      scheduleSavedTimer = setTimeout(() => { scheduleSaved.value = false }, 2400)
+    }
+    scheduleHadDraft = false
+  }, { flush: 'sync' })
+async function discardCloudChanges(kind) {
+  if (kind === 'schedule') discardingSchedule = true
+  try { await recover(kind, true) } finally { discardingSchedule = false }
+}
+onBeforeUnmount(() => clearTimeout(scheduleSavedTimer))
 const planPickerDisabled = computed(() => cloudBlocked.value || schedulePending.value || targetBusyIds.value.size > 0 || targetLoading.value)
 const scheduleTimezone = ref(BUSINESS_TIMEZONE)
 const commonSpends = useCustomSpendTemplates()
@@ -1869,6 +1915,16 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 </script>
 
 <style scoped>
+.planner-save-toast { position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: var(--z-sticky-controls); display: flex; align-items: center; gap: 12px; max-width: 460px; min-height: 58px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px rgba(var(--theme-shadow-rgb, 73, 59, 44), .16); }
+.planner-save-icon { flex: none; color: var(--theme-accent-text, var(--accent-strong)); }
+.planner-save-icon.is-success { color: var(--theme-success-text, #5f8568); }
+.planner-save-icon.is-error { color: var(--theme-danger-text, var(--rouge)); }
+.planner-save-copy { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 14px; line-height: 1.35; }
+.planner-save-copy strong { font-weight: 700; }
+.planner-save-copy span { color: var(--ink-60); font-size: 12px; }
+.planner-save-retry { flex: none; padding: 7px 12px; border: 1px solid var(--theme-danger-line, var(--rouge)); border-radius: 8px; background: transparent; color: var(--theme-danger-text, var(--rouge)); font: inherit; font-weight: 700; cursor: pointer; }
+.planner-save-retry:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
+@media (min-width: 600px) { .planner-save-toast { left: 50%; right: auto; width: min(460px, calc(100% - 32px)); transform: translateX(-50%); } }
 .custom-rule-list { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0; font-size: 13px; color: var(--ink); }
 .custom-rule-list > span { font-weight: 700; }
 .spend-channel-grid .common-spend-label { white-space: normal; overflow-wrap: anywhere; }
