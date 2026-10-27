@@ -171,22 +171,24 @@
 
 版本号是示例，必须选择尚未发布的版本；详细失败恢复见工作区 `docs/release-workflow.md`。只发前端时可使用 `./release.sh --frontend auto`。
 
-独立 clone 本仓库时继续使用前端脚本（先提交业务改动）：
+独立 clone 本仓库时，在非 main 候选分支准备版本，然后自行提交并创建 PR：
 
 ```bash
-./release-frontend.sh --dry-run 0.0.1-beta.20
-./release-frontend.sh 0.0.1-beta.20
-# 或不传版本 / 传 auto，自动沿用未发布 VERSION 或递增 beta.N
+./release-frontend.sh --dry-run --prepare-only auto
+./release-frontend.sh --prepare-only auto  # 或指定版本；自行提交 VERSION 并创建 PR
+# PR CI 通过并合并后，切换并同步 main，确认 main push CI 成功：
+./release-frontend.sh --dry-run auto
+./release-frontend.sh auto
 ```
 
 统一入口会 dispatch `release.yml` 的 `phase=prepare`，传入新 tag、完整 main SHA 与唯一 request。prepare 校验提交属于 main、tag 未存在且 VERSION 匹配，仅写构建产物，不切换 current 或创建 GitHub Release；两仓 CI 和 prepare 全部成功后才发 tag。准备和发布复用原 production environment / concurrency；配置了人工审批时两阶段均需批准。两仓 workflow 需先进入远端 main。
 
-独立前端脚本保持先 CI、后 tag/构建的顺序，不自动预构建。脚本支持 `--prepare-only` 供统一入口只准备 VERSION/main；`--expected-commit <完整 SHA>` 核对准备阶段提交。未通过 CI 不创建 tag；Release 失败通过重跑原 Release 恢复，不删除、移动或重打已有 tag。
+独立前端脚本保持先 CI、后 tag/构建的顺序，不自动预构建。脚本支持 `--prepare-only` 在候选分支准备 VERSION，自动沿用未发布版本或递增已发布的 beta.N；`--expected-commit <完整 SHA>` 核对准备阶段提交。未通过 CI 不创建 tag；Release 失败通过重跑原 Release 恢复，不删除、移动或重打已有 tag。
 
 人工发布仍遵循：
 
 1. 确认 `VERSION` 已经是目标版本，例如 `0.0.1-beta.2`。
-2. 提交并推送到 `main`，等 CI 绿。
+2. 在候选分支提交 VERSION，经 PR CI 合并到 `main`，再等对应 main push CI 绿。
 3. 打 tag 并推送（tag 必须与 `VERSION` 去掉 `v` 后完全一致）：
 
    ```bash
