@@ -33,7 +33,7 @@ test('foreign identity invalid dates and malformed server payloads never enter a
 test('form defaults prefill selected date and validate title note leap date and time boundaries', () => {
   assert.equal(privateItemForm(null).start_date, serverToday())
   assert.equal(privateItemForm(null).end_date, serverToday())
-  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', start_date: '2026-10-15', end_date: '2026-10-15', time: '', note: '', reminder_on: 'START', reminder_days_before: 0 })
+  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', start_date: '2026-10-15', end_date: '2026-10-15', time: '', note: '', reminder_on: 'START', reminder_days_before: 0, recurrence: 'NONE' })
   const form = { title: ' 文 ', start_date: '2028-02-29', end_date: '2028-02-29', time: '00:00', note: '文'.repeat(1000) }
   assert.deepEqual(validatePrivateItem(form), {})
   for (const patch of [{ title: ' ' }, { title: '文'.repeat(101) }, { start_date: '2026-02-29' }, { end_date: '2026-02-29' }, { time: '24:00' }, { time: '9:00' }, { note: '文'.repeat(1001) }]) assert.ok(Object.keys(validatePrivateItem({ ...form, ...patch })).length)
@@ -64,7 +64,7 @@ test('closed private ranges cover month/year/leap boundaries, clip once and neve
   ]) {
     const item = privateCalendarItem(raw({ start_date: start, end_date: end, time: '09:00' }), account)
     assert.ok(item)
-    assert.deepEqual(privateItemForm(item), { title: item.title, start_date: start, end_date: end, time: '09:00', note: item.note, reminder_on: '', reminder_days_before: 0 })
+    assert.deepEqual(privateItemForm(item), { title: item.title, start_date: start, end_date: end, time: '09:00', note: item.note, reminder_on: '', reminder_days_before: 0, recurrence: 'NONE' })
     assert.deepEqual(validatePrivateItem(privateItemForm(item)), {})
     for (const day of [start, middle, end]) assert.equal(calendarItemsOnDay([item, item], day).length, 1)
     assert.ok(monthCalendarDays([item], middle).find(day => day.date === middle).items.includes(item))
@@ -107,4 +107,19 @@ test('historical reminders stay off, new forms default today, and malformed sett
   const form = privateItemForm(null, '2026-10-15')
   assert.ok(validatePrivateItem({ ...form, title: '事项', reminder_on: 'OTHER' }).reminder_on)
   assert.ok(validatePrivateItem({ ...form, title: '事项', reminder_days_before: '1' }).reminder_days_before)
+})
+
+test('monthly instances keep unique view ids but edit the original series dates', () => {
+  const series = { recurrence: 'MONTHLY', series_start_date: '2026-01-31', series_end_date: '2026-02-02', reminder_on: 'START', reminder_days_before: 1 }
+  const jan = privateCalendarItem(raw({ ...series, start_date: '2026-01-31', end_date: '2026-02-02', occurrence_date: '2026-01-31' }), account)
+  const feb = privateCalendarItem(raw({ ...series, start_date: '2026-02-28', end_date: '2026-03-02', occurrence_date: '2026-02-28' }), account)
+  assert.notEqual(jan.id, feb.id)
+  assert.equal(jan.series_id, feb.series_id)
+  assert.deepEqual(privateCalendarItem(feb, account), feb)
+  assert.equal(privateItemForm(feb).start_date, '2026-01-31')
+  assert.equal(privateItemForm(feb).end_date, '2026-02-02')
+  assert.equal(privateItemForm(feb).recurrence, 'MONTHLY')
+  assert.equal(calendarItemsOnDay([jan, feb], '2026-03-01').length, 1)
+  assert.equal(privateCalendarItem(raw({ recurrence: 'WEEKLY' }), account), null)
+  assert.equal(privateCalendarItem(raw({ ...series, occurrence_date: '2026-10-01' }), account), null)
 })

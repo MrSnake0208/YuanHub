@@ -18,3 +18,7 @@ it('every private request binds the original user and account; only update and d
   expect(request.mock.lastCall).toEqual(['/v1/activity-calendar/private-items/pci_one?account_id=a&expected_version=3', { auth: true, expectedUserId: 'owner', method: 'DELETE' }])
   expect(request.mock.calls.every(([url]) => !url.includes('/subscriptions'))).toBe(true)
 })
+it('one-period deletion binds the series id, date, original user and CAS', async () => {
+  await deleteCalendarPrivateItem('pci_series', 'a', 4, 'owner', '2026-11-01')
+  expect(request.mock.lastCall).toEqual(['/v1/activity-calendar/private-items/pci_series?account_id=a&expected_version=4&occurrence_date=2026-11-01', { auth: true, expectedUserId: 'owner', method: 'DELETE' }])
+})

@@ -95,3 +95,12 @@ test('Beijing cross-day updates activity and reminder eligibility without relyin
   assert.equal(after.length, 1)
   assert.equal(after[0].label, '今天提醒 · 明天开始')
 })
+
+test('next-month private occurrence enters highlights on the previous month last day', () => {
+  const item = { id: 'series@2026-11-01', title: '月度事项', start_date: '2026-11-01', end_date: '2026-11-01', reminder_on: 'START', reminder_days_before: 1 }
+  const result = aggregateTodayHighlights({ privateItems: [item], now: Date.parse('2026-10-31T12:00:00+08:00'), game: '如鸢' })
+  assert.equal(result.length, 1)
+  assert.equal(result[0].today, true)
+  assert.equal(result[0].date, '2026-11-01')
+  assert.equal(result[0].to.query.event, item.id)
+})

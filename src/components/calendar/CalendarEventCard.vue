@@ -11,7 +11,7 @@
         <strong v-if="deadline" class="calendar-deadline">{{ deadline }}</strong>
       </div>
     </div>
-    <p class="calendar-range"><Clock3 :size="15" aria-hidden="true" /> {{ calendarRangeLabel(item) }}<span v-if="item.start_time && !privateItem"> · {{ item.time_zone }}</span></p>
+    <p class="calendar-range"><Repeat2 v-if="item.recurrence === 'MONTHLY'" :size="15" aria-label="每月固定" /><Clock3 :size="15" aria-hidden="true" /> {{ calendarRangeLabel(item) }}<span v-if="item.start_time && !privateItem"> · {{ item.time_zone }}</span></p>
     <p v-if="variant === 'card' && !privateItem && !item.end_time" class="calendar-hint">具体时间未提供</p>
     <p v-if="item.description" class="calendar-description">{{ item.description }}</p>
     <p v-if="display.association" class="calendar-hint calendar-association">{{ display.association }}</p>
@@ -32,7 +32,7 @@ import { computed, inject } from 'vue'
 import CalendarSubscriptionControls from './CalendarSubscriptionControls.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { CALENDAR_PRIVATE_ITEMS, isPrivateCalendarItem } from '@/data/calendarPrivateItems.js'
-import { Clock3, ExternalLink } from '@lucide/vue'
+import { Repeat2, Clock3, ExternalLink } from '@lucide/vue'
 import { addCalendarDays, calendarDeadline, calendarRangeLabel, calendarStatuses } from '@/data/activityCalendar.js'
 import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 const props = defineProps({ item: { type: Object, required: true }, today: { type: String, required: true }, variant: { type: String, default: 'card' }, personal: Boolean, headingTag: { type: String, default: 'h4' } })

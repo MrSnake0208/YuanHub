@@ -94,3 +94,19 @@ test('unavailable session storage retains snooze in memory without creating a da
     assert.deepEqual(readReminderDismissals(key, '2026-10-16', 'sessionStorage'), [])
   } finally { delete globalThis.sessionStorage }
 })
+
+test('monthly instance reminders use actual cross-month dates and dismiss each period independently', () => {
+  const november = item({ id: 'series@2026-11-01', start_date: '2026-11-01', end_date: '2026-11-01', reminder_days_before: 1 })
+  const december = item({ id: 'series@2026-12-01', start_date: '2026-12-01', end_date: '2026-12-01', reminder_days_before: 1 })
+  const advance = privateItemReminder(november, '2026-10-31')
+  const sameDay = privateItemReminder(november, '2026-11-01')
+  const next = privateItemReminder(december, '2026-11-30')
+  assert.equal(advance.label, '明天开始')
+  assert.equal(sameDay.label, '今天开始')
+  assert.notEqual(advance.key, next.key)
+  const key = reminderStorageKey('monthly-owner', 'monthly-account')
+  dismissPrivateReminders(key, '2026-10-31', [advance])
+  assert.ok(readReminderDismissals(key, '2026-10-31').includes(advance.key))
+  assert.ok(!readReminderDismissals(key, '2026-11-01').includes(sameDay.key))
+  assert.ok(!readReminderDismissals(key, '2026-11-30').includes(next.key))
+})

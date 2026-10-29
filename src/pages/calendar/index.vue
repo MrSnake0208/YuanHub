@@ -23,6 +23,7 @@
             <SlidersHorizontal :size="17" aria-hidden="true" /><span>筛选</span>
             <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
           </button>
+          <p v-if="!mine && rememberedGame" class="calendar-hint calendar-game-memory" role="status">已记住筛选：{{ rememberedGame }}</p>
           <div v-show="mine || mobilePublic" ref="mobileViewTools" :class="mine ? 'calendar-mine-view-target' : 'calendar-public-view-target'"></div>
           <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
@@ -114,6 +115,7 @@ import CalendarAgendaView from '@/components/calendar/CalendarAgendaView.vue'
 import CalendarTimelineView from '@/components/calendar/CalendarTimelineView.vue'
 import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
 import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
+import { calendarGameFilter, readCalendarGamePreference, saveCalendarGamePreference } from '@/data/calendarGamePreference.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
 import { CALENDAR_DISPLAY_GROUPS } from '@/data/activityCalendarTypes.js'
@@ -126,6 +128,8 @@ const today = ref(serverToday())
 const wide = typeof window !== 'undefined' && window.innerWidth >= 1024
 let savedView = ''
 try { if (enabled) savedView = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) || '' } catch { /* Storage can be unavailable in private browsers. */ }
+const preferredGame = ref(enabled ? readCalendarGamePreference() : '')
+const rememberedGame = ref(preferredGame.value)
 const preferredView = ref(calendarView({}, savedView, wide))
 const mine = computed(() => subscriptionScope(route.query))
 const taskStatus = computed(() => subscriptionTask(route.query))
@@ -144,7 +148,7 @@ function syncPhone(event) {
 }
 onMounted(() => phoneMedia?.addEventListener('change', syncPhone))
 onBeforeUnmount(() => phoneMedia?.removeEventListener('change', syncPhone))
-const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
+const filters = computed(() => ({ ...calendarFilters(route.query), game: mine.value ? subscriptions.account.value?.game || '' : calendarGameFilter(route.query, preferredGame.value) }))
 const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null), agendaView = ref(null)
 const activeFilters = computed(() => [
   !mine.value && filters.value.game && { key: 'game', label: filters.value.game, clear: '' },
@@ -263,7 +267,18 @@ onBeforeUnmount(() => {
   clearInterval(minuteTimer)
   clearTimeout(boundaryTimer)
 })
-function setFilter(patch) { const value = { ...patch }; if (mine.value) delete value.game; return router.replace({ query: calendarFilterQuery(route.query, value) }) }
+function rememberGame(game) {
+  preferredGame.value = game
+  rememberedGame.value = saveCalendarGamePreference(game) ? game : ''
+}
+async function setFilter(patch) {
+  const value = { ...patch }, publicScope = !mine.value
+  if (!publicScope) delete value.game
+  const query = calendarFilterQuery(publicScope ? { ...route.query, game: filters.value.game } : route.query, value)
+  const failure = await router.replace({ query })
+  if ((!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) && publicScope && Object.hasOwn(value, 'game')) rememberGame(value.game)
+  return failure
+}
 async function removeFilter(condition) {
   const failure = await (condition.key === 'task' ? setTask(condition.clear) : setFilter({ [condition.key]: condition.clear }))
   if (failure) return
@@ -275,6 +290,7 @@ async function resetFilters() {
   if (mine.value && !route.query.task && taskStatus.value === 'all') query.task = 'all'
   delete query.pending
   const failure = await router.replace({ query })
+  if ((!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) && !mine.value) rememberGame('')
   if (failure || filterOpen.value) return failure
   await nextTick()
   filterTrigger.value?.focus({ preventScroll: true })

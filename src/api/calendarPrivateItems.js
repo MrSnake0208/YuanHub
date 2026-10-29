@@ -8,4 +8,4 @@ export const listCalendarPrivateItems = (filters, userId) => request(PATH + quer
 export const getCalendarPrivateItem = (id, accountId, userId) => request(PATH + '/' + encodeURIComponent(id) + query({ account_id: accountId }), options(userId))
 export const createCalendarPrivateItem = (body, userId) => request(PATH, { ...options(userId), method: 'POST', body })
 export const updateCalendarPrivateItem = (id, body, userId) => request(PATH + '/' + encodeURIComponent(id), { ...options(userId), method: 'PUT', body })
-export const deleteCalendarPrivateItem = (id, accountId, version, userId) => request(PATH + '/' + encodeURIComponent(id) + query({ account_id: accountId, expected_version: version }), { ...options(userId), method: 'DELETE' })
+export const deleteCalendarPrivateItem = (id, accountId, version, userId, occurrenceDate) => request(PATH + '/' + encodeURIComponent(id) + query({ account_id: accountId, expected_version: version, occurrence_date: occurrenceDate }), { ...options(userId), method: 'DELETE' })

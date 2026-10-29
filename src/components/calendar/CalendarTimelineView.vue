@@ -29,7 +29,7 @@
               <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
                 <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
                   <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
-                  <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
+                  <span class="calendar-timeline-bar-title">{{ entry.item.title }} <Repeat2 v-if="entry.item.recurrence === 'MONTHLY'" :size="13" aria-label="每月固定" style="vertical-align: -2px" /></span>
                   <span v-if="!compactPublic && (entry.upAgents || entry.item.start_date !== entry.item.end_date)" class="calendar-timeline-bar-meta">
                     <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
                     <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
@@ -48,7 +48,7 @@
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ChevronDown, ChevronLeft, ChevronRight } from '@lucide/vue'
+import { Repeat2, ChevronDown, ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarDetailDialog from './CalendarDetailDialog.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange } from '@/data/activityCalendar.js'

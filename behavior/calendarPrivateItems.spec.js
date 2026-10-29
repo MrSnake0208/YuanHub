@@ -17,7 +17,7 @@ vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
 vi.mock('../src/api/calendarPrivateItems.js', () => ({ createCalendarPrivateItem: vi.fn(), deleteCalendarPrivateItem: vi.fn(), getCalendarPrivateItem: vi.fn(), listCalendarPrivateItems: vi.fn(), updateCalendarPrivateItem: vi.fn() }))
-vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn(), choose: vi.fn() } }))
 const event = { id: 'official', source_type: 'MANUAL', game: '如鸢', title: '官方活动', category: 'ACTIVITY', start_date: '2026-10-10', end_date: '2026-10-20' }
 const raw = (patch = {}) => ({ id: 'pci_00000000-0000-0000-0000-000000000001', account_id: 'a', game: '如鸢', title: '私人内容', date: '2026-10-15', time: null, note: '', version: 0, created_at: '2026-10-10T04:00:00Z', updated_at: '2026-10-10T04:00:00Z', ...patch })
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
@@ -85,7 +85,7 @@ it('selected date creation saves without navigation; single time persists and pu
   expect(document.activeElement).toBe(document.querySelector('#private-item-title-input'))
   await field('title', '  领取奖励  '); await field('time', '23:59'); await field('note', '纯文本\n说明')
   await save()
-  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-15', time: '23:59', note: '纯文本\n说明', reminder_on: 'START', reminder_days_before: 0 }, 'owner')
+  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-15', time: '23:59', note: '纯文本\n说明', recurrence: 'NONE', reminder_on: 'START', reminder_days_before: 0 }, 'owner')
   expect(editor()).toBeNull()
   expect(wrapper.text()).toContain('领取奖励')
   expect(wrapper.text()).toContain('23:59（上海时间）')
@@ -219,7 +219,7 @@ it('save is single flight; failed delete keeps contents and cancel sends no dele
   await button('重试').trigger('click'); await flushPromises()
   rows = [raw()]; await vi.advanceTimersByTimeAsync(1100); await routerRefresh()
   await button('删除事项').trigger('click'); await flushPromises()
-  expect(deleteCalendarPrivateItem).toHaveBeenCalledWith(raw().id, 'a', 0, 'owner')
+  expect(deleteCalendarPrivateItem).toHaveBeenCalledWith(raw().id, 'a', 0, 'owner', undefined)
   expect(wrapper.text()).toContain('私人事项已删除')
 })
 async function routerRefresh() { document.dispatchEvent(new Event('visibilitychange')); await flushPromises() }
@@ -388,4 +388,67 @@ it('range starting outside the window remains visible immediately after save whe
   await field('title', '延续计划'); await field('start_date', '2026-09-01'); await field('end_date', '2026-11-20'); await save()
   expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('延续计划'))).toBe(true)
   expect(wrapper.text()).not.toContain('该区间不在当前日期范围')
+})
+
+it('monthly shortcuts preserve custom text, save recurrence and edit the original series', async () => {
+  await render()
+  await button('记一件事').trigger('click'); await flushPromises()
+  await field('title', '我的自定义内容')
+  await button('招募商店').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-title-input').value).toBe('我的自定义内容')
+  await button('保留原文').trigger('click'); await flushPromises()
+  await button('月度提醒').trigger('click'); await flushPromises()
+  await field('start_date', '2026-10-31'); await field('end_date', '2026-11-02')
+  expect(editor().textContent).toContain('当月最后一天')
+  createCalendarPrivateItem.mockImplementationOnce(async body => {
+    const result = raw({ ...body, series_start_date: body.start_date, series_end_date: body.end_date })
+    rows.push({ ...result, occurrence_date: body.start_date })
+    return result
+  })
+  await save()
+  expect(createCalendarPrivateItem.mock.lastCall[0]).toMatchObject({ title: '我的自定义内容', recurrence: 'MONTHLY', start_date: '2026-10-31', end_date: '2026-11-02' })
+  expect(editor()).toBeNull()
+})
+
+it('monthly instance deletion persists the occurrence date and series deletion requires confirmation', async () => {
+  rows = [raw({ recurrence: 'MONTHLY', series_start_date: '2026-09-15', series_end_date: '2026-09-15', occurrence_date: '2026-10-15' })]
+  await render()
+  dialog.choose.mockResolvedValueOnce({ value: 'occurrence' })
+  await button('删除事项').trigger('click'); await flushPromises()
+  expect(deleteCalendarPrivateItem).toHaveBeenCalledWith(rows[0]?.id || raw().id, 'a', 0, 'owner', '2026-10-15')
+  expect(dialog.confirm).not.toHaveBeenCalled()
+})
+
+it('editing a later monthly occurrence edits original dates and warns about the whole series', async () => {
+  rows = [raw({ recurrence: 'MONTHLY', series_start_date: '2026-01-31', series_end_date: '2026-02-02', start_date: '2026-10-31', end_date: '2026-11-02', occurrence_date: '2026-10-31' })]
+  await render('scope=mine&view=month&date=2026-10-31')
+  await button('编辑事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-start_date').value).toBe('2026-01-31')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-02-02')
+  expect(editor().textContent).toContain('整个重复系列')
+  updateCalendarPrivateItem.mockResolvedValueOnce(raw({ recurrence: 'MONTHLY', start_date: '2026-01-31', end_date: '2026-02-02', series_start_date: '2026-01-31', series_end_date: '2026-02-02', version: 1 }))
+  await field('title', '修改所有月份'); await save()
+  expect(updateCalendarPrivateItem.mock.lastCall).toEqual([raw().id, expect.objectContaining({ title: '修改所有月份', recurrence: 'MONTHLY', start_date: '2026-01-31', expected_version: 0 }), 'owner'])
+  expect(editor()).toBeNull()
+})
+
+it('deleting a whole monthly series waits for explicit confirmation and sends no occurrence date', async () => {
+  rows = [raw({ recurrence: 'MONTHLY', series_start_date: '2026-09-15', series_end_date: '2026-09-15', occurrence_date: '2026-10-15' })]
+  await render()
+  dialog.choose.mockResolvedValue({ value: 'series' })
+  dialog.confirm.mockResolvedValueOnce(false)
+  await button('删除事项').trigger('click'); await flushPromises()
+  expect(deleteCalendarPrivateItem).not.toHaveBeenCalled()
+  expect(dialog.confirm.mock.lastCall[0].message).toContain('所有月份')
+  await button('删除事项').trigger('click'); await flushPromises()
+  expect(deleteCalendarPrivateItem).toHaveBeenCalledWith(raw().id, 'a', 0, 'owner', undefined)
+})
+
+it('saved public game preference never overrides the current private account game', async () => {
+  localStorage.setItem('yuanhub.activity-calendar.game.v1', '代号鸢')
+  await render('scope=mine&game=代号鸢&view=month&date=2026-10-15')
+  expect(listCalendarPrivateItems.mock.lastCall[0].account_id).toBe('a')
+  expect(listCalendarSubscriptions.mock.lastCall[0].account_id).toBe('a')
+  expect(wrapper.find('.calendar-game-memory').exists()).toBe(false)
+  localStorage.removeItem('yuanhub.activity-calendar.game.v1')
 })

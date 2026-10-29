@@ -70,7 +70,7 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
   }
   function accept(value) {
     generation++; loading.value = false; error.value = ''
-    records.value = records.value.filter(item => item.id !== value.id)
+    records.value = records.value.filter(item => item.series_id !== value.series_id)
     if (value.start_date <= range.value.to && value.end_date >= range.value.from) records.value.push(value)
   }
   function notifyChange() {
@@ -84,18 +84,21 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
     draft.busy = true; draft.error = ''; draft.conflict = false
     const account = { ...subscriptions.account.value }, user = subscriptions.identity.value
     const body = { account_id: account.id, title: draft.form.title.trim(), start_date: draft.form.start_date, end_date: draft.form.end_date, time: draft.form.time || null, note: draft.form.note,
-      reminder_on: draft.form.reminder_on || null, reminder_days_before: draft.form.reminder_days_before }
+      recurrence: draft.form.recurrence, reminder_on: draft.form.reminder_on || null, reminder_days_before: draft.form.reminder_days_before }
     try {
       const raw = draft.record
-        ? await updateCalendarPrivateItem(draft.record.id, { ...body, expected_version: draft.record.version }, user)
+        ? await updateCalendarPrivateItem(draft.record.series_id || draft.record.id, { ...body, expected_version: draft.record.version }, user)
         : await createCalendarPrivateItem(body, user)
       if (!current(context) || editor.value !== draft) return false
       const result = privateCalendarItem(raw, account)
-      if (!result || draft.record && (result.id !== draft.record.id || result.version <= draft.record.version)) throw new Error('保存结果需要确认，请读取最新内容。')
-      accept(result); editor.value = null
+      if (!result || draft.record && (result.series_id !== (draft.record.series_id || draft.record.id) || result.version <= draft.record.version)) throw new Error('保存结果需要确认，请读取最新内容。')
+      editor.value = null
+      if (result.recurrence === 'MONTHLY') await load()
+      else accept(result)
+      if (!current(context)) return false
       notifyChange()
-      notice.value = `已保存私人事项 · ${calendarRangeLabel(result)}`
-      if (result.end_date < range.value.from || result.start_date > range.value.to) notice.value += '。该区间不在当前日期范围，请在月历或时间轴选择覆盖日期查看。'
+      notice.value = result.recurrence === 'MONTHLY' ? `已保存每月重复事项 · 首次 ${calendarRangeLabel(result)}` : `已保存私人事项 · ${calendarRangeLabel(result)}`
+      if (result.recurrence !== 'MONTHLY' && (result.end_date < range.value.from || result.start_date > range.value.to)) notice.value += '。该区间不在当前日期范围，请在月历或时间轴选择覆盖日期查看。'
       return true
     } catch (err) {
       if (current(context) && editor.value === draft && !securityError(err)) {
@@ -110,10 +113,10 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
     if (!draft?.record || draft.busy || !await subscriptions.confirmDiscard() || !current(context) || editor.value !== draft) return
     draft.busy = true
     try {
-      const result = privateCalendarItem(await getCalendarPrivateItem(draft.record.id, subscriptions.account.value.id, subscriptions.identity.value), subscriptions.account.value)
+      const result = privateCalendarItem(await getCalendarPrivateItem(draft.record.series_id || draft.record.id, subscriptions.account.value.id, subscriptions.identity.value), subscriptions.account.value)
       if (!current(context) || editor.value !== draft) return
       if (!result) throw new Error('读取结果需要确认，请重试。')
-      accept(result)
+      if (result.recurrence !== 'MONTHLY') accept(result)
       const form = privateItemForm(result)
       editor.value = { record: result, form, original: JSON.stringify(form), errors: {}, error: '', conflict: false, busy: false }
     } catch (err) {
@@ -125,12 +128,24 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
     if (!current(context) || busyId.value || editor.value || dialog._state?.visible || !privateCalendarItem(record, subscriptions.account.value)) return
     busyId.value = record.id
     try {
-      if (!await dialog.confirm({ title: '删除私人事项？', message: `“${record.title}”将被删除。`, type: 'danger', confirmText: '删除', cancelText: '保留' }) || !current(context)) return
-      await deleteCalendarPrivateItem(record.id, subscriptions.account.value.id, record.version, subscriptions.identity.value)
+      let occurrenceDate
+      if (record.recurrence === 'MONTHLY') {
+        const choice = await dialog.choose({ title: '删除重复事项', message: `“${record.title}”每月重复，请选择删除范围。`, type: 'danger', choices: [
+          { value: 'occurrence', label: '仅删除这一期' }, { value: 'series', label: '删除整个重复事项' },
+        ] })
+        if (!current(context) || !choice.value) return
+        if (choice.value === 'occurrence') {
+          if (!isCalendarDate(record.occurrence_date)) throw new Error('无法定位这一期，请刷新后重试。')
+          occurrenceDate = record.occurrence_date
+        } else if (!await dialog.confirm({ title: '删除整个重复事项？', message: `“${record.title}”的所有月份事项都将删除。`, type: 'danger', confirmText: '删除整个系列', cancelText: '保留' }) || !current(context)) return
+      } else if (!await dialog.confirm({ title: '删除私人事项？', message: `“${record.title}”将被删除。`, type: 'danger', confirmText: '删除', cancelText: '保留' }) || !current(context)) return
+      await deleteCalendarPrivateItem(record.series_id || record.id, subscriptions.account.value.id, record.version, subscriptions.identity.value, occurrenceDate)
       if (!current(context)) return
       generation++; loading.value = false
-      records.value = records.value.filter(value => value.id !== record.id)
-      notice.value = '私人事项已删除。'
+      records.value = records.value.filter(value => occurrenceDate ? value.id !== record.id : value.series_id !== record.series_id)
+      notice.value = occurrenceDate ? '已删除这一期，其他月份保留。' : '私人事项已删除。'
+      await load()
+      if (!current(context)) return
       notifyChange()
     } catch (err) {
       if (current(context) && !securityError(err)) {

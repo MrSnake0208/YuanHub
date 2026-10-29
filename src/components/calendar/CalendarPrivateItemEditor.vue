@@ -8,6 +8,7 @@
         </header>
         <form id="private-item-form" ref="scrollBody" class="calendar-private-body" novalidate @submit.prevent="save">
           <p class="calendar-private-context">{{ account.game }} · {{ account.name }} · 仅自己可见</p>
+          <p v-if="draft.record?.recurrence === 'MONTHLY'" class="calendar-private-repeat-hint">正在编辑整个重复系列，保存后会更新所有月份。</p>
           <div v-if="Object.keys(draft.errors).length" ref="errorSummary" class="calendar-private-error" role="alert" tabindex="-1">
             <p>请检查以下内容：</p>
             <a v-for="(message, field) in draft.errors" :key="field" :href="field === 'title' ? '#private-item-title-input' : '#private-item-' + field" @click.prevent="focusField(field)">{{ message }}</a>
@@ -26,6 +27,24 @@
           <label for="private-item-time">具体时间 <span>可选 · 留空为全天</span></label>
           <div class="calendar-private-time"><input id="private-item-time" v-model="draft.form.time" type="time" :disabled="draft.busy" :aria-invalid="!!draft.errors.time" aria-describedby="private-item-time-hint" /><button v-if="draft.form.time" type="button" :disabled="draft.busy" @click="draft.form.time = ''">改为全天</button></div>
           <p id="private-item-time-hint">{{ draft.errors.time || '北京时间，仅表示开始日的时刻。' }}</p>
+          <fieldset id="private-item-recurrence" class="calendar-private-repeat" :disabled="draft.busy" :aria-describedby="draft.form.recurrence === 'MONTHLY' ? 'private-item-repeat-hint' : undefined">
+            <legend>重复</legend>
+            <div class="calendar-private-repeat-options">
+              <label v-for="(label, value) in { NONE: '不重复', MONTHLY: '每月固定' }" :key="value" :class="{ 'is-selected': draft.form.recurrence === value }">
+                <input v-model="draft.form.recurrence" type="radio" name="private-item-recurrence" :value="value" />{{ label }}
+              </label>
+            </div>
+          </fieldset>
+          <p v-if="draft.form.recurrence === 'MONTHLY'" id="private-item-repeat-hint" class="calendar-private-repeat-hint">
+            <Repeat2 :size="16" aria-hidden="true" />
+            <span>按开始日期自动每月重复{{ repeatDay ? `，每月 ${repeatDay} 日出现` : '' }}。{{ repeatDay >= 29 ? '遇到没有该日的月份，使用当月最后一天。' : '' }}</span>
+          </p>
+          <div class="calendar-private-shortcuts" role="group" aria-label="快捷选择">
+            <span>快捷选择</span>
+            <button type="button" :disabled="draft.busy" @click="draft.form.recurrence = 'MONTHLY'">月度提醒</button>
+            <button v-for="title in ['招募商店', '星石商店']" :key="title" type="button" :disabled="draft.busy" @click="fillTitle(title + '兑换')">{{ title }}</button>
+          </div>
+          <p v-if="suggestedTitle" class="calendar-private-shortcut-confirm" role="status">保留现有内容，或 <button type="button" :disabled="draft.busy" @click="draft.form.title = suggestedTitle; suggestedTitle = ''">改用“{{ suggestedTitle }}”</button><button type="button" :disabled="draft.busy" @click="suggestedTitle = ''">保留原文</button></p>
           <label for="private-item-reminder_on">站内提醒</label>
           <select id="private-item-reminder_on" v-model="draft.form.reminder_on" :disabled="draft.busy" :aria-invalid="!!draft.errors.reminder_on" aria-describedby="private-item-reminder-hint">
             <option value="">关闭提醒</option><option value="START">开始日提醒</option><option value="END">截止日提醒</option>
@@ -36,7 +55,7 @@
               <option :value="0">仅当天</option><option :value="1">提前一天＋当天</option>
             </select>
           </template>
-          <p id="private-item-reminder-hint">{{ draft.errors.reminder_on || draft.errors.reminder_days_before || '按北京时间的日期提醒，不按具体时刻提醒。' }}</p>
+          <p id="private-item-reminder-hint">{{ draft.errors.reminder_on || draft.errors.reminder_days_before || '访问网站时按北京时间日期显示站内提醒，不按具体时刻推送。' }}</p>
           <details :open="!!draft.form.note || !!draft.errors.note">
             <summary>附加说明（可选）</summary>
             <label for="private-item-note">纯文本说明 · 最多1000字</label>
@@ -57,7 +76,7 @@
 
 <script setup>
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { X } from '@lucide/vue'
+import { X, Repeat2 } from '@lucide/vue'
 import { CALENDAR_PRIVATE_ITEMS, validatePrivateItem } from '@/data/calendarPrivateItems.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useModalViewport } from '@/composables/useModalViewport.js'
@@ -69,6 +88,13 @@ const invalidDates = computed(() => {
   const errors = validatePrivateItem(draft.value.form)
   return !!(errors.start_date || errors.end_date)
 })
+const repeatDay = computed(() => Number(draft.value?.form.start_date?.slice(8, 10)) || 0)
+const suggestedTitle = ref('')
+function fillTitle(title) {
+  if (!draft.value.form.title.trim() || draft.value.form.title === title) draft.value.form.title = title
+  else suggestedTitle.value = title
+}
+watch(draft, () => { suggestedTitle.value = '' })
 const panel = ref(null), titleInput = ref(null), errorSummary = ref(null)
 const scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !!draft.value, scrollBody, panel)
@@ -101,6 +127,18 @@ button:disabled { opacity: .6; cursor: default; }
 :is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 input, textarea, select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 summary { cursor: pointer; }
+.calendar-private-repeat { min-width: 0; padding: 0; margin: 12px 0 0; border: 0; }
+.calendar-private-repeat legend { font-weight: 700; margin-bottom: 6px; }
+.calendar-private-repeat-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.calendar-private-repeat-options label { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 6px 10px; margin: 0; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; box-sizing: border-box; }
+.calendar-private-repeat-options .is-selected { border-color: var(--theme-accent-text, var(--accent)); background: var(--cream); }
+.calendar-private-repeat-options input { width: 18px; min-height: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--tea); }
+.calendar-private-repeat-hint { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--cream); }
+.calendar-private-repeat-hint svg { flex: none; margin-top: 2px; }
+.calendar-private-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 10px 0; font-size: 13px; }
+.calendar-private-shortcuts button { font-size: 13px; padding: 6px 10px; }
+.calendar-private-shortcut-confirm button { max-width: 100%; overflow-wrap: anywhere; }
+
 .calendar-private-error { color: var(--theme-danger-text, var(--rouge)); }
 .calendar-private-error a { color: inherit; }
 footer { border-top: 1px solid var(--line); }

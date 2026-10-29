@@ -13,6 +13,7 @@ vi.mock('../src/config/features.js', async importOriginal => ({ ...(await import
 
 let desktopMedia
 beforeEach(() => {
+  localStorage.clear()
   vi.clearAllMocks()
   vi.stubGlobal('innerWidth', 390)
   const target = new EventTarget()
@@ -399,4 +400,25 @@ it('慢响应抵达时用当前时间判断状态，不等待下一分钟刷新'
   await flushPromises()
   expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['started-while-loading'])
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
+})
+
+it('主动筛选持久化、有效链接优先但不覆盖偏好、清除后普通进入显示全部', async () => {
+  const first = await render('/calendar?view=month&ref=keep')
+  await open(first.wrapper); await clickSheet('代号鸢')
+  expect(localStorage.getItem('yuanhub.activity-calendar.game.v1')).toBe('代号鸢')
+  first.wrapper.unmount()
+  const linked = await render('/calendar?game=如鸢&ref=keep')
+  expect(summaryText(linked.wrapper)).toBe('如鸢')
+  expect(localStorage.getItem('yuanhub.activity-calendar.game.v1')).toBe('代号鸢')
+  linked.wrapper.unmount()
+  const restored = await render('/calendar?ref=keep')
+  expect(summaryText(restored.wrapper)).toBe('代号鸢')
+  expect(restored.wrapper.text()).toContain('已记住筛选：代号鸢')
+  await restored.wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
+  expect(summaryText(restored.wrapper)).toBe('未启用筛选')
+  expect(restored.router.currentRoute.value.query.ref).toBe('keep')
+  restored.wrapper.unmount()
+  const cleared = await render()
+  expect(summaryText(cleared.wrapper)).toBe('未启用筛选')
+  cleared.wrapper.unmount()
 })
