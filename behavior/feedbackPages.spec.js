@@ -119,7 +119,7 @@ it('取消流转草稿须确认，拒绝后保留处理说明', async () => {
 })
 
 it.each([
-  [0, 'STAR', ''], [1, 'updated', 'oldest'], [2, '30', '20']
+  [0, 'STAR', ''], [1, 'updated', 'latest'], [2, '30', '20']
 ])('放弃回复草稿被取消时恢复第 %s 个筛选控件', async (index, next, previous) => {
   const wrapper = render(ManagedFeedback); await flushPromises()
   await choose(wrapper, 'rpt_a'); await compose(wrapper, '保留回复')
@@ -178,7 +178,7 @@ it('运营能发现交回与需回复队列，排序请求由服务端处理', a
   const returned = wrapper.findAll('.feedback-work-queues button').find(tab => tab.text().startsWith('程序已交回'))
   expect(returned.text()).toContain('4')
   await returned.trigger('click'); await flushPromises()
-  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'RETURNED', sortBy: 'createdAt', sortOrder: 'asc' }))
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'RETURNED', sortBy: 'createdAt', sortOrder: 'desc' }))
   await wrapper.findAll('.feedback-work-queues button').find(tab => tab.text().startsWith('需我回复')).trigger('click'); await flushPromises()
   await wrapper.get('[aria-label="反馈排序"]').setValue('updated'); await flushPromises()
   expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'NEEDS_REPLY', sortBy: 'updatedAt', sortOrder: 'desc' }))
