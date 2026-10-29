@@ -86,6 +86,20 @@ it.each([390, 1440])('快捷录入勾选及批量输入跨布局保留，resize 
   }
 })
 
+it('快捷录入逐字改等级不提前清空修为，结束编辑后按最终等级校正', async () => {
+  const wrapper = render(); await flushPromises()
+  await wrapper.findAll('.batch-fields button').find(button => button.text() === '100级 / 修为17').trigger('click')
+  const level = wrapper.get('input[name="level"]'), elite = wrapper.get('input[name="elite"]')
+  level.element.value = ''; await level.trigger('input')
+  expect(elite.element.value).toBe('17')
+  level.element.value = '9'; await level.trigger('input')
+  expect(elite.element.value).toBe('17')
+  level.element.value = '90'; await level.trigger('input')
+  await level.trigger('change')
+  expect(elite.element.value).toBe('15')
+  expect(importOperator).not.toHaveBeenCalled()
+})
+
 it('所有星级步骤默认1级1修为，未勾选不产生导入', async () => {
   const wrapper = render()
   await flushPromises()

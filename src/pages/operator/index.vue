@@ -54,6 +54,7 @@
         </template>
       </CompactToolHeader>
       <p v-if="panelPreferenceNotice" class="panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
+      <p v-if="editorOpeningId || editorOpenError" class="panel-preference-notice operator-editor-open-status" :role="editorOpenError ? 'alert' : 'status'">{{ editorOpenError || '正在读取密探编辑资料…' }}</p>
 
       <section>
         <div class="wrap">
@@ -740,6 +741,8 @@
                       type="button"
                       :aria-label="'编辑' + (e.name || e.id)"
                       title="编辑养成"
+                      :disabled="editorOpeningId === e.id"
+                      :aria-busy="editorOpeningId === e.id"
                       @click.stop="openEdit(e.id)"
                     >
                       <Pencil :size="15" aria-hidden="true" />
@@ -2234,6 +2237,8 @@
                         v-else
                         class="ledger-full-edit"
                         type="button"
+                        :disabled="editorOpeningId === e.id"
+                        :aria-busy="editorOpeningId === e.id"
                         @click.stop="openEdit(e.id)"
                       >
                         <Pencil :size="14" aria-hidden="true" />完整编辑
@@ -2439,7 +2444,6 @@
           :aria-labelledby="'operator-editor-title-' + editingId"
           :aria-describedby="'operator-editor-context-' + editingId"
           tabindex="-1"
-          v-reveal
         >
           <div class="editor-head">
             <div class="editor-identity">
@@ -2649,6 +2653,8 @@
                           inputmode="numeric"
                           min="0"
                           max="100"
+                          @focus="$event.target.select()"
+                          @change="normalizeEditGrowth"
                       /></label>
                       <OperatorLevelBreakthroughSelect inline v-model="editForm.levelBreakthroughStage" :level="Number(editForm.level) || 0" :disabled="savingEdit" />
                     </div>
@@ -2660,6 +2666,7 @@
                         inputmode="numeric"
                         min="0"
                         :max="maxEliteForLevel"
+                        @focus="$event.target.select()"
                     /></label>
                     <span class="elite-hint"
                       >最高修为：{{ maxEliteForLevel }}</span
@@ -2784,16 +2791,17 @@
                       @click="fillEditToMax(true)"
                     >奇闻全部拉满</button>
                   </div>
-                  <label
+                  <div
                     v-for="key in ODDITY_KEYS"
                     :key="key"
                     class="oddity-field"
                   >
-                    <span class="oddity-name" :title="oddityFieldName(key)">{{
+                    <label class="oddity-name" :for="'operator-edit-oddity-' + key" :title="oddityFieldName(key)">{{
                       oddityFieldName(key)
-                    }}</span>
+                    }}</label>
                     <span class="oddity-control">
                       <input
+                        :id="'operator-edit-oddity-' + key"
                         v-model.number="
                           editForm.combatStats.oddities[key].current
                         "
@@ -2812,10 +2820,15 @@
                         class="oddity-limit"
                         :title="oddityLimitTitle(key)"
                         aria-hidden="true"
-                        >上限 {{ oddityLimitLabel(key) }}</span
+                        >{{ oddityLimitLabel(key) === '—' ? '暂无上限' : '上限 ' + oddityLimitLabel(key) }}</span
                       >
+                      <button type="button" class="btn ghost oddity-fill-one"
+                        :disabled="savingEdit || oddityLimitLabel(key) === '—'"
+                        :aria-label="oddityFieldName(key) + '拉满'"
+                        :title="oddityLimitLabel(key) === '—' ? '公共图鉴暂无上限，暂不能拉满' : '仅填入此项上限，点击保存后生效'"
+                        @click="fillEditOddityToMax(key)">拉满</button>
                     </span>
-                  </label>
+                  </div>
                   <small id="operator-oddity-precision" class="oddity-hint">{{ oddityFieldName('special') }}最多一位小数</small>
                   <small v-if="editOddityErrorKey" id="operator-oddity-error" class="oddity-hint oddity-error" role="alert">{{ editNotice }}</small>
                 </div>
@@ -3491,6 +3504,9 @@ const discTooltip = ref({
 const editing = ref(false);
 const editingId = ref("");
 const editingOp = ref(null);
+const editorOpeningId = ref("");
+const editorOpenError = ref("");
+let editorOpenSeq = 0;
 const editorSection = ref('growth');
 const editGame = ref("");
 const editForm = ref({
@@ -3639,6 +3655,8 @@ watch(
     growthExecuteBusyKeys.value = new Set();
     growthExecutionKeys.clear();
     editing.value = false;
+    editorOpeningId.value = "";
+    editorOpenError.value = "";
     editingId.value = "";
     editingOp.value = null;
     editConflictDraft.value = null;
@@ -4410,20 +4428,16 @@ const stoneSlots = computed(function () {
   ];
 });
 
-// 修为不能超过当前等级上限，等级变化时自动修正
-watch(
-  function () {
-    return editForm.value.level;
-  },
-  function (level) {
-    const max = getMaxEliteForLevel(level);
-    if (editForm.value.elite > max) {
-      editForm.value.elite = max;
-      editNotice.value = "修为已随等级自动调整为 " + max + "（当前等级上限）";
-      editNoticeError.value = false;
-    }
-  },
-);
+function normalizeEditGrowth() {
+  const level = editForm.value.level;
+  if (level === "" || !Number.isInteger(Number(level)) || level < 0 || level > OPERATOR_LEVEL_MAX) return;
+  const max = getMaxEliteForLevel(level);
+  if (editForm.value.elite > max) {
+    editForm.value.elite = max;
+    editNotice.value = "修为已随等级自动调整为 " + max + "（当前等级上限）";
+    editNoticeError.value = false;
+  }
+}
 
 watch(editorSection, async function () {
   hideDiscTooltip();
@@ -4776,6 +4790,15 @@ function fillEditToMax(odditiesOnly = false) {
   editNotice.value = missing.length
     ? "已填入" + scope + "有上限的奇闻；" + missing.map(oddityFieldName).join("、") + "暂无图鉴上限，已保留原值，请确认后保存"
     : "已填入" + scope + "全部奇闻上限，请确认后保存";
+  editNoticeError.value = false;
+}
+
+function fillEditOddityToMax(key) {
+  const max = editForm.value.combatStats.oddities[key].max;
+  if (savingEdit.value || max == null) return;
+  editForm.value.combatStats.oddities[key].current = max;
+  editOddityErrorKey.value = "";
+  editNotice.value = "已填入" + oddityFieldName(key) + "上限，请确认后保存";
   editNoticeError.value = false;
 }
 
@@ -7951,10 +7974,22 @@ async function openEdit(id) {
   }
   const op = catalogMap.value[id];
   if (!op) return;
-  editorTriggerEl =
+  const seq = ++editorOpenSeq;
+  const contextSeq = currentContextSeq;
+  const trigger =
     document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+  editorOpeningId.value = id;
+  editorOpenError.value = "";
+  const ready = await prepareStarLoadout(op, "main1");
+  if (operatorPageDisposed || seq !== editorOpenSeq || contextSeq !== currentContextSeq) return;
+  editorOpeningId.value = "";
+  if (!ready) {
+    editorOpenError.value = starLoadoutError.value || "未能打开密探编辑，请重试。";
+    return;
+  }
+  editorTriggerEl = trigger;
   const existing = currentMap.value[id] || {};
   editingId.value = id;
   editingOp.value = op;
@@ -7965,11 +8000,6 @@ async function openEdit(id) {
   editNotice.value = "";
   editNoticeError.value = false;
   editOddityErrorKey.value = "";
-  if (!(await prepareStarLoadout(op, "main1"))) {
-    editingId.value = "";
-    editingOp.value = null;
-    return;
-  }
   editBaseline.value = JSON.stringify([editForm.value, combatDisplayMode.value]);
   editing.value = true;
 }
@@ -12238,6 +12268,11 @@ onBeforeUnmount(function () {
 }
 .oddity-limit {
   color: var(--ink-35);
+}
+.oddity-fill-one {
+  min-height: 0;
+  padding: 3px 8px;
+  font-size: 12px;
 }
 .disc-loadout-tabs {
   border-radius: 8px;

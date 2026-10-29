@@ -169,6 +169,7 @@
                       min="0"
                       max="100"
                       :disabled="busy"
+                      @focus="$event.target.select()"
                       @change="normalizePageForm"
                     />
                     <i>/100</i>
@@ -182,6 +183,7 @@
                       min="0"
                       :max="maxEliteHint"
                       :disabled="busy"
+                      @focus="$event.target.select()"
                       @change="normalizePageForm"
                     />
                     <i>/{{ OPERATOR_ELITE_MAX }}</i>
@@ -856,7 +858,9 @@ async function toggleOperator(id, event) {
   }
   const sequence = contextSequence;
   const key = currentKey.value;
-  if (checkbox?.checked) await selectPageIds([id]);
+  const selected = checkbox?.checked;
+  if (checkbox) checkbox.checked = isChecked(id);
+  if (selected) await selectPageIds([id]);
   else checkedByKey[key] = checkedByKey[key].filter(item => item !== id);
   if (isCurrentContext(sequence) && checkbox) checkbox.checked = isChecked(id);
 }
@@ -934,30 +938,6 @@ async function clearPage() {
     if (isCurrentContext(sequence)) selectionPending.value = false;
   }
 }
-
-// 修为不能超过当前等级上限（每页各自跟随：等级变更下修、修为手工上调时封顶）
-watch(
-  function () {
-    return currentKey.value && (formByKey[currentKey.value] || {}).level;
-  },
-  function (level) {
-    const f = formByKey[currentKey.value];
-    if (!f) return;
-    const max = getMaxEliteForLevel(level);
-    if (f.elite > max) f.elite = max;
-  },
-);
-watch(
-  function () {
-    return currentKey.value && (formByKey[currentKey.value] || {}).elite;
-  },
-  function (elite) {
-    const f = formByKey[currentKey.value];
-    if (!f) return;
-    const max = getMaxEliteForLevel(f.level);
-    if (elite > max) f.elite = max;
-  },
-);
 
 const maxEliteHint = computed(function () {
   const f = pageForm.value;

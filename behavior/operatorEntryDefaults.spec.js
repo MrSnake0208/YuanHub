@@ -128,6 +128,97 @@ async function openCardStarEditor(existing, catalog = { ...operator, rarity: 4 }
 const growthValues = wrapper => wrapper.findAll('.level-row input[type="number"]').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
 
+it.each([true, false])('连续打开不同密探时旧请求不清空最新编辑器（旧请求先返回：%s）', async olderFirst => {
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator, { ...operator, id: 'other', name: '另一密探' }] })
+  const wrapper = renderPage()
+  await flushPromises()
+  let resolveFirst, resolveSecond
+  getCurrentStarState.mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve }))
+  getCurrentStarState.mockReturnValueOnce(new Promise(resolve => { resolveSecond = resolve }))
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click')
+  expect(wrapper.get('[aria-label="编辑测试密探"]').element.disabled).toBe(true)
+  expect(wrapper.get('.operator-editor-open-status').text()).toContain('正在读取')
+  await wrapper.get('[aria-label="编辑另一密探"]').trigger('click')
+  if (olderFirst) { resolveFirst({ generation: 0, entries: [] }); await flushPromises() }
+  resolveSecond({ generation: 0, entries: [] })
+  await flushPromises()
+  if (!olderFirst) { resolveFirst({ generation: 0, entries: [] }); await flushPromises() }
+  expect(wrapper.find('.page-operator').exists()).toBe(true)
+  expect(wrapper.get('.editor-panel h3').text()).toContain('另一密探')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it.each(['account', 'unmount'])('打开编辑期间%s后迟到响应不再打开编辑器', async change => {
+  operatorApi.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: '账号A', game: '如鸢' }, { id: 'other', name: '账号B', game: '如鸢' }])
+  const wrapper = renderPage(); await flushPromises()
+  let resolveRead
+  getCurrentStarState.mockReturnValueOnce(new Promise(resolve => { resolveRead = resolve }))
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click')
+  if (change === 'account') { activeAccount.id = 'other'; await flushPromises() }
+  else wrapper.unmount()
+  resolveRead({ generation: 0, entries: [] }); await flushPromises()
+  expect(wrapper.find('.editor-panel').exists()).toBe(false)
+  if (change === 'account') expect(wrapper.find('.operator-editor-open-status').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('打开编辑失败有可见提示，再次打开可恢复且不写云端', async () => {
+  const wrapper = renderPage()
+  await flushPromises()
+  getCurrentStarState.mockRejectedValueOnce(new Error('星石读取失败'))
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
+  expect(wrapper.find('.editor-panel').exists()).toBe(false)
+  expect(wrapper.get('.operator-editor-open-status[role="alert"]').text()).toContain('星石读取失败')
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
+  expect(wrapper.find('.editor-panel').exists()).toBe(true)
+  expect(wrapper.find('.operator-editor-open-status').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('编辑等级时保留修为，最终有效等级提交后才校正，清空不当作零', async () => {
+  const wrapper = await openEditor({ level: 100, elite: 17, starLevel: 1 })
+  const level = wrapper.findAll('.level-row input[type="number"]')[0]
+  await level.setValue('')
+  expect(growthValues(wrapper)).toEqual(['', '17'])
+  level.element.value = '9'; await level.trigger('input')
+  expect(growthValues(wrapper)).toEqual(['9', '17'])
+  level.element.value = '90'; await level.trigger('input')
+  expect(growthValues(wrapper)).toEqual(['90', '17'])
+  await level.trigger('change')
+  expect(growthValues(wrapper)).toEqual(['90', '15'])
+  expect(wrapper.get('.editor-action-status').text()).toContain('15')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('奇闻单项拉满只填选中字段，缺上限不可用，取消不写云端', async () => {
+  const wrapper = await openEditor({ level: 90, elite: 15, starLevel: 1,
+    combat_stats: { oddities: { attack: { current: 12 }, hp: { current: 34 }, special: { current: 1.2 } } },
+  }, { ...operator, oddity_schema: { attack: { max: 300 }, hp: { max: 1560 }, special: { max: null } } })
+  const fields = wrapper.findAll('.oddity-field')
+  await fields[0].get('button').trigger('click')
+  expect(fields.map(field => field.get('input').element.value)).toEqual(['300', '34', '1.2'])
+  expect(fields[2].get('button').element.disabled).toBe(true)
+  expect(growthValues(wrapper)).toEqual(['90', '15'])
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  dialog.confirm.mockResolvedValueOnce(true)
+  await wrapper.get('.editor-cancel').trigger('click'); await flushPromises()
+  expect(wrapper.find('.editor-panel').exists()).toBe(false)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('第三项奇闻单项拉满保留小数并沿用原保存接口', async () => {
+  const wrapper = await openEditor({ level: 90, elite: 15, starLevel: 1 }, { ...operator,
+    oddity_schema: { attack: { max: 300 }, hp: { max: 1560 }, special: { name: '增伤值', max: 5.5 } },
+  })
+  await wrapper.get('[aria-label="增伤值拉满"]').trigger('click')
+  expect(wrapper.get('[data-oddity-key="special"]').element.value).toBe('5.5')
+  operatorApi.patchOperatorCurrent.mockResolvedValueOnce({ level: 90, elite: 15, star_level: 1, revision: 2 })
+  await wrapper.get('.editor-save').trigger('click'); await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({ patch: expect.objectContaining({
+    combat_stats: expect.objectContaining({ oddities: { attack: { current: 0 }, hp: { current: 0 }, special: { current: 5.5 } } }),
+  }) }))
+})
+
 it('面板来源默认保留过期手填，切换和养成变动均不删除原值', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   operatorApi.previewOperatorPanel.mockResolvedValue({ status: 'calculated', attack: 1000, hp: 2000 })
