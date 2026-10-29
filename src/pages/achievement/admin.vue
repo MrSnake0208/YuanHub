@@ -26,6 +26,7 @@
               <button :disabled="busy" @click="download('legacy')">导出旧目录原始文档</button>
             </section>
             <fieldset class="catalog-controls" :disabled="compatibilityIssues.length > 0">
+            <AchievementSettingsImport :game="game" :draft="draft" :busy="busy" :revision="data.revision" @apply="applySettings" />
             <router-link to="/achievement/admin/suggestions">审核玩家投稿</router-link>
             <p class="catalog-summary">已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 编辑修订 {{ data.revision }}</p>
             <p class="version">当前发布：{{ data.published.version }}<br>{{ data.published.published_at }} · {{ data.published.published_by }}</p>
@@ -116,6 +117,7 @@
               <h2 id="publish-title">{{ publication.restored_from ? '回滚预览' : '发布预览' }}</h2>
               <p>新增 {{ changeCount('add') }} · 修改 {{ changeCount('update') }} · 退役 / 移除 {{ changeCount('retire') }}</p>
               <p v-if="publication.restored_from">将 {{ publication.restored_from }} 发布为一个新版本。</p>
+              <p v-if="publication.settings_changed">奖励字典、积分档位或筛选配置有变化，将随本次目录一起发布。</p>
               <details v-if="publication.changes.length"><summary>成就变更明细</summary><p v-for="c in publication.changes" :key="c.achievement_id">{{ changeLabels[c.kind] }} · {{ c.name }} · {{ c.achievement_id }}</p></details>
               <details v-if="publication.category_changes.length"><summary>分类变更 {{ publication.category_changes.length }} 项</summary><p v-for="(c, i) in publication.category_changes" :key="i">{{ c }}</p></details>
               <p>范围：{{ publicationRange }}</p>
@@ -138,7 +140,7 @@
                   <button :disabled="busy" @click="download('published')">导出已发布目录</button>
                   <button :disabled="busy" @click="download('draft')">{{ dirty ? '导出本地未保存草稿' : '导出已保存草稿' }}</button>
                   <button :disabled="busy || dirty" @click="fileInput.click()">选择目录 JSON</button>
-                  <input ref="fileInput" class="file-input" type="file" accept=".json,application/json" @change="readFile">
+                  <input data-testid="catalog-import" ref="fileInput" class="file-input" type="file" accept=".json,application/json" @change="readFile">
                 </div>
                 <template v-if="importDocument">
                   <p>{{ importName }} · 只合入草稿，文件缺失条目不会删除现有资料；确认发布后玩家可见。</p>
@@ -166,6 +168,7 @@
 </template>
 
 <script setup>
+import AchievementSettingsImport from './AchievementSettingsImport.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import '../../styles/page-header.css'
@@ -187,6 +190,11 @@ const importDocument = ref(null), importPlan = ref(null), importStrategy = ref('
 const fileInput = ref(null), errorSummary = ref(null), editor = ref(null), publicationPanel = ref(null), listPanel = ref(null)
 const identity = computed(() => String(auth.userInfo?.id || ''))
 const permitted = computed(() => !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE))
+function applySettings(settings) {
+  Object.assign(draft.value, settings)
+  publication.value = null
+  notice.value = '奖励配置已应用到本地草稿，尚未保存或发布。'
+}
 const dirty = computed(() => !!data.value && JSON.stringify(draft.value) !== JSON.stringify(data.value.draft))
 const entry = computed(() => draft.value?.entries.find(e => e.achievement_id === selected.value))
 const activeEntries = computed(() => draft.value?.entries.filter(e => !retired(e)) || [])
@@ -212,7 +220,7 @@ const publicationIssues = computed(() => {
   return [...groups.values()]
 })
 const compatibilityIssues = computed(() => data.value?.compatibility_issues || [])
-const rewardItems = computed(() => (data.value?.reward_items || []).filter(item => item.games.includes(game.value)))
+const rewardItems = computed(() => (draft.value?.reward_items || data.value?.reward_items || []).filter(item => item.games.includes(game.value)))
 const rewardState = computed(() => entry.value?.rewards == null ? 'unknown' : entry.value.rewards.length ? 'known' : 'none')
 const firstRewardError = computed(() => {
   for (const entry of draft.value?.entries || []) {

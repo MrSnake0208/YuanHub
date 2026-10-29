@@ -28,7 +28,7 @@ function mountPage() {
 beforeEach(() => {
   vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }; activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }])
-  api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', entries: [entry] })
+  api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', achievement_targets: [1, 3, 8], entries: [entry] })
   api.getBondArchive.mockImplementation(id => Promise.resolve(archive(id)))
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_a', name: '甲_乙', games: ['代号鸢'] }, { id: 'char_b', name: '丙', games: ['代号鸢'] }] })
   getOperatorCurrent.mockResolvedValue([])

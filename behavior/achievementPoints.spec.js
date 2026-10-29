@@ -1,22 +1,21 @@
 import { expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AchievementPointRewards from '../src/pages/achievement/AchievementPointRewards.vue'
-import { pointRewardTrack } from '../src/pages/achievement/pointRewards.js'
 
-const props = { categoryName: '刀光剑影', track: pointRewardTrack('代号鸢', '刀光剑影'), points: 1780, recordState: 'ready', alwaysExpanded: true }
+const props = { categoryName: '测试分类', track: { itemName: '测试分', itemKey: 'test_points', tiers: [11, 27, 39, 63].map(at => ({ at, name: '测试奖励', quantity: 2, icon: 'coins' })) }, points: 40, recordState: 'ready', alwaysExpanded: true }
 
 it('展示真实积分、四档奖励和差额，阈值及超额正确，未假定已领取', async () => {
   const wrapper = mount(AchievementPointRewards, { props })
   expect(wrapper.findAll('.is-reached')).toHaveLength(3)
-  expect(wrapper.text()).toContain('220')
-  expect(wrapper.text()).toContain('头像框【刀光剑影】 ×1')
+  expect(wrapper.text()).toContain('23')
+  expect(wrapper.text()).toContain('测试奖励 ×2')
   expect(wrapper.findAll('button')).toHaveLength(0)
-  for (const [points, reached] of [[0, 0], [499, 0], [500, 1], [1000, 2], [1500, 3], [2000, 4], [2605, 4]]) {
+  for (const [points, reached] of [[0, 0], [10, 0], [11, 1], [27, 2], [39, 3], [63, 4], [90, 4]]) {
     await wrapper.setProps({ points })
     expect(wrapper.findAll('.is-reached')).toHaveLength(reached)
     expect(wrapper.find('.achievement-points-current strong').text()).toBe(String(points))
   }
-  expect(wrapper.text()).toContain('四档均已达标')
+  expect(wrapper.text()).toContain('全部档位已达标')
   wrapper.unmount()
 })
 

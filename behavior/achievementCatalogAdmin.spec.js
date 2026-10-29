@@ -17,7 +17,7 @@ function content(game = '代号鸢') {
 }
 function state(game = '代号鸢') {
   const draft = content(game)
-  return { revision: 3, draft, published: { version: 'v1', content: { ...clone(draft), entries: [], data_status: 'empty' }, published_at: '2026-10-18', published_by: 'admin' }, history: [], compatibility_issues: [], reward_items: [{ item_key: 'baijinbi', name: '白金币', games: ['代号鸢', '如鸢'] }] }
+  return { revision: 3, draft, published: { version: 'v1', content: { ...clone(draft), entries: [], data_status: 'empty' }, published_at: '2026-10-18', published_by: 'admin' }, history: [], compatibility_issues: [], reward_items: [{ item_key: 'test_coin', name: '测试币', games: ['代号鸢', '如鸢'] }] }
 }
 const button = (w, label) => w.findAll('button').find(b => b.text() === label)
 let wrappers = []
@@ -160,7 +160,7 @@ it('清空目标保存 null，不生成旧进度类型或单位字段', async ()
 it('导入先预览，非法项禁用确认；策略变化必须重做预览，确认只写草稿', async () => {
   const w = await page()
   const document = content()
-  const input = w.get('input[type="file"]')
+  const input = w.get('[data-testid="catalog-import"]')
   Object.defineProperty(input.element, 'files', { configurable: true, value: [{ name: 'catalog.json', size: 200, text: async () => JSON.stringify(document) }] })
   await input.trigger('change'); await flushPromises()
   const plan = { expected_revision: 3, strategy: 'keep', preview_token: 'test-preview', items: [{ outcome: 'invalid', message: '非法条目' }] }
@@ -226,7 +226,7 @@ it('1590条列表分页且跨页/筛选保留奖励草稿，失败保存聚焦�
   await w.get('.entry-row').trigger('click')
   await w.findAll('select').find(s => s.text().includes('资料未补齐')).setValue('known')
   const item = w.get('#reward-item-0')
-  await item.setValue('baijinbi')
+  await item.setValue('test_coin')
   await w.get('[aria-label="奖励 1 数量"]').setValue('0')
   await button(w, '保存草稿').trigger('click'); await flushPromises()
   expect(api.achievementCatalogCommand).not.toHaveBeenCalled()
@@ -245,7 +245,7 @@ it('1590条列表分页且跨页/筛选保留奖励草稿，失败保存聚焦�
   await button(w, '保存草稿').trigger('click'); await flushPromises()
   expect(w.get('[aria-label="奖励 1 数量"]').element.value).toBe('15')
   const submitted = api.achievementCatalogCommand.mock.lastCall[4].catalog.entries[0]
-  expect(submitted.rewards).toEqual([{ item_key: 'baijinbi', name: '白金币', quantity: 15 }])
+  expect(submitted.rewards).toEqual([{ item_key: 'test_coin', name: '测试币', quantity: 15 }])
   expect(Object.keys(submitted)).toHaveLength(10)
 })
 

@@ -8,7 +8,7 @@ import { candidateErrors, newCandidate } from '../src/pages/achievement/suggesti
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ userInfo: { id: 'owner' }, adminAccess: { permissions: [] } }) }))
 vi.mock('../src/api/achievementSuggestions.js', () => ({ getSuggestionOptions: vi.fn(), getSuggestionReviewOptions: vi.fn(), submitAchievementSuggestion: vi.fn(), getMyAchievementSuggestions: vi.fn(), getAchievementSuggestion: vi.fn(), getAchievementSuggestionQueue: vi.fn(), reviewAchievementSuggestion: vi.fn() }))
 const categories = [{ category_id: 'cat_test', name: '测试分类', enabled: true }]
-const rewardItems = [{ item_key: 'baijinbi', name: '白金币', games: ['如鸢', '代号鸢'] }]
+const rewardItems = [{ item_key: 'test_coin', name: '测试币', games: ['如鸢', '代号鸢'] }]
 const options = () => ({ catalog: { categories }, reward_items: rewardItems })
 const reviewOptions = () => ({ revision: 3, draft: { categories }, reward_items: rewardItems, compatibility_issues: [] })
 const row = (status = 'PENDING') => ({ suggestion: { id: 's1', original: { ...newCandidate('代号鸢'), name: '原稿名称', category_id: 'cat_test', condition: '原稿条件' }, status, version: 0, source_url: 'https://example.com', submission_note: '<b>文本</b>', reviewed_at: null }, currently_published: null })
@@ -106,7 +106,7 @@ it('未知奖励不变为零，奖励与目标校验覆盖边界', () => {
   expect(candidate.rewards).toBe(null)
   expect(candidateErrors(candidate, categories, rewardItems)).toEqual({})
   candidate.target = 0; expect(candidateErrors(candidate, categories, rewardItems).target).toBeTruthy()
-  candidate.rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 0 }]
+  candidate.rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 0 }]
   expect(candidateErrors(candidate, categories, rewardItems).rewards).toBeTruthy()
 })
 

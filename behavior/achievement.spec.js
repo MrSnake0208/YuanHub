@@ -36,8 +36,9 @@ beforeEach(() => {
 
 it('积分汇总跨分页且不受筛选影响，保存成功才更新，切账号与读取失败不残留旧积分', async () => {
   const catalog = achievementCatalog(55)
-  catalog.categories[0].name = '刀光剑影'
-  catalog.entries.forEach(entry => { entry.rewards = [{ item_key: 'wugouxue', name: '吴钩雪', quantity: 10 }] })
+  catalog.categories[0].name = '测试积分分类'
+  catalog.point_tracks = [{ category_id: 'test', item_key: 'test_score', item_name: '测试分', tiers: [11, 27, 39, 63].map(at => ({ at, name: '测试奖励', quantity: 2, icon: 'coins' })) }]
+  catalog.entries.forEach(entry => { entry.rewards = [{ item_key: 'test_score', name: '测试分', quantity: 10 }] })
   const records = catalog.entries.slice(5).map(entry => ({ achievement_id: entry.achievement_id, status: 'completed' }))
   api.getAchievementCatalog.mockResolvedValue(catalog)
   api.getAchievementArchive.mockImplementation(id => Promise.resolve(achievementArchive(id, { records: id === 'a' ? records : [] })))
@@ -45,7 +46,7 @@ it('积分汇总跨分页且不受筛选影响，保存成功才更新，切账�
   const score = () => wrapper.find('.achievement-points-current strong').text()
   expect(score()).toBe('500')
   expect(wrapper.find('.achievement-points-tiers').exists()).toBe(false)
-  await button(wrapper, '刀光剑影').trigger('click')
+  await button(wrapper, '测试积分分类').trigger('click')
   expect(wrapper.findAll('.achievement-points-tiers li')).toHaveLength(4)
   await button(wrapper, '下一页').trigger('click')
   expect(score()).toBe('500')
@@ -164,14 +165,14 @@ it('导入预览不提交、未知需确认、revision 变化使预览失效', a
 
 it('筛选选项直接展示，奖励、关联进度和隐藏条件组合后可清除', async () => {
   const catalog = achievementCatalog(3)
-  catalog.entries[1].rewards = [{ item_key: 'gongguoge', name: '功过格', quantity: 1 }]
+  catalog.entries[1].rewards = [{ item_key: 'gongguoge', name: '测试格', quantity: 1 }]
   catalog.entries[1].linked_metric = 'yuan_bond_variants'; catalog.entries[1].target = 20
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const toolbar = wrapper.get('.achievement-toolbar')
   expect(toolbar.findAll('.achievement-filter-row')).toHaveLength(5)
   expect(toolbar.find('select, details').exists()).toBe(false)
-  const reward = button(toolbar.get('[aria-label="成就奖励选项"]'), '功过格')
+  const reward = button(toolbar.get('[aria-label="成就奖励选项"]'), '测试格')
   await reward.trigger('click')
   await toolbar.get('[aria-label="关联进度筛选"] button[value="yuan_bond_variants"]').trigger('click')
   await toolbar.get('[aria-label="成就属性筛选"]').findAll('input')[1].setValue(true)
@@ -190,7 +191,7 @@ it('筛选选项直接展示，奖励、关联进度和隐藏条件组合后可�
 })
 
 it('奖励仅提供四种快捷筛选，全部仍保留其它奖励成就', async () => {
-  const names = ['白金币', '五铢钱', '符传', '功过格']
+  const names = ['测试币', '测试钱', '测试券', '测试格']
   const catalog = achievementCatalog(5)
   catalog.entries.forEach((entry, index) => {
     entry.rewards = [{ item_key: 'fixture_' + index, name: names[index] || '称号【测试】', quantity: 1 }]
@@ -278,21 +279,21 @@ it('保存期间阻止重复提交，失败保留实际状态且不误开详情'
 it('奖励/分类/状态/关注组合与分组计数来自真实目录，清除恢复全部', async () => {
   const catalog = achievementCatalog(3)
   catalog.categories.push({ category_id: 'other', name: '另一测试分类' })
-  catalog.entries[0].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 1 }]
-  catalog.entries[1].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 2 }]
-  catalog.entries[2].category_id = 'other'; catalog.entries[2].rewards = [{ item_key: 'fuchuan', name: '符传', quantity: 1 }]
+  catalog.entries[0].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 1 }]
+  catalog.entries[1].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 2 }]
+  catalog.entries[2].category_id = 'other'; catalog.entries[2].rewards = [{ item_key: 'test_ticket', name: '测试券', quantity: 1 }]
   api.getAchievementCatalog.mockResolvedValue(catalog)
   mockArchiveWrites([{ achievement_id: catalog.entries[0].achievement_id, status: 'completed', favorite: true, note: '', progress: null, completed_on: null }])
   const wrapper = page(); await flushPromises()
   expect(wrapper.findAll('.achievement-group-heading').map(item => item.text())).toEqual(['测试分类本类已完成 1 / 共 2 项', '另一测试分类本类已完成 0 / 共 1 项'])
-  expect(wrapper.findAll('[aria-label="成就奖励选项"] button').map(item => item.text())).toEqual(['全部', '白金币', '五铢钱', '符传', '功过格'])
-  await button(wrapper.get('[aria-label="成就奖励选项"]'), '白金币').trigger('click')
+  expect(wrapper.findAll('[aria-label="成就奖励选项"] button').map(item => item.text())).toEqual(['全部', '测试币', '测试钱', '测试券', '测试格'])
+  await button(wrapper.get('[aria-label="成就奖励选项"]'), '测试币').trigger('click')
   await wrapper.get('[aria-label="游戏分类筛选"] button[value="test"]').trigger('click')
   await wrapper.get('[aria-label="成就状态筛选"] button[value="completed"]').trigger('click')
   await wrapper.get('.achievement-toolbar input[type="checkbox"]').setValue(true)
   expect(wrapper.findAll('.achievement-row')).toHaveLength(1)
   expect(wrapper.get('.achievement-group-heading').text()).toBe('测试分类本类已完成 1 / 共 2 项')
-  await button(wrapper.get('[aria-label="成就奖励选项"]'), '功过格').trigger('click')
+  await button(wrapper.get('[aria-label="成就奖励选项"]'), '测试格').trigger('click')
   expect(wrapper.findAll('.achievement-row')).toHaveLength(0)
   expect(wrapper.get('.achievement-empty').text()).toContain('没有匹配')
   await button(wrapper, '清除条件并查看全部').trigger('click')
@@ -624,13 +625,13 @@ it('完成日期草稿在两态切换和备注单独保存后保留，返回已�
 
 it('结构化奖励三态和旧奖励文本保留，指标缺失不伪造零进度', async () => {
   const catalog = achievementCatalog(4)
-  catalog.entries[0].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 10 }]
+  catalog.entries[0].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 10 }]
   catalog.entries[1].rewards = []
   catalog.entries[2].target = 20; catalog.entries[2].linked_metric = 'yuan_bond_variants'
   catalog.legacy_rewards = { [catalog.entries[3].achievement_id]: '旧奖励内容' }
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const w = page(); await flushPromises()
-  expect(w.text()).toContain('白金币 × 10'); expect(w.text()).toContain('无奖励')
+  expect(w.text()).toContain('测试币 × 10'); expect(w.text()).toContain('无奖励')
   expect(w.text()).toContain('奖励资料未补齐'); expect(w.text()).toContain('旧奖励内容（旧文本，未结构化）')
   expect(w.text()).toContain('羁绊进度未读取')
   expect(w.findAll('progress')).toHaveLength(0)
