@@ -1,0 +1,25 @@
+.achievement-points { min-width: 0; color: var(--ink); border: 1px solid var(--achievement-ornament); border-radius: 8px; background: color-mix(in srgb, var(--surface) 92%, transparent); }
+.achievement-points p { margin: 0; }
+.achievement-points-header { display: flex; flex-wrap: wrap; align-items: center; }
+.achievement-points-header > * { min-width: 0; }
+.achievement-points-current { flex: 1; }
+.achievement-points-current p { overflow-wrap: anywhere; }
+.achievement-points strong { color: var(--achievement-gold); font-family: var(--font-d); font-variant-numeric: tabular-nums; }
+.achievement-points-current small, .achievement-points-footnote { color: var(--ink-60); }
+.achievement-points-label { display: block; }
+.achievement-main .achievement-points-toggle { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--achievement-gold); background: transparent; border-color: transparent; }
+.achievement-points-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.achievement-points-track { position: relative; }
+.achievement-points-line { position: absolute; background: var(--achievement-line); border-radius: 3px; }
+.achievement-points-line i { display: block; height: 100%; background: var(--achievement-gold); border-radius: inherit; }
+.achievement-points-tiers { position: relative; display: grid; list-style: none; padding: 0; margin: 0; }
+.achievement-points-tiers li { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.achievement-points-node { box-sizing: border-box; display: grid; place-items: center; width: 26px; height: 26px; border: 2px solid var(--achievement-ornament); background: var(--surface); border-radius: 50%; }
+.is-reached .achievement-points-node { border-color: var(--achievement-gold); background: var(--achievement-gold); color: var(--surface); }
+.achievement-points-tiers b { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
+.achievement-points-tiers .is-reached b, .achievement-points-tiers .is-reached .achievement-points-state { color: var(--achievement-gold); }
+.achievement-points-reward { display: flex; align-items: center; justify-content: center; gap: 8px; overflow-wrap: anywhere; }
+.achievement-points-reward svg { flex-shrink: 0; color: var(--achievement-gold); }
+.achievement-points-state { margin-top: auto; color: var(--ink-60); }
+.achievement-points-tiers .is-next .achievement-points-node { border-color: var(--achievement-gold); }
+.achievement-points-footnote { border-top: 1px solid var(--achievement-line); text-align: center; overflow-wrap: anywhere; }

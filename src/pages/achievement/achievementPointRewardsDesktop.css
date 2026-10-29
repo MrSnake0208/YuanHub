@@ -1,0 +1,18 @@
+@media (min-width: 768px) {
+  .achievement-points { margin-bottom: 12px; padding: 12px 20px; font-size: 13px; }
+  .achievement-points.is-expanded { padding: 18px 22px 12px; }
+  .achievement-points-header { gap: 12px 24px; }
+  .achievement-points-current strong { font-size: 20px; }
+  .achievement-points.is-expanded .achievement-points-current strong { font-size: 40px; line-height: 1.2; }
+  .achievement-points.is-expanded .achievement-points-current p > span { font-family: var(--font-s); font-size: 26px; font-weight: 700; }
+  .achievement-points-label { margin-bottom: 2px; }
+  .achievement-points-next p { margin-top: 3px; }
+  .achievement-points.is-expanded .achievement-points-next { border-left: 1px solid var(--achievement-ornament); padding-left: 20px; }
+  .achievement-points-next strong { font-size: 30px; }
+  .achievement-points-track { margin: 18px 0 20px; }
+  .achievement-points-line { inset: 11px 0 auto; height: 4px; }
+  .achievement-points-tiers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .achievement-points-tiers li { padding-inline: 8px; }
+  .achievement-points-tiers b { font-size: 16px; }
+  .achievement-points-footnote { padding-top: 10px; font-size: 12px; line-height: 1.6; }
+}
