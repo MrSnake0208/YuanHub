@@ -25,7 +25,7 @@ function model() {
 function page() { return mount(AchievementPage, { attachTo: document.body, global: { provide: { [routeLocationKey]: { fullPath: '/achievement' } }, stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RouterLink: RouterLinkStub } } }) }
 beforeEach(() => {
   vi.clearAllMocks()
-  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: [] }
   activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }])
   api.getAchievementCatalog.mockResolvedValue(achievementCatalog())
@@ -656,12 +656,15 @@ it('羁绊只读进度达标提示和取消不反向修改人工完成状态', a
 })
 
 
-it('未授权或撤销授权时不展示成就内容和导入导出', async () => {
+it('普通用户无需管理权限即可查看成就和导入导出，退出登录后隐藏私人功能', async () => {
   const wrapper = page(); await flushPromises()
   expect(wrapper.find('.achievement-row').exists()).toBe(true)
   auth.adminAccess = { permissions: [] }; await flushPromises()
+  expect(wrapper.find('.achievement-row').exists()).toBe(true)
+  expect(wrapper.findComponent(AchievementExchange).exists()).toBe(true)
+  auth.accessToken = ''; auth.userInfo = null; await flushPromises()
   expect(wrapper.find('.achievement-row').exists()).toBe(false)
   expect(wrapper.findComponent(AchievementExchange).exists()).toBe(false)
-  expect(wrapper.text()).toContain('当前账号没有成就与羁绊访问权限')
+  expect(wrapper.text()).toContain('请先登录后使用成就档案')
   wrapper.unmount()
 })

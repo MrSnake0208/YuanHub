@@ -109,7 +109,7 @@
       </div>
       <SiteFooter />
     </main>
-    <main v-else id="main-content" class="achievement-main"><p role="status">当前账号没有成就与羁绊访问权限。</p></main>
+    <main v-else id="main-content" class="achievement-main"><p role="status">请先登录后使用成就档案。</p></main>
 
     <AchievementExchange v-if="canAccessArchive" ref="exchangePanel" :open="exchangeOpen" :account-id="accountId" :account-name="account?.name || ''" :identity="identity" :game="game" :revision="state.archive?.revision" :context-version="state.contextVersion" :can-record="available && !!state.archive && !state.loading" @close="exchangeOpen = false" @busy="state.busy = $event" @committed="acceptImport" />
   </div>
@@ -124,7 +124,6 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import { auth } from '../../store/auth.js'
-import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { dialog } from '../../utils/dialog.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
@@ -135,7 +134,7 @@ import { achievementPoints, pointRewardTrack } from './pointRewards.js'
 import { useAchievement } from './useAchievement.js'
 import { PAGE_SIZE, progressValidationError, STATUS_LABELS, summarizeAchievements } from './rules.js'
 
-const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
+const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo)
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE)
 const route = useRoute()
 const model = enabled ? useAchievement() : null

@@ -79,7 +79,7 @@ export const routes = [
     {
         path: '/achievement/suggestions', name: 'achievement-suggestions', text: '成就资料投稿', display: false, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/suggestions.vue'),
-        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就资料投稿 — YuanHub' }
+        meta: { requiresAuth: true, feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就资料投稿 — YuanHub' }
     },
     {
         path: '/achievement/admin/suggestions', name: 'achievement-suggestion-review', text: '审核成就投稿', display: false, module: 'tools', icon: 'book-check',
@@ -94,7 +94,7 @@ export const routes = [
     {
         path: '/achievement', name: 'achievement', text: '成就档案', display: true, module: 'tools', icon: 'book-check',
         component: () => import('/src/pages/achievement/index.vue'),
-        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, feature: FEATURE_KEYS.ACHIEVEMENT_ARCHIVE, featureFallback: '/', title: '成就档案 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar', name: 'calendar', text: '活动日历', display: true, module: 'tools', icon: 'calendar-days',
