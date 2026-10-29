@@ -6,21 +6,21 @@
         <h3 class="achievement-title">{{ entry.name }}</h3>
         <p class="achievement-condition">{{ entry.condition }}</p>
         <small v-if="entry.is_hidden === true">隐藏成就</small>
-        <div v-if="entry.linked_metric || hasQuantifiedProgress(entry) || record.progress != null" class="achievement-progress">
-          <template v-if="entry.linked_metric">
-            <span>{{ linked ? '羁绊已记录进度 ' + linked.displayed + ' / ' + entry.target : '羁绊进度未读取' }}</span>
-            <progress v-if="linked" :value="linked.displayed" :max="entry.target" :aria-label="entry.name + ' 羁绊已记录进度'" />
-            <small v-if="linked?.reached && completionStatus(record) !== 'completed'">记录已达标，可确认完成</small>
-            <small v-if="record.progress != null">历史人工进度 {{ record.progress }}（单独保留）</small>
-          </template>
-          <template v-else-if="hasQuantifiedProgress(entry)">
-            <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
-            <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
-          </template>
-          <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
-        </div>
       </div>
       <div class="achievement-reward"><span>{{ rewardText(entry, legacyReward) }}</span></div>
+      <div v-if="entry.linked_metric || hasQuantifiedProgress(entry) || record.progress != null" class="achievement-progress">
+        <template v-if="entry.linked_metric">
+          <span>{{ linked ? '羁绊已记录进度 ' + linked.displayed + ' / ' + entry.target : '羁绊进度未读取' }}</span>
+          <progress v-if="linked" :value="linked.displayed" :max="entry.target" :aria-label="entry.name + ' 羁绊已记录进度'" />
+          <small v-if="linked?.reached && completionStatus(record) !== 'completed'">记录已达标，可确认完成</small>
+          <small v-if="record.progress != null">历史人工进度 {{ record.progress }}（单独保留）</small>
+        </template>
+        <template v-else-if="hasQuantifiedProgress(entry)">
+          <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
+          <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
+        </template>
+        <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
+      </div>
       <div class="achievement-row-actions">
         <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
           <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (saving ? ' 正在保存' : recordReady ? (completed ? ' 已完成' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><LoaderCircle v-if="saving" :size="18" aria-hidden="true" /><Check v-else-if="recordReady && completed" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ saving ? '保存中…' : recordReady ? (completed ? '已完成' : '未完成') : '未读取' }}</span></button>
