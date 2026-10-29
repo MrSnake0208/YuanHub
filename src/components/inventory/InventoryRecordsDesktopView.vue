@@ -22,12 +22,13 @@
           </div>
           <div class="record-source">来源：{{ r.acquisition_channel || '未标注来源' }}</div>
           <p v-if="r.record_type === 'consumption_delta'" class="record-delete-note">升级消耗不可单独删除。</p>
+          <p v-if="r.transaction_id?.startsWith('reset_')" class="record-delete-note">密探重置记录，请在该密探的「鞭子重置 / 记录」中整笔撤销。</p>
         </div>
         <div class="record-meta">
           <time class="record-time" :datetime="r.effective_at || undefined"><Clock3 :size="13" aria-hidden="true" />{{ fmtTime(r.effective_at) || '时间未提供' }}</time>
           <div class="record-actions">
             <button type="button" class="record-detail-toggle" data-record-action="details" :aria-expanded="expandedIds.includes(r.record_id)" :aria-controls="'inventory-record-details-' + encodeURIComponent(r.record_id)" @click="$emit('toggle-details', r.record_id, !expandedIds.includes(r.record_id))"><Eye :size="15" aria-hidden="true" />详情</button>
-            <button v-if="r.record_type !== 'consumption_delta'" type="button" class="record-del" data-record-action="delete" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="15" aria-hidden="true" />删除</button>
+            <button v-if="r.record_type !== 'consumption_delta' && !r.transaction_id?.startsWith('reset_')" type="button" class="record-del" data-record-action="delete" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="15" aria-hidden="true" />删除</button>
           </div>
         </div>
         <div v-show="expandedIds.includes(r.record_id)" :id="'inventory-record-details-' + encodeURIComponent(r.record_id)" class="record-details">

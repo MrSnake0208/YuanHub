@@ -6,6 +6,10 @@
 
 > 2026-10-22：新增[命盘快捷选择](./operator-disc-presets.md)，一盘、二盘共用两款游戏合并统计的完整 Top 3，支持填入当前/目标草稿及撤销。
 
+> 2026-10-29：密探编辑的等级/修为区增加「鞭子重置 / 记录」。记录游戏内已完成的重置并增加已核对的返还材料，不统计或扣除鞭子；五铢钱只展示。操作前显示账号、密探、共享形态、练度及库存前后变化，数量可按游戏预览修正。未保存编辑需先处理，取消不写入；已采集/盘点包含的返还不可重复入库。100 级经验及等级内零头无法自动推断，兵书须核对实际数量。
+>
+> 重置与持久撤销同时提供：成功后及重新打开的重置记录内均可撤销。恢复原等级/修为/突破并扣回本次实际返还数量，保留其他资源；关联密探后续修改、相关库存盘点覆盖或材料不足时整笔阻止，不覆盖后续数据。库存记录显示返还来源并指向密探重置记录，禁止单独删除。账号备份导入不复制这段撤销历史。
+
 > **当前养成专项更新：**「当前养成」Tab 的最新职责、养成状态、任意人数委托、双命盘、已装备星石及快捷提升方案，以 [`operator-current-workbench-implementation-plan.md`](./operator-current-workbench-implementation-plan.md) 为准；正式数据格式见 [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md)，后端配合见 [`backend-operator-current-workbench-spec.md`](./backend-operator-current-workbench-spec.md)，自动采集行动规划见 [`operator-auto-scan-integration-plan.md`](./operator-auto-scan-integration-plan.md)。当前养成展示并允许快捷卸除已装备星石，但不在此处进行替换、升级或多方案管理；双命盘仍无“当前盘”语义。
 
 ## 1. 产品定位

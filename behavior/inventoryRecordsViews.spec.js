@@ -18,6 +18,16 @@ const props = () => ({ recordsList: [row], accountId: 'synthetic-a', deleteRecor
 const render = options => mount(InventoryRecordsView, { props: props(), attachTo: document.body, ...options })
 beforeEach(() => { viewport = installViewport(390); window.scrollBy = vi.fn() })
 
+it.each([390, 1024])('密探重置在 %ipx 记录中显示整笔撤销路径并隐藏单独删除', async width => {
+  viewport.resize(width)
+  const reset = { ...row, record_id: 'yuanhub:reset_1', record_type: 'resource_delta', transaction_id: 'reset_1', acquisition_channel: '密探重置返还', entries: [{ id: 'bingshuquanjuan', count: 65 }] }
+  const w = render({ props: { ...props(), recordsList: [reset] } })
+  expect(w.find('[data-record-action="delete"]').exists()).toBe(false)
+  if (width === 390) await w.get('[data-record-action="details"]').trigger('click')
+  expect(w.get('.record-delete-note').text()).toContain('鞭子重置 / 记录')
+  w.unmount()
+})
+
 it.each([390, 1024])('符传兑换在 %ipx 组件中显示有符号两边变动并整笔删除', async width => {
   viewport.resize(width)
   const exchange = { ...row, record_id: 'draw:exchange', record_type: 'resource_delta', acquisition_channel: '白金币兑换',

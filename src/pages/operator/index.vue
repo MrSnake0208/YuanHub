@@ -2637,6 +2637,10 @@
 
           <div ref="editorBodyEl" class="editor-body">
             <section v-show="editorSection === 'growth'" id="operator-editor-growth" class="editor-row editor-growth-section" role="tabpanel" aria-labelledby="operator-editor-tab-growth" tabindex="0" data-editor-section="growth">
+              <div class="editor-reset-action">
+                <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" @click="resetEntry = editingOp">鞭子重置 / 记录</button>
+                <span v-if="editorDirty" class="hint">保存或取消当前修改后可操作</span>
+              </div>
               <div class="num-fields">
                 <div class="editor-level-block">
                   <div class="editor-growth-heading">
@@ -3081,6 +3085,7 @@
         @update:draft-loadouts="starLoadoutDrafts = $event"
       />
       <OperatorMilestoneDialog v-if="milestoneEntry && auth.isLoggedIn && accountId" :entry="milestoneEntry" :account-id="accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" @close="milestoneEntry = null" />
+      <OperatorResetDialog v-if="resetEntry && auth.isLoggedIn && accountId" :entry="resetEntry" :account-id="accountId" :account-name="accounts.find(a => a.id === accountId)?.name || accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" :operators="catalogOperators" @close="resetEntry = null" @updated="refreshAfterReset" />
       <OperatorAwakeningDialog v-if="awakeningEntry" :key="accountId + ':' + awakeningEntry.id"
         :entry="awakeningEntry" :account-id="accountId" :game="saveGame" :refresh="refreshAwakeningEntry"
         @close="awakeningId = ''" @saved="onAwakeningSaved" />
@@ -3093,6 +3098,7 @@ import operatorV5Example from "../../../docs/examples/operator-growth-exchange-v
 import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
+import OperatorResetDialog from '../../components/operator/OperatorResetDialog.vue';
 import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates, publishAccountList } from '../../store/accountList.js'
 import { updateAccount } from '../../api/accounts.js'
@@ -3453,6 +3459,7 @@ const quickSavingIds = ref(new Set());
 const quickNotices = ref({});
 const awakeningId = ref('');
 const milestoneEntry = ref(null);
+const resetEntry = ref(null);
 const awakeningEntry = computed(() => currentMap.value[awakeningId.value] || null);
 const workbenchStatuses = ref({});
 const workbenchRemarks = ref({});
@@ -3615,7 +3622,7 @@ const organizationTagOptions = computed(() => {
   const owned = new Set(ownedCurrentEntries.value.map(entry => entry.id));
   return organizationData.value.tags.map(tag => ({ value: tag.id, label: tag.name, count: tag.operator_ids.filter(id => owned.has(id)).length }));
 });
-watch(() => [accountId.value, gameFilter.value, auth.userInfo?.id, auth.isLoggedIn], () => { milestoneEntry.value = null; }, { flush: "sync" });
+watch(() => [accountId.value, gameFilter.value, auth.userInfo?.id, auth.isLoggedIn], () => { milestoneEntry.value = null; resetEntry.value = null; }, { flush: "sync" });
 watch([accountId, gameFilter], () => { organizationTagFilter.value = ""; }, { flush: "sync" });
 watch(() => organizationData.value.tags, tags => {
   if (organizationTagFilter.value && !tags.some(tag => tag.id === organizationTagFilter.value)) organizationTagFilter.value = "";
@@ -7965,6 +7972,15 @@ async function saveCardCombat(entry) {
     next.delete(entry.id);
     cardCombatSavingIds.value = next;
   }
+}
+
+async function refreshAfterReset() {
+  const seq = currentContextSeq;
+  const id = editingId.value;
+  await Promise.all([reloadCurrent(true), loadCardMaterialStock()]);
+  if (operatorPageDisposed || seq !== currentContextSeq || !editing.value || editingId.value !== id || editorDirty.value || error.value) return;
+  applyEditorEntry(currentMap.value[id], editingOp.value, id, false);
+  editBaseline.value = JSON.stringify([editForm.value, combatDisplayMode.value]);
 }
 
 async function openEdit(id) {

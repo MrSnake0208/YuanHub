@@ -27,7 +27,7 @@
           <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
           <div class="record-actions">
             <button type="button" class="record-detail-toggle" data-record-action="details" aria-label="显示详情" title="显示详情" :aria-expanded="expandedIds.includes(r.record_id)" :aria-controls="'inventory-record-details-' + encodeURIComponent(r.record_id)" @click="$emit('toggle-details', r.record_id, !expandedIds.includes(r.record_id))"><Eye :size="16" aria-hidden="true" /></button>
-            <button v-if="r.record_type !== 'consumption_delta'" type="button" class="record-del" data-record-action="delete" aria-label="删除记录" title="删除记录" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="16" aria-hidden="true" /></button>
+            <button v-if="r.record_type !== 'consumption_delta' && !r.transaction_id?.startsWith('reset_')" type="button" class="record-del" data-record-action="delete" aria-label="删除记录" title="删除记录" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="16" aria-hidden="true" /></button>
           </div>
         </div>
         <div v-show="expandedIds.includes(r.record_id)" :id="'inventory-record-details-' + encodeURIComponent(r.record_id)" class="record-details">
@@ -35,6 +35,7 @@
             <div v-if="staminaCostOf(r) !== undefined" class="record-stamina">消耗体力 {{ staminaCostOf(r) }}</div>
             <div class="record-id">记录 ID：{{ r.record_id || '未提供' }}</div>
             <p v-if="r.record_type === 'consumption_delta'" class="record-delete-note">升级消耗不可单独删除。</p>
+            <p v-if="r.transaction_id?.startsWith('reset_')" class="record-delete-note">密探重置记录，请在该密探的「鞭子重置 / 记录」中整笔撤销。</p>
           </div>
         </div>
       </li>
