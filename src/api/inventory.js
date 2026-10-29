@@ -130,7 +130,7 @@ export function exportInventory({ accountId, scope, include, from, to }) {
 
 // 导入记录列表（GET，需登录）——{ accountId, entityType?, from?, to?, cursor?, limit? }，按 effective_at 倒序（游标分页）
 // 返回 { items: [{ account_id, record_id, record_type, entity_type, acquisition_channel, staminaCost?, effective_at, received_at, stock_effect, entries }], next_cursor }
-export async function listRecords({ accountId, entityType, from, to, cursor, limit } = {}) {
+export async function listRecords({ accountId, entityType, from, to, cursor, limit } = {}, { expectedUserId, fresh = false } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (entityType != null && entityType !== '') params.set('entity_type', entityType)
@@ -139,7 +139,7 @@ export async function listRecords({ accountId, entityType, from, to, cursor, lim
   if (cursor != null && cursor !== '') params.set('cursor', cursor)
   if (limit != null) params.set('limit', String(limit))
   const qs = params.toString()
-  const page = await request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true })
+  const page = await request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true, ...(expectedUserId === undefined ? {} : { expectedUserId }), ...(fresh ? { headers: { 'Cache-Control': 'no-cache' } } : {}) })
   return deserializeInventoryRecordPage(page)
 }
 

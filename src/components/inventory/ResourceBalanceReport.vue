@@ -8,10 +8,14 @@
     </header>
     <div v-if="error" class="report-state" role="alert"><p>{{ error }}</p><p>暂时无法读取库存记录，请重试；读取失败不代表没有盘点。</p><slot name="error-actions" /></div>
     <p v-else-if="truncated" class="report-state" role="status">流水超过 5,000 条，以下仅展示已加载记录；库存与净变化可能不完整。</p>
-    <div class="coin-basis" role="group" aria-label="白金币统计口径"><button type="button" :aria-pressed="!includeZhuyu" @click="includeZhuyu = false">实际白金币</button><button type="button" :aria-pressed="includeZhuyu" @click="includeZhuyu = true">含茱萸等价值</button></div>
+    <div class="coin-basis" role="group" aria-label="资源统计口径"><button v-for="option in bases" :key="option.id" type="button" :aria-pressed="basis === option.id" @click="basis = option.id">{{ option.label }}</button></div>
     <p v-if="includeZhuyu" class="explanation">按最近已知白金币库存 + 茱萸库存 × 50 折算，不代表已兑换；月历、净变化和趋势使用同一口径。</p>
-    <p v-if="includeZhuyu && resources[0].missingDays" class="report-state" role="status">部分日期缺少白金币或茱萸库存基准，暂不计算这些日期的等价值；缺测不按零处理。</p>
-    <div v-if="!error" class="resource-summary">
+    <p v-if="includeMailbox" class="explanation">计入邮件待领白金币与普通符传；领取只转入背包，储备调整不代表当天获得或消耗。</p>
+    <p v-if="mailLoading && includeMailbox" class="report-state" role="status">正在读取邮件与库存历史…</p>
+    <div v-if="mailError && includeMailbox" class="report-state" role="alert">{{ mailError }} <button type="button" @click="loadMailboxData">重试读取邮件历史</button></div>
+    <div v-if="includeMailbox && mailData && !mailData.history.length && !mailError" class="report-state">本期暂无邮箱储备基准；未录入不代表零封。<slot name="mailbox-empty-actions" /></div>
+    <p v-if="resources.some(r => r.missingDays)" class="report-state" role="status">部分日期缺少背包、茱萸或邮箱库存基准，暂不计算对应合计；缺测不按零处理。</p>
+    <div v-if="!reportError && (!includeMailbox || !mailLoading)" class="resource-summary">
       <article v-for="resource in resources" :key="resource.id">
         <div class="resource-name"><img :src="icon(resource.id)" alt="" width="24" height="24" /><h3>{{ resource.name }}</h3></div>
         <div class="summary-values">
@@ -32,7 +36,7 @@
       <p>这不代表从未盘点。可以调整日期范围查找已有盘点，或核对当前背包后录入库存，也可以导入 MaaYuan 库存报告。只有奖励流水时仍不能确定实际库存。</p>
       <div class="report-empty-actions"><slot name="empty-actions" /></div>
     </div>
-    <template v-else-if="view === 'calendar' && !error">
+    <template v-else-if="view === 'calendar' && !reportError && (!includeMailbox || !mailLoading)">
       <div class="calendar-scroll"><div class="calendar-content">
         <div class="weekdays"><span v-for="day in ['日', '一', '二', '三', '四', '五', '六']" :key="day">{{ day }}</span></div>
         <div class="calendar">
@@ -51,11 +55,11 @@
           <div v-for="n in trailingDays" :key="'trailing' + n" class="day blank" aria-hidden="true"></div>
         </div>
       </div></div>
-      <div v-if="selected" class="day-detail" aria-live="polite"><h3>{{ selected }} · 记录详情</h3><p v-for="r in resources" :key="r.id"><b>{{ r.name }}</b><span v-if="pointFor(r, selected)">库存 {{ number(pointFor(r, selected).stock) }} · {{ pointFor(r, selected).state }} · {{ changeFor(r, selected) }}<template v-if="pointFor(r, selected).previousDay">（较 {{ pointFor(r, selected).previousDay }}）</template></span><span v-else-if="calendarValue(r, selected).stock !== null">最近已知库存 {{ number(calendarValue(r, selected).stock) }}（{{ calendarPointFor(r, selected).state }}，记录于 {{ calendarValue(r, selected).recordedDay }}，当日未更新）</span><span v-else>本期截至当日无库存基准，无法计算</span></p></div>
+      <div v-if="selected" class="day-detail" aria-live="polite"><h3>{{ selected }} · 记录详情</h3><p v-for="r in resources" :key="r.id"><b>{{ r.name }}</b><span v-if="pointFor(r, selected)">库存 {{ number(pointFor(r, selected).stock) }} · {{ pointFor(r, selected).state }} · {{ changeFor(r, selected) }}<template v-if="pointFor(r, selected).previousDay">（较 {{ pointFor(r, selected).previousDay }}）</template><template v-if="pointFor(r, selected).components"> · {{ componentText(pointFor(r, selected).components) }}</template><template v-for="note in pointFor(r, selected).notes" :key="note"> · {{ note }}</template></span><span v-else-if="calendarValue(r, selected).stock !== null">最近已知库存 {{ number(calendarValue(r, selected).stock) }}（{{ calendarPointFor(r, selected).state }}，记录于 {{ calendarValue(r, selected).recordedDay }}，当日未更新）</span><span v-else>本期截至当日无库存基准，无法计算</span></p></div>
       <div class="calendar-state-legend" aria-label="库存记录状态说明"><span>基准：首次已知库存，变化暂不可比较</span><span>0：与上次记录相比零变化</span><span>未更新：沿用旧记录，不代表零变化</span><span>无基准 / —：无法计算</span></div>
       <p class="explanation">月历展示记录日相对上次记录的库存变化，可能跨越多日；行内库存是该记录日的已知值。空白不代表零变化，点击日期查看基准、来源和精确数值。<template v-if="compactChart">白金币、符传、天机符传依次使用蓝、紫棕、金色标签；大额变化以万或亿取近似值。</template></p>
     </template>
-    <section v-else-if="!error" class="trend" aria-labelledby="resource-trend-title">
+    <section v-else-if="!reportError && (!includeMailbox || !mailLoading)" class="trend" aria-labelledby="resource-trend-title">
       <h3 id="resource-trend-title">库存趋势</h3><p class="explanation">各资源以周期内的起始库存为基准，比较相对涨跌；纵向位置不代表相同数量。起始库存为零时以 1 为基准。选择数据点可查看实际库存。</p>
     <div class="legend"><span v-for="r in resources" :key="r.id"><i :style="{ background: r.color }"></i>{{ r.name }}</span><span><i class="dashed"></i>跨未记录日期连线</span></div>
       <p v-if="!chart.series.some(r => r.points.length)" class="report-state">已加载记录中暂无可展示的库存基准</p>
@@ -74,8 +78,8 @@
       <div v-if="activePoint" ref="tooltipElement" class="point-tooltip" role="status" :style="{ ...tooltipPosition, '--point-color': activePoint.color }">
         <div class="point-tooltip-heading"><b>{{ activePoint.name }}</b><time>{{ activePoint.day }}</time></div>
         <div class="point-stock"><span>库存</span><strong>{{ number(activePoint.stock) }}</strong></div>
-        <p v-if="activePoint.components" class="point-note">白金币 {{ number(activePoint.components.baijinbi) }} + 茱萸 {{ number(activePoint.components.zhuyu) }} × 50</p>
-        <p class="point-note">{{ activePoint.state }}</p>
+        <p v-if="activePoint.components" class="point-note">{{ componentText(activePoint.components) }}</p>
+        <p class="point-note">{{ activePoint.state }}</p><p v-for="note in activePoint.notes" :key="note" class="point-note">{{ note }}</p>
         <dl>
           <div v-if="activePoint.delta !== null"><dt>较 {{ activePoint.previousDay }}</dt><dd :class="changeClass(activePoint.delta)">{{ signed(activePoint.delta) }}</dd></div>
           <div v-if="activePoint.delta !== null && activePoint.percent !== null"><dt>较周期起始</dt><dd :class="changeClass(activePoint.percent)">{{ signed(activePoint.percent) }}%</dd></div>
@@ -91,10 +95,42 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { buildResourceBalance, resourceRangeDates, resourceDayNumber, resourceCalendarValue } from '../../data/inventory/resourceBalance.js'
-const props = defineProps({ records: { type: Array, default: () => [] }, from: { type: String, required: true }, to: { type: String, required: true }, error: { type: String, default: '' }, truncated: Boolean })
-const includeZhuyu = ref(false)
-const resources = computed(() => buildResourceBalance(props.error ? [] : props.records, props.from, props.to, includeZhuyu.value))
-const noBaseline = computed(() => !props.error && !props.truncated && resources.value.every(resource => !resource.latest))
+const props = defineProps({ records: { type: Array, default: () => [] }, from: { type: String, required: true }, to: { type: String, required: true }, error: { type: String, default: '' }, truncated: Boolean, loadMailbox: Function, contextKey: { type: String, default: '' } })
+const bases = [{ id: 'actual', label: '实际白金币' }, { id: 'zhuyu', label: '含茱萸等价值' }, { id: 'mailbox', label: '含邮箱' }, { id: 'all', label: '含茱萸与邮箱' }]
+const basis = ref('actual')
+const includeZhuyu = computed(() => ['zhuyu', 'all'].includes(basis.value))
+const includeMailbox = computed(() => ['mailbox', 'all'].includes(basis.value))
+const mailData = ref(null), mailError = ref(''), mailLoading = ref(false)
+let mailSequence = 0
+async function loadMailboxData() {
+  const seq = ++mailSequence
+  mailData.value = null; mailError.value = ''; mailLoading.value = true
+  try {
+    if (!props.loadMailbox) throw new Error('邮件历史暂不可用')
+    const data = await props.loadMailbox(props.from, props.to)
+    if (seq === mailSequence) mailData.value = data
+  } catch (err) {
+    if (seq === mailSequence) mailError.value = err.message || '邮件历史读取失败'
+  } finally { if (seq === mailSequence) mailLoading.value = false }
+}
+watch(includeMailbox, included => { if (included && !mailData.value && !mailLoading.value) loadMailboxData() })
+watch(() => [props.contextKey, props.from, props.to, props.records], () => {
+  ++mailSequence; mailData.value = null; mailError.value = ''; mailLoading.value = false
+  if (includeMailbox.value) loadMailboxData()
+})
+onBeforeUnmount(() => { ++mailSequence })
+const reportError = computed(() => props.error || (includeMailbox.value && mailError.value))
+const resources = computed(() => buildResourceBalance(
+  reportError.value || includeMailbox.value && !mailData.value ? [] : includeMailbox.value ? mailData.value.records : props.records,
+  props.from, props.to, basis.value, includeMailbox.value ? mailData.value?.history || [] : []
+))
+const noBaseline = computed(() => !reportError.value && (!includeMailbox.value || !mailLoading.value) && !props.truncated && resources.value.every(resource => !resource.latest))
+function componentText(parts) {
+  const result = [parts.baijinbi !== undefined ? `白金币 ${number(parts.baijinbi)}` : `符传 ${number(parts.fuchuan)}`]
+  if (parts.zhuyu !== undefined) result.push(`茱萸 ${number(parts.zhuyu)} × 50`)
+  if (parts.mailbox !== undefined) result.push(`邮箱待领 ${number(parts.mailbox)}`)
+  return result.join(' + ')
+}
 const views = [{ id: 'calendar', label: '月历' }, { id: 'trend', label: '趋势' }]
 const view = ref('calendar')
 const compactChart = ref(false)
@@ -149,7 +185,7 @@ watch([plotElement, tooltipElement], () => {
 watch([activePoint, chartWidth], positionTooltip, { flush: 'post' })
 onBeforeUnmount(() => tooltipObserver?.disconnect())
 watch(() => [props.from, props.to, props.records, props.error, props.truncated], () => { selected.value = ''; hoverPoint.value = null; pinnedPoint.value = null })
-watch([view, includeZhuyu], () => { hoverPoint.value = null; pinnedPoint.value = null })
+watch([view, basis], () => { hoverPoint.value = null; pinnedPoint.value = null })
 const dates = computed(() => resourceRangeDates(props.from, props.to))
 const offset = computed(() => dates.value.length ? new Date(props.from + 'T00:00:00Z').getUTCDay() : 0)
 const trailingDays = computed(() => (7 - (offset.value + dates.value.length) % 7) % 7)

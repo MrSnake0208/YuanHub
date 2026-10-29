@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import ResourceBalanceReport from '../src/components/inventory/ResourceBalanceReport.vue'
 
 beforeEach(() => {
@@ -144,4 +144,43 @@ it('手机也保留日期与来源，选中详情在换数据后清除', async (
   await wrapper.setProps({ records: [datedSnapshot('next-account', '2026-10-01', [], 'full')] })
   expect(wrapper.find('.day-detail').exists()).toBe(false)
   expect(wrapper.get('.summary-values strong').text()).toBe('0')
+})
+
+it('含邮箱同步更新摘要月历趋势，切回旧口径不受邮箱失败影响', async () => {
+  const records = [snapshot([{ id: 'baijinbi', count: 1000 }, { id: 'zhuyu', count: 2 }, { id: 'fuchuan', count: 10 }])]
+  const loadMailbox = vi.fn().mockResolvedValue({ records, history: [{ version: 1, effective_at: '2026-09-30T12:00:00+08:00', kind: 'baseline', white_coin_mails: [{ count: 8, coins_per_mail: 90 }], fu_chuan_mail_count: 2 }] })
+  const wrapper = mount(ResourceBalanceReport, { props: { records, from: '2026-09-30', to: '2026-09-30', loadMailbox } })
+  await button(wrapper, '含邮箱').trigger('click'); await flushPromises()
+  expect(wrapper.get('.summary-values strong').text()).toBe('1,720')
+  expect(wrapper.findAll('.summary-values strong')[1].text()).toBe('16')
+  await button(wrapper, '含茱萸与邮箱').trigger('click')
+  expect(wrapper.get('.summary-values strong').text()).toBe('1,820')
+  expect(loadMailbox).toHaveBeenCalledTimes(1)
+  await button(wrapper, '趋势').trigger('click')
+  await wrapper.get('circle[role="button"]').trigger('click')
+  expect(wrapper.get('.point-tooltip').text()).toContain('邮箱待领 720')
+  loadMailbox.mockRejectedValue(new Error('邮件读取失败'))
+  await wrapper.setProps({ contextKey: 'other' }); await flushPromises()
+  expect(wrapper.text()).toContain('邮件读取失败')
+  expect(wrapper.find('.resource-summary').exists()).toBe(false)
+  await button(wrapper, '实际白金币').trigger('click')
+  expect(wrapper.get('.summary-values strong').text()).toBe('1,000')
+  wrapper.unmount()
+})
+
+it('切换账号忽略旧邮箱响应，原口径在邮箱加载中仍可用', async () => {
+  let resolveOld
+  const old = new Promise(resolve => { resolveOld = resolve })
+  const records = [snapshot([{ id: 'baijinbi', count: 1000 }])]
+  const loadMailbox = vi.fn().mockReturnValueOnce(old).mockResolvedValue({ records: [], history: [] })
+  const wrapper = mount(ResourceBalanceReport, { props: { records, from: '2026-09-30', to: '2026-09-30', loadMailbox, contextKey: 'a' } })
+  await button(wrapper, '含邮箱').trigger('click')
+  await button(wrapper, '实际白金币').trigger('click')
+  expect(wrapper.get('.summary-values strong').text()).toBe('1,000')
+  await wrapper.setProps({ contextKey: 'b' })
+  await button(wrapper, '含邮箱').trigger('click'); await flushPromises()
+  resolveOld({ records, history: [{ version: 1, effective_at: '2026-09-30T12:00:00+08:00', kind: 'baseline', white_coin_mails: [{ count: 8, coins_per_mail: 90 }], fu_chuan_mail_count: 0 }] })
+  await flushPromises()
+  expect(wrapper.text()).not.toContain('1,720')
+  wrapper.unmount()
 })

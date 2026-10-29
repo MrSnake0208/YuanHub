@@ -7,7 +7,9 @@ export const DRAW_RESOURCES = [
 ]
 
 // Reconstruct only after an observed snapshot. Reward totals alone are not stock.
-export function buildResourceBalance(records, from, to, includeZhuyu = false) {
+export function buildResourceBalance(records, from, to, basis = 'actual', mailboxHistory = []) {
+  const includeZhuyu = ['zhuyu', 'all'].includes(basis)
+  const includeMailbox = ['mailbox', 'all'].includes(basis)
   const ordered = [...records].filter(r => r.entity_type === 'item' && localDayKey(r.effective_at))
     .sort((a, b) => Date.parse(a.effective_at) - Date.parse(b.effective_at)
       || Number(a.record_type === 'stock_snapshot') - Number(b.record_type === 'stock_snapshot')
@@ -43,24 +45,42 @@ export function buildResourceBalance(records, from, to, includeZhuyu = false) {
     return { ...resource, points, latest: points.at(-1) || null,
       net: points.length > 1 ? points.at(-1).stock - points[0].stock : null }
   })
-  if (!includeZhuyu) return balances
-  const coin = balances[0]
-  const zhuyu = balances.pop()
-  const days = [...new Set([...coin.points, ...zhuyu.points].map(point => point.day))].sort()
-  let missingDays = 0
-  const points = days.flatMap(day => {
-    const coinStock = resourceCalendarValue(coin.points, day).stock
-    const zhuyuStock = resourceCalendarValue(zhuyu.points, day).stock
-    if (coinStock === null || zhuyuStock === null) { missingDays++; return [] }
-    return [{ day, stock: coinStock + zhuyuStock * 50, state: '基于最近记录折算', components: { baijinbi: coinStock, zhuyu: zhuyuStock } }]
-  }).map((point, index, all) => ({ ...point,
-    delta: index ? point.stock - all[index - 1].stock : null,
-    previousDay: index ? all[index - 1].day : null
-  }))
-  balances[0] = { ...coin, name: '白金币等价值（含茱萸）', points, missingDays,
-    latest: points.at(-1) || null,
-    net: points.length > 1 ? points.at(-1).stock - points[0].stock : null }
+  const zhuyu = includeZhuyu ? balances.pop() : null
+  if (!includeZhuyu && !includeMailbox) return balances
+  const mailDays = new Map()
+  for (const entry of [...mailboxHistory].sort((a, b) => Date.parse(a.effective_at) - Date.parse(b.effective_at) || a.version - b.version)) {
+    const day = localDayKey(entry.effective_at)
+    if (!day || day < from || day > to) continue
+    const previous = mailDays.get(day)
+    mailDays.set(day, { day,
+      coins: entry.white_coin_mails.reduce((sum, row) => sum + row.count * row.coins_per_mail, 0),
+      tickets: entry.fu_chuan_mail_count * 3,
+      notes: [...(previous?.notes || []), entry.claim_deleted ? '关联领取记录已删除，邮件储备未退回' : entry.kind === 'adjustment' ? '储备调整（不代表当天获得或消耗）' : entry.kind === 'claim' ? '邮件领取转入背包' : '邮箱储备基准']
+    })
+  }
+  const mailPoints = [...mailDays.values()]
+  for (let index = 0; index < (includeMailbox ? 2 : 1); index++) {
+    const resource = balances[index]
+    const withZhuyu = index === 0 && includeZhuyu
+    const days = [...new Set([...resource.points, ...(withZhuyu ? zhuyu.points : []), ...(includeMailbox ? mailPoints : [])].map(p => p.day))].sort()
+    let missingDays = 0
+    const points = days.flatMap(day => {
+      const stock = resourceCalendarValue(resource.points, day).stock
+      const z = withZhuyu ? resourceCalendarValue(zhuyu.points, day).stock : 0
+      const mail = includeMailbox ? mailPoints.findLast(p => p.day <= day) : null
+      if (stock === null || z === null || includeMailbox && !mail) { missingDays++; return [] }
+      const reserved = includeMailbox ? (index === 0 ? mail.coins : mail.tickets) : 0
+      const components = index === 0 ? { baijinbi: stock, ...(withZhuyu ? { zhuyu: z } : {}) } : { fuchuan: stock }
+      if (includeMailbox) components.mailbox = reserved
+      return [{ day, stock: stock + z * 50 + reserved, state: '基于最近记录折算', components,
+        notes: mail?.day === day ? [...new Set(mail.notes)] : [] }]
+    }).map((point, i, all) => ({ ...point, delta: i ? point.stock - all[i - 1].stock : null, previousDay: i ? all[i - 1].day : null }))
+    const additions = [withZhuyu && '茱萸', includeMailbox && '邮箱'].filter(Boolean).join('与')
+    balances[index] = { ...resource, name: `${resource.name}${withZhuyu ? '等价值' : ''}（含${additions}）`, points, missingDays,
+      latest: points.at(-1) || null, net: points.length > 1 ? points.at(-1).stock - points[0].stock : null }
+  }
   return balances
+
 }
 
 // UTC date-only arithmetic keeps calendar spacing stable across DST and month/year boundaries.

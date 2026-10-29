@@ -8,7 +8,7 @@ test('含茱萸按两个独立库存基线折算，兑换茱萸不会凭空增�
   const rows = [record('a', '01', 'stock_snapshot', [coin(100), { id: 'zhuyu', count: 2 }], 'listed'),
     record('b', '02', 'reward_delta', [{ id: 'zhuyu', count: 1 }]),
     record('c', '03', 'stock_snapshot', [coin(150), { id: 'zhuyu', count: 2 }], 'listed')]
-  const equivalent = buildResourceBalance(rows, '2026-08-01', '2026-08-31', true)[0]
+  const equivalent = buildResourceBalance(rows, '2026-08-01', '2026-08-31', 'zhuyu')[0]
   assert.deepEqual(equivalent.points.map(p => [p.stock, p.delta]), [[200, null], [250, 50], [250, 0]])
   assert.deepEqual(equivalent.latest.components, { baijinbi: 150, zhuyu: 2 })
   assert.equal(equivalent.net, 50)
@@ -18,12 +18,12 @@ test('茱萸仅有奖励不能当库存零值，必须等盘点；完整快照�
   const rows = [record('a', '01', 'stock_snapshot', [coin(100)], 'listed'),
     record('b', '02', 'reward_delta', [{ id: 'zhuyu', count: 2 }]),
     record('c', '03', 'stock_snapshot', [{ id: 'zhuyu', count: 0 }], 'listed')]
-  const first = buildResourceBalance(rows.slice(0, 2), '2026-08-01', '2026-08-31', true)[0]
+  const first = buildResourceBalance(rows.slice(0, 2), '2026-08-01', '2026-08-31', 'zhuyu')[0]
   assert.equal(first.latest, null)
   assert.equal(first.missingDays, 1)
-  const complete = buildResourceBalance(rows, '2026-08-01', '2026-08-31', true)[0]
+  const complete = buildResourceBalance(rows, '2026-08-01', '2026-08-31', 'zhuyu')[0]
   assert.deepEqual(complete.points.map(p => [p.day, p.stock]), [['2026-08-03', 100]])
-  assert.equal(buildResourceBalance([record('d', '01', 'stock_snapshot', [coin(100)], 'full')], '2026-08-01', '2026-08-31', true)[0].latest.stock, 100)
+  assert.equal(buildResourceBalance([record('d', '01', 'stock_snapshot', [coin(100)], 'full')], '2026-08-01', '2026-08-31', 'zhuyu')[0].latest.stock, 100)
 })
 test('draw resource colors keep the report legend mapping stable', () => {
   assert.deepEqual(DRAW_RESOURCES.map(resource => [resource.id, resource.color]), [
@@ -91,4 +91,35 @@ test('identical zero snapshots provide a known baseline and a later zero change,
     assert.equal(resource.net, 0)
     assert.equal(resourceCalendarValue(resource.points, '2026-08-04').delta, null)
   }
+})
+
+test('four bases include both mailbox resources and claims conserve totals', () => {
+  const rows = [record('base', '01', 'stock_snapshot', [coin(1000), { id: 'zhuyu', count: 2 }, { id: 'fuchuan', count: 10 }], 'full'),
+    record('claim', '02', 'reward_delta', [coin(90), { id: 'fuchuan', count: 3 }])]
+  const history = [
+    { version: 1, effective_at: '2026-08-01T08:00:00Z', kind: 'baseline', white_coin_mails: [{ count: 8, coins_per_mail: 90 }], fu_chuan_mail_count: 2 },
+    { version: 2, effective_at: '2026-08-02T08:00:00Z', kind: 'claim', white_coin_mails: [{ count: 7, coins_per_mail: 90 }], fu_chuan_mail_count: 1 },
+  ]
+  const bases = ['actual', 'zhuyu', 'mailbox', 'all'].map(basis => buildResourceBalance(rows, '2026-08-01', '2026-08-31', basis, history))
+  assert.deepEqual(bases.map(r => r[0].points[0].stock), [1000, 1100, 1720, 1820])
+  assert.deepEqual(bases.map(r => r[0].latest.stock), [1090, 1190, 1720, 1820])
+  for (const basis of bases.slice(2)) {
+    assert.equal(basis[0].net, 0)
+    assert.equal(basis[1].net, 0)
+    assert.equal(basis[1].latest.stock, 16)
+  }
+})
+
+test('mailbox-only adjustment days and same-time versions use absolute reserves, without future or out-of-range baselines', () => {
+  const rows = [record('base', '01', 'stock_snapshot', [coin(1000)], 'full')]
+  const entry = (day, version, count, kind = 'adjustment') => ({ version, effective_at: `2026-08-${day}T08:00:00Z`, kind, white_coin_mails: [{ count, coins_per_mail: 90 }], fu_chuan_mail_count: 0 })
+  const history = [entry('02', 1, 8, 'baseline'), entry('03', 3, 10), entry('03', 2, 9)]
+  const result = buildResourceBalance(rows, '2026-08-01', '2026-08-31', 'mailbox', history)
+  assert.equal(resourceCalendarValue(result[0].points, '2026-08-01').stock, null)
+  assert.deepEqual(result[0].points.map(p => p.stock), [1720, 1900])
+  assert.equal(result[0].net, 180)
+  assert.match(result[0].latest.notes.join(), /储备调整/)
+  assert.equal(result[1].latest.stock, 0)
+  assert.equal(buildResourceBalance(rows, '2026-08-03', '2026-08-31', 'mailbox', history)[0].latest, null)
+  assert.equal(buildResourceBalance(rows, '2026-08-01', '2026-08-31', 'mailbox', [])[0].latest, null)
 })

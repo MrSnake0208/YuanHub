@@ -9,7 +9,7 @@
 .mail-quick .btn { padding: 6px 14px; min-height: 34px; border-radius: 9px; font-size: 13px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .mail-manage { min-height: 34px; padding: 6px; border: 0; background: transparent; color: var(--ink-60); font: 13px/1.5 var(--font-b); cursor: pointer; }
 .mail-feedback { margin: 6px 0 0; font-size: 12px; color: var(--ink-60); overflow-wrap: anywhere; }
-.mailbox-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.mailbox-row { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: end; gap: 10px; }
 .mailbox-manage-form legend { margin-bottom: 12px; font-weight: 700; }
 .mailbox-claim-form { gap: 12px; }
 .mailbox-claim-form .mail-claim-fields { gap: 8px; }
@@ -46,4 +46,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .mailbox-claim-form .mail-claim-input { grid-template-columns: minmax(0, 1fr) 104px; align-items: center; gap: 8px; }
   .mailbox-claim-form .mail-claim-error { padding-left: 0; }
 }
+.mail-count-field { display: grid; gap: 6px; min-width: 0; }
+.mail-stepper { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: stretch; gap: 4px; }
+.mail-stepper input { width: 100%; min-width: 0; padding-inline: 4px; text-align: center; appearance: textfield; }
+.mail-stepper input::-webkit-inner-spin-button, .mail-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.mail-stepper button { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
 }
+
+@media (max-width: 767px) { .mailbox-row > .mail-manage { grid-column: 1 / -1; justify-self: end; } }

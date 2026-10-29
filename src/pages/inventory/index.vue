@@ -51,7 +51,7 @@
               @busy="dailyBusy = $event" @imported="onRewardImported" />
             <MailboxReserve ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')"
               :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || !!rewardEntryWorkspace?.mode"
-              @busy="mailboxBusy = $event" @recorded="onRewardImported" />
+              @busy="mailboxBusy = $event" @recorded="onRewardImported" @saved="onMailboxSaved" />
           </div>
 
           <RewardEntryWorkspace ref="rewardEntryWorkspace" :key="auth.userInfo?.id || ''" compact
@@ -1086,11 +1086,14 @@
             <ResourceBalanceReport
               v-if="reportBook === 'resources' && !acquiredLoading"
               :records="acquiredAllRecords"
+              :load-mailbox="loadMailboxReport"
+              :context-key="stockContext"
               :from="resourceReportRange.from"
               :to="resourceReportRange.to"
               :error="acquiredError || acquiredRecordsError"
               :truncated="acquiredRecordsTruncated"
             >
+              <template #mailbox-empty-actions><button type="button" class="act-btn" @click="openMailboxReserve">录入／调整储备</button></template>
               <template #error-actions>
                 <button type="button" class="act-btn" @click="loadAcquired">重试读取</button>
               </template>
@@ -1651,6 +1654,7 @@ import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodRepor
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
 import InventoryRecordsWorkspace from '../../components/inventory/InventoryRecordsWorkspace.vue';
 import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
+import { loadMailboxResourceReport } from "../../api/mailboxReserve.js";
 import MailboxReserve from "../../components/inventory/MailboxReserve.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
 import DrawResourceEntry from "../../components/inventory/DrawResourceEntry.vue";
@@ -1983,6 +1987,21 @@ function openRewardEntry(mode, trigger) {
   if (mode === "daily") rewardEntryWorkspace.value?.openDaily(trigger);
   else if (mode === "manual") rewardEntryWorkspace.value?.openManual(trigger);
   else rewardEntryWorkspace.value?.openReport(trigger);
+}
+
+async function openMailboxReserve() {
+  const context = stockContext.value;
+  await setTab("manifest");
+  await nextTick();
+  if (stockContext.value === context && activeTab.value === "manifest") mailboxReserve.value?.openManage();
+}
+function loadMailboxReport(from, to) {
+  return loadMailboxResourceReport(accountId.value, String(auth.userInfo?.id || ''), dayStartIso(from), nextDayStartIso(to));
+}
+function onMailboxSaved(targetAccountId) {
+  if (targetAccountId !== accountId.value) return;
+  resetAcquiredData();
+  if (activeTab.value === "acquired") loadAcquired();
 }
 
 function onRewardImported(targetAccountId) {
@@ -3691,7 +3710,7 @@ async function onDeleteRecord(rec) {
     " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
   const confirmed = await dialog.confirm({
     title: "删除库存记录？",
-    message: "账号「" + currentAccountName.value + "」的记录：" + summary + "。删除后会重建库存；可在本页撤销。",
+    message: "账号「" + currentAccountName.value + "」的记录：" + summary + "。删除后会重建库存；可在本页撤销。" + (rid.startsWith("yuanhub:mail:") ? " 邮件储备不会退回；撤销删除也不会再次扣邮件。若需修正封数，请录入／调整储备。" : ""),
     type: "danger",
     confirmText: "删除记录",
   });

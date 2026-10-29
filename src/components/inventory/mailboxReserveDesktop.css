@@ -41,4 +41,9 @@
 .mailbox-container :is(button,input):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 
+.mail-count-field { display: grid; gap: 6px; min-width: 0; }
+.mail-stepper { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: stretch; gap: 4px; }
+.mail-stepper input { width: 100%; min-width: 0; padding-inline: 4px; text-align: center; appearance: textfield; }
+.mail-stepper input::-webkit-inner-spin-button, .mail-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.mail-stepper button { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
 }
