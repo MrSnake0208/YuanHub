@@ -96,7 +96,7 @@ const days = computed(() => calendarDates(range.value).map(date => {
   return { date, number: Number(date.slice(8)), month: date === range.value.from || date.endsWith('-01') ? `${Number(date.slice(5, 7))}月` : '', weekday: ['日', '一', '二', '三', '四', '五', '六'][weekday], weekend: weekday === 0 || weekday === 6 }
 }))
 const todayColumn = computed(() => props.today >= range.value.from && props.today <= range.value.to ? calendarDayDistance(range.value.from, props.today) : -1)
-const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['PRIVATE_ITEM', '私人事项']].map(([category, label]) => {
+const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['UNCLASSIFIED', '待归类'], ['PRIVATE_ITEM', '私人事项']].map(([category, label]) => {
   const lanes = timelineLanes(props.items.filter(item => calendarDisplay(item).group === category), range.value).map(lane => lane.map(({ item, position }) => {
     const display = calendarDisplay(item)
     const upAgents = calendarUpAgentDisplay(item)

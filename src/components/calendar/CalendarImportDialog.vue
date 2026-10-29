@@ -9,7 +9,7 @@
         <div class="calendar-import-body">
           <p class="calendar-hint"><strong>新活动默认公开；已有活动跳过、不覆盖。</strong>仅支持手工活动，不导入卡池或招募。</p>
           <a href="/examples/activity-calendar-v1.json" download>下载 JSON v1 示例（2 条活动）</a>
-          <details class="calendar-hint"><summary>JSON 格式与分类说明</summary><p>细分类别可选，旧 JSON 仍可导入；家具关联细目使用 FURNITURE / MYSTERIOUS_CAVE。已有活动的分类差异只提示，请到目录编辑补全。</p></details>
+          <details class="calendar-hint"><summary>JSON 格式与分类说明</summary><p>细分类别可选，旧 JSON 仍可导入；新版历练/洞窟使用 ACTIVITY / TRIAL_CAVE，旧家具细目继续兼容。已有活动的分类差异只提示，请到目录编辑补全。</p></details>
           <label class="calendar-import-file">选择 .json 文件<input ref="fileInput" type="file" accept=".json,application/json" :disabled="busy" @change="chooseFile"></label>
           <p class="calendar-hint">UTF-8 JSON · 每批 1–200 条 · 最大 1 MiB · 默认北京时间</p>
           <label class="calendar-import-input" for="calendar-import-json">或直接粘贴 JSON

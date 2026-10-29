@@ -299,34 +299,33 @@ npm run test:behavior -- behavior/activityCalendarImport.spec.js behavior/activi
 
 三视图共享同一过滤结果及各自原有请求日期窗口。今日摘要仍按当前游戏、类型及招募条件统计公开活动的日历日覆盖，不应用时间状态或个人活动状态，不表示个人订阅数；原“进行中”统计仍指严格跨越今天的活动。
 
-## 两级分类与历史兼容（2026-10-18）
+## 两级分类与历史兼容（2026-10-29）
 
-`src/data/activityCalendarTypes.js` 统一定义展示分类；`eventTypeColors.js` 保持共享语义色。一级分类按活动、卡池、家具、其他排列，斜杠名称是一项，不拆开。
+`src/data/activityCalendarTypes.js` 统一定义展示分类；`eventTypeColors.js` 保持共享语义色。一级分类按活动、常驻、卡池、其他排列，斜杠名称是一项，不拆开。
 
 | 一级 | 二级 | 持久化 category / subtype |
 | --- | --- | --- |
-| 活动 | 大型/周年 | ACTIVITY / LARGE_EVENT |
-| 活动 | 地宫 | ACTIVITY / UNDERGROUND |
-| 活动 | 签到/楼主查岗 | ACTIVITY / SIGN_IN |
-| 活动 | 初见日/转盘 | ACTIVITY / FIRST_MEETING_ROULETTE |
+| 活动 | 活动/周年 | ACTIVITY / LARGE_EVENT |
+| 活动 | 地宫/鸢会 | ACTIVITY / UNDERGROUND |
+| 活动 | 签到/查岗 | ACTIVITY / SIGN_IN |
+| 常驻 | 当季星图 | ACTIVITY / SEASONAL_STAR_CHART |
+| 常驻 | 白鸽 | ACTIVITY / WHITE_PIGEON |
+| 常驻 | 密探特训 | ACTIVITY / AGENT_TRAINING |
+| 常驻 | 历练/洞窟 | ACTIVITY / TRIAL_CAVE |
 | 卡池 | 限定、复刻、照影、自选 | RECRUITMENT；权威招募目录 pool_type，只读 |
-| 家具 | 历练 | ACTIVITY / FURNITURE_TRIAL |
-| 家具 | 神秘洞窟 | ACTIVITY / MYSTERIOUS_CAVE |
-| 其他 | 维护 | OTHER / MAINTENANCE |
-| 其他 | 商店 | SHOP / null |
-| 其他 | 星池 | OTHER / STAR_POOL |
+| 其他 | 其他 | OTHER / OTHER |
 
-表单只提供一级、二级；卡池在招募目录维护。中文是分类交换文件的目标值，单条 API 仍使用代码。旧 LOGIN 映射签到/楼主查岗，旧 MAINTENANCE 映射维护，旧 SHOP 及其两种细类映射商店，旧 ACTIVITY/FURNITURE/MYSTERIOUS_CAVE 映射家具·神秘洞窟。读取不写库，编辑其他资料时保留旧分类编码；主动选新分类才采用新编码。
+常驻是活动展示分组 `PERMANENT`，与招募目录的常驻卡池无关。项目招募资料使用「照影」，未取得足以改名的官方证据，因此保留「照影」及 `zhaoying`。
 
-旧中型活动、泰山府、无细目家具，以及常驻/未知卡池保留并提示待归类，不按标题猜测，不删除、合并或改日期。家具和神秘洞窟仍是独立记录、独立订阅。其他未知值保留中性兜底。
+旧 LOGIN（无 subtype 或 SIGN_IN）显示活动·签到/查岗；旧 FURNITURE_TRIAL、MYSTERIOUS_CAVE，以及 ACTIVITY/FURNITURE + subtype_detail=MYSTERIOUS_CAVE 显示常驻·历练/洞窟，原编码不变。MEDIUM_EVENT、TAISHAN_FU、无明确细目的 FURNITURE、FIRST_MEETING_ROULETTE、STAR_POOL、维护、商店及未知类型均待归类，不根据标题推断。玩家默认完整列表和三个视图保留这些记录；时间轴在「待归类」区呈现，不将其误标为其他。管理列表/编辑器提示原始 category/subtype/detail。新选项不增加待归类或第三层。
 
-筛选按钮采用四组。新 URL 参数 `display_group` 按展示映射过滤，后端查询仍使用旧 category 契约；家具不会作为 category 发给后端。旧 `category=ACTIVITY/LOGIN/SHOP/...` 链接保持按原存储类别筛选。公开日历、今日统计和我的订阅使用相同展示映射；类型筛选时隐藏私人事项。
+表单继续只有一级、二级；编辑标题等字段保留旧编码，主动重选才规范化并清空旧细目。用户建议及审核复用相同字段和校验，招募卡池仍只读。旧 `category` URL 保留存储类别语义；旧 `display_group=FURNITURE` 转换为 `PERMANENT`，已有视图与筛选偏好存储机制不变。
 
 后端直接将权威目录 `pool_type` 附到日历派生响应，`recruitmentPoolTypes.js` 同时供日历和 `RecruitmentTimeline.vue` 使用。规范化先 trim、英文 lowercase：明确别名为 limited、rerun、zhaoying、choice/select、permanent/standard，以及历史已知“傅融地宫”“重逢限定”。接受由“自选/照影/复刻/限定”组成的类型及可选“卡池/招募”后缀，按自选 > 照影 > 复刻 > 限定的既有优先级判定；常驻及可选后缀单独识别。“常驻限定”“并非限定”或未审查的自由文本均回退中性。仅解析 pool_type，不解析活动标题；招募封面保留原淡金 #F2DFAD、淡蓝 #D9E8F5、淡紫 #E7DCF4、淡红 #F1D5D1。常驻与未知不强标限定。前端不会恢复后端已过滤的隐藏/停用卡池。
 
 日程保持暖白卡与左侧 3px 分类色条，类型标签带文字、浅底和细描边。时间轴使用同一 token 的浅背景和左侧标记，类型/游戏用短文字；结束提醒仅影响倒计时文字，选中使用外框与标题下划线，均不覆盖类型色。月历不染日期格，窄屏最多 3 种不同色点加完整活动数量，桌面最多 2 条带细色线的“类型 · 标题”及 +N；日期按钮的可访问名称含全部类型，点击当日以弹窗显示完整卡片。颜色不是唯一信息，现有日期边界、重叠、键盘详情和焦点恢复保留。
 
-地宫/泰山府共享紫色和相同关联提示；家具/神秘洞窟共享黄色，洞窟始终显示在家具下。无权威关联标识时不声明同一期、不视觉合并条目；家具/洞窟同档日期由维护者核对。每个记录仍独立计数、时间、ID、订阅和进度。商店按人工需求录入，不由卡池/活动自动派生。未新增定时任务、常驻细类 Chips 或图例，类型文字已说明颜色语义。
+地宫及旧泰山府保留紫色，历练/洞窟保留黄色。旧泰山府不据此推断分类；无权威关联标识时不声明同一期、不视觉合并条目，各记录日期仍由维护者核对。每个记录仍独立计数、时间、ID、订阅和进度。商店按人工需求录入，不由卡池/活动自动派生。未新增定时任务、常驻细类 Chips 或图例，类型文字已说明颜色语义。
 
 现有六种 category 精确筛选和 URL 语义仍保留（LOGIN 与 MAINTENANCE 可单独选择），四组仅负责展示，不扩张筛选状态或后端查询语义。紧凑入口/Bottom Sheet、“不含招募”、时间状态、今日统计、我的订阅、账号游戏锁定均沿用原逻辑。
 
@@ -525,12 +524,16 @@ npm run test:behavior -- behavior/calendarDetailDialog.spec.js
 手工行是 `{id, expected_version, original, classification}`。`original` 保留完整管理资料供核对；只修改 `classification`，例如：
 
 ```json
-{"level1":"家具","level2":"历练"}
+{"level1":"常驻","level2":"历练/洞窟"}
 ```
 
 使用导出文件中的真实ID和版本；历史缺version按0导出。`classification: null` 表示不更新，省略整个活动行也不删除。`original`、`classification_options`、`reference_items` 均是参考，不参与写入，也不能扩展服务端允许的分类。卡池不允许移入手工items或在此修改，请到招募目录维护。空目录示例为 `public/examples/activity-calendar-classification-v1.json`（前端仓）。
 
 预览报告包含 `total/ready/unchanged/skipped/invalid/conflicts/reference_count/rows/preview_token/updated`。行状态为 READY、UNCHANGED、SKIPPED、INVALID、CONFLICT，成功后 READY 变为 UPDATED。无效/重复/不存在/只读ID、非法分类或版本冲突阻止整批提交。只有实际分类变更才检查期望版本和写入；未修改导出文件重传应为零更新，旧编码不会被隐式规范化。
+
+`classification_options` 返回上述 12 个二级选项，其中 8 个为手工可写目标。多对一映射固定写入 `ACTIVITY/TRIAL_CAVE`，不通过遍历展示标签反查多个旧编码。旧 v1 中的大型/周年、地宫、签到/楼主查岗、家具·历练、家具·神秘洞窟目标接受并转换为新版名称。旧初见日/转盘、维护、商店、星池目标仅在与该记录原分类一致时允许作为未变更读取；不能用于给其他记录重新分类，需选新版目标，错误会在行级预览中说明。
+
+导出已明确映射的历史记录显示新版 `classification`；待归类记录导出 `null`，原始资料仍在 `original.item` 中。未变更的展示分类不触发存储规范化，避免整理其他活动时重写旧记录。若只希望将旧历练/洞窟的内部编码统一，而展示分类不变，在活动编辑器中主动重选「常驻 / 历练/洞窟」保存；分类文件保留原有按展示差异更新的契约。
 
 提交使用 Hub Mongo 事务与逐条版本CAS，只更新 category、subtype、subtype_detail、修改审计及version。ID、标题、日期、说明、来源、启用状态、创建审计及订阅引用保持。任意一行失败整批回滚，缺少/过期令牌返回409。文件变化即废弃旧预览；超时或结果不明保留文件，必须重新预览实际结果，不复用旧令牌。重复提交相同目标不再增版本。
 

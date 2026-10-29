@@ -43,6 +43,7 @@
             <article v-for="entry in sortedEntries" :key="entry.item.id" class="calendar-panel">
               <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
               <h3>{{ entry.item.title }}</h3>
+              <p v-if="(!calendarDisplay(entry.item).key || calendarDisplay(entry.item).preserved) && !entry.read_only" class="calendar-hint">原分类：{{ calendarDisplay(entry.item).original }}</p>
               <p class="calendar-range">{{ calendarRangeLabel(entry.item) }}<span v-if="entry.item.start_time"> · {{ entry.item.time_zone }}</span></p>
               <p class="calendar-hint">{{ entry.read_only ? '来自招募卡池 · 只读' : '手工整理' }} · 最近修改：{{ modifiedLabel(entry.updated_at) }}</p>
               <p v-if="entry.source_note" class="calendar-hint">来源备注：{{ entry.source_note }}</p>

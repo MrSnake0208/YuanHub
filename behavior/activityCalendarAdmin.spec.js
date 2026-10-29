@@ -40,6 +40,7 @@ it('缺权限或关闭flag时不读写管理员API，也不暴露管理工具', 
   expect(api.updateActivityCalendar).not.toHaveBeenCalled()
 })
 it('列表筛选提交API，独立编辑器与列表互斥，保存携带version=0并保留筛选', async () => {
+  api.listAdminActivityCalendar.mockResolvedValue({ items: [entry({ item: item({ subtype: 'LARGE_EVENT' }) })] })
   const wrapper = render(); await flushPromises()
   await filter(wrapper, '游戏').setValue('如鸢')
   await filter(wrapper, '类型').setValue('ACTIVITY')
@@ -206,11 +207,11 @@ it('列表网络错误可刷新，倒置日期范围不发送请求，保存网�
 it('管理员编辑家具及神秘洞窟往返分类并保持原活动ID版本日期', async () => {
   const wrapper = render(); await flushPromises()
   await button(wrapper, '编辑活动').trigger('click')
-  await wrapper.get('#calendar-category').setValue('FURNITURE')
-  await wrapper.get('#calendar-subtype').setValue('MYSTERIOUS_CAVE')
+  await wrapper.get('#calendar-category').setValue('PERMANENT')
+  await wrapper.get('#calendar-subtype').setValue('TRIAL_CAVE')
   await wrapper.get('form').trigger('submit'); await flushPromises()
   expect(api.updateActivityCalendar).toHaveBeenCalledWith('evt-a', expect.objectContaining({
-    category: 'ACTIVITY', subtype: 'MYSTERIOUS_CAVE', subtype_detail: null, expected_version: 0,
+    category: 'ACTIVITY', subtype: 'TRIAL_CAVE', subtype_detail: null, expected_version: 0,
     start_date: '2026-10-03', end_date: '2026-10-10',
   }))
 })

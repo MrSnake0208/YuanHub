@@ -14,7 +14,7 @@ vi.mock('../src/config/features.js', async original => ({ ...(await original()),
 vi.mock('../src/api/activityCalendar.js', () => ({ listAdminActivityCalendar: vi.fn(), createActivityCalendar: vi.fn(), updateActivityCalendar: vi.fn(), exportActivityCalendar: vi.fn(), previewCalendarClassification: vi.fn(), commitCalendarClassification: vi.fn() }))
 const documentData = { document_type: 'activity-calendar-classification', schema_version: 1, items: [], reference_items: [] }
 const source = JSON.stringify(documentData)
-const report = patch => ({ total: 1, ready: 1, unchanged: 0, skipped: 0, invalid: 0, conflicts: 0, reference_count: 1, updated: 0, rows: [{ row: 1, id: 'evt_1', title: '资料', status: 'READY', before: null, after: { level1: '家具', level2: '历练' } }], preview_token: 'snapshot', ...patch })
+const report = patch => ({ total: 1, ready: 1, unchanged: 0, skipped: 0, invalid: 0, conflicts: 0, reference_count: 1, updated: 0, rows: [{ row: 1, id: 'evt_1', title: '资料', status: 'READY', before: null, after: { level1: '常驻', level2: '历练/洞窟' } }], preview_token: 'snapshot', ...patch })
 const button = text => [...document.querySelectorAll('button')].find(node => node.textContent.trim() === text)
 const click = async text => { button(text).click(); await flushPromises() }
 let wrappers = []

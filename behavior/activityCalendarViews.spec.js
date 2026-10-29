@@ -230,7 +230,7 @@ it('Month默认无详情，点日期才弹出当天全部事项；空日期和�
   expect(wrapper.findAll('.calendar-month-day')).toHaveLength(35)
   const selected = wrapper.get('.calendar-month-day[aria-pressed=true]')
   expect(selected.attributes('aria-current')).toBe('date')
-  expect(selected.attributes('aria-label')).toBe('2026年10月3日，2项活动，今天，已选中，活动 · 类型未标注')
+  expect(selected.attributes('aria-label')).toBe('2026年10月3日，2项活动，今天，已选中，待归类 · 类型未标注')
   expect(wrapper.findAllComponents(EventCard)).toHaveLength(0)
   expect(wrapper.find('.calendar-day-detail').exists()).toBe(false)
   await selected.trigger('click'); await wrapper.emitted('select-date').at(-1)[1](); await flushPromises()
@@ -430,16 +430,16 @@ it('页面日期已经是今天，重复今天导航仍定位时间轴且不重�
 
 it('Timeline按四个展示分组，重叠分轨而相邻活动复用轨道，名称只显示一次', () => {
   const wrapper = mount(Timeline, { global: { stubs: { Teleport: true } }, props: viewProps({ items: [
-    event({ id: 'a', title: '首个活动', start_date: today, end_date: '2026-10-05' }),
-    event({ id: 'b', title: '重叠活动', start_date: '2026-10-04', end_date: '2026-10-06' }),
-    event({ id: 'c', title: '后续活动', start_date: '2026-10-06', end_date: '2026-10-08' }),
+    event({ id: 'a', title: '首个活动', subtype: 'LARGE_EVENT', start_date: today, end_date: '2026-10-05' }),
+    event({ id: 'b', title: '重叠活动', subtype: 'LARGE_EVENT', start_date: '2026-10-04', end_date: '2026-10-06' }),
+    event({ id: 'c', title: '后续活动', subtype: 'LARGE_EVENT', start_date: '2026-10-06', end_date: '2026-10-08' }),
     event({ id: 'm', title: '维护', category: 'MAINTENANCE', start_date: today, end_date: today }),
   ] }) })
   const activity = wrapper.get('.calendar-timeline-group[aria-label="活动"]')
   expect(activity.findAll('.calendar-timeline-track')).toHaveLength(2)
   expect(activity.findAll('.calendar-timeline-track')[0].findAll('.calendar-timeline-bar-title').map(node => node.text())).toEqual(['首个活动', '后续活动'])
   expect(activity.text().match(/首个活动/g)).toHaveLength(1)
-  expect(wrapper.get('.calendar-timeline-group[aria-label="其他"] .is-single-day').attributes('aria-label')).toContain('维护')
+  expect(wrapper.get('.calendar-timeline-group[aria-label="待归类"] .is-single-day').attributes('aria-label')).toContain('维护')
   expect(wrapper.get('.is-single-day .calendar-timeline-point').attributes('aria-hidden')).toBe('true')
 })
 

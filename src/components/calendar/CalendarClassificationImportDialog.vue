@@ -5,7 +5,7 @@
         <header class="calendar-import-head"><h2 id="classification-import-title" ref="heading" tabindex="-1">导入更新分类</h2><button type="button" :disabled="busy" @click="close">关闭</button></header>
         <div class="calendar-import-body">
           <p>先通过“导出全部”下载资料，只修改 classification 中的中文一级、二级分类。其他资料仅供参考，不会覆盖；文件中缺少的活动不会删除。</p>
-          <p class="calendar-hint">保留 classification: null 表示不更新。只读卡池请到招募目录维护。UTF-8 JSON · 最多 10000 条 / 20 MiB。</p>
+          <p class="calendar-hint">分类按文件中的 classification_options 选择；待归类记录保留原编码，不按标题推断。保留 classification: null 表示不更新。只读卡池请到招募目录维护。UTF-8 JSON · 最多 10000 条 / 20 MiB。</p>
           <label class="calendar-import-file">选择分类文件<input ref="fileInput" type="file" accept=".json,application/json" :disabled="busy" @change="chooseFile"></label>
           <label class="calendar-import-input">或粘贴导出文件<textarea v-model="text" rows="5" spellcheck="false" :disabled="busy" /></label>
           <p v-if="busy" role="status">{{ operation === 'commit' ? '正在更新分类，请保持窗口打开…' : '正在读取和校验…' }}</p>

@@ -105,7 +105,8 @@ export function groupCalendarItems(items, today) {
 export function calendarFilters(query = {}) {
   const first = value => Array.isArray(value) ? value[0] : value
   const game = first(query.game), category = first(query.category), status = first(query.status)
-  const displayGroup = Object.hasOwn(CALENDAR_DISPLAY_GROUPS, first(query.display_group)) ? first(query.display_group) : ''
+  const requestedGroup = first(query.display_group) === 'FURNITURE' ? 'PERMANENT' : first(query.display_group)
+  const displayGroup = Object.hasOwn(CALENDAR_DISPLAY_GROUPS, requestedGroup) ? requestedGroup : ''
   return {
     game: CALENDAR_GAMES.includes(game) ? game : '',
     category: !displayGroup && Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '',
