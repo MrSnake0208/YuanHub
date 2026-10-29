@@ -1,0 +1,66 @@
+@media (max-width: 767px) {
+  .capacity-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); box-sizing: border-box; }
+  .capacity-dialog { display: flex; flex-direction: column; width: min(460px, 100%); min-width: 0; max-height: calc(var(--modal-viewport-height, 100dvh) - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))); overflow: hidden; font: 13px/1.5 var(--font-b); }
+  .capacity-heading { display: flex; flex: none; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 17px 16px 0; }
+  .capacity-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 21px; font-weight: 800; }
+  .capacity-heading h2 svg { flex: none; width: 23px; }
+  .capacity-heading p { margin: 6px 0 0; font-size: 12px; }
+  .capacity-icon-button { display: inline-grid; flex: none; place-items: center; width: 32px; height: 32px; padding: 0; }
+  .capacity-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 16px; scroll-padding-block: 12px; }
+  .capacity-source, .capacity-source > div { display: flex; align-items: center; gap: 7px; }
+  .capacity-source { justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; }
+  .capacity-sync { display: inline-flex; align-items: center; gap: 5px; }
+  .capacity-sync::before { width: 5px; height: 5px; }
+  .capacity-interval { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: end; gap: 8px; padding: 11px; }
+  .capacity-field { display: grid; gap: 5px; min-width: 0; }
+  .capacity-field label { font-size: 12px; font-weight: 650; }
+  .capacity-field :deep(.planner-select) { width: 100%; }
+  .capacity-field :deep(.planner-select-trigger) { width: 100%; min-height: 38px; font-size: 15px; }
+  .capacity-arrow { width: 20px; margin-bottom: 8px; }
+  .capacity-auto { grid-column: 1 / -1; font-size: 11px; }
+  .capacity-result-heading { display: grid; gap: 4px; margin: 16px 0 10px; }
+  .capacity-result-heading h3 { margin: 0; font-size: 16px; font-weight: 750; }
+  .capacity-result-heading p { margin: 0; font-size: 11px; }
+  .capacity-results { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .capacity-group { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; align-items: center; gap: 8px; min-width: 0; padding: 12px; text-align: left; }
+  .capacity-attributes, .capacity-attribute { display: inline-flex; align-items: center; gap: 5px; }
+  .capacity-attributes { flex-wrap: wrap; gap: 5px; font-size: 14px; }
+  .capacity-attribute svg { width: 16px; }
+  .capacity-count { display: flex; align-items: baseline; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+  .capacity-count strong { min-width: 0; font-size: 26px; line-height: 1.1; font-weight: 650; }
+  .capacity-count > span { font-size: 12px; }
+  .capacity-detail-toggle { font-size: 0; }
+  .capacity-detail-toggle svg { display: block; width: 15px; }
+  .capacity-detail { min-width: 0; padding: 13px 10px 10px; }
+  .capacity-detail h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 16px; font-weight: 750; }
+  .capacity-detail h3::before { width: 3px; height: 17px; flex: none; }
+  .capacity-mobile-context { margin: 6px 0 10px; font-size: 11px; }
+  table, tbody { display: block; width: 100%; }
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .85fr); align-items: center; gap: 3px 5px; padding: 10px 0; font-size: 11px; }
+  tbody th { grid-column: 1; grid-row: 1 / 3; min-width: 0; padding: 0; text-align: left; font-weight: 500; }
+  .capacity-material { display: flex; align-items: center; gap: 5px; }
+  .capacity-material img { flex: none; width: 25px; height: 25px; object-fit: contain; }
+  .capacity-material > span { overflow-wrap: anywhere; }
+  td { min-width: 0; padding: 0; overflow-wrap: anywhere; }
+  .capacity-required { grid-column: 2; grid-row: 1; }
+  .capacity-required::before { content: '单人 '; color: var(--ink-60); font-family: var(--font-b); }
+  .capacity-owned { grid-column: 2; grid-row: 2; }
+  .capacity-owned::before { content: '库存 '; color: var(--ink-60); font-family: var(--font-b); }
+  .capacity-remaining { grid-column: 1 / -1; grid-row: 3; color: var(--ink-60); font-size: 10px; }
+  .capacity-remaining::before { content: '培养后剩余 '; font-family: var(--font-b); }
+  .capacity-gap { grid-column: 3; grid-row: 1 / 3; text-align: right; font-size: 12px; }
+  .capacity-mobile-label { font-family: var(--font-b); }
+  .capacity-desktop-dash { display: none; }
+  .capacity-next { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0; padding: 9px; font-size: 11px; overflow-wrap: anywhere; }
+  .capacity-next svg { flex: none; width: 15px; margin-top: 1px; }
+  .capacity-footer { display: grid; flex: none; gap: 10px; padding: 0 14px 14px; font-size: 10px; }
+  .capacity-footer p { display: flex; align-items: baseline; gap: 4px; margin: 3px 0; }
+  .capacity-footer svg { flex: none; width: 11px; align-self: center; }
+  .capacity-close { width: 100%; min-height: 38px; padding: 8px 16px; font-size: 14px; }
+  .capacity-state { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 12px 0; }
+  .capacity-state p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+  .capacity-state button { padding: 7px 10px; }
+  .is-short-viewport .capacity-dialog { display: block; overflow-y: auto; }
+  .is-short-viewport .capacity-body { overflow: visible; }
+}

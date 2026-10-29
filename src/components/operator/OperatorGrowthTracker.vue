@@ -6,6 +6,7 @@
         <p>选好要培养的密探，按材料缺口安排每日体力。</p>
       </div>
       <div class="planner-heading-actions">
+        <button v-if="isLoggedIn && accountId" type="button" class="status-action secondary planner-capacity-entry" aria-haspopup="dialog" @click="capacityOpen = true"><Calculator :size="16" aria-hidden="true" />修为人数试算</button>
         <button v-if="canUseReserve && accountId && !reserveOpen" ref="reserveEntryRef" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace">未来储备</button>
         <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
           <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
@@ -13,6 +14,8 @@
         </button>
       </div>
     </header>
+
+    <OperatorXiuweiCapacityDialog v-if="isLoggedIn && accountId" v-model:open="capacityOpen" :account-id="accountId" :account-name="accountName" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" :loading="loading" :error="error" @refresh="loadInventory" />
 
     <section v-if="canUseReserve && accountId" v-show="reserveOpen" id="planner-reserve-workspace" ref="reserveWorkspaceRef" class="planner-reserve-workspace" tabindex="-1" aria-label="未来储备工作区">
       <header class="reserve-workspace-heading">
@@ -491,7 +494,7 @@ import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } fr
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import Sortable from 'sortablejs'
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
+import { Calculator, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
@@ -499,6 +502,7 @@ import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
 import OperatorReserveWorkspace from './OperatorReserveWorkspace.vue'
+import OperatorXiuweiCapacityDialog from './OperatorXiuweiCapacityDialog.vue'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
@@ -532,9 +536,11 @@ import CultivationProgress from './CultivationProgress.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
+const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, accountName: { type: String, default: '当前子账号' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
+const capacityOpen = ref(false)
+watch(() => [props.accountId, props.game, props.isLoggedIn, props.active], () => { capacityOpen.value = false }, { flush: 'sync' })
 const canUseReserve = computed(() => props.isLoggedIn && auth.isLoggedIn &&
   (isFeatureEnabled(FEATURE_KEYS.OPERATOR_RESERVE) || hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.OPERATOR_RESERVE_USE)))
 const workspaceSession = ref(0)

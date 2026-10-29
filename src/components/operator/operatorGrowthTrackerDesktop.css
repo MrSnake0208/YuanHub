@@ -17,6 +17,7 @@
 button, input, select { font: inherit; }
 button { touch-action: manipulation; }
 .planner-refresh { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; padding: 0 13px; font: 700 12px var(--font-b); }
+.planner-capacity-entry { white-space: nowrap; }
 .planner-state { display: flex; min-height: 96px; align-items: center; justify-content: center; gap: 8px; padding: 20px; font-size: 13px; text-align: center; }
 .planner-state button, .planner-notice button { font-weight: 800; }
 .planner-state.empty { min-height: 80px; margin-top: 14px; }

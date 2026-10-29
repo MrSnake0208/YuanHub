@@ -2333,6 +2333,7 @@
             <OperatorGrowthTracker
               :game="gameFilter"
               :account-id="accountId"
+              :account-name="currentAccountName"
               :current-entries="currentEntries"
               :catalog-entries="catalogOperators"
               :favorite-ids="favoriteAgentIds"
