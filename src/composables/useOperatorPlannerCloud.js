@@ -70,7 +70,13 @@ export function useOperatorPlannerCloud(props, targets, emit) {
       if (token !== scheduleGeneration) return
       writeScheduleCache(localStorage, account, plan, remote)
       scheduleWriter = createPlannerSnapshotWriter({ initial: remote, read: () => getSchedule(account, plan),
-        write: async body => scheduleFromRemote(await api.putStaminaSchedule(account, plan, body), account), body: scheduleBody,
+        write: async body => {
+          const saved = scheduleFromRemote(await api.putStaminaSchedule(account, plan, body), account)
+          if (saved.plan_id !== plan || saved.revision !== body.expected_revision + 1 || (body.schedule && (!saved.schedule?.context || !Array.isArray(saved.schedule?.history) || !Array.isArray(saved.schedule?.result?.timeline)))) {
+            throw new Error('日程保存结果尚未确认，请重试或重新读取云端')
+          }
+          return saved
+        }, body: scheduleBody,
         storage: localStorage, key: storageKey(account, 'schedule:' + plan),
         onChange: state => { if (token === scheduleGeneration) scheduleState.value = state },
         onSaved: (saved, hasPending) => { if (token === scheduleGeneration && !hasPending) { snapshot.value = saved; writeScheduleCache(localStorage, account, plan, saved) } }
@@ -165,10 +171,10 @@ export function useOperatorPlannerCloud(props, targets, emit) {
       }
     }
   }
-  watch(() => [props.accountId, props.isLoggedIn], load, { immediate: true })
+  watch(() => [props.accountId, props.isLoggedIn], load, { immediate: true, flush: 'sync' })
   watch(() => [workspace.value.accountId, workspace.value.activePlanId, loading.value], () => {
     if (!loading.value) loadSchedule()
-  })
+  }, { flush: 'sync' })
   watch(() => [workspacePending.value, schedulePending.value], () => {
     if (refreshAgain && !workspacePending.value && !schedulePending.value) refresh()
   })

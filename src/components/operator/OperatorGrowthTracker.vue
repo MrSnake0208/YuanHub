@@ -156,6 +156,7 @@
         <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
           <div class="workspace-heading-content"><span class="section-kicker">每日刷取建议</span>
             <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
+              <button v-if="viewMode === 'display' && !fixedSchedule" type="button" class="action-button primary" :disabled="Boolean(firstScheduleSaveReason)" :aria-describedby="firstScheduleSaveReason ? 'first-schedule-save-hint' : undefined" @click="generateAndSaveSchedule"><Check :size="16" aria-hidden="true" />生成并保存日程</button>
               <button v-if="viewMode === 'display' && !reviewingHistory" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="openExactOptimizer">方案对比</button>
             </div></div>
             <p>此日程暂不支持交给 Maa 自动执行。</p>
@@ -168,6 +169,7 @@
             {{ cloudStatusLabel }}
             <span v-if="fixedSchedule"> · 日界线北京时间 05:00</span>
           </div>
+          <p v-if="!fixedSchedule && firstScheduleSaveReason" id="first-schedule-save-hint" class="planner-footnote">{{ firstScheduleSaveReason }}</p>
           <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
           <template v-for="kind in ['workspace', 'schedule']" :key="kind">
             <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" :id="'planner-cloud-recovery-' + kind" class="cloud-recovery" role="alert" tabindex="-1">
@@ -421,7 +423,8 @@
 </div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" title="恢复当前套用方案中的当日安排" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天方案</button></div></section>
                 <footer class="planner-step-actions">
                   <button type="button" class="workspace-link" aria-label="上一步：方案对比" title="上一步：方案对比" @click="setPlannerStep('comparison')"><ChevronLeft :size="18" aria-hidden="true" /></button>
-                  <button type="button" class="action-button primary" @click="openPlanner('display', true)"><Check :size="16" aria-hidden="true" />完成编辑</button>
+                  <button v-if="!fixedSchedule" type="button" class="action-button primary" :disabled="Boolean(firstScheduleSaveReason)" :aria-describedby="firstScheduleSaveReason ? 'first-schedule-save-hint' : undefined" @click="generateAndSaveSchedule"><Check :size="16" aria-hidden="true" />生成并保存日程</button>
+                  <button v-else type="button" class="action-button primary" @click="openPlanner('display', true)"><Check :size="16" aria-hidden="true" />返回日程</button>
                 </footer>
               </section>
             </div>
@@ -440,7 +443,7 @@
         <Check v-else-if="scheduleSaveStatus === 'saved'" class="planner-save-icon is-success" :size="22" aria-hidden="true" />
         <CircleAlert v-else class="planner-save-icon is-error" :size="22" aria-hidden="true" />
         <div class="planner-save-copy" :role="scheduleSaveStatus === 'error' ? 'alert' : 'status'" aria-live="polite">
-          <strong>{{ scheduleSaveStatus === 'saving' ? '正在保存到云端…' : scheduleSaveStatus === 'saved' ? '已保存到云端' : '日程尚未确认保存' }}</strong>
+          <strong>{{ scheduleSaveStatus === 'saving' ? (fixedSchedule ? '正在保存日程…' : '正在保存规划条件…') : scheduleSaveStatus === 'saved' ? '日程已保存到云端' : (fixedSchedule ? '日程尚未确认保存' : '规划条件尚未确认保存') }}</strong>
           <span v-if="scheduleSaveStatus === 'saving'">请稍候</span>
           <span v-else-if="scheduleSaveStatus === 'error'">请重试或查看云端同步提示</span>
         </div>
@@ -564,7 +567,7 @@ let scheduleHadDraft = false
 const scheduleSaveStatus = computed(() => {
   if (scheduleState.value.saving || (schedulePending.value && !scheduleState.value.error)) return 'saving'
   if (scheduleState.value.error) return 'error'
-  return scheduleSaved.value ? 'saved' : ''
+  return scheduleSaved.value && cloudSnapshot.value?.schedule ? 'saved' : ''
 })
 watch(() => [schedulePending.value, scheduleState.value.error, props.accountId, props.isLoggedIn, workspace.value.activePlanId],
   ([pending, failure, account, loggedIn, plan], [wasPending, , oldAccount, oldLoggedIn, oldPlan]) => {
@@ -575,7 +578,7 @@ watch(() => [schedulePending.value, scheduleState.value.error, props.accountId, 
       return
     }
     if (pending || failure) {
-      if (scheduleState.value.pending) scheduleHadDraft = true
+      if (scheduleState.value.pending?.schedule) scheduleHadDraft = true
       clearTimeout(scheduleSavedTimer)
       scheduleSaved.value = false
       return
@@ -925,13 +928,30 @@ const plannerDates = computed(() => {
   return future.length ? future : [plannerToday.value]
 })
 const derivedPreviewDates = computed(() => customRules.value.length ? allPlannerDates.value.filter(date => date >= plannerToday.value && !manualPlans.value[date] && !plannerTimeline.value.some(day => day.date === date)) : [])
+const firstScheduleSaveReason = computed(() => {
+  if (!props.isLoggedIn || !props.accountId) return '请先登录并选择子账号'
+  if (cloudLoading.value || scheduleLoading.value) return '正在读取培养清单与日程，请稍候'
+  if (cloudBlocked.value) return '请先处理云端同步或本机计划提示'
+  if (schedulePending.value) return '正在保存，请稍候'
+  if (!workspace.value.activePlanId) return '请先选择培养清单'
+  if (loading.value || targetLoading.value || targetBusyIds.value.size) return '正在读取库存与培养目标，请稍候'
+  if (!inventoryReady.value || error.value) return '库存尚未准备好，请重新读取库存'
+  if (targetError.value) return '培养目标尚未准备好，请重新读取目标'
+  if (!requirementPlanRows.value.length) return '请先将密探加入培养清单并设置目标'
+  if (hasUnknownRequirements.value) return '部分培养目标暂无法计算，请先调整目标'
+  if (!livePlannerSimulation.value.timeline?.length || livePlannerSimulation.value.status === 'invalid') return '当前推荐暂不可用，请检查每日安排与规划条件'
+  return ''
+})
 const cloudStatusLabel = computed(() => {
   if (cloudLoading.value || scheduleLoading.value) return '正在读取云端计划…'
-  if (cloudError.value || workspaceState.value.error || scheduleState.value.error) return '云端同步未完成，请处理下方提示'
-  if (workspaceState.value.saving || scheduleState.value.saving) return '正在保存到云端…'
-  if (workspacePending.value || schedulePending.value) return '修改等待云端保存'
-  if (derivedPreviewDates.value.includes(selectedDate.value)) return '每日规则已保存；当前日期为派生预览，尚未保存该日日程'
-  return fixedSchedule.value ? '日程已保存到云端' : '计划与日程按子账号保存到云端'
+  if (scheduleState.value.error) return fixedSchedule.value ? '日程尚未确认保存，可重试' : '规划条件尚未确认保存，日程尚未保存'
+  if (cloudError.value || workspaceState.value.error) return '云端同步未完成，请处理下方提示'
+  if (schedulePending.value) return fixedSchedule.value ? '正在保存日程…' : '正在保存规划条件，日程尚未保存'
+  if (workspacePending.value) return '正在保存培养清单与设置…'
+  if (!cloudSnapshot.value?.schedule) return '当前为推荐预览，尚未保存日程'
+  if (scheduleNeedsUpdate.value || fixedSchedule.value?.result?.awaitingRecalculation) return '已保存日程需要更新或重新计算'
+  if (derivedPreviewDates.value.includes(selectedDate.value)) return '每日规则已保存；当前日期为推荐预览，尚未保存该日日程'
+  return '日程已保存到云端'
 })
 const plannerCycleNotice = computed(() => {
   if (scheduleDifferences.value.goalsChanged) return '清单或培养目标已变更，当前显示的是更新前的日程。'
@@ -1435,6 +1455,15 @@ function persistPlannerSnapshot(revise = true) {
       strategy: strategy.value, agentOrder: orderedRosterIds.value, preferences: plannerPreferences.value,
       manualPlans: manualPlans.value, schedule: fixedSchedule.value })
   } catch (err) { fixedSchedule.value = previous; planError.value = '体力规划保存失败：' + err.message; return false }
+}
+function generateAndSaveSchedule() {
+  // Never replace an existing schedule, including a recovered draft.
+  if (fixedSchedule.value || cloudSnapshot.value?.schedule || firstScheduleSaveReason.value) return
+  try {
+    fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, manualPlans.value)
+    plannerStartDate.value = fixedSchedule.value.startDate
+    if (!persistPlannerSnapshot(false) && !scheduleState.value.pending) fixedSchedule.value = null
+  } catch (err) { planError.value = '日程生成失败：' + err.message }
 }
 function downloadPending(kind) {
   const value = kind === 'workspace' ? workspaceState.value.pending : scheduleState.value.pending
@@ -2055,6 +2084,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .tracker-popover-actions button.cancel { background: var(--paper); color: var(--ink-60); }
 .tracker-popover-actions button:hover:not(:disabled) { border-color: var(--accent); }
 .planner-workspace { border-top: 1px solid var(--theme-line, rgba(183, 144, 80, .28)); }
+.plan-heading-actions { flex-wrap: wrap; }
 .plan-heading-actions .plan-icon { border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
 .plan-heading-actions .plan-icon:hover:not(:disabled) { background: var(--paper); color: var(--theme-strong-text, var(--tea)); }
 .plan-heading-actions .plan-icon:disabled { opacity: .5; cursor: default; }

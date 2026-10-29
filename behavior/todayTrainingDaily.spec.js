@@ -232,3 +232,17 @@ it('undoing the last retained completion restores focus to the planning link', a
   expect(todos.querySelector('section')).toBeNull()
   expect(document.activeElement).toBe(preview.querySelector('.daily-details'))
 })
+
+
+it('首次日程保存事件使未保存提示变为今日历练，不自动加入待办', async () => {
+  api.getOperatorDailyTasks.mockResolvedValueOnce(dailyTrainingResponse({ source: { status: 'no_schedule', revision: 0, items: [] } }))
+  render(); await flushPromises()
+  expect(preview.textContent).toContain('尚未保存体力日程')
+  publish('operator_stamina_schedule')
+  await vi.advanceTimersByTimeAsync(180); await flushPromises()
+  expect(api.getOperatorDailyTasks).toHaveBeenLastCalledWith('a', 'p', '2026-10-16', 'owner-a')
+  expect(preview.textContent).not.toContain('尚未保存体力日程')
+  expect(preview.querySelectorAll('.daily-source-row')).toHaveLength(2)
+  expect(preview.querySelector('.daily-adopt').disabled).toBe(false)
+  expect(api.adoptOperatorDailyTasks).not.toHaveBeenCalled()
+})

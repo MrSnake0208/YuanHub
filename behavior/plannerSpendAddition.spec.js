@@ -28,9 +28,9 @@ function initial(account) {
   const plan = { gains: [createGain('natural', { value: 488 })], spends: [] }
   const context = { date: today, initialState: { a: { shuijing: 2000 } }, requiredState: { a: { shuijing: 2000 } }, stock: {}, goals: {}, levels: { fh: 3, ds: 5, yy: 2, experience: 4 }, strategy: 'overall', agentOrder: ['a'], preferences: normalizePlannerPreferences() }
   const manualPlans = { [today]: plan, [addCalendarDays(today, 1)]: clone(plan) }
-  return { ...scheduleBody({ manualPlans, schedule: createFixedSchedule(context, manualPlans), preferences: context.preferences, agentOrder: ['a'], strategy: 'overall' }), account_id: account, revision: 1 }
+  return { ...scheduleBody({ manualPlans, schedule: createFixedSchedule(context, manualPlans), preferences: context.preferences, agentOrder: ['a'], strategy: 'overall' }), account_id: account, plan_id: 'favorites', revision: 1 }
 }
-function commit(account, body) { remotes[account] = { ...clone(body), account_id: account, revision: body.expected_revision + 1 }; return clone(remotes[account]) }
+function commit(account, body) { remotes[account] = { ...clone(body), account_id: account, plan_id: 'favorites', revision: body.expected_revision + 1 }; return clone(remotes[account]) }
 const savedPlan = (account = 'a') => scheduleFromRemote(remotes[account], account).manualPlans[today]
 async function setup(global = {}) {
   const wrapper = mount(OperatorGrowthTracker, { attachTo: document.body, props: { accountId: 'a', isLoggedIn: true }, global })
@@ -100,12 +100,12 @@ it('底部状态条在保存、失败重试和云端确认之间切换', async (
   await open(wrapper)
   api.put.mockImplementationOnce(() => request.promise)
   await button(wrapper, '洛阳派遣').trigger('click'); await flushPromises()
-  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存到云端')
+  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存日程')
   expect(document.querySelector('.planner-save-retry')).toBeNull()
   await wrapper.setProps({ active: false })
   expect(document.querySelector('.planner-save-toast')).toBeNull()
   await wrapper.setProps({ active: true }); await flushPromises()
-  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存到云端')
+  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存日程')
   request.reject(new Error('离线')); await flushPromises()
   expect(document.querySelector('.planner-save-toast').textContent).toContain('日程尚未确认保存')
   expect(savedPlan().spends).toEqual([])
@@ -273,7 +273,7 @@ it('切换账号清空选择；迟到保存只写原账号，新账号无次数�
   const wrapper = await setup(), request = pending(); await open(wrapper)
   api.put.mockImplementationOnce((account, plan, body) => request.promise.then(() => commit(account, body)))
   await button(wrapper.get('#planner-spend-menu'), '6-24').trigger('click'); await flushPromises()
-  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存到云端')
+  expect(document.querySelector('.planner-save-toast').textContent).toContain('正在保存日程')
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   expect(document.querySelector('.planner-save-toast')).toBeNull()
   request.resolve(); await flushPromises()

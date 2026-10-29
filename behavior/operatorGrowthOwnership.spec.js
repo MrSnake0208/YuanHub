@@ -156,7 +156,7 @@ it('规划首页仅保留三模块，按需保存策略/偏好/关卡；两种�
   vi.spyOn(dialog, 'confirm').mockResolvedValue(true)
   plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: 2 }))
   plannerApi.putStaminaSchedule.mockImplementation(async (_account, _plan, body) => {
-    const saved = { ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }
+    const saved = { ...body, account_id: 'acc', plan_id: 'plan', revision: body.expected_revision + 1 }
     plannerApi.getStaminaSchedule.mockResolvedValue(saved)
     return saved
   })
@@ -303,7 +303,7 @@ it('A→B→A 时旧来源保存完成不能污染新会话的预测', async () 
   await sources.get('form').trigger('submit'); await flushPromises()
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   await wrapper.setProps({ accountId: 'acc' }); await flushPromises()
-  finish({ ...sent, account_id: 'acc', revision: 2 }); await flushPromises()
+  finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 2 }); await flushPromises()
   expect(sources.findAll('.condition-summary-card')[0].text()).toContain('未启用月卡')
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
   expect(wrapper.getComponent({ name: 'PlannerExactOptimizer' }).props('input').preferences.sourcePeriods).toBeUndefined()
@@ -552,7 +552,7 @@ it('月卡设置成功但日程失败：提示部分成功，重试后刷新仍�
   plannerApi.getStaminaSchedule.mockImplementation(async () => schedule)
   plannerApi.putTrainingWorkspace.mockImplementation(async (_a, body) => (workspace = { ...body, account_id: 'acc', revision: 2 }))
   plannerApi.putStaminaSchedule.mockRejectedValueOnce(new Error('网络中断'))
-    .mockImplementation(async (_a, _p, body) => (schedule = { ...body, account_id: 'acc', revision: 1 }))
+    .mockImplementation(async (_a, _p, body) => (schedule = { ...body, account_id: 'acc', plan_id: 'plan', revision: body.expected_revision + 1 }))
   const { wrapper, settings } = await openMonthlyTracker()
   await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
   await settings.get('form').trigger('submit'); await flushPromises()
@@ -584,7 +584,7 @@ it('日程保存的迟到响应不更新另一个账号，也不显示旧账号�
   await settings.get('[aria-label="月卡权益档位"]').setValue('zhaoyang')
   await settings.get('form').trigger('submit'); await flushPromises()
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
-  finish({ ...sent, account_id: 'acc', revision: 1 }); await flushPromises()
+  finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 1 }); await flushPromises()
   expect(wrapper.getComponent(PlannerDailySources).props('accountId')).toBe('b')
   expect(wrapper.getComponent(PlannerDailySources).findAll('.condition-summary-card')[0].text()).toContain('未启用月卡')
   expect(wrapper.text()).not.toContain('已同步当前方案')
@@ -597,7 +597,7 @@ it('两次保存之间中断后重开月卡，用已保存的原值补同步，�
   plannerApi.getTrainingWorkspace.mockResolvedValue({ ...base, stamina_sources: {
     monthly_card: { tier: 'zhaoyang', daily_enabled: true, shop_enabled: true, daily_amount: 60, shop_amount: 20, start_date: '', end_date: '' }, fixed_sources: [],
   } })
-  plannerApi.putStaminaSchedule.mockImplementation(async (_a, _p, body) => ({ ...body, account_id: 'acc', revision: 1 }))
+  plannerApi.putStaminaSchedule.mockImplementation(async (_a, _p, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: body.expected_revision + 1 }))
   const { settings } = await openMonthlyTracker()
   expect(settings.get('[aria-label="月卡权益档位"]').element.value).toBe('zhaoyang')
   await settings.get('form').trigger('submit'); await flushPromises()
@@ -661,7 +661,9 @@ it('编辑当日直达每日步骤，按原账号和日期保存，返回保留�
   const [account, plan, body] = plannerApi.putStaminaSchedule.mock.calls.at(-1)
   expect([account, plan]).toEqual(['acc', 'plan'])
   expect(body.manual_plans[date].gains[0].value).toBe(300)
-  await wrapper.findAll('button').find(button => button.text() === '完成编辑').trigger('click'); await flushPromises()
+  const writesBeforeReturn = plannerApi.putStaminaSchedule.mock.calls.length
+  await wrapper.findAll('button').find(button => button.text() === '返回日程').trigger('click'); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(writesBeforeReturn)
   expect(wrapper.vm.selectedDate).toBe(date)
   expect(wrapper.get('.planner-display [aria-pressed="true"]').attributes('data-date')).toBe(date)
   expect(document.activeElement).toBe(wrapper.get('.day-plan-actions button').element)
@@ -704,4 +706,107 @@ it('同步中的材料及心纸统计明确显示状态，不把未取得的库�
   finish([]); await flushPromises()
   expect(metrics[1].text()).toContain('%')
   expect(metrics[2].text()).toContain('0 张')
+})
+
+
+it.each(['display', 'edit'])('首次推荐在 %s 模式不改收支即可保存，重复点击只写一次且等服务器确认', async mode => {
+  const wrapper = await mountRoster()
+  if (mode === 'display') await wrapper.vm.openPlanner('display')
+  else await wrapper.vm.editSchedule('daily')
+  await flushPromises()
+  expect(wrapper.get('.cloud-status').text()).toContain('推荐预览')
+  let finish, sent
+  plannerApi.putStaminaSchedule.mockImplementation((_a, _p, body) => { sent = body; return new Promise(resolve => { finish = resolve }) })
+  const save = wrapper.findAll('button').find(b => b.text() === '生成并保存日程')
+  expect(save.element.disabled).toBe(false)
+  await save.trigger('click'); wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(plannerApi.putStaminaSchedule.mock.calls[0].slice(0, 2)).toEqual(['acc', 'plan'])
+  expect(sent.manual_plans).toEqual({})
+  expect(sent.schedule.result.timeline.length).toBeGreaterThan(0)
+  expect(sent.schedule.context.plan_baselines).toBeTruthy()
+  expect(wrapper.get('.cloud-status').text()).toContain('正在保存日程')
+  expect(wrapper.text()).not.toContain('日程已保存到云端')
+  finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 1 }); await flushPromises()
+  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(wrapper.get('.planner-save-toast').text()).toContain('日程已保存到云端')
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+})
+
+it.each(['network', 'null', 'incomplete', 'wrong-plan', 'old-revision'])('首次保存 %s 失败保留完整草稿，重试确认后才成功', async failure => {
+  const wrapper = await mountRoster()
+  let sent
+  plannerApi.putStaminaSchedule.mockImplementationOnce(async (_a, _p, body) => {
+    sent = body
+    if (failure === 'network') throw new Error('网络中断')
+    return { ...body, account_id: 'acc', plan_id: failure === 'wrong-plan' ? 'other' : 'plan', revision: failure === 'old-revision' ? 0 : 1,
+      ...(failure === 'null' ? { schedule: null } : failure === 'incomplete' ? { schedule: {} } : {}) }
+  })
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  expect(wrapper.get('.cloud-status').text()).toContain('尚未确认保存')
+  expect(wrapper.text()).not.toContain('日程已保存到云端')
+  const draft = JSON.parse(localStorage.getItem('yuanhub:planner-cloud-draft:v1:acc:schedule:plan'))
+  expect(draft.pending.schedule.result.timeline.length).toBeGreaterThan(0)
+  plannerApi.putStaminaSchedule.mockImplementation(async (_a, _p, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }))
+  await wrapper.vm.recover('schedule'); await flushPromises()
+  expect(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2].schedule).toEqual(sent.schedule)
+  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(localStorage.getItem('yuanhub:planner-cloud-draft:v1:acc:schedule:plan')).toBeNull()
+})
+
+it('首次保存失败但服务端已提交，重试读取确认且不重复写入', async () => {
+  const wrapper = await mountRoster()
+  let saved
+  plannerApi.putStaminaSchedule.mockImplementationOnce(async (_a, _p, body) => {
+    saved = { ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }
+    throw new Error('响应丢失')
+  })
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  plannerApi.getStaminaSchedule.mockResolvedValue(saved)
+  await wrapper.vm.recover('schedule'); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
+  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+})
+
+
+it.each(['account', 'plan'])('首次保存中切换 %s，迟到成功不能污染新上下文或覆盖新日程', async kind => {
+  const wrapper = await mountRoster()
+  const base = await plannerApi.getTrainingWorkspace('acc')
+  plannerApi.getTrainingWorkspace.mockImplementation(async account => ({ ...base, account_id: account }))
+  plannerApi.getStaminaSchedule.mockImplementation(async (account, plan) => ({ schema_version: 1, rules_version: PLANNER_RULES.version,
+    account_id: account, plan_id: plan, revision: 0 }))
+  let finish, sent
+  plannerApi.putStaminaSchedule.mockImplementationOnce((_a, _p, body) => { sent = body; return new Promise(resolve => { finish = resolve }) })
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  if (kind === 'account') await wrapper.setProps({ accountId: 'b' })
+  else wrapper.vm.workspace = { ...wrapper.vm.workspace, activePlanId: 'other', plans: [...wrapper.vm.workspace.plans, { ...wrapper.vm.workspace.plans[0], id: 'other' }] }
+  await flushPromises()
+  finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 1 }); await flushPromises()
+  expect(wrapper.vm.fixedSchedule).toBeNull()
+  expect(wrapper.get('.cloud-status').text()).toContain('推荐预览')
+  expect(wrapper.text()).not.toContain('日程已保存到云端')
+  plannerApi.putStaminaSchedule.mockImplementation(async (account, plan, body) => ({ ...body, account_id: account, plan_id: plan, revision: 1 }))
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  expect(plannerApi.putStaminaSchedule.mock.calls.at(-1).slice(0, 2)).toEqual(kind === 'account' ? ['b', 'plan'] : ['acc', 'other'])
+  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+})
+
+it('只保存规划条件仍显示推荐未保存，不弹出日程成功提示', async () => {
+  const wrapper = await mountRoster()
+  wrapper.vm.persistPlannerSnapshot(false); await flushPromises()
+  expect(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2].schedule).toBeNull()
+  expect(wrapper.get('.cloud-status').text()).toContain('尚未保存日程')
+  expect(wrapper.find('.planner-save-toast.is-saved').exists()).toBe(false)
+})
+
+it('必要库存未就绪时禁止首次提交并说明原因', async () => {
+  const wrapper = await mountRoster()
+  wrapper.vm.inventoryReady = false
+  await wrapper.vm.openPlanner('display'); await flushPromises()
+  const save = wrapper.findAll('button').find(b => b.text() === '生成并保存日程')
+  expect(save.element.disabled).toBe(true)
+  expect(wrapper.get('#first-schedule-save-hint').text()).toContain('库存尚未准备好')
+  wrapper.vm.generateAndSaveSchedule(); await flushPromises()
+  expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
 })
