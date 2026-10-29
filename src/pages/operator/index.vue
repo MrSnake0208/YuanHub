@@ -3085,7 +3085,7 @@
         @update:draft-loadouts="starLoadoutDrafts = $event"
       />
       <OperatorMilestoneDialog v-if="milestoneEntry && auth.isLoggedIn && accountId" :entry="milestoneEntry" :account-id="accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" @close="milestoneEntry = null" />
-      <OperatorResetDialog v-if="resetEntry && auth.isLoggedIn && accountId" :entry="resetEntry" :account-id="accountId" :account-name="accounts.find(a => a.id === accountId)?.name || accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" :operators="catalogOperators" @close="resetEntry = null" @updated="refreshAfterReset" />
+      <OperatorResetDialog v-if="resetEntry && auth.isLoggedIn && accountId" :entry="resetEntry" :current-growth="currentMap[resetEntry.id]" :account-id="accountId" :account-name="accounts.find(a => a.id === accountId)?.name || accountId" :game="saveGame" :user-id="auth.userInfo?.id || ''" :operators="catalogOperators" @close="resetEntry = null" @updated="refreshAfterReset" />
       <OperatorAwakeningDialog v-if="awakeningEntry" :key="accountId + ':' + awakeningEntry.id"
         :entry="awakeningEntry" :account-id="accountId" :game="saveGame" :refresh="refreshAwakeningEntry"
         @close="awakeningId = ''" @saved="onAwakeningSaved" />

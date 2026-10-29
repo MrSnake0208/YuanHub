@@ -118,7 +118,7 @@ async function openEditor(existing, catalog = operator, stubs = {}, options = {}
 }
 
 it('密探重置入口绑定已保存账号；编辑有草稿时阻止重置且不丢弃草稿', async () => {
-  const wrapper = await openEditor({ level: 40, elite: 2, star_level: 1 }, operator, { OperatorResetDialog: { props: ['accountId', 'accountName', 'entry'], template: '<div data-test="reset-dialog">{{accountId}} {{accountName}} {{entry.name}}</div>' } })
+  const wrapper = await openEditor({ level: 40, elite: 2, star_level: 1 }, operator, { OperatorResetDialog: { props: ['accountId', 'accountName', 'entry', 'currentGrowth'], template: '<div data-test="reset-dialog">{{accountId}} {{accountName}} {{entry.name}} {{currentGrowth.level}}级 / 修为+{{currentGrowth.elite}}</div>' } })
   const button = wrapper.findAll('button').find(item => item.text() === '鞭子重置 / 记录')
   await wrapper.get('.num-fields input').setValue('41')
   expect(button.attributes('disabled')).toBeDefined()
@@ -128,6 +128,7 @@ it('密探重置入口绑定已保存账号；编辑有草稿时阻止重置且�
   await wrapper.get('.num-fields input').setValue('40')
   await button.trigger('click'); await flushPromises()
   expect(wrapper.get('[data-test="reset-dialog"]').text()).toContain('acc 测试账号 测试密探')
+  expect(wrapper.get('[data-test="reset-dialog"]').text()).toContain('40级 / 修为+2')
   activeAccount.id = 'other'; await flushPromises()
   expect(wrapper.find('[data-test="reset-dialog"]').exists()).toBe(false)
 })
