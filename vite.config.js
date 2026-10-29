@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ocrModelCdn } from './scripts/ocr-model-cdn.mjs'
 
 const DEFAULT_TUNNEL_HOST = 'hubf.maayuan.fun'
 const DEFAULT_DEV_API_TARGET = 'http://127.0.0.1:8080'
@@ -101,6 +102,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
+      ocrModelCdn(),
       VitePWA({
         // 不让旧 Service Worker 长时间等待用户手动确认更新。
         // 这里不接入 virtual:pwa-register 的自动 reload，因此不会在用户编辑表单时强制刷新页面；

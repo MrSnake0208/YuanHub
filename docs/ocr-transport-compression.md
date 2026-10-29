@@ -1,6 +1,16 @@
 # OCR 静态资源传输压缩
 
-正式策略为 **gzip-only + identity fallback**。YuanStar 生成原始 worker、模型和 ORT 资源，YuanHub 在最终部署 dist 中生成 `.gz`。原文件完整保留；OCR runtime、触发条件、300 秒 timeout 和现有缓存策略不变。
+本站静态资源压缩策略为 **gzip-only + identity fallback**。YuanStar 生成原始 worker、模型和 ORT 资源，YuanHub 在最终部署 dist 中生成 `.gz`。原文件完整保留；OCR runtime、触发条件和 300 秒 timeout 不变。
+
+## 三个模型改由公开 CDN 分发（2026-10-29）
+
+`scripts/ocr-model-cdn.mjs` 统一维护三个 ONNX 的 ModelScope `v3.10.0` 固定地址。开发和 preview 返回精确 URL 的 302；生产构建输出 `dist/nginx/ocr-model-cdn.conf`，必须按 [部署说明](./deployment.md) 在前端 Nginx server 中 include 并经校验后启用。只构建/发布前端不会自动修改生产 Nginx。
+
+浏览器直接跟随跳转下载公开模型，本站仅承担小型跳转响应；不使用后端代理、不自动回退本站下载。字典、Worker、ORT/WASM 仍由本站加载。保持同源模型入口 URL，因此无需改动 YuanStar 原仓库、生成 JS 或 provenance manifest，也不改变模型根目录与 ORT 相对路径。
+
+本次已实际下载三个公开模型，HTTP 200，SHA-256 均与 `docs/yuanstar-embed-manifest.json` 一致；最终 CDN 响应包含 `Access-Control-Allow-Origin: *`。公开平台后续可用性与速度不作保证，真实浏览器识别及生产生效需另行验收。字典继续使用本站原文件。
+
+三个模型的重定向缓存为 300 秒；其它资源沿用原缓存策略。原始 ONNX 和压缩副本保留以维护产物完整性并支持运维回滚，不代表正常模型请求仍传输本站副本。下文传输量是切换前的历史数据，不是 CDN 模式的实测总量。
 
 ## 构建与完整性
 

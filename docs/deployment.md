@@ -98,6 +98,10 @@
      root /var/www/yuanhub/current;
      index index.html;
 
+     # npm run build 生成；三个 OCR 模型由浏览器直接下载 ModelScope 文件。
+     # 首次启用前先发布包含此文件的构建，路径随实际部署目录调整。
+     include /var/www/yuanhub/current/nginx/ocr-model-cdn.conf;
+
      # 带 hash 的静态资源可长期缓存；入口 HTML 与 PWA 更新文件必须始终重新验证。
      location /assets/ {
        expires 1y;
@@ -132,7 +136,7 @@
      # 而它引用的 worker 带内容 hash、每次同步都会改文件名。
      # 若浏览器继续使用缓存的旧入口，就会去请求已被删除的旧 worker → 404，
      # 表现为“星石”页视觉识别不可用。因此这里的 HTML/JS/CSS 必须每次重新验证；
-     # 目录下体积较大的模型与 wasm 仍可按需长缓存。
+     # 三个模型优先命中上方 include 的 exact location；字典与 wasm 仍可长缓存。
      location /yuanstar-embed/ {
        expires -1;
        add_header Cache-Control "no-cache, must-revalidate" always;
@@ -147,6 +151,12 @@
      }
    }
    ```
+
+   **OCR CDN 首次启用不是仅发布前端即可完成：** 构建会输出 `dist/nginx/ocr-model-cdn.conf`，Release 原样复制到 `current/nginx/`，但不会修改或 reload Nginx。运维需在上述前端 `server` 内加入 include，确认文件存在后执行 `nginx -t`，通过后再按运维流程 reload。若现有配置已包含这三个 exact location，先合并，不能重复定义。CDN 地址、开发及 preview 规则的唯一来源是 `scripts/ocr-model-cdn.mjs`，不手改构建文件。
+
+   include 只对三个固定 ONNX 路径返回 302（缓存 300 秒），不会代理模型内容、转发查询参数或改变字典/ORT 路径。模型下载失败沿用 OCR 的超时与重试，不自动回退本站模型。已缓存的旧模型仍可使用；若 ESA 缓存了这三个 URL 的旧 200 响应，启用时只刷新对应模型 URL 的边缘缓存，并确保规则不覆盖源站的 300 秒跳转缓存。无需清空全站缓存。
+
+   验收：三个模型原 URL 应返回 302，Location 指向固定 ModelScope `v3.10.0`；跟随跳转后应得到原模型。字典和 WASM 仍由本站提供。浏览器人工打开星石页，确认准备完成并识别一张截图；下载速度需要用户实际网络验证。**回滚时先移除 include、校验并 reload，再回退到不含该文件的旧构建**；浏览器/边缘的 302 缓存最多等待 300 秒（前提是边缘遵守源站缓存头）。完整原始模型随构建保留，撤掉重定向后可恢复本站静态分发。
 
    如果主站前面接了阿里云 ESA，还要在 **规则 → 缓存规则** 增加一条 PWA 更新文件规则：
 
