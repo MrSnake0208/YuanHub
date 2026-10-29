@@ -59,5 +59,5 @@ const fill = computed(() => pointTrackFill(score.value, props.track.tiers))
 </script>
 
 <style src="./achievementPointRewardsShared.css"></style>
-<style src="./achievementPointRewardsMobile.css"></style>
-<style src="./achievementPointRewardsDesktop.css"></style>
+<style scoped src="./achievementPointRewardsMobile.css"></style>
+<style scoped src="./achievementPointRewardsDesktop.css"></style>
