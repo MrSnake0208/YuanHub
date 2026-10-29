@@ -3,8 +3,13 @@
     <template #lobby>
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus" :game="calendarGame">
         <template #actions>
-          <button v-if="auth.isLoggedIn" type="button" class="today-customize" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /> 自定义首页</button>
-          <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
+          <div class="today-actions">
+            <button v-if="auth.isLoggedIn" type="button" class="today-record" aria-haspopup="dialog" aria-controls="reward-entry-panel"
+              :aria-expanded="!!rewardEntryWorkspace?.mode" :disabled="rewardEntryDisabled || recordBusy" :title="recordUnavailableReason || '记录获得、使用与兑换'"
+              @click="openRewardEntry($event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
+            <button v-if="auth.isLoggedIn" type="button" class="today-customize" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /> 自定义首页</button>
+            <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
+          </div>
         </template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"
@@ -15,7 +20,9 @@
           :game="accountGame"
           :is-logged-in="auth.isLoggedIn"
           :loading="accountLoading"
-          :switch-disabled="accountLoadFailed"
+          :switch-disabled="accountLoadFailed || recordBusy"
+          :switch-disabled-reason="recordBusy ? '正在保存或确认入账，请处理完成后再切换账号。' : ''"
+          :before-switch="beforeAccountSwitch"
         />
       </TodayLobby>
     </template>
@@ -34,6 +41,17 @@
       <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
       <TodayPreferencesPanel v-model:open="customizeOpen" :preferences="preferences" />
+      <RewardEntryWorkspace v-if="recordMounted && auth.isLoggedIn && validAccountId" :key="highlightContext" ref="rewardEntryWorkspace" compact
+        :account-id="validAccountId" :account-name="currentAccountName" :game="accountGame"
+        :disabled="rewardEntryDisabled" :resource-busy="drawResourceBusy" :before-close="confirmDrawDraft"
+        @busy="rewardBusy = $event" @imported="onRewardImported">
+        <template #actions />
+        <template #resource-entry="{ operation }">
+          <DrawResourceEntry ref="drawResourceEntry" embedded :operation="operation" :account-id="validAccountId"
+            :user-id="String(auth.userInfo?.id || '')" :game="accountGame" :disabled="rewardEntryDisabled || rewardBusy"
+            @busy="drawResourceBusy = $event" @recorded="onRewardImported" />
+        </template>
+      </RewardEntryWorkspace>
     </template>
     <template #highlights>
       <TodayHighlights v-if="calendarEnabled && validAccountId && moduleShown('highlights')" :key="highlightContext" :items="highlights" :sources="highlightSources" @retry="retryHighlights" @empty-focus="focusCustomize" />
@@ -75,8 +93,11 @@
 import { useAccountListUpdates } from '../../store/accountList.js'
 import TutorialEntry from '../../components/TutorialEntry.vue'
 import OnboardingGuide from '../../components/OnboardingGuide.vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Gem, PackageOpen, SlidersHorizontal, Users } from '@lucide/vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { Gem, PackageOpen, Plus, SlidersHorizontal, Users } from '@lucide/vue'
+import RewardEntryWorkspace from '../../components/inventory/RewardEntryWorkspace.vue'
+import DrawResourceEntry from '../../components/inventory/DrawResourceEntry.vue'
+import { dialog } from '../../utils/dialog.js'
 import { TODAY_MODULES, useTodayPreferences } from '../../composables/useTodayPreferences.js'
 import TodayPreferencesPanel from '../../components/today/TodayPreferencesPanel.vue'
 import TodayHighlights from '../../components/today/TodayHighlights.vue'
@@ -150,6 +171,9 @@ const allModulesHidden = computed(() => TODAY_MODULES.every(item => !moduleShown
 const customizeOpen = ref(false)
 const accounts = ref([])
 const accountContext = ref(null)
+const rewardEntryWorkspace = ref(null), drawResourceEntry = ref(null)
+const recordMounted = ref(false), rewardBusy = ref(false), drawResourceBusy = ref(false)
+const recordBusy = computed(() => rewardBusy.value || drawResourceBusy.value)
 const subscriptionSource = ref(null), privateSource = ref(null)
 const subscriptionState = ref(null), privateState = ref(null)
 useAccountListUpdates(next => { accounts.value = next })
@@ -165,6 +189,17 @@ const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const validAccountId = computed(() => accounts.value.some(account => account.id === accountId.value) ? accountId.value : '')
+const currentAccountName = computed(() => accounts.value.find(account => account.id === validAccountId.value)?.name || '当前账号')
+const recordUnavailableReason = computed(() => {
+  if (!auth.isLoggedIn) return '登录后可记一笔'
+  if (accountLoading.value) return '正在读取游戏账号…'
+  if (accountLoadFailed.value) return '账号读取失败，请先重试'
+  if (!validAccountId.value) return '请先创建或选择游戏账号'
+  if (summaryLoading.value) return '正在读取库存状态…'
+  if (realSummary.value.inventoryKindCount == null) return '库存读取失败，请先重试'
+  return ''
+})
+const rewardEntryDisabled = computed(() => !!recordUnavailableReason.value)
 const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && !accountLoading.value)
 const trainingEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.OPERATOR_GROWTH_TRACKING) && auth.isLoggedIn && !accountLoading.value)
 const calendarGame = computed(function () {
@@ -173,6 +208,35 @@ const calendarGame = computed(function () {
 })
 const highlightContext = computed(() => JSON.stringify([auth.isLoggedIn ? auth.userInfo?.id || '' : '', validAccountId.value, accountGame.value]))
 watch([highlightContext, calendarEnabled], () => { subscriptionState.value = null; privateState.value = null }, { flush: 'sync' })
+watch(highlightContext, () => { recordMounted.value = false; rewardBusy.value = false; drawResourceBusy.value = false }, { flush: 'sync' })
+
+async function openRewardEntry(trigger) {
+  if (rewardEntryDisabled.value || recordBusy.value) return
+  const context = highlightContext.value, sequence = loadSequence
+  recordMounted.value = true
+  await nextTick()
+  if (context !== highlightContext.value || sequence !== loadSequence || rewardEntryDisabled.value || recordBusy.value) return
+  rewardEntryWorkspace.value?.openManual(trigger)
+}
+async function confirmDrawDraft() {
+  return !drawResourceEntry.value || await drawResourceEntry.value.confirmDiscard()
+}
+async function beforeAccountSwitch() {
+  if (recordBusy.value) return false
+  const context = highlightContext.value, sequence = loadSequence
+  const current = () => context === highlightContext.value && sequence === loadSequence && !recordBusy.value
+  if (!(await confirmDrawDraft()) || !current()) return false
+  if (rewardEntryWorkspace.value?.hasDraft() && !(await dialog.confirm({
+    title: '放弃当前账号的录入草稿？', message: '切换账号会清空未保存的记录。已保存的数据不受影响。',
+    type: 'danger', confirmText: '放弃并切换', cancelText: '继续填写'
+  }))) return false
+  return current()
+}
+function onRewardImported(targetAccountId) {
+  if (!auth.isLoggedIn || !validAccountId.value || targetAccountId !== validAccountId.value) return
+  summaryLoading.value = true
+  void loadSummary(++summarySequence, validAccountId.value, accountGame.value)
+}
 const highlightSources = computed(() => [
   { id: 'subscriptions', label: '订阅活动', state: subscriptionState.value },
   { id: 'private', label: '私人事项', state: privateState.value }
@@ -345,13 +409,17 @@ watch([validAccountId, accountGame, accountLoading], () => {
   summaryLoading.value = true
   void loadSummary(sequence, validAccountId.value, accountGame.value)
 }, { flush: 'sync' })
-watch(() => [auth.isLoggedIn, auth.accessToken, auth.userInfo?.id], loadDashboard, { immediate: true, flush: 'sync' })
+// 同一用户续期 token 不重建账号上下文，避免打断尚待确认的记账。
+watch(() => [auth.isLoggedIn, auth.userInfo?.id], loadDashboard, { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 </script>
 
 <style scoped>
 #today-training-todos:empty { display: none; }
 .today-customize { border: 1px solid var(--line); border-radius: 8px; color: var(--theme-strong-text, var(--tea)); background: var(--cream); cursor: pointer; font: inherit; font-size: 13px; }
+.today-record { border: 1px solid var(--tea); border-radius: 8px; color: var(--on-strong); background: var(--tea); cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+.today-record:hover:not(:disabled) { background: var(--tea-deep); }
+.today-record:disabled { opacity: .55; cursor: not-allowed; }
 .today-customize:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 /* 刻意共享的字段外观，不持有双端布局。 */
 
