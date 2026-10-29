@@ -344,7 +344,7 @@ const showManagement = computed(() =>
 );
 const showCalendar = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR));
 const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE));
-const showAchievement = computed(() => isLoggedIn.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
+const showAchievement = computed(() => isLoggedIn.value && isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
 const showBonds = computed(() => isLoggedIn.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && isFeatureEnabled(FEATURE_KEYS.BOND_ARCHIVE));
 const showBetaCommunityEntry = computed(
   () =>

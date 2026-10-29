@@ -522,18 +522,18 @@ it.each([
 })
 
 
-it('成就羁绊仅对显式授权身份展示，撤销或退出后立即隐藏', async () => {
+it('普通登录用户可见成就，羁绊仍需授权，退出后隐藏成就', async () => {
   isFeatureEnabled.mockReturnValue(true)
   auth.accessToken = 'fixture'; auth.userInfo = { id: 'member' }
   auth.adminAccess = { permissions: ['achievement_catalog:write', 'bond_catalog:write'] }
   const wrapper = render()
-  expect(routes(wrapper)).not.toContain('/achievement')
+  expect(routes(wrapper)).toContain('/achievement')
   expect(routes(wrapper)).not.toContain('/bonds')
   auth.adminAccess = { permissions: ['archive:access'] }; await flushPromises()
   expect(routes(wrapper)).toContain('/achievement')
   expect(routes(wrapper)).toContain('/bonds')
   auth.adminAccess = { permissions: [] }; await flushPromises()
-  expect(routes(wrapper)).not.toContain('/achievement')
+  expect(routes(wrapper)).toContain('/achievement')
   expect(routes(wrapper)).not.toContain('/bonds')
   auth.adminAccess = { permissions: ['archive:access'] }; auth.accessToken = ''; await flushPromises()
   expect(routes(wrapper)).not.toContain('/achievement')

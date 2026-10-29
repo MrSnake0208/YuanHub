@@ -24,16 +24,18 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
-`achievementArchive` and `bondArchive` are built in,
-but are temporarily restricted to PLATFORM_ADMIN and SUPER_ADMIN. Archive routes
-and navigation require `archive:access`; the operator relationship tab, backup,
+`achievementArchive` is built in and available to signed-in users with existing
+site eligibility; its navigation, player routes and APIs require no admin role or
+`archive:access`. The existing Beta gate and account ownership checks remain.
+`bondArchive` is built in but remains restricted to PLATFORM_ADMIN and SUPER_ADMIN
+through `archive:access`. The operator relationship tab, backup,
 content mount and persisted-tab restoration allow administrator preview via
 `operator_relationship:use` while the `operatorRelationships` public flag defaults
 to `false` in development and production. Opening that flag also requires a paired
 backend permission-policy change; it never bypasses server authorization.
-Ordinary users and Beta enrollment do not grant access. Historical ARCHIVE_USER
+Ordinary users and Beta enrollment do not grant access to these restricted features. Historical ARCHIVE_USER
 and OPERATOR_PANEL_USER bindings are preserved but currently grant no feature access.
-Catalog management still requires its existing write permission.
+Catalog management still requires its existing write permission and configured data-owner identity.
 
 Automatic operator panels require `operator_panel:use`, also administrator-only.
 Unauthorized users keep manual/observed values and do not request automatic panels;

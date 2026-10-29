@@ -43,7 +43,7 @@ test('成就私有路径使用既有 Beta，公开目录可由游客读取', () 
   for (const path of ['/archive', '/export', '/batch', '/records/id', '/import/preview', '/import/confirm']) assert.equal(requiresBetaApi('POST', '/v1/achievements' + path), true)
   assert.equal(requiresBetaApi('GET', '/v1/achievements-other'), false)
 })
-test('成就开发及生产均由显式访问权限保护', async () => {
+test('成就开发及生产均开放登录入口，不再要求管理员访问权限', async () => {
   const source = readFileSync(new URL('../src/config/features.js', import.meta.url), 'utf8')
   for (const env of [{ DEV: false, PROD: true }, { DEV: true, PROD: false }]) {
     const flags = await import('data:text/javascript;base64,' + Buffer.from(source.replaceAll('import.meta.env', JSON.stringify(env))).toString('base64'))
@@ -53,7 +53,7 @@ test('成就开发及生产均由显式访问权限保护', async () => {
   const route = routes.find(item => item.path === '/achievement')
   assert.equal(route.meta.feature, 'achievementArchive')
   assert.equal(route.meta.requiresAuth, true)
-  assert.equal(route.meta.requiredPermission, 'archive:access')
+  assert.equal(route.meta.requiredPermission, undefined)
 })
 
 
