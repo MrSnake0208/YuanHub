@@ -5,8 +5,9 @@ import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from './opera
 import { subProfList } from './operatorFilters.js'
 
 export const BOX_IMAGE_WIDTH = 1440
-// Five overview cards at their 190px minimum, with the existing gaps/padding.
-export const BOX_IMAGE_LAYOUT_WIDTH = 5 * 190 + 4 * 10 + 2 * 24
+// Fallback at the 1440px desktop viewport: sidebar, wrap gutters, ledger padding/border.
+// Prefer the overview's measured card width in the capture clone below.
+export const BOX_IMAGE_LAYOUT_WIDTH = Math.min(BOX_IMAGE_WIDTH - 292, 1180) - 2 * 48 - 2 * (16 + 1) + 2 * 24
 export const BOX_IMAGE_PAGE_SIZE = 30
 
 // Only presentation fields cross into the export; private notes and targets stay out.
@@ -79,14 +80,23 @@ async function waitForAssets(element) {
 export async function renderOperatorBoxImage(element) {
   await waitForAssets(element)
   const { default: html2canvas } = await import('html2canvas')
-  const canvas = await html2canvas(element, {
+  const options = {
     width: BOX_IMAGE_LAYOUT_WIDTH, scale: BOX_IMAGE_WIDTH / BOX_IMAGE_LAYOUT_WIDTH,
     backgroundColor: '#5A4633', useCORS: true,
     windowWidth: BOX_IMAGE_WIDTH, scrollX: 0, scrollY: 0, logging: false,
     onclone: async (document, cloned) => {
       try {
+        const overviewCard = document.querySelector('.current-ledger .agent-ledger-card--editable')
+        const cardWidth = overviewCard?.getBoundingClientRect().width
+        if (cardWidth > 0) {
+          // Read desktop geometry even when generation starts on a phone; keep five columns.
+          options.width = Math.ceil(5 * cardWidth + 4 * 10 + 2 * 24)
+          // html2canvas floors pixel dimensions; avoid a 1439px result from float rounding.
+          options.scale = (BOX_IMAGE_WIDTH + Number.EPSILON * BOX_IMAGE_WIDTH) / options.width
+          cloned.style.width = options.width + 'px'
+        }
         // Measure after the clone activates desktop rules, including on a phone.
-        const pixelHeight = Math.ceil(cloned.scrollHeight * BOX_IMAGE_WIDTH / BOX_IMAGE_LAYOUT_WIDTH)
+        const pixelHeight = Math.ceil(cloned.scrollHeight * options.scale)
         if (pixelHeight > 16384 || pixelHeight * BOX_IMAGE_WIDTH > 16000000) {
           throw new Error('完整长图过长，请改用分段图片。')
         }
@@ -96,7 +106,8 @@ export async function renderOperatorBoxImage(element) {
         throw error
       }
     },
-  })
+  }
+  const canvas = await html2canvas(element, options)
   try {
     return await new Promise((resolve, reject) => canvas.toBlob(blob => {
       if (blob) resolve(blob)

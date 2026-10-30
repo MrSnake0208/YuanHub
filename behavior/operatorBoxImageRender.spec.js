@@ -34,6 +34,19 @@ it('broken portraits fail visibly rather than silently exporting blank artwork',
   expect(html2canvas).not.toHaveBeenCalled()
 })
 
+it.each([[218.5, 1181], [210.8, 1142], [0, 1066]])('calibrates five columns from the desktop clone card width %s, with a CSS-derived fallback', async (cardWidth, layoutWidth) => {
+  const root = element()
+  document.body.innerHTML = '<div class="current-ledger"><article class="agent-ledger-card--editable"></article></div>'
+  vi.spyOn(document.querySelector('article'), 'getBoundingClientRect').mockReturnValue({ width: cardWidth })
+  html2canvas.mockImplementation(async (element, options) => { await options.onclone(document, element); return canvas() })
+  await renderOperatorBoxImage(root)
+  const options = html2canvas.mock.calls[0][1]
+  expect(options.width).toBe(layoutWidth)
+  expect(Math.floor(options.width * options.scale)).toBe(1440)
+  expect(options.windowWidth).toBe(1440)
+  if (cardWidth) expect(root.style.width).toBe(layoutWidth + 'px')
+})
+
 it('oversized full images apply pixel limits after scaling, before allocating a canvas', async () => {
   const root = element()
   // Fits the old 1x area guard, but exceeds 16 million pixels at the PNG scale.

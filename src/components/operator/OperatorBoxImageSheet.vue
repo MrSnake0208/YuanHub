@@ -57,6 +57,7 @@
             <span>命盘{{ index === 0 ? '一' : '二' }}</span>
             <div class="ledger-destiny-values">
               <em v-for="(disc, i) in loadout" :key="i" class="disc-term" :class="discClass[disc.color]">{{ disc.name }}</em>
+              <em v-if="!loadout.length" class="empty">未配置</em>
             </div>
           </div>
         </div></div>
@@ -98,7 +99,7 @@ defineExpose({ sheet })
 .box-image-heading > span { font-size: 17px; }
 .box-image-footer { padding-top: 18px; font: 14px/1.4 var(--font-s, serif); }
 /* Override the overview skin's auto-fill so exported rows never exceed five cards. */
-.box-image-sheet .box-image-grid { display: grid; grid-template-columns: repeat(5, 190px) !important; gap: 10px; align-items: start; }
+.box-image-sheet .box-image-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 10px; align-items: start; }
 /* Only remove control decoration/columns; card geometry comes from the overview. */
 /* html2canvas needs an explicit stacking context for the negative-z portrait. */
 .box-image-sheet .box-image-card { z-index: 0; }
@@ -109,4 +110,8 @@ defineExpose({ sheet })
 .box-image-sheet .box-image-card .ledger-status-button { cursor: default; }
 .box-image-sheet .box-image-card .ledger-status-button::after { content: none; }
 .box-image-sheet .box-image-card .ledger-destiny-row { cursor: default; }
+/* Exported text has no editor/tooltip to reveal clipped content. */
+.box-image-sheet .box-image-card .ledger-destiny-row em { overflow: visible; text-overflow: clip; }
+.box-image-sheet .box-image-card .ledger-destiny-row em.empty { grid-column: 1 / -1; color: var(--ink-60); }
+.box-image-sheet .box-image-card .ledger-huaji-value { flex-wrap: wrap; overflow: visible; white-space: normal; }
 </style>

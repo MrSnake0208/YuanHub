@@ -20,8 +20,9 @@ export async function prepareOperatorBoxImage(document, root) {
   }
   // html2canvas copies pseudo styles from the live viewport before creating its desktop clone.
   for (const portrait of root.querySelectorAll('.ledger-portrait')) {
-    const overlay = portrait.querySelector('html2canvaspseudoelement')
-    if (!overlay) continue
+    // A phone's live styles may have no ::after at all; materialize it in the desktop clone.
+    const overlay = portrait.querySelector('html2canvaspseudoelement') || document.createElement('html2canvaspseudoelement')
+    if (!overlay.parentNode) portrait.append(overlay)
     const hidden = '___html2canvas___pseudoelement_after'
     portrait.classList.remove(hidden)
     const computed = view.getComputedStyle(portrait, '::after')
@@ -43,6 +44,9 @@ export async function prepareOperatorBoxImage(document, root) {
     return colors.get(color)
   })
   const properties = ['color', 'background-color', 'background-image', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'box-shadow', 'text-shadow']
+  const ruleTile = document.createElement('canvas')
+  ruleTile.width = 6; ruleTile.height = 1
+  const ruleContext = ruleTile.getContext('2d')
   const pseudoStyles = []
   for (const [index, node] of [root, ...root.querySelectorAll('*')].entries()) {
     const style = view.getComputedStyle(node)
@@ -50,6 +54,17 @@ export async function prepareOperatorBoxImage(document, root) {
       const value = style.getPropertyValue(property)
       const converted = compatibleColors(value)
       if (converted !== value) node.style.setProperty(property, converted, 'important')
+    }
+    // html2canvas skips repeating gradients; retain the shared skin's 3px/3px rule.
+    if (style.backgroundImage?.startsWith('repeating-linear-gradient(') && style.getPropertyValue('--ledger-input-line').trim()) {
+      ruleContext.clearRect(0, 0, 6, 1)
+      ruleContext.fillStyle = style.getPropertyValue('--ledger-input-line')
+      ruleContext.fillRect(0, 0, 3, 1)
+      node.style.setProperty('background-image', `url("${ruleTile.toDataURL('image/png')}")`, 'important')
+      node.style.backgroundSize = '6px 1px'
+      node.style.backgroundRepeat = 'repeat-x'
+      // The renderer also drops calc() in the shared rule's bottom offset.
+      node.style.backgroundPosition = `0px ${node.clientHeight - 5}px`
     }
     for (const pseudo of ['::before', '::after']) {
       const computed = view.getComputedStyle(node, pseudo)
@@ -64,6 +79,7 @@ export async function prepareOperatorBoxImage(document, root) {
       }
     }
   }
+  ruleTile.width = ruleTile.height = 0
   const styles = document.createElement('style')
   styles.textContent = pseudoStyles.join('\n')
   document.head.append(styles)

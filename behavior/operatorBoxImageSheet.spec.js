@@ -70,6 +70,19 @@ it.each([
   wrapper.unmount()
 })
 
+it.each([{ terms: [] }, { terms: ['已配词条'] }])('empty loadouts show a read-only state while configured terms remain: $terms', ({ terms }) => {
+  const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({
+    id: 'empty', name: '测试', discLoadouts: [{ discNames: terms }, { discNames: [] }],
+  })] } })
+  const rows = wrapper.findAll('.ledger-destiny-row')
+  expect(rows).toHaveLength(2)
+  expect(rows[0].findAll('em').map(term => term.text())).toEqual(terms.length ? terms : ['未配置'])
+  expect(rows[1].get('em.empty').text()).toBe('未配置')
+  expect(wrapper.text()).not.toContain('+ 命盘')
+  expect(wrapper.find('button, input, [role="button"], [tabindex]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
 it('the export keeps the overview section ancestry and imports its actual desktop skins', () => {
   const landmarks = new Set(['ledger-portrait', 'ledger-card-head', 'ledger-name-tab', 'ledger-identity', 'ledger-name-row', 'ledger-prof-tab', 'ledger-status-menu', 'ledger-status-button', 'ledger-combat', 'ledger-combat-stat', 'ledger-combat-head', 'ledger-combat-value', 'ledger-oddity', 'ledger-growth', 'ledger-growth-row', 'ledger-grow-label', 'ledger-inline-field', 'ledger-inline-input', 'ledger-huaji-value', 'ledger-loadouts', 'ledger-destiny', 'ledger-destiny-row', 'ledger-destiny-values'])
   function ancestry(source) {
@@ -87,8 +100,7 @@ it('the export keeps the overview section ancestry and imports its actual deskto
   }
   const original = ancestry(overview)
   for (const path of ancestry(sheet)) expect(original.has(path), path).toBe(true)
-  expect(sheet).toMatch(/grid-template-columns:\s*repeat\(5, 190px\)\s*!important/)
-  expect(BOX_IMAGE_LAYOUT_WIDTH).toBe(5 * 190 + 4 * 10 + 2 * 24)
+  expect(sheet).toMatch(/grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)\s*!important/)
   expect(sheet).not.toMatch(/background:\s*transparent\s*!important|\.ledger-status-menu\s*\{\s*top:/)
   for (const name of ['reading', 'v1', 'v1Desktop', 'v2', 'v2Desktop', 'v3', 'v3Desktop']) {
     const imported = `src="../../styles/operator-ledger-card.${name}.css"`

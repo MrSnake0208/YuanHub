@@ -65,10 +65,10 @@ it('uses measured glyph positions for vertical names, including a supplementary 
   document.head.lastChild.remove()
 })
 
-it('refreshes the portrait overlay from the desktop clone instead of retaining mobile pseudo styles', async () => {
+it.each([true, false])('uses the desktop portrait gradient even if a mobile overlay exists: %s', async existing => {
   const root = document.createElement('section')
-  root.innerHTML = '<picture class="ledger-portrait ___html2canvas___pseudoelement_after"><html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement></picture>'
-  const portrait = root.firstElementChild, overlay = portrait.firstElementChild
+  root.innerHTML = `<picture class="ledger-portrait ___html2canvas___pseudoelement_after">${existing ? '<html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement>' : ''}</picture>`
+  const portrait = root.firstElementChild
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({})
   vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) => {
     if (node === portrait && pseudo === '::after' && !portrait.classList.contains('___html2canvas___pseudoelement_after')) {
@@ -77,8 +77,33 @@ it('refreshes the portrait overlay from the desktop clone instead of retaining m
     return { content: 'none', getPropertyValue: () => '' }
   })
   await prepareOperatorBoxImage(document, root)
+  const overlay = portrait.firstElementChild
   expect(overlay.style.position).toBe('absolute')
   expect(overlay.style.height).toBe('258px')
   expect(portrait.classList.contains('___html2canvas___pseudoelement_after')).toBe(true)
+  document.head.lastChild.remove()
+})
+
+it('keeps the overview numeric rules when the renderer cannot paint repeating gradients', async () => {
+  const root = document.createElement('section')
+  root.innerHTML = '<output style="background-position:left bottom">500</output>'
+  const value = root.firstElementChild
+  Object.defineProperty(value, 'clientHeight', { value: 25 })
+  const context = { clearRect: vi.fn(), fillRect: vi.fn() }
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context)
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,cnVsZQ==')
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(node => ({
+    backgroundImage: node === value ? 'repeating-linear-gradient(90deg, #d78935 0 3px, transparent 3px 6px)' : 'none',
+    content: 'none',
+    getPropertyValue: property => property === '--ledger-input-line' && node === value ? '#d78935' : '',
+  }))
+  await prepareOperatorBoxImage(document, root)
+  expect(context.fillStyle).toBe('#d78935')
+  expect(context.fillRect).toHaveBeenCalledWith(0, 0, 3, 1)
+  expect(value.style.backgroundImage).toContain('data:image/png;base64,cnVsZQ==')
+  expect(value.style.backgroundSize).toBe('6px 1px')
+  expect(value.style.backgroundRepeat).toBe('repeat-x')
+  expect(value.style.backgroundPosition).toBe('0px 20px')
+  expect(value.textContent).toBe('500')
   document.head.lastChild.remove()
 })
