@@ -17,9 +17,7 @@ function matchesReward(reward, value) {
 }
 
 export function achievementRewardOptions(catalog) {
-  const rewards = [...(catalog?.entries || []).flatMap(entry => entry.rewards || []), ...(catalog?.point_tracks || []).flatMap(track => track.tiers)]
-  const options = new Set([...(catalog?.reward_filters || []), ...rewards.map(reward => rewardType(reward) || reward.name)])
-  return [...options]
+  return catalog ? ['白金币', '称号', '功过格', '符传'] : []
 }
 
 export function pointRewardSources(catalog, filters) {

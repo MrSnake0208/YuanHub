@@ -165,14 +165,14 @@ it('导入预览不提交、未知需确认、revision 变化使预览失效', a
 
 it('筛选选项直接展示，奖励、关联进度和隐藏条件组合后可清除', async () => {
   const catalog = achievementCatalog(3)
-  catalog.entries[1].rewards = [{ item_key: 'gongguoge', name: '测试格', quantity: 1 }]
+  catalog.entries[1].rewards = [{ item_key: 'gongguoge', name: '功过格', quantity: 1 }]
   catalog.entries[1].linked_metric = 'yuan_bond_variants'; catalog.entries[1].target = 20
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const toolbar = wrapper.get('.achievement-toolbar')
   expect(toolbar.findAll('.achievement-filter-row')).toHaveLength(5)
   expect(toolbar.find('select, details').exists()).toBe(false)
-  const reward = button(toolbar.get('[aria-label="成就奖励选项"]'), '测试格')
+  const reward = button(toolbar.get('[aria-label="成就奖励选项"]'), '功过格')
   await reward.trigger('click')
   await toolbar.get('[aria-label="关联进度筛选"] button[value="yuan_bond_variants"]').trigger('click')
   await toolbar.get('[aria-label="成就属性筛选"]').findAll('input')[1].setValue(true)
@@ -190,16 +190,16 @@ it('筛选选项直接展示，奖励、关联进度和隐藏条件组合后可�
   expect(wrapper.get('.achievement-results').text()).toBe('全部成就 · 共 3 项')
 })
 
-it('保留配置的奖励选项，并从实际奖励补充称号类型', async () => {
-  const names = ['测试币', '测试钱', '测试券', '测试格']
+it('奖励选项固定四项，目录配置与其他奖励不扩展入口', async () => {
+  const names = ['白金币', '称号', '功过格', '符传']
   const catalog = achievementCatalog(5)
   catalog.entries.forEach((entry, index) => {
-    entry.rewards = [{ item_key: 'fixture_' + index, name: names[index] || '称号【测试】', quantity: 1 }]
+    entry.rewards = [{ item_key: 'fixture_' + index, name: index === 1 ? '称号【测试】' : names[index] || '并蒂莲', quantity: 1 }]
   })
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const options = wrapper.get('[aria-label="成就奖励选项"]')
-  expect(options.findAll('button').map(item => item.text())).toEqual(['全部', ...names, '称号'])
+  expect(options.findAll('button').map(item => item.text())).toEqual(['全部', ...names])
   expect(options.find('input').exists()).toBe(false)
   for (const [index, name] of names.entries()) {
     await button(options, name).trigger('click')
@@ -213,7 +213,7 @@ it('保留配置的奖励选项，并从实际奖励补充称号类型', async (
   expect(api.writeAchievements).not.toHaveBeenCalled()
 })
 
-it('奖励配置为空仍可筛选白金币、符传和外观类型，并按名称反查且不写档案', async () => {
+it('奖励配置为空仍保留四项筛选，头像框仅可通过名称搜索且不写档案', async () => {
   const catalog = achievementCatalog(5)
   catalog.reward_filters = []
   const names = ['白金币', '符传', '称号【风起】', '头像框【云涌】', '头像【听雨】']
@@ -221,8 +221,8 @@ it('奖励配置为空仍可筛选白金币、符传和外观类型，并按名�
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
   const options = wrapper.get('[aria-label="成就奖励选项"]')
-  expect(options.findAll('button').map(item => item.text())).toEqual(['全部', '白金币', '符传', '称号', '头像框', '头像'])
-  for (const [index, name] of ['白金币', '符传', '称号', '头像框', '头像'].entries()) {
+  expect(options.findAll('button').map(item => item.text())).toEqual(['全部', '白金币', '称号', '功过格', '符传'])
+  for (const [index, name] of ['白金币', '符传', '称号'].entries()) {
     await button(options, name).trigger('click')
     expect(wrapper.findAll('.achievement-row')).toHaveLength(1)
     expect(wrapper.get('.achievement-title').text()).toBe(catalog.entries[index].name)
@@ -328,21 +328,21 @@ it('保存期间阻止重复提交，失败保留实际状态且不误开详情'
 it('奖励/分类/状态/关注组合与分组计数来自真实目录，清除恢复全部', async () => {
   const catalog = achievementCatalog(3)
   catalog.categories.push({ category_id: 'other', name: '另一测试分类' })
-  catalog.entries[0].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 1 }]
-  catalog.entries[1].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 2 }]
-  catalog.entries[2].category_id = 'other'; catalog.entries[2].rewards = [{ item_key: 'test_ticket', name: '测试券', quantity: 1 }]
+  catalog.entries[0].rewards = [{ item_key: 'test_coin', name: '白金币', quantity: 1 }]
+  catalog.entries[1].rewards = [{ item_key: 'test_coin', name: '白金币', quantity: 2 }]
+  catalog.entries[2].category_id = 'other'; catalog.entries[2].rewards = [{ item_key: 'test_ticket', name: '符传', quantity: 1 }]
   api.getAchievementCatalog.mockResolvedValue(catalog)
   mockArchiveWrites([{ achievement_id: catalog.entries[0].achievement_id, status: 'completed', favorite: true, note: '', progress: null, completed_on: null }])
   const wrapper = page(); await flushPromises()
   expect(wrapper.findAll('.achievement-group-heading').map(item => item.text())).toEqual(['测试分类本类已完成 1 / 共 2 项', '另一测试分类本类已完成 0 / 共 1 项'])
-  expect(wrapper.findAll('[aria-label="成就奖励选项"] button').map(item => item.text())).toEqual(['全部', '测试币', '测试钱', '测试券', '测试格'])
-  await button(wrapper.get('[aria-label="成就奖励选项"]'), '测试币').trigger('click')
+  expect(wrapper.findAll('[aria-label="成就奖励选项"] button').map(item => item.text())).toEqual(['全部', '白金币', '称号', '功过格', '符传'])
+  await button(wrapper.get('[aria-label="成就奖励选项"]'), '白金币').trigger('click')
   await wrapper.get('[aria-label="游戏分类筛选"] button[value="test"]').trigger('click')
   await wrapper.get('[aria-label="成就状态筛选"] button[value="completed"]').trigger('click')
   await wrapper.get('.achievement-toolbar input[type="checkbox"]').setValue(true)
   expect(wrapper.findAll('.achievement-row')).toHaveLength(1)
   expect(wrapper.get('.achievement-group-heading').text()).toBe('测试分类本类已完成 1 / 共 2 项')
-  await button(wrapper.get('[aria-label="成就奖励选项"]'), '测试格').trigger('click')
+  await button(wrapper.get('[aria-label="成就奖励选项"]'), '功过格').trigger('click')
   expect(wrapper.findAll('.achievement-row')).toHaveLength(0)
   expect(wrapper.get('.achievement-empty').text()).toContain('没有匹配')
   await button(wrapper, '清除条件并查看全部').trigger('click')
