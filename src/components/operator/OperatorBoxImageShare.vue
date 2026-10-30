@@ -1,7 +1,7 @@
 <template>
   <section class="box-image-share" aria-labelledby="box-image-heading" :aria-busy="busy">
     <h3 id="box-image-heading">生成 BOX 图片</h3>
-    <p class="box-image-help">三列排版，每张最多九位，保留立绘、化极、等级修为、攻血奇闻和双命盘。不含账号名、备注或链接，无需开启公开分享。</p>
+    <p class="box-image-help">包含角色、练度与双命盘，不含账号名和备注，无需开启公开分享。</p>
     <label class="box-image-scope">导出范围
       <select v-model="scope" :disabled="busy">
         <option value="filtered">当前筛选（{{ filteredIds.length }} 位）</option>
@@ -10,14 +10,19 @@
     </label>
     <p v-if="!ready" class="box-image-help" role="status">{{ sourceError || '密探档案准备中，请稍后重试。' }}</p>
     <p v-else-if="!selected.length" class="box-image-help">当前范围没有密探，请调整筛选或选择全部已拥有。</p>
-    <p class="box-image-help" role="status">
-      完整长图预计可容纳约 51 位密探，词条换行较多时会更少，实际以图片尺寸为准。
-      <strong v-if="selected.length > 51">当前选择 {{ selected.length }} 位，生成长图可能超出限制，建议直接生成分段图片。</strong>
-      <span v-else>人数较多时建议使用分段图片，避免等待后因图片过长而失败。</span>
+    <p v-if="ready && selected.length" class="box-image-help" role="status">
+      <template v-if="selected.length > 51">已选 {{ selected.length }} 位，建议生成 {{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张分段图。完整长图可能超出限制。</template>
+      <template v-else>已选 {{ selected.length }} 位，可生成分段图或尝试完整长图。</template>
     </p>
     <div class="box-image-actions">
-      <button type="button" class="btn primary" :disabled="busy || !ready || !selected.length" @click="generate(false)">生成分段图片（{{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张）</button>
-      <button type="button" class="btn ghost" :disabled="busy || !ready || !selected.length" @click="generate(true)">生成完整长图</button>
+      <div class="box-image-action">
+        <button type="button" class="btn primary" :disabled="busy || !ready || !selected.length" @click="generate(false)">生成分段图 · {{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张</button>
+        <p class="box-image-help">三列排版，每张最多九位，便于放大查看。</p>
+      </div>
+      <div class="box-image-action">
+        <button type="button" class="btn ghost box-image-long" :disabled="busy || !ready || !selected.length" @click="generate(true)">尝试生成完整长图</button>
+        <p class="box-image-help">预计容纳约 51 位；词条换行会减少容量，实际以图片尺寸为准。</p>
+      </div>
     </div>
     <p v-if="busy || notice" class="box-image-feedback" role="status" aria-live="polite">{{ busy ? progress : notice }}</p>
     <p v-if="error" class="box-image-feedback is-error" role="alert">{{ error }}</p>
@@ -111,7 +116,14 @@ async function generate(full) {
 .box-image-help { margin: 8px 0 12px; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
 .box-image-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
 .box-image-scope select { min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-.box-image-actions,.box-image-pages,.box-image-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.box-image-pages,.box-image-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.box-image-actions { display: grid; align-items: start; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; margin-top: 14px; }
+.box-image-action { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.box-image-action > .btn { box-sizing: border-box; width: 100%; min-height: 44px; margin: 0; padding: 12px 16px; border: 1px solid transparent; line-height: 20px; }
+.box-image-action > .btn:hover:not(:disabled) { transform: none; }
+.box-image-action > .box-image-help { margin: 0; font-size: 12px; }
+.box-image-actions .box-image-long { background: transparent; border-color: var(--line); color: var(--ink); }
+.box-image-actions .box-image-long:hover:not(:disabled) { background: var(--paper); }
 .box-image-actions .btn,.box-image-save .btn { font-size: 13px; }
 .box-image-feedback { font-size: 13px; line-height: 1.6; color: var(--ink-60); }
 .box-image-feedback.is-error { color: var(--theme-danger-text, var(--rouge)); }
@@ -120,5 +132,5 @@ async function generate(full) {
 .box-image-save { justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
 .box-image-preview { display: block; width: 100%; height: auto; border-radius: 8px; }
 .box-image-staging { position: fixed; top: 0; left: -100000px; pointer-events: none; }
-@media (max-width: 640px) { .box-image-share { padding: 16px; } }
+@media (max-width: 640px) { .box-image-actions { grid-template-columns: minmax(0, 1fr); gap: 12px; } .box-image-share { padding: 16px; } }
 </style>
