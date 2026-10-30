@@ -1,6 +1,6 @@
 name: CI
 
-# 普通 push / PR 只做检查与构建，不做任何生产部署。
+# 普通 push / PR 跑快速检查与构建；完整行为测试由 regression.yml 每日/手动运行。
 # 生产发布由 tag 触发的 release.yml 负责。
 
 on:
@@ -44,9 +44,6 @@ jobs:
       # 跨仓库契约由 YuanHub-All 完整入口显式调用 test:contract；test:all 也仅覆盖本仓。
       - name: Repository tests
         run: npm run test:repo
-
-      - name: Behavior tests
-        run: npm run test:behavior
 
       - name: Build
         env:

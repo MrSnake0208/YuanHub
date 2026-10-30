@@ -52,16 +52,15 @@
 
 默认由**用户、用户另行安排的 DSH 或 CI 执行常规回归与全量验证**。Agent 负责实现、diff 自检及本次风险确实需要的最小开发期验证，不自动启动独立测试 Agent。只在仍有必要的待验收事项时给出简短路径或命令，不因小修改列出整套 CI；低风险任务不以等待 DSH 为完成门槛。
 
-当前仓库的 CI 等价命令仍是：
+当前仓库发布 CI 的快速检查命令是：
 
 ```bash
 npm run test:static
 npm run test:repo
-npm run test:behavior
 npm run build
 ```
 
-它们是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整 `.github/workflows/ci.yml`。
+完整回归使用 `npm run test:all`（包含 `npm run test:behavior`），由独立 `regression.yml` 每日或手动运行，不阻塞发布。以上命令是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整 `.github/workflows/ci.yml`。
 
 ## 浏览器自动化默认禁用（UI 由用户验收）
 

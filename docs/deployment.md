@@ -2,7 +2,8 @@
 
 本仓库可独立 clone / build / release / deploy，不依赖任何外部仓库。
 
-- **CI**（`.github/workflows/ci.yml`）：`push main`、PR、手动触发。只做静态检查、单测、行为测试、`npm run build`，并校验 `VERSION` 真的进入了产物。**不做任何生产部署。**
+- **CI**（`.github/workflows/ci.yml`）：`push main`、PR、手动触发。只做静态检查、本仓 Node 测试、`npm run build`，并校验 `VERSION` 真的进入了产物。**不做任何生产部署。**
+- **Full regression**（`.github/workflows/regression.yml`）：每日 19:17 UTC 在默认分支运行，也可手动选择分支运行 `npm run test:all`（static / repo / behavior / build）。独立于发布门禁，失败需在 Actions 中处理；异步回归可能在上线后才发现问题。
 - **Release**（`.github/workflows/release.yml`）：由 `v*` tag 或手动指定已有 tag 发布，另支持仅预构建的 `phase=prepare`，使用 `environment: production`。GitHub 通过 SSH 驱动服务器 A 自动拉取指定 tag、在服务器本地构建并原子发布，不再上传整套 `dist`。
 
 ## 1. 版本来源
@@ -207,7 +208,7 @@
    ```
 
 4. workflow 依次执行：
-   - GitHub-hosted runner 校验 `VERSION == tag`，要求 `ci.yml` 中 **main push / 同 SHA** 已成功；复用完整 CI 的 static / repo / behavior / build，不重复安装依赖或跑部分测试
+   - GitHub-hosted runner 校验 `VERSION == tag`，要求 `ci.yml` 中 **main push / 同 SHA** 已成功；复用快速 CI 的 static / repo / build；完整行为测试由独立 regression workflow 负责，不重复安装依赖或跑部分测试
    - 通过 SSH 连接服务器 A；首次创建 `.source`，之后复用源码缓存
    - `git fetch --tags`，checkout 精确 commit，并再次核对 commit 与 GitHub 本次发布 commit 完全一致
    - 优先复用同版本/commit 的产物；新的 metadata 还校验构建 API 地址。缺失或不匹配时执行 `npm ci` 与 `VITE_API_BASE=... npm run build`
@@ -251,7 +252,7 @@ ln -sfn releases/0.0.1-beta.1 .current-tmp && mv -T .current-tmp current
 
 `npm test` 与 `npm run test:repo` 都只执行本仓 Node 测试（含递归 property 与宣传站测试），不读取后端源码。
 `npm run test:all` 聚合本仓 static、repo、behavior、build 四阶段；跨仓契约不在其中。
-以下沿用现有 CI 的 npm 命令；统一 pnpm/npm 与锁文件属于后续 F01，本批没有改变安装路径。
+发布 CI 执行 static / repo / build；本地完整回归执行 `npm run test:all`，或在 Actions → Full regression → Run workflow 手动触发。以下列出完整检查命令；统一 pnpm/npm 与锁文件属于后续 F01，本批没有改变安装路径。
 
 ```bash
 npm ci
