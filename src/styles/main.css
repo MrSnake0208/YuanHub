@@ -68,7 +68,13 @@ body::before{
 }
 .skip-link:focus{transform:translateY(0)}
 
-/* ---------------- 悬浮岛式侧边栏 ---------------- */
+/* 今日一览采用浅纸底和淡鸟纹，侧栏及卡片仍使用不透明底板。 */
+@media (min-width:1081px){
+  body:has(.today-page){background-color:var(--surface);background-image:none}
+  body:has(.today-page)::before{opacity:.045}
+}
+
+/* ---------------- 侧边栏 ---------------- */
 .brand-mark{width:34px;height:34px;display:block;flex:none;object-fit:contain}
 .page-detail .brand-mark{background:transparent}
 .src-tag{display:inline-flex;align-items:center;justify-content:center;background:var(--slate);color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;line-height:1.2;margin-right:6px;vertical-align:middle}
