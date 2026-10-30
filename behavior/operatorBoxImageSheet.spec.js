@@ -1,11 +1,8 @@
-import overview from '../src/pages/operator/index.vue?raw'
 import sheet from '../src/components/operator/OperatorBoxImageSheet.vue?raw'
 import { expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { parse } from '@vue/compiler-dom'
 import Sheet from '../src/components/operator/OperatorBoxImageSheet.vue'
 import { BOX_IMAGE_LAYOUT_WIDTH, operatorBoxImageEntry } from '../src/utils/operatorBoxImage.js'
-import { operatorLedgerCardVersionClass } from '../src/config/operatorLedgerCard.js'
 
 // Values visible on the supplied overview screenshot; dates/unknown terms are not invented.
 const xushu = {
@@ -22,14 +19,14 @@ it('the screenshot operator retains identity, growth, oddities and every configu
   expect(wrapper.get('h3').text()).toBe('徐庶')
   expect(wrapper.get('.ledger-prof-tab').text()).toBe('神纪')
   expect(wrapper.get('.ledger-prof-tab img').attributes('alt')).toBe('阳属性')
-  expect(wrapper.get('.ledger-status-button').text()).toBe('养成中')
-  expect(wrapper.findAll('.ledger-growth-row').map(row => row.text())).toEqual(['等级100', '修为17', '化极5'])
+  expect(wrapper.find('.ledger-status-button').exists()).toBe(false)
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('化极5星')
+  expect(wrapper.findAll('.ledger-growth-row').map(row => row.text())).toEqual(['等级100', '修为17'])
   expect(wrapper.findAll('.ledger-combat-value').map(row => row.text())).toEqual(['7706', '37195'])
   expect(wrapper.findAll('.ledger-oddity').map(row => row.text())).toEqual(['500/ 500', '2600/ 2600'])
   expect(wrapper.findAll('.ledger-oddity.is-full')).toHaveLength(2)
   expect(wrapper.text()).not.toMatch(/历程|未记录日期/)
   expect(wrapper.get('.box-image-sheet').element.style.width).toBe(BOX_IMAGE_LAYOUT_WIDTH + 'px')
-  expect(wrapper.get('article').classes()).toEqual(expect.arrayContaining(operatorLedgerCardVersionClass().split(' ')))
   expect(wrapper.findAll('.ledger-destiny-row').map(row => row.findAll('em').map(term => term.text()))).toEqual(xushu.discLoadouts.map(row => row.discNames))
   expect(wrapper.find('button, input, textarea, select, details, [role="button"], [tabindex]').exists()).toBe(false)
   expect(wrapper.find('.ledger-stones, .ledger-card-footer, .ledger-favorite').exists()).toBe(false)
@@ -83,28 +80,13 @@ it.each([{ terms: [] }, { terms: ['已配词条'] }])('empty loadouts show a rea
   wrapper.unmount()
 })
 
-it('the export keeps the overview section ancestry and imports its actual desktop skins', () => {
-  const landmarks = new Set(['ledger-portrait', 'ledger-card-head', 'ledger-name-tab', 'ledger-identity', 'ledger-name-row', 'ledger-prof-tab', 'ledger-status-menu', 'ledger-status-button', 'ledger-combat', 'ledger-combat-stat', 'ledger-combat-head', 'ledger-combat-value', 'ledger-oddity', 'ledger-growth', 'ledger-growth-row', 'ledger-grow-label', 'ledger-inline-field', 'ledger-inline-input', 'ledger-huaji-value', 'ledger-loadouts', 'ledger-destiny', 'ledger-destiny-row', 'ledger-destiny-values'])
-  function ancestry(source) {
-    const paths = new Set()
-    function visit(node, parents = []) {
-      if (node.type === 1) {
-        const classes = node.props.find(prop => prop.type === 6 && prop.name === 'class')?.value?.content.split(/\s+/) || []
-        const landmark = classes.find(name => landmarks.has(name))
-        if (landmark) { parents = [...parents, landmark]; paths.add(parents.join(' > ')) }
-      }
-      node.children?.forEach(child => visit(child, parents))
-    }
-    visit(parse(source.slice(source.indexOf('<template>') + 10, source.lastIndexOf('</template>'))))
-    return paths
-  }
-  const original = ancestry(overview)
-  for (const path of ancestry(sheet)) expect(original.has(path), path).toBe(true)
-  expect(sheet).toMatch(/grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)\s*!important/)
-  expect(sheet).not.toMatch(/background:\s*transparent\s*!important|\.ledger-status-menu\s*\{\s*top:/)
-  for (const name of ['reading', 'v1', 'v1Desktop', 'v2', 'v2Desktop', 'v3', 'v3Desktop']) {
-    const imported = `src="../../styles/operator-ledger-card.${name}.css"`
-    expect(overview).toContain(imported)
-    expect(sheet).toContain(imported)
-  }
+it('the export owns its three-column layout without importing editable overview skins', () => {
+  expect(sheet).toMatch(/grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/)
+  expect(sheet).not.toMatch(/operator-ledger-card\.|agent-ledger-card--editable/)
+})
+
+it('awakened progress stays visible alongside stars', () => {
+  const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ id: 'awake', rarity: 5, huaji: { owned: true, stage: 25, awakened: true } })] } })
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe('化极5星 · 已觉醒')
+  wrapper.unmount()
 })

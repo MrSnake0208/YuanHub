@@ -46,15 +46,19 @@ async function open(link = true) {
   if (link) await button('链接分享').trigger('click')
 }
 
-it('默认进入图片分享，切换方式不写入公开权限', async () => {
+it('每次打开默认进入链接分享，切换方式不写入公开权限', async () => {
   await render(); await open(false)
-  expect(button('图片分享').attributes('aria-pressed')).toBe('true')
-  expect(panel().get('.box-image-share').isVisible()).toBe(true)
-  expect(panel().get('.operator-share-content').isVisible()).toBe(false)
-  expect(panel().get('#operator-share-footer-management').isVisible()).toBe(false)
-  await button('链接分享').trigger('click')
+  expect(button('链接分享').attributes('aria-pressed')).toBe('true')
   expect(panel().get('.operator-share-content').isVisible()).toBe(true)
   expect(panel().get('.box-image-share').isVisible()).toBe(false)
+  expect(panel().get('#operator-share-footer-management').isVisible()).toBe(true)
+  await button('图片分享').trigger('click')
+  expect(panel().get('.box-image-share').isVisible()).toBe(true)
+  expect(panel().get('.operator-share-content').isVisible()).toBe(false)
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click')
+  await open(false)
+  expect(button('链接分享').attributes('aria-pressed')).toBe('true')
+  expect(panel().get('.operator-share-content').isVisible()).toBe(true)
   expect(api.setAccountShareScope).not.toHaveBeenCalled()
   expect(api.regenerateAccountShare).not.toHaveBeenCalled()
   expect(api.revokeAccountShare).not.toHaveBeenCalled()

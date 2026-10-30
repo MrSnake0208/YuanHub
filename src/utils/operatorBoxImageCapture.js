@@ -1,23 +1,6 @@
-// Adapt computed overview styles only in html2canvas's clone; never change the live cards.
+// The export template uses plain RGB colors and no filters or repeating gradients.
 export async function prepareOperatorBoxImage(document, root) {
   const view = document.defaultView
-  // html2canvas ignores CSS filters; bake the overview's portrait filter into the clone.
-  for (const image of root.querySelectorAll('.ledger-portrait img')) {
-    const filter = view.getComputedStyle(image).filter
-    if (!filter || filter === 'none') continue
-    const canvas = document.createElement('canvas'), context = canvas.getContext('2d')
-    // shortcut: browsers without Canvas filters retain the source colors; recheck if supported targets change.
-    if (!('filter' in context)) continue
-    try {
-      canvas.width = image.naturalWidth
-      canvas.height = image.naturalHeight
-      context.filter = filter
-      context.drawImage(image, 0, 0)
-      image.src = canvas.toDataURL('image/png')
-      image.style.filter = 'none'
-      await image.decode()
-    } finally { canvas.width = canvas.height = 0 }
-  }
   // html2canvas copies pseudo styles from the live viewport before creating its desktop clone.
   for (const portrait of root.querySelectorAll('.ledger-portrait')) {
     // A phone's live styles may have no ::after at all; materialize it in the desktop clone.
@@ -31,61 +14,8 @@ export async function prepareOperatorBoxImage(document, root) {
     }
     portrait.classList.add(hidden)
   }
-  const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
-  const colors = new Map()
-  const compatibleColors = value => value.replace(/(?:color(?:-mix)?|oklab|oklch|lab|lch)\([^)]*\)/g, color => {
-    if (!colors.has(color)) {
-      context.clearRect(0, 0, 1, 1)
-      context.fillStyle = color
-      context.fillRect(0, 0, 1, 1)
-      const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data
-      colors.set(color, `rgba(${r}, ${g}, ${b}, ${a / 255})`)
-    }
-    return colors.get(color)
-  })
-  const properties = ['color', 'background-color', 'background-image', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'box-shadow', 'text-shadow']
-  const ruleTile = document.createElement('canvas')
-  ruleTile.width = 6; ruleTile.height = 1
-  const ruleContext = ruleTile.getContext('2d')
-  const pseudoStyles = []
-  for (const [index, node] of [root, ...root.querySelectorAll('*')].entries()) {
-    const style = view.getComputedStyle(node)
-    for (const property of properties) {
-      const value = style.getPropertyValue(property)
-      const converted = compatibleColors(value)
-      if (converted !== value) node.style.setProperty(property, converted, 'important')
-    }
-    // html2canvas skips repeating gradients; retain the shared skin's 3px/3px rule.
-    if (style.backgroundImage?.startsWith('repeating-linear-gradient(') && style.getPropertyValue('--ledger-input-line').trim()) {
-      ruleContext.clearRect(0, 0, 6, 1)
-      ruleContext.fillStyle = style.getPropertyValue('--ledger-input-line')
-      ruleContext.fillRect(0, 0, 3, 1)
-      node.style.setProperty('background-image', `url("${ruleTile.toDataURL('image/png')}")`, 'important')
-      node.style.backgroundSize = '6px 1px'
-      node.style.backgroundRepeat = 'repeat-x'
-      // The renderer also drops calc() in the shared rule's bottom offset.
-      node.style.backgroundPosition = `0px ${node.clientHeight - 5}px`
-    }
-    for (const pseudo of ['::before', '::after']) {
-      const computed = view.getComputedStyle(node, pseudo)
-      if (!computed.content || ['none', 'normal'].includes(computed.content)) continue
-      const declarations = properties.flatMap(property => {
-        const value = computed.getPropertyValue(property), converted = compatibleColors(value)
-        return converted === value ? [] : [`${property}:${converted}!important`]
-      })
-      if (declarations.length) {
-        node.setAttribute('data-box-capture', index)
-        pseudoStyles.push(`[data-box-capture="${index}"]${pseudo}{${declarations.join(';')}}`)
-      }
-    }
-  }
-  ruleTile.width = ruleTile.height = 0
-  const styles = document.createElement('style')
-  styles.textContent = pseudoStyles.join('\n')
-  document.head.append(styles)
-
   // html2canvas does not paint writing-mode. Preserve the browser's actual glyph positions.
-  const vertical = [...root.querySelectorAll('.ledger-name-tab > h3, .ledger-prof-tab > span, .ledger-status-button > span')].map(node => {
+  const vertical = [...root.querySelectorAll('.ledger-name-tab > h3, .ledger-prof-tab > span')].map(node => {
     if (view.getComputedStyle(node).writingMode !== 'vertical-rl') return null
     const bounds = node.getBoundingClientRect(), glyphs = []
     const walker = document.createTreeWalker(node, 4)

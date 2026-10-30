@@ -1,7 +1,7 @@
 <template>
   <section class="box-image-share" aria-labelledby="box-image-heading" :aria-busy="busy">
     <h3 id="box-image-heading">生成 BOX 图片</h3>
-    <p class="box-image-help">保留总览卡片的立绘、养成状态、攻血和双命盘。不含账号名、备注或链接，无需开启公开分享。</p>
+    <p class="box-image-help">三列排版，每张最多九位，保留立绘、化极、等级修为、攻血奇闻和双命盘。不含账号名、备注或链接，无需开启公开分享。</p>
     <label class="box-image-scope">导出范围
       <select v-model="scope" :disabled="busy">
         <option value="filtered">当前筛选（{{ filteredIds.length }} 位）</option>
@@ -10,6 +10,11 @@
     </label>
     <p v-if="!ready" class="box-image-help" role="status">{{ sourceError || '密探档案准备中，请稍后重试。' }}</p>
     <p v-else-if="!selected.length" class="box-image-help">当前范围没有密探，请调整筛选或选择全部已拥有。</p>
+    <p class="box-image-help" role="status">
+      完整长图预计可容纳约 51 位密探，词条换行较多时会更少，实际以图片尺寸为准。
+      <strong v-if="selected.length > 51">当前选择 {{ selected.length }} 位，生成长图可能超出限制，建议直接生成分段图片。</strong>
+      <span v-else>人数较多时建议使用分段图片，避免等待后因图片过长而失败。</span>
+    </p>
     <div class="box-image-actions">
       <button type="button" class="btn primary" :disabled="busy || !ready || !selected.length" @click="generate(false)">生成分段图片（{{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张）</button>
       <button type="button" class="btn ghost" :disabled="busy || !ready || !selected.length" @click="generate(true)">生成完整长图</button>

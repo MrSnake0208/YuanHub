@@ -35,20 +35,20 @@ function render(count = 105, extra = {}) {
   return wrapper
 }
 
-it('105 entries produce four independently downloadable pages with correct ranges', async () => {
+it('105 entries produce twelve independently downloadable pages with correct ranges', async () => {
   const wrapper = render()
   await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
-  expect(captures.map(c => c.names.length)).toEqual([30, 30, 30, 15])
+  expect(captures.map(c => c.names.length)).toEqual([...Array(11).fill(9), 6])
   expect(captures.flatMap(c => c.names)).toEqual(Array.from({ length: 105 }, (_, i) => '密探' + i))
-  expect(captures[3].text).toContain('第 4 / 4 张 · 第 91—105 位')
+  expect(captures[11].text).toContain('第 12 / 12 张 · 第 100—105 位')
   expect(captures[0].text).toContain('等级100')
   expect(captures[0].controls).toBe(0)
   expect(captures[0].text).not.toContain('账号名')
-  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(4)
-  await wrapper.findAll('.box-image-pages button')[3].trigger('click')
-  expect(wrapper.get('a[download]').attributes('download')).toBe('YuanHub-BOX-如鸢-4-4.png')
-  expect(wrapper.get('.box-image-save').text()).toContain('15 位密探')
-  expect(wrapper.text()).toContain('已生成 4 张图片')
+  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(12)
+  await wrapper.findAll('.box-image-pages button')[11].trigger('click')
+  expect(wrapper.get('a[download]').attributes('download')).toBe('YuanHub-BOX-如鸢-12-12.png')
+  expect(wrapper.get('.box-image-save').text()).toContain('6 位密探')
+  expect(wrapper.text()).toContain('已生成 12 张图片')
 })
 
 it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loadouts and unknown states in the rendered sheet', async action => {
@@ -134,7 +134,7 @@ it('a failed later page keeps completed images and permits a clean retry', async
   expect(wrapper.attributes('aria-busy')).toBe('false')
   await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
-  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(2)
+  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(5)
 })
 
 it('failed or empty source data cannot generate a misleading image', async () => {
@@ -163,4 +163,14 @@ it('changing the authenticated user invalidates a pending capture even when acco
   pending.resolve(new Blob(['old-user'])); await flushPromises()
   expect(URL.createObjectURL).not.toHaveBeenCalled()
   expect(wrapper.find('.box-image-preview').exists()).toBe(false)
+})
+
+it('warns before generation for large selections and updates when the export scope changes', async () => {
+  const wrapper = render(105, { filteredIds: ['op0'] })
+  expect(wrapper.text()).toContain('预计可容纳约 51 位')
+  expect(wrapper.text()).not.toContain('当前选择 105 位')
+  await wrapper.get('select').setValue('all')
+  expect(wrapper.text()).toContain('当前选择 105 位，生成长图可能超出限制')
+  expect(button(wrapper, '生成完整长图').attributes('disabled')).toBeUndefined()
+  expect(renderOperatorBoxImage).not.toHaveBeenCalled()
 })

@@ -1,12 +1,11 @@
 <template>
   <section ref="sheet" class="box-image-sheet" data-theme="light" :style="{ width: BOX_IMAGE_LAYOUT_WIDTH + 'px' }">
     <header class="box-image-heading">
-      <strong>{{ game }} BOX · 共 {{ total }} 位</strong>
-      <span>第 {{ page }} / {{ pages }} 张 · 第 {{ start }}—{{ start + entries.length - 1 }} 位</span>
+      <div><strong>{{ game }} BOX</strong><span class="box-image-subtitle">角色与练度</span></div>
+      <span>共 {{ total }} 位 · 第 {{ page }} / {{ pages }} 张 · 第 {{ start }}—{{ start + entries.length - 1 }} 位</span>
     </header>
-    <div class="box-image-grid agent-ledger-grid">
-      <!-- Keep the overview's editable skin, but mount presentation elements only. -->
-      <article v-for="entry in entries" :key="entry.id" class="box-image-card agent-ledger-card agent-ledger-card--editable" :class="[operatorLedgerCardVersionClass(), 'rarity-r' + entry.rarity, 'status-' + entry.status]">
+    <div class="box-image-grid">
+      <article v-for="entry in entries" :key="entry.id" class="box-image-card">
         <picture v-if="portraits[entry.id]" class="ledger-portrait" aria-hidden="true">
           <img :src="portraits[entry.id]" alt="" width="480" height="350" />
         </picture>
@@ -20,39 +19,24 @@
               <img v-if="profIcon(entry.prof)" :src="profIcon(entry.prof)" :alt="entry.prof + '属性'" />
               <span>{{ entry.job }}</span>
             </span>
-            <div class="ledger-status-menu" :class="'status-' + entry.status"><span class="ledger-status-button"><span>{{ entry.statusLabel }}</span></span></div>
           </div></div>
         </header>
-        <ShareCardStats :name="entry.name">
-          <template #combat>
-            <section class="ledger-combat" aria-label="战斗面板">
-              <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat">
-                <div class="ledger-combat-head"><span :aria-label="kind === 'attack' ? '攻击' : '生命'"><Swords v-if="kind === 'attack'" :size="12" aria-hidden="true" /><Heart v-else :size="12" aria-hidden="true" /></span></div>
-                <span class="ledger-combat-value">{{ entry[kind] }}</span>
-                <div class="ledger-oddity" :class="{ 'is-full': entry.oddities?.[kind]?.max > 0 && entry.oddities[kind].current >= entry.oddities[kind].max }" :aria-label="(kind === 'attack' ? '攻击' : '生命') + '奇闻'">
-                  <Sparkles class="ledger-oddity-icon" :size="12" aria-hidden="true" />
-                  <output>{{ entry.oddities?.[kind]?.current ?? '—' }}</output>
-                  <span>/ {{ entry.oddities?.[kind]?.max ?? '—' }}</span>
-                </div>
-              </div>
-            </section>
-          </template>
-          <template #growth>
-            <section class="ledger-growth" aria-label="核心养成">
-              <div class="ledger-growth-row"><span class="ledger-grow-label">等级</span><span class="ledger-inline-field"><span class="ledger-inline-input">{{ entry.level }}</span></span></div>
-              <div class="ledger-growth-row"><span class="ledger-grow-label">修为</span><span class="ledger-inline-field"><span class="ledger-inline-input">{{ entry.elite }}</span></span></div>
-              <div class="ledger-growth-row">
-                <span class="ledger-grow-label">化极</span>
-                <span class="ledger-huaji-value" :aria-label="entry.huaji">
-                  <span v-if="entry.huajiProgress?.awakened">已觉醒</span>
-                  <template v-else-if="entry.huajiProgress?.stars"><span>{{ entry.huajiProgress.stars }}</span><Star :size="12" fill="currentColor" aria-hidden="true" /><span v-if="entry.huajiProgress.nodes != null">{{ entry.huajiProgress.nodes }}<span class="ledger-node-label">节点</span></span></template>
-                  <template v-else>{{ entry.huaji }}</template>
-                </span>
-              </div>
-            </section>
-          </template>
-        </ShareCardStats>
-        <div class="ledger-loadouts"><div class="ledger-destiny fate-trait-style-a">
+        <div class="ledger-huaji-value" :aria-label="entry.huaji">
+          <template v-if="entry.huajiProgress?.stars">化极{{ entry.huajiProgress.stars }}星<template v-if="entry.huajiProgress.awakened"> · 已觉醒</template><template v-else-if="entry.huajiProgress.nodes != null"> · {{ entry.huajiProgress.nodes }}节点</template></template>
+          <template v-else>{{ entry.huaji }}</template>
+        </div>
+        <div class="box-image-details">
+          <section class="ledger-growth" aria-label="核心养成">
+            <div class="ledger-growth-row">等级<strong>{{ entry.level }}</strong></div>
+            <div class="ledger-growth-row">修为<strong>{{ entry.elite }}</strong></div>
+          </section>
+          <section class="ledger-combat" aria-label="战斗面板">
+            <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat">
+              <div class="ledger-combat-head"><Swords v-if="kind === 'attack'" :size="18" aria-hidden="true" /><Heart v-else :size="18" aria-hidden="true" /><span>{{ kind === 'attack' ? '攻击' : '生命' }}</span><strong class="ledger-combat-value">{{ entry[kind] }}</strong></div>
+              <div class="box-image-oddity-row"><span>奇闻</span><div class="ledger-oddity" :class="{ 'is-full': entry.oddities?.[kind]?.max > 0 && entry.oddities[kind].current >= entry.oddities[kind].max }" :aria-label="(kind === 'attack' ? '攻击' : '生命') + '奇闻'"><output>{{ entry.oddities?.[kind]?.current ?? '—' }}</output><span>/ {{ entry.oddities?.[kind]?.max ?? '—' }}</span></div></div>
+            </div>
+          </section>
+        <div class="ledger-loadouts"><div class="ledger-destiny">
           <div v-for="(loadout, index) in entry.loadouts" :key="index" class="ledger-destiny-row">
             <span>命盘{{ index === 0 ? '一' : '二' }}</span>
             <div class="ledger-destiny-values">
@@ -61,6 +45,7 @@
             </div>
           </div>
         </div></div>
+        </div>
       </article>
     </div>
     <footer class="box-image-footer">YuanHub · 密探养成快照 <span>生成于 {{ generatedAt }}</span></footer>
@@ -69,11 +54,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Heart, Sparkles, Star, Swords } from '@lucide/vue'
+import { Heart, Swords } from '@lucide/vue'
 import { avatarUrl } from '../../api/request.js'
-import { operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { BOX_IMAGE_LAYOUT_WIDTH } from '../../utils/operatorBoxImage.js'
-import ShareCardStats from './ShareCardStats.vue'
 import portraits from '../../data/operatorPortraits.json'
 
 defineProps({ entries: { type: Array, required: true }, game: String, total: Number, start: Number, page: Number, pages: Number, generatedAt: String })
@@ -84,34 +67,58 @@ const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/pr
 defineExpose({ sheet })
 </script>
 
-<style scoped src="../../styles/operator-ledger-card.reading.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v1.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v1Desktop.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v2.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v2Desktop.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v3.css"></style>
-<style scoped src="../../styles/operator-ledger-card.v3Desktop.css"></style>
 <style scoped>
-.box-image-sheet { box-sizing: border-box; padding: 24px; background: #5a4633; color: var(--ink); font: 14px/1.4 var(--font-b, sans-serif); }
-.box-image-heading,.box-image-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; color: #f0e0ae; }
-.box-image-heading { padding: 0 2px 18px; font: 500 22px/1.4 var(--font-s, serif); }
-.box-image-heading strong { font-weight: 700; }
-.box-image-heading > span { font-size: 17px; }
-.box-image-footer { padding-top: 18px; font: 14px/1.4 var(--font-s, serif); }
-/* Override the overview skin's auto-fill so exported rows never exceed five cards. */
-.box-image-sheet .box-image-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 10px; align-items: start; }
-/* Only remove control decoration/columns; card geometry comes from the overview. */
-/* html2canvas needs an explicit stacking context for the negative-z portrait. */
-.box-image-sheet .box-image-card { z-index: 0; }
-.box-image-sheet .box-image-card .ledger-growth-row:nth-child(n) { grid-template-columns: 20px minmax(0, 1fr); }
-.box-image-sheet .box-image-card .ledger-inline-input { display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 700; }
-/* Match the overview input's text color; sizing and rules use the shared skin. */
-.box-image-sheet .box-image-card .ledger-oddity output { display: flex; align-items: center; justify-content: center; color: var(--ink-60); }
-.box-image-sheet .box-image-card .ledger-status-button { cursor: default; }
-.box-image-sheet .box-image-card .ledger-status-button::after { content: none; }
-.box-image-sheet .box-image-card .ledger-destiny-row { cursor: default; }
-/* Exported text has no editor/tooltip to reveal clipped content. */
-.box-image-sheet .box-image-card .ledger-destiny-row em { overflow: visible; text-overflow: clip; }
-.box-image-sheet .box-image-card .ledger-destiny-row em.empty { grid-column: 1 / -1; color: var(--ink-60); }
-.box-image-sheet .box-image-card .ledger-huaji-value { flex-wrap: wrap; overflow: visible; white-space: normal; }
+.box-image-sheet { box-sizing: border-box; padding: 30px; background: #f6f0e2; color: #352b20; font: 16px/1.5 var(--font-b, sans-serif); }
+.box-image-sheet * { box-sizing: border-box; }
+.box-image-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 0 4px 20px; margin-bottom: 20px; border-bottom: 1px solid #b79a61; }
+.box-image-heading strong { font: 800 46px/1.2 var(--font-s, serif); }
+.box-image-subtitle { margin-left: 18px; font: 600 23px var(--font-s, serif); }
+.box-image-heading > span { font-size: 15px; }
+.box-image-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.box-image-card { min-width: 0; position: relative; padding: 5px; border: 1px solid #b79a61; border-radius: 10px; background: #fffcf3; }
+.ledger-card-head { position: relative; height: 190px; }
+.ledger-portrait { position: absolute; top: 6px; right: 6px; left: 6px; height: 208px; overflow: hidden; border-radius: 6px 6px 0 0; }
+.ledger-portrait img { position: relative; left: -6%; display: block; width: 112%; max-width: none; height: auto; }
+/* Same-color transparent stops avoid dark interpolation in the PNG renderer. */
+.ledger-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255, 252, 243, 0) 76%, #fffcf3 100%), linear-gradient(180deg, rgba(255, 252, 243, 0) 90%, #fffcf3 100%); }
+.ledger-name-tab { position: absolute; top: 8px; right: 12px; }
+.ledger-name-tab h3 { margin: 0; writing-mode: vertical-rl; text-orientation: upright; font: 800 40px/1.1 var(--font-s, serif); letter-spacing: 2px; color: #2e2419; }
+.ledger-name-tab h3.is-three-char-name { font-size: 36px; }
+.ledger-name-tab h3.is-long-name { font-size: 26px; max-height: 176px; }
+.ledger-name-continuation { display: inline; }
+.ledger-card-head:has(.is-long-name) .ledger-identity { right: 90px; }
+.ledger-identity { position: absolute; top: 13px; right: 66px; }
+.ledger-prof-tab { display: flex; flex-direction: column; align-items: center; gap: 5px; font: 18px var(--font-s, serif); }
+.ledger-prof-tab img { width: 25px; height: 25px; }
+.ledger-prof-tab > span { writing-mode: vertical-rl; letter-spacing: 2px; }
+.ledger-avatar { position: absolute; top: 40px; right: 100px; width: 90px; height: 90px; }
+.ledger-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.ledger-avatar > span { font-size: 60px; }
+.ledger-huaji-value { position: relative; margin: 0 10px; padding: 4px 8px; border: 1px solid #d4bb7d; border-radius: 18px; background: #f7edce; text-align: center; font: 700 22px/1.35 var(--font-s, serif); overflow-wrap: anywhere; }
+.box-image-details { position: relative; padding: 0 10px 9px; background: #fffcf3; }
+.ledger-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 9px 0; border-bottom: 1px solid #e0d1ac; }
+.ledger-growth-row { display: flex; justify-content: center; align-items: baseline; gap: 18px; }
+.ledger-growth-row + .ledger-growth-row { border-left: 1px solid #e0d1ac; }
+.ledger-growth-row strong { font-size: 20px; }
+.ledger-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px 0; border-bottom: 1px solid #e0d1ac; }
+.ledger-combat-stat { min-width: 0; padding: 0 6px; }
+.ledger-combat-stat + .ledger-combat-stat { border-left: 1px solid #e0d1ac; }
+.ledger-combat-head { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ledger-combat-head svg { flex: none; color: #75664f; }
+.ledger-combat-head > span { font-size: 13px; }
+.ledger-combat-value { margin-left: auto; font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; }
+.ledger-combat-value, .ledger-growth-row strong, .ledger-oddity { font-family: var(--font-d, sans-serif); font-variant-numeric: tabular-nums; }
+.box-image-oddity-row { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px; margin-top: 5px; font-size: 12px; color: #74654e; }
+.ledger-oddity { display: flex; gap: 3px; color: #443a2d; }
+.ledger-oddity.is-full { color: #38634c; }
+.ledger-destiny { display: grid; gap: 7px; padding-top: 8px; }
+.ledger-destiny-row { display: flex; align-items: center; gap: 6px; }
+.ledger-destiny-row > span { flex: none; font: 15px var(--font-s, serif); color: #765624; }
+.ledger-destiny-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; flex: 1; min-width: 0; }
+.disc-term { display: flex; align-items: center; justify-content: center; min-height: 28px; padding: 4px 2px; border-radius: 4px; background: #eee9df; color: #3d3326; font: 600 13px/1.5 var(--font-s, serif); text-align: center; overflow-wrap: anywhere; }
+.disc-term.rarity-gold { background: #fbefc2; }
+.disc-term.rarity-purple { background: #e9e1f1; }
+.disc-term.rarity-blue { background: #e0ebf0; }
+.disc-term.empty { grid-column: 1 / -1; background: transparent; color: #74654e; font-weight: 400; justify-content: start; }
+.box-image-footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 20px; font: 14px var(--font-s, serif); color: #74654e; }
 </style>

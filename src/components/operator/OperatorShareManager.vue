@@ -9,8 +9,8 @@
         </header>
         <div ref="scrollBody" class="operator-share-body">
           <div class="operator-share-modes" role="group" aria-label="分享方式">
-            <button type="button" :aria-pressed="mode === 'image'" @click="mode = 'image'">图片分享</button>
             <button type="button" :aria-pressed="mode === 'link'" @click="mode = 'link'">链接分享</button>
+            <button type="button" :aria-pressed="mode === 'image'" @click="mode = 'image'">图片分享</button>
           </div>
           <OperatorBoxImageShare v-if="accountId" v-show="mode === 'image'" :open="open && mode === 'image'" :account-id="accountId" :game="game"
             :entries="imageEntries" :filtered-ids="imageFilteredIds" :ready="imageReady" :source-error="imageError" />
@@ -61,7 +61,7 @@ defineProps({
 defineEmits(['status-change', 'share-change'])
 const open = defineModel('open', { type: Boolean, default: false })
 const manager = ref(null)
-const mode = ref('image')
+const mode = ref('link')
 const backdropPressed = ref(false)
 const panel = ref(null), closeButton = ref(null), scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, scrollBody)
@@ -76,6 +76,7 @@ function onBackdrop() {
 useModalFocus(open, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {
   if (!visible) return
+  mode.value = 'link'
   const body = document.body, root = document.documentElement
   const x = window.scrollX, y = window.scrollY
   const previous = Object.fromEntries(['position', 'top', 'left', 'width', 'overflow', 'paddingRight'].map(key => [key, body.style[key]]))
