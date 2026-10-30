@@ -56,8 +56,8 @@
           </form>
           <div class="bond-view-options" role="group" aria-label="列表展示方式">
             <span>查看方式</span>
-            <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
+            <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
           </div>
           <p v-if="state.ownedError" class="bond-hint" role="status">{{ state.ownedError }}</p><p v-else-if="available && !state.owned && !state.loading" class="bond-hint">尚未填写密探拥有资料，默认显示全部组合。<router-link to="/operator">前往我的密探</router-link></p>
           <p v-if="state.operatorError" class="bond-error" role="alert">{{ state.operatorError }} 暂以密探ID展示；请刷新重试。</p>
@@ -70,7 +70,7 @@
             <div v-if="view === 'find'" class="bond-find-results">
               <p v-if="filtered.length" class="bond-find-count" role="status">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜找到 {{ groups.length }} 组配对<template v-if="filtered.length !== groups.length"> · {{ filtered.length }} 个天气条目</template></p>
               <div v-if="filtered.length" class="bond-find-list">
-              <section v-for="pair in groups.slice(page * 20, (page + 1) * 20)" :key="pair.key" class="bond-find-pair" :aria-label="pair.members.map(operatorName).join('与')">
+              <section v-for="pair in groups.slice(page * 20, (page + 1) * 20)" :key="pair.key" class="bond-find-pair" :class="{ 'has-many-weather': pair.entries.length > 1 }" :aria-label="pair.members.map(operatorName).join('与')">
                 <h2>{{ pair.members.map(operatorName).join(' × ') }}<small v-if="!filters.action">{{ ACTIONS[pair.action] }}</small></h2>
                 <div class="bond-find-conditions">
                 <div v-for="entry in pair.entries" :key="entry.bond_id" class="bond-find-entry">
@@ -145,7 +145,7 @@ import { ACTIONS, STATUS, WEATHERS } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
-const view = ref('find'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
+const view = ref('codex'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIcons = { sunny: Sun, rain: CloudRain, fog: CloudFog, wind: Wind, light_snow: CloudSnow, heavy_snow: Snowflake, hurricane: Tornado, thunder: CloudLightning }
 watch(view, () => { page.value = 0; selected.value = [] })
 const resultGroupCount = computed(() => view.value === 'find' ? groups.value.length : operatorGroups.value.length)

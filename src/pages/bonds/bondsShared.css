@@ -134,3 +134,10 @@
 .bond-view-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; }
 .bond-view-options > span { margin-right: 6px; color: var(--bond-muted); }
 .bond-view-options button { padding: 5px 10px; font-size: 13px; }
+
+.bond-find-pair.has-many-weather { display: block; }
+.bond-find-pair.has-many-weather h2 { margin-bottom: 8px; }
+.bond-find-pair.has-many-weather .bond-find-conditions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.bond-find-pair.has-many-weather .bond-find-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; }
+.bond-find-pair.has-many-weather .bond-find-record { grid-column: 1 / -1; margin-left: 0; }
+.bond-find-pair.has-many-weather .bond-batch-check { grid-column: 1 / -1; }
