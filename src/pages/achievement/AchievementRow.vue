@@ -7,7 +7,12 @@
         <p class="achievement-condition">{{ entry.condition }}</p>
         <small v-if="entry.is_hidden === true">隐藏成就</small>
       </div>
-      <div class="achievement-reward"><span>{{ rewardText(entry, legacyReward) }}</span></div>
+      <div class="achievement-reward">
+        <template v-if="entry.rewards?.length">
+          <span v-for="reward in entry.rewards" :key="reward.item_key" class="achievement-reward-item"><AchievementRewardIcon :reward="reward" /><span>{{ reward.name }} × {{ reward.quantity }}</span></span>
+        </template>
+        <span v-else>{{ rewardText(entry, legacyReward) }}</span>
+      </div>
       <div v-if="entry.linked_metric || hasQuantifiedProgress(entry) || record.progress != null" class="achievement-progress">
         <template v-if="entry.linked_metric">
           <span>{{ linked ? '羁绊已记录进度 ' + linked.displayed + ' / ' + entry.target : '羁绊进度未读取' }}</span>
@@ -49,6 +54,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { Check, Circle, LoaderCircle, NotebookPen, Pencil, Star } from '@lucide/vue'
 import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText } from './rules.js'
+import AchievementRewardIcon from './AchievementRewardIcon.vue'
 const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, error: String, pendingRemoval: Boolean, batchMode: Boolean, selected: Boolean })
 const completed = computed(() => completionStatus(props.record) === 'completed')
 const linked = computed(() => linkedProgress(props.entry, props.linkedMetrics))

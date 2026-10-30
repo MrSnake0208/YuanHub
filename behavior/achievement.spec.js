@@ -674,13 +674,19 @@ it('完成日期草稿在两态切换和备注单独保存后保留，返回已�
 
 it('结构化奖励三态和旧奖励文本保留，指标缺失不伪造零进度', async () => {
   const catalog = achievementCatalog(4)
-  catalog.entries[0].rewards = [{ item_key: 'test_coin', name: '测试币', quantity: 10 }]
+  catalog.entries[0].rewards = [{ item_key: 'baijinbi', name: '白金币', quantity: 10 }, { item_key: 'xinzhi_achan', name: '心纸【阿蝉】', quantity: 1 }]
   catalog.entries[1].rewards = []
   catalog.entries[2].target = 20; catalog.entries[2].linked_metric = 'yuan_bond_variants'
   catalog.legacy_rewards = { [catalog.entries[3].achievement_id]: '旧奖励内容' }
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const w = page(); await flushPromises()
-  expect(w.text()).toContain('测试币 × 10'); expect(w.text()).toContain('无奖励')
+  expect(w.text()).toContain('白金币 × 10'); expect(w.text()).toContain('无奖励')
+  const rewards = w.findAll('.achievement-row')[0].get('.achievement-reward')
+  expect(rewards.findAll('img')).toHaveLength(1)
+  expect(rewards.text()).toContain('心纸【阿蝉】 × 1')
+  await rewards.get('img').trigger('error')
+  expect(rewards.find('img').exists()).toBe(false)
+  expect(rewards.text()).toContain('白金币 × 10')
   expect(w.text()).toContain('奖励资料未补齐'); expect(w.text()).toContain('旧奖励内容（旧文本，未结构化）')
   expect(w.text()).toContain('羁绊进度未读取')
   expect(w.findAll('progress')).toHaveLength(0)

@@ -25,7 +25,7 @@
           <li v-for="tier in track.tiers" :key="tier.at" :class="{ 'is-reached': score !== null && score >= tier.at, 'is-next': next?.at === tier.at }">
             <span class="achievement-points-node" aria-hidden="true"><Check v-if="score !== null && score >= tier.at" :size="16" /></span>
             <b>{{ tier.at }} 分</b>
-            <span class="achievement-points-reward"><component :is="icons[tier.icon]" :size="24" aria-hidden="true" /><span>{{ tier.name }} ×{{ tier.quantity }}</span></span>
+            <span class="achievement-points-reward"><AchievementRewardIcon :reward="tier"><component :is="icons[tier.icon]" :size="24" aria-hidden="true" /></AchievementRewardIcon><span>{{ tier.name }} ×{{ tier.quantity }}</span></span>
             <span class="achievement-points-state">{{ score === null ? '待核对' : score >= tier.at ? '已达标' : '未达标' }}</span>
           </li>
         </ol>
@@ -38,6 +38,7 @@
 <script setup>
 import { computed, ref, useId } from 'vue'
 import { pointTrackFill } from './pointRewards.js'
+import AchievementRewardIcon from './AchievementRewardIcon.vue'
 import { Check, ChevronDown, Coins, Frame, ScrollText, Ticket } from '@lucide/vue'
 
 const props = defineProps({

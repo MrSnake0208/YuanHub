@@ -91,7 +91,7 @@
                 <section v-if="rewardSources.length" class="achievement-reward-sources" aria-label="分类积分奖励来源">
                   <h2>分类积分奖励来源</h2>
                   <p>以下奖励需累计分类积分获得，并非单条成就直接奖励。<template v-if="filters.status || filters.favorite || filters.hidden || filters.metric">状态、关注、隐藏及关联进度筛选仅作用于单条成就。</template></p>
-                  <ul><li v-for="source in rewardSources" :key="`${source.category_id}:${source.at}`"><strong>{{ source.name }} × {{ source.quantity }}</strong><span>{{ source.category_name }} · 累计 {{ source.at }} 分</span></li></ul>
+                  <ul><li v-for="source in rewardSources" :key="`${source.category_id}:${source.at}`"><strong class="achievement-reward-item"><AchievementRewardIcon :reward="source" />{{ source.name }} × {{ source.quantity }}</strong><span>{{ source.category_name }} · 累计 {{ source.at }} 分</span></li></ul>
                 </section>
                 <div v-if="pageGroups.length" class="achievement-groups" tabindex="-1" aria-label="成就列表">
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
@@ -135,6 +135,7 @@ import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import AchievementRow from './AchievementRow.vue'
 import AchievementExchange from './AchievementExchange.vue'
 import AchievementPointRewards from './AchievementPointRewards.vue'
+import AchievementRewardIcon from './AchievementRewardIcon.vue'
 import { achievementPoints, pointRewardTrack } from './pointRewards.js'
 import { useAchievement } from './useAchievement.js'
 import { achievementRewardOptions, PAGE_SIZE, pointRewardSources, progressValidationError, STATUS_LABELS, summarizeAchievements } from './rules.js'

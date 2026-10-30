@@ -85,6 +85,9 @@
 .achievement-title { margin: 0; }
 .achievement-condition { white-space: pre-wrap; }
 .achievement-reward, .achievement-inline-editor, .achievement-supplement { overflow-wrap: anywhere; }
+.achievement-reward { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.achievement-reward-item { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; gap: 6px; }
+.achievement-reward-item > span { min-width: 0; }
 .achievement-main .achievement-progress-edit { border: 0; background: transparent; color: var(--ink-60); text-align: left; }
 .achievement-progress-edit svg { flex-shrink: 0; }
 .achievement-main .achievement-note-toggle { color: var(--ink-60); border-color: transparent; background: transparent; }
