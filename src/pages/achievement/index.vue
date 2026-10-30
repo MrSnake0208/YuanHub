@@ -39,7 +39,7 @@
               <template v-if="state.catalog">
                 <div class="achievement-toolbar">
                   <div class="achievement-search-row">
-                    <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就名称或完成条件" placeholder="搜索成就名称、完成条件或关键词"></label>
+                    <label class="achievement-search"><Search :size="16" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索成就、完成条件或奖励名称" placeholder="搜索成就、完成条件或奖励名称"></label>
                     <button v-if="hasFilters" class="achievement-reset" type="button" @click="resetFilters"><X :size="15" aria-hidden="true" />清除筛选</button>
                   </div>
                   <div class="achievement-filter-band">
@@ -82,12 +82,17 @@
                       <small v-if="filters.hidden">隐藏属性尚未核验的条目不纳入。</small>
                     </div>
                   </div>
-                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}</p>
+                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}<template v-if="rewardSources.length"> · {{ rewardSources.length }} 项分类积分奖励</template></p>
                   <button ref="batchTrigger" class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []"><NotebookPen :size="16" aria-hidden="true" />{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
                   <span>目标：{{ account?.name }} · 已选 {{ selected.length }} 条</span><button type="button" :disabled="!writable || !pageEntries.length" @click="selected = pageEntries.map(entry => entry.achievement_id)">选择本页（{{ pageEntries.length }} 条）</button><button type="button" :disabled="!selected.length || state.busy" @click="selected = []">取消选择</button><button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :disabled="!writable || !selected.length" @click="bulkSave(value)">标记{{ label }}</button>
                 </div>
+                <section v-if="rewardSources.length" class="achievement-reward-sources" aria-label="分类积分奖励来源">
+                  <h2>分类积分奖励来源</h2>
+                  <p>以下奖励需累计分类积分获得，并非单条成就直接奖励。<template v-if="filters.status || filters.favorite || filters.hidden || filters.metric">状态、关注、隐藏及关联进度筛选仅作用于单条成就。</template></p>
+                  <ul><li v-for="source in rewardSources" :key="`${source.category_id}:${source.at}`"><strong class="achievement-reward-item"><AchievementRewardIcon :reward="source" />{{ source.name }} × {{ source.quantity }}</strong><span>{{ source.category_name }} · 累计 {{ source.at }} 分</span></li></ul>
+                </section>
                 <div v-if="pageGroups.length" class="achievement-groups" tabindex="-1" aria-label="成就列表">
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
                     <header class="achievement-group-heading"><h2>{{ group.name }}</h2><i class="achievement-chapter-rule" aria-hidden="true"></i><span>本类已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
@@ -96,10 +101,10 @@
                     <ul v-if="group.entries.length" class="achievement-list">
                       <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="state.pendingRemoval.includes(entry.achievement_id)" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" />
                     </ul>
-                    <div v-else class="achievement-empty"><p>当前筛选下没有匹配成就。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></div>
+                    <div v-else class="achievement-empty"><p>当前筛选下没有匹配的单条成就。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></div>
                   </section>
                 </div>
-                <div v-else class="achievement-empty"><p v-if="!entries.length">暂无可发布成就资料。资料核验后才会收录，当前不是完整游戏成就库。</p><template v-else><p>没有匹配的成就：{{ filterDescription }}。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></template></div>
+                <div v-else class="achievement-empty"><p v-if="rewardSources.length">没有匹配的单条成就，上方已列出分类积分奖励来源。</p><p v-else-if="!entries.length">暂无可发布成就资料。资料核验后才会收录，当前不是完整游戏成就库。</p><template v-else><p>没有匹配的成就：{{ filterDescription }}。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></template></div>
                 <nav v-if="filtered.length > PAGE_SIZE" class="achievement-pagination" aria-label="成就分页"><button type="button" :disabled="page === 0" @click="page--">上一页</button><span>第 {{ page + 1 }} / {{ pageCount }} 页 · 每页最多 {{ PAGE_SIZE }} 条</span><button type="button" :disabled="page + 1 >= pageCount" @click="page++">下一页</button></nav>
               </template>
             </div>
@@ -130,9 +135,10 @@ import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import AchievementRow from './AchievementRow.vue'
 import AchievementExchange from './AchievementExchange.vue'
 import AchievementPointRewards from './AchievementPointRewards.vue'
+import AchievementRewardIcon from './AchievementRewardIcon.vue'
 import { achievementPoints, pointRewardTrack } from './pointRewards.js'
 import { useAchievement } from './useAchievement.js'
-import { PAGE_SIZE, progressValidationError, STATUS_LABELS, summarizeAchievements } from './rules.js'
+import { achievementRewardOptions, PAGE_SIZE, pointRewardSources, progressValidationError, STATUS_LABELS, summarizeAchievements } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo)
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE)
@@ -149,7 +155,8 @@ const summaryItems = [
   { key: 'incomplete', label: '未完成', icon: Clock },
   { key: 'favorite', label: '我的关注', icon: Star }
 ]
-const rewardOptions = computed(() => state.catalog?.reward_filters || [])
+const rewardOptions = computed(() => achievementRewardOptions(state.catalog))
+const rewardSources = computed(() => pointRewardSources(state.catalog, filters))
 const pointRecordState = computed(() => state.loading || state.accountsLoading ? 'loading' : !available.value ? 'unavailable' : state.archive ? 'ready' : 'error')
 const pageGroups = computed(() => (state.catalog?.categories || []).map(category => {
   const categoryEntries = entries.value.filter(entry => entry.category_id === category.category_id)

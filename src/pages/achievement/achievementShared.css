@@ -85,6 +85,9 @@
 .achievement-title { margin: 0; }
 .achievement-condition { white-space: pre-wrap; }
 .achievement-reward, .achievement-inline-editor, .achievement-supplement { overflow-wrap: anywhere; }
+.achievement-reward { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.achievement-reward-item { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; gap: 6px; }
+.achievement-reward-item > span { min-width: 0; }
 .achievement-main .achievement-progress-edit { border: 0; background: transparent; color: var(--ink-60); text-align: left; }
 .achievement-progress-edit svg { flex-shrink: 0; }
 .achievement-main .achievement-note-toggle { color: var(--ink-60); border-color: transparent; background: transparent; }
@@ -117,6 +120,12 @@
 .achievement-search-row .achievement-search { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
 .achievement-main .achievement-reset { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; color: var(--achievement-gold); box-shadow: none; }
 .achievement-toolbar .achievement-results { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.achievement-reward-sources { margin-block: 16px; padding: 12px; border: 1px solid var(--achievement-line); border-radius: 8px; background: var(--surface); overflow-wrap: anywhere; }
+.achievement-reward-sources h2 { margin: 0; font-size: 16px; }
+.achievement-reward-sources p { margin: 6px 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.achievement-reward-sources ul { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.achievement-reward-sources li { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; line-height: 1.6; }
+.achievement-reward-sources li span { color: var(--ink-60); }
 .achievement-filter-row { min-width: 0; max-width: 100%; }
 .achievement-filter-label { color: var(--ink); font-weight: 700; white-space: nowrap; }
 .achievement-main .achievement-filter-options button { border: 1px solid transparent; border-radius: 7px; background: color-mix(in srgb, var(--paper) 24%, transparent); color: var(--ink-60); font-weight: 600; white-space: normal; overflow-wrap: anywhere; }

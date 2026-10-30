@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { completionStatus, emptyRecord, filterAchievements, progressValidationError, hasQuantifiedProgress, readAchievementBackup, summarizeAchievements } from '../src/pages/achievement/rules.js'
+import { achievementRewardOptions, completionStatus, emptyRecord, filterAchievements, pointRewardSources, progressValidationError, hasQuantifiedProgress, readAchievementBackup, summarizeAchievements } from '../src/pages/achievement/rules.js'
 import { requiresBetaApi } from '../src/utils/betaAccess.js'
 import { achievementArchive, achievementBackup, achievementCatalog } from '../test-support/achievement.js'
 
@@ -57,17 +57,54 @@ test('成就开发及生产均开放登录入口，不再要求管理员访问�
 })
 
 
-test('奖励文本支持真实选项和关键词，与分类/状态/关注/搜索共同筛选', () => {
+test('奖励名称与分类/状态/关注/搜索共同筛选', () => {
   const entries = achievementCatalog().entries.map((entry, index) => ({ ...entry, rewards: index === 2 ? null : [{ item_key: 'test', name: '测试资源', quantity: index + 1 }] }))
   const records = [{ ...emptyRecord(entries[0].achievement_id), status: 'completed', favorite: true }, { ...emptyRecord('removed'), favorite: true }]
   assert.deepEqual(filterAchievements(entries, records, filters({ reward: '  测试资源  ', category: 'test', status: 'completed', favorite: true, query: '测试成就 1' })).map(item => item.achievement_id), [entries[0].achievement_id])
   assert.equal(filterAchievements(entries, records, filters({ reward: '测试资源', hidden: true })).length, 1)
   assert.equal(filterAchievements(entries, records, filters({ reward: '不存在' })).length, 0)
   assert.equal(filterAchievements(entries, records, filters({ reward: '   ' })).length, 3)
-  assert.equal(filterAchievements([{ ...entries[0], rewards: [{ item_key: 'test', name: 'Fixture TOKEN', quantity: 1 }] }], [], filters({ reward: 'token' })).length, 1)
+  assert.equal(filterAchievements([{ ...entries[0], rewards: [{ item_key: 'test', name: 'Fixture TOKEN', quantity: 1 }] }], [], filters({ reward: 'fixture token' })).length, 1)
   const summary = summarizeAchievements(entries, records)
   assert.equal(summary.favorite, 1)
   assert.equal(summary.incomplete + summary.completed, summary.total)
+})
+test('未配置奖励筛选也能从实际奖励生成选项，外观奖励按类型合并', () => {
+  const catalog = achievementCatalog(5)
+  catalog.reward_filters = []
+  const names = ['白金币', '符传', '称号【测试甲】', '称号【测试乙】', '头像框【测试】']
+  catalog.entries.forEach((entry, index) => { entry.rewards = [{ item_key: 'test_' + index, name: names[index], quantity: 1 }] })
+  assert.deepEqual(achievementRewardOptions(catalog), ['白金币', '符传', '称号', '头像框'])
+  catalog.reward_filters = ['功过格', '白金币']
+  assert.deepEqual(achievementRewardOptions(catalog), ['功过格', '白金币', '符传', '称号', '头像框'])
+  assert.deepEqual(achievementRewardOptions(null), [])
+})
+test('奖励名称可模糊反查，物品筛选精确匹配，头像不混入头像框，缺资料不作为奖励名', () => {
+  const names = ['符传', '天机符传', '称号【风起】', '头像框【风起】', '头像【风起】']
+  const catalog = achievementCatalog(names.length + 2)
+  catalog.entries.forEach((entry, index) => { entry.rewards = index < names.length ? [{ item_key: 'test_' + index, name: names[index], quantity: 1 }] : null })
+  const legacy = { [catalog.entries[5].achievement_id]: '称号【旧风起】' }
+  const find = values => filterAchievements(catalog.entries, [], filters(values), [], legacy).map(entry => entry.achievement_id)
+  assert.deepEqual(find({ reward: '符传' }), [catalog.entries[0].achievement_id])
+  assert.deepEqual(find({ reward: '头像' }), [catalog.entries[4].achievement_id])
+  assert.deepEqual(find({ reward: '头像框', query: '风起' }), [catalog.entries[3].achievement_id])
+  assert.deepEqual(find({ reward: '称号', query: '风起' }), [catalog.entries[2].achievement_id, catalog.entries[5].achievement_id])
+  assert.equal(find({ query: '风起' }).length, 4)
+  assert.deepEqual(find({ query: '奖励资料未补齐' }), [])
+  catalog.entries[5].rewards = [{ item_key: 'test_coin', name: '白金币', quantity: 1 }]
+  assert.deepEqual(find({ query: '旧风起' }), [])
+})
+test('按奖励名和类型反查积分来源，保留分类与门槛，不伪造成单条成就奖励', () => {
+  const catalog = achievementCatalog()
+  catalog.categories.push({ category_id: 'other', name: '另一分类' })
+  catalog.point_tracks = [{ category_id: 'test', tiers: [{ at: 100, name: '风起', quantity: 1, icon: 'title' }, { at: 200, name: '云涌', quantity: 1, icon: 'frame' }] }, { category_id: 'other', tiers: [{ at: 300, name: '风起', quantity: 1, icon: 'frame' }] }]
+  assert.deepEqual(pointRewardSources(catalog, filters({})), [])
+  assert.deepEqual(pointRewardSources(catalog, filters({ query: ' 风起 ', reward: '称号' })), [{ at: 100, name: '风起', quantity: 1, icon: 'title', category_id: 'test', category_name: '测试分类' }])
+  assert.equal(pointRewardSources(catalog, filters({ query: '风起' })).length, 2)
+  assert.equal(pointRewardSources(catalog, filters({ query: '风起', category: 'other', reward: '头像框' }))[0].at, 300)
+  assert.equal(pointRewardSources(catalog, filters({ query: '风起', category: 'other', reward: '称号' })).length, 0)
+  assert.ok(achievementRewardOptions(catalog).includes('称号'))
+  assert.ok(achievementRewardOptions(catalog).includes('头像框'))
 })
 test('只有明确正整数目标可展示进度，不虚构0/1', () => {
   for (const entry of [{}, { target: null }, { target: 0 }, { target: 2.5 }, { target: '10' }, { target: 1e12 + 1 }]) assert.equal(hasQuantifiedProgress(entry), false)
