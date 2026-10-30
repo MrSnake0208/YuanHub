@@ -786,6 +786,9 @@ it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当�
   await share.trigger('click')
   expect(modal.isVisible()).toBe(true)
   expect(modal.text()).toContain('测试账号')
+  expect(modal.get('.box-image-share').isVisible()).toBe(true)
+  expect(modal.get('.box-image-share').text()).toContain('当前筛选（1 位）')
+  await modal.findAll('button').find(button => button.text() === '链接分享').trigger('click')
   expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(false)
   expect(share.attributes('aria-expanded')).toBe('true')
   await modal.get('[aria-label="复制密探 BOX链接"]').trigger('click'); await flushPromises()
@@ -814,6 +817,30 @@ it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当�
   expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
   expect(accountShareApi.regenerateAccountShare).not.toHaveBeenCalled()
   expect(accountShareApi.revokeAccountShare).not.toHaveBeenCalled()
+})
+
+it('BOX 图片只取已保存养成与双命盘，不带入卡片草稿或私人内容', async () => {
+  const wrapper = await openTrackingLedger({
+    ...snapshotCurrent(), remark: '私人备注',
+    disc_loadouts: [
+      { id: 'disc_1', name: '私人命盘名', discs: [{ ot_name: '已保存词条甲' }], target_discs: [{ ot_name: '私人目标' }] },
+      { id: 'disc_2', discs: [{ ot_name: '已保存词条乙' }] },
+    ],
+  })
+  await wrapper.get('input[aria-label="等级"]').setValue('60')
+  await wrapper.get('input[aria-label="测试密探攻击力"]').setValue('999')
+  await wrapper.get('.roster-share').trigger('click'); await flushPromises()
+  const share = wrapper.getComponent({ name: 'OperatorShareManager' })
+  expect(share.props('imageReady')).toBe(true)
+  expect(share.props('imageFilteredIds')).toEqual(['op'])
+  expect(share.props('imageEntries')).toEqual([expect.objectContaining({
+    id: 'op', level: 50, elite: 7, attack: '111', hp: '1,111',
+    loadouts: [[{ name: '已保存词条甲', color: '' }], [{ name: '已保存词条乙', color: '' }]],
+  })])
+  expect(JSON.stringify(share.props('imageEntries'))).not.toContain('私人')
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('60')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
 })
 
 it('JSON 仍从更多打开，分享弹窗不改写导入草稿或导出范围', async () => {

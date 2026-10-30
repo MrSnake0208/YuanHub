@@ -8,7 +8,13 @@
           <button ref="closeButton" type="button" class="operator-share-close" aria-label="关闭分享弹窗" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
         <div ref="scrollBody" class="operator-share-body">
-          <AccountShareManager ref="manager" :account-id="accountId" compact class="operator-share-content" @status-change="$emit('status-change', $event)" @share-change="$emit('share-change', $event)">
+          <div class="operator-share-modes" role="group" aria-label="分享方式">
+            <button type="button" :aria-pressed="mode === 'image'" @click="mode = 'image'">图片分享</button>
+            <button type="button" :aria-pressed="mode === 'link'" @click="mode = 'link'">链接分享</button>
+          </div>
+          <OperatorBoxImageShare v-if="accountId" v-show="mode === 'image'" :open="open && mode === 'image'" :account-id="accountId" :game="game"
+            :entries="imageEntries" :filtered-ids="imageFilteredIds" :ready="imageReady" :source-error="imageError" />
+          <AccountShareManager v-show="mode === 'link'" ref="manager" :account-id="accountId" compact class="operator-share-content" @status-change="$emit('status-change', $event)" @share-change="$emit('share-change', $event)">
             <template #heading="{ titleId }"><h3 :id="titleId">公开内容</h3></template>
             <template #management="{ busy, regenerate, revoke }">
               <Teleport to="#operator-share-footer-management" defer>
@@ -29,10 +35,10 @@
               </div>
             </template>
           </AccountShareManager>
-          <p v-if="!accountId" class="operator-share-empty">{{ !isLoggedIn ? '登录并选择账号后，可生成分享链接。' : '创建并选择账号后，可生成分享链接。' }}</p>
+          <p v-if="!accountId" class="operator-share-empty">{{ !isLoggedIn ? '登录并选择账号后，可分享 BOX。' : '创建并选择账号后，可分享 BOX。' }}</p>
         </div>
         <footer class="operator-share-footer" aria-label="分享管理操作">
-          <div id="operator-share-footer-management" class="operator-share-footer-management"></div>
+          <div v-show="mode === 'link'" id="operator-share-footer-management" class="operator-share-footer-management"></div>
           <button type="button" class="operator-share-footer-button is-primary" @click="close">关闭</button>
         </footer>
       </section>
@@ -43,13 +49,19 @@
 import { ref, watch } from 'vue'
 import { ChevronDown, ShieldCheck, X } from '@lucide/vue'
 import AccountShareManager from '../AccountShareManager.vue'
+import OperatorBoxImageShare from './OperatorBoxImageShare.vue'
 import { modalFocusState, useModalFocus } from '../../composables/useModalFocus.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 
-defineProps({ accountId: { type: String, required: true }, accountName: { type: String, default: '当前账号' }, isLoggedIn: { type: Boolean, default: true } })
+defineProps({
+  accountId: { type: String, required: true }, accountName: { type: String, default: '当前账号' }, isLoggedIn: { type: Boolean, default: true },
+  game: { type: String, default: '' }, imageEntries: { type: Array, default: () => [] }, imageFilteredIds: { type: Array, default: () => [] },
+  imageReady: Boolean, imageError: { type: String, default: '' },
+})
 defineEmits(['status-change', 'share-change'])
 const open = defineModel('open', { type: Boolean, default: false })
 const manager = ref(null)
+const mode = ref('image')
 const backdropPressed = ref(false)
 const panel = ref(null), closeButton = ref(null), scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, scrollBody)
@@ -92,6 +104,10 @@ defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? fals
 .operator-share-close:hover { background: var(--paper); }
 .operator-share-close:focus-visible,.operator-share-help summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .operator-share-body { min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }
+.operator-share-modes { display: flex; gap: 8px; padding: 14px 24px 0; }
+.operator-share-modes button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 700 13px/1.5 var(--font-b); cursor: pointer; }
+.operator-share-modes button[aria-pressed="true"] { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
+.operator-share-modes button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .operator-share-content { border: 0; background: transparent; }
 .operator-share-content h3 { margin: 0; font: 800 16px/1.4 var(--font-s); }
 .operator-share-help { margin-top: 14px; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
@@ -114,7 +130,7 @@ defineExpose({ copyCurrentShare: () => manager.value?.copyCurrentShare() ?? fals
 .operator-share-footer-note { color: var(--ink-60); font-size: 12px; white-space: nowrap; }
 .operator-share-footer-button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font: 700 12px/1.5 var(--font-b); cursor: pointer; }
 .operator-share-footer-button.is-danger { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); }
-.operator-share-footer-button.is-primary { flex: none; min-width: 76px; background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
+.operator-share-footer-button.is-primary { flex: none; margin-left: auto; min-width: 76px; background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
 .operator-share-footer-button:hover:not(:disabled) { background: var(--paper); }
 .operator-share-footer-button.is-primary:hover { background: var(--theme-control-bg, var(--ink)); }
 .operator-share-footer-button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }

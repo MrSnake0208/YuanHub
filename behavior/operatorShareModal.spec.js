@@ -39,11 +39,26 @@ async function render() {
   await flushPromises()
   return wrapper
 }
-async function open() {
+async function open(link = true) {
   const opener = wrapper.get('.opener')
   opener.element.focus()
   await opener.trigger('click'); await flushPromises()
+  if (link) await button('链接分享').trigger('click')
 }
+
+it('默认进入图片分享，切换方式不写入公开权限', async () => {
+  await render(); await open(false)
+  expect(button('图片分享').attributes('aria-pressed')).toBe('true')
+  expect(panel().get('.box-image-share').isVisible()).toBe(true)
+  expect(panel().get('.operator-share-content').isVisible()).toBe(false)
+  expect(panel().get('#operator-share-footer-management').isVisible()).toBe(false)
+  await button('链接分享').trigger('click')
+  expect(panel().get('.operator-share-content').isVisible()).toBe(true)
+  expect(panel().get('.box-image-share').isVisible()).toBe(false)
+  expect(api.setAccountShareScope).not.toHaveBeenCalled()
+  expect(api.regenerateAccountShare).not.toHaveBeenCalled()
+  expect(api.revokeAccountShare).not.toHaveBeenCalled()
+})
 
 it('关闭后迟到状态照常更新，重新打开保持实例、链接及读取次数，复制引用仍有效', async () => {
   const pending = deferred()

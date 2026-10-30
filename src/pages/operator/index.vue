@@ -151,6 +151,11 @@
             :account-id="auth.isLoggedIn ? accountId : ''"
             :account-name="currentAccountName"
             :is-logged-in="auth.isLoggedIn"
+            :game="gameFilter"
+            :image-entries="boxImageEntries"
+            :image-filtered-ids="filteredCurrent.map(entry => entry.id)"
+            :image-ready="boxImageReady"
+            :image-error="accountError || error || catalogError"
             @share-change="operatorShare = $event"
           />
 
@@ -3166,6 +3171,7 @@ import { useOperatorOrganization } from "../../composables/useOperatorOrganizati
 import { OPERATOR_ORGANIZATION_FORMAT, compareOperatorOrganization, operatorOrganizationBackup, operatorOrganizationContent, operatorOrganizationRanks, readOperatorOrganizationBackup, updateOperatorTag } from "../../utils/operatorOrganization.js";
 import OperatorBoxViewer from "../../components/operator/OperatorBoxViewer.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
+import { operatorBoxImageEntry } from "../../utils/operatorBoxImage.js";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import OperatorEditorNav from "./OperatorEditorNav.vue";
@@ -5275,6 +5281,30 @@ const filteredCurrent = computed(function () {
     .filter(entry => matchesDiscStatus(entry.discLoadouts, discStatusFilter.value))
     .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
       : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction));
+});
+
+const boxImageReady = computed(() => auth.isLoggedIn && !accountsLoading.value && !accountError.value &&
+  !loading.value && !error.value && !catalogLoading.value && !catalogError.value &&
+  currentLoadedKey.value === accountId.value + ':' + gameFilter.value);
+const boxImageEntries = computed(() => {
+  if (!shareModalOpen.value || !boxImageReady.value) return [];
+  const entries = ownedCurrentEntries.value.slice().sort(currentSort.value.mode === 'default' ? compareCurrentEntries
+    : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction));
+  return entries.map(entry => {
+    // Export saved growth and equipment, never the card's unsaved editing drafts.
+    const stones = inventoryPanelStones(entry.id, starLoadoutCurrent.value) || Object.fromEntries(
+      (entry.starStones || []).map(stone => [stone.type, stone]));
+    const combat = calculateOperatorCombatStats({
+      stored: entry.combatStats || {},
+      input: { operatorName: entry.name, spOf: entry.spOf, level: entry.level, elite: entry.elite,
+        starLevel: entry.starLevel, huaji: operatorHuaji(entry), levelBreakthroughStage: operatorLevelBreakthroughStage(entry),
+        stones, oddities: entry.combatStats?.oddities },
+      serverResult: panelBatchState.value.key === panelBatchInput.value?.key ? panelBatchState.value.result?.[entry.id] : null,
+      allowAutomatic: panelAutoFillEnabled.value,
+      displayMode: entry.combatStats?.displayMode,
+    });
+    return operatorBoxImageEntry(entry, catalogMap.value[entry.id], combat);
+  });
 });
 
 const batchSelectedIds = computed(function () {

@@ -1,0 +1,58 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+import html2canvas from 'html2canvas'
+import { renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
+
+vi.mock('html2canvas', () => ({ default: vi.fn() }))
+beforeEach(() => { html2canvas.mockReset() })
+const element = () => document.createElement('section')
+const canvas = () => ({ width: 1440, height: 2500, toBlob: fn => fn(new Blob(['png'], { type: 'image/png' })) })
+
+it('waits for portraits before capture, creates PNG and releases canvas memory', async () => {
+  const root = element(), image = document.createElement('img'), result = canvas()
+  Object.defineProperty(image, 'complete', { value: false })
+  Object.defineProperty(image, 'naturalWidth', { value: 480 })
+  root.append(image)
+  html2canvas.mockResolvedValue(result)
+  const output = renderOperatorBoxImage(root)
+  await Promise.resolve()
+  expect(html2canvas).not.toHaveBeenCalled()
+  image.dispatchEvent(new Event('load'))
+  expect((await output).type).toBe('image/png')
+  expect(html2canvas).toHaveBeenCalledWith(root, expect.objectContaining({ scale: 1, windowWidth: 1440, useCORS: true }))
+  expect(result.width).toBe(0)
+  expect(result.height).toBe(0)
+})
+
+it('broken portraits fail visibly rather than silently exporting blank artwork', async () => {
+  const root = element(), image = document.createElement('img')
+  root.append(image)
+  await expect(renderOperatorBoxImage(root)).rejects.toThrow('立绘加载失败')
+  expect(html2canvas).not.toHaveBeenCalled()
+})
+
+it('oversized full images fail before allocating a canvas', async () => {
+  const root = element()
+  Object.defineProperty(root, 'scrollHeight', { value: 12000 })
+  await expect(renderOperatorBoxImage(root)).rejects.toThrow('改用分段图片')
+  expect(html2canvas).not.toHaveBeenCalled()
+})
+
+it('stalled portraits time out with a retry message', async () => {
+  vi.useFakeTimers()
+  try {
+    const root = element(), image = document.createElement('img')
+    Object.defineProperty(image, 'complete', { value: false })
+    root.append(image)
+    const output = expect(renderOperatorBoxImage(root)).rejects.toThrow('图片准备超时')
+    await vi.advanceTimersByTimeAsync(20000)
+    await output
+    expect(html2canvas).not.toHaveBeenCalled()
+  } finally { vi.useRealTimers() }
+})
+
+it('PNG encoding failure still releases the canvas', async () => {
+  const result = { ...canvas(), toBlob: fn => fn(null) }
+  html2canvas.mockResolvedValue(result)
+  await expect(renderOperatorBoxImage(element())).rejects.toThrow('图片生成失败')
+  expect(result.width).toBe(0)
+})
