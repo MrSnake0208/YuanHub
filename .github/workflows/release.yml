@@ -109,7 +109,7 @@ jobs:
           echo "YUANHUB_VERSION=$version" >> "$GITHUB_ENV"
           echo "YUANHUB_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
 
-      # 复用同一提交的完整 CI，包括 behavior tests/build；直接推 tag 也无法绕过。
+      # 复用同一提交的快速 CI（static/repo/build）；完整回归独立运行，直接推 tag 也无法绕过 CI。
       - name: Require successful CI for release commit
         if: ${{ inputs.phase != 'prepare' }}
         env:
