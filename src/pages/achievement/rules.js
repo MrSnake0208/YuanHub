@@ -5,6 +5,35 @@ export const MAX_IMPORT_BYTES = 16 * 1024 * 1024
 export const MAX_IMPORT_RECORDS = 5000
 export const emptyRecord = id => ({ achievement_id: id, status: 'pending', favorite: false, note: '', progress: null, completed_on: null })
 
+function rewardType(reward) {
+  if (reward.icon === 'title') return '称号'
+  if (reward.icon === 'frame') return '头像框'
+  // shortcut: 单条奖励暂按名称前缀识别类型，奖励字典支持类型字段后改用明确类型。
+  return ['头像框', '头像', '称号'].find(type => reward.name.trim().startsWith(type)) || ''
+}
+
+function matchesReward(reward, value) {
+  return ['称号', '头像框', '头像'].includes(value) ? rewardType(reward) === value : reward.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase()
+}
+
+export function achievementRewardOptions(catalog) {
+  const rewards = [...(catalog?.entries || []).flatMap(entry => entry.rewards || []), ...(catalog?.point_tracks || []).flatMap(track => track.tiers)]
+  const options = new Set([...(catalog?.reward_filters || []), ...rewards.map(reward => rewardType(reward) || reward.name)])
+  return [...options]
+}
+
+export function pointRewardSources(catalog, filters) {
+  const query = (filters.query || '').trim().toLocaleLowerCase()
+  const reward = (filters.reward || '').trim()
+  if (!query && !reward) return []
+  return (catalog?.point_tracks || []).flatMap(track => {
+    const category = catalog.categories.find(item => item.category_id === track.category_id)
+    if (!category || (filters.category && filters.category !== category.category_id)) return []
+    return track.tiers.filter(tier => (!query || tier.name.toLocaleLowerCase().includes(query)) && (!reward || matchesReward(tier, reward)))
+      .map(tier => ({ ...tier, category_id: category.category_id, category_name: category.name }))
+  })
+}
+
 export function summarizeAchievements(entries, records) {
   const byId = new Map(records.map(record => [record.achievement_id, record]))
   const result = { total: entries.length, incomplete: 0, completed: 0, favorite: 0 }
@@ -22,13 +51,17 @@ export function filterAchievements(entries, records, filters, categories = [], l
   const reward = (filters.reward || '').trim().toLocaleLowerCase()
   return entries.filter(entry => {
     const record = byId.get(entry.achievement_id) || emptyRecord(entry.achievement_id)
+    const legacyReward = entry.rewards == null ? legacyRewards[entry.achievement_id] || '' : ''
+    const rewardMatches = entry.rewards == null
+      ? (['称号', '头像框', '头像'].includes(reward) ? rewardType({ name: legacyReward }) === reward : legacyReward.toLocaleLowerCase().includes(reward))
+      : entry.rewards.some(item => matchesReward(item, reward))
     return (!filters.category || entry.category_id === filters.category) &&
       (!filters.metric || entry.linked_metric === filters.metric) &&
       (!filters.status || completionStatus(record) === filters.status) &&
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
-      (!reward || rewardText(entry, legacyRewards[entry.achievement_id]).toLocaleLowerCase().includes(reward)) &&
-      (!query || [entry.name, entry.condition]
+      (!reward || rewardMatches) &&
+      (!query || [entry.name, entry.condition, ...(entry.rewards?.map(item => item.name) || []), legacyReward]
         .join(' ').toLocaleLowerCase().includes(query))
   }).sort((a, b) => (categories.findIndex(c => c.category_id === a.category_id) - categories.findIndex(c => c.category_id === b.category_id)) || a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
 }
