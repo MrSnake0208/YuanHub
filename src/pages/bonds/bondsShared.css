@@ -44,8 +44,6 @@
 .bonds-codex progress::-webkit-progress-bar { background: color-mix(in srgb, var(--theme-control-bg, var(--ink)) 10%, var(--surface)); border-radius: 20px; }
 .bonds-codex progress::-webkit-progress-value { background: var(--tea); border-radius: 20px; }
 .bonds-codex progress::-moz-progress-bar { background: var(--tea); border-radius: 20px; }
-.bonds-codex .bond-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; padding: 0; margin: 16px 0 12px; }
-.bonds-codex .bond-tabs button { padding: 9px 12px; border-radius: 9px; font-weight: 700; }
 .bonds-codex .bond-filters { padding: 12px 16px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .bond-search-row { display: flex; gap: 12px; }
 .bonds-codex .bond-search { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding-inline: 12px; border: 1px solid transparent; border-radius: 8px; background: color-mix(in srgb, var(--paper) 40%, var(--surface)); }
@@ -131,3 +129,8 @@
   .bonds-codex .bond-condition[aria-pressed=true]:hover:not(:disabled) { background: var(--theme-success-bg, #e8f1dc); }
 }
 @media (prefers-reduced-motion: reduce) { .bonds-codex :where(.bonds-main) button:not(:disabled) { transition: none; } }
+
+.bond-browser { margin-top: 16px; }
+.bond-view-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+.bond-view-options > span { margin-right: 6px; color: var(--bond-muted); }
+.bond-view-options button { padding: 5px 10px; font-size: 13px; }

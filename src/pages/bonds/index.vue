@@ -27,13 +27,9 @@
         </section>
         <p v-if="state.notice || state.busy" class="bond-feedback" role="status">{{ state.busy ? '正在保存或处理文件…' : state.notice }}</p>
         <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
-        <nav class="bond-tabs" aria-label="羁绊功能">
-          <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'"><BookOpen :size="18" aria-hidden="true" />图鉴收集</button>
-          <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'"><Search :size="18" aria-hidden="true" />查找配对</button>
-        </nav>
-        <section :aria-label="view === 'codex' ? '图鉴收集' : '查找配对'">
+        <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
-            <div v-if="view === 'find'" class="bond-find-choices">
+            <div class="bond-find-choices">
               <fieldset><legend>当前天气</legend><div class="bond-choice-options">
                 <button type="button" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
                 <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><component :is="weatherIcons[value]" :size="18" aria-hidden="true" />{{ label }}</button>
@@ -50,16 +46,19 @@
 
             <div class="bond-common-filters">
               <label>收录状态<select v-model="filters.recorded" :disabled="!state.archive"><option value="">全部</option><option value="missing">未收录</option><option value="collected">已收录</option></select></label>
-              <label v-if="view === 'codex'">行动<select v-model="filters.action"><option value="">全部行动</option><option v-for="(label, value) in ACTIONS" :key="value" :value="value">{{ label }}</option></select></label>
-              <label v-if="view === 'codex'">天气<select v-model="filters.weather"><option value="">全部天气</option><option v-for="(label, value) in WEATHERS" :key="value" :value="value">{{ label }}</option></select></label>
-              <label v-show="view === 'codex' || filtersOpen">效果<select v-model="filters.effect"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
               <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned">仅显示我拥有的密探</label>
             </div>
             <div v-show="filtersOpen" id="bond-advanced-filters" class="bond-advanced-filters">
+              <label>效果<select v-model="filters.effect"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
               <label>资料范围<select v-model="filters.status"><option value="active">当前图鉴</option><option value="">含历史资料</option><option value="retired">历史下架</option><option value="invalid">误录</option></select></label>
               <label class="bond-check"><input v-model="filters.hideRecorded" type="checkbox" :disabled="!state.archive">隐藏已收录</label>
             </div>
           </form>
+          <div class="bond-view-options" role="group" aria-label="列表展示方式">
+            <span>查看方式</span>
+            <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
+            <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
+          </div>
           <p v-if="state.ownedError" class="bond-hint" role="status">{{ state.ownedError }}</p><p v-else-if="available && !state.owned && !state.loading" class="bond-hint">尚未填写密探拥有资料，默认显示全部组合。<router-link to="/operator">前往我的密探</router-link></p>
           <p v-if="state.operatorError" class="bond-error" role="alert">{{ state.operatorError }} 暂以密探ID展示；请刷新重试。</p>
           <p v-if="state.loading" class="bond-empty" role="status">正在读取目录与账号记录…</p>
@@ -128,7 +127,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { BookOpen, Search, Settings, ChevronDown, RefreshCw, Check, Sun, CloudRain, CloudFog, Wind, CloudSnow, Snowflake, Tornado, CloudLightning } from '@lucide/vue'
+import { Search, Settings, ChevronDown, RefreshCw, Check, Sun, CloudRain, CloudFog, Wind, CloudSnow, Snowflake, Tornado, CloudLightning } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -146,7 +145,7 @@ import { ACTIONS, STATUS, WEATHERS } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
-const view = ref('codex'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
+const view = ref('find'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIcons = { sunny: Sun, rain: CloudRain, fog: CloudFog, wind: Wind, light_snow: CloudSnow, heavy_snow: Snowflake, hurricane: Tornado, thunder: CloudLightning }
 watch(view, () => { page.value = 0; selected.value = [] })
 const resultGroupCount = computed(() => view.value === 'find' ? groups.value.length : operatorGroups.value.length)

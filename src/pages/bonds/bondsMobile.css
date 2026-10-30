@@ -21,8 +21,6 @@
   .bonds-codex .bond-summary .bond-owned-stat { margin-inline: 0 8px; padding-inline: 12px; border-left: 1px solid var(--line); background: transparent; }
   .bonds-codex .bond-summary strong { font-size: 22px; margin-block: 4px 7px; }
   .bonds-codex .bond-summary small { font-size: 11px; }
-  .bonds-codex .bond-tabs { gap: 8px; margin-top: 12px; }
-  .bonds-codex .bond-tabs button { padding: 9px; font-size: 14px; }
   .bonds-codex .bond-filters { padding: 12px; margin-bottom: 12px; }
   .bond-search-row { gap: 6px; }
   .bonds-codex .bond-search { padding-inline: 8px; gap: 6px; }

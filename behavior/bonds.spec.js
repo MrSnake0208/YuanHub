@@ -73,8 +73,8 @@ it('筛选不影响服务端累计，未填写拥有资料默认显示全部', a
 })
 it('天气卡直接切换收录，两个密探同步且顶部不重复计数，成功后才更新状态', async () => {
   const w = mountPage()
-  await flushPromises(); expect(w.text()).toContain('貌合神离')
-  expect(button(w, '图鉴收集').attributes('aria-pressed')).toBe('true')
+  await flushPromises(); await button(w, '按密探').trigger('click'); expect(w.text()).toContain('貌合神离')
+  expect(button(w, '按密探').attributes('aria-pressed')).toBe('true')
   expect(w.findAll('.bond-condition')).toHaveLength(2)
   expect(w.get('[data-testid=next-threshold]').text()).toBe('还差 1 种')
   const next = { ...archive('a', 1), records: [{ bond_id: entry.bond_id, triggered: true }], summary: { triggered_count: 1, available_total: 1, active_triggered_count: 1 } }
@@ -96,10 +96,11 @@ it('天气卡直接切换收录，两个密探同步且顶部不重复计数，�
 })
 it('查找配对不预设天气，备份移入设置，批量同条目只提交一次', async () => {
   const w = mountPage(); await flushPromises()
-  await button(w, '查找配对').trigger('click'); expect(w.text()).toContain('当前天气')
+  expect(button(w, '按配对').attributes('aria-pressed')).toBe('true')
+  expect(w.text()).toContain('当前天气')
   expect(button(w, '全部天气').attributes('aria-pressed')).toBe('true')
   expect(w.findAll('.bond-find-pair')).toHaveLength(1)
-  await button(w, '图鉴收集').trigger('click')
+  await button(w, '按密探').trigger('click')
   await button(w, '设置').trigger('click'); expect(w.get('#bond-settings').isVisible()).toBe(true); expect(w.getComponent(BondExchange).isVisible()).toBe(true)
   await w.get('#bond-settings input[type=checkbox]').setValue(true)
   await w.find('.bond-batch-check input').setValue(true)
@@ -111,6 +112,7 @@ it('查找配对不预设天气，备份移入设置，批量同条目只提交�
 it('天气卡失败不高亮，账号切换清除状态，拥有统计读取真实账号数据', async () => {
   getOperatorCurrent.mockResolvedValue([{ account_id: 'a', game: '代号鸢', entries: { char_a: { starLevel: 1 }, char_b: { starLevel: 0 } } }])
   const w = mountPage(); await flushPromises()
+  await button(w, '按密探').trigger('click')
   expect(w.get('[data-testid=owned-progress]').text()).toBe('1 / 2')
   api.writeBonds.mockRejectedValueOnce(new Error('网络故障'))
   await w.find('.bond-condition').trigger('click'); await flushPromises()
@@ -123,6 +125,7 @@ it('天气卡失败不高亮，账号切换清除状态，拥有统计读取真�
 it('历史天气只能取消已有收录，退出后隐藏整个羁绊内容', async () => {
   api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', entries: [{ ...entry, status: 'retired' }] })
   const w = mountPage(); await flushPromises()
+  await button(w, '按密探').trigger('click')
   await button(w, '更多筛选').trigger('click')
   await w.get('#bond-advanced-filters select').setValue('retired')
   expect(w.findAll('.bond-condition').every(b => b.element.disabled)).toBe(true)
@@ -154,7 +157,7 @@ it('按天气和行动直接找到唯一配对，切换视图保留条件，收�
   const poison = { ...rain, bond_id: 'poison_fixture', action: 'poison' }
   api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', entries: [entry, rain, poison] })
   const w = mountPage(); await flushPromises()
-  await button(w, '查找配对').trigger('click')
+  await button(w, '按配对').trigger('click')
   await button(w, '雨天').trigger('click')
   await button(w, '纵火').trigger('click')
   expect(w.findAll('.bond-find-pair')).toHaveLength(1)
@@ -168,8 +171,11 @@ it('按天气和行动直接找到唯一配对，切换视图保留条件，收�
   await w.get('.bond-find-record').trigger('click'); await flushPromises()
   expect(api.writeBonds).toHaveBeenLastCalledWith('a', 'owner', 0, 'fixture-v1', [{ bond_id: rain.bond_id, triggered: true }])
   expect(w.get('.bond-find-record').text()).toContain('已收录')
-  await button(w, '图鉴收集').trigger('click')
-  await button(w, '查找配对').trigger('click')
+  await button(w, '按密探').trigger('click')
+  expect(button(w, '雨天').attributes('aria-pressed')).toBe('true')
+  expect(button(w, '纵火').attributes('aria-pressed')).toBe('true')
+  expect(w.findAll('.bond-condition')).toHaveLength(2)
+  await button(w, '按配对').trigger('click')
   expect(button(w, '雨天').attributes('aria-pressed')).toBe('true')
   expect(button(w, '纵火').attributes('aria-pressed')).toBe('true')
   await button(w, '全部天气').trigger('click')
