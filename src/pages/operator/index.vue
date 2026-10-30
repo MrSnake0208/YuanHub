@@ -974,11 +974,6 @@
                 </button>
               </template>
               <template #footer>
-                <details class="current-sort-help">
-                  <summary>排序说明</summary>
-                  <p>默认排序保留置顶、分组与特别关注优先。游戏排序只比较所选字段，未知值放最后，同值按稳定 ID 排列；切回默认可恢复原偏好。阶级对应 Hub 修为，星级包含化极节点。</p>
-                  <p>两款游戏共用截图中的排序选项，未核验游戏内部的隐藏排序差异。</p>
-                </details>
                 <OperatorOrganizationManager
                   ref="organizationManager"
                   v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
@@ -10907,15 +10902,6 @@ onBeforeUnmount(function () {
 .current-favorite-sort:disabled {
   opacity: 0.55;
   cursor: default;
-}
-.current-sort-help {
-  border-top: 1px dashed var(--line);
-  color: var(--ink-60);
-}
-.current-sort-help summary { cursor: pointer; }
-.current-sort-help summary:focus-visible {
-  outline: 2px solid var(--theme-focus, var(--brand-blue));
-  outline-offset: 2px;
 }
 .current-filter-reset {
   border: 1px solid var(--line);
