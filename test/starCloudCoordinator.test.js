@@ -331,3 +331,129 @@ for (const level of [20, 21]) test(`old rebuild response reconciles inferred or 
   assert.equal(coordinator.needsRetry(), false)
   assert.equal(persistent.getItem('yuanhub.star-rebuild-pending:a'), null)
 })
+
+for (const operation of ['ocr', 'import']) for (const result of ['saved', 'rejected']) {
+  for (const [generation, revision] of [[3, 7], [4, 7]]) {
+    test(`late ${operation} ${result} cannot clear a newer intent (${generation}/${revision})`, async () => {
+      const persistent = storage(), reply = deferred(), key = 'yuanhub.star-rebuild-pending:a'
+      let posts = 0
+      const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: persistent,
+        getState: async () => remote(), rebuildState: async () => { posts++; return reply.promise } })
+      await c.enter(handle())
+      const pending = operation === 'ocr' ? c.rebuildOcr(local(), 'point') : c.replaceImport(local())
+      const expected = JSON.parse(persistent.getItem(key))
+      const newer = JSON.stringify({ ...expected, generation, revision })
+      persistent.setItem(key, newer)
+      if (result === 'saved') reply.resolve({ state: { ...remote(3, 6), plan_targets: expected.planTargets } })
+      else reply.resolve(Promise.reject(Object.assign(new Error('rejected'), { status: 422 })))
+      await assert.rejects(pending, error => error.code === 'star_rebuild_uncertain')
+      assert.equal(persistent.getItem(key), newer)
+      assert.equal(c.state().generation, 2, 'the stale reply is not adopted')
+      assert.equal(c.committed({ accountId: 'a', snapshot: local() }), false)
+      assert.throws(() => c.ocrRebuildScope(), /未完成/)
+      assert.equal(posts, 1)
+    })
+  }
+}
+
+test('uncertain OCR recovery keeps old or unreadable authority locked, then reconciles the exact commit', async () => {
+  let current = remote(), readFails = false, posts = 0
+  const persistent = storage(), key = 'yuanhub.star-rebuild-pending:a'
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: persistent,
+    getState: async () => { if (readFails) throw new Error('offline'); return current },
+    rebuildState: async () => { posts++; throw Object.assign(new Error('server result unknown'), { status: 500 }) } })
+  await c.enter(handle())
+  await assert.rejects(c.rebuildOcr(local(), 'point'), error => error.code === 'star_rebuild_uncertain')
+  const intent = persistent.getItem(key)
+  for (let i = 0; i < 2; i++) {
+    assert.equal(await c.enter(handle()), true)
+    assert.equal(c.needsRetry(), true)
+    assert.equal(persistent.getItem(key), intent, 'an old read cannot prove the POST failed')
+  }
+  readFails = true
+  assert.equal(await c.enter(handle()), false)
+  assert.equal(persistent.getItem(key), intent)
+  assert.equal(c.state().ready, false)
+  readFails = false; current = { ...remote(3, 6), plan_targets: {} }
+  let hydrated
+  assert.equal(await c.enter({ ...handle(), applyCloudBusinessSnapshot: async value => { hydrated = value } }), true)
+  assert.equal(persistent.getItem(key), null)
+  assert.equal(c.needsRetry(), false)
+  assert.equal(hydrated.generation, 3)
+  assert.equal(posts, 1, 'all recovery attempts read; none replays rebuild')
+})
+
+for (const [generation, revision] of [[3, 7], [4, 6]]) {
+  test(`re-entry cannot confirm a rebuild using a different authority version (${generation}/${revision})`, async () => {
+    let current = remote()
+    const persistent = storage(), key = 'yuanhub.star-rebuild-pending:a'
+    const options = { selectedHostAccount: () => ({ accountId: 'a' }), storage: persistent,
+      getState: async () => current, rebuildState: async () => { throw new TypeError('lost') } }
+    const c = createStarCloudCoordinator(options); await c.enter(handle())
+    await assert.rejects(c.rebuildOcr(local(), 'point'), error => error.code === 'star_rebuild_uncertain')
+    const intent = persistent.getItem(key)
+    current = { ...remote(generation, revision), plan_targets: {} }
+    const remount = createStarCloudCoordinator(options); await remount.enter(handle())
+    assert.equal(persistent.getItem(key), intent)
+    assert.equal(remount.needsRetry(), true)
+    assert.throws(() => remount.ocrRebuildScope(), /未完成/)
+  })
+}
+
+test('late authority read and old completion lease cannot release another account pending rebuild', async () => {
+  let selected = 'a', delayed = false
+  const reply = deferred(), persistent = storage()
+  const expectedB = { generation: 8, revision: 10, ...local() }
+  const keyB = 'yuanhub.star-rebuild-pending:b', intentB = JSON.stringify(expectedB)
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: selected, gameVersion: '如鸢' }), storage: persistent,
+    getState: async account => account === 'b' ? remote(7, 9) : delayed ? reply.promise : remote() })
+  await c.enter(handle())
+  const lease = c.beginCompletion(c.completionScope('owner', '如鸢'))
+  delayed = true
+  const oldRead = c.enter(handle())
+  selected = 'b'; persistent.setItem(keyB, intentB)
+  await c.enter(handle())
+  reply.resolve(remote(3, 6)); assert.equal(await oldRead, false)
+  lease.release()
+  assert.equal(c.state().accountId, 'b')
+  assert.equal(c.state().generation, 7)
+  assert.equal(persistent.getItem(keyB), intentB)
+  assert.equal(c.needsRetry(), true)
+  selected = 'a'; delayed = false
+  await c.enter(handle())
+  assert.equal(c.needsRetry(), false)
+  assert.equal(persistent.getItem(keyB), intentB)
+})
+
+test('rejected OCR rechecks its intent after asynchronous local rollback', async t => {
+  const previous = globalThis.indexedDB, persistent = storage(), key = 'yuanhub.star-rebuild-pending:a'
+  let newer
+  globalThis.indexedDB = { open() { throw new Error('must not create a database') }, async databases() {
+    newer = JSON.stringify({ ...JSON.parse(persistent.getItem(key)), generation: 4, revision: 7 })
+    persistent.setItem(key, newer)
+    return []
+  } }
+  t.after(() => { if (previous === undefined) delete globalThis.indexedDB; else globalThis.indexedDB = previous })
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: persistent,
+    getState: async () => remote(), rebuildState: async () => { throw Object.assign(new Error('rejected'), { status: 422 }) } })
+  await c.enter(handle())
+  await assert.rejects(c.rebuildOcr(local(), 'point'), error => error.code === 'star_rebuild_uncertain')
+  assert.equal(persistent.getItem(key), newer)
+  assert.equal(c.needsRetry(), true)
+})
+
+test('unreadable local intent after a successful POST stays uncertain and blocks another write', async () => {
+  const persistent = storage(), reply = deferred(), key = 'yuanhub.star-rebuild-pending:a'
+  let unavailable = false, posts = 0
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }),
+    storage: { ...persistent, getItem(name) { if (unavailable && name === key) throw new Error('storage unavailable'); return persistent.getItem(name) } },
+    getState: async () => remote(), rebuildState: async () => { posts++; return reply.promise } })
+  await c.enter(handle())
+  const pending = c.replaceImport(local()), intent = persistent.getItem(key)
+  unavailable = true; reply.resolve({ state: remote(3, 6) })
+  await assert.rejects(pending, error => error.code === 'star_rebuild_uncertain')
+  assert.equal(persistent.getItem(key), intent)
+  assert.equal(c.needsRetry(), true)
+  await assert.rejects(c.replaceImport(local()), /未完成/)
+  assert.equal(posts, 1)
+})

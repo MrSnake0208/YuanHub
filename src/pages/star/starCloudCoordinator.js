@@ -147,12 +147,24 @@ export function createStarCloudCoordinator({
       const expected = businessState({ generation: body.expected_generation + 1, revision: body.expected_revision + 1,
         inventory: body.inventory, plan_targets: body.plan_targets, experience: body.experience, bag: body.bag })
       const pendingKey='yuanhub.star-rebuild-pending:' + session.accountId
-      storage.setItem(pendingKey,JSON.stringify(expected))
+      const pendingRaw = JSON.stringify(expected)
+      storage.setItem(pendingKey, pendingRaw)
+      // Another session may start a newer rebuild while this response is in flight.
+      // Only the persisted intent belonging to this request may be adopted/cleared.
+      const assertPendingOwner = () => {
+        let matches = false
+        try { matches = storage.getItem(pendingKey) === pendingRaw } catch { /* Cannot prove ownership without the durable record. */ }
+        if (!matches) {
+          session.error = uncertainRebuild('本次保存状态仍待核对，请重新加载，不要重复替换背包。')
+          throw session.error
+        }
+      }
+      const clearPending = () => { assertPendingOwner(); storage.removeItem(pendingKey) }
       let response
       if (reason !== 'pre_ocr_rebuild') {
         try { response = await rebuildState(session.accountId, body) }
         catch (error) {
-          if (explicitlyRejected(error)) storage.removeItem(pendingKey)
+          if (explicitlyRejected(error)) clearPending()
           else {
             session.error = uncertainRebuild('背包替换结果尚未确认，请先重新加载核对，不要重复导入或恢复。')
             throw session.error
@@ -167,10 +179,11 @@ export function createStarCloudCoordinator({
           if (!businessSame(saved, expected) || saved.revision !== expected.revision) throw new Error('云端重建回读与确认结果不一致。')
         } catch (error) {
           if (explicitlyRejected(error)) {
+            assertPendingOwner()
             session.error = error
             await rollbackRejectedStarPlanIntent({ operation: 'ocr', accountId: session.accountId, snapshot, recoveryPointId,
               scope: { generation: body.expected_generation, revision: body.expected_revision } })
-            storage.removeItem(pendingKey)
+            clearPending()
             session.error = undefined
             throw error
           }
@@ -187,8 +200,9 @@ export function createStarCloudCoordinator({
         }
       }
       if (active !== session || selectedHostAccount()?.accountId !== session.accountId) throw new Error('账号已切换，请重新加载星石状态。')
+      assertPendingOwner()
       if (!session.writer.adopt(businessState(response.state))) throw new Error('云端版本已变化，请重新加载星石状态。')
-      storage.removeItem(pendingKey)
+      clearPending()
       return response
     } finally { session.replacing = false; if (active === session) emit() }
   }
