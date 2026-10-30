@@ -25,7 +25,7 @@
           <h3>备份迁移</h3>
           <BondExchange :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
         </section>
-        <p class="bond-feedback" role="status" aria-live="polite">{{ state.busy ? '正在保存或处理文件…' : state.notice }}</p>
+        <p v-if="state.notice" class="bond-feedback" role="status">{{ state.notice }}</p>
         <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>

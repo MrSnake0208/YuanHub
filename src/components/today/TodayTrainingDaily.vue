@@ -24,10 +24,10 @@
           {{ saving ? '正在保存…' : snapshot.needs_update ? '更新今日待办' : added ? '已加入今日待办' : '加入今日待办' }}
         </button>
       </template>
-      <p class="daily-notice save-feedback-slot" role="status">{{ notice }}</p>
+      <p v-if="notice" class="daily-notice" role="status">{{ notice }}</p>
       <p v-if="added && !showTodos" class="daily-hint">首页待办已隐藏，可在「自定义首页」中开启。</p>
       <router-link class="daily-details" :to="plannerTo">查看完整规划<ChevronRight :size="15" aria-hidden="true" /></router-link>
-      <p v-if="snapshot?.source.status === 'ready'" class="daily-cloud"><Cloud :size="14" aria-hidden="true" />已保存到云端 · 北京时间 05:00 换日</p>
+      <p v-if="snapshot?.source.status === 'ready'" class="daily-cloud">北京时间 05:00 换日</p>
     </div>
   </Teleport>
   <Teleport :to="todosTarget || 'body'" :disabled="!todosTarget" defer>
@@ -51,7 +51,7 @@
         </li>
       </ul>
       <p v-if="tasks.length" class="daily-total">{{ tasks.length === completedTasks ? '今日历练已全部完成' : `还有 ${tasks.length - completedTasks} 项历练待完成` }}</p>
-      <p v-if="!previewTarget" class="daily-notice save-feedback-slot" role="status">{{ notice }}</p>
+      <p v-if="notice && !previewTarget" class="daily-notice" role="status">{{ notice }}</p>
       <p class="daily-footnote"><Info :size="14" aria-hidden="true" />勾选仅记录完成状态</p>
     </section>
   </Teleport>
@@ -59,7 +59,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Check, ChevronRight, Cloud, Info, ListChecks, Plus } from '@lucide/vue'
+import { Check, ChevronRight, Info, ListChecks, Plus } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getOperatorDailyTasks, adoptOperatorDailyTasks, completeOperatorDailyTask } from '../../api/operatorDailyTasks.js'
@@ -122,7 +122,7 @@ async function write(entry, completed) {
     if (result.version < before.version || (entry ? completed ? !task || task.completed_count < task.count : task && task.completed_count !== 0
       : result.needs_update || result.version === 0)) throw new Error('保存结果需要确认，请读取最新状态后核对。')
     snapshot.value = result
-    notice.value = entry ? completed ? '已标记完成' : '已取消完成' : before.version ? '已更新待办，完成次数已保留' : `已加入 ${result.tasks.length} 项历练待办`
+    notice.value = entry ? '' : before.version ? '已更新待办，完成次数已保留' : `已加入 ${result.tasks.length} 项历练待办`
     await nextTick()
     if (current(token) && (!entry || !focused?.isConnected)) {
       const target = todoHeading.value || props.previewTarget?.querySelector('.daily-details')

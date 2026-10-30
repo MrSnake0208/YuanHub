@@ -25,12 +25,11 @@
             <p v-if="!identity">游客可以浏览目录。<router-link to="/login?redirect=/achievement">登录后记录</router-link></p>
             <p v-else-if="!state.accountsLoading && !state.accounts.length">请<router-link to="/user/profile#game-accounts">选择或创建已有游戏账号</router-link>；个人记录使用全站统一账号。</p>
           </div>
-          <!-- 反馈区保留空间，保存结果和撤销入口更新时不推动页面。 -->
-          <div class="achievement-save-feedback" :class="{ 'has-result': state.notice || state.undo }">
+          <!-- 仅保留导入、撤销等结果说明，常规保存由条目状态体现。 -->
+          <div class="achievement-save-feedback" :class="{ 'has-result': !!state.notice }">
             <div class="achievement-save-slot">
-              <CircleCheck v-if="state.notice || state.undo" class="achievement-save-icon" :size="17" aria-hidden="true" />
-              <p class="achievement-save-notice" role="status" aria-atomic="true">{{ state.notice || (state.undo ? '可撤销上一次保存。' : '') }}</p>
-              <button v-if="state.undo" type="button" :disabled="!writable" @click="undo">撤销</button>
+              <CircleCheck v-if="state.notice" class="achievement-save-icon" :size="17" aria-hidden="true" />
+              <p class="achievement-save-notice" role="status" aria-atomic="true">{{ state.notice }}</p>
             </div>
           </div>
           <div class="achievement-feedback" aria-live="polite"><p v-if="dirtyEditors.length">有 {{ dirtyEditors.length }} 条未保存的行内修改。<button type="button" @click="revealDraft">返回编辑</button></p><p v-if="state.loading || state.accountsLoading">正在读取成就档案…</p><p v-if="state.error" class="achievement-error" role="alert">{{ state.error }} <router-link v-if="identity && !state.accounts.length" to="/beta?redirect=/achievement">查看体验资格</router-link></p><p v-if="state.catalogError" class="achievement-error" role="alert">{{ state.catalogError }}</p><button v-if="state.error || state.catalogError" type="button" :disabled="state.busy || state.loading" @click="retry">重新读取</button></div>
@@ -82,7 +81,7 @@
                       <small v-if="filters.hidden">隐藏属性尚未核验的条目不纳入。</small>
                     </div>
                   </div>
-                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}<template v-if="rewardSources.length"> · {{ rewardSources.length }} 项分类积分奖励</template></p>
+                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}<template v-if="rewardSources.length"> · {{ rewardSources.length }} 项分类积分奖励</template> <button class="achievement-undo" type="button" :disabled="!state.undo || !writable" @click="undo">撤销</button></p>
                   <button ref="batchTrigger" class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []"><NotebookPen :size="16" aria-hidden="true" />{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">

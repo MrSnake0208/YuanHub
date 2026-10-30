@@ -90,7 +90,7 @@ export function useBonds() {
       const result = await api.writeBonds(token.accountId, token.identity, revision, version, changes)
       if (!matches(token)) return false
       if (result.account_id !== token.accountId || result.game !== token.game || result.catalog_version !== version) throw new Error('保存响应归属或目录不一致，请刷新核对。')
-      state.archive = result; selected.value = []; state.notice = '已保存到当前账号。'
+      state.archive = result; selected.value = []
       return true
     } catch (error) {
       if (matches(token)) {

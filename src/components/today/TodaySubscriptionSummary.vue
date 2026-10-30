@@ -189,7 +189,7 @@ async function toggle(task, event) {
         subscriptionCompleted(result) !== subscriptionCompleted(task.record) || result.completed !== subscriptionCompleted(result) ||
         snapshot(result.checklist) !== snapshot(checklist)) throw new Error('保存结果需要确认')
     records.value = records.value.map(record => record.event_id === id ? result : record)
-    message.value = `已保存「${task.entry.title}」`
+
     const focused = document.activeElement
     await nextTick()
     if (!current(context)) return

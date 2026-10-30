@@ -120,7 +120,7 @@
 .bond-secondary-panel h3 { font-size: 15px; margin-block: 14px 6px; }
 .bond-secondary-panel p { margin-block: 8px; }
 .bond-settings-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.bond-feedback { min-height: 1.5em; margin-block: 6px; font-size: 13px; line-height: 1.5; }
+.bond-feedback { margin-block: 6px; font-size: 13px; line-height: 1.5; }
 .bond-public p { font-size: 13px; margin: 0; }
 .bonds-codex .is-flipped { transform: rotate(180deg); }
 @media (hover: hover) {

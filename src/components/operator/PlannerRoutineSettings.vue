@@ -13,7 +13,7 @@
         <ChevronRight :size="18" aria-hidden="true" />
       </button>
     </div>
-    <p v-if="notice" class="routine-notice" role="status">{{ notice }}</p>
+
     <PlannerSettingsPanel :open="Boolean(editor)" :title="editor === 'preferences' ? '派遣与购买体力' : '目前能刷的关卡'" :description="editor === 'preferences' ? '设置每天的派遣和购买次数，保存到当前培养清单。' : '选择已经通关、能够稳定刷取的最高关卡，保存为这个账号的设置。'" :dirty="dirty" :busy="busy" :error="localError || (stale ? '当前设置已更新，请关闭后重新打开，再进行修改。' : '')" :save-disabled="disabled || stale || !dirty" @close="close" @save="save">
       <fieldset v-if="editor === 'preferences'" class="routine-fields" :disabled="disabled || busy || stale">
         <legend class="sr-only">派遣与购买次数</legend>
@@ -48,7 +48,7 @@ import PlannerSettingsPanel from './PlannerSettingsPanel.vue'
 
 const props = defineProps({ preferences: { type: Object, required: true }, levels: { type: Object, required: true }, accountId: String, planId: String, revision: Number, disabled: Boolean })
 const emit = defineEmits(['save-preferences', 'save-levels'])
-const editor = ref(''), draftPreferences = ref({}), draftLevels = ref({}), base = ref(''), loadedRevision = ref(0), busy = ref(false), localError = ref(''), notice = ref('')
+const editor = ref(''), draftPreferences = ref({}), draftLevels = ref({}), base = ref(''), loadedRevision = ref(0), busy = ref(false), localError = ref('')
 let generation = 0
 onBeforeUnmount(() => { generation++ })
 const preferenceFields = [{ key: 'luoyang', id: 'luoyang', label: '洛阳派遣', max: PLANNER_RULES.maxDispatchCount }, { key: 'shouchun', id: 'shouchun', label: '寿春派遣', max: PLANNER_RULES.maxDispatchCount }, { key: 'purchaseCount', id: 'purchase', label: '购买体力', max: PLANNER_RULES.maxPurchaseCount }]
@@ -60,13 +60,13 @@ const levelSummary = computed(() => TRAINING_GROUPS.map(group => group.name + ' 
 
 function open(type) {
   if (props.disabled) return
-  generation++; editor.value = type; localError.value = ''; notice.value = ''; busy.value = false
+  generation++; editor.value = type; localError.value = ''; busy.value = false
   draftPreferences.value = normalizePlannerPreferences(props.preferences)
   draftLevels.value = normalizeTrainingLevels(props.levels)
   base.value = savedKey(); loadedRevision.value = props.revision
 }
 function close() { generation++; editor.value = ''; busy.value = false; localError.value = '' }
-watch(() => [props.accountId, props.planId], () => { close(); notice.value = '' })
+watch(() => [props.accountId, props.planId], () => { close() })
 function adjust(field, delta) { draftPreferences.value[field.key] = Math.min(field.max, Math.max(0, (Number(draftPreferences.value[field.key]) || 0) + delta)) }
 function save() {
   if (props.disabled || busy.value || stale.value || !dirty.value) return
@@ -78,7 +78,7 @@ function save() {
   emit(type === 'preferences' ? 'save-preferences' : 'save-levels', value, context, saved => {
     if (token !== generation) return
     busy.value = false
-    if (saved) { close(); notice.value = '设置已保存' }
+    if (saved) close()
     else localError.value = '保存未成功，修改仍保留在这里。请处理页面的同步提示后重试。'
   })
 }
@@ -97,8 +97,8 @@ input, button { box-sizing: border-box; min-height: 38px; border: 1px solid var(
 button { cursor: pointer; }
 .training-level-field { display: grid; gap: 8px; }
 .training-level-select { width: 100%; }
-.routine-help, .routine-notice { color: var(--ink-60); font-size: 12px; line-height: 1.6; margin: 0; }
-.routine-notice { margin-top: 8px; }
+.routine-help { color: var(--ink-60); font-size: 12px; line-height: 1.6; margin: 0; }
+
 :is(input, button):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 :disabled { opacity: .55; cursor: default; }
 fieldset:disabled { opacity: 1; }

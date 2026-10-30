@@ -172,7 +172,7 @@ async function save() {
   try {
     const value = await context.progress(id.value, version.value, JSON.parse(JSON.stringify(draft.value)))
     if (!current(token) || !value) return
-    adopt(value); message.value = '待办已保存。'
+    adopt(value)
   } catch (err) { if (current(token)) failed(err) }
   finally { if (current(token)) { busy.value = false; saving.value = false } }
 }

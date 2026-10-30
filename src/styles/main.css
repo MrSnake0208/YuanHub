@@ -491,7 +491,3 @@ p.action-feedback[role="alert"] {
   border-inline-start-color: var(--theme-danger-text, var(--rouge));
   color: var(--theme-danger-text, var(--rouge));
 }
-
-/* 操作反馈显隐不改变文档高度；长消息仍自然展开。 */
-.save-feedback-slot { min-height: 3.4em; line-height: 1.7; overflow-wrap: anywhere; }
-.save-feedback-slot:empty { visibility: hidden; }
