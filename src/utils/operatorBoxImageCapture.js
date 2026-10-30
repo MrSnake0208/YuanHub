@@ -1,6 +1,23 @@
 // Adapt computed overview styles only in html2canvas's clone; never change the live cards.
-export function prepareOperatorBoxImage(document, root) {
+export async function prepareOperatorBoxImage(document, root) {
   const view = document.defaultView
+  // html2canvas ignores CSS filters; bake the overview's portrait filter into the clone.
+  for (const image of root.querySelectorAll('.ledger-portrait img')) {
+    const filter = view.getComputedStyle(image).filter
+    if (!filter || filter === 'none') continue
+    const canvas = document.createElement('canvas'), context = canvas.getContext('2d')
+    // shortcut: browsers without Canvas filters retain the source colors; recheck if supported targets change.
+    if (!('filter' in context)) continue
+    try {
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      context.filter = filter
+      context.drawImage(image, 0, 0)
+      image.src = canvas.toDataURL('image/png')
+      image.style.filter = 'none'
+      await image.decode()
+    } finally { canvas.width = canvas.height = 0 }
+  }
   // html2canvas copies pseudo styles from the live viewport before creating its desktop clone.
   for (const portrait of root.querySelectorAll('.ledger-portrait')) {
     const overlay = portrait.querySelector('html2canvaspseudoelement')

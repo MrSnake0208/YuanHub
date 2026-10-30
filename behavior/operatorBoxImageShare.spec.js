@@ -64,13 +64,13 @@ it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loa
   const text = captures[0].text
   for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极2', '2节点',
     '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
-    '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认', '未配置命盘']) {
+    '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认']) {
     expect(text).toContain(value)
   }
   expect(text).not.toContain('+—')
 })
 
-it('static ledger keeps combat without oddities, history, calculation sources or private fields', async () => {
+it('static ledger keeps combat and oddities without history, calculation sources or private fields', async () => {
   const saved = { id: 'op', name: '测试', level: 90, elite: 12, starLevel: 19, rarity: 5,
     remark: '私人备忘', discLoadouts: [{ name: '私人方案', discNames: ['真实命盘'] }],
     combatStats: { oddities: { attack: { current: 500, max: 500 }, hp: { current: 0, max: 2600 } } },
@@ -82,9 +82,9 @@ it('static ledger keeps combat without oddities, history, calculation sources or
   await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
   const capture = captures[0]
   for (const value of ['等级90', '修为12', '化极4', '0节点', '9,999', '99,999',
-    '真实命盘', '未配置命盘']) expect(capture.text).toContain(value)
+    '真实命盘', '500/ 500', '0/ 2600']) expect(capture.text).toContain(value)
   expect(capture.controls).toBe(0)
-  expect(capture.text).not.toMatch(/奇闻|历程|未记录日期|自动计算|手动修正|私人|置顶|添加备忘|完整编辑|\+ 命盘/)
+  expect(capture.text).not.toMatch(/历程|未记录日期|自动计算|手动修正|私人|置顶|添加备忘|完整编辑|\+ 命盘|未配置命盘/)
   expect(JSON.stringify(saved)).toBe(before)
 })
 

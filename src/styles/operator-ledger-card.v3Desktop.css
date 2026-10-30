@@ -237,7 +237,7 @@
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat-head :deep(svg),
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity-icon { width: 10px; height: 10px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity { grid-template-columns: 10px minmax(0, 1fr) auto; min-height: 0; gap: 0 2px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity input { min-width: 0; min-height: 18px; padding-inline: 0; font-size: 8px; }
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity :is(input, output) { min-width: 0; min-height: 18px; padding-inline: 0; font-size: 8px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity > span { font-size: 8px; line-height: 12px; text-align: center; }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .share-card-stats .ledger-growth {
@@ -275,10 +275,10 @@
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-action-ratio { font-size: 8px; letter-spacing: -.04em; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-growth-row:nth-child(n) > .ledger-popover { left: -7px; right: auto; width: calc(200% + var(--ledger-stats-gap) + 28px); max-width: none; transform: none; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats
-    :is(.ledger-inline-input, .ledger-huaji-value, .ledger-combat-value, .ledger-oddity input) {
+    :is(.ledger-inline-input, .ledger-huaji-value, .ledger-combat-value, .ledger-oddity :is(input, output)) {
     --ledger-input-line: var(--accent);
   }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats .ledger-oddity input { --ledger-input-line: var(--line); }
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats .ledger-oddity :is(input, output) { --ledger-input-line: var(--line); }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-loadouts { display: grid; gap: 5px; }
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny { grid-template-columns: minmax(0, 1fr); gap: 3px; padding-top: 0; }

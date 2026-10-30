@@ -59,7 +59,7 @@ test('export keeps real huaji stars, nodes and awakening without treating legacy
   }
 })
 
-test('export retains calculated combat results without oddities or calculation sources', () => {
+test('export retains calculated combat and actual oddities without inventing unknown limits or leaking sources', () => {
   const entry = { id: 'op', name: '测试', combatStats: { oddities: {
     attack: { current: 500, max: 500 }, hp: { current: 0, max: null },
   } } }
@@ -69,7 +69,11 @@ test('export retains calculated combat results without oddities or calculation s
   })
   assert.equal(output.attack, '9,999')
   assert.equal(output.hp, '99,999')
-  assert.equal(Object.hasOwn(output, 'oddities'), false)
+  assert.deepEqual(output.oddities, { attack: { current: 500, max: 500 }, hp: { current: 0, max: '—' } })
+  assert.deepEqual(operatorBoxImageEntry({ id: 'unknown' }).oddities, {
+    attack: { current: '—', max: '—' }, hp: { current: '—', max: '—' },
+  })
+  assert.deepEqual(operatorBoxImageEntry({ id: 'zero', combatStats: { oddities: { attack: { current: 0, max: 0 } } } }).oddities.attack, { current: 0, max: 0 })
   assert.equal(Object.hasOwn(output, 'sources'), false)
   assert.equal(JSON.stringify(entry), before)
 })

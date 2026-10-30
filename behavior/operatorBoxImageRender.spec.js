@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import html2canvas from 'html2canvas'
 import { prepareOperatorBoxImage } from '../src/utils/operatorBoxImageCapture.js'
-import { renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
+import { BOX_IMAGE_LAYOUT_WIDTH, renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
 
 vi.mock('../src/utils/operatorBoxImageCapture.js', () => ({ prepareOperatorBoxImage: vi.fn() }))
 vi.mock('html2canvas', () => ({ default: vi.fn() }))
@@ -20,7 +20,9 @@ it('waits for portraits before capture, creates PNG and releases canvas memory',
   expect(html2canvas).not.toHaveBeenCalled()
   image.dispatchEvent(new Event('load'))
   expect((await output).type).toBe('image/png')
-  expect(html2canvas).toHaveBeenCalledWith(root, expect.objectContaining({ scale: 1, windowWidth: 1440, useCORS: true }))
+  const options = html2canvas.mock.calls[0][1]
+  expect(options).toMatchObject({ width: BOX_IMAGE_LAYOUT_WIDTH, scale: 1440 / BOX_IMAGE_LAYOUT_WIDTH, windowWidth: 1440, useCORS: true })
+  expect(Math.floor(options.width * options.scale)).toBe(1440)
   expect(result.width).toBe(0)
   expect(result.height).toBe(0)
 })
@@ -32,10 +34,11 @@ it('broken portraits fail visibly rather than silently exporting blank artwork',
   expect(html2canvas).not.toHaveBeenCalled()
 })
 
-it('oversized full images fail before allocating a canvas', async () => {
+it('oversized full images apply pixel limits after scaling, before allocating a canvas', async () => {
   const root = element()
-  Object.defineProperty(root, 'scrollHeight', { value: 12000 })
-  html2canvas.mockImplementation(async (element, options) => { options.onclone(document, element); return canvas() })
+  // Fits the old 1x area guard, but exceeds 16 million pixels at the PNG scale.
+  Object.defineProperty(root, 'scrollHeight', { value: 9000 })
+  html2canvas.mockImplementation(async (element, options) => { await options.onclone(document, element); return canvas() })
   await expect(renderOperatorBoxImage(root)).rejects.toThrow('改用分段图片')
   expect(prepareOperatorBoxImage).not.toHaveBeenCalled()
 })

@@ -5,6 +5,8 @@ import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from './opera
 import { subProfList } from './operatorFilters.js'
 
 export const BOX_IMAGE_WIDTH = 1440
+// Five overview cards at their 190px minimum, with the existing gaps/padding.
+export const BOX_IMAGE_LAYOUT_WIDTH = 5 * 190 + 4 * 10 + 2 * 24
 export const BOX_IMAGE_PAGE_SIZE = 30
 
 // Only presentation fields cross into the export; private notes and targets stay out.
@@ -32,6 +34,10 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     huaji: operatorHuajiLabel(entry).replace(' 星', '★'),
     attack: combat.attackLabel || '—',
     hp: combat.hpLabel || '—',
+    oddities: Object.fromEntries(['attack', 'hp'].map(kind => {
+      const oddity = entry.combatStats?.oddities?.[kind]
+      return [kind, { current: oddity?.current ?? '—', max: oddity?.max ?? '—' }]
+    })),
     loadouts: Array.from({ length: 2 }, (_, index) => normalizeDiscNames(loadouts[index]?.discNames || loadouts[index]?.discs).map(name => {
       const disc = terms.get(name)
       return { name: disc?.abbreviation || name, color: disc?.color || '' }
@@ -74,15 +80,17 @@ export async function renderOperatorBoxImage(element) {
   await waitForAssets(element)
   const { default: html2canvas } = await import('html2canvas')
   const canvas = await html2canvas(element, {
-    scale: 1, backgroundColor: '#5A4633', useCORS: true,
+    width: BOX_IMAGE_LAYOUT_WIDTH, scale: BOX_IMAGE_WIDTH / BOX_IMAGE_LAYOUT_WIDTH,
+    backgroundColor: '#5A4633', useCORS: true,
     windowWidth: BOX_IMAGE_WIDTH, scrollX: 0, scrollY: 0, logging: false,
-    onclone: (document, cloned) => {
+    onclone: async (document, cloned) => {
       try {
         // Measure after the clone activates desktop rules, including on a phone.
-        if (cloned.scrollHeight > 16384 || cloned.scrollHeight * BOX_IMAGE_WIDTH > 16000000) {
+        const pixelHeight = Math.ceil(cloned.scrollHeight * BOX_IMAGE_WIDTH / BOX_IMAGE_LAYOUT_WIDTH)
+        if (pixelHeight > 16384 || pixelHeight * BOX_IMAGE_WIDTH > 16000000) {
           throw new Error('完整长图过长，请改用分段图片。')
         }
-        prepareOperatorBoxImage(document, cloned)
+        await prepareOperatorBoxImage(document, cloned)
       } catch (error) {
         document.defaultView.frameElement?.remove()
         throw error
