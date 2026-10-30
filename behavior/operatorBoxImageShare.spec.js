@@ -14,7 +14,8 @@ beforeEach(() => {
   captures = []
   vi.stubGlobal('URL', Object.assign(class extends URL {}, { createObjectURL: vi.fn(() => 'blob:preview-' + captures.length), revokeObjectURL: vi.fn() }))
   renderOperatorBoxImage.mockReset().mockImplementation(async element => {
-    captures.push({ names: [...element.querySelectorAll('h3')].map(node => node.textContent), text: element.textContent })
+    captures.push({ names: [...element.querySelectorAll('h3')].map(node => node.textContent), text: element.textContent,
+      controls: element.querySelectorAll('button, input, textarea, select, [role="button"]').length })
     return new Blob(['image'], { type: 'image/png' })
   })
 })
@@ -31,7 +32,8 @@ it('105 entries produce four independently downloadable pages with correct range
   expect(captures.map(c => c.names.length)).toEqual([30, 30, 30, 15])
   expect(captures.flatMap(c => c.names)).toEqual(Array.from({ length: 105 }, (_, i) => '密探' + i))
   expect(captures[3].text).toContain('第 4 / 4 张 · 第 91—105 位')
-  expect(captures[0].text).toContain('Lv. 100')
+  expect(captures[0].text).toContain('等级100')
+  expect(captures[0].controls).toBe(0)
   expect(captures[0].text).not.toContain('账号名')
   expect(wrapper.findAll('.box-image-pages button')).toHaveLength(4)
   await wrapper.findAll('.box-image-pages button')[3].trigger('click')
@@ -51,12 +53,30 @@ it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loa
   const wrapper = render(0, { entries, filteredIds: entries.map(e => e.id) })
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
-  for (const value of ['用于排版的长姓名', 'Lv. 73', '修为 +0', '化极 2★ · 2 节点',
+  for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极2★ · 2 节点',
     '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
-    '另一词条', '第二套独立词条', 'Lv. —', '修为 —', '化极待确认', '未配置命盘']) {
+    '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认', '未配置命盘']) {
     expect(text).toContain(value)
   }
   expect(text).not.toContain('+—')
+})
+
+it('static ledger keeps combat results without oddities, calculation sources or private fields', async () => {
+  const saved = { id: 'op', name: '测试', level: 90, elite: 12, starLevel: 19, rarity: 5,
+    remark: '私人备忘', discLoadouts: [{ name: '私人方案', discNames: ['真实命盘'] }],
+    combatStats: { oddities: { attack: { current: 500, max: 500 }, hp: { current: 0, max: 2600 } } },
+  }
+  const before = JSON.stringify(saved)
+  const entries = [operatorBoxImageEntry(saved, {}, { attackLabel: '9,999', hpLabel: '99,999',
+    attackSource: 'calculated', hpSource: 'manual', status: 'manual' })]
+  const wrapper = render(0, { entries, filteredIds: ['op'] })
+  await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
+  const capture = captures[0]
+  for (const value of ['等级90', '修为12', '4★ · 0 节点', '9,999', '99,999',
+    '真实命盘', '未配置命盘']) expect(capture.text).toContain(value)
+  expect(capture.controls).toBe(0)
+  expect(capture.text).not.toMatch(/奇闻|自动计算|手动修正|私人|置顶|添加备忘|完整编辑|\+ 命盘/)
+  expect(JSON.stringify(saved)).toBe(before)
 })
 
 it('current filters retain their order; all owned and complete-image export are explicit choices', async () => {
