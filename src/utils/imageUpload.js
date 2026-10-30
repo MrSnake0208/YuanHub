@@ -1,18 +1,19 @@
 export const IMAGE_UPLOAD_PROFILES = Object.freeze({
   FEEDBACK: Object.freeze({
-    maxDimension: 2560,
-    optimizeAboveBytes: 800 * 1024,
-    targetBytes: 3 * 1024 * 1024,
-    hardLimitBytes: 10 * 1024 * 1024,
+    // 保留截图原始尺寸，避免长截图和小字因缩图丢失细节。
+    maxDimension: 12000,
+    optimizeAboveBytes: 128 * 1024,
+    targetBytes: 512 * 1024,
+    hardLimitBytes: 3 * 1024 * 1024,
     maxSourceBytes: 25 * 1024 * 1024,
     maxSourcePixels: 40 * 1000 * 1000,
     maxSourceDimension: 12000,
+    outputType: 'image/webp',
     quality: 0.84,
-    minQuality: 0.68,
-    qualityStep: 0.06,
-    pngFallbackQuality: 0.9,
-    minDimension: 1600,
-    maxResizePasses: 2,
+    minQuality: 0.78,
+    qualityStep: 0.03,
+    minDimension: 12000,
+    maxResizePasses: 1,
     allowOriginal: true
   }),
   CHANGELOG: Object.freeze({
@@ -161,7 +162,7 @@ function validateSource(file, profile, dimensions) {
 
 function shouldProcess(file, profile, dimensions) {
   if (!profile.allowOriginal) return true
-  if (profile.outputType && normalizedType(file) !== profile.outputType) return true
+  if (profile.requireOutputType && normalizedType(file) !== profile.outputType) return true
   if (file.size > profile.optimizeAboveBytes) return true
   if (!dimensions) return file.size > profile.hardLimitBytes
   return Math.max(dimensions.width, dimensions.height) > profile.maxDimension
@@ -290,23 +291,17 @@ export async function prepareImageUpload(file, profile = IMAGE_UPLOAD_PROFILES.F
     maxDimension = nextDimension(maxDimension, profile, encoded.blob.size)
   }
 
-  if (!encoded || encoded.blob.size > profile.hardLimitBytes) {
-    const limitMiB = Math.round(profile.hardLimitBytes / 1024 / 1024 * 10) / 10
-    throw new ImageUploadError(
-      `图片优化后仍超过 ${limitMiB} MiB，请换一张分辨率更低的图片`,
-      'output_too_large'
-    )
-  }
-
   const resizedByDimensions = Boolean(
     dimensions &&
+    encoded &&
     (encoded.width < dimensions.width || encoded.height < dimensions.height)
   )
 
   if (
+    encoded &&
     profile.allowOriginal &&
     !resizedByDimensions &&
-    normalizedType(file) === encoded.blob.type &&
+    (normalizedType(file) === encoded.blob.type || (profile.outputType && !profile.requireOutputType)) &&
     file.size <= profile.hardLimitBytes &&
     encoded.blob.size >= file.size
   ) {
@@ -320,6 +315,14 @@ export async function prepareImageUpload(file, profile = IMAGE_UPLOAD_PROFILES.F
       outputWidth: dimensions?.width || null,
       outputHeight: dimensions?.height || null
     }
+  }
+
+  if (!encoded || encoded.blob.size > profile.hardLimitBytes) {
+    const limitMiB = Math.round(profile.hardLimitBytes / 1024 / 1024 * 10) / 10
+    throw new ImageUploadError(
+      `图片优化后仍超过 ${limitMiB} MiB，请裁剪无关区域或分成多张截图后重试`,
+      'output_too_large'
+    )
   }
 
   const outputFile = blobToFile(encoded.blob, file)
