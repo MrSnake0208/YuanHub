@@ -4,7 +4,7 @@
     <p>仅记录尚未记过的实际变动；修改当前余额请用「更新数量」。</p>
     <p v-if="loading" role="status">正在读取抽卡资源库存…</p>
     <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <button v-if="!context && !loading || conflict" type="button" class="btn ghost" :disabled="locked || disabled" @click="load">重新读取库存</button>
     <form v-if="context" @submit.prevent="submit">
       <fieldset :disabled="disabled || locked || conflict">

@@ -78,7 +78,7 @@
             <p>这是内部账号编号，也是库存、密探等数据的归属标识。</p>
             <code>{{ target.id }}</code>
             <button ref="copyButton" type="button" class="secondary-action" @click="copyId">{{ copyMessage || '复制编号' }}</button>
-            <p v-if="copyMessage" :role="copyFailed ? 'alert' : 'status'">{{ copyMessage }}</p>
+            <p class="action-feedback" v-if="copyMessage" :role="copyFailed ? 'alert' : 'status'">{{ copyMessage }}</p>
           </div>
           <form v-else class="account-form" @submit.prevent="mode === 'create' ? createNewAccount() : saveAccount()">
             <div class="form-body">

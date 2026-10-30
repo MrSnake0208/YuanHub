@@ -13,7 +13,7 @@
       </label>
     </div>
     <button v-if="Object.keys(changes).length" class="btn small" type="button" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存星石突破' }}</button>
-    <p v-if="message" role="status">{{ message }}</p>
+    <p class="action-feedback" v-if="message" role="status">{{ message }}</p>
   </section>
 </template>
 

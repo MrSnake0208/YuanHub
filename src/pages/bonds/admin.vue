@@ -4,7 +4,7 @@
       <p v-if="!permitted" role="alert">需要羁绊目录管理权限。</p>
       <template v-else>
         <div class="bond-toolbar"><button v-for="item in ['代号鸢', '如鸢']" :key="item" type="button" :aria-pressed="game === item" :disabled="busy" @click="switchGame(item)">{{ item }}</button><button type="button" :disabled="busy" @click="reload">重新读取</button><span v-if="busy" role="status">处理中…</span></div>
-        <p v-if="error" ref="errorSummary" class="bond-error" role="alert" tabindex="-1">{{ error }}</p><p v-if="notice" role="status">{{ notice }}</p>
+        <p v-if="error" ref="errorSummary" class="bond-error" role="alert" tabindex="-1">{{ error }}</p><p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
         <template v-if="data">
           <p>已发布 {{ data.published.entries.length }} 条 · 草稿 {{ draft.length }} 条 · 修订 {{ data.revision }}</p><p class="bond-admin-id">{{ data.published.catalog_version }}</p>
           <div class="bond-toolbar"><strong>{{ dirty ? '有未保存修改' : '草稿已同步' }}</strong><button type="button" :disabled="busy || !dirty" @click="save">保存草稿</button><button type="button" :disabled="busy || dirty" @click="previewPublication()">预览发布</button><button type="button" :disabled="busy" @click="download">导出本地草稿</button><button type="button" :disabled="busy || dirty" @click="discard">放弃服务器草稿</button></div>

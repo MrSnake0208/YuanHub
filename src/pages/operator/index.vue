@@ -45,16 +45,11 @@
             <span>{{ manifestPercent }}</span>
             <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
           </div>
-        </template>
-        <template #help>
-          <p>图鉴更新于 {{ catalogVersion || '本地兜底' }}；完整目录版本也可在「更多筛选」中选中复制。</p>
-          <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
-          <p v-if="canUseAutomaticPanel">自动补全只填未录入的血攻，已有手填或采集值优先；在「更多」中按账号开关，也可在密探编辑中单独选择来源。切换来源保留原值。</p>
-          <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。<span v-if="canUseAutomaticPanel">面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</span></p>
+          <p v-if="panelPreferenceNotice" class="action-feedback panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
+          <p v-if="editorOpeningId || editorOpenError" class="action-feedback panel-preference-notice operator-editor-open-status" :role="editorOpenError ? 'alert' : 'status'">{{ editorOpenError || '正在读取密探编辑资料…' }}</p>
         </template>
       </CompactToolHeader>
-      <p v-if="panelPreferenceNotice" class="panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
-      <p v-if="editorOpeningId || editorOpenError" class="panel-preference-notice operator-editor-open-status" :role="editorOpenError ? 'alert' : 'status'">{{ editorOpenError || '正在读取密探编辑资料…' }}</p>
+
 
       <section>
         <div class="wrap">
@@ -9526,8 +9521,7 @@ onBeforeUnmount(function () {
 
 <style scoped>
 .panel-preference-notice {
-  margin: 0 1rem 1rem;
-  color: var(--ink);
+  margin: 0.5rem 0 0;
 }
 .editor-panel-source {
   display: flex;

@@ -6,7 +6,7 @@
         <p id="milestone-help" class="intro">补录实际达成日期，查看各阶段耗时。</p>
         <p class="hint date-help">按北京时间填写，留空表示未知。</p>
         <p v-if="error" role="alert" class="error">{{ error }}</p>
-        <p v-if="notice" role="status">{{ notice }}</p>
+        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
         <p v-if="busy" role="status">{{ saving ? '正在保存…' : '正在读取历程…' }}</p>
         <form v-if="data" @submit.prevent="save">
           <ol class="milestone-list">

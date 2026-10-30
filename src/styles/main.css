@@ -471,3 +471,23 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .rv{opacity:1;transform:none}
   .route-loading-bar{animation:none;transform:none;width:100%;opacity:1}
 }
+
+/* 显式用于操作反馈，不改变普通正文或其它页面的状态样式。 */
+p.action-feedback {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 3px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+p.action-feedback[role="alert"] {
+  border-inline-start-color: var(--theme-danger-text, var(--rouge));
+  color: var(--theme-danger-text, var(--rouge));
+}
