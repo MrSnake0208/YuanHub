@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ImageShare from '../src/components/operator/OperatorBoxImageShare.vue'
-import { renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
+import { operatorBoxImageEntry, renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
 import { deferred } from '../test-support/factories.js'
 
 vi.mock('../src/utils/operatorBoxImage.js', async original => ({ ...await original(), renderOperatorBoxImage: vi.fn() }))
-const entry = id => ({ id: 'op' + id, name: '密探' + id, level: 100, elite: 17, huaji: '5★已觉醒', attack: '1,234', hp: '9,876', loadouts: [[], []] })
+const entry = id => ({ id: 'op' + id, name: '密探' + id, level: 100, elite: 17, huaji: '5★ · 已觉醒', attack: '1,234', hp: '9,876', loadouts: [[], []] })
 const button = (wrapper, text) => wrapper.findAll('button').find(node => node.text().includes(text))
 let captures
 const wrappers = []
@@ -31,13 +31,32 @@ it('105 entries produce four independently downloadable pages with correct range
   expect(captures.map(c => c.names.length)).toEqual([30, 30, 30, 15])
   expect(captures.flatMap(c => c.names)).toEqual(Array.from({ length: 105 }, (_, i) => '密探' + i))
   expect(captures[3].text).toContain('第 4 / 4 张 · 第 91—105 位')
-  expect(captures[0].text).toContain('Lv 100')
+  expect(captures[0].text).toContain('Lv. 100')
   expect(captures[0].text).not.toContain('账号名')
   expect(wrapper.findAll('.box-image-pages button')).toHaveLength(4)
   await wrapper.findAll('.box-image-pages button')[3].trigger('click')
   expect(wrapper.get('a[download]').attributes('download')).toBe('YuanHub-BOX-如鸢-4-4.png')
   expect(wrapper.get('.box-image-save').text()).toContain('15 位密探')
   expect(wrapper.text()).toContain('已生成 4 张图片')
+})
+
+it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loadouts and unknown states in the rendered sheet', async action => {
+  const entries = [
+    operatorBoxImageEntry({ id: 'long', name: '用于排版的长姓名', level: 73, elite: 0, rarity: 5,
+      huaji: { owned: true, stage: 9, awakened: false },
+      discLoadouts: [{ discNames: ['第一套较长且必须完整保留的词条', '另一词条'] }, { discNames: ['第二套独立词条'] }],
+    }, {}, { attackLabel: '999,999', hpLabel: '9,999,999' }),
+    operatorBoxImageEntry({ id: 'unknown', name: '待核', rarity: 5, huaji: { owned: true, stage: null } }, {}, {}),
+  ]
+  const wrapper = render(0, { entries, filteredIds: entries.map(e => e.id) })
+  await button(wrapper, action).trigger('click'); await flushPromises()
+  const text = captures[0].text
+  for (const value of ['用于排版的长姓名', 'Lv. 73', '修为 +0', '化极 2★ · 2 节点',
+    '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
+    '另一词条', '第二套独立词条', 'Lv. —', '修为 —', '化极待确认', '未配置命盘']) {
+    expect(text).toContain(value)
+  }
+  expect(text).not.toContain('+—')
 })
 
 it('current filters retain their order; all owned and complete-image export are explicit choices', async () => {

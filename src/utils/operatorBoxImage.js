@@ -17,7 +17,7 @@ export function operatorBoxImageEntry(entry, catalog, combat) {
     avatar: catalog.avatar || '',
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
-    huaji: operatorHuajiLabel(entry).replace(' 星', '★').replace(' · ', '').replace(' 节点', ''),
+    huaji: operatorHuajiLabel(entry).replace(' 星', '★'),
     attack: combat.attackLabel || '—',
     hp: combat.hpLabel || '—',
     loadouts: Array.from({ length: 2 }, (_, index) => normalizeDiscNames(loadouts[index]?.discNames || loadouts[index]?.discs).map(name => {
