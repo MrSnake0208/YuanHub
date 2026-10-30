@@ -38,7 +38,7 @@
 .achievement-stat-watermark { position: absolute; z-index: -1; right: 10px; bottom: 7px; transform: rotate(12deg); color: var(--stat-color); opacity: .045; stroke-width: 1; }
 .achievement-error { color: var(--theme-danger-text, var(--rouge)); }
 .achievement-save-feedback { border: 1px solid transparent; border-radius: 8px; }
-.achievement-save-feedback:not(.has-result) { display: none; }
+.achievement-save-feedback:not(.has-result) { visibility: hidden; }
 .achievement-save-feedback.has-result { border-color: color-mix(in srgb, var(--achievement-complete) 10%, transparent); background: color-mix(in srgb, var(--achievement-complete) 4%, var(--surface)); }
 .achievement-save-slot { color: var(--achievement-complete); }
 .achievement-save-icon { flex-shrink: 0; fill: var(--achievement-complete); stroke: var(--surface); }

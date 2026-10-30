@@ -25,7 +25,7 @@
           <h3>备份迁移</h3>
           <BondExchange :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
         </section>
-        <p v-if="state.notice || state.busy" class="bond-feedback" role="status">{{ state.busy ? '正在保存或处理文件…' : state.notice }}</p>
+        <p class="bond-feedback" role="status" aria-live="polite">{{ state.busy ? '正在保存或处理文件…' : state.notice }}</p>
         <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
@@ -101,6 +101,7 @@
                   <div class="bond-agent-progress"><span>{{ collectionCount == null ? '—' : group.collected }} / {{ group.total }}</span><progress :value="collectionCount == null ? 0 : group.collected" :max="group.total || 1" :aria-label="operatorName(group.id) + '当前图鉴收集进度'" /></div>
                   <ChevronDown class="bond-fold-icon" :size="16" aria-hidden="true" />
                 </summary>
+                <p v-if="available && state.archive && state.catalog && !state.loading && !state.catalogError" class="bond-mobile-hint">点选天气即可收录，再点取消</p>
                 <div class="bond-agent-pairs">
                   <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
                     <div class="bond-pair-heading"><span>与</span><h3>{{ pair.members.map(operatorName).join('、') }}</h3><span class="bond-effect" :class="pair.effect">{{ pair.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span><span v-if="pairAction(pair)" class="bond-pair-action">行动：{{ ACTIONS[pairAction(pair)] }}</span></div>
@@ -108,8 +109,9 @@
                       <h4 v-if="!pairAction(pair)" class="bond-action-heading">行动：{{ ACTIONS[actionGroup.action] }}</h4>
                     <div class="bond-condition-grid">
                       <div v-for="entry in actionGroup.entries" :key="entry.bond_id" class="bond-condition-wrap">
-                        <button type="button" class="bond-condition" :class="{ 'is-saving': savingId === entry.bond_id && state.busy }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
+                        <button type="button" class="bond-condition" :aria-busy="savingId === entry.bond_id && state.busy" :class="{ 'is-saving': savingId === entry.bond_id && state.busy, 'has-compact-state': recorded(entry.bond_id) || (writable || state.busy) && entry.status === 'active' }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
                           <component :is="weatherIcons[entry.weather]" class="bond-weather-icon" :class="'weather-' + entry.weather" :size="30" :stroke-width="1.5" aria-hidden="true" />
+                          <component :is="savingId === entry.bond_id && state.busy ? LoaderCircle : recorded(entry.bond_id) ? Check : Plus" class="bond-mobile-state" :size="16" aria-hidden="true" />
                           <span class="bond-condition-copy"><span>{{ WEATHERS[entry.weather] }}</span></span>
                           <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>
                           <span class="bond-condition-status"><Check v-if="recorded(entry.bond_id)" :size="12" aria-hidden="true" />{{ savingId === entry.bond_id && state.busy ? '保存中…' : available && !state.archive ? '记录未读取' : recorded(entry.bond_id) ? '已收录' : writable && entry.status === 'active' ? '标记收录' : '未收录' }}</span>
@@ -133,7 +135,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Search, Settings, ChevronDown, RefreshCw, Check, Sun, CloudRain, CloudFog, Wind, CloudSnow, Snowflake, Tornado, CloudLightning } from '@lucide/vue'
+import { Search, Settings, ChevronDown, RefreshCw, Check, Plus, LoaderCircle, Sun, CloudRain, CloudFog, Wind, CloudSnow, Snowflake, Tornado, CloudLightning } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'

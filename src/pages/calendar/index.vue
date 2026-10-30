@@ -54,7 +54,7 @@
         </details>
         <CalendarTodaySummary v-else-if="!mobileMine" :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
-        <p v-if="mine && privateItems.notice.value" class="calendar-panel" role="status">{{ privateItems.notice.value }}</p>
+        <p v-if="mine" class="save-feedback-slot" role="status">{{ privateItems.notice.value }}</p>
         <p v-if="mine && privateItemsHidden" class="calendar-hint" role="status">{{ mobileMine ? '当前筛选仅显示订阅活动，私人事项已隐藏。请在筛选中调整类型、时间或本期状态。' : '当前类型、时间状态或已完成视图仅显示订阅活动，私人事项已隐藏；清除类型/时间筛选或切回我的待办即可查看。' }}</p>
         <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请先通过上方账号切换器选择或新建游戏账号，再使用我的日历。</p>
         <div v-else-if="!viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">

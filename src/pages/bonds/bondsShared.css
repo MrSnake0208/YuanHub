@@ -120,7 +120,7 @@
 .bond-secondary-panel h3 { font-size: 15px; margin-block: 14px 6px; }
 .bond-secondary-panel p { margin-block: 8px; }
 .bond-settings-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.bond-feedback { font-size: 13px; }
+.bond-feedback { min-height: 1.5em; margin-block: 6px; font-size: 13px; line-height: 1.5; }
 .bond-public p { font-size: 13px; margin: 0; }
 .bonds-codex .is-flipped { transform: rotate(180deg); }
 @media (hover: hover) {
@@ -147,3 +147,5 @@
 .bond-record-options button { font-size: 13px; }
 .bond-action-group + .bond-action-group { margin-top: 10px; }
 .bond-action-heading { margin: 0 0 7px; color: var(--bond-muted); font-size: 13px; font-weight: 400; }
+
+.bond-mobile-state, .bond-mobile-hint { display: none; }

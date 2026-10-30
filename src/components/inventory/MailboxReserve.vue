@@ -6,10 +6,9 @@
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
       <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="录入／调整储备" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">录入／调整储备</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
     </div>
-    <p v-if="loading" class="mail-feedback" role="status">正在读取邮件…</p>
     <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
     <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>
-    <p v-if="notice && !panel" class="mail-feedback" role="status">{{ notice }}</p>
+    <p class="mail-feedback save-feedback-slot" role="status">{{ loading ? '正在读取邮件…' : !panel ? notice : '' }}</p>
     <InventoryQuickDialog :open="!!panel" :title="panel === 'claim' ? '记录邮件领取' : '管理邮件储备'" :locked="locked" @close="closePanel">
       <form v-if="panel === 'manage' && loaded" class="mailbox-manage-form" @submit.prevent="save">
         <fieldset class="panel-fields" :disabled="locked || disabled || conflict">

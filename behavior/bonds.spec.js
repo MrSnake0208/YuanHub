@@ -78,13 +78,22 @@ it('天气卡直接切换收录，两个密探同步且顶部不重复计数，�
   expect(w.findAll('.bond-condition')).toHaveLength(2)
   expect(w.get('[data-testid=next-threshold]').text()).toBe('还差 1 种')
   const next = { ...archive('a', 1), records: [{ bond_id: entry.bond_id, triggered: true }], summary: { triggered_count: 1, available_total: 1, active_triggered_count: 1 } }
+  const hint = w.get('.bond-mobile-hint').element
+  const feedback = w.get('.bond-feedback').element
   const saving = deferred(); api.writeBonds.mockReturnValueOnce(saving.promise)
   await w.find('.bond-condition').trigger('click')
   expect(w.findAll('.bond-condition').every(b => b.attributes('aria-pressed') === 'false')).toBe(true)
   expect(button(w, '设置').element.disabled).toBe(true)
+  expect(w.findAll('.bond-condition').every(b => b.classes().includes('has-compact-state') && b.element.disabled)).toBe(true)
+  expect(w.get('.bond-condition').attributes('aria-busy')).toBe('true')
+  expect(w.get('.bond-mobile-hint').element).toBe(hint)
+  expect(w.get('.bond-feedback').element).toBe(feedback)
   expect(api.writeBonds).toHaveBeenLastCalledWith('a', 'owner', 0, 'fixture-v1', [{ bond_id: entry.bond_id, triggered: true }])
   saving.resolve(next); await flushPromises()
   expect(w.findAll('.bond-condition').every(b => b.attributes('aria-pressed') === 'true')).toBe(true)
+  expect(w.get('.bond-condition').attributes('aria-busy')).toBe('false')
+  expect(w.get('.bond-mobile-hint').element).toBe(hint)
+  expect(w.get('.bond-feedback').element).toBe(feedback)
   expect(w.findAll('.bond-agent-progress').map(b => b.text())).toEqual(['1 / 1', '1 / 1'])
   expect(w.get('[data-testid=collection-progress]').text()).toBe('1 / 1')
   expect(w.get('[data-testid=next-threshold]').text()).toBe('还差 2 种')

@@ -21,7 +21,7 @@
         <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget !== 'pools'" :target="pageGuideTarget" :message="pageGuideMessage"><button type="button" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
         <p data-guide-target="login" v-if="!identity" class="card">请先登录再使用招募档案。</p>
         <p data-guide-target="account-setup" v-else-if="!state.accountsLoading && !state.accounts.length && !state.error" class="card">还没有游戏账号。<router-link to="/user/profile#game-accounts">先创建游戏账号</router-link></p>
-        <div data-guide-target="archive-state" class="feedback" aria-live="polite"><p v-if="state.error" class="error" role="alert">{{ state.error }}</p><p v-if="state.catalogError">{{ state.catalogError }}</p><p v-if="state.notice">{{ state.notice }}</p><p v-if="state.loading">正在读取档案…</p><button v-if="state.error" type="button" :disabled="state.loading || state.accountsLoading" @click="available ? refresh() : loadAccounts()">重新读取</button></div>
+        <div data-guide-target="archive-state" class="feedback" aria-live="polite"><p v-if="state.error" class="error" role="alert">{{ state.error }}</p><p v-if="state.catalogError">{{ state.catalogError }}</p><p class="save-feedback-slot" role="status">{{ state.notice }}</p><p v-if="state.loading">正在读取档案…</p><button v-if="state.error" type="button" :disabled="state.loading || state.accountsLoading" @click="available ? refresh() : loadAccounts()">重新读取</button></div>
         <template v-if="state.archive">
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
           <section class="account-overview" aria-label="当前账号招募摘要">

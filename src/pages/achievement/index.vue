@@ -25,7 +25,7 @@
             <p v-if="!identity">游客可以浏览目录。<router-link to="/login?redirect=/achievement">登录后记录</router-link></p>
             <p v-else-if="!state.accountsLoading && !state.accounts.length">请<router-link to="/user/profile#game-accounts">选择或创建已有游戏账号</router-link>；个人记录使用全站统一账号。</p>
           </div>
-          <!-- 仅有保存结果或撤销入口时展示反馈，避免空提示区占位。 -->
+          <!-- 反馈区保留空间，保存结果和撤销入口更新时不推动页面。 -->
           <div class="achievement-save-feedback" :class="{ 'has-result': state.notice || state.undo }">
             <div class="achievement-save-slot">
               <CircleCheck v-if="state.notice || state.undo" class="achievement-save-icon" :size="17" aria-hidden="true" />

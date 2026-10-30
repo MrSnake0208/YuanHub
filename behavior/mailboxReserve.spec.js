@@ -16,6 +16,8 @@ afterEach(() => wrapper?.unmount())
 beforeEach(() => { vi.resetAllMocks(); getMailboxReserve.mockResolvedValue(record()) })
 it('读取不写入，折算多行并覆盖保存，清零合法', async () => {
   await open()
+  const feedback = wrapper.get('.save-feedback-slot').element
+  expect(feedback.textContent).toBe('')
   expect(wrapper.text()).toContain('1,800 白金币 · 30 普通符传')
   expect(saveMailboxReserve).not.toHaveBeenCalled()
   await button('添加白金币邮件').trigger('click')
@@ -27,6 +29,7 @@ it('读取不写入，折算多行并覆盖保存，清零合法', async () => {
   await submit()
   expect(saveMailboxReserve).toHaveBeenCalledWith('a', 'owner', { expected_version: 1, white_coin_mails: [{ count: 20, coins_per_mail: 90 }, { count: 2, coins_per_mail: 60 }], fu_chuan_mail_count: 20 })
   expect(wrapper.text()).toContain('已保存')
+  expect(wrapper.get('.save-feedback-slot').element).toBe(feedback)
   await button('录入／调整储备').trigger('click')
   await submit()
   expect(saveMailboxReserve).toHaveBeenCalledTimes(1)
