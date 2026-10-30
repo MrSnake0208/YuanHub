@@ -27,3 +27,8 @@
     .bond-find-pair:nth-child(even) { border-left: 1px solid var(--line); }
   }
 }
+
+@media (min-width: 768px) {
+  .bond-find-choices legend { float: left; width: 46px; padding: 8px 0; margin: 0; }
+  .bond-find-choices .bond-choice-options { margin-left: 56px; }
+}

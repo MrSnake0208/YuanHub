@@ -30,11 +30,11 @@
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
             <div class="bond-find-choices">
-              <fieldset><legend>当前天气</legend><div class="bond-choice-options">
+              <fieldset><legend>天气</legend><div class="bond-choice-options">
                 <button type="button" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
                 <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><component :is="weatherIcons[value]" :size="18" aria-hidden="true" />{{ label }}</button>
               </div></fieldset>
-              <fieldset><legend>当前行动</legend><div class="bond-choice-options">
+              <fieldset><legend>行动</legend><div class="bond-choice-options">
                 <button type="button" :aria-pressed="!filters.action" @click="filters.action = ''">全部行动</button>
                 <button v-for="(label, value) in ACTIONS" :key="value" type="button" :aria-pressed="filters.action === value" @click="filters.action = value">{{ label }}</button>
               </div></fieldset>
@@ -45,8 +45,15 @@
             </div>
 
             <div class="bond-common-filters">
-              <label>收录状态<select v-model="filters.recorded" :disabled="!state.archive"><option value="">全部</option><option value="missing">未收录</option><option value="collected">已收录</option></select></label>
+              <div class="bond-record-options" role="group" aria-label="收录状态"><span>收录状态</span>
+                <button v-for="option in [{ value: '', label: '全部' }, { value: 'missing', label: '未收录' }, { value: 'collected', label: '已收录' }]" :key="option.value" type="button" :disabled="!state.archive" :aria-pressed="filters.recorded === option.value" @click="filters.recorded = option.value">{{ option.label }}</button>
+              </div>
               <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned">仅显示我拥有的密探</label>
+          <div class="bond-view-options" role="group" aria-label="列表展示方式">
+            <span>查看方式</span>
+            <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
+            <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
+          </div>
             </div>
             <div v-show="filtersOpen" id="bond-advanced-filters" class="bond-advanced-filters">
               <label>效果<select v-model="filters.effect"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
@@ -54,11 +61,7 @@
               <label class="bond-check"><input v-model="filters.hideRecorded" type="checkbox" :disabled="!state.archive">隐藏已收录</label>
             </div>
           </form>
-          <div class="bond-view-options" role="group" aria-label="列表展示方式">
-            <span>查看方式</span>
-            <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
-            <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
-          </div>
+
           <p v-if="state.ownedError" class="bond-hint" role="status">{{ state.ownedError }}</p><p v-else-if="available && !state.owned && !state.loading" class="bond-hint">尚未填写密探拥有资料，默认显示全部组合。<router-link to="/operator">前往我的密探</router-link></p>
           <p v-if="state.operatorError" class="bond-error" role="alert">{{ state.operatorError }} 暂以密探ID展示；请刷新重试。</p>
           <p v-if="state.loading" class="bond-empty" role="status">正在读取目录与账号记录…</p>
@@ -101,16 +104,19 @@
                 <div class="bond-agent-pairs">
                   <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
                     <div class="bond-pair-heading"><span>与</span><h3>{{ pair.members.map(operatorName).join('、') }}</h3><span class="bond-effect" :class="pair.effect">{{ pair.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span><span v-if="pairAction(pair)" class="bond-pair-action">行动：{{ ACTIONS[pairAction(pair)] }}</span></div>
+                    <div v-for="actionGroup in groupBonds(pair.entries)" :key="actionGroup.key" class="bond-action-group">
+                      <h4 v-if="!pairAction(pair)" class="bond-action-heading">行动：{{ ACTIONS[actionGroup.action] }}</h4>
                     <div class="bond-condition-grid">
-                      <div v-for="entry in pair.entries" :key="entry.bond_id" class="bond-condition-wrap">
+                      <div v-for="entry in actionGroup.entries" :key="entry.bond_id" class="bond-condition-wrap">
                         <button type="button" class="bond-condition" :class="{ 'is-saving': savingId === entry.bond_id && state.busy }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
                           <component :is="weatherIcons[entry.weather]" class="bond-weather-icon" :class="'weather-' + entry.weather" :size="30" :stroke-width="1.5" aria-hidden="true" />
-                          <span class="bond-condition-copy"><span>{{ WEATHERS[entry.weather] }}</span><small v-if="!pairAction(pair)">{{ ACTIONS[entry.action] }}</small></span>
+                          <span class="bond-condition-copy"><span>{{ WEATHERS[entry.weather] }}</span></span>
                           <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>
                           <span class="bond-condition-status"><Check v-if="recorded(entry.bond_id)" :size="12" aria-hidden="true" />{{ savingId === entry.bond_id && state.busy ? '保存中…' : available && !state.archive ? '记录未读取' : recorded(entry.bond_id) ? '已收录' : writable && entry.status === 'active' ? '标记收录' : '未收录' }}</span>
                         </button>
                         <label v-if="batchMode" class="bond-batch-check"><input type="checkbox" :checked="selected.includes(entry.bond_id)" :disabled="!writable || !selected.includes(entry.bond_id) && selected.length >= 50" :aria-label="'批量选择' + entryLabel(entry)" @change="select(entry.bond_id)">选择此天气</label>
                       </div>
+                    </div>
                     </div>
                   </section>
                 </div>
@@ -141,7 +147,7 @@ import { isMovieOperator } from '../../utils/operatorForms.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
 import BondExchange from './BondExchange.vue'
 import { useBonds } from './useBonds.js'
-import { ACTIONS, STATUS, WEATHERS } from './rules.js'
+import { ACTIONS, STATUS, WEATHERS, groupBonds } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
