@@ -5303,7 +5303,7 @@ const boxImageEntries = computed(() => {
       allowAutomatic: panelAutoFillEnabled.value,
       displayMode: entry.combatStats?.displayMode,
     });
-    return operatorBoxImageEntry(entry, catalogMap.value[entry.id], combat);
+    return operatorBoxImageEntry(entry, catalogMap.value[entry.id], combat, operatorStatus(entry));
   });
 });
 
@@ -11175,21 +11175,6 @@ onBeforeUnmount(function () {
   border-bottom: 1.5px solid currentColor;
   content: "";
 }
-.ledger-status-menu.status-growing .ledger-status-button {
-  border-color: var(--theme-success-line, rgba(111, 159, 118, 0.45));
-  background: var(--theme-success-bg, #bfdcc0);
-  color: var(--theme-success-text, #315f38);
-}
-.ledger-status-menu.status-graduated .ledger-status-button {
-  border-color: var(--theme-line, rgba(239, 210, 142, 0.85));
-  background: var(--yellow);
-  color: var(--ink);
-}
-.ledger-status-menu.status-inactive .ledger-status-button {
-  border-color: var(--theme-line, rgba(73, 59, 44, 0.22));
-  background: var(--theme-wash, rgba(73, 59, 44, 0.12));
-  color: var(--ink-60);
-}
 .ledger-status-button:focus-visible {
   outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 1px;
@@ -11340,11 +11325,6 @@ onBeforeUnmount(function () {
 }
 .ledger-oddity span {
   color: var(--ink-35);
-}
-.ledger-oddity.is-full {
-  --ink-60: var(--theme-success-text, #276749);
-  --ink-35: var(--theme-success-text, #276749);
-  color: var(--theme-success-text, #276749);
 }
 .ledger-growth {
   border: 1px solid var(--line);
@@ -12760,8 +12740,6 @@ onBeforeUnmount(function () {
   .operator-tabs .workspace-tabs-toggle:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 }
 .ledger-status-help { color: var(--ink-60); }
-.agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
-.ledger-status-menu.status-discarded .ledger-status-button { background: var(--cream); color: var(--theme-strong-text, var(--tea)); border: 1px dashed var(--tea); }
 .batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
@@ -12826,6 +12804,7 @@ onBeforeUnmount(function () {
 <style scoped src="./operatorWorkspaceMobile.css"></style>
 <style scoped src="./operatorEditorDesktop.css"></style>
 <style scoped src="./operatorEditorMobile.css"></style>
+<style scoped src="../../styles/operator-ledger-card.reading.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1Desktop.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1Mobile.css"></style>

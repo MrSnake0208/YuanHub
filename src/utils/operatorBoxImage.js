@@ -1,19 +1,31 @@
+import { prepareOperatorBoxImage } from './operatorBoxImageCapture.js'
 import { normalizeDiscNames, discNameOf } from './operatorDiscLoadouts.js'
-import { operatorHuajiLabel } from './operatorHuaji.js'
+import { operatorHuaji, operatorHuajiLabel } from './operatorHuaji.js'
+import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from './operatorAnnotations.js'
 import { subProfList } from './operatorFilters.js'
 
 export const BOX_IMAGE_WIDTH = 1440
 export const BOX_IMAGE_PAGE_SIZE = 30
 
 // Only presentation fields cross into the export; private notes and targets stay out.
-export function operatorBoxImageEntry(entry, catalog, combat) {
+export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) {
   const terms = new Map((catalog.discs || []).map(disc => [discNameOf(disc), disc]))
   const loadouts = entry.discLoadouts?.length ? entry.discLoadouts : [{ discs: entry.discs || [] }]
+  const huaji = operatorHuaji(entry)
+  const state = operatorAnnotationStatus(status)
   return {
+    rarity: entry.rarity || 3,
+    status: state,
+    statusLabel: operatorAnnotationStatusLabel(state),
+    huajiProgress: {
+      stars: huaji.stage > 0 ? Math.floor((huaji.stage - 1) / 6) + 1 : null,
+      nodes: huaji.stage > 0 && huaji.stage < 25 && !entry.spOf ? (huaji.stage - 1) % 6 : null,
+      awakened: huaji.awakened === true,
+    },
     id: entry.id,
-    name: entry.name,
+    name: entry.name || entry.id,
     prof: Array.isArray(entry.prof) ? entry.prof[0] : entry.prof,
-    job: subProfList(entry).join('、'),
+    job: subProfList(entry)[0] || '',
     avatar: catalog.avatar || '',
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
@@ -60,14 +72,22 @@ async function waitForAssets(element) {
 
 export async function renderOperatorBoxImage(element) {
   await waitForAssets(element)
-  // Bound canvas memory; browsers that cannot hold the full image can still save 30 per page.
-  if (element.scrollHeight > 16384 || element.scrollHeight * BOX_IMAGE_WIDTH > 16000000) {
-    throw new Error('完整长图过长，请改用分段图片。')
-  }
   const { default: html2canvas } = await import('html2canvas')
   const canvas = await html2canvas(element, {
     scale: 1, backgroundColor: '#5A4633', useCORS: true,
     windowWidth: BOX_IMAGE_WIDTH, scrollX: 0, scrollY: 0, logging: false,
+    onclone: (document, cloned) => {
+      try {
+        // Measure after the clone activates desktop rules, including on a phone.
+        if (cloned.scrollHeight > 16384 || cloned.scrollHeight * BOX_IMAGE_WIDTH > 16000000) {
+          throw new Error('完整长图过长，请改用分段图片。')
+        }
+        prepareOperatorBoxImage(document, cloned)
+      } catch (error) {
+        document.defaultView.frameElement?.remove()
+        throw error
+      }
+    },
   })
   try {
     return await new Promise((resolve, reject) => canvas.toBlob(blob => {

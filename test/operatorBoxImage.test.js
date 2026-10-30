@@ -59,7 +59,7 @@ test('export keeps real huaji stars, nodes and awakening without treating legacy
   }
 })
 
-test('export retains combat results without exporting oddities or calculation sources', () => {
+test('export retains calculated combat results without oddities or calculation sources', () => {
   const entry = { id: 'op', name: '测试', combatStats: { oddities: {
     attack: { current: 500, max: 500 }, hp: { current: 0, max: null },
   } } }

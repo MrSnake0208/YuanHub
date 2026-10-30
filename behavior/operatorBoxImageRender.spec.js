@@ -1,7 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import html2canvas from 'html2canvas'
+import { prepareOperatorBoxImage } from '../src/utils/operatorBoxImageCapture.js'
 import { renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
 
+vi.mock('../src/utils/operatorBoxImageCapture.js', () => ({ prepareOperatorBoxImage: vi.fn() }))
 vi.mock('html2canvas', () => ({ default: vi.fn() }))
 beforeEach(() => { html2canvas.mockReset() })
 const element = () => document.createElement('section')
@@ -33,8 +35,9 @@ it('broken portraits fail visibly rather than silently exporting blank artwork',
 it('oversized full images fail before allocating a canvas', async () => {
   const root = element()
   Object.defineProperty(root, 'scrollHeight', { value: 12000 })
+  html2canvas.mockImplementation(async (element, options) => { options.onclone(document, element); return canvas() })
   await expect(renderOperatorBoxImage(root)).rejects.toThrow('改用分段图片')
-  expect(html2canvas).not.toHaveBeenCalled()
+  expect(prepareOperatorBoxImage).not.toHaveBeenCalled()
 })
 
 it('stalled portraits time out with a retry message', async () => {

@@ -2,8 +2,15 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ImageShare from '../src/components/operator/OperatorBoxImageShare.vue'
 import { operatorBoxImageEntry, renderOperatorBoxImage } from '../src/utils/operatorBoxImage.js'
+import { getOperatorMilestones } from '../src/api/operatorMilestones.js'
+import { auth } from '../src/store/auth.js'
 import { deferred } from '../test-support/factories.js'
 
+vi.mock('../src/api/operatorMilestones.js', () => ({ getOperatorMilestones: vi.fn() }))
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  return { auth: reactive({ isLoggedIn: true, userInfo: { id: 'user-a' } }) }
+})
 vi.mock('../src/utils/operatorBoxImage.js', async original => ({ ...await original(), renderOperatorBoxImage: vi.fn() }))
 const entry = id => ({ id: 'op' + id, name: '密探' + id, level: 100, elite: 17, huaji: '5★ · 已觉醒', attack: '1,234', hp: '9,876', loadouts: [[], []] })
 const button = (wrapper, text) => wrapper.findAll('button').find(node => node.text().includes(text))
@@ -12,6 +19,8 @@ const wrappers = []
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()) })
 beforeEach(() => {
   captures = []
+  auth.userInfo = { id: 'user-a' }
+  getOperatorMilestones.mockReset().mockResolvedValue({ milestones: [] })
   vi.stubGlobal('URL', Object.assign(class extends URL {}, { createObjectURL: vi.fn(() => 'blob:preview-' + captures.length), revokeObjectURL: vi.fn() }))
   renderOperatorBoxImage.mockReset().mockImplementation(async element => {
     captures.push({ names: [...element.querySelectorAll('h3')].map(node => node.textContent), text: element.textContent,
@@ -53,7 +62,7 @@ it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loa
   const wrapper = render(0, { entries, filteredIds: entries.map(e => e.id) })
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
-  for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极2★ · 2 节点',
+  for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极2', '2节点',
     '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
     '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认', '未配置命盘']) {
     expect(text).toContain(value)
@@ -61,7 +70,7 @@ it.each(['生成分段图片', '生成完整长图'])('%s keeps growth, both loa
   expect(text).not.toContain('+—')
 })
 
-it('static ledger keeps combat results without oddities, calculation sources or private fields', async () => {
+it('static ledger keeps combat without oddities, history, calculation sources or private fields', async () => {
   const saved = { id: 'op', name: '测试', level: 90, elite: 12, starLevel: 19, rarity: 5,
     remark: '私人备忘', discLoadouts: [{ name: '私人方案', discNames: ['真实命盘'] }],
     combatStats: { oddities: { attack: { current: 500, max: 500 }, hp: { current: 0, max: 2600 } } },
@@ -72,10 +81,10 @@ it('static ledger keeps combat results without oddities, calculation sources or 
   const wrapper = render(0, { entries, filteredIds: ['op'] })
   await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
   const capture = captures[0]
-  for (const value of ['等级90', '修为12', '4★ · 0 节点', '9,999', '99,999',
+  for (const value of ['等级90', '修为12', '化极4', '0节点', '9,999', '99,999',
     '真实命盘', '未配置命盘']) expect(capture.text).toContain(value)
   expect(capture.controls).toBe(0)
-  expect(capture.text).not.toMatch(/奇闻|自动计算|手动修正|私人|置顶|添加备忘|完整编辑|\+ 命盘/)
+  expect(capture.text).not.toMatch(/奇闻|历程|未记录日期|自动计算|手动修正|私人|置顶|添加备忘|完整编辑|\+ 命盘/)
   expect(JSON.stringify(saved)).toBe(before)
 })
 
@@ -136,4 +145,22 @@ it('failed or empty source data cannot generate a misleading image', async () =>
   expect(wrapper.text()).toContain('当前范围没有密探')
   expect(button(wrapper, '生成完整长图').attributes('disabled')).toBeDefined()
   expect(renderOperatorBoxImage).not.toHaveBeenCalled()
+})
+
+it('image generation does not request milestone data', async () => {
+  const wrapper = render(1)
+  await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
+  expect(getOperatorMilestones).not.toHaveBeenCalled()
+  expect(captures).toHaveLength(1)
+})
+
+it('changing the authenticated user invalidates a pending capture even when account props stay unchanged', async () => {
+  const pending = deferred()
+  renderOperatorBoxImage.mockReturnValueOnce(pending.promise)
+  const wrapper = render(1)
+  await button(wrapper, '生成分段图片').trigger('click'); await flushPromises()
+  auth.userInfo = { id: 'user-b' }
+  pending.resolve(new Blob(['old-user'])); await flushPromises()
+  expect(URL.createObjectURL).not.toHaveBeenCalled()
+  expect(wrapper.find('.box-image-preview').exists()).toBe(false)
 })

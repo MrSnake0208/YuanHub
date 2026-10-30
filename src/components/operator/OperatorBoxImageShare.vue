@@ -1,7 +1,7 @@
 <template>
   <section class="box-image-share" aria-labelledby="box-image-heading" :aria-busy="busy">
     <h3 id="box-image-heading">生成 BOX 图片</h3>
-    <p class="box-image-help">保留立绘、养成、攻血和双命盘。不含账号名、备注或链接，无需开启公开分享。</p>
+    <p class="box-image-help">保留总览卡片的立绘、养成状态、攻血和双命盘。不含账号名、备注或链接，无需开启公开分享。</p>
     <label class="box-image-scope">导出范围
       <select v-model="scope" :disabled="busy">
         <option value="filtered">当前筛选（{{ filteredIds.length }} 位）</option>
@@ -34,6 +34,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { auth } from '../../store/auth.js'
 import OperatorBoxImageSheet from './OperatorBoxImageSheet.vue'
 import { BOX_IMAGE_PAGE_SIZE, operatorBoxImagePages, renderOperatorBoxImage } from '../../utils/operatorBoxImage.js'
 
@@ -62,7 +63,7 @@ function reset() {
   sheetData.value = null
   error.value = notice.value = ''
 }
-watch([() => props.accountId, () => props.game, () => props.open], reset)
+watch([() => props.accountId, () => props.game, () => props.open, () => auth.userInfo?.id, () => auth.isLoggedIn], reset, { flush: 'sync' })
 watch(scope, reset)
 onBeforeUnmount(reset)
 
