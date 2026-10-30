@@ -69,16 +69,16 @@ test('奖励名称与分类/状态/关注/搜索共同筛选', () => {
   assert.equal(summary.favorite, 1)
   assert.equal(summary.incomplete + summary.completed, summary.total)
 })
-test('奖励筛选固定五项，不随目录配置、单条奖励或积分档位扩展', () => {
+test('奖励筛选固定四项，不随目录配置、单条奖励或积分档位扩展', () => {
   const catalog = achievementCatalog(5)
   catalog.reward_filters = []
   const names = ['白金币', '符传', '称号【测试甲】', '并蒂莲', '头像框【测试】']
   catalog.entries.forEach((entry, index) => { entry.rewards = [{ item_key: 'test_' + index, name: names[index], quantity: 1 }] })
-  assert.deepEqual(achievementRewardOptions(catalog), ['白金币', '称号', '功过格', '符传', '头像框'])
+  assert.deepEqual(achievementRewardOptions(catalog), ['白金币', '称号', '功过格', '符传'])
   catalog.reward_filters = ['功过格', '白金币', '五铢钱']
   catalog.point_tracks = [{ category_id: 'test', tiers: [{ at: 100, name: '醉骨草', quantity: 1 }] }]
-  assert.deepEqual(achievementRewardOptions(catalog), ['白金币', '称号', '功过格', '符传', '头像框'])
-  assert.deepEqual(achievementRewardOptions({}), ['白金币', '称号', '功过格', '符传', '头像框'])
+  assert.deepEqual(achievementRewardOptions(catalog), ['白金币', '称号', '功过格', '符传'])
+  assert.deepEqual(achievementRewardOptions({}), ['白金币', '称号', '功过格', '符传'])
   assert.deepEqual(achievementRewardOptions(null), [])
 })
 test('奖励名称可模糊反查，物品筛选精确匹配，头像不混入头像框，缺资料不作为奖励名', () => {
@@ -106,7 +106,7 @@ test('按奖励名和类型反查积分来源，保留分类与门槛，不伪�
   assert.equal(pointRewardSources(catalog, filters({ query: '风起', category: 'other', reward: '头像框' }))[0].at, 300)
   assert.equal(pointRewardSources(catalog, filters({ query: '风起', category: 'other', reward: '称号' })).length, 0)
   assert.ok(achievementRewardOptions(catalog).includes('称号'))
-  assert.ok(achievementRewardOptions(catalog).includes('头像框'))
+  assert.equal(achievementRewardOptions(catalog).includes('头像框'), false)
 })
 test('只有明确正整数目标可展示进度，不虚构0/1', () => {
   for (const entry of [{}, { target: null }, { target: 0 }, { target: 2.5 }, { target: '10' }, { target: 1e12 + 1 }]) assert.equal(hasQuantifiedProgress(entry), false)

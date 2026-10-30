@@ -17,7 +17,7 @@ function matchesReward(reward, value) {
 }
 
 export function achievementRewardOptions(catalog) {
-  return catalog ? ['白金币', '称号', '功过格', '符传', '头像框'] : []
+  return catalog ? ['白金币', '称号', '功过格', '符传'] : []
 }
 
 export function pointRewardSources(catalog, filters) {
