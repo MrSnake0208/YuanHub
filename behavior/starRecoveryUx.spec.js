@@ -605,6 +605,75 @@ it('首次云端读取失败后显示重试，重试成功后清除错误', asyn
   wrapper.unmount()
 })
 
+it.each(['old', 'committed', 'read-failed', 'new-revision', 'new-generation'])(
+  'pending rebuild retry reads authority without replaying writes (%s)', async outcome => {
+    auth.isLoggedIn = true
+    activeAccount.set('acc-1')
+    const key = 'yuanhub.star-rebuild-pending:acc-1'
+    const expected = { ...emptySnapshot, generation: 3, revision: 6 }
+    const intent = JSON.stringify(expected)
+    localStorage.setItem(key, intent)
+    const old = { ...emptyRemote, generation: 2, revision: 5 }
+    getCurrentStarState.mockResolvedValue(old)
+    const product = embedMount.getMockImplementation()()
+    product.applyCloudBusinessSnapshot = vi.fn().mockResolvedValue(undefined)
+    embedMount.mockReturnValue(product)
+    const wrapper = render()
+    await flushPromises(); await loadStylesheet()
+    expect(wrapper.get('.star-sync-state').text()).toContain('保存结果仍待确认')
+    const gate = deferred()
+    const failure = outcome === 'read-failed'
+    getCurrentStarState.mockImplementationOnce(() => gate.promise.then(value => {
+      if (failure) throw new Error('offline')
+      return value
+    }))
+    const retry = wrapper.get('.star-sync-state .star-sync-retry')
+    await retry.trigger('click'); await retry.trigger('click'); await flushPromises()
+    expect(retry.attributes('disabled')).toBeDefined()
+    expect(getCurrentStarState).toHaveBeenCalledTimes(2)
+    gate.resolve(outcome === 'old' ? old : { ...emptyRemote,
+      generation: outcome === 'new-generation' ? 4 : 3,
+      revision: outcome === 'new-revision' ? 7 : 6 })
+    await flushPromises()
+    expect(rebuildStarState).not.toHaveBeenCalled()
+    expect(importInventory).not.toHaveBeenCalled()
+    expect(embedMount).toHaveBeenCalledTimes(1)
+    if (outcome === 'committed') {
+      expect(localStorage.getItem(key)).toBeNull()
+      expect(wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
+      expect(product.applyCloudBusinessSnapshot).toHaveBeenLastCalledWith(expected)
+    } else {
+      expect(localStorage.getItem(key)).toBe(intent)
+      expect(wrapper.get('.star-sync-state.is-error').text()).toContain(failure ? '暂时无法读取云端背包' : '保存结果仍待确认')
+    }
+    wrapper.unmount()
+  },
+)
+
+it('lost OCR POST response can be reconciled from the page without starting OCR or rebuilding again', async () => {
+  auth.isLoggedIn = true
+  activeAccount.set('acc-1')
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 2, revision: 5 })
+  const product = embedMount.getMockImplementation()()
+  product.applyCloudBusinessSnapshot = vi.fn().mockResolvedValue(undefined)
+  embedMount.mockReturnValue(product)
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  rebuildStarState.mockRejectedValueOnce(new TypeError('lost POST response'))
+  const options = embedMount.mock.calls[0][1]
+  await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toMatchObject({ code: 'star_rebuild_uncertain' })
+  await flushPromises()
+  expect(localStorage.getItem('yuanhub.star-rebuild-pending:acc-1')).not.toBeNull()
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 3, revision: 6 })
+  await wrapper.get('.star-sync-state .star-sync-retry').trigger('click')
+  await flushPromises()
+  expect(localStorage.getItem('yuanhub.star-rebuild-pending:acc-1')).toBeNull()
+  expect(wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
+  expect(rebuildStarState).toHaveBeenCalledTimes(1)
+  expect(product.importCaptureBatch).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
 it('挂载后账号同步失败会释放旧实例，重试只保留一个产品实例', async () => {
   const first = {
     setHostAccount: vi.fn().mockRejectedValue(new Error('账号初始化失败')),
