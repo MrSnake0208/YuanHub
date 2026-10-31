@@ -1,6 +1,6 @@
 <template>
   <InventoryLayout>
-      <CompactToolHeader mobile-context class="inventory-header" title="库存" description="看总览，也能轻松记录">
+      <CompactToolHeader mobile-context class="inventory-header" title="库存">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
@@ -28,9 +28,6 @@
               </div>
             </div>
           </details>
-        </template>
-        <template #help>
-          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记一笔」记录获得、符传使用与兑换，「更新数量」直接填写实际库存。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
         </template>
       </CompactToolHeader>
 

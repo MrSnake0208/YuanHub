@@ -123,3 +123,15 @@ test('mailbox-only adjustment days and same-time versions use absolute reserves,
   assert.equal(buildResourceBalance(rows, '2026-08-03', '2026-08-31', 'mailbox', history)[0].latest, null)
   assert.equal(buildResourceBalance(rows, '2026-08-01', '2026-08-31', 'mailbox', [])[0].latest, null)
 })
+
+test('自动累计只影响含邮箱口径，并保留估算说明', () => {
+  const records = [record('stock', '01', 'stock_snapshot', [coin(100)], 'listed')]
+  const history = [
+    { version: 1, effective_at: '2026-08-01T05:00:00+08:00', kind: 'baseline', white_coin_mails: [], fu_chuan_mail_count: 0 },
+    { version: 2, effective_at: '2026-08-02T05:00:00+08:00', kind: 'accrual', white_coin_mails: [{ count: 1, coins_per_mail: 90 }], fu_chuan_mail_count: 0 }
+  ]
+  assert.equal(buildResourceBalance(records, '2026-08-01', '2026-08-31', 'actual', history)[0].latest.stock, 100)
+  const combined = buildResourceBalance(records, '2026-08-01', '2026-08-31', 'mailbox', history)[0]
+  assert.equal(combined.latest.stock, 190)
+  assert.ok(combined.latest.notes.includes('邮件自动累计（按设定估算）'))
+})

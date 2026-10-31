@@ -376,4 +376,18 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .quick-rules-content p { margin: 0; }
 .quick-rules-content p + p { margin-top: 8px; }
 .quick-feedback { min-width: 0; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+
+
+  .home-daily { padding: 10px 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .home-daily .daily-quick { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
+  .home-daily .daily-quick-heading strong { font-size: 16px; }
+  .home-daily .daily-quick > fieldset { grid-column: 1 / -1; grid-row: 2; }
+  .home-daily .daily-quick-option { padding: 3px 0; min-height: 34px; }
+  .home-daily .daily-quick-option > label { min-height: 34px; gap: 6px; }
+  .home-daily .daily-quick-option img { width: 26px; height: 26px; }
+  .home-daily .daily-quick-option label > span { gap: 2px 6px; }
+  .home-daily .daily-quick-actions { display: contents; }
+  .home-daily .daily-quick-actions > .primary-button { grid-column: 1 / -1; grid-row: 3; min-height: 34px; padding: 5px 10px; }
+  .home-daily .quick-inventory { grid-column: 2; grid-row: 1; font-size: 12px; padding-block: 5px; }
+  .home-daily .quick-feedback { grid-column: 1 / -1; margin: 0; }
 }

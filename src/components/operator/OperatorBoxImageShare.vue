@@ -4,24 +4,25 @@
     <p class="box-image-help">包含角色、练度与双命盘，不含账号名和备注，无需开启公开分享。</p>
     <label class="box-image-scope">导出范围
       <select v-model="scope" :disabled="busy">
+        <option v-if="selectedIds.length || scope === 'selected'" value="selected">已选密探（{{ selectedIds.length }} 位）</option>
         <option value="filtered">当前筛选（{{ filteredIds.length }} 位）</option>
         <option value="all">全部已拥有（{{ entries.length }} 位）</option>
       </select>
     </label>
     <p v-if="!ready" class="box-image-help" role="status">{{ sourceError || '密探档案准备中，请稍后重试。' }}</p>
-    <p v-else-if="!selected.length" class="box-image-help">当前范围没有密探，请调整筛选或选择全部已拥有。</p>
+    <p v-else-if="!selected.length" class="box-image-help">当前范围没有密探，请返回列表选择或调整导出范围。</p>
     <p v-if="ready && selected.length" class="box-image-help" role="status">
-      <template v-if="selected.length > 51">已选 {{ selected.length }} 位，建议生成 {{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张分段图。完整长图可能超出限制。</template>
-      <template v-else>已选 {{ selected.length }} 位，可生成分段图或尝试完整长图。</template>
+      <template v-if="selected.length > BOX_IMAGE_PAGE_SIZE">本次导出 {{ selected.length }} 位，可生成 {{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张分段图或尝试完整长图。</template>
+      <template v-else>本次导出 {{ selected.length }} 位，生成 1 张图片。</template>
     </p>
     <div class="box-image-actions">
       <div class="box-image-action">
-        <button type="button" class="btn primary" :disabled="busy || !ready || !selected.length" @click="generate(false)">生成分段图 · {{ Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) }} 张</button>
-        <p class="box-image-help">三列排版，每张最多九位，便于放大查看。</p>
+        <button type="button" class="btn primary" :disabled="busy || !ready || !selected.length" @click="generate(false)">{{ selected.length <= BOX_IMAGE_PAGE_SIZE ? '生成图片' : '生成分段图 · ' + Math.ceil(selected.length / BOX_IMAGE_PAGE_SIZE) + ' 张' }}</button>
+        <p class="box-image-help">五列排版，每张最多 {{ BOX_IMAGE_PAGE_SIZE }} 位，保存原图后可放大查看。</p>
       </div>
-      <div class="box-image-action">
+      <div v-if="selected.length > BOX_IMAGE_PAGE_SIZE" class="box-image-action">
         <button type="button" class="btn ghost box-image-long" :disabled="busy || !ready || !selected.length" @click="generate(true)">尝试生成完整长图</button>
-        <p class="box-image-help">预计容纳约 51 位；词条换行会减少容量，实际以图片尺寸为准。</p>
+        <p class="box-image-help">密探数量和命盘词条长度会影响长图尺寸，超出限制时请使用分段图。</p>
       </div>
     </div>
     <p v-if="busy || notice" class="box-image-feedback" role="status" aria-live="polite">{{ busy ? progress : notice }}</p>
@@ -51,6 +52,7 @@ import { BOX_IMAGE_PAGE_SIZE, operatorBoxImagePages, renderOperatorBoxImage } fr
 const props = defineProps({
   accountId: { type: String, required: true }, game: { type: String, default: '' }, open: Boolean,
   entries: { type: Array, default: () => [] }, filteredIds: { type: Array, default: () => [] },
+  selectedIds: { type: Array, default: () => [] }, initialScope: { type: String, default: 'filtered' },
   ready: Boolean, sourceError: { type: String, default: '' },
 })
 const scope = ref('filtered'), busy = ref(false), progress = ref(''), notice = ref(''), error = ref('')
@@ -59,7 +61,8 @@ let operation = 0
 const selected = computed(() => {
   if (scope.value === 'all') return props.entries
   const byId = new Map(props.entries.map(entry => [entry.id, entry]))
-  return props.filteredIds.map(id => byId.get(id)).filter(Boolean)
+  const ids = scope.value === 'selected' ? props.selectedIds : props.filteredIds
+  return ids.map(id => byId.get(id)).filter(Boolean)
 })
 function clearImages() {
   images.value.forEach(image => URL.revokeObjectURL(image.url))
@@ -74,6 +77,8 @@ function reset() {
   error.value = notice.value = ''
 }
 watch([() => props.accountId, () => props.game, () => props.open, () => auth.userInfo?.id, () => auth.isLoggedIn], reset, { flush: 'sync' })
+watch(() => props.open, open => { if (open) scope.value = props.initialScope }, { immediate: true })
+watch(() => props.selectedIds, () => { if (scope.value === 'selected') reset() })
 watch(scope, reset)
 onBeforeUnmount(reset)
 

@@ -5,31 +5,22 @@
     <main id="main-content" class="profile-main">
       <header class="page-header">
         <div class="wrap">
-          <h1 class="page-header-title">账号与连接码</h1>
-          <p class="page-header-description">管理游戏账号与应用连接，核对数据归属和访问范围。</p>
-        </div>
-      </header>
-
-      <section>
-        <div class="wrap">
-          <BetaNotice />
-          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data', 'operator-first-entry', 'inventory-first-baseline', 'account-create', 'maayuan-first-sync']" :target="maaTutorialTarget" />
-
-          <section class="game-account-summary" aria-labelledby="game-account-summary-title" :aria-busy="accountsLoading">
-            <!-- 路由 hash 滚动固定 top: 0，锚点上移以避开移动导航。 -->
+          <section class="game-account-summary" aria-label="游戏账号" :aria-busy="accountsLoading">
             <span id="game-accounts" class="account-summary-anchor" aria-hidden="true" />
-            <div class="account-summary-copy">
-              <div class="account-summary-heading"><h2 id="game-account-summary-title">游戏账号</h2><TutorialEntry v-if="TUTORIALS_ENABLED" task="account-create" label="账号教程" /></div>
+            <div class="profile-title-row">
+              <h1 class="page-header-title">账号与连接码</h1>
+              <AccountSwitcher v-if="accounts.length && !accountLoadError" :accounts="accounts"
+                :account-id="activeAccount.id" :loading="accountsLoading" :disabled="busy || !beta.canUseBetaFeatures" />
+              <TutorialEntry v-if="TUTORIALS_ENABLED" task="account-create" label="账号教程" />
+            </div>
+            <div v-if="accountsLoading || accountLoadError || !currentAccount" class="account-summary-copy">
               <p v-if="accountsLoading" role="status">正在读取游戏账号…</p>
               <div v-else-if="accountLoadError" class="account-summary-error" role="alert">
                 <p>{{ accountLoadError }}</p>
                 <button class="text-btn" type="button" @click="loadAccounts">重试</button>
               </div>
               <template v-else-if="accounts.length">
-                <p class="account-summary-current" :title="connectionAccountLabel(currentAccount)">
-                  {{ currentAccount ? '当前账号：' + connectionAccountLabel(currentAccount) : '尚未选择当前账号' }}
-                </p>
-                <p class="account-summary-count">共 {{ accounts.length }} 个游戏账号</p>
+                <p v-if="!currentAccount">尚未选择当前账号</p>
               </template>
               <p v-else>尚未创建游戏账号</p>
             </div>
@@ -39,6 +30,12 @@
               {{ accountsLoading || accountLoadError || accounts.length ? '管理游戏账号' : '创建游戏账号' }}
             </button>
           </section>
+        </div>
+      </header>
+
+      <section>
+        <div class="wrap">
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data', 'operator-first-entry', 'inventory-first-baseline', 'account-create', 'maayuan-first-sync']" :target="maaTutorialTarget" />
 
           <GameAccountManager
             v-if="accountManagerView"
@@ -54,11 +51,9 @@
           <div class="connection-card" v-reveal>
             <div class="card-head">
               <div>
-                <span class="section-kicker">APPLICATION CONNECTIONS</span>
                 <h2>应用与数据连接</h2>
                 <p class="card-sub">
-                  连接码类似一把只供某个工具使用的钥匙，不是你的登录密码。你可以查看它能做什么，并随时停止访问。
-                  <router-link to="/developers/guide">开发者接入文档</router-link>
+                  连接码仅用于授权工具访问，你可以随时停止连接。
                 </p>
               </div>
             </div>
@@ -79,8 +74,7 @@
                   <button v-if="TUTORIALS_ENABLED" class="act-btn ghost maayuan-tutorial-entry" type="button" @click="beginMaaYuanTutorial()">连接教程</button>
                 </div>
                 <p>
-                  把游戏内采集到的库存与密探信息安全上传到
-                  YuanHub，并读取密探养成状态，支持仅扫描和更新“养成中”的密探。
+                  同步库存与密探采集结果，读取密探养成状态，支持仅扫描和更新“养成中”的密探。
                 </p>
                 <div
                   class="app-capabilities"
@@ -126,12 +120,6 @@
                 }}
               </button>
             </article>
-
-            <details class="maayuan-other-tasks">
-              <summary>以后还可以同步什么</summary>
-              <p>密探练度：百宝箱 · 采集密探信息。派遣 / 情报掉落：据点日常，开启「记录奖励内容及数量」与「同步至 YuanHub」。</p>
-              <p>星石：网页端截图识别可用；MaaYuan 自动采集仍在接入中。</p>
-            </details>
 
             <form
               v-if="showMaaYuanConnect"
@@ -353,17 +341,9 @@
             >
               <div class="subsection-head">
                 <div>
-                  <span class="section-kicker">CONNECTED</span>
                   <h3 id="connections-title">现有连接</h3>
                 </div>
                 <span class="connection-count">{{ tokenCount }} 条</span>
-              </div>
-              <div class="stable-token-note connection-reminder" role="note">
-                <KeyRound :size="19" aria-hidden="true" />
-                <div>
-                  <strong>已创建的连接码可直接复制</strong>
-                  <p>连接码不会在这里显示完整内容。需要重新填写时，点击对应连接的“复制连接码”。</p>
-                </div>
               </div>
 
               <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-connection" />
@@ -427,12 +407,6 @@
                     <p v-if="tokenItem.created_at" class="connection-created">
                       创建于 {{ formatCreateTime(tokenItem.created_at) }}
                     </p>
-                    <details class="technical-details">
-                      <summary>查看技术详情</summary>
-                      <code>{{ tokenItem.token_id }}</code>
-                      <p>这是凭证编号，不是需要填写到 MaaYuan 的连接码。</p>
-                      <p v-if="!supportsMaaYuan(tokenItem)">需要“仅扫描养成中”时，点击此连接的“让它支持 MaaYuan”补齐权限，原连接码不变。</p>
-                    </details>
                   </div>
                   <div class="connection-actions">
                     <button
@@ -454,7 +428,7 @@
                       {{
                         updatingTokenId === tokenItem.token_id
                           ? "正在更新…"
-                          : "让它支持 MaaYuan"
+                          : "适配 MaaYuan"
                       }}
                     </button>
                     <button
@@ -587,6 +561,7 @@
                 </div>
               </form>
             </details>
+            <p class="connection-safety"><ShieldCheck :size="15" aria-hidden="true" />连接码不是登录密码，请仅提供给你信任的工具。</p>
           </div>
         </div>
       </section>
@@ -630,7 +605,7 @@ import TutorialEntry from "../../components/TutorialEntry.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { auth } from "../../store/auth.js";
 import { beta } from "../../store/beta.js";
-import BetaNotice from "../../components/beta/BetaNotice.vue";
+import AccountSwitcher from "../../components/AccountSwitcher.vue";
 import GameAccountManager from "../../components/GameAccountManager.vue";
 import { listAccounts } from "../../api/accounts.js";
 import {
@@ -1251,7 +1226,7 @@ onBeforeUnmount(function () {
 .tutorial-target { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .maayuan-other-tasks summary, details.paste-steps summary { cursor: pointer; }
 .capability-note { color: var(--theme-danger-text, var(--rouge)); }
-.game-account-summary { border-bottom: 1px solid var(--line); }
+.connection-safety { color: var(--ink-60); }
 .account-summary-copy h2 { color: var(--theme-strong-text, var(--tea)); }
 .account-summary-copy p { color: var(--ink-60); }
 .account-summary-copy .account-summary-current { color: var(--ink); }
@@ -1277,7 +1252,7 @@ onBeforeUnmount(function () {
   border-radius: 22px;
 }
 .app-pass::after {
-  content: "MAAYUAN";
+  content: none;
   color: var(--theme-muted, rgba(73, 59, 44, 0.045));
   pointer-events: none;
 }
@@ -1411,12 +1386,6 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 14px;
 }
-.grant-column.allow {
-  border-top: 3px solid var(--accent);
-}
-.grant-column.deny {
-  border-top: 3px solid var(--brand-blue);
-}
 .grant-column h4 {
   color: var(--ink);
 }
@@ -1527,18 +1496,13 @@ onBeforeUnmount(function () {
   background: var(--theme-danger-wash, rgba(166, 81, 74, 0.14));
 }
 .connections-section {
-  border-top: 1px dashed var(--line);
+  border-top: 0;
 }
 .subsection-head h3 {
   color: var(--ink);
 }
 .connection-count {
   color: var(--ink-60);
-}
-.connection-reminder {
-  border: 1px solid var(--theme-line, rgba(215, 137, 53, 0.48));
-  border-left: 4px solid var(--accent);
-  background: var(--yellow);
 }
 .state {
   color: var(--ink-60);
@@ -1606,21 +1570,6 @@ onBeforeUnmount(function () {
 .connection-created {
   color: var(--ink-60);
 }
-.technical-details {
-  color: var(--ink-60);
-}
-.technical-details summary {
-  cursor: pointer;
-  color: var(--theme-info-text, var(--brand-blue));
-}
-.technical-details code {
-  color: var(--ink);
-  background: var(--paper);
-  border-radius: 7px;
-}
-.technical-details p {
-  color: var(--ink-60);
-}
 .t-btn {
   color: var(--ink-60);
   background: transparent;
@@ -1633,9 +1582,9 @@ onBeforeUnmount(function () {
     border-color 0.3s var(--ease);
 }
 .t-btn.copy {
-  color: var(--on-strong);
-  background: var(--tea);
-  border-color: var(--tea);
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
 }
 .t-btn.copy:hover:not(:disabled) {
   color: var(--on-strong);
@@ -1644,12 +1593,14 @@ onBeforeUnmount(function () {
 }
 .t-btn.update {
   color: var(--theme-accent-text, var(--accent-strong));
-  background: var(--theme-wash-strong, rgba(239, 210, 142, 0.25));
+  background: transparent;
+  border-color: transparent;
 }
 .t-btn.update:hover:not(:disabled) {
   background: var(--yellow);
   border-color: var(--yellow-deep);
 }
+.t-btn.del { color: var(--theme-danger-text, var(--rouge)); border-color: transparent; }
 .t-btn.del:hover:not(:disabled) {
   color: var(--theme-danger-text, var(--rouge));
   border-color: var(--rouge);

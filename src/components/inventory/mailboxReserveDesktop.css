@@ -46,4 +46,13 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .mail-stepper input { width: 100%; min-width: 0; padding-inline: 4px; text-align: center; appearance: textfield; }
 .mail-stepper input::-webkit-inner-spin-button, .mail-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .mail-stepper button { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
+
+.mailbox-manage-form .panel-fields + .panel-fields { border-top: 1px solid var(--line); padding-top: 18px; }
+.mailbox-manage-form legend { font-size: 18px; line-height: 1.5; }
+.mailbox-manage-form .mail-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; justify-self: start; width: auto; padding: 8px 12px; }
+.mail-estimate { display: flex; align-items: flex-start; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; }
+.mail-estimate svg { flex: none; margin-top: 3px; }
+.mail-manage-total { font-weight: 650; }
+.mailbox-manage-form .panel-actions { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1fr); gap: 12px; }
+.mailbox-manage-form .panel-actions .btn { min-width: 0; padding: 11px 8px; border-radius: 10px; }
 }

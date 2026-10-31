@@ -23,21 +23,21 @@ it('分页获取两份完整历史，带登录身份并禁止库存缓存', asyn
 })
 it('仅历史入账改变条数也会重读，最多尝试两轮', async () => {
   let reads = 0
-  request.mockImplementation(async path => path.includes('/history?') ? { ...state(1, reads < 3 ? 1 : 2), entries: [], next_cursor: null } : state(1, ++reads === 1 ? 1 : 2))
+  request.mockImplementation(async path => path.includes('/sync?') ? state() : path.includes('/history?') ? { ...state(1, reads < 3 ? 1 : 2), entries: [], next_cursor: null } : state(1, ++reads === 1 ? 1 : 2))
   await loadMailboxResourceReport('a', 'owner', from, to)
   expect(reads).toBe(4)
   expect(listRecords).toHaveBeenCalledTimes(2)
 })
 it('持续并发变化或旧服务缺标记都不返回混合报告', async () => {
   let reads = 0
-  request.mockImplementation(async path => path.includes('/history?') ? { ...state(reads), entries: [], next_cursor: null } : state(++reads))
+  request.mockImplementation(async path => path.includes('/sync?') ? state() : path.includes('/history?') ? { ...state(reads), entries: [], next_cursor: null } : state(++reads))
   await expect(loadMailboxResourceReport('a', 'owner', from, to)).rejects.toThrow('资源正在更新')
   expect(reads).toBe(4)
   request.mockResolvedValue({ account_id: 'a', version: 1 })
   await expect(loadMailboxResourceReport('a', 'owner', from, to)).rejects.toThrow('尚未就绪')
 })
 it('分页失败、重复游标与其他账号响应不能作为完整数据', async () => {
-  request.mockImplementation(async path => path.includes('/history?') ? { ...state(), entries: [], next_cursor: 'same' } : state())
+  request.mockImplementation(async path => path.includes('/sync?') ? state() : path.includes('/history?') ? { ...state(), entries: [], next_cursor: 'same' } : state())
   await expect(loadMailboxResourceReport('a', 'owner', from, to)).rejects.toThrow('未完整加载')
   request.mockResolvedValue({ ...state(), account_id: 'b' })
   await expect(loadMailboxResourceReport('a', 'owner', from, to)).rejects.toThrow('尚未就绪')

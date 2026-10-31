@@ -134,7 +134,7 @@ it('紧凑模式常驻搜索和状态，更多筛选展开后可使用原有属�
 })
 
 it.each(['密探图鉴', '当前养成'])('%s 沿用共同操作顺序，专属操作排在公共入口之后', contextLabel => {
-  const secondaryLabels = contextLabel === '当前养成' ? ['特别关注优先', '分类设置', '批量标注'] : []
+  const secondaryLabels = contextLabel === '当前养成' ? ['特别关注优先', '分类设置', '批量选择'] : []
   const wrapper = mount(OperatorFilterDossier, { props: {
     compact: true, searchable: true, contextLabel, hasFilters: true, advancedFilterCount: 0,
   }, slots: {

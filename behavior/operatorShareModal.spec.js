@@ -31,9 +31,9 @@ afterEach(async () => {
 async function render() {
   wrapper = mount(defineComponent({
     components: { OperatorShareManager, AppDialog },
-    setup: () => ({ open: ref(false), accountId: ref('a') }),
+    setup: () => ({ open: ref(false), accountId: ref('a'), selectedOnly: ref(false) }),
     template: `<main><button class="opener" @click="open = true">分享 BOX</button><p class="page-content">保留正文</p>
-      <OperatorShareManager ref="manager" v-model:open="open" :account-id="accountId" :account-name="accountId + '账号'" />
+      <OperatorShareManager ref="manager" v-model:open="open" :account-id="accountId" :account-name="accountId + '账号'" :selected-only="selectedOnly" :image-selected-ids="['op1']" />
       <AppDialog /></main>`,
   }), { attachTo: document.body })
   await flushPromises()
@@ -291,4 +291,26 @@ it('已显示 A 的链接在切换到等待中的 B 时清空，关闭期间权�
   update.resolve(active('b', [])); await flushPromises()
   expect(panel().isVisible()).toBe(false)
   expect(wrapper.findComponent(OperatorShareManager).emitted('share-change').at(-1)[0]).toMatchObject({ accountId: 'b', status: '未开启', link: '' })
+})
+
+
+it('所选导出入口直接打开图片，重新打开恢复所选，普通入口仍默认链接', async () => {
+  await render()
+  wrapper.vm.selectedOnly = true
+  await open(false)
+  expect(button('图片分享').attributes('aria-pressed')).toBe('true')
+  expect(panel().get('.box-image-scope select').element.value).toBe('selected')
+  await panel().get('.box-image-scope select').setValue('all')
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click')
+  await open(false)
+  expect(panel().get('.box-image-scope select').element.value).toBe('selected')
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click')
+  wrapper.vm.selectedOnly = false
+  await open(false)
+  expect(button('链接分享').attributes('aria-pressed')).toBe('true')
+  await button('图片分享').trigger('click')
+  expect(panel().get('.box-image-scope select').element.value).toBe('filtered')
+  expect(api.setAccountShareScope).not.toHaveBeenCalled()
+  expect(api.regenerateAccountShare).not.toHaveBeenCalled()
+  expect(api.revokeAccountShare).not.toHaveBeenCalled()
 })

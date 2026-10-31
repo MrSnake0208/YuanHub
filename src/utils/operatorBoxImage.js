@@ -7,7 +7,9 @@ import { subProfList } from './operatorFilters.js'
 export const BOX_IMAGE_WIDTH = 1440
 // Fixed export geometry is independent of the overview and the generating device.
 export const BOX_IMAGE_LAYOUT_WIDTH = 1080
-export const BOX_IMAGE_PAGE_SIZE = 9
+export const BOX_IMAGE_PAGE_SIZE = 15
+
+const discColorOrder = { 金: 0, gold: 0, 紫: 1, purple: 1, 蓝: 2, blue: 2 }
 
 // Only presentation fields cross into the export; private notes and targets stay out.
 export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) {
@@ -32,8 +34,8 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
     huaji: operatorHuajiLabel(entry).replace(' 星', '★'),
-    attack: combat.attackLabel || '—',
-    hp: combat.hpLabel || '—',
+    attack: (combat.attackLabel || '—').replaceAll(',', ''),
+    hp: (combat.hpLabel || '—').replaceAll(',', ''),
     oddities: Object.fromEntries(['attack', 'hp'].map(kind => {
       const oddity = entry.combatStats?.oddities?.[kind]
       return [kind, { current: oddity?.current ?? '—', max: oddity?.max ?? '—' }]
@@ -41,7 +43,7 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     loadouts: Array.from({ length: 2 }, (_, index) => normalizeDiscNames(loadouts[index]?.discNames || loadouts[index]?.discs).map(name => {
       const disc = terms.get(name)
       return { name: disc?.abbreviation || name, color: disc?.color || '' }
-    })),
+    }).sort((a, b) => (discColorOrder[a.color] ?? 3) - (discColorOrder[b.color] ?? 3))),
   }
 }
 
@@ -55,6 +57,7 @@ export function operatorBoxImagePages(entries, full = false) {
 }
 
 async function waitForAssets(element) {
+  const document = element.ownerDocument
   const cleanups = []
   let timer
   try {
@@ -66,8 +69,16 @@ async function waitForAssets(element) {
       img.addEventListener('error', failed)
       cleanups.push(() => { img.removeEventListener('load', loaded); img.removeEventListener('error', failed) })
     }))
+    const fonts = document.fonts
+    // Include the exported Chinese text so unicode-range font subsets load before capture.
+    const exportFonts = fonts?.load ? Promise.all([
+      '600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"',
+      '700 16px "Archivo"', '800 16px "Archivo"', '900 16px "Archivo"',
+    ].map(font => fonts.load(font, element.textContent || '代号鸢 BOX 0123456789').then(faces => {
+      if (!faces.length) throw new Error('字体未注册')
+    }))).catch(() => { throw new Error('分享图字体加载失败，请检查网络后重试。') }) : Promise.resolve()
     await Promise.race([
-      Promise.all([document.fonts?.ready, ...images]),
+      Promise.all([exportFonts, fonts?.ready, ...images]),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('图片准备超时，请检查网络后重试。')), 20000) }),
     ])
   } finally {
@@ -88,6 +99,7 @@ export async function renderOperatorBoxImage(element) {
     windowWidth: BOX_IMAGE_WIDTH, scrollX: 0, scrollY: 0, logging: false,
     onclone: async (document, cloned) => {
       try {
+        await waitForAssets(cloned)
         const pixelHeight = Math.ceil(cloned.scrollHeight * options.scale)
         if (pixelHeight > 16384 || pixelHeight * BOX_IMAGE_WIDTH > 16000000) {
           throw new Error('完整长图过长，请改用分段图片。')

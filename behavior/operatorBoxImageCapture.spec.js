@@ -5,7 +5,7 @@ afterEach(() => vi.restoreAllMocks())
 
 it('uses measured glyph positions for vertical names, including a supplementary Unicode character', async () => {
   const root = document.createElement('section')
-  root.innerHTML = '<div class="ledger-name-tab"><h3>徐𠮷</h3></div>'
+  root.innerHTML = '<div class="box-image-name-tab"><h3>徐𠮷</h3></div>'
   const name = root.querySelector('h3')
   vi.spyOn(window, 'getComputedStyle').mockReturnValue({ writingMode: 'vertical-rl', content: 'none', getPropertyValue: () => '' })
   vi.spyOn(name, 'getBoundingClientRect').mockReturnValue({ left: 50, top: 10, width: 26, height: 70 })
@@ -23,7 +23,7 @@ it('uses measured glyph positions for vertical names, including a supplementary 
 
 it.each([true, false])('uses the desktop portrait gradient even if a mobile overlay exists: %s', async existing => {
   const root = document.createElement('section')
-  root.innerHTML = `<picture class="ledger-portrait ___html2canvas___pseudoelement_after">${existing ? '<html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement>' : ''}</picture>`
+  root.innerHTML = `<picture class="box-image-portrait ___html2canvas___pseudoelement_after">${existing ? '<html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement>' : ''}</picture>`
   const portrait = root.firstElementChild
   vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) => {
     if (node === portrait && pseudo === '::after' && !portrait.classList.contains('___html2canvas___pseudoelement_after')) {
@@ -48,4 +48,20 @@ it('does not scan stat and fate nodes or allocate compatibility canvases', async
   expect(canvas).not.toHaveBeenCalled()
   expect(root.children).toHaveLength(1000)
   expect(root.firstChild.textContent).toBe('真实词条')
+})
+
+
+it.each([
+  [142, 280, 'scale(0.5)'],
+  [142, 120, ''],
+  [0, 280, ''],
+])('fits overflowing fate text without dropping terms: available %s, required %s', async (available, required, transform) => {
+  const root = document.createElement('section')
+  root.innerHTML = '<em class="box-image-term"><span>第一套较长且必须完整保留的词条</span></em>'
+  const text = root.firstElementChild.firstElementChild
+  vi.spyOn(text.parentElement, 'getBoundingClientRect').mockReturnValue({ width: available })
+  vi.spyOn(text, 'getBoundingClientRect').mockReturnValue({ width: required })
+  await prepareOperatorBoxImage(document, root)
+  expect(text.style.transform).toBe(transform)
+  expect(text.textContent).toBe('第一套较长且必须完整保留的词条')
 })

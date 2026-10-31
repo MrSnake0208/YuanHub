@@ -55,7 +55,7 @@ export function buildResourceBalance(records, from, to, basis = 'actual', mailbo
     mailDays.set(day, { day,
       coins: entry.white_coin_mails.reduce((sum, row) => sum + row.count * row.coins_per_mail, 0),
       tickets: entry.fu_chuan_mail_count * 3,
-      notes: [...(previous?.notes || []), entry.claim_deleted ? '关联领取记录已删除，邮件储备未退回' : entry.kind === 'adjustment' ? '储备调整（不代表当天获得或消耗）' : entry.kind === 'claim' ? '邮件领取转入背包' : '邮箱储备基准']
+      notes: [...(previous?.notes || []), entry.claim_deleted ? '关联领取记录已删除，邮件储备未退回' : entry.kind === 'accrual' ? '邮件自动累计（按设定估算）' : entry.kind === 'adjustment' ? '储备调整（不代表当天获得或消耗）' : entry.kind === 'claim' ? '邮件领取转入背包' : '邮箱储备基准']
     })
   }
   const mailPoints = [...mailDays.values()]

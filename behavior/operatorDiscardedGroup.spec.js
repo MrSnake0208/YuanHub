@@ -89,14 +89,14 @@ it('批量标注直接展开属性、职业和品质筛选，退出后恢复紧�
   await flushPromises()
   const filters = wrapper.get('#operator-panel-current .operator-filter-dossier')
   expect(filters.get('.current-filter-secondary').findAll('button').map(button => button.text()))
-    .toEqual(['特别关注优先', '分类设置', '批量标注'])
+    .toEqual(['特别关注优先', '分类设置', '批量选择'])
   expect(filters.get('.dossier-extra').isVisible()).toBe(false)
-  await filters.get('.current-batch-toggle[title="批量标注养成状态"]').trigger('click')
+  await filters.get('.current-batch-toggle[title="批量选择密探"]').trigger('click')
   for (const selector of ['.pf-prof-row', '.pf-subprof-row', '.pf-rarity-row']) {
     expect(filters.get(selector).isVisible()).toBe(true)
   }
   expect(filters.find('.dossier-more').exists()).toBe(false)
-  await filters.get('.current-batch-toggle[title="批量标注养成状态"]').trigger('click')
+  await filters.get('.current-batch-toggle[title="批量选择密探"]').trigger('click')
   expect(filters.get('.dossier-extra').isVisible()).toBe(false)
   expect(filters.get('.dossier-more').attributes('aria-expanded')).toBe('false')
   noObjectiveWrites()
@@ -116,7 +116,7 @@ it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读�
   expect(card(wrapper, 'a').findAll('[role="option"]').map(option => option.text())).toEqual(['养成中', '已毕业', '养老中'])
   expect(card(wrapper, 'd').get('summary').text()).toContain('已弃置')
   expect(api.putOperatorAnnotation).not.toHaveBeenCalled()
-  await wrapper.findAll('button').find(button => button.text() === '批量标注').trigger('click')
+  await wrapper.findAll('button').find(button => button.text() === '批量选择').trigger('click')
   expect(wrapper.findAll('.batch-status-action').map(option => option.text())).toEqual(['设为养成中', '设为已毕业', '设为养老中'])
   await wrapper.get('.batch-select-all input').setValue(true)
   await wrapper.get('.batch-status-action.graduated').trigger('click'); await flushPromises()
@@ -185,7 +185,7 @@ it('保存中保留原卡片并显示忙碌，成功后移出并可查看弃置�
 
 it('失败保留原位置和选中对象，冲突重新读取而不盲目覆盖', async () => {
   const wrapper = await render()
-  await wrapper.findAll('button').find(button => button.text() === '批量标注').trigger('click')
+  await wrapper.findAll('button').find(button => button.text() === '批量选择').trigger('click')
   await card(wrapper, 'a').get('input[type="checkbox"]').setValue(true)
   api.putOperatorAnnotation.mockRejectedValueOnce(new Error('保存失败'))
   await status(wrapper, 'a', '已弃置')
@@ -200,7 +200,7 @@ it('失败保留原位置和选中对象，冲突重新读取而不盲目覆盖'
 })
 
 it('批量固定请求对象，部分成功保留失败选择，重试后可批量恢复到养成中', async () => {
-  const wrapper = await render(); await wrapper.findAll('button').find(button => button.text() === '批量标注').trigger('click')
+  const wrapper = await render(); await wrapper.findAll('button').find(button => button.text() === '批量选择').trigger('click')
   await wrapper.get('.batch-select-all input').setValue(true)
   api.putOperatorAnnotation.mockImplementation(async ({ operatorId, annotation }) => {
     if (operatorId === 'b') throw new Error('失败')
@@ -306,4 +306,33 @@ it('养成总览的紧凑搜索与状态筛选组合，重置恢复列表且不�
   expect(wrapper.get('#operator-panel-current .current-filter-search input').element.value).toBe('')
   expect(cards(wrapper)).toHaveLength(3)
   noObjectiveWrites()
+})
+
+
+it('批量图片导出使用有效勾选，不写标注，关闭保留选择，切换账号清空', async () => {
+  const wrapper = await render()
+  await wrapper.get('.current-batch-toggle[title="批量选择密探"]').trigger('click')
+  expect(wrapper.get('.batch-export').element.disabled).toBe(true)
+  await card(wrapper, 'a').get('.ledger-batch-select input').setValue(true)
+  await card(wrapper, 'b').get('.ledger-batch-select input').setValue(true)
+  await wrapper.get('.batch-export').trigger('click'); await flushPromises()
+  const share = wrapper.getComponent({ name: 'OperatorShareManager' })
+  expect(share.props('open')).toBe(true)
+  expect(share.props('selectedOnly')).toBe(true)
+  expect(share.props('imageSelectedIds')).toEqual(['a', 'b'])
+  expect(api.putOperatorAnnotation).not.toHaveBeenCalled()
+  noObjectiveWrites()
+  share.vm.$emit('update:open', false); await flushPromises()
+  expect(wrapper.get('.batch-selected-count').text()).toBe('已选 2 位')
+  await group(wrapper, 'growing')
+  expect(wrapper.get('.batch-selected-count').text()).toBe('已选 1 位')
+  await wrapper.get('.batch-export').trigger('click'); await flushPromises()
+  expect(share.props('imageSelectedIds')).toEqual(['a'])
+  share.vm.$emit('update:open', false); await flushPromises()
+  await wrapper.get('.roster-share').trigger('click'); await flushPromises()
+  expect(share.props('selectedOnly')).toBe(false)
+  activeAccount.id = 'accB'; await flushPromises()
+  expect(share.props('imageSelectedIds')).toEqual([])
+  expect(wrapper.find('.batch-export').exists()).toBe(false)
+  wrapper.unmount()
 })

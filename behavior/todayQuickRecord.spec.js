@@ -1,3 +1,4 @@
+import { getMailboxDailyStatus } from '../src/api/mailboxReserve.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { createPinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -8,7 +9,7 @@ import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { getOperatorCurrent } from '../src/api/operator.js'
-import { getCurrent, importInventory } from '../src/api/inventory.js'
+import { getCurrent, importInventory, listRecords } from '../src/api/inventory.js'
 import { getRewardCatalog } from '../src/api/rewardCatalog.js'
 import { getDrawResources, recordDrawResources } from '../src/api/drawResources.js'
 import { getTrainingWorkspace } from '../src/api/operatorPlanner.js'
@@ -25,6 +26,7 @@ vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), importInventory: vi.fn(), listRecords: vi.fn(), previewRewardAnnotations: vi.fn(), annotateRewards: vi.fn() }))
 vi.mock('../src/api/rewardCatalog.js', () => ({ getRewardCatalog: vi.fn() }))
+vi.mock('../src/api/dailyZhuyuPreference.js', () => ({ getDailyZhuyuPreference: vi.fn(async account => ({ account_id: account, game: account === 'a' ? '代号鸢' : '如鸢', preference: 'zhuyu' })), saveDailyZhuyuPreference: vi.fn() }))
 vi.mock('../src/api/drawResources.js', () => ({ getDrawResources: vi.fn(), recordDrawResources: vi.fn() }))
 vi.mock('../src/api/operatorPlanner.js', () => ({ getTrainingWorkspace: vi.fn(), putTrainingWorkspace: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
@@ -70,6 +72,7 @@ beforeEach(() => {
   activeAccount.clear()
   listAccounts.mockResolvedValue(accounts)
   getOperatorCurrent.mockResolvedValue({ entries: {} })
+  listRecords.mockResolvedValue({ items: [], next_cursor: null })
   getCurrent.mockResolvedValue([])
   getCurrentStarState.mockResolvedValue({ inventory: [] })
   getRewardCatalog.mockResolvedValue([{ id: 'baijinbi', entity_type: 'item', name: '白金币', rarity: 3 }])
@@ -80,13 +83,13 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 
-it('首次浏览只读，不挂载录入器；记一笔位于自定义首页前并保留账号区域', async () => {
+it('首次浏览只读，仅加载今日奖励；记一笔位于自定义首页前并保留账号区域', async () => {
   const { wrapper } = await render()
   expect(wrapper.get('.today-actions').findAll('button').map(button => button.text())).toEqual(['记一笔'])
   expect(wrapper.get('[aria-label="自定义首页"]').attributes('aria-haspopup')).toBe('dialog')
   expect(wrapper.get('.lobby-context').text()).toContain('测试大号')
-  expect(wrapper.findComponent(RewardEntryWorkspace).exists()).toBe(false)
-  expect(getRewardCatalog).not.toHaveBeenCalled()
+  expect(wrapper.findAllComponents(RewardEntryWorkspace).some(component => !component.props("compactDaily"))).toBe(false)
+  expect(getRewardCatalog).toHaveBeenCalledTimes(1)
   expect(getDrawResources).not.toHaveBeenCalled()
   expect(importInventory).not.toHaveBeenCalled()
   expect(recordDrawResources).not.toHaveBeenCalled()
@@ -101,7 +104,7 @@ it.each(['guest', 'empty', 'accounts-loading', 'accounts-error', 'inventory-erro
   const { wrapper } = await render()
   if (state === 'guest') expect(wrapper.find('.today-record').exists()).toBe(false)
   else expect(wrapper.get('.today-record').element.disabled).toBe(true)
-  expect(wrapper.findComponent(RewardEntryWorkspace).exists()).toBe(false)
+  expect(wrapper.findAllComponents(RewardEntryWorkspace).some(component => !component.props("compactDaily"))).toBe(false)
   expect(importInventory).not.toHaveBeenCalled()
 })
 
@@ -285,3 +288,74 @@ it.each(['account', 'identity', 'unmount'])('%s 变化后迟到的获得回执�
   expect(panel()).toBeNull()
   expect(document.querySelector('.result')).toBeNull()
 })
+
+ it('首页奖励直接记录当前账号，保存时锁定切号与记一笔，成功后阻止重复提交', async () => {
+  const { wrapper } = await render()
+  const daily = wrapper.get('.today-daily-rewards')
+  expect(daily.findAll('.daily-quick-option')).toHaveLength(3)
+  expect(daily.find('.quick-history').exists()).toBe(false)
+  expect(daily.find('.quick-rules').exists()).toBe(false)
+  await daily.findAll('input[type="checkbox"]')[1].setValue(true)
+  const pending = deferred()
+  importInventory.mockReturnValueOnce(pending.promise)
+  await daily.get('form').trigger('submit'); await flushPromises()
+  expect(importInventory).toHaveBeenCalledTimes(1)
+  expect(importInventory.mock.lastCall[0].records[0]).toMatchObject({ account_id: 'a', entries: [{ id: 'baijinbi', name: '白金币', count: 50 }] })
+  expect(wrapper.get('.today-record').element.disabled).toBe(true)
+  expect(wrapper.get('.account-switcher .context-selector').element.disabled).toBe(true)
+  const reads = getCurrent.mock.calls.length
+  pending.resolve(receipt); await flushPromises()
+  expect(getCurrent.mock.calls.length).toBe(reads + 1)
+  expect(daily.findAll('.daily-quick-option')[1].text()).toContain('已记录')
+  await daily.get('form').trigger('submit'); await flushPromises()
+  expect(importInventory).toHaveBeenCalledTimes(1)
+})
+
+it('首页奖励切号先确认未保存选择，拒绝保留，接受清空并读取新账号', async () => {
+  const { wrapper } = await render()
+  await wrapper.get('.today-daily-rewards').findAll('input[type="checkbox"]')[1].setValue(true)
+  dialog.confirm.mockResolvedValueOnce(false)
+  await switchAccount(wrapper)
+  expect(activeAccount.id).toBe('a')
+  expect(wrapper.get('.today-daily-rewards input:checked').exists()).toBe(true)
+  await switchAccount(wrapper)
+  expect(activeAccount.id).toBe('b')
+  expect(wrapper.find('.today-daily-rewards input:checked').exists()).toBe(false)
+  expect(listRecords.mock.lastCall[0].accountId).toBe('b')
+  expect(importInventory).not.toHaveBeenCalled()
+})
+
+it('首页奖励未知结果锁定离开与切号，原样重试成功解锁', async () => {
+  const { wrapper, router } = await render()
+  const daily = wrapper.get('.today-daily-rewards')
+  await daily.findAll('input[type="checkbox"]')[1].setValue(true)
+  importInventory.mockRejectedValueOnce(new Error('网络中断'))
+  await daily.get('form').trigger('submit'); await flushPromises()
+  const original = JSON.stringify(importInventory.mock.lastCall[0])
+  expect(wrapper.get('.today-record').element.disabled).toBe(true)
+  expect(wrapper.get('.account-switcher .context-selector').element.disabled).toBe(true)
+  await router.push('/away'); await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/')
+  await daily.get('[role="alert"] button').trigger('click'); await flushPromises()
+  expect(JSON.stringify(importInventory.mock.lastCall[0])).toBe(original)
+  expect(wrapper.get('.today-record').element.disabled).toBe(false)
+})
+
+it.each(['account', 'identity', 'unmount'])('首页奖励 %s 变化后迟到回执不刷新新上下文', async change => {
+  const { wrapper } = await render()
+  await wrapper.get('.today-daily-rewards').findAll('input[type="checkbox"]')[1].setValue(true)
+  const pending = deferred()
+  importInventory.mockReturnValueOnce(pending.promise)
+  await wrapper.get('.today-daily-rewards form').trigger('submit'); await flushPromises()
+  if (change === 'account') activeAccount.set('b')
+  if (change === 'identity') { auth.userInfo = { id: 'other-owner' }; auth.accessToken = 'other-token' }
+  if (change === 'unmount') wrapper.unmount()
+  await flushPromises()
+  const reads = getCurrent.mock.calls.length
+  pending.resolve(receipt); await flushPromises()
+  expect(getCurrent.mock.calls.length).toBe(reads)
+  expect(document.body.textContent).not.toContain('今日领取已记录。')
+})
+
+vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxDailyStatus: vi.fn(async () => ({ monthly_claimed: false, monthly_coins: null })) }))
+beforeEach(() => { getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: false, monthly_coins: null }) })

@@ -95,3 +95,62 @@ it('prunes unrelated page branches while retaining export ancestors, descendants
     style.remove(); link.remove(); document.body.replaceChildren()
   }
 })
+
+it('waits for all export font weights before capturing', async () => {
+  const original = Object.getOwnPropertyDescriptor(document, 'fonts')
+  let finish
+  const loaded = new Promise(resolve => { finish = resolve })
+  const load = vi.fn(() => loaded)
+  Object.defineProperty(document, 'fonts', { configurable: true, value: { load, ready: Promise.resolve() } })
+  try {
+    html2canvas.mockResolvedValue(canvas())
+    const root = element()
+    root.textContent = "孙权 士燮 47,908"
+    const output = renderOperatorBoxImage(root)
+    await Promise.resolve()
+    expect(load.mock.calls.map(([font]) => font)).toEqual([
+      '600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"',
+      '700 16px "Archivo"', '800 16px "Archivo"', '900 16px "Archivo"',
+    ])
+    expect(html2canvas).not.toHaveBeenCalled()
+    expect(load.mock.calls.every(([, text]) => text === root.textContent)).toBe(true)
+    finish([{}])
+    await output
+    expect(html2canvas).toHaveBeenCalledOnce()
+  } finally {
+    if (original) Object.defineProperty(document, 'fonts', original)
+    else delete document.fonts
+  }
+})
+
+it.each(['missing', 'failed'])('does not export fallback text when the export font is %s', async state => {
+  const original = Object.getOwnPropertyDescriptor(document, 'fonts')
+  const load = state === 'missing' ? vi.fn().mockResolvedValue([]) : vi.fn().mockRejectedValue(new Error('network'))
+  Object.defineProperty(document, 'fonts', { configurable: true, value: { load, ready: Promise.resolve() } })
+  try {
+    await expect(renderOperatorBoxImage(element())).rejects.toThrow('分享图字体加载失败')
+    expect(html2canvas).not.toHaveBeenCalled()
+  } finally {
+    if (original) Object.defineProperty(document, 'fonts', original)
+    else delete document.fonts
+  }
+})
+
+it('waits for the clone fonts before measuring and preparing glyphs', async () => {
+  const cloneDocument = document.implementation.createHTMLDocument('export')
+  const cloned = cloneDocument.createElement('section')
+  cloned.textContent = '士燮'
+  let finish
+  const loaded = new Promise(resolve => { finish = resolve })
+  const load = vi.fn(() => loaded)
+  Object.defineProperty(cloneDocument, 'fonts', { value: { load, ready: Promise.resolve() } })
+  prepareOperatorBoxImage.mockClear()
+  html2canvas.mockResolvedValue(canvas())
+  await renderOperatorBoxImage(element())
+  const pending = html2canvas.mock.calls[0][1].onclone(cloneDocument, cloned)
+  expect(load).toHaveBeenCalledWith('900 16px "Noto Serif SC"', '士燮')
+  expect(prepareOperatorBoxImage).not.toHaveBeenCalled()
+  finish([{}])
+  await pending
+  expect(prepareOperatorBoxImage).toHaveBeenCalledWith(cloneDocument, cloned)
+})

@@ -13,7 +13,7 @@
             <button type="button" :aria-pressed="mode === 'image'" @click="mode = 'image'">图片分享</button>
           </div>
           <OperatorBoxImageShare v-if="accountId" v-show="mode === 'image'" :open="open && mode === 'image'" :account-id="accountId" :game="game"
-            :entries="imageEntries" :filtered-ids="imageFilteredIds" :ready="imageReady" :source-error="imageError" />
+            :entries="imageEntries" :filtered-ids="imageFilteredIds" :selected-ids="imageSelectedIds" :initial-scope="selectedOnly ? 'selected' : 'filtered'" :ready="imageReady" :source-error="imageError" />
           <AccountShareManager v-show="mode === 'link'" ref="manager" :account-id="accountId" compact class="operator-share-content" @status-change="$emit('status-change', $event)" @share-change="$emit('share-change', $event)">
             <template #heading="{ titleId }"><h3 :id="titleId">公开内容</h3></template>
             <template #management="{ busy, regenerate, revoke }">
@@ -53,9 +53,10 @@ import OperatorBoxImageShare from './OperatorBoxImageShare.vue'
 import { modalFocusState, useModalFocus } from '../../composables/useModalFocus.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 
-defineProps({
+const props = defineProps({
   accountId: { type: String, required: true }, accountName: { type: String, default: '当前账号' }, isLoggedIn: { type: Boolean, default: true },
   game: { type: String, default: '' }, imageEntries: { type: Array, default: () => [] }, imageFilteredIds: { type: Array, default: () => [] },
+  imageSelectedIds: { type: Array, default: () => [] }, selectedOnly: Boolean,
   imageReady: Boolean, imageError: { type: String, default: '' },
 })
 defineEmits(['status-change', 'share-change'])
@@ -76,7 +77,7 @@ function onBackdrop() {
 useModalFocus(open, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {
   if (!visible) return
-  mode.value = 'link'
+  mode.value = props.selectedOnly ? 'image' : 'link'
   const body = document.body, root = document.documentElement
   const x = window.scrollX, y = window.scrollY
   const previous = Object.fromEntries(['position', 'top', 'left', 'width', 'overflow', 'paddingRight'].map(key => [key, body.style[key]]))

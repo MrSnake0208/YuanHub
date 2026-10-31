@@ -1,7 +1,8 @@
 import { request } from './request.js'
 
 const path = accountId => '/v1/inventory/mailbox-reserve?' + new URLSearchParams({ account_id: accountId })
-export const getMailboxReserve = (accountId, userId) => request(path(accountId), { auth: true, expectedUserId: userId })
+export const getMailboxReserve = (accountId, userId) => request('/v1/inventory/mailbox-reserve/sync?' + new URLSearchParams({ account_id: accountId }), { method: 'POST', auth: true, expectedUserId: userId })
+export const getMailboxDailyStatus = (accountId, userId, day) => request('/v1/inventory/mailbox-reserve/daily-status?' + new URLSearchParams({ account_id: accountId, day }), { auth: true, expectedUserId: userId })
 export const saveMailboxReserve = (accountId, userId, body) => request(path(accountId), { method: 'PUT', auth: true, expectedUserId: userId, body })
 
 export const claimMailboxReserve = (accountId, userId, body) => request('/v1/inventory/mailbox-reserve/claim?' + new URLSearchParams({ account_id: accountId }), { method: 'POST', auth: true, expectedUserId: userId, body })
@@ -13,8 +14,10 @@ export async function loadMailboxResourceReport(accountId, userId, from, to) {
     if (data?.account_id !== accountId || ![data.version, data.inventory_revision, data.inventory_record_count].every(Number.isSafeInteger)) throw new Error('邮件历史服务尚未就绪，请稍后重试')
     return `${data.version}:${data.inventory_revision}:${data.inventory_record_count}`
   }
+  await getMailboxReserve(accountId, userId)
+  const readMarker = () => request(path(accountId), { auth: true, expectedUserId: userId })
   for (let attempt = 0; attempt < 2; attempt++) {
-    const before = marker(await getMailboxReserve(accountId, userId))
+    const before = marker(await readMarker())
     const history = [], records = [], seenMail = new Set(), seenRecords = new Set()
     let cursor = null, changed = false
     do {
@@ -38,7 +41,7 @@ export async function loadMailboxResourceReport(accountId, userId, from, to) {
       if (cursor && (seenRecords.has(cursor) || records.length >= 5000)) throw new Error('库存流水未完整加载，请缩小日期范围后重试')
       if (cursor) seenRecords.add(cursor)
     } while (cursor)
-    if (marker(await getMailboxReserve(accountId, userId)) === before) return { records, history }
+    if (marker(await readMarker()) === before) return { records, history }
   }
   throw new Error('资源正在更新，请稍后重试，避免混用领取前后的数据')
 }

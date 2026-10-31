@@ -1,3 +1,4 @@
+import { getMailboxDailyStatus } from '../src/api/mailboxReserve.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
@@ -2535,3 +2536,6 @@ it('月卡编辑先读取最新计划并保留其他配置，版本冲突留在�
   submit(); await flushPromises()
   expect(document.querySelector('.quick-reward-editor')).toBeNull()
 })
+
+vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxDailyStatus: vi.fn(async () => ({ monthly_claimed: false, monthly_coins: null })) }))
+beforeEach(() => { getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: false, monthly_coins: null }) })
