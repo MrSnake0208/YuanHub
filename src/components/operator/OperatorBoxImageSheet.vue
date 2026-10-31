@@ -106,7 +106,7 @@ defineExpose({ sheet })
 .box-image-card[data-operator="char_123_sunfu"] { --portrait-tone: #e9e1df; }
 .box-image-card-head { position: relative; height: 264px; }
 .box-image-portrait { position: absolute; inset: 3px 3px auto; height: 280px; overflow: hidden; border-radius: 4px 4px 0 0; background: var(--portrait-tone); }
-.box-image-portrait img { position: absolute; top: 0; left: 47%; display: block; width: auto; max-width: none; height: 280px; transform: translateX(-50%); }
+.box-image-portrait img { position: absolute; top: 0; left: 52%; display: block; width: auto; max-width: none; height: 280px; transform: translateX(-50%); }
 /* Plain RGB stops are supported by the PNG renderer; only the edges fade to paper. */
 .box-image-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 250, 240, 0) 76%, #fffaf0 96%); }
 .box-image-name-tab { position: absolute; top: 12px; right: 10px; padding: 10px 5px 12px; border: 1px solid #dac292; border-radius: 10px 0 10px 0; background: rgba(255, 250, 240, .94); }
