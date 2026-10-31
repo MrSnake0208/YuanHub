@@ -35,13 +35,13 @@
               <template v-else>{{ entry.huaji }}</template>
             </div>
             <div class="box-image-growth">
-              <div class="box-image-growth-row">等级<strong>{{ entry.level }}</strong></div>
-              <div class="box-image-growth-row">修为<strong>{{ entry.elite }}</strong></div>
+              <div class="box-image-growth-row"><span>等级</span><strong>{{ entry.level }}</strong></div>
+              <div class="box-image-growth-row"><span>修为</span><strong>{{ entry.elite }}</strong></div>
             </div>
           </section>
           <section class="box-image-combat" aria-label="战斗面板">
             <div v-for="kind in ['hp', 'attack']" :key="kind" class="box-image-combat-stat">
-              <div class="box-image-combat-head"><Swords v-if="kind === 'attack'" :size="18" aria-hidden="true" /><Heart v-else :size="18" aria-hidden="true" /><span>{{ kind === 'attack' ? '攻击' : '生命' }}</span><strong class="box-image-combat-value">{{ entry[kind] }}</strong></div>
+              <div class="box-image-combat-head"><span>{{ kind === 'attack' ? '攻击' : '生命' }}</span><strong class="box-image-combat-value">{{ entry[kind] }}</strong></div>
             </div>
           </section>
         <div class="box-image-loadouts"><div class="box-image-destiny">
@@ -63,7 +63,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Heart, Swords } from '@lucide/vue'
 import { avatarUrl } from '../../api/request.js'
 import { BOX_IMAGE_LAYOUT_WIDTH } from '../../utils/operatorBoxImage.js'
 import portraits from '../../data/operatorPortraits.json'
@@ -131,18 +130,13 @@ defineExpose({ sheet })
 /* Rounded paper overlaps the portrait without masks or clip-path. */
 .box-image-details::before { content: ''; position: absolute; top: -7px; left: 0; width: 100%; height: 9px; border-radius: 50% 50% 0 0; background: #fffaf0; }
 .box-image-details > * { position: relative; }
-.box-image-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-top: 8px; }
-.box-image-growth-row { display: flex; justify-content: center; align-items: center; gap: 7px; font: 700 14px/1.4 var(--font-b, sans-serif); color: #695b4b; }
-.box-image-growth-row + .box-image-growth-row { border-left: 1px solid #dfd1b6; }
-.box-image-growth-row strong { font: inherit; color: #493b2c; }
-.box-image-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px 0 9px; }
-.box-image-combat-stat { min-width: 0; position: relative; text-align: center; }
-.box-image-combat-stat + .box-image-combat-stat::before { content: ''; position: absolute; left: -4px; top: 2px; bottom: 2px; width: 1px; background: #eee5d8; }
-.box-image-combat-head { display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
-.box-image-combat-head svg { flex: none; width: 15px; height: 15px; color: #695b4b; }
-.box-image-combat-head > span { font-size: 12px; }
-.box-image-combat-value { flex-basis: 100%; font-size: 19px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-.box-image-combat-value { font-family: var(--font-d, sans-serif); font-variant-numeric: tabular-nums; }
+.box-image-growth, .box-image-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.box-image-growth { margin-top: 8px; }
+.box-image-growth-row, .box-image-combat-head { display: grid; grid-template-columns: 2em minmax(0, 1fr); align-items: center; column-gap: 5px; min-width: 0; text-align: left; font: 600 14px/1.4 var(--font-b, sans-serif); color: #695b4b; }
+.box-image-growth-row + .box-image-growth-row, .box-image-combat-stat + .box-image-combat-stat { border-left: 1px solid #dfd1b6; padding-left: 8px; }
+.box-image-growth-row strong, .box-image-combat-value { min-width: 0; font: inherit; font-weight: 700; color: #493b2c; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.box-image-combat { padding: 10px 0 12px; }
+.box-image-combat-stat { min-width: 0; }
 .box-image-destiny { display: grid; gap: 9px; padding-top: 2px; }
 .box-image-destiny-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .box-image-destiny-row > span { display: flex; align-items: center; gap: 7px; font: 500 10px/1.3 var(--font-b, sans-serif); color: #695b4b; }

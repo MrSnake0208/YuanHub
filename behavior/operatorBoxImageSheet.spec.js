@@ -26,6 +26,7 @@ it('the screenshot operator retains identity, growth and every configured fate t
   expect(wrapper.findAll('.box-image-growth-row').map(row => row.text())).toEqual(['等级100', '修为17'])
   expect(wrapper.findAll('.box-image-combat-head > span').map(row => row.text())).toEqual(['生命', '攻击'])
   expect(wrapper.findAll('.box-image-combat-value').map(row => row.text())).toEqual(['37195', '7706'])
+  expect(wrapper.find('.box-image-combat svg').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('奇闻')
   expect(wrapper.find('.box-image-oddity').exists()).toBe(false)
   expect(wrapper.text()).not.toMatch(/历程|未记录日期/)
