@@ -130,7 +130,7 @@ defineExpose({ sheet })
 /* Rounded paper overlaps the portrait without masks or clip-path. */
 .box-image-details::before { content: ''; position: absolute; top: -7px; left: 0; width: 100%; height: 9px; border-radius: 50% 50% 0 0; background: #fffaf0; }
 .box-image-details > * { position: relative; }
-.box-image-growth, .box-image-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.box-image-growth, .box-image-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-inline: 7px; }
 .box-image-growth { margin-top: 8px; }
 .box-image-growth-row, .box-image-combat-head { display: grid; grid-template-columns: 2em minmax(0, 1fr); align-items: center; column-gap: 5px; min-width: 0; text-align: left; font: 600 14px/1.4 var(--font-b, sans-serif); color: #695b4b; }
 .box-image-growth-row + .box-image-growth-row, .box-image-combat-stat + .box-image-combat-stat { border-left: 1px solid #dfd1b6; padding-left: 8px; }
