@@ -59,8 +59,20 @@
 .cart-search{flex-basis:180px}
 .cart-search input,.cart-sort select,:is(.cart-category,.cart-source) select{min-height:38px;padding:6px 8px;font-size:12px}
 .cart-source,.cart-category,.cart-sort{flex-wrap:wrap;gap:4px}
-.cart-pricing-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 16px;margin:8px 0 12px}
-.cart-pricing-toolbar>.cart-pricing-settings{flex:1 1 560px}
+.cart-pricing-toolbar{padding:0 16px;margin:8px 0 12px}
+.cart-pricing-summary{display:flex;align-items:center;gap:10px;min-height:60px;padding-block:10px}
+.cart-pricing-overview{display:flex;flex:1;align-items:baseline;gap:12px;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.cart-pricing-toggle{display:flex;align-items:center;gap:4px;font-size:12px}
+.cart-pricing-body{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding-block:12px}
+.cart-draft-hint{margin:0 0 12px;font-size:12px;line-height:1.6}
+.cart-draft-hint br{display:none}
+.cart-search{padding-left:10px}
+.cart-search>svg{flex-shrink:0}
+.cart-more-filters>summary{min-height:38px;padding-inline:10px}
+.cart-advanced-content{display:grid;gap:8px}
+.cart-advanced-content .cart-source{display:flex;flex-wrap:wrap;gap:8px}
+.cart-advanced-content .cart-source select{flex:1;min-width:120px}
+.cart-pricing-body>.cart-pricing-settings{flex:1 1 560px}
 .cart-pricing-settings{display:flex;flex-wrap:wrap;align-items:end;gap:16px;margin:0}
 .cart-pricing-settings label{flex-basis:180px;font-size:12px}
 .cart-pricing-settings input,.cart-pricing-settings select{min-height:38px}

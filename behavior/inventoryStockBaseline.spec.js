@@ -142,6 +142,8 @@ it('只读初始化不写库存，不用登录状态宣称已同步', async () =
   expect(wrapper.get('.tool-summary time').attributes('datetime')).toBeTruthy()
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
   expect(wrapper.get('.inventory-setup').text()).toContain('尚未建立库存')
+  expect(wrapper.get('.manifest-items .slot-count').text()).toBe('—')
+  expect(wrapper.get('.inventory-freshness').text()).toContain('数量未知')
   expect(wrapper.get('.inventory-setup .inventory-entry').text()).toBe('开始首次盘点')
   expect(wrapper.get('.reward-entry').element.disabled).toBe(false)
   expect(wrapper.get('.inventory-tabs').isVisible()).toBe(true)

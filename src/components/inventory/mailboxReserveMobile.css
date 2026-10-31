@@ -6,6 +6,11 @@
 .mail-quick b { color: var(--theme-strong-text, var(--tea)); font: 800 25px/1.2 var(--font-d); }
 .mail-summary { grid-column: 2; font-size: 12px; color: var(--ink-60); overflow-wrap: anywhere; }
 .mail-quick-actions { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 3px; }
+.mail-quick.is-empty { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; }
+.mail-quick.is-empty .mail-quick-icon { grid-row: 1; align-self: center; margin: 0; }
+.mail-quick.is-empty .mail-quick-actions { grid-column: 3; grid-row: 1; margin: 0; }
+.mail-quick.is-empty .mail-quick-actions .btn { padding: 6px 8px; border: 0; background: transparent; box-shadow: none; }
+.mail-quick.is-empty b { font-size: 20px; }
 .mail-quick .btn { padding: 6px 14px; min-height: 34px; border-radius: 9px; font-size: 13px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .mail-manage { min-height: 34px; padding: 6px; border: 0; background: transparent; color: var(--ink-60); font: 13px/1.5 var(--font-b); cursor: pointer; }
 .mail-feedback { margin: 6px 0 0; font-size: 12px; color: var(--ink-60); overflow-wrap: anywhere; }

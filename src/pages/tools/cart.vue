@@ -16,7 +16,7 @@
           <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
         </template>
         <template #actions>
-          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建方案</button>
+          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建</button>
           <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>
         <template #help>
@@ -27,52 +27,55 @@
 
       <section>
         <div class="wrap">
-          <div class="cart-pricing-toolbar">
-            <div class="cart-pricing-settings">
-              <label>显示币种<select v-model="currentPricing.currency" aria-label="预算显示币种"><option v-for="currency in ledgerCurrencies" :key="currency" :value="currency">{{ currencyNames[currency] }} {{ currency }}</option></select></label>
-              <label>支付比例（原价百分比）<span class="cart-percent-input"><input v-model="currentPricing.discount_percent" aria-label="支付原价的百分比" type="number" min="0.01" max="100" step="any" /><span aria-hidden="true">%</span></span></label>
-              <div class="cart-discount-actions"><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 100" @click="currentPricing.discount_percent = 100">不打折</button><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 95" @click="currentPricing.discount_percent = 95">九五折</button></div>
-            </div>
-            <details class="cart-rate-settings">
-              <summary><Calculator :size="16" aria-hidden="true" />汇率设置</summary>
-              <p class="cart-rate-hint">折扣由你设定，仅影响预算支出；不参与优惠或已填写实付价的礼包请取消「参与方案折扣」。</p>
-
-              <div
-                v-if="version === 'daihao'"
-                class="rate-bar"
-                style="border: none; background: transparent; padding: 0"
-              >
-                <Calculator :size="16" class="ic" />
-                <span class="lb" style="font-size: 12.5px">汇率 USD→CNY</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  :value="rateDraft"
-                  min="0"
-                  :aria-invalid="rateError ? 'true' : undefined"
-                  :aria-describedby="rateError ? 'cart-rate-error' : undefined"
-                  @input="updateRateDraft($event.target.value)"
-                  aria-label="美元兑人民币汇率"
-                />
-                <span class="cart-rate-hint">参考汇率，可修改</span>
-              </div>
+          <details class="cart-pricing-toolbar">
+            <summary class="cart-pricing-summary">
+              <Calculator :size="18" aria-hidden="true" />
+              <span class="cart-pricing-overview"><strong>计价设置</strong><span>{{ currencyNames[currentPricing.currency] }} {{ currentPricing.currency }} · {{ discountSummary }}</span></span>
+              <span class="cart-pricing-toggle"><span class="when-closed">展开</span><span class="when-open">收起</span><ChevronDown :size="16" aria-hidden="true" /></span>
+            </summary>
+            <div class="cart-pricing-body">
               <div class="cart-pricing-settings">
-                <label v-for="currency in (version === 'daihao' ? ['HKD', 'JPY'] : ['USD', 'HKD', 'JPY'])" :key="currency">1 {{ currency }} = 多少 CNY
-                  <input v-model="currentPricing.rates[currency]" :aria-label="`${currencyNames[currency]}兑人民币参考汇率`" type="number" min="0.000001" max="1000000" step="any" placeholder="手动填写" />
-                </label>
+                <label>显示币种<select v-model="currentPricing.currency" aria-label="预算显示币种"><option v-for="currency in ledgerCurrencies" :key="currency" :value="currency">{{ currencyNames[currency] }} {{ currency }}</option></select></label>
+                <label>支付比例（按原价的百分比计算）<span class="cart-percent-input"><input v-model="currentPricing.discount_percent" aria-label="支付原价的百分比" type="number" min="0.01" max="100" step="any" /><span aria-hidden="true">%</span></span></label>
+                <div class="cart-discount-actions"><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 100" @click="currentPricing.discount_percent = 100">不打折</button><button type="button" :aria-pressed="Number(currentPricing.discount_percent) === 95" @click="currentPricing.discount_percent = 95">九五折</button></div>
               </div>
-              <p class="cart-rate-hint">仅需填写选中礼包或预算币种用到的汇率；港币、日元不提供实时汇率。修改预算币种不会改写礼包标价。</p>
-            </details>
-          </div>
+              <details class="cart-rate-settings">
+                <summary><Calculator :size="16" aria-hidden="true" />汇率设置</summary>
+                <p class="cart-rate-hint">折扣由你设定，仅影响预算支出；不参与优惠或已填写实付价的礼包请取消「参与方案折扣」。</p>
+
+                <div
+                  v-if="version === 'daihao'"
+                  class="rate-bar"
+                  style="border: none; background: transparent; padding: 0"
+                >
+                  <Calculator :size="16" class="ic" />
+                  <span class="lb" style="font-size: 12.5px">汇率 USD→CNY</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    :value="rateDraft"
+                    min="0"
+                    :aria-invalid="rateError ? 'true' : undefined"
+                    :aria-describedby="rateError ? 'cart-rate-error' : undefined"
+                    @input="updateRateDraft($event.target.value)"
+                    aria-label="美元兑人民币汇率"
+                  />
+                  <span class="cart-rate-hint">参考汇率，可修改</span>
+                </div>
+                <div class="cart-pricing-settings">
+                  <label v-for="currency in (version === 'daihao' ? ['HKD', 'JPY'] : ['USD', 'HKD', 'JPY'])" :key="currency">1 {{ currency }} = 多少 CNY
+                    <input v-model="currentPricing.rates[currency]" :aria-label="`${currencyNames[currency]}兑人民币参考汇率`" type="number" min="0.000001" max="1000000" step="any" placeholder="手动填写" />
+                  </label>
+                </div>
+                <p class="cart-rate-hint">仅需填写选中礼包或预算币种用到的汇率；港币、日元不提供实时汇率。修改预算币种不会改写礼包标价。</p>
+              </details>
+            </div>
+          </details>
           <p v-if="budgetError" class="cart-rate-error" role="alert">{{ budgetError }}；补全后才可保存或导出。</p>
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
-          <div class="cart-catalog-status">
-            <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
-            <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
-            <p class="cart-draft-hint">清单仅保留在当前标签页；刷新、关闭或切换账号前请保存方案。</p>
-          </div>
+          <p class="cart-draft-hint">清单仅保留在当前标签页；<br />刷新、关闭或切换账号前请保存方案。</p>
           <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
@@ -80,13 +83,13 @@
             <div class="cart-catalog">
               <div class="cart-filters" v-reveal>
                 <div class="cart-search-row">
-                  <label class="cart-search"><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
-                  <label class="cart-source"><select v-model="currentPricing.custom_only" aria-label="礼包来源"><option :value="false">全部礼包</option><option :value="true">仅自定义</option></select></label>
-                  <label class="cart-category"><select aria-label="分类" :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
-                  <label class="cart-sort"><select aria-label="排序" v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
+                  <label class="cart-search"><Search :size="18" aria-hidden="true" /><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
+                  <label class="cart-category"><span>分类</span><select aria-label="分类" :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
+                  <label class="cart-sort"><span>排序</span><select aria-label="排序" v-model="sortMode"><option value="default">默认</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
                   <details class="cart-more-filters">
-                    <summary>更多筛选<span v-if="drawFilter !== 'all' || selectedOnly"> · 已启用</span></summary>
+                    <summary><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="activeFilterCount"> · {{ activeFilterCount }}</span></summary>
                     <div class="cart-advanced-content">
+                      <label class="cart-source"><span>礼包来源</span><select v-model="currentPricing.custom_only" aria-label="礼包来源"><option :value="false">全部礼包</option><option :value="true">仅自定义</option></select></label>
                       <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
                       <div class="row" role="group" aria-label="礼包抽数筛选">
                         <span class="f-dot"></span>
@@ -105,6 +108,10 @@
                 </div>
               </div>
 
+              <div class="cart-catalog-status">
+                <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
+                <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
+              </div>
               <div class="pkg-grid">
                 <PackageCard
                   v-for="pkg in filteredPackages"
@@ -165,24 +172,8 @@
         <div class="v">{{ formatMoney(totalAmount, currentPricing.currency) }}</div>
       </div>
       <div class="btns">
-        <button
-          class="mbtn ghost icon"
-          aria-label="清空购物车"
-          :disabled="cartItems.length === 0"
-          @click="clearCart"
-        >
-          <Trash2 :size="17" />
-        </button>
-        <button
-          class="mbtn accent"
-          :disabled="cartItems.length === 0 || exportBusy"
-          :aria-busy="exportBusy"
-          @click="exportReceipt"
-        >
-          <Download :size="15" /><span class="only-sm">导出</span>
-        </button>
         <button class="mbtn primary" :aria-expanded="showReceipt" @click="showReceipt = true">
-          <Receipt :size="15" />清单 · {{ version === 'daihao' ? daihaoCount : ruCount }}
+          <Receipt :size="15" aria-hidden="true" />查看清单 · {{ version === 'daihao' ? daihaoCount : ruCount }}
         </button>
       </div>
     </div>
@@ -233,10 +224,11 @@
 import { ref, toRefs, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import {
   Plus,
-  Trash2,
   Receipt,
   Calculator,
-  Download,
+  ChevronDown,
+  Search,
+  SlidersHorizontal,
   Save,
   FolderOpen,
 } from "@lucide/vue";
@@ -341,6 +333,12 @@ onBeforeUnmount(() => {
 const currentCart = computed(() =>
   version.value === "daihao" ? cartDaihao.value : cartRu.value,
 );
+const discountSummary = computed(() => {
+  const percent = Number(currentPricing.value.discount_percent);
+  if (!Number.isFinite(percent) || percent <= 0 || percent > 100) return "支付比例待修正";
+  return percent === 100 ? "不打折" : `支付原价 ${percent}%`;
+});
+const activeFilterCount = computed(() => Number(currentPricing.value.custom_only) + Number(selectedOnly.value) + Number(drawFilter.value !== 'all'));
 const daihaoCount = computed(() => Object.values(cartDaihao.value).reduce((sum, qty) => sum + qty, 0));
 const ruCount = computed(() => Object.values(cartRu.value).reduce((sum, qty) => sum + qty, 0));
 function showResult(message, error = false) {
@@ -397,6 +395,7 @@ const filteredPackages = computed(() => displayPackages(processedPackages.value,
 }));
 watch(categories, values => { if (!values.includes(activeCategory.value)) activeCategory.value = "全部"; });
 function resetFilters() {
+  currentPricing.value.custom_only = false;
   query.value = "";
   activeCategory.value = "全部";
   drawFilter.value = "all";
@@ -651,13 +650,13 @@ async function newBlankPlan() {
     cartDaihao.value = {}; customPackagesDaihao.value = []; initialPointsDaihao.value = 0;
     exchangeRate.value = publicCatalog.value.exchangeRate; rateDraft.value = String(exchangeRate.value); rateError.value = '';
   } else { cartRu.value = {}; customPackagesRu.value = []; initialPointsRu.value = 0; }
+  resetFilters();
   pricingByVersion.value[game] = { ...defaultPricing(), custom_only: true };
   builtinSnapshots.value[game] = [];
   plansByVersion.value[game] = { id: null, name: '', isLocal: false };
-  resetFilters();
   showCustomForm.value = false;
   showPlanSave.value = false;
-  showResult('已新建空白方案，可添加自定义礼包；需要公共礼包时切换「礼包来源」。');
+  showResult('已新建空白方案，可添加自定义礼包；需要公共礼包时在「筛选」中切换「礼包来源」。');
 }
 
 async function deleteCustom(id) {
@@ -1117,7 +1116,9 @@ function openPlanSave() {
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .cart-main :deep(.compact-tool-description) { color: var(--ink); }
 .cart-search,.cart-sort,.cart-selected{color:var(--ink)}
-.cart-search input,.cart-sort select{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.cart-search,.cart-sort select{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.cart-search input{border:0;background:transparent;color:var(--ink)}
+.cart-search:focus-within{outline:2px solid var(--theme-focus, var(--accent));outline-offset:2px}
 .cart-selected{cursor:pointer}
 .cart-selected input{accent-color:var(--tea)}
 .cart-rate-hint{color:var(--ink-60);font-size:12px}
@@ -1148,7 +1149,17 @@ function openPlanSave() {
 .cart-rate-settings { color: var(--ink-60); }
 .cart-rate-settings > summary, .cart-more-filters > summary { cursor: pointer; }
 .cart-rate-modify { text-decoration: underline; text-underline-offset: 3px; }
-.cart-more-filters > summary::after { content: '⌄'; }
+.cart-pricing-summary { cursor: pointer; list-style: none; }
+.cart-pricing-summary::-webkit-details-marker,.cart-more-filters > summary::-webkit-details-marker { display: none; }
+.cart-pricing-summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+.cart-pricing-overview > span,.cart-draft-hint { color: var(--ink-60); }
+.cart-pricing-toolbar .when-open,.cart-pricing-toolbar[open] .when-closed { display: none; }
+.cart-pricing-toolbar[open] .when-open { display: inline; }
+.cart-pricing-toolbar[open] .cart-pricing-toggle svg { transform: rotate(180deg); }
+.cart-pricing-body { border-top: 1px solid var(--line); }
+.cart-more-filters > summary { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.cart-more-filters[open] > summary { border-color: var(--accent-strong); }
+.cart-mbar .mbtn.primary { background: var(--accent-strong); color: var(--on-surface); }
 .cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-category select,.cart-source select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .cart-advanced-content { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }

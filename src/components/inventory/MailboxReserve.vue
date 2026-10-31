@@ -1,10 +1,10 @@
 <template>
   <div class="mailbox-container">
-    <div class="mail-quick">
+    <div class="mail-quick" :class="{ 'is-empty': loaded && !mailCount && !pendingClaim }">
       <Mail :size="22" class="mail-quick-icon" aria-hidden="true" />
       <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
-      <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="录入／调整储备" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">录入／调整储备</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
+      <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="管理邮件储备（录入／调整储备）" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
     </div>
     <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
     <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>
