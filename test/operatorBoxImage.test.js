@@ -29,7 +29,7 @@ test('export allowlist contains actual fate terms, never private names, notes or
   const output = operatorBoxImageEntry(entry, { avatar: '/avatar/test.webp', discs: [{ ot_name: '实际词条', abbreviation: '实际', color: '金' }] }, { attackLabel: '12,345' })
   assert.equal(output.huaji, '5★ · 已觉醒')
   assert.equal(output.job, '神纪')
-  assert.equal(output.attack, '12,345')
+  assert.equal(output.attack, '12345')
   assert.equal(output.hp, '—')
   assert.deepEqual(output.loadouts, [[{ name: '实际', color: '金' }], []])
   assert.doesNotMatch(JSON.stringify(output), /private-|perfect|target|remark|userId/)
@@ -67,8 +67,8 @@ test('export retains calculated combat and actual oddities without inventing unk
   const output = operatorBoxImageEntry(entry, {}, {
     attackLabel: '9,999', hpLabel: '99,999', attackSource: 'calculated', hpSource: 'observed', status: 'stale',
   })
-  assert.equal(output.attack, '9,999')
-  assert.equal(output.hp, '99,999')
+  assert.equal(output.attack, '9999')
+  assert.equal(output.hp, '99999')
   assert.deepEqual(output.oddities, { attack: { current: 500, max: 500 }, hp: { current: 0, max: '—' } })
   assert.deepEqual(operatorBoxImageEntry({ id: 'unknown' }).oddities, {
     attack: { current: '—', max: '—' }, hp: { current: '—', max: '—' },
@@ -76,4 +76,22 @@ test('export retains calculated combat and actual oddities without inventing unk
   assert.deepEqual(operatorBoxImageEntry({ id: 'zero', combatStats: { oddities: { attack: { current: 0, max: 0 } } } }).oddities.attack, { current: 0, max: 0 })
   assert.equal(Object.hasOwn(output, 'sources'), false)
   assert.equal(JSON.stringify(entry), before)
+})
+
+
+test('export sorts each loadout by color stably without mutating saved loadouts or catalog', () => {
+  const entry = { id: 'sort', discLoadouts: [
+    { discNames: ['蓝一', '金一', '紫一'] },
+    { discNames: ['未知', '金二', '金一'] },
+  ] }
+  const catalog = { discs: [
+    { ot_name: '蓝一', color: 'blue' }, { ot_name: '金一', color: '金' },
+    { ot_name: '紫一', color: 'purple' }, { ot_name: '金二', color: 'gold' },
+  ] }
+  const before = JSON.stringify({ entry, catalog })
+  const output = operatorBoxImageEntry(entry, catalog, { attackLabel: '1,234,567', hpLabel: '0' })
+  assert.deepEqual(output.loadouts.map(row => row.map(disc => disc.name)), [['金一', '紫一', '蓝一'], ['金二', '金一', '未知']])
+  assert.equal(output.attack, '1234567')
+  assert.equal(output.hp, '0')
+  assert.equal(JSON.stringify({ entry, catalog }), before)
 })

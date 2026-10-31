@@ -9,6 +9,8 @@ export const BOX_IMAGE_WIDTH = 1440
 export const BOX_IMAGE_LAYOUT_WIDTH = 1080
 export const BOX_IMAGE_PAGE_SIZE = 15
 
+const discColorOrder = { 金: 0, gold: 0, 紫: 1, purple: 1, 蓝: 2, blue: 2 }
+
 // Only presentation fields cross into the export; private notes and targets stay out.
 export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) {
   const terms = new Map((catalog.discs || []).map(disc => [discNameOf(disc), disc]))
@@ -32,8 +34,8 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
     huaji: operatorHuajiLabel(entry).replace(' 星', '★'),
-    attack: combat.attackLabel || '—',
-    hp: combat.hpLabel || '—',
+    attack: (combat.attackLabel || '—').replaceAll(',', ''),
+    hp: (combat.hpLabel || '—').replaceAll(',', ''),
     oddities: Object.fromEntries(['attack', 'hp'].map(kind => {
       const oddity = entry.combatStats?.oddities?.[kind]
       return [kind, { current: oddity?.current ?? '—', max: oddity?.max ?? '—' }]
@@ -41,7 +43,7 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     loadouts: Array.from({ length: 2 }, (_, index) => normalizeDiscNames(loadouts[index]?.discNames || loadouts[index]?.discs).map(name => {
       const disc = terms.get(name)
       return { name: disc?.abbreviation || name, color: disc?.color || '' }
-    })),
+    }).sort((a, b) => (discColorOrder[a.color] ?? 3) - (discColorOrder[b.color] ?? 3))),
   }
 }
 

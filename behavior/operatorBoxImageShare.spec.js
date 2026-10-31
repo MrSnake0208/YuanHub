@@ -65,7 +65,7 @@ it.each(['生成分段图', '尝试生成完整长图'])('%s keeps growth, both 
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
   for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极', '2节点',
-    '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
+    '999999', '9999999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
     '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认']) {
     expect(text).toContain(value)
   }
@@ -84,7 +84,7 @@ it('static ledger keeps final combat without oddity details, history, calculatio
   const wrapper = render(0, { entries, filteredIds: ['op'] })
   await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   const capture = captures[0]
-  for (const value of ['等级90', '修为12', '化极', '0节点', '9,999', '99,999',
+  for (const value of ['等级90', '修为12', '化极', '0节点', '9999', '99999',
     '真实命盘']) expect(capture.text).toContain(value)
   expect(capture.controls).toBe(0)
   expect(capture.stars).toEqual([4])
