@@ -18,7 +18,7 @@
         </div>
       </div>
       <div v-if="$slots.summary" class="compact-tool-summary"><slot name="summary" /></div>
-      <div v-if="helpOpen" :id="helpId" class="compact-tool-help-content"><slot name="help" /></div>
+      <div v-if="$slots.help && helpOpen" :id="helpId" class="compact-tool-help-content"><slot name="help" /></div>
     </div>
   </header>
 </template>

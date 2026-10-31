@@ -17,10 +17,6 @@
           <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建</button>
           <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>
-        <template #help>
-          <p>选择公共礼包或录入当地价格，设置折扣与预算币种，累计积分抽数和累充奖励，保存方案或导出账单图片。两个版本的购物清单独立保留，切换版本不会清空。</p>
-          <p>独立创作 · 著作权归作者 binary 所有；数据以游戏内商店为准。</p>
-        </template>
       </CompactToolHeader>
 
       <section>

@@ -39,10 +39,6 @@
           </details>
         </template>
         <template #summary>
-          <div class="tool-summary roster-summary" aria-label="密探概览">
-            <span class="roster-total">图鉴 <b>{{ catalogCount }}</b> 位</span>
-            <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
-          </div>
           <p v-if="panelPreferenceNotice" class="action-feedback panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
           <p v-if="editorOpeningId || editorOpenError" class="action-feedback panel-preference-notice operator-editor-open-status" :role="editorOpenError ? 'alert' : 'status'">{{ editorOpenError || '正在读取密探编辑资料…' }}</p>
         </template>
@@ -4530,12 +4526,6 @@ const starOperatorDisplayNames = computed(function () {
     if (operator && operator.id && operator.name && !names[operator.id]) names[operator.id] = operator.name;
   });
   return names;
-});
-
-const catalogCount = computed(function () {
-  return catalogOperators.value.filter(function (op) {
-    return matchesGame(op, gameFilter.value);
-  }).length;
 });
 
 function normalizeEntry(e, odditySchema) {
