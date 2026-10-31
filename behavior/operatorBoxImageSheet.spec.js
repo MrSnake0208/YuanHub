@@ -67,13 +67,16 @@ it.each([
   wrapper.unmount()
 })
 
-it.each([{ terms: [] }, { terms: ['已配词条'] }])('empty loadouts show a read-only state while configured terms remain: $terms', ({ terms }) => {
+it.each([{ terms: [] }, { terms: ['已配词条'] }, { terms: ['词条一', '词条二'] }, { terms: ['词条一', '词条二', '词条三'] }])('empty loadouts show a read-only state while configured terms remain: $terms', ({ terms }) => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({
     id: 'empty', name: '测试', discLoadouts: [{ discNames: terms }, { discNames: [] }],
   })] } })
   const rows = wrapper.findAll('.box-image-destiny-row')
   expect(rows).toHaveLength(2)
   expect(rows[0].findAll('em').map(term => term.text())).toEqual(terms.length ? terms : ['—'])
+  expect(rows[0].findAll('.box-image-term-placeholder')).toHaveLength(3 - Math.max(1, terms.length))
+  expect(rows[0].get('.box-image-destiny-line').element.children).toHaveLength(3)
+  expect(rows[1].get('.box-image-destiny-line').element.children).toHaveLength(3)
   expect(rows[1].get('em.empty').text()).toBe('—')
   expect(rows[1].get('em.empty').attributes('aria-label')).toBe('未配置')
   expect(wrapper.text()).not.toContain('+ 命盘')

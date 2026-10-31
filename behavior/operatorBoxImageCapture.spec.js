@@ -49,3 +49,19 @@ it('does not scan stat and fate nodes or allocate compatibility canvases', async
   expect(root.children).toHaveLength(1000)
   expect(root.firstChild.textContent).toBe('真实词条')
 })
+
+
+it.each([
+  [142, 280, 'scale(0.5)'],
+  [142, 120, ''],
+  [0, 280, ''],
+])('fits overflowing fate text without dropping terms: available %s, required %s', async (available, required, transform) => {
+  const root = document.createElement('section')
+  root.innerHTML = '<em class="box-image-term"><span>第一套较长且必须完整保留的词条</span></em>'
+  const text = root.firstElementChild.firstElementChild
+  vi.spyOn(text.parentElement, 'getBoundingClientRect').mockReturnValue({ width: available })
+  vi.spyOn(text, 'getBoundingClientRect').mockReturnValue({ width: required })
+  await prepareOperatorBoxImage(document, root)
+  expect(text.style.transform).toBe(transform)
+  expect(text.textContent).toBe('第一套较长且必须完整保留的词条')
+})

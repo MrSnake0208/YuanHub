@@ -55,6 +55,7 @@ export function operatorBoxImagePages(entries, full = false) {
 }
 
 async function waitForAssets(element) {
+  const document = element.ownerDocument
   const cleanups = []
   let timer
   try {
@@ -66,8 +67,16 @@ async function waitForAssets(element) {
       img.addEventListener('error', failed)
       cleanups.push(() => { img.removeEventListener('load', loaded); img.removeEventListener('error', failed) })
     }))
+    const fonts = document.fonts
+    // Include the exported Chinese text so unicode-range font subsets load before capture.
+    const exportFonts = fonts?.load ? Promise.all([
+      '600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"',
+      '700 16px "Archivo"', '800 16px "Archivo"', '900 16px "Archivo"',
+    ].map(font => fonts.load(font, element.textContent || '代号鸢 BOX 0123456789').then(faces => {
+      if (!faces.length) throw new Error('字体未注册')
+    }))).catch(() => { throw new Error('分享图字体加载失败，请检查网络后重试。') }) : Promise.resolve()
     await Promise.race([
-      Promise.all([document.fonts?.ready, ...images]),
+      Promise.all([exportFonts, fonts?.ready, ...images]),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('图片准备超时，请检查网络后重试。')), 20000) }),
     ])
   } finally {
@@ -88,6 +97,7 @@ export async function renderOperatorBoxImage(element) {
     windowWidth: BOX_IMAGE_WIDTH, scrollX: 0, scrollY: 0, logging: false,
     onclone: async (document, cloned) => {
       try {
+        await waitForAssets(cloned)
         const pixelHeight = Math.ceil(cloned.scrollHeight * options.scale)
         if (pixelHeight > 16384 || pixelHeight * BOX_IMAGE_WIDTH > 16000000) {
           throw new Error('完整长图过长，请改用分段图片。')

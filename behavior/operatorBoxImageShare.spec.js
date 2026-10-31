@@ -64,7 +64,7 @@ it.each(['生成分段图', '尝试生成完整长图'])('%s keeps growth, both 
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
   for (const value of ['用于排版的长姓名', '等级73', '修为0', '化极2', '2节点',
-    '999,999', '9,999,999', '命盘一', '命盘二', '第一套较长且必须完整保留的词条',
+    '999,999', '9,999,999', '命盘1', '命盘2', '第一套较长且必须完整保留的词条',
     '另一词条', '第二套独立词条', '等级—', '修为—', '化极待确认']) {
     expect(text).toContain(value)
   }

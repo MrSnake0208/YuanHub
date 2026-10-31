@@ -14,6 +14,12 @@ export async function prepareOperatorBoxImage(document, root) {
     }
     portrait.classList.add(hidden)
   }
+  // Fit exceptional long terms inside equal-width cells without distorting glyph proportions.
+  for (const text of root.querySelectorAll('.box-image-term > span')) {
+    const available = text.parentElement.getBoundingClientRect().width - 2
+    const required = text.getBoundingClientRect().width
+    if (available > 0 && required > available) text.style.transform = `scale(${available / required})`
+  }
   // html2canvas does not paint writing-mode. Preserve the browser's actual glyph positions.
   const vertical = [...root.querySelectorAll('.box-image-name-tab > h3, .box-image-prof-tab > span')].map(node => {
     if (view.getComputedStyle(node).writingMode !== 'vertical-rl') return null
