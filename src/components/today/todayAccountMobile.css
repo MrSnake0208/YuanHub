@@ -1,5 +1,7 @@
 /* 手机专属布局与密度；不继承桌面几何规则。 */
 @media not all and (min-width: 768px) {
+  .customize-desktop-label { display: none; }
+  .today-customize { border: 0; background: transparent; color: var(--ink-60); font-size: 12px; }
   .today-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
   .today-customize, .today-record { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 6px 10px; }
 .today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }

@@ -2,7 +2,7 @@
   <div class="bonds-page bonds-codex">
     <IslandSidebar />
     <main v-if="canAccessArchive" id="main-content" class="bonds-main">
-      <CompactToolHeader title="羁绊图鉴" description="作者：线线&amp;悠扬 · 独立创作">
+      <CompactToolHeader mobile-context mobile-description title="羁绊图鉴" description="作者：线线&amp;悠扬 · 独立创作">
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :error="state.accountsError" :switch-disabled="state.busy" switch-disabled-reason="正在保存或处理文件，请等待完成。" /></template>
         <template #actions>
           <button type="button" class="bond-header-action" :disabled="state.busy" :aria-expanded="settingsOpen" aria-controls="bond-settings" @click="settingsOpen = !settingsOpen"><Settings :size="15" aria-hidden="true" />设置</button>

@@ -51,12 +51,7 @@
 .cart-layout :deep(.cart-actions) { gap: 8px; }
 .cart-layout :deep(.cart-actions .btn) { flex: 1; min-width: 0; min-height: 44px; padding: 8px 8px; font-size: 13px; white-space: nowrap; }
 @media(max-width:767px) {
-  .cart-main :deep(.compact-tool-header) { padding-block: 12px 8px; }
-  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading account' 'actions actions'; gap: 8px 10px; }
-  .cart-main :deep(.compact-tool-heading h1) { font-size: 24px; }
-  .cart-main :deep(.compact-tool-description) { font-size: 12px; font-weight: 400; color: var(--ink-60); text-wrap: pretty; }
-  .cart-main :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; justify-content: flex-start; gap: 4px 10px; }
-  .cart-version-selector { min-height: 38px; }
+  .cart-version-selector { min-height: 44px; width: auto; border: 0; border-radius: 10px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); font-weight: 600; }
   .cart-rate-settings > summary { min-height: 36px; flex-wrap: wrap; }
   .cart-filters { margin-block: 6px 10px; }
   .cart-search-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }

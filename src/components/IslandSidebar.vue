@@ -383,7 +383,7 @@ const menuOpen = ref(false);
 const menuToggle = ref(null);
 const menuPanel = ref(null);
 useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEscape: closeMenu });
-const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "YuanHub");
+const mobileTitle = computed(() => ({ '/star': '星石背包', '/cart': '礼包计算器', '/feedback': '我的反馈' }[route.path] || route.meta?.title?.split(" — ")[0] || "YuanHub"));
 
 watch(() => route.fullPath, () => {
   cancelSwipe();

@@ -64,3 +64,16 @@
   .feedback-modal .modal-foot button { flex: 1; }
 }
 }
+
+@media (max-width: 767px) {
+  .page-feedback .page-header { padding-block: 12px 8px; }
+  .page-feedback .page-header > .wrap { padding-inline: 16px; }
+  .page-feedback .page-header-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .page-feedback .page-header-identity { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+  .page-feedback .page-header-actions { flex: none; margin-left: auto; }
+  .page-feedback .page-header-action { min-height: 40px; padding: 6px 8px; font-size: 12px; }
+  .page-feedback :deep(.feedback-space-context) { flex: 0 1 auto; max-width: 100%; }
+  .page-feedback :deep(.feedback-space-context > span) { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+  .page-feedback :deep(.feedback-space-context select) { flex: none; width: auto; max-width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: var(--cream); font-weight: 600; }
+  .page-feedback :deep(.feedback-space-context strong) { padding: 10px; border-radius: 10px; background: var(--cream); }
+}

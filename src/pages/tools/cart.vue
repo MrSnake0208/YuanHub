@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="cart-main">
-      <CompactToolHeader title="礼包预算" description="作者：binary · 独立创作">
+      <CompactToolHeader mobile-context mobile-description title="礼包预算" description="作者：binary · 独立创作">
         <template #account>
           <div class="cart-header-context">
             <select class="cart-version-selector" :value="version" aria-label="游戏版本" @change="setVersion($event.target.value)">
@@ -14,8 +14,6 @@
         </template>
         <template #primary-actions>
           <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
-        </template>
-        <template #actions>
           <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建</button>
           <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
         </template>

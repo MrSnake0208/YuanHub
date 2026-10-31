@@ -1,9 +1,27 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
+import { h } from 'vue'
 import CompactToolHeader from '../src/components/CompactToolHeader.vue'
 import DataAccountContextBar from '../src/components/DataAccountContextBar.vue'
 
 beforeEach(() => { window.matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
+
+it('手机上下文布局保留署名、摘要、主操作与辅助操作，原帮助仍可展开', async () => {
+  const save = vi.fn()
+  const wrapper = mount(CompactToolHeader, { props: { title: '礼包预算', description: '作者：binary · 独立创作', mobileContext: true, mobileDescription: true }, slots: {
+    account: '<button>代号鸢</button>', 'primary-actions': () => h('button', { onClick: save }, '保存方案'),
+    actions: '<button>我的方案</button>', summary: '<p>真实统计</p>', help: '<p>原有帮助</p>',
+  } })
+  expect(wrapper.classes()).toContain('mobile-context-header')
+  expect(wrapper.classes()).toContain('mobile-description')
+  expect(wrapper.get('.compact-tool-description').text()).toContain('binary')
+  expect(wrapper.get('.compact-tool-summary').text()).toBe('真实统计')
+  expect(wrapper.get('.compact-tool-utilities').text()).toContain('我的方案')
+  await wrapper.get('.compact-tool-primary button').trigger('click')
+  expect(save).toHaveBeenCalledOnce()
+  await wrapper.get('.compact-tool-help').trigger('click')
+  expect(wrapper.get('.compact-tool-help-content').text()).toBe('原有帮助')
+})
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/inventory' }), onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn() }))
 

@@ -2,15 +2,7 @@
   .achievement-main { min-width: 0; min-height: 100dvh; margin-left: 0; }
   .achievement-page .wrap, .achievement-page main.achievement-main .compact-tool-header > .wrap { box-sizing: border-box; width: 100%; min-width: 0; padding-inline: 16px; }
   /* 页头仍用同一组件；窄屏只重排，账号与辅助操作持续可见。 */
-  .achievement-page .compact-tool-header { padding-block: 14px 4px; }
-  .achievement-page .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; gap: 8px 12px; }
-  .achievement-page .compact-tool-header .compact-tool-heading h1 { font-size: 28px; }
-  .achievement-page .compact-tool-header .compact-tool-description { font-size: 12px; margin-top: 4px; }
   .achievement-page .compact-tool-actions { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-  .achievement-page .compact-tool-header .compact-tool-actions .tool-more { position: relative; }
-  .achievement-page .compact-tool-header .compact-tool-actions .tool-more-content { left: auto; right: 0; max-width: calc(100vw - 32px); }
-  .achievement-page .compact-tool-header .compact-tool-help { min-height: 32px; padding: 4px; }
-  .achievement-page .compact-tool-account .context-selector { min-height: 36px; padding: 7px 10px; }
   .achievement-main::before { height: 260px; mask-size: auto 260px; mask-position: right top; }
   .achievement-workspace { padding-block: 4px 26px; }
   .achievement-main button, .achievement-dialog button { min-height: 36px; padding: 7px 9px; font: inherit; font-size: 13px; }

@@ -14,16 +14,9 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
 
 @media (max-width: 767px) {
   .recruitment-main { background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 30%, transparent), color-mix(in srgb, var(--paper) 90%, transparent) 180px); }
-  .recruitment-main :deep(.compact-tool-header) { padding-block: 12px 4px; }
-  .recruitment-main :deep(.compact-tool-heading h1) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .recruitment-main :deep(.compact-tool-row) { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-  .recruitment-main :deep(.compact-tool-heading) { position: absolute; }
-  .recruitment-main :deep(.compact-tool-account) { flex: 1 1 160px; min-width: 0; }
-  .recruitment-main :deep(.compact-tool-actions) { flex: 0 1 auto; flex-wrap: wrap; max-width: 100%; margin-left: auto; }
   .archive-toggle { min-height: 32px; padding: 6px 4px; font-weight: 500; }
   .recruitment-content { padding-top: 0; }
   .recruitment-content :deep(.timeline-heading h2) { font-size: 22px; }
-  .recruitment-main :deep(.compact-tool-description) { color: var(--ink); }
 }
 
 @media (max-width: 1080px) {

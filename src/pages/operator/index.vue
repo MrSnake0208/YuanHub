@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="operator-main">
-      <CompactToolHeader class="roster-header" title="密探名册">
+      <CompactToolHeader mobile-context class="roster-header" title="密探名册">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" :switch-disabled="accountSwitchBusy"
@@ -41,8 +41,6 @@
         <template #summary>
           <div class="tool-summary roster-summary" aria-label="密探概览">
             <span class="roster-total">图鉴 <b>{{ catalogCount }}</b> 位</span>
-            <span class="roster-owned">已招募 <b>{{ manifestOwned }}</b><span class="roster-mobile-total"> / <b>{{ catalogCount }}</b></span> 位</span>
-            <span>{{ manifestPercent }}</span>
             <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
           </div>
           <p v-if="panelPreferenceNotice" class="action-feedback panel-preference-notice" :role="panelPreferenceError ? 'alert' : 'status'">{{ panelPreferenceNotice }}</p>
@@ -555,10 +553,10 @@
                 <template #primary-tool>
                   <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
                 </template>
-                <template #extra-filters>
-                  <label class="catalog-version-copy">目录版本 <input class="catalog-version-value" type="text" readonly
-                    :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
-                    aria-label="目录版本，可选中复制" @focus="$event.target.select()" /></label>
+                <template #extra-footer>
+                  <button v-if="hasManifestFilters" type="button" class="current-filter-reset catalog-filter-reset" @click="focusCatalogEntry">
+                    <RotateCcw :size="13" aria-hidden="true" />重置筛选
+                  </button>
                 </template>
               </OperatorFilterDossier>
             </div>
@@ -1071,14 +1069,6 @@
               >
             </div>
             <div v-else class="current-ledger" v-reveal>
-              <div class="current-ledger-meta">
-                <span>{{ currentFilterSuffix }}</span>
-                <span>{{
-                  ledgerCardIsV2
-                    ? "快捷提升扣库存；卡片编辑、完整编辑不扣库存"
-                    : "快捷提升扣库存；手动校正、完整编辑不扣库存"
-                }}</span>
-              </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
                 没有匹配{{ currentFilterSuffix }}的已招募密探
                 <button type="button" class="link" @click="resetCurrentFilters">{{ discardedEnabled ? '清除筛选，返回在册' : '清除筛选' }}</button>
@@ -2206,6 +2196,7 @@
                       "
                       @input="setOperatorRemarkDraft(e, $event.target.value)"
                     ></textarea>
+                    <small v-if="cardHasDraft(e)" class="ledger-card-save-hint">仅修改养成记录，不扣除库存</small>
                     <div class="ledger-card-actions">
                       <template v-if="cardHasDraft(e)"
                         ><button
@@ -5006,12 +4997,6 @@ const manifestOwned = computed(function () {
 });
 const manifestMissing = computed(function () {
   return statsEntries.value.length - manifestOwned.value;
-});
-const manifestPercent = computed(function () {
-  if (!statsEntries.value.length) return "0%";
-  return (
-    Math.round((manifestOwned.value * 100) / statsEntries.value.length) + "%"
-  );
 });
 
 // 图鉴展示列表：在全量基础上叠加品质 / 属性 / 职业 / 搜索 / 拥有状态 / 养成条件
@@ -9593,8 +9578,6 @@ onBeforeUnmount(function () {
 }
 
 
-.catalog-version-value { border: 0; background: transparent; color: inherit; }
-.catalog-version-value:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .oddity-completion-badge {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -10897,6 +10880,9 @@ onBeforeUnmount(function () {
   opacity: 0.55;
   cursor: default;
 }
+.catalog-tools .catalog-filter-reset {
+  display: none;
+}
 .current-filter-reset {
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -11021,12 +11007,6 @@ onBeforeUnmount(function () {
   border-radius: 20px;
   background: linear-gradient(145deg, var(--tea), var(--tea-deep));
   box-shadow: 0 20px 40px -24px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.55);
-}
-.current-ledger-meta {
-  color: rgba(255, 248, 236, 0.76);
-}
-.current-ledger-meta span:last-child {
-  color: var(--theme-accent-text, var(--yellow));
 }
 .agent-ledger-card {
   color: var(--ink);
@@ -12777,7 +12757,6 @@ onBeforeUnmount(function () {
 .roster-share small.is-sharing::before { background: var(--theme-success-bg, #6f9f76); box-shadow: 0 0 0 3px rgba(111, 159, 118, .14); }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
-.catalog-version-copy { color: var(--ink-60); }
 </style>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorWorkspaceDesktop.css"></style>

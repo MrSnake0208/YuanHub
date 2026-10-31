@@ -8,6 +8,7 @@
   .lobby-heading time { font-size: 12px; }
   .lobby-context { margin-left: auto; min-width: 0; max-width: 100%; }
   .lobby-actions { flex: none; }
+  .lobby-utilities { display: flex; align-items: center; gap: 8px; margin-left: -12px; }
   .lobby-scene { position: relative; display: flex; align-items: center; min-height: 106px; }
   .lobby-copy { position: relative; z-index: 2; width: calc(100% - 262px); min-width: 0; padding: 16px 0; }
   .lobby-greeting { font-size: 28px; letter-spacing: .05em; }

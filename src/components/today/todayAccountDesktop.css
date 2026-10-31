@@ -1,5 +1,6 @@
 /* 桌面专属布局与密度；共享字段外观留在功能组件。 */
 @media (min-width: 768px) {
+  .customize-mobile-label { display: none; }
   .today-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
   .today-customize, .today-record { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 10px; }
 .today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }

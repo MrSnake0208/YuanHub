@@ -88,3 +88,9 @@
   .cart-catalog :deep(.pkg-foot){column-gap:6px}
 }
 }
+
+@media (min-width: 768px) {
+  .cart-main :deep(.compact-tool-help) { order: 1; }
+  .cart-plan-new { order: 2; }
+  .cart-plan-list { order: 3; }
+}

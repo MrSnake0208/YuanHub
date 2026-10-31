@@ -115,6 +115,7 @@
         </div>
 
         <OperatorGrowthFilters v-if="showGrowthFilters && compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+        <slot name="extra-footer" />
       </div>
 
       <div class="pf-row pf-status-row">

@@ -712,21 +712,17 @@ it('工作区方向键不切换视图，即将上线仍只打开说明', async (
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招募统计', async () => {
+it('图鉴工具栏显示筛选结果，搜索不改变招募统计', async () => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator, { ...operator, id: 'other', name: '另一位密探' }] })
   operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
   const wrapper = renderPage()
   await flushPromises()
   const tools = wrapper.get('.catalog-tools')
-  const summary = wrapper.get('.roster-summary')
   expect(tools.getComponent({ name: 'OperatorFilterDossier' }).props('statusLabel')).toBe('招募状态')
-  expect(summary.get('.roster-owned').text()).toBe('已招募 1 / 2 位')
-  expect(summary.text()).toContain('50%')
   const counts = () => tools.findAll('[aria-label="按招募状态筛选密探图鉴"] small').map(item => item.text())
   expect(tools.get('.current-filter-result').text()).toBe('2 / 2 位')
   expect(counts()).toEqual(['2', '1', '1'])
   await tools.get('input[type="search"]').setValue('另一位')
-  expect(summary.get('.roster-owned').text()).toBe('已招募 1 / 2 位')
   expect(tools.get('.current-filter-result').text()).toBe('1 / 2 位')
   expect(counts()).toEqual(['2', '1', '1'])
   await tools.get('[aria-label="按招募状态筛选密探图鉴"] button:nth-child(2)').trigger('click')
@@ -735,7 +731,7 @@ it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it.each(['2026-10-17T03:04:05Z', ''])('精简页头仍可从帮助查看更新时间及复制完整目录版本：%s', async version => {
+it.each(['2026-10-17T03:04:05Z', ''])('精简页头仍可从帮助查看更新时间：%s', async version => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
@@ -747,10 +743,6 @@ it.each(['2026-10-17T03:04:05Z', ''])('精简页头仍可从帮助查看更新�
   expect(content.attributes('id')).toBe(help.attributes('aria-controls'))
   await help.trigger('click')
   expect(wrapper.find('.compact-tool-help-content').exists()).toBe(false)
-  const filters = wrapper.get('.catalog-tools')
-  await filters.get('.dossier-more').trigger('click')
-  expect(filters.get('.catalog-version-value').element.value).toBe(version || '本地兜底')
-  expect(filters.get('.catalog-version-value').attributes('readonly')).toBeDefined()
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
@@ -949,15 +941,13 @@ it('已有密探时隐藏首次引导，筛选无结果不会误报空档案', a
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('单角色入口复用图鉴并聚焦搜索，目录版本保持完整可复制原值', async () => {
-  const version = 'catalog-release-opaque-not-a-date-20261005-sha123456789'
-  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
+it('单角色入口复用图鉴并聚焦搜索', async () => {
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
   await wrapper.findAll('.operator-entry-guide button').find(button => button.text() === '从图鉴补录一位密探').trigger('click')
   await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.catalog-tools input[type="search"]').element)
-  expect(wrapper.get('[aria-label="目录版本，可选中复制"]').element.value).toBe(version)
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })

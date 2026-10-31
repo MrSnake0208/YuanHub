@@ -46,7 +46,6 @@
 .roster-summary { margin: 4px 0 0; font-size: 12px; }
 .roster-summary .tool-updated { display: inline-flex; }
 .roster-box-actions { display: contents; }
-.roster-summary .roster-mobile-total { display: none; }
 @media (min-width: 768px) {
   .roster-header :deep(.compact-tool-row) { display: flex; flex-wrap: wrap; gap: 8px 16px; }
   .roster-header :deep(.compact-tool-heading) { flex: none; }
@@ -57,7 +56,6 @@
 
 
 .planning-bug-notice { margin: 0 0 16px; padding: 12px 16px; line-height: 1.7; overflow-wrap: anywhere; }
-.catalog-version-value { width: 14ch; max-width: 100%; padding: 0; font: inherit; font-weight: 700; text-overflow: ellipsis; }
 .slot-oddity-completion,
 .ledger-oddity-completion {
   display: flex;
@@ -1026,15 +1024,6 @@
   margin-top: 16px;
   padding: 16px;
 }
-.current-ledger-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 2px 14px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.6;
-}
 .agent-ledger-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1694,6 +1683,10 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+.ledger-card-save-hint {
+  font-size: 12px;
+  line-height: 1.5;
 }
 .ledger-card-actions {
   display: flex;
@@ -2830,10 +2823,6 @@
   .agent-ledger-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .current-ledger-meta {
-    flex-direction: column;
-    gap: 4px;
-  }
   .operator-main > section {
     padding-bottom: 40px;
   }
@@ -3140,11 +3129,6 @@
   .current-ledger {
     margin-inline: -2px;
     padding: 12px;
-  }
-  .current-ledger-meta {
-    padding-bottom: 12px;
-    font-size: 12px;
-    line-height: 1.5;
   }
   .agent-ledger-grid {
     grid-template-columns: 1fr;
@@ -3748,13 +3732,6 @@
     min-height: 44px;
     font-size: 12px;
   }
-  .current-ledger-meta {
-    min-width: 0;
-  }
-  .current-ledger-meta span {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
   .ledger-card-head,
   .ledger-identity,
   .ledger-name-row,
@@ -4039,36 +4016,11 @@
 .current-status-summary { margin: 0; }
 .panel > .catalog-tools ~ .backpack .bp-head { margin-bottom: 12px; padding-bottom: 8px; }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { margin: 0; }
-.catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; }
-.catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
 @media (max-width: 767px) {
-  .page-operator :deep(.compact-tool-header) { padding-block: 12px 8px; }
-  .page-operator :deep(.compact-tool-heading h1) { font-size: 26px; }
-  .roster-header :deep(.wrap) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 6px 8px;
-    overflow: visible;
-  }
-  .roster-header :deep(.compact-tool-row),
-  .roster-header :deep(.compact-tool-actions) { display: contents; }
-  .roster-header :deep(.compact-tool-heading) { grid-area: 1 / 1; }
-  .roster-header :deep(.compact-tool-account) { grid-area: 1 / 2; }
-  .roster-header :deep(.compact-tool-help) { grid-area: 1 / 3; min-height: 34px; }
-  .roster-header :deep(.data-account-context-bar.is-compact) { min-height: 34px; }
-  .roster-header :deep(.context-selector) { flex-wrap: wrap; min-height: 34px; padding: 4px 6px; gap: 2px 4px; }
-  .roster-header :deep(.account-name) { flex: 1 1 2em; }
-  .roster-box-actions { grid-area: 2 / 1 / auto / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+  .roster-box-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .roster-box-actions .btn { flex: 1 1 auto; }
-  .roster-summary { grid-area: 3 / 1 / auto / 3; min-width: 0; margin: 0; }
+  .roster-summary { min-width: 0; margin: 0; }
   .roster-summary .roster-total, .roster-summary .tool-updated { display: none; }
-  .roster-summary > .roster-owned::before { display: none; }
-  .roster-summary .roster-mobile-total { display: inline-flex; gap: 4px; }
-  .roster-header :deep(.compact-tool-actions .tool-more) { grid-area: 3 / 3; position: relative; }
-  .roster-header :deep(.tool-more > summary) { min-height: 34px; }
-  .roster-header :deep(.tool-more-content) { left: auto; right: 0; max-width: calc(100vw - 32px); }
-  .roster-header :deep(.compact-tool-help-content) { grid-column: 1 / -1; min-width: 0; margin-top: 0; }
   .page-operator .operator-tabs.tool-workspace-tabs { width: 100%; }
   .page-operator .tool-workspace-tabs > .workspace-tab-list { flex-grow: 1; }
   .page-operator .operator-tabs.tool-workspace-tabs button { flex-grow: 1; min-height: 38px; padding-block: 6px; }
@@ -4104,7 +4056,8 @@
   .catalog-tools :deep(.current-status-filter) { display: flex; flex-wrap: wrap; box-sizing: border-box; }
   .catalog-tools :deep(.current-status-filter button) { flex: 1 1 auto; width: auto; padding-inline: 6px; white-space: normal; }
   .catalog-tools :deep(.current-status-filter button.on) { background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); }
-  .catalog-tools :deep(.current-filter-reset) { grid-column: 1 / -1; justify-self: end; }
+  .catalog-tools :deep(.current-filter-tools > .current-filter-reset) { display: none; }
+  .catalog-tools .catalog-filter-reset { display: inline-flex; align-items: center; align-self: flex-end; gap: 4px; min-height: 34px; padding: 6px 10px; }
   .catalog-tools :deep(.dossier-extra) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
 }
 @media (max-width: 640px) {
@@ -4116,7 +4069,6 @@
   #operator-panel-current :deep(.operator-filter-dossier.is-compact) { margin-top: 6px; }
   .current-favorite-sort:not(.on), .current-batch-toggle:not(.on) { border-color: transparent; background: transparent; }
   #operator-panel-current .current-ledger { margin-top: 8px; padding: 8px; }
-  #operator-panel-current .current-ledger-meta { gap: 2px; padding-bottom: 8px; font-weight: 400; }
 }
 
 .is-short-viewport .editor-panel { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; }

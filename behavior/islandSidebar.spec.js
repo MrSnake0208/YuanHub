@@ -61,6 +61,13 @@ beforeEach(() => {
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
 
+it.each([['/star', '星石背包'], ['/cart', '礼包计算器'], ['/feedback', '我的反馈']])('手机 %s 使用简洁页面标题，保留原路由元信息', (path, title) => {
+  Object.assign(currentRoute, { path, meta: { title: '原有完整标题 — YuanHub' } })
+  const wrapper = render()
+  expect(wrapper.get('.mobile-page-title').text()).toBe(title)
+  expect(currentRoute.meta.title).toBe('原有完整标题 — YuanHub')
+})
+
 function dispatchTouch(target, type, x, y, count = 1) {
   const point = { identifier: 7, clientX: x, clientY: y }
   const event = new Event(type, { bubbles: true, cancelable: true })

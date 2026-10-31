@@ -8,6 +8,7 @@
         </div>
         <div v-if="$slots.default" class="lobby-context"><slot /></div>
         <div v-if="$slots.actions" class="lobby-actions"><slot name="actions" /></div>
+        <div v-if="$slots.utilities" class="lobby-utilities"><slot name="utilities" /></div>
       </div>
       <div class="lobby-scene">
         <div class="lobby-copy">

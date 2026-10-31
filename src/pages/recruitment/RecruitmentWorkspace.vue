@@ -2,7 +2,7 @@
   <div class="page-recruitment">
     <IslandSidebar />
     <main id="main-content" class="recruitment-main" @keydown.esc="onPageEscape">
-      <CompactToolHeader title="招募档案">
+      <CompactToolHeader mobile-context title="招募档案">
         <template v-if="enabled" #account>
           <div class="account-controls">
           <DataAccountContextBar data-guide-target="account" compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />

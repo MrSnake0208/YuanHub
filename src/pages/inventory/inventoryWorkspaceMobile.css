@@ -2240,6 +2240,7 @@
 }
 
 /* 库存精修：两端共享业务，窄屏只重排呈现。 */
+@media (min-width: 768px) {
 :deep(.inventory-header.compact-tool-header) { padding: 16px 0 12px; background: transparent; border: 0; border-radius: 0; }
 :deep(.inventory-header .compact-tool-row) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; align-items: center; gap: 10px 12px; }
 :deep(.inventory-header .compact-tool-heading h1) { font: 900 30px/1.25 var(--font-s); }
@@ -2250,9 +2251,10 @@
 :deep(.inventory-header .compact-tool-help), :deep(.inventory-header .tool-more > summary) { min-height: 36px; padding: 5px; font-size: 12px; }
 :deep(.inventory-header .tool-more) { position: relative; }
 :deep(.inventory-header .tool-more-content) { right: 0; left: auto; max-width: calc(100vw - 32px); }
+}
 .inventory-actions { display: flex; flex: 1 1 200px; gap: 6px; min-width: 0; }
 .inventory-actions > button { display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 38px; padding: 8px 10px; border-radius: 9px; font: 700 13px/1.5 var(--font-b); white-space: nowrap; }
-.inventory-actions .reward-entry { border: 1px solid var(--tea); background: var(--surface); color: var(--theme-strong-text, var(--tea)); box-shadow: none; }
+.inventory-actions .reward-entry { border: 1px solid var(--tea); background: var(--tea); color: var(--on-strong); box-shadow: none; }
 .inventory-actions .inventory-entry { background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .inventory-quickbar { display: grid; gap: 12px; margin: 4px 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .inventory-quickbar > * { min-width: 0; }
@@ -2306,7 +2308,6 @@
   .inventory-freshness { margin-left: auto; }
 }
 @media (max-width: 360px) {
-  :deep(.inventory-header .compact-tool-row) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; gap: 8px; }
   .inventory-actions { flex-basis: 100%; order: 1; }
 }
 /* 数量移出图标后仍保持原手机网格与数量角标的阅读顺序。 */

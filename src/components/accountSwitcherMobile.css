@@ -1,21 +1,24 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 767px) {
 .account-switcher { display: inline-flex; align-items: center; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 0 8px; }
-.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 8px; font: 500 13px/1.5 var(--font-b); }
+.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 8px 10px; border-radius: 10px; font: 600 13px/1.5 var(--font-b); }
 .selector-game, svg { flex: none; }
-.account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 10em; }
+.account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 16em; }
 .switch-status, .switch-error { flex-basis: 100%; font: 12px/1.6 var(--font-b); overflow-wrap: anywhere; }
 .account-switch-mask { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; align-items: flex-end; }
-.account-switch-panel { display: flex; flex-direction: column; width: 100%; min-width: 0; max-height: 85vh; max-height: 85dvh; padding: 8px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); font: 14px/1.6 var(--font-b); }
-.account-switch-panel::before { width: 32px; height: 4px; flex: none; margin: 0 auto 4px; }
+.account-switch-panel { display: flex; flex-direction: column; width: 100%; min-width: 0; max-height: 85vh; max-height: 85dvh; padding: 10px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); font: 14px/1.6 var(--font-b); }
+.account-switch-panel::before { width: 32px; height: 4px; flex: none; margin: 0 auto 8px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
 h2 { margin: 0; font: 900 18px/1.4 var(--font-s); }
 .switch-close { display: grid; place-items: center; min-width: 44px; min-height: 44px; }
 .switch-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
-h3 { margin: 8px 8px 4px; font: 600 12px/1.6 var(--font-b); }
-.switch-option { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; text-align: left; font: inherit; }
-.switch-option > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.switch-option small { flex: none; font-size: 12px; }
+h3 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+.switch-option { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 64px; padding: 10px 12px; border-radius: 10px; text-align: left; font: inherit; }
+.switch-option > span { min-width: 0; flex: 1; overflow-wrap: anywhere; white-space: normal; }
+.switch-option-copy { display: flex; flex-direction: column; gap: 2px; }
+.switch-option-game { display: block; color: var(--ink-60); font-size: 12px; font-weight: 400; }
+.switch-option > svg { order: 2; width: 20px; height: 20px; }
+.switch-option > small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .switch-option[aria-pressed="true"] { font-weight: 700; }
 .is-hidden { visibility: hidden; }
 footer { flex: none; margin-top: 8px; padding-top: 8px; }

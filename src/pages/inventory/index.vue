@@ -1,18 +1,20 @@
 <template>
   <InventoryLayout>
-      <CompactToolHeader class="inventory-header" title="库存" description="看总览，也能轻松记录">
+      <CompactToolHeader mobile-context class="inventory-header" title="库存" description="看总览，也能轻松记录">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
             :switch-disabled="dailyBusy || drawResourceLocked || mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
-        <template #actions>
+        <template #primary-actions>
           <div class="inventory-actions">
             <button type="button" class="btn primary reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || mailboxBusy"
               aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="!!rewardEntryWorkspace?.mode"
               @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
             <button type="button" class="btn ghost inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked" @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新数量</button>
           </div>
+        </template>
+        <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>

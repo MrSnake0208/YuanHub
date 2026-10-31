@@ -1,5 +1,5 @@
 <template>
-  <header class="compact-tool-header">
+  <header class="compact-tool-header" :class="{ 'mobile-context-header': mobileContext, 'mobile-description': mobileDescription }">
     <div class="wrap">
       <div class="compact-tool-row">
         <div class="compact-tool-heading">
@@ -8,14 +8,16 @@
         </div>
         <div v-if="$slots.account" class="compact-tool-account"><slot name="account" /></div>
         <div v-if="$slots.help || $slots.actions || $slots['primary-actions']" class="compact-tool-actions">
-          <slot name="primary-actions" />
-          <button v-if="$slots.help" type="button" class="compact-tool-help" :aria-expanded="helpOpen" :aria-controls="helpId" @click="helpOpen = !helpOpen">
-            <CircleHelp :size="15" aria-hidden="true" />帮助
-          </button>
-          <slot name="actions" />
+          <div v-if="$slots['primary-actions']" class="compact-tool-primary"><slot name="primary-actions" /></div>
+          <div class="compact-tool-utilities">
+            <button v-if="$slots.help" type="button" class="compact-tool-help" :aria-expanded="helpOpen" :aria-controls="helpId" @click="helpOpen = !helpOpen">
+              <CircleHelp :size="15" aria-hidden="true" />帮助
+            </button>
+            <slot name="actions" />
+          </div>
         </div>
       </div>
-      <slot name="summary" />
+      <div v-if="$slots.summary" class="compact-tool-summary"><slot name="summary" /></div>
       <div v-if="helpOpen" :id="helpId" class="compact-tool-help-content"><slot name="help" /></div>
     </div>
   </header>
@@ -25,7 +27,7 @@
 import { ref, useId } from 'vue'
 import { CircleHelp } from '@lucide/vue'
 
-defineProps({ title: { type: String, required: true }, description: { type: String, default: '' } })
+defineProps({ title: { type: String, required: true }, description: { type: String, default: '' }, mobileContext: Boolean, mobileDescription: Boolean })
 const helpOpen = ref(false)
 const helpId = useId()
 </script>
@@ -33,6 +35,7 @@ const helpId = useId()
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .compact-tool-header { color: var(--ink); }
+.compact-tool-primary, .compact-tool-utilities, .compact-tool-summary { display: contents; }
 .compact-tool-heading h1 { color: var(--theme-strong-text, var(--tea)); }
 .compact-tool-description { color: var(--ink-60); }
 .compact-tool-help { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }

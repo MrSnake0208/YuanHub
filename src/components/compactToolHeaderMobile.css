@@ -29,3 +29,36 @@
   .compact-tool-actions :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 }
 }
+
+/* 已确认的手机顶部：上下文、辅助操作、署名、摘要与主操作各有固定位置。 */
+@media (max-width: 767px) {
+  .compact-tool-header.mobile-context-header { padding-block: 12px 8px; }
+  .compact-tool-header.mobile-context-header > .wrap {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'account utilities' 'heading heading' 'summary summary' 'primary primary' 'help help';
+    align-items: center; column-gap: 8px; row-gap: 0; padding-inline: 16px;
+  }
+  .compact-tool-header.mobile-context-header .compact-tool-row,
+  .compact-tool-header.mobile-context-header .compact-tool-actions { display: contents; }
+  .compact-tool-header.mobile-context-header .compact-tool-heading { grid-area: heading; position: static; }
+  .compact-tool-header.mobile-context-header .compact-tool-heading h1 {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .compact-tool-header.mobile-context-header:not(.mobile-description) .compact-tool-description { display: none; }
+  .compact-tool-header.mobile-context-header.mobile-description .compact-tool-description {
+    margin: 8px 0 0; max-width: none; color: var(--ink-60); font: 400 12px/1.6 var(--font-b);
+  }
+  .compact-tool-header.mobile-context-header .compact-tool-account { grid-area: account; min-width: 0; max-width: 100%; justify-self: start; align-self: center; }
+  .compact-tool-header.mobile-context-header .compact-tool-utilities {
+    grid-area: utilities; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px;
+    min-width: 0; max-width: 100%; position: relative;
+  }
+  .compact-tool-header.mobile-context-header .compact-tool-primary { grid-area: primary; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
+  .compact-tool-header.mobile-context-header .compact-tool-summary { grid-area: summary; display: block; min-width: 0; margin-top: 8px; }
+  .compact-tool-header.mobile-context-header .compact-tool-help-content { grid-area: help; margin-top: 8px; min-width: 0; }
+  .compact-tool-header.mobile-context-header .compact-tool-help { min-height: 40px; }
+  .compact-tool-header.mobile-context-header :deep(.tool-more) { position: static; }
+  .compact-tool-header.mobile-context-header :deep(.tool-more-content) { left: auto; right: 0; max-width: calc(100vw - 32px); }
+  .compact-tool-header.mobile-context-header :deep(.tool-more > summary) { min-height: 40px; }
+}

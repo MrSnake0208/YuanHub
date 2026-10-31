@@ -2,7 +2,7 @@
   <div class="page-star">
     <IslandSidebar />
     <main id="main-content" class="star-main">
-      <CompactToolHeader title="星石背包" description="作者：Drifty Yan · 独立创作">
+      <CompactToolHeader mobile-context mobile-description title="星石背包" description="作者：Drifty Yan · 独立创作">
         <template #account>
           <span v-if="completionDemo" class="star-sync-meta">隔离演示 · 虚构账号，未连接完成接口</span>
           <DataAccountContextBar v-else compact :accounts="accounts" :account-id="accountId" :game="accountGame"
