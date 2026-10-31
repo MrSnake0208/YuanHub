@@ -7,7 +7,7 @@ import { subProfList } from './operatorFilters.js'
 export const BOX_IMAGE_WIDTH = 1440
 // Fixed export geometry is independent of the overview and the generating device.
 export const BOX_IMAGE_LAYOUT_WIDTH = 1080
-export const BOX_IMAGE_PAGE_SIZE = 9
+export const BOX_IMAGE_PAGE_SIZE = 15
 
 // Only presentation fields cross into the export; private notes and targets stay out.
 export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) {

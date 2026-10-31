@@ -35,20 +35,20 @@ function render(count = 105, extra = {}) {
   return wrapper
 }
 
-it('105 entries produce twelve independently downloadable pages with correct ranges', async () => {
+it('105 entries produce seven independently downloadable pages with correct ranges', async () => {
   const wrapper = render()
   await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
-  expect(captures.map(c => c.names.length)).toEqual([...Array(11).fill(9), 6])
+  expect(captures.map(c => c.names.length)).toEqual(Array(7).fill(15))
   expect(captures.flatMap(c => c.names)).toEqual(Array.from({ length: 105 }, (_, i) => '密探' + i))
-  expect(captures[11].text).toContain('第 12 / 12 张 · 第 100—105 位')
+  expect(captures[6].text).toContain('第 7 / 7 张 · 第 91—105 位')
   expect(captures[0].text).toContain('等级100')
   expect(captures[0].controls).toBe(0)
   expect(captures[0].text).not.toContain('账号名')
-  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(12)
-  await wrapper.findAll('.box-image-pages button')[11].trigger('click')
-  expect(wrapper.get('a[download]').attributes('download')).toBe('YuanHub-BOX-如鸢-12-12.png')
-  expect(wrapper.get('.box-image-save').text()).toContain('6 位密探')
-  expect(wrapper.text()).toContain('已生成 12 张图片')
+  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(7)
+  await wrapper.findAll('.box-image-pages button')[6].trigger('click')
+  expect(wrapper.get('a[download]').attributes('download')).toBe('YuanHub-BOX-如鸢-7-7.png')
+  expect(wrapper.get('.box-image-save').text()).toContain('15 位密探')
+  expect(wrapper.text()).toContain('已生成 7 张图片')
 })
 
 it.each(['生成分段图', '尝试生成完整长图'])('%s keeps growth, both loadouts and unknown states in the rendered sheet', async action => {
@@ -59,7 +59,7 @@ it.each(['生成分段图', '尝试生成完整长图'])('%s keeps growth, both 
     }, {}, { attackLabel: '999,999', hpLabel: '9,999,999' }),
     operatorBoxImageEntry({ id: 'unknown', name: '待核', rarity: 5, huaji: { owned: true, stage: null } }, {}, {}),
   ]
-  entries.push(...Array.from({ length: 8 }, (_, i) => entry(i)))
+  entries.push(...Array.from({ length: 14 }, (_, i) => entry(i)))
   const wrapper = render(0, { entries, filteredIds: entries.map(e => e.id) })
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
@@ -135,7 +135,7 @@ it('a failed later page keeps completed images and permits a clean retry', async
   expect(wrapper.attributes('aria-busy')).toBe('false')
   await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
-  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(5)
+  expect(wrapper.findAll('.box-image-pages button')).toHaveLength(3)
 })
 
 it('failed or empty source data cannot generate a misleading image', async () => {
@@ -169,10 +169,10 @@ it('changing the authenticated user invalidates a pending capture even when acco
 
 it('warns before generation for large selections and updates when the export scope changes', async () => {
   const wrapper = render(105, { filteredIds: ['op0'] })
-  expect(wrapper.text()).not.toContain('预计容纳约 51 位')
+  expect(wrapper.text()).not.toContain('超出限制时请使用分段图')
   expect(wrapper.text()).not.toContain('本次导出 105 位')
   await wrapper.get('select').setValue('all')
-  expect(wrapper.text()).toContain('本次导出 105 位，建议生成 12 张分段图。完整长图可能超出限制')
+  expect(wrapper.text()).toContain('本次导出 105 位，可生成 7 张分段图或尝试完整长图')
   expect(button(wrapper, '尝试生成完整长图').attributes('disabled')).toBeUndefined()
   expect(renderOperatorBoxImage).not.toHaveBeenCalled()
 })
@@ -205,8 +205,8 @@ it('empty selection never falls back to all entries and invalidates a pending se
   expect(wrapper.text()).toContain('当前范围没有密探')
 })
 
-it.each([9, 10])('%i entries expose only appropriate image actions', count => {
+it.each([15, 16])('%i entries expose only appropriate image actions', count => {
   const wrapper = render(count)
-  expect(wrapper.findAll('.box-image-actions button')).toHaveLength(count === 9 ? 1 : 2)
-  expect(wrapper.get('.box-image-actions .btn.primary').text()).toBe(count === 9 ? '生成图片' : '生成分段图 · 2 张')
+  expect(wrapper.findAll('.box-image-actions button')).toHaveLength(count === 15 ? 1 : 2)
+  expect(wrapper.get('.box-image-actions .btn.primary').text()).toBe(count === 15 ? '生成图片' : '生成分段图 · 2 张')
 })

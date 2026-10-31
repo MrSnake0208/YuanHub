@@ -2,7 +2,7 @@
 export async function prepareOperatorBoxImage(document, root) {
   const view = document.defaultView
   // html2canvas copies pseudo styles from the live viewport before creating its desktop clone.
-  for (const portrait of root.querySelectorAll('.ledger-portrait')) {
+  for (const portrait of root.querySelectorAll('.box-image-portrait')) {
     // A phone's live styles may have no ::after at all; materialize it in the desktop clone.
     const overlay = portrait.querySelector('html2canvaspseudoelement') || document.createElement('html2canvaspseudoelement')
     if (!overlay.parentNode) portrait.append(overlay)
@@ -15,7 +15,7 @@ export async function prepareOperatorBoxImage(document, root) {
     portrait.classList.add(hidden)
   }
   // html2canvas does not paint writing-mode. Preserve the browser's actual glyph positions.
-  const vertical = [...root.querySelectorAll('.ledger-name-tab > h3, .ledger-prof-tab > span')].map(node => {
+  const vertical = [...root.querySelectorAll('.box-image-name-tab > h3, .box-image-prof-tab > span')].map(node => {
     if (view.getComputedStyle(node).writingMode !== 'vertical-rl') return null
     const bounds = node.getBoundingClientRect(), glyphs = []
     const walker = document.createTreeWalker(node, 4)
@@ -37,7 +37,7 @@ export async function prepareOperatorBoxImage(document, root) {
     for (const glyph of glyphs) {
       const span = document.createElement('span')
       span.textContent = glyph.char
-      // Inline !important also overrides the overview's special SP continuation selectors.
+      // Nested name continuations must retain the measured glyph geometry in the clone.
       span.style.cssText = `position:absolute!important;display:flex!important;align-items:center;justify-content:center;writing-mode:horizontal-tb!important;letter-spacing:0;line-height:1;left:${glyph.left}px;top:${glyph.top}px;width:${glyph.width}px;height:${glyph.height}px`
       node.append(span)
     }

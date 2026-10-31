@@ -5,7 +5,7 @@ afterEach(() => vi.restoreAllMocks())
 
 it('uses measured glyph positions for vertical names, including a supplementary Unicode character', async () => {
   const root = document.createElement('section')
-  root.innerHTML = '<div class="ledger-name-tab"><h3>徐𠮷</h3></div>'
+  root.innerHTML = '<div class="box-image-name-tab"><h3>徐𠮷</h3></div>'
   const name = root.querySelector('h3')
   vi.spyOn(window, 'getComputedStyle').mockReturnValue({ writingMode: 'vertical-rl', content: 'none', getPropertyValue: () => '' })
   vi.spyOn(name, 'getBoundingClientRect').mockReturnValue({ left: 50, top: 10, width: 26, height: 70 })
@@ -23,7 +23,7 @@ it('uses measured glyph positions for vertical names, including a supplementary 
 
 it.each([true, false])('uses the desktop portrait gradient even if a mobile overlay exists: %s', async existing => {
   const root = document.createElement('section')
-  root.innerHTML = `<picture class="ledger-portrait ___html2canvas___pseudoelement_after">${existing ? '<html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement>' : ''}</picture>`
+  root.innerHTML = `<picture class="box-image-portrait ___html2canvas___pseudoelement_after">${existing ? '<html2canvaspseudoelement style="height:10px"></html2canvaspseudoelement>' : ''}</picture>`
   const portrait = root.firstElementChild
   vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) => {
     if (node === portrait && pseudo === '::after' && !portrait.classList.contains('___html2canvas___pseudoelement_after')) {

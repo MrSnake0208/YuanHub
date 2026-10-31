@@ -2,18 +2,18 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { operatorBoxImageEntry, operatorBoxImagePages } from '../src/utils/operatorBoxImage.js'
 
-test('105 operators keep order and appear exactly once across eleven nine-entry pages and a six-entry last page', () => {
+test('105 operators keep order and appear exactly once across seven fifteen-entry pages', () => {
   const entries = Array.from({ length: 105 }, (_, id) => ({ id }))
   const pages = operatorBoxImagePages(entries)
-  assert.deepEqual(pages.map(page => page.entries.length), [...Array(11).fill(9), 6])
-  assert.deepEqual(pages.map(({ start, end }) => [start, end]), Array.from({ length: 12 }, (_, i) => [i * 9 + 1, Math.min((i + 1) * 9, 105)]))
+  assert.deepEqual(pages.map(page => page.entries.length), Array(7).fill(15))
+  assert.deepEqual(pages.map(({ start, end }) => [start, end]), Array.from({ length: 7 }, (_, i) => [i * 15 + 1, Math.min((i + 1) * 15, 105)]))
   assert.deepEqual(pages.flatMap(page => page.entries), entries)
   assert.equal(operatorBoxImagePages(entries, true).length, 1)
   assert.equal(operatorBoxImagePages(entries, true)[0].end, 105)
 })
 
 test('empty, row and page boundaries have no blank final page', () => {
-  for (const [count, sizes] of [[0, []], [1, [1]], [3, [3]], [9, [9]], [10, [9, 1]], [125, [...Array(13).fill(9), 8]]]) {
+  for (const [count, sizes] of [[0, []], [1, [1]], [5, [5]], [15, [15]], [16, [15, 1]], [30, [15, 15]], [31, [15, 15, 1]], [125, [...Array(8).fill(15), 5]]]) {
     assert.deepEqual(operatorBoxImagePages(Array.from({ length: count }, (_, id) => id)).map(page => page.entries.length), sizes)
   }
   assert.deepEqual(operatorBoxImagePages([], true), [])
