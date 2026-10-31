@@ -731,18 +731,13 @@ it('图鉴工具栏显示筛选结果，搜索不改变招募统计', async () =
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it.each(['2026-10-17T03:04:05Z', ''])('精简页头仍可从帮助查看更新时间：%s', async version => {
+it.each(['2026-10-17T03:04:05Z', ''])('精简页头展示目录更新时间：%s', async version => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
-  const help = wrapper.get('.roster-header .compact-tool-help')
-  expect(wrapper.find('.compact-tool-help-content').exists()).toBe(false)
-  await help.trigger('click')
-  const content = wrapper.get('.compact-tool-help-content')
-  expect(content.text()).toContain('图鉴更新于 ' + (version || '本地兜底'))
-  expect(content.attributes('id')).toBe(help.attributes('aria-controls'))
-  await help.trigger('click')
-  expect(wrapper.find('.compact-tool-help-content').exists()).toBe(false)
+  const updated = wrapper.get('.roster-header .tool-updated')
+  expect(updated.attributes('title')).toBe(version || '本地兜底')
+  expect(updated.text()).toBe('更新于 ' + (version ? version.split('T')[0] : '本地兜底'))
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
@@ -778,6 +773,8 @@ it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当�
   await share.trigger('click')
   expect(modal.isVisible()).toBe(true)
   expect(modal.text()).toContain('测试账号')
+  expect(modal.get('.box-image-share').isVisible()).toBe(false)
+  await modal.findAll('button').find(button => button.text() === '图片分享').trigger('click')
   expect(modal.get('.box-image-share').isVisible()).toBe(true)
   expect(modal.get('.box-image-share').text()).toContain('当前筛选（1 位）')
   await modal.findAll('button').find(button => button.text() === '链接分享').trigger('click')

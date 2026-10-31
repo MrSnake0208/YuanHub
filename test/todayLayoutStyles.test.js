@@ -42,6 +42,6 @@ test('today device layouts keep compact scenes and own their regions independent
   assert.equal(declarations('todayOnboarding', 'Desktop', '.account-management-card')['grid-template-columns'], 'minmax(0, 1fr) auto')
   assert.equal(declarations('todayOnboarding', 'Mobile', '.sync-recommendation')['flex-direction'], 'column')
   assert.equal(declarations('todayOnboarding', 'Desktop', '.sync-recommendation')['flex-direction'], 'row')
-  assert.equal(declarations('todayLayout', 'Desktop', '.today-main')['margin-left'], '292px')
+  assert.equal(declarations('todayLayout', 'Desktop', '.today-main')['margin-left'], '244px')
   assert.equal(declarations('todayLayout', 'Mobile', '.today-main')['margin-left'], undefined)
 })

@@ -165,7 +165,7 @@ test('密探图鉴在筛选激活时显示筛选后的密探数量', function ()
     /v-if="hasManifestFilters"[\s\S]*?筛选出\s*<b class="bp-num">\{\{\s*manifestEntries\.length\s*\}\}<\/b>\s*位密探/
   )
   // 数量必须来自与列表同一套筛选口径，页面不得再内联另一份过滤条件。
-  assert.match(operatorPage, /matchesManifestFilters\(e, \{/)
+  assert.match(operatorPage, /matchesManifestFilters\(entry, catalogFilterState\.value\)/)
   assert.match(operatorPage, /return hasActiveManifestFilters\(\{/)
   assert.match(operatorPage, /<OperatorFilterDossier\b[^>]*v-model:growth-filters="manifestGrowthFilters"[^>]*show-growth-filters/)
   assert.match(operatorPage, /growthFilters: manifestGrowthFilters\.value/g)

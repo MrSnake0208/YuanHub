@@ -1,4 +1,4 @@
-.organization-sheet-mask { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
+.organization-sheet-mask { position: fixed; inset: 0; z-index: var(--z-overlay-blocking); display: flex; align-items: flex-end; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
 .organization-sheet { width: 100%; max-height: 85%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; border-radius: 20px 20px 0 0; background: var(--surface); color: var(--ink); }
 .organization-sheet-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .organization-sheet-header h2 { margin: 0; font: 700 18px var(--font-s); }
