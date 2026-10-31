@@ -16,7 +16,7 @@ vi.mock('../src/store/auth.js', async () => { const { reactive } = await import(
 vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: vi.fn().mockResolvedValue(null) } }))
 vi.mock('../src/store/activeAccount.js', async () => {
   const { reactive } = await import('vue')
-  return { normalizeAccountGame: game => game === '如鸢' ? '如鸢' : '代号鸢', activeAccount: reactive({ id: 'acc-a', syncAccounts: vi.fn(), set: vi.fn() }) }
+  return { normalizeAccountGame: game => game === '如鸢' ? '如鸢' : '代号鸢', activeAccount: reactive({ id: 'acc-a', gameFor: () => '代号鸢', syncAccounts: vi.fn(), set: vi.fn() }) }
 })
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn().mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }]) }))
 vi.mock('../src/api/openApi.js', () => ({
@@ -47,22 +47,22 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
-afterEach(() => vi.useRealTimers())
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
 it('摘要仅展示真实当前账号与总数，管理按需打开共享 Dialog，关闭后不残留 CRUD', async () => {
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
   const wrapper = render(); await flushPromises()
   const summary = wrapper.get('.game-account-summary')
-  expect(summary.text()).toContain('当前账号：代号鸢 · 大号')
-  expect(summary.text()).toContain('共 2 个游戏账号')
+  expect(summary.text()).toContain('代号鸢·大号')
+  expect(summary.find('.account-summary-copy').exists()).toBe(false)
   expect(summary.text()).not.toContain('小号')
   expect(summary.findAll('ul, input, select, .more-trigger')).toHaveLength(0)
   expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
   activeAccount.id = 'acc-b'; await flushPromises()
-  expect(summary.text()).toContain('当前账号：如鸢 · 小号')
+  expect(summary.text()).toContain('如鸢·小号')
   publishAccountList([{ id: 'acc-b', name: '已改名', game: '代号鸢' }]); await flushPromises()
-  expect(summary.text()).toContain('当前账号：代号鸢 · 已改名')
-  expect(summary.text()).toContain('共 1 个游戏账号')
+  expect(summary.text()).toContain('代号鸢·已改名')
+  expect(summary.find('.account-summary-copy').exists()).toBe(false)
   expect(summary.text()).not.toContain('小号')
   await summary.get('[data-tour="account-create"]').trigger('click')
   const manager = wrapper.findComponent({ name: 'GameAccountManager' })
@@ -96,8 +96,8 @@ it('loading 不显示零账号；错误不伪装空态，重试后沿用现有�
   listAccounts.mockResolvedValueOnce([{ id: 'acc-b', name: '备用', game: '如鸢' }])
   await summary.get('.account-summary-error button').trigger('click'); await flushPromises()
   expect(activeAccount.id).toBe('acc-b')
-  expect(summary.text()).toContain('当前账号：如鸢 · 备用')
-  expect(summary.text()).toContain('共 1 个游戏账号')
+  expect(summary.text()).toContain('如鸢·备用')
+  expect(summary.find('.account-summary-copy').exists()).toBe(false)
   wrapper.unmount()
 })
 
@@ -150,12 +150,13 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
 it('补权限与停止连接使用站内危险确认；取消或账号切换后不提交', async () => {
   let wrapper = render()
   await flushPromises()
-  expect(wrapper.get('.technical-details').text()).toContain('点击此连接的“让它支持 MaaYuan”补齐权限，原连接码不变')
+  expect(wrapper.find('.technical-details').exists()).toBe(false)
+  expect(wrapper.get('.token-list').text()).not.toContain(token.token_id)
   dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.t-btn.update').trigger('click')
   await flushPromises()
   expect(updateOpenApiTokenScopes).not.toHaveBeenCalled()
-  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', confirmText: '补齐权限' }))
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', confirmText: '补齐权限', message: expect.stringContaining('连接码不会变化，原有权限也会保留') }))
 
   let resolveConfirm
   dialog.confirm.mockImplementationOnce(() => new Promise(resolve => { resolveConfirm = resolve }))
@@ -298,7 +299,8 @@ it('剪贴板拒绝复制时不误报成功，也不在页面显示连接码', a
 it('顶部保留页面身份，连接区打开或收起既有表单且不提前创建连接', async () => {
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('.page-header h1').text()).toBe('账号与连接码')
-  expect(wrapper.get('.page-header').findAll('button, a')).toHaveLength(0)
+  expect(wrapper.get('.page-header .context-selector').attributes('aria-label')).toContain('当前游戏账号：代号鸢 · 大号')
+  expect(wrapper.get('.page-header [data-tour="account-create"]').text()).toBe('管理游戏账号')
   expect(wrapper.get('.app-copy').text()).toContain('星石自动采集仍在接入中')
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')
@@ -483,7 +485,7 @@ it('账号列表只接纳最新请求，旧请求不能覆盖更新结果或结�
   expect(wrapper.get('.game-account-summary').attributes('aria-busy')).toBe('true')
   expect(wrapper.get('.game-account-summary').text()).not.toContain('旧账号')
   resolveSecond([{ id: 'new', name: '新账号', game: '如鸢' }]); await flushPromises()
-  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢 · 新账号')
+  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢·新账号')
   expect(activeAccount.id).toBe('new')
   wrapper.unmount()
 })
@@ -495,7 +497,7 @@ it('CRUD 发布的列表不被在途旧加载覆盖', async () => {
   const latest = [{ id: 'created', name: '新创建', game: '如鸢' }]
   publishAccountList(latest); activeAccount.id = 'created'; await flushPromises()
   resolveList([{ id: 'old', name: '旧账号', game: '代号鸢' }]); await flushPromises()
-  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢 · 新创建')
+  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢·新创建')
   expect(wrapper.get('.game-account-summary').text()).not.toContain('旧账号')
   expect(wrapper.get('.game-account-summary').attributes('aria-busy')).toBe('false')
   wrapper.unmount()
@@ -556,4 +558,22 @@ it.each([390, 1440])('连接草稿在%s起步跨断点保持账号、权限、�
     wrapper.unmount()
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
   }
+})
+
+it('页头快捷切换更新默认连接目标，但保留手动绑定且不筛掉已有连接', async () => {
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click')
+  await wrapper.get('.context-selector').trigger('click'); await flushPromises()
+  document.querySelector('[data-account-id="acc-b"]').click(); await flushPromises()
+  expect(activeAccount.id).toBe('acc-b')
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
+  expect(wrapper.get('.token-list').text()).toContain('旧连接')
+  await wrapper.get('#maayuan-account').setValue('acc-a')
+  activeAccount.id = 'acc-a'; await flushPromises()
+  activeAccount.id = 'acc-b'; await flushPromises()
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

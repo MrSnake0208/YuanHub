@@ -18,17 +18,17 @@
 }
 .capability-note { font-size: 12px; }
 #maayuan-connect-panel { scroll-margin-top: 84px; }
-.game-account-summary { position: relative; display: grid; gap: 10px; margin-top: 24px; padding-bottom: 16px; }
+.page-header { padding-bottom: 8px; }
+.game-account-summary { padding: 0; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; }
 .account-summary-anchor { position: absolute; top: -84px; width: 1px; height: 1px; }
-.account-summary-copy { min-width: 0; }
-.account-summary-copy h2 { font: 900 20px/1.4 var(--font-s); }
-.account-summary-copy p { margin-top: 6px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.account-summary-copy .account-summary-current { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-summary-copy .account-summary-count { margin-top: 2px; font-size: 12px; }
-.account-summary-error { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; }
-@media (min-width: 768px) {
-  .game-account-summary { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
-}
+.profile-title-row { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; min-width: 0; }
+.profile-title-row :deep(.account-switcher) { max-width: 100%; }
+.account-summary-copy { grid-column: 1 / -1; grid-row: 2; min-width: 0; font-size: 13px; }
+.account-summary-copy p { line-height: 1.6; overflow-wrap: anywhere; }
+.account-summary-error { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.account-summary-manage { grid-column: 2; grid-row: 1; }
+.connection-safety { display: flex; align-items: flex-start; gap: 7px; margin-top: 16px; font-size: 12px; line-height: 1.6; }
+.connection-safety svg { flex: none; margin-top: 2px; }
 .section-kicker {
   font-family: var(--font-d);
   font-size: 11px;
@@ -36,7 +36,7 @@
   letter-spacing: 0.12em;
 }
 .connection-card {
-  margin-top: 24px;
+  margin-top: 8px;
   padding: 30px;
 }
 .card-head h2 {
@@ -453,12 +453,12 @@
 .failure-history li { margin: 4px 0; }
 .connections-section {
   margin-top: 30px;
-  padding-top: 25px;
+  padding-top: 0;
 }
 .subsection-head {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
   gap: 16px;
 }
 .subsection-head h3 {
@@ -469,6 +469,9 @@
   letter-spacing: 0.03em;
 }
 .connection-count {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--paper);
   font-family: var(--font-d);
   font-size: 12px;
   font-weight: 800;
@@ -517,17 +520,17 @@
 }
 .token-item {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
   padding: 17px;
 }
 .token-item:hover {
-  transform: translateY(-2px);
+  transform: none;
 }
 .connection-icon {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
 }
@@ -566,37 +569,17 @@
   font-family: var(--font-d);
   font-size: 11px;
 }
-.technical-details {
-  margin-top: 8px;
-  font-size: 11px;
-}
-.technical-details summary {
-  width: max-content;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  font-weight: 800;
-}
-.technical-details code {
-  display: block;
-  margin-top: 7px;
-  padding: 7px 9px;
-  overflow-wrap: anywhere;
-  font-family: var(--font-d);
-}
-.technical-details p {
-  margin-top: 4px;
-  line-height: 1.5;
-}
 .connection-actions {
+  grid-column: 2;
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
 }
 .t-btn {
-  min-height: 44px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -607,10 +590,10 @@
   font-weight: 800;
 }
 .t-btn.copy {
-  min-height: 46px;
+  min-height: 36px;
 }
 .advanced-zone {
-  margin-top: 24px;
+  margin-top: 16px;
 }
 .advanced-zone > summary {
   min-height: 68px;
@@ -741,6 +724,8 @@
     grid-template-columns: 46px minmax(0, 1fr);
   }
   .connection-actions {
+  grid-column: 2;
+  min-width: 0;
     grid-column: 2;
     justify-content: flex-start;
   }
@@ -816,6 +801,8 @@
     height: 35px;
   }
   .connection-actions {
+  grid-column: 2;
+  min-width: 0;
     grid-column: 1/-1;
     justify-content: stretch;
   }
@@ -828,5 +815,15 @@
   .advanced-zone > summary {
     padding: 12px;
   }
+}
+@media (max-width: 767px) {
+ .game-account-summary { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .profile-title-row { grid-column: 1 / -1; }
+  .account-summary-copy { grid-column: 1 / -1; grid-row: 3; }
+  .account-summary-manage { grid-column: 1 / -1; grid-row: 2; justify-self: start; padding: 8px 12px; }
+  .connection-card { margin-top: 8px; }
+  .app-copy > p { font-size: 14px; }
+  .connection-scope { font-size: 13px; }
+  .app-capabilities span { width: auto; }
 }
 }
