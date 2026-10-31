@@ -82,7 +82,8 @@ beforeEach(() => {
 
 it('首次浏览只读，不挂载录入器；记一笔位于自定义首页前并保留账号区域', async () => {
   const { wrapper } = await render()
-  expect(wrapper.get('.today-actions').findAll('button').map(button => button.text())).toEqual(['记一笔', '自定义首页'])
+  expect(wrapper.get('.today-actions').findAll('button').map(button => button.text())).toEqual(['记一笔'])
+  expect(wrapper.get('[aria-label="自定义首页"]').attributes('aria-haspopup')).toBe('dialog')
   expect(wrapper.get('.lobby-context').text()).toContain('测试大号')
   expect(wrapper.findComponent(RewardEntryWorkspace).exists()).toBe(false)
   expect(getRewardCatalog).not.toHaveBeenCalled()
