@@ -143,12 +143,12 @@ defineExpose({ sheet })
 .box-image-destiny-row > span::after { content: ''; flex: 1; border-top: 1px solid #e4d2ad; }
 .box-image-destiny-values { min-width: 0; }
 .box-image-destiny-line { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 4px; min-height: 28px; }
-.box-image-term { display: flex; justify-content: center; align-items: center; min-width: 0; height: 28px; padding: 0; border: 1px solid #e2d7c7; border-radius: 3px; background: #faf6ed; color: #493b2c; font: 600 11px/1.4 var(--font-b, sans-serif); white-space: nowrap; }
+.box-image-term { display: flex; justify-content: center; align-items: center; min-width: 0; height: 28px; padding: 0; border: 1px solid #cfc1ac; border-radius: 3px; background: #faf6ed; color: #493b2c; font: 700 13px/1.4 var(--font-b, sans-serif); white-space: nowrap; }
 .box-image-term-placeholder { height: 28px; border: 1px solid #eee5d8; border-radius: 2px; }
 .box-image-term > span { flex: none; display: inline-block; transform-origin: center; }
-.box-image-term.rarity-gold { border-color: #e8d4a1; background: #fbf3df; }
-.box-image-term.rarity-purple { border-color: #d9cbe7; background: #f4eef8; }
-.box-image-term.rarity-blue { border-color: #c9dce4; background: #eef5f7; }
+.box-image-term.rarity-gold { border-color: #dfc287; background: #fbf3df; }
+.box-image-term.rarity-purple { border-color: #c4b0d1; background: #f4eef8; }
+.box-image-term.rarity-blue { border-color: #a9bfd0; background: #eef5f7; }
 .box-image-destiny-line > .empty { color: #695b4b; font-style: normal; }
 .box-image-footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 18px; padding-top: 12px; border-top: 1px solid #d8c5a3; font: 12px var(--font-b, sans-serif); color: #695b4b; }
 </style>
