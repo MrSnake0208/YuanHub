@@ -4051,14 +4051,14 @@
   }
   .catalog-tools :deep(.current-filter-search) { grid-area: 1 / 1; width: 100%; min-width: 0; box-sizing: border-box; }
   .catalog-tools .catalog-entry { grid-area: 1 / 2; margin: 0; }
-  .catalog-tools :deep(.dossier-more) { grid-area: 2 / 2; align-self: center; }
+  .catalog-tools :deep(.dossier-more) { display: none; }
+  .catalog-portrait-grid > .catalog-filter-summary-only { display: none; }
   .catalog-tools :deep(.pf-status-row) { grid-area: 2 / 1; display: block; min-width: 0; }
   .catalog-tools :deep(.current-status-filter) { display: flex; flex-wrap: wrap; box-sizing: border-box; }
   .catalog-tools :deep(.current-status-filter button) { flex: 1 1 auto; width: auto; padding-inline: 6px; white-space: normal; }
   .catalog-tools :deep(.current-status-filter button.on) { background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); }
   .catalog-tools :deep(.current-filter-tools > .current-filter-reset) { display: none; }
-  .catalog-tools .catalog-filter-reset { display: inline-flex; align-items: center; align-self: flex-end; gap: 4px; min-height: 34px; padding: 6px 10px; }
-  .catalog-tools :deep(.dossier-extra) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+  .catalog-tools :deep(.dossier-extra) { display: none !important; }
 }
 @media (max-width: 640px) {
   #operator-panel-tracking { margin-top: 10px; }
@@ -4077,4 +4077,33 @@
 
 @media (max-width: 1080px) {
   .ledger-milestone-label { width: auto; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; }
+}
+
+@media (max-width: 767px) {
+  .growth-overview-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; padding: 8px; border: 0; background: transparent; overflow: visible; }
+  .growth-overview-filters :deep(.current-filter-head),
+  .growth-overview-filters :deep(.current-filter-tools),
+  .growth-overview-filters :deep(.current-filter-secondary),
+  .growth-overview-filters :deep(.current-filter-rows) { display: contents; }
+  .growth-overview-filters :deep(.current-filter-title),
+  .growth-overview-filters :deep(.dossier-more),
+  .growth-overview-filters :deep(.current-filter-reset),
+  .growth-overview-filters :deep(.dossier-extra),
+  .growth-overview-filters :deep(.pf-disc-row),
+  .growth-overview-filters :deep(.pf-tag-row) { display: none !important; }
+  .growth-overview-filters :deep(.current-filter-search) { grid-area: 1 / 1 / 2 / 3; width: 100%; min-width: 0; box-sizing: border-box; }
+  .growth-overview-filters .btn.primary { grid-area: 1 / 3; margin: 0; }
+  .growth-overview-filters :deep(.pf-status-row) { grid-area: 2 / 1 / 3 / -1; min-width: 0; }
+  .growth-overview-filters :deep(.current-status-filter) { width: 100%; box-sizing: border-box; }
+  .growth-overview-filters .current-sort-controls { grid-area: 3 / 1; min-width: 0; }
+  .growth-overview-filters .current-sort-field { gap: 4px; min-width: 0; }
+  .growth-overview-filters .current-sort-field select { min-width: 0; max-width: 100%; }
+  .growth-overview-filters .current-favorite-sort { grid-area: 3 / 2; }
+  .growth-overview-filters .current-favorite-sort, .growth-overview-filters .current-organization-toggle { white-space: normal; min-width: 0; flex-wrap: wrap; }
+  .growth-overview-filters :deep(.catalog-filter-trigger) { grid-area: 3 / 3; }
+  .growth-overview-filters :deep(.current-filter-result) { grid-area: 4 / 1; align-self: center; }
+  .growth-overview-filters .current-organization-toggle { grid-area: 4 / 2; }
+  .growth-overview-filters .current-batch-toggle:not(.current-organization-toggle) { grid-area: 4 / 3; }
+  .growth-overview-filters :deep(.catalog-filter-chips) { grid-area: 5 / 1 / 6 / -1; }
+  .growth-overview-filters :deep(.operator-organization), .growth-overview-filters .batch-status-bar { grid-column: 1 / -1; }
 }

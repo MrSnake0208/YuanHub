@@ -182,3 +182,81 @@ it('卡片置顶独立于特别关注，标签点击等待保存结果，不假�
   expect(wrapper.emitted('tag')[0]).toEqual(['team', true]); expect(wrapper.get('input').element.checked).toBe(false)
   await wrapper.setProps({ disabled: true }); expect(wrapper.get('button').element.disabled).toBe(true)
 })
+
+it('局域网 HTTP 缺少 randomUUID 时仍能新增标签并在保存时提交有效 ID', async () => {
+  const cryptoSource = globalThis.crypto
+  vi.stubGlobal('crypto', { getRandomValues: cryptoSource.getRandomValues.bind(cryptoSource) })
+  try {
+    const props = managerProps(), wrapper = await openManager(props)
+    await clickText(wrapper, '新增标签')
+    await wrapper.get('input[aria-label="标签名称 1"]').setValue('主力队')
+    expect(props.save).not.toHaveBeenCalled()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const tag = props.save.mock.calls[0][0].tags[0]
+    expect(tag.name).toBe('主力队')
+    expect(tag.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('手机分类设置关闭时保护草稿，继续编辑和放弃关闭均不写入', async () => {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  try {
+    const props = { ...managerProps(), mobileSheet: true }
+    const wrapper = mount(OperatorOrganizationManager, { props, attachTo: document.body }); wrappers.push(wrapper)
+    wrapper.vm.toggle(); await flushPromises()
+    expect(document.querySelector('[role="dialog"][aria-label="分类设置"]')).toBeTruthy()
+    document.querySelector('.organization-sheet .organization-add').click(); await flushPromises()
+    const input = document.querySelector('.organization-sheet [data-tag-name]')
+    input.value = '手机草稿'; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    document.querySelector('[aria-label="关闭分类设置"]').click(); await flushPromises()
+    expect(document.querySelector('.organization-close-confirm').textContent).toContain('尚未保存')
+    const find = text => [...document.querySelectorAll('.organization-close-confirm button')].find(button => button.textContent === text)
+    find('继续编辑').click(); await flushPromises()
+    expect(document.querySelector('.organization-sheet [data-tag-name]').value).toBe('手机草稿')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
+    find('放弃修改并关闭').click(); await flushPromises()
+    expect(document.querySelector('.organization-sheet-mask')).toBeNull()
+    expect(wrapper.vm.changed).toBe(false)
+    expect(props.save).not.toHaveBeenCalled()
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('手机分类设置保存失败保留草稿，保存成功才关闭弹层', async () => {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  try {
+    const props = { ...managerProps(), mobileSheet: true }
+    props.save.mockRejectedValueOnce(new Error('网络错误')).mockResolvedValueOnce(true)
+    const wrapper = mount(OperatorOrganizationManager, { props, attachTo: document.body }); wrappers.push(wrapper)
+    wrapper.vm.toggle(); await flushPromises()
+    document.querySelector('.organization-sheet .organization-add').click(); await flushPromises()
+    const input = document.querySelector('.organization-sheet [data-tag-name]')
+    input.value = '主力'; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    document.querySelector('.organization-sheet form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+    expect(document.querySelector('.organization-sheet').textContent).toContain('网络错误')
+    expect(document.querySelector('.organization-sheet [data-tag-name]').value).toBe('主力')
+    document.querySelector('.organization-sheet form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+    expect(document.querySelector('.organization-sheet-mask')).toBeNull()
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('手机切换桌面移动同一表单，保留草稿并解除背景滚动锁', async () => {
+  let change
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: (_, fn) => { change = fn }, removeEventListener: vi.fn() })))
+  try {
+    const wrapper = mount(OperatorOrganizationManager, { props: { ...managerProps(), mobileSheet: true }, attachTo: document.body }); wrappers.push(wrapper)
+    const previous = document.body.style.overflow
+    wrapper.vm.toggle(); await flushPromises()
+    document.querySelector('.organization-sheet .organization-add').click(); await flushPromises()
+    const input = document.querySelector('.organization-sheet [data-tag-name]')
+    input.value = '保留草稿'; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    change({ matches: false }); await flushPromises()
+    expect(document.querySelector('.organization-sheet-mask')).toBeNull()
+    expect(wrapper.get('[data-tag-name]').element).toBe(input)
+    expect(input.value).toBe('保留草稿')
+    expect(wrapper.vm.changed).toBe(true)
+    expect(document.body.style.overflow).toBe(previous)
+  } finally { vi.unstubAllGlobals() }
+})

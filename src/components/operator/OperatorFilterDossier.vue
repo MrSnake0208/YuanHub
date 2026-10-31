@@ -35,6 +35,7 @@
         <button v-if="compact && !forceExpanded" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">
           更多筛选<template v-if="advancedFilterCount != null"><span v-if="advancedFilterCount"> · {{ advancedFilterCount }}</span></template><template v-else-if="hasFilters"> · 已启用</template>
         </button>
+        <slot name="mobile-filters" />
         <button
           v-if="hasFilters"
           class="current-filter-reset"

@@ -553,10 +553,10 @@
                 <template #primary-tool>
                   <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
                 </template>
-                <template #extra-footer>
-                  <button v-if="hasManifestFilters" type="button" class="current-filter-reset catalog-filter-reset" @click="focusCatalogEntry">
-                    <RotateCcw :size="13" aria-hidden="true" />重置筛选
-                  </button>
+                <template #mobile-filters>
+                  <CatalogFilterSheet v-model="catalogFilterState" :context-key="`${accountId}:${gameFilter}:${activeTab}`"
+                    :prof-options="profOptions" :sub-prof-options="subProfOptions" :rarity-options="rarityOptions"
+                    :count-results="countCatalogResults" />
                 </template>
               </OperatorFilterDossier>
             </div>
@@ -570,7 +570,7 @@
               }}<button class="link" @click="loadCatalog">重试</button>
             </div>
             <div v-else class="backpack catalog-portrait-grid" v-reveal>
-              <div v-if="hasManifestFilters || !auth.isLoggedIn || error || favoriteError" class="bp-head">
+              <div v-if="hasManifestFilters || !auth.isLoggedIn || error || favoriteError" class="bp-head" :class="{ 'catalog-filter-summary-only': auth.isLoggedIn && !error && !favoriteError }">
                 <span class="bp-tip">
                   <template v-if="rarityFilter !== 'all'">
                     · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
@@ -887,6 +887,7 @@
 
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
+              class="growth-overview-filters"
               compact
               searchable
               v-model:search-query="currentSearch"
@@ -919,10 +920,16 @@
               <template #primary-tool>
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               </template>
+              <template #mobile-filters>
+                <CatalogFilterSheet v-model="currentFilterState" context-label="养成总览" show-disc-filter
+                  :context-key="`${accountId}:${gameFilter}:${activeTab}`" :prof-options="profOptions"
+                  :sub-prof-options="subProfOptions" :rarity-options="rarityOptions" :tag-options="organizationTagOptions"
+                  :total-count="ownedCurrentEntries.length" :count-results="countCurrentResults" :reset-filters="emptyCurrentFilterState" />
+              </template>
               <template #secondary-tool>
                 <div class="current-sort-controls" role="group" aria-label="当前名册排序">
                   <label class="current-sort-field">
-                    <span>游戏排序选项</span>
+                    <span>排序</span>
                     <select :value="currentSort.mode" @change="setCurrentSort($event.target.value)">
                       <option v-for="option in currentSortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
@@ -968,7 +975,7 @@
               </template>
               <template #footer>
                 <OperatorOrganizationManager
-                  ref="organizationManager"
+                  ref="organizationManager" mobile-sheet
                   v-if="auth.isLoggedIn && accountId" :key="accountId + ':' + gameFilter"
                   :value="organizationData" :account-id="accountId" :game="gameFilter" :catalog="catalogMap"
                   :ready="organizationReady" :loading="organizationLoading" :saving="organizationSaving" :error="organizationError"
@@ -3146,6 +3153,7 @@ import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
+import CatalogFilterSheet from "../../components/operator/CatalogFilterSheet.vue";
 import OperatorOrganizationManager from "../../components/operator/OperatorOrganizationManager.vue";
 import OperatorOrganizationCard from "../../components/operator/OperatorOrganizationCard.vue";
 import { useOperatorOrganization } from "../../composables/useOperatorOrganization.js";
@@ -3605,7 +3613,6 @@ const confirmOrganizationDiscard = useUnsavedChanges(organizationDirty, "分类�
 const { data: organizationData, loading: organizationLoading, saving: organizationSaving, error: organizationError,
   ready: organizationReady, reload: reloadOrganization, save: saveOrganization } = useOperatorOrganization(accountId, computed(() => auth.isLoggedIn));
 const organizationRanks = computed(() => operatorOrganizationRanks(organizationData.value));
-const organizationTagMembers = computed(() => new Set(organizationData.value.tags.find(tag => tag.id === organizationTagFilter.value)?.operator_ids || []));
 const organizationTagOptions = computed(() => {
   const owned = new Set(ownedCurrentEntries.value.map(entry => entry.id));
   return organizationData.value.tags.map(tag => ({ value: tag.id, label: tag.name, count: tag.operator_ids.filter(id => owned.has(id)).length }));
@@ -5000,37 +5007,29 @@ const manifestMissing = computed(function () {
 });
 
 // 图鉴展示列表：在全量基础上叠加品质 / 属性 / 职业 / 搜索 / 拥有状态 / 养成条件
-const manifestEntries = computed(function () {
-  const state = currentMap.value;
-  return catalogOperators.value
-    .map(function (op) {
-      const build = state[op.id];
-      const owned = isOperatorOwned(build);
-      return Object.assign({}, op, {
-        owned: owned,
-        elite: build ? build.elite : 0,
-        starLevel: build ? build.starLevel : 0,
-        level: build ? build.level : 0,
-      });
-    })
-    .filter(function (e) {
-      if (!matchesGame(e, gameFilter.value)) return false;
-      return matchesManifestFilters(e, {
-        rarityFilter: rarityFilter.value,
-        profFilter: profFilter.value,
-        subProfFilter: subProfFilter.value,
-        manifestFilter: manifestFilter.value,
-        search: manifestSearch.value,
-        growthFilters: manifestGrowthFilters.value,
-      });
-    })
-    .sort(function (a, b) {
-      return (
-        operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id) ||
-        String(a.name).localeCompare(String(b.name), "zh-CN")
-      );
-    });
+const catalogFilterState = computed({
+  get: () => ({ rarityFilter: rarityFilter.value, profFilter: profFilter.value, subProfFilter: subProfFilter.value,
+    manifestFilter: manifestFilter.value, search: manifestSearch.value, growthFilters: manifestGrowthFilters.value }),
+  set: value => {
+    rarityFilter.value = value.rarityFilter;
+    profFilter.value = value.profFilter;
+    subProfFilter.value = value.subProfFilter;
+    manifestFilter.value = value.manifestFilter;
+    manifestSearch.value = value.search;
+    manifestGrowthFilters.value = value.growthFilters;
+  },
 });
+const manifestCandidates = computed(() => catalogOperators.value.map(op => {
+  const build = currentMap.value[op.id];
+  return { ...op, owned: isOperatorOwned(build), elite: build ? build.elite : 0,
+    starLevel: build ? build.starLevel : 0, level: build ? build.level : 0 };
+}).filter(entry => matchesGame(entry, gameFilter.value)));
+function countCatalogResults(filters) {
+  return manifestCandidates.value.filter(entry => matchesManifestFilters(entry, filters)).length;
+}
+const manifestEntries = computed(() => manifestCandidates.value
+  .filter(entry => matchesManifestFilters(entry, catalogFilterState.value))
+  .sort((a, b) => operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id) || String(a.name).localeCompare(String(b.name), "zh-CN")));
 
 function operatorReleaseOrder(id) {
   const match = String(id || "").match(/char_(\d+)/);
@@ -5238,25 +5237,37 @@ const activeUpgradeReadyIds = computed(function () {
   );
 });
 
-function matchesCurrentFilters(entry) {
-  return (
-    matchesOperatorSearch(entry, currentSearch.value) &&
-    matchesOperatorQuality(entry, rarityFilter.value) &&
-    matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
-    matchesOperatorStatus(operatorStatus(entry), workbenchStatusFilter.value) &&
-    (!organizationTagFilter.value || organizationTagMembers.value.has(entry.id)) &&
-    matchesOperatorGrowthFilters(entry, growthFilters.value) &&
-    (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(entry.id))
-  );
+function emptyCurrentFilterState() {
+  return { search: '', statusFilter: defaultStatusFilter, profFilter: 'all', subProfFilter: 'all', rarityFilter: 'all',
+    discStatusFilter: 'all', tagFilter: '', growthFilters: emptyGrowthFilters(), upgradeReadyFilter: '' };
 }
-
-const filteredCurrent = computed(function () {
-  return ownedCurrentEntries.value
-    .filter(matchesCurrentFilters)
-    .filter(entry => matchesDiscStatus(entry.discLoadouts, discStatusFilter.value))
-    .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
-      : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction));
+const currentFilterState = computed({
+  get: () => ({ search: currentSearch.value, statusFilter: workbenchStatusFilter.value, profFilter: profFilter.value,
+    subProfFilter: subProfFilter.value, rarityFilter: rarityFilter.value, discStatusFilter: discStatusFilter.value,
+    tagFilter: organizationTagFilter.value, growthFilters: growthFilters.value, upgradeReadyFilter: upgradeReadyFilter.value }),
+  set: value => {
+    currentSearch.value = value.search; workbenchStatusFilter.value = value.statusFilter;
+    profFilter.value = value.profFilter; subProfFilter.value = value.subProfFilter; rarityFilter.value = value.rarityFilter;
+    discStatusFilter.value = value.discStatusFilter; organizationTagFilter.value = value.tagFilter;
+    growthFilters.value = value.growthFilters; upgradeReadyFilter.value = value.upgradeReadyFilter;
+  },
 });
+function currentResults(filters) {
+  const tagMembers = new Set(organizationData.value.tags.find(tag => tag.id === filters.tagFilter)?.operator_ids || []);
+  return ownedCurrentEntries.value.filter(entry =>
+    matchesOperatorSearch(entry, filters.search) &&
+    matchesOperatorQuality(entry, filters.rarityFilter) &&
+    matchesProfSubFilter(entry, filters.profFilter, filters.subProfFilter) &&
+    matchesOperatorStatus(operatorStatus(entry), filters.statusFilter) &&
+    (!filters.tagFilter || tagMembers.has(entry.id)) &&
+    matchesOperatorGrowthFilters(entry, filters.growthFilters) &&
+    (!filters.upgradeReadyFilter || activeUpgradeReadyIds.value.has(entry.id)) &&
+    matchesDiscStatus(entry.discLoadouts, filters.discStatusFilter));
+}
+function countCurrentResults(filters) { return currentResults(filters).length; }
+const filteredCurrent = computed(() => currentResults(currentFilterState.value)
+  .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
+    : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction)));
 
 const boxImageReady = computed(() => auth.isLoggedIn && !accountsLoading.value && !accountError.value &&
   !loading.value && !error.value && !catalogLoading.value && !catalogError.value &&
@@ -10879,9 +10890,6 @@ onBeforeUnmount(function () {
 .current-favorite-sort:disabled {
   opacity: 0.55;
   cursor: default;
-}
-.catalog-tools .catalog-filter-reset {
-  display: none;
 }
 .current-filter-reset {
   border: 1px solid var(--line);
