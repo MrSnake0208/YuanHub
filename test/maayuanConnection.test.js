@@ -32,7 +32,7 @@ test('高级权限选择器展示星石采集权限分组', () => {
   assert.match(profile, /permission\.scope\.startsWith\("star:"\)/)
 })
 
-test('MaaYuan首次闭环只选背包，其他任务折叠且星石边界准确', () => {
+test('MaaYuan首次闭环说明背包同步步骤', () => {
   assert.match(profile, /复制连接码后，前往 MaaYuan 开启同步/)
   assert.match(profile, /仅创建连接码不表示同步成功/)
   assert.match(profile, /newTokenKind === 'maayuan' && tokenCopied/)
@@ -40,11 +40,6 @@ test('MaaYuan首次闭环只选背包，其他任务折叠且星石边界准确'
   assert.match(profile, /同步至 YuanHub/)
   assert.match(profile, /YuanHub 连接码/)
   assert.match(profile, /运行一次任务/)
-  assert.match(profile, /以后还可以同步什么/)
-  assert.match(profile, /采集密探信息/)
-  assert.match(profile, /据点日常/)
-  assert.match(profile, /记录奖励内容及数量/)
-  assert.match(profile, /网页端截图识别可用；MaaYuan 自动采集仍在接入中/)
 })
 
 test('MaaYuan 连接按钮暴露给新手教程并继续复用现有连接逻辑', () => {

@@ -3,7 +3,7 @@
     <img class="box-image-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="box-image-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
     <header class="box-image-heading">
-      <div><strong>{{ game }} BOX</strong><span class="box-image-subtitle">角色与练度</span></div>
+      <div><strong>{{ game }}</strong><span class="box-image-subtitle">角色与练度</span></div>
       <span>共 {{ total }} 位 · 第 {{ page }} / {{ pages }} 张 · 第 {{ start }}—{{ start + entries.length - 1 }} 位</span>
     </header>
     <div class="box-image-grid">
@@ -16,6 +16,7 @@
           <div class="box-image-name-tab">
             <div v-if="!portraits[entry.id]" class="box-image-avatar"><img v-if="entry.avatar" :src="avatarUrl(entry.avatar)" :alt="entry.name" /><span v-else>{{ Array.from(entry.name)[0] }}</span></div>
             <h3 :class="{ 'is-three-char-name': Array.from(entry.name).length === 3, 'is-long-name': Array.from(entry.name).length > 3, 'is-single-column-name': entry.name === '史子眇·赴烛' }"><template v-if="entry.name === '陈登·黍王'">陈登·<span class="box-image-name-continuation box-image-name-continuation--natural">黍王</span></template><template v-else-if="entry.name === '史子眇·赴烛'">史子眇·<span class="box-image-name-continuation">赴烛</span></template><template v-else>{{ entry.name }}</template></h3>
+            <span v-if="entry.huajiProgress?.awakened === true" class="box-image-awakening" aria-hidden="true"><span>觉</span><span>醒</span></span>
           </div>
           <div class="box-image-identity"><div class="box-image-name-row">
             <span class="box-image-prof-tab" :class="{ 'box-image-prof-tab--fuzhu': entry.id === 'char_085_shizimiaosp' }">
@@ -114,6 +115,11 @@ defineExpose({ sheet })
 .box-image-name-tab h3.is-three-char-name { font-size: 26px; }
 .box-image-name-tab h3.is-long-name { font-size: 21px; max-height: 196px; white-space: normal; overflow-wrap: anywhere; }
 .box-image-name-continuation { display: inline; }
+/* Stack upright glyphs so PNG export does not depend on writing-mode support. */
+.box-image-awakening { position: absolute; right: calc(100% + 3px); bottom: -3px; display: flex; flex-direction: column; align-items: center; width: 30px; padding-bottom: 2px; pointer-events: none; color: #fff3d1; font: 900 23px/26px var(--font-s, serif); text-shadow: -1px 0 #b74324, 1px 0 #b74324, 0 -1px #b74324, 0 1px #b74324, 0 0 4px #cf6431; }
+.box-image-awakening > span { position: relative; z-index: 1; }
+.box-image-awakening::after { content: ''; position: absolute; left: 0; bottom: 0; width: 30px; height: 30px; border: 1px solid #efc36d; border-radius: 50%; }
+.box-image-awakening::before { content: ''; position: absolute; left: 13px; bottom: -6px; width: 4px; height: 4px; background: #efc36d; transform: rotate(45deg); }
 .box-image-identity { position: absolute; top: 12px; left: 9px; }
 .box-image-prof-tab { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 3px 8px; border: 1px solid #d5b773; border-radius: 14px; background: #fffaf0; font: 500 12px var(--font-b, sans-serif); }
 .box-image-prof-tab img { width: 20px; height: 20px; }
