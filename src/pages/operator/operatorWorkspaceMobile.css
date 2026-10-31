@@ -960,12 +960,15 @@
   font: 900 13px var(--font-d);
 }
 .batch-status-actions {
+  flex-wrap: wrap;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: auto;
 }
 .batch-status-action,
+.batch-export,
 .batch-clear {
   display: inline-flex;
   min-height: 32px;
@@ -973,6 +976,7 @@
   justify-content: center;
   padding: 4px 10px;
   font: 800 10.5px var(--font-b);
+  white-space: nowrap;
 }
 .catalog-prof-filter .mf-filter button {
   display: inline-flex;
@@ -3061,13 +3065,15 @@
     gap: 7px;
     padding: 8px 9px;
   }
+  .batch-status-label { flex-basis: 100%; }
   .batch-status-actions {
     margin-left: 0;
     flex-wrap: wrap;
   }
   .batch-status-action,
+  .batch-export,
   .batch-clear {
-    flex: 1;
+    flex: 1 0 auto;
     min-width: 0;
     min-height: 34px;
   }

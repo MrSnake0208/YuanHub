@@ -37,7 +37,7 @@ function render(count = 105, extra = {}) {
 
 it('105 entries produce twelve independently downloadable pages with correct ranges', async () => {
   const wrapper = render()
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(captures.map(c => c.names.length)).toEqual([...Array(11).fill(9), 6])
   expect(captures.flatMap(c => c.names)).toEqual(Array.from({ length: 105 }, (_, i) => '密探' + i))
   expect(captures[11].text).toContain('第 12 / 12 张 · 第 100—105 位')
@@ -59,6 +59,7 @@ it.each(['生成分段图', '尝试生成完整长图'])('%s keeps growth, both 
     }, {}, { attackLabel: '999,999', hpLabel: '9,999,999' }),
     operatorBoxImageEntry({ id: 'unknown', name: '待核', rarity: 5, huaji: { owned: true, stage: null } }, {}, {}),
   ]
+  entries.push(...Array.from({ length: 8 }, (_, i) => entry(i)))
   const wrapper = render(0, { entries, filteredIds: entries.map(e => e.id) })
   await button(wrapper, action).trigger('click'); await flushPromises()
   const text = captures[0].text
@@ -79,7 +80,7 @@ it('static ledger keeps combat and oddities without history, calculation sources
   const entries = [operatorBoxImageEntry(saved, {}, { attackLabel: '9,999', hpLabel: '99,999',
     attackSource: 'calculated', hpSource: 'manual', status: 'manual' })]
   const wrapper = render(0, { entries, filteredIds: ['op'] })
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   const capture = captures[0]
   for (const value of ['等级90', '修为12', '化极4', '0节点', '9,999', '99,999',
     '真实命盘', '500/ 500', '0/ 2600']) expect(capture.text).toContain(value)
@@ -90,7 +91,7 @@ it('static ledger keeps combat and oddities without history, calculation sources
 
 it('current filters retain their order; all owned and complete-image export are explicit choices', async () => {
   const wrapper = render(40, { filteredIds: ['op23', 'op2'] })
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(captures[0].names).toEqual(['密探23', '密探2'])
   await wrapper.get('select').setValue('all')
   expect(wrapper.find('.box-image-preview').exists()).toBe(false)
@@ -104,7 +105,7 @@ it.each([{ accountId: 'account-b' }, { game: '代号鸢' }, { open: false }])('l
   const pending = deferred()
   renderOperatorBoxImage.mockReturnValueOnce(pending.promise)
   const wrapper = render(2)
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(wrapper.attributes('aria-busy')).toBe('true')
   await wrapper.setProps(change)
   pending.resolve(new Blob(['old-account']))
@@ -116,11 +117,11 @@ it.each([{ accountId: 'account-b' }, { game: '代号鸢' }, { open: false }])('l
 
 it('generated URLs are revoked on close and unmount', async () => {
   const wrapper = render(2)
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   await wrapper.setProps({ open: false })
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1')
   await wrapper.setProps({ open: true })
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   wrapper.unmount()
   expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2)
 })
@@ -128,11 +129,11 @@ it('generated URLs are revoked on close and unmount', async () => {
 it('a failed later page keeps completed images and permits a clean retry', async () => {
   renderOperatorBoxImage.mockResolvedValueOnce(new Blob(['first'])).mockRejectedValueOnce(new Error('内存不足，请使用分段图片'))
   const wrapper = render(40)
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(wrapper.get('[role="alert"]').text()).toContain('已生成的 1 张仍可保存')
   expect(wrapper.findAll('a[download]')).toHaveLength(1)
   expect(wrapper.attributes('aria-busy')).toBe('false')
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   expect(wrapper.findAll('.box-image-pages button')).toHaveLength(5)
 })
@@ -140,16 +141,17 @@ it('a failed later page keeps completed images and permits a clean retry', async
 it('failed or empty source data cannot generate a misleading image', async () => {
   const wrapper = render(2, { ready: false, sourceError: '档案读取失败' })
   expect(wrapper.text()).toContain('档案读取失败')
-  expect(button(wrapper, '生成分段图').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('.box-image-actions .btn.primary').attributes('disabled')).toBeDefined()
   await wrapper.setProps({ ready: true, filteredIds: [] })
   expect(wrapper.text()).toContain('当前范围没有密探')
-  expect(button(wrapper, '尝试生成完整长图').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('.box-image-actions .btn.primary').attributes('disabled')).toBeDefined()
+  expect(button(wrapper, '尝试生成完整长图')).toBeUndefined()
   expect(renderOperatorBoxImage).not.toHaveBeenCalled()
 })
 
 it('image generation does not request milestone data', async () => {
   const wrapper = render(1)
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   expect(getOperatorMilestones).not.toHaveBeenCalled()
   expect(captures).toHaveLength(1)
 })
@@ -158,7 +160,7 @@ it('changing the authenticated user invalidates a pending capture even when acco
   const pending = deferred()
   renderOperatorBoxImage.mockReturnValueOnce(pending.promise)
   const wrapper = render(1)
-  await button(wrapper, '生成分段图').trigger('click'); await flushPromises()
+  await wrapper.get('.box-image-actions .btn.primary').trigger('click'); await flushPromises()
   auth.userInfo = { id: 'user-b' }
   pending.resolve(new Blob(['old-user'])); await flushPromises()
   expect(URL.createObjectURL).not.toHaveBeenCalled()
@@ -167,10 +169,44 @@ it('changing the authenticated user invalidates a pending capture even when acco
 
 it('warns before generation for large selections and updates when the export scope changes', async () => {
   const wrapper = render(105, { filteredIds: ['op0'] })
-  expect(wrapper.text()).toContain('预计容纳约 51 位')
-  expect(wrapper.text()).not.toContain('已选 105 位')
+  expect(wrapper.text()).not.toContain('预计容纳约 51 位')
+  expect(wrapper.text()).not.toContain('本次导出 105 位')
   await wrapper.get('select').setValue('all')
-  expect(wrapper.text()).toContain('已选 105 位，建议生成 12 张分段图。完整长图可能超出限制')
+  expect(wrapper.text()).toContain('本次导出 105 位，建议生成 12 张分段图。完整长图可能超出限制')
   expect(button(wrapper, '尝试生成完整长图').attributes('disabled')).toBeUndefined()
   expect(renderOperatorBoxImage).not.toHaveBeenCalled()
+})
+
+
+it('selected scope exports only checked IDs in list order and resets to that scope on reopen', async () => {
+  const wrapper = render(12, { selectedIds: ['op5', 'op1', 'op8'], initialScope: 'selected' })
+  expect(wrapper.get('select').element.value).toBe('selected')
+  expect(wrapper.text()).toContain('本次导出 3 位，生成 1 张图片')
+  await button(wrapper, '生成图片').trigger('click'); await flushPromises()
+  expect(captures[0].names).toEqual(['密探5', '密探1', '密探8'])
+  await wrapper.get('select').setValue('all')
+  await wrapper.setProps({ open: false })
+  await wrapper.setProps({ selectedIds: ['op2'], open: true })
+  expect(wrapper.get('select').element.value).toBe('selected')
+  await button(wrapper, '生成图片').trigger('click'); await flushPromises()
+  expect(captures[1].names).toEqual(['密探2'])
+})
+
+it('empty selection never falls back to all entries and invalidates a pending selected capture', async () => {
+  const pending = deferred()
+  renderOperatorBoxImage.mockReturnValueOnce(pending.promise)
+  const wrapper = render(12, { selectedIds: ['op2'], initialScope: 'selected' })
+  await button(wrapper, '生成图片').trigger('click'); await flushPromises()
+  await wrapper.setProps({ selectedIds: [] })
+  pending.resolve(new Blob(['old-selection'])); await flushPromises()
+  expect(URL.createObjectURL).not.toHaveBeenCalled()
+  expect(wrapper.get('select').element.value).toBe('selected')
+  expect(button(wrapper, '生成图片').element.disabled).toBe(true)
+  expect(wrapper.text()).toContain('当前范围没有密探')
+})
+
+it.each([9, 10])('%i entries expose only appropriate image actions', count => {
+  const wrapper = render(count)
+  expect(wrapper.findAll('.box-image-actions button')).toHaveLength(count === 9 ? 1 : 2)
+  expect(wrapper.get('.box-image-actions .btn.primary').text()).toBe(count === 9 ? '生成图片' : '生成分段图 · 2 张')
 })

@@ -12,7 +12,7 @@
         <template #primary-actions>
           <div class="roster-box-actions">
             <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
-              :title="currentAccountName + ' · ' + ledgerShareStatus" @click="shareModalOpen = true">
+              :title="currentAccountName + ' · ' + ledgerShareStatus" @click="openOperatorShare(false)">
               <Share2 :size="16" aria-hidden="true" />分享 BOX <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
             </button>
             <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
@@ -147,6 +147,8 @@
             :game="gameFilter"
             :image-entries="boxImageEntries"
             :image-filtered-ids="filteredCurrent.map(entry => entry.id)"
+            :image-selected-ids="batchImageSelectedIds"
+            :selected-only="shareSelectedOnly"
             :image-ready="boxImageReady"
             :image-error="accountError || error || catalogError"
             @share-change="operatorShare = $event"
@@ -965,12 +967,12 @@
                   :class="{ on: batchSelectMode }"
                   type="button"
                   :aria-pressed="batchSelectMode"
-                  title="批量标注养成状态"
+                  title="批量选择密探"
                   @click="toggleBatchSelectMode"
                 >
                   <ListChecks :size="13" aria-hidden="true" /><span
                     class="current-batch-label"
-                    >{{ batchSelectMode ? "退出批量" : "批量标注" }}</span
+                    >{{ batchSelectMode ? "退出批量" : "批量选择" }}</span
                   >
                 </button>
               </template>
@@ -986,7 +988,7 @@
                 <div
                   v-if="batchSelectMode"
                   class="batch-status-bar"
-                  aria-label="批量设置养成状态"
+                  aria-label="批量标注与图片导出"
                 >
                 <label
                   class="batch-select-all"
@@ -1010,6 +1012,7 @@
                   >已选 <b>{{ batchSelectedCount }}</b> 位</span
                 >
                 <div class="batch-status-actions">
+                  <span class="batch-status-label">批量标注</span>
                   <button
                     v-for="option in editableStatusOptions"
                     :key="option.value"
@@ -1019,6 +1022,16 @@
                     @click="batchSetStatus(option.value)"
                   >
                     {{ workbenchStatusFilter === 'discarded' && option.value !== 'discarded' ? '恢复为' : '设为' }}{{ option.label }}
+                  </button>
+                  <button
+                    type="button"
+                    class="batch-export"
+                    :disabled="!batchSelectedCount || !boxImageReady || annotationBusyIds.size > 0 || batchStatusBusy"
+                    aria-haspopup="dialog"
+                    aria-controls="operator-share-dialog"
+                    @click="openOperatorShare(true)"
+                  >
+                    <ImageIcon :size="14" aria-hidden="true" />导出图片（{{ batchSelectedCount }}）
                   </button>
                   <button
                     v-if="batchSelectedCount"
@@ -3135,6 +3148,7 @@ import {
   Heart,
   Eye,
   ListChecks,
+  Image as ImageIcon,
   Pencil,
   RotateCcw,
   Save,
@@ -3733,6 +3747,12 @@ watch(
 const accountWorkspaceCompact = ref(true);
 const boxViewerOpen = ref(false);
 const shareModalOpen = ref(false);
+const shareSelectedOnly = ref(false);
+function openOperatorShare(selectedOnly) {
+  if (selectedOnly && (!batchSelectedCount.value || !boxImageReady.value || annotationBusyIds.value.size || batchStatusBusy.value)) return;
+  shareSelectedOnly.value = selectedOnly;
+  shareModalOpen.value = true;
+}
 const operatorShare = ref(null);
 const isOperatorSharing = computed(() => auth.isLoggedIn && operatorShare.value?.accountId === accountId.value && !!operatorShare.value?.link);
 const ledgerShareStatus = computed(() => {
@@ -5318,6 +5338,7 @@ const batchSelectedIds = computed(function () {
       }),
   );
 });
+const batchImageSelectedIds = computed(() => Array.from(batchSelectedIds.value));
 const batchSelectedCount = computed(function () {
   return batchSelectedIds.value.size;
 });
@@ -10976,11 +10997,15 @@ onBeforeUnmount(function () {
   color: var(--theme-accent-text, var(--accent-strong));
 }
 .batch-status-action,
+.batch-export,
 .batch-clear {
   border: 1px solid var(--line);
   border-radius: 7px;
   cursor: pointer;
 }
+.batch-status-label { color: var(--ink-60); font-size: 11px; white-space: nowrap; }
+.batch-export { background: var(--tea); border-color: var(--tea); color: var(--on-strong); gap: 5px; }
+.batch-export:hover:not(:disabled) { background: var(--theme-control-bg, var(--ink)); }
 .batch-status-action.graduated {
   border-color: var(--theme-line, rgba(239, 210, 142, 0.85));
   background: var(--yellow);
@@ -10995,6 +11020,7 @@ onBeforeUnmount(function () {
   background: var(--surface);
   color: var(--ink-35);
 }
+.batch-export:disabled,
 .batch-status-action:disabled,
 .batch-clear:disabled {
   opacity: 0.5;
