@@ -1,5 +1,5 @@
 <template>
-  <div class="reward-workspace" :class="{ 'compact-daily': compactDaily }">
+  <div class="reward-workspace" :class="{ 'compact-daily': compactDaily, 'home-daily': homeDaily }">
     <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
       <div class="daily-quick-heading"><strong>今日奖励</strong><time :datetime="dailyDate" title="北京时间 05:00 换日">{{ dailyDate.slice(5).replace('-', '月') }}日</time></div>
       <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
@@ -16,9 +16,10 @@
       </fieldset>
       <p v-if="mailboxMonthlyCoins" class="shortcut-note">记录月卡领取会扣除当天邮件；调整奖励请前往库存的邮件管理。</p>
       <div class="daily-quick-actions">
-        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : '记录所选' }}</button>
-        <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
-        <details class="quick-rules shortcut-note">
+        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : homeDaily && manual.presets.length && !result ? `记录所选（${manual.presets.length}）` : '记录所选' }}</button>
+        <router-link v-if="homeDaily" class="quick-inventory text-button" to="/inventory">前往库存 ›</router-link>
+        <button v-else type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
+        <details v-if="!homeDaily" class="quick-rules shortcut-note">
           <summary>领取规则</summary>
           <div class="quick-rules-content">
             <p>每日茱萸可选择记录茱萸或已领取的白金币；点击编辑选择本次结果。仅勾选实际已领取的奖励，未领取的邮件暂勿入账。</p>
@@ -298,7 +299,7 @@ import { businessDate, businessDayStartIso, nextBusinessDayStartIso } from '../.
 import { getMailboxDailyStatus } from '../../api/mailboxReserve.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
-const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
+const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, homeDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
 const emit = defineEmits(['imported', 'busy'])
 const mode = ref(props.compactDaily ? 'manual' : '')
 const dailyMode = ref(props.compactDaily)

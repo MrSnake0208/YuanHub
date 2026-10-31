@@ -12,7 +12,7 @@ const xushu = {
   discLoadouts: [{ discNames: ['人多增伤', '降低阴抗'] }, { discNames: ['攻击中幅', '人少增伤'] }],
 }
 
-it('the screenshot operator retains identity, growth, oddities and every configured fate term, with no history or controls', () => {
+it('the screenshot operator retains identity, growth and every configured fate term while hiding oddities, with no history or controls', () => {
   const entry = operatorBoxImageEntry(xushu, {}, { attackLabel: '7706', hpLabel: '37195' }, 'active')
   const wrapper = mount(Sheet, { props: { entries: [entry] } })
   expect(wrapper.get('.box-image-portrait img').attributes('src')).toContain('char_063_xushu.webp')
@@ -20,11 +20,13 @@ it('the screenshot operator retains identity, growth, oddities and every configu
   expect(wrapper.get('.box-image-prof-tab').text()).toBe('神纪')
   expect(wrapper.get('.box-image-prof-tab img').attributes('alt')).toBe('阳属性')
   expect(wrapper.find('.ledger-status-button, .box-image-status-button').exists()).toBe(false)
-  expect(wrapper.get('.box-image-huaji-value').text()).toBe('化极5星')
+  expect(wrapper.get('.box-image-huaji-value').text()).toBe('化极')
+  expect(wrapper.get('.box-image-stars').attributes('aria-label')).toBe('5星')
+  expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
   expect(wrapper.findAll('.box-image-growth-row').map(row => row.text())).toEqual(['等级100', '修为17'])
   expect(wrapper.findAll('.box-image-combat-value').map(row => row.text())).toEqual(['7706', '37195'])
-  expect(wrapper.findAll('.box-image-oddity').map(row => row.text())).toEqual(['500/ 500', '2600/ 2600'])
-  expect(wrapper.findAll('.box-image-oddity.is-full')).toHaveLength(2)
+  expect(wrapper.text()).not.toContain('奇闻')
+  expect(wrapper.find('.box-image-oddity').exists()).toBe(false)
   expect(wrapper.text()).not.toMatch(/历程|未记录日期/)
   expect(wrapper.get('.box-image-sheet').element.style.width).toBe(BOX_IMAGE_LAYOUT_WIDTH + 'px')
   expect(wrapper.findAll('.box-image-destiny-row').map(row => row.findAll('em').map(term => term.text()))).toEqual(xushu.discLoadouts.map(row => row.discNames))
@@ -33,7 +35,7 @@ it('the screenshot operator retains identity, growth, oddities and every configu
   wrapper.unmount()
 })
 
-it('the screenshot three-character operator keeps nodes, different oddities and all six colored fate terms', () => {
+it('the screenshot three-character operator keeps nodes and all six colored fate terms while hiding oddities', () => {
   const saved = {
     id: 'char_003_sunshangxiang', name: '孙尚香', prof: '火', subProf: 'pojun', rarity: 5,
     level: 100, elite: 17, huaji: { owned: true, stage: 24, awakened: null },
@@ -48,8 +50,8 @@ it('the screenshot three-character operator keeps nodes, different oddities and 
   const wrapper = mount(Sheet, { props: { entries: [entry] } })
   expect(wrapper.get('h3').classes()).toContain('is-three-char-name')
   expect(wrapper.get('.box-image-huaji-value').attributes('aria-label')).toBe('4★ · 5 节点')
-  expect(wrapper.findAll('.box-image-oddity').map(row => row.text())).toEqual(['500/ 500', '500/ 2600'])
-  expect(wrapper.findAll('.box-image-oddity.is-full')).toHaveLength(1)
+  expect(wrapper.text()).not.toContain('奇闻')
+  expect(wrapper.find('.box-image-oddity').exists()).toBe(false)
   expect(wrapper.findAll('.box-image-destiny-row').map(row => row.findAll('em').map(term => term.text()))).toEqual(saved.discLoadouts.map(row => row.discNames))
   expect(wrapper.findAll('em').map(term => term.classes().find(name => name.startsWith('rarity-')))).toEqual(['rarity-gold', 'rarity-blue', 'rarity-purple', 'rarity-gold', 'rarity-blue', 'rarity-gold'])
   wrapper.unmount()
@@ -63,7 +65,8 @@ it.each([
   expect(wrapper.get('h3').text()).toBe(name)
   expect(wrapper.get('.box-image-name-continuation').text()).toBe(continuation)
   expect(wrapper.get('.box-image-huaji-value').text()).not.toMatch(/\d/)
-  expect(wrapper.findAll('.box-image-oddity output').map(value => value.text())).toEqual(['—', '—'])
+  expect(wrapper.find('.box-image-stars').exists()).toBe(false)
+  expect(wrapper.find('.box-image-oddity').exists()).toBe(false)
   wrapper.unmount()
 })
 
@@ -94,6 +97,21 @@ it('the export owns its five-column layout without importing editable overview s
 
 it('awakened progress stays visible alongside stars', () => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ id: 'awake', rarity: 5, huaji: { owned: true, stage: 25, awakened: true } })] } })
-  expect(wrapper.get('.box-image-huaji-value').text()).toBe('化极5星 · 已觉醒')
+  expect(wrapper.get('.box-image-huaji-value').text()).toContain('已觉醒')
+  expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
+  expect(wrapper.get('.box-image-huaji-value').attributes('aria-label')).toContain('已觉醒')
+  expect(wrapper.get('.box-image-huaji-value').text()).not.toContain('节点')
+  wrapper.unmount()
+})
+
+
+it.each([[1, 1], [7, 2], [13, 3], [19, 4], [25, 5]])('renders stage %s as exactly %s stars without empty slots', (stage, stars) => {
+  const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ id: 'stars', rarity: 5, huaji: { owned: true, stage } })] } })
+  const icons = wrapper.findAll('.box-image-stars img')
+  expect(icons).toHaveLength(stars)
+  expect(icons.every(icon => icon.attributes('src').endsWith('/assets/operator-box/star.svg'))).toBe(true)
+  expect(wrapper.get('.box-image-stars').attributes('aria-label')).toBe(stars + '星')
+  expect(wrapper.get('.box-image-huaji-value').text()).not.toMatch(/化极\d|\d星/)
+  if (stage < 25) expect(wrapper.get('.box-image-huaji-value').text()).toContain('0节点')
   wrapper.unmount()
 })

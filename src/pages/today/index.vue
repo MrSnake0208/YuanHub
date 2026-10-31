@@ -43,9 +43,14 @@
       <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
       <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
       <TodayPreferencesPanel v-model:open="customizeOpen" :preferences="preferences" />
+      <RewardEntryWorkspace v-if="auth.isLoggedIn && validAccountId && !accountLoading && !accountLoadFailed" :key="'daily:' + highlightContext"
+        ref="dailyRewards" class="today-daily-rewards" compact-daily home-daily
+        :account-id="validAccountId" :account-name="currentAccountName" :game="accountGame"
+        :disabled="rewardEntryDisabled || rewardBusy || drawResourceBusy || !!rewardEntryWorkspace?.mode"
+        @busy="dailyBusy = $event" @imported="onRewardImported" />
       <RewardEntryWorkspace v-if="recordMounted && auth.isLoggedIn && validAccountId" :key="highlightContext" ref="rewardEntryWorkspace" compact
         :account-id="validAccountId" :account-name="currentAccountName" :game="accountGame"
-        :disabled="rewardEntryDisabled" :resource-busy="drawResourceBusy" :before-close="confirmDrawDraft"
+        :disabled="rewardEntryDisabled || dailyBusy" :resource-busy="drawResourceBusy" :before-close="confirmDrawDraft"
         @busy="rewardBusy = $event" @imported="onRewardImported">
         <template #actions />
         <template #resource-entry="{ operation }">
@@ -175,7 +180,8 @@ const accounts = ref([])
 const accountContext = ref(null)
 const rewardEntryWorkspace = ref(null), drawResourceEntry = ref(null)
 const recordMounted = ref(false), rewardBusy = ref(false), drawResourceBusy = ref(false)
-const recordBusy = computed(() => rewardBusy.value || drawResourceBusy.value)
+const dailyRewards = ref(null), dailyBusy = ref(false)
+const recordBusy = computed(() => rewardBusy.value || drawResourceBusy.value || dailyBusy.value)
 const subscriptionSource = ref(null), privateSource = ref(null)
 const subscriptionState = ref(null), privateState = ref(null)
 useAccountListUpdates(next => { accounts.value = next })
@@ -210,7 +216,7 @@ const calendarGame = computed(function () {
 })
 const highlightContext = computed(() => JSON.stringify([auth.isLoggedIn ? auth.userInfo?.id || '' : '', validAccountId.value, accountGame.value]))
 watch([highlightContext, calendarEnabled], () => { subscriptionState.value = null; privateState.value = null }, { flush: 'sync' })
-watch(highlightContext, () => { recordMounted.value = false; rewardBusy.value = false; drawResourceBusy.value = false }, { flush: 'sync' })
+watch(highlightContext, () => { dailyBusy.value = false; recordMounted.value = false; rewardBusy.value = false; drawResourceBusy.value = false }, { flush: 'sync' })
 
 async function openRewardEntry(trigger) {
   if (rewardEntryDisabled.value || recordBusy.value) return
@@ -228,7 +234,7 @@ async function beforeAccountSwitch() {
   const context = highlightContext.value, sequence = loadSequence
   const current = () => context === highlightContext.value && sequence === loadSequence && !recordBusy.value
   if (!(await confirmDrawDraft()) || !current()) return false
-  if (rewardEntryWorkspace.value?.hasDraft() && !(await dialog.confirm({
+  if ((rewardEntryWorkspace.value?.hasDraft() || dailyRewards.value?.hasDraft()) && !(await dialog.confirm({
     title: '放弃当前账号的录入草稿？', message: '切换账号会清空未保存的记录。已保存的数据不受影响。',
     type: 'danger', confirmText: '放弃并切换', cancelText: '继续填写'
   }))) return false

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="520" viewBox="0 0 200 520" preserveAspectRatio="none" fill="none">
-  <g stroke="#b58a45" stroke-width=".7">
+  <g stroke="#bd913e" stroke-width="1.1">
     <path d="M17 3H183L197 17V503L183 517H17L3 503V17Z" vector-effect="non-scaling-stroke"/>
     <path d="M3 25V7Q3 3 7 3H25M175 3H193Q197 3 197 7V25M197 495V513Q197 517 193 517H175M25 517H7Q3 517 3 513V495" vector-effect="non-scaling-stroke"/>
   </g>

@@ -416,4 +416,23 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 @container (min-width: 761px) {
   .daily-quick-option img { width: 38px; height: 38px; }
 }
+
+/* 首页只压缩展示，库存页与记录规则沿用原实现。 */
+  .home-daily { padding: 10px 12px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .home-daily .daily-quick { grid-template-columns: 76px minmax(0, 1fr) auto; gap: 8px 12px; }
+  .home-daily .daily-quick-heading { display: grid; gap: 2px; }
+  .home-daily .daily-quick-heading strong { font-size: 16px; }
+  .home-daily .daily-quick > fieldset { grid-column: 2; grid-row: 1; gap: 6px; }
+  .home-daily .daily-quick-option { padding: 4px 2px 4px 6px; }
+  .home-daily .daily-quick-option img { width: 26px; height: 26px; }
+  .home-daily .daily-quick-actions { grid-column: 3; grid-row: 1; display: grid; grid-template-columns: auto; gap: 2px; text-align: center; }
+  .home-daily .daily-quick-actions > .primary-button { min-height: 32px; padding: 6px 10px; }
+  .home-daily .quick-inventory { padding: 3px 0; font-size: 12px; }
+  .home-daily .quick-feedback { margin: 0; }
+@media (max-width: 1200px) {
+  .home-daily .daily-quick { grid-template-columns: minmax(0, 1fr) auto; }
+  .home-daily .daily-quick-heading { display: flex; gap: 8px; }
+  .home-daily .daily-quick > fieldset { grid-column: 1 / -1; grid-row: 2; }
+  .home-daily .daily-quick-actions { grid-column: 2; display: flex; gap: 10px; }
+}
 }
