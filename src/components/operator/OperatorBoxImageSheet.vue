@@ -132,7 +132,7 @@ defineExpose({ sheet })
 .box-image-details::before { content: ''; position: absolute; top: -7px; left: 0; width: 100%; height: 9px; border-radius: 50% 50% 0 0; background: #fffaf0; }
 .box-image-details > * { position: relative; }
 .box-image-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-top: 8px; }
-.box-image-growth-row { display: flex; justify-content: center; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; color: #695b4b; }
+.box-image-growth-row { display: flex; justify-content: center; align-items: baseline; gap: 7px; font-size: 11px; font-weight: 700; color: #695b4b; }
 .box-image-growth-row + .box-image-growth-row { border-left: 1px solid #dfd1b6; }
 .box-image-growth-row strong { font-size: 18px; font-weight: 700; line-height: 1.2; color: #493b2c; }
 .box-image-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px 0 9px; }
