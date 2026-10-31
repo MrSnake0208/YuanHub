@@ -49,7 +49,7 @@
             <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
             <span v-if="activeTab === 'import'" class="star-privacy-note" title="图片识别在本机完成。手动截图由浏览器读取；MaaYuan 截图从临时服务器获取。登录后同步背包数据。">本机识别</span>
-            <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
+            <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRecoveryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
           </div>
           <ArchiveExchangePanel
@@ -87,22 +87,23 @@
           <AccountShareManager v-if="showShare && !completionDemo && auth.isLoggedIn && accountId" id="star-account-share" :account-id="accountId" class="star-share-manager" />
           <p v-else-if="showShare && !completionDemo" id="star-account-share" class="star-share-placeholder">登录并选择游戏账号后，可管理密探与星石分享。</p>
           <p
-            v-if="cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
+            v-if="cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRecoveryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError, 'is-warning': captureVersionWarning || cloudNeedsRetry || captureNeedsRetry || captureImportNeedsRetry }"
             role="status"
             aria-live="polite"
           >
-            <span v-if="cloudSyncError || cloudNeedsRetry || cloudRetryBusy">{{ cloudSyncError || cloudSyncMessage }}</span>
-            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudNeedsRetry || cloudRetryBusy) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
+            <span v-if="cloudSyncError || cloudNeedsRetry || cloudRecoveryBusy">{{ cloudSyncError || cloudSyncMessage }}</span>
+            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudNeedsRetry || cloudRecoveryBusy) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
             <span v-if="captureVersionWarning"> · {{ captureVersionWarning }}</span>
             <button
-              v-if="cloudNeedsRetry || cloudRetryBusy || (cloudSyncError && productReady && accountId)"
+              v-if="(cloudRecoveryAction && productReady && accountId) || cloudRecoveryBusy"
               type="button"
-              class="star-sync-retry"
-              :disabled="cloudRetryBusy"
-              @click="retryStarCloud"
-            >{{ cloudRetryBusy ? '重试中…' : '重试' }}</button>
+              class="star-sync-retry star-sync-cloud"
+              :disabled="cloudRecoveryBusy || captureImportBusy || starExchangeBusy"
+              :aria-busy="cloudRecoveryBusy"
+              @click="recoverStarCloud"
+            >{{ cloudRecoveryBusy ? (cloudRecoveryMode === 'recover' ? '恢复中…' : '加载中…') : (cloudRecoveryAction === 'recover' ? '恢复云端' : '重新加载') }}</button>
             <button
               v-if="captureNeedsRetry || captureRetryBusy"
               type="button"
@@ -149,7 +150,7 @@
             <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady && (summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError)" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <div id="product-root" ref="mountRoot" :inert="cloudRecoveryBusy" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady && (summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError)" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionExampleModal :items="recognitionTutorialExamples[helpExampleKind] || []" @close="helpExampleKind = null" />
           <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="summary.planInheritancePending || summary.planInheritanceOpen || cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
@@ -268,7 +269,9 @@ const starFiltersOpen = ref(false);
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
-const cloudRetryBusy = ref(false);
+const cloudRecoveryBusy = ref(false);
+const cloudRecoveryAction = ref("");
+const cloudRecoveryMode = ref("");
 const productReady = ref(false);
 const cloudWriteBusy = ref(false);
 const recognitionTutorialOpen = ref(false);
@@ -451,7 +454,8 @@ const starCloud = createStarCloudCoordinator({
   selectedHostAccount,
   onState: function (state) {
     if (state.accountId && state.accountId !== accountId.value) return;
-    cloudWriteBusy.value = !!(state.replacing || state.error || state.writer?.saving || state.writer?.pending);
+    cloudWriteBusy.value = !!(state.replacing || state.error || state.writer?.saving || state.writer?.pending || state.writer?.error);
+    cloudRecoveryAction.value = state.canReloadCloud ? "recover" : (state.error || state.recoveryRequired || state.commandPending) ? "reload" : "";
     tutorialCloudReady.value = Boolean(state.ready);
     tutorialCloudHistory.value = Boolean(state.writer?.revision > 0 || state.writer?.generation > 0);
     const feedback = starCloudFeedback(state);
@@ -461,22 +465,29 @@ const starCloud = createStarCloudCoordinator({
   },
 });
 function clearCloudSyncFeedback() {
-  if (cloudNeedsRetry.value || cloudRetryBusy.value) return;
+  if (cloudNeedsRetry.value || cloudRecoveryBusy.value) return;
   cloudSyncMessage.value = "";
   cloudSyncError.value = "";
 }
-async function retryStarCloud() {
-  if ((!cloudNeedsRetry.value && !cloudSyncError.value) || cloudRetryBusy.value) return;
-  cloudRetryBusy.value = true;
+async function recoverStarCloud() {
+  if (!cloudRecoveryAction.value || cloudRecoveryBusy.value || captureImportBusy.value || starExchangeBusy.value || !handle || !selectedHostAccount()) return;
+  const mode = cloudRecoveryAction.value, session = starCloud.state(), currentHandle = handle;
+  const context = starContextVersion, identity = accountIdentityVersion;
+  const isCurrent = () => !unmounted && context === starContextVersion && identity === accountIdentityVersion && currentHandle === handle && session === starCloud.state();
+  cloudRecoveryMode.value = mode;
+  cloudRecoveryBusy.value = true;
   try {
-    const state = starCloud.state();
-    if (state?.ready && !state.error) await starCloud.retry();
-    else if (handle && selectedHostAccount()) await syncHostAccount();
+    if (mode === "recover") {
+      const recovered = await starCloud.discardAndReload({ isCurrent });
+      if (!isCurrent()) return;
+      if (recovered) {
+        cloudSyncMessage.value = "已恢复云端背包，可继续编辑。";
+        cloudSyncError.value = "";
+      } else cloudSyncError.value = "未能恢复云端背包，待同步记录仍保留。请检查网络、浏览器存储或账号状态后再次恢复。";
+    } else await syncHostAccount({ readOnly: true });
   } catch (error) {
-    cloudSyncError.value = "云端结果尚未确认，请保留本机数据并重试核对。";
-  } finally {
-    cloudRetryBusy.value = false;
-  }
+    if (isCurrent()) cloudSyncError.value = "未能读取或核对云端背包，本机记录仍保留，请重新加载。";
+  } finally { cloudRecoveryBusy.value = false; }
 }
 function resetStarImportState() {
   starImportPreview.value = null;
@@ -645,15 +656,15 @@ async function loadAccounts() {
     accountsLoading.value = false;
   }
 }
-async function syncHostAccount() {
+async function syncHostAccount({ readOnly = false } = {}) {
   if (completionDemo) return false;
   if (!handle) return false;
   productReady.value = false;
   tutorialAccountReady.value = false;
-  const host = selectedHostAccount();
+  const host = selectedHostAccount(), identity = accountIdentityVersion;
   return queueAccountSync(async function (isLatest) {
     const currentHandle = handle;
-    const isCurrent = () => isLatest() && !unmounted && currentHandle === handle && (host?.accountId || "") === (selectedHostAccount()?.accountId || "");
+    const isCurrent = () => isLatest() && !unmounted && identity === accountIdentityVersion && currentHandle === handle && (host?.accountId || "") === (selectedHostAccount()?.accountId || "");
     const previousAccountId = mountedAccountId;
     try {
       if (!isCurrent()) return false;
@@ -666,7 +677,7 @@ async function syncHostAccount() {
       if (previousAccountId && previousAccountId !== mountedAccountId)
         resetStarImportState();
       clearCloudSyncFeedback();
-      const entered = await starCloud.enter(currentHandle);
+      const entered = await starCloud.enter(currentHandle, { readOnly, isCurrent });
       if (!isCurrent()) return false;
       if (host && !entered) cloudSyncError.value = "暂时无法读取云端背包，请重试加载；本机数据没有被覆盖。";
       tutorialAccountReady.value = !host || entered;
@@ -828,7 +839,7 @@ async function mountProduct() {
       onSaveBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.save(owner,id,count)),
       onAcceptBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.acceptCurrent(owner,id,count)),
       hostAccount: initialHostAccount,
-      onBusinessStateCommitted: function (event) { starCloud.committed(event); },
+      onBusinessStateCommitted: function (event) { return starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
       onApplyRecoveredPlan: function (snapshot, scope) { return starCloud.applyRecoveredPlan(snapshot, scope); },
       getOcrRebuildScope: function () { return starCloud.ocrRebuildScope(); },
@@ -887,6 +898,7 @@ watch([accountId, accountGame], () => {
   tutorialAccountReady.value = false;
   bagTutorialGate.reset();
   productReady.value = false;
+  starCloud.leave();
   resetStarImportState();
   showArchive.value = false;
   discardForeignPendingCapture();
@@ -930,6 +942,7 @@ onBeforeUnmount(function () {
   tutorialStatusObserver?.disconnect();
   cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
+  starCloud.leave();
   if (stopCaptureEvents) stopCaptureEvents();
   productReady.value = false;
   const current = handle;
@@ -991,6 +1004,7 @@ onBeforeUnmount(function () {
 .star-sync-retry:hover:not(:disabled) { color: var(--theme-accent-text, var(--accent)); }
 .star-sync-retry:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; border-radius: 2px; }
 .star-sync-retry:disabled { opacity: .55; cursor: wait; }
+.star-sync-cloud { max-width: calc(100% - 8px); white-space: normal; text-align: start; overflow-wrap: anywhere; }
 #product-root {
   background: transparent;
 }

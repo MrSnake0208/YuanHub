@@ -74,38 +74,68 @@ export function createStarCloudCoordinator({
   storage = globalThis.localStorage, onState = () => {},
 } = {}) {
   let active = null, sequence = 0
+  const writerKey = accountId => 'yuanhub.star-state:' + accountId
+  function hasCommandPending(accountId) {
+    try { return ['yuanhub.star-rebuild-pending:', 'yuanhub.star-plan-pending:'].some(prefix => storage.getItem(prefix + accountId) !== null) }
+    catch { return true } // Unreadable protection records cannot authorize a write/discard.
+  }
+  function current(session) { return active === session && selectedHostAccount()?.accountId === session.accountId }
+  function assertCurrent(session) {
+    if (!current(session)) throw new Error('账号或页面已变化，请重新加载当前账号。')
+  }
+  async function readBusiness(accountId) {
+    const raw = await getState(accountId)
+    // Never turn a malformed/partial recovery read into an empty backpack.
+    const isRecord = value => value && typeof value === 'object' && !Array.isArray(value)
+    const count = value => value === null || Number.isInteger(value) && value >= 0
+    const plan = raw?.plan_targets ?? raw?.planTargets
+    if (!Number.isInteger(raw?.generation) || raw.generation < 0 || !Number.isInteger(raw?.revision) || raw.revision < 0 ||
+      !Array.isArray(raw.inventory) || !isRecord(raw.bag) || !isRecord(raw.experience) || !isRecord(plan) ||
+      !count(Object.hasOwn(raw.bag, 'current_count') ? raw.bag.current_count : raw.bag.currentCount) || !count(raw.bag.capacity) ||
+      !['orange', 'purple', 'white'].every(key => count(raw.experience[key]))) throw new Error('云端星石数据不完整，请保留本机记录并重试。')
+    return businessState(raw)
+  }
+  function canReloadCloud() {
+    if (!active?.ready || !current(active) || !active.writer.isActive() || active.replacing || active.error || hasCommandPending(active.accountId)) return false
+    const writer = active.writer.state()
+    return !writer.saving && Boolean(writer.pending)
+  }
   function emit() {
     if (!active) return onState({ accountId: '', loading: false, ready: false, needsRetry: false, recoveryRequired: false })
     const writer = active.writer?.state() || {}
     return onState({ accountId: active.accountId, loading: active.loading, ready: active.ready, writer,
-      replacing: Boolean(active.replacing), error: active.error,
+      replacing: Boolean(active.replacing), recovering: Boolean(active.reloading), readOnlyReload: Boolean(active.readOnlyReload), error: active.error, commandPending: hasCommandPending(active.accountId), canReloadCloud: canReloadCloud(),
       needsRetry: Boolean(active.ready && (writer.pending || writer.error || active.error)),
       recoveryRequired: Boolean(active.ready && (active.error || writer.error || (!writer.saving && writer.pending))) })
   }
-  function sessionFor(accountId, initial) {
-    const session = { accountId, generation: initial.generation, ready: false, loading: false, replacing: false, writer: null }
+  function sessionFor(accountId, initial, handle) {
+    const session = { accountId, generation: initial.generation, handle, ready: false, loading: false, replacing: false, writer: null }
     session.writer = createPlannerSnapshotWriter({
-      initial, storage, key: 'yuanhub.star-state:' + accountId,
-      read: async () => businessState(await getState(accountId)),
-      write: async body => businessState((await patchState(accountId, body)).state),
-      body: stateBody, equals: businessSame, onChange: emit,
-      onSaved: saved => { session.generation = saved.generation; emit() },
+      initial, storage, key: writerKey(accountId), isCurrent: () => current(session),
+      read: () => readBusiness(accountId),
+      write: async body => {
+        assertCurrent(session)
+        if (hasCommandPending(accountId)) throw Object.assign(new Error('背包替换或计划保存仍待核对，请重新加载。'), { status: 409 })
+        return businessState((await patchState(accountId, body)).state)
+      },
+      body: stateBody, equals: businessSame, sameVersion: (a, b) => a.generation === b.generation && a.revision === b.revision, onChange: emit,
+      onSaved: saved => { session.readOnlyReload = false; session.generation = saved.generation; emit() },
     })
     return session
   }
-  async function enter(handle) {
+  async function enter(handle, { readOnly = false, isCurrent = () => true } = {}) {
+    active?.writer?.stop()
     const host = selectedHostAccount?.()
     if (!host?.accountId) { active = null; ++sequence; emit(); return false }
     const accountId = host.accountId, token = ++sequence
     active = { accountId, loading: true, ready: false, writer: null }; emit()
     try {
-      const [remote, local] = await Promise.all([getState(accountId), handle.getCloudBusinessSnapshot()])
-      if (token !== sequence || selectedHostAccount()?.accountId !== accountId) return false
-      const cloud = businessState(remote)
+      const [cloud, local] = await Promise.all([readBusiness(accountId), handle.getCloudBusinessSnapshot()])
+      if (token !== sequence || !isCurrent() || selectedHostAccount()?.accountId !== accountId) return false
       const next = cloud.revision > 0 ? cloud : draftState(local, cloud.generation, cloud.revision)
       if (cloud.revision > 0) await handle.applyCloudBusinessSnapshot(next)
-      if (token !== sequence || selectedHostAccount()?.accountId !== accountId) return false
-      const session = sessionFor(accountId, cloud)
+      if (token !== sequence || !isCurrent() || selectedHostAccount()?.accountId !== accountId) return false
+      const session = sessionFor(accountId, cloud, handle)
       for (const prefix of ['yuanhub.star-rebuild-pending:','yuanhub.star-plan-pending:']) {
         const pendingRaw=storage.getItem(prefix + accountId)
         if (!pendingRaw) continue
@@ -113,8 +143,8 @@ export function createStarCloudCoordinator({
         if (businessSame(cloud,expected) && cloud.revision===expected.revision) storage.removeItem(prefix + accountId)
         else session.error=new Error('上次保存结果仍待确认，请重新加载核对，不要重复替换背包或登记完成。')
       }
-      session.ready = true; active = session; emit()
-      if (!session.error && cloud.revision === 0 && !businessSame(next, cloud)) void session.writer.save(next)
+      session.readOnlyReload = readOnly; session.ready = true; active = session; emit()
+      if (!readOnly && !session.error && cloud.revision === 0 && !businessSame(next, cloud)) void session.writer.save(next)
       return true
     } catch (error) {
       if (token === sequence) { active = { accountId, loading: false, ready: false, error, writer: null }; emit() }
@@ -123,15 +153,52 @@ export function createStarCloudCoordinator({
   }
   function committed(event) {
     const session = active
-    if (!session?.ready || session.replacing || session.error || event.accountId !== session.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
+    if (!session?.ready || !session.writer.isActive() || (session.replacing && !session.reloading) || session.error || event.accountId !== session.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
+    session.commitVersion = (session.commitVersion || 0) + 1
     void session.writer.save(draftState(event.snapshot, session.generation, session.writer.state().revision))
     return true
+  }
+  // Internal lossless reconciliation remains available; the page never uses it to resubmit discarded edits.
+  function retry() {
+    const session = active
+    if (!session?.ready || !current(session) || session.replacing || session.error || hasCommandPending(session.accountId)) return Promise.resolve(false)
+    return session.writer.retry()
+  }
+  async function discardAndReload({ isCurrent = () => true } = {}) {
+    if (!canReloadCloud()) return false
+    const session = active, commitVersion = session.commitVersion || 0
+    session.replacing = true; session.reloading = true; emit()
+    try {
+      return await session.writer.discard({ beforeDiscard: async remote => {
+        const assertSafe = () => {
+          assertCurrent(session)
+          if (!isCurrent() || (session.commitVersion || 0) !== commitVersion) throw new Error('恢复期间账号或本机修改已变化，待同步记录已保留。')
+          if (hasCommandPending(session.accountId)) throw new Error('识别重建或计划继承仍待核对，不能放弃普通修改。')
+          const base = session.writer.state().base
+          if (remote.generation < base.generation || remote.revision < base.revision) throw new Error('云端版本已过期，请重新读取。')
+        }
+        assertSafe()
+        const pendingRaw = storage.getItem(writerKey(session.accountId))
+        const local = await session.handle.getCloudBusinessSnapshot()
+        assertSafe()
+        if (storage.getItem(writerKey(session.accountId)) !== pendingRaw) throw new Error('本机待保存记录已变化，请重新核对。')
+        const backupKey = 'yuanhub.star-state-backup:' + session.accountId + ':' + globalThis.crypto.randomUUID()
+        const backup = JSON.stringify({ accountId: session.accountId, savedAt: new Date().toISOString(), pendingRaw, pending: session.writer.state().pending, local, cloud: remote })
+        storage.setItem(backupKey, backup)
+        if (storage.getItem(backupKey) !== backup) throw new Error('未能保留本机备份，已停止重新加载。')
+        await session.handle.applyCloudBusinessSnapshot(remote)
+        assertSafe()
+        const hydrated = await session.handle.getCloudBusinessSnapshot()
+        assertSafe()
+        if (!businessSame(remote, draftState(hydrated, remote.generation, remote.revision))) throw new Error('背包读取结果不一致，本机待保存记录已保留。')
+      } })
+    } finally { session.replacing = false; session.reloading = false; if (current(session)) emit() }
   }
   function commandSession() {
     const session = active
     if (!session?.ready || selectedHostAccount()?.accountId !== session.accountId) throw new Error('星石云端状态尚未就绪，请重新加载后重试。')
     const writer = session.writer.state()
-    if (session.replacing || session.error || writer.pending || writer.saving || writer.error) {
+    if (!session.writer.isActive() || session.replacing || session.error || writer.pending || writer.saving || writer.error || hasCommandPending(session.accountId)) {
       throw Object.assign(new Error('存在未完成的星石云端保存，请重新加载后重试。'), { status: 409 })
     }
     return session
@@ -248,7 +315,8 @@ export function createStarCloudCoordinator({
         release() { session.replacing = false; if (active === session) emit() },
       }
     },
-    retry: () => active?.writer?.retry() ?? Promise.resolve(false),
+    retry, discardAndReload, canReloadCloud,
+    leave() { active?.writer?.stop(); active = null; ++sequence; emit() },
     needsRetry: () => Boolean(active?.ready && (active.error || active.writer?.state().pending || active.writer?.state().error)),
     ocrRebuildScope() { const session = commandSession(); return { accountId: session.accountId, generation: session.generation, revision: session.writer.state().revision } },
     async applyRecoveredPlan(snapshot, scope) {
