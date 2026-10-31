@@ -133,3 +133,17 @@ test('分类先后优先于组内顺序，稳定ID解决排序相同，5000条�
   assert.ok(new TextEncoder().encode(text).length > 1024 * 1024)
   assert.equal(readAchievementBackup(text).records.length, 5000)
 })
+
+test('已完成仅在分类内置底，两段保持原始顺序，筛选与关闭排序可恢复', () => {
+  const catalog = achievementCatalog(6)
+  catalog.categories.push({ category_id: 'other', name: '另一分类' })
+  catalog.entries.slice(3).forEach(entry => { entry.category_id = 'other' })
+  const records = [1, 3, 4].map(index => ({ achievement_id: catalog.entries[index - 1].achievement_id, status: 'completed' }))
+  const order = extra => filterAchievements([...catalog.entries].reverse(), records, filters(extra), catalog.categories).map(entry => entry.sort)
+  assert.deepEqual(order({}), [1, 2, 3, 4, 5, 6])
+  assert.deepEqual(order({ completedLast: true }), [2, 1, 3, 5, 6, 4])
+  assert.deepEqual(order({ completedLast: true, status: 'completed' }), [1, 3, 4])
+  assert.deepEqual(order({ completedLast: true, status: 'incomplete' }), [2, 5, 6])
+  assert.deepEqual(order({ completedLast: true, category: 'other' }), [5, 6, 4])
+  assert.deepEqual(catalog.entries.map(entry => entry.sort), [1, 2, 3, 4, 5, 6])
+})

@@ -29,13 +29,12 @@
 .achievement-main :is(input:not([type="checkbox"]), select, textarea), .achievement-dialog :is(input:not([type="checkbox"]), select, textarea) { box-sizing: border-box; color: var(--ink); background: var(--surface); border: 1px solid var(--achievement-line, var(--line)); border-radius: 8px; font: inherit; }
 .achievement-main a, .achievement-dialog a { color: var(--theme-strong-text, var(--tea)); }
 .achievement-summary, .achievement-hint, .achievement-results, .achievement-dialog small { color: var(--ink-60); }
-.achievement-stat { --stat-color: var(--achievement-gold); position: relative; isolation: isolate; overflow: hidden; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 3px 10px rgba(var(--theme-shadow-rgb, 73, 59, 44), .035), inset 0 0 0 2px color-mix(in srgb, var(--surface) 55%, transparent); }
-.achievement-stat-icon { display: grid; place-items: center; flex-shrink: 0; border-radius: 50%; color: var(--stat-color); background: color-mix(in srgb, var(--stat-color) 7%, transparent); }
-.achievement-stat.stat-completed { --stat-color: var(--achievement-complete); }
-.achievement-stat.stat-incomplete { --stat-color: var(--theme-strong-text, var(--tea)); }
-.achievement-stat-copy { position: relative; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.achievement-summary { background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--achievement-line); border-radius: 9px; }
+.achievement-stat { min-width: 0; text-align: center; }
+.achievement-stat + .achievement-stat { border-left: 1px solid var(--achievement-line); }
+.achievement-stat-copy { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .achievement-stat b { color: var(--ink); font-family: var(--font-d); font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.achievement-stat-watermark { position: absolute; z-index: -1; right: 10px; bottom: 7px; transform: rotate(12deg); color: var(--stat-color); opacity: .045; stroke-width: 1; }
+.achievement-stat.stat-completed b { color: var(--achievement-complete); }
 .achievement-error { color: var(--theme-danger-text, var(--rouge)); }
 .achievement-save-feedback { border: 1px solid transparent; border-radius: 8px; }
 .achievement-save-feedback:not(.has-result) { display: none; }
@@ -114,9 +113,16 @@
 .achievement-selection { position: absolute; left: 0; top: 3px; }
 .achievement-list { border: 1px solid var(--achievement-line); border-radius: 8px; background: var(--surface); }
 .achievement-toolbar { position: relative; isolation: isolate; }
-/* 同一底板承托三排筛选，批量入口由两端网格安排位置。 */
-.achievement-toolbar::before { content: ''; z-index: -1; pointer-events: none; border: 1px solid var(--achievement-line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 85%, transparent); }
-.achievement-filter-band { border-bottom: 1px solid var(--achievement-line); }
+/* 收起辅助条件时保留筛选摘要，避免隐藏条件影响结果却不可见。 */
+.achievement-filter-panel { min-width: 0; grid-column: 1 / -1; border: 1px solid var(--achievement-line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 85%, transparent); }
+.achievement-filter-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; border-top: 1px solid var(--achievement-line); }
+.achievement-main .achievement-more-filters { display: inline-flex; align-items: center; gap: 5px; padding-inline: 0; border-color: transparent; background: transparent; }
+.achievement-more-filters[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+.achievement-filter-controls .achievement-check { cursor: pointer; }
+.achievement-filter-controls svg, .achievement-active-filters svg { flex-shrink: 0; }
+.achievement-advanced-filters { border-top: 1px solid var(--achievement-line); }
+.achievement-active-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
+.achievement-main .achievement-active-filters button { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 28px; padding: 3px 7px; font-size: 12px; color: var(--achievement-gold); background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); overflow-wrap: anywhere; }
 .achievement-search-row { min-width: 0; }
 .achievement-search-row .achievement-search { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
 .achievement-main .achievement-reset { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; color: var(--achievement-gold); box-shadow: none; }

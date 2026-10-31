@@ -54,7 +54,7 @@ it('平均出绝密使用账号摘要，刷新和切换账号更新且不请求�
   expect(wrapper.get('.summary-average').text()).toContain('平均出绝密抽数')
   expect(wrapper.get('.summary-average strong').text()).toBe('26.73')
   archives['acc-a'].summary.average_gold_pulls = 28.5
-  await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   expect(wrapper.get('.summary-average strong').text()).toBe('28.50')
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.get('.summary-average strong').text()).toBe('12.00')
@@ -72,7 +72,7 @@ it('账号总UP和大保底随权威摘要刷新，切账号清空且迟到响�
   expect(wrapper.get('.gold-statistics').find('.small-pity-metric').exists()).toBe(false)
   const lateA = deferred(), loadB = deferred()
   api.getRecruitmentArchive.mockReturnValueOnce(lateA.promise).mockReturnValueOnce(loadB.promise)
-  await wrapper.get('.archive-refresh').trigger('click')
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed')
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.find('.gold-statistics').exists()).toBe(false)
   loadB.resolve(structuredClone(archives['acc-b'])); await flushPromises()
@@ -82,7 +82,7 @@ it('账号总UP和大保底随权威摘要刷新，切账号清空且迟到响�
   lateA.resolve(structuredClone(archives['acc-a'])); await flushPromises()
   expect(wrapper.get('.total-up-metric strong').text()).toBe('100%')
   Object.assign(archives['acc-b'].summary, { up_gold_count: 0, known_up_gold_count: 0, unknown_up_gold_count: 0, total_up_rate: null, guaranteed_gold_count: 0, pity_status: 'no_samples' })
-  await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   expect(wrapper.get('.total-up-metric strong').text()).toBe('—')
   expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('0 次')
   expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('暂无五星样本')
@@ -120,16 +120,15 @@ it('普池抽数与绝密排行保留并列，并随刷新及账号切换更新'
   archives['acc-a'].summary.permanent_known_total_pulls = 1250
   archives['acc-a'].summary.most_non_up_gold_agents[0].count = 4
   archives['acc-a'].summary.most_permanent_gold_agents = [{ agent_id: 'char-b', name: '常驻并列绝密', count: 2 }]
-  await wrapper.get('.archive-refresh').trigger('click'); await flushPromises()
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe((1250).toLocaleString())
   expect(wrapper.get('.summary-most-non-up').text()).toContain('歪卡绝密4 次')
   expect(wrapper.get('.summary-most-permanent').findAll('li')).toHaveLength(1)
   expect(wrapper.get('.summary-most-permanent').text()).not.toContain('测试绝密')
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.get('.summary-permanent strong').text()).toBe('0')
-  expect(wrapper.get('.summary-most-obtained').text()).toContain('暂无记录')
-  expect(wrapper.get('.summary-most-non-up').text()).toContain('暂无记录')
-  expect(wrapper.get('.summary-most-permanent').text()).toContain('暂无记录')
+  expect(wrapper.get('.recruitment-highlights').text()).toBe('抽卡趣闻暂无记录，记录后查看抽卡趣闻')
+  expect(wrapper.find('.highlight-grid').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('并列绝密')
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   expect(api.listRecruitmentBatches).not.toHaveBeenCalled()
@@ -201,6 +200,16 @@ it.each([null, undefined])('普池抽数与绝密排行在字段缺失或null（
   expect(wrapper.get('.summary-most-non-up').text()).toContain('—')
   expect(wrapper.get('.summary-most-permanent .summary-empty').text()).toBe('—')
   expect(wrapper.find('.summary-agent-toggle').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('空榜与未知榜混合时仍保留各项状态', async () => {
+  Object.assign(archives['acc-a'].summary, { most_obtained_gold_agents: [], most_non_up_gold_agents: [], most_permanent_gold_agents: null })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.highlights-empty').exists()).toBe(false)
+  expect(wrapper.get('.summary-most-obtained .summary-empty').text()).toBe('暂无记录')
+  expect(wrapper.get('.summary-most-non-up .summary-empty').text()).toBe('暂无记录')
+  expect(wrapper.get('.summary-most-permanent .summary-empty').text()).toBe('—')
   wrapper.unmount()
 })
 
@@ -888,7 +897,7 @@ it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏�
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '正式密探', avatar: '/formal.png', rarity: 5, games: ['代号鸢'] }, { id: 'other', name: '另一游戏', rarity: 5, games: ['如鸢'] }, { id: 'r4', name: '机密', rarity: 4, games: ['代号鸢'] }] })
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot', name: '占位', operator_id: 'char-a', active: true }]; api.getRecruitmentCatalog.mockResolvedValue(catalog); records['acc-a'][0].agent_snapshot = { agent_id: 'slot', name: '旧名字' }
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('.quick-up-button').attributes('aria-label')).toContain('正式密探'); expect(editor(wrapper).get('img').attributes('src')).toContain('/formal.png')
-  await editor(wrapper).get('footer button').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); await selectPool(wrapper)
+  await editor(wrapper).get('footer button').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises(); await selectPool(wrapper)
   expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeUndefined(); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '完成').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
 })
 it('游戏错配只读；身份失效清弹窗，功能开关关闭时不读写', async () => {
@@ -933,7 +942,7 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   const late = deferred(), pendingB = deferred()
   api.getRecruitmentArchive.mockReturnValueOnce(late.promise).mockReturnValueOnce(pendingB.promise)
-  await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.find('.up-count').exists()).toBe(false)
   expect(wrapper.find('.summary-most-permanent').exists()).toBe(false)
@@ -945,7 +954,7 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
   expect(wrapper.text()).not.toContain('当前卡池')
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
-  await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
+  wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   api.recruitmentCommand.mockImplementation(async () => {

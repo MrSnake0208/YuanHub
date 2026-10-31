@@ -2,11 +2,10 @@
   <div class="page-recruitment">
     <IslandSidebar />
     <main id="main-content" class="recruitment-main" @keydown.esc="onPageEscape">
-      <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
+      <CompactToolHeader title="招募档案">
         <template v-if="enabled" #account>
           <div class="account-controls">
           <DataAccountContextBar data-guide-target="account" compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
-            <button v-if="state.archive" class="archive-refresh" type="button" :disabled="state.loading || state.busy" @click="refresh"><RotateCw :size="15" aria-hidden="true" />刷新档案</button>
           </div>
         </template>
         <template v-if="enabled" #actions>
@@ -32,9 +31,9 @@
               <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span>平均出绝密抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
               <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span>绣衣天下已知抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
             </RecruitmentGoldStatistics>
-            <section class="recruitment-highlights" aria-label="抽卡趣闻">
-              <header class="overview-heading"><h2>抽卡趣闻</h2><p>一些有趣的抽卡数据统计</p></header>
-              <div class="highlight-grid">
+            <section class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty }" aria-label="抽卡趣闻">
+              <header class="overview-heading"><h2>抽卡趣闻</h2><p>{{ highlightsEmpty ? '暂无记录，记录后查看抽卡趣闻' : '一些有趣的抽卡数据统计' }}</p></header>
+              <div v-if="!highlightsEmpty" class="highlight-grid">
                 <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
                   <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>
                   <div><span>{{ metric.label }}</span>
@@ -60,7 +59,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Archive, BookOpen, ChartNoAxesColumn, CircleHelp, Gem, Layers3, RotateCw, Shuffle, Trophy } from '@lucide/vue'
+import { Archive, BookOpen, ChartNoAxesColumn, CircleHelp, Gem, Layers3, Shuffle, Trophy } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -91,6 +90,7 @@ const goldAgentHighlights = computed(() => [
   { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents },
   { key: 'most-permanent', label: '常驻池抽中最多的绝密', icon: Layers3, agents: state.archive?.summary.most_permanent_gold_agents, collapsible: true }
 ])
+const highlightsEmpty = computed(() => goldAgentHighlights.value.every(metric => Array.isArray(metric.agents) && metric.agents.length === 0))
 const canRecordPool = pool => {
   const directory = recruitmentPoolCatalog(pool, state.catalog || [])
   return !!pool?.snapshot.catalog_pool_id && !!directory?.enabled && !directory.hidden && !state.catalogError
@@ -192,7 +192,7 @@ async function savePool(payload) {
 :deep([data-guide-active]){outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}
 .recruitment-tutorial-entry{border:0;border-radius:8px;background:transparent;color:var(--ink-60)}
 
-.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.archive-refresh{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 8px;font-size:12px;background:transparent}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
+.archive-toggle{border:1.5px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-60);transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.archive-toggle{border:0;border-radius:6px;background:transparent}.account-note{color:var(--ink)}.account-note{margin:4px 0 0;font-size:12px;line-height:1.6}
 button{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--surface);cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}.error{color:var(--theme-danger-text, var(--rouge))}
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 
@@ -202,6 +202,7 @@ button{border:1px solid var(--line);border-radius:10px;color:var(--ink);backgrou
 .summary .summary-icon{position:absolute;left:9px;top:15px}.summary-agent{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:8px;background:color-mix(in srgb,var(--cream) 65%,var(--surface))}.summary-agent .summary-icon{padding-top:2px}.summary-agent>div{flex:1}.highlight-grid{display:grid;gap:10px}
 .summary-agent-list{display:flex;flex-wrap:wrap;gap:2px 14px;list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary-agent-list strong{font:700 16px/1.5 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60);font-size:13px}
 .summary-agent-toggle{min-height:0;margin-top:4px;padding:4px 0;border:0;background:transparent;color:var(--theme-accent-text, var(--accent-strong));font:12px/1.5 var(--font-b);text-align:left;overflow-wrap:anywhere}
+.highlights-empty .overview-heading{margin-bottom:0}
 </style>
 <style scoped src="./recruitmentWorkspaceDesktop.css"></style>
 <style scoped src="./recruitmentWorkspaceMobile.css"></style>
