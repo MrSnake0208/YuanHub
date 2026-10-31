@@ -1,15 +1,14 @@
 <template>
   <div class="mailbox-container">
-    <div class="mail-quick">
+    <div class="mail-quick" :class="{ 'is-empty': loaded && !mailCount && !pendingClaim }">
       <Mail :size="22" class="mail-quick-icon" aria-hidden="true" />
       <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
-      <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="录入／调整储备" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">录入／调整储备</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
+      <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="管理邮件储备（录入／调整储备）" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
     </div>
-    <p v-if="loading" class="mail-feedback" role="status">正在读取邮件…</p>
     <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
     <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>
-    <p v-if="notice && !panel" class="mail-feedback" role="status">{{ notice }}</p>
+    <p v-if="loading" class="mail-feedback" role="status">正在读取邮件…</p>
     <InventoryQuickDialog :open="!!panel" :title="panel === 'claim' ? '记录邮件领取' : '管理邮件储备'" :locked="locked" @close="closePanel">
       <form v-if="panel === 'manage' && loaded" class="mailbox-manage-form" @submit.prevent="save">
         <fieldset class="panel-fields" :disabled="locked || disabled || conflict">
@@ -87,7 +86,7 @@ const LIMIT = 1000000
 const claimId = useId()
 const empty = () => ({ white_coin_mails: [], fu_chuan_mail_count: 0 })
 const draft = ref(empty()), baseline = ref(''), version = ref(0), updatedAt = ref(null)
-const loading = ref(false), loaded = ref(false), busy = ref(false), conflict = ref(false), error = ref(''), notice = ref('')
+const loading = ref(false), loaded = ref(false), busy = ref(false), conflict = ref(false), error = ref('')
 const panel = ref(''), selection = ref(null), pendingClaim = ref(null)
 const locked = computed(() => busy.value || !!pendingClaim.value)
 watch(locked, value => emit('busy', value), { flush: 'sync' })
@@ -106,7 +105,7 @@ function claimFieldError(count, max) {
 }
 function openPanel(value) {
   if (props.disabled || locked.value || !loaded.value || conflict.value) return
-  error.value = ''; notice.value = ''
+  error.value = ''
   if (value === 'claim') resetClaimSelection()
   panel.value = value
 }
@@ -175,7 +174,7 @@ async function save() {
   error.value = ''
   try {
     const data = await saveMailboxReserve(account, user, { expected_version: version.value, ...JSON.parse(JSON.stringify(draft.value)) })
-    if (seq === sequence) { apply(data); notice.value = '邮件储备已保存'; panel.value = ''; emit('saved', account) }
+    if (seq === sequence) { apply(data); panel.value = ''; emit('saved', account) }
   } catch (err) {
     if (seq === sequence) {
       error.value = [400, 401, 403, 404, 409, 422].includes(err.status) ? (err.message || '保存失败，草稿已保留') : '保存结果尚未确认，请重新读取并核对储备后再修改。'
@@ -192,12 +191,12 @@ async function claim() {
     if (!claimValid.value || !claimTotals.value.coins && !claimTotals.value.tickets) return
     pendingClaim.value = { expected_version: version.value, operation_id: crypto.randomUUID(), selection: JSON.parse(JSON.stringify(selection.value)) }
   }
-  busy.value = true; error.value = ''; notice.value = ''
+  busy.value = true; error.value = ''
   try {
     const data = await claimMailboxReserve(account, user, pendingClaim.value)
     if (seq !== sequence) return
     if (data?.account_id !== account || !Number.isSafeInteger(data.version) || data.version <= pendingClaim.value.expected_version) throw new Error('领取结果无法确认，请原样重试')
-    apply(data); pendingClaim.value = null; panel.value = ''; selection.value = null; notice.value = '已记录领取，库存和待领封数已同步。'
+    apply(data); pendingClaim.value = null; panel.value = ''; selection.value = null
     emit('recorded', account)
   } catch (err) {
     if (seq !== sequence) return
@@ -216,7 +215,6 @@ watch(() => [props.accountId, props.userId], () => {
   busy.value = false
   pendingClaim.value = null; panel.value = ''; selection.value = null
   conflict.value = false
-  notice.value = ''
   error.value = ''
   emit('busy', false)
   loadPromise = props.accountId && props.userId ? load() : null

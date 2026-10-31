@@ -1,18 +1,20 @@
 <template>
   <InventoryLayout>
-      <CompactToolHeader class="inventory-header" title="库存" description="看总览，也能轻松记录">
+      <CompactToolHeader mobile-context class="inventory-header" title="库存" description="看总览，也能轻松记录">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
             :switch-disabled="dailyBusy || drawResourceLocked || mailboxBusy || savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
-        <template #actions>
+        <template #primary-actions>
           <div class="inventory-actions">
             <button type="button" class="btn primary reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || mailboxBusy"
               aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="!!rewardEntryWorkspace?.mode"
               @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
             <button type="button" class="btn ghost inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked" @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新数量</button>
           </div>
+        </template>
+        <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
@@ -208,7 +210,7 @@
                     class="mf-search"
                     type="search"
                     aria-label="搜索库存名称或 ID"
-                    placeholder="搜索名称 / id"
+                    placeholder="搜索道具名称 / ID"
                   />
                   <div class="mf-filter">
                     <button
@@ -242,7 +244,7 @@
                   <span v-if="loading || currentLoadedContext !== stockContext">{{ error ? '读取失败' : '读取中…' }}</span>
                   <span v-else-if="error">读取失败</span>
                   <time v-else-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time>
-                  <span v-else>尚无完整盘点</span>
+                  <span v-else>{{ inventorySetupNeeded && entityType === 'item' ? '未盘点，— 表示数量未知' : '尚无完整盘点' }}</span>
                 </div>
                 <span v-if="error" class="mf-sync-error" role="status"
                   >库存未能读取：{{ error }}。当前按 0 显示，不代表实际库存；请重试读取。</span
@@ -748,7 +750,7 @@
                       </div>
                       <InventoryItemName :entry="e" />
                       <span class="slot-count" :class="{ zero: !e.owned }">{{
-                        fmtCount(e.count)
+                        inventorySetupNeeded ? '—' : fmtCount(e.count)
                       }}</span>
                     </li>
                   </ul>
@@ -793,17 +795,17 @@
                           <div v-if="subcategory.id === 'draw-resources'" class="resource-summary">
                             <p class="resource-equivalent is-fuchuan">
                               <span>符传</span>
-                              <strong>约<b>{{ fmtCount(resourceSummary.fuchuanPity) }}</b>个保底</strong>
+                              <strong>约<b>{{ inventorySetupNeeded ? '—' : fmtCount(resourceSummary.fuchuanPity) }}</b>个保底</strong>
                             </p>
                             <p class="resource-equivalent is-tianji">
                               <span>天机符传</span>
-                              <strong>约<b>{{ fmtCount(resourceSummary.tianjiPity) }}</b>个保底</strong>
+                              <strong>约<b>{{ inventorySetupNeeded ? '—' : fmtCount(resourceSummary.tianjiPity) }}</b>个保底</strong>
                             </p>
                           </div>
                           <div v-else-if="subcategory.id === 'bird-food-pack'" class="resource-summary">
                             <p class="resource-equivalent is-zhuyu">
                               <span>茱萸折合</span>
-                              <strong><b>{{ fmtCount(resourceSummary.zhuyuWhiteCoin) }}</b>白金币</strong>
+                              <strong><b>{{ inventorySetupNeeded ? '—' : fmtCount(resourceSummary.zhuyuWhiteCoin) }}</b>白金币</strong>
                             </p>
                           </div>
                         </div>
@@ -849,7 +851,7 @@
                                 <span
                                   class="slot-count"
                                   :class="{ zero: !e.owned }"
-                                  >{{ fmtCount(e.count) }}</span
+                                  >{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span
                                 >
                               </li>
                             </ul>
@@ -877,10 +879,10 @@
                                 @load="onImgLoad"
                                 @error="onImgError"
                               />
-                              <span v-if="section.id === 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                              <span v-if="section.id === 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
                             </div>
                             <InventoryItemName :entry="e" />
-                            <span v-if="section.id !== 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                            <span v-if="section.id !== 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
                           </li>
                         </ul>
                       </div>
@@ -1938,7 +1940,7 @@ const inventoryPromptTitle = computed(() => {
   return '';
 });
 const inventoryPromptDescription = computed(() => accountError.value || error.value ||
-  (inventorySetupNeeded.value ? '完成第一次盘点后，即可查看材料余额、养成消耗和库存变化。' : '当前账号的材料与心纸库存会保存在对应游戏账号下。'));
+  (inventorySetupNeeded.value ? '盘点后查看准确余额与库存变化。' : '当前账号的材料与心纸库存会保存在对应游戏账号下。'));
 const stockContext = computed(function () {
   return JSON.stringify([auth.isLoggedIn, auth.userInfo?.id || "", accountId.value, entityType.value, agentGameFilter.value]);
 });

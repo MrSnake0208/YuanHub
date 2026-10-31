@@ -1,0 +1,29 @@
+.organization-sheet-mask { position: fixed; inset: 0; z-index: var(--z-overlay-blocking); display: flex; align-items: flex-end; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
+.organization-sheet { width: 100%; max-height: 85%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; border-radius: 20px 20px 0 0; background: var(--surface); color: var(--ink); }
+.organization-sheet-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.organization-sheet-header h2 { margin: 0; font: 700 18px var(--font-s); }
+.organization-sheet-header small { margin-left: auto; color: var(--theme-accent-text, var(--accent-strong)); }
+.organization-sheet-header button { margin-left: auto; min-width: 44px; min-height: 44px; border: 0; }
+.organization-sheet .organization-editor { padding: 0 16px; gap: 12px; }
+.organization-sheet .organization-intro { font-size: 12px; margin-top: 12px; }
+.organization-sheet .organization-editor-grid, .organization-sheet .organization-order-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.organization-sheet .organization-section { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 0 0 12px; gap: 6px; }
+.organization-sheet .organization-sort-row { gap: 6px; padding: 4px 0; }
+.organization-sheet .organization-row-actions { gap: 4px; }
+.organization-sheet .organization-row-actions button { min-height: 40px; padding: 5px 8px; }
+.organization-sheet .organization-pin-row .organization-row-actions { flex-basis: auto; padding-left: 0; }
+.organization-sheet .organization-empty { padding: 2px 0; font-size: 12px; }
+.organization-sheet .organization-tag-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; }
+.organization-sheet .organization-tag-meta { flex-direction: column; gap: 0; }
+.organization-sheet .organization-tag-field input { min-height: 44px; }
+.organization-sheet .organization-tag-list { gap: 10px; }
+.organization-sheet .organization-add { min-height: 44px; }
+.organization-sheet .organization-save-area { position: sticky; bottom: 0; z-index: 1; margin: 0 -16px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); background: var(--surface); }
+.organization-sheet .organization-actions { display: flex; flex-wrap: wrap; }
+.organization-sheet .organization-actions > button { min-height: 44px; }
+.organization-sheet .organization-save { flex: 1; order: 1; }
+.organization-sheet .organization-actions > span, .organization-sheet .organization-actions > small { flex-basis: 100%; order: 2; }
+.organization-close-confirm { position: sticky; top: 65px; z-index: 3; padding: 12px 16px; background: var(--cream); border-bottom: 1px solid var(--line); }
+.organization-close-confirm button { min-height: 44px; margin: 8px 8px 0 0; }
+.organization-sheet.is-short { max-height: 100%; }
+.organization-sheet.is-short .organization-sheet-header, .organization-sheet.is-short .organization-save-area { position: static; }

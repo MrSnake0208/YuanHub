@@ -249,8 +249,6 @@
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-view-switcher { grid-column: 1 / -1; grid-row: 2; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-today-action { grid-column: 2; grid-row: 3; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; min-width: 0; }
-  :is(.calendar-public-mobile, .calendar-mine-mobile) .account-switcher .context-selector { display: flex; width: 100%; min-width: 0; min-height: 36px; padding: 6px 4px; gap: 4px; justify-content: flex-start; background: transparent; border-color: transparent; font-size: 12px; }
-  :is(.calendar-public-mobile, .calendar-mine-mobile) .account-switcher .account-name { min-width: 0; max-width: none; overflow: visible; overflow-wrap: anywhere; white-space: normal; text-overflow: clip; }
   .calendar-mine-mobile .calendar-private-add { grid-column: 1 / -1; grid-row: 4; justify-self: end; min-width: 0; min-height: 38px; padding: 6px 8px; font-size: 13px; }
 }
 

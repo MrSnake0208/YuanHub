@@ -34,6 +34,7 @@
         <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /><span>备注</span></button>
       </div>
     </div>
+    <p v-if="pendingReorder" class="achievement-row-feedback">即将移至本分类已完成区域</p>
     <p v-if="pendingRemoval" class="achievement-row-feedback">即将从未完成列表移出</p>
     <p v-if="error" class="achievement-row-feedback achievement-error" role="alert">{{ error }}</p>
     <form v-if="editor.progressOpen" :id="'progress-' + entry.achievement_id" class="achievement-inline-editor achievement-progress-form" @submit.prevent="$emit('save', 'progress')">
@@ -55,7 +56,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Check, Circle, LoaderCircle, NotebookPen, Pencil, Star } from '@lucide/vue'
 import { completionStatus, hasQuantifiedProgress, linkedProgress, progressValidationError, rewardText } from './rules.js'
 import AchievementRewardIcon from './AchievementRewardIcon.vue'
-const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, error: String, pendingRemoval: Boolean, batchMode: Boolean, selected: Boolean })
+const props = defineProps({ entry: Object, linkedMetrics: Array, legacyReward: String, record: Object, editor: Object, writable: Boolean, recordReady: Boolean, saving: Boolean, error: String, pendingRemoval: Boolean, pendingReorder: Boolean, batchMode: Boolean, selected: Boolean })
 const completed = computed(() => completionStatus(props.record) === 'completed')
 const linked = computed(() => linkedProgress(props.entry, props.linkedMetrics))
 defineEmits(['select', 'quick-save', 'edit', 'cancel', 'save'])

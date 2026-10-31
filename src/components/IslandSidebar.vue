@@ -233,14 +233,13 @@
       <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }" :aria-current="(!managementActive && $route.path.startsWith('/feedback')) ? 'page' : undefined">
         <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
       </router-link>
-      <h2 v-if="showManagement" class="nav-group-label">管理</h2>
-      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined"><LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span></router-link>
-      <template v-if="showManagement && pinnedTools.length">
-        <span class="admin-pins-label">常用管理</span>
+      <h2 v-if="showManagement" class="nav-group-label">{{ pinnedTools.length ? '常用管理' : '管理' }}</h2>
+      <template v-if="showManagement">
         <router-link v-for="tool in pinnedTools" :key="tool.key" :to="tool.to"
           :class="{ active: pinnedActive(tool) }" :aria-current="pinnedActive(tool) ? 'page' : undefined">
           <component :is="tool.icon" :size="20" aria-hidden="true" /><span>{{ tool.label }}</span>
         </router-link>
+        <router-link class="management-nav-link" to="/manage" :class="{ active: workbenchActive }" :aria-current="workbenchActive ? 'page' : undefined"><LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span></router-link>
       </template>
       <details ref="desktopMore" class="sidebar-more" :open="moreActive" @keydown.esc.stop.prevent="closeDesktopMore(true)">
         <summary class="sidebar-more-trigger" :class="{ 'in-current-section': moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" aria-label="更多">
@@ -270,19 +269,31 @@
       </details>
     </nav>
     <div class="island-foot">
-      <ThemeSelector />
       <div class="sidebar-utilities">
-        <router-link class="sidebar-account" :to="isLoggedIn ? '/user/profile' : '/login'">
-          <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
-          <small>{{ isLoggedIn ? "账号与连接码" : "同步你的游戏数据" }}</small>
-        </router-link>
+        <details ref="accountMenu" class="sidebar-account-menu" @keydown.esc.stop.prevent="closeAccountMenu(true)" @focusout="onAccountFocusOut">
+          <summary class="sidebar-account" aria-label="账号与外观设置" aria-controls="sidebar-account-panel">
+            <img src="/brand/yuanhub-logo.png" alt="" width="30" height="30" />
+            <span class="sidebar-account-copy">
+              <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
+              <small>{{ isLoggedIn ? "账号与连接码" : "登录与外观设置" }}</small>
+            </span>
+            <ChevronDown :size="14" class="account-chevron" aria-hidden="true" />
+          </summary>
+          <div id="sidebar-account-panel" class="sidebar-account-panel">
+            <router-link :to="isLoggedIn ? '/user/profile' : '/login'" @click="closeAccountMenu()">
+              <UserRound :size="18" aria-hidden="true" />{{ isLoggedIn ? "账号与连接码" : "登录 / 注册" }}
+            </router-link>
+            <span class="account-appearance-label">外观</span>
+            <ThemeSelector />
+            <button v-if="isLoggedIn" class="foot-logout" type="button" @click="onLogout"><LogOut :size="18" aria-hidden="true" />退出登录</button>
+            <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
+          </div>
+        </details>
         <router-link v-if="isLoggedIn" class="sidebar-notifications" to="/notifications" :class="{ active: $route.path === '/notifications' }" :aria-label="unreadCount > 0 ? `通知，${unreadCount > 99 ? '99+' : unreadCount} 条未读` : '通知'">
           <Bell :size="20" aria-hidden="true" />
           <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? "99+" : unreadCount }}</span>
         </router-link>
-        <button v-if="isLoggedIn" class="foot-logout" type="button" @click="onLogout" aria-label="退出登录"><LogOut :size="18" aria-hidden="true" /></button>
       </div>
-      <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
     </div>
   </aside>
 </template>
@@ -367,14 +378,16 @@ const moreActive = computed(() => !managementActive.value && (
   ["/beta", "/changelog", "/roadmap", "/install"].includes(route.path) || route.path.startsWith('/developers')
 ));
 const desktopMore = ref(null);
+const accountMenu = ref(null);
 const menuOpen = ref(false);
 const menuToggle = ref(null);
 const menuPanel = ref(null);
 useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEscape: closeMenu });
-const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "YuanHub");
+const mobileTitle = computed(() => ({ '/star': '星石背包', '/cart': '礼包计算器', '/feedback': '我的反馈' }[route.path] || route.meta?.title?.split(" — ")[0] || "YuanHub"));
 
 watch(() => route.fullPath, () => {
   cancelSwipe();
+  closeAccountMenu();
   menuOpen.value = false;
   void nextTick(() => {
     if (desktopMore.value) desktopMore.value.open = moreActive.value;
@@ -385,7 +398,10 @@ watch(menuOpen, (open) => {
   document.body.classList.toggle("mobile-nav-open", open);
 });
 
+watch(identity, () => closeAccountMenu());
+
 async function onLogout() {
+  closeAccountMenu(true);
   const confirmed = await dialog.confirm({ title: '退出登录？', message: '退出后需要重新登录才能访问个人数据。', confirmText: '退出登录' });
   if (confirmed) await doLogout('/login?loggedOut=1');
 }
@@ -448,6 +464,20 @@ function closeDesktopMore(restoreFocus = false) {
   if (restoreFocus) details.querySelector("summary")?.focus();
 }
 
+function closeAccountMenu(restoreFocus = false) {
+  if (!accountMenu.value?.open) return;
+  accountMenu.value.open = false;
+  if (restoreFocus) accountMenu.value.querySelector("summary")?.focus();
+}
+
+function onAccountPointerDown(event) {
+  if (!accountMenu.value?.contains(event.target)) closeAccountMenu();
+}
+
+function onAccountFocusOut(event) {
+  if (!accountMenu.value?.contains(event.relatedTarget)) closeAccountMenu();
+}
+
 function openBetaCommunity() {
   closeDesktopMore();
   menuOpen.value = false;
@@ -455,6 +485,7 @@ function openBetaCommunity() {
 }
 
 onMounted(function () {
+  document.addEventListener("pointerdown", onAccountPointerDown);
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchmove", onTouchMove, { passive: true });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -462,6 +493,7 @@ onMounted(function () {
 });
 
 onBeforeUnmount(function () {
+  document.removeEventListener("pointerdown", onAccountPointerDown);
   document.removeEventListener("touchstart", onTouchStart);
   document.removeEventListener("touchmove", onTouchMove);
   document.removeEventListener("touchend", onTouchEnd);

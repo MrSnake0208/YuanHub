@@ -20,7 +20,7 @@
     </template>
     <p v-if="busy" role="status">正在处理，请稍候…</p>
     <p v-if="error" class="bond-error" role="alert">{{ error }}</p>
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <section v-if="preview" aria-label="导入预览结果">
       <h3>确认导入到 {{ accountName }} · {{ game }}</h3>
       <p>预计修改 {{ preview.affected }} 条；档案版本 {{ preview.expected_revision }}。</p>

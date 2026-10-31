@@ -52,10 +52,6 @@ button { touch-action: manipulation; }
 .workspace-link > svg { flex: none; }
 .outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; font-size: 10px; }
-.status-rule { display: flex; align-items: center; gap: 10px; padding: 10px 0 8px; font: 700 10px var(--font-s); letter-spacing: .16em; }
-.status-rule span { height: 1px; flex: 1; }
-.status-rule span:last-child { transform: scaleX(-1); }
-.status-rule i { font-style: normal; white-space: nowrap; }
 .planner-status .status-roster { display: block; container: growth-roster / inline-size; padding: 0; }
 .planner-status .status-metrics { margin-top: 0; }
 .growth-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; margin-top: 0; }
@@ -369,4 +365,12 @@ button { touch-action: manipulation; }
 .spend-draft-form :deep(.custom-entry) { margin: 0; padding: 0; }
 .spend-save-status, .spend-inline-error { margin: 8px 0 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .spend-inline-error a { display: inline-block; margin-left: 4px; }
+
+.roster-title { margin: 18px 0 8px; font: 850 23px/1.4 var(--font-s); color: var(--ink); }
+.material-readiness-track { height: 6px; margin-top: 10px; }
+.growth-progress-label .progress-values { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(48px, 1.2fr) 64px; }
+.growth-progress-label .tracker-editable { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.growth-quick-action { width: 64px; height: auto; min-height: 32px; padding: 4px; font: 700 11px/1.4 var(--font-b); }
+.growth-quick-action svg { display: none; }
+.growth-quick-label { overflow-wrap: anywhere; }
 }

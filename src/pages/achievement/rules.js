@@ -61,7 +61,10 @@ export function filterAchievements(entries, records, filters, categories = [], l
       (!reward || rewardMatches) &&
       (!query || [entry.name, entry.condition, ...(entry.rewards?.map(item => item.name) || []), legacyReward]
         .join(' ').toLocaleLowerCase().includes(query))
-  }).sort((a, b) => (categories.findIndex(c => c.category_id === a.category_id) - categories.findIndex(c => c.category_id === b.category_id)) || a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
+  }).sort((a, b) =>
+    (categories.findIndex(c => c.category_id === a.category_id) - categories.findIndex(c => c.category_id === b.category_id)) ||
+    (filters.completedLast ? Number(completionStatus(byId.get(a.achievement_id)) === 'completed') - Number(completionStatus(byId.get(b.achievement_id)) === 'completed') : 0) ||
+    a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
 }
 
 export function hasQuantifiedProgress(entry) {

@@ -6,6 +6,7 @@
         <div class="calendar-header-copy">
           <h1>活动日历</h1>
         </div>
+        <div v-show="phone && enabled" ref="mobileAccountContext" class="calendar-mobile-context"></div>
         <Teleport :to="mobileViewTools || 'body'" :disabled="!(mobileMine || mobilePublic) || !mobileViewTools">
           <div v-if="enabled" class="calendar-view-tools">
             <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
@@ -25,10 +26,12 @@
           </button>
           <p v-if="!mine && rememberedGame" class="calendar-hint calendar-game-memory" role="status">已记住筛选：{{ rememberedGame }}</p>
           <div v-show="mine || mobilePublic" ref="mobileViewTools" :class="mine ? 'calendar-mine-view-target' : 'calendar-public-view-target'"></div>
+          <Teleport :to="mobileAccountContext || 'body'" :disabled="!phone || !mobileAccountContext">
           <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
+          </Teleport>
           <label v-if="mine && !mobileMine" class="calendar-task-filter">个人活动
             <select :value="taskStatus" aria-label="个人活动状态" @change="setTask($event.target.value, $event.target)">
               <option value="todo">我的待办</option><option value="completed">已完成</option><option value="all">全部订阅</option>
@@ -138,6 +141,7 @@ const phoneMedia = typeof window !== 'undefined' && typeof window.matchMedia ===
 const mobileMine = computed(() => mine.value && phone.value)
 const mobilePublic = computed(() => !mine.value && phone.value)
 const mobileViewTools = ref(null)
+const mobileAccountContext = ref(null)
 function syncPhone(event) {
   const focused = document.activeElement
   phone.value = event.matches

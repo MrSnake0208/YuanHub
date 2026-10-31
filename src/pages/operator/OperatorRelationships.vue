@@ -34,7 +34,7 @@
           <section ref="backupPanel" class="relationships relationship-backup-panel" :class="{ 'is-short': backupShortViewport }" role="dialog" aria-modal="true" aria-labelledby="relationship-backup-title" tabindex="-1" @focusin="revealBackupControl">
             <header><h2 id="relationship-backup-title">信赖与传闻备份</h2><button ref="backupClose" type="button" :disabled="saving" aria-label="关闭信赖备份" @click="cancel"><X :size="18" aria-hidden="true" /></button></header>
             <div ref="backupBody" class="relationships-exchange">
-        <p v-if="notice" role="status">{{ notice }}</p>
+        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
         <p v-if="error" role="alert">{{ error }}</p>
         <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
         <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>

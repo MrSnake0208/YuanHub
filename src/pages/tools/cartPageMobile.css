@@ -51,21 +51,16 @@
 .cart-layout :deep(.cart-actions) { gap: 8px; }
 .cart-layout :deep(.cart-actions .btn) { flex: 1; min-width: 0; min-height: 44px; padding: 8px 8px; font-size: 13px; white-space: nowrap; }
 @media(max-width:767px) {
-  .cart-main :deep(.compact-tool-header) { padding-block: 12px 8px; }
-  .cart-main :deep(.compact-tool-row) { grid-template-areas: 'heading heading' 'account account' 'actions actions'; gap: 6px 10px; }
-  .cart-main :deep(.compact-tool-heading h1) { font-size: 26px; }
-  .cart-main :deep(.compact-tool-description) { font-size: 12px; font-weight: 400; color: var(--ink-60); text-wrap: pretty; }
-  .cart-main :deep(.compact-tool-actions) { position: relative; flex-wrap: wrap; justify-content: flex-start; }
-  .cart-version-selector { min-height: 38px; }
+  .cart-version-selector { min-height: 44px; width: auto; border: 0; border-radius: 10px; background: var(--cream); color: var(--theme-strong-text, var(--tea)); font-weight: 600; }
   .cart-rate-settings > summary { min-height: 36px; flex-wrap: wrap; }
   .cart-filters { margin-block: 6px 10px; }
-  .cart-search-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .cart-search, .cart-more-filters, .cart-source { grid-column: 1 / -1; }
+  .cart-search-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+  .cart-search { grid-column: 1 / -1; }
   .cart-search { width: auto; }
   .cart-sort, :is(.cart-category,.cart-source) { width: auto; flex: 1 1 140px; }
-  .cart-sort, :is(.cart-category,.cart-source) { gap: 6px; font-size: 12px; }
+  .cart-sort, :is(.cart-category,.cart-source) { gap: 4px; font-size: 12px; }
   .cart-sort select, :is(.cart-category,.cart-source) select { flex: 1; width: 0; min-height: 40px; padding: 6px 8px; }
-  .cart-more-filters > summary { min-height: 36px; }
+  .cart-more-filters > summary { min-height: 40px; padding-inline: 8px; white-space: nowrap; }
   .cart-mbar { flex-wrap: nowrap; gap: 8px; padding-block: 8px calc(8px + env(safe-area-inset-bottom)); }
   .cart-mbar .sum { min-width: 0; }
   .cart-mbar .sum .v { font-size: 18px; overflow-wrap: anywhere; }
@@ -75,7 +70,19 @@
   .cart-mbar .mbtn:disabled { opacity: 1; background: var(--paper); border: 1px solid var(--line); color: var(--ink-60); box-shadow: none; }
 }
 
-.cart-pricing-toolbar{padding:12px;margin:8px 0 12px}
+.cart-pricing-toolbar{padding:0 12px;margin:4px 0 10px}
+.cart-pricing-summary{display:flex;align-items:center;gap:8px;min-height:60px;padding-block:10px}
+.cart-pricing-overview{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.cart-pricing-toggle{display:flex;align-items:center;gap:4px;flex-shrink:0;font-size:12px}
+.cart-pricing-body{padding-block:12px}
+.cart-draft-hint{margin:0 0 12px;font-size:12px;line-height:1.6}
+.cart-search{padding-left:12px}
+.cart-search>svg{flex-shrink:0}
+.cart-more-filters>summary{padding-inline:8px}
+.cart-advanced-content{display:grid;gap:8px}
+.cart-advanced-content .cart-source{display:flex;flex-wrap:wrap;gap:8px}
+.cart-advanced-content .cart-source select{flex:1;min-width:120px}
+.cart-advanced-content .row{margin:0;padding:0}
 .cart-pricing-settings{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:0}
 .cart-pricing-settings label{flex-basis:140px;font-size:12px}
 .cart-pricing-settings input,.cart-pricing-settings select{min-height:40px}
@@ -86,7 +93,13 @@
 .cart-catalog{padding:12px;min-width:0}
 .cart-filters{margin-top:0}
 @media(max-width:767px){
-  .cart-catalog{padding:10px}
+  .cart-catalog{padding:0;border:0;background:transparent}
+  .cart-category>span,.cart-sort>span{flex-shrink:0}
+  .cart-search input{font-size:16px;min-height:44px}
+  .cart-pricing-settings input,.cart-pricing-settings select{font-size:16px}
+  .cart-mbar .mbtn.primary{padding-inline:16px;min-height:44px;font-size:14px}
+  .pkg-add-card{min-height:44px;flex-direction:row;gap:6px}
+  .pkg-add-card .ic{width:auto;height:auto}
   .cart-pricing-settings label{flex-basis:100%}
   .cart-search-row{gap:8px}
 }

@@ -137,7 +137,7 @@
 
   /* Raise the rules while preserving the controls' clickable height. */
   .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats
-    :is(.ledger-inline-input, .ledger-huaji-value, .ledger-combat-value, .ledger-oddity input) {
+    :is(.ledger-inline-input, .ledger-huaji-value, .ledger-combat-value, .ledger-oddity :is(input, output)) {
     border-bottom-color: transparent;
     background: repeating-linear-gradient(90deg, var(--ledger-input-line) 0 3px, transparent 3px 6px)
       left bottom 4px / 100% 1px no-repeat;
@@ -278,13 +278,13 @@
   }
 
   /* Raise the dashed rule without shrinking the input's touch area. */
-  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat-value, .ledger-oddity input) {
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat-value, .ledger-oddity :is(input, output)) {
     border-bottom-color: transparent;
     background: repeating-linear-gradient(90deg, var(--ledger-input-line) 0 3px, transparent 3px 6px)
       left bottom 4px / 100% 1px no-repeat;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .share-card-stats :is(.ledger-combat-value, .ledger-oddity input) {
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .share-card-stats :is(.ledger-combat-value, .ledger-oddity :is(input, output)) {
     background-color: var(--ledger-control-paper);
   }
 

@@ -96,7 +96,7 @@
 
         <div v-show="view === 'history'" ref="historyBody" class="reset-body history" tabindex="-1">
           <p class="hint intro">查看该账号、该游戏、该密探的历史重置及撤销状态。</p>
-          <p v-if="notice" role="status">{{ notice }}</p>
+          <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
           <p v-if="pending" class="undo-warning">上次提交结果尚未确认。请核对记录，或返回原操作原样重试。</p>
           <p v-if="historyBusy" role="status">正在读取重置记录…</p>
           <p v-if="historyError" role="alert" class="error">{{ historyError }} <button type="button" :disabled="historyBusy" @click="loadHistory(failedCursor)">重试读取记录</button></p>

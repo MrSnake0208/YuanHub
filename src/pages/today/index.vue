@@ -7,9 +7,11 @@
             <button v-if="auth.isLoggedIn" type="button" class="today-record" aria-haspopup="dialog" aria-controls="reward-entry-panel"
               :aria-expanded="!!rewardEntryWorkspace?.mode" :disabled="rewardEntryDisabled || recordBusy" :title="recordUnavailableReason || '记录获得、使用与兑换'"
               @click="openRewardEntry($event.currentTarget)"><Plus :size="16" aria-hidden="true" />记一笔</button>
-            <button v-if="auth.isLoggedIn" type="button" class="today-customize" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /> 自定义首页</button>
-            <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
           </div>
+        </template>
+        <template v-if="auth.isLoggedIn" #utilities>
+          <button type="button" class="today-customize" aria-label="自定义首页" title="自定义首页" aria-haspopup="dialog" @click="customizeOpen = true"><SlidersHorizontal :size="16" aria-hidden="true" /><span class="customize-desktop-label">自定义首页</span><span class="customize-mobile-label" aria-hidden="true">自定义</span></button>
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" />
         </template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"

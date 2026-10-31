@@ -80,7 +80,7 @@ it('标签公开失败可刷新恢复，旧账号的迟到更新不公开新账�
 describe('当前子账号分享管理：渲染与真实异步行为', () => {
   it('初始化只读取，不会创建、更新或撤销分享', async () => {
     const wrapper = renderManager({ props: { accountId: 'a' } })
-    expect(wrapper.get('[role="status"]').text()).toContain('读取')
+    expect(wrapper.findComponent(AccountShareManager).get('[role="status"]').text()).toContain('读取')
     await flushPromises()
     expect(api.getAccountShare).toHaveBeenCalledExactlyOnceWith('a')
     expect(wrapper.get('[role="switch"][aria-label="密探 BOX分享"]').element.checked).toBe(false)
@@ -103,7 +103,7 @@ describe('当前子账号分享管理：渲染与真实异步行为', () => {
     const wrapper = renderManager({ props: { accountId: 'a' } })
     await wrapper.setProps({ accountId: 'b' })
     a.resolve(active('a')); await flushPromises()
-    expect(wrapper.get('[role="status"]').text()).toContain('读取')
+    expect(wrapper.findComponent(AccountShareManager).get('[role="status"]').text()).toContain('读取')
     b.resolve(active('b')); await flushPromises()
     expect(wrapper.get('input[readonly]').element.value).toContain('b-code')
   })

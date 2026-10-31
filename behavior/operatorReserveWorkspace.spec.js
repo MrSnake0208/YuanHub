@@ -117,7 +117,7 @@ it('没有 randomUUID 时仍可新建方案与培养目标并保存有效 UUID',
   expect(group.id).toMatch(uuid)
   expect(group.id).not.toBe(plan.id)
   expect(body.active_plan_id).toBe(plan.id)
-  expect(wrapper.text()).toContain('储备方案已保存')
+  expect(wrapper.text()).not.toContain('储备方案已保存')
 })
 
 it('删除先确认，未保存不写云端，保存最后一个删除后恢复为空', async () => {
@@ -208,7 +208,7 @@ it('409 保留草稿，读取比较不覆盖，明确选择后才能按新版本
   expect(api.put).toHaveBeenCalledTimes(1)
   await button(wrapper, '保留草稿，重试保存').trigger('click'); await flushPromises()
   expect(api.put.mock.calls[1][1]).toMatchObject({ expected_revision: 7, plans: [{ demands: [{ target: { elite: 16 } }] }] })
-  expect(wrapper.text()).toContain('储备方案已保存')
+  expect(wrapper.text()).not.toContain('储备方案已保存')
 })
 
 it('比较读取失败也保留草稿，采用云端只读回不再写入', async () => {
@@ -492,7 +492,7 @@ it('切换方案保留全部草稿；保存后再修改立即显示未保存，�
   window.dispatchEvent(leave)
   expect(leave.defaultPrevented).toBe(true)
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(wrapper.text()).toContain('储备方案已保存')
+  expect(wrapper.text()).not.toContain('储备方案已保存')
   const savedLeave = new Event('beforeunload', { cancelable: true })
   window.dispatchEvent(savedLeave)
   expect(savedLeave.defaultPrevented).toBe(false)

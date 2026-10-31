@@ -1,0 +1,41 @@
+.catalog-mobile-filter { display: none; }
+@media (max-width: 767px) {
+  .catalog-mobile-filter { display: contents; }
+}
+.catalog-filter-trigger { grid-area: 2 / 2; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.catalog-filter-chips { grid-column: 1 / -1; display: flex; gap: 6px; overflow-x: auto; min-width: 0; padding-bottom: 2px; }
+.catalog-filter-chips button { flex: none; display: inline-flex; gap: 6px; align-items: center; min-height: 34px; font-size: 12px; border-radius: 20px; }
+button { min-height: 40px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+.catalog-filter-mask { position: fixed; inset: 0; z-index: var(--z-overlay-blocking); display: flex; align-items: flex-end; background: var(--theme-overlay, rgba(73, 59, 44, .5)); }
+.catalog-filter-sheet { box-sizing: border-box; width: 100%; max-height: 82%; display: flex; flex-direction: column; background: var(--surface); color: var(--ink); border-radius: 20px 20px 0 0; overflow: hidden; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; flex: none; border-bottom: 1px solid var(--line); }
+h2 { margin: 0; font: 700 18px var(--font-s); }
+header button { border: 0; min-width: 44px; min-height: 44px; display: grid; place-items: center; }
+.catalog-filter-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 12px; }
+footer { display: flex; gap: 10px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex: none; }
+footer button { min-height: 44px; }
+.apply { flex: 1; background: var(--tea); color: var(--on-strong, #fff); border-color: var(--tea); font-weight: 700; }
+.apply:disabled { opacity: .5; cursor: default; }
+.catalog-filter-body :deep(.operator-filter-dossier) { border: 0; margin: 0; background: transparent; }
+.catalog-filter-body :deep(.current-filter-head), .catalog-filter-body :deep(.pf-status-row) { display: none; }
+.catalog-filter-body :deep(.current-filter-rows) { padding: 0; }
+.catalog-filter-body :deep(.dossier-extra) { display: flex; flex-direction: column; gap: 16px; padding-top: 12px; }
+.catalog-filter-body :deep(.pf-row) { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.catalog-filter-body :deep(.pf-label) { width: auto; justify-content: flex-start; text-align: left; font-size: 13px; }
+.catalog-filter-body :deep(.mf-filter) { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; background: transparent; }
+.catalog-filter-body :deep(.mf-filter button) { flex: 0 0 auto; width: auto; max-width: 100%; min-height: 40px; padding: 7px 11px; font-size: 13px; border: 1px solid var(--line); }
+.catalog-filter-body :deep(.mf-filter button.on) { background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); box-shadow: none; }
+.catalog-filter-body :deep(.growth-filter-presets button) { min-height: 40px; font-size: 13px; }
+.catalog-filter-body :deep(.current-growth-filter summary) { min-height: 44px; width: 100%; }
+.catalog-filter-body :deep(.current-growth-filter summary::after) { content: ''; width: 7px; height: 7px; margin-left: auto; margin-right: 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.catalog-filter-body :deep(.current-growth-filter[open] summary::after) { transform: rotate(225deg); }
+.catalog-filter-sheet.is-short { max-height: 100%; display: block; overflow-y: auto; }
+.is-short .catalog-filter-body { overflow: visible; }
+/* 同一组控件在图鉴和养成弹层内都按基础条件、命盘、标签、养成范围排列。 */
+.catalog-filter-body :deep(.current-filter-rows) { display: flex; flex-direction: column; gap: 16px; padding-top: 12px; }
+.catalog-filter-body :deep(.dossier-extra) { display: contents; }
+.catalog-filter-body :deep(.pf-disc-row) { order: 1; }
+.catalog-filter-body :deep(.pf-tag-row) { order: 2; display: flex; }
+.catalog-filter-body :deep(.pf-tag-row > .pf-label) { display: inline-flex; }
+.catalog-filter-body :deep(.operator-growth-filters) { order: 3; }

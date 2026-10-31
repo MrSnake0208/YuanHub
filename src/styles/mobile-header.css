@@ -4,7 +4,7 @@
 
 @media (max-width:1080px){
   .mobile-shell{
-    background:var(--theme-surface, rgba(255,248,236,.96));border-bottom:1px solid var(--line);
+    background:var(--theme-surface, var(--cream));border-bottom:1px solid var(--line);
     box-shadow:0 8px 24px -20px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.45);transition:transform .18s cubic-bezier(.25,1,.5,1);
   }
 }

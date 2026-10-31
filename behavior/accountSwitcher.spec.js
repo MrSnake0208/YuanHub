@@ -68,6 +68,8 @@ it('手机使用 Sheet，锁定滚动，实时断点变化和卸载恢复原滚�
   const { wrapper } = await render(); await open(wrapper)
   expect(document.querySelector('.account-switch-mask').classList.contains('is-desktop')).toBe(false)
   expect(document.body.style.overflow).toBe('hidden')
+  expect(document.querySelector('.account-switch-panel h2').textContent).toBe('切换 BOX')
+  expect(option('a').querySelector('.switch-option-copy').textContent).toBe('大号如鸢')
   media.matches = true; media.dispatchEvent(new Event('change')); await flushPromises()
   expect(document.querySelector('[role=dialog]')).toBeNull(); expect(document.body.style.overflow).toBe('auto')
   media.matches = false; await open(wrapper); wrapper.unmount(); await flushPromises()

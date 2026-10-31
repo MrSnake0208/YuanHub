@@ -5,7 +5,7 @@
     <div v-else class="page-recruitment">
       <IslandSidebar />
       <main id="main-content" class="recruitment-main" @keydown.esc="exitGuide">
-        <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
+        <CompactToolHeader title="招募档案">
           <template v-if="enabled && TUTORIALS_ENABLED" #actions>
             <div class="guide-entry-wrap">
               <button ref="entry" type="button" :aria-expanded="picker" @click="picker = !picker">使用教程</button>

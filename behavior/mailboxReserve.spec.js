@@ -8,7 +8,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 const record = (account = 'a', count = 20) => ({ account_id: account, white_coin_mails: [{ count, coins_per_mail: 90 }], fu_chuan_mail_count: 10, version: 1, updated_at: '2026-10-22T00:00:00Z' })
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 let wrapper
-const open = async (manage = true) => { wrapper = mount(MailboxReserve, { props: { userId: 'owner', accountId: 'a' }, global: { stubs: { teleport: true } } }); await flushPromises(); if (manage && !button('录入／调整储备')?.element.disabled) await button('录入／调整储备').trigger('click') }
+const open = async (manage = true) => { wrapper = mount(MailboxReserve, { props: { userId: 'owner', accountId: 'a' }, global: { stubs: { teleport: true } } }); await flushPromises(); if (manage && !button('管理')?.element.disabled) await button('管理').trigger('click') }
 const input = label => wrapper.get(`input[aria-label="${label}"]`)
 const submit = async () => { await wrapper.get('form').trigger('submit'); await flushPromises() }
 const button = text => wrapper.findAll('button').find(b => b.text() === text)
@@ -16,6 +16,7 @@ afterEach(() => wrapper?.unmount())
 beforeEach(() => { vi.resetAllMocks(); getMailboxReserve.mockResolvedValue(record()) })
 it('读取不写入，折算多行并覆盖保存，清零合法', async () => {
   await open()
+  expect(wrapper.find('.save-feedback-slot').exists()).toBe(false)
   expect(wrapper.text()).toContain('1,800 白金币 · 30 普通符传')
   expect(saveMailboxReserve).not.toHaveBeenCalled()
   await button('添加白金币邮件').trigger('click')
@@ -26,8 +27,9 @@ it('读取不写入，折算多行并覆盖保存，清零合法', async () => {
   saveMailboxReserve.mockImplementation(async (account, user, body) => ({ account_id: account, ...body, version: 2, updated_at: '2026-10-22T01:00:00Z' }))
   await submit()
   expect(saveMailboxReserve).toHaveBeenCalledWith('a', 'owner', { expected_version: 1, white_coin_mails: [{ count: 20, coins_per_mail: 90 }, { count: 2, coins_per_mail: 60 }], fu_chuan_mail_count: 20 })
-  expect(wrapper.text()).toContain('已保存')
-  await button('录入／调整储备').trigger('click')
+  expect(wrapper.text()).not.toContain('邮件储备已保存')
+  expect(wrapper.find('.save-feedback-slot').exists()).toBe(false)
+  await button('管理').trigger('click')
   await submit()
   expect(saveMailboxReserve).toHaveBeenCalledTimes(1)
   await input('符传邮件封数').setValue('0')
@@ -123,7 +125,7 @@ it('零封只显示摘要与管理入口，主页面不渲染表单', async () =
   expect(wrapper.get('.mail-quick').text()).toContain('0 封')
   expect(wrapper.find('form').exists()).toBe(false)
   expect(button('记录领取')).toBeUndefined()
-  await button('录入／调整储备').trigger('click')
+  await button('管理').trigger('click')
   expect(input('符传邮件封数').exists()).toBe(true)
 })
 it('领取面板按封数提交，未知结果原样重试且不能离开', async () => {
@@ -155,7 +157,7 @@ it('领取确认前切换账号清除面板；管理草稿不改变摘要', asyn
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
   expect(wrapper.find('form').exists()).toBe(false)
   expect(claimMailboxReserve).not.toHaveBeenCalled()
-  await button('录入／调整储备').trigger('click')
+  await button('管理').trigger('click')
   await input('符传邮件封数').setValue('3')
   expect(wrapper.get('.mail-quick').text()).toContain('12 封')
   dialog.confirm.mockResolvedValue(false)
@@ -268,7 +270,7 @@ it('步进只改草稿，取消不领取，首次零值可以建立基准', asyn
   await submit()
   expect(saveMailboxReserve.mock.lastCall[2].fu_chuan_mail_count).toBe(0)
   expect(wrapper.emitted('saved')[0]).toEqual(['a'])
-  await button('录入／调整储备').trigger('click')
+  await button('管理').trigger('click')
   expect(button('保存邮件储备').element.disabled).toBe(true)
 })
 

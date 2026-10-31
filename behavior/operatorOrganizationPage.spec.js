@@ -458,3 +458,21 @@ it('自动计算未授权不展示也不请求，授予后可用，撤销后忽�
   expect(wrapper.text()).not.toContain('123,456')
   noGrowthWrites()
 })
+
+it('养成手机筛选弹层先预览标签交集，确认后列表一致且取消标签恢复结果', async () => {
+  organization.tags = [{ id: 'team', name: '主力', operator_ids: ['a', 'c'] }]
+  await render()
+  const tools = wrapper.get('.growth-overview-filters')
+  await tools.get('.catalog-filter-trigger').trigger('click'); await flushPromises()
+  const sheet = tools.findComponent({ name: 'CatalogFilterSheet' })
+  const filters = sheet.findComponent({ name: 'OperatorFilterDossier' })
+  filters.vm.$emit('update:tagFilter', 'team'); await flushPromises()
+  expect(document.querySelector('.catalog-filter-sheet .apply').textContent).toContain('查看 2 位密探')
+  expect(cardNames()).toEqual(['a', 'b', 'c'])
+  document.querySelector('.catalog-filter-sheet .apply').click(); await flushPromises()
+  expect(cardNames()).toEqual(['a', 'c'])
+  await tools.get('[aria-label="取消主力筛选"]').trigger('click'); await flushPromises()
+  expect(cardNames()).toEqual(['a', 'b', 'c'])
+  expect(api.putOperatorOrganization).not.toHaveBeenCalled()
+  noGrowthWrites()
+})

@@ -108,10 +108,11 @@ it('a dark compact drawer exports an isolated light snapshot without changing th
     return { toDataURL: () => 'data:image/png;base64,AA' }
   })
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-  await wrapper.get('.cart-mbar .mbtn.accent').trigger('click')
+  await openReceipt(wrapper)
+  await bodyElement('.cart-receipt-drawer .receipt-export').trigger('click')
   await flushPromises()
   expect(html2canvas).toHaveBeenCalledTimes(1)
-  expect(wrapper.get('.cart-mbar .mbtn.primary').attributes('aria-expanded')).toBe('false')
+  expect(wrapper.get('.cart-mbar .mbtn.primary').attributes('aria-expanded')).toBe('true')
   expect(document.querySelectorAll('.receipt')).toHaveLength(1)
 })
 
@@ -122,7 +123,7 @@ it('unmount releases media listener and scroll lock; pending export cannot downl
   let finish
   html2canvas.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
   const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-  await wrapper.get('.cart-mbar .mbtn.accent').trigger('click')
+  await bodyElement('.cart-receipt-drawer .receipt-export').trigger('click')
   await flushPromises()
   wrapper.unmount()
   finish({ toDataURL: () => 'data:image/png;base64,AA' })
@@ -191,4 +192,20 @@ it('budget summary stays visible for an empty cart and exports expanded pricing 
   expect(wrapper.get('.receipt-pricing-details').text()).toContain('¥50.00')
   expect(wrapper.get('.receipt-pricing-details').text()).toContain('80%')
   expect(wrapper.find('.cart-actions').exists()).toBe(false)
+})
+
+
+it('手机底栏只保留清单入口，导出和清空在清单中可达', async () => {
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.findAll('.cart-mbar button')).toHaveLength(1)
+  expect(wrapper.get('.cart-mbar button').text()).toContain('查看清单 · 0')
+  await openReceipt(wrapper)
+  expect(bodyElement('.cart-receipt-drawer .receipt-export').attributes('disabled')).toBeDefined()
+  expect(bodyElement('.cart-receipt-drawer .receipt-clear').attributes('disabled')).toBeDefined()
+  await bodyElement('[aria-label="关闭购物清单"]').trigger('click')
+  await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
+  await openReceipt(wrapper)
+  expect(bodyElement('.cart-receipt-drawer .receipt-export').attributes('disabled')).toBeUndefined()
+  expect(bodyElement('.cart-receipt-drawer .receipt-clear').attributes('disabled')).toBeUndefined()
 })

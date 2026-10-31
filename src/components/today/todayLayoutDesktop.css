@@ -13,5 +13,6 @@
   .today-workspace:not(:has(.today-primary section)), .today-workspace:not(:has(.today-secondary section)) { grid-template-columns: minmax(0, 1fr); }
 }
 @media (min-width: 1081px) {
-  .today-main { margin-left: 292px; }
+  .today-main { margin-left: 244px; }
+  .today-wrap { max-width: 1600px; margin-inline: 0; padding-inline: 32px; }
 }

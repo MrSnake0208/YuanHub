@@ -79,7 +79,7 @@ export function useRecruitment() {
       pendingCommand = null; state.requestVersion++
       await refresh()
       if (!matches(token)) return null
-      state.notice = '已保存'
+
       return result
     } catch (error) {
       if (!matches(token)) return null

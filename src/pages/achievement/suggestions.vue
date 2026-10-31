@@ -12,7 +12,7 @@
           <p>{{ error || '请修正以下内容后再提交。' }}</p>
           <p v-for="(message, field) in errors" :key="field"><a :href="'#candidate-' + field" @click.prevent="focusField(field)">{{ message }}</a></p>
         </div>
-        <p v-if="notice" role="status">{{ notice }}</p>
+        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
         <nav v-if="!review" aria-label="投稿任务"><button :aria-pressed="mode === 'new'" :disabled="busy" @click="changeMode('new')">补充资料</button><button :aria-pressed="mode === 'mine'" :disabled="busy" @click="changeMode('mine')">我的投稿</button></nav>
         <template v-if="review || mode === 'mine'">
           <form class="suggestion-toolbar" @submit.prevent="loadList(1)">

@@ -17,12 +17,62 @@ const { pinned = false } = defineProps({ pinned: Boolean })
 const route = useRoute()
 const header = ref(null)
 const hidden = ref(false)
-const directionThreshold = 8
+const directionThreshold = 24
 const followTopProperty = '--mobile-shell-follow-top'
 let mobileQuery = null
 let previousY = 0
 let directionStartY = 0
 let direction = 0
+let intentDirection = 0
+let intentUntil = 0
+let touchY = null
+let previousHeight = 0
+
+function clearIntent() {
+  intentDirection = 0
+  intentUntil = 0
+  direction = 0
+  previousY = scrollY()
+  directionStartY = previousY
+  previousHeight = document.documentElement.scrollHeight
+}
+
+function recordIntent(delta) {
+  if (!delta) return
+  const now = performance.now()
+  if (now > intentUntil || intentDirection !== Math.sign(delta)) clearIntent()
+  intentDirection = Math.sign(delta)
+  // 只接受紧随输入的滚动；不靠 scroll 事件续期，以免布局变化延续旧意图。
+  intentUntil = now + 250
+}
+
+function onWheel(event) {
+  if (!event.ctrlKey && Math.abs(event.deltaY) > Math.abs(event.deltaX)) recordIntent(event.deltaY)
+}
+
+function onTouchStart(event) {
+  clearIntent()
+  touchY = event.touches.length === 1 ? event.touches[0].clientY : null
+}
+
+function onTouchMove(event) {
+  const nextY = event.touches.length === 1 ? event.touches[0].clientY : null
+  if (touchY !== null && nextY !== null) recordIntent(touchY - nextY)
+  touchY = nextY
+}
+
+function onKeydown(event) {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+      event.target.closest?.('input, textarea, select, button, a, [contenteditable]:not([contenteditable="false"]), [role="slider"], [role="listbox"]')) return
+  const delta = { ArrowDown: 1, PageDown: 1, End: 1, ArrowUp: -1, PageUp: -1, Home: -1, ' ': event.shiftKey ? -1 : 1 }[event.key]
+  if (delta) recordIntent(delta)
+}
+
+const inputListeners = [
+  ['pointerdown', clearIntent], ['click', clearIntent], ['wheel', onWheel],
+  ['touchstart', onTouchStart], ['touchmove', onTouchMove],
+  ['touchcancel', clearIntent], ['keydown', onKeydown],
+]
 
 function syncFollowTop() {
   if (typeof document === 'undefined') return
@@ -41,9 +91,7 @@ function scrollY() {
 
 function reset() {
   hidden.value = false
-  previousY = scrollY()
-  directionStartY = previousY
-  direction = 0
+  clearIntent()
 }
 
 function onScroll() {
@@ -55,6 +103,12 @@ function onScroll() {
   }
 
   const delta = currentY - previousY
+  const height = document.documentElement.scrollHeight
+  if (pinned || performance.now() > intentUntil || !intentDirection ||
+      Math.sign(delta) !== intentDirection || height !== previousHeight) {
+    clearIntent()
+    return
+  }
   if (!delta) return
   const nextDirection = Math.sign(delta)
   if (nextDirection !== direction) {
@@ -71,11 +125,16 @@ function onScroll() {
 
 function syncViewport() {
   window.removeEventListener('scroll', onScroll)
+  for (const [name, listener] of inputListeners) window.removeEventListener(name, listener)
   reset()
-  if (mobileQuery.matches && !pinned) window.addEventListener('scroll', onScroll, { passive: true })
+  if (mobileQuery.matches && !pinned) {
+    window.addEventListener('scroll', onScroll, { passive: true })
+    for (const [name, listener] of inputListeners) window.addEventListener(name, listener, { passive: true })
+  }
 }
 
 watch(() => route.fullPath, reset)
+watch(() => pinned, () => { if (mobileQuery) syncViewport() })
 watch(hidden, syncFollowTop, { flush: 'sync' })
 
 onMounted(() => {
@@ -88,6 +147,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
+  for (const [name, listener] of inputListeners) window.removeEventListener(name, listener)
   mobileQuery?.removeEventListener('change', syncViewport)
   if (typeof document !== 'undefined')
     document.documentElement.style.removeProperty(followTopProperty)

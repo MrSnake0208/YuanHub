@@ -354,17 +354,19 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-quick-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .daily-quick-heading strong { font: 800 18px/1.4 var(--font-s); }
 .daily-quick-heading time { font: 12px/1.5 var(--font-d); }
-.daily-quick > fieldset { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; margin: 0; padding: 0; }
-.daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 6px 5px 10px; }
+.daily-quick > fieldset { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; margin: 0; padding: 0; }
+.daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.daily-quick-option:last-child { border-bottom: 0; }
+.daily-quick-option:has(input:checked) { border-color: var(--line); border-radius: 8px; }
 .daily-quick-option > label { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
 .daily-quick-option label > span { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; gap: 3px 10px; min-width: 0; }
-.daily-quick-option b { font-size: 13px; overflow-wrap: anywhere; }
+.daily-quick-option b { font-size: 14px; overflow-wrap: anywhere; }
 .daily-quick-option small { font-size: 12px; overflow-wrap: anywhere; }
 .daily-quick-option input { flex: none; appearance: auto; width: 17px; height: 17px; margin: 0; }
 .daily-quick-option img { flex: none; width: 32px; height: 32px; object-fit: contain; }
 .quick-edit { display: grid; place-items: center; flex: none; width: 34px; min-height: 34px; padding: 4px; border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
 .daily-quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-.daily-quick-actions > .primary-button { flex: 1 1 100px; min-height: 38px; padding: 8px 12px; white-space: nowrap; }
+.daily-quick-actions > .primary-button { box-shadow: none; flex: 1 1 100px; min-height: 38px; padding: 8px 12px; white-space: nowrap; }
 .daily-quick-actions .quick-history { min-height: 34px; padding: 5px 0; font-size: 12px; white-space: nowrap; }
 .quick-rules { font-size: 12px; margin: 0; }
 .quick-rules[open] { flex-basis: 100%; }

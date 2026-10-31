@@ -1,15 +1,14 @@
-/* 手机将账号收进日期行，值守只保留短场景。 */
+/* 手机先显示账号与辅助操作，再显示日期与记录入口；保留原值守场景。 */
 @media not all and (min-width: 768px) {
   .today-lobby { isolation: isolate; }
-  .lobby-wrap { padding-inline: 14px; }
-  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding-top: 4px; }
-  .lobby-heading { min-width: 0; }
+  .lobby-wrap { padding-inline: 16px; }
+  .lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'context utilities' 'date actions'; align-items: center; gap: 8px; padding-top: 12px; }
+  .lobby-heading { grid-area: date; min-width: 0; }
   .lobby-heading h1 { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .lobby-heading time { font-size: 11px; }
-  .lobby-context { min-width: 0; max-width: 100%; justify-self: end; }
-  .lobby-actions { min-width: 0; }
-  .lobby-header:has(.today-customize) { grid-template-columns: auto minmax(0, 1fr); }
-  .lobby-header:has(.today-customize) .lobby-actions { grid-column: 1 / -1; justify-self: end; }
+  .lobby-heading time { font-size: 12px; }
+  .lobby-context { grid-area: context; min-width: 0; max-width: 100%; justify-self: start; }
+  .lobby-actions { grid-area: actions; min-width: 0; justify-self: end; }
+  .lobby-utilities { grid-area: utilities; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
   .lobby-scene { position: relative; display: flex; align-items: center; min-height: 120px; }
   .lobby-copy { position: relative; z-index: 2; width: calc(100% - 152px); min-width: 0; padding: 8px 0; }
   .lobby-greeting { font-size: 22px; letter-spacing: .03em; }

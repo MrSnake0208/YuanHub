@@ -2160,7 +2160,15 @@
   .report-book-switch.acquired-type-switch > button { min-height: 32px; padding-inline: 6px; font-size: 10px }
 }
 .panel { margin-top: 12px; }
-.inventory-setup { margin-top: 8px; }
+.inventory-setup { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; margin: 4px 0 12px; padding: 14px; text-align: left; border-radius: 12px; }
+.inventory-setup :deep(h2) { margin: 0; font: 800 18px/1.5 var(--font-s); }
+.inventory-setup :deep(p) { grid-column: 1; margin: 0; font-size: 13px; line-height: 1.6; }
+.inventory-setup :deep(.tool-task-actions) { grid-column: 2; grid-row: 1 / 3; margin: 0; }
+.inventory-setup :deep(.tool-task-actions .btn) { padding: 9px 12px; font-size: 13px; }
+@media (max-width: 380px) {
+  .inventory-setup { grid-template-columns: minmax(0, 1fr); }
+  .inventory-setup :deep(.tool-task-actions) { grid-column: 1; grid-row: auto; justify-items: start; margin-top: 4px; }
+}
 @media (max-width: 640px) {
   #inventory-panel-manifest { margin-top: 8px; }
 }/* 确认稿的移动端布局；仅作用于库存，不改变共享工具页头。 */
@@ -2177,7 +2185,7 @@
 .manifest-items .subsection-head h3 { display: inline-flex; align-items: center; gap: 7px; min-width: 0; font: 800 14px/1.4 var(--font-b); }
 .manifest-items .subsection-head h3::before { content: ''; flex: 0 0 3px; width: 3px; height: 16px; border-radius: 2px; background: var(--accent); }
 .manifest-items .subsection-head > span { font: 600 11px/1.5 var(--font-b); }
-.manifest-items .subsection-edit { gap: 4px; min-height: 30px; min-width: 0; padding: 4px 6px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); }
+.manifest-items .subsection-edit { margin-left: auto; gap: 4px; min-height: 30px; min-width: 0; padding: 4px 6px; border: 0; border-radius: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); }
 .manifest-items .subsection-edit-label { font: 700 12px/1.4 var(--font-b); }
 .manifest-items .subsection-edit::after { display: none; }
 .manifest-items .subsection-head:has(.resource-summary) { flex-wrap: nowrap; }
@@ -2232,8 +2240,9 @@
 }
 
 /* 库存精修：两端共享业务，窄屏只重排呈现。 */
+@media (min-width: 768px) {
 :deep(.inventory-header.compact-tool-header) { padding: 16px 0 12px; background: transparent; border: 0; border-radius: 0; }
-:deep(.inventory-header .compact-tool-row) { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'heading account' 'actions actions'; align-items: center; gap: 10px 12px; }
+:deep(.inventory-header .compact-tool-row) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; align-items: center; gap: 10px 12px; }
 :deep(.inventory-header .compact-tool-heading h1) { font: 900 30px/1.25 var(--font-s); }
 :deep(.inventory-header .compact-tool-description) { max-width: 12em; font-size: 12px; }
 :deep(.inventory-header .compact-tool-account) { min-width: 0; max-width: 100%; justify-self: start; align-self: start; }
@@ -2242,9 +2251,10 @@
 :deep(.inventory-header .compact-tool-help), :deep(.inventory-header .tool-more > summary) { min-height: 36px; padding: 5px; font-size: 12px; }
 :deep(.inventory-header .tool-more) { position: relative; }
 :deep(.inventory-header .tool-more-content) { right: 0; left: auto; max-width: calc(100vw - 32px); }
+}
 .inventory-actions { display: flex; flex: 1 1 200px; gap: 6px; min-width: 0; }
 .inventory-actions > button { display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 38px; padding: 8px 10px; border-radius: 9px; font: 700 13px/1.5 var(--font-b); white-space: nowrap; }
-.inventory-actions .reward-entry { background: var(--tea); color: var(--on-strong); }
+.inventory-actions .reward-entry { border: 1px solid var(--tea); background: var(--tea); color: var(--on-strong); box-shadow: none; }
 .inventory-actions .inventory-entry { background: var(--cream); color: var(--theme-strong-text, var(--tea)); }
 .inventory-quickbar { display: grid; gap: 12px; margin: 4px 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .inventory-quickbar > * { min-width: 0; }
@@ -2263,9 +2273,9 @@
 .manifest-bar-summary .mf-num, .manifest-bar-summary .mf-k { font-size: 12px; }
 .manifest-toolbar .manifest-item-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .manifest-item-tools .mf-search { flex: 1 1 200px; min-width: 0; width: 100%; min-height: 38px; padding: 8px 10px; background: var(--surface); font: 16px/1.4 var(--font-b); }
-.manifest-item-tools .mf-filter { display: grid; flex: 1 1 210px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 9px; background: transparent; }
-.manifest-item-tools .mf-filter button { min-width: 0; min-height: 34px; padding: 5px 8px; font: 600 13px/1.5 var(--font-b); white-space: nowrap; }
-.manifest-item-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 32%, var(--surface)); color: var(--theme-strong-text, var(--tea)); box-shadow: inset 0 -2px var(--tea); }
+.manifest-item-tools .mf-filter { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; border: 0; background: transparent; }
+.manifest-item-tools .mf-filter button { min-width: 0; min-height: 34px; padding: 5px 8px; font: 600 13px/1.5 var(--font-b); white-space: nowrap; border: 1px solid var(--line); border-radius: 8px; }
+.manifest-item-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 32%, var(--surface)); border-color: transparent; color: var(--theme-strong-text, var(--tea)); box-shadow: none; }
 .inventory-freshness { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--ink-60); font: 11px/1.5 var(--font-b); }
 .inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .manifest-intro { display: block; margin-top: 10px; }
@@ -2298,7 +2308,6 @@
   .inventory-freshness { margin-left: auto; }
 }
 @media (max-width: 360px) {
-  :deep(.inventory-header .compact-tool-row) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; gap: 8px; }
   .inventory-actions { flex-basis: 100%; order: 1; }
 }
 /* 数量移出图标后仍保持原手机网格与数量角标的阅读顺序。 */
@@ -2326,7 +2335,7 @@
 }
 .manifest-items .item-section.is-legacy-resources .subsection-head:has(.resource-summary) { flex-wrap: wrap; }
 .manifest-items .item-section.is-legacy-resources .resource-summary {
-  display: grid; flex: 1 1 100%; width: 100%; min-width: 0; margin: 2px 0 0; justify-content: stretch;
+  display: flex; flex-wrap: wrap; gap: 4px 12px; flex: 1 1 100%; width: 100%; min-width: 0; margin: 4px 0 0; padding: 6px 8px; border-radius: 8px; background: var(--cream); justify-content: flex-start;
 }
 .manifest-items .item-section.is-legacy-resources .subsection-shelves .item-subsection > .slot-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 12px 7px; margin-top: 10px;
@@ -2357,5 +2366,7 @@
   border: 1px dashed var(--line); background: var(--surface); color: var(--ink-60); box-shadow: none;
 }
 
+.manifest-items .item-section.is-legacy-resources .resource-equivalent { padding: 0; border: 0; background: transparent; }
+.manifest-items .item-section.is-legacy-resources .resource-equivalent :is(span, strong) { font-size: 12px; line-height: 1.5; }
 .inventory-quickbar:has(.quick-rules[open]) { position: relative; z-index: var(--z-popover); }
 }

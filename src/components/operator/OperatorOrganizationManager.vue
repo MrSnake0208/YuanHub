@@ -7,10 +7,21 @@
       <button type="button" :disabled="!ready || !batchTag" @click="applyBatch(true)">添加标签</button>
       <button type="button" :disabled="!ready || !batchTag" @click="applyBatch(false)">移除标签</button>
     </div>
-    <details :id="panelId" ref="panel" class="organization-settings" @toggle="onToggle">
+    <Teleport to="body" :disabled="!sheetOpen">
+    <div :class="{ 'organization-sheet-mask': sheetOpen }" :style="sheetOpen ? viewportStyle : undefined" @click.self="requestClose">
+    <details :id="panelId" ref="panel" class="organization-settings" :class="{ 'organization-sheet': sheetOpen, 'is-short': sheetOpen && shortViewport }" :role="sheetOpen ? 'dialog' : undefined" :aria-modal="sheetOpen ? true : undefined" :aria-label="sheetOpen ? '分类设置' : undefined" :tabindex="sheetOpen ? -1 : undefined" @focusin="revealFocusedControl" @toggle="onToggle">
       <summary hidden>分类设置</summary>
+      <header v-if="sheetOpen" class="organization-sheet-header">
+        <h2>分类设置</h2><small v-if="changed">未保存</small>
+        <button type="button" aria-label="关闭分类设置" :disabled="saving" @click="requestClose"><X :size="20" aria-hidden="true" /></button>
+      </header>
+      <div v-if="sheetOpen && confirmingClose" class="organization-close-confirm" role="alert">
+        <p>分类设置尚未保存，是否放弃修改？</p>
+        <button type="button" @click="confirmingClose = false">继续编辑</button>
+        <button type="button" @click="discardAndClose">放弃修改并关闭</button>
+      </div>
       <form v-if="draft" ref="editor" class="organization-editor" novalidate @submit.prevent="saveDraft">
-        <p class="organization-intro">仅调整当前子账号的展示分类，不改变练度、养成状态或特别关注。</p>
+        <p class="organization-intro">{{ sheetOpen ? '仅调整当前 BOX 的分类与顺序。' : '仅调整当前子账号的展示分类，不改变练度、养成状态或特别关注。' }}</p>
         <div class="organization-editor-grid">
           <div class="organization-order-panel">
             <section class="organization-section" aria-label="分组顺序">
@@ -28,7 +39,7 @@
             </section>
             <section class="organization-section" aria-label="置顶顺序">
               <div class="organization-section-heading"><Pin :size="16" aria-hidden="true" /><h3>置顶顺序</h3><small>{{ draft.pinned_ids.length }} 位</small></div>
-              <p v-if="!draft.pinned_ids.length" class="organization-empty">还没有置顶密探。点击下方密探卡片的“置顶”，即可优先展示。</p>
+              <p v-if="!draft.pinned_ids.length" class="organization-empty">{{ sheetOpen ? '暂无置顶密探，可在密探卡片上置顶。' : '还没有置顶密探。点击下方密探卡片的“置顶”，即可优先展示。' }}</p>
               <ol v-else class="organization-sort-list">
                 <li v-for="(id, index) in draft.pinned_ids" :key="id" class="organization-sort-row organization-pin-row">
                   <span class="organization-rank" aria-hidden="true">{{ index + 1 }}</span><span class="organization-sort-name">{{ catalog[id]?.name || id }}</span>
@@ -77,20 +88,52 @@
         </div>
       </form>
     </details>
+    </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId, watch } from 'vue'
-import { ArrowDown, ArrowUp, Pin, Plus, SlidersHorizontal, Tags } from '@lucide/vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { ArrowDown, ArrowUp, Pin, Plus, SlidersHorizontal, Tags, X } from '@lucide/vue'
 import { operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { operatorOrganizationContent, updateOperatorTag } from '../../utils/operatorOrganization.js'
+import { useModalFocus } from '../../composables/useModalFocus.js'
+import { useModalViewport } from '../../composables/useModalViewport.js'
+import { createUuid } from '../../utils/createUuid.js'
 const props = defineProps({ value: { type: Object, required: true }, accountId: { type: String, required: true }, game: { type: String, required: true },
+  mobileSheet: Boolean,
   catalog: { type: Object, required: true }, ready: Boolean, loading: Boolean, saving: Boolean, error: { type: String, default: '' },
   discardedEnabled: Boolean, selectedIds: { type: Array, default: () => [] },
   save: { type: Function, required: true }, reload: { type: Function, required: true } })
 const panelId = useId()
 const panel = ref(null), panelOpen = ref(false), editor = ref(null), draft = ref(null), baseline = ref(''), baselineRevision = ref(0)
+const phone = ref(false), confirmingClose = ref(false)
+const sheetOpen = computed(() => props.mobileSheet && phone.value && panelOpen.value)
+let phoneMedia
+function updatePhone(event) { phone.value = event.matches; confirmingClose.value = false }
+onMounted(() => {
+  if (!props.mobileSheet) return
+  phoneMedia = window.matchMedia('(max-width: 767px)')
+  updatePhone(phoneMedia)
+  phoneMedia.addEventListener('change', updatePhone)
+})
+onBeforeUnmount(() => phoneMedia?.removeEventListener('change', updatePhone))
+useModalFocus(sheetOpen, panel, { initialFocus: () => panel.value, onEscape: requestClose, blocking: true, preventRestoreScroll: true })
+const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(sheetOpen, panel, panel)
+watch(sheetOpen, (open, _, cleanup) => {
+  if (!open) return
+  const body = document.body, root = document.documentElement
+  const bodyOverflow = body.style.overflow, rootOverflow = root.style.overflow
+  body.style.overflow = root.style.overflow = 'hidden'
+  cleanup(() => { body.style.overflow = bodyOverflow; root.style.overflow = rootOverflow })
+}, { flush: 'sync' })
+function requestClose() {
+  if (!sheetOpen.value || props.saving) return
+  if (changed.value) { confirmingClose.value = true; return }
+  setPanelOpen(false)
+}
+function discardAndClose() { resetDraft(); confirmingClose.value = false; setPanelOpen(false) }
 const batchTag = ref(''), notice = ref(''), noticeError = ref(false), touchedTagIds = ref(new Set()), validationAttempted = ref(false)
 const changed = computed(() => Boolean(draft.value && JSON.stringify(draft.value) !== baseline.value))
 defineExpose({ changed, open: panelOpen, panelId, toggle, resetDraft })
@@ -109,7 +152,7 @@ function focusTag(index) { editor.value?.querySelectorAll('[data-tag-name]')[ind
 function resetDraft() {
   draft.value = operatorOrganizationContent(props.value)
   baseline.value = JSON.stringify(draft.value); baselineRevision.value = props.value.revision
-  notice.value = ''; noticeError.value = false; touchedTagIds.value.clear(); validationAttempted.value = false
+  notice.value = ''; noticeError.value = false; confirmingClose.value = false; touchedTagIds.value.clear(); validationAttempted.value = false
 }
 function setPanelOpen(open) {
   if (!panel.value) return
@@ -128,7 +171,7 @@ function moveState(state, delta) {
   ;[draft.value.status_order[first], draft.value.status_order[second]] = [draft.value.status_order[second], draft.value.status_order[first]]
 }
 async function addTag() {
-  const tag = { id: crypto.randomUUID(), name: '', operator_ids: [] }
+  const tag = { id: createUuid(), name: '', operator_ids: [] }
   draft.value.tags.push(tag)
   await nextTick(); focusTag(draft.value?.tags.findIndex(item => item.id === tag.id))
 }
@@ -143,7 +186,7 @@ async function saveDraft() {
   if (!props.ready || !changed.value) return
   try {
     const content = operatorOrganizationContent(draft.value)
-    if (await props.save(content, baselineRevision.value)) { resetDraft(); notice.value = '分类设置已保存' }
+    if (await props.save(content, baselineRevision.value)) { resetDraft(); notice.value = '分类设置已保存'; if (sheetOpen.value) setPanelOpen(false) }
   } catch (err) { notice.value = err.message; noticeError.value = true }
 }
 async function applyBatch(add) {
@@ -208,3 +251,5 @@ button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-v
   .organization-tag-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 </style>
+
+<style scoped src="./operatorOrganizationSheetMobile.css"></style>

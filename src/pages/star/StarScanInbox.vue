@@ -6,7 +6,7 @@
     </div>
     <p>采集端只上传识别数据。请对照游戏核对；确认对应旧星石后，可保留其养成计划、佩戴和有效突破状态。</p>
     <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <button v-if="retryCommand" type="button" class="btn" :disabled="busy" @click="submit">重试确认同一份导入结果</button>
     <p v-if="!pending.length && !review && !busy">暂无待核对结果。可在 MaaYuan 开启星石同步后采集。</p>
     <ul v-if="!review && pending.length" class="scan-pending">

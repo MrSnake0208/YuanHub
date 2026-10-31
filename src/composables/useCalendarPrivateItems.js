@@ -97,8 +97,8 @@ export function useCalendarPrivateItems(subscriptions, range, mine) {
       else accept(result)
       if (!current(context)) return false
       notifyChange()
-      notice.value = result.recurrence === 'MONTHLY' ? `已保存每月重复事项 · 首次 ${calendarRangeLabel(result)}` : `已保存私人事项 · ${calendarRangeLabel(result)}`
-      if (result.recurrence !== 'MONTHLY' && (result.end_date < range.value.from || result.start_date > range.value.to)) notice.value += '。该区间不在当前日期范围，请在月历或时间轴选择覆盖日期查看。'
+      notice.value = ''
+      if (result.recurrence !== 'MONTHLY' && (result.end_date < range.value.from || result.start_date > range.value.to)) notice.value = `事项日期 ${calendarRangeLabel(result)}。该区间不在当前日期范围，请在月历或时间轴选择覆盖日期查看。`
       return true
     } catch (err) {
       if (current(context) && editor.value === draft && !securityError(err)) {

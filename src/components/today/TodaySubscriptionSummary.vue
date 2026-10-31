@@ -31,7 +31,7 @@
         </ul>
         <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" :aria-controls="visibleTasks.length ? 'today-todo-list' : undefined" @click="showAll = !showAll">{{ showAll ? '收起清单' : pendingTasks ? '展开完整清单' : '查看已勾选清单' }}</button>
         <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成，可查看全部。</p>
-        <p v-if="message" role="status" aria-live="polite">{{ message }}</p>
+        <p class="action-feedback" v-if="message" role="status" aria-live="polite">{{ message }}</p>
         <template v-for="(action, eventId) in actions" :key="eventId">
           <div v-if="action.error" class="todo-error" role="alert">
             <p>{{ action.error }}</p>
@@ -189,7 +189,7 @@ async function toggle(task, event) {
         subscriptionCompleted(result) !== subscriptionCompleted(task.record) || result.completed !== subscriptionCompleted(result) ||
         snapshot(result.checklist) !== snapshot(checklist)) throw new Error('保存结果需要确认')
     records.value = records.value.map(record => record.event_id === id ? result : record)
-    message.value = `已保存「${task.entry.title}」`
+
     const focused = document.activeElement
     await nextTick()
     if (!current(context)) return

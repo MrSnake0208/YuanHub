@@ -9,6 +9,22 @@ const empty = {
   starMin: '', starMax: '', starEnabled: false
 }
 
+it('高级筛选底部操作随展开区显示和收起，收起不清空已有条件', async () => {
+  const wrapper = mount(OperatorFilterDossier, { attachTo: document.body, props: {
+    compact: true, profFilter: '阳', profOptions: ['阳'],
+  }, slots: { 'extra-footer': '<button class="test-extra-reset">重置筛选</button>' } })
+  const reset = wrapper.get('.dossier-extra .test-extra-reset')
+  expect(reset.isVisible()).toBe(false)
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(reset.isVisible()).toBe(true)
+  expect(wrapper.get('.dossier-extra').element.lastElementChild).toBe(reset.element)
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(reset.isVisible()).toBe(false)
+  expect(wrapper.findAll('.pf-prof-row button')[1].attributes('aria-pressed')).toBe('true')
+  expect(wrapper.emitted('reset')).toBeUndefined()
+  wrapper.unmount()
+})
+
 it('填写数值不自动启用，开关保留输入，预设可一键启用或关闭', async () => {
   const wrapper = mount(OperatorFilterDossier, { props: { growthFilters: { ...empty }, showGrowthFilters: true } })
   await wrapper.get('summary').trigger('click')
@@ -202,5 +218,14 @@ it('自定义标签复用原筛选行与选中语义；没有标签时不增加�
   await buttons[0].trigger('click')
   expect(wrapper.emitted('update:tagFilter').at(-1)).toEqual([''])
   expect(wrapper.emitted('update:statusFilter')).toBeUndefined()
+  wrapper.unmount()
+})
+
+it.each([true, false])('关闭快捷预设仍保留自定义范围，默认消费者不受影响（compact=%s）', async compact => {
+  const wrapper = mount(OperatorFilterDossier, { props: { compact, forceExpanded: true, showGrowthFilters: true, showGrowthPresets: false, growthFilters: { ...empty } } })
+  expect(wrapper.find('.growth-filter-presets').exists()).toBe(false)
+  expect(wrapper.find('.current-growth-filter').exists()).toBe(true)
+  await wrapper.setProps({ showGrowthPresets: true })
+  expect(wrapper.find('.growth-filter-presets').exists()).toBe(true)
   wrapper.unmount()
 })

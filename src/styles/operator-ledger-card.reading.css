@@ -1,0 +1,23 @@
+/* 总览与只读导出共用的状态和奇闻完成色。 */
+.ledger-status-menu.status-growing .ledger-status-button {
+  border-color: var(--theme-success-line, rgba(111, 159, 118, 0.45));
+  background: var(--theme-success-bg, #bfdcc0);
+  color: var(--theme-success-text, #315f38);
+}
+.ledger-status-menu.status-graduated .ledger-status-button {
+  border-color: var(--theme-line, rgba(239, 210, 142, 0.85));
+  background: var(--yellow);
+  color: var(--ink);
+}
+.ledger-status-menu.status-inactive .ledger-status-button {
+  border-color: var(--theme-line, rgba(73, 59, 44, 0.22));
+  background: var(--theme-wash, rgba(73, 59, 44, 0.12));
+  color: var(--ink-60);
+}
+.ledger-oddity.is-full {
+  --ink-60: var(--theme-success-text, #276749);
+  --ink-35: var(--theme-success-text, #276749);
+  color: var(--theme-success-text, #276749);
+}
+.agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
+.ledger-status-menu.status-discarded .ledger-status-button { background: var(--cream); color: var(--theme-strong-text, var(--tea)); border: 1px dashed var(--tea); }

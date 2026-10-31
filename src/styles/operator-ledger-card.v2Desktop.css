@@ -119,7 +119,7 @@
   white-space: nowrap;
 }
 
-:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity input {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity :is(input, output) {
   width: 100%;
   min-width: 48px;
   min-height: 20px;

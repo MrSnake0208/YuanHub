@@ -7,7 +7,7 @@
           <button type="button" class="calendar-detail-close" aria-label="关闭日历详情" @click="$emit('close')"><X :size="20" aria-hidden="true" /></button>
         </header>
         <div ref="body" class="calendar-detail-body" role="region" aria-label="日历事项内容" tabindex="0">
-          <p v-if="privateItems?.notice.value" role="status">{{ privateItems.notice.value }}</p>
+          <p class="action-feedback" v-if="privateItems?.notice.value" role="status">{{ privateItems.notice.value }}</p>
           <div v-if="error" class="calendar-error" role="alert"><p>{{ error }}</p><button type="button" @click="$emit('retry')">重试读取</button></div>
           <p v-else-if="loading && !entries.length" role="status">正在读取事项…</p>
           <div v-else-if="entries.length" class="calendar-event-list">

@@ -8,6 +8,7 @@
   .lobby-heading time { font-size: 12px; }
   .lobby-context { margin-left: auto; min-width: 0; max-width: 100%; }
   .lobby-actions { flex: none; }
+  .lobby-utilities { display: flex; align-items: center; gap: 8px; margin-left: -12px; }
   .lobby-scene { position: relative; display: flex; align-items: center; min-height: 106px; }
   .lobby-copy { position: relative; z-index: 2; width: calc(100% - 262px); min-width: 0; padding: 16px 0; }
   .lobby-greeting { font-size: 28px; letter-spacing: .05em; }
@@ -36,4 +37,8 @@
 }
 @media (min-width: 768px) {
   .duty-candidates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1081px) {
+  .lobby-wrap { max-width: 1600px; margin-inline: 0; padding-inline: 32px; }
 }

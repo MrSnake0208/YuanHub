@@ -61,6 +61,13 @@ beforeEach(() => {
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
 
+it.each([['/star', '星石背包'], ['/cart', '礼包计算器'], ['/feedback', '我的反馈']])('手机 %s 使用简洁页面标题，保留原路由元信息', (path, title) => {
+  Object.assign(currentRoute, { path, meta: { title: '原有完整标题 — YuanHub' } })
+  const wrapper = render()
+  expect(wrapper.get('.mobile-page-title').text()).toBe(title)
+  expect(currentRoute.meta.title).toBe('原有完整标题 — YuanHub')
+})
+
 function dispatchTouch(target, type, x, y, count = 1) {
   const point = { identifier: 7, clientX: x, clientY: y }
   const event = new Event(type, { bubbles: true, cancelable: true })
@@ -270,7 +277,8 @@ it('双端按确认方案分组排序，常用入口直达并使用相同图标'
   expect(wrapper.find('.no').exists()).toBe(false)
   expect(wrapper.findAll('.sidebar-more')).toHaveLength(1)
   expect(wrapper.get('.sidebar-more').element.closest('.nav')).not.toBeNull()
-  expect(wrapper.find('.island-foot details').exists()).toBe(false)
+  expect(wrapper.find('.island-foot .sidebar-more').exists()).toBe(false)
+  expect(wrapper.find('.island-foot .sidebar-account-menu').exists()).toBe(true)
   expect(wrapper.find('.admin-pins-label').exists()).toBe(false)
 })
 it('关闭活动flag时两处导航都没有入口', async () => {
@@ -599,4 +607,64 @@ it('成就页双端只有成就入口高亮，首页无第二个选中态', asyn
     expect(selected.map(link => link.props('to'))).toEqual(['/achievement'])
     expect(selected[0].attributes('aria-current')).toBe('page')
   }
+})
+
+
+it('桌面账号菜单保留主题与账号入口，Esc 关闭并恢复焦点', async () => {
+  auth.accessToken = 'fixture'; auth.userInfo = { id: 'account-menu', user_name: '测试殿下' }
+  const wrapper = render()
+  const menu = wrapper.get('.sidebar-account-menu')
+  const trigger = menu.get('summary')
+  await trigger.trigger('click')
+  expect(menu.element.open).toBe(true)
+  expect(menu.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toContain('/user/profile')
+  expect(menu.get('.theme-selector').findAll('button').map(button => button.text())).toEqual(['浅色', '深色', '跟随系统'])
+  const themeButton = menu.get('.theme-selector button')
+  themeButton.element.focus()
+  expect(menu.element.open).toBe(true)
+  await themeButton.trigger('keydown', { key: 'Escape' })
+  expect(menu.element.open).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+})
+
+it('账号菜单在点击外部、焦点离开、切换路由或身份时收起', async () => {
+  const wrapper = render()
+  const menu = wrapper.get('.sidebar-account-menu')
+  const trigger = menu.get('summary')
+  await trigger.trigger('click')
+  await wrapper.get('.brand').trigger('pointerdown')
+  expect(menu.element.open).toBe(false)
+  await trigger.trigger('click')
+  trigger.element.focus()
+  wrapper.get('.brand').element.setAttribute('tabindex', '0')
+  wrapper.get('.brand').element.focus()
+  expect(menu.element.open).toBe(false)
+  await trigger.trigger('click')
+  Object.assign(currentRoute, { path: '/inventory', fullPath: '/inventory' })
+  await flushPromises()
+  expect(menu.element.open).toBe(false)
+  await trigger.trigger('click')
+  auth.accessToken = 'fixture'; auth.userInfo = { id: 'other-account' }
+  await flushPromises()
+  expect(menu.element.open).toBe(false)
+  const remove = vi.spyOn(document, 'removeEventListener')
+  wrapper.unmount()
+  expect(remove).toHaveBeenCalledWith('pointerdown', expect.any(Function))
+})
+
+it('桌面菜单退出仍先确认，取消后保留账号并回到菜单入口', async () => {
+  auth.accessToken = 'fixture'; auth.userInfo = { id: 'logout-menu' }
+  const wrapper = render()
+  const menu = wrapper.get('.sidebar-account-menu')
+  dialog.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+  await menu.get('summary').trigger('click')
+  await menu.get('.foot-logout').trigger('click')
+  await flushPromises()
+  expect(menu.element.open).toBe(false)
+  expect(document.activeElement).toBe(menu.get('summary').element)
+  expect(logout).not.toHaveBeenCalled()
+  await menu.get('summary').trigger('click')
+  await menu.get('.foot-logout').trigger('click')
+  await flushPromises()
+  expect(logout).toHaveBeenCalledWith('/login?loggedOut=1')
 })

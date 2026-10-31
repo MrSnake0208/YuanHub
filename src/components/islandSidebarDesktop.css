@@ -1,27 +1,38 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 1080px) {
+.island, .island:hover {
+  background: color-mix(in srgb, var(--cream) 72%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 4px 18px rgba(var(--theme-shadow-rgb, 73, 59, 44), .06);
+}
+.brand { border-bottom: 0; }
+.island-foot { border-top: 1px solid var(--line); }
+.nav a, .sidebar-more-trigger { border-radius: 9px; }
+.nav a::before { border-radius: 2px; }
+.nav a.active { background: color-mix(in srgb, var(--yellow) 55%, var(--surface)); font-weight: 600; }
 .admin-pins-label { display: block; flex-shrink: 0; padding: 12px 12px 4px; font-size: 12px; }
 .nav .calendar-nav-link { align-items: center; }
-.nav > a { flex-shrink: 0; min-height: 44px; }
-.nav svg { flex: none; }
+.nav > a { flex-shrink: 0; min-height: 38px; }
+.nav svg { flex: none; width: 18px; height: 18px; }
 .nav-group-label {
   display: flex;
   flex: none;
   align-items: center;
   gap: 10px;
-  margin: 16px 4px 5px;
+  margin: 18px 12px 4px;
   font: 600 11px/1.5 var(--font-b);
 }
 .nav-group-label::after { flex: 1; height: 1px; }
-.sidebar-more { flex: none; margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.sidebar-more { flex: none; margin-top: 8px; }
 .island-foot { position: relative; }
 .sidebar-more-trigger {
   display: flex;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   gap: 12px;
-  padding: 11px 12px;
-  font: 600 14px/1.3 var(--font-b);
+  padding: 9px 12px;
+  font: 600 14px/1.4 var(--font-b);
   list-style: none;
 }
 summary::-webkit-details-marker { display: none; }
@@ -36,11 +47,11 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
 .sidebar-more-panel > a,
 .sidebar-more-panel > button {
   display: flex;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  font: 700 13px/1.3 var(--font-b);
+  font: 700 13px/1.4 var(--font-b);
   text-align: left;
 }
 .sidebar-more-panel svg { flex: none; }
@@ -55,42 +66,69 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   font: 900 10px/1 var(--font-b);
 }
 .sidebar-utilities { display: flex; align-items: center; gap: 4px; }
+.sidebar-account-menu { flex: 1; min-width: 0; }
 .sidebar-utilities .sidebar-account {
   display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   min-height: 44px;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  line-height: 1.35;
+  padding: 5px 4px;
+  color: var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+  list-style: none;
 }
-.sidebar-account strong,
-.sidebar-account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-account strong { font-size: 12px; }
+.sidebar-account img { flex: none; border-radius: 50%; }
+.sidebar-account-copy { display: grid; flex: 1; min-width: 0; gap: 3px; line-height: 1.3; }
+.sidebar-account strong, .sidebar-account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-account strong { font-size: 12px; font-weight: 600; }
 .sidebar-account small { font-size: 10px; }
+.account-chevron { flex: none; }
+details[open] .account-chevron { transform: rotate(180deg); }
+.sidebar-account-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 260px;
+  max-height: calc(100dvh - 100px - var(--version-update-banner-height, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgba(var(--theme-shadow-rgb, 73, 59, 44), .12);
+}
+.island-foot .sidebar-account-panel > a, .sidebar-account-panel .foot-logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  font: 400 13px/1.4 var(--font-b);
+  text-decoration: none;
+  text-align: left;
+}
+.sidebar-account:hover, .sidebar-account-panel > a:hover, .sidebar-account-panel .foot-logout:hover { background: var(--theme-wash, rgba(73,59,44,.05)); }
+.sidebar-account-panel :is(a, button):focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
+.account-appearance-label { display: block; margin: 12px 8px 4px; font-size: 12px; color: var(--ink-60); }
+.sidebar-account-panel .foot-version { margin: 10px 8px 2px; }
 .sidebar-utilities .sidebar-notifications {
   position: relative;
   display: inline-flex;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 38px;
   flex: none;
   align-items: center;
   justify-content: center;
 }
 .sidebar-notifications .sidebar-badge { position: absolute; top: 0; right: 0; margin: 0; }
-.foot-logout {
-  display: inline-flex;
-  width: 44px;
-  min-height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin-left: 2px;
-  font-family: var(--font-b, inherit);
-  font-size: 12px;
-  font-weight: 700;
-}
+
 .sidebar-badge {
   display: inline-flex;
   align-items: center;
@@ -112,6 +150,10 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   .island { overflow-y: auto; overscroll-behavior: contain; }
   .brand, .nav { flex: none; }
   .nav { overflow: visible; }
+  .sidebar-account-panel { position: static; width: 100%; max-height: none; margin-top: 8px; }
+  .sidebar-utilities { align-items: flex-start; }
+  .sidebar-account-panel :deep(.theme-selector) { flex-wrap: wrap; }
+
 }
 .foot-version {
   display: block;

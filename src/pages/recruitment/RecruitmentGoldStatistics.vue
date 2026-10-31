@@ -64,12 +64,11 @@ summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); ou
   .account-statistics .gold-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @container (max-width: 520px) {
-  .account-statistics .gold-metrics > div, .account-statistics .gold-metrics > :slotted(.summary-item) { padding: 9px 7px; }
-  .account-statistics .metric-icon { position: static; display: block; margin-bottom: 3px; }
-  .account-statistics strong { font-size: 20px; }
-  .account-statistics dt { font-size: 11px; }
-}
-@container (max-width: 310px) {
-  .account-statistics .gold-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-statistics .gold-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+  .account-statistics .gold-metrics > div, .account-statistics .gold-metrics > :slotted(.summary-item) { padding: 10px 0; border-radius: 0; background: transparent; border-bottom: 1px solid var(--line); }
+  .account-statistics .gold-metrics > div:nth-last-child(-n + 2), .account-statistics .gold-metrics > :slotted(.summary-item:nth-last-child(-n + 2)) { border-bottom: 0; }
+  .account-statistics .metric-icon { position: static; display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .account-statistics strong { font-size: 22px; }
+  .account-statistics dt { font-size: 12px; }
 }
 </style>

@@ -14,12 +14,9 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
 
 @media (max-width: 767px) {
   .recruitment-main { background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 30%, transparent), color-mix(in srgb, var(--paper) 90%, transparent) 180px); }
-  .recruitment-main :deep(.compact-tool-header) { padding-block: 12px 4px; }
-  .recruitment-main :deep(.compact-tool-heading h1) { font-size: 26px; }
-  .archive-toggle { min-height: 32px; padding: 6px 4px; }
+  .archive-toggle { min-height: 32px; padding: 6px 4px; font-weight: 500; }
   .recruitment-content { padding-top: 0; }
   .recruitment-content :deep(.timeline-heading h2) { font-size: 22px; }
-  .recruitment-main :deep(.compact-tool-description) { color: var(--ink); }
 }
 
 @media (max-width: 1080px) {
@@ -44,8 +41,8 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
 }
 @media (max-width: 1080px) {
   @container (max-width: 520px) {
-    .summary .summary-icon { position: static; display: block; margin-bottom: 3px; }
-    .summary-number strong { font-size: 20px; }
-    .summary-item dt { font-size: 11px; }
+    .summary .summary-icon { position: static; display: inline-flex; vertical-align: middle; margin-right: 5px; }
+    .summary-number strong { font-size: 22px; }
+    .summary-item dt { font-size: 12px; }
   }
 }

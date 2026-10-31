@@ -56,6 +56,7 @@ it.each([320, 390, 430])('%ipx摘要保留真实活动/个人状态，完整信�
   expect(wrapper.classes()).not.toContain('calendar-mine-mobile')
   expect(wrapper.findAllComponents(ViewSwitcher)).toHaveLength(1)
   expect(wrapper.get('.calendar-public-view-target .calendar-view-switcher').exists()).toBe(true)
+  expect(wrapper.get('.calendar-mobile-context .account-switcher').exists()).toBe(true)
   expect(wrapper.find('.calendar-private-add').exists()).toBe(false)
   const card = wrapper.get('[data-event-id="activity"]')
   expect(card.classes()).toContain('calendar-public-summary')
@@ -170,6 +171,7 @@ it('摘要详情跨断点保留同一草稿与焦点，关闭遵守未保存确�
     expect(document.querySelector('.calendar-detail-dialog')).toBe(panel)
     expect(input.element.value).toBe('未保存公开详情草稿'); expect(document.activeElement).toBe(input.element)
     expect(wrapper.getComponent(ViewSwitcher).vm.$).toBe(switcher); expect(wrapper.getComponent(AccountSwitcher).vm.$).toBe(account)
+    expect(wrapper.get('.account-switcher').element.closest(width < 768 ? '.calendar-mobile-context' : '.calendar-subscription-toolbar')).not.toBeNull()
     expect(reads()).toEqual(count)
   }
   dialog.confirm.mockResolvedValue(false); await closeDetail()

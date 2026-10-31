@@ -19,7 +19,7 @@
           <button :id="prefix + '-new'" type="button" :disabled="saving || workspace.read_only || workspace.plans.length >= 50" @click="addPlan"><Plus :size="16" aria-hidden="true" />{{ workspace.plans.length ? '新建方案' : '新建储备方案' }}</button>
           <div v-if="workspace.plans.length || dirty" class="reserve-save">
             <button type="submit" class="reserve-primary" :disabled="saving || conflict || workspace.read_only"><Save :size="16" aria-hidden="true" />{{ saving ? '正在保存…' : '保存方案' }}</button>
-            <span role="status" :class="{ 'reserve-dirty': dirty }">{{ saving ? '正在同步到云端…' : workspace.read_only ? '只读云端方案' : dirty ? '有未保存的修改' : notice || '已与云端同步' }}</span>
+            <span role="status" :class="{ 'reserve-dirty': dirty }">{{ saving ? '正在同步到云端…' : workspace.read_only ? '只读云端方案' : dirty ? '有未保存的修改' : notice }}</span>
           </div>
           <button v-if="activePlan" :id="prefix + '-delete'" type="button" class="reserve-delete" :disabled="saving || workspace.read_only" @click="confirmDelete = activePlan.id"><Trash2 :size="16" aria-hidden="true" />删除方案</button>
         </div>
@@ -113,7 +113,7 @@
 
         <div v-if="calculation" class="reserve-save reserve-bottom-save">
           <button type="submit" class="reserve-primary" :disabled="saving || conflict || workspace.read_only"><Save :size="16" aria-hidden="true" />{{ saving ? '正在保存…' : '保存方案' }}</button>
-          <span>{{ dirty ? '有未保存的修改' : notice || '已与云端同步' }}</span>
+          <span>{{ dirty ? '有未保存的修改' : notice }}</span>
         </div>
       </form>
     </template>
@@ -259,7 +259,7 @@ async function save(expectedRevision = workspace.value.revision) {
   try {
     const response = await putOperatorReserveWorkspace(account, body)
     if (current !== session || account !== props.accountId) return
-    apply(accept(response, account)); notice.value = '储备方案已保存'
+    apply(accept(response, account))
   } catch (failure) {
     if (current !== session || account !== props.accountId) return
     if (failure.status === 409) { conflict.value = true; comparison.value = null }

@@ -712,21 +712,17 @@ it('工作区方向键不切换视图，即将上线仍只打开说明', async (
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招募统计', async () => {
+it('图鉴工具栏显示筛选结果，搜索不改变招募统计', async () => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator, { ...operator, id: 'other', name: '另一位密探' }] })
   operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
   const wrapper = renderPage()
   await flushPromises()
   const tools = wrapper.get('.catalog-tools')
-  const summary = wrapper.get('.roster-summary')
   expect(tools.getComponent({ name: 'OperatorFilterDossier' }).props('statusLabel')).toBe('招募状态')
-  expect(summary.get('.roster-owned').text()).toBe('已招募 1 / 2 位')
-  expect(summary.text()).toContain('50%')
   const counts = () => tools.findAll('[aria-label="按招募状态筛选密探图鉴"] small').map(item => item.text())
   expect(tools.get('.current-filter-result').text()).toBe('2 / 2 位')
   expect(counts()).toEqual(['2', '1', '1'])
   await tools.get('input[type="search"]').setValue('另一位')
-  expect(summary.get('.roster-owned').text()).toBe('已招募 1 / 2 位')
   expect(tools.get('.current-filter-result').text()).toBe('1 / 2 位')
   expect(counts()).toEqual(['2', '1', '1'])
   await tools.get('[aria-label="按招募状态筛选密探图鉴"] button:nth-child(2)').trigger('click')
@@ -735,22 +731,13 @@ it('图鉴工具头显示筛选结果与全量招募数量，搜索不改变招�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it.each(['2026-10-17T03:04:05Z', ''])('精简页头仍可从帮助查看更新时间及复制完整目录版本：%s', async version => {
+it.each(['2026-10-17T03:04:05Z', ''])('精简页头展示目录更新时间：%s', async version => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
-  const help = wrapper.get('.roster-header .compact-tool-help')
-  expect(wrapper.find('.compact-tool-help-content').exists()).toBe(false)
-  await help.trigger('click')
-  const content = wrapper.get('.compact-tool-help-content')
-  expect(content.text()).toContain('图鉴更新于 ' + (version || '本地兜底'))
-  expect(content.attributes('id')).toBe(help.attributes('aria-controls'))
-  await help.trigger('click')
-  expect(wrapper.find('.compact-tool-help-content').exists()).toBe(false)
-  const filters = wrapper.get('.catalog-tools')
-  await filters.get('.dossier-more').trigger('click')
-  expect(filters.get('.catalog-version-value').element.value).toBe(version || '本地兜底')
-  expect(filters.get('.catalog-version-value').attributes('readonly')).toBeDefined()
+  const updated = wrapper.get('.roster-header .tool-updated')
+  expect(updated.attributes('title')).toBe(version || '本地兜底')
+  expect(updated.text()).toBe('更新于 ' + (version ? version.split('T')[0] : '本地兜底'))
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
@@ -786,6 +773,11 @@ it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当�
   await share.trigger('click')
   expect(modal.isVisible()).toBe(true)
   expect(modal.text()).toContain('测试账号')
+  expect(modal.get('.box-image-share').isVisible()).toBe(false)
+  await modal.findAll('button').find(button => button.text() === '图片分享').trigger('click')
+  expect(modal.get('.box-image-share').isVisible()).toBe(true)
+  expect(modal.get('.box-image-share').text()).toContain('当前筛选（1 位）')
+  await modal.findAll('button').find(button => button.text() === '链接分享').trigger('click')
   expect(wrapper.get('#operator-account-workspace').isVisible()).toBe(false)
   expect(share.attributes('aria-expanded')).toBe('true')
   await modal.get('[aria-label="复制密探 BOX链接"]').trigger('click'); await flushPromises()
@@ -814,6 +806,30 @@ it('分享状态统一在顶部入口，弹窗保留复制且状态仍跟随当�
   expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
   expect(accountShareApi.regenerateAccountShare).not.toHaveBeenCalled()
   expect(accountShareApi.revokeAccountShare).not.toHaveBeenCalled()
+})
+
+it('BOX 图片只取已保存养成与双命盘，不带入卡片草稿或私人内容', async () => {
+  const wrapper = await openTrackingLedger({
+    ...snapshotCurrent(), remark: '私人备注',
+    disc_loadouts: [
+      { id: 'disc_1', name: '私人命盘名', discs: [{ ot_name: '已保存词条甲' }], target_discs: [{ ot_name: '私人目标' }] },
+      { id: 'disc_2', discs: [{ ot_name: '已保存词条乙' }] },
+    ],
+  })
+  await wrapper.get('input[aria-label="等级"]').setValue('60')
+  await wrapper.get('input[aria-label="测试密探攻击力"]').setValue('999')
+  await wrapper.get('.roster-share').trigger('click'); await flushPromises()
+  const share = wrapper.getComponent({ name: 'OperatorShareManager' })
+  expect(share.props('imageReady')).toBe(true)
+  expect(share.props('imageFilteredIds')).toEqual(['op'])
+  expect(share.props('imageEntries')).toEqual([expect.objectContaining({
+    id: 'op', level: 50, elite: 7, attack: '111', hp: '1,111',
+    loadouts: [[{ name: '已保存词条甲', color: '' }], [{ name: '已保存词条乙', color: '' }]],
+  })])
+  expect(JSON.stringify(share.props('imageEntries'))).not.toContain('私人')
+  expect(wrapper.get('input[aria-label="等级"]').element.value).toBe('60')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(accountShareApi.setAccountShareScope).not.toHaveBeenCalled()
 })
 
 it('JSON 仍从更多打开，分享弹窗不改写导入草稿或导出范围', async () => {
@@ -922,15 +938,13 @@ it('已有密探时隐藏首次引导，筛选无结果不会误报空档案', a
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('单角色入口复用图鉴并聚焦搜索，目录版本保持完整可复制原值', async () => {
-  const version = 'catalog-release-opaque-not-a-date-20261005-sha123456789'
-  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
+it('单角色入口复用图鉴并聚焦搜索', async () => {
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
   await wrapper.findAll('.operator-entry-guide button').find(button => button.text() === '从图鉴补录一位密探').trigger('click')
   await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.catalog-tools input[type="search"]').element)
-  expect(wrapper.get('[aria-label="目录版本，可选中复制"]').element.value).toBe(version)
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
@@ -1812,4 +1826,68 @@ it('管理员信赖权限撤销时卸载面板并返回图鉴', async () => {
   expect(wrapper.find('#operator-panel-relationships').exists()).toBe(false)
   expect(wrapper.get('#operator-tab-catalog').attributes('aria-selected')).toBe('true')
   expect(relationshipApi.patchRelationships).not.toHaveBeenCalled()
+})
+
+it('手机筛选弹层预览数量与应用后图鉴一致，取消标签恢复结果', async () => {
+  installViewport(390)
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator, prof: '阳' }, { ...operator, id: 'other', name: '另一位密探', prof: '阴' }] })
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
+  const wrapper = renderPage({ attachTo: document.body })
+  await flushPromises()
+  const tools = wrapper.get('.catalog-tools')
+  await tools.get('.catalog-filter-trigger').trigger('click')
+  const sheet = new DOMWrapper(document.querySelector('.catalog-filter-sheet'))
+  await sheet.findAll('.pf-prof-row button').find(button => button.text() === '阳').trigger('click')
+  expect(sheet.get('.apply').text()).toBe('查看 1 位密探')
+  expect(tools.get('.current-filter-result').text()).toBe('2 / 2 位')
+  await sheet.get('.apply').trigger('click')
+  expect(tools.get('.current-filter-result').text()).toBe('1 / 2 位')
+  await tools.get('[aria-label="取消属性 阳筛选"]').trigger('click')
+  expect(tools.get('.current-filter-result').text()).toBe('2 / 2 位')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('信赖与传闻不展示快捷预设或命盘，也不继承养成命盘筛选结果', async () => {
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
+  relationshipApi.getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: {} })
+  relationshipApi.getRelationships.mockResolvedValue({ account_id: 'acc', game: '如鸢', revision: 0, entries: {} })
+  const wrapper = renderPage()
+  await flushPromises()
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  const growth = wrapper.get('.growth-overview-filters').getComponent({ name: 'OperatorFilterDossier' })
+  growth.vm.$emit('update:discStatusFilter', 'perfect'); await flushPromises()
+  expect(growth.props('resultCount')).toBe(0)
+  await wrapper.get('#operator-tab-relationships').trigger('click'); await flushPromises()
+  const relationships = wrapper.get('#operator-panel-relationships')
+  expect(relationships.find('.pf-disc-row').exists()).toBe(false)
+  expect(relationships.find('.growth-filter-presets').exists()).toBe(false)
+  expect(relationships.find('.current-growth-filter').exists()).toBe(true)
+  expect(relationships.getComponent({ name: 'OperatorFilterDossier' }).props('resultCount')).toBe(1)
+  expect(relationships.getComponent({ name: 'OperatorFilterDossier' }).props('hasFilters')).toBe(false)
+  expect(growth.props('discStatusFilter')).toBe('perfect')
+})
+
+it('三页使用统一工具区，信赖弹层不含命盘或预设且确认不清空养成命盘选择', async () => {
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 1 } } }])
+  relationshipApi.getRelationshipCatalog.mockResolvedValue({ game: '如鸢', version: 'test', operators: {} })
+  relationshipApi.getRelationships.mockResolvedValue({ account_id: 'acc', game: '如鸢', revision: 0, entries: {} })
+  const wrapper = renderPage({ attachTo: document.body })
+  await flushPromises()
+  expect(wrapper.get('.catalog-tools .operator-mobile-toolbar').exists()).toBe(true)
+  await wrapper.get('#operator-tab-current').trigger('click'); await flushPromises()
+  const growth = wrapper.get('.growth-overview-filters').getComponent({ name: 'OperatorFilterDossier' })
+  expect(wrapper.get('.growth-overview-filters').classes()).toContain('operator-mobile-toolbar')
+  growth.vm.$emit('update:discStatusFilter', 'perfect'); await flushPromises()
+  await wrapper.get('#operator-tab-relationships').trigger('click'); await flushPromises()
+  const tools = wrapper.get('.relationship-filters')
+  expect(tools.classes()).toContain('operator-mobile-toolbar')
+  await tools.get('.catalog-filter-trigger').trigger('click'); await flushPromises()
+  const sheet = new DOMWrapper(document.querySelector('.catalog-filter-sheet'))
+  expect(sheet.find('.pf-disc-row').exists()).toBe(false)
+  expect(sheet.find('.growth-filter-presets').exists()).toBe(false)
+  expect(sheet.find('.current-growth-filter').exists()).toBe(true)
+  expect(sheet.get('.apply').text()).toBe('查看 1 位密探')
+  await sheet.get('.apply').trigger('click'); await flushPromises()
+  expect(growth.props('discStatusFilter')).toBe('perfect')
+  expect(tools.getComponent({ name: 'OperatorFilterDossier' }).props('resultCount')).toBe(1)
 })

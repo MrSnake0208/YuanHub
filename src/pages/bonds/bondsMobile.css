@@ -9,50 +9,61 @@
 }
 
 @media (max-width: 767px) {
-  .bonds-codex .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; gap: 8px; }
-  .bonds-codex .compact-tool-header > .wrap { padding-inline: 12px; }
-  .bonds-codex .compact-tool-header .compact-tool-heading h1 { font-size: 27px; }
-  .bonds-codex .compact-tool-header .compact-tool-actions { flex-wrap: wrap; gap: 5px; }
   .bonds-codex .bond-header-action { padding: 6px; font-size: 12px; }
   .bonds-codex .bond-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 0; }
   .bonds-codex .bond-summary > div { padding: 4px 12px; }
-  .bonds-codex .bond-summary .bond-collection-stat { grid-column: 1 / -1; padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .bonds-codex .bond-summary .bond-collection-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; grid-column: 1 / -1; padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .bond-collection-stat .bond-progress-line { grid-column: 1 / -1; }
+  .bonds-codex .bond-collection-stat strong { margin: 0; }
   .bonds-codex .bond-summary > div:nth-child(2) { border-left: 0; }
   .bonds-codex .bond-summary .bond-owned-stat { margin-inline: 0 8px; padding-inline: 12px; border-left: 1px solid var(--line); background: transparent; }
-  .bonds-codex .bond-summary strong { font-size: 22px; margin-block: 4px 7px; }
+  .bonds-codex .bond-summary strong { font-size: 20px; margin-block: 3px 5px; }
   .bonds-codex .bond-summary small { font-size: 11px; }
-  .bonds-codex .bond-tabs { gap: 8px; margin-top: 12px; }
-  .bonds-codex .bond-tabs button { padding: 9px; font-size: 14px; }
   .bonds-codex .bond-filters { padding: 12px; margin-bottom: 12px; }
   .bond-search-row { gap: 6px; }
   .bonds-codex .bond-search { padding-inline: 8px; gap: 6px; }
   .bonds-codex .bond-search input { font-size: 13px; }
   .bond-search-row > button { padding-inline: 7px; font-size: 12px; gap: 3px; }
-  .bond-common-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
-  .bond-common-filters > label { display: flex; justify-content: space-between; gap: 4px; }
-  .bond-common-filters > label > select { flex: 1; max-width: 110px; padding-inline: 5px; }
-  .bond-common-filters > .bond-check { grid-column: 1 / -1; justify-content: start; padding-top: 2px; }
-  .bond-agent-heading { display: grid; grid-template-columns: 10px auto minmax(0, 1fr) auto; gap: 7px; padding: 9px 10px; }
-  .bond-agent-heading .operator-avatar { grid-row: 1 / 3; grid-column: 2; width: 40px; height: 40px; }
-  .bond-agent-heading > h2 { font-size: 18px; margin: 0; grid-column: 3; }
-  .bond-agent-tags { grid-column: 3; gap: 4px; }
+  .bond-common-filters { display: flex; flex-wrap: wrap; gap: 10px; }
+  .bond-common-filters > .bond-check { flex-basis: 100%; }
+  .bond-view-options { margin-left: 0; }
+  .bond-agent-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; padding: 9px 10px; }
+  .bond-agent-heading .operator-avatar { grid-row: 1 / 3; grid-column: 1; width: 40px; height: 40px; }
+  .bond-agent-heading > h2 { font-size: 18px; margin: 0; grid-column: 2; }
+  .bond-agent-tags { grid-column: 2; gap: 4px; }
   .bond-agent-tags .bond-tag { font-size: 11px; padding: 1px 6px; }
-  .bond-expand-icon { grid-row: 1 / 3; }
-  .bond-agent-progress { width: auto; grid-column: 2 / 5; grid-row: 3; display: flex; align-items: center; flex-direction: row-reverse; gap: 10px; margin: 2px 0 0; font-size: 12px; }
+  .bond-agent-progress { min-width: 0; width: auto; grid-column: 1 / -1; grid-row: 3; display: flex; align-items: center; flex-direction: row-reverse; gap: 10px; margin: 2px 0 0; font-size: 12px; }
   .bond-agent-progress > span { flex: none; }
-  .bond-agent-progress progress { flex: 1; height: 5px; }
-  .bond-fold-icon { grid-row: 1 / 3; grid-column: 4; margin: 0; }
+  .bond-agent-progress progress { width: 0; flex: 1 1 0; height: 5px; }
+  .bond-fold-icon { grid-row: 1 / 3; grid-column: 3; margin: 0; }
   .bond-agent-pairs { padding: 0 7px 7px; }
   .bond-pair { padding: 8px 5px; }
   .bond-pair-heading { gap: 8px; }
   .bond-pair-heading > h3 { font-size: 14px; }
   .bond-effect { padding: 2px 7px; }
-  .bonds-codex .bond-condition { padding: 8px; gap: 5px 8px; }
+  .bonds-codex .bond-condition { grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; min-height: 40px; padding: 7px; gap: 4px; }
+  .bond-condition .bond-weather-icon { width: 22px; height: 22px; grid-column: 1; grid-row: 1; }
+  .bond-condition-copy { grid-column: 2; grid-row: 1; }
+  .has-compact-state .bond-mobile-state { display: block; grid-column: 3; grid-row: 1; color: var(--ink); }
+  .bonds-codex .has-compact-state .bond-condition-status { display: none; }
+  .bond-mobile-hint { display: block; margin: 0 12px 5px; font-size: 12px; color: var(--bond-muted); }
   .bond-secondary-panel { padding: 12px; }
 }
 @media (max-width: 380px) {
-  .bonds-codex .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'account' 'actions'; }
-  .bonds-codex .compact-tool-header .compact-tool-actions { justify-content: flex-start; }
   .bond-common-filters { gap: 8px; font-size: 12px; }
 }
-@media (min-width: 560px) and (max-width: 767px) { .bond-condition-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 560px) and (max-width: 767px) { .bond-condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+@media (max-width: 767px) {
+  .bonds-codex .bond-workspace { padding-top: 4px; }
+  .bond-find-choices .bond-choice-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bond-choice-options button { min-height: 34px; padding: 6px 4px; gap: 4px; }
+  .bond-choice-options button svg { flex: none; }
+  .bond-search-row { flex-wrap: wrap; }
+  .bonds-codex .bond-search { flex: 1 1 180px; }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  .is-saving .bond-mobile-state { animation: bond-saving-spin 1s linear infinite; }
+}
+@keyframes bond-saving-spin { to { transform: rotate(360deg); } }

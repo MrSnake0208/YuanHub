@@ -1,30 +1,21 @@
-/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+/* 手机礼包卡片保留标价和操作，压缩重复留白。 */
 @media (max-width: 767px) {
 .pkg-card{min-width:0;padding:12px;gap:8px}
-.pkg-top{flex-wrap:wrap}
-.pkg-top>div:first-child{flex:1 1 140px;min-width:0}
-.pkg-name,.pkg-tag{overflow-wrap:anywhere}
-.pkg-tag{white-space:normal}
-.pkg-price{max-width:100%;overflow-wrap:anywhere}
-.pkg-tags{gap:4px;margin-top:4px}
-.pkg-foot{flex-wrap:wrap;gap:8px;padding-top:8px}
-.stepper{flex-shrink:0;gap:2px;padding:2px}
-.stepper .qty{width:28px;font-size:14px}
-.pkg-card{padding:16px;gap:12px}
-.pkg-top{flex-wrap:nowrap}
-.pkg-top>div:first-child{flex:1 1 0;padding-right:0}
-.pkg-name{font-size:16px}
-.pkg-original{font-size:11px;margin-top:5px}
-.pkg-price{flex:0 1 auto;max-width:50%}
-.pkg-price .main{font-size:20px;line-height:1.3}
+.pkg-top{flex-wrap:nowrap;gap:10px}
+.pkg-top>div:first-child{flex:1 1 0;min-width:0;padding-right:0}
+.pkg-name{font-size:17px;overflow-wrap:anywhere}
+.pkg-original{font-size:12px;margin-top:4px}
+.pkg-price{flex:0 1 auto;max-width:50%;overflow-wrap:anywhere}
+.pkg-price .main{font-size:21px;line-height:1.3;font-variant-numeric:tabular-nums}
 .pkg-tags{margin-top:0;gap:6px}
-.pkg-tag{font-size:11px;padding:4px 7px}
-.pkg-foot{gap:8px;padding-top:12px}
-.pkg-personal-actions{flex:1 1 100%;font-size:12px;gap:6px}
+.pkg-tag{font-size:12px;padding:3px 7px;white-space:normal;overflow-wrap:anywhere}
+.pkg-foot{flex-wrap:wrap;gap:6px;padding-top:8px}
+.pkg-personal-actions{flex:1 1 100%;font-size:13px;gap:8px}
+.pkg-personal-actions label,.pkg-personal-actions button{min-height:32px}
 .pkg-personal-actions button{padding:4px 6px}
 .pkg-personal-actions input{width:16px;height:16px}
-.pkg-limit{font-size:11px}
-.stepper{gap:0;padding:2px}
-.stepper button{width:34px;height:34px;min-width:34px;min-height:34px}
+.pkg-limit{font-size:12px}
+.stepper{flex-shrink:0;gap:0;padding:2px}
+.stepper button{width:36px;height:36px;min-width:36px;min-height:36px}
 .stepper .qty{width:28px;font-size:14px}
 }

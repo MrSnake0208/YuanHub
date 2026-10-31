@@ -10,7 +10,7 @@
     </div>
     <button class="text-button guide-link" type="button" :disabled="!game || guideLoading" @click="downloadGuide">{{ guideLoading ? '正在获取规范…' : '获取 AI 导入规范' }}</button>
     <p v-if="readOnly" class="hint">当前账号暂不能导入，仍可导出。</p>
-    <p v-if="error && !dialogOpen" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p><p v-if="notice" role="status">{{ notice }}</p>
+    <p v-if="error && !dialogOpen" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p><p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <Teleport to="body">
       <div v-if="dialogOpen" class="exchange-mask" @click.self="closeDialog">
         <section ref="panel" class="exchange-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" tabindex="-1" :aria-busy="loading || committing">

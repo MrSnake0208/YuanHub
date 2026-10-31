@@ -53,15 +53,11 @@ button { touch-action: manipulation; }
 .workspace-link > svg { flex: none; }
 .outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; font-size: 10px; }
-.status-rule { display: flex; align-items: center; gap: 10px; padding: 16px 0 12px; font: 700 10px var(--font-s); letter-spacing: .16em; }
-.status-rule span { height: 1px; flex: 1; }
-.status-rule span:last-child { transform: scaleX(-1); }
-.status-rule i { font-style: normal; white-space: nowrap; }
 .planner-status .status-roster { display: block; container: growth-roster / inline-size; padding: 0; }
 .planner-status .status-metrics { margin-top: 0; }
 .planner-status .status-metric { padding: 17px; }
 .growth-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; margin-top: 0; }
-.growth-card { --growth-rarity-accent: var(--yellow-deep); --growth-rarity-border: var(--yellow-deep); --growth-rarity-start: var(--cream); position: relative; align-self: start; min-width: 0; padding: 16px; }
+.growth-card { --growth-rarity-accent: var(--yellow-deep); --growth-rarity-border: var(--yellow-deep); --growth-rarity-start: var(--cream); position: relative; align-self: start; min-width: 0; padding: 12px; }
 .growth-card.rarity-r5 { --growth-rarity-accent: var(--yellow-deep); }
 .growth-card.rarity-r4 { --growth-rarity-accent: #a996c5; --growth-rarity-border: color-mix(in srgb, var(--theme-purple-line, #a996c5) 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 8%, var(--cream)); }
 .growth-card.rarity-r3 { --growth-rarity-accent: #bfcee0; --growth-rarity-border: color-mix(in srgb, var(--theme-info-line, #bfcee0) 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 8%, var(--cream)); }
@@ -97,14 +93,14 @@ button { touch-action: manipulation; }
 .growth-progress-status { display: block; font: 600 11px/1.5 var(--font-b); }
 .growth-percent { flex: none; text-align: right; font: 850 20px var(--font-d); }
 .growth-percent small { margin-left: 2px; font: 700 10px var(--font-b); }
-.growth-progress-list { display: grid; gap: 14px; margin-top: 16px; }
+.growth-progress-list { display: grid; gap: 12px; margin-top: 12px; }
 .growth-progress-row { position: relative; display: grid; gap: 6px; }
-.growth-progress-label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; font-size: 12px; }
+.growth-progress-label { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 6px; font-size: 12px; }
 .growth-progress-label > span { font-weight: 800; }
 .growth-progress-side-label { flex: none; font: 500 12px/1.5 var(--font-b); white-space: nowrap; }
 .growth-progress-label b { font: 750 13px/1.5 var(--font-d); white-space: nowrap; }
 .progress-values { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-family: var(--font-d); }
-.growth-progress-label .progress-values { display: grid; width: 100%; justify-self: start; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1.2fr) 32px; gap: 4px; font: 750 13px/1.5 var(--font-d); }
+.growth-progress-label .progress-values { display: grid; width: 100%; justify-self: start; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(48px, 1.2fr) 58px; gap: 4px; font: 750 13px/1.5 var(--font-d); }
 .growth-progress-label .growth-value-divider { display: none; }
 .growth-progress-label .progress-values > b { white-space: normal; overflow-wrap: normal; }
 .growth-progress-label .tracker-editable { width: 100%; min-width: 0; min-height: 36px; padding: 3px; }
@@ -118,8 +114,9 @@ button { touch-action: manipulation; }
 .heart-progress-note { overflow: visible !important; line-height: 1.5; text-overflow: clip !important; white-space: normal !important; }
 .growth-track { height: 7px; overflow: hidden; }
 .growth-track i { display: block; height: 100%; }
-.growth-quick-action { display: inline-grid; width: 32px; min-width: 32px; height: 32px; min-height: 32px; flex: none; place-items: center; padding: 0; }
-.growth-quick-action svg { display: block; }
+.growth-quick-action { display: inline-flex; width: 58px; min-width: 0; min-height: 32px; align-items: center; justify-content: center; gap: 3px; padding: 4px; font: 700 11px/1.4 var(--font-b); }
+.growth-quick-action svg { display: none; }
+.growth-quick-label { overflow-wrap: anywhere; }
 .tracker-star-anchor b { white-space: normal; overflow-wrap: anywhere; }
 .growth-action-notice { margin: 7px 0 0; font-size: 12px; font-weight: 750; line-height: 1.5; }
 .growth-materials { margin-top: 6px; padding-top: 0; }
@@ -260,7 +257,6 @@ button { touch-action: manipulation; }
 @media (max-width: 640px) {
   .status-main { padding: 14px 0; }
   .status-title h2 { font-size: 22px; }
-  .status-rule { padding-right: 0; padding-left: 0; }
   .planner-status .status-roster { padding-right: 0; padding-left: 0; }
   .status-metric { min-height: 108px; padding: 15px 13px; }
   .status-metric strong, .status-metric-primary strong { font-size: 24px; }
@@ -462,7 +458,6 @@ button { touch-action: manipulation; }
   .planner-status .status-metric { min-height: 84px; padding: 10px; }
   .status-metric strong { margin-top: 6px; line-height: 1.2; }
   .metric-explanation { margin-top: 4px; }
-  .status-rule { padding: 4px 0; }
 }
 
 /* 规划条件首页仅承载策略和摘要；详细字段在按需面板编辑。 */
@@ -527,5 +522,54 @@ button { touch-action: manipulation; }
 @media (max-width: 420px) {
   .spend-channel-grid { grid-template-columns: minmax(0, 1fr); }
   .spend-panel-heading h4 { flex-basis: 50%; }
+}
+
+/* 培养清单与日程保持连续文档流，仅收紧展示密度。 */
+.roster-title { margin: 12px 0 0; font: 850 21px/1.4 var(--font-s); color: var(--ink); }
+.material-readiness-track { height: 6px; margin-top: 10px; }
+.planner-heading > .planner-heading-actions { gap: 6px; }
+.planner-heading-actions > button { min-height: 34px; padding: 6px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.planner-status .status-metrics { gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.planner-status .status-metric { min-height: 78px; padding: 12px; }
+.status-metric:nth-child(2) { background: var(--cream); }
+.growth-card { border-top-width: 2px; border-radius: 12px; background: var(--surface); box-shadow: none; }
+.growth-card-head { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.growth-progress-row + .growth-progress-row { padding-top: 10px; border-top: 1px solid var(--line); }
+.growth-progress-label .tracker-editable { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 16px; }
+.growth-track { height: 5px; }
+.growth-track, .growth-progress-row > small { margin-left: 34px; }
+.growth-materials { margin-top: 2px; }
+.day-plan { gap: 12px; border-radius: 12px; }
+.day-plan .card-heading { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.day-plan-actions { gap: 6px; }
+.day-plan-actions .status-action { min-height: 34px; padding: 6px 8px; }
+.day-totals { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0; }
+.day-totals > div { padding: 8px 3px; }
+.day-totals dt { font-size: 11px; white-space: normal; }
+.day-totals dd { font-size: 18px; white-space: normal; }
+.schedule-update { gap: 10px; padding: 12px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; }
+.schedule-update > button { align-self: flex-end; min-height: 34px; }
+.planner-display :deep(.cultivation-progress) { padding: 12px; border-radius: 12px; }
+.planner-display :deep(.progress-heading) { margin-bottom: 6px; gap: 6px 12px; }
+.planner-display :deep(.progress-heading h3) { font-size: 18px; }
+.planner-display :deep(.resource) { padding-block: 8px; }
+.status-title :deep(.plan-identity) { gap: 4px 8px; }
+.status-title :deep(.plan-management-actions) { gap: 4px; }
+.status-title :deep(.plan-management-actions > button) { min-height: 32px; padding-inline: 4px; }
+.status-title :deep(.plan-member-add) { min-height: 40px; }
+.status-actions .status-action { min-height: 38px; }
+@media (max-width: 640px) {
+  .planner-heading h2 { font-size: 22px; }
+  .planner-heading > .planner-heading-actions { display: grid; grid-template-columns: auto auto auto; justify-content: start; }
+  .planner-status { gap: 10px; }
+  .planner-independent-note { font-size: 11px; }
+}
+@container growth-roster (max-width: 300px) {
+  .growth-progress-label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .growth-track, .growth-progress-row > small { margin-left: 0; }
+}
+@media (max-width: 360px) {
+  .planner-heading > .planner-heading-actions { display: flex; flex-wrap: wrap; }
+  .day-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 }

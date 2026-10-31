@@ -107,7 +107,7 @@ it('游客保存成功和本地存储失败均有页内反馈', async () => {
   expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('保存失败')
 })
 
-it('桌面和手机导出共用流程，完成和失败均反馈', async () => {
+it('清单导出完成和失败均反馈', async () => {
   const wrapper = render()
   await addFirst(wrapper)
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
@@ -118,7 +118,7 @@ it('桌面和手机导出共用流程，完成和失败均反馈', async () => {
   expect(click).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.cart-operation-message[role="status"]').text()).toContain('浏览器将开始下载')
   html2canvas.mockRejectedValueOnce(new Error('screenshot'))
-  await wrapper.get('.cart-mbar .mbtn.accent').trigger('click')
+  await wrapper.get('.cart-actions .receipt-export').trigger('click')
   await flushPromises()
   expect(html2canvas).toHaveBeenCalledTimes(2)
   expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('导出图片失败')
@@ -154,4 +154,45 @@ it('修正汇率时保持设置展开，不打断连续输入', async () => {
   await input.setValue('7.2')
   expect(settings.element.open).toBe(true)
   expect(wrapper.find('#cart-rate-error').exists()).toBe(false)
+})
+
+
+it('计价折叠摘要跟随设置，收起后错误与保存提醒仍可见', async () => {
+  const wrapper = render()
+  await flushPromises()
+  const settings = wrapper.get('.cart-pricing-toolbar')
+  const summary = wrapper.get('.cart-pricing-summary')
+  expect(settings.element.open).toBe(false)
+  expect(summary.text()).toContain('人民币 CNY · 不打折')
+  settings.element.open = true
+  await wrapper.get('[aria-label="支付原价的百分比"]').setValue('95')
+  settings.element.open = false
+  expect(summary.text()).toContain('支付原价 95%')
+  await wrapper.get('[aria-label="支付原价的百分比"]').setValue('')
+  expect(summary.text()).toContain('支付比例待修正')
+  expect(wrapper.get('.cart-rate-error').isVisible()).toBe(true)
+  expect(wrapper.get('.cart-draft-hint').isVisible()).toBe(true)
+  await wrapper.get('[aria-label="支付原价的百分比"]').setValue('100')
+  await wrapper.get('[aria-label="预算显示币种"]').setValue('USD')
+  expect(summary.text()).toContain('USD · 不打折')
+  expect(settings.element.open).toBe(false)
+})
+
+it('筛选入口计入来源和已选条件，清除筛选保留预算', async () => {
+  const wrapper = render()
+  await flushPromises()
+  await addFirst(wrapper)
+  const total = wrapper.get('.cart-mbar .sum .v').text()
+  const filters = wrapper.get('.cart-more-filters')
+  expect(filters.element.open).toBe(false)
+  filters.element.open = true
+  await filters.get('[aria-label="礼包来源"]').setValue('true')
+  await filters.get('.cart-selected input').setValue(true)
+  filters.element.open = false
+  expect(filters.get('summary').text()).toContain('筛选 · 2')
+  expect(wrapper.findAll('.pkg-card')).toHaveLength(0)
+  await wrapper.get('.cart-filter-empty button').trigger('click')
+  expect(filters.get('summary').text()).toBe('筛选')
+  expect(wrapper.findAll('.pkg-card').length).toBeGreaterThan(0)
+  expect(wrapper.get('.cart-mbar .sum .v').text()).toBe(total)
 })

@@ -22,7 +22,7 @@
             <details><summary>查看逐条核对结果</summary><ol class="achievement-import-items"><li v-for="item in preview.items" :key="item.index">第 {{ item.index + 1 }} 条 · {{ item.achievement_id || '无 ID' }} · {{ OUTCOMES[item.outcome] }}<span v-if="item.message">：{{ item.message }}</span></li></ol></details>
           </section>
           <p v-if="error" ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
-          <p v-if="notice" role="status">{{ notice }}</p>
+          <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
         </div>
         <footer><button type="button" :disabled="working" @click="close">关闭</button><button type="button" :disabled="!canConfirm" @click="commit">{{ working ? '正在处理…' : '确认导入到此账号' }}</button></footer>
       </section>

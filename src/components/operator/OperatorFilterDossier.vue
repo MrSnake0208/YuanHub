@@ -35,6 +35,7 @@
         <button v-if="compact && !forceExpanded" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">
           更多筛选<template v-if="advancedFilterCount != null"><span v-if="advancedFilterCount"> · {{ advancedFilterCount }}</span></template><template v-else-if="hasFilters"> · 已启用</template>
         </button>
+        <slot name="mobile-filters" />
         <button
           v-if="hasFilters"
           class="current-filter-reset"
@@ -114,7 +115,8 @@
           </div>
         </div>
 
-        <OperatorGrowthFilters v-if="showGrowthFilters && compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+        <OperatorGrowthFilters v-if="showGrowthFilters && compact" :show-presets="showGrowthPresets" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+        <slot name="extra-footer" />
       </div>
 
       <div class="pf-row pf-status-row">
@@ -159,7 +161,7 @@
         </div>
       </div>
 
-      <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+      <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :show-presets="showGrowthPresets" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
     </div>
 
     <slot name="footer" />
@@ -204,6 +206,7 @@ const props = defineProps({
   advancedFilterCount: { type: Number, default: null },
   growthFilters: { type: Object, default: function () { return {} } },
   showGrowthFilters: Boolean,
+  showGrowthPresets: { type: Boolean, default: true },
   showDiscFilter: Boolean,
   discStatusFilter: { type: String, default: 'all' },
   showAwakenedFilter: Boolean,

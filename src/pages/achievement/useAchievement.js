@@ -17,10 +17,10 @@ export function useAchievement() {
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy)
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const entries = computed(() => state.catalog?.entries || [])
-  const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false, metric: '' })
+  const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false, metric: '', completedLast: false })
   const page = ref(0), batchMode = ref(false), selected = ref([])
   const filtered = computed(() => filterAchievements(entries.value, records.value.map(record =>
-    filters.status === 'incomplete' && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters, state.catalog?.categories || [], state.catalog?.legacy_rewards || {}))
+    (filters.status === 'incomplete' || (!filters.status && filters.completedLast)) && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters, state.catalog?.categories || [], state.catalog?.legacy_rewards || {}))
   const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
   const summary = computed(() => summarizeAchievements(entries.value, records.value))
   const recordFor = id => records.value.find(record => record.achievement_id === id) || emptyRecord(id)
@@ -85,11 +85,11 @@ export function useAchievement() {
       if (result.account_id !== token.accountId || result.game !== token.game) throw new Error('档案归属不一致，请重新读取账号。')
       clearRemoval()
       state.savedIds = patches.map(patch => patch.achievement_id)
-      state.pendingRemoval = filters.status === 'incomplete' ? completing : []
+      state.pendingRemoval = filters.status === 'incomplete' || (!filters.status && filters.completedLast) ? completing : []
       removalTimer = setTimeout(clearRemoval, 6000)
       state.archive = result
       state.undo = undoing ? null : { patches: before, revision: result.revision, token }
-      state.notice = undoing ? '已撤销，恢复到本次操作之前。' : patches.length > 1 ? `已保存 ${patches.length} 项到当前账号。` : '已保存到当前账号。'
+      state.notice = undoing ? '已撤销，恢复到本次操作之前。' : ''
       return true
     } catch (error) {
       if (matches(token)) {

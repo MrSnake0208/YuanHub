@@ -14,7 +14,7 @@
       <div v-if="open" class="account-switch-mask" :class="{ 'is-desktop': desktop }" :style="desktop ? undefined : sheetViewport" @click.self="close">
         <section :id="panelId" ref="panel" class="account-switch-panel" :style="desktop ? position : sheetSize"
           role="dialog" aria-modal="true" :aria-labelledby="panelId + '-title'" tabindex="-1">
-          <header><h2 :id="panelId + '-title'">{{ accounts.length > 1 ? '切换游戏账号' : '游戏账号' }}</h2><button type="button" class="switch-close" aria-label="关闭游戏账号切换器" @click="close"><X :size="18" aria-hidden="true" /></button></header>
+          <header><h2 :id="panelId + '-title'">{{ desktop ? (accounts.length > 1 ? '切换游戏账号' : '游戏账号') : '切换 BOX' }}</h2><button type="button" class="switch-close" aria-label="关闭游戏账号切换器" @click="close"><X :size="18" aria-hidden="true" /></button></header>
           <label v-if="accounts.length > 8" class="switch-search">搜索游戏或账号<input ref="searchInput" v-model="query" type="search" autocomplete="off" placeholder="输入游戏或账号名" /></label>
           <div class="switch-list" @keydown="moveFocus">
             <section v-for="group in groups" :key="group.game" :aria-label="group.game">
@@ -22,12 +22,12 @@
               <button v-for="account in group.accounts" :key="account.id" type="button" class="switch-option"
                 :data-account-id="account.id" :aria-pressed="account.id === accountId" :aria-label="group.game + ' · ' + account.name + (account.id === accountId ? '，当前账号' : '')"
                 :title="group.game + ' · ' + account.name" @click="select(account.id)">
-                <Check :size="16" aria-hidden="true" :class="{ 'is-hidden': account.id !== accountId }" /><span>{{ account.name }}</span><small v-if="account.id === accountId">当前</small>
+                <Check :size="16" aria-hidden="true" :class="{ 'is-hidden': account.id !== accountId }" /><span class="switch-option-copy"><span>{{ account.name }}</span><span class="switch-option-game">{{ group.game }}</span></span><small v-if="account.id === accountId">当前</small>
               </button>
             </section>
             <p v-if="!groups.length">{{ accounts.length ? '没有匹配的游戏账号' : '还没有游戏账号，可以在这里新建。' }}</p>
           </div>
-          <footer><button type="button" @click="openManager('create')"><Plus :size="16" aria-hidden="true" />新建游戏账号</button><button type="button" @click="openManager('list')"><Settings :size="16" aria-hidden="true" />管理游戏账号</button></footer>
+          <footer><button type="button" @click="openManager('create')"><Plus :size="16" aria-hidden="true" />{{ desktop ? '新建游戏账号' : '新建 BOX' }}</button><button type="button" @click="openManager('list')"><Settings :size="16" aria-hidden="true" />{{ desktop ? '管理游戏账号' : '管理 BOX' }}</button></footer>
         </section>
       </div>
     </Teleport>
@@ -168,6 +168,7 @@ h2 { color: var(--theme-strong-text, var(--tea)); }
 h3 { color: var(--ink-60); }
 .switch-option { border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .switch-option small { color: var(--theme-strong-text, var(--tea)); }
+.switch-option-game { display: none; }
 .switch-option[aria-pressed="true"] { background: color-mix(in srgb, var(--yellow) 28%, var(--surface)); }
 .switch-option:hover, footer button:hover { background: var(--cream); }
 footer { border-top: 1px solid var(--line); }
