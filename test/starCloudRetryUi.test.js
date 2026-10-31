@@ -4,19 +4,17 @@ import { readFileSync } from 'node:fs'
 
 const page = readFileSync(new URL('../src/pages/star/index.vue', import.meta.url), 'utf8')
 
-test('star page exposes retry only as an inline recovery action', function () {
-  assert.match(page, /v-if="cloudNeedsRetry \|\| cloudRetryBusy \|\| \(cloudSyncError && productReady && accountId\)"/)
-  assert.match(page, /class="star-sync-retry"/)
-  assert.match(page, /:disabled="cloudRetryBusy"/)
-  assert.match(page, /@click="retryStarCloud"/)
-  assert.match(page, /cloudRetryBusy \? '重试中…' : '重试'/)
-  assert.match(page, /await starCloud\.retry\(\)/)
-  assert.match(page, /else if \(handle && selectedHostAccount\(\)\) await syncHostAccount\(\)/)
-  assert.match(page, /cloudNeedsRetry\.value = Boolean\(state\.recoveryRequired\)/)
-  assert.match(page, /if \(state\?\.ready && !state\.error\) await starCloud\.retry\(\)/)
-  assert.match(page, /cloudSyncError\.value = "云端结果尚未确认，请保留本机数据并重试核对。"/)
-  assert.match(page, /\.star-sync-retry \{[\s\S]*?background: transparent/)
+test('star page uses one direct recovery action and preserves capture-specific retries', function () {
+  assert.equal((page.match(/@click="recoverStarCloud"/g) || []).length, 1)
+  assert.match(page, /class="star-sync-retry star-sync-cloud"/)
+  assert.match(page, /:aria-busy="cloudRecoveryBusy"/)
+  assert.match(page, /恢复中…/)
+  assert.match(page, /恢复云端/)
+  assert.match(page, /重新加载/)
+  assert.match(page, /await starCloud\.discardAndReload\(\{ isCurrent \}\)/)
+  assert.match(page, /await syncHostAccount\(\{ readOnly: true \}\)/)
+  assert.doesNotMatch(page, /dialog\.confirm|window\.confirm|starCloud\.retry\(|retryStarCloud|discardStarCloud|star-sync-discard/)
+  assert.match(page, /@click="retryCaptureConsume"/)
+  assert.match(page, /@click="retryCaptureImport"/)
   assert.match(page, /\.star-sync-retry:focus-visible/)
-  // Privacy/help copy may mention automatic synchronization; forbid a manual action.
-  assert.doesNotMatch(page, /<button\b[^>]*>(?:(?!<\/button>)[\s\S])*同步背包/)
 })
