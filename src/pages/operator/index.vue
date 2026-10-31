@@ -526,6 +526,7 @@
             <div class="catalog-tools">
               <OperatorFilterDossier
                 ref="catalogFilters"
+                class="operator-mobile-toolbar is-simple-toolbar"
                 compact
                 searchable
                 context-label="密探图鉴"
@@ -887,7 +888,7 @@
 
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
-              class="growth-overview-filters"
+              class="growth-overview-filters operator-mobile-toolbar"
               compact
               searchable
               v-model:search-query="currentSearch"
@@ -953,7 +954,7 @@
                     :size="13"
                     :fill="favoriteFirst ? 'currentColor' : 'none'"
                     aria-hidden="true"
-                  />特别关注优先
+                  />特别关注<span class="current-favorite-suffix">优先</span>
                 </button>
                 <button v-if="auth.isLoggedIn" type="button" class="current-batch-toggle current-organization-toggle"
                   :class="{ on: organizationManager?.open }" :aria-expanded="Boolean(organizationManager?.open)" :aria-controls="organizationManager?.panelId"
@@ -2293,24 +2294,30 @@
           <div v-if="canUseRelationships && !visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
           <div v-if="canUseRelationships && visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
             v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
-            <OperatorFilterDossier compact searchable context-label="信赖与传闻"
-              v-model:search-query="currentSearch" :result-count="filteredCurrent.length" :total-count="ownedCurrentEntries.length"
+            <OperatorFilterDossier compact searchable context-label="信赖与传闻" class="operator-mobile-toolbar is-simple-toolbar relationship-filters"
+              v-model:search-query="currentSearch" :result-count="filteredRelationships.length" :total-count="ownedCurrentEntries.length"
               :rarity-options="rarityOptions" :prof-options="profOptions" :sub-prof-options="subProfOptions"
               :status-options="workbenchStatusOptions" :status-counts="currentStatusCounts" :tag-options="organizationTagOptions"
               v-model:tag-filter="organizationTagFilter" v-model:rarity-filter="rarityFilter" v-model:prof-filter="profFilter"
               v-model:sub-prof-filter="subProfFilter" :status-filter="workbenchStatusFilter" :prof-icon="profIcon"
-              :has-filters="hasCurrentFilters" v-model:growth-filters="growthFilters" v-model:disc-status-filter="discStatusFilter"
-              show-disc-filter show-growth-filters @update:status-filter="setWorkbenchStatusFilter" @reset="resetCurrentFilters">
+              :has-filters="hasRelationshipFilters" v-model:growth-filters="growthFilters"
+              show-growth-filters :show-growth-presets="false" @update:status-filter="setWorkbenchStatusFilter" @reset="resetCurrentFilters">
               <template #primary-tool>
                 <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
               </template>
               <template v-if="upgradeReadyFilter" #extra-filters>
                 <button type="button" class="btn ghost" @click="upgradeReadyFilter = ''">{{ upgradeReadyFilter === 'huaji' ? '可提升化极' : '等级/修为可提升' }} · 取消筛选</button>
               </template>
+              <template #mobile-filters>
+                <CatalogFilterSheet v-model="relationshipFilterState" context-label="信赖与传闻" :show-growth-presets="false"
+                  :context-key="`${accountId}:${gameFilter}:${activeTab}`" :prof-options="profOptions"
+                  :sub-prof-options="subProfOptions" :rarity-options="rarityOptions" :tag-options="organizationTagOptions"
+                  :total-count="ownedCurrentEntries.length" :count-results="countCurrentResults" :reset-filters="emptyCurrentFilterState" />
+              </template>
             </OperatorFilterDossier>
             <OperatorRelationships ref="relationshipWorkspace" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
               :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
-              :operators="filteredCurrent.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" :owned-count="ownedCurrentEntries.length"
+              :operators="filteredRelationships.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" :owned-count="ownedCurrentEntries.length"
               :prof-icon="profIcon" :favorite-ids="favoriteAgentIds" :favorite-busy-ids="favoriteBusyIds" :favorite-loading="favoriteLoading" :favorite-error="favoriteError" @favorite="toggleAgentFavorite" />
           </div>
           <div
@@ -5265,7 +5272,14 @@ function currentResults(filters) {
     matchesDiscStatus(entry.discLoadouts, filters.discStatusFilter));
 }
 function countCurrentResults(filters) { return currentResults(filters).length; }
+const relationshipFilterState = computed({
+  get: () => ({ ...currentFilterState.value, discStatusFilter: 'all' }),
+  set: value => { currentFilterState.value = { ...value, discStatusFilter: discStatusFilter.value }; },
+});
 const filteredCurrent = computed(() => currentResults(currentFilterState.value)
+  .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
+    : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction)));
+const filteredRelationships = computed(() => currentResults({ ...currentFilterState.value, discStatusFilter: 'all' })
   .sort(currentSort.value.mode === 'default' ? compareCurrentEntries
     : (a, b) => compareOperatorEntries(a, b, currentSort.value.mode, currentSort.value.direction)));
 
@@ -5358,6 +5372,11 @@ const hasGrowthDrafts = computed(function () {
 const hasCurrentFilters = computed(function () {
   return (
     discStatusFilter.value !== "all" ||
+    hasRelationshipFilters.value
+  );
+});
+const hasRelationshipFilters = computed(function () {
+  return (
     Boolean(currentSearch.value.trim()) ||
     Boolean(organizationTagFilter.value) ||
     rarityFilter.value !== "all" ||

@@ -1,6 +1,6 @@
 <template>
   <div class="operator-growth-filters">
-    <div class="growth-filter-presets" role="group" aria-label="养成快捷预设">
+    <div v-if="showPresets" class="growth-filter-presets" role="group" aria-label="养成快捷预设">
       <span>快捷预设</span>
       <button
         v-for="preset in presets"
@@ -44,7 +44,7 @@ import { computed } from 'vue'
 import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from '../../utils/operatorGrowthRules.js'
 import { hasActiveOperatorGrowthFilters } from '../../utils/operatorFilters.js'
 
-const props = defineProps({ modelValue: { type: Object, required: true } })
+const props = defineProps({ modelValue: { type: Object, required: true }, showPresets: { type: Boolean, default: true } })
 const emit = defineEmits(['update:modelValue'])
 
 const ranges = [

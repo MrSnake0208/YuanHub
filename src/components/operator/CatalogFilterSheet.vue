@@ -16,7 +16,7 @@
             <button type="button" aria-label="关闭筛选，不应用修改" @click="open = false"><X :size="20" aria-hidden="true" /></button>
           </header>
           <div ref="scrollBody" class="catalog-filter-body">
-            <OperatorFilterDossier compact force-expanded show-growth-filters :context-label="contextLabel"
+            <OperatorFilterDossier compact force-expanded show-growth-filters :context-label="contextLabel" :show-growth-presets="showGrowthPresets"
               :show-disc-filter="showDiscFilter" :tag-options="tagOptions" :total-count="totalCount"
               v-model:disc-status-filter="draft.discStatusFilter" v-model:tag-filter="draft.tagFilter"
               :prof-options="profOptions" :sub-prof-options="subProfOptions" :rarity-options="rarityOptions"
@@ -50,6 +50,7 @@ const props = defineProps({
   contextKey: { type: String, default: '' },
   contextLabel: { type: String, default: '密探图鉴' },
   showDiscFilter: Boolean,
+  showGrowthPresets: { type: Boolean, default: true },
   tagOptions: { type: Array, default: () => [] },
   totalCount: { type: Number, default: 0 },
   resetFilters: { type: Function, default: null },
@@ -73,6 +74,7 @@ const chips = computed(() => {
   }
   if (props.showDiscFilter && value.discStatusFilter !== 'all') result.push({ key: 'discStatusFilter', label: DISC_FILTER_OPTIONS.find(o => o.value === value.discStatusFilter)?.label || '命盘' })
   if (value.tagFilter) result.push({ key: 'tagFilter', label: props.tagOptions.find(o => o.value === value.tagFilter)?.label || '标签' })
+  if (value.upgradeReadyFilter) result.push({ key: 'upgradeReadyFilter', label: value.upgradeReadyFilter === 'huaji' ? '可提升化极' : '等级/修为可提升' })
   const awakened = value.growthFilters.awakened
   if (awakened) result.push({ key: 'awakened', growth: true, label: { true: '已觉醒', false: '未觉醒', unknown: '觉醒待确认' }[awakened] })
   return result
@@ -90,7 +92,7 @@ function resetDraft() {
 function remove(chip) {
   const value = copy(props.modelValue)
   if (chip.growth) value.growthFilters[chip.key === 'awakened' ? chip.key : chip.key + 'Enabled'] = chip.key === 'awakened' ? '' : false
-  else value[chip.key] = chip.key === 'tagFilter' ? '' : 'all'
+  else value[chip.key] = ['tagFilter', 'upgradeReadyFilter'].includes(chip.key) ? '' : 'all'
   emit('update:modelValue', value)
 }
 watch(() => props.contextKey, () => { open.value = false })

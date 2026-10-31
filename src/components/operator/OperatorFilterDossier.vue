@@ -115,7 +115,7 @@
           </div>
         </div>
 
-        <OperatorGrowthFilters v-if="showGrowthFilters && compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+        <OperatorGrowthFilters v-if="showGrowthFilters && compact" :show-presets="showGrowthPresets" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
         <slot name="extra-footer" />
       </div>
 
@@ -161,7 +161,7 @@
         </div>
       </div>
 
-      <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+      <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :show-presets="showGrowthPresets" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
     </div>
 
     <slot name="footer" />
@@ -206,6 +206,7 @@ const props = defineProps({
   advancedFilterCount: { type: Number, default: null },
   growthFilters: { type: Object, default: function () { return {} } },
   showGrowthFilters: Boolean,
+  showGrowthPresets: { type: Boolean, default: true },
   showDiscFilter: Boolean,
   discStatusFilter: { type: String, default: 'all' },
   showAwakenedFilter: Boolean,

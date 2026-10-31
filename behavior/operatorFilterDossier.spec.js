@@ -220,3 +220,12 @@ it('自定义标签复用原筛选行与选中语义；没有标签时不增加�
   expect(wrapper.emitted('update:statusFilter')).toBeUndefined()
   wrapper.unmount()
 })
+
+it.each([true, false])('关闭快捷预设仍保留自定义范围，默认消费者不受影响（compact=%s）', async compact => {
+  const wrapper = mount(OperatorFilterDossier, { props: { compact, forceExpanded: true, showGrowthFilters: true, showGrowthPresets: false, growthFilters: { ...empty } } })
+  expect(wrapper.find('.growth-filter-presets').exists()).toBe(false)
+  expect(wrapper.find('.current-growth-filter').exists()).toBe(true)
+  await wrapper.setProps({ showGrowthPresets: true })
+  expect(wrapper.find('.growth-filter-presets').exists()).toBe(true)
+  wrapper.unmount()
+})

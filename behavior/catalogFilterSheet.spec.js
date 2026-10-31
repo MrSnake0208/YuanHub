@@ -94,3 +94,13 @@ it('养成弹层支持命盘与标签草稿，取消标签及重置沿用养成�
   button('查看 3 位密探').click()
   expect(wrapper.emitted('update:modelValue')[1][0]).toEqual(defaults)
 })
+
+it('继承的可提升条件仍可通过标签取消，不影响其他筛选', async () => {
+  setup()
+  await wrapper.setProps({ modelValue: { ...original(), upgradeReadyFilter: 'huaji' } })
+  await wrapper.get('[aria-label="取消可提升化极筛选"]').trigger('click')
+  const value = wrapper.emitted('update:modelValue')[0][0]
+  expect(value.upgradeReadyFilter).toBe('')
+  expect(value.growthFilters).toEqual(original().growthFilters)
+  expect(value.manifestFilter).toBe('owned')
+})
