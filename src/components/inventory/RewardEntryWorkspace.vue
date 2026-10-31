@@ -6,13 +6,15 @@
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
           <label>
-            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 && !manual.presets.some(entry => entry.id === preset.id) || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" />
+            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 && !manual.presets.some(entry => entry.id === preset.id) || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady && !mailboxMonthlyCoins || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" />
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
-          <button type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
+          <small v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins" class="shortcut-note">按邮件设置</small>
+          <button v-else type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
       </fieldset>
+      <p v-if="mailboxMonthlyCoins" class="shortcut-note">记录月卡领取会扣除当天邮件；调整奖励请前往库存的邮件管理。</p>
       <div class="daily-quick-actions">
         <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : '记录所选' }}</button>
         <button type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
@@ -107,12 +109,13 @@
           <legend class="sr-only">填写奖励流水</legend>
           <div v-if="!compact || dailyMode" class="whitecoin-shortcuts">
             <p v-if="dailyMode" class="shortcut-note">游戏日 {{ dailyDate }} · 北京时间 05:00 切换。仅记录已经领取的奖励。</p>
-            <p v-if="dailyMode && dailyLoading" role="status" class="shortcut-note">正在核对已记录项目…</p>
-            <p v-if="dailyMode && dailyStatusError" role="alert" class="shortcut-note">{{ dailyStatusError }} <button type="button" class="text-button" @click="loadDailyStatus">重试</button></p>
+            <p v-if="dailyLoading" role="status" class="shortcut-note">正在核对已记录项目…</p>
+            <p v-if="dailyStatusError" role="alert" class="shortcut-note">{{ dailyStatusError }} <button type="button" class="text-button" @click="loadDailyStatus">重试</button></p>
             <div class="section-label">日常快捷录入<span>可同时选择多个来源；每个来源每个游戏日仅记一笔</span></div>
             <div class="shortcut-options" role="group" aria-label="日常来源">
-              <button v-for="preset in dailyPresets" :key="preset.id" type="button" class="outline-button" :disabled="preset.count === 0 || (dailyMode && (dailyLoading || !!dailyStatusError || dailyRecorded.has(preset.id)))" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectDailyPreset(preset)">{{ preset.channel }} {{ preset.itemId === 'zhuyu' ? '+' + preset.count : preset.count }}<span v-if="dailyMode && dailyRecorded.has(preset.id)"> · 已记录</span></button>
-              <label class="monthly-tier-field">月卡档位<select v-model="monthlyTier" aria-label="月卡奖励档位" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
+              <button v-for="preset in dailyPresets" :key="preset.id" type="button" class="outline-button" :disabled="preset.count === 0 || ((dailyMode || preset.id === 'monthly-card') && (dailyLoading || !!dailyStatusError || dailyRecorded.has(preset.id)))" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectDailyPreset(preset)">{{ preset.channel }} {{ preset.itemId === 'zhuyu' ? '+' + preset.count : preset.count }}<span v-if="dailyRecorded.has(preset.id)"> · 已记录</span></button>
+              <p v-if="mailboxMonthlyCoins" class="shortcut-note">月卡领取将同时扣除当天邮件，每封 {{ mailboxMonthlyCoins }} 白金币；奖励设置请在邮件管理中调整。</p>
+              <label v-else class="monthly-tier-field">月卡档位<select v-model="monthlyTier" aria-label="月卡奖励档位" @change="changeMonthlyTier"><option v-for="tier in monthlyTiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
               <button v-if="manual.presets.length && !dailyMode" type="button" class="outline-button" @click="manual.presets = []; manual.whiteCoinPurpose = ''; clearPreview()">普通补录</button>
             </div>
             <details class="shortcut-note">
@@ -292,6 +295,7 @@ import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD_LEVELS, calculateTrainingRewards, calculateTrainingRewardBatch, trainingRewardUnavailableReason } from '../../data/inventory/trainingRewards.js'
 import { businessDate, businessDayStartIso, nextBusinessDayStartIso } from '../../utils/businessDay.js'
+import { getMailboxDailyStatus } from '../../api/mailboxReserve.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
@@ -316,7 +320,8 @@ let quickEditBaseline = '', quickOrdinaryBaseline = ''
 const monthlyTier = ref('yinghuo'), monthlyPreferenceNote = ref(''), monthlyReady = ref(false)
 let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
-const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: manual.value.presets.find(entry => entry.id === preset.id)?.count ?? quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? monthlyCardTier(monthlyTier.value, props.game).coins : preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? 50 : preset.count) })))
+const mailboxMonthlyCoins = ref(null)
+const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: (preset.id === 'monthly-card' ? mailboxMonthlyCoins.value : null) ?? manual.value.presets.find(entry => entry.id === preset.id)?.count ?? quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? (mailboxMonthlyCoins.value ?? monthlyCardTier(monthlyTier.value, props.game).coins) : preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? 50 : preset.count) })))
 function dailyZhuyuPreferenceKey() {
   return `yuanhub:inventory:daily-zhuyu:${encodeURIComponent(auth.userInfo?.id || '')}:${encodeURIComponent(props.game)}:${encodeURIComponent(props.accountId)}`
 }
@@ -525,15 +530,15 @@ const dailyDate = computed(() => {
   catch (_) { return '' }
 })
 async function loadDailyStatus() {
-  const seq = ++dailyStatusSeq, account = props.accountId, day = dailyDate.value
-  dailyRecorded.value = new Set(); dailyStatusError.value = ''
-  if (!dailyMode.value || mode.value !== 'manual' || !account || !day) { dailyLoading.value = false; return }
+  const seq = ++dailyStatusSeq, account = props.accountId, day = dailyDate.value, user = String(auth.userInfo?.id || '')
+  dailyRecorded.value = new Set(); dailyStatusError.value = ''; mailboxMonthlyCoins.value = null
+  if (mode.value !== 'manual' || !account || !day) { dailyLoading.value = false; return }
   dailyLoading.value = true
-  const current = () => !disposed && seq === dailyStatusSeq && props.accountId === account && dailyDate.value === day && mode.value === 'manual' && dailyMode.value
+  const current = () => !disposed && seq === dailyStatusSeq && props.accountId === account && dailyDate.value === day && mode.value === 'manual' && String(auth.userInfo?.id || '') === user
   try {
     const ids = new Set(), cursors = new Set()
     let cursor
-    do {
+    if (dailyMode.value) do {
       const page = await listRecords({ accountId: account, entityType: 'item', from: businessDayStartIso(day), to: nextBusinessDayStartIso(day), cursor, limit: 100 })
       if (!current()) return
       if (!Array.isArray(page?.items)) throw new Error('无法读取日常记录')
@@ -543,11 +548,25 @@ async function loadDailyStatus() {
       cursors.add(cursor)
     } while (cursor)
     dailyRecorded.value = new Set(DAILY_REWARD_PRESETS.filter(preset => ids.has(dailyRewardRecordId(preset.id, businessDayStartIso(day)))).map(preset => preset.id))
-    manual.value.presets = manual.value.presets.filter(preset => !dailyRecorded.value.has(preset.id))
+    const mail = await getMailboxDailyStatus(account, user, day)
+    if (!current()) return
+    if (!mail || typeof mail.monthly_claimed !== 'boolean') throw new Error('邮件领取状态不完整')
+    if (mail.monthly_claimed) dailyRecorded.value.add('monthly-card')
+    mailboxMonthlyCoins.value = Number.isInteger(mail.monthly_coins) && mail.monthly_coins > 0 ? mail.monthly_coins : null
+
+    manual.value.presets = manual.value.presets.filter(preset => !dailyRecorded.value.has(preset.id)).map(preset => preset.id === 'monthly-card' && mailboxMonthlyCoins.value ? { ...preset, count: mailboxMonthlyCoins.value } : preset)
   } catch (_) {
     if (current()) dailyStatusError.value = '已记录状态读取失败，请重试后再打卡。'
   } finally { if (current()) dailyLoading.value = false }
 }
+function refreshMailboxDaily(event) {
+  if (event?.detail && (event.detail.accountId !== props.accountId || event.detail.userId !== String(auth.userInfo?.id || ''))) return
+  if (event?.detail?.source === 'reward' || result.value) return
+  if (!locked.value && !props.disabled && mode.value === 'manual') void loadDailyStatus()
+}
+window.addEventListener('yuanhub:mailbox-updated', refreshMailboxDaily)
+onBeforeUnmount(() => window.removeEventListener('yuanhub:mailbox-updated', refreshMailboxDaily))
+watch(() => props.disabled, value => { if (!value) refreshMailboxDaily() })
 watch([dailyDate, dailyMode, mode, () => props.accountId, () => props.game], loadDailyStatus)
 let quickCountsDay = dailyDate.value
 watch(dailyDate, day => {
@@ -1024,6 +1043,7 @@ function previewReport() {
 function selectFailed() { rows.value.forEach(row => { row.selected = !row.error && !!row.status?.includes('上报失败') }) }
 function toggleDetails(key) { if (expandedRows.value.has(key)) expandedRows.value.delete(key); else expandedRows.value.add(key) }
 async function submit() {
+  if (!pendingDocument.value && (dailyMode.value || manual.value.presets.some(entry => entry.id === 'monthly-card')) && (dailyLoading.value || dailyStatusError.value)) return
   if (busy.value || checkingBaseline.value || props.disabled || !props.accountId || result.value) return
   error.value = ''
   const targetAccount = props.accountId
@@ -1059,6 +1079,7 @@ async function submit() {
     pendingAnnotationRevision.value = null
     result.value = response; pendingDocument.value = null
     if (props.compactDaily) manual.value.presets.forEach(preset => dailyRecorded.value.add(preset.id))
+    window.dispatchEvent(new CustomEvent('yuanhub:mailbox-updated', { detail: { accountId: targetAccount, userId: String(targetUser || ''), source: 'reward' } }))
     emit('imported', targetAccount)
     await nextTick()
     resultBox.value?.focus({ preventScroll: true })
@@ -1072,7 +1093,7 @@ async function submit() {
       if ([400, 401, 403, 404, 409, 422].includes(err.status)) pendingDocument.value = null
       if (err.status === 409 && dailyMode.value) { previewed.value = false; rows.value = []; await loadDailyStatus() }
       if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
-      await showError(rejectedAnnotation ? `${err.message || '库存盘点已变化'}。草稿已保留，请核对盘点后重新预览。` : err.status === 409 && (dailyMode.value || manual.value.presets.length) ? '所选日常来源已有记录，未重复入账。请核对已记录项目后补录其他来源；修正时先在操作历史删除原记录。' : err.message || '补录失败，请重试')
+      await showError(err.code === 'mailbox_claim_conflict' ? err.message : rejectedAnnotation ? `${err.message || '库存盘点已变化'}。草稿已保留，请核对盘点后重新预览。` : err.status === 409 && (dailyMode.value || manual.value.presets.length) ? '所选日常来源已有记录，未重复入账。请核对已记录项目后补录其他来源；修正时先在操作历史删除原记录。' : err.message || '补录失败，请重试')
     }
   } finally { if (manual.value === targetDraft) busy.value = false }
 }

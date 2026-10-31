@@ -1,3 +1,4 @@
+import { getMailboxDailyStatus } from '../src/api/mailboxReserve.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
@@ -201,4 +202,24 @@ it('A补标预检查迟到时不能自动提交B普通录入的预览', async ()
   a.resolve([{ entity_type: 'item', full_baseline_at: new Date(Date.now() + 60000).toISOString() }]); await flushPromises()
   expect(api.importInventory).not.toHaveBeenCalled()
   expect(document.querySelector('.preview-section')).not.toBeNull()
+})
+
+vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxDailyStatus: vi.fn(async () => ({ monthly_claimed: false, monthly_coins: null })) }))
+beforeEach(() => { getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: false, monthly_coins: null }) })
+
+it('邮件已领状态阻止重复日常月卡，同时保留其它来源', async () => {
+  getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: true, monthly_coins: 90 })
+  const wrapper = create(); await open(wrapper)
+  const monthly = [...document.querySelectorAll('.shortcut-options button')].find(node => node.textContent.includes('月卡奖励'))
+  expect(monthly.disabled).toBe(true)
+  expect(monthly.textContent).toContain('已记录')
+  expect(button('每日茱萸').disabled).toBe(false)
+  wrapper.unmount()
+})
+it('日常月卡领取使用邮件单封奖励，而非另一个月卡预设', async () => {
+  getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: false, monthly_coins: 90 })
+  const wrapper = create(); await open(wrapper)
+  await click('月卡奖励'); await purpose('income'); await click('一键记录')
+  expect(api.importInventory.mock.lastCall[0].records[0].entries[0].count).toBe(90)
+  wrapper.unmount()
 })

@@ -1,3 +1,4 @@
+import { getMailboxDailyStatus } from '../src/api/mailboxReserve.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { createPinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -285,3 +286,6 @@ it.each(['account', 'identity', 'unmount'])('%s 变化后迟到的获得回执�
   expect(panel()).toBeNull()
   expect(document.querySelector('.result')).toBeNull()
 })
+
+vi.mock('../src/api/mailboxReserve.js', () => ({ getMailboxDailyStatus: vi.fn(async () => ({ monthly_claimed: false, monthly_coins: null })) }))
+beforeEach(() => { getMailboxDailyStatus.mockResolvedValue({ monthly_claimed: false, monthly_coins: null }) })
