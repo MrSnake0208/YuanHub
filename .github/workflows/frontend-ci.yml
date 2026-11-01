@@ -20,6 +20,11 @@ on:
       - '.gitattributes'
       - '.gitignore'
   workflow_call:
+    inputs:
+      contract-only:
+        description: Run only paired contracts for backend-only PR changes
+        type: boolean
+        default: false
   workflow_dispatch:
 
 concurrency:
@@ -44,6 +49,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node
+        if: ${{ inputs.contract-only }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up npm cache
+        if: ${{ !inputs.contract-only }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -51,21 +63,25 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        if: ${{ !inputs.contract-only }}
         run: npm ci
 
       # 复用仓库既有命令，不另建测试体系。
       - name: Static source check
+        if: ${{ !inputs.contract-only }}
         run: npm run test:static
 
       # 这里只跑 YuanHub 仓库内可独立执行的 node:test。
       # 跨端契约由下方 test:contract 检查；test:all 仍只覆盖前端。
       - name: Repository tests
+        if: ${{ !inputs.contract-only }}
         run: npm run test:repo
 
       - name: Paired API contract
         run: npm run test:contract
 
       - name: Build
+        if: ${{ !inputs.contract-only }}
         env:
           NODE_ENV: production
         run: npm run build
@@ -73,6 +89,7 @@ jobs:
       # 校验 VERSION / commit / buildTime 确实进入了构建产物，
       # 否则版本入口与 Feedback 诊断会在线上显示错误信息。
       - name: Verify injected build info
+        if: ${{ !inputs.contract-only }}
         run: |
           set -eu
           version="$(tr -d '[:space:]' < VERSION)"
@@ -85,6 +102,7 @@ jobs:
           echo "Injected productVersion: $version"
 
       - name: Upload build output
+        if: ${{ !inputs.contract-only }}
         uses: actions/upload-artifact@v4
         with:
           name: yuanhub-dist-${{ github.sha }}

@@ -14,7 +14,7 @@ The `./scripts/test.sh` command is the supported **optional** local test entrypo
 | **L1** | local component/display behavior with no shared state | diff/relevant-file self-review; no new tests, test run or build required by default |
 | **L2** | store/composable/API/data conversion/cache/polling/business branch | minimal risk-specific review/check; add or run targeted tests only for a concrete regression risk; elevate permissions/account isolation/data-loss risks to L3 |
 | **L3** | auth/authorization, account isolation, API contract, router/global state, persistence/migration, transaction/concurrency, shared core | evidence for affected critical invariants via focused tests/contract checks or equivalent module-level verification; full suite is not the default |
-| **L4** | build tooling, CI, test infrastructure, dependency/release/deploy, cross-repo shared infrastructure | `./scripts/test.sh all` plus any explicitly relevant integration/stress suite |
+| **L4** | build tooling, CI, test infrastructure, dependency/release/deploy, cross-repo shared infrastructure | risk-specific infrastructure checks; consider `./scripts/test.sh all` only when the affected scope warrants it |
 
 `./scripts/test.sh quick` selects affected component checks and excludes database/mutation suites. **Do not use it by default for L0/L1 work.** Pure `.css`/Markdown edits need diff review, not automatic business tests; rule files (`AGENTS.md`) and this testing policy remain configuration inputs. Copy-only edits inside JS/Vue cannot be inferred from the filename and still need a human risk decision.
 
@@ -31,7 +31,7 @@ Unknown runtime paths expand only their own component; root/shared tooling expan
 
 `--budget 900` is the default total command-execution budget, and `--timeout 900` is the per-command limit; each command receives the smaller remaining allowance. Explicit full suites can request a larger budget when justified. The first failure/timeout or invalid test discovery stops subsequent checks; reports retain `planned_checks`, `not_run`, exit codes, timings and source identity. Only the process group created for a timed-out command is terminated; detached/shared Gradle daemons or database services are never killed. If a daemon remains busy, inspect it rather than start a competing build.
 
-JUnit suites use the Gradle task-specific `--rerun` option and discard that suite’s previous XML before execution, retaining compilation caches but requiring fresh test output. Reports bind HEAD/base, changed-file fingerprint, execution environment and per-command logs/timestamps. A changed tree during execution, zero discovered tests or skipped/failed tests cannot be reported as passing. Empty check selection means no automatic check was needed, not proof of runtime correctness. Optional Trellis coverage explanations remain required where that completion workflow is explicitly used; no task is created by these commands.
+JUnit suites use the Gradle task-specific `--rerun` option and discard that suite’s previous XML before execution, retaining compilation caches but requiring fresh test output. Reports bind HEAD/base, changed-file fingerprint, execution environment and per-command logs/timestamps. A changed tree during execution, zero discovered tests or skipped/failed tests cannot be reported as passing. Empty check selection means no automatic check was needed, not proof of runtime correctness. Without an optional task, missing Trellis coverage metadata does not fail `smart`. Optional Trellis coverage explanations remain required where that completion workflow is explicitly used; no task is created by these commands.
 
 ## Entry boundaries and prerequisites
 
@@ -45,7 +45,11 @@ JUnit suites use the Gradle task-specific `--rerun` option and discard that suit
 
 PR CI uses root `.github/workflows/pr-ci.yml` to select affected components and aggregate their results into `PR merge gate`. Failed/cancelled selection or any required component that does not succeed blocks the gate; only explicitly unaffected components may be skipped. Run `python3 scripts/testing/test_monorepo_ci.py` for focused gate regressions. Branch protection rollout and selection rules are documented in [Monorepo operations](../monorepo-operations.md).
 
-Frontend CI runs static checks, repository Node tests, paired API contracts and build; full behavior tests run in the independent daily/manual `.github/workflows/frontend-regression.yml` via `npm run test:all`. Local full regression uses that same existing command. Regression failures may arrive after deployment; risk-specific developer checks still apply. Backend CI runs from the root `.github/workflows/backend-ci.yml`.
+For backend-only PR source changes, the frontend reusable job uses `contract-only`: Node and the paired API contract, with no npm dependency install, repository tests or frontend build. Frontend/shared changes and push/manual runs retain the full frontend job. Backend CI executes the same `ktlintCheck test assemble` tasks in one Gradle invocation.
+
+Full frontend CI runs static checks, repository Node tests, paired API contracts and build; full behavior tests run in the independent daily/manual `.github/workflows/frontend-regression.yml` via `npm run test:all`. Local full regression uses that same existing command. Regression failures may arrive after deployment; risk-specific developer checks still apply. Backend CI runs from the root `.github/workflows/backend-ci.yml`.
+
+Scoped `smart` integration checks pass the selected class names to Gradle with `--tests`; `all` and unknown/full-backend scope retain the complete integration suite.
 
 Regression/full execution remains user/CI-owned. Backend `architectureTest` and `apiSchemaTest` are separate entries; `all` also runs the existing representative dataset and mutation checks. Mongo script tests remain behind their owning JUnit isolated integration suites; no migration script is run against developer data by these changes. Existing standalone backend script-test commands are unchanged.
 
@@ -80,4 +84,4 @@ Test data is synthetic, deterministic and disposable. Database suites use the ex
 
 ## Local-only workflow
 
-`.dev/` and `.trellis/` are ignored and are never published. A clean clone or Worktree can run the component checks and `scripts/test.sh` without Trellis. An optional local task workflow may supply `--task .trellis/tasks/<task>` for reviewed coverage and completion evidence; it is not included in the clone. Without a task plan, `plan` reports unresolved coverage honestly rather than treating it as verified.
+`.dev/` and `.trellis/` are ignored and are never published. A clean clone or Worktree can run the component checks and `scripts/test.sh` without Trellis. An optional local task workflow may supply `--task .trellis/tasks/<task>` for reviewed coverage and completion evidence; it is not included in the clone. Without a task plan, `plan` does not perform the optional task coverage review; an empty gaps list is not proof of business coverage.

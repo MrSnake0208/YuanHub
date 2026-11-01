@@ -39,3 +39,16 @@
 同一个定时任务 `fe12fabf-9391-4bc4-90c6-508be8d457f6` 已切换至 v3 prompt/precheck 并启用；每 5 分钟、原工作树、模型参数与 fresh-session 设置不变。启用前 precheck 输出 `[]`，退出码 1 表示无合格待处理 PR，没有启动 worker。最终配置回读已确认启用与入口一致，凭据见 `activation-backup/enabled-readback.json`。
 
 这里启用的是编排脚本；本树 `scripts/testing/` 优化仍未提交，不会自动进入新 PR 的隔离工作树。真实 PR 耗时仍待后续样本验证。
+
+## 第二阶段实施计划：开发与 PR 测试执行
+
+1. 保留 PR 合并门禁；只有后端源码变化时，前端 job 执行零依赖契约检查，不安装前端依赖、不运行无关前端测试和构建；前端或共享配置变化仍执行完整前端 CI。
+2. 后端 CI 用一次 Gradle 调用执行既有 lint、unit、assemble，减少配置开销，不删测试或构建。
+3. 本地 smart 按已选集成测试类传递 --tests；非 Trellis 任务不因缺少可选任务清单而将成功检查判为失败。
+4. 对选择、门禁与命令生成做定向回归；记录可测的选择范围，不将省略命令数量包装成实际耗时收益。
+
+第二阶段验证：84 项 Python 入口/选择/门禁回归通过（4.684 秒）；实际 `node --test frontend/test/contract.test.js` 17 项通过（Node 报告 96.515 毫秒），无失败或跳过。未运行数据库套件、完整 Gradle 或远端 Actions；这些数字仅是本地检查耗时，不是线上优化收益。
+
+真实仓库选择示例：纯 CSS 改动 0 个执行命令；account store 改动选 89 个 Node 文件、79 个组件文件，不选后端；inventory service 改动选 61 个 unit 类、22 个 integration 类，不选前端。共享账号逻辑仍保留较宽覆盖，不能仅为压时间删掉关键回归。日常 L0/L1 直接 diff 自检，L2/L3 按具体风险使用定向检查；quick/smart/all 不是必须依次执行的流程。
+
+第二阶段独立只读复核未发现阻断；无 task 覆盖说明的文档差异已同步。

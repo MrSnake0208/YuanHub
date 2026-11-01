@@ -60,6 +60,22 @@ class ScopeTest(unittest.TestCase):
         self.assertTrue(selected['scope']['full_frontend'])
         self.assertFalse(selected['scope']['backend'])
 
+    def test_targeted_integration_keeps_selected_classes(self):
+        selected = impact.infer(self.root, ['backend/src/main/kotlin/inventory/InventoryService.kt'])
+        selected['integration'] = ['example.InventoryTransactionTest']
+        commands = {name: argv for name, _, argv in run.build_commands('smart', selected)}
+        self.assertEqual(['--tests', 'example.InventoryTransactionTest'], commands['integration'][-2:])
+        full = {name: argv for name, _, argv in run.build_commands('all', selected)}
+        self.assertNotIn('--tests', full['integration'])
+
+    def test_no_optional_task_does_not_require_coverage_manifest(self):
+        self.write('frontend/src/example.js', 'export const value = 1')
+        with patch.object(run, 'ROOT', self.root), patch('run.current_task', return_value=None), \
+                patch('run.environment', return_value={'PATH': '', 'FC_SEED': '1'}), \
+                patch('run.execute_plan', return_value=([], 'completed')), \
+                patch('run.coverage_gaps', side_effect=AssertionError('optional manifest must not gate')):
+            self.assertEqual(0, run.main(['smart']))
+
     def test_clean_committed_pr_requires_base_before_execution(self):
         with patch.object(run, 'ROOT', self.root), patch('run.environment', return_value={}), \
                 patch('run.changed_files', return_value=[]), patch('run.execute') as execute:

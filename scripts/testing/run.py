@@ -99,7 +99,10 @@ def build_commands(mode, impact):
         commands.append(('architecture', back, ['./gradlew', 'architectureTest', '--console=plain']))
     if mode in ('smart', 'all'):
         if full or scope['full_backend'] or impact['integration']:
-            commands.append(('integration', back, ['./gradlew', 'integrationTest', '--console=plain']))
+            integration = ['./gradlew', 'integrationTest', '--console=plain']
+            if not (full or scope['full_backend']):
+                integration += [v for name in impact['integration'] for v in ('--tests', name)]
+            commands.append(('integration', back, integration))
         if full:
             commands.append(('realistic', back, ['./gradlew', 'realisticTest', '--console=plain']))
         if full or (scope['backend'] and (scope['full_backend'] or scope['contract'] or impact['api'] or
@@ -219,7 +222,7 @@ def main(argv=None):
     head = git(ROOT, 'rev-parse', 'HEAD').decode().strip()
     impact = infer(ROOT, changes, task)
     impact['kotlin_files'] = [p.removeprefix('backend/') for p in changes if p.startswith('backend/') and p.endswith(('.kt', '.kts')) and (ROOT / p).is_file()]
-    gaps, reviewed = coverage_gaps(ROOT, changes, task)
+    gaps, reviewed = coverage_gaps(ROOT, changes, task) if task else ([], [])
     stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
     output = ROOT / '.test-artifacts/runs' / (stamp + '-' + args.mode)
     output.mkdir(parents=True)

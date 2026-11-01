@@ -62,14 +62,8 @@ jobs:
         run: chmod +x ./gradlew
 
       # 复用仓库既有命令，不重新发明测试体系。
-      - name: Lint (ktlint)
-        run: ./gradlew ktlintCheck --console=plain
-
-      - name: Unit tests
-        run: ./gradlew test --console=plain
-
-      - name: Build jar
-        run: ./gradlew assemble --console=plain
+      - name: Lint, unit tests and build jar
+        run: ./gradlew ktlintCheck test assemble --console=plain
 
       - name: Verify jar output
         run: |

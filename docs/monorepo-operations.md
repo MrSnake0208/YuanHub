@@ -22,9 +22,9 @@
 
 ## 独立 CI 与发布
 
-根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
+根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；仅后端改动通过 contract-only 输入跳过前端 npm ci、静态/仓库测试和构建，前端/共享配置改动保留完整前端流程；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
 
-frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
+frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。后端 CI 将 ktlintCheck、test、assemble 合为一次 Gradle 调用，任务覆盖不变。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
 
 分支保护切换必须与工作流交付分开：先推送包含新门禁的 PR，确认 GitHub Actions 的 `PR merge gate` 在最新 SHA 成功，再把 main 必需检查从 `Frontend checks and build` 替换为 `PR merge gate`，绑定 GitHub Actions 来源，保留 strict/up-to-date、管理员约束、禁止强推/删除等既有规则，随后合并该 PR。不要保留旧检查名：复用工作流下的检查名称会变化，旧名称会一直等待。其余旧 PR 必须更新到包含新入口的 main 后重新检查。切换前暂停无人值守合并；未提交/推送的本地配置不代表线上门禁已生效。
 
