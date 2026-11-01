@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "promo-site/**"
+      - "frontend/promo-site/**"
       - ".github/workflows/promo-site-deploy.yml"
   workflow_dispatch:
 

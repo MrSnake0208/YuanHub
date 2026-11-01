@@ -1,7 +1,9 @@
 """Execute the actual root workflow's request validation without GitHub or SSH."""
+import fnmatch
 import os
 from pathlib import Path
 import subprocess
+import re
 import textwrap
 import unittest
 
@@ -9,6 +11,20 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 class MonorepoWorkflowTest(unittest.TestCase):
+    def test_promo_push_filter_covers_its_build_directory(self):
+        workflow='.github/workflows/promo-site-deploy.yml'
+        text=(ROOT/workflow).read_text()
+        paths=text.split('    paths:\n',1)[1].split('  workflow_dispatch:',1)[0]
+        patterns=re.findall(r'^\s+- ["\']([^"\']+)["\']\s*$',paths,re.MULTILINE)
+        build_dir=re.search(r'working-directory:\s*(\S+)',text).group(1)
+        package=f'{build_dir}/package.json'
+        self.assertTrue((ROOT/package).is_file())
+        for changed in [package,workflow]:
+            self.assertTrue(any(fnmatch.fnmatchcase(changed,pattern) for pattern in patterns),changed)
+        for changed in ['backend/build.gradle.kts','frontend/src/main.js']:
+            self.assertFalse(any(fnmatch.fnmatchcase(changed,pattern) for pattern in patterns),changed)
+        self.assertIn("vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true'",text)
+
     def test_component_prepare_tags_are_validated_before_checkout(self):
         for component in ['frontend','backend']:
             text=(ROOT/'.github/workflows'/f'{component}-release.yml').read_text()
