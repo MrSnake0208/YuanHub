@@ -34,6 +34,18 @@ test('normal dev mode keeps LAN binding and proxies backend paths to the configu
   }
 })
 
+test('worktree dev mode allows LAN access while preserving its port and local API proxy', () => {
+  const env = { YUANHUB_FRONTEND_PORT: '51334', YUANHUB_DEV_API_TARGET: 'http://127.0.0.1:51335' }
+  const config = buildDevServerConfig('development', env)
+
+  assert.equal(config.host, true)
+  assert.equal(config.port, 51334)
+  assert.equal(config.strictPort, true)
+  assert.equal(config.proxy['/v1'].target, env.YUANHUB_DEV_API_TARGET)
+  assert.equal(buildDevServerConfig('tunnel', env).host, '127.0.0.1')
+  assert.equal(buildDevServerConfig('development', { ...env, YUANHUB_AGENT_TEST: 'true' }).host, '127.0.0.1')
+})
+
 test('tunnel mode binds loopback, allowlists configured host and proxies backend paths', () => {
   const config = buildDevServerConfig('tunnel', {
     YUANHUB_TUNNEL_HOST: 'preview.example.com',

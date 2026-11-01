@@ -12,7 +12,9 @@
 
 使用当前树的 `./dev.sh --print-env` 生成私有 .dev 配置（目录0700、实例文件0600），查看本树地址。前端 `cd frontend && npm ci` 使用 Node22；后端使用 JDK21 和 backend/gradlew。`./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh` 按需启动；不重启或停止别人的服务。
 
-每树分配独立 loopback 应用端口、媒体和构建输出；MongoDB 共用 127.0.0.1:27017 的 MaaBackend/HubBackend，Redis 共用 127.0.0.1:6379（默认 DB 0）。启动器清除继承的生产连接配置。共享开发数据意味着不同工作树的写入互相可见；不要用开发库运行破坏性测试。端口被占用时 fail-fast，不能杀掉占用者。
+每树分配独立应用端口、媒体和构建输出；普通开发前端监听所有网卡，后端仅监听 127.0.0.1，API 由 Vite 代理转发。MongoDB 共用 127.0.0.1:27017 的 MaaBackend/HubBackend，Redis 共用 127.0.0.1:6379（默认 DB 0）。启动器清除继承的生产连接配置。共享开发数据意味着不同工作树的写入互相可见；不要用开发库运行破坏性测试。端口被占用时 fail-fast，不能杀掉占用者。
+
+局域网访问：运行 `./dev.sh` 后，在同一网络的设备打开 `http://<电脑局域网 IP>:<前端端口>`；端口可通过 `./dev.sh --print-env` 查看，将输出中的 127.0.0.1 替换为电脑局域网 IP。若无法连接，检查系统防火墙及 Wi-Fi 客户端隔离。开发前端及其 API 代理会向可达该端口的设备开放，仅在可信网络使用；Tunnel 和 Agent 测试模式仍仅监听本机。
 
 本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
 
