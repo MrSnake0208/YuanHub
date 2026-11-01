@@ -13,14 +13,14 @@
           <span class="schedule-number"><input ref="daysInput" v-model="remainingDays" type="number" min="1" :max="maximumDays" step="1" inputmode="numeric" :required="needsConfirmation" placeholder="例如 285" :aria-label="`${title}月卡剩余天数`" :aria-describedby="touched && daysError ? hintId : undefined" :aria-invalid="touched && !!daysError" @input="updateDays($event.target.value)" /><span>天</span></span>
         </label>
         <p v-if="touched && daysError" :id="hintId" class="schedule-error" role="alert">{{ daysError }}</p>
-        <fieldset class="schedule-claim"><legend>今天的月卡邮件领了吗？</legend>
+        <fieldset class="schedule-claim"><legend>今天的月卡邮件状态</legend>
           <div class="schedule-options">
             <label v-for="option in claimOptions" :key="option.value" :class="{ selected: claimedToday === option.value }">
-              <input v-model="claimedToday" type="radio" :name="hintId" :value="option.value" :required="needsConfirmation" :aria-label="`${title}${option.label}`" @change="setClaimedToday(option.value)" />{{ option.label }}
+              <input v-model="claimedToday" type="radio" :name="hintId" :value="option.value" :required="needsConfirmation" :disabled="option.value === 'included' && !hasIncludedMail" :aria-label="`${title}${option.label}`" @change="setClaimedToday(option.value)" />{{ option.label }}
             </label>
           </div>
         </fieldset>
-        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天未领的邮件会计入待领；今天已手工录入的封数不会再加一。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : needsConfirmation ? '请选择今天的领取状态。' : '修改配置时，请确认今天的领取状态。' }}</p>
+        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天未领的邮件会新增一封待领。' : claimedToday === 'included' ? hasIncludedMail ? '今天的邮件已在上方封数中，不会再加一。' : '封数为零，请选择今天未领取或已领取。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : needsConfirmation ? '请选择今天的邮件状态。' : '修改配置时，请确认今天的邮件状态。' }}</p>
         <label v-if="coins && (coinOptions.length > 1 || !coinOptions.includes(modelValue.coins_per_mail))" class="schedule-reward">累计到哪组邮件
           <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="touched = true; update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
         </label>
@@ -33,13 +33,13 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { ChevronRight } from '@lucide/vue'
 import { addCalendarDays } from '../../utils/businessDay.js'
-const props = defineProps({ modelValue: { type: Object, default: null }, title: String, today: String, coinOptions: { type: Array, default: () => [] }, coins: Boolean })
+const props = defineProps({ modelValue: { type: Object, default: null }, title: String, today: String, coinOptions: { type: Array, default: () => [] }, coins: Boolean, hasIncludedMail: Boolean })
 const emit = defineEmits(['update:modelValue', 'status'])
 const editing = ref(!!props.modelValue && !props.modelValue.end_date)
 const settingsOpen = ref(editing.value)
 const remainingDays = ref(''), claimedToday = ref(''), touched = ref(false), daysInput = ref(null)
 const hintId = useId()
-const claimOptions = [{ value: 'no', label: '还没领取' }, { value: 'yes', label: '已经领取' }]
+const claimOptions = [{ value: 'no', label: '还没领取' }, { value: 'included', label: '未领取，已计入封数' }, { value: 'yes', label: '已经领取' }]
 const daysLeft = computed(() => Math.max(0, Math.round((Date.parse(props.modelValue?.end_date) - Date.parse(props.today)) / 86400000)) || 0)
 const maximumEnd = computed(() => {
   const year = Number(props.today.slice(0, 4)) + 10
@@ -51,10 +51,11 @@ const daysError = computed(() => {
   return Number.isInteger(days) && days >= 1 && days <= maximumDays.value ? '' : `请输入 1–${maximumDays.value} 的整数天数。`
 })
 const needsConfirmation = computed(() => editing.value && (touched.value || !props.modelValue?.end_date))
-watch([editing, daysError, claimedToday, touched, needsConfirmation], () => emit('status', {
+watch([editing, daysError, claimedToday, touched, needsConfirmation, () => props.hasIncludedMail], () => emit('status', {
   editing: editing.value,
-  valid: !needsConfirmation.value || !daysError.value && !!claimedToday.value,
-  dirty: editing.value && touched.value
+  valid: (!needsConfirmation.value || !daysError.value && !!claimedToday.value) && (claimedToday.value !== 'included' || props.hasIncludedMail),
+  dirty: editing.value && touched.value,
+  includedToday: claimedToday.value === 'included'
 }), { immediate: true })
 function update(key, value) { emit('update:modelValue', { ...props.modelValue, [key]: value }) }
 function updateDays(value) {
@@ -86,6 +87,7 @@ function enable() {
 function stop() {
   editing.value = false
   touched.value = false
+  claimedToday.value = ''
   emit('update:modelValue', null)
 }
 </script>

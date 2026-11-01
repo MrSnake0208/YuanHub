@@ -6,7 +6,6 @@ import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.MailboxDelivery
 import com.lhs.share.hub.repository.entity.MailboxReserve
-import com.lhs.share.hub.repository.entity.MailboxReserveHistory
 import com.lhs.share.hub.repository.entity.MailboxSchedule
 import com.lhs.share.hub.repository.entity.SubAccount
 import com.lhs.share.hub.repository.entity.WhiteCoinMail
@@ -42,39 +41,23 @@ class MailboxAccrualServiceTest {
         val schedule = MailboxSchedule(day, "2026-11-05", 90)
         val before = MailboxReserve(listOf(WhiteCoinMail(2, 90)), fuChuanMailCount = 1)
         val value = before.copy(whiteCoinSchedule = schedule, fuChuanSchedule = MailboxSchedule(day, "2026-11-05"))
-        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } answers {
-            assertEquals("owner", firstArg<Query>().queryObject["userId"])
-            assertEquals("a", firstArg<Query>().queryObject["accountId"])
-            listOf(
-                MailboxReserveHistory(
-                    userId = "owner",
-                    accountId = "a",
-                    version = 1,
-                    effectiveAt = clock.instant(),
-                    kind = "baseline",
-                    whiteCoinMails = before.whiteCoinMails,
-                    fuChuanMailCount = 1,
-                ),
-            )
-        }
-        every { template.findOne(any<Query>(), MailboxReserveHistory::class.java) } returns null
         every { template.exists(any<Query>(), MailboxDelivery::class.java) } returns false
         val deliveries = mutableListOf<MailboxDelivery>()
         every { template.insert(any<MailboxDelivery>()) } answers { firstArg<MailboxDelivery>().also { deliveries.add(it) } }
 
-        val recognized = service.recognizeManualToday("owner", "a", before, value)
+        val recognized = service.recognizeManualToday("owner", "a", value, setOf("coins", "tickets"))
         assertEquals(2, recognized.whiteCoinMails.single().count)
         assertEquals(day, recognized.whiteCoinSchedule?.throughDate)
         assertEquals(1, recognized.fuChuanMailCount)
         assertEquals(day, recognized.fuChuanSchedule?.throughDate)
         assertEquals(listOf("claimed", "claimed"), deliveries.map { it.state })
-        assertEquals(recognized, service.recognizeManualToday("owner", "a", before, recognized))
+        assertEquals(recognized, service.recognizeManualToday("owner", "a", recognized, setOf("coins", "tickets")))
         assertEquals(2, deliveries.size)
         val expired = value.copy(
             whiteCoinSchedule = MailboxSchedule("2026-11-01", "2026-11-02", 90, "2026-11-02"),
             fuChuanSchedule = null,
         )
-        assertEquals(expired, service.recognizeManualToday("owner", "a", before, expired))
+        assertEquals(expired, service.recognizeManualToday("owner", "a", expired, setOf("coins")))
         assertEquals(2, deliveries.size)
     }
 
@@ -83,34 +66,11 @@ class MailboxAccrualServiceTest {
         val schedule = MailboxSchedule("2026-11-03", "2026-11-05", 90)
         val before = MailboxReserve(listOf(WhiteCoinMail(1, 90)))
         val value = before.copy(whiteCoinSchedule = schedule)
-        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } returns emptyList()
-        assertEquals(value, service.recognizeManualToday("owner", "a", before, value))
-        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } returns listOf(
-            MailboxReserveHistory(
-                userId = "owner",
-                accountId = "a",
-                version = 2,
-                effectiveAt = clock.instant(),
-                kind = "adjustment",
-                whiteCoinMails = before.whiteCoinMails,
-                fuChuanMailCount = 0,
-            ),
-        )
-        every { template.findOne(any<Query>(), MailboxReserveHistory::class.java) } returns
-            MailboxReserveHistory(
-                userId = "owner",
-                accountId = "a",
-                version = 1,
-                effectiveAt = clock.instant(),
-                kind = "baseline",
-                whiteCoinMails = listOf(WhiteCoinMail(2, 90)),
-                fuChuanMailCount = 0,
-            )
-        assertEquals(value, service.recognizeManualToday("owner", "a", before, value))
-        assertEquals(
-            value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90))),
-            service.recognizeManualToday("owner", "a", before, value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90)))),
-        )
+        assertEquals(value, service.recognizeManualToday("owner", "a", value, emptySet()))
+        assertEquals(value, service.recognizeManualToday("owner", "a", value, emptySet()))
+        assertThrows(InventoryApiException::class.java) {
+            service.recognizeManualToday("owner", "a", value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90))), setOf("coins"))
+        }
         verify(exactly = 0) { template.insert(any<MailboxDelivery>()) }
     }
 

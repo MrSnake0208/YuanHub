@@ -6,7 +6,7 @@ let wrapper
 afterEach(() => wrapper?.unmount())
 function open(today = '2026-11-01', modelValue = { start_date: '2026-11-02', end_date: '', coins_per_mail: 90 }) {
   wrapper = mount(MailboxScheduleFields, { attachTo: document.body, props: {
-    title: '白金币邮件', today, coins: true, coinOptions: [90], modelValue,
+    title: '白金币邮件', today, coins: true, coinOptions: [90], hasIncludedMail: true, modelValue,
     'onUpdate:modelValue': value => wrapper.setProps({ modelValue: value })
   } })
 }
@@ -15,7 +15,7 @@ const claimed = label => wrapper.get(`[aria-label="白金币邮件${label}"]`)
 const end = () => wrapper.props('modelValue').end_date
 const status = () => wrapper.emitted('status').at(-1)[0]
 
-it('只显示天数和领取选项；285天固定加到今天，领取选择只改变首次日期', async () => {
+it('只显示天数和邮件状态；已计入封数的选择保留今日日期及明确标记', async () => {
   open()
   expect(wrapper.find('input[type=date]').exists()).toBe(false)
   expect(wrapper.findAll('input:checked')).toHaveLength(0)
@@ -25,8 +25,13 @@ it('只显示天数和领取选项；285天固定加到今天，领取选择只�
   await claimed('还没领取').setValue()
   expect(wrapper.props('modelValue')).toEqual({ start_date: '2026-11-01', end_date: '2027-08-13', coins_per_mail: 90 })
   expect(status().valid).toBe(true)
+  expect(status().includedToday).toBe(false)
+  await claimed('未领取，已计入封数').setValue()
+  expect(wrapper.props('modelValue').start_date).toBe('2026-11-01')
+  expect(status().includedToday).toBe(true)
   await claimed('已经领取').setValue()
   expect(wrapper.props('modelValue')).toEqual({ start_date: '2026-11-02', end_date: '2027-08-13', coins_per_mail: 90 })
+  expect(status().includedToday).toBe(false)
 })
 it.each([['2026-12-31', '1', '2027-01-01'], ['2028-02-28', '2', '2028-03-01']])('从%s正确跨年或闰日', async (today, count, expectedEnd) => {
   open(today)
@@ -71,10 +76,11 @@ it('修改已存配置时回填天数，但不推断今天领取状态', async (
 it('停止后重设清空状态，不沿用今天领取选择', async () => {
   open()
   await days().setValue('25')
-  await claimed('已经领取').setValue()
+  await claimed('未领取，已计入封数').setValue()
   await wrapper.get('[aria-label="停止白金币邮件自动累计"]').trigger('click')
   expect(wrapper.props('modelValue')).toBeNull()
   expect(status().valid).toBe(true)
+  expect(status().includedToday).toBe(false)
   await wrapper.get('[aria-label="白金币邮件设置自动累计"]').trigger('click')
   expect(days().element.value).toBe('')
   expect(wrapper.findAll('input:checked')).toHaveLength(0)

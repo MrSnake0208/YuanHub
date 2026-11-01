@@ -17,7 +17,7 @@
       <form v-if="panel === 'manage' && loaded" :id="`${claimId}-manage`" class="mailbox-manage-form" @submit.prevent="save">
         <p class="panel-note">查看待领数量，管理月卡累计</p>
         <fieldset aria-label="白金币邮件" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
-          <MailboxScheduleFields :key="`coins-${editorRevision}`" v-model="draft.white_coin_schedule" title="白金币邮件" :today="today" :coin-options="coinOptions" coins @status="scheduleStatus.coins = $event">
+          <MailboxScheduleFields :key="`coins-${editorRevision}`" v-model="draft.white_coin_schedule" title="白金币邮件" :today="today" :coin-options="coinOptions" :has-included-mail="draft.white_coin_mails.some(row => row.coins_per_mail === draft.white_coin_schedule?.coins_per_mail && row.count > 0)" coins @status="scheduleStatus.coins = $event">
             <div class="mail-card-summary"><div><p>待领 <strong>{{ draft.white_coin_mails.reduce((sum, row) => sum + (Number(row.count) || 0), 0) }}</strong> 封</p><p v-if="draft.white_coin_mails.length === 1" class="mail-card-reward">每封 {{ draft.white_coin_mails[0].coins_per_mail }} 白金币</p><p v-else v-for="(row, index) in draft.white_coin_mails" :key="index" class="mail-card-reward">{{ row.count }} 封 · 每封 {{ row.coins_per_mail }} 白金币</p></div><button type="button" class="mail-manage" aria-label="调整白金币邮件" :aria-expanded="adjustCoins" @click="adjustCoins = !adjustCoins">{{ adjustCoins ? '收起调整' : '调整封数' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
             <div v-if="adjustCoins" class="mail-adjustments">
               <p class="panel-note">调整已有待领邮件，不会转入背包。</p>
@@ -35,7 +35,7 @@
           </MailboxScheduleFields>
         </fieldset>
         <fieldset aria-label="符传邮件" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
-          <MailboxScheduleFields :key="`tickets-${editorRevision}`" v-model="draft.fu_chuan_schedule" title="符传邮件" :today="today" @status="scheduleStatus.tickets = $event">
+          <MailboxScheduleFields :key="`tickets-${editorRevision}`" v-model="draft.fu_chuan_schedule" title="符传邮件" :today="today" :has-included-mail="draft.fu_chuan_mail_count > 0" @status="scheduleStatus.tickets = $event">
             <div class="mail-card-summary"><div><p>待领 <strong>{{ draft.fu_chuan_mail_count }}</strong> 封</p><p class="mail-card-reward">每封 3 普通符传</p></div><button type="button" class="mail-manage" aria-label="调整符传邮件" :aria-expanded="adjustTickets" @click="adjustTickets = !adjustTickets">{{ adjustTickets ? '收起调整' : '调整封数' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
             <div v-if="adjustTickets" class="mail-adjustments">
               <p class="panel-note">调整已有待领邮件，不会转入背包。</p>
@@ -243,7 +243,8 @@ async function save() {
   busy.value = true
   error.value = ''
   try {
-    const data = await saveMailboxReserve(account, user, { expected_version: version.value, ...JSON.parse(JSON.stringify(draft.value)) })
+    const manualTodayIncluded = ['coins', 'tickets'].filter(type => scheduleStatus.value[type]?.includedToday)
+    const data = await saveMailboxReserve(account, user, { expected_version: version.value, ...JSON.parse(JSON.stringify(draft.value)), ...(manualTodayIncluded.length ? { manual_today_included: manualTodayIncluded } : {}) })
     if (seq === sequence) { apply(data); panel.value = ''; emit('saved', account) }
   } catch (err) {
     if (seq === sequence) {
