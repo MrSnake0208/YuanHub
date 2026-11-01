@@ -18,4 +18,5 @@ data class StarRecoveryPoint(
     val sourceGeneration: Long,
     val state: StarStateSnapshot,
     val loadouts: List<StarOperatorLoadout>?,
+    val inheritanceProtected: Boolean = false,
 )

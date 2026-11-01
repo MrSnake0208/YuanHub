@@ -31,6 +31,7 @@ enum class OpenApiPermission(
     OPERATOR_DAILY_TASKS_WRITE(code = 20005, key = "operator:daily-tasks:write", desc = "今日历练完成记录"),
     STAR_CAPTURE_WRITE(code = 30001, key = "star:capture:write", desc = "上传星石背包临时采集结果"),
     STAR_SCAN_WRITE(code = 30002, key = "star:scan:write", desc = "上传星石本地识别结果（网页核对后导入）"),
+    STAR_SYNC_WRITE(code = 30003, key = "star:sync:write", desc = "完整星石扫描自动同步（重建背包）"),
 
     /**
      * 活动日历读取

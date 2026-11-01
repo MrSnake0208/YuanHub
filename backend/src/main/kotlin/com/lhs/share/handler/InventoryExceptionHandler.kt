@@ -46,6 +46,8 @@ private val inventoryLog = KotlinLogging.logger { }
         com.lhs.share.hub.controller.inventory.MailboxReserveController::class,
         com.lhs.share.hub.controller.inventory.MailboxClaimController::class,
         StarStateController::class,
+        com.lhs.share.hub.controller.star.StarPlanInheritanceController::class,
+        com.lhs.share.openapi.OpenApiStarInventorySyncController::class,
         StarCompletionController::class,
         StarLoadoutController::class,
         StarLoadoutPresetController::class,

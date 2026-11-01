@@ -316,6 +316,7 @@ class StarStateService(
             ),
         )
         recoveryPoints.findByUserIdAndAccountIdOrderByCreatedAtDescIdDesc(userId, accountId)
+            .filterNot { it.inheritanceProtected }
             .drop(3).forEach(recoveryPoints::delete)
         return point
     }

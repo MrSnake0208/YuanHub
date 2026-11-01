@@ -1,0 +1,202 @@
+package com.lhs.share.hub.service.star
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.lhs.share.hub.controller.star.request.StarInventoryEntryRequest
+import com.lhs.share.hub.controller.star.request.StarInventorySyncRequest
+import com.lhs.share.hub.controller.star.request.StarStateRebuildRequest
+import com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest
+import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
+import com.lhs.share.hub.repository.StarInventorySyncRepository
+import com.lhs.share.hub.repository.StarPlanInheritancePendingRepository
+import com.lhs.share.hub.repository.StarRecoveryPointRepository
+import com.lhs.share.hub.repository.SubAccountRepository
+import com.lhs.share.hub.repository.entity.StarInventorySync
+import com.lhs.share.hub.repository.entity.StarPlanInheritancePending
+import com.lhs.share.hub.repository.entity.StarStateSnapshot
+import com.lhs.share.hub.service.account.AccountEventService
+import com.lhs.share.hub.service.account.SubAccountService
+import com.lhs.share.hub.service.inventory.InventoryApiException
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
+import java.util.UUID
+
+@Service
+class StarInventorySyncService(
+    private val receipts: StarInventorySyncRepository,
+    private val pending: StarPlanInheritancePendingRepository,
+    private val points: StarRecoveryPointRepository,
+    private val accounts: SubAccountService,
+    private val accountRepository: SubAccountRepository,
+    private val states: StarStateService,
+    private val events: AccountEventService,
+    private val mapper: ObjectMapper,
+    @param:Qualifier("hubTransactionTemplate") private val transactions: TransactionTemplate,
+) {
+    fun sync(userId: String, accountId: String, request: StarInventorySyncRequest): StarInventorySyncResponse {
+        val account = accounts.requireAccount(userId, accountId)
+        validate(request, account.game)
+        val payload = mapper.writeValueAsString(request)
+        fun existing(): StarInventorySyncResponse? = receipts.findByUserIdAndAccountIdAndScanId(userId, accountId, request.scanId)?.let {
+            if (mapper.readTree(it.payload) != mapper.readTree(payload)) conflict("star_sync_scan_conflict", "同一扫描批次已保存不同内容")
+            response(it)
+        }
+        existing()?.let { return it }
+        // Capture the expected version before entering the transaction. Never retry a new
+        // generation against a newer version after CAS failure.
+        val before = states.current(userId, accountId)
+        return try {
+            commit(userId, accountId, account.game, request, payload, before.generation, before.revision, ::existing)
+        } catch (error: InventoryApiException) {
+            if (error.status == HttpStatus.CONFLICT) existing() ?: throw error else throw error
+        }
+    }
+
+    private fun commit(
+        userId: String,
+        accountId: String,
+        game: String,
+        request: StarInventorySyncRequest,
+        payload: String,
+        expectedGeneration: Long,
+        expectedRevision: Long,
+        existing: () -> StarInventorySyncResponse?,
+    ): StarInventorySyncResponse = starCasConflictBoundary({
+        conflict("star_state_revision_conflict", "背包或账号已变化，请重新读取后再同步")
+    }) {
+        checkNotNull(
+            transactions.execute {
+                existing()?.let { return@execute it }
+                if (!accountRepository.fenceRecruitmentWrite(userId, accountId, game)) {
+                    conflict("star_sync_account_changed", "绑定账号已变化，请重新连接")
+                }
+                if (pending.findByUserIdAndAccountId(userId, accountId) != null) {
+                    conflict("star_plan_inheritance_pending", "旧养成计划仍待继承，暂不能用新扫描覆盖；旧计划来源已安全保留")
+                }
+                val result = states.rebuild(
+                    userId,
+                    accountId,
+                    StarStateRebuildRequest(
+                        expectedGeneration,
+                        expectedRevision,
+                        request.inventory.map {
+                            StarInventoryEntryRequest(UUID.randomUUID().toString(), it.kind, it.name, it.quality, it.level)
+                        },
+                        emptyMap(),
+                        StarWorkspaceExperienceRequest(request.experience.orange, request.experience.purple, request.experience.white),
+                        StarWorkspaceBagRequest(currentCount = request.inventory.size),
+                        "pre_ocr_rebuild",
+                    ),
+                )
+                val source = result.recoveryPoint?.let {
+                    checkNotNull(points.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, it.recoveryPointId))
+                }
+                val levels = source?.state?.inventory.orEmpty().associate { it.instanceId to it.level }
+                val unfinished = source?.state?.planTargets.orEmpty().any { (levels[it.instanceId] ?: Int.MAX_VALUE) < it.targetLevel }
+                if (unfinished) {
+                    checkNotNull(source)
+                    points.save(source.copy(inheritanceProtected = true))
+                    pending.insert(
+                        StarPlanInheritancePending(
+                            "$userId:$accountId",
+                            userId,
+                            accountId,
+                            source.recoveryPointId,
+                            result.state.generation,
+                            request.scanId,
+                        ),
+                    )
+                }
+                val receipt = receipts.insert(
+                    StarInventorySync(
+                        "$userId:$accountId:${request.scanId}", userId, accountId, request.scanId, payload,
+                        result.state.generation, result.state.revision, source?.recoveryPointId, unfinished,
+                    ),
+                )
+                events.publishChange(
+                    userId,
+                    accountId,
+                    "star_inventory_synced",
+                    mapOf("scan_id" to request.scanId, "generation" to receipt.generation, "inheritance_pending" to unfinished),
+                )
+                response(receipt)
+            },
+        )
+    }
+
+    fun status(userId: String, accountId: String, scanId: String): StarInventorySyncResponse {
+        accounts.requireAccount(userId, accountId)
+        return receipts.findByUserIdAndAccountIdAndScanId(userId, accountId, scanId)?.let(::response)
+            ?: throw InventoryApiException(HttpStatus.NOT_FOUND, "star_sync_not_found", "扫描批次尚未成功保存，可安全重试原批次")
+    }
+
+    fun inheritanceSource(userId: String, accountId: String): StarPlanInheritanceSource? {
+        accounts.requireAccount(userId, accountId)
+        val item = pending.findByUserIdAndAccountId(userId, accountId) ?: return null
+        val point = checkNotNull(points.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, item.sourceRecoveryPointId))
+        return StarPlanInheritanceSource(accountId, item.sourceRecoveryPointId, point.sourceGeneration, item.targetGeneration, point.state)
+    }
+
+    companion object {
+        fun validate(request: StarInventorySyncRequest, game: String) {
+            if (game !in setOf("如鸢", "代号鸢")) invalid("绑定账号游戏版本无效")
+            if (request.format != "maayuan-star-inventory" || request.version != 1 || !request.complete) invalid("需要完整的星石扫描")
+            if (!Regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$").matches(request.scanId)) invalid("scan_id 必须为 UUID")
+            if (request.inventory.size > 1000 || request.counts.main < 0 || request.counts.support < 0 ||
+                request.counts.main != request.inventory.count { it.kind == "main" } ||
+                request.counts.support != request.inventory.count { it.kind == "support" }
+            ) {
+                invalid("主辅星数量与条目不一致")
+            }
+            request.inventory.forEach {
+                val names = when (it.kind) {
+                    "main" -> StarScanService.MAIN_NAMES
+                    "support" -> StarScanService.SUPPORT_NAMES
+                    else -> invalid("星石分类无效")
+                }
+                // Both supported games currently share this canonical star catalog.
+                if (it.name !in names) invalid("星石名称与分类不符")
+                try {
+                    StarBreakthroughRules.allowed(it.level, it.quality)
+                } catch (_: IllegalArgumentException) {
+                    invalid("星石品质或等级无效")
+                }
+            }
+            if (listOf(request.experience.orange, request.experience.purple, request.experience.white).any { it == null || it < 0 }) {
+                invalid("三种经验星曜数量必须已识别且非负")
+            }
+        }
+
+        private fun response(item: StarInventorySync) = StarInventorySyncResponse(
+            item.scanId,
+            "synced",
+            item.accountId,
+            item.generation,
+            item.revision,
+            item.recoveryPointId,
+            item.inheritancePending,
+        )
+        private fun invalid(message: String): Nothing =
+            throw InventoryApiException(HttpStatus.UNPROCESSABLE_ENTITY, "star_sync_invalid", message)
+        private fun conflict(code: String, message: String): Nothing = throw InventoryApiException(HttpStatus.CONFLICT, code, message)
+    }
+}
+
+data class StarInventorySyncResponse(
+    val scanId: String,
+    val status: String,
+    val accountId: String,
+    val generation: Long,
+    val revision: Long,
+    val recoveryPointId: String?,
+    val inheritancePending: Boolean,
+)
+
+data class StarPlanInheritanceSource(
+    val accountId: String,
+    val sourceRecoveryPointId: String,
+    val sourceGeneration: Long,
+    val targetGeneration: Long,
+    val sourceState: StarStateSnapshot,
+)

@@ -93,7 +93,7 @@
                     ><Sparkles
                       :size="15"
                       aria-hidden="true"
-                    />上传星石截图</span
+                    />自动同步星石背包</span
                   >
                   <span class="no-read"
                     ><ShieldCheck
@@ -102,7 +102,7 @@
                     />读取密探养成状态</span
                   >
                 </div>
-                <p class="capability-note">星石自动采集仍在接入中，请先在星石背包导入截图。</p>
+                <p class="capability-note">完整扫描将更新背包并清空旧佩戴；旧背包和未完成计划来源会保留。计划继承处理将在后续开放。</p>
                 <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-start" />
               </div>
               <button
@@ -223,7 +223,7 @@
                     <Check :size="17" aria-hidden="true" />读取当前密探数据与养成状态
                   </p>
                   <p>
-                    <Check :size="17" aria-hidden="true" />上传星石截图（MaaYuan 自动采集接入中）
+                    <Check :size="17" aria-hidden="true" />自动同步星石背包（保留旧背包及计划来源，清空旧佩戴）
                   </p>
                 </div>
                 <div class="grant-column deny">
@@ -749,6 +749,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:daily-tasks:write": "在手机小组件中记录今日历练完成",
   "star:capture:write": "上传星石截图",
   "star:scan:write": "上传星石本地识别结果（核对后导入）",
+  "star:sync:write": "完整星石扫描自动同步（重建背包）",
   "calendar:read": "查看活动日历与订阅",
 };
 

@@ -181,6 +181,14 @@ function notifyForEvent(message) {
       ? '/operator?' + new URLSearchParams({ account_id: accountId, review_record: recordId, review_operator: operatorId })
       : '/operator'
     showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '部分内容可能已保存，请核对采集结果', reviewHref })
+  } else if (message.event === 'star_inventory_synced') {
+    showToast({
+      kind: 'system',
+      title: '星石背包已同步',
+      detail: data.inheritance_pending
+        ? '旧养成计划来源已保留，继承处理功能将在后续开放。重新打开星石页面可读取新背包。'
+        : '重新打开星石页面可读取新背包，旧背包恢复点已保留。'
+    })
   } else if (message.event === 'inventory_import') {
     void notifyInventoryImport(data)
   }
