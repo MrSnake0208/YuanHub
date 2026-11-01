@@ -1,0 +1,16 @@
+// Explicit maintenance only. Running this task writes to PANEL_HUB_MONGO_URI.
+allprojects {
+    afterEvaluate {
+        tasks.register('panelRulesMaintenance', JavaExec) {
+            dependsOn tasks.named('classes')
+            classpath = sourceSets.main.runtimeClasspath
+            mainClass = 'com.lhs.share.hub.service.operator.PanelRulesMaintenance'
+            doFirst {
+                def action = project.property('panelAction')
+                if (action == 'import') args 'import', project.property('panelBundle')
+                else if (action == 'activate') args 'activate', project.property('panelGame'), project.property('panelVersion')
+                else throw new GradleException('panelAction must be import or activate')
+            }
+        }
+    }
+}

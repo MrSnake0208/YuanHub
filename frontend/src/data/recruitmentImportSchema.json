@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yuanhub.app/schema/recruitment-import-v1.schema.json",
+  "title": "YuanHub 普通招募记录导入 v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "yuanhub.recruitment.import.v1"
+    },
+    "game": {
+      "enum": [
+        "如鸢",
+        "代号鸢"
+      ]
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "description": "首次生成的小写UUID，同一真实记录重复导入或修订时保留，不得重新编号。"
+          },
+          "catalog_pool_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "agent_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "pull_span": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "up_status": {
+            "enum": [
+              "up",
+              "non_up",
+              "unknown"
+            ],
+            "default": "unknown"
+          },
+          "acquired_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "description": "首次生成的小写UUID，同一真实记录重复导入或修订时保留，不得重新编号。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "catalog_pool_id",
+          "agent_id",
+          "pull_span"
+        ]
+      }
+    },
+    "batches": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "description": "首次生成的小写UUID，同一真实记录重复导入或修订时保留，不得重新编号。"
+          },
+          "catalog_pool_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "total_pull_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          }
+        },
+        "required": [
+          "batch_id",
+          "catalog_pool_id",
+          "total_pull_count"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "game",
+    "events"
+  ],
+  "$comment": "UTF-8文件最多5MiB，events与batches不可同时为空；公共池最多500。服务端校验目标游戏、公共目录、唯一ID、批次归属与抽数，4星pull_span必须null。数组顺序为记录顺序。普通导入只追加，不替换基准/当前进度/当前卡池。"
+}

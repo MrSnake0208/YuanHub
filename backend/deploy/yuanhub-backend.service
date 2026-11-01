@@ -1,0 +1,45 @@
+# YuanHub Backend systemd 单元（参考模板）
+#
+# 首次部署时按实际服务器替换以下占位符，然后安装到 /etc/systemd/system/：
+#   __BACKEND_PATH__  与 GitHub Variable YUANHUB_BACKEND_DEPLOY_DIR 完全一致
+#   __RUN_USER__      运行后端的系统用户（需要该目录的读写权限）
+#
+#   sudo cp deploy/yuanhub-backend.service /etc/systemd/system/yuanhub-backend.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now yuanhub-backend
+#
+# 目录约定（由 release workflow 维护，见 .github/workflows/release.yml）：
+#   __BACKEND_PATH__/releases/<tag>/app.jar   每次发布一个目录
+#   __BACKEND_PATH__/current -> releases/<tag> 原子切换
+#   __BACKEND_PATH__/shared/backend.env       运维维护（数据库、JWT 等），workflow 不覆盖
+#   __BACKEND_PATH__/shared/version.env       workflow 写入 YUANHUB_* 版本变量
+#
+# 注意：application.yml 里 share.info.version / share.info.product-version 使用
+# ${YUANHUB_BACKEND_VERSION} / ${YUANHUB_PRODUCT_VERSION} 占位，由 version.env 提供。
+
+[Unit]
+Description=YuanHub Backend (Spring Boot)
+Documentation=https://github.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+Group=__RUN_USER__
+# 重要：base application.yml 的 spring.profiles.active 默认是 dev，而 application-dev.yml
+# 指向内网 Mongo/Redis。shared/backend.env 必须包含 SPRING_PROFILES_ACTIVE=prod
+# 与生产数据库地址，否则服务会带着开发配置启动。完整必填项见 docs/deployment.md。
+# 工作目录固定在根目录，保证 ./logs、data/、私有媒体等相对路径不随版本目录变化。
+WorkingDirectory=__BACKEND_PATH__
+EnvironmentFile=__BACKEND_PATH__/shared/backend.env
+EnvironmentFile=-__BACKEND_PATH__/shared/version.env
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=75 -Dfile.encoding=UTF-8 -jar __BACKEND_PATH__/current/app.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+# 生产建议按需放开资源限制
+# LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

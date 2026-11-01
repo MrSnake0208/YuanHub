@@ -1,0 +1,24 @@
+[Unit]
+Description=YuanHub Backend (%i slot)
+Documentation=https://github.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+Group=__RUN_USER__
+WorkingDirectory=__BACKEND_PATH__
+Environment=YUANHUB_JAVA_MAX_RAM_PERCENTAGE=25
+EnvironmentFile=__BACKEND_PATH__/shared/backend.env
+EnvironmentFile=__BACKEND_PATH__/slots/%i.env
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=${YUANHUB_JAVA_MAX_RAM_PERCENTAGE} -Dfile.encoding=UTF-8 -jar ${YUANHUB_JAR}
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=65
+KillSignal=SIGTERM
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,133 @@
+name: Build and Deploy Promo Site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "promo-site/**"
+      - ".github/workflows/promo-site-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: yuanhub-promo-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: promo-site
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: promo-site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build promo site
+        run: npm run build
+
+      - name: Check build output
+        run: |
+          test -f dist/index.html
+          test -f dist/brand/yuanhub-logo.png
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -f dist/pwa/icon-192.png
+          test -f dist/pwa/icon-512.png
+          test -f dist/pwa/icon-maskable-512.png
+          test -f dist/pwa/apple-touch-icon.png
+
+      - name: Validate deployment SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$DEPLOY_KEY" || {
+            echo "::error::YUANHUB_PROMO_VPS_SSH_KEY is empty or unavailable. Add it as a repository secret."
+            exit 1
+          }
+          case "$DEPLOY_KEY" in
+            "-----BEGIN OPENSSH PRIVATE KEY-----"*|"-----BEGIN RSA PRIVATE KEY-----"*) ;;
+            *)
+              echo "::error::YUANHUB_PROMO_VPS_SSH_KEY must contain the complete private key, including BEGIN and END lines."
+              exit 1
+              ;;
+          esac
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          chmod 600 "$key_file"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
+      - name: Upload build to temporary directory
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
+          key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
+          source: "promo-site/dist/*"
+          target: "/tmp/yuanhub-promo-site-${{ github.sha }}/"
+          overwrite: true
+          strip_components: 2
+
+      - name: Replace deployed files
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        env:
+          DEPLOY_DIR: ${{ secrets.YUANHUB_PROMO_DEPLOY_DIR }}
+          TMP_DIR: /tmp/yuanhub-promo-site-${{ github.sha }}
+        with:
+          host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
+          key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
+          envs: DEPLOY_DIR,TMP_DIR
+          script: |
+            set -eu
+            test -n "$DEPLOY_DIR"
+            install -d -m 0755 "$DEPLOY_DIR"
+            find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+            cp -a "$TMP_DIR"/. "$DEPLOY_DIR"/
+            rm -rf "$TMP_DIR"
+
+      - name: Verify deployed promo resources
+        env:
+          SITE_URL: https://hub.maayuan.com
+        run: |
+          set -eu
+          check_url() {
+            path="$1"
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --retry 4 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              -H 'Cache-Control: no-cache' \
+              "${SITE_URL}${path}?deploy=${GITHUB_SHA}" \
+              >/dev/null
+          }
+
+          check_url "/"
+          check_url "/brand/yuanhub-logo.png"
+          check_url "/pwa/icon-192.png"
+          check_url "/manifest.webmanifest"
+          check_url "/sw.js"

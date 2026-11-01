@@ -1,0 +1,96 @@
+name: Backend CI
+
+# 普通 push / PR 只做检查、测试与打包，不做任何生产部署。
+# 生产发布由 tag 触发的 release.yml 负责。
+#
+# 默认 test 排除 integration / architecture / api-schema / realistic / stress 标签。
+# 说明：容器依赖的 integrationTest / apiSchemaTest / realisticTest / stressTest 不在默认 CI 内，
+# 它们需要 Docker 且耗时较长；本地完整验证入口是 Monorepo 根目录 ./scripts/test.sh all。
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'backend/**'
+      - '.github/**'
+      - 'scripts/**'
+      - 'dev.sh'
+      - 'release.sh'
+      - 'AGENTS.md'
+      - 'docs/development/testing.md'
+      - '.gitattributes'
+      - '.gitignore'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/**'
+      - 'scripts/**'
+      - 'dev.sh'
+      - 'release.sh'
+      - 'AGENTS.md'
+      - 'docs/development/testing.md'
+      - '.gitattributes'
+      - '.gitignore'
+  workflow_dispatch:
+
+concurrency:
+  group: yuanhub-backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Backend checks and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # 复用仓库既有命令，不重新发明测试体系。
+      - name: Lint (ktlint)
+        run: ./gradlew ktlintCheck --console=plain
+
+      - name: Unit tests
+        run: ./gradlew test --console=plain
+
+      - name: Build jar
+        run: ./gradlew assemble --console=plain
+
+      - name: Verify jar output
+        run: |
+          set -eu
+          jar="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n 1)"
+          test -n "$jar" || { echo "::error::no bootJar produced"; exit 1; }
+          echo "Built $jar"
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yuanhub-backend-jar-${{ github.sha }}
+          path: backend/build/libs/*.jar
+          retention-days: 7

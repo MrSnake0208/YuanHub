@@ -1,0 +1,649 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yuanhub.app/schema/recruitment-exchange-v1.schema.json",
+  "title": "YuanHub recruitment snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "yuanhub.recruitment.v1"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "source_account": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "account_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "account_id"
+      ],
+      "description": "可省略或为null的来源元信息；提供对象时account_id必填。导入目标由已认证请求的account_id决定，导出仍携带来源。"
+    },
+    "game": {
+      "enum": [
+        "如鸢",
+        "代号鸢"
+      ]
+    },
+    "archive_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775806
+    },
+    "baseline": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "current_pool_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pool"
+      },
+      "maxItems": 500
+    },
+    "temporary_agents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/temporary_agent"
+      },
+      "maxItems": 1000
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      },
+      "maxItems": 20000
+    },
+    "batches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/batch"
+      },
+      "maxItems": 20000
+    }
+  },
+  "required": [
+    "schema",
+    "exported_at",
+    "game",
+    "archive_revision",
+    "baseline",
+    "current_pool_id",
+    "pools",
+    "temporary_agents",
+    "events",
+    "batches"
+  ],
+  "$defs": {
+    "pool_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "game": {
+          "enum": [
+            "如鸢",
+            "代号鸢"
+          ]
+        },
+        "catalog_pool_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "up_agent_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "up_status": {
+          "enum": [
+            "verified",
+            "partial",
+            "selection",
+            "unknown"
+          ]
+        },
+        "up_agent_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxItems": 1000
+        },
+        "unmapped_up_agent_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxItems": 1000
+        },
+        "catalog_revision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pool_type": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allow_custom_up": {
+          "type": "boolean"
+        },
+        "up_agents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/up_agent"
+          },
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "name",
+        "game"
+      ]
+    },
+    "agent_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "temporary": {
+          "type": "boolean"
+        },
+        "catalog_revision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rarity": {
+          "enum": [
+            4,
+            5
+          ]
+        }
+      },
+      "required": [
+        "agent_id",
+        "name",
+        "rarity"
+      ]
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/pool_snapshot"
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wish_agent_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+          "uniqueItems": true,
+          "oneOf": [{ "maxItems": 0 }, { "minItems": 2 }],
+          "minItems": 0,
+          "maxItems": 2
+        },
+        "mapped_snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/pool_snapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "pool_id",
+        "snapshot",
+        "progress"
+      ]
+    },
+    "temporary_agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "pattern": "^tmp_[A-Za-z0-9._:-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "mapped_agent_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mapped_name": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "agent_id",
+        "name"
+      ]
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "pool_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "pool_snapshot": {
+          "$ref": "#/$defs/pool_snapshot"
+        },
+        "agent_snapshot": {
+          "$ref": "#/$defs/agent_snapshot"
+        },
+        "pull_span": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sort_order": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854755806
+        },
+        "up_status": {
+          "enum": [
+            "up",
+            "non_up",
+            "unknown"
+          ]
+        },
+        "acquired_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "batch_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "deleted_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deleted_revision": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "import_batch_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imported_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "event_id",
+        "pool_id",
+        "pool_snapshot",
+        "agent_snapshot",
+        "pull_span",
+        "sort_order",
+        "up_status",
+        "source",
+        "created_at",
+        "updated_at"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "agent_snapshot": {
+                "properties": {
+                  "rarity": {
+                    "const": 4
+                  }
+                },
+                "required": [
+                  "rarity"
+                ]
+              }
+            },
+            "required": [
+              "agent_snapshot"
+            ]
+          },
+          "then": {
+            "properties": {
+              "pull_span": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "pool_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "total_pull_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "deleted_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deleted_revision": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "import_batch_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imported_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "batch_id",
+        "pool_id",
+        "total_pull_count",
+        "created_at"
+      ]
+    },
+    "up_agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operator_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "$comment": "Stable pool-local UP identity. operator_id=null is an administrator placeholder; binding preserves id. Snapshot metadata cannot create or overwrite the public directory."
+    }
+  },
+  "$comment": "UTF-8 serialized document <=5MiB. Server additionally validates unique IDs/order, game/snapshot agreement, graph references, tombstone metadata and batch arithmetic. Import additionally authorizes existing administrator pools and their UP slot references; disabled pools and retired slots may restore history. New user-defined pools, temporary agents, legacy-pool events/batches and cross-pool slots are rejected; existing legacy facts remain exportable and comparable."
+}

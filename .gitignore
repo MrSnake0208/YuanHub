@@ -1,29 +1,45 @@
-# Dependencies and build output
-node_modules
-dist
-.pnpm-store
-
-# OS and local configuration
+# Per-worktree dependencies, build output and local evidence
+node_modules/
+dist/
+build/
+.gradle/
+.gradle-user-home/
+.gradle-home/
+.kotlin/
+.cache/
+.pnpm-store/
+coverage/
+__pycache__/
+*.pyc
 .DS_Store
-*.local
+.idea/
+.vscode/
+.dev/
+.test-artifacts/
+.agent-test/
+.ai/
+.playwright-cli/
+.ux/audits/
+.worktrees/
+.agent-teams/
+.herdr-web-ui/
+.ovis/
 .env
 .env.*
 !.env.example
 !.env.*.example
 !.env.template
-!.env.*.template
+*.pem
+*.p12
+*.pfx
+*.archive.gz
+*.bundle
+*.log
+# Private archive datasets stay outside the source repository.
+/achievement/*.xlsx
+/achievement/converted/
+/achievement/imported/
+/bonds/converted/
 
-# Local agent session records
-/.agent-teams/
-
-# Package-manager debug logs
-npm-debug.log*
-pnpm-debug.log*
-
-# Test coverage
-/coverage/
-/promo-site/coverage/
-
-# Local UX audit reports/screenshots may contain authenticated UI state.
-.ux/audits/
-.playwright-cli
+# Personal workflow is local to this checkout, never published.
+/.trellis/
