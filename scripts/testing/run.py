@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One local entrypoint. Failures stay failures, including missing containers and test gaps."""
+"""One local entrypoint. Failures stay failures, including missing services and test gaps."""
 from __future__ import annotations
 import argparse
 import datetime as dt
@@ -42,16 +42,6 @@ def environment():
         'SPRING_DATA_REDIS_URL': 'redis://127.0.0.1:1',
         'PYTHONDONTWRITEBYTECODE': '1', 'FC_SEED': env.get('FC_SEED', '20260922'),
     })
-    if not env.get('DOCKER_HOST'):
-        sockets = [Path.home() / '.colima/yuanhub-tests/docker.sock', Path.home() / '.docker/run/docker.sock', Path('/var/run/docker.sock')]
-        socket = next((path for path in sockets if path.exists()), None)
-        if socket:
-            env['DOCKER_HOST'] = 'unix://' + str(socket)
-    if '.colima/' in env.get('DOCKER_HOST', ''):
-        env['TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE'] = '/var/run/docker.sock'
-        env['TESTCONTAINERS_HOST_OVERRIDE'] = '127.0.0.1'
-    if env.get('DOCKER_HOST') and not env['DOCKER_HOST'].startswith('unix://'):
-        raise ValueError('Refusing non-local DOCKER_HOST. Use a local Unix Docker socket for disposable tests.')
     return env
 
 
@@ -144,7 +134,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     env = environment()
     if args.mode == 'doctor':
-        commands = [('Node', ['node', '--version']), ('npm', ['npm', '--version']), ('Java', ['java', '-version']), ('Docker', ['docker', 'info', '--format', '{{.ServerVersion}}'])]
+        commands = [('Node', ['node', '--version']), ('npm', ['npm', '--version']), ('Java', ['java', '-version']), ('Local databases', ['bash', 'backend/scripts/dev-up.sh'])]
         failed = False
         for label, command in commands:
             try:
@@ -152,7 +142,7 @@ def main(argv=None):
                 print(f'{label}: ' + (result.stdout + result.stderr).strip()); failed |= result.returncode != 0
             except (OSError, subprocess.TimeoutExpired) as error:
                 print(f'{label}: {error}'); failed = True
-        print('Python:', sys.version.split()[0]); print('Docker socket:', env.get('DOCKER_HOST', 'default local socket'))
+        print('Python:', sys.version.split()[0])
         return int(failed)
     task = current_task(ROOT, args.task)
     changes = changed_files(ROOT, args.base)

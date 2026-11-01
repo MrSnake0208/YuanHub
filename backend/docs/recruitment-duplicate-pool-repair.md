@@ -71,4 +71,4 @@ node --test scripts/migrations/20261015-recruitment-duplicate-pools.test.js
 ./gradlew integrationTest --tests '*RecruitmentDuplicateRepairMongoTest' --console=plain
 ```
 
-集成测试环境需要现有 Docker 和 mongosh；缺少工具时失败，不静默跳过。真实浏览器交互和生产数据由用户按第 4 步手工验收。
+集成测试环境需要本机 MongoDB 副本集和 mongosh；缺少工具时失败，不静默跳过。真实浏览器交互和生产数据由用户按第 4 步手工验收。

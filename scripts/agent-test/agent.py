@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owned local sandbox; never adopts existing Mongo/Redis or restarts services."""
+"""Owned synthetic data on shared local Mongo/Redis; never restarts services."""
 import argparse
 import json
 import os
@@ -9,13 +9,12 @@ import secrets
 import socket
 import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
-LABEL = "yuanhub.agent.instance"
+MONGO = "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=3000"
 
 
 class Refused(RuntimeError):
@@ -25,7 +24,7 @@ class Refused(RuntimeError):
 def run(args, *, input=None):
     result = subprocess.run(args, input=input, text=True, capture_output=True)
     if result.returncode:
-        raise Refused(f"{Path(args[0]).name} 操作失败；检查 Docker/工具是否可用（输出已隐藏以保护凭据）")
+        raise Refused(f"{Path(args[0]).name} 操作失败；检查本机服务/工具是否可用（输出已隐藏以保护凭据）")
     return result.stdout.strip()
 
 
@@ -57,33 +56,32 @@ def load(path):
     return json.loads(path.read_text())
 
 
-def inspect_owned(data, role):
-    container = data["containers"][role]
-    details = json.loads(run(["docker", "inspect", container]))[0]
-    labels = details["Config"].get("Labels") or {}
-    if details["Id"] != container or labels.get(LABEL) != data["instance"] or labels.get("yuanhub.agent.role") != role:
-        raise Refused("Docker 容器归属不匹配；拒绝连接或删除")
-    if not details["State"]["Running"] or details["HostConfig"]["NetworkMode"] == "host":
-        raise Refused("专属容器未运行或网络不安全；不要接入现有数据库")
-    if any(m["Type"] != "tmpfs" for m in details.get("Mounts", [])):
-        raise Refused("专属容器不得挂载已有数据 volume/bind")
-    port = "27017/tcp" if role == "mongo" else "6379/tcp"
-    bindings = details["NetworkSettings"]["Ports"]
-    actual = bindings.get(port)
-    expected_port = data["ports"].get(role)
-    if not actual or len(actual) != 1 or actual[0]["HostIp"] != "127.0.0.1" or (
-        expected_port is not None and actual[0]["HostPort"] != str(expected_port)
-    ) or any(v for k, v in bindings.items() if k != port):
-        raise Refused("数据库发布地址与专属 loopback 端口不符")
-    return container
+def mongo(script):
+    return run(["mongosh", MONGO, "--quiet", "--eval", script])
+
+
+def redis(*args):
+    return run(["redis-cli", "-h", "127.0.0.1", "-p", "6379", "-n", "15", "-t", "3", "--raw", *args])
+
+
+def check_manifest(data):
+    instance = data.get("instance", "")
+    if not re.fullmatch(r"[a-f0-9]{32}", instance) or data.get("ports") != {"mongo": 27017, "redis": 6379} or data.get("containers"):
+        raise Refused("需要共享本机服务的新 manifest；旧容器配置不自动迁移或删除")
+    expected = properties(data, Path(data["properties"]["share.agent-test.manifest"]).parent)
+    for key in ("spring.data.mongodb.uri", "share.mongo.hub-uri", "spring.data.redis.url"):
+        if data["properties"].get(key) != expected[key]:
+            raise Refused("测试连接必须使用本实例随机库和本机 Redis DB 15")
+    return instance
 
 
 def verify(data):
     no_tunnel()
-    if not data.get("properties") or set(data["containers"]) != {"mongo", "redis"}:
-        raise Refused("setup 尚未完成；运行 cleanup --yes 清理本次专属容器后重新 setup")
-    for role in ("mongo", "redis"):
-        inspect_owned(data, role)
+    instance = check_manifest(data)
+    for suffix in ("maa", "hub"):
+        mongo(f"if (!db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.findOne({{_id:'{instance}'}})) quit(1)")
+    if redis("GET", f"yuanhub_agent:{instance}:agent-test:ownership") != instance:
+        raise Refused("Redis 测试命名空间归属标记不匹配")
 
 
 def properties(data, directory):
@@ -96,7 +94,7 @@ def properties(data, directory):
         "server.forward-headers-strategy": "none",
         "spring.data.mongodb.uri": mongo + "_maa?replicaSet=rs0&directConnection=true",
         "share.mongo.hub-uri": mongo + "_hub?replicaSet=rs0&directConnection=true",
-        "spring.data.redis.url": f"redis://127.0.0.1:{data['ports']['redis']}/0",
+        "spring.data.redis.url": f"redis://127.0.0.1:{data['ports']['redis']}/15",
         "debug.email.no-send": "true", "share.jwt.secret": secrets.token_urlsafe(48),
         "share.jwt.expire": "10",
         "share.beta.local-test-mode": "true", "share.beta.campaign-id": f"yuanhub-beta-local-agent-{instance}",
@@ -114,60 +112,27 @@ def setup(path, namespace):
     no_tunnel()
     if path.exists():
         verify(load(path))
-        print("专属容器与配置已存在，未新增或覆盖数据。")
+        print("专属测试数据与配置已存在，未新增或覆盖数据。")
         return
-    run(["docker", "info", "--format", "{{.ServerVersion}}"])
+    run(["bash", str(ROOT / "backend/scripts/dev-up.sh")])
     private_dir(path.parent.parent)
     private_dir(path.parent)
     instance = uuid.uuid4().hex
-    data = {"instance": instance, "containers": {}, "ports": {}, "users": {}}
-    # Persist each owned container so a failed setup remains safely cleanable.
+    data = {"instance": instance, "ports": {"mongo": 27017, "redis": 6379}, "users": {}}
+    data["properties"] = properties(data, path.parent)
+    # Persist ownership before writes, so failed setup can be inspected safely.
     save(path, data)
-    for role, image, port, command, mounts in (
-        ("mongo", "mongo:7.0", 27017, ["mongod", "--replSet", "rs0", "--bind_ip_all"], ["/data/db", "/data/configdb"]),
-        ("redis", "redis:7.2-alpine", 6379, ["redis-server", "--save", "", "--appendonly", "no"], ["/data"]),
-    ):
-        args = ["docker", "run", "-d", "--rm", "--label", f"{LABEL}={instance}", "--label", f"yuanhub.agent.role={role}",
-                "--publish", f"127.0.0.1::{port}"]
-        for mount in mounts:
-            args += ["--tmpfs", mount]
-        container = run(args + [image] + command)
-        data["containers"][role] = container
-        save(path, data)
-        binding = json.loads(run(["docker", "inspect", container]))[0]["NetworkSettings"]["Ports"][f"{port}/tcp"][0]
-        data["ports"][role] = int(binding["HostPort"])
-        save(path, data)
-    mongo = data["containers"]["mongo"]
-    for attempt in range(40):
-        try:
-            run(["docker", "exec", mongo, "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"])
-            break
-        except Refused:
-            if attempt == 39:
-                raise
-            time.sleep(0.5)
-    run(["docker", "exec", mongo, "mongosh", "--quiet", "--eval",
-         "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"])
-    for attempt in range(40):
-        try:
-            run(["docker", "exec", mongo, "mongosh", "--quiet", "--eval",
-                 "if (!db.hello().isWritablePrimary) quit(1)"])
-            break
-        except Refused:
-            if attempt == 39:
-                raise
-            time.sleep(0.5)
     for suffix in ("maa", "hub"):
-        run(["docker", "exec", mongo, "mongosh", "--quiet", "--eval",
-             f"db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.insertOne({{_id:'{instance}'}})"])
-    run(["docker", "exec", data["containers"]["redis"], "redis-cli", "SET", "agent-test:ownership", instance])
+        mongo(f"db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.insertOne({{_id:'{instance}'}})")
+    if redis("SET", f"yuanhub_agent:{instance}:agent-test:ownership", instance, "NX") != "OK":
+        raise Refused("Redis 测试命名空间已存在；拒绝覆盖")
     for role in ("user", "admin"):
         data["users"][role] = {"email": f"agent-{role}-{namespace}@example.test", "name": f"agent-{role}-{namespace}",
                                "password": secrets.token_urlsafe(24)}
     data["properties"] = properties(data, path.parent)
     save(path, data)
     verify(data)
-    print("专属 Mongo replica set / Redis 已准备；随机凭据仅保存在受保护 manifest。下一步：start")
+    print("共享本机 Mongo/Redis 中的专属测试数据已准备；随机凭据仅保存在受保护 manifest。下一步：start")
 
 
 def request(origin, route):
@@ -193,6 +158,16 @@ def listening(port):
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
+def validate_launch(config):
+    path = Path(config["share.agent-test.manifest"]).resolve()
+    if not path.is_relative_to((ROOT / ".agent-test").resolve()):
+        raise Refused("Agent manifest 必须位于本工作树 .agent-test")
+    data = load(path)
+    if config != data["properties"] or config.get("share.agent-test.enabled") != "true":
+        raise Refused("启动参数必须与受保护 manifest 完全一致")
+    verify(data)
+
+
 def start(data, directory):
     verify(data)
     if listening(8080) or listening(5173):
@@ -213,14 +188,19 @@ def cleanup(data, path):
     no_tunnel()
     if listening(8080) or listening(5173):
         raise Refused("清理前请自行停止开发服务；工具不会终止现有进程")
-    for role in data["containers"]:
-        inspect_owned(data, role)
-    for container in data["containers"].values():
-        run(["docker", "rm", "-f", container])
-    # Credentials/state live only here. No database drops, external volumes or shared data.
+    verify(data)  # Check both database markers and Redis ownership before any deletion.
+    instance = check_manifest(data)
+    for suffix in ("maa", "hub"):
+        mongo(f"const d=db.getSiblingDB('yuanhub_agent_{instance}_{suffix}'); if (!d.agent_test_ownership.findOne({{_id:'{instance}'}})) quit(1); d.dropDatabase()")
+    prefix = f"yuanhub_agent:{instance}:"
+    keys = redis("--scan", "--pattern", prefix + "*").splitlines()
+    if any(not key.startswith(prefix) for key in keys):
+        raise Refused("Redis 返回了命名空间外的键；拒绝删除")
+    for key in keys:
+        redis("DEL", key)
     import shutil
     shutil.rmtree(path.parent)
-    print("仅本实例容器、凭据与浏览器状态已清理。")
+    print("仅本实例测试数据库、Redis 键、凭据与浏览器状态已清理。")
 
 
 def main():
@@ -263,5 +243,5 @@ if __name__ == "__main__":
     except (Refused, OSError, ValueError, KeyError, urllib.error.URLError):
         # Never print exception payloads that might contain server responses or secrets.
         error = sys.exc_info()[1]
-        print(f"拒绝执行：{error if isinstance(error, Refused) else '依赖/配置/服务不可用；检查 Docker、setup 和 start（现有服务不会重启）'}", file=sys.stderr)
+        print(f"拒绝执行：{error if isinstance(error, Refused) else '依赖/配置/服务不可用；检查本机服务、setup 和 start（现有服务不会重启）'}", file=sys.stderr)
         sys.exit(1)

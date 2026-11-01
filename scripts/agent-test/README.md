@@ -1,16 +1,16 @@
 # Agent 本地真实登录
 
 入口：在 **YuanHub-All 根目录**运行 `python3 scripts/agent-test/agent.py`。
-这是独立合成数据环境；普通开发数据库、远端副本和正式服务均不接入。
+这是共享本机服务上的独立合成数据环境；不接入普通开发数据库、远端副本或正式服务。浏览器操作仍须当前任务明确授权。
 
 ## 首次使用
 
-需要 Python 3、Node 20+、JDK 21、Docker daemon、工作区已有 Playwright 1.63、Google Chrome，以及前后端已有依赖。
-可先检查 `docker info`、`npx --no-install playwright --version`、`npx --no-install playwright cli --help`。
+需要 Python 3、Node 20+、JDK 21、本机 MongoDB 副本集与 Redis、mongosh 和 redis-cli、工作区已有 Playwright 1.63、Google Chrome，以及前后端已有依赖。
+可先检查 `bash backend/scripts/dev-up.sh`、`npx --no-install playwright --version`、`npx --no-install playwright cli --help`。
 工具明确使用 `chrome` channel 与独立 profile，不访问日常 Chrome 个人资料；缺少 Chrome 时先安装 Google Chrome。
 
 1. 确认没有 cloudflared，且 8080 / 5173 没有其它开发服务。工具会探测并拒绝冲突，**不会停止或重启现有服务**。已有服务需要由用户自行安排切换；不要为此直接运行 Vite/bootRun。
-2. 创建专属容器与随机凭据：
+2. 创建随机测试数据库、Redis 键命名空间与凭据：
 
    ```bash
    python3 scripts/agent-test/agent.py setup
@@ -31,7 +31,7 @@
    ```
 
 `start` 只复用 `/version` 和私有 ready 证明都匹配本实例的前后端。后端启动期间请等日志显示就绪后再 `init`。
-账号由后端启动时通过现有 `UserService.register/login` 创建和验活，密码使用现有 BCrypt；一次性验证码仅在专属 Redis 内生成并经现有校验消耗，不发邮件、不输出验证码。没有新增认证 HTTP 入口。
+账号由后端启动时通过现有 `UserService.register/login` 创建和验活，密码使用现有 BCrypt；一次性验证码仅在Redis DB 15 的本实例键前缀内生成并经现有校验消耗，不发邮件、不输出验证码。没有新增认证 HTTP 入口。
 
 ## 每个新 Agent 会话
 
@@ -77,7 +77,7 @@ python3 scripts/agent-test/agent.py login user --session alice
 python3 scripts/agent-test/agent.py cli user --session alice snapshot
 ```
 
-同身份多浏览器仍共享业务数据；需要独立用户/库时，以 `--namespace alice` 为每个命令指定另一组容器、凭据与用户（标识限 1–10 位小写字母/数字/`-`）。当前服务器端口固定为 8080/5173，多个 namespace 的服务不能同时运行；它们可分别保留容器，再由用户安排切换服务。**同 namespace 的 init/reset/setup 串行执行**，没有引入并发调度平台。
+同身份多浏览器仍共享业务数据；需要独立用户/库时，以 `--namespace alice` 为每个命令指定另一组随机数据库、Redis 键前缀、凭据与用户（标识限 1–10 位小写字母/数字/`-`）。当前服务器端口固定为 8080/5173，多个 namespace 的服务不能同时运行；它们可分别保留测试数据，再由用户安排切换服务。**同 namespace 的 init/reset/setup 串行执行**，没有引入并发调度平台。
 
 ## 重置、轮换与清理
 
@@ -98,8 +98,9 @@ python3 scripts/agent-test/agent.py cleanup --yes
 python3 scripts/agent-test/agent.py setup
 ```
 
-`cleanup` 逐个校验所有容器 ID/标签/挂载/端口，才移除**本实例容器**及本 namespace 私有配置；容器内仅有此实例合成数据，无持久化 volume。新 setup 生成新密码和 JWT secret，旧 token 对新实例失效。不要手改 manifest 密码，后端不会覆盖已有账号密码；不要运行通用 Compose `down -v` 或清理已有库。
-容器采用 tmpfs + `--rm`：关闭 Docker/移除容器会丢失此专属合成数据。Docker daemon 重启后若容器已消失，工具拒绝冒认其它容器；可核对已记录 ID 均不存在后，自行移除对应 `.agent-test/<namespace>` 私有目录，再 setup。不要删除其它 namespace。
+`cleanup` 先校验两个随机数据库和 Redis 命名空间的归属标记，才删除本实例测试库、前缀键及私有配置；不停止共享服务，不执行 FLUSHDB。新 setup 生成新密码和 JWT secret，旧 token 对新实例失效。不要手改 manifest 密码，后端不会覆盖已有账号密码。
+
+旧容器版 manifest 不自动迁移，也不会自动删除旧容器；应由用户保留旧数据，使用新 namespace 创建本机服务版测试环境。共享服务持久化测试数据，需要时显式 cleanup；不得删除其他 namespace。
 
 密码、JWT secret、token 快照、浏览器 profile、截图与日志只存于 Git 忽略的 `.agent-test/`，目录 0700、配置/state 0600。不要打印 manifest、yh_auth、HTTP Authorization、refresh 响应或认证 trace；不要把它们贴进任务日志、README、报告或 Git。
 官方 CLI 的 daemon 元数据位于用户 Playwright 缓存中；浏览器 profile 和所有工作区输出通过私有工作目录隔离。关闭命名会话后可按官方 CLI 文档删除其 daemon 缓存，不要 `close-all/kill-all` 干扰其它 Agent。
@@ -109,10 +110,10 @@ python3 scripts/agent-test/agent.py setup
 | 诊断 | 操作 |
 | --- | --- |
 | `发现 cloudflared` | 用户先停止 tunnel，再 setup/start/init/login；工具不会停止它 |
-| Docker 不可用 | 启动 Docker Desktop，再 `docker info`；禁止改接 localhost 27017/6379 |
+| Docker 不可用 | 启动 Docker Desktop，再 `bash backend/scripts/dev-up.sh`；禁止改接 localhost 27017/6379 |
 | 缺少 manifest / ready | 先 setup/start；只在私有 `backend.log` 查看启动错误，不贴出敏感内容 |
 | 服务/代理实例不匹配 | 当前开发服务属于另一个环境；用户安排停止/切换后再 start |
-| Mongo/Redis marker、profile、配置不符 | 失败关闭；核对容器，重新创建此专属实例，禁止复制真实库或删除安全校验 |
+| Mongo/Redis marker、profile、配置不符 | 失败关闭；核对随机测试库与 Redis 键前缀，修复本实例，禁止复制真实库或删除安全校验 |
 | `SESSION_REFRESH_TEMPORARY` | 网络/服务暂时失败；检查服务再 login |
 | `SESSION_LOGIN_REJECTED` | 账号停用或密码已修改；按上述完整清理流程轮换此专属环境 |
 | check 显示未登录 / CLI 会话关闭 | 再执行相同角色和 session 的 login |

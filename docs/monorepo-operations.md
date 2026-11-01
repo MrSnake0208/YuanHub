@@ -12,9 +12,13 @@
 
 使用当前树的 `./dev.sh --print-env` 生成私有 .dev 配置（目录0700、实例文件0600），查看本树地址。前端 `cd frontend && npm ci` 使用 Node22；后端使用 JDK21 和 backend/gradlew。`./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh` 按需启动；不重启或停止别人的服务。
 
-每树分配独立 loopback 端口、Compose 项目、Mongo replica set/Redis 数据、媒体、日志和构建输出。启动器清除继承的生产连接配置，仅连接本树本地 Docker 服务；自动化数据库测试仍只使用 TestMongo/TestRedis 的自有可抛弃容器。不要指向 MaaBackend、HubBackend 或共享开发库。端口被占用时 fail-fast，不能杀掉占用者。
+每树分配独立 loopback 应用端口、媒体和构建输出；MongoDB 共用 127.0.0.1:27017 的 MaaBackend/HubBackend，Redis 共用 127.0.0.1:6379（默认 DB 0）。启动器清除继承的生产连接配置。共享开发数据意味着不同工作树的写入互相可见；不要用开发库运行破坏性测试。端口被占用时 fail-fast，不能杀掉占用者。
 
-Docker 使用本机 Unix socket；Mongo 大型测试需要容器 nofile 至少65536。未运行 Docker 时可以构建和执行不需容器的检查，不能声称后端已启动。生产 env 不进入源码树；前端私有 env 由用户自行准备。共享 Cloudflare Tunnel 不支持多树自动复用，本启动器拒绝 tunnel 子命令。
+本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
+
+集成测试不依赖 Docker/Testcontainers。TestMongo 仅访问自己注册的随机 yuanhub_test_ 数据库；TestRedis 使用本机 Redis DB 15，并给所有键及清理模式加进程专属前缀。退出时尽力清理自有数据；强制终止 JVM 可能留下测试数据，不得因此清空共享 Redis 或批量删除其他会话测试库。普通单元测试仍使用不可连接的占位地址。详见 [测试说明](development/testing.md)。
+
+生产 env 不进入源码树；前端私有 env 由用户自行准备。共享 Cloudflare Tunnel 不支持多树自动复用，本启动器拒绝 tunnel 子命令。
 
 ## 独立 CI 与发布
 

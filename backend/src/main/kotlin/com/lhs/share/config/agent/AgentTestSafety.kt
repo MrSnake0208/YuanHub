@@ -6,12 +6,14 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor
+import org.springframework.beans.factory.config.BeanPostProcessor
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.core.env.Environment
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.web.filter.OncePerRequestFilter
 import java.net.URI
 import java.nio.file.Files
@@ -27,6 +29,20 @@ class AgentTestSafety {
         @JvmStatic
         fun refuseUnsafeAgentConnections(environment: Environment): BeanFactoryPostProcessor = BeanFactoryPostProcessor {
             verify(environment)
+        }
+
+        @Bean
+        @JvmStatic
+        fun isolateAgentRedisKeys(environment: Environment): BeanPostProcessor {
+            val instance = manifest(environment).path("instance").asText()
+            require(Regex("[a-f0-9]{32}").matches(instance))
+            val serializer = NamespacedRedisKeys("yuanhub_agent:$instance:")
+            return object : BeanPostProcessor {
+                override fun postProcessBeforeInitialization(bean: Any, beanName: String): Any {
+                    if (bean is StringRedisTemplate) bean.keySerializer = serializer
+                    return bean
+                }
+            }
         }
 
         fun manifest(environment: Environment): JsonNode {
@@ -66,16 +82,18 @@ class AgentTestSafety {
             }
             for ((key, suffix) in listOf("spring.data.mongodb.uri" to "maa", "share.mongo.hub-uri" to "hub")) {
                 val uri = URI(environment.getProperty(key)!!)
-                require(uri.scheme == "mongodb" && uri.host == "127.0.0.1" && uri.port > 1024 && uri.userInfo == null) {
-                    "Agent Mongo must use an owned loopback container"
+                require(uri.scheme == "mongodb" && uri.host == "127.0.0.1" && uri.port == 27017 && uri.userInfo == null) {
+                    "Agent Mongo must use a shared local service with isolated data"
                 }
                 require(uri.path == "/yuanhub_agent_${instance}_$suffix" && uri.query == "replicaSet=rs0&directConnection=true") {
                     "Agent Mongo database/replica set mismatch"
                 }
             }
             val redis = URI(environment.getProperty("spring.data.redis.url")!!)
-            require(redis.scheme == "redis" && redis.host == "127.0.0.1" && redis.port > 1024 && redis.path == "/0") {
-                "Agent Redis must use an owned loopback container"
+            require(
+                redis.scheme == "redis" && redis.host == "127.0.0.1" && redis.port == 6379 && redis.path == "/15" && redis.userInfo == null,
+            ) {
+                "Agent Redis must use a shared local service with isolated data"
             }
             require(environment.getProperty("server.address") == "127.0.0.1") { "Agent HTTP must bind loopback" }
             require(environment.getProperty("server.forward-headers-strategy") == "none") { "Agent proxy headers forbidden" }

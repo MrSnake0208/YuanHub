@@ -4,7 +4,7 @@
 - 只编辑当前 Worktree 内的文件，不跳到原主工作区或其它任务工作树；不得将当前分支切换到某个写死的功能分支。主分支只接受已完成集成的工作。
 - frontend/ 负责 Vue/Vite 页面、API 调用和公开开发者文档；backend/ 负责 Kotlin/Spring API、权限和持久化。保留二端子目录 AGENTS.md 的安全与领域约束。API/DTO/协议变更须同时检查两端契约与兼容发布顺序。
 - 一个任务使用一个根 Git Worktree，一个 PR 可包含两端；不创建子仓、跨工作区符号链接或第二套分支。不要擅自 commit、push、merge 或远端写入。
-- 开发统一用当前树 `./dev.sh`。它为本树分配端口和独立 Compose 数据；不复用共享 Mongo/Redis，不读取原目录的生产配置。用 `./dev.sh --print-env` 查看本树地址。自动测试仍只使用 TestMongo/TestRedis 自有可抛弃容器。
+- 开发统一用当前树 `./dev.sh`。它为本树分配应用端口，复用本机 MongoDB/Redis；后端通过 bootJar 构建、java -jar 启动，不执行 docker compose up、不读取生产配置。用 `./dev.sh --print-env` 查看本树地址。测试同样不依赖 Docker：仅使用 TestMongo 注册的随机测试库及 TestRedis 的进程专属键命名空间。
 - 端口被占用时停止并报告，不终止他人的进程。临时数据、日志、构建及依赖只放本树的忽略目录。浏览器自动化与线上操作仍须当前任务明确授权。
 - 二端独立构建部署；发布及回滚入口见 docs/monorepo-operations.md。旧多仓发布脚本仅作历史资产，不对当前根仓执行。
 
@@ -96,4 +96,4 @@
 
 依据 `docs/development/testing.md` 按 L0–L4 风险选择最小充分验证，不因改动自动执行全量测试。通用开发不要求安装个人任务工作流。
 
-Mongo transaction/Redis semantics tests must always use owned disposable containers, never existing development or production services. Preserve unrelated dirty files; do not reset, stash, clean, or include them in the task.
+Mongo transaction/Redis semantics tests share local services but must use process-owned disposable test databases and namespaced Redis keys; never use development/production data or flush shared Redis. Preserve unrelated dirty files; do not reset, stash, clean, or include them in the task.

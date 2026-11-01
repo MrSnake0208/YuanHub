@@ -284,7 +284,7 @@ class ScaleTest {
         self.assertFalse({'backend-unit', 'integration', 'realistic', 'api-schema', 'mutation', 'frontend-build', 'backend-build'} & stress)
         self.assertTrue({'runner-self-tests', 'backend-compile', 'backend-ktlint', 'architecture'} <= stress)
 
-    def test_runner_removes_live_connection_overrides_and_refuses_remote_docker(self):
+    def test_runner_removes_live_connection_overrides_without_requiring_docker(self):
         with patch.dict(os.environ, {'SPRING_PROFILES_ACTIVE': 'prod', 'SHARE_MONGO_HUB_URI': 'mongodb://production/HubBackend',
                                      'BETA_TEST_MONGO_URI': 'mongodb://production/HubBackend', 'DOCKER_HOST': 'unix:///tmp/test.sock'}):
             env = run.environment()
@@ -292,8 +292,7 @@ class ScaleTest {
             self.assertIn('127.0.0.1:1/yuanhub_test_', env['SHARE_MONGO_HUB_URI'])
             self.assertNotIn('BETA_TEST_MONGO_URI', env)
         with patch.dict(os.environ, {'DOCKER_HOST': 'tcp://remote.example.invalid:2375'}):
-            with self.assertRaises(ValueError):
-                run.environment()
+            self.assertEqual('test', run.environment()['SPRING_PROFILES_ACTIVE'])
 
     def test_preexisting_exception_cannot_silently_exempt_new_edits_to_the_same_file(self):
         import hashlib

@@ -15,22 +15,21 @@ spec.loader.exec_module(env)
 
 
 class WorktreeEnvironmentTest(unittest.TestCase):
-    def test_compose_uses_the_validated_local_endpoint(self):
+    def test_local_service_checks_fail_without_redis_and_never_start_services(self):
         with tempfile.TemporaryDirectory() as directory:
-            binary = Path(directory)/'docker'
-            binary.write_text('#!/bin/sh\n[ "$DOCKER_HOST" = "unix:///owned/docker.sock" ] && [ -z "${DOCKER_CONTEXT:-}" ] || exit 99\n')
-            binary.chmod(0o700)
-            values = dict(os.environ, PATH=directory+os.pathsep+os.environ['PATH'],
-                          DOCKER_HOST='unix:///owned/docker.sock', DOCKER_CONTEXT='remote-production',
-                          COMPOSE_PROJECT_NAME='owned-test', YUANHUB_MONGO_PORT='12345', YUANHUB_REDIS_PORT='12346')
-            result = subprocess.run(['bash', str(MODULE.parents[1]/'backend/scripts/dev-up.sh')],
-                                    env=values, capture_output=True, text=True, timeout=5)
+            root = Path(directory)
+            for name, script in {'mongosh': 'exit 0', 'redis-cli': 'echo PONG'}.items():
+                binary = root/name
+                binary.write_text('#!/bin/sh\n' + script + '\n')
+                binary.chmod(0o700)
+            values = dict(os.environ, PATH=directory+os.pathsep+os.environ['PATH'])
+            command = ['bash', str(MODULE.parents[1]/'backend/scripts/dev-up.sh')]
+            result = subprocess.run(command, env=values, capture_output=True, text=True, timeout=5)
             self.assertEqual(0, result.returncode, result.stderr)
-            result = subprocess.run(['bash', str(MODULE.parents[1]/'backend/scripts/dev-up.sh')],
-                                    env=dict(values, DOCKER_HOST='tcp://production:2375'),
-                                    capture_output=True, text=True, timeout=5)
+            (root/'redis-cli').write_text('#!/bin/sh\necho NOAUTH\n')
+            result = subprocess.run(command, env=values, capture_output=True, text=True, timeout=5)
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('Only local Unix Docker endpoints', result.stderr)
+            self.assertIn('Redis is unavailable', result.stderr)
 
     def test_launcher_does_not_start_apps_after_database_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -53,6 +52,34 @@ class WorktreeEnvironmentTest(unittest.TestCase):
             self.assertNotIn('YUANHUB_BETA_CAMPAIGN_ID', values)
             self.assertIn('127.0.0.1:', values['SHARE_MONGO_HUB_URI'])
 
+    def test_backend_builds_bootjar_before_java_and_does_not_launch_after_build_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(['git', 'init', '-q', directory], check=True)
+            for sub in ('scripts', 'backend/scripts', 'backend/src/main', 'bin'):
+                (root/sub).mkdir(parents=True, exist_ok=True)
+            shutil.copy(MODULE, root/'scripts/worktree_env.py')
+            shutil.copy(MODULE.parents[1]/'dev.sh', root/'dev.sh')
+            (root/'backend/scripts/dev-up.sh').write_text('exit 0')
+            gradle = root/'backend/gradlew'
+            gradle.write_text('#!/bin/sh\n[ "$1" = bootJar ] || exit 90\nmkdir -p build/libs\necho built > build/libs/app.jar\n')
+            gradle.chmod(0o700)
+            java = root/'bin/java'
+            java.write_text('#!/bin/sh\n[ "$1" = -jar ] && [ -f "$2" ] || exit 91\necho launched > java-called\n')
+            java.chmod(0o700)
+            values = dict(os.environ, PATH=str(root/'bin')+os.pathsep+os.environ['PATH'])
+            result = subprocess.run(['bash', 'dev.sh', 'backend'], cwd=root, env=values,
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue((root/'backend/java-called').exists())
+            self.assertEqual('built\n', (root/'.dev/backend-running.jar').read_text())
+            (root/'backend/java-called').unlink()
+            gradle.write_text('#!/bin/sh\nexit 23\n')
+            result = subprocess.run(['bash', 'dev.sh', 'backend'], cwd=root, env=values,
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(23, result.returncode, result.stderr)
+            self.assertFalse((root/'backend/java-called').exists())
+
     def test_concurrent_first_launch_uses_one_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             with ThreadPoolExecutor(max_workers=2) as pool:
@@ -68,11 +95,12 @@ class WorktreeEnvironmentTest(unittest.TestCase):
             self.assertEqual(a, env.configuration(roots[0]))
             self.assertNotEqual(a['project'], b['project'])
             self.assertNotEqual(a['jwt'], b['jwt'])
-            self.assertEqual(len(set(a['ports'].values())), 4)
+            self.assertEqual(len(set(a['ports'].values())), 2)
             values = env.exports(a)
-            self.assertIn(f":{a['ports']['mongo']}/yuanhub_local_maa?", values['SPRING_DATA_MONGODB_URI'])
+            self.assertIn(":27017/MaaBackend?", values['SPRING_DATA_MONGODB_URI'])
             self.assertIn('directConnection=true', values['SHARE_MONGO_HUB_URI'])
-            self.assertNotIn('MaaBackend', values['SPRING_DATA_MONGODB_URI'])
+            self.assertEqual(values['SPRING_DATA_MONGODB_URI'], env.exports(b)['SPRING_DATA_MONGODB_URI'])
+            self.assertEqual('6379', values['SPRING_DATA_REDIS_PORT'])
             self.assertEqual('true', values['DEBUG_EMAIL_NO_SEND'])
             self.assertEqual('local', values['SPRING_PROFILES_ACTIVE'])
             self.assertEqual('127.0.0.1', values['SERVER_ADDRESS'])

@@ -51,7 +51,7 @@
 
 首次启动前先备份并按正常流程发布后端，使种子完成，再发布前端。检查管理页或公共 GET：代号鸢101个、如鸢41个；两期旧活动各按旧页面两游戏均展示的行为迁移为4份游戏限定的历史记录，每份14档。保留结束时间 `2026-04-29T23:59:59+08:00`、`2026-05-13T23:59:59+08:00`，不补造开始时间。原来源未记录活动适用版本，`source_note` 明示这一限制；运营应核实适用游戏后创建新活动，或停用不适用历史记录。默认6.7。原如鸢 id96 的 price_cny=1580 等数值保持原样，不自动纠错。
 
-非生产 test profile 不自动执行启动种子，隔离测试显式调用相同 initialize；测试只连接 TestMongo 拥有的临时容器和随机测试库。不要删除种子记录后期待其删除永久生效：正常启动会补回缺失的固定 v1 ID，停用才是维护方式。回滚前端不清理公共集合或私人方案。
+非生产 test profile 不自动执行启动种子，隔离测试显式调用相同 initialize；测试只连接 共享本机服务上 TestMongo 拥有的随机测试库。不要删除种子记录后期待其删除永久生效：正常启动会补回缺失的固定 v1 ID，停用才是维护方式。回滚前端不清理公共集合或私人方案。
 
 ## 缓存与失败
 
@@ -64,4 +64,4 @@
 ./gradlew integrationTest --tests '*LedgerCatalog*MongoTest'
 ```
 
-第二条需要本机 Docker，禁止改接现有数据库。`LedgerCatalogHttpMongoTest` 验证真实 JSON → Controller → Service → 临时 Mongo → 公开 JSON → 持久审计闭环；安全链测试另外验证匿名/权限边界。
+第二条需要本机 MongoDB 副本集，只允许访问 TestMongo 创建的测试库。`LedgerCatalogHttpMongoTest` 验证真实 JSON → Controller → Service → 临时 Mongo → 公开 JSON → 持久审计闭环；安全链测试另外验证匿名/权限边界。

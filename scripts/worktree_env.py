@@ -1,4 +1,4 @@
-"""Private loopback ports and data namespace for the current Git worktree."""
+"""Private application ports and shared local databases for the current Git worktree."""
 import hashlib
 import fcntl
 import json
@@ -27,12 +27,12 @@ def create_configuration(root, file):
         return data
     sockets = []
     try:
-        for _ in range(4):
+        for _ in range(2):
             sock = socket.socket()
             sock.bind(('127.0.0.1', 0))
             sockets.append(sock)
         data = dict(root=str(root), project='yuanhub-' + hashlib.sha256(str(root).encode()).hexdigest()[:12],
-                    ports=dict(zip(('frontend','backend','mongo','redis'), [s.getsockname()[1] for s in sockets])),
+                    ports=dict(zip(('frontend','backend'), [s.getsockname()[1] for s in sockets])),
                     jwt=secrets.token_urlsafe(48))
         with file.open('x') as stream:
             os.chmod(file, 0o600)
@@ -46,22 +46,21 @@ def create_configuration(root, file):
 def exports(data):
     root = Path(data['root'])
     ports = data['ports']
-    mongo = f"mongodb://127.0.0.1:{ports['mongo']}"
-    query = '?replicaSet=rs0&directConnection=true'
+    mongo = "mongodb://127.0.0.1:27017"
+    query = '?directConnection=true'
     return {
-        'COMPOSE_PROJECT_NAME': data['project'],
         'YUANHUB_FRONTEND_PORT': str(ports['frontend']),
         'SERVER_PORT': str(ports['backend']),
         'MANAGEMENT_SERVER_PORT': str(ports['backend']),
         'SERVER_ADDRESS': '127.0.0.1',
-        'YUANHUB_MONGO_PORT': str(ports['mongo']),
-        'YUANHUB_REDIS_PORT': str(ports['redis']),
+        'YUANHUB_MONGO_PORT': '27017',
+        'YUANHUB_REDIS_PORT': '6379',
         'YUANHUB_DEV_API_TARGET': f"http://127.0.0.1:{ports['backend']}",
         'SPRING_PROFILES_ACTIVE': 'local',
-        'SPRING_DATA_MONGODB_URI': mongo + '/yuanhub_local_maa' + query,
-        'SHARE_MONGO_HUB_URI': mongo + '/yuanhub_local_hub' + query,
+        'SPRING_DATA_MONGODB_URI': mongo + '/MaaBackend' + query,
+        'SHARE_MONGO_HUB_URI': mongo + '/HubBackend' + query,
         'SPRING_DATA_REDIS_HOST': '127.0.0.1',
-        'SPRING_DATA_REDIS_PORT': str(ports['redis']),
+        'SPRING_DATA_REDIS_PORT': '6379',
         'SHARE_PUBLIC_BASE_URL': f"http://127.0.0.1:{ports['backend']}",
         'SHARE_CORS_ALLOWED_ORIGIN_PATTERNS': f"http://127.0.0.1:{ports['frontend']},http://localhost:{ports['frontend']}",
         'SHARE_JWT_SECRET': data['jwt'],
