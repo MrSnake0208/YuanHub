@@ -49,6 +49,15 @@ class AgentSafetyTest(unittest.TestCase):
                 run.assert_not_called()
             self.assertEqual(path.read_bytes(), before)
 
+    def test_first_setup_checks_local_services_before_writing_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifest.json"
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "run", side_effect=agent.Refused("unavailable")) as run:
+                with self.assertRaises(agent.Refused):
+                    agent.setup(path, "default")
+            run.assert_called_once_with(["python3", str(agent.ROOT / "scripts/check_local_services.py")])
+            self.assertFalse(path.exists())
+
     def test_manifest_permissions_and_random_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "manifest.json"

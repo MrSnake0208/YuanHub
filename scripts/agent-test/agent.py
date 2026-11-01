@@ -120,7 +120,7 @@ def setup(path, namespace):
         verify(load(path))
         print("专属测试数据与配置已存在，未新增或覆盖数据。")
         return
-    run(["bash", str(ROOT / "backend/scripts/dev-up.sh")])
+    run(["python3", str(ROOT / "scripts/check_local_services.py")])
     private_dir(path.parent.parent)
     private_dir(path.parent)
     instance = uuid.uuid4().hex

@@ -24,7 +24,7 @@ Git 统一在 Monorepo 根，仍可只发布本组件。从根执行 `./release.
 
 从 Monorepo 根目录使用 `./dev.sh backend`，先 bootJar 构建，再由 java -jar 启动。无需 Docker，不运行 Compose 或 bootRun。`./dev.sh --print-env` 显示当前树的实际 API/前端端口。
 
-开发复用本机 MongoDB 127.0.0.1:27017（MaaBackend、HubBackend）和 Redis 127.0.0.1:6379。需要 JDK21、mongosh、redis-cli，以及已运行的 MongoDB 副本集和 Redis；`backend/scripts/dev-up.sh` 仅执行只读就绪检查，不启动服务或初始化副本集。事务功能不支持 standalone MongoDB。
+开发复用本机 MongoDB 127.0.0.1:27017（MaaBackend、HubBackend）和 Redis 127.0.0.1:6379。需要 JDK21、mongosh、redis-cli，以及已运行的 MongoDB 副本集和 Redis；`python3 scripts/check_local_services.py` 仅执行只读就绪检查，不启动服务或初始化副本集。事务功能不支持 standalone MongoDB。
 
 集成测试同样不依赖 Docker：TestMongo 创建随机自有测试库；TestRedis 使用 DB 15 和进程专属键前缀，禁止清空共享服务。详见 [开发与测试说明](../docs/development/testing.md)。
 

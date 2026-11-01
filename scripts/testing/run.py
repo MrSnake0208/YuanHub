@@ -203,7 +203,7 @@ def main(argv=None):
         parser.error('--timeout and --budget must be positive')
     env = environment()
     if args.mode == 'doctor':
-        commands = [('Node', ['node', '--version']), ('npm', ['npm', '--version']), ('Java', ['java', '-version']), ('Local databases', ['bash', 'backend/scripts/dev-up.sh'])]
+        commands = [('Node', ['node', '--version']), ('npm', ['npm', '--version']), ('Java', ['java', '-version']), ('Local databases', ['python3', 'scripts/check_local_services.py'])]
         failed = False
         for label, command in commands:
             try:

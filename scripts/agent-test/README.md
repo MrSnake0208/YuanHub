@@ -6,7 +6,7 @@
 ## 首次使用
 
 需要 Python 3、Node 20+、JDK 21、本机 MongoDB 副本集与 Redis、mongosh 和 redis-cli、工作区已有 Playwright 1.63、Google Chrome，以及前后端已有依赖。
-可先检查 `bash backend/scripts/dev-up.sh`、`npx --no-install playwright --version`、`npx --no-install playwright cli --help`。
+可先检查 `python3 scripts/check_local_services.py`、`npx --no-install playwright --version`、`npx --no-install playwright cli --help`。
 工具明确使用 `chrome` channel 与独立 profile，不访问日常 Chrome 个人资料；缺少 Chrome 时先安装 Google Chrome。
 
 1. 确认没有 cloudflared，且 8080 / 5173 没有其它开发服务。工具会探测并拒绝冲突，**不会停止或重启现有服务**。已有服务需要由用户自行安排切换；不要为此直接运行 Vite/bootRun。
@@ -110,7 +110,7 @@ python3 scripts/agent-test/agent.py setup
 | 诊断 | 操作 |
 | --- | --- |
 | `发现 cloudflared` | 用户先停止 tunnel，再 setup/start/init/login；工具不会停止它 |
-| Docker 不可用 | 启动 Docker Desktop，再 `bash backend/scripts/dev-up.sh`；禁止改接 localhost 27017/6379 |
+| MongoDB/Redis 不可用 | 检查本机服务，再运行 `python3 scripts/check_local_services.py`；工具不会启动或重启服务 |
 | 缺少 manifest / ready | 先 setup/start；只在私有 `backend.log` 查看启动错误，不贴出敏感内容 |
 | 服务/代理实例不匹配 | 当前开发服务属于另一个环境；用户安排停止/切换后再 start |
 | Mongo/Redis marker、profile、配置不符 | 失败关闭；核对随机测试库与 Redis 键前缀，修复本实例，禁止复制真实库或删除安全校验 |
