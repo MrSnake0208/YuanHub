@@ -28,7 +28,8 @@ case "$KEEP_RELEASES" in ''|*[!0-9]*) KEEP_RELEASES=5 ;; esac
 case "$DRAIN_SECONDS" in ''|*[!0-9]*) DRAIN_SECONDS=45 ;; esac
 case "$LEGACY_CAPTURE_DRAIN_SECONDS" in ''|*[!0-9]*) LEGACY_CAPTURE_DRAIN_SECONDS=2100 ;; esac
 
-SOURCE_DIR="$BACKEND_ROOT/.source"
+CHECKOUT_DIR="$BACKEND_ROOT/.monorepo-source"
+SOURCE_DIR="$CHECKOUT_DIR/backend"
 RELEASES_DIR="$BACKEND_ROOT/releases"
 RELEASE_DIR="$RELEASES_DIR/$RELEASE_VERSION"
 SLOTS_DIR="$BACKEND_ROOT/slots"
@@ -37,7 +38,7 @@ ACTIVE_SLOT_FILE="$STATE_DIR/active-slot"
 NGINX_ACTIVE_FILE="$BACKEND_ROOT/nginx/active.conf"
 
 mkdir -p "$RELEASES_DIR"
-[ -d "$SOURCE_DIR/.git" ] || { echo "Source cache is missing: $SOURCE_DIR" >&2; exit 1; }
+[ -d "$CHECKOUT_DIR/.git" ] || { echo "Source cache is missing: $SOURCE_DIR" >&2; exit 1; }
 for tool in git java javac python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "$tool is required on the deployment server" >&2; exit 1; }
 done

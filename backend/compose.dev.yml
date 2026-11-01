@@ -1,11 +1,11 @@
-name: backendv3-share-dev
+name: ${COMPOSE_PROJECT_NAME:?Run root ./dev.sh}
 
 services:
   mongodb:
     image: mongo:8.2.3-noble
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "127.0.0.1:27018:27017"
+      - "127.0.0.1:${YUANHUB_MONGO_PORT:?Run root ./dev.sh}:27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -30,7 +30,7 @@ services:
   redis:
     image: redis:7.4.10-alpine3.21
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${YUANHUB_REDIS_PORT:?Run root ./dev.sh}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

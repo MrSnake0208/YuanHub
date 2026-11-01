@@ -731,13 +731,15 @@ it('图鉴工具栏显示筛选结果，搜索不改变招募统计', async () =
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it.each(['2026-10-17T03:04:05Z', ''])('精简页头展示目录更新时间：%s', async version => {
+it.each(['2026-10-17T03:04:05Z', ''])('目录版本 %s 不影响页头账号与分享、备份入口', async version => {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
-  const updated = wrapper.get('.roster-header .tool-updated')
-  expect(updated.attributes('title')).toBe(version || '本地兜底')
-  expect(updated.text()).toBe('更新于 ' + (version ? version.split('T')[0] : '本地兜底'))
+  const header = wrapper.get('.roster-header')
+  expect(header.get('h1').text()).toBe('密探名册')
+  expect(header.getComponent({ name: 'DataAccountContextBar' }).props('accountId')).toBe('acc')
+  expect(header.get('.roster-share').attributes('title')).toContain('测试账号')
+  expect(header.get('.archive-toggle').element.disabled).toBe(false)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
@@ -823,7 +825,7 @@ it('BOX 图片只取已保存养成与双命盘，不带入卡片草稿或私人
   expect(share.props('imageReady')).toBe(true)
   expect(share.props('imageFilteredIds')).toEqual(['op'])
   expect(share.props('imageEntries')).toEqual([expect.objectContaining({
-    id: 'op', level: 50, elite: 7, attack: '111', hp: '1,111',
+    id: 'op', level: 50, elite: 7, attack: '111', hp: '1111',
     loadouts: [[{ name: '已保存词条甲', color: '' }], [{ name: '已保存词条乙', color: '' }]],
   })])
   expect(JSON.stringify(share.props('imageEntries'))).not.toContain('私人')

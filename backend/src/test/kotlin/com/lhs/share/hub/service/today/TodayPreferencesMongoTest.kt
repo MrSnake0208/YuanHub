@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
 
 @Tag("integration")
 class TodayPreferencesMongoTest {
-    private val database = TestMongo.database("today_preferences")
+    private val database = TestMongo.database("today_prefs")
     private val client = TestMongo.client()
     private val template = MongoTemplate(SimpleMongoClientDatabaseFactory(client, database))
     private val repository = TodayPreferencesRepository(template)

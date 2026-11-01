@@ -12,6 +12,7 @@ import com.lhs.share.hub.service.star.StarLoadoutService
 import com.lhs.share.hub.service.star.StarStateService
 import com.lhs.share.service.DataTransferService
 import com.lhs.share.service.jwt.JwtService
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springdoc.core.configuration.SpringDocConfiguration
@@ -97,6 +98,10 @@ class StarCloudOpenApiContractTest {
             root.at("/paths/~1v1~1star-state~1rebuild/post/responses/422/description").asText().contains("star_state_invalid_snapshot"),
         )
         assertTrue(root.at("/paths/~1v1~1star-loadout~1current/put/responses/409/description").asText().contains("star_generation_changed"))
+        assertEquals(
+            setOf("integer", "null"),
+            root.at("/components/schemas/StarStateEntryResponse/properties/breakthrough_stage/type").map { it.asText() }.toSet(),
+        )
 
         val presetResponses = root.at("/paths/~1v1~1star-loadout-presets~1current/put/responses")
         assertTrue(presetResponses.has("409"))

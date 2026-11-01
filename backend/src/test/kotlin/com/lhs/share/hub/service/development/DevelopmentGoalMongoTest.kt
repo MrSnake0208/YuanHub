@@ -18,7 +18,7 @@ import java.time.Instant
 
 @Tag("integration")
 class DevelopmentGoalMongoTest {
-    private val database = TestMongo.database("developmentgoal")
+    private val database = TestMongo.database("devgoal")
     private val client = TestMongo.client()
     private val repository = MongoRepositoryFactory(
         MongoTemplate(SimpleMongoClientDatabaseFactory(client, database)),

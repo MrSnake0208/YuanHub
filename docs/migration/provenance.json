@@ -1,0 +1,21 @@
+{
+  "target": "https://github.com/MrSnake0208/YuanHub",
+  "visibility": "public",
+  "frontend": {
+    "repository": "https://github.com/MrSnake0208/YuanHub",
+    "base": "94952f4560781e2afb30e40ca614cebb1de9a425",
+    "method": "unchanged ancestry followed by a frontend/ move commit"
+  },
+  "backend": {
+    "repository": "https://github.com/MrSnake0208/BackEndV3-Share",
+    "base": "3bf88fa937bc5e84b1eaa7d78fd0dcc509000276",
+    "method": "full-history subtree merge under backend/, without squash"
+  },
+  "outer_repository_history": "excluded",
+  "open_feature": {
+    "pull_request": "https://github.com/MrSnake0208/YuanHub/pull/37",
+    "source_head": "c299277e52db83961f5c7bae6ba357394584192a",
+    "branch": "feature/star-rebuild-recovery",
+    "included_in_migration_baseline": false
+  }
+}

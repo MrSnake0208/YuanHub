@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const SCRIPT_DIRECTORY = typeof __dirname === "undefined"
-  ? path.resolve("BackEndV3-Share/scripts/migrations")
+  ? path.resolve("backend/scripts/migrations")
   : __dirname;
 const {
   CATALOG_FIELDS,

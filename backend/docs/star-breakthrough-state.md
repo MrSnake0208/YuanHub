@@ -15,6 +15,8 @@
 
 StarState GET、PATCH、rebuild、restore、恢复点快照、完成回执和星石分享保留字段，沿用 generation/revision CAS、账号归属、事务和幂等。
 
+OpenAPI 中状态读取与公开分享的 `breakthrough_stage` 均声明为 `integer | null`，与未知突破次数的实际响应一致。
+
 - 同代 PATCH 缺字段：实例 ID、kind、name、quality、level 均未变则保留原值，包括历史异常；不因老客户端保存其它信息抹除已知突破。
 - 新实例或身份/等级变化且缺字段：只有唯一合法次数时推断，节点留 null。新写入拒绝品质超限等级及不匹配次数。
 - 显式 null：清除确认值；整数必须符合等级/品质。缺失、null、数字字符串和小数不混为一谈。

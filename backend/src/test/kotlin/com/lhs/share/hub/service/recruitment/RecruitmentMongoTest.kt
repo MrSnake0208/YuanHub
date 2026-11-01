@@ -287,7 +287,8 @@ class RecruitmentMongoTest {
         val batchesBefore = store.exchangeBatches("u", "a", 1000)
         repeat(2) {
             val archive = service.archive("u", "a")
-            assertEquals(38.0, archive.summary.averageGoldPulls)
+            // Account mean keeps two decimals: (40 * 39 + 40 * 38 + 1) / 81 = 38.037...
+            assertEquals(38.04, archive.summary.averageGoldPulls)
             assertEquals(0L, archive.summary.permanentKnownTotalPulls)
             assertEquals("catalog_p:up:A", archive.summary.mostObtainedGoldAgents?.single()?.agentId)
             assertEquals(121L, archive.summary.mostObtainedGoldAgents?.single()?.count)

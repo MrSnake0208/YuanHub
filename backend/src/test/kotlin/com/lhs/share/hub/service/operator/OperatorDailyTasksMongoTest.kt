@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 
 @Tag("integration")
 class OperatorDailyTasksMongoTest {
-    private val database = TestMongo.database("training_tasks")
+    private val database = TestMongo.database("daily_tasks")
     private val client = TestMongo.client()
     private val template = MongoTemplate(SimpleMongoClientDatabaseFactory(client, database))
     private val repository = OperatorDailyTasksRepository(template)

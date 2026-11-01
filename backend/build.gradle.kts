@@ -5,7 +5,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.5.3"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.gorylenko.gradle-git-properties") version "2.5.2"
+    id("com.gorylenko.gradle-git-properties") version "3.0.3"
 
     val ktVersion = "2.2.0"
     kotlin("jvm") version ktVersion
@@ -212,6 +212,12 @@ pitest {
 }
 
 gitProperties {
+    if (file("../.git").exists()) {
+        val actualGitDir = providers.exec {
+            commandLine("git", "rev-parse", "--absolute-git-dir")
+        }.standardOutput.asText.get().trim()
+        dotGitDirectory.set(file(actualGitDir))
+    }
     failOnNoGitDirectory = false
     keys = listOf("git.branch", "git.commit.id", "git.commit.id.abbrev", "git.commit.time")
 }

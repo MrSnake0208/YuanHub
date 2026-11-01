@@ -1,3 +1,7 @@
+# Monorepo 适用说明
+
+本目录现在是根仓库的普通跟踪目录。Git 分支与提交以 `git rev-parse --show-toplevel` 定位的当前 Worktree 为准；不再要求本目录有独立 .git，也不单独 clone/push。依赖安装、测试、构建仍从本目录执行。以下原有安全、领域、UI 和风险规则继续适用；涉及历史“独立仓库/相邻仓库”的结构说明，以根 AGENTS.md 与 docs/monorepo-operations.md 为准。
+
 ## 测试与验证：按风险选择最小充分检查
 
 测试要求与**行为变化**绑定，不与“修改了 Kotlin 文件”绑定。
@@ -7,8 +11,8 @@
 | **L0** | 文档、注释、纯日志文案、确定不改变行为的格式化 | 检查 diff；不要求测试/build |
 | **L1** | 局部实现细节、不改变 API/持久化/共享状态语义 | 只做直接相关的定向测试或编译/lint |
 | **L2** | 一般 Service/Domain 行为、校验、数据转换、普通接口逻辑 | 同步更新相关单元/契约测试；建议用户运行受影响测试 |
-| **L3** | API 契约、鉴权、账户隔离、持久化、事务、缓存、并发、幂等、共享核心 | 相关单元/契约 + 必要 integration；可使用 `./test smart` |
-| **L4** | Gradle/依赖/CI/测试基础设施/部署发布/跨仓基础设施 | 才执行完整 CI 等价检查或 `./test all` |
+| **L3** | API 契约、鉴权、账户隔离、持久化、事务、缓存、并发、幂等、共享核心 | 相关单元/契约 + 必要 integration；可使用 `./scripts/test.sh smart` |
+| **L4** | Gradle/依赖/CI/测试基础设施/部署发布/跨仓基础设施 | 才执行完整 CI 等价检查或 `./scripts/test.sh all` |
 
 ### 测试代码
 
@@ -101,7 +105,7 @@ These documents are the authoritative inventory-domain specifications for this r
 
 ## Local risk-based verification gate (2026-09-28)
 
-When this repository is edited inside YuanHub-All, follow root `TESTING.md` and only the backend quality guideline. Trellis tasks should record `risk_level` and `verification_owner`.
+Follow the Monorepo root `docs/development/testing.md` and the rules for this component. Personal task workflows are optional and are not distributed with the repository.
 
 - `verification_owner=user`: finish/archive must not require a local `quick/smart/all` report; keep behavior-test coverage/exceptions honest and report pending commands to the user.
 - `verification_owner=agent`: run only the checks justified by the risk; L3 normally uses `smart`, L4 may use `all`.

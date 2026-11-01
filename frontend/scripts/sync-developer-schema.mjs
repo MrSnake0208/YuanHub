@@ -2,9 +2,9 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { resolve, dirname } from 'node:path'
 
-// Only this reviewed schema crosses repositories; never copy a docs directory.
+// Only this reviewed schema is published; never copy a docs directory.
 const root = fileURLToPath(new URL('../', import.meta.url))
-const source = resolve(root, '../BackEndV3-Share/docs/schema/recruitment-exchange-v1.schema.json')
+const source = resolve(root, '../backend/docs/schema/recruitment-exchange-v1.schema.json')
 const target = resolve(root, 'docs/developers/schemas/recruitment-exchange-v1.schema.json')
 const args = process.argv.slice(2)
 if (args.some(arg => arg !== '--write')) throw new Error('Usage: node scripts/sync-developer-schema.mjs [--write]')

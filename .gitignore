@@ -1,0 +1,45 @@
+# Per-worktree dependencies, build output and local evidence
+node_modules/
+dist/
+build/
+.gradle/
+.gradle-user-home/
+.gradle-home/
+.kotlin/
+.cache/
+.pnpm-store/
+coverage/
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
+.dev/
+.test-artifacts/
+.agent-test/
+.ai/
+.playwright-cli/
+.ux/audits/
+.worktrees/
+.agent-teams/
+.herdr-web-ui/
+.ovis/
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.template
+*.pem
+*.p12
+*.pfx
+*.archive.gz
+*.bundle
+*.log
+# Private archive datasets stay outside the source repository.
+/achievement/*.xlsx
+/achievement/converted/
+/achievement/imported/
+/bonds/converted/
+
+# Personal workflow is local to this checkout, never published.
+/.trellis/

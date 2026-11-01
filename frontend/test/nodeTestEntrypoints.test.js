@@ -69,7 +69,7 @@ test('显式契约在默认或自定义后端缺失时均失败，显示读取�
   for (const target of ['', join(root, 'custom-backend')]) {
     const result = run(root, 'npm', ['run', 'test:contract'], { YUANHUB_BACKEND_ROOT: target })
     assert.notEqual(result.status, 0, result.output)
-    assert.ok(result.output.includes(target || join(dirname(root), 'BackEndV3-Share')), result.output)
+    assert.ok(result.output.includes(target || join(dirname(root), 'backend')), result.output)
     assert.match(result.output, /YUANHUB_BACKEND_ROOT/)
     assert.match(result.output, /跨仓契约无法读取/)
   }

@@ -5,7 +5,7 @@ name: CI
 #
 # 默认 test 排除 integration / architecture / api-schema / realistic / stress 标签。
 # 说明：容器依赖的 integrationTest / apiSchemaTest / realisticTest / stressTest 不在默认 CI 内，
-# 它们需要 Docker 且耗时较长；本地完整验证入口是仓库外的 root ./test all。
+# 它们需要 Docker 且耗时较长；本地完整验证入口是仓库外的 root ./scripts/test.sh all。
 
 on:
   push:

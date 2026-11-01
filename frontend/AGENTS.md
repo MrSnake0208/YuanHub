@@ -1,8 +1,12 @@
+# Monorepo 适用说明
+
+本目录现在是根仓库的普通跟踪目录。Git 分支与提交以 `git rev-parse --show-toplevel` 定位的当前 Worktree 为准；不再要求本目录有独立 .git，也不单独 clone/push。依赖安装、测试、构建仍从本目录执行。以下原有安全、领域、UI 和风险规则继续适用；涉及历史“独立仓库/相邻仓库”的结构说明，以根 AGENTS.md 与 docs/monorepo-operations.md 为准。
+
 # AGENTS.md — MaaYuan Share（YuanHub）
 
 本仓库是 **MaaYuan Share 作业分享站**（Vue 3 + Vite + vue-router 4）的复刻/自建实现。
 
-本仓库必须能够在被单独 clone 后独立开发，因此所有开发必需规范均以仓库内文件为准，不依赖父目录或外部工作区文件。
+本目录保留独立安装、开发、测试和构建能力，开发必需规范随目录保存；版本控制统一由根 Git 仓库管理。
 
 ## 权威规范
 
@@ -39,7 +43,7 @@
 | **L1** | 单组件展示/局部交互，不涉及共享状态/API | 默认检查 diff 与相关文件；有具体风险时才做定向检查，不默认补测、跑测或 build |
 | **L2** | store/composable、API 请求、数据转换、缓存/轮询、一般业务分支 | 按具体风险选择最小定向检查；权限、跨账号或数据损坏风险上调至 L3 |
 | **L3** | API 契约、登录鉴权/权限、账号隔离、路由/全局状态、持久化/迁移、事务/并发、共享核心 | 必须取得受影响关键约束的可复核定向证据；不默认全量检查 |
-| **L4** | Vite/依赖/CI/测试基础设施/发布流程 | 按影响考虑完整 CI 等价检查或工作区 `./test all`，不机械运行无关检查 |
+| **L4** | Vite/依赖/CI/测试基础设施/发布流程 | 按影响考虑完整 CI 等价检查或工作区 `./scripts/test.sh all`，不机械运行无关检查 |
 
 ### 测试代码
 
@@ -67,16 +71,6 @@ npm run build
 - 当前任务未获用户明确授权时，**不运行 Playwright、Chrome DevTools、Puppeteer、Cypress、真实浏览器 E2E、自动页面截图/视觉 diff、自动登录或 320–1440px 浏览器视口矩阵**；不启动浏览器、不安装/修复浏览器测试依赖，也不以 UX 审查为由访问运行中的页面。仓库规范中的浏览器命令及完整视口矩阵仅作为用户人工验收或明确授权后的专项回归参考。
 - 仍须遵守 `ui-ux-pro-max`、设计规范与响应式约束；按上文具体风险选择代码自检或必要的非浏览器单元/组件/契约检查，不因行为变化一律补测。关键安全验证不得省略，不得移除已有 E2E 或弱化 CI。
 - 最终按改动风险向用户给出对应的桌面端/手机端人工验收路径、动作、预期与建议视口，注明真实视觉、触控、运行时交互尚未由 Agent 验证；集中回归也不隐含浏览器自动化授权。
-
-## YuanHub-All 临时 Rapid Mode
-
-当本仓库位于 YuanHub-All 工作区内，且父工作区 `.trellis/config.yaml` 配置为 `codex.dispatch_mode: inline` 时，启用临时快速清 backlog 规则：
-
-- L0/L1 默认由主 Agent 直接实现并做 diff/相关文件自检，不为小改动自动运行完整测试、build、全量静态检查，也不创建无意义测试。
-- 范围明确且局部的 L2 只做 targeted check；回归/全量验证继续默认交给用户/CI。
-- 不为 L0/L1 自动启动额外的完整 UX 审计、`trellis-check`、全视口矩阵或逐任务 commit；已有 UI 硬约束 `ui-ux-pro-max` 仍必须遵守。
-- L3/L4、登录/权限、跨页面共享状态、持久化、关键 API/路由、Vite/依赖/CI/发布不适用减负，继续走现有高风险验证规则。
-- 独立 clone 本仓库、或父工作区恢复 `codex.dispatch_mode: auto` 时，本节不生效。
 
 ## UI/UX Skills 与用户视角审查（硬约束）
 
@@ -134,10 +128,10 @@ npm run build
 
 ## Local risk-based verification gate (2026-09-28)
 
-When this repository is edited inside YuanHub-All, follow root `TESTING.md` and only the frontend quality guideline. Trellis tasks should record `risk_level` and `verification_owner`.
+Follow the Monorepo root `docs/development/testing.md` and the rules for this component. Personal task workflows are optional and are not distributed with the repository.
 
 - `verification_owner=user`: do not require a local `quick/smart/all` report before finish/archive; keep tests/exceptions honest and report pending commands to the user.
 - `verification_owner=agent`: execute only risk-justified checks; L3 requires focused evidence for affected critical invariants, not a default full suite; L4 may use `all` when warranted.
-- For an existing Trellis task, record honest exact-file risk-based exceptions where checks are unnecessary; do not create a task or artificial tests merely because a local L0/L1 edit changes behavior.
+- When using an optional personal task workflow, record honest exact-file risk-based exceptions where checks are unnecessary; do not create a task or artificial tests merely because a local L0/L1 edit changes behavior.
 
 Preserve unrelated dirty files; never reset, stash, clean, or include them merely to make a gate pass.

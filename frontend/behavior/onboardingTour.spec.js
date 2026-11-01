@@ -109,7 +109,10 @@ it.each(['/', '/operator', '/operator/quick', '/inventory', '/user/profile'])('�
   if (path === '/user/profile') {
     await host.get('.app-connect').trigger('click'); await flushPromises()
     expect(host.get('#maayuan-account').element.value).toBe('acc')
-    expect(host.text()).toContain('复制连接码')
+    const createConnection = host.findAll('button').find(button => button.text() === '创建 MaaYuan 连接码')
+    expect(createConnection).toBeTruthy()
+    expect(createConnection.element.disabled).toBe(false)
+    expect(connectionApi.generateOpenApiToken).not.toHaveBeenCalled()
   }
 })
 afterEach(() => { host?.unmount(); host = null })

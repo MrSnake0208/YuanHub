@@ -1,5 +1,5 @@
 // 前后端跨仓库契约一致性测试（node:test，零依赖）
-// 默认读取相邻 BackEndV3-Share，可用 YUANHUB_BACKEND_ROOT 指定其他完整检出。
+// 默认读取当前工作树 backend，可用 YUANHUB_BACKEND_ROOT 指定其他完整检出。
 // 手动运行：npm run test:contract；YuanHub-All 完整入口显式执行，单仓入口不执行。
 // 校验后端 OpenApiTokenService/OpenApiPermission/InventoryController 与前端
 // openApi.js/inventory.js/profile.vue/utils 的字段名、路径、scope key 一致，
@@ -13,7 +13,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const frontendRoot = fileURLToPath(new URL('../', import.meta.url))
-const backendRoot = resolve(process.env.YUANHUB_BACKEND_ROOT || resolve(frontendRoot, '../BackEndV3-Share'))
+const backendRoot = resolve(process.env.YUANHUB_BACKEND_ROOT || resolve(frontendRoot, '../backend'))
 
 function readFrontend(rel) {
   return readFileSync(resolve(frontendRoot, rel), 'utf8')
@@ -24,7 +24,7 @@ function readBackend(rel) {
   try {
     return readFileSync(file, 'utf8')
   } catch (cause) {
-    throw new Error(`跨仓契约无法读取 ${file}。请设置 YUANHUB_BACKEND_ROOT 指向完整的 BackEndV3-Share 检出目录，再运行 npm run test:contract。`, { cause })
+    throw new Error(`跨仓契约无法读取 ${file}。请设置 YUANHUB_BACKEND_ROOT 指向完整的 backend 源码目录，再运行 npm run test:contract。`, { cause })
   }
 }
 

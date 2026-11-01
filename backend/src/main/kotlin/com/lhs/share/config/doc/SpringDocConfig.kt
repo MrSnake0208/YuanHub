@@ -75,6 +75,12 @@ class SpringDocConfig(
                 types = setOf("string", "null")
             }
         }
+        listOf("StarStateEntryResponse", "StarShareEntry").forEach { name ->
+            openApi.components.schemas[name]?.properties?.get("breakthrough_stage")?.apply {
+                type = null
+                types = setOf("integer", "null")
+            }
+        }
     }
 
     @Bean

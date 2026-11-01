@@ -255,7 +255,8 @@ class OpenApiSchemaHarnessTest {
             assertEquals(setOf("game", "available_views", "has_state", "updated_at", "inventory"), data.fieldNames().asSequence().toSet())
             assertEquals(2, data.path("inventory").size())
             data.path("inventory").forEach { entry ->
-                assertEquals(setOf("kind", "name", "quality", "level"), entry.fieldNames().asSequence().toSet())
+                assertEquals(setOf("kind", "name", "quality", "level", "breakthrough_stage"), entry.fieldNames().asSequence().toSet())
+                assertTrue(entry.path("breakthrough_stage").isNull)
             }
         }
         assertEquals(before, mongo.findById(saved.id, StarStateCurrent::class.java))

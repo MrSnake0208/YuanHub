@@ -32,6 +32,10 @@ vi.mock('../src/store/auth.js', async () => {
   return { auth: reactive({ accessToken: '', userInfo: null, isLoggedIn: false }), logout: vi.fn() }
 })
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
+// Monthly-card reads belong to rewardEntryWorkspace.spec.js; keep this suite's calendar/training sources real.
+vi.mock('../src/components/inventory/RewardEntryWorkspace.vue', () => ({ default: {
+  name: 'RewardEntryWorkspace', template: '<div />', methods: { hasDraft: () => false }
+} }))
 vi.mock('../src/api/todayPreferences.js', () => ({ getTodayPreferences: vi.fn(async mode => ({ layout_mode: mode, schema_version: 1, version: 0, hidden_modules: [] })), saveTodayPreferences: vi.fn() }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn(), getOperatorCatalog: vi.fn(async () => ({ operators: [] })), getOperatorAnnotations: vi.fn(async account => ({ account_id: account, items: [] })), getOperatorGrowthTargets: vi.fn(async account => ({ account_id: account, items: [] })) }))

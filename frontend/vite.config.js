@@ -58,10 +58,10 @@ export function buildDevServerConfig(mode, env = {}) {
     : env.YUANHUB_DEV_API_TARGET || DEFAULT_DEV_API_TARGET
 
   const config = {
-    port: 5173,
-    host: isTunnel || isAgentTest ? '127.0.0.1' : true,
+    port: Number(env.YUANHUB_FRONTEND_PORT || 5173),
+    host: env.YUANHUB_FRONTEND_PORT || isTunnel || isAgentTest ? '127.0.0.1' : true,
     allowedHosts: isAgentTest ? ['127.0.0.1'] : Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean))),
-    ...(isAgentTest ? { strictPort: true } : {})
+    ...(isAgentTest || env.YUANHUB_FRONTEND_PORT ? { strictPort: true } : {})
   }
 
   const proxyTarget = {
