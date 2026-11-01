@@ -4,6 +4,7 @@
       <section ref="panel" class="quick-dialog" :class="{ 'is-short-viewport': shortViewport }" role="dialog" aria-modal="true" :aria-labelledby="titleId" :aria-busy="locked" tabindex="-1" @focusin="revealFocusedControl">
         <header><h3 :id="titleId" ref="heading" tabindex="-1">{{ title }}</h3><button type="button" :disabled="locked" :aria-label="`关闭${title}`" @click="$emit('close')"><X :size="20" aria-hidden="true" /></button></header>
         <div ref="body" class="quick-dialog-body"><slot /></div>
+        <footer v-if="$slots.footer" class="quick-dialog-footer"><slot name="footer" /></footer>
       </section>
     </div>
   </Teleport>

@@ -1,0 +1,4 @@
+defaultTabs:
+  - title: Agent
+  - title: 开发预览
+    command: ./dev.sh preview

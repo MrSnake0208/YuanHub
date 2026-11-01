@@ -17,6 +17,7 @@ test('Agent sandbox binds loopback, refuses tunnel and never falls back to anoth
   assert.equal(config.host, '127.0.0.1')
   assert.equal(config.strictPort, true)
   assert.deepEqual(config.allowedHosts, ['127.0.0.1'])
+  assert.equal(buildDevServerConfig('development', { YUANHUB_AGENT_TEST: 'true', YUANHUB_FRONTEND_PORT: '54229' }).host, '127.0.0.1')
   assert.throws(() => buildDevServerConfig('tunnel', { YUANHUB_AGENT_TEST: 'true' }), /cannot use tunnel/)
 })
 
@@ -34,16 +35,11 @@ test('normal dev mode keeps LAN binding and proxies backend paths to the configu
   }
 })
 
-test('worktree dev mode allows LAN access while preserving its port and local API proxy', () => {
-  const env = { YUANHUB_FRONTEND_PORT: '51334', YUANHUB_DEV_API_TARGET: 'http://127.0.0.1:51335' }
-  const config = buildDevServerConfig('development', env)
-
-  assert.equal(config.host, true)
-  assert.equal(config.port, 51334)
+test('worktree preview binds all interfaces on its assigned port', () => {
+  const config = buildDevServerConfig('development', { YUANHUB_FRONTEND_PORT: '54229' })
+  assert.equal(config.host, '0.0.0.0')
+  assert.equal(config.port, 54229)
   assert.equal(config.strictPort, true)
-  assert.equal(config.proxy['/v1'].target, env.YUANHUB_DEV_API_TARGET)
-  assert.equal(buildDevServerConfig('tunnel', env).host, '127.0.0.1')
-  assert.equal(buildDevServerConfig('development', { ...env, YUANHUB_AGENT_TEST: 'true' }).host, '127.0.0.1')
 })
 
 test('tunnel mode binds loopback, allowlists configured host and proxies backend paths', () => {

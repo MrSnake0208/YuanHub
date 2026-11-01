@@ -10,17 +10,27 @@
 
 ## 本地服务与数据
 
-使用当前树的 `./dev.sh --print-env` 生成私有 .dev 配置（目录0700、实例文件0600），查看本树地址。前端 `cd frontend && npm ci` 使用 Node22；后端使用 JDK21 和 backend/gradlew。`./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh` 按需启动；不重启或停止别人的服务。
+使用当前树的 `./dev.sh --print-env` 生成私有 .dev 配置（目录0700、实例文件0600），查看本树地址。前端使用 Node22，后端使用 JDK21 和 backend/gradlew。`./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh` 按需启动；不重启或停止别人的服务。
 
 每树分配独立应用端口、媒体和构建输出；普通开发前端监听所有网卡，后端仅监听 127.0.0.1，API 由 Vite 代理转发。MongoDB 共用 127.0.0.1:27017 的 MaaBackend/HubBackend，Redis 共用 127.0.0.1:6379（默认 DB 0）。启动器清除继承的生产连接配置。共享开发数据意味着不同工作树的写入互相可见；不要用开发库运行破坏性测试。端口被占用时 fail-fast，不能杀掉占用者。
 
 局域网访问：运行 `./dev.sh` 后，在同一网络的设备打开 `http://<电脑局域网 IP>:<前端端口>`；端口可通过 `./dev.sh --print-env` 查看，将输出中的 127.0.0.1 替换为电脑局域网 IP。若无法连接，检查系统防火墙及 Wi-Fi 客户端隔离。开发前端及其 API 代理会向可达该端口的设备开放，仅在可信网络使用；Tunnel 和 Agent 测试模式仍仅监听本机。
 
-本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
+本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。默认启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose；原有 `./dev.sh containers` 仍可显式使用本树私有容器。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
 
 集成测试不依赖 Docker/Testcontainers。TestMongo 仅访问自己注册的随机 yuanhub_test_ 数据库；TestRedis 使用本机 Redis DB 15，并给所有键及清理模式加进程专属前缀。退出时尽力清理自有数据；强制终止 JVM 可能留下测试数据，不得因此清空共享 Redis 或批量删除其他会话测试库。普通单元测试仍使用不可连接的占位地址。详见 [测试说明](development/testing.md)。
 
 生产 env 不进入源码树；前端私有 env 由用户自行准备。共享 Cloudflare Tunnel 不支持多树自动复用，本启动器拒绝 tunnel 子命令。
+
+## Orca 自动预览（Mac 执行、Windows 访问）
+
+根目录 `orca.yaml` 为新工作树添加「开发预览」终端，自动运行 `./dev.sh preview`；第一个终端留给 Agent。Orca 项目设置需允许运行共享 YAML 命令（本项目目前为 run-by-default，且无本地 setup 覆盖）。配置必须进入新工作树所基于的版本才会自动生效；不会同步已有工作树，也不自动提交、合并或修改主工作区。现有工作树可由 Agent 创建一次预览终端，无需 Windows 手动 SSH 转发。
+
+预览会在缺少 node_modules 时安装本树前端依赖，通过 `dev.sh` 启动前后端。前端监听 `0.0.0.0`，后端和数据库仍只监听 loopback；Windows 可直接打开 `http://<本机 Tailscale IPv4>:<本树前端端口>/inventory`，API 由 Vite 同源代理至本树后端。启动器不执行 Tailscale 命令，也不修改 Serve/Funnel 配置。监听所有网卡也允许同一局域网访问该预览，使用共享开发数据时，预览中的保存和删除会影响这些数据。
+
+启动过程分别报告「前端已就绪」和「前后端均已就绪」。首次后端启动需要下载依赖并编译；失败时保留前端，登录和保存不可用，查看同一终端错误。重复运行预览由本树文件锁阻止；已有非预览服务占用端口时提示复用，不接管或重启。关闭预览终端或 Ctrl+C 停止它创建的前后端服务，不停止共享 MongoDB/Redis，也不删除数据。每个运行中的工作树仍需要自己的 Vite 和 JVM 进程；用完后关闭对应预览终端释放资源。
+
+预览的 Gradle 缓存保存在本树 `.gradle-user-home`；启动器使用 Kotlin in-process 编译，避免 Kotlin 2.2 daemon 参数文件破坏中文工作树路径。定向启动配置检查：`python3 scripts/testing/test_worktree_env.py`、`python3 scripts/testing/test_dev_preview.py`。这些检查使用临时 fixture，不对共享本机数据库进行语义测试。
 
 ## 独立 CI 与发布
 

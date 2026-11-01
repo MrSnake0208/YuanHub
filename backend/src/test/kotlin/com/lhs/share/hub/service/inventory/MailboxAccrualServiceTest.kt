@@ -36,6 +36,47 @@ class MailboxAccrualServiceTest {
     private val mapper = jacksonObjectMapper()
 
     @Test
+    fun `manual stock received today is accounted once as pending mail`() {
+        val day = "2026-11-03"
+        val schedule = MailboxSchedule(day, "2026-11-05", 90)
+        val before = MailboxReserve(listOf(WhiteCoinMail(2, 90)), fuChuanMailCount = 1)
+        val value = before.copy(whiteCoinSchedule = schedule, fuChuanSchedule = MailboxSchedule(day, "2026-11-05"))
+        every { template.exists(any<Query>(), MailboxDelivery::class.java) } returns false
+        every { records.findByUserIdAndAccountIdAndRecordId(any(), any(), any()) } returns null
+        every { deleted.findByUserIdAndAccountIdAndRecordId(any(), any(), any()) } returns null
+        val deliveries = mutableListOf<MailboxDelivery>()
+        every { template.insert(any<MailboxDelivery>()) } answers { firstArg<MailboxDelivery>().also { deliveries.add(it) } }
+
+        val recognized = service.recognizeManualToday("owner", "a", value, setOf("coins", "tickets"))
+        assertEquals(2, recognized.whiteCoinMails.single().count)
+        assertEquals(day, recognized.whiteCoinSchedule?.throughDate)
+        assertEquals(1, recognized.fuChuanMailCount)
+        assertEquals(day, recognized.fuChuanSchedule?.throughDate)
+        assertEquals(listOf("pending", "pending"), deliveries.map { it.state })
+        assertEquals(recognized, service.recognizeManualToday("owner", "a", recognized, setOf("coins", "tickets")))
+        assertEquals(2, deliveries.size)
+        val expired = value.copy(
+            whiteCoinSchedule = MailboxSchedule("2026-11-01", "2026-11-02", 90, "2026-11-02"),
+            fuChuanSchedule = null,
+        )
+        assertEquals(expired, service.recognizeManualToday("owner", "a", expired, setOf("coins")))
+        assertEquals(2, deliveries.size)
+    }
+
+    @Test
+    fun `old stock and same day reduction do not count as today's receipt`() {
+        val schedule = MailboxSchedule("2026-11-03", "2026-11-05", 90)
+        val before = MailboxReserve(listOf(WhiteCoinMail(1, 90)))
+        val value = before.copy(whiteCoinSchedule = schedule)
+        assertEquals(value, service.recognizeManualToday("owner", "a", value, emptySet()))
+        assertEquals(value, service.recognizeManualToday("owner", "a", value, emptySet()))
+        assertThrows(InventoryApiException::class.java) {
+            service.recognizeManualToday("owner", "a", value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90))), setOf("coins"))
+        }
+        verify(exactly = 0) { template.insert(any<MailboxDelivery>()) }
+    }
+
+    @Test
     fun `strict dates positive rewards and no retroactive start`() {
         for (input in listOf(
             """{"start_date":"2026-11-02","end_date":"2026-11-10","coins_per_mail":90}""",

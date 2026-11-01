@@ -59,7 +59,7 @@ export function buildDevServerConfig(mode, env = {}) {
 
   const config = {
     port: Number(env.YUANHUB_FRONTEND_PORT || 5173),
-    host: isTunnel || isAgentTest ? '127.0.0.1' : true,
+    host: isTunnel || isAgentTest ? '127.0.0.1' : env.YUANHUB_FRONTEND_PORT ? '0.0.0.0' : true,
     allowedHosts: isAgentTest ? ['127.0.0.1'] : Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean))),
     ...(isAgentTest || env.YUANHUB_FRONTEND_PORT ? { strictPort: true } : {})
   }

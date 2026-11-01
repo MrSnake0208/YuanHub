@@ -70,6 +70,47 @@ class MailboxAccrualService(
         }
     }
 
+    // Only the player's explicit choice can distinguish today's mail from older stock.
+    fun recognizeManualToday(user: String, account: String, value: MailboxReserve, included: Set<String>): MailboxReserve {
+        val businessDay = today()
+        val day = businessDay.toString()
+        fun count(reserve: MailboxReserve, type: String, amount: Int): Int {
+            return if (type == "coins") {
+                reserve.whiteCoinMails.filter { it.coinsPerMail == amount }.sumOf { it.count }
+            } else {
+                reserve.fuChuanMailCount
+            }
+        }
+        var result = value
+        for (type in listOf("coins", "tickets")) {
+            val schedule = if (type == "coins") result.whiteCoinSchedule else result.fuChuanSchedule
+            if (type in included && (schedule == null || count(result, type, schedule.coinsPerMail) == 0)) {
+                invalid("今天已计入封数须有对应月卡和正数封数")
+            }
+            if (type !in included || schedule == null || next(schedule) != businessDay || businessDay > date(schedule.endDate) ||
+                count(result, type, schedule.coinsPerMail) == 0
+            ) {
+                continue
+            }
+            val query = owner(user, account).addCriteria(Criteria.where("type").`is`(type).and("day").`is`(day))
+            if (!template.exists(query, MailboxDelivery::class.java)) {
+                template.insert(
+                    MailboxDelivery(
+                        userId = user,
+                        accountId = account,
+                        type = type,
+                        day = day,
+                        coinsPerMail = schedule.coinsPerMail,
+                        state = if (type == "coins" && recorded(user, account, day)) "claimed" else "pending",
+                    ),
+                )
+            }
+            val accounted = schedule.copy(throughDate = day)
+            result = if (type == "coins") result.copy(whiteCoinSchedule = accounted) else result.copy(fuChuanSchedule = accounted)
+        }
+        return result
+    }
+
     fun sync(user: String, account: String): MailboxReserve {
         repeat(3) { attempt ->
             try {
@@ -101,11 +142,7 @@ class MailboxAccrualService(
                 if (day < next(schedule) || day > date(schedule.endDate)) continue
                 val query = owner(user, account).addCriteria(Criteria.where("type").`is`(type).and("day").`is`(day.toString()))
                 if (!template.exists(query, MailboxDelivery::class.java)) {
-                    val key = dailyId(day.toString())
-                    val recorded = type == "coins" && (
-                        records.findByUserIdAndAccountIdAndRecordId(user, account, key) != null ||
-                            deleted.findByUserIdAndAccountIdAndRecordId(user, account, key) != null
-                        )
+                    val recorded = type == "coins" && recorded(user, account, day.toString())
                     template.insert(
                         MailboxDelivery(
                             userId = user,
@@ -250,6 +287,11 @@ class MailboxAccrualService(
         value.throughDate?.let { date(it).plusDays(1) } ?: date(value.startDate),
     )
     private fun now(value: MailboxReserve): Instant = maxOf(clock.instant().truncatedTo(ChronoUnit.MILLIS), value.updatedAt ?: Instant.MIN)
+    private fun recorded(user: String, account: String, day: String): Boolean {
+        val key = dailyId(day)
+        return records.findByUserIdAndAccountIdAndRecordId(user, account, key) != null ||
+            deleted.findByUserIdAndAccountIdAndRecordId(user, account, key) != null
+    }
     private fun owner(user: String, account: String) = Query(Criteria.where("userId").`is`(user).and("accountId").`is`(account))
     private fun date(value: String): LocalDate = try {
         if (!Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)) invalid("请输入有效日期")

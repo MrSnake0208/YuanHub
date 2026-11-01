@@ -3,7 +3,9 @@
 # 一键启动开发环境：同时运行后端 (backend) + 前端 (frontend)
 #
 # 用法:
-#   ./dev.sh          # 同时启动后端 + 前端（本机 Mongo/Redis 与 API）
+#   ./dev.sh          # 同时启动后端 + 前端（共用本机 Mongo/Redis 开发数据）
+#   ./dev.sh preview  # 自动准备依赖并监听所有网卡，供 Orca 默认终端使用
+#   ./dev.sh containers # 显式使用本树私有 Mongo/Redis 容器
 #   ./dev.sh beta     # 同时启动后端 + 前端（隔离的本地内测模式）
 #   tunnel 模式需单独授权配置每树 ingress；当前默认拒绝复用旧 Tunnel
 #   ./dev.sh backend  # 只启动后端
@@ -20,6 +22,14 @@ set -euo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
+if [[ "${1:-}" == preview ]]; then
+    exec python3 "$ROOT_DIR/scripts/dev_preview.py"
+fi
+DATA_MODE=local
+if [[ "${1:-}" == containers ]]; then
+    DATA_MODE=containers
+    shift
+fi
 
 # The opt-in agent launcher supplies a protected manifest, verified before datasource creation.
 agent_test_json=""
@@ -31,7 +41,7 @@ fi
 for name in $(compgen -e); do
     case "$name" in SPRING_*|SHARE_*|DEBUG_*|YUANHUB_BETA_*|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS) unset "$name" ;; esac
 done
-worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py)"
+worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py "$DATA_MODE")"
 eval "$worktree_exports"
 if [[ -n "$agent_test_json" ]]; then
     YUANHUB_AGENT_CONFIG="$agent_test_json" python3 - "$ROOT_DIR" <<'CHECK_AGENT'
@@ -44,7 +54,8 @@ CHECK_AGENT
     export YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 fi
 if [[ "${1:-}" == "--print-env" ]]; then
-    printf 'Worktree: %s\nFrontend: http://127.0.0.1:%s\nBackend: %s\nMongo: 127.0.0.1:27017\nRedis: 127.0.0.1:6379\n' "$ROOT_DIR" "$YUANHUB_FRONTEND_PORT" "$YUANHUB_DEV_API_TARGET"
+    printf 'Worktree: %s\nFrontend: http://127.0.0.1:%s\nBackend: %s\nCompose: %s\n' "$ROOT_DIR" "$YUANHUB_FRONTEND_PORT" "$YUANHUB_DEV_API_TARGET" "$COMPOSE_PROJECT_NAME"
+    printf 'Database mode: %s\n' "$DATA_MODE"
     exit 0
 fi
 
@@ -125,9 +136,11 @@ start_backend() {
         export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 
         backend_pid=""
+        # Kotlin 2.2's daemon argument-file path escaping breaks Chinese worktree names.
+        gradle=(./gradlew -Pkotlin.compiler.execution.strategy=in-process)
 
         build_backend() {
-            ./gradlew bootJar --console=plain || return $?
+            "${gradle[@]}" bootJar --console=plain || return $?
             jars=()
             for candidate in build/libs/*.jar; do
                 [[ -f "$candidate" && "$candidate" != *-plain.jar ]] && jars+=("$candidate")
@@ -271,12 +284,16 @@ keys = ['YUANHUB_FRONTEND_PORT'] if sys.argv[1] == 'frontend' else ['SERVER_PORT
 for key in keys:
     with socket.socket() as sock:
         try:
-            sock.bind(('127.0.0.1', int(os.environ[key])))
+            sock.bind(('0.0.0.0' if key == 'YUANHUB_FRONTEND_PORT' else '127.0.0.1', int(os.environ[key])))
         except OSError:
             raise SystemExit(f"{key}={os.environ[key]} 已被占用；请复用本树服务或检查冲突，不终止其它任务")
 CHECK_PORTS
 if [[ "$SERVICE_MODE" != "frontend" ]]; then
-    bash "$BACKEND_DIR/scripts/dev-up.sh"
+    if [[ "$DATA_MODE" == containers ]]; then
+        bash "$BACKEND_DIR/scripts/dev-up.sh"
+    else
+        python3 "$ROOT_DIR/scripts/check_local_services.py"
+    fi
 fi
 
 trap cleanup INT TERM EXIT
