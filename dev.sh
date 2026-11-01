@@ -3,7 +3,9 @@
 # 一键启动开发环境：同时运行后端 (backend) + 前端 (frontend)
 #
 # 用法:
-#   ./dev.sh          # 同时启动后端 + 前端（本机 Mongo/Redis 与 API）
+#   ./dev.sh          # 同时启动后端 + 前端（共用本机 Mongo/Redis 开发数据）
+#   ./dev.sh preview  # 自动准备依赖并提供 Tailscale 预览，供 Orca 默认终端使用
+#   ./dev.sh containers # 显式使用本树私有 Mongo/Redis 容器
 #   ./dev.sh beta     # 同时启动后端 + 前端（隔离的本地内测模式）
 #   tunnel 模式需单独授权配置每树 ingress；当前默认拒绝复用旧 Tunnel
 #   ./dev.sh backend  # 只启动后端
@@ -13,22 +15,31 @@
 #   - 后端是 Gradle/Spring Boot 项目，用 ./gradlew bootRun 启动（注意：不是 npm run）
 #   - 后端源码变化后会等待 2 秒，编译成功才自动重启；编译失败时保留当前后端
 #   - 前端是 Vue3 + Vite 项目，用 npm run dev 启动
-#   - 后端固定 local profile 与本树私有 Mongo/Redis；忽略继承的生产连接配置
+#   - 后端固定 local profile；默认共用本机开发数据，忽略继承的生产连接配置
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
+if [[ "${1:-}" == preview ]]; then
+    exec python3 "$ROOT_DIR/scripts/dev_preview.py"
+fi
+DATA_MODE=local
+if [[ "${1:-}" == containers ]]; then
+    DATA_MODE=containers
+    shift
+fi
 
-# Ignore inherited live-service credentials; all local endpoints belong to this tree.
+# Ignore inherited live-service credentials; local mode uses existing development data.
 for name in $(compgen -e); do
     case "$name" in SPRING_*|SHARE_*|DEBUG_*|YUANHUB_BETA_*|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS) unset "$name" ;; esac
 done
-worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py)"
+worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py "$DATA_MODE")"
 eval "$worktree_exports"
 if [[ "${1:-}" == "--print-env" ]]; then
     printf 'Worktree: %s\nFrontend: http://127.0.0.1:%s\nBackend: %s\nCompose: %s\n' "$ROOT_DIR" "$YUANHUB_FRONTEND_PORT" "$YUANHUB_DEV_API_TARGET" "$COMPOSE_PROJECT_NAME"
+    printf 'Database mode: %s\n' "$DATA_MODE"
     exit 0
 fi
 
@@ -109,14 +120,16 @@ start_backend() {
         export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 
         backend_pid=""
+        # Kotlin 2.2's daemon argument-file path escaping breaks Chinese worktree names.
+        gradle=(./gradlew -Pkotlin.compiler.execution.strategy=in-process)
 
         launch_backend() {
             if (( BETA_LOCAL_TEST == 1 )); then
                 YUANHUB_BETA_LOCAL_TEST=true \
                 YUANHUB_BETA_CAMPAIGN_ID=yuanhub-beta-local \
-                    ./gradlew bootRun &
+                    "${gradle[@]}" bootRun &
             else
-                ./gradlew bootRun &
+                "${gradle[@]}" bootRun &
             fi
             backend_pid=$!
         }
@@ -155,7 +168,7 @@ start_backend() {
                 pending_restart=0
                 log "$COLOR_BACKEND" "后端" "检测到源码变化，正在编译..."
 
-                if ./gradlew classes --console=plain; then
+                if "${gradle[@]}" classes --console=plain; then
                     log "$COLOR_BACKEND" "后端" "编译成功，正在重启 Spring Boot..."
                     stop_backend
                     launch_backend
@@ -248,7 +261,11 @@ for key in keys:
             raise SystemExit(f"{key}={os.environ[key]} 已被占用；请复用本树服务或检查冲突，不终止其它任务")
 CHECK_PORTS
 if [[ "$SERVICE_MODE" != "frontend" ]]; then
-    bash "$BACKEND_DIR/scripts/dev-up.sh"
+    if [[ "$DATA_MODE" == containers ]]; then
+        bash "$BACKEND_DIR/scripts/dev-up.sh"
+    else
+        python3 "$ROOT_DIR/scripts/check_local_services.py"
+    fi
 fi
 
 trap cleanup INT TERM EXIT

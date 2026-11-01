@@ -43,10 +43,15 @@ def create_configuration(root, file):
             sock.close()
 
 
-def exports(data):
+def exports(data, mode='local'):
+    if mode not in ('local', 'containers'):
+        raise ValueError('Database mode must be local or containers')
     root = Path(data['root'])
     ports = data['ports']
-    mongo = f"mongodb://127.0.0.1:{ports['mongo']}"
+    isolated_containers = mode == 'containers'
+    mongo = f"mongodb://127.0.0.1:{ports['mongo'] if isolated_containers else 27017}"
+    maa_database = 'yuanhub_local_maa' if isolated_containers else 'MaaBackend'
+    hub_database = 'yuanhub_local_hub' if isolated_containers else 'HubBackend'
     query = '?replicaSet=rs0&directConnection=true'
     return {
         'COMPOSE_PROJECT_NAME': data['project'],
@@ -58,10 +63,11 @@ def exports(data):
         'YUANHUB_REDIS_PORT': str(ports['redis']),
         'YUANHUB_DEV_API_TARGET': f"http://127.0.0.1:{ports['backend']}",
         'SPRING_PROFILES_ACTIVE': 'local',
-        'SPRING_DATA_MONGODB_URI': mongo + '/yuanhub_local_maa' + query,
-        'SHARE_MONGO_HUB_URI': mongo + '/yuanhub_local_hub' + query,
+        'SPRING_DATA_MONGODB_URI': mongo + f'/{maa_database}' + query,
+        'SHARE_MONGO_HUB_URI': mongo + f'/{hub_database}' + query,
         'SPRING_DATA_REDIS_HOST': '127.0.0.1',
-        'SPRING_DATA_REDIS_PORT': str(ports['redis']),
+        'SPRING_DATA_REDIS_PORT': str(ports['redis'] if isolated_containers else 6379),
+        'SPRING_DATA_REDIS_DATABASE': '0',
         'SHARE_PUBLIC_BASE_URL': f"http://127.0.0.1:{ports['backend']}",
         'SHARE_CORS_ALLOWED_ORIGIN_PATTERNS': f"http://127.0.0.1:{ports['frontend']},http://localhost:{ports['frontend']}",
         'SHARE_JWT_SECRET': data['jwt'],
@@ -75,7 +81,8 @@ def exports(data):
 
 
 if __name__ == '__main__':
+    import sys
     root = Path(subprocess.check_output(['git','rev-parse','--show-toplevel'], text=True).strip())
     os.umask(0o077)
-    for key, value in exports(configuration(root)).items():
+    for key, value in exports(configuration(root), sys.argv[1] if len(sys.argv) > 1 else 'local').items():
         print('export ' + key + '=' + shlex.quote(value))
