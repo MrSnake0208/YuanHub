@@ -36,12 +36,14 @@ class MailboxAccrualServiceTest {
     private val mapper = jacksonObjectMapper()
 
     @Test
-    fun `manual stock received today is accounted once without creating another pending mail`() {
+    fun `manual stock received today is accounted once as pending mail`() {
         val day = "2026-11-03"
         val schedule = MailboxSchedule(day, "2026-11-05", 90)
         val before = MailboxReserve(listOf(WhiteCoinMail(2, 90)), fuChuanMailCount = 1)
         val value = before.copy(whiteCoinSchedule = schedule, fuChuanSchedule = MailboxSchedule(day, "2026-11-05"))
         every { template.exists(any<Query>(), MailboxDelivery::class.java) } returns false
+        every { records.findByUserIdAndAccountIdAndRecordId(any(), any(), any()) } returns null
+        every { deleted.findByUserIdAndAccountIdAndRecordId(any(), any(), any()) } returns null
         val deliveries = mutableListOf<MailboxDelivery>()
         every { template.insert(any<MailboxDelivery>()) } answers { firstArg<MailboxDelivery>().also { deliveries.add(it) } }
 
@@ -50,7 +52,7 @@ class MailboxAccrualServiceTest {
         assertEquals(day, recognized.whiteCoinSchedule?.throughDate)
         assertEquals(1, recognized.fuChuanMailCount)
         assertEquals(day, recognized.fuChuanSchedule?.throughDate)
-        assertEquals(listOf("claimed", "claimed"), deliveries.map { it.state })
+        assertEquals(listOf("pending", "pending"), deliveries.map { it.state })
         assertEquals(recognized, service.recognizeManualToday("owner", "a", recognized, setOf("coins", "tickets")))
         assertEquals(2, deliveries.size)
         val expired = value.copy(

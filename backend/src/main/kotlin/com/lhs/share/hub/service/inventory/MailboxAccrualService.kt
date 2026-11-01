@@ -101,7 +101,7 @@ class MailboxAccrualService(
                         type = type,
                         day = day,
                         coinsPerMail = schedule.coinsPerMail,
-                        state = "claimed",
+                        state = if (type == "coins" && recorded(user, account, day)) "claimed" else "pending",
                     ),
                 )
             }
@@ -142,11 +142,7 @@ class MailboxAccrualService(
                 if (day < next(schedule) || day > date(schedule.endDate)) continue
                 val query = owner(user, account).addCriteria(Criteria.where("type").`is`(type).and("day").`is`(day.toString()))
                 if (!template.exists(query, MailboxDelivery::class.java)) {
-                    val key = dailyId(day.toString())
-                    val recorded = type == "coins" && (
-                        records.findByUserIdAndAccountIdAndRecordId(user, account, key) != null ||
-                            deleted.findByUserIdAndAccountIdAndRecordId(user, account, key) != null
-                        )
+                    val recorded = type == "coins" && recorded(user, account, day.toString())
                     template.insert(
                         MailboxDelivery(
                             userId = user,
@@ -291,6 +287,11 @@ class MailboxAccrualService(
         value.throughDate?.let { date(it).plusDays(1) } ?: date(value.startDate),
     )
     private fun now(value: MailboxReserve): Instant = maxOf(clock.instant().truncatedTo(ChronoUnit.MILLIS), value.updatedAt ?: Instant.MIN)
+    private fun recorded(user: String, account: String, day: String): Boolean {
+        val key = dailyId(day)
+        return records.findByUserIdAndAccountIdAndRecordId(user, account, key) != null ||
+            deleted.findByUserIdAndAccountIdAndRecordId(user, account, key) != null
+    }
     private fun owner(user: String, account: String) = Query(Criteria.where("userId").`is`(user).and("accountId").`is`(account))
     private fun date(value: String): LocalDate = try {
         if (!Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)) invalid("请输入有效日期")
