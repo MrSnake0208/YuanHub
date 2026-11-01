@@ -8,7 +8,8 @@ import { getCurrent as getCurrentInventory, importInventory } from '../src/api/i
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
-import { getCurrentStarState, rebuildStarState } from '../src/api/starState.js'
+import { getCurrentStarState, patchCurrentStarState, rebuildStarState } from '../src/api/starState.js'
+import { dialog } from '../src/utils/dialog.js'
 import { consumeStarCapture, getStarCaptureImage, getStarCaptureManifest } from '../src/api/starCaptures.js'
 import { isStarCaptureDraftPersisted } from '../src/pages/star/captureDraftReceipt.js'
 import { STAR_CAPTURE_LIFECYCLE_KEY } from '../src/pages/star/starCaptureLifecycle.js'
@@ -63,6 +64,7 @@ async function loadStylesheet() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  patchCurrentStarState.mockReset()
   tutorialFeature.enabled = true
   navigation.route = reactive({ path: '/star', query: {}, hash: '' })
   auth.isLoggedIn = false
@@ -584,7 +586,7 @@ it('样式加载失败可重试，失败链接不会阻挡下一次加载', asyn
   wrapper.unmount()
 })
 
-it('首次云端读取失败后显示重试，重试成功后清除错误', async () => {
+it('首次GET失败只提供重新加载，读取成功后清除错误', async () => {
   auth.isLoggedIn = true
   activeAccount.set('acc-1')
   getCurrentStarState.mockRejectedValueOnce(new Error('offline'))
@@ -593,23 +595,124 @@ it('首次云端读取失败后显示重试，重试成功后清除错误', asyn
   await loadStylesheet()
   expect(wrapper.get('.star-sync-state').text()).toContain('暂时无法读取云端背包')
   expect(wrapper.get('.star-sync-state').classes()).toContain('is-error')
-  expect(wrapper.get('.star-sync-retry').text()).toBe('重试')
+  expect(wrapper.get('.star-sync-cloud').text()).toBe('重新加载')
+  expect(wrapper.findAll('.star-sync-cloud')).toHaveLength(1)
+  expect(patchCurrentStarState).not.toHaveBeenCalled()
 
   await wrapper.get('.star-sync-retry').trigger('click')
   await flushPromises()
   expect(getCurrentStarState).toHaveBeenCalledTimes(2)
   expect(wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
-  expect(wrapper.get('.star-sync-meta[role="status"]').text()).toBe('已同步')
-  expect(wrapper.get('.star-sync-meta svg').attributes('aria-hidden')).toBe('true')
-  expect(wrapper.get('.star-sync-meta').attributes('title')).toBe('星石云端状态已保存')
+  expect(wrapper.get('.star-sync-meta[role="status"]').text()).toBe('已读取云端星石状态')
+  expect(wrapper.find('.star-sync-meta svg').exists()).toBe(false)
+  expect(wrapper.get('.star-sync-meta').attributes('title')).toBe('已读取云端星石状态')
   wrapper.unmount()
 })
 
-it.each(['old', 'committed', 'read-failed', 'new-revision', 'new-generation'])(
-  'pending rebuild retry reads authority without replaying writes (%s)', async outcome => {
+async function conflictPage() {
+  auth.isLoggedIn = true
+  activeAccount.set('acc-1')
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: 'A', game: '如鸢' }, { id: 'acc-2', name: 'B', game: '如鸢' }])
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 2, revision: 5, bag: { current_count: 1, capacity: 40 } })
+  const product = embedMount.getMockImplementation()()
+  let snapshot = { ...emptySnapshot, bag: { currentCount: 1, capacity: 40 } }
+  product.getCloudBusinessSnapshot = vi.fn(async () => snapshot)
+  product.applyCloudBusinessSnapshot = vi.fn(async value => { snapshot = value })
+  embedMount.mockReturnValue(product)
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const callbacks = embedMount.mock.calls.at(-1)[1]
+  patchCurrentStarState.mockRejectedValue(Object.assign(Error('conflict'), { status: 409 }))
+  snapshot = { ...emptySnapshot, bag: { currentCount: 2, capacity: 40 } }
+  expect(callbacks.onBusinessStateCommitted({ accountId: 'acc-1', snapshot })).toBe(true)
+  await flushPromises()
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 2, revision: 6, bag: { current_count: 9, capacity: 40 } })
+  return { wrapper, product, callbacks, snapshot: () => snapshot }
+}
+
+it('普通409只显示恢复云端，单击无确认、无PATCH，恢复后可再次编辑', async () => {
+  const f = await conflictPage(), key = 'yuanhub.star-state:acc-1', pending = localStorage.getItem(key)
+  const confirm = vi.spyOn(dialog, 'confirm'), nativeConfirm = vi.spyOn(window, 'confirm')
+  const buttons = f.wrapper.findAll('.star-sync-state button')
+  expect(buttons).toHaveLength(1)
+  expect(buttons[0].text()).toBe('恢复云端')
+  expect(f.wrapper.get('.star-sync-state span').text()).toBe('本次修改尚未同步。可恢复云端背包，放弃本次未保存的修改。')
+  expect(f.wrapper.find('.star-sync-discard').exists()).toBe(false)
+  const gate = deferred(), reads = getCurrentStarState.mock.calls.length
+  getCurrentStarState.mockImplementationOnce(() => gate.promise)
+  await buttons[0].trigger('click'); await buttons[0].trigger('click'); await flushPromises()
+  expect(getCurrentStarState).toHaveBeenCalledTimes(reads + 1)
+  expect(buttons[0].text()).toBe('恢复中…')
+  expect(buttons[0].attributes('disabled')).toBeDefined()
+  expect(f.wrapper.get('#product-root').attributes('inert')).toBeDefined()
+  expect(confirm).not.toHaveBeenCalled(); expect(nativeConfirm).not.toHaveBeenCalled()
+  expect(dialog._state.visible).toBe(false)
+  expect(localStorage.getItem(key)).toBe(pending)
+  gate.resolve({ ...emptyRemote, generation: 2, revision: 6, bag: { current_count: 9, capacity: 40 } }); await flushPromises()
+  expect(patchCurrentStarState).toHaveBeenCalledTimes(1)
+  expect(localStorage.getItem(key)).toBeNull()
+  expect(f.snapshot().bag.currentCount).toBe(9)
+  expect(f.wrapper.find('.star-sync-cloud').exists()).toBe(false)
+  expect(f.wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
+  const backupKey = Object.keys(localStorage).find(key => key.startsWith('yuanhub.star-state-backup:acc-1:'))
+  expect(JSON.parse(localStorage.getItem(backupKey)).pendingRaw).toBe(pending)
+  expect(f.wrapper.findComponent({ name: 'DataAccountContextBar' }).props('switchDisabled')).toBe(false)
+  patchCurrentStarState.mockResolvedValue({ state: { ...emptyRemote, generation: 2, revision: 7, bag: { current_count: 10, capacity: 40 } } })
+  f.callbacks.onBusinessStateCommitted({ accountId: 'acc-1', snapshot: { ...emptySnapshot, bag: { currentCount: 10, capacity: 40 } } })
+  await flushPromises()
+  expect(patchCurrentStarState.mock.calls.at(-1)[1]).toMatchObject({ expected_generation: 2, expected_revision: 6 })
+  f.wrapper.unmount()
+})
+
+it.each(['read', 'backup', 'hydrate', 'mismatch'])('恢复%s失败保留记录和唯一入口，再点可恢复', async failure => {
+  const f = await conflictPage(), key = 'yuanhub.star-state:acc-1', pending = localStorage.getItem(key)
+  let restore = () => {}
+  if (failure === 'read') getCurrentStarState.mockRejectedValueOnce(Error('offline'))
+  if (failure === 'backup') {
+    const original = Storage.prototype.setItem
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('yuanhub.star-state-backup:')) throw Error('quota')
+      return original.call(this, key, value)
+    })
+    restore = () => spy.mockRestore()
+  }
+  if (failure === 'hydrate') f.product.applyCloudBusinessSnapshot.mockRejectedValueOnce(Error('IDB failure'))
+  if (failure === 'mismatch') f.product.getCloudBusinessSnapshot.mockResolvedValueOnce(f.snapshot()).mockResolvedValueOnce(emptySnapshot)
+  await f.wrapper.get('.star-sync-cloud').trigger('click'); await flushPromises()
+  expect(localStorage.getItem(key)).toBe(pending)
+  expect(f.wrapper.findAll('.star-sync-cloud')).toHaveLength(1)
+  expect(f.wrapper.get('.star-sync-cloud').text()).toBe('恢复云端')
+  expect(f.wrapper.get('.star-sync-state.is-error').text()).toContain('未能恢复云端背包')
+  expect(patchCurrentStarState).toHaveBeenCalledTimes(1)
+  restore()
+  await f.wrapper.get('.star-sync-cloud').trigger('click'); await flushPromises()
+  expect(localStorage.getItem(key)).toBeNull()
+  expect(f.wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
+  f.wrapper.unmount()
+})
+
+it.each(['account', 'roundtrip', 'identity', 'unmount', 'remount'])('恢复读取期间%s变化使旧请求失效', async action => {
+  const f = await conflictPage(), key = 'yuanhub.star-state:acc-1', pending = localStorage.getItem(key), gate = deferred()
+  getCurrentStarState.mockImplementationOnce(() => gate.promise)
+  await f.wrapper.get('.star-sync-cloud').trigger('click'); await flushPromises()
+  let remounted
+  if (action === 'unmount' || action === 'remount') {
+    f.wrapper.unmount()
+    if (action === 'remount') { remounted = render(); await flushPromises() }
+  } else if (action === 'identity') auth.userInfo = { id: 'new-identity' }
+  else { activeAccount.set('acc-2'); if (action === 'roundtrip') activeAccount.set('acc-1'); await flushPromises() }
+  gate.resolve({ ...emptyRemote, generation: 2, revision: 6, bag: { current_count: 9, capacity: 40 } }); await flushPromises()
+  expect(localStorage.getItem(key)).toBe(pending)
+  expect(Object.keys(localStorage).some(key => key.startsWith('yuanhub.star-state-backup:'))).toBe(false)
+  expect(patchCurrentStarState).toHaveBeenCalledTimes(1)
+  expect(f.wrapper.text()).not.toContain('已恢复云端背包')
+  remounted?.unmount(); f.wrapper.unmount()
+})
+
+it.each(['rebuild', 'plan'].flatMap(kind => ['old', 'committed', 'read-failed', 'new-revision', 'new-generation'].map(outcome => [kind, outcome])))(
+  'pending %s only reloads authority without replaying writes (%s)', async (kind, outcome) => {
     auth.isLoggedIn = true
     activeAccount.set('acc-1')
-    const key = 'yuanhub.star-rebuild-pending:acc-1'
+    const key = 'yuanhub.star-' + kind + '-pending:acc-1'
     const expected = { ...emptySnapshot, generation: 3, revision: 6 }
     const intent = JSON.stringify(expected)
     localStorage.setItem(key, intent)
@@ -621,6 +724,8 @@ it.each(['old', 'committed', 'read-failed', 'new-revision', 'new-generation'])(
     const wrapper = render()
     await flushPromises(); await loadStylesheet()
     expect(wrapper.get('.star-sync-state').text()).toContain('保存结果仍待确认')
+    expect(wrapper.findAll('.star-sync-cloud')).toHaveLength(1)
+    expect(wrapper.get('.star-sync-cloud').text()).toBe('重新加载')
     const gate = deferred()
     const failure = outcome === 'read-failed'
     getCurrentStarState.mockImplementationOnce(() => gate.promise.then(value => {
@@ -636,6 +741,7 @@ it.each(['old', 'committed', 'read-failed', 'new-revision', 'new-generation'])(
       revision: outcome === 'new-revision' ? 7 : 6 })
     await flushPromises()
     expect(rebuildStarState).not.toHaveBeenCalled()
+    expect(patchCurrentStarState).not.toHaveBeenCalled()
     expect(importInventory).not.toHaveBeenCalled()
     expect(embedMount).toHaveBeenCalledTimes(1)
     if (outcome === 'committed') {

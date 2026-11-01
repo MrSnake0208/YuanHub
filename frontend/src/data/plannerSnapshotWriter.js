@@ -8,21 +8,28 @@ const conflict = () => Object.assign(new Error('云端已有其他修改。请�
 
 // One sequential CAS writer per account + plan. Pending drafts survive navigation
 // and failed responses; retries first reconcile a potentially committed request.
-export function createPlannerSnapshotWriter({ initial, read, write, body, storage, key, equals, onChange = () => {}, onSaved = () => {} }) {
+export function createPlannerSnapshotWriter({ initial, read, write, body, storage, key, equals, sameVersion = (a, b) => a.revision === b.revision, isCurrent = () => true, onChange = () => {}, onSaved = () => {} }) {
   const owners = activeWriters.get(storage) || new Map()
   activeWriters.set(storage, owners)
   const owner = {}
   owners.set(key, owner)
-  const active = () => owners.get(key) === owner
-  let base = clone(initial), pending = null, sent = null, error = null, running = null, latest = null
-  const restored = JSON.parse(storage.getItem(key) || 'null')
-  if (restored) { pending = restored.pending; sent = restored.sent; base.revision = restored.revision; error = new Error('发现上次未完成的保存，可重试恢复或读取云端。') }
-  function state() { return { pending: pending && clone(pending), saving: Boolean(running), error, latest, revision: base.revision } }
+  const active = () => owners.get(key) === owner && isCurrent()
+  let base = clone(initial), pending = null, sent = null, error = null, running = null, latest = null, discarding = false
+  let persisted = storage.getItem(key)
+  const restored = JSON.parse(persisted || 'null')
+  if (restored) { pending = restored.pending; sent = restored.sent; base = restored.base || { ...base, revision: restored.revision,
+    ...(Object.hasOwn(base, 'generation') && pending?.generation !== undefined ? { generation: pending.generation } : {}) }; error = new Error('发现上次未完成的保存，可重试恢复或读取云端。') }
+  function state() { return { base: clone(base), pending: pending && clone(pending), saving: Boolean(running), error, latest, revision: base.revision } }
   function notify() { onChange(state()) }
+  function assertOwner() {
+    if (!active() || storage.getItem(key) !== persisted) throw conflict()
+  }
   function persist() {
-    if (!active()) return
-    if (pending) storage.setItem(key, JSON.stringify({ pending, sent, revision: base.revision }))
+    assertOwner()
+    const value = pending ? JSON.stringify({ base, pending, sent, revision: base.revision }) : null
+    if (pending) storage.setItem(key, value)
     else storage.removeItem(key)
+    persisted = value
   }
   function same(a, b) { return equals ? equals(a, b) : stable(body(a, 0)) === stable(body(b, 0)) }
   async function drain() {
@@ -32,6 +39,7 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
       try {
         persist()
         const saved = await write(body(draft, base.revision))
+        assertOwner()
         base = clone(saved)
         sent = null
         if (pending === draft) pending = null
@@ -50,12 +58,14 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
     return running
   }
   return {
-    state,
+    state, isActive: active,
     async save(value) {
-      if (error || !active()) return false
+      if (!active()) return false
       if (!pending && !running && same(value, base)) return false
       pending = clone(value)
       try { persist() } catch (err) { error = new Error('本机无法保留待保存内容：' + err.message); notify(); return false }
+      // Keep later local commits even while an earlier request needs reconciliation.
+      if (error || discarding) { notify(); return false }
       return start()
     },
     retry() {
@@ -63,9 +73,11 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
       if (running) return running
       running = Promise.resolve().then(async () => {
         try {
+          assertOwner()
           latest = await read()
+          assertOwner()
           if (sent && same(latest, sent)) { base = clone(latest); sent = null; if (pending && same(latest, pending)) pending = null }
-          else if (latest.revision !== base.revision) throw conflict()
+          else if (!sameVersion(latest, base)) throw conflict()
           error = null
           persist()
           if (!pending) { onSaved(base, false); return true }
@@ -75,18 +87,26 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
       notify()
       return running
     },
-    discard() {
+    discard({ beforeDiscard = async () => {} } = {}) {
       if (!active()) return Promise.resolve(false)
       if (running) return running
+      discarding = true
+      const draft = pending
+      const assertUnchanged = () => { assertOwner(); if (pending !== draft) throw conflict() }
       running = Promise.resolve().then(async () => {
         try {
+          assertUnchanged()
           const remote = await read()
-          if (!active()) return false
+          assertUnchanged()
+          // The caller may back up and hydrate its workspace. Failure must keep the draft.
+          await beforeDiscard(clone(remote))
+          assertUnchanged()
           storage.removeItem(key)
+          persisted = null
           base = remote; pending = null; sent = null; error = null; latest = null
           onSaved(remote, false); return true
         } catch (err) { error = err; return false }
-      }).finally(() => { running = null; notify() })
+      }).finally(() => { discarding = false; running = null; notify() })
       notify()
       return running
     },
@@ -102,6 +122,7 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
       base = clone(value); sent = null; latest = null
       try { persist() } catch (err) { error = new Error('本机无法更新云端版本：' + err.message); notify(); return false }
       onSaved(base, false); notify(); return true
-    }
+    },
+    stop() { if (owners.get(key) === owner) owners.delete(key) }
   }
 }
