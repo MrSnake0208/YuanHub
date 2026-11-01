@@ -1,0 +1,138 @@
+spring:
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      # multipart 请求封套上限;业务文件上限由 share.media.max-size 控制为 10 MiB
+      max-file-size: 12MB
+      # 请求总大小上限,为 multipart 边界和字段预留空间
+      max-request-size: 50MB
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    date-format: yyyy-MM-dd'T'HH:mm:ss'Z'
+    time-zone: UTC
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+  data:
+    mongodb:
+      # 打开自动索引生成(否则数据库内唯一索引不生效)
+      auto-index-creation: true
+  cache:
+    # 进程内缓存,使用 caffeine,缓存时长为 5 分钟,最大缓存数量 500
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: framework
+  tomcat:
+    # 限制 post 表单最大为 30KB
+    max-http-form-post-size: 30KB
+    # 星石完整背包采集为 13 张 PNG 加 manifest，共 14 个 multipart parts。
+    max-part-count: 50
+  compression:
+    enabled: true
+
+management:
+  server:
+    # 蓝绿部署时由 slot 环境变量覆盖为 18080 / 18081；其他环境默认与应用端口一致。
+    # management.server.address 仅在蓝绿 slot env 中设置，因为它要求管理端口与应用端口不同。
+    port: ${MANAGEMENT_SERVER_PORT:${server.port}}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,mongo,redis,diskSpace
+
+logging:
+  file:
+    name: ./logs/latest.log
+  logback:
+    rollingpolicy:
+      max-history: 14
+      clean-history-on-start: true
+
+# 应用自定义配置
+share:
+  cors:
+    # 本地默认保持兼容；生产环境必须通过环境变量收敛为实际前端域名。
+    allowed-origin-patterns: "${SHARE_CORS_ALLOWED_ORIGIN_PATTERNS:*}"
+  info:
+    title: Share Backend API
+    description: Share Backend API
+    # 后端自身版本,与 YuanHub 产品版本无关;发布后端时由 YUANHUB_BACKEND_VERSION 覆盖
+    version: ${YUANHUB_BACKEND_VERSION:v0.1.0}
+    # YuanHub 产品版本,仅在生产环境通过 YUANHUB_PRODUCT_VERSION 注入,后端不硬编码
+    product-version: ${YUANHUB_PRODUCT_VERSION:}
+    public-base-url: ${SHARE_PUBLIC_BASE_URL:https://hub.maayuan.fun:16666}
+  jwt:
+    header: Authorization
+    # AccessToken 过期时间,单位秒
+    expire: 21600
+    # RefreshToken 过期时间,单位秒
+    refresh-expire: 604800
+    # JWT 签名密钥,生产环境务必更换为随机长字符串
+    secret: please-change-me-to-a-long-random-secret
+  cache:
+    # 缓存默认过期时间,单位秒
+    default-expire: 60
+  beta:
+    # 正式环境默认使用正式活动；本地隔离测试必须显式通过环境变量开启。
+    campaign-id: ${YUANHUB_BETA_CAMPAIGN_ID:yuanhub-beta-202609}
+    local-test-mode: ${YUANHUB_BETA_LOCAL_TEST:false}
+    # 系统级安全上限：只用于防止管理员误输入极端数字，不是本轮产品层面的最多人数。
+    capacity-hard-limit: ${YUANHUB_BETA_CAPACITY_HARD_LIMIT:100000}
+  vcode:
+    # 验证码失效时间,单位秒
+    expire: 600
+  ledger:
+    # 广陵账房:每用户方案数上限
+    max-plans-per-user: 50
+  avatar:
+    # 密探头像文件目录(存放 {operatorId}.webp;application-local.yml 同步保留默认值即可)
+    dir: ${SHARE_AVATAR_DIR:./data/avatar}
+  media:
+    # 公开图片存储目录(存放 med_xxx.{jpg,png,webp};生产用环境变量 SHARE_MEDIA_DIR 覆盖)
+    dir: ${SHARE_MEDIA_DIR:./data/media}
+    # 私有附件存储目录(不得位于公开图片目录下;生产用环境变量 SHARE_PRIVATE_MEDIA_DIR 覆盖)
+    private-dir: ${SHARE_PRIVATE_MEDIA_DIR:./data/private-media}
+    # 单个业务媒体文件大小上限(字节),10 MiB
+    max-size: 10485760
+  star-capture:
+    # 临时私有星石截图目录；不映射为公开静态资源。
+    dir: ${SHARE_STAR_CAPTURE_DIR:./data/star-captures}
+    ttl-minutes: 30
+  mails:
+    # 邮件服务器 SMTP 配置(可配置多个,发送时轮询)
+    # - host: smtp.qq.com
+    #   port: 465
+    #   from: xxx@qq.com
+    #   user: xxx
+    #   pass: 授权码
+    #   ssl: true
+    #   starttls: false
+
+debug:
+  email:
+    # 本地调试:true 时不真实发邮件,验证码打印到日志
+    no-send: true
+
+springdoc:
+  swagger-ui:
+    # 开启 Swagger UI 界面
+    enabled: true
+  api-docs:
+    # 开启 api-docs
+    enabled: true
+  # 配置需要生成接口文档的扫描包
+  packages-to-scan: com.lhs.share

@@ -1,0 +1,353 @@
+name: Release
+run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inputs.tag, inputs.commit, inputs.request) || format('Release {0}', inputs.tag || github.ref_name) }}
+
+# Production backend release:
+# GitHub-hosted runner performs the release gate, then server B fetches the exact commit
+# and builds the Spring Boot jar locally. No large jar is uploaded through GitHub Actions.
+# Traffic switches between blue:8080 and green:8081 only after the inactive slot passes
+# local readiness checks. Public verification failure automatically restores the old upstream.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Backend tag (prepare uses a new tag; release uses an existing tag)"
+        required: true
+      phase:
+        description: "Prepare builds only; release activates after successful CI"
+        type: choice
+        options: [release, prepare]
+        default: release
+      commit:
+        description: "Full main commit SHA, required for prepare"
+        required: false
+      request:
+        description: "Unique prepare request identifier"
+        required: false
+
+concurrency:
+  group: yuanhub-backend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    name: Server-build blue/green release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      DEPLOY_PHASE: ${{ inputs.phase || 'release' }}
+      REQUESTED_COMMIT: ${{ inputs.commit }}
+      PREPARE_REQUEST: ${{ inputs.request }}
+
+    steps:
+      - name: Validate release request
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "::error::Invalid phase"; exit 1 ;; esac
+          if [ "$DEPLOY_PHASE" = prepare ]; then
+            [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::prepare must run from main"; exit 1; }
+            [[ "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::prepare requires a full SHA"; exit 1; }
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || { echo "::error::Invalid prepare tag"; exit 1; }
+            [[ "$PREPARE_REQUEST" =~ ^[A-Za-z0-9._-]{1,100}$ ]] || { echo "::error::Invalid prepare request"; exit 1; }
+          fi
+
+      - name: Checkout release ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.phase == 'prepare' && (inputs.commit || 'main') || (github.event_name == 'workflow_dispatch' && inputs.tag || github.ref) }}
+          fetch-depth: 0
+
+      - name: Validate prepared commit
+        if: ${{ inputs.phase == 'prepare' }}
+        run: |
+          set -eu
+          [ "$(git rev-parse HEAD)" = "$REQUESTED_COMMIT" ]
+          git merge-base --is-ancestor "$REQUESTED_COMMIT" origin/main || {
+            echo "::error::prepare commit must belong to main"; exit 1;
+          }
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::prepare cannot overwrite an existing tag"; exit 1;
+          fi
+
+      - name: Resolve immutable release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_TAG"
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *) echo "::error::backend release tag must start with v"; exit 1 ;;
+          esac
+          if [ "$DEPLOY_PHASE" = prepare ]; then
+            release_commit="$REQUESTED_COMMIT"
+          else
+            git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null || {
+              echo "::error::tag $RELEASE_TAG does not exist in this checkout"
+              exit 1
+            }
+            release_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          fi
+          head_commit="$(git rev-parse HEAD)"
+          if [ "$release_commit" != "$head_commit" ]; then
+            echo "::error::checked out commit $head_commit does not match tag $RELEASE_TAG ($release_commit)"
+            exit 1
+          fi
+          echo "BACKEND_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
+          echo "Releasing $RELEASE_TAG (${release_commit::7})"
+
+      - name: Require successful CI for release commit
+        if: ${{ inputs.phase != 'prepare' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci_run_id="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow ci.yml \
+              --branch main \
+              --event push \
+              --commit "$BACKEND_RELEASE_COMMIT" \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty'
+          )"
+          test -n "$ci_run_id" || {
+            echo "::error::No successful main push CI run exists for release commit $BACKEND_RELEASE_COMMIT"
+            exit 1
+          }
+          echo "Using successful CI run $ci_run_id for $BACKEND_RELEASE_COMMIT"
+
+      - name: Resolve product version
+        id: product-version
+        env:
+          CONFIGURED_PRODUCT_VERSION: ${{ vars.YUANHUB_PRODUCT_VERSION }}
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          product_version="$CONFIGURED_PRODUCT_VERSION"
+
+          if [ -z "$product_version" ] && [ -n "$BACKEND_URL" ]; then
+            echo "YUANHUB_PRODUCT_VERSION is not visible in vars; falling back to the currently deployed backend."
+            payload="$(curl --fail --silent --show-error --location --max-time 10 "${BACKEND_URL%/}/version" || true)"
+            product_version="$(printf '%s' "$payload" | jq -r '.data.product_version // ""' 2>/dev/null || true)"
+          fi
+
+          test -n "$product_version" || {
+            echo "::error::Could not resolve YuanHub product version from GitHub Variables or the current /version endpoint."
+            exit 1
+          }
+
+          echo "Resolved product version: $product_version"
+          echo "value=$product_version" >> "$GITHUB_OUTPUT"
+
+      - name: Validate deployment configuration
+        env:
+          BACKEND_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
+          PRODUCT_VERSION: ${{ steps.product-version.outputs.value }}
+          DEPLOY_HOST: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
+          DEPLOY_PORT: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
+          DEPLOY_KEY: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BACKEND_ROOT" || { echo "::error::YUANHUB_BACKEND_DEPLOY_DIR is not configured"; exit 1; }
+          case "$BACKEND_ROOT" in /*) ;; *) echo "::error::YUANHUB_BACKEND_DEPLOY_DIR must be absolute"; exit 1 ;; esac
+          test "$BACKEND_ROOT" != "/" || { echo "::error::YUANHUB_BACKEND_DEPLOY_DIR must not be /"; exit 1; }
+          test -n "$BACKEND_URL" || { echo "::error::YUANHUB_BACKEND_URL is not configured"; exit 1; }
+          case "$BACKEND_URL" in https://*) ;; *) echo "::error::YUANHUB_BACKEND_URL must use https://"; exit 1 ;; esac
+          test -n "$PRODUCT_VERSION" || { echo "::error::YUANHUB_PRODUCT_VERSION is not configured"; exit 1; }
+          test -n "$DEPLOY_HOST" || { echo "::error::YUANHUB_BACKEND_VPS_HOST is not configured"; exit 1; }
+          test -n "$DEPLOY_USER" || { echo "::error::YUANHUB_BACKEND_VPS_USER is not configured"; exit 1; }
+          test -n "$DEPLOY_PORT" || { echo "::error::YUANHUB_BACKEND_VPS_PORT is not configured"; exit 1; }
+          test -n "$DEPLOY_KEY" || { echo "::error::YUANHUB_BACKEND_VPS_SSH_KEY is not configured"; exit 1; }
+
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          chmod 600 "$key_file"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
+      - name: Preflight deployment server
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        env:
+          BACKEND_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
+          REPO_URL: git@github.com:${{ github.repository }}.git
+        with:
+          host: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
+          key: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
+          command_timeout: 2m
+          envs: BACKEND_ROOT,REPO_URL
+          script: |
+            set -euo pipefail
+
+            for tool in git java javac curl python3; do
+              command -v "$tool" >/dev/null 2>&1 || {
+                echo "$tool is required on the deployment server" >&2
+                exit 1
+              }
+            done
+
+            java_major="$(java -version 2>&1 | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+            javac_major="$(javac -version 2>&1 | sed -n 's/^javac \([0-9][0-9]*\).*/\1/p' | head -n 1)"
+            [ "$java_major" = "21" ] || {
+              echo "Java 21 runtime is required; found $(java -version 2>&1 | head -n1)" >&2
+              exit 1
+            }
+            [ "$javac_major" = "21" ] || {
+              echo "Java 21 JDK compiler is required; found $(javac -version 2>&1 | head -n1)" >&2
+              exit 1
+            }
+
+            [ -f "$BACKEND_ROOT/shared/backend.env" ] || {
+              echo "Missing $BACKEND_ROOT/shared/backend.env" >&2
+              exit 1
+            }
+            command -v nginx >/dev/null 2>&1 || { echo "nginx is required on the deployment server" >&2; exit 1; }
+            command -v systemctl >/dev/null 2>&1 || { echo "systemctl is required on the deployment server" >&2; exit 1; }
+
+            export GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new'
+            git ls-remote "$REPO_URL" HEAD >/dev/null
+            echo "Deployment server preflight passed: Java/Javac 21 and repository access are ready."
+
+      - name: Fetch, build and blue-green deploy on server B
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        env:
+          BACKEND_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
+          PRODUCT_VERSION: ${{ steps.product-version.outputs.value }}
+          KEEP_RELEASES: ${{ vars.YUANHUB_KEEP_RELEASES }}
+          DRAIN_SECONDS: ${{ vars.YUANHUB_BACKEND_DRAIN_SECONDS }}
+          LEGACY_SERVICE: ${{ vars.YUANHUB_BACKEND_LEGACY_SERVICE }}
+          RELEASE_VERSION: ${{ env.RELEASE_TAG }}
+          RELEASE_COMMIT: ${{ env.BACKEND_RELEASE_COMMIT }}
+          REPO_URL: git@github.com:${{ github.repository }}.git
+          DEPLOY_PHASE: ${{ env.DEPLOY_PHASE }}
+        with:
+          host: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
+          key: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
+          command_timeout: 60m
+          envs: BACKEND_ROOT,BACKEND_URL,PRODUCT_VERSION,KEEP_RELEASES,DRAIN_SECONDS,LEGACY_SERVICE,RELEASE_VERSION,RELEASE_COMMIT,REPO_URL,DEPLOY_PHASE
+          script: |
+            set -euo pipefail
+
+            : "${BACKEND_ROOT:?}"
+            : "${BACKEND_URL:?}"
+            : "${PRODUCT_VERSION:?}"
+            : "${RELEASE_VERSION:?}"
+            : "${RELEASE_COMMIT:?}"
+            : "${REPO_URL:?}"
+
+            source_dir="$BACKEND_ROOT/.source"
+            mkdir -p "$BACKEND_ROOT"
+            export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new'
+
+            if [ ! -d "$source_dir/.git" ]; then
+              rm -rf "$source_dir"
+              git clone --filter=blob:none "$REPO_URL" "$source_dir"
+            fi
+
+            cd "$source_dir"
+            git remote set-url origin "$REPO_URL"
+
+            # .source is only a deployment cache: discard server-side edits before
+            # switching commits so stale manual changes cannot block a release.
+            git reset --hard HEAD
+            git clean -ffdx -e .gradle/ -e build/
+
+            git fetch --force --prune --tags origin
+            git checkout --force --detach "$RELEASE_COMMIT"
+            git reset --hard "$RELEASE_COMMIT"
+            git clean -ffdx -e .gradle/ -e build/
+
+            actual_commit="$(git rev-parse HEAD)"
+            [ "$actual_commit" = "$RELEASE_COMMIT" ] || {
+              echo "Checked-out commit $actual_commit does not match expected $RELEASE_COMMIT"
+              exit 1
+            }
+
+            chmod +x deploy/blue-green-deploy.sh
+            KEEP_RELEASES="${KEEP_RELEASES:-5}" \
+            DRAIN_SECONDS="${DRAIN_SECONDS:-45}" \
+            LEGACY_SERVICE="${LEGACY_SERVICE:-yuanhub-backend}" \
+            BACKEND_ROOT="$BACKEND_ROOT" \
+            BACKEND_URL="$BACKEND_URL" \
+            PRODUCT_VERSION="$PRODUCT_VERSION" \
+            RELEASE_VERSION="$RELEASE_VERSION" \
+            RELEASE_COMMIT="$RELEASE_COMMIT" \
+            DEPLOY_PHASE="$DEPLOY_PHASE" \
+              ./deploy/blue-green-deploy.sh
+
+      - name: Verify public deployment from GitHub runner
+        if: ${{ inputs.phase != 'prepare' }}
+        env:
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${BACKEND_URL%/}"
+          for attempt in $(seq 1 10); do
+            payload="$(curl --fail --silent --show-error --location --max-time 10 \
+              -H 'Cache-Control: no-cache' \
+              "$base/version?deploy=$BACKEND_RELEASE_COMMIT" || true)"
+            version="$(printf '%s' "$payload" | jq -r '.data.backend_version // ""' 2>/dev/null || true)"
+            commit="$(printf '%s' "$payload" | jq -r '.data.backend_commit // ""' 2>/dev/null || true)"
+            if [ "$version" = "$RELEASE_TAG" ] && [ -n "$commit" ]; then
+              case "$BACKEND_RELEASE_COMMIT" in
+                "$commit"*)
+                  echo "Verified public backend: version=$version commit=$commit"
+                  exit 0
+                  ;;
+              esac
+            fi
+            echo "Attempt $attempt: version='$version' commit='$commit'"
+            sleep 3
+          done
+          echo "::error::public backend did not converge to $RELEASE_TAG / $BACKEND_RELEASE_COMMIT"
+          exit 1
+
+      - name: Create or update GitHub Release
+        if: ${{ inputs.phase != 'prepare' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes="$(mktemp)"
+          {
+            echo "## Backend $RELEASE_TAG"
+            echo
+            echo "- backendVersion: $RELEASE_TAG"
+            echo "- backendCommit: ${BACKEND_RELEASE_COMMIT::7}"
+            echo "- deployment: server-build blue/green"
+            echo "- deployedTo: $BACKEND_URL"
+            echo
+            echo "The production jar is built on server B from the exact tagged commit; no large jar is uploaded by GitHub Actions."
+          } > "$notes"
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --title "Backend $RELEASE_TAG" --notes-file "$notes"
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --title "Backend $RELEASE_TAG" --notes-file "$notes" --verify-tag
+          fi

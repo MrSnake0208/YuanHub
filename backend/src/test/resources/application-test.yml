@@ -1,0 +1,42 @@
+# Safe IDE defaults. Gradle pins the same settings as JVM properties, while
+# TestApplicationSafety refuses all non-owned connections before beans exist.
+spring:
+  data:
+    mongodb:
+      uri: mongodb://127.0.0.1:1/yuanhub_test_unit?serverSelectionTimeoutMS=50&connectTimeoutMS=50
+      auto-index-creation: false
+    redis:
+      host: 127.0.0.1
+      port: 1
+      url: redis://127.0.0.1:1
+      timeout: 250ms
+      connect-timeout: 250ms
+share:
+  mongo:
+    hub-uri: mongodb://127.0.0.1:1/yuanhub_test_unit_hub?serverSelectionTimeoutMS=50&connectTimeoutMS=50
+  beta:
+    campaign-id: yuanhub_test_beta
+    local-test:
+      enabled: false
+  jwt:
+    secret: local-tests-only-not-a-production-signing-secret-20260922
+  info:
+    public-base-url: http://127.0.0.1
+  avatar:
+    dir: ./build/test-data/avatars
+  media:
+    dir: ./build/test-data/media
+    private-dir: ./build/test-data/private
+  star-capture:
+    dir: ./build/test-data/star-captures
+debug:
+  email:
+    no-send: true
+server:
+  address: 127.0.0.1
+logging:
+  file:
+    name: ./build/test-logs/spring.log
+  level:
+    org.mongodb.driver: WARN
+    org.springframework.data.convert.CustomConversions: ERROR

@@ -1,0 +1,24 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/MaaBackend?replicaSet=rs0
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+share:
+  info:
+    public-base-url: http://127.0.0.1:8080
+  jwt:
+    secret: local-development-only-jwt-secret-do-not-use-in-production
+  mongo:
+    hub-uri: mongodb://127.0.0.1:27017/HubBackend?replicaSet=rs0
+  avatar:
+    dir: ./data/avatar
+  media:
+    dir: ./data/media
+    private-dir: ./data/private-media
+
+debug:
+  email:
+    no-send: true

@@ -1,0 +1,10 @@
+{
+  "campaign_id": "yuanhub-beta-202609",
+  "snapshot_id": "share-before-beta-v1",
+  "starts_at": "REPLACE_WITH_ACTUAL_START_TIME_AND_TIMEZONE",
+  "snapshot_at": "REPLACE_WITH_ACTUAL_SNAPSHOT_TIME_AND_TIMEZONE",
+  "snapshot_source_note": "REPLACE_WITH_VERIFIED_SHARE_SNAPSHOT_SOURCE",
+  "initial_capacity": 100,
+  "rules_version": "v1",
+  "announcement_timezone": "Asia/Shanghai"
+}

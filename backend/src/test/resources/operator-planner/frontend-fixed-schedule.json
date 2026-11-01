@@ -1,0 +1,1208 @@
+{
+  "schema_version": 1,
+  "rules_version": 13,
+  "timezone": "Asia/Shanghai",
+  "expected_revision": 0,
+  "strategy": "overall",
+  "agent_order": [
+    "char_001_yangxiu"
+  ],
+  "preferences": {
+    "luoyang": 0,
+    "shouchun": 0,
+    "purchase_count": 0
+  },
+  "manual_plans": {
+    "2026-09-12": {
+      "gains": [
+        {
+          "id": "natural",
+          "label": "自然恢复",
+          "kind": "energy",
+          "value": 408
+        }
+      ],
+      "spends": [
+        {
+          "id": "yinyang",
+          "label": "阴阳·第 12 层",
+          "color_key": "yinyang",
+          "kind": "training",
+          "value": 1,
+          "rec": 0,
+          "cost_per": 20,
+          "custom": false,
+          "yield": {
+            "shuijing": 60,
+            "xinghanjing": 45
+          },
+          "group_id": "yy",
+          "stage_level": 12
+        }
+      ]
+    }
+  },
+  "schedule": {
+    "version": 1,
+    "start_date": "2026-09-12",
+    "baseline_date": "2026-09-12",
+    "context": {
+      "date": "2026-09-12",
+      "initial_state": {
+        "char_001_yangxiu": {
+          "shuijing": 2000
+        }
+      },
+      "required_state": {
+        "char_001_yangxiu": {
+          "shuijing": 2100
+        }
+      },
+      "stock": {
+        "shuijing": 100
+      },
+      "goals": {
+        "char_001_yangxiu": [
+          100,
+          17,
+          7
+        ]
+      },
+      "levels": {
+        "fh": 12,
+        "ds": 12,
+        "yy": 12,
+        "experience": 8
+      },
+      "strategy": "overall",
+      "agent_order": [
+        "char_001_yangxiu"
+      ],
+      "preferences": {
+        "luoyang": 0,
+        "shouchun": 0,
+        "purchase_count": 0
+      }
+    },
+    "history": [],
+    "result": {
+      "timeline": [
+        {
+          "date": "2026-09-12",
+          "index": 0,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 2000
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": true,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "custom",
+                "kind": "energy",
+                "value": 408,
+                "rec": 0,
+                "custom": false
+              }
+            ],
+            "spends": [
+              {
+                "id": "yinyang",
+                "label": "阴阳·第 12 层",
+                "color_key": "yinyang",
+                "kind": "training",
+                "value": 1,
+                "rec": 0,
+                "cost_per": 20,
+                "custom": false,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "group_id": "yy",
+                "stage_level": 12
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 1940,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "yinyang",
+              "label": "阴阳·第 12 层",
+              "runs": 1,
+              "rewards": {
+                "shuijing": 60,
+                "xinghanjing": 45
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 60,
+            "xinghanjing": 45
+          },
+          "planned_yield": {
+            "shuijing": 60,
+            "xinghanjing": 45
+          },
+          "used": {
+            "shuijing": 60
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 45
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 20,
+            "balance": 388
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 1940,
+              "start_remaining": 2000,
+              "owned": 100,
+              "prior": 0,
+              "used": 60,
+              "produced": 60,
+              "surplus": 0,
+              "stock": 100,
+              "done": 160,
+              "percent": 7,
+              "before_percent": 4.761904761904762,
+              "today_percent": 2.857142857142857
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 45,
+              "surplus": 45,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-13",
+          "index": 1,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 1940,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 1580,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 6,
+              "rewards": {
+                "shuijing": 360,
+                "xinghanjing": 270
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "planned_yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "used": {
+            "shuijing": 360,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 270
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 120,
+            "balance": 288
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 1580,
+              "start_remaining": 1940,
+              "owned": 100,
+              "prior": 60,
+              "used": 360,
+              "produced": 360,
+              "surplus": 0,
+              "stock": 100,
+              "done": 520,
+              "percent": 24,
+              "before_percent": 7.6190476190476195,
+              "today_percent": 17.142857142857142
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 270,
+              "surplus": 270,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-14",
+          "index": 2,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 1580,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 1220,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 6,
+              "rewards": {
+                "shuijing": 360,
+                "xinghanjing": 270
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "planned_yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "used": {
+            "shuijing": 360,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 270
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 120,
+            "balance": 288
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 1220,
+              "start_remaining": 1580,
+              "owned": 100,
+              "prior": 420,
+              "used": 360,
+              "produced": 360,
+              "surplus": 0,
+              "stock": 100,
+              "done": 880,
+              "percent": 41,
+              "before_percent": 24.761904761904763,
+              "today_percent": 17.142857142857142
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 270,
+              "surplus": 270,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-15",
+          "index": 3,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 1220,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 860,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 6,
+              "rewards": {
+                "shuijing": 360,
+                "xinghanjing": 270
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "planned_yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "used": {
+            "shuijing": 360,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 270
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 120,
+            "balance": 288
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 860,
+              "start_remaining": 1220,
+              "owned": 100,
+              "prior": 780,
+              "used": 360,
+              "produced": 360,
+              "surplus": 0,
+              "stock": 100,
+              "done": 1240,
+              "percent": 59,
+              "before_percent": 41.904761904761905,
+              "today_percent": 17.142857142857142
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 270,
+              "surplus": 270,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-16",
+          "index": 4,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 860,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 500,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 6,
+              "rewards": {
+                "shuijing": 360,
+                "xinghanjing": 270
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "planned_yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "used": {
+            "shuijing": 360,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 270
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 120,
+            "balance": 288
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 500,
+              "start_remaining": 860,
+              "owned": 100,
+              "prior": 1140,
+              "used": 360,
+              "produced": 360,
+              "surplus": 0,
+              "stock": 100,
+              "done": 1600,
+              "percent": 76,
+              "before_percent": 59.04761904761905,
+              "today_percent": 17.142857142857142
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 270,
+              "surplus": 270,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-17",
+          "index": 5,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 500,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 6,
+                "rec": 6
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 140,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 6,
+              "rewards": {
+                "shuijing": 360,
+                "xinghanjing": 270
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "planned_yield": {
+            "shuijing": 360,
+            "xinghanjing": 270
+          },
+          "used": {
+            "shuijing": 360,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 0,
+            "xinghanjing": 270
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 120,
+            "balance": 288
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 140,
+              "start_remaining": 500,
+              "owned": 100,
+              "prior": 1500,
+              "used": 360,
+              "produced": 360,
+              "surplus": 0,
+              "stock": 100,
+              "done": 1960,
+              "percent": 93,
+              "before_percent": 76.19047619047619,
+              "today_percent": 17.142857142857142
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 270,
+              "surplus": 270,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        },
+        {
+          "date": "2026-09-18",
+          "index": 6,
+          "start": {
+            "char_001_yangxiu": {
+              "shuijing": 140,
+              "xinghanjing": 0
+            }
+          },
+          "recommended": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 3,
+                "rec": 3
+              }
+            ]
+          },
+          "manual": false,
+          "planned": {
+            "gains": [
+              {
+                "id": "natural",
+                "label": "自然恢复",
+                "color_key": "natural",
+                "kind": "energy",
+                "value": 288,
+                "rec": 288
+              },
+              {
+                "id": "meal",
+                "label": "每日进膳",
+                "color_key": "meal",
+                "kind": "energy",
+                "value": 120,
+                "rec": 120
+              }
+            ],
+            "spends": [
+              {
+                "id": "training-yy-12",
+                "label": "阴阳·第 12 层",
+                "kind": "training",
+                "group_id": "yy",
+                "stage_level": 12,
+                "color_key": "yinyang",
+                "cost_per": 20,
+                "yield": {
+                  "shuijing": 60,
+                  "xinghanjing": 45
+                },
+                "value": 3,
+                "rec": 3
+              }
+            ]
+          },
+          "end": {
+            "char_001_yangxiu": {
+              "shuijing": 0,
+              "xinghanjing": 0
+            }
+          },
+          "errors": [],
+          "warnings": [],
+          "sources": [
+            {
+              "id": "training-yy-12",
+              "label": "阴阳·第 12 层",
+              "runs": 3,
+              "rewards": {
+                "shuijing": 180,
+                "xinghanjing": 135
+              }
+            }
+          ],
+          "yield": {
+            "shuijing": 180,
+            "xinghanjing": 135
+          },
+          "planned_yield": {
+            "shuijing": 180,
+            "xinghanjing": 135
+          },
+          "used": {
+            "shuijing": 140,
+            "xinghanjing": 0
+          },
+          "surplus": {
+            "shuijing": 40,
+            "xinghanjing": 135
+          },
+          "totals": {
+            "gains": 408,
+            "spends": 60,
+            "balance": 348
+          },
+          "progress_rows": [
+            {
+              "id": "shuijing",
+              "required": 2100,
+              "remaining": 0,
+              "start_remaining": 140,
+              "owned": 100,
+              "prior": 1860,
+              "used": 140,
+              "produced": 180,
+              "surplus": 40,
+              "stock": 100,
+              "done": 2100,
+              "percent": 100,
+              "before_percent": 93.33333333333333,
+              "today_percent": 6.666666666666667
+            },
+            {
+              "id": "xinghanjing",
+              "required": 0,
+              "remaining": 0,
+              "start_remaining": 0,
+              "owned": 0,
+              "prior": 0,
+              "used": 0,
+              "produced": 135,
+              "surplus": 135,
+              "stock": 0,
+              "done": 0,
+              "percent": null,
+              "before_percent": 0,
+              "today_percent": 0
+            }
+          ]
+        }
+      ],
+      "status": "complete",
+      "eta_days": 7,
+      "last_progress_day": 7,
+      "remaining": {
+        "char_001_yangxiu": {
+          "shuijing": 0,
+          "xinghanjing": 0
+        }
+      },
+      "blocked": []
+    }
+  }
+}

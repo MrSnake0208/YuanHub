@@ -1,0 +1,2100 @@
+{
+  "format": "myshare-star-scan",
+  "version": 1,
+  "record_id": "emulator-720x1280-v1",
+  "expected_account_id": "a",
+  "game": "代号鸢",
+  "captured_at": "2026-10-23T16:14:58.832441+00:00",
+  "width": 720,
+  "height": 1280,
+  "dpi": 320,
+  "sections": {
+    "main": true,
+    "support": true,
+    "experience": true
+  },
+  "entries": [
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "天府 / 60级",
+      "source": "main/1/col1/y356",
+      "observation_id": "star-0001"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "武曲 / 60级",
+      "source": "main/1/col2/y357",
+      "observation_id": "star-0002"
+    },
+    {
+      "kind": "main",
+      "name": "破军",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "破军 / 60级",
+      "source": "main/1/col3/y357",
+      "observation_id": "star-0003"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 50,
+      "quality": "orange",
+      "raw_text": "武曲 / 50级",
+      "source": "main/1/col4/y356",
+      "observation_id": "star-0004"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 40,
+      "quality": "orange",
+      "raw_text": "天府 / 40级",
+      "source": "main/1/col1/y524",
+      "observation_id": "star-0005"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 40,
+      "quality": "orange",
+      "raw_text": "天相 / 40级",
+      "source": "main/1/col2/y523",
+      "observation_id": "star-0006"
+    },
+    {
+      "kind": "main",
+      "name": "紫微",
+      "level": 40,
+      "quality": "orange",
+      "raw_text": "紫微 / 40级",
+      "source": "main/1/col3/y523",
+      "observation_id": "star-0007"
+    },
+    {
+      "kind": "main",
+      "name": "天机",
+      "level": 40,
+      "quality": "orange",
+      "raw_text": "天机 / 40级",
+      "source": "main/1/col4/y523",
+      "observation_id": "star-0008"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 36,
+      "quality": "orange",
+      "raw_text": "天府 / 36级",
+      "source": "main/1/col1/y690",
+      "observation_id": "star-0009"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 36,
+      "quality": "orange",
+      "raw_text": "武曲 / 36级",
+      "source": "main/1/col2/y690",
+      "observation_id": "star-0010"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天府 / 30级",
+      "source": "main/1/col3/y690",
+      "observation_id": "star-0011"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "太阳 / 30级",
+      "source": "main/1/col4/y690",
+      "observation_id": "star-0012"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "太阳 / 30纟 | 30",
+      "source": "main/1/col1/y857",
+      "observation_id": "star-0013"
+    },
+    {
+      "kind": "main",
+      "name": "天同",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天同 / 30级",
+      "source": "main/1/col2/y855",
+      "observation_id": "star-0014"
+    },
+    {
+      "kind": "main",
+      "name": "天机",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天机 / 30纟 | 30级",
+      "source": "main/1/col3/y857",
+      "observation_id": "star-0015"
+    },
+    {
+      "kind": "main",
+      "name": "太阴",
+      "level": 26,
+      "quality": "orange",
+      "raw_text": "太阴 / 26级",
+      "source": "main/1/col4/y857",
+      "observation_id": "star-0016"
+    },
+    {
+      "kind": "main",
+      "name": "贪狼",
+      "level": 20,
+      "quality": "orange",
+      "raw_text": "贪狼 / 0级 | 20级",
+      "source": "main/2/col1/y942",
+      "observation_id": "star-0017"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 级",
+      "source": "main/2/col2/y942",
+      "observation_id": "star-0018"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 级",
+      "source": "main/2/col3/y942",
+      "observation_id": "star-0019"
+    },
+    {
+      "kind": "main",
+      "name": "破军",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "破军 / 级",
+      "source": "main/2/col4/y943",
+      "observation_id": "star-0020"
+    },
+    {
+      "kind": "main",
+      "name": "天机",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天机 / 1级",
+      "source": "main/5/col1/y873",
+      "observation_id": "star-0021"
+    },
+    {
+      "kind": "main",
+      "name": "破军",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "破军 / 60级",
+      "source": "main/5/col2/y872",
+      "observation_id": "star-0022"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 59,
+      "quality": "orange",
+      "raw_text": "武曲 / 59级",
+      "source": "main/5/col3/y873",
+      "observation_id": "star-0023"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 36,
+      "quality": "orange",
+      "raw_text": "武曲 / 36级",
+      "source": "main/5/col4/y873",
+      "observation_id": "star-0024"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天相 / 30级",
+      "source": "main/7/col1/y882",
+      "observation_id": "star-0025"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "太阳 / 30级",
+      "source": "main/7/col2/y882",
+      "observation_id": "star-0026"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "巨门 / 30级",
+      "source": "main/7/col3/y882",
+      "observation_id": "star-0027"
+    },
+    {
+      "kind": "main",
+      "name": "天同",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天同 / 30级",
+      "source": "main/7/col4/y882",
+      "observation_id": "star-0028"
+    },
+    {
+      "kind": "main",
+      "name": "太阴",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "太阴 / 30级",
+      "source": "main/9/col1/y888",
+      "observation_id": "star-0029"
+    },
+    {
+      "kind": "main",
+      "name": "天机",
+      "level": 30,
+      "quality": "orange",
+      "raw_text": "天机 / 30级",
+      "source": "main/9/col2/y888",
+      "observation_id": "star-0030"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 17,
+      "quality": "orange",
+      "raw_text": "七杀 / 17级",
+      "source": "main/9/col3/y888",
+      "observation_id": "star-0031"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 10,
+      "quality": "orange",
+      "raw_text": "巨门 / 10级",
+      "source": "main/9/col4/y888",
+      "observation_id": "star-0032"
+    },
+    {
+      "kind": "main",
+      "name": "太阴",
+      "level": 10,
+      "quality": "orange",
+      "raw_text": "太阴 / 10级",
+      "source": "main/11/col1/y893",
+      "observation_id": "star-0033"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/11/col2/y893",
+      "observation_id": "star-0034"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 级",
+      "source": "main/11/col3/y893",
+      "observation_id": "star-0035"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/11/col4/y893",
+      "observation_id": "star-0036"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/13/col1/y897",
+      "observation_id": "star-0037"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/13/col2/y897",
+      "observation_id": "star-0038"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/13/col3/y897",
+      "observation_id": "star-0039"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 级",
+      "source": "main/13/col4/y896",
+      "observation_id": "star-0040"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 1级",
+      "source": "main/15/col1/y903",
+      "observation_id": "star-0041"
+    },
+    {
+      "kind": "main",
+      "name": "廉贞",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "廉贞 / 级",
+      "source": "main/15/col2/y902",
+      "observation_id": "star-0042"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 1级",
+      "source": "main/15/col3/y903",
+      "observation_id": "star-0043"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 1级",
+      "source": "main/15/col4/y902",
+      "observation_id": "star-0044"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 级",
+      "source": "main/17/col1/y908",
+      "observation_id": "star-0045"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 1级",
+      "source": "main/17/col2/y909",
+      "observation_id": "star-0046"
+    },
+    {
+      "kind": "main",
+      "name": "天府",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天府 / 级",
+      "source": "main/17/col3/y908",
+      "observation_id": "star-0047"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "武曲 / 级",
+      "source": "main/17/col4/y908",
+      "observation_id": "star-0048"
+    },
+    {
+      "kind": "main",
+      "name": "武曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "武曲 / 1级",
+      "source": "main/19/col1/y917",
+      "observation_id": "star-0049"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 1级",
+      "source": "main/19/col2/y917",
+      "observation_id": "star-0050"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 1级",
+      "source": "main/19/col3/y915",
+      "observation_id": "star-0051"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 1级",
+      "source": "main/19/col4/y917",
+      "observation_id": "star-0052"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 1级",
+      "source": "main/21/col1/y924",
+      "observation_id": "star-0053"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 1级",
+      "source": "main/21/col2/y924",
+      "observation_id": "star-0054"
+    },
+    {
+      "kind": "main",
+      "name": "天相",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天相 / 级",
+      "source": "main/21/col3/y924",
+      "observation_id": "star-0055"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 1级",
+      "source": "main/21/col4/y923",
+      "observation_id": "star-0056"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 1级",
+      "source": "main/23/col1/y929",
+      "observation_id": "star-0057"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 1级",
+      "source": "main/23/col2/y929",
+      "observation_id": "star-0058"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 1级",
+      "source": "main/23/col3/y929",
+      "observation_id": "star-0059"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 1级",
+      "source": "main/23/col4/y929",
+      "observation_id": "star-0060"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 级",
+      "source": "main/25/col1/y936",
+      "observation_id": "star-0061"
+    },
+    {
+      "kind": "main",
+      "name": "太阳",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "太阳 / 级",
+      "source": "main/25/col2/y937",
+      "observation_id": "star-0062"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/25/col3/y937",
+      "observation_id": "star-0063"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/25/col4/y937",
+      "observation_id": "star-0064"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/27/col1/y939",
+      "observation_id": "star-0065"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/27/col2/y940",
+      "observation_id": "star-0066"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/27/col3/y939",
+      "observation_id": "star-0067"
+    },
+    {
+      "kind": "main",
+      "name": "巨门",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "巨门 / 级",
+      "source": "main/27/col4/y940",
+      "observation_id": "star-0068"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "七杀 / 1级",
+      "source": "main/30/col1/y872",
+      "observation_id": "star-0069"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "七杀 / 1级",
+      "source": "main/30/col2/y872",
+      "observation_id": "star-0070"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "七杀 / 级",
+      "source": "main/30/col3/y872",
+      "observation_id": "star-0071"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "七杀 / 1级",
+      "source": "main/30/col4/y872",
+      "observation_id": "star-0072"
+    },
+    {
+      "kind": "main",
+      "name": "七杀",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "七杀 / 1级",
+      "source": "main/32/col1/y933",
+      "observation_id": "star-0073"
+    },
+    {
+      "kind": "main",
+      "name": "紫微",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "紫微 / 1级",
+      "source": "main/32/col2/y933",
+      "observation_id": "star-0074"
+    },
+    {
+      "kind": "main",
+      "name": "天梁",
+      "level": null,
+      "quality": "orange",
+      "raw_text": "天梁 / 级",
+      "source": "main/32/col3/y932",
+      "observation_id": "star-0075"
+    },
+    {
+      "kind": "main",
+      "name": "天梁",
+      "level": null,
+      "quality": "orange",
+      "raw_text": "天梁 / 级",
+      "source": "main/32/col4/y932",
+      "observation_id": "star-0076"
+    },
+    {
+      "kind": "support",
+      "name": "天魁",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "天魁 / 60级",
+      "source": "support/1/col1/y356",
+      "observation_id": "star-0077"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "三台 / 60级",
+      "source": "support/1/col2/y357",
+      "observation_id": "star-0078"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 60,
+      "quality": "orange",
+      "raw_text": "解神 / 60级",
+      "source": "support/1/col3/y357",
+      "observation_id": "star-0079"
+    },
+    {
+      "kind": "support",
+      "name": "阴煞",
+      "level": 55,
+      "quality": "orange",
+      "raw_text": "阴煞 / 55级",
+      "source": "support/1/col4/y356",
+      "observation_id": "star-0080"
+    },
+    {
+      "kind": "support",
+      "name": "天马",
+      "level": 40,
+      "quality": "orange",
+      "raw_text": "天马 / 40级",
+      "source": "support/1/col1/y524",
+      "observation_id": "star-0081"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 18,
+      "quality": "orange",
+      "raw_text": "擎羊 / 18级",
+      "source": "support/1/col2/y523",
+      "observation_id": "star-0082"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 12,
+      "quality": "orange",
+      "raw_text": "解神 / T2级",
+      "source": "support/1/col3/y523",
+      "observation_id": "star-0083"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 10,
+      "quality": "orange",
+      "raw_text": "擎羊 / 10级",
+      "source": "support/1/col4/y523",
+      "observation_id": "star-0084"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "台 / 1级",
+      "source": "support/1/col1/y690",
+      "observation_id": "star-0085"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/1/col2/y690",
+      "observation_id": "star-0086"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 50,
+      "quality": "orange",
+      "raw_text": "文曲 / 50级",
+      "source": "support/1/col3/y690",
+      "observation_id": "star-0087"
+    },
+    {
+      "kind": "support",
+      "name": "天魁",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天魁 / 1级",
+      "source": "support/1/col4/y690",
+      "observation_id": "star-0088"
+    },
+    {
+      "kind": "support",
+      "name": "天魁",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天魁 / 1级",
+      "source": "support/1/col1/y857",
+      "observation_id": "star-0089"
+    },
+    {
+      "kind": "support",
+      "name": "天钺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天钺 / 1级",
+      "source": "support/1/col2/y855",
+      "observation_id": "star-0090"
+    },
+    {
+      "kind": "support",
+      "name": "天钺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天钺 / 1级",
+      "source": "support/1/col3/y857",
+      "observation_id": "star-0091"
+    },
+    {
+      "kind": "support",
+      "name": "天钺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天钺 / 1级",
+      "source": "support/1/col4/y857",
+      "observation_id": "star-0092"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 级",
+      "source": "support/2/col2/y942",
+      "observation_id": "star-0093"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 级",
+      "source": "support/2/col3/y942",
+      "observation_id": "star-0094"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 级",
+      "source": "support/2/col4/y942",
+      "observation_id": "star-0095"
+    },
+    {
+      "kind": "support",
+      "name": "天钺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天钺 / 1级",
+      "source": "support/3/col1/y869",
+      "observation_id": "star-0096"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 1级",
+      "source": "support/5/col1/y875",
+      "observation_id": "star-0097"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 1级",
+      "source": "support/5/col2/y875",
+      "observation_id": "star-0098"
+    },
+    {
+      "kind": "support",
+      "name": "左辅",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "左辅 / 1级",
+      "source": "support/5/col3/y875",
+      "observation_id": "star-0099"
+    },
+    {
+      "kind": "support",
+      "name": "右弼",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "右弼 / 1级",
+      "source": "support/5/col4/y875",
+      "observation_id": "star-0100"
+    },
+    {
+      "kind": "support",
+      "name": "右弼",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "右弼 / 1级",
+      "source": "support/7/col1/y882",
+      "observation_id": "star-0101"
+    },
+    {
+      "kind": "support",
+      "name": "右弼",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "右弼 / 1级",
+      "source": "support/7/col2/y883",
+      "observation_id": "star-0102"
+    },
+    {
+      "kind": "support",
+      "name": "右弼",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "右弼 / 1级",
+      "source": "support/7/col3/y883",
+      "observation_id": "star-0103"
+    },
+    {
+      "kind": "support",
+      "name": "天马",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天马 / 1级",
+      "source": "support/7/col4/y882",
+      "observation_id": "star-0104"
+    },
+    {
+      "kind": "support",
+      "name": "天马",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天马 / 1级",
+      "source": "support/9/col1/y888",
+      "observation_id": "star-0105"
+    },
+    {
+      "kind": "support",
+      "name": "天马",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天马 / 1级",
+      "source": "support/9/col2/y889",
+      "observation_id": "star-0106"
+    },
+    {
+      "kind": "support",
+      "name": "天马",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天马 / 1级",
+      "source": "support/9/col3/y889",
+      "observation_id": "star-0107"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/9/col4/y889",
+      "observation_id": "star-0108"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/11/col1/y896",
+      "observation_id": "star-0109"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/11/col2/y896",
+      "observation_id": "star-0110"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/11/col3/y896",
+      "observation_id": "star-0111"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/11/col4/y896",
+      "observation_id": "star-0112"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 1级",
+      "source": "support/13/col1/y902",
+      "observation_id": "star-0113"
+    },
+    {
+      "kind": "support",
+      "name": "擎羊",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "擎羊 / 级",
+      "source": "support/13/col2/y901",
+      "observation_id": "star-0114"
+    },
+    {
+      "kind": "support",
+      "name": "陀螺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "陀螺 / 1级",
+      "source": "support/13/col3/y902",
+      "observation_id": "star-0115"
+    },
+    {
+      "kind": "support",
+      "name": "陀螺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "陀螺 / 级",
+      "source": "support/13/col4/y901",
+      "observation_id": "star-0116"
+    },
+    {
+      "kind": "support",
+      "name": "陀螺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "陀螺 / 1级",
+      "source": "support/15/col1/y909",
+      "observation_id": "star-0117"
+    },
+    {
+      "kind": "support",
+      "name": "陀螺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "陀螺 / 级",
+      "source": "support/15/col2/y908",
+      "observation_id": "star-0118"
+    },
+    {
+      "kind": "support",
+      "name": "陀螺",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "陀螺 / 1级",
+      "source": "support/15/col3/y909",
+      "observation_id": "star-0119"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 级",
+      "source": "support/15/col4/y908",
+      "observation_id": "star-0120"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/17/col1/y917",
+      "observation_id": "star-0121"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/17/col2/y917",
+      "observation_id": "star-0122"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/17/col3/y917",
+      "observation_id": "star-0123"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/17/col4/y917",
+      "observation_id": "star-0124"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/19/col1/y921",
+      "observation_id": "star-0125"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/19/col2/y921",
+      "observation_id": "star-0126"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/19/col3/y921",
+      "observation_id": "star-0127"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/19/col4/y920",
+      "observation_id": "star-0128"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/21/col1/y925",
+      "observation_id": "star-0129"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/21/col2/y925",
+      "observation_id": "star-0130"
+    },
+    {
+      "kind": "support",
+      "name": "火星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "火星 / 1级",
+      "source": "support/21/col3/y925",
+      "observation_id": "star-0131"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/21/col4/y925",
+      "observation_id": "star-0132"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/23/col1/y931",
+      "observation_id": "star-0133"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/23/col2/y930",
+      "observation_id": "star-0134"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/23/col3/y931",
+      "observation_id": "star-0135"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/23/col4/y930",
+      "observation_id": "star-0136"
+    },
+    {
+      "kind": "support",
+      "name": "铃星",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "铃星 / 1级",
+      "source": "support/25/col1/y935",
+      "observation_id": "star-0137"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/25/col2/y936",
+      "observation_id": "star-0138"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/25/col3/y936",
+      "observation_id": "star-0139"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/25/col4/y935",
+      "observation_id": "star-0140"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/27/col1/y942",
+      "observation_id": "star-0141"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/27/col2/y942",
+      "observation_id": "star-0142"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 级",
+      "source": "support/27/col3/y942",
+      "observation_id": "star-0143"
+    },
+    {
+      "kind": "support",
+      "name": "地空",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地空 / 1级",
+      "source": "support/27/col4/y942",
+      "observation_id": "star-0144"
+    },
+    {
+      "kind": "support",
+      "name": "天刑",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天刑 / 级",
+      "source": "support/29/col1/y942",
+      "observation_id": "star-0145"
+    },
+    {
+      "kind": "support",
+      "name": "天刑",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天刑 / 级",
+      "source": "support/29/col2/y942",
+      "observation_id": "star-0146"
+    },
+    {
+      "kind": "support",
+      "name": "天刑",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天刑 / 级",
+      "source": "support/29/col3/y942",
+      "observation_id": "star-0147"
+    },
+    {
+      "kind": "support",
+      "name": "天刑",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天刑 / 级",
+      "source": "support/29/col4/y942",
+      "observation_id": "star-0148"
+    },
+    {
+      "kind": "support",
+      "name": "天刑",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天刑 / 1级",
+      "source": "support/32/col1/y876",
+      "observation_id": "star-0149"
+    },
+    {
+      "kind": "support",
+      "name": "天姚",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天姚 / 1级",
+      "source": "support/32/col2/y876",
+      "observation_id": "star-0150"
+    },
+    {
+      "kind": "support",
+      "name": "天姚",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天姚 / 1级",
+      "source": "support/32/col3/y876",
+      "observation_id": "star-0151"
+    },
+    {
+      "kind": "support",
+      "name": "天姚",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天姚 / 1级",
+      "source": "support/32/col4/y876",
+      "observation_id": "star-0152"
+    },
+    {
+      "kind": "support",
+      "name": "天姚",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天姚 / 1级",
+      "source": "support/34/col1/y882",
+      "observation_id": "star-0153"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 级",
+      "source": "support/34/col2/y882",
+      "observation_id": "star-0154"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/34/col3/y883",
+      "observation_id": "star-0155"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/34/col4/y882",
+      "observation_id": "star-0156"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/36/col1/y890",
+      "observation_id": "star-0157"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/36/col2/y889",
+      "observation_id": "star-0158"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/36/col3/y890",
+      "observation_id": "star-0159"
+    },
+    {
+      "kind": "support",
+      "name": "天巫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天巫 / 1级",
+      "source": "support/36/col4/y889",
+      "observation_id": "star-0160"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "三台 / 级",
+      "source": "support/38/col1/y896",
+      "observation_id": "star-0161"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "三台 / 1级",
+      "source": "support/38/col2/y897",
+      "observation_id": "star-0162"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "元 / 1级",
+      "source": "support/38/col3/y899",
+      "observation_id": "star-0163"
+    },
+    {
+      "kind": "support",
+      "name": "三台",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "三台 / 1级",
+      "source": "support/38/col4/y897",
+      "observation_id": "star-0164"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/40/col1/y907",
+      "observation_id": "star-0165"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/40/col2/y907",
+      "observation_id": "star-0166"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/40/col3/y907",
+      "observation_id": "star-0167"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/40/col4/y906",
+      "observation_id": "star-0168"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/42/col1/y912",
+      "observation_id": "star-0169"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/42/col2/y912",
+      "observation_id": "star-0170"
+    },
+    {
+      "kind": "support",
+      "name": "八座",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "八座 / 1级",
+      "source": "support/42/col3/y913",
+      "observation_id": "star-0171"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/42/col4/y913",
+      "observation_id": "star-0172"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/44/col1/y921",
+      "observation_id": "star-0173"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/44/col2/y921",
+      "observation_id": "star-0174"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/44/col3/y921",
+      "observation_id": "star-0175"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/44/col4/y920",
+      "observation_id": "star-0176"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/46/col2/y927",
+      "observation_id": "star-0177"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 级",
+      "source": "support/46/col3/y927",
+      "observation_id": "star-0178"
+    },
+    {
+      "kind": "support",
+      "name": "恩光",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "恩光 / 1级",
+      "source": "support/46/col1/y929",
+      "observation_id": "star-0179"
+    },
+    {
+      "kind": "support",
+      "name": "天贵",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天贵 / 1级",
+      "source": "support/46/col4/y929",
+      "observation_id": "star-0180"
+    },
+    {
+      "kind": "support",
+      "name": "天贵",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天贵 / 1级",
+      "source": "support/48/col1/y935",
+      "observation_id": "star-0181"
+    },
+    {
+      "kind": "support",
+      "name": "天贵",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天贵 / 1级",
+      "source": "support/48/col2/y935",
+      "observation_id": "star-0182"
+    },
+    {
+      "kind": "support",
+      "name": "天贵",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天贵 / 1级",
+      "source": "support/48/col3/y935",
+      "observation_id": "star-0183"
+    },
+    {
+      "kind": "support",
+      "name": "天贵",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "天贵 / 1级",
+      "source": "support/48/col4/y935",
+      "observation_id": "star-0184"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 1级",
+      "source": "support/50/col1/y941",
+      "observation_id": "star-0185"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 1级",
+      "source": "support/50/col2/y939",
+      "observation_id": "star-0186"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "昌 / 1级",
+      "source": "support/50/col3/y941",
+      "observation_id": "star-0187"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 1级",
+      "source": "support/50/col4/y941",
+      "observation_id": "star-0188"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 级",
+      "source": "support/52/col1/y941",
+      "observation_id": "star-0189"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 级",
+      "source": "support/52/col2/y941",
+      "observation_id": "star-0190"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 级",
+      "source": "support/52/col3/y941",
+      "observation_id": "star-0191"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 级",
+      "source": "support/52/col4/y942",
+      "observation_id": "star-0192"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 1级",
+      "source": "support/55/col1/y873",
+      "observation_id": "star-0193"
+    },
+    {
+      "kind": "support",
+      "name": "文昌",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文昌 / 级",
+      "source": "support/55/col2/y873",
+      "observation_id": "star-0194"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 级",
+      "source": "support/55/col3/y873",
+      "observation_id": "star-0195"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/55/col4/y873",
+      "observation_id": "star-0196"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/57/col1/y881",
+      "observation_id": "star-0197"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/57/col2/y881",
+      "observation_id": "star-0198"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/57/col3/y882",
+      "observation_id": "star-0199"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/57/col4/y881",
+      "observation_id": "star-0200"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/59/col1/y889",
+      "observation_id": "star-0201"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/59/col2/y890",
+      "observation_id": "star-0202"
+    },
+    {
+      "kind": "support",
+      "name": "文曲",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "文曲 / 1级",
+      "source": "support/59/col3/y890",
+      "observation_id": "star-0203"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/59/col4/y890",
+      "observation_id": "star-0204"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/61/col1/y896",
+      "observation_id": "star-0205"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/61/col2/y895",
+      "observation_id": "star-0206"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/61/col3/y896",
+      "observation_id": "star-0207"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/61/col4/y895",
+      "observation_id": "star-0208"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/63/col1/y902",
+      "observation_id": "star-0209"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/63/col2/y902",
+      "observation_id": "star-0210"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 级",
+      "source": "support/63/col3/y902",
+      "observation_id": "star-0211"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/63/col4/y902",
+      "observation_id": "star-0212"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 级",
+      "source": "support/65/col1/y907",
+      "observation_id": "star-0213"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 级",
+      "source": "support/65/col2/y908",
+      "observation_id": "star-0214"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 级",
+      "source": "support/65/col3/y907",
+      "observation_id": "star-0215"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 级",
+      "source": "support/65/col4/y907",
+      "observation_id": "star-0216"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/67/col1/y914",
+      "observation_id": "star-0217"
+    },
+    {
+      "kind": "support",
+      "name": "解神",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "解神 / 1级",
+      "source": "support/67/col2/y914",
+      "observation_id": "star-0218"
+    },
+    {
+      "kind": "support",
+      "name": "禄存",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "禄存 / 级",
+      "source": "support/67/col3/y913",
+      "observation_id": "star-0219"
+    },
+    {
+      "kind": "support",
+      "name": "禄存",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "禄存 / 1级",
+      "source": "support/67/col4/y914",
+      "observation_id": "star-0220"
+    },
+    {
+      "kind": "support",
+      "name": "禄存",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "禄存 / 级",
+      "source": "support/69/col1/y919",
+      "observation_id": "star-0221"
+    },
+    {
+      "kind": "support",
+      "name": "地劫",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "地劫 / 1级",
+      "source": "support/69/col2/y920",
+      "observation_id": "star-0222"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/69/col3/y921",
+      "observation_id": "star-0223"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/69/col4/y920",
+      "observation_id": "star-0224"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/71/col1/y926",
+      "observation_id": "star-0225"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/71/col2/y926",
+      "observation_id": "star-0226"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 级",
+      "source": "support/71/col3/y926",
+      "observation_id": "star-0227"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/71/col4/y926",
+      "observation_id": "star-0228"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 1级",
+      "source": "support/73/col1/y933",
+      "observation_id": "star-0229"
+    },
+    {
+      "kind": "support",
+      "name": "红鸾",
+      "level": 1,
+      "quality": "orange",
+      "raw_text": "红鸾 / 级",
+      "source": "support/73/col2/y932",
+      "observation_id": "star-0230"
+    }
+  ],
+  "experience": {
+    "orange": null,
+    "purple": 4,
+    "white": 150
+  },
+  "bag": {
+    "current_count": 230,
+    "capacity": 255
+  },
+  "warnings": [
+    "经验星曜有未识别数量，请在网页补齐；留空会保留原值。"
+  ]
+}

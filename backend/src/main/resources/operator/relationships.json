@@ -1,0 +1,1150 @@
+{
+  "version": "relationships-2026-10-22-trust-v1",
+  "source": "2026-10-22 信赖配置提取数据；双服同步及电影形态奖励共用按产品确认",
+  "verified_on": "2026-10-22",
+  "export_sha256": "b58bca805416732b84e20fd9c91f6274fda261ecc6a1a19b1b53b0c66d37e4ce",
+  "milestones": [
+    {
+      "at": 100,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 200,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 300,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 400,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 600,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 700,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 800,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 900,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 1000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 1200,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 1400,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 1600,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 1800,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 2000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806002",
+          "name": "阴符·异",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 2200,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 2400,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 2600,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 2800,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 3000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 3200,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 3400,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 3600,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 3800,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 4000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 4200,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 4400,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 4600,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 4800,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 5000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806002",
+          "name": "阴符·异",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 5500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 6000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 6500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 7000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 7500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806002",
+          "name": "阴符·异",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 8000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 8500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "at": 9000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806001",
+          "name": "阴符",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "at": 9500,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:3",
+          "name": "白金币",
+          "quantity": 20
+        }
+      ]
+    },
+    {
+      "at": 10000,
+      "rewards": [
+        {
+          "item_key": "item:110001",
+          "name": "兵书残卷",
+          "quantity": 5
+        },
+        {
+          "item_key": "item:806002",
+          "name": "阴符·异",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "subjects": [
+    {
+      "warrior_id": 11101,
+      "name": "严颜",
+      "max": 2000
+    },
+    {
+      "warrior_id": 12301,
+      "name": "关靖",
+      "max": 2000
+    },
+    {
+      "warrior_id": 12401,
+      "name": "甘缇",
+      "max": 2000
+    },
+    {
+      "warrior_id": 13101,
+      "name": "蛾使",
+      "max": 2000
+    },
+    {
+      "warrior_id": 14501,
+      "name": "鸢使",
+      "max": 2000
+    },
+    {
+      "warrior_id": 21201,
+      "name": "崔烈",
+      "max": 2000
+    },
+    {
+      "warrior_id": 21301,
+      "name": "伍丹",
+      "max": 2000
+    },
+    {
+      "warrior_id": 21401,
+      "name": "李脱",
+      "max": 2000
+    },
+    {
+      "warrior_id": 22101,
+      "name": "徐稺",
+      "max": 2000
+    },
+    {
+      "warrior_id": 22401,
+      "name": "李真",
+      "max": 2000
+    },
+    {
+      "warrior_id": 23101,
+      "name": "毛玠",
+      "max": 2000
+    },
+    {
+      "warrior_id": 23201,
+      "name": "飞云",
+      "max": 2000
+    },
+    {
+      "warrior_id": 23501,
+      "name": "周群",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24101,
+      "name": "高览",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24102,
+      "name": "绣球",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24103,
+      "name": "蜂使",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24201,
+      "name": "眭固",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24202,
+      "name": "楼班",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24401,
+      "name": "雀使",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24501,
+      "name": "山九",
+      "max": 2000
+    },
+    {
+      "warrior_id": 24502,
+      "name": "杨阜",
+      "max": 2000
+    },
+    {
+      "warrior_id": 25401,
+      "name": "第五天",
+      "max": 2000
+    },
+    {
+      "warrior_id": 31101,
+      "name": "阿蝉",
+      "max": 10000
+    },
+    {
+      "warrior_id": 31501,
+      "name": "许攸",
+      "max": 10000
+    },
+    {
+      "warrior_id": 32201,
+      "name": "颜良",
+      "max": 10000
+    },
+    {
+      "warrior_id": 32401,
+      "name": "小乔",
+      "max": 10000
+    },
+    {
+      "warrior_id": 32501,
+      "name": "鲁肃",
+      "max": 10000
+    },
+    {
+      "warrior_id": 32502,
+      "name": "陆绩",
+      "max": 10000
+    },
+    {
+      "warrior_id": 33101,
+      "name": "文丑",
+      "max": 10000
+    },
+    {
+      "warrior_id": 33102,
+      "name": "公孙珊",
+      "max": 10000
+    },
+    {
+      "warrior_id": 33502,
+      "name": "干吉",
+      "max": 10000
+    },
+    {
+      "warrior_id": 34201,
+      "name": "王异",
+      "max": 10000
+    },
+    {
+      "warrior_id": 34301,
+      "name": "史子眇",
+      "max": 10000
+    },
+    {
+      "warrior_id": 34401,
+      "name": "陈登",
+      "max": 10000
+    },
+    {
+      "warrior_id": 35501,
+      "name": "许曼",
+      "max": 10000
+    },
+    {
+      "warrior_id": 36201,
+      "name": "严白虎",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41101,
+      "name": "张辽",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41102,
+      "name": "马超",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41103,
+      "name": "安期",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41104,
+      "name": "马腾",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41105,
+      "name": "吕布",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41201,
+      "name": "夏侯惇",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41301,
+      "name": "张仲景",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41401,
+      "name": "董白",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41402,
+      "name": "刘璋",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41403,
+      "name": "陈群",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41501,
+      "name": "荀攸",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41502,
+      "name": "戏学",
+      "max": 10000
+    },
+    {
+      "warrior_id": 41503,
+      "name": "卢植",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42101,
+      "name": "诸葛瑾",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42102,
+      "name": "郭女王",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42103,
+      "name": "庞德",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42104,
+      "name": "司马孚",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42401,
+      "name": "周瑜",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42402,
+      "name": "王粲",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42403,
+      "name": "孔融",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42404,
+      "name": "令狐茂",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42405,
+      "name": "刘豹",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42406,
+      "name": "简雍",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42501,
+      "name": "蔡琰",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42502,
+      "name": "甘宁",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42503,
+      "name": "刘繇",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42504,
+      "name": "士燮",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42505,
+      "name": "陈纪",
+      "max": 10000
+    },
+    {
+      "warrior_id": 42506,
+      "name": "孙辅",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43101,
+      "name": "陆逊",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43102,
+      "name": "吕蒙",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43103,
+      "name": "孙尚香",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43104,
+      "name": "凌统",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43105,
+      "name": "孙静",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43201,
+      "name": "郭解",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43202,
+      "name": "孙权",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43301,
+      "name": "孟获",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43401,
+      "name": "张郃",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43402,
+      "name": "甄宓",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43403,
+      "name": "诸葛诞",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43404,
+      "name": "蒯越",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43405,
+      "name": "张燕",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43406,
+      "name": "钟繇",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43501,
+      "name": "张修",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43503,
+      "name": "程昱",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43504,
+      "name": "程普",
+      "max": 10000
+    },
+    {
+      "warrior_id": 43505,
+      "name": "蒯良",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44101,
+      "name": "张飞",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44102,
+      "name": "太史慈",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44103,
+      "name": "陈应",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44104,
+      "name": "赵云",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44401,
+      "name": "荀彧",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44402,
+      "name": "张邈",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44403,
+      "name": "张昭",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44404,
+      "name": "士䵋",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44501,
+      "name": "郭嘉",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44502,
+      "name": "曹植",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44503,
+      "name": "庞羲",
+      "max": 10000
+    },
+    {
+      "warrior_id": 44504,
+      "name": "曹丕",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45101,
+      "name": "夏侯渊",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45201,
+      "name": "黄月英",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45202,
+      "name": "朱然",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45301,
+      "name": "华佗",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45302,
+      "name": "董奉",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45401,
+      "name": "杨修",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45402,
+      "name": "庞统",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45403,
+      "name": "徐庶",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45404,
+      "name": "祢衡",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45405,
+      "name": "诸葛亮",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45406,
+      "name": "酆公珠",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45407,
+      "name": "酆公玖",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45408,
+      "name": "双蛇",
+      "max": 10000
+    },
+    {
+      "warrior_id": 45501,
+      "name": "张松",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46101,
+      "name": "满宠",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46102,
+      "name": "张绣",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46103,
+      "name": "虞翻",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46202,
+      "name": "周泰",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46301,
+      "name": "周忠",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46401,
+      "name": "法正",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46501,
+      "name": "贾诩",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46502,
+      "name": "张角",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46503,
+      "name": "葛洪",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46504,
+      "name": "张闿",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46505,
+      "name": "张鲁",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46506,
+      "name": "黄盖",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46507,
+      "name": "司马徽",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46508,
+      "name": "陈琳",
+      "max": 10000
+    },
+    {
+      "warrior_id": 46509,
+      "name": "魏延",
+      "max": 10000
+    }
+  ]
+}

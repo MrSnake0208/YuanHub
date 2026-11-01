@@ -1,0 +1,2864 @@
+{
+  "packages": [
+    {
+      "id": "daihao:1",
+      "content_id": 1,
+      "game": "daihao",
+      "name": "年卡",
+      "points": 2280,
+      "limit": 1,
+      "draws": 180,
+      "price_usd": 37.99,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "daihao:2",
+      "content_id": 2,
+      "game": "daihao",
+      "name": "半年卡",
+      "points": 1200,
+      "limit": 1,
+      "draws": 90,
+      "price_usd": 19.99,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "daihao:3",
+      "content_id": 3,
+      "game": "daihao",
+      "name": "季卡",
+      "points": 720,
+      "limit": 1,
+      "draws": 45,
+      "price_usd": 11.99,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "daihao:4",
+      "content_id": 4,
+      "game": "daihao",
+      "name": "广陵金库",
+      "points": 600,
+      "limit": 1,
+      "draws": 34,
+      "price_usd": 9.99,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "daihao:5",
+      "content_id": 5,
+      "game": "daihao",
+      "name": "贤士礼包1",
+      "points": 60,
+      "limit": 2,
+      "draws": 2,
+      "price_usd": 0.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:6",
+      "content_id": 6,
+      "game": "daihao",
+      "name": "卡池超值",
+      "points": 60,
+      "limit": 1,
+      "draws": 2,
+      "price_usd": 0.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:7",
+      "content_id": 7,
+      "game": "daihao",
+      "name": "贤士礼包1.2",
+      "points": 120,
+      "limit": 2,
+      "draws": 4,
+      "price_usd": 1.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:8",
+      "content_id": 8,
+      "game": "daihao",
+      "name": "贤士礼包2",
+      "points": 180,
+      "limit": 3,
+      "draws": 5,
+      "price_usd": 2.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:9",
+      "content_id": 9,
+      "game": "daihao",
+      "name": "贤士礼包2.1",
+      "points": 300,
+      "limit": 3,
+      "draws": 8,
+      "price_usd": 4.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:10",
+      "content_id": 10,
+      "game": "daihao",
+      "name": "贤士礼包3",
+      "points": 600,
+      "limit": 3,
+      "draws": 12,
+      "price_usd": 9.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:11",
+      "content_id": 11,
+      "game": "daihao",
+      "name": "卡池特惠",
+      "points": 300,
+      "limit": 1,
+      "draws": 5,
+      "price_usd": 4.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:12",
+      "content_id": 12,
+      "game": "daihao",
+      "name": "卡池初级",
+      "points": 600,
+      "limit": 1,
+      "draws": 10,
+      "price_usd": 9.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:13",
+      "content_id": 13,
+      "game": "daihao",
+      "name": "贤士礼包3.1",
+      "points": 900,
+      "limit": 3,
+      "draws": 15,
+      "price_usd": 14.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:14",
+      "content_id": 14,
+      "game": "daihao",
+      "name": "贤士礼包3.2",
+      "points": 1200,
+      "limit": 5,
+      "draws": 16,
+      "price_usd": 19.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:15",
+      "content_id": 15,
+      "game": "daihao",
+      "name": "卡池助力",
+      "points": 780,
+      "limit": 3,
+      "draws": 10,
+      "price_usd": 12.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:16",
+      "content_id": 16,
+      "game": "daihao",
+      "name": "卡池中级",
+      "points": 1200,
+      "limit": 1,
+      "draws": 14,
+      "price_usd": 19.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:17",
+      "content_id": 17,
+      "game": "daihao",
+      "name": "贤士礼包3.3",
+      "points": 1800,
+      "limit": 5,
+      "draws": 20,
+      "price_usd": 29.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:18",
+      "content_id": 18,
+      "game": "daihao",
+      "name": "首充双倍60",
+      "points": 60,
+      "limit": 1,
+      "draws": 0.6,
+      "price_usd": 0.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:19",
+      "content_id": 19,
+      "game": "daihao",
+      "name": "卡池高级",
+      "points": 1800,
+      "limit": 1,
+      "draws": 18,
+      "price_usd": 29.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:20",
+      "content_id": 20,
+      "game": "daihao",
+      "name": "贤士礼包3.4",
+      "points": 3000,
+      "limit": 5,
+      "draws": 28,
+      "price_usd": 49.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:21",
+      "content_id": 21,
+      "game": "daihao",
+      "name": "卡池特级",
+      "points": 3000,
+      "limit": 1,
+      "draws": 25,
+      "price_usd": 49.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:22",
+      "content_id": 22,
+      "game": "daihao",
+      "name": "贤士礼包3.5",
+      "points": 6000,
+      "limit": 10,
+      "draws": 45,
+      "price_usd": 99.99,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "daihao:23",
+      "content_id": 23,
+      "game": "daihao",
+      "name": "卡池终极",
+      "points": 6000,
+      "limit": 1,
+      "draws": 40,
+      "price_usd": 99.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:24",
+      "content_id": 24,
+      "game": "daihao",
+      "name": "卡池豪华",
+      "points": 6000,
+      "limit": 2,
+      "draws": 40,
+      "price_usd": 99.99,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "daihao:25",
+      "content_id": 25,
+      "game": "daihao",
+      "name": "首充双倍300",
+      "points": 300,
+      "limit": 1,
+      "draws": 3,
+      "price_usd": 4.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:26",
+      "content_id": 26,
+      "game": "daihao",
+      "name": "首充双倍900",
+      "points": 900,
+      "limit": 1,
+      "draws": 9,
+      "price_usd": 14.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:27",
+      "content_id": 27,
+      "game": "daihao",
+      "name": "首充双倍1800",
+      "points": 1800,
+      "limit": 1,
+      "draws": 18,
+      "price_usd": 29.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:28",
+      "content_id": 28,
+      "game": "daihao",
+      "name": "首充双倍3000",
+      "points": 3000,
+      "limit": 1,
+      "draws": 30,
+      "price_usd": 49.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:29",
+      "content_id": 29,
+      "game": "daihao",
+      "name": "首充双倍6000",
+      "points": 6000,
+      "limit": 1,
+      "draws": 60,
+      "price_usd": 99.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:30",
+      "content_id": 30,
+      "game": "daihao",
+      "name": "孙策·金窗绣户恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·金窗",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:31",
+      "content_id": 31,
+      "game": "daihao",
+      "name": "孙策·金窗绣户恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·金窗",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:32",
+      "content_id": 32,
+      "game": "daihao",
+      "name": "孙策·金窗绣户恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·金窗",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:33",
+      "content_id": 33,
+      "game": "daihao",
+      "name": "左慈·乌飞恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·乌飞",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:34",
+      "content_id": 34,
+      "game": "daihao",
+      "name": "左慈·乌飞恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·乌飞",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:35",
+      "content_id": 35,
+      "game": "daihao",
+      "name": "左慈·乌飞恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·乌飞",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:36",
+      "content_id": 36,
+      "game": "daihao",
+      "name": "袁基·若书之说恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·若书",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:37",
+      "content_id": 37,
+      "game": "daihao",
+      "name": "袁基·若书之说恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·若书",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:38",
+      "content_id": 38,
+      "game": "daihao",
+      "name": "袁基·若书之说恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·若书",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:39",
+      "content_id": 39,
+      "game": "daihao",
+      "name": "傅融·乌云白云恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·乌云",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:40",
+      "content_id": 40,
+      "game": "daihao",
+      "name": "傅融·乌云白云恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·乌云",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:41",
+      "content_id": 41,
+      "game": "daihao",
+      "name": "傅融·乌云白云恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·乌云",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:42",
+      "content_id": 42,
+      "game": "daihao",
+      "name": "刘辩·浮白与离光恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·浮白",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:43",
+      "content_id": 43,
+      "game": "daihao",
+      "name": "刘辩·浮白与离光恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·浮白",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:44",
+      "content_id": 44,
+      "game": "daihao",
+      "name": "刘辩·浮白与离光恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·浮白",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:45",
+      "content_id": 45,
+      "game": "daihao",
+      "name": "孙策·狐截尾恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·截尾",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:46",
+      "content_id": 46,
+      "game": "daihao",
+      "name": "孙策·狐截尾恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·截尾",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:47",
+      "content_id": 47,
+      "game": "daihao",
+      "name": "孙策·狐截尾恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·截尾",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:48",
+      "content_id": 48,
+      "game": "daihao",
+      "name": "傅融·神游览念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·神游",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:49",
+      "content_id": 49,
+      "game": "daihao",
+      "name": "傅融·神游览念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·神游",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:50",
+      "content_id": 50,
+      "game": "daihao",
+      "name": "傅融·神游览念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·神游",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:51",
+      "content_id": 51,
+      "game": "daihao",
+      "name": "左慈·紫藤醉日恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·紫藤",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:52",
+      "content_id": 52,
+      "game": "daihao",
+      "name": "左慈·紫藤醉日恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·紫藤",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:53",
+      "content_id": 53,
+      "game": "daihao",
+      "name": "左慈·紫藤醉日恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·紫藤",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:54",
+      "content_id": 54,
+      "game": "daihao",
+      "name": "袁基·却扇歌恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·却扇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:55",
+      "content_id": 55,
+      "game": "daihao",
+      "name": "袁基·却扇歌恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·却扇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:56",
+      "content_id": 56,
+      "game": "daihao",
+      "name": "袁基·却扇歌恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·却扇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:57",
+      "content_id": 57,
+      "game": "daihao",
+      "name": "刘辩·极乐之宴恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·极乐",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:58",
+      "content_id": 58,
+      "game": "daihao",
+      "name": "刘辩·极乐之宴恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·极乐",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:59",
+      "content_id": 59,
+      "game": "daihao",
+      "name": "刘辩·极乐之宴恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·极乐",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:60",
+      "content_id": 60,
+      "game": "daihao",
+      "name": "孙策·师子狻猊恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·狻猊",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:61",
+      "content_id": 61,
+      "game": "daihao",
+      "name": "孙策·师子狻猊恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·狻猊",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:62",
+      "content_id": 62,
+      "game": "daihao",
+      "name": "孙策·师子狻猊恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·狻猊",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:63",
+      "content_id": 63,
+      "game": "daihao",
+      "name": "左慈·璃魂月魄恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·璃魂",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:64",
+      "content_id": 64,
+      "game": "daihao",
+      "name": "左慈·璃魂月魄恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·璃魂",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:65",
+      "content_id": 65,
+      "game": "daihao",
+      "name": "左慈·璃魂月魄恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·璃魂",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:66",
+      "content_id": 66,
+      "game": "daihao",
+      "name": "傅融·湖心之梦恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·湖心",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:67",
+      "content_id": 67,
+      "game": "daihao",
+      "name": "傅融·湖心之梦恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·湖心",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:68",
+      "content_id": 68,
+      "game": "daihao",
+      "name": "傅融·湖心之梦恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·湖心",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:69",
+      "content_id": 69,
+      "game": "daihao",
+      "name": "孙策·围城恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·围城",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:70",
+      "content_id": 70,
+      "game": "daihao",
+      "name": "孙策·围城恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·围城",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:71",
+      "content_id": 71,
+      "game": "daihao",
+      "name": "孙策·围城恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·围城",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:72",
+      "content_id": 72,
+      "game": "daihao",
+      "name": "袁基·盛宴恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·盛宴",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:73",
+      "content_id": 73,
+      "game": "daihao",
+      "name": "袁基·盛宴恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·盛宴",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:74",
+      "content_id": 74,
+      "game": "daihao",
+      "name": "袁基·盛宴恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·盛宴",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:75",
+      "content_id": 75,
+      "game": "daihao",
+      "name": "刘辩·灯之国恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·灯之国",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:76",
+      "content_id": 76,
+      "game": "daihao",
+      "name": "刘辩·灯之国恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·灯之国",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:77",
+      "content_id": 77,
+      "game": "daihao",
+      "name": "刘辩·灯之国恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·灯之国",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:78",
+      "content_id": 78,
+      "game": "daihao",
+      "name": "左慈·欲追日影恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·日影",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:79",
+      "content_id": 79,
+      "game": "daihao",
+      "name": "左慈·欲追日影恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·日影",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:80",
+      "content_id": 80,
+      "game": "daihao",
+      "name": "左慈·欲追日影恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·日影",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:81",
+      "content_id": 81,
+      "game": "daihao",
+      "name": "傅融·梦中雪恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·梦中雪",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:82",
+      "content_id": 82,
+      "game": "daihao",
+      "name": "傅融·梦中雪恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·梦中雪",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:83",
+      "content_id": 83,
+      "game": "daihao",
+      "name": "傅融·梦中雪恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·梦中雪",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:84",
+      "content_id": 84,
+      "game": "daihao",
+      "name": "刘辩·魇恋念礼包 1",
+      "points": 900,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 14.99,
+      "category": "恋念",
+      "extra": "40 阴文·魇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:85",
+      "content_id": 85,
+      "game": "daihao",
+      "name": "刘辩·魇恋念礼包 2",
+      "points": 600,
+      "limit": 6,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "恋念",
+      "extra": "20 阴文·魇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:86",
+      "content_id": 86,
+      "game": "daihao",
+      "name": "刘辩·魇恋念礼包 3",
+      "points": 1200,
+      "limit": 999,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "恋念",
+      "extra": "20 阴文·魇",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:87",
+      "content_id": 87,
+      "game": "daihao",
+      "name": "密探特训37期",
+      "points": 780,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 12.99,
+      "category": "超值",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:88",
+      "content_id": 88,
+      "game": "daihao",
+      "name": "密探特训38期",
+      "points": 780,
+      "limit": 1,
+      "draws": 0,
+      "price_usd": 12.99,
+      "category": "超值",
+      "sort_id": 50
+    },
+    {
+      "id": "daihao:89",
+      "content_id": 89,
+      "game": "daihao",
+      "name": "善恶簿体验包",
+      "points": 60,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 0.99,
+      "category": "贤士",
+      "extra": "10 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "daihao:90",
+      "content_id": 90,
+      "game": "daihao",
+      "name": "善恶簿精选包",
+      "points": 120,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 1.99,
+      "category": "贤士",
+      "extra": "18 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "daihao:91",
+      "content_id": 91,
+      "game": "daihao",
+      "name": "善恶簿高阶包",
+      "points": 360,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 5.99,
+      "category": "贤士",
+      "extra": "35 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "daihao:92",
+      "content_id": 92,
+      "game": "daihao",
+      "name": "善恶簿丰盈包",
+      "points": 1200,
+      "limit": 5,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "贤士",
+      "extra": "80 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "daihao:93",
+      "content_id": 93,
+      "game": "daihao",
+      "name": "功过格体验包",
+      "points": 120,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 1.99,
+      "category": "贤士",
+      "extra": "10 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "daihao:94",
+      "content_id": 94,
+      "game": "daihao",
+      "name": "功过格精选包",
+      "points": 300,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 4.99,
+      "category": "贤士",
+      "extra": "18 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "daihao:95",
+      "content_id": 95,
+      "game": "daihao",
+      "name": "功过格高阶包",
+      "points": 600,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 9.99,
+      "category": "贤士",
+      "extra": "28 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "daihao:96",
+      "content_id": 96,
+      "game": "daihao",
+      "name": "功过格丰盈包",
+      "points": 1440,
+      "limit": 5,
+      "draws": 0,
+      "price_usd": 23.99,
+      "category": "贤士",
+      "extra": "50 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "daihao:97",
+      "content_id": 97,
+      "game": "daihao",
+      "name": "地宫秘宝",
+      "points": 900,
+      "limit": 1,
+      "draws": 22,
+      "price_usd": 14.99,
+      "category": "超值",
+      "sort_id": 40
+    },
+    {
+      "id": "daihao:98",
+      "content_id": 98,
+      "game": "daihao",
+      "name": "体力体验包",
+      "points": 60,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 0.99,
+      "category": "贤士",
+      "extra": "4 体力",
+      "sort_id": 33
+    },
+    {
+      "id": "daihao:99",
+      "content_id": 99,
+      "game": "daihao",
+      "name": "体力精选包",
+      "points": 180,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 2.99,
+      "category": "贤士",
+      "extra": "8 体力",
+      "sort_id": 33
+    },
+    {
+      "id": "daihao:100",
+      "content_id": 100,
+      "game": "daihao",
+      "name": "体力高阶包",
+      "points": 300,
+      "limit": 5,
+      "draws": 0,
+      "price_usd": 4.99,
+      "category": "贤士",
+      "extra": "11 体力",
+      "sort_id": 33
+    },
+    {
+      "id": "daihao:101",
+      "content_id": 101,
+      "game": "daihao",
+      "name": "主线助力",
+      "points": 1200,
+      "limit": 2,
+      "draws": 0,
+      "price_usd": 19.99,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:1",
+      "content_id": 1,
+      "game": "ru",
+      "name": "年卡",
+      "points": 2480,
+      "limit": 1,
+      "draws": 180,
+      "price_cny": 248,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "ru:3",
+      "content_id": 3,
+      "game": "ru",
+      "name": "季卡",
+      "points": 720,
+      "limit": 1,
+      "draws": 45,
+      "price_cny": 72,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "ru:4",
+      "content_id": 4,
+      "game": "ru",
+      "name": "广陵金库",
+      "points": 680,
+      "limit": 1,
+      "draws": 34,
+      "price_cny": 68,
+      "category": "超值",
+      "sort_id": 10
+    },
+    {
+      "id": "ru:5",
+      "content_id": 5,
+      "game": "ru",
+      "name": "贤士礼包1",
+      "points": 60,
+      "limit": 2,
+      "draws": 2,
+      "price_cny": 6,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:6",
+      "content_id": 6,
+      "game": "ru",
+      "name": "卡池超值",
+      "points": 60,
+      "limit": 1,
+      "draws": 2,
+      "price_cny": 6,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:7",
+      "content_id": 7,
+      "game": "ru",
+      "name": "贤士礼包1.2",
+      "points": 120,
+      "limit": 2,
+      "draws": 4,
+      "price_cny": 12,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:8",
+      "content_id": 8,
+      "game": "ru",
+      "name": "贤士礼包2",
+      "points": 180,
+      "limit": 3,
+      "draws": 5,
+      "price_cny": 18,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:9",
+      "content_id": 9,
+      "game": "ru",
+      "name": "贤士礼包2.1",
+      "points": 300,
+      "limit": 3,
+      "draws": 8,
+      "price_cny": 30,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:10",
+      "content_id": 10,
+      "game": "ru",
+      "name": "贤士礼包3",
+      "points": 680,
+      "limit": 3,
+      "draws": 12,
+      "price_cny": 68,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:11",
+      "content_id": 11,
+      "game": "ru",
+      "name": "卡池特惠",
+      "points": 300,
+      "limit": 1,
+      "draws": 5,
+      "price_cny": 30,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:12",
+      "content_id": 12,
+      "game": "ru",
+      "name": "卡池初级",
+      "points": 680,
+      "limit": 1,
+      "draws": 10,
+      "price_cny": 68,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:13",
+      "content_id": 13,
+      "game": "ru",
+      "name": "贤士礼包3.1",
+      "points": 980,
+      "limit": 3,
+      "draws": 15,
+      "price_cny": 98,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:14",
+      "content_id": 14,
+      "game": "ru",
+      "name": "贤士礼包3.2",
+      "points": 1280,
+      "limit": 5,
+      "draws": 16,
+      "price_cny": 128,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:15",
+      "content_id": 15,
+      "game": "ru",
+      "name": "卡池助力",
+      "points": 780,
+      "limit": 3,
+      "draws": 10,
+      "price_cny": 78,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:16",
+      "content_id": 16,
+      "game": "ru",
+      "name": "卡池中级",
+      "points": 1280,
+      "limit": 1,
+      "draws": 14,
+      "price_cny": 128,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:17",
+      "content_id": 17,
+      "game": "ru",
+      "name": "贤士礼包3.3",
+      "points": 1980,
+      "limit": 5,
+      "draws": 20,
+      "price_cny": 198,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:18",
+      "content_id": 18,
+      "game": "ru",
+      "name": "首充双倍60",
+      "points": 60,
+      "limit": 1,
+      "draws": 0.6,
+      "price_cny": 6,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:19",
+      "content_id": 19,
+      "game": "ru",
+      "name": "卡池高级",
+      "points": 1980,
+      "limit": 1,
+      "draws": 18,
+      "price_cny": 198,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:20",
+      "content_id": 20,
+      "game": "ru",
+      "name": "贤士礼包3.4",
+      "points": 3280,
+      "limit": 5,
+      "draws": 28,
+      "price_cny": 328,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:21",
+      "content_id": 21,
+      "game": "ru",
+      "name": "卡池特级",
+      "points": 3280,
+      "limit": 1,
+      "draws": 25,
+      "price_cny": 328,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:22",
+      "content_id": 22,
+      "game": "ru",
+      "name": "贤士礼包3.5",
+      "points": 6480,
+      "limit": 10,
+      "draws": 45,
+      "price_cny": 648,
+      "category": "贤士",
+      "sort_id": 30
+    },
+    {
+      "id": "ru:23",
+      "content_id": 23,
+      "game": "ru",
+      "name": "卡池终极",
+      "points": 6480,
+      "limit": 1,
+      "draws": 40,
+      "price_cny": 648,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:24",
+      "content_id": 24,
+      "game": "ru",
+      "name": "卡池豪华",
+      "points": 6480,
+      "limit": 2,
+      "draws": 40,
+      "price_cny": 648,
+      "category": "卡池",
+      "sort_id": 20
+    },
+    {
+      "id": "ru:25",
+      "content_id": 25,
+      "game": "ru",
+      "name": "首充双倍300",
+      "points": 300,
+      "limit": 1,
+      "draws": 3,
+      "price_cny": 30,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:26",
+      "content_id": 26,
+      "game": "ru",
+      "name": "首充双倍900",
+      "points": 980,
+      "limit": 1,
+      "draws": 9,
+      "price_cny": 98,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:27",
+      "content_id": 27,
+      "game": "ru",
+      "name": "首充双倍1800",
+      "points": 1980,
+      "limit": 1,
+      "draws": 18,
+      "price_cny": 198,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:28",
+      "content_id": 28,
+      "game": "ru",
+      "name": "首充双倍3000",
+      "points": 3280,
+      "limit": 1,
+      "draws": 30,
+      "price_cny": 328,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:29",
+      "content_id": 29,
+      "game": "ru",
+      "name": "首充双倍6000",
+      "points": 6480,
+      "limit": 1,
+      "draws": 60,
+      "price_cny": 648,
+      "category": "其他",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:30",
+      "content_id": 30,
+      "game": "ru",
+      "name": "密探特训",
+      "points": 780,
+      "limit": 1,
+      "draws": 0,
+      "price_cny": 78,
+      "category": "超值",
+      "sort_id": 50
+    },
+    {
+      "id": "ru:31",
+      "content_id": 31,
+      "game": "ru",
+      "name": "地宫秘宝",
+      "points": 980,
+      "limit": 1,
+      "draws": 22,
+      "price_cny": 98,
+      "category": "超值",
+      "sort_id": 40
+    },
+    {
+      "id": "ru:89",
+      "content_id": 89,
+      "game": "ru",
+      "name": "善恶簿体验包",
+      "points": 60,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 6,
+      "category": "贤士",
+      "extra": "10 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "ru:90",
+      "content_id": 90,
+      "game": "ru",
+      "name": "善恶簿精选包",
+      "points": 120,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 12,
+      "category": "贤士",
+      "extra": "18 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "ru:91",
+      "content_id": 91,
+      "game": "ru",
+      "name": "善恶簿高阶包",
+      "points": 360,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 36,
+      "category": "贤士",
+      "extra": "35 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "ru:92",
+      "content_id": 92,
+      "game": "ru",
+      "name": "善恶簿丰盈包",
+      "points": 1280,
+      "limit": 5,
+      "draws": 0,
+      "price_cny": 128,
+      "category": "贤士",
+      "extra": "80 善恶簿",
+      "sort_id": 31
+    },
+    {
+      "id": "ru:93",
+      "content_id": 93,
+      "game": "ru",
+      "name": "功过格体验包",
+      "points": 120,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 12,
+      "category": "贤士",
+      "extra": "10 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "ru:94",
+      "content_id": 94,
+      "game": "ru",
+      "name": "功过格精选包",
+      "points": 300,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 30,
+      "category": "贤士",
+      "extra": "18 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "ru:95",
+      "content_id": 95,
+      "game": "ru",
+      "name": "功过格高阶包",
+      "points": 680,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 68,
+      "category": "贤士",
+      "extra": "28 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "ru:96",
+      "content_id": 96,
+      "game": "ru",
+      "name": "功过格丰盈包",
+      "points": 1580,
+      "limit": 5,
+      "draws": 0,
+      "price_cny": 1580,
+      "category": "贤士",
+      "extra": "50 功过格",
+      "sort_id": 32
+    },
+    {
+      "id": "ru:98",
+      "content_id": 98,
+      "game": "ru",
+      "name": "体力体验包",
+      "points": 60,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 6,
+      "category": "贤士",
+      "extra": "4 体力",
+      "sort_id": 33
+    },
+    {
+      "id": "ru:99",
+      "content_id": 99,
+      "game": "ru",
+      "name": "体力精选包",
+      "points": 180,
+      "limit": 2,
+      "draws": 0,
+      "price_cny": 18,
+      "category": "贤士",
+      "extra": "8 体力",
+      "sort_id": 33
+    },
+    {
+      "id": "ru:100",
+      "content_id": 100,
+      "game": "ru",
+      "name": "体力高阶包",
+      "points": 300,
+      "limit": 5,
+      "draws": 0,
+      "price_cny": 30,
+      "category": "贤士",
+      "extra": "11 体力",
+      "sort_id": 33
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "legacy:daihao:track1",
+      "game": "daihao",
+      "name": "周年限时累充",
+      "starts_at": null,
+      "ends_at": "2026-04-29T23:59:59+08:00",
+      "time_zone": "Asia/Shanghai",
+      "status": "published",
+      "tiers": [
+        {
+          "points": 100,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            }
+          ],
+          "sort_id": 0,
+          "enabled": true
+        },
+        {
+          "points": 300,
+          "rewards": [
+            {
+              "name": "善恶簿",
+              "count": 10
+            },
+            {
+              "name": "兵书残卷",
+              "count": 100
+            }
+          ],
+          "sort_id": 1,
+          "enabled": true
+        },
+        {
+          "points": 500,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "白金币",
+              "count": 200
+            }
+          ],
+          "sort_id": 2,
+          "enabled": true
+        },
+        {
+          "points": 1000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "解谪瓶",
+              "count": 30
+            },
+            {
+              "name": "白金币",
+              "count": 300
+            }
+          ],
+          "sort_id": 3,
+          "enabled": true
+        },
+        {
+          "points": 2400,
+          "rewards": [
+            {
+              "name": "功过格",
+              "count": 10
+            },
+            {
+              "name": "防务情报",
+              "count": 10
+            },
+            {
+              "name": "市井情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 4,
+          "enabled": true
+        },
+        {
+          "points": 5000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "节气情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 5,
+          "enabled": true
+        },
+        {
+          "points": 10000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "豪门情报",
+              "count": 10
+            },
+            {
+              "name": "地脉情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 6,
+          "enabled": true
+        },
+        {
+          "points": 16000,
+          "rewards": [
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "功过格",
+              "count": 10
+            }
+          ],
+          "sort_id": 7,
+          "enabled": true
+        },
+        {
+          "points": 20000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 5
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "五铢钱",
+              "count": 500000
+            }
+          ],
+          "sort_id": 8,
+          "enabled": true
+        },
+        {
+          "points": 25000,
+          "rewards": [
+            {
+              "name": "密探自选·金蟾",
+              "count": 1
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "星图箱",
+              "count": 1
+            }
+          ],
+          "sort_id": 9,
+          "enabled": true
+        },
+        {
+          "points": 35000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 10
+            },
+            {
+              "name": "装金玻璃",
+              "count": 1
+            }
+          ],
+          "sort_id": 10,
+          "enabled": true
+        },
+        {
+          "points": 45000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 10
+            },
+            {
+              "name": "功过格",
+              "count": 10
+            },
+            {
+              "name": "六韬兵书",
+              "count": 10
+            }
+          ],
+          "sort_id": 11,
+          "enabled": true
+        },
+        {
+          "points": 55000,
+          "rewards": [
+            {
+              "name": "骨算筹",
+              "count": 2
+            },
+            {
+              "name": "金算筹",
+              "count": 2
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            }
+          ],
+          "sort_id": 12,
+          "enabled": true
+        },
+        {
+          "points": 60000,
+          "rewards": [
+            {
+              "name": "密探自选·金蟾",
+              "count": 1
+            },
+            {
+              "name": "云中殿（背景）",
+              "count": 1
+            },
+            {
+              "name": "星图箱",
+              "count": 2
+            }
+          ],
+          "sort_id": 13,
+          "enabled": true
+        }
+      ],
+      "source_note": "历史迁移：原页面两游戏均展示；原始数据未记录适用版本与开始日期，仅供历史参考，请核实后创建新活动。"
+    },
+    {
+      "id": "legacy:daihao:track2",
+      "game": "daihao",
+      "name": "男主限时累充",
+      "starts_at": null,
+      "ends_at": "2026-05-13T23:59:59+08:00",
+      "time_zone": "Asia/Shanghai",
+      "status": "published",
+      "tiers": [
+        {
+          "points": 150,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "蒹葭",
+              "count": 2
+            },
+            {
+              "name": "兵书残卷",
+              "count": 30
+            }
+          ],
+          "sort_id": 0,
+          "enabled": true
+        },
+        {
+          "points": 450,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "蒹葭",
+              "count": 3
+            },
+            {
+              "name": "兵书残卷",
+              "count": 50
+            }
+          ],
+          "sort_id": 1,
+          "enabled": true
+        },
+        {
+          "points": 700,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "五铢钱",
+              "count": 30000
+            },
+            {
+              "name": "兵书残卷",
+              "count": 70
+            }
+          ],
+          "sort_id": 2,
+          "enabled": true
+        },
+        {
+          "points": 1000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            },
+            {
+              "name": "体力",
+              "count": 40
+            }
+          ],
+          "sort_id": 3,
+          "enabled": true
+        },
+        {
+          "points": 1500,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            },
+            {
+              "name": "体力",
+              "count": 40
+            }
+          ],
+          "sort_id": 4,
+          "enabled": true
+        },
+        {
+          "points": 2000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "五铢钱",
+              "count": 60000
+            },
+            {
+              "name": "兵书残卷",
+              "count": 10
+            }
+          ],
+          "sort_id": 5,
+          "enabled": true
+        },
+        {
+          "points": 3000,
+          "rewards": [
+            {
+              "name": "互动道具",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 70000
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            }
+          ],
+          "sort_id": 6,
+          "enabled": true
+        },
+        {
+          "points": 5000,
+          "rewards": [
+            {
+              "name": "紫色星石",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 80000
+            },
+            {
+              "name": "点头之交",
+              "count": 8
+            }
+          ],
+          "sort_id": 7,
+          "enabled": true
+        },
+        {
+          "points": 10000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 5
+            },
+            {
+              "name": "五铢钱",
+              "count": 90000
+            },
+            {
+              "name": "兵书全卷",
+              "count": 5
+            }
+          ],
+          "sort_id": 8,
+          "enabled": true
+        },
+        {
+          "points": 15000,
+          "rewards": [
+            {
+              "name": "橙色星石",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            },
+            {
+              "name": "善恶簿",
+              "count": 5
+            }
+          ],
+          "sort_id": 9,
+          "enabled": true
+        },
+        {
+          "points": 20000,
+          "rewards": [
+            {
+              "name": "鸢记",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            },
+            {
+              "name": "善恶簿",
+              "count": 5
+            }
+          ],
+          "sort_id": 10,
+          "enabled": true
+        },
+        {
+          "points": 25000,
+          "rewards": [
+            {
+              "name": "互动道具",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 150000
+            },
+            {
+              "name": "倾盖之交",
+              "count": 3
+            }
+          ],
+          "sort_id": 11,
+          "enabled": true
+        },
+        {
+          "points": 30000,
+          "rewards": [
+            {
+              "name": "装金玻璃",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 150000
+            },
+            {
+              "name": "功过格",
+              "count": 2
+            }
+          ],
+          "sort_id": 12,
+          "enabled": true
+        },
+        {
+          "points": 35000,
+          "rewards": [
+            {
+              "name": "头像框",
+              "count": 1
+            },
+            {
+              "name": "称号",
+              "count": 1
+            },
+            {
+              "name": "六韬兵书",
+              "count": 5
+            },
+            {
+              "name": "五铢钱",
+              "count": 200000
+            }
+          ],
+          "sort_id": 13,
+          "enabled": true
+        }
+      ],
+      "source_note": "历史迁移：原页面两游戏均展示；原始数据未记录适用版本与开始日期，仅供历史参考，请核实后创建新活动。"
+    },
+    {
+      "id": "legacy:ru:track1",
+      "game": "ru",
+      "name": "周年限时累充",
+      "starts_at": null,
+      "ends_at": "2026-04-29T23:59:59+08:00",
+      "time_zone": "Asia/Shanghai",
+      "status": "published",
+      "tiers": [
+        {
+          "points": 100,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            }
+          ],
+          "sort_id": 0,
+          "enabled": true
+        },
+        {
+          "points": 300,
+          "rewards": [
+            {
+              "name": "善恶簿",
+              "count": 10
+            },
+            {
+              "name": "兵书残卷",
+              "count": 100
+            }
+          ],
+          "sort_id": 1,
+          "enabled": true
+        },
+        {
+          "points": 500,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "白金币",
+              "count": 200
+            }
+          ],
+          "sort_id": 2,
+          "enabled": true
+        },
+        {
+          "points": 1000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "解谪瓶",
+              "count": 30
+            },
+            {
+              "name": "白金币",
+              "count": 300
+            }
+          ],
+          "sort_id": 3,
+          "enabled": true
+        },
+        {
+          "points": 2400,
+          "rewards": [
+            {
+              "name": "功过格",
+              "count": 10
+            },
+            {
+              "name": "防务情报",
+              "count": 10
+            },
+            {
+              "name": "市井情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 4,
+          "enabled": true
+        },
+        {
+          "points": 5000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "节气情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 5,
+          "enabled": true
+        },
+        {
+          "points": 10000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "豪门情报",
+              "count": 10
+            },
+            {
+              "name": "地脉情报",
+              "count": 10
+            }
+          ],
+          "sort_id": 6,
+          "enabled": true
+        },
+        {
+          "points": 16000,
+          "rewards": [
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "功过格",
+              "count": 10
+            }
+          ],
+          "sort_id": 7,
+          "enabled": true
+        },
+        {
+          "points": 20000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 5
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "五铢钱",
+              "count": 500000
+            }
+          ],
+          "sort_id": 8,
+          "enabled": true
+        },
+        {
+          "points": 25000,
+          "rewards": [
+            {
+              "name": "密探自选·金蟾",
+              "count": 1
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            },
+            {
+              "name": "星图箱",
+              "count": 1
+            }
+          ],
+          "sort_id": 9,
+          "enabled": true
+        },
+        {
+          "points": 35000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 10
+            },
+            {
+              "name": "装金玻璃",
+              "count": 1
+            }
+          ],
+          "sort_id": 10,
+          "enabled": true
+        },
+        {
+          "points": 45000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 10
+            },
+            {
+              "name": "功过格",
+              "count": 10
+            },
+            {
+              "name": "六韬兵书",
+              "count": 10
+            }
+          ],
+          "sort_id": 11,
+          "enabled": true
+        },
+        {
+          "points": 55000,
+          "rewards": [
+            {
+              "name": "骨算筹",
+              "count": 2
+            },
+            {
+              "name": "金算筹",
+              "count": 2
+            },
+            {
+              "name": "善恶簿",
+              "count": 20
+            }
+          ],
+          "sort_id": 12,
+          "enabled": true
+        },
+        {
+          "points": 60000,
+          "rewards": [
+            {
+              "name": "密探自选·金蟾",
+              "count": 1
+            },
+            {
+              "name": "云中殿（背景）",
+              "count": 1
+            },
+            {
+              "name": "星图箱",
+              "count": 2
+            }
+          ],
+          "sort_id": 13,
+          "enabled": true
+        }
+      ],
+      "source_note": "历史迁移：原页面两游戏均展示；原始数据未记录适用版本与开始日期，仅供历史参考，请核实后创建新活动。"
+    },
+    {
+      "id": "legacy:ru:track2",
+      "game": "ru",
+      "name": "男主限时累充",
+      "starts_at": null,
+      "ends_at": "2026-05-13T23:59:59+08:00",
+      "time_zone": "Asia/Shanghai",
+      "status": "published",
+      "tiers": [
+        {
+          "points": 150,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "蒹葭",
+              "count": 2
+            },
+            {
+              "name": "兵书残卷",
+              "count": 30
+            }
+          ],
+          "sort_id": 0,
+          "enabled": true
+        },
+        {
+          "points": 450,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 1
+            },
+            {
+              "name": "蒹葭",
+              "count": 3
+            },
+            {
+              "name": "兵书残卷",
+              "count": 50
+            }
+          ],
+          "sort_id": 1,
+          "enabled": true
+        },
+        {
+          "points": 700,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "五铢钱",
+              "count": 30000
+            },
+            {
+              "name": "兵书残卷",
+              "count": 70
+            }
+          ],
+          "sort_id": 2,
+          "enabled": true
+        },
+        {
+          "points": 1000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            },
+            {
+              "name": "体力",
+              "count": 40
+            }
+          ],
+          "sort_id": 3,
+          "enabled": true
+        },
+        {
+          "points": 1500,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 2
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            },
+            {
+              "name": "体力",
+              "count": 40
+            }
+          ],
+          "sort_id": 4,
+          "enabled": true
+        },
+        {
+          "points": 2000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 3
+            },
+            {
+              "name": "五铢钱",
+              "count": 60000
+            },
+            {
+              "name": "兵书残卷",
+              "count": 10
+            }
+          ],
+          "sort_id": 5,
+          "enabled": true
+        },
+        {
+          "points": 3000,
+          "rewards": [
+            {
+              "name": "互动道具",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 70000
+            },
+            {
+              "name": "蒹葭",
+              "count": 5
+            }
+          ],
+          "sort_id": 6,
+          "enabled": true
+        },
+        {
+          "points": 5000,
+          "rewards": [
+            {
+              "name": "紫色星石",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 80000
+            },
+            {
+              "name": "点头之交",
+              "count": 8
+            }
+          ],
+          "sort_id": 7,
+          "enabled": true
+        },
+        {
+          "points": 10000,
+          "rewards": [
+            {
+              "name": "符传",
+              "count": 5
+            },
+            {
+              "name": "五铢钱",
+              "count": 90000
+            },
+            {
+              "name": "兵书全卷",
+              "count": 5
+            }
+          ],
+          "sort_id": 8,
+          "enabled": true
+        },
+        {
+          "points": 15000,
+          "rewards": [
+            {
+              "name": "橙色星石",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            },
+            {
+              "name": "善恶簿",
+              "count": 5
+            }
+          ],
+          "sort_id": 9,
+          "enabled": true
+        },
+        {
+          "points": 20000,
+          "rewards": [
+            {
+              "name": "鸢记",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 100000
+            },
+            {
+              "name": "善恶簿",
+              "count": 5
+            }
+          ],
+          "sort_id": 10,
+          "enabled": true
+        },
+        {
+          "points": 25000,
+          "rewards": [
+            {
+              "name": "互动道具",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 150000
+            },
+            {
+              "name": "倾盖之交",
+              "count": 3
+            }
+          ],
+          "sort_id": 11,
+          "enabled": true
+        },
+        {
+          "points": 30000,
+          "rewards": [
+            {
+              "name": "装金玻璃",
+              "count": 1
+            },
+            {
+              "name": "五铢钱",
+              "count": 150000
+            },
+            {
+              "name": "功过格",
+              "count": 2
+            }
+          ],
+          "sort_id": 12,
+          "enabled": true
+        },
+        {
+          "points": 35000,
+          "rewards": [
+            {
+              "name": "头像框",
+              "count": 1
+            },
+            {
+              "name": "称号",
+              "count": 1
+            },
+            {
+              "name": "六韬兵书",
+              "count": 5
+            },
+            {
+              "name": "五铢钱",
+              "count": 200000
+            }
+          ],
+          "sort_id": 13,
+          "enabled": true
+        }
+      ],
+      "source_note": "历史迁移：原页面两游戏均展示；原始数据未记录适用版本与开始日期，仅供历史参考，请核实后创建新活动。"
+    }
+  ],
+  "settings": {
+    "exchange_rate": 6.7
+  }
+}

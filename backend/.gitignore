@@ -1,0 +1,48 @@
+# Build output and caches
+build/
+.gradle
+.gradle-user-home
+.gradle-home
+.kotlin
+
+# IDE and OS files
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode/
+.DS_Store
+
+# Local runtime output
+logs/
+log/
+temp/
+gen/
+bin/
+
+# Local configuration and tools
+application-dev.yml
+application-prod.yml
+.tools/
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.template
+!.env.*.template
+
+# Local agent session records
+.agent-teams
+
+# Runtime media and private screenshots
+# Keep tracked avatar assets; do not ignore the entire data directory.
+data/private-media
+data/media
+/data/star-captures/
+/data/avatar/*.webp.tmp
+
+# Local-only beta preparation dependencies; keep UID exports outside the repository.
+/scripts/beta/node_modules/
+
+# Private migration scan output
+/scripts/migrations/recruitment-count-scan.jsonl

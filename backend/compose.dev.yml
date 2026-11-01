@@ -1,0 +1,45 @@
+name: backendv3-share-dev
+
+services:
+  mongodb:
+    image: mongo:8.2.3-noble
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "27017",
+          "--eval",
+          "quit(db.adminCommand({ hello: 1 }).isWritablePrimary ? 0 : 1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.10-alpine3.21
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:

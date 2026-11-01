@@ -1,0 +1,39 @@
+# 本地开发配置模板
+# 复制本文件为 application-dev.yml 并按需修改
+spring:
+  data:
+    mongodb:
+      # 账号只读模块:与 MaaYuan-Share-Backend 共用 MongoDB,maa_user 集合由原项目写入
+      # 库名 MaaBackend(注意:不是 ShareBackend,数据在原项目的 MaaBackend 库中)
+      # 如果没有密码
+      # uri: mongodb://192.168.31.21:27017/MaaBackend
+      # 有密码
+      # uri: mongodb://用户名:密码@192.168.31.21:27017/MaaBackend
+      uri: mongodb://192.168.31.21:27017/MaaBackend
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+share:
+  cors:
+    # 多个来源用英文逗号分隔；生产环境不要保留 *。
+    allowed-origin-patterns: "${SHARE_CORS_ALLOWED_ORIGIN_PATTERNS:*}"
+  info:
+    # OpenAPI 中发布的 HTTPS 地址;反向代理部署时按实际公网地址覆盖
+    public-base-url: ${SHARE_PUBLIC_BASE_URL:https://hub.maayuan.fun:16666}
+  jwt:
+    # JWT 签名密钥,生产环境务必更换
+    secret: please-change-me-to-a-long-random-secret
+  mongo:
+    # Hub 库(HubBackend)连接串,与 MaaBackend 同一实例时留空即可(自动复用主连接)
+    # 不同实例/不同账号时填写完整连接串
+    hub-uri: mongodb://192.168.31.21:27017/HubBackend
+  media:
+    # 生产环境分别挂载公开图片与私有附件持久卷
+    dir: ${SHARE_MEDIA_DIR:./data/media}
+    private-dir: ${SHARE_PRIVATE_MEDIA_DIR:./data/private-media}
+    # 单个业务媒体文件大小上限(字节),10 MiB
+    max-size: 10485760
+  ledger:
+    # 广陵账房:每用户方案数上限
+    max-plans-per-user: 50
