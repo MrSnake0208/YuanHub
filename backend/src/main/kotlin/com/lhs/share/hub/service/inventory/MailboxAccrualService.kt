@@ -7,6 +7,7 @@ import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.MailboxDelivery
 import com.lhs.share.hub.repository.entity.MailboxReserve
+import com.lhs.share.hub.repository.entity.MailboxReserveHistory
 import com.lhs.share.hub.repository.entity.MailboxSchedule
 import com.lhs.share.hub.repository.entity.WhiteCoinMail
 import org.springframework.beans.factory.annotation.Qualifier
@@ -68,6 +69,75 @@ class MailboxAccrualService(
         value.fuChuanSchedule?.let { schedule ->
             if (value.fuChuanMailCount + remaining(schedule) > LIMIT) invalid("当前封数与剩余累计封数超过上限，请减少封数或缩短截止日期")
         }
+    }
+
+    // A positive manual stock change on this business day already accounts for today's mail.
+    fun recognizeManualToday(user: String, account: String, before: MailboxReserve, value: MailboxReserve): MailboxReserve {
+        val businessDay = today()
+        val day = businessDay.toString()
+        val start = businessDay.atTime(5, 0).atZone(ZONE).toInstant()
+        val end = businessDay.plusDays(1).atTime(5, 0).atZone(ZONE).toInstant()
+        val changes by lazy {
+            template.find(
+                owner(user, account).addCriteria(Criteria.where("effectiveAt").gte(start).lt(end))
+                    .with(Sort.by("version")),
+                MailboxReserveHistory::class.java,
+            )
+        }
+        fun count(reserve: MailboxReserve, type: String, amount: Int): Int {
+            return if (type == "coins") {
+                reserve.whiteCoinMails.filter { it.coinsPerMail == amount }.sumOf { it.count }
+            } else {
+                reserve.fuChuanMailCount
+            }
+        }
+        fun increased(previous: MailboxReserve, current: MailboxReserve, type: String, amount: Int): Boolean {
+            if (count(current, type, amount) <= count(previous, type, amount)) return false
+            return if (type == "coins") {
+                current.whiteCoinMails.sumOf { it.count } > previous.whiteCoinMails.sumOf { it.count }
+            } else {
+                current.fuChuanMailCount > previous.fuChuanMailCount
+            }
+        }
+        fun recorded(type: String, amount: Int): Boolean = changes.any { change ->
+            if (change.kind != "adjustment" && (change.kind != "baseline" || change.version != 1L)) return@any false
+            val earlier = template.findOne(
+                owner(user, account).addCriteria(Criteria.where("version").`is`(change.version - 1)),
+                MailboxReserveHistory::class.java,
+            )
+            increased(
+                MailboxReserve(earlier?.whiteCoinMails ?: emptyList(), earlier?.fuChuanMailCount ?: 0),
+                MailboxReserve(change.whiteCoinMails, change.fuChuanMailCount),
+                type,
+                amount,
+            )
+        }
+        var result = value
+        for (type in listOf("coins", "tickets")) {
+            val schedule = if (type == "coins") result.whiteCoinSchedule else result.fuChuanSchedule
+            if (schedule == null || next(schedule) != businessDay || businessDay > date(schedule.endDate) ||
+                count(result, type, schedule.coinsPerMail) == 0
+            ) {
+                continue
+            }
+            if (!increased(before, result, type, schedule.coinsPerMail) && !recorded(type, schedule.coinsPerMail)) continue
+            val query = owner(user, account).addCriteria(Criteria.where("type").`is`(type).and("day").`is`(day))
+            if (!template.exists(query, MailboxDelivery::class.java)) {
+                template.insert(
+                    MailboxDelivery(
+                        userId = user,
+                        accountId = account,
+                        type = type,
+                        day = day,
+                        coinsPerMail = schedule.coinsPerMail,
+                        state = "claimed",
+                    ),
+                )
+            }
+            val accounted = schedule.copy(throughDate = day)
+            result = if (type == "coins") result.copy(whiteCoinSchedule = accounted) else result.copy(fuChuanSchedule = accounted)
+        }
+        return result
     }
 
     fun sync(user: String, account: String): MailboxReserve {

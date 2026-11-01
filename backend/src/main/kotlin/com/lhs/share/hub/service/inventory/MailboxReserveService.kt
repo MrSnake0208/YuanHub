@@ -69,7 +69,12 @@ class MailboxReserveService(
                     return@execute MailboxReserveResponse.of(accountId, previous)
                 }
                 val now = maxOf(clock.instant().truncatedTo(ChronoUnit.MILLIS), previous.updatedAt ?: java.time.Instant.MIN)
-                val reserve = MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule)
+                val reserve = accrual?.recognizeManualToday(
+                    userId,
+                    accountId,
+                    previous,
+                    MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule),
+                ) ?: MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule)
                 accrual?.validateCapacity(reserve)
                 val account = repository.replaceMailboxReserve(userId, accountId, previous.version, reserve) ?: conflict()
                 accrual?.reduce(userId, accountId, previous, reserve, "adjusted")

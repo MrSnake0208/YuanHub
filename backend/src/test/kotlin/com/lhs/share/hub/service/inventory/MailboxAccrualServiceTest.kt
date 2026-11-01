@@ -6,6 +6,7 @@ import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.MailboxDelivery
 import com.lhs.share.hub.repository.entity.MailboxReserve
+import com.lhs.share.hub.repository.entity.MailboxReserveHistory
 import com.lhs.share.hub.repository.entity.MailboxSchedule
 import com.lhs.share.hub.repository.entity.SubAccount
 import com.lhs.share.hub.repository.entity.WhiteCoinMail
@@ -34,6 +35,84 @@ class MailboxAccrualServiceTest {
     private val clock = Clock.fixed(Instant.parse("2026-11-03T06:00:00Z"), ZoneOffset.UTC)
     private val service = MailboxAccrualService(accounts, records, deleted, history, template, tx, clock)
     private val mapper = jacksonObjectMapper()
+
+    @Test
+    fun `manual stock received today is accounted once without creating another pending mail`() {
+        val day = "2026-11-03"
+        val schedule = MailboxSchedule(day, "2026-11-05", 90)
+        val before = MailboxReserve(listOf(WhiteCoinMail(2, 90)), fuChuanMailCount = 1)
+        val value = before.copy(whiteCoinSchedule = schedule, fuChuanSchedule = MailboxSchedule(day, "2026-11-05"))
+        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } answers {
+            assertEquals("owner", firstArg<Query>().queryObject["userId"])
+            assertEquals("a", firstArg<Query>().queryObject["accountId"])
+            listOf(
+                MailboxReserveHistory(
+                    userId = "owner",
+                    accountId = "a",
+                    version = 1,
+                    effectiveAt = clock.instant(),
+                    kind = "baseline",
+                    whiteCoinMails = before.whiteCoinMails,
+                    fuChuanMailCount = 1,
+                ),
+            )
+        }
+        every { template.findOne(any<Query>(), MailboxReserveHistory::class.java) } returns null
+        every { template.exists(any<Query>(), MailboxDelivery::class.java) } returns false
+        val deliveries = mutableListOf<MailboxDelivery>()
+        every { template.insert(any<MailboxDelivery>()) } answers { firstArg<MailboxDelivery>().also { deliveries.add(it) } }
+
+        val recognized = service.recognizeManualToday("owner", "a", before, value)
+        assertEquals(2, recognized.whiteCoinMails.single().count)
+        assertEquals(day, recognized.whiteCoinSchedule?.throughDate)
+        assertEquals(1, recognized.fuChuanMailCount)
+        assertEquals(day, recognized.fuChuanSchedule?.throughDate)
+        assertEquals(listOf("claimed", "claimed"), deliveries.map { it.state })
+        assertEquals(recognized, service.recognizeManualToday("owner", "a", before, recognized))
+        assertEquals(2, deliveries.size)
+        val expired = value.copy(
+            whiteCoinSchedule = MailboxSchedule("2026-11-01", "2026-11-02", 90, "2026-11-02"),
+            fuChuanSchedule = null,
+        )
+        assertEquals(expired, service.recognizeManualToday("owner", "a", before, expired))
+        assertEquals(2, deliveries.size)
+    }
+
+    @Test
+    fun `old stock and same day reduction do not count as today's receipt`() {
+        val schedule = MailboxSchedule("2026-11-03", "2026-11-05", 90)
+        val before = MailboxReserve(listOf(WhiteCoinMail(1, 90)))
+        val value = before.copy(whiteCoinSchedule = schedule)
+        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } returns emptyList()
+        assertEquals(value, service.recognizeManualToday("owner", "a", before, value))
+        every { template.find(any<Query>(), MailboxReserveHistory::class.java) } returns listOf(
+            MailboxReserveHistory(
+                userId = "owner",
+                accountId = "a",
+                version = 2,
+                effectiveAt = clock.instant(),
+                kind = "adjustment",
+                whiteCoinMails = before.whiteCoinMails,
+                fuChuanMailCount = 0,
+            ),
+        )
+        every { template.findOne(any<Query>(), MailboxReserveHistory::class.java) } returns
+            MailboxReserveHistory(
+                userId = "owner",
+                accountId = "a",
+                version = 1,
+                effectiveAt = clock.instant(),
+                kind = "baseline",
+                whiteCoinMails = listOf(WhiteCoinMail(2, 90)),
+                fuChuanMailCount = 0,
+            )
+        assertEquals(value, service.recognizeManualToday("owner", "a", before, value))
+        assertEquals(
+            value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90))),
+            service.recognizeManualToday("owner", "a", before, value.copy(whiteCoinMails = listOf(WhiteCoinMail(0, 90)))),
+        )
+        verify(exactly = 0) { template.insert(any<MailboxDelivery>()) }
+    }
 
     @Test
     fun `strict dates positive rewards and no retroactive start`() {

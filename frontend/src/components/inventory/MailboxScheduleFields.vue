@@ -20,7 +20,7 @@
             </label>
           </div>
         </fieldset>
-        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天这封会计入待领邮件；已累计过的不会重复增加。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : needsConfirmation ? '请选择今天的领取状态。' : '修改配置时，请确认今天的领取状态。' }}</p>
+        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天未领的邮件会计入待领；今天已手工录入的封数不会再加一。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : needsConfirmation ? '请选择今天的领取状态。' : '修改配置时，请确认今天的领取状态。' }}</p>
         <label v-if="coins && (coinOptions.length > 1 || !coinOptions.includes(modelValue.coins_per_mail))" class="schedule-reward">累计到哪组邮件
           <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="touched = true; update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
         </label>

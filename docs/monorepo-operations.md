@@ -20,7 +20,7 @@
 
 根目录 `orca.yaml` 为新工作树添加「开发预览」终端，自动运行 `./dev.sh preview`；第一个终端留给 Agent。Orca 项目设置需允许运行共享 YAML 命令（本项目目前为 run-by-default，且无本地 setup 覆盖）。配置必须进入新工作树所基于的版本才会自动生效；不会同步已有工作树，也不自动提交、合并或修改主工作区。现有工作树可由 Agent 创建一次预览终端，无需 Windows 手动 SSH 转发。
 
-预览会在缺少 node_modules 时安装本树前端依赖，通过 `dev.sh` 启动前后端，并使用前台 Tailscale TCP 转发暴露前端端口；后端和数据库仍只监听 loopback。Windows 在同一 tailnet 内直接打开终端打印的 `http://<Tailscale IPv4>:<本树前端端口>/inventory`，API 由 Vite 同源代理至本树后端。需要本机已登录 Tailscale；tailnet 的访问控制仍生效，不使用公网 Funnel。已有转发冲突时停止，不覆盖其它入口。
+预览会在缺少 node_modules 时安装本树前端依赖，通过 `dev.sh` 启动前后端。前端监听 `0.0.0.0`，后端和数据库仍只监听 loopback；Windows 可直接打开 `http://<本机 Tailscale IPv4>:<本树前端端口>/inventory`，API 由 Vite 同源代理至本树后端。启动器不执行 Tailscale 命令，也不修改 Serve/Funnel 配置。监听所有网卡也允许同一局域网访问该预览，使用共享开发数据时，预览中的保存和删除会影响这些数据。
 
 启动过程分别报告「前端已就绪」和「前后端均已就绪」。首次后端启动需要下载依赖并编译；失败时保留前端，登录和保存不可用，查看同一终端错误。重复运行预览由本树文件锁阻止；已有非预览服务占用端口时提示复用，不接管或重启。关闭预览终端或 Ctrl+C 停止它创建的服务和临时转发，不停止共享 MongoDB/Redis，也不删除数据。每个运行中的工作树仍需要自己的 Vite 和 JVM 进程；用完后关闭对应预览终端释放资源。
 

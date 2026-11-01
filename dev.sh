@@ -4,7 +4,7 @@
 #
 # 用法:
 #   ./dev.sh          # 同时启动后端 + 前端（共用本机 Mongo/Redis 开发数据）
-#   ./dev.sh preview  # 自动准备依赖并提供 Tailscale 预览，供 Orca 默认终端使用
+#   ./dev.sh preview  # 自动准备依赖并监听所有网卡，供 Orca 默认终端使用
 #   ./dev.sh containers # 显式使用本树私有 Mongo/Redis 容器
 #   ./dev.sh beta     # 同时启动后端 + 前端（隔离的本地内测模式）
 #   tunnel 模式需单独授权配置每树 ingress；当前默认拒绝复用旧 Tunnel
@@ -256,7 +256,7 @@ keys = ['YUANHUB_FRONTEND_PORT'] if sys.argv[1] == 'frontend' else ['SERVER_PORT
 for key in keys:
     with socket.socket() as sock:
         try:
-            sock.bind(('127.0.0.1', int(os.environ[key])))
+            sock.bind(('0.0.0.0' if key == 'YUANHUB_FRONTEND_PORT' else '127.0.0.1', int(os.environ[key])))
         except OSError:
             raise SystemExit(f"{key}={os.environ[key]} 已被占用；请复用本树服务或检查冲突，不终止其它任务")
 CHECK_PORTS

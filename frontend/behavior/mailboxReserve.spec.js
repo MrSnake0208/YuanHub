@@ -322,6 +322,7 @@ it('自动累计只填写天数和今日状态，不提前增加未来邮件或�
   await submit()
   expect(saveMailboxReserve).not.toHaveBeenCalled()
   await ui().get('[aria-label="白金币邮件还没领取"]').setValue()
+  expect(ui().text()).toContain('今天已手工录入的封数不会再加一')
   expect(ui().get('.mail-manage-total').text()).toContain('1,800 白金币 · 30 普通符传')
   saveMailboxReserve.mockImplementation(async (account, user, body) => ({ account_id: account, ...body, version: 2, updated_at: new Date().toISOString() }))
   await submit()
