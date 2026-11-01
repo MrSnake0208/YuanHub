@@ -98,7 +98,7 @@ python3 scripts/agent-test/agent.py cleanup --yes
 python3 scripts/agent-test/agent.py setup
 ```
 
-`cleanup` 先校验两个随机数据库和 Redis 命名空间的归属标记，才删除本实例测试库、前缀键及私有配置；不停止共享服务，不执行 FLUSHDB。新 setup 生成新密码和 JWT secret，旧 token 对新实例失效。不要手改 manifest 密码，后端不会覆盖已有账号密码。
+`cleanup` 先校验尚未清理资源的归属标记，才删除本实例测试库、前缀键及私有配置；删除进度记录在受保护 manifest 中。若 setup 中途失败或 cleanup 中途失败，保持服务关闭后重试 `cleanup --yes`，成功后再运行 `setup`；缺失归属标记的未完成资源只跳过，不删除未证实归属的数据。不停止共享服务，不执行 FLUSHDB。新 setup 生成新密码和 JWT secret，旧 token 对新实例失效。不要手改 manifest 密码，后端不会覆盖已有账号密码。
 
 旧容器版 manifest 不自动迁移，也不会自动删除旧容器；应由用户保留旧数据，使用新 namespace 创建本机服务版测试环境。共享服务持久化测试数据，需要时显式 cleanup；不得删除其他 namespace。
 

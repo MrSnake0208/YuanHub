@@ -72,12 +72,18 @@ def check_manifest(data):
     for key in ("spring.data.mongodb.uri", "share.mongo.hub-uri", "spring.data.redis.url"):
         if data["properties"].get(key) != expected[key]:
             raise Refused("测试连接必须使用本实例随机库和本机 Redis DB 15")
+    states = data.get("resources")
+    if states is not None and (not isinstance(states, dict) or set(states) != {"maa", "hub", "redis"} or
+                               any(state not in {"creating", "ready", "deleting", "deleted"} for state in states.values())):
+        raise Refused("manifest 资源状态无效")
     return instance
 
 
 def verify(data):
     no_tunnel()
     instance = check_manifest(data)
+    if any(data.get("resources", {}).get(name, "ready") != "ready" for name in ("maa", "hub", "redis")):
+        raise Refused("测试资源未完整准备；请 cleanup --yes 后重新 setup")
     for suffix in ("maa", "hub"):
         mongo(f"if (!db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.findOne({{_id:'{instance}'}})) quit(1)")
     if redis("GET", f"yuanhub_agent:{instance}:agent-test:ownership") != instance:
@@ -118,14 +124,19 @@ def setup(path, namespace):
     private_dir(path.parent.parent)
     private_dir(path.parent)
     instance = uuid.uuid4().hex
-    data = {"instance": instance, "ports": {"mongo": 27017, "redis": 6379}, "users": {}}
+    data = {"instance": instance, "ports": {"mongo": 27017, "redis": 6379}, "users": {},
+            "resources": {name: "creating" for name in ("maa", "hub", "redis")}}
     data["properties"] = properties(data, path.parent)
     # Persist ownership before writes, so failed setup can be inspected safely.
     save(path, data)
     for suffix in ("maa", "hub"):
         mongo(f"db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.insertOne({{_id:'{instance}'}})")
+        data["resources"][suffix] = "ready"
+        save(path, data)
     if redis("SET", f"yuanhub_agent:{instance}:agent-test:ownership", instance, "NX") != "OK":
         raise Refused("Redis 测试命名空间已存在；拒绝覆盖")
+    data["resources"]["redis"] = "ready"
+    save(path, data)
     for role in ("user", "admin"):
         data["users"][role] = {"email": f"agent-{role}-{namespace}@example.test", "name": f"agent-{role}-{namespace}",
                                "password": secrets.token_urlsafe(24)}
@@ -188,16 +199,44 @@ def cleanup(data, path):
     no_tunnel()
     if listening(8080) or listening(5173):
         raise Refused("清理前请自行停止开发服务；工具不会终止现有进程")
-    verify(data)  # Check both database markers and Redis ownership before any deletion.
     instance = check_manifest(data)
+    states = data.setdefault("resources", {name: "ready" for name in ("maa", "hub", "redis")})
+    # A missing marker is safe only after this instance recorded creation or deletion in progress.
     for suffix in ("maa", "hub"):
-        mongo(f"const d=db.getSiblingDB('yuanhub_agent_{instance}_{suffix}'); if (!d.agent_test_ownership.findOne({{_id:'{instance}'}})) quit(1); d.dropDatabase()")
+        if states[suffix] == "deleted":
+            continue
+        marker = mongo(f"db.getSiblingDB('yuanhub_agent_{instance}_{suffix}').agent_test_ownership.findOne({{_id:'{instance}'}}) ? 'owned' : 'absent'")
+        if marker != "owned" and (marker != "absent" or states[suffix] == "ready"):
+            raise Refused("Mongo 测试库归属标记不匹配")
+    owner_key = f"yuanhub_agent:{instance}:agent-test:ownership"
+    redis_owned = False
+    if states["redis"] != "deleted":
+        marker = redis("GET", owner_key)
+        if marker != instance and (marker or states["redis"] == "ready"):
+            raise Refused("Redis 测试命名空间归属标记不匹配")
+        redis_owned = marker == instance
+    for suffix in ("maa", "hub"):
+        if states[suffix] == "deleted":
+            continue
+        states[suffix] = "deleting"
+        save(path, data)
+        mongo(f"const d=db.getSiblingDB('yuanhub_agent_{instance}_{suffix}'); if (d.agent_test_ownership.findOne({{_id:'{instance}'}})) d.dropDatabase()")
+        states[suffix] = "deleted"
+        save(path, data)
     prefix = f"yuanhub_agent:{instance}:"
-    keys = redis("--scan", "--pattern", prefix + "*").splitlines()
-    if any(not key.startswith(prefix) for key in keys):
-        raise Refused("Redis 返回了命名空间外的键；拒绝删除")
-    for key in keys:
-        redis("DEL", key)
+    if states["redis"] != "deleted":
+        states["redis"] = "deleting"
+        save(path, data)
+        if redis_owned:
+            keys = redis("--scan", "--pattern", prefix + "*").splitlines()
+            if any(not key.startswith(prefix) for key in keys):
+                raise Refused("Redis 返回了命名空间外的键；拒绝删除")
+            for key in keys:
+                if key != owner_key:
+                    redis("DEL", key)
+            redis("DEL", owner_key)
+        states["redis"] = "deleted"
+        save(path, data)
     import shutil
     shutil.rmtree(path.parent)
     print("仅本实例测试数据库、Redis 键、凭据与浏览器状态已清理。")

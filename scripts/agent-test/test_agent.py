@@ -73,10 +73,12 @@ class AgentSafetyTest(unittest.TestCase):
 
     def test_cleanup_checks_all_ownership_before_any_deletion(self):
         with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
-                patch.object(agent, "verify", side_effect=agent.Refused("foreign")), patch.object(agent, "run") as run:
+                patch.object(agent, "mongo", side_effect=["owned", "absent"]) as mongo, \
+                patch.object(agent, "redis") as redis:
             with self.assertRaises(agent.Refused):
                 agent.cleanup(self.fixture(), Path("unused"))
-            run.assert_not_called()
+            self.assertEqual(2, mongo.call_count)
+            redis.assert_not_called()
 
     def test_cleanup_only_deletes_own_databases_and_prefixed_keys(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -85,16 +87,51 @@ class AgentSafetyTest(unittest.TestCase):
             data = self.fixture()
             prefix = "yuanhub_agent:" + data["instance"] + ":"
             with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
-                    patch.object(agent, "verify"), patch.object(agent, "mongo") as mongo, \
-                    patch.object(agent, "redis", side_effect=[prefix+"one\n"+prefix+"two", "1", "1"]) as redis:
+                    patch.object(agent, "mongo", side_effect=["owned", "owned", "", ""]) as mongo, \
+                    patch.object(agent, "redis", side_effect=[data["instance"], prefix+"one\n"+prefix+"two\n"+prefix+"agent-test:ownership", "1", "1", "1"]) as redis:
                 agent.cleanup(data, path/"manifest.json")
-                self.assertEqual(2, mongo.call_count)
+                self.assertEqual(4, mongo.call_count)
                 for call in mongo.call_args_list:
                     self.assertIn("agent_test_ownership", call.args[0])
                     self.assertIn("yuanhub_agent_" + data["instance"], call.args[0])
-                self.assertEqual([("DEL", prefix+"one"), ("DEL", prefix+"two")],
-                                 [call.args for call in redis.call_args_list[1:]])
+                self.assertEqual([("DEL", prefix+"one"), ("DEL", prefix+"two"), ("DEL", prefix+"agent-test:ownership")],
+                                 [call.args for call in redis.call_args_list[2:]])
             self.assertFalse(path.exists())
+
+    def test_cleanup_retries_after_first_drop_and_redis_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "owned" / "manifest.json"
+            agent.private_dir(path.parent)
+            data = self.fixture()
+            agent.save(path, data)
+            instance = data["instance"]
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
+                    patch.object(agent, "mongo", side_effect=["owned", "owned", "", agent.Refused("hub down"), "owned", ""]), \
+                    patch.object(agent, "redis", side_effect=[instance, instance, agent.Refused("redis down"), instance, "", "1"]):
+                with self.assertRaises(agent.Refused):
+                    agent.cleanup(data, path)
+                self.assertEqual("deleted", agent.load(path)["resources"]["maa"])
+                with self.assertRaises(agent.Refused):
+                    agent.cleanup(agent.load(path), path)
+                self.assertEqual("deleted", agent.load(path)["resources"]["hub"])
+                agent.cleanup(agent.load(path), path)
+            self.assertFalse(path.parent.exists())
+
+    def test_cleanup_after_setup_fails_before_markers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "owned" / "manifest.json"
+            agent.private_dir(path.parent)
+            data = self.fixture()
+            data["resources"] = {name: "creating" for name in ("maa", "hub", "redis")}
+            agent.save(path, data)
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
+                    patch.object(agent, "mongo", side_effect=["absent", "absent", "", ""]) as mongo, \
+                    patch.object(agent, "redis", return_value="") as redis:
+                agent.cleanup(data, path)
+                self.assertTrue(all("dropDatabase" not in call.args[0] or "if (d.agent_test_ownership.findOne" in call.args[0]
+                                    for call in mongo.call_args_list))
+                self.assertEqual(1, redis.call_count)
+            self.assertFalse(path.parent.exists())
 
     def test_launch_requires_exact_protected_config_in_current_worktree(self):
         with tempfile.TemporaryDirectory() as directory:
