@@ -18,7 +18,13 @@ Docker 使用本机 Unix socket；Mongo 大型测试需要容器 nofile 至少65
 
 ## 独立 CI 与发布
 
-根 .github/workflows 的 frontend-ci/backend-ci 分别构建两端，路径过滤覆盖所属源码、根脚本及共享配置；前端 CI 同时检查后端 API 契约。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
+根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
+
+frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
+
+分支保护切换必须与工作流交付分开：先推送包含新门禁的 PR，确认 GitHub Actions 的 `PR merge gate` 在最新 SHA 成功，再把 main 必需检查从 `Frontend checks and build` 替换为 `PR merge gate`，绑定 GitHub Actions 来源，保留 strict/up-to-date、管理员约束、禁止强推/删除等既有规则，随后合并该 PR。不要保留旧检查名：复用工作流下的检查名称会变化，旧名称会一直等待。其余旧 PR 必须更新到包含新入口的 main 后重新检查。切换前暂停无人值守合并；未提交/推送的本地配置不代表线上门禁已生效。
+
+CI 门禁回归：`python3 scripts/testing/test_monorepo_ci.py`，覆盖模块选择、失败/取消/跳过以及发布开关；不能代替 GitHub 上的实际工作流运行。CI/门禁文件变更属于 L4，自动化不得自行批准或合并这类 PR。本入口不创建发布标签、不触发部署，也不修改仓库部署开关。
 
 前端独立构建 `cd frontend && npm run build`，产品版本来自 frontend/VERSION，产物记录组件版本、Monorepo SHA 和资源信息。后端独立构建 `cd backend && ./gradlew assemble --console=plain`，JAR 记录后端版本与当前树 Git SHA。两端不统一包管理或发布节奏。
 

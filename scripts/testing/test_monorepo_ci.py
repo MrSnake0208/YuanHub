@@ -1,16 +1,88 @@
 """Execute the actual root workflow's request validation without GitHub or SSH."""
 import fnmatch
+import itertools
+import json
 import os
 from pathlib import Path
 import subprocess
 import re
 import textwrap
+import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
 
 
 class MonorepoWorkflowTest(unittest.TestCase):
+    def pr_script(self, step):
+        text = (ROOT / '.github/workflows/pr-ci.yml').read_text()
+        block = text.split(f'      - name: {step}\n', 1)[1]
+        script = re.split(r'\n {0,8}\S', block.split('        run: |\n', 1)[1], maxsplit=1)[0]
+        return textwrap.dedent(script)
+
+    def test_pr_component_selection(self):
+        script = self.pr_script('Select components')
+        cases = [
+            ([], ('false', 'false')),
+            (['docs/guide.md'], ('false', 'false')),
+            (['frontend/src/main.js'], ('true', 'false')),
+            (['backend/build.gradle.kts'], ('false', 'true')),
+            (['backend/src/main/Api.kt'], ('true', 'true')),
+            (['docs/development/testing.md'], ('true', 'true')),
+            (['.github/workflows/backend-ci.yml'], ('true', 'true')),
+            (['scripts/test.sh'], ('true', 'true')),
+            (['unknown-root-config'], ('true', 'true')),
+            (['frontend/a\nb.js'], ('true', 'false')),
+            (['frontend/deleted.js', 'backend/renamed.js'], ('true', 'true')),
+            ([f'docs/{n}.md' for n in range(350)] + ['backend/src/Api.kt'], ('true', 'true')),
+        ]
+        artifacts = ROOT / '.test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=artifacts) as directory:
+            output = Path(directory) / 'output'
+            for paths, expected in cases:
+                with self.subTest(paths=paths[-2:]):
+                    output.write_text('')
+                    raw = b''.join(os.fsencode(path) + b'\0' for path in paths)
+                    with patch('subprocess.check_output', return_value=raw) as git, \
+                            patch.dict(os.environ, GITHUB_OUTPUT=str(output)):
+                        exec(script, {})
+                    git.assert_called_once_with([
+                        'git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD', '--'
+                    ])
+                    self.assertEqual(output.read_text(), f'frontend={expected[0]}\nbackend={expected[1]}\n')
+            with patch('subprocess.check_output', side_effect=subprocess.CalledProcessError(128, 'git')):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    exec(script, {})
+
+    def test_pr_gate_fails_closed(self):
+        script = self.pr_script('Require all affected checks')
+
+        def check(selection, front, back, changes='success'):
+            needs = {
+                'changes': {'result': changes, 'outputs': selection},
+                'frontend': {'result': front}, 'backend': {'result': back},
+            }
+            return subprocess.run(
+                ['python3', '-c', script], capture_output=True, text=True,
+                env=dict(os.environ, NEEDS_JSON=json.dumps(needs)),
+            ).returncode
+
+        for front_required, back_required in itertools.product(('true', 'false'), repeat=2):
+            selection = {'frontend': front_required, 'backend': back_required}
+            for front, back in itertools.product(('success', 'failure', 'cancelled', 'skipped'), repeat=2):
+                expected = (
+                    front == ('success' if front_required == 'true' else 'skipped') and
+                    back == ('success' if back_required == 'true' else 'skipped')
+                )
+                with self.subTest(selection=selection, frontend=front, backend=back):
+                    self.assertEqual(check(selection, front, back) == 0, expected)
+        for status in ('failure', 'cancelled', 'skipped'):
+            self.assertNotEqual(check({'frontend': 'false', 'backend': 'false'}, 'skipped', 'skipped', status), 0)
+        for invalid in ({}, {'frontend': '', 'backend': 'false'}, {'frontend': 'false', 'backend': 'unknown'}):
+            self.assertNotEqual(check(invalid, 'skipped', 'skipped'), 0)
+
     def test_promo_push_filter_covers_its_build_directory(self):
         workflow='.github/workflows/promo-site-deploy.yml'
         text=(ROOT/workflow).read_text()
