@@ -1,50 +1,116 @@
 <template>
-  <div class="mail-schedule" :class="{ 'is-enabled': modelValue }">
+  <section class="mail-schedule">
     <div class="schedule-heading">
-      <div><strong>自动累计</strong><p>每天增加 1 封</p></div>
-      <button type="button" class="schedule-switch" role="switch" :aria-checked="!!modelValue" :aria-label="`${title}自动累计`" @click="toggle"><span /></button>
+      <div class="schedule-title"><h4>{{ coins ? '白金币月卡' : '符传月卡' }}</h4><span class="schedule-badge">{{ !modelValue ? '未开启' : editing ? '设置中' : daysLeft > 0 ? '自动累计中' : '已到期' }}</span></div>
+      <button v-if="!modelValue" type="button" class="schedule-action" :aria-label="`${title}设置自动累计`" @click="enable">设置 <ChevronRight :size="16" aria-hidden="true" /></button>
     </div>
+    <div v-if="modelValue && !editing" class="schedule-overview">
+      <p class="schedule-countdown">剩余 <strong>{{ daysLeft }}</strong> 天</p>
+      <button type="button" class="schedule-action" :aria-label="`修改${title}月卡天数`" @click="edit">修改 <ChevronRight :size="16" aria-hidden="true" /></button>
+    </div>
+    <slot />
     <template v-if="modelValue">
-      <label v-if="coins && (coinOptions.length > 1 || !coinOptions.includes(modelValue.coins_per_mail))" class="schedule-reward">累计到哪组邮件
-        <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
-      </label>
-      <div class="schedule-dates">
-        <label>首次累计日期<input type="date" :aria-label="`${title}首次累计日期`" :value="modelValue.start_date" :min="minimumStart || today" :max="maximumEnd" required @input="update('start_date', $event.target.value)" /></label>
-        <label>截止日期（含当天）<input type="date" :aria-label="`${title}截止日期`" :value="modelValue.end_date" :min="modelValue.start_date" :max="maximumEnd" required @input="update('end_date', $event.target.value)" /></label>
+      <div v-if="editing" class="schedule-editor">
+        <label class="schedule-days">月卡剩余天数
+          <span class="schedule-number"><input ref="daysInput" v-model="remainingDays" type="number" min="1" :max="maximumDays" step="1" inputmode="numeric" required placeholder="例如 285" :aria-label="`${title}月卡剩余天数`" :aria-describedby="touched && daysError ? hintId : undefined" :aria-invalid="touched && !!daysError" @input="updateDays($event.target.value)" /><span>天</span></span>
+        </label>
+        <p v-if="touched && daysError" :id="hintId" class="schedule-error" role="alert">{{ daysError }}</p>
+        <fieldset class="schedule-claim"><legend>今天的月卡邮件领了吗？</legend>
+          <div class="schedule-options">
+            <label v-for="option in claimOptions" :key="option.value" :class="{ selected: claimedToday === option.value }">
+              <input v-model="claimedToday" type="radio" :name="hintId" :value="option.value" required :aria-label="`${title}${option.label}`" @change="setClaimedToday(option.value)" />{{ option.label }}
+            </label>
+          </div>
+        </fieldset>
+        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天这封会计入待领邮件；已累计过的不会重复增加。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : '请选择今天的领取状态。' }}</p>
+        <label v-if="coins && (coinOptions.length > 1 || !coinOptions.includes(modelValue.coins_per_mail))" class="schedule-reward">累计到哪组邮件
+          <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
+        </label>
       </div>
-      <p v-if="modelValue.end_date && modelValue.end_date < today" class="schedule-preview">已到期，已有邮件保留。延长后从当前业务日继续，不补到期期间。</p>
-      <p v-else-if="modelValue.start_date && modelValue.end_date" class="schedule-preview">{{ startLabel }}每天增加 1 封，{{ modelValue.end_date }} 后停止。</p>
-      <p v-else class="schedule-preview">请选择截止日期，包含当天。</p>
-      <p v-if="modelValue.start_date === today && !minimumStart" class="schedule-preview">今天会额外增加 1 封，请确认未包含在当前封数中。</p>
+      <div class="schedule-footnote"><p class="schedule-note">{{ daysLeft === 0 && !editing ? '已停止累计，已有邮件保留。' : '每天北京时间 05:00 更新，剩余 0 天时停止。' }}</p><button type="button" class="schedule-action schedule-stop" :aria-label="`停止${title}自动累计`" @click="stop">停止累计</button></div>
     </template>
-  </div>
+  </section>
 </template>
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
+import { ChevronRight } from '@lucide/vue'
 import { addCalendarDays } from '../../utils/businessDay.js'
-const props = defineProps({ modelValue: { type: Object, default: null }, title: String, today: String, minimumStart: String, coinOptions: { type: Array, default: () => [] }, coins: Boolean })
-const emit = defineEmits(['update:modelValue'])
-const maximumEnd = computed(() => `${Number(props.today.slice(0, 4)) + 10}${props.today.slice(4)}`)
-const startLabel = computed(() => props.modelValue.start_date === addCalendarDays(props.today, 1) ? '从明天起' : `从 ${props.modelValue.start_date} 起`)
+const props = defineProps({ modelValue: { type: Object, default: null }, title: String, today: String, coinOptions: { type: Array, default: () => [] }, coins: Boolean })
+const emit = defineEmits(['update:modelValue', 'status'])
+const editing = ref(!!props.modelValue && !props.modelValue.end_date)
+const remainingDays = ref(''), claimedToday = ref(''), touched = ref(false), daysInput = ref(null)
+const hintId = useId()
+const claimOptions = [{ value: 'no', label: '还没领取' }, { value: 'yes', label: '已经领取' }]
+const daysLeft = computed(() => Math.max(0, Math.round((Date.parse(props.modelValue?.end_date) - Date.parse(props.today)) / 86400000)) || 0)
+const maximumEnd = computed(() => {
+  const year = Number(props.today.slice(0, 4)) + 10
+  return addCalendarDays(`${year}${props.today.slice(4)}`, 0) || `${year}-02-28`
+})
+const maximumDays = computed(() => Math.round((Date.parse(maximumEnd.value) - Date.parse(props.today)) / 86400000))
+const daysError = computed(() => {
+  const days = Number(remainingDays.value)
+  return Number.isInteger(days) && days >= 1 && days <= maximumDays.value ? '' : `请输入 1–${maximumDays.value} 的整数天数。`
+})
+watch([editing, daysError, claimedToday, touched], () => emit('status', {
+  editing: editing.value,
+  valid: !editing.value || !daysError.value && !!claimedToday.value,
+  dirty: editing.value && touched.value
+}), { immediate: true })
 function update(key, value) { emit('update:modelValue', { ...props.modelValue, [key]: value }) }
-function toggle() {
-  emit('update:modelValue', props.modelValue ? null : { start_date: addCalendarDays(props.today, 1), end_date: '', ...(props.coins ? { coins_per_mail: props.coinOptions[0] || 90 } : {}) })
+function updateDays(value) {
+  remainingDays.value = value
+  touched.value = true
+  update('end_date', daysError.value ? '' : addCalendarDays(props.today, Number(value)))
+}
+function setClaimedToday(value) {
+  touched.value = true
+  update('start_date', value === 'yes' ? addCalendarDays(props.today, 1) : props.today)
+}
+async function edit() {
+  remainingDays.value = daysLeft.value || ''
+  claimedToday.value = ''
+  touched.value = false
+  editing.value = true
+  await nextTick()
+  daysInput.value?.focus()
+}
+function enable() {
+  emit('update:modelValue', { start_date: addCalendarDays(props.today, 1), end_date: '', ...(props.coins ? { coins_per_mail: props.coinOptions[0] || 90 } : {}) })
+  edit()
+}
+function stop() {
+  editing.value = false
+  touched.value = false
+  emit('update:modelValue', null)
 }
 </script>
 <style scoped>
 .mail-schedule { min-width: 0; }
-.mail-schedule.is-enabled { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--paper) 48%, var(--surface)); }
-.schedule-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
-.schedule-heading strong { font-size: 16px; }
-.schedule-heading p, .schedule-preview { color: var(--ink-60); font-size: 13px; line-height: 1.65; margin: 0; }
-.schedule-switch { flex: none; width: 46px; height: 27px; min-height: 0; padding: 3px; border: 0; border-radius: 20px; background: var(--line); cursor: pointer; }
-.schedule-switch span { display: block; width: 21px; height: 21px; border-radius: 50%; background: var(--surface); }
-.schedule-switch[aria-checked=true] { background: var(--theme-control-bg, var(--tea)); }
-.schedule-switch[aria-checked=true] span { transform: translateX(19px); background: var(--on-strong, #fff8ec); }
-.schedule-dates { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 14px 0 10px; }
-.schedule-dates label, .schedule-reward { display: grid; gap: 6px; min-width: 0; font-size: 14px; }
-.schedule-reward { margin-top: 12px; }
-.schedule-dates input, select { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 42px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 16px var(--font-b); }
+.schedule-heading, .schedule-title, .schedule-overview, .schedule-footnote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.schedule-title { justify-content: flex-start; }
+.schedule-title h4 { margin: 0; font: 750 21px/1.5 var(--font-s); }
+.schedule-badge { padding: 3px 10px; border-radius: 20px; background: var(--cream); color: var(--ink-60); font-size: 12px; }
+.schedule-action { display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 6px 0; border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); font: 14px/1.5 var(--font-b); cursor: pointer; }
+.schedule-overview { margin-top: 14px; }
+.schedule-countdown { margin: 0; font-size: 16px; }
+.schedule-countdown strong { margin-inline: 4px; font: 600 38px/1.2 var(--font-d); color: var(--theme-strong-text, var(--tea)); font-variant-numeric: tabular-nums; }
+.schedule-editor { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.schedule-days, .schedule-reward { display: grid; gap: 6px; font-size: 14px; }
+.schedule-number { display: flex; align-items: center; width: min(100%, 250px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.schedule-number input[type=number] { border: 0; border-radius: 0; width: 100%; min-width: 0; min-height: 42px; padding: 8px 12px; background: var(--surface); color: var(--ink); font: 22px var(--font-d); }
+.schedule-number > span { padding: 10px 14px; border-left: 1px solid var(--line); }
+.schedule-number:focus-within { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }
+.schedule-claim { margin: 0; padding: 0; border: 0; min-width: 0; }
+.schedule-claim legend { margin-bottom: 8px; font-size: 14px; }
+.schedule-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.schedule-options label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 6px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; cursor: pointer; }
+.schedule-options label.selected { border-color: var(--theme-strong-text, var(--tea)); background: var(--cream); }
+.schedule-options input[type=radio] { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--theme-control-bg, var(--tea)); }
+.schedule-footnote { margin-top: 12px; }
+.schedule-note { margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.schedule-error { margin: 0; color: var(--theme-danger-text, var(--rouge)); font-size: 13px; }
+.schedule-stop { font-size: 12px; color: var(--ink-60); }
 :is(button, input, select):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
-@media (min-width: 768px) { .schedule-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.schedule-number input:focus-visible { outline: 0; }
+@media (max-width: 380px) { .schedule-title h4 { font-size: 18px; } .schedule-options label { gap: 5px; } }
 </style>

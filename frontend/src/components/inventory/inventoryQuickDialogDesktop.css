@@ -4,11 +4,12 @@
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
 h3 { margin: 0; font: 800 20px/1.5 var(--font-s); }
 header button { display: grid; place-items: center; flex: none; min-width: 44px; min-height: 44px; padding: 8px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.quick-dialog-footer { flex: none; padding: 14px 20px; border-top: 1px solid var(--line); }
 .quick-dialog-body { padding: 18px 20px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 :deep(form) { display: grid; gap: 16px; min-width: 0; }
 :deep(fieldset) { min-width: 0; margin: 0; padding: 0; border: 0; }
 :deep(label) { display: grid; gap: 6px; min-width: 0; }
-:deep(input:not([type=checkbox])), :deep(select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; font-size: 16px; }
+:deep(input:not([type=checkbox]):not([type=radio])), :deep(select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; font-size: 16px; }
 :deep(p) { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
 :deep(.panel-fields) { display: grid; gap: 14px; }
 :deep(.panel-actions) { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
