@@ -57,6 +57,7 @@ class MailboxReserveControllerContractTest {
         every { helper.requireUserId() } returns "owner"
         every { accrual.settle("owner", "a") } returns MailboxReserve()
         every { accrual.schedule(any(), any(), any()) } answers { secondArg() }
+        every { accrual.recognizeManualToday(any(), any(), any(), any()) } answers { arg(2) }
         every { accrual.validateCapacity(any()) } returns Unit
         every { accrual.reduce(any(), any(), any(), any(), any()) } returns Unit
         every { accounts.requireAccount("owner", "a") } returns account

@@ -37,8 +37,16 @@ class MailboxReserveService(
         fields(
             body,
             setOf("expected_version", "white_coin_mails", "fu_chuan_mail_count") +
-                setOf("white_coin_schedule", "fu_chuan_schedule").filter { body.has(it) },
+                setOf("white_coin_schedule", "fu_chuan_schedule", "manual_today_included").filter { body.has(it) },
         )
+        val included = body.get("manual_today_included")?.let { node ->
+            if (!node.isArray || node.any { !it.isTextual || it.asText() !in setOf("coins", "tickets") } ||
+                node.map { it.asText() }.toSet().size != node.size()
+            ) {
+                invalid("今日已计入封数的邮件类型无效")
+            }
+            node.map { it.asText() }.toSet()
+        } ?: emptySet()
         val expected = body.path("expected_version")
         if (!expected.isIntegralNumber || !expected.canConvertToLong() || expected.longValue() !in 0L until 9007199254740991L) {
             invalid("储备版本不正确，请重新读取")
@@ -69,7 +77,12 @@ class MailboxReserveService(
                     return@execute MailboxReserveResponse.of(accountId, previous)
                 }
                 val now = maxOf(clock.instant().truncatedTo(ChronoUnit.MILLIS), previous.updatedAt ?: java.time.Instant.MIN)
-                val reserve = MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule)
+                val reserve = accrual?.recognizeManualToday(
+                    userId,
+                    accountId,
+                    MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule),
+                    included,
+                ) ?: MailboxReserve(mails, tickets, previous.version + 1, now, coinSchedule, ticketSchedule)
                 accrual?.validateCapacity(reserve)
                 val account = repository.replaceMailboxReserve(userId, accountId, previous.version, reserve) ?: conflict()
                 accrual?.reduce(userId, accountId, previous, reserve, "adjusted")

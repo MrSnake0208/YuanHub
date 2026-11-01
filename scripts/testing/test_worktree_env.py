@@ -43,7 +43,7 @@ class WorktreeEnvironmentTest(unittest.TestCase):
             (root/'backend/scripts/dev-up.sh').write_text(
                 "python3 - <<'CHECK'\nimport json, os\n"
                 "print(json.dumps({k:v for k,v in os.environ.items() if k.startswith(('SPRING_', 'SHARE_', 'YUANHUB_BETA_'))}))\nCHECK\nexit 23\n")
-            result = subprocess.run(['bash', 'dev.sh', 'all'], cwd=root, capture_output=True, text=True,
+            result = subprocess.run(['bash', 'dev.sh', 'containers', 'all'], cwd=root, capture_output=True, text=True,
                 env=dict(os.environ, SPRING_CONFIG_LOCATION='file:/production.yml',
                          SHARE_MONGO_HUB_URI='mongodb://production/real', YUANHUB_BETA_CAMPAIGN_ID='production'))
             self.assertEqual(23, result.returncode, result.stderr)
@@ -69,7 +69,7 @@ class WorktreeEnvironmentTest(unittest.TestCase):
             self.assertNotEqual(a['project'], b['project'])
             self.assertNotEqual(a['jwt'], b['jwt'])
             self.assertEqual(len(set(a['ports'].values())), 4)
-            values = env.exports(a)
+            values = env.exports(a, 'containers')
             self.assertIn(f":{a['ports']['mongo']}/yuanhub_local_maa?", values['SPRING_DATA_MONGODB_URI'])
             self.assertIn('directConnection=true', values['SHARE_MONGO_HUB_URI'])
             self.assertNotIn('MaaBackend', values['SPRING_DATA_MONGODB_URI'])
@@ -78,6 +78,33 @@ class WorktreeEnvironmentTest(unittest.TestCase):
             self.assertEqual('127.0.0.1', values['SERVER_ADDRESS'])
             self.assertEqual(0o600, (roots[0]/'.dev/instance.json').stat().st_mode & 0o777)
             self.assertTrue(values['SHARE_MEDIA_DIR'].startswith(str(roots[0].resolve())))
+
+    def test_local_instances_use_existing_data_but_keep_app_ports_and_jwt_separate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            roots = [Path(directory)/name for name in ('task-a', 'task-b')]
+            for root in roots:
+                root.mkdir()
+            a, b = [env.exports(env.configuration(root)) for root in roots]
+            for item in (a, b):
+                self.assertEqual('mongodb://127.0.0.1:27017/MaaBackend?replicaSet=rs0&directConnection=true', item['SPRING_DATA_MONGODB_URI'])
+                self.assertEqual('mongodb://127.0.0.1:27017/HubBackend?replicaSet=rs0&directConnection=true', item['SHARE_MONGO_HUB_URI'])
+                self.assertEqual('6379', item['SPRING_DATA_REDIS_PORT'])
+                self.assertEqual('0', item['SPRING_DATA_REDIS_DATABASE'])
+                self.assertNotIn('SHARE_LOCAL_REDIS_KEY_PREFIX', item)
+            for key in ('YUANHUB_FRONTEND_PORT', 'SERVER_PORT', 'SHARE_JWT_SECRET'):
+                self.assertNotEqual(a[key], b[key])
+
+    def test_local_launcher_never_calls_docker_when_services_are_unavailable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(['git', 'init', '-q', directory], check=True)
+            (root/'scripts').mkdir()
+            shutil.copy(MODULE, root/'scripts/worktree_env.py')
+            shutil.copy(MODULE.parents[1]/'dev.sh', root/'dev.sh')
+            (root/'scripts/check_local_services.py').write_text('raise SystemExit(23)\n')
+            result = subprocess.run(['bash', 'dev.sh'], cwd=root, capture_output=True, text=True)
+            self.assertEqual(23, result.returncode, result.stderr)
+            self.assertNotIn('Docker', result.stdout)
 
 
 if __name__ == '__main__':

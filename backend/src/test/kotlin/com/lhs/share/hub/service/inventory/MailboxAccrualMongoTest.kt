@@ -110,8 +110,9 @@ class MailboxAccrualMongoTest {
         version: Long = 0,
         count: Int = 0,
         schedule: String = """{"start_date":"2026-11-01","end_date":"2026-11-03","coins_per_mail":90}""",
+        included: String = "",
     ) = mapper.readTree(
-        """{"expected_version":$version,"white_coin_mails":[{"count":$count,"coins_per_mail":90}],"fu_chuan_mail_count":0,"white_coin_schedule":$schedule,"fu_chuan_schedule":null}""",
+        """{"expected_version":$version,"white_coin_mails":[{"count":$count,"coins_per_mail":90}],"fu_chuan_mail_count":0,"white_coin_schedule":$schedule,"fu_chuan_schedule":null$included}""",
     )
     private fun daily(day: String = "2026-11-01", amount: Long = 90) = InventoryImportRequest(
         "myshare-inventory-exchange",
@@ -156,7 +157,10 @@ class MailboxAccrualMongoTest {
 
     @Test
     fun `daily record consumes mail atomically retry is duplicate and bulk does not consume it again`() {
-        service.save("owner", "a", config(count = 2))
+        time = Instant.parse("2026-10-31T06:00:00Z")
+        val manual = service.save("owner", "a", config(count = 2, schedule = "null"))
+        time = Instant.parse("2026-11-01T06:00:00Z")
+        service.save("owner", "a", config(manual.version, count = 2))
         inventory.import("owner", daily())
         assertEquals(90L, balance())
         assertEquals(2, service.get("owner", "a").whiteCoinMails.single().count)
@@ -166,6 +170,105 @@ class MailboxAccrualMongoTest {
         claims.claim("owner", "a", claim(version))
         claims.claim("owner", "a", claim(version))
         assertEquals(270L, balance())
+    }
+
+    @Test
+    fun `same day manual count is recognized once and next business day still accrues`() {
+        val manual = service.save("owner", "a", config(count = 2, schedule = "null"))
+        val saved = service.save("owner", "a", config(manual.version, count = 2, included = ",\"manual_today_included\":[\"coins\"]"))
+        assertEquals(2, saved.whiteCoinMails.single().count)
+        assertEquals(false, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+        assertEquals("pending", template.findAll(MailboxDelivery::class.java).single().state)
+        assertEquals(saved.version, accrual.sync("owner", "a").version)
+        assertEquals(saved.version, service.save("owner", "a", config(saved.version, count = 2)).version)
+        time = Instant.parse("2026-11-02T20:59:59Z")
+        assertEquals(3, accrual.sync("owner", "a").whiteCoinMails.single().count)
+        time = Instant.parse("2026-11-02T21:00:00Z")
+        assertEquals(4, accrual.sync("owner", "a").whiteCoinMails.single().count)
+        assertEquals(3, template.findAll(MailboxDelivery::class.java).size)
+    }
+
+    @Test
+    fun `manual included mail is claimed once through daily entry without another accrual`() {
+        val manual = service.save("owner", "a", config(count = 2, schedule = "null"))
+        val saved = service.save("owner", "a", config(manual.version, count = 2, included = ",\"manual_today_included\":[\"coins\"]"))
+        assertEquals(2, saved.whiteCoinMails.single().count)
+        assertEquals(saved.version, accrual.sync("owner", "a").version)
+        assertEquals(false, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+
+        assertEquals(1, inventory.import("owner", daily()).accepted)
+        assertEquals(1, service.get("owner", "a").whiteCoinMails.single().count)
+        assertEquals(90L, balance())
+        assertEquals("claimed", template.findAll(MailboxDelivery::class.java).single().state)
+        assertEquals(true, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+
+        val version = service.get("owner", "a").version
+        val historyCount = historyRepository.count()
+        assertEquals(1, inventory.import("owner", daily()).duplicates)
+        assertEquals(version, service.get("owner", "a").version)
+        assertEquals(historyCount, historyRepository.count())
+        assertEquals(1, service.get("owner", "a").whiteCoinMails.single().count)
+        assertEquals(90L, balance())
+    }
+
+    @Test
+    fun `same day old baseline with explicit unclaimed choice accrues today`() {
+        val old = service.save("owner", "a", config(count = 2, schedule = "null"))
+        val saved = service.save("owner", "a", config(old.version, count = 2))
+        assertEquals(3, saved.whiteCoinMails.single().count)
+        assertEquals(false, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+        assertEquals("pending", template.findAll(MailboxDelivery::class.java).single().state)
+        assertEquals(saved.version, accrual.sync("owner", "a").version)
+    }
+
+    @Test
+    fun `same save manual count accounts for coins and tickets without double delivery`() {
+        val request = mapper.readTree(
+            """{"expected_version":0,"white_coin_mails":[{"count":1,"coins_per_mail":90}],"fu_chuan_mail_count":1,"white_coin_schedule":{"start_date":"2026-11-01","end_date":"2026-11-02","coins_per_mail":90},"fu_chuan_schedule":{"start_date":"2026-11-01","end_date":"2026-11-02"},"manual_today_included":["coins","tickets"]}""",
+        )
+        val saved = service.save("owner", "a", request)
+        assertEquals(1, saved.whiteCoinMails.single().count)
+        assertEquals(1, saved.fuChuanMailCount)
+        assertEquals(listOf("pending", "pending"), template.findAll(MailboxDelivery::class.java).map { it.state }.sorted())
+        assertEquals(saved.version, accrual.sync("owner", "a").version)
+        inventory.import("owner", daily())
+        assertEquals(0, service.get("owner", "a").whiteCoinMails.single().count)
+        assertEquals(1, service.get("owner", "a").fuChuanMailCount)
+        val states = template.findAll(MailboxDelivery::class.java).associate { it.type to it.state }
+        assertEquals(mapOf("coins" to "claimed", "tickets" to "pending"), states)
+    }
+
+    @Test
+    fun `same day reduction is not mistaken for a manual receipt`() {
+        time = Instant.parse("2026-10-31T06:00:00Z")
+        val old = service.save("owner", "a", config(count = 2, schedule = "null"))
+        time = Instant.parse("2026-11-01T06:00:00Z")
+        val reduced = service.save("owner", "a", config(old.version, count = 1, schedule = "null"))
+        val scheduled = service.save("owner", "a", config(reduced.version, count = 1))
+        assertEquals(2, scheduled.whiteCoinMails.single().count)
+        assertEquals("pending", template.findAll(MailboxDelivery::class.java).single().state)
+    }
+
+    @Test
+    fun `manual receipt evidence follows the five oclock business boundary`() {
+        time = Instant.parse("2026-11-01T20:59:59Z")
+        val yesterday = service.save("owner", "a", config(count = 1, schedule = "null"))
+        time = Instant.parse("2026-11-01T21:00:00Z")
+        val schedule = """{"start_date":"2026-11-02","end_date":"2026-11-03","coins_per_mail":90}"""
+        assertEquals(2, service.save("owner", "a", config(yesterday.version, 1, schedule)).whiteCoinMails.single().count)
+        val today = service.save("owner", "b", config(count = 1, schedule = "null"))
+        assertEquals(
+            1,
+            service.save(
+                "owner",
+                "b",
+                config(today.version, 1, schedule, ",\"manual_today_included\":[\"coins\"]"),
+            ).whiteCoinMails.single().count,
+        )
+        assertEquals(
+            mapOf("a" to "pending", "b" to "pending"),
+            template.findAll(MailboxDelivery::class.java).associate { it.accountId to it.state },
+        )
     }
 
     @Test
@@ -204,6 +307,33 @@ class MailboxAccrualMongoTest {
         assertEquals(0, service.get("other", "a").whiteCoinMails.size)
         assertThrows(InventoryApiException::class.java) { accrual.sync("stranger", "a") }
         assertThrows(InventoryApiException::class.java) { accrual.dailyStatus("stranger", "a", "2026-11-01") }
+    }
+
+    @Test
+    fun `manual inclusion never reopens a previously recorded daily receipt`() {
+        inventory.import("owner", daily())
+        val saved = service.save("owner", "a", config(count = 1, included = ",\"manual_today_included\":[\"coins\"]"))
+        assertEquals(1, saved.whiteCoinMails.single().count)
+        assertEquals("claimed", template.findAll(MailboxDelivery::class.java).single().state)
+        assertEquals(true, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+        assertEquals(1, inventory.import("owner", daily()).duplicates)
+        assertEquals(1, service.get("owner", "a").whiteCoinMails.single().count)
+        assertEquals(90L, balance())
+    }
+
+    @Test
+    fun `claimed delivery stays claimed after schedule is stopped and restarted`() {
+        service.save("owner", "a", config())
+        inventory.import("owner", daily())
+        val stopped = service.save("owner", "a", config(service.get("owner", "a").version, count = 0, schedule = "null"))
+        val manual = service.save("owner", "a", config(stopped.version, count = 1, schedule = "null"))
+        val restarted = service.save("owner", "a", config(manual.version, count = 1, included = ",\"manual_today_included\":[\"coins\"]"))
+        assertEquals(1, restarted.whiteCoinMails.single().count)
+        assertEquals("claimed", template.findAll(MailboxDelivery::class.java).single().state)
+        assertEquals(true, accrual.dailyStatus("owner", "a", "2026-11-01")["monthly_claimed"])
+        assertEquals(1, inventory.import("owner", daily()).duplicates)
+        assertEquals(1, service.get("owner", "a").whiteCoinMails.single().count)
+        assertEquals(90L, balance())
     }
 
     @Test
