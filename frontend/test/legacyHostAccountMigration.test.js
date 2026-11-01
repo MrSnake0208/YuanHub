@@ -83,7 +83,7 @@ test("star page runs legacy migration before embedded host-account sync", functi
     "utf8",
   );
 
-  const syncStart = page.indexOf("async function syncHostAccount()");
+  const syncStart = page.indexOf("async function syncHostAccount(");
   const syncMigration = page.indexOf(
     "await migrateLegacyYuanStarHostAccount(host)",
     syncStart,

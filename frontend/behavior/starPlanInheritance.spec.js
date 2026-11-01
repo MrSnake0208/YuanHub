@@ -6,6 +6,12 @@ import {createStarCloudCoordinator} from '../src/pages/star/starCloudCoordinator
 const workbook=readFileSync('public/yuanstar-embed/reference/YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx')
 let root,handle,serial=0,db
 const settle=()=>new Promise(resolve=>setTimeout(resolve,80))
+async function inheritanceDialog() {
+ let node
+ await vi.waitFor(()=>{node=document.querySelector('.plan-inheritance-dialog');expect(node).not.toBeNull()},{timeout:3000,interval:20})
+ return node
+}
+async function clickInheritance(selector) { (await inheritanceDialog()).querySelector(selector).click() }
 const request=r=>new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})
 const transact=async(fn)=>{const tx=db.transaction(['meta','restorePoints','workspaces'],'readwrite');const done=new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});fn(tx);await done}
 afterEach(async()=>{await handle?.dispose();db?.close();root?.remove();handle=null;vi.unstubAllGlobals()})
@@ -41,13 +47,13 @@ it.each([409,422])('real embed + host: rejected plan %i retains the old plan and
  const key='product.pendingPlanInheritance:'+account.accountId
  const source=await request(db.transaction('restorePoints').objectStore('restorePoints').get([account.accountId,'source']))
  handle.setActiveTab('review');handle.setReviewView('plan');await settle()
- document.querySelector('[data-inheritance-confirm]').click();await settle()
+ await clickInheritance('[data-inheritance-confirm]');await settle()
  const pending=await request(db.transaction('meta').objectStore('meta').get(key))
  expect(pending.phase).toBe('pending');expect(pending.confirmation).toBeUndefined()
  expect(localStorage.getItem('yuanhub.star-plan-pending:'+account.accountId)).toBeNull()
  await coordinator.enter(handle);await settle()
  rejected=false;root.querySelector('[data-open-pending-plan]').click();await settle()
- document.querySelector('[data-inheritance-confirm]').click();await settle()
+ await clickInheritance('[data-inheritance-confirm]');await settle()
  expect(patchState).toHaveBeenCalledTimes(2)
  expect(await request(db.transaction('meta').objectStore('meta').get(key))).toBeUndefined()
  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({new:60})
@@ -57,7 +63,7 @@ it.each([409,422])('real embed + host: rejected plan %i retains the old plan and
 it.each([new TypeError('network lost'),Object.assign(new Error('identity changed'),{status:401,code:'request_identity_changed'})])('real embed + host: uncertain plan keeps its durable confirmation (%s)',async failure=>{
  const {account}=await fixture(false,{getState:async()=>cloudState(),patchState:async()=>{throw failure}})
  handle.setActiveTab('review');handle.setReviewView('plan');await settle()
- document.querySelector('[data-inheritance-confirm]').click();await settle()
+ await clickInheritance('[data-inheritance-confirm]');await settle()
  expect((await request(db.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))).confirmation).toBeTruthy()
  expect(localStorage.getItem('yuanhub.star-plan-pending:'+account.accountId)).not.toBeNull()
  expect(root.querySelector('[data-discard-pending-plan]')).toBeNull()
@@ -69,10 +75,10 @@ it.each([false,true])('real embed + host: failed preflight GET sends no PATCH an
  const {account,coordinator}=await fixture(false,{getState:async()=>{if(failRead) throw new TypeError('read offline');return cloudState()},patchState})
  handle.setActiveTab('review');handle.setReviewView('plan');await settle()
  if(emptyPlan){
-  document.querySelector('.plan-inheritance-dialog .soft-dropdown-trigger').click()
+  (await inheritanceDialog()).querySelector('.soft-dropdown-trigger').click()
   document.querySelector('.plan-inheritance-dialog .yuanstar-dropdown-portal [role="option"]').click()
  }
- failRead=true;document.querySelector('[data-inheritance-confirm]').click();await settle()
+ failRead=true;await clickInheritance('[data-inheritance-confirm]');await settle()
  const key='product.pendingPlanInheritance:'+account.accountId
  expect(patchState).not.toHaveBeenCalled()
  expect((await request(db.transaction('meta').objectStore('meta').get(key))).confirmation).toBeUndefined()
@@ -99,14 +105,51 @@ it('real embed + host: explicitly rejected OCR releases only its prepared marker
  expect(document.querySelector('.plan-inheritance-dialog')).toBeNull()
  expect(root.textContent).not.toContain('保存结果待确认')
 })
+
+it('real embed + host: ordinary conflict recovery hydrates IDB without clearing plan inheritance or OCR recovery points',async()=>{
+ let current=cloudState(),rejected=true
+ const patchState=vi.fn(async(_account,body)=>{
+  if(rejected) throw Object.assign(Error('conflict'),{status:409})
+  expect(body.expected_generation).toBe(current.generation);expect(body.expected_revision).toBe(current.revision)
+  current={...current,revision:current.revision+1,inventory:body.inventory,plan_targets:body.plan_targets,experience:body.experience,bag:body.bag}
+  return {state:current}
+ })
+ const {account,coordinator}=await fixture(false,{getState:async()=>current,patchState})
+ const planKey='product.pendingPlanInheritance:'+account.accountId
+ const pendingPlan=await request(db.transaction('meta').objectStore('meta').get(planKey))
+ const source=await request(db.transaction('restorePoints').objectStore('restorePoints').get([account.accountId,'source']))
+ const local={...await handle.getCloudBusinessSnapshot(),bag:{currentCount:2,capacity:100}}
+ await handle.applyCloudBusinessSnapshot(local)
+ expect(coordinator.committed({accountId:account.accountId,snapshot:local})).toBe(true);await settle()
+ current={...current,revision:6,inventory:current.inventory.map(star=>({...star,level:55}))}
+ expect(patchState).toHaveBeenCalledTimes(1)
+ const writerKey='yuanhub.star-state:'+account.accountId,pendingRaw=localStorage.getItem(writerKey)
+ expect(await coordinator.discardAndReload()).toBe(true)
+ expect(patchState).toHaveBeenCalledTimes(1)
+ expect(localStorage.getItem(writerKey)).toBeNull()
+ const hydrated=await handle.getCloudBusinessSnapshot()
+ expect(hydrated.inventory[0].level).toBe(55);expect(hydrated.bag.currentCount).toBe(1)
+ expect((await request(db.transaction('workspaces').objectStore('workspaces').get(account.accountId))).snapshot.inventory[0].level).toBe(55)
+ expect(await request(db.transaction('meta').objectStore('meta').get(planKey))).toEqual(pendingPlan)
+ expect(await request(db.transaction('restorePoints').objectStore('restorePoints').get([account.accountId,'source']))).toEqual(source)
+ const backupKey=Object.keys(localStorage).find(key=>key.startsWith('yuanhub.star-state-backup:'+account.accountId+':'))
+ expect(JSON.parse(localStorage.getItem(backupKey)).pendingRaw).toBe(pendingRaw)
+ rejected=false
+ const edited={...hydrated,inventory:hydrated.inventory.map(star=>({...star,level:56}))}
+ await handle.applyCloudBusinessSnapshot(edited)
+ coordinator.committed({accountId:account.accountId,snapshot:edited});await settle()
+ expect(patchState.mock.calls.at(-1)[1].expected_revision).toBe(6)
+ expect(current.inventory[0].level).toBe(56)
+ expect(coordinator.needsRetry()).toBe(false)
+})
 it('bag remains editable, entering plan opens current-inventory preview; cancel keeps pending and confirm PATCHes only plans',async()=>{
  const {account,patch}=await fixture();handle.setActiveTab('review');await settle()
  expect(document.querySelector('.plan-inheritance-dialog')).toBeNull()
  handle.setReviewView('plan');await settle()
- expect(document.querySelector('.plan-inheritance-dialog').textContent).toContain('当前 50级')
- document.querySelector('[data-inheritance-cancel]').click();await settle()
+ expect((await inheritanceDialog()).textContent).toContain('当前 50级')
+ await clickInheritance('[data-inheritance-cancel]');await settle()
  expect(root.textContent).toContain('旧养成计划待处理');expect(patch).not.toHaveBeenCalled()
- root.querySelector('[data-open-pending-plan]').click();await settle();document.querySelector('[data-inheritance-confirm]').click();await settle()
+ root.querySelector('[data-open-pending-plan]').click();await settle();await clickInheritance('[data-inheritance-confirm]');await settle()
  expect(patch).toHaveBeenCalledTimes(1);const sent=patch.mock.calls[0][0]
  expect(sent.inventory[0].level).toBe(50);expect(sent.planTargets).toEqual({new:60});expect(sent.experience).toEqual({orange:1,purple:2,white:3})
  expect(await request(db.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))).toBeUndefined()
@@ -123,7 +166,7 @@ it('four-field group layout reuses soft controls; reselect is inert, occupied ca
  const old={...record.snapshot,inventory:record.snapshot.inventory.slice(0,4).map((star,i)=>({...star,starInstanceId:'old-'+i,level:[60,50,1,1][i]})),planTargets:{'old-1':60,'old-2':60,'old-3':50},growthRouteOrder:['old-1','old-2','old-3']}
  await transact(tx=>{tx.objectStore('restorePoints').put({accountId:account.accountId,restorePointId:'source',reason:'pre_ocr_rebuild',createdAt:new Date().toISOString(),workspaceRevision:1,snapshot:old,imageIds:[]});tx.objectStore('meta').put({accountId:account.accountId,sourceRestorePointId:'source',taskId:'ocr-fixture',phase:'pending',cloudGeneration:1,inventoryIds:current.inventory.map(star=>star.starInstanceId),rebuildRevision:1},'product.pendingPlanInheritance:'+account.accountId)})
  handle.setActiveTab('review');handle.setReviewView('plan');await settle()
- const dialog=document.querySelector('.plan-inheritance-dialog'),fields=[...dialog.querySelectorAll('select')],triggers=[...dialog.querySelectorAll('.soft-dropdown-trigger')]
+ const dialog=await inheritanceDialog(),fields=[...dialog.querySelectorAll('select')],triggers=[...dialog.querySelectorAll('.soft-dropdown-trigger')]
  expect(dialog.querySelector('summary').textContent).toBe('天府 · 橙');expect(dialog.querySelector('.inheritance-inventories').textContent).toContain('60级 × 1，50级 × 1，1级 × 2')
  expect(dialog.querySelectorAll('.inheritance-slot')).toHaveLength(3);expect(triggers).toHaveLength(3);expect(dialog.querySelector('[data-inheritance-result]')).toBeNull()
  const changed=vi.fn();fields[0].addEventListener('change',changed)
@@ -143,9 +186,9 @@ it('four-field group layout reuses soft controls; reselect is inert, occupied ca
 })
 it('remount already in plan view reopens durable pending workflow and rejects stale confirmation',async()=>{
  const {options}=await fixture(true);await handle.dispose();handle=mountYuanStar(root,options);await handle.setHostAccount(options.hostAccount);handle.setActiveTab('review');handle.setReviewView('plan');await settle()
- expect(document.querySelector('.plan-inheritance-dialog')).not.toBeNull()
+ expect(await inheritanceDialog()).not.toBeNull()
  await handle.applyCloudBusinessSnapshot({inventory:[{starInstanceId:'new',kind:'主星',name:'天府',quality:'橙',level:55}],planTargets:{},bag:{currentCount:1,capacity:100},experience:{orange:1,purple:2,white:3}})
- document.querySelector('[data-inheritance-confirm]').click();await settle()
+ await clickInheritance('[data-inheritance-confirm]');await settle()
  expect(document.querySelector('.inheritance-error').textContent).toContain('已更新')
  expect(options.onApplyRecoveredPlan).not.toHaveBeenCalled()
 })
