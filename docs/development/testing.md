@@ -16,14 +16,22 @@ The `./scripts/test.sh` command is the supported **optional** local test entrypo
 | **L3** | auth/authorization, account isolation, API contract, router/global state, persistence/migration, transaction/concurrency, shared core | evidence for affected critical invariants via focused tests/contract checks or equivalent module-level verification; full suite is not the default |
 | **L4** | build tooling, CI, test infrastructure, dependency/release/deploy, cross-repo shared infrastructure | `./scripts/test.sh all` plus any explicitly relevant integration/stress suite |
 
-`./scripts/test.sh quick` remains useful as a broad fast smoke check, but it intentionally touches both frontend and backend infrastructure. **Do not use it by default for L0/L1 work.**
+`./scripts/test.sh quick` selects affected component checks and excludes database/mutation suites. **Do not use it by default for L0/L1 work.** Pure `.css`/Markdown edits need diff review, not automatic business tests; rule files (`AGENTS.md`) and this testing policy remain configuration inputs. Copy-only edits inside JS/Vue cannot be inferred from the filename and still need a human risk decision.
 
 Available modes:
 
-- `./scripts/test.sh quick` — broad fast smoke checks plus affected unit/component tests.
+- `./scripts/test.sh quick --base <frozen-base-sha>` — affected component checks plus unit/component tests.
 - `./scripts/test.sh smart` — diff-aware affected tests and required integration/API checks.
 - `./scripts/test.sh all` — full frontend/backend, Mongo/Redis, architecture, OpenAPI, builds, mutation, plus the realistic fixture dataset.
 - `./scripts/test.sh stress` — explicit large-data suite for scale-sensitive Mongo/index/query/import work.
+
+For a committed PR, always supply its frozen base. A clean working tree without `--base` is an error for `quick/smart/plan`, not a request for a full suite. Local uncommitted work can omit it. Base refs are resolved to a commit at startup; deletion and both rename paths remain in the diff.
+
+Unknown runtime paths expand only their own component; root/shared tooling expands both. Backend controller/request/response/DTO/OpenAPI/security/resource changes also select the frontend contract, while service-only changes do not automatically run frontend behavior tests. Literal `readFrontend/readBackend` inputs in `contract.test.js` also select that contract, including its page and route dependencies. The runner's own tests run only for `scripts/testing/**`, `scripts/test.sh`, or explicit `all/stress`. Gradle test tasks already compile their prerequisites, so targeted runs do not issue a separate `compileTestKotlin` first. Affected Kotlin lint still forces execution because the plugin does not fingerprint its file filter.
+
+`--budget 900` is the default total command-execution budget, and `--timeout 900` is the per-command limit; each command receives the smaller remaining allowance. Explicit full suites can request a larger budget when justified. The first failure/timeout or invalid test discovery stops subsequent checks; reports retain `planned_checks`, `not_run`, exit codes, timings and source identity. Only the process group created for a timed-out command is terminated; detached/shared Gradle daemons or database services are never killed. If a daemon remains busy, inspect it rather than start a competing build.
+
+JUnit suites use the Gradle task-specific `--rerun` option and discard that suite’s previous XML before execution, retaining compilation caches but requiring fresh test output. Reports bind HEAD/base, changed-file fingerprint, execution environment and per-command logs/timestamps. A changed tree during execution, zero discovered tests or skipped/failed tests cannot be reported as passing. Empty check selection means no automatic check was needed, not proof of runtime correctness. Optional Trellis coverage explanations remain required where that completion workflow is explicitly used; no task is created by these commands.
 
 ## Entry boundaries and prerequisites
 
@@ -33,7 +41,7 @@ Available modes:
 | `frontend`: `npm run test:all` | Repository static + Node + Vitest/jsdom + build; installed frontend dependencies required; no cross-repository contract. | Individual stage output and `dist/`. |
 | `frontend`: `npm run test:contract` | Node/Git and both complete source checkouts. Defaults to sibling `backend`; set `YUANHUB_BACKEND_ROOT` for another directory. Missing files fail. | Terminal logs both HEADs, clean/dirty state and operator v4/v5 versions. Dirty trees are not reproducible from HEAD alone. |
 | `backend`: `./gradlew test --console=plain` | JDK 21/wrapper; ordinary unit/MockMvc/untagged contracts. Excludes integration, architecture, api-schema, realistic and stress tags. Explicit tasks and `check` dependencies are unchanged. | `build/test-results/test/` and `build/reports/tests/test/`. |
-| Workspace: `./scripts/test.sh quick/smart/all/stress` | Existing mode-specific requirements remain. `all` and conservative fallback explicitly run repo + contract once; targeted contract selection is separate. `stress` stays explicit; scale-only classes are not unit selections. Local MongoDB replica set and Redis are required by database suites; Docker is not required. | `.test-artifacts/runs/<stamp>-<mode>/`; separate `frontend-contract.log` records the pair when selected. |
+| Workspace: `./scripts/test.sh quick/smart/all/stress` | `all` runs repo + contract once; scoped fallback expands the affected component, with contracts selected separately. `stress` stays explicit; scale-only classes are not unit selections. Local MongoDB replica set and Redis are required by database suites; Docker is not required. | `.test-artifacts/runs/<stamp>-<mode>/`; separate `frontend-contract.log` records the pair when selected. |
 
 PR CI uses root `.github/workflows/pr-ci.yml` to select affected components and aggregate their results into `PR merge gate`. Failed/cancelled selection or any required component that does not succeed blocks the gate; only explicitly unaffected components may be skipped. Run `python3 scripts/testing/test_monorepo_ci.py` for focused gate regressions. Branch protection rollout and selection rules are documented in [Monorepo operations](../monorepo-operations.md).
 
