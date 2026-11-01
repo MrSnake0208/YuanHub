@@ -315,10 +315,20 @@ class StarStateService(
                 sourceGeneration = state.generation, state = state.snapshot(), loadouts = safeLoadouts,
             ),
         )
+        pruneRecoveryPoints(userId, accountId)
+        return point
+    }
+
+    internal fun pruneRecoveryPoints(userId: String, accountId: String) {
         recoveryPoints.findByUserIdAndAccountIdOrderByCreatedAtDescIdDesc(userId, accountId)
             .filterNot { it.inheritanceProtected }
             .drop(3).forEach(recoveryPoints::delete)
-        return point
+    }
+
+    /** A real write fences no-op confirmations/discards against ordinary edits/rebuilds. Called inside the resolution transaction. */
+    internal fun fencePlanResolution(userId: String, accountId: String, generation: Long, revision: Long) {
+        checkVersion(states.findByUserIdAndAccountId(userId, accountId), generation, revision)
+        if (!states.fenceLoadoutWrite(userId, accountId, generation, revision)) throw stateConflict()
     }
 
     private fun replaceLoadout(

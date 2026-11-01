@@ -32,4 +32,12 @@ data class StarPlanInheritancePending(
     val targetGeneration: Long,
     val scanId: String,
     val createdAt: Instant = Instant.now(),
+    val resolution: StarPlanInheritanceResolution? = null,
+)
+
+data class StarPlanInheritanceResolution(
+    val operationId: String,
+    val action: String,
+    val payload: String,
+    val revision: Long,
 )

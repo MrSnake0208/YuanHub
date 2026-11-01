@@ -57,10 +57,35 @@ three ordinary points. Further automatic full syncs return 409
 account authorization and returns null or `account_id`, `source_recovery_point_id`,
 `source_generation`, `target_generation`, `source_state`. `source_state` is the full
 immutable business snapshot (inventory, plan target list, experience and bag).
-No plan matching, confirmation, discard or release command is implemented yet.
-The next UI integration must check target-generation ownership before applying a
-mapping, then resolve the pending source and unpin it transactionally. Ordinary
-manual rebuild/restore can advance generation while the source remains protected.
+POST /v1/star-state/plan-inheritance/confirm and /discard use the same JWT/account
+query. Both require operation_id (UUID), source_recovery_point_id,
+expected_generation and expected_revision. Confirm additionally requires
+plan_targets (a map from current instance IDs to target levels); discard must omit
+plan_targets. Later/close sends no modifying request.
+
+The server never calculates a mapping. Confirm validates current account, source,
+target generation, revision and instance references, and refuses to overwrite an
+existing nonempty current plan. Saving targets, resolving the pending source and
+unpinning its checkpoint share one Mongo transaction. Discard fences the same
+state but preserves inventory, current plans, wear and revision. No-op confirm also
+fences the state. Standard retention resumes immediately after unpinning, so an old
+source outside the latest three ordinary points can then be evicted.
+
+The response contains operation_id, source_recovery_point_id, target_generation,
+revision and action (confirm/discard). The account slot keeps its latest resolution
+for exact operation/body retries; a different operation or body is rejected. Reads
+return null for a resolved slot and new full syncs may replace it with a new source.
+An old operation cannot mutate that later source. This is not a historical-plan
+manager. Ordinary manual rebuild/restore can advance generation while the source
+remains protected; old-generation confirm and discard then reject safely.
+
+The host's cloudPlanInheritance port supplies this transient source to YuanStar's
+existing preview/adjust/apply algorithms and PlanInheritanceDialog. It never writes
+a cloud source into local IndexedDB pending records. Existing local OCR inheritance
+stays separate. Loading/rendering a source or receiving an account event never
+forces business hydration over unsaved plan edits. Source changes require an
+approved committed clean YuanStar source and the official embed sync; this phase
+does not commit that source or edit generated embed assets.
 
 MaaYuan saves `inventory.json` and `inventory-sync.json` before the POST. Its next
 task run retries a failed/uncertain saved batch before scanning again. A local

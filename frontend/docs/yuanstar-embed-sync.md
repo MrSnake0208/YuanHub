@@ -1,5 +1,13 @@
 # YuanStar embed 同步说明
 
+## 云端养成计划继承正式来源（2026-11-01）
+
+- 权威源码分支 feature/yuanhub-embed，source commit 5b851bca031c19bae11876905caf584441e057ba。已提交 source commit 的干净工作树正式 build：执行 build:embed，再由 scripts/sync-yuanstar-embed.mjs 官方同步全部12个资源；manifest记录该提交和每个资源SHA-256。
+- 新增 cloudPlanInheritance Host参数，云端来源直接复用原 previewPlanInheritance、adjustPlanInheritance、applyPlanInheritance 和同一个 PlanInheritanceDialog；原匹配/弹窗源码及网页OCR本地待办流程保留，不伪造IndexedDB pending。
+- 确认/放弃调用账号、来源、generation和revision绑定的云端接口；稍后不修改待办。本地未保存编辑及账号切换继续受保护，不继承佩戴。
+- 本次worker、CSS、模型、ORT和规则资源字节未变，仅正式生成JS及manifest哈希更新。没有手改生成资源、跳过SHA或放宽同步脚本。
+- 完成来源/字节校验、Host与实际embed的非浏览器定向兼容检查及前端构建；GUI视觉、触控和完整应用人工验收尚未执行。没有push、PR、merge或部署；下述旧来源记录保留供历史追溯。
+
 2026-10-21：宿主与后端增加星石实际突破次数；本轮未同步嵌入产物，私有源码改动由其拥有人接手，见[交接清单](./yuanstar-panel-handoff.md)。下述来源记录保持原样。
 
 ## 宿主初始空背包展示修复（2026-10-18）

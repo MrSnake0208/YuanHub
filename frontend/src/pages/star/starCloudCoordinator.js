@@ -306,6 +306,7 @@ export function createStarCloudCoordinator({
       session.replacing = true; emit()
       // Lease is session-bound: an old account response cannot unlock/adopt a new one.
       return {
+        isCurrent() { return active === session && selectedHostAccount()?.accountId === session.accountId && session.writer.isActive() },
         adopt(context) {
           if (active !== session || selectedHostAccount()?.accountId !== session.accountId || context.account_id !== session.accountId) throw new Error('账号已切换，原操作仍待恢复。')
           const next = businessState(context.state)

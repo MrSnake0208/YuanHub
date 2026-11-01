@@ -208,6 +208,7 @@ import {
   waitForYuanStarDisposal,
 } from "./embedLifecycle.js";
 import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
+import { createCloudPlanInheritancePort } from "./starCloudPlanInheritance.js";
 import { starCloudFeedback } from "./starCloudStatus.js";
 import { createLatestAccountSync } from "./latestAccountSync.js";
 import { migrateLegacyYuanStarHostAccount } from "./legacyHostAccountMigration.js";
@@ -842,6 +843,7 @@ async function mountProduct() {
       onBusinessStateCommitted: function (event) { return starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
       onApplyRecoveredPlan: function (snapshot, scope) { return starCloud.applyRecoveredPlan(snapshot, scope); },
+      cloudPlanInheritance: createCloudPlanInheritancePort({ coordinator: starCloud }),
       getOcrRebuildScope: function () { return starCloud.ocrRebuildScope(); },
       onOcrRebuild: async function (snapshot, recoveryPointId, scope) {
         const owner = bagTutorialOwner(), context = starContextVersion;

@@ -76,7 +76,7 @@ class StarInventorySyncServiceTest {
         every { receipts.findByUserIdAndAccountIdAndScanId("owner", "a", any()) } answers { saved[thirdArg()] }
         every { receipts.insert(any<StarInventorySync>()) } answers { firstArg<StarInventorySync>().also { saved[it.scanId] = it } }
         every { pending.findByUserIdAndAccountId("owner", "a") } returns null
-        every { pending.insert(any<StarPlanInheritancePending>()) } answers { firstArg() }
+        every { pending.save(any<StarPlanInheritancePending>()) } answers { firstArg() }
         every { points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", "point") } returns source
         every { points.save(any<StarRecoveryPoint>()) } answers { firstArg() }
         every { states.current("owner", "a") } returns StarStateCurrentResponse.empty("a").copy(generation = 4, revision = 9)
@@ -107,7 +107,7 @@ class StarInventorySyncServiceTest {
                 },
             )
             points.save(source.copy(inheritanceProtected = true))
-            pending.insert(
+            pending.save(
                 match<StarPlanInheritancePending> {
                     it.targetGeneration == 5L && it.sourceRecoveryPointId == "point" &&
                         it.accountId == "a"

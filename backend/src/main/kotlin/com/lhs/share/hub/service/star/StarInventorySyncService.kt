@@ -3,6 +3,8 @@ package com.lhs.share.hub.service.star
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.lhs.share.hub.controller.star.request.StarInventoryEntryRequest
 import com.lhs.share.hub.controller.star.request.StarInventorySyncRequest
+import com.lhs.share.hub.controller.star.request.StarPlanInheritanceRequest
+import com.lhs.share.hub.controller.star.request.StarStatePatchRequest
 import com.lhs.share.hub.controller.star.request.StarStateRebuildRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
@@ -12,6 +14,7 @@ import com.lhs.share.hub.repository.StarRecoveryPointRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.StarInventorySync
 import com.lhs.share.hub.repository.entity.StarPlanInheritancePending
+import com.lhs.share.hub.repository.entity.StarPlanInheritanceResolution
 import com.lhs.share.hub.repository.entity.StarStateSnapshot
 import com.lhs.share.hub.service.account.AccountEventService
 import com.lhs.share.hub.service.account.SubAccountService
@@ -71,7 +74,7 @@ class StarInventorySyncService(
                 if (!accountRepository.fenceRecruitmentWrite(userId, accountId, game)) {
                     conflict("star_sync_account_changed", "绑定账号已变化，请重新连接")
                 }
-                if (pending.findByUserIdAndAccountId(userId, accountId) != null) {
+                if (pending.findByUserIdAndAccountId(userId, accountId)?.let { it.resolution == null } == true) {
                     conflict("star_plan_inheritance_pending", "旧养成计划仍待继承，暂不能用新扫描覆盖；旧计划来源已安全保留")
                 }
                 val result = states.rebuild(
@@ -97,7 +100,7 @@ class StarInventorySyncService(
                 if (unfinished) {
                     checkNotNull(source)
                     points.save(source.copy(inheritanceProtected = true))
-                    pending.insert(
+                    pending.save(
                         StarPlanInheritancePending(
                             "$userId:$accountId",
                             userId,
@@ -133,9 +136,101 @@ class StarInventorySyncService(
 
     fun inheritanceSource(userId: String, accountId: String): StarPlanInheritanceSource? {
         accounts.requireAccount(userId, accountId)
-        val item = pending.findByUserIdAndAccountId(userId, accountId) ?: return null
+        val item = pending.findByUserIdAndAccountId(userId, accountId)?.takeIf { it.resolution == null } ?: return null
         val point = checkNotNull(points.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, item.sourceRecoveryPointId))
         return StarPlanInheritanceSource(accountId, item.sourceRecoveryPointId, point.sourceGeneration, item.targetGeneration, point.state)
+    }
+
+    fun resolveInheritance(
+        userId: String,
+        accountId: String,
+        action: String,
+        request: StarPlanInheritanceRequest,
+    ): StarPlanInheritanceResolutionResponse {
+        val account = accounts.requireAccount(userId, accountId)
+        if (action !in setOf("confirm", "discard") || request.expectedGeneration < 0 || request.expectedRevision < 0 ||
+            !Regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$").matches(request.operationId) ||
+            request.sourceRecoveryPointId.isBlank() || request.sourceRecoveryPointId.length > 128 ||
+            action == "confirm" && request.planTargets == null || action == "discard" && request.planTargets != null
+        ) {
+            throw InventoryApiException(HttpStatus.UNPROCESSABLE_ENTITY, "star_plan_inheritance_invalid", "计划处理请求无效")
+        }
+        val payload = mapper.writeValueAsString(request)
+        return starCasConflictBoundary({ conflict("star_plan_inheritance_conflict", "账号、背包或待继承计划已变化，请重新读取") }) {
+            checkNotNull(
+                transactions.execute {
+                    if (!accountRepository.fenceRecruitmentWrite(userId, accountId, account.game)) {
+                        conflict("star_sync_account_changed", "绑定账号已变化，请重新加载")
+                    }
+                    val item = pending.findByUserIdAndAccountId(userId, accountId)
+                        ?: conflict("star_plan_inheritance_not_pending", "这份旧计划已处理或不存在，请重新加载")
+                    val current = states.current(userId, accountId)
+                    if (item.sourceRecoveryPointId != request.sourceRecoveryPointId ||
+                        item.targetGeneration != request.expectedGeneration ||
+                        current.generation != item.targetGeneration
+                    ) {
+                        conflict("star_generation_changed", "背包或旧计划来源已变化，本次处理未保存")
+                    }
+                    item.resolution?.let {
+                        if (it.operationId != request.operationId || it.action != action ||
+                            mapper.readTree(it.payload) != mapper.readTree(payload)
+                        ) {
+                            conflict("star_plan_inheritance_resolved", "这份旧计划已在其他窗口处理，请重新加载")
+                        }
+                        return@execute StarPlanInheritanceResolutionResponse(
+                            it.operationId,
+                            item.sourceRecoveryPointId,
+                            item.targetGeneration,
+                            it.revision,
+                            it.action,
+                        )
+                    }
+                    states.fencePlanResolution(userId, accountId, request.expectedGeneration, request.expectedRevision)
+                    val source = points.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, item.sourceRecoveryPointId)
+                        ?: conflict("star_plan_inheritance_source_missing", "旧计划恢复点未找到，待办仍保留，请联系维护者")
+                    if (!source.inheritanceProtected) conflict("star_plan_inheritance_source_changed", "旧计划来源状态已变化，请重新读取")
+                    val revision = if (action == "confirm") {
+                        if (current.planTargets.isNotEmpty()) conflict("star_plan_inheritance_plan_exists", "当前已有养成计划，不能覆盖；请先处理当前计划")
+                        states.patch(
+                            userId,
+                            accountId,
+                            StarStatePatchRequest(
+                                request.expectedGeneration,
+                                request.expectedRevision,
+                                current.inventory.map { StarInventoryEntryRequest(it.instanceId, it.kind, it.name, it.quality, it.level) },
+                                request.planTargets,
+                                StarWorkspaceExperienceRequest(
+                                    current.experience.orange,
+                                    current.experience.purple,
+                                    current.experience.white,
+                                ),
+                                StarWorkspaceBagRequest(current.bag.currentCount, current.bag.capacity),
+                            ),
+                        ).state.revision
+                    } else {
+                        current.revision
+                    }
+                    // Keep only the most recent resolution at the account slot for safe response-loss retries.
+                    // A later full sync may replace this resolved slot with its new pending source.
+                    pending.save(item.copy(resolution = StarPlanInheritanceResolution(request.operationId, action, payload, revision)))
+                    points.save(source.copy(inheritanceProtected = false))
+                    states.pruneRecoveryPoints(userId, accountId)
+                    events.publishChange(
+                        userId,
+                        accountId,
+                        "star_plan_inheritance_resolved",
+                        mapOf("source_recovery_point_id" to item.sourceRecoveryPointId, "generation" to item.targetGeneration),
+                    )
+                    StarPlanInheritanceResolutionResponse(
+                        request.operationId,
+                        item.sourceRecoveryPointId,
+                        item.targetGeneration,
+                        revision,
+                        action,
+                    )
+                },
+            )
+        }
     }
 
     companion object {
@@ -199,4 +294,12 @@ data class StarPlanInheritanceSource(
     val sourceGeneration: Long,
     val targetGeneration: Long,
     val sourceState: StarStateSnapshot,
+)
+
+data class StarPlanInheritanceResolutionResponse(
+    val operationId: String,
+    val sourceRecoveryPointId: String,
+    val targetGeneration: Long,
+    val revision: Long,
+    val action: String,
 )

@@ -24,3 +24,15 @@ export function restoreStarRecoveryPoint(accountId, pointId, body) {
     method: 'POST', auth: true, body,
   })
 }
+
+export function getPendingStarPlanInheritance(accountId) {
+  return request(BASE + '/plan-inheritance/pending' + accountQuery(accountId), { auth: true })
+}
+
+export function confirmStarPlanInheritance(accountId, body) {
+  return request(BASE + '/plan-inheritance/confirm' + accountQuery(accountId), { method: 'POST', auth: true, body })
+}
+
+export function discardStarPlanInheritance(accountId, body) {
+  return request(BASE + '/plan-inheritance/discard' + accountQuery(accountId), { method: 'POST', auth: true, body })
+}
