@@ -18,6 +18,7 @@ jobs:
     outputs:
       frontend: ${{ steps.scope.outputs.frontend }}
       backend: ${{ steps.scope.outputs.backend }}
+      frontend_full: ${{ steps.scope.outputs.frontend_full }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,25 +37,27 @@ jobs:
           changed = subprocess.check_output([
               'git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD', '--'
           ]).split(b'\0')
-          frontend = backend = False
+          frontend = backend = frontend_full = False
           for raw in filter(None, changed):
               path = os.fsdecode(raw)
               if path.startswith('frontend/'):
-                  frontend = True
+                  frontend = frontend_full = True
               elif path.startswith('backend/'):
                   backend = True
                   frontend |= path.startswith('backend/src/')
               elif path.startswith('docs/') and path != 'docs/development/testing.md':
                   continue
               else:
-                  frontend = backend = True
+                  frontend = backend = frontend_full = True
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'frontend={str(frontend).lower()}\nbackend={str(backend).lower()}\n')
+              output.write(f'frontend={str(frontend).lower()}\nbackend={str(backend).lower()}\nfrontend_full={str(frontend_full).lower()}\n')
 
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     uses: ./.github/workflows/frontend-ci.yml
+    with:
+      contract-only: ${{ needs.changes.outputs.frontend_full == 'false' }}
 
   backend:
     needs: changes

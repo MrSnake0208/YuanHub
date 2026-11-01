@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Instant
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -33,7 +32,7 @@ import java.util.concurrent.TimeUnit
 @Tag("integration")
 class RedisStarCaptureUploadSessionStoreTest {
     private val connectionFactory = TestRedis.connectionFactory()
-    private val template = StringRedisTemplate(connectionFactory)
+    private val template = TestRedis.template(connectionFactory)
     private val mapper = jacksonObjectMapper()
         .registerModule(JavaTimeModule())
         .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)

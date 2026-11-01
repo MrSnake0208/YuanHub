@@ -74,7 +74,7 @@ def is_test(path):
 def fingerprint(root, changes, task=None):
     digest = hashlib.sha256()
     for name in sorted(changes):
-        if not (runtime_file(name) or is_test(name) or name.endswith(('lock.json', 'lock.yaml', 'baseline.xml'))):
+        if name.startswith('.trellis/'):
             continue
         path = root / name
         digest.update(name.encode('utf-8', errors='surrogateescape')); digest.update(b'\0')
@@ -147,7 +147,41 @@ def reverse_dependents(graph, seeds):
         affected |= extra
 
 
+def component_scope(changes):
+    """Unknown code expands its own component; shared tooling expands both."""
+    active = [p for p in changes if not (
+        p.endswith(('.md', '.css')) and p != 'docs/development/testing.md' and Path(p).name != 'AGENTS.md'
+    )]
+    shared = any(not p.startswith(('frontend/', 'backend/', 'docs/', '.trellis/')) or
+                 p == 'docs/development/testing.md' for p in active)
+    front = shared or any(p.startswith('frontend/') for p in active)
+    back = shared or any(p.startswith('backend/') for p in active)
+    full = {}
+    for name, enabled in [('frontend', front), ('backend', back)]:
+        paths = [p for p in active if p.startswith(name + '/')]
+        full[name] = enabled and (shared or any(
+            not p.startswith((name + '/src/', name + '/test/', name + '/behavior/')) or
+            not any(w in p.lower() for words in WORDS.values() for w in words)
+            for p in paths))
+    # Protocol/config changes must still check both sides; service-only edits do not.
+    contract = shared or any(
+        p.startswith(('frontend/src/api/', 'backend/src/main/resources/')) or
+        p == 'frontend/test/contract.test.js' or
+        (p.startswith('backend/src/main/') and any(part in p.split('/') for part in
+         ('controller', 'request', 'response', 'dto', 'openapi', 'security')))
+        for p in active)
+    runner = any(p == 'scripts/test.sh' or p.startswith('scripts/testing/') for p in active)
+    return {'frontend': front, 'backend': back, 'full_frontend': full['frontend'],
+            'full_backend': full['backend'], 'contract': contract, 'runner': runner}
+
+
 def infer(root, changes, task=None):
+    scope = component_scope(changes)
+    contract_file = root / 'frontend/test/contract.test.js'
+    if contract_file.is_file():
+        dependencies = {component.lower() + '/' + path for component, path in re.findall(
+            r"read(Frontend|Backend)\(['\"]([^'\"]+)['\"]\)", contract_file.read_text())}
+        scope['contract'] |= bool(dependencies.intersection(changes))
     domains = {domain for path in changes for domain, words in WORDS.items() if any(w in path.lower() for w in words)}
     # Cascade once from directly changed domains; recursively closing account
     # edges would turn every small star edit into an unnecessary whole-app run.
@@ -165,17 +199,17 @@ def infer(root, changes, task=None):
     components = sorted(p.relative_to(front).as_posix() for p in (front / 'behavior').rglob('*.spec.js'))
     seeds = {p.removeprefix('frontend/') for p in changes if p.startswith('frontend/')}
     dependent = reverse_dependents(import_graph(front), seeds)
-    source_paths = [p for p in changes if runtime_file(p)]
-    unknown = any(p.startswith(('frontend/src/', 'backend/src/main/')) and not any(w in p.lower() for words in WORDS.values() for w in words) for p in source_paths)
-    infrastructure = any(p in {'scripts/test.sh', 'frontend/package.json', 'frontend/vite.config.js', 'frontend/vitest.config.js', 'backend/build.gradle.kts'} or
-                         p.startswith(('scripts/testing/', 'backend/src/test/kotlin/com/lhs/share/testinfra/')) for p in changes)
-    whole = infrastructure or unknown or not changes
     keywords = {w for domain in domains for w in WORDS[domain]}
-    selected_node = nodes if whole else [p for p in nodes if p in dependent or any(w in p.lower() for w in keywords)]
-    selected_behavior = components if whole else [p for p in components if p in dependent or any(w in p.lower() for w in keywords)]
-    if any(p.startswith('src/') for p in seeds):
+    selected_node = nodes if scope['full_frontend'] else [p for p in nodes if p in dependent or any(w in p.lower() for w in keywords)]
+    selected_behavior = components if scope['full_frontend'] else [p for p in components if p in dependent or any(w in p.lower() for w in keywords)]
+    if scope['frontend'] and any(p.startswith('src/') for p in seeds):
         selected_node = selected_node or nodes
         selected_behavior = selected_behavior or components
+    if not scope['frontend']:
+        selected_node, selected_behavior = [], []
+    selected_node = [p for p in selected_node if p != 'test/contract.test.js']
+    if scope['contract']:
+        selected_node.append('test/contract.test.js')
     selections = {'unit': [], 'integration': [], 'architecture': [], 'api': []}
     symbols = {Path(p).stem for p in changes if p.startswith('backend/src/main/') and p.endswith('.kt')}
     for file in (root / 'backend/src/test/kotlin').rglob('*.kt'):
@@ -187,19 +221,20 @@ def infer(root, changes, task=None):
         for name in re.findall(r'^(?:open\s+)?class\s+(\w*Test)\b', text, re.M):
             fqcn = f'{package[1]}.{name}' if package else name
             kind = 'integration' if '@Tag("integration")' in text else 'architecture' if '@Tag("architecture")' in text else 'api' if '@Tag("api-schema")' in text else 'unit'
-            if whole or file.relative_to(root).as_posix() in changes or not domains or any(w in fqcn.lower() for w in keywords) or any(re.search(r'\b' + re.escape(s) + r'\b', text) for s in symbols):
+            if scope['backend'] and (scope['full_backend'] or file.relative_to(root).as_posix() in changes or not domains or any(w in fqcn.lower() for w in keywords) or any(re.search(r'\b' + re.escape(s) + r'\b', text) for s in symbols)):
                 selections[kind].append(fqcn)
     return {'domains': sorted(domains), 'node': sorted(set(selected_node)), 'behavior': sorted(set(selected_behavior)),
-            **{kind: sorted(set(names)) for kind, names in selections.items()}, 'conservative_full': whole,
+            **{kind: sorted(set(names)) for kind, names in selections.items()},
+            'scope': scope, 'conservative_full': scope['full_frontend'] or scope['full_backend'],
             'task_documents': task_documents,
-            'evidence': ['Nested Git staged/unstaged/untracked files; module cascades; JS reverse imports; Kotlin package/import references',
-                         'Conservative full fast suite for unknown/shared changes' if whole else 'Selected affected modules']}
+            'evidence': ['Monorepo diff including deletions/renames; component scope; domain cascades; JS reverse imports; Kotlin references',
+                         'Unknown paths expand only their component; shared tooling expands both; CSS/docs require diff review']}
 
 
 def coverage_gaps(root, changes, task=None):
     manifest = json.loads((task / 'test-plan.json').read_text()) if task and (task / 'test-plan.json').is_file() else {}
     gaps, reviewed = [], []
-    for source in (p for p in changes if runtime_file(p)):
+    for source in (p for p in changes if runtime_file(p) and not p.endswith(('.css', '.md'))):
         matching = [e for e in manifest.get('coverage', []) if any(fnmatch.fnmatchcase(source, pattern) for pattern in e.get('sources', []))]
         valid = [e for e in matching if e.get('invariants') and e.get('tests') and
                  all((root / name).is_file() and is_test(name) for name in e['tests']) and any(name in changes for name in e['tests'])]

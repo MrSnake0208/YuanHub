@@ -38,9 +38,9 @@ class AgentTestSafetyTest {
         val properties = linkedMapOf(
             "server.address" to "127.0.0.1", "server.port" to "8080", "management.server.port" to "8080",
             "server.forward-headers-strategy" to "none",
-            "spring.data.mongodb.uri" to "mongodb://127.0.0.1:32001/yuanhub_agent_${instance}_maa?replicaSet=rs0&directConnection=true",
-            "share.mongo.hub-uri" to "mongodb://127.0.0.1:32001/yuanhub_agent_${instance}_hub?replicaSet=rs0&directConnection=true",
-            "spring.data.redis.url" to "redis://127.0.0.1:32002/0", "debug.email.no-send" to "true",
+            "spring.data.mongodb.uri" to "mongodb://127.0.0.1:27017/yuanhub_agent_${instance}_maa?replicaSet=rs0&directConnection=true",
+            "share.mongo.hub-uri" to "mongodb://127.0.0.1:27017/yuanhub_agent_${instance}_hub?replicaSet=rs0&directConnection=true",
+            "spring.data.redis.url" to "redis://127.0.0.1:6379/15", "debug.email.no-send" to "true",
             "share.jwt.secret" to "unit-only-".repeat(6), "share.jwt.expire" to "10", "share.beta.local-test-mode" to "true",
             "share.beta.campaign-id" to "yuanhub-beta-local-agent-$instance", "share.info.product-version" to "agent-$instance",
         )
@@ -67,6 +67,21 @@ class AgentTestSafetyTest {
             setActiveProfiles("local", "agent-test")
             setProperty("share.agent-test.manifest", manifest.toString())
             properties.forEach { (key, value) -> setProperty(key, value) }
+        }
+    }
+
+    @Test
+    fun `agent Redis keys are scoped to its manifest instance`() {
+        val environment = safeEnvironment()
+        val template = org.springframework.data.redis.core.StringRedisTemplate()
+        AgentTestSafety.isolateAgentRedisKeys(environment).postProcessBeforeInitialization(template, "redis")
+        val expected = ("yuanhub_agent:" + "a".repeat(32) + ":agent-test:ownership").toByteArray()
+        val serializer = template.stringSerializer
+        assertEquals("agent-test:ownership", serializer.deserialize("agent-test:ownership".toByteArray()))
+        val keys = template.keySerializer as NamespacedRedisKeys
+        org.junit.jupiter.api.Assertions.assertArrayEquals(expected, keys.serialize("agent-test:ownership"))
+        assertThrows(IllegalArgumentException::class.java) {
+            NamespacedRedisKeys("yuanhub_agent:" + "b".repeat(32) + ":").deserialize(expected)
         }
     }
 
@@ -101,7 +116,7 @@ class AgentTestSafetyTest {
         val mapper = jacksonObjectMapper()
         val tree = mapper.readTree(path.toFile())
         (tree["properties"] as com.fasterxml.jackson.databind.node.ObjectNode)
-            .put("share.mongo.hub-uri", "mongodb://127.0.0.1:32001/HubBackend?replicaSet=rs0&directConnection=true")
+            .put("share.mongo.hub-uri", "mongodb://127.0.0.1:27017/HubBackend?replicaSet=rs0&directConnection=true")
         mapper.writeValue(path.toFile(), tree)
         environment.setProperty("share.mongo.hub-uri", tree["properties"]["share.mongo.hub-uri"].asText())
         assertThrows(IllegalArgumentException::class.java) { AgentTestSafety.verify(environment) }

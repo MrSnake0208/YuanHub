@@ -22,58 +22,24 @@ Git 统一在 Monorepo 根，仍可只发布本组件。从根执行 `./release.
 
 ## 本地开发指南
 
-本地 JVM 直接运行在 WSL/Nix 环境中，Docker Compose 只启动 MongoDB 和 Redis：
+从 Monorepo 根目录使用 `./dev.sh backend`，先 bootJar 构建，再由 java -jar 启动。无需 Docker，不运行 Compose 或 bootRun。`./dev.sh --print-env` 显示当前树的实际 API/前端端口。
 
-```bash
-./scripts/dev-up.sh
-nix develop path:.
-SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
-```
+开发复用本机 MongoDB 127.0.0.1:27017（MaaBackend、HubBackend）和 Redis 127.0.0.1:6379。需要 JDK21、mongosh、redis-cli，以及已运行的 MongoDB 副本集和 Redis；`python3 scripts/check_local_services.py` 仅执行只读就绪检查，不启动服务或初始化副本集。事务功能不支持 standalone MongoDB。
 
-`scripts/dev-up.sh` 会启动单节点 MongoDB replica set `rs0` 和 Redis，初始化一次 replica set，等待 PRIMARY，
-并验证 replica set discovery 与 Redis `PING`。本地 profile 固定使用：
-
-- 后端：`http://127.0.0.1:8080`
-- MaaBackend：`mongodb://127.0.0.1:27017/MaaBackend?replicaSet=rs0`
-- HubBackend：`mongodb://127.0.0.1:27017/HubBackend?replicaSet=rs0`
-- Redis：`127.0.0.1:6379`
-
-库存导入使用 MongoDB transaction，因此 MongoDB 必须以 replica set 运行；standalone MongoDB 不受支持。
-启动后检查：
-
-```bash
-curl --fail-with-body http://127.0.0.1:8080/ready | jq
-curl --fail-with-body http://127.0.0.1:8080/v3/api-docs \
-  | jq '.servers'
-```
-
-第二条命令在 local profile 下应显示 `http://127.0.0.1:8080`。
+集成测试同样不依赖 Docker：TestMongo 创建随机自有测试库；TestRedis 使用 DB 15 和进程专属键前缀，禁止清空共享服务。详见 [开发与测试说明](../docs/development/testing.md)。
 
 反馈附件使用两个独立目录：`SHARE_MEDIA_DIR` 保存可由 `/media/**` 公开访问的截图，
 `SHARE_PRIVATE_MEDIA_DIR` 保存只能经工单 JWT 下载接口读取的普通文件。两个目录不能相同，
 私有目录也不能位于公开目录下；生产部署必须分别挂载持久卷。默认本地路径为
 `./data/media` 与 `./data/private-media`。
 
-MongoDB 与 Redis 使用命名 volume。普通停止不会删除本地数据：
-
-```bash
-docker compose -f compose.dev.yml down
-```
-
-需要显式重置测试数据时可执行下面的命令。**该命令会永久删除本仓库 Compose 环境的全部本地 MongoDB 和 Redis 数据：**
-
-```bash
-docker compose -f compose.dev.yml down -v
-```
-
-Windows 上的 MaaY 通常可直接用 `http://127.0.0.1:8080` 访问 WSL 后端。如果 WSL localhost 转发不可用，
-在 WSL 中运行 `hostname -I` 查询当前 IP，并在 MaaY 中临时填写 `http://<WSL_IP>:8080`；不要把动态 IP 写入配置文件。
+停止当前开发进程不会停止共享 MongoDB/Redis，也不会删除数据。不要用 Compose down -v 或 FLUSHDB 清理共享开发环境。
 
 ### 创建本地账号和 API Token
 
 YuanHub-All 工作区的 Agent 真实浏览器验证另有隔离入口：根目录
 `python3 scripts/agent-test/agent.py setup`，操作说明见工作区 `scripts/agent-test/README.md`。
-它使用独占容器、`local,agent-test` profile、受保护 manifest 和真实账号/JWT，
+它使用共享本机服务上的独立数据库和 Redis 键命名空间、`local,agent-test` profile、受保护 manifest 和真实账号/JWT，
 默认普通身份无管理/招募授权，管理身份仅有活动日历编辑角色。
 不要在下述普通开发数据库上运行 Agent 种子或清理操作。
 

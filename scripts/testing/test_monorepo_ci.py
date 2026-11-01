@@ -51,7 +51,11 @@ class MonorepoWorkflowTest(unittest.TestCase):
                     git.assert_called_once_with([
                         'git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD', '--'
                     ])
-                    self.assertEqual(output.read_text(), f'frontend={expected[0]}\nbackend={expected[1]}\n')
+                    actual = dict(line.split('=') for line in output.read_text().splitlines())
+                    self.assertEqual((actual['frontend'], actual['backend']), expected)
+                    full = any(path.startswith('frontend/') or (not path.startswith(('backend/', 'docs/')) or
+                               path == 'docs/development/testing.md') for path in paths)
+                    self.assertEqual(actual['frontend_full'], str(full).lower())
             with patch('subprocess.check_output', side_effect=subprocess.CalledProcessError(128, 'git')):
                 with self.assertRaises(subprocess.CalledProcessError):
                     exec(script, {})
@@ -82,6 +86,20 @@ class MonorepoWorkflowTest(unittest.TestCase):
             self.assertNotEqual(check({'frontend': 'false', 'backend': 'false'}, 'skipped', 'skipped', status), 0)
         for invalid in ({}, {'frontend': '', 'backend': 'false'}, {'frontend': 'false', 'backend': 'unknown'}):
             self.assertNotEqual(check(invalid, 'skipped', 'skipped'), 0)
+
+    def test_contract_only_keeps_contract_and_skips_dependency_build_work(self):
+        text = (ROOT / '.github/workflows/frontend-ci.yml').read_text()
+        for name in ['Set up npm cache', 'Install dependencies', 'Static source check',
+                     'Repository tests', 'Build', 'Verify injected build info', 'Upload build output']:
+            block = text.split('      - name: ' + name + '\n', 1)[1].split('      - name:', 1)[0]
+            self.assertIn('if: ${{ !inputs.contract-only }}', block)
+        contract = text.split('      - name: Paired API contract\n', 1)[1].split('      - name:', 1)[0]
+        self.assertNotIn('if:', contract)
+        self.assertIn('npm run test:contract', contract)
+        self.assertIn("contract-only: ${{ needs.changes.outputs.frontend_full == 'false' }}",
+                      (ROOT / '.github/workflows/pr-ci.yml').read_text())
+        backend = (ROOT / '.github/workflows/backend-ci.yml').read_text()
+        self.assertIn('./gradlew ktlintCheck test assemble --console=plain', backend)
 
     def test_promo_push_filter_covers_its_build_directory(self):
         workflow='.github/workflows/promo-site-deploy.yml'

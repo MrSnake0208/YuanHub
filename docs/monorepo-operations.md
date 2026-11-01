@@ -12,9 +12,15 @@
 
 使用当前树的 `./dev.sh --print-env` 生成私有 .dev 配置（目录0700、实例文件0600），查看本树地址。前端使用 Node22，后端使用 JDK21 和 backend/gradlew。`./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh` 按需启动；不重启或停止别人的服务。
 
-默认复用本机 `127.0.0.1:27017` MongoDB（要求 rs0 可写副本集）和 `127.0.0.1:6379` Redis，不启动 Docker Desktop、Colima、虚拟机或额外数据库进程。按用户选择，直接共用已有 `MaaBackend`、`HubBackend` 和 Redis DB 0，不增加工作树库名或键前缀，现有开发账号和数据无需复制即可使用。各分支的写入、删除、验证码和限流会影响同一份开发数据；不要对共享库运行清理、迁移或自动化数据库测试。每树端口、JWT 密钥、媒体和构建输出仍独立，切换预览端口可能需要重新登录；现有媒体文件不会自动复制到新树。启动器清除继承的生产连接配置，仅连接本机开发服务。端口被占用时 fail-fast，不能杀掉占用者。
+每树分配独立应用端口、媒体和构建输出；普通开发前端监听所有网卡，后端仅监听 127.0.0.1，API 由 Vite 代理转发。MongoDB 共用 127.0.0.1:27017 的 MaaBackend/HubBackend，Redis 共用 127.0.0.1:6379（默认 DB 0）。启动器清除继承的生产连接配置。共享开发数据意味着不同工作树的写入互相可见；不要用开发库运行破坏性测试。端口被占用时 fail-fast，不能杀掉占用者。
 
-需要原有容器隔离模式时显式运行 `./dev.sh containers`（可追加 `backend` / `--print-env`），仅使用本机 Unix Docker socket 和本树 Compose 项目。两种模式数据不自动迁移，不要在已有服务运行时切换。自动化数据库测试仍只使用 TestMongo/TestRedis 自有可抛弃容器，不能针对共享本机数据库运行事务或 Redis 语义测试。生产 env 不进入源码树。共享 Cloudflare Tunnel 不支持多树自动复用，本启动器拒绝 tunnel 子命令。
+局域网访问：运行 `./dev.sh` 后，在同一网络的设备打开 `http://<电脑局域网 IP>:<前端端口>`；端口可通过 `./dev.sh --print-env` 查看，将输出中的 127.0.0.1 替换为电脑局域网 IP。若无法连接，检查系统防火墙及 Wi-Fi 客户端隔离。开发前端及其 API 代理会向可达该端口的设备开放，仅在可信网络使用；Tunnel 和 Agent 测试模式仍仅监听本机。
+
+本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。默认启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose；`./dev.sh containers` 显式通过本树的 Compose 项目启动私有 MongoDB/Redis，并等待副本集和服务就绪。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
+
+集成测试不依赖 Docker/Testcontainers。TestMongo 仅访问自己注册的随机 yuanhub_test_ 数据库；TestRedis 使用本机 Redis DB 15，并给所有键及清理模式加进程专属前缀。退出时尽力清理自有数据；强制终止 JVM 可能留下测试数据，不得因此清空共享 Redis 或批量删除其他会话测试库。普通单元测试仍使用不可连接的占位地址。详见 [测试说明](development/testing.md)。
+
+生产 env 不进入源码树；前端私有 env 由用户自行准备。共享 Cloudflare Tunnel 不支持多树自动复用，本启动器拒绝 tunnel 子命令。
 
 ## Orca 自动预览（Mac 执行、Windows 访问）
 
@@ -28,9 +34,9 @@
 
 ## 独立 CI 与发布
 
-根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
+根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；仅后端改动通过 contract-only 输入跳过前端 npm ci、静态/仓库测试和构建，前端/共享配置改动保留完整前端流程；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
 
-frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
+frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。后端 CI 将 ktlintCheck、test、assemble 合为一次 Gradle 调用，任务覆盖不变。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
 
 分支保护切换必须与工作流交付分开：先推送包含新门禁的 PR，确认 GitHub Actions 的 `PR merge gate` 在最新 SHA 成功，再把 main 必需检查从 `Frontend checks and build` 替换为 `PR merge gate`，绑定 GitHub Actions 来源，保留 strict/up-to-date、管理员约束、禁止强推/删除等既有规则，随后合并该 PR。不要保留旧检查名：复用工作流下的检查名称会变化，旧名称会一直等待。其余旧 PR 必须更新到包含新入口的 main 后重新检查。切换前暂停无人值守合并；未提交/推送的本地配置不代表线上门禁已生效。
 

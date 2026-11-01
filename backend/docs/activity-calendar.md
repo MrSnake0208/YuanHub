@@ -105,7 +105,7 @@ classification:null 为 SKIPPED；相同展示分类为 UNCHANGED，不规范化
 ./gradlew integrationTest --tests '*ActivityCalendarImportMongoTest' --tests '*ActivityCalendarMongoTest' --console=plain
 ```
 
-第二条需要 Docker，由 TestMongo 创建并清理专属容器/随机测试库。
+第二条需要本机 MongoDB 副本集，由 TestMongo 创建并清理随机测试库。
 
 ## 内测用户查询
 
@@ -234,7 +234,7 @@ event 使用既有手工活动写入字段，采纳同样要求来源链接必�
 ./gradlew integrationTest --tests '*ActivityCalendarSuggestionMongoTest' --tests '*ActivityCalendarMongoTest' --console=plain
 ```
 
-integrationTest 只使用 TestMongo 自有、可销毁的副本集容器，验证唯一重试索引、所有权/分页、事务回滚及并发审核；不接受开发或生产数据库连接。
+integrationTest 只使用 本机副本集上 TestMongo 自有、可销毁的随机测试库，验证唯一重试索引、所有权/分页、事务回滚及并发审核；不访问开发或生产数据库。
 
 
 ## 内测准入验证（2026-10-12）
@@ -280,7 +280,7 @@ integrationTest 只使用 TestMongo 自有、可销毁的副本集容器，验�
 ./gradlew integrationTest --tests '*ActivityCalendarSubscriptionMongoTest' --tests '*AccountIndexMongoTest' --console=plain
 ```
 
-Mongo测试必须使用项目TestMongo管理的自有临时容器，不连接已有开发/生产实例。integrationTest验证唯一约束、CAS、故障回滚、取消历史清理及账号删除竞争；普通test通过不能替代它。先发布兼容后端再发布前端；本次未部署、未改变开放范围。
+Mongo测试必须使用项目 TestMongo 管理的随机测试库，共享本机服务但不访问开发/生产数据。integrationTest验证唯一约束、CAS、故障回滚、取消历史清理及账号删除竞争；普通test通过不能替代它。先发布兼容后端再发布前端；本次未部署、未改变开放范围。
 
 细分类别变更的最小隔离验证（cwd BackEndV3-Share）：
 
@@ -289,7 +289,7 @@ Mongo测试必须使用项目TestMongo管理的自有临时容器，不连接已
 ./gradlew integrationTest --tests '*ActivityCalendarMongoTest' --tests '*ActivityCalendarSuggestionMongoTest' --tests '*ActivityCalendarImportMongoTest' --console=plain
 ```
 
-第二条要求 Docker，由测试独占临时容器，绝不能改用开发/生产 Mongo。新增测试覆盖字段缺失的旧文档、枚举 BSON 往返、原始建议/采纳快照及公开响应、独立记录计数；既有导入隔离测试覆盖重复、并发与预览过期。不会因为 Docker 未运行而跳过有效断言。
+第二条要求本机 MongoDB 副本集，由测试创建随机自有数据库，绝不能访问开发/生产数据。新增测试覆盖字段缺失的旧文档、枚举 BSON 往返、原始建议/采纳快照及公开响应、独立记录计数；既有导入隔离测试覆盖重复、并发与预览过期。不会因为本机服务未运行而跳过有效断言。
 
 ## 活动级完成与Checklist兼容（2026-10-12）
 
@@ -305,7 +305,7 @@ Mongo测试必须使用项目TestMongo管理的自有临时容器，不连接已
 
 升级先后端再前端。回退前端保留存储，回退旧后端可能重新按清单解释completed；不建议只回退后端语义。无数据库迁移或回填。
 
-最小验证（cwd BackEndV3-Share；integrationTest仅使用TestMongo独占临时容器）：
+最小验证（cwd BackEndV3-Share；integrationTest仅使用TestMongo 随机自有测试库）：
 
 ```bash
 ./gradlew test --tests '*ActivityCalendarSubscriptionServiceTest' --tests '*ActivityCalendarSubscriptionControllerContractTest' --tests '*ActivityCalendarSecurityTest' --console=plain
@@ -322,14 +322,14 @@ Mongo 对应可空 `reminderOn` 和整数 `reminderDaysBefore`。历史文档缺
 
 前端用既有 GET 列表查询今天至明天的重叠事项，筛选目标日为今天或开启提前一天的明天；长跨度事项可按结束日触发，不推断完成状态。关闭记忆属于浏览器本地状态，不写入服务端通知集合。**升级顺序：后端→前端**；旧后端严格解码会拒绝新提醒字段，不能先上前端。
 
-新增单元／契约／专属容器 Mongo 用例覆盖提醒字段校验、默认值、持久化、旧客户端更新保留、显式关闭、CAS及他人账号隔离。用户执行：
+新增单元／契约／随机测试库 Mongo 用例覆盖提醒字段校验、默认值、持久化、旧客户端更新保留、显式关闭、CAS及他人账号隔离。用户执行：
 
 ```bash
 ./gradlew test --tests '*CalendarPrivateItemServiceTest' --tests '*CalendarPrivateItemControllerContractTest' --console=plain
 ./gradlew integrationTest --tests '*CalendarPrivateItemMongoTest' --console=plain
 ```
 
-Mongo 用例只使用 TestMongo 创建的专属临时容器；不得连接现有开发／生产数据库。
+Mongo 用例只使用 TestMongo 在本机副本集上创建的随机测试库；不得访问开发／生产数据库。
 
 ### 基础接口
 
@@ -349,7 +349,7 @@ Mongo 用例只使用 TestMongo 创建的专属临时容器；不得连接现有
 
 创建/修改/删除在既有 Mongo 事务中先获取账号写fence；更新使用 `@Version`，删除使用版本条件，过期版本或事务竞争返回409 `private_item_conflict`。账号重命名不影响事项；存在事项时变更游戏409 `calendar_private_game_locked`。账号删除在原事务级联删除私人事项，后续失败整体回滚，与创建共享账号fence避免孤儿记录。公开数据、管理员活动维护权限和订阅TODO结构/历史字段均不变。
 
-最小定向验证（Mongo仅使用TestMongo自有临时容器，配置到可用Docker daemon，不连接开发/生产库）：
+最小定向验证（Mongo仅使用TestMongo 随机自有测试库，连接本机副本集，不访问开发/生产数据）：
 
 ```bash
 ./gradlew test --tests '*CalendarPrivateItemServiceTest' --tests '*CalendarPrivateItemControllerContractTest' --tests '*ActivityCalendarSecurityTest' --tests '*SubAccountServiceTest' --tests '*ActivityCalendarSubscriptionServiceTest' --tests '*ActivityCalendarSubscriptionControllerContractTest' --console=plain

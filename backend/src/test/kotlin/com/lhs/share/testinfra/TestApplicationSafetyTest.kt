@@ -18,7 +18,7 @@ class TestApplicationSafetyTest {
     }
 
     @Test
-    fun `safe dead-port configuration is accepted without starting Docker`() {
+    fun `safe dead-port configuration is accepted without connecting to services`() {
         assertDoesNotThrow { TestApplicationSafety.verify(safeEnvironment()) }
     }
 

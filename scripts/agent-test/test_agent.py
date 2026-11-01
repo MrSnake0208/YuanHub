@@ -12,38 +12,33 @@ spec.loader.exec_module(agent)
 
 class AgentSafetyTest(unittest.TestCase):
     def fixture(self):
-        data = {"instance": "a" * 32, "containers": {"mongo": "owned"}, "ports": {"mongo": 32001}}
-        detail = {"Id": "owned", "Config": {"Labels": {agent.LABEL: data["instance"], "yuanhub.agent.role": "mongo"}},
-                  "State": {"Running": True}, "HostConfig": {"NetworkMode": "bridge"}, "Mounts": [{"Type": "tmpfs"}],
-                  "NetworkSettings": {"Ports": {"27017/tcp": [{"HostIp": "127.0.0.1", "HostPort": "32001"}]}}}
-        return data, detail
+        data = {"instance": "a" * 32, "ports": {"mongo": 27017, "redis": 6379}}
+        data["properties"] = agent.properties(data, agent.ROOT / ".agent-test/fixture")
+        return data
 
-    def test_only_owned_volume_free_loopback_container_is_accepted(self):
-        data, detail = self.fixture()
-        with patch.object(agent, "run", return_value=json.dumps([detail])):
-            self.assertEqual(agent.inspect_owned(data, "mongo"), "owned")
+    def test_only_owned_local_namespaces_are_accepted(self):
+        data = self.fixture()
+        self.assertEqual("a" * 32, agent.check_manifest(data))
         mutations = [
-            lambda d: d["Config"]["Labels"].update({agent.LABEL: "other"}),
-            lambda d: d["Mounts"].append({"Type": "volume"}),
-            lambda d: d["NetworkSettings"]["Ports"]["27017/tcp"][0].update(HostIp="0.0.0.0"),
-            lambda d: d["NetworkSettings"]["Ports"]["27017/tcp"][0].update(HostPort="27017"),
-            lambda d: d["HostConfig"].update(NetworkMode="host"),
-            lambda d: d["State"].update(Running=False),
+            lambda d: d.update(instance="../foreign"),
+            lambda d: d["ports"].update(mongo=32001),
+            lambda d: d.update(containers={"mongo": "legacy"}),
+            lambda d: d["properties"].update({"spring.data.mongodb.uri": "mongodb://127.0.0.1:27017/MaaBackend"}),
+            lambda d: d["properties"].update({"spring.data.redis.url": "redis://remote/15"}),
         ]
         for mutate in mutations:
-            data, detail = self.fixture()
-            mutate(detail)
-            with patch.object(agent, "run", return_value=json.dumps([detail])):
-                with self.assertRaises(agent.Refused):
-                    agent.inspect_owned(data, "mongo")
+            data = self.fixture()
+            mutate(data)
+            with self.assertRaises(agent.Refused):
+                agent.check_manifest(data)
 
-    def test_tunnel_refuses_before_docker_or_seed_writes(self):
+    def test_tunnel_refuses_before_service_or_seed_writes(self):
         with patch.object(agent, "run", return_value="/opt/homebrew/bin/cloudflared\n") as run:
             with self.assertRaises(agent.Refused):
                 agent.setup(Path("unused"), "default")
             self.assertEqual(run.call_count, 1)
 
-    def test_setup_repeat_does_not_create_containers_or_replace_credentials(self):
+    def test_setup_repeat_does_not_write_data_or_replace_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "manifest.json"
             agent.save(path, {"instance": "existing"})
@@ -54,10 +49,19 @@ class AgentSafetyTest(unittest.TestCase):
                 run.assert_not_called()
             self.assertEqual(path.read_bytes(), before)
 
+    def test_first_setup_checks_local_services_before_writing_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifest.json"
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "run", side_effect=agent.Refused("unavailable")) as run:
+                with self.assertRaises(agent.Refused):
+                    agent.setup(path, "default")
+            run.assert_called_once_with(["python3", str(agent.ROOT / "scripts/check_local_services.py")])
+            self.assertFalse(path.exists())
+
     def test_manifest_permissions_and_random_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "manifest.json"
-            data = {"instance": "a" * 32, "ports": {"mongo": 32001, "redis": 32002}}
+            data = {"instance": "a" * 32, "ports": {"mongo": 27017, "redis": 6379}}
             first = agent.properties(data, path.parent)
             second = agent.properties(data, path.parent)
             self.assertNotEqual(first["share.jwt.secret"], second["share.jwt.secret"])
@@ -76,13 +80,87 @@ class AgentSafetyTest(unittest.TestCase):
                 agent.start({}, Path("unused"))
             launch.assert_not_called()
 
-    def test_cleanup_checks_every_container_before_any_removal(self):
-        data = {"containers": {"mongo": "ours", "redis": "foreign"}}
+    def test_cleanup_checks_all_ownership_before_any_deletion(self):
         with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
-                patch.object(agent, "inspect_owned", side_effect=["ours", agent.Refused("foreign")]), patch.object(agent, "run") as run:
+                patch.object(agent, "mongo", side_effect=["owned", "absent"]) as mongo, \
+                patch.object(agent, "redis") as redis:
             with self.assertRaises(agent.Refused):
-                agent.cleanup(data, Path("unused"))
-            run.assert_not_called()
+                agent.cleanup(self.fixture(), Path("unused"))
+            self.assertEqual(2, mongo.call_count)
+            redis.assert_not_called()
+
+    def test_cleanup_only_deletes_own_databases_and_prefixed_keys(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/"owned"
+            path.mkdir()
+            data = self.fixture()
+            prefix = "yuanhub_agent:" + data["instance"] + ":"
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
+                    patch.object(agent, "mongo", side_effect=["owned", "owned", "", ""]) as mongo, \
+                    patch.object(agent, "redis", side_effect=[data["instance"], prefix+"one\n"+prefix+"two\n"+prefix+"agent-test:ownership", "1", "1", "1"]) as redis:
+                agent.cleanup(data, path/"manifest.json")
+                self.assertEqual(4, mongo.call_count)
+                for call in mongo.call_args_list:
+                    self.assertIn("agent_test_ownership", call.args[0])
+                    self.assertIn("yuanhub_agent_" + data["instance"], call.args[0])
+                self.assertEqual([("DEL", prefix+"one"), ("DEL", prefix+"two"), ("DEL", prefix+"agent-test:ownership")],
+                                 [call.args for call in redis.call_args_list[2:]])
+            self.assertFalse(path.exists())
+
+    def test_cleanup_retries_after_first_drop_and_redis_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "owned" / "manifest.json"
+            agent.private_dir(path.parent)
+            data = self.fixture()
+            agent.save(path, data)
+            instance = data["instance"]
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
+                    patch.object(agent, "mongo", side_effect=["owned", "owned", "", agent.Refused("hub down"), "owned", ""]), \
+                    patch.object(agent, "redis", side_effect=[instance, instance, agent.Refused("redis down"), instance, "", "1"]):
+                with self.assertRaises(agent.Refused):
+                    agent.cleanup(data, path)
+                self.assertEqual("deleted", agent.load(path)["resources"]["maa"])
+                with self.assertRaises(agent.Refused):
+                    agent.cleanup(agent.load(path), path)
+                self.assertEqual("deleted", agent.load(path)["resources"]["hub"])
+                agent.cleanup(agent.load(path), path)
+            self.assertFalse(path.parent.exists())
+
+    def test_cleanup_after_setup_fails_before_markers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "owned" / "manifest.json"
+            agent.private_dir(path.parent)
+            data = self.fixture()
+            data["resources"] = {name: "creating" for name in ("maa", "hub", "redis")}
+            agent.save(path, data)
+            with patch.object(agent, "no_tunnel"), patch.object(agent, "listening", return_value=False), \
+                    patch.object(agent, "mongo", side_effect=["absent", "absent", "", ""]) as mongo, \
+                    patch.object(agent, "redis", return_value="") as redis:
+                agent.cleanup(data, path)
+                self.assertTrue(all("dropDatabase" not in call.args[0] or "if (d.agent_test_ownership.findOne" in call.args[0]
+                                    for call in mongo.call_args_list))
+                self.assertEqual(1, redis.call_count)
+            self.assertFalse(path.parent.exists())
+
+    def test_launch_requires_exact_protected_config_in_current_worktree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / ".agent-test" / "fixture"
+            agent.private_dir(folder)
+            data = self.fixture()
+            data["properties"] = agent.properties(data, folder)
+            agent.save(folder / "manifest.json", data)
+            with patch.object(agent, "ROOT", root), patch.object(agent, "verify") as verify:
+                agent.validate_launch(data["properties"])
+                verify.assert_called_once_with(data)
+                verify.reset_mock()
+                unsafe = dict(data["properties"], **{"share.agent-test.enabled": "false"})
+                with self.assertRaises(agent.Refused):
+                    agent.validate_launch(unsafe)
+                unsafe["share.agent-test.manifest"] = str(root / "outside.json")
+                with self.assertRaises(agent.Refused):
+                    agent.validate_launch(unsafe)
+                verify.assert_not_called()
 
     def test_credentials_and_state_are_git_ignored(self):
         for file in ["manifest.json", "ready.json", "browser-user-default/state.json", "browser-admin-default/profile/token"]:

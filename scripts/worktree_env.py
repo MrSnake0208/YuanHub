@@ -1,4 +1,4 @@
-"""Private loopback ports and data namespace for the current Git worktree."""
+"""Private application ports and shared local databases for the current Git worktree."""
 import hashlib
 import fcntl
 import json
@@ -49,6 +49,8 @@ def exports(data, mode='local'):
     root = Path(data['root'])
     ports = data['ports']
     isolated_containers = mode == 'containers'
+    if isolated_containers and not {'mongo', 'redis'} <= ports.keys():
+        raise ValueError('Existing worktree configuration has no container ports; use local mode')
     mongo = f"mongodb://127.0.0.1:{ports['mongo'] if isolated_containers else 27017}"
     maa_database = 'yuanhub_local_maa' if isolated_containers else 'MaaBackend'
     hub_database = 'yuanhub_local_hub' if isolated_containers else 'HubBackend'
@@ -59,8 +61,8 @@ def exports(data, mode='local'):
         'SERVER_PORT': str(ports['backend']),
         'MANAGEMENT_SERVER_PORT': str(ports['backend']),
         'SERVER_ADDRESS': '127.0.0.1',
-        'YUANHUB_MONGO_PORT': str(ports['mongo']),
-        'YUANHUB_REDIS_PORT': str(ports['redis']),
+        'YUANHUB_MONGO_PORT': str(ports.get('mongo', 27017)),
+        'YUANHUB_REDIS_PORT': str(ports.get('redis', 6379)),
         'YUANHUB_DEV_API_TARGET': f"http://127.0.0.1:{ports['backend']}",
         'SPRING_PROFILES_ACTIVE': 'local',
         'SPRING_DATA_MONGODB_URI': mongo + f'/{maa_database}' + query,

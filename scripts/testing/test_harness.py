@@ -13,6 +13,16 @@ import impact
 import run
 
 
+def commands_for(mode, selection):
+    # Explicit scope fixture for legacy command-shape checks.
+    full = selection['conservative_full']
+    selection['scope'] = {'frontend': full or bool(selection['node'] or selection['behavior']),
+                          'backend': full or bool(selection['unit'] or selection.get('kotlin_files')),
+                          'full_frontend': full, 'full_backend': full,
+                          'contract': full or 'test/contract.test.js' in selection['node'], 'runner': full}
+    return run.build_commands(mode, selection)
+
+
 class TemporaryProject(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='yuanhub_test_git_')
@@ -126,7 +136,7 @@ class ScaleTest {
         for changes in [[], ['backend/src/test/kotlin/integration/ScaleTest.kt']]:
             with self.subTest(changes=changes):
                 selection = impact.infer(self.root, changes)
-                self.assertEqual(['unit.OrdinaryTest'], selection['unit'])
+                self.assertEqual(['unit.OrdinaryTest'] if changes else [], selection['unit'])
 
     def test_default_gradle_excludes_scale_tags_and_preserves_explicit_suites(self):
         # Real Gradle/JUnit discovery remains a separate user/CI check.
@@ -230,8 +240,8 @@ class ScaleTest {
 
     def test_quick_never_runs_database_or_mutation_but_all_runs_them(self):
         selection = {'conservative_full': True, 'unit': ['ExampleTest'], 'node': [], 'behavior': [], 'integration': ['MongoTest'], 'api': [], 'domains': ['star']}
-        quick = {c[0] for c in run.build_commands('quick', selection)}
-        full = {c[0] for c in run.build_commands('all', selection)}
+        quick = {c[0] for c in commands_for('quick', selection)}
+        full = {c[0] for c in commands_for('all', selection)}
         self.assertFalse({'integration', 'realistic', 'stress', 'api-schema', 'mutation'} & quick)
         self.assertTrue({'integration', 'realistic', 'api-schema', 'mutation', 'frontend-build', 'backend-build'} <= full)
         self.assertNotIn('stress', full)
@@ -241,7 +251,7 @@ class ScaleTest {
             selection = {'conservative_full': mode != 'all', 'unit': [], 'node': ['test/contract.test.js'],
                          'behavior': [], 'integration': [], 'api': [], 'domains': []}
             with self.subTest(mode=mode):
-                commands = run.build_commands(mode, selection)
+                commands = commands_for(mode, selection)
                 self.assertEqual(1, sum(name == 'frontend-contract' for name, _, _ in commands))
                 by_name = {name: command for name, _, command in commands}
                 self.assertEqual(['npm', 'run', 'test:repo'], by_name['frontend-node'])
@@ -252,7 +262,7 @@ class ScaleTest {
             selection = {'conservative_full': False, 'unit': [], 'node': node,
                          'behavior': [], 'integration': [], 'api': [], 'domains': []}
             with self.subTest(node=node):
-                commands = {name: command for name, _, command in run.build_commands('smart', selection)}
+                commands = {name: command for name, _, command in commands_for('smart', selection)}
                 self.assertEqual('test/contract.test.js' in node, 'frontend-contract' in commands)
                 if 'test/ordinary.test.js' in node:
                     self.assertEqual(['node', '--test', 'test/ordinary.test.js'], commands['frontend-node'])
@@ -271,7 +281,7 @@ class ScaleTest {
             'domains': [],
             'kotlin_files': [kotlin_file],
         }
-        commands = {name: command for name, _, command in run.build_commands('quick', selection)}
+        commands = {name: command for name, _, command in commands_for('quick', selection)}
         affected = commands['backend-ktlint-affected']
         self.assertIn('-PstrictKtlint=true', affected)
         self.assertIn('-PktlintFiles=' + kotlin_file, affected)
@@ -279,12 +289,12 @@ class ScaleTest {
 
     def test_stress_is_explicit_and_does_not_repeat_the_entire_all_suite(self):
         selection = {'conservative_full': True, 'unit': ['ExampleTest'], 'node': [], 'behavior': [], 'integration': ['MongoTest'], 'api': [], 'domains': ['star']}
-        stress = {c[0] for c in run.build_commands('stress', selection)}
+        stress = {c[0] for c in commands_for('stress', selection)}
         self.assertIn('stress', stress)
         self.assertFalse({'backend-unit', 'integration', 'realistic', 'api-schema', 'mutation', 'frontend-build', 'backend-build'} & stress)
         self.assertTrue({'runner-self-tests', 'backend-compile', 'backend-ktlint', 'architecture'} <= stress)
 
-    def test_runner_removes_live_connection_overrides_and_refuses_remote_docker(self):
+    def test_runner_removes_live_connection_overrides_without_requiring_docker(self):
         with patch.dict(os.environ, {'SPRING_PROFILES_ACTIVE': 'prod', 'SHARE_MONGO_HUB_URI': 'mongodb://production/HubBackend',
                                      'BETA_TEST_MONGO_URI': 'mongodb://production/HubBackend', 'DOCKER_HOST': 'unix:///tmp/test.sock'}):
             env = run.environment()
@@ -292,8 +302,7 @@ class ScaleTest {
             self.assertIn('127.0.0.1:1/yuanhub_test_', env['SHARE_MONGO_HUB_URI'])
             self.assertNotIn('BETA_TEST_MONGO_URI', env)
         with patch.dict(os.environ, {'DOCKER_HOST': 'tcp://remote.example.invalid:2375'}):
-            with self.assertRaises(ValueError):
-                run.environment()
+            self.assertEqual('test', run.environment()['SPRING_PROFILES_ACTIVE'])
 
     def test_preexisting_exception_cannot_silently_exempt_new_edits_to_the_same_file(self):
         import hashlib

@@ -1,9 +1,11 @@
 package com.lhs.share.testinfra
 
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor
+import org.springframework.beans.factory.config.BeanPostProcessor
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
+import org.springframework.data.redis.core.StringRedisTemplate
 import java.net.URI
 import java.nio.file.Path
 
@@ -17,6 +19,15 @@ class TestApplicationSafety {
         @JvmStatic
         fun refuseLiveTestConnections(environment: Environment): BeanFactoryPostProcessor = BeanFactoryPostProcessor {
             verify(environment)
+        }
+
+        @Bean
+        @JvmStatic
+        fun isolateRedisKeys(): BeanPostProcessor = object : BeanPostProcessor {
+            override fun postProcessBeforeInitialization(bean: Any, beanName: String): Any {
+                if (bean is StringRedisTemplate) bean.keySerializer = TestRedis.keySerializer
+                return bean
+            }
         }
 
         fun verify(environment: Environment) {

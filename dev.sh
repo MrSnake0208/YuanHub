@@ -12,10 +12,10 @@
 #   ./dev.sh frontend # 只启动前端
 #
 # 说明:
-#   - 后端是 Gradle/Spring Boot 项目，用 ./gradlew bootRun 启动（注意：不是 npm run）
+#   - 后端是 Gradle/Spring Boot 项目，用 java -jar "$ROOT_DIR/.dev/backend-running.jar" 启动（注意：不是 npm run）
 #   - 后端源码变化后会等待 2 秒，编译成功才自动重启；编译失败时保留当前后端
 #   - 前端是 Vue3 + Vite 项目，用 npm run dev 启动
-#   - 后端固定 local profile；默认共用本机开发数据，忽略继承的生产连接配置
+#   - 后端固定 local profile 与共享本机 Mongo/Redis；忽略继承的生产连接配置
 #
 set -euo pipefail
 
@@ -31,12 +31,28 @@ if [[ "${1:-}" == containers ]]; then
     shift
 fi
 
-# Ignore inherited live-service credentials; local mode uses existing development data.
+# The opt-in agent launcher supplies a protected manifest, verified before datasource creation.
+agent_test_json=""
+if [[ "${YUANHUB_AGENT_TEST:-}" == true ]]; then
+    agent_test_json="${SPRING_APPLICATION_JSON:?Agent launcher must supply its protected configuration}"
+fi
+
+# Ignore inherited live-service credentials; application ports belong to this tree; databases are shared local services.
 for name in $(compgen -e); do
     case "$name" in SPRING_*|SHARE_*|DEBUG_*|YUANHUB_BETA_*|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS) unset "$name" ;; esac
 done
 worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py "$DATA_MODE")"
 eval "$worktree_exports"
+if [[ -n "$agent_test_json" ]]; then
+    YUANHUB_AGENT_CONFIG="$agent_test_json" python3 - "$ROOT_DIR" <<'CHECK_AGENT'
+import json, os, runpy, sys
+agent = runpy.run_path(sys.argv[1] + '/scripts/agent-test/agent.py')
+agent['validate_launch'](json.loads(os.environ['YUANHUB_AGENT_CONFIG']))
+CHECK_AGENT
+    export SPRING_PROFILES_ACTIVE=local,agent-test SPRING_APPLICATION_JSON="$agent_test_json"
+    export SERVER_PORT=8080 MANAGEMENT_SERVER_PORT=8080 YUANHUB_FRONTEND_PORT=5173
+    export YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
+fi
 if [[ "${1:-}" == "--print-env" ]]; then
     printf 'Worktree: %s\nFrontend: http://127.0.0.1:%s\nBackend: %s\nCompose: %s\n' "$ROOT_DIR" "$YUANHUB_FRONTEND_PORT" "$YUANHUB_DEV_API_TARGET" "$COMPOSE_PROJECT_NAME"
     printf 'Database mode: %s\n' "$DATA_MODE"
@@ -109,7 +125,7 @@ start_backend() {
         return 1
     fi
 
-    log "$COLOR_BACKEND" "后端" "启动中: ./gradlew bootRun (profile: ${SPRING_PROFILES_ACTIVE:-local}, 目录: $BACKEND_DIR)"
+    log "$COLOR_BACKEND" "后端" "启动中: bootJar + java -jar (profile: ${SPRING_PROFILES_ACTIVE:-local}, 目录: $BACKEND_DIR)"
     if (( BETA_LOCAL_TEST == 1 )); then
         log "$COLOR_BACKEND" "后端" "本地内测模式：使用隔离活动 yuanhub-beta-local，不读写正式内测报名资格"
     fi
@@ -123,13 +139,24 @@ start_backend() {
         # Kotlin 2.2's daemon argument-file path escaping breaks Chinese worktree names.
         gradle=(./gradlew -Pkotlin.compiler.execution.strategy=in-process)
 
+        build_backend() {
+            "${gradle[@]}" bootJar --console=plain || return $?
+            jars=()
+            for candidate in build/libs/*.jar; do
+                [[ -f "$candidate" && "$candidate" != *-plain.jar ]] && jars+=("$candidate")
+            done
+            [[ "${#jars[@]}" == 1 ]] || { echo 'Expected one bootJar in build/libs; remove obsolete artifacts explicitly' >&2; return 1; }
+        }
+
         launch_backend() {
+            cp "${jars[0]}" "$ROOT_DIR/.dev/backend-running.jar" || return $?
+
             if (( BETA_LOCAL_TEST == 1 )); then
                 YUANHUB_BETA_LOCAL_TEST=true \
                 YUANHUB_BETA_CAMPAIGN_ID=yuanhub-beta-local \
-                    "${gradle[@]}" bootRun &
+                    java -jar "$ROOT_DIR/.dev/backend-running.jar" &
             else
-                "${gradle[@]}" bootRun &
+                java -jar "$ROOT_DIR/.dev/backend-running.jar" &
             fi
             backend_pid=$!
         }
@@ -148,6 +175,7 @@ start_backend() {
 
         trap shutdown_backend_supervisor INT TERM
 
+        build_backend || exit $?
         launch_backend
 
         last_state="$(backend_source_state)"
@@ -168,7 +196,7 @@ start_backend() {
                 pending_restart=0
                 log "$COLOR_BACKEND" "后端" "检测到源码变化，正在编译..."
 
-                if "${gradle[@]}" classes --console=plain; then
+                if build_backend; then
                     log "$COLOR_BACKEND" "后端" "编译成功，正在重启 Spring Boot..."
                     stop_backend
                     launch_backend

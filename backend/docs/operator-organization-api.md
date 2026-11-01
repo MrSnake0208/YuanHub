@@ -54,7 +54,7 @@ PUT 提交整个快照内容，将响应的 `account_id`、`revision` 去掉，�
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew test --tests '*OperatorOrganizationServiceTest' --tests '*OperatorOrganizationControllerTest' --tests '*SubAccountServiceTest' --offline --console=plain
 ```
 
-Mongo CAS 创建/更新竞争、用户/账号隔离及级联删除检查只使用测试自建可销毁容器，须先确保 Docker 可用：
+Mongo CAS 创建/更新竞争、用户/账号隔离及级联删除检查只使用 TestMongo 随机自有测试库，须先确保本机 MongoDB 副本集可用：
 
 ```sh
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew integrationTest --tests '*OperatorOrganizationMongoTest' --offline --console=plain

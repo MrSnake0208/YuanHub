@@ -48,9 +48,6 @@ repositories {
     mavenCentral()
 }
 
-// Stay on Testcontainers 1.x for Boot 3.5; 1.21.4 includes the Docker 29 API fix.
-extra["testcontainers.version"] = "1.21.4"
-
 dependencies {
     val hutoolVersion = "5.8.39"
     val mapstructVersion = "1.6.3"
@@ -58,9 +55,6 @@ dependencies {
     kapt("org.springframework.boot:spring-boot-configuration-processor")
 
     testImplementation("io.mockk:mockk:1.14.4")
-    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
-    testImplementation("org.testcontainers:mongodb:1.21.4")
-    testImplementation("org.testcontainers:testcontainers:1.21.4")
     testImplementation("com.tngtech.archunit:archunit:1.4.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("com.networknt:json-schema-validator:1.5.8")
@@ -141,8 +135,6 @@ tasks.withType<Test>().configureEach {
         !key.startsWith("SPRING_") && !key.startsWith("SHARE_") && !key.startsWith("YUANHUB_BETA_") &&
             key !in setOf("PLANNER_TEST_MONGO_URI", "BETA_TEST_MONGO_URI", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS")
     }
-    environment("TESTCONTAINERS_RYUK_DISABLED", "false")
-    environment("TESTCONTAINERS_REUSE_ENABLE", "false")
     maxParallelForks = 1
     maxHeapSize = "1g"
     testLogging {

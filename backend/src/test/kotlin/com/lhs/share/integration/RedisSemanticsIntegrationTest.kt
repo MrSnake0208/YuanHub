@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.Callable
@@ -25,7 +24,7 @@ import java.util.concurrent.TimeUnit
 @Tag("integration")
 class RedisSemanticsIntegrationTest {
     private val connectionFactory = TestRedis.connectionFactory()
-    private val template = StringRedisTemplate(connectionFactory)
+    private val template = TestRedis.template(connectionFactory)
     private val cache = RedisCache(60, template)
     private val key = "yuanhub_test:${UUID.randomUUID()}"
 
@@ -33,6 +32,13 @@ class RedisSemanticsIntegrationTest {
     fun closeConnection() {
         template.delete(key)
         connectionFactory.destroy()
+    }
+
+    @Test
+    fun `namespace cleanup removes process-owned keys`() {
+        template.opsForValue().set(key, "owned")
+        TestRedis.clearOwnedKeys(template)
+        assertNull(template.opsForValue().get(key))
     }
 
     @Test
