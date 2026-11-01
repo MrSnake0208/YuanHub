@@ -96,7 +96,7 @@
                   <button ref="batchTrigger" class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []"><NotebookPen :size="16" aria-hidden="true" />{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
-                  <span>目标：{{ account?.name }} · 已选 {{ selected.length }} 条</span><button type="button" :disabled="!writable || !pageEntries.length" @click="selected = pageEntries.map(entry => entry.achievement_id)">选择本页（{{ pageEntries.length }} 条）</button><button type="button" :disabled="!selected.length || state.busy" @click="selected = []">取消选择</button><button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :disabled="!writable || !selected.length" @click="bulkSave(value)">标记{{ label }}</button>
+                  <span>目标：{{ account?.name }} · 已选 {{ selected.length }} 条</span><button type="button" :disabled="!writable || !pageEntries.length" @click="selected = pageEntries.map(entry => entry.achievement_id)">选择本页（{{ pageEntries.length }} 条）</button><button type="button" :disabled="!selected.length || state.busy" @click="selected = []">取消选择</button><button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :disabled="!writable || !selected.length" @click="bulkSave({ status: value })">标记{{ label }}</button><button type="button" :disabled="!writable || !selected.length" @click="bulkSave({ favorite: false })">移除关注</button>
                 </div>
                 <section v-if="rewardSources.length" class="achievement-reward-sources" aria-label="分类积分奖励来源">
                   <h2>分类积分奖励来源</h2>
@@ -272,12 +272,20 @@ async function saveInline(patch) {
   if ('status' in patch && recordFor(patch.achievement_id).status === patch.status) return
   await save([patch])
 }
-async function bulkSave(status) {
+async function bulkSave(patch) {
   if (!writable.value || !selected.value.length) return
   const token = capture(), ids = [...selected.value]
-  const confirmation = await dialog.confirm({ title: '确认批量记录？', message: `目标：${account.value.name} · ${game.value}，将把明确选中的 ${ids.length} 条标记为“${STATUS_LABELS[status]}”。`, confirmText: '确认记录', cancelText: '取消' })
+  const removingFavorite = patch.favorite === false
+  const confirmation = await dialog.confirm({
+    title: removingFavorite ? '确认批量移除关注？' : '确认批量记录？',
+    message: removingFavorite
+      ? `目标：${account.value.name} · ${game.value}，将移除明确选中的 ${ids.length} 条成就的关注，完成状态、进度和备注保持不变。`
+      : `目标：${account.value.name} · ${game.value}，将把明确选中的 ${ids.length} 条标记为“${STATUS_LABELS[patch.status]}”。`,
+    confirmText: removingFavorite ? '移除关注' : '确认记录', cancelText: '取消'
+  })
   if (!confirmation || !matches(token) || ids.some(id => !selected.value.includes(id) || !pageEntries.value.some(entry => entry.achievement_id === id))) return
-  if (await save(ids.map(id => ({ achievement_id: id, status }))) && matches(token)) {
+  if (await save(ids.map(id => ({ achievement_id: id, ...patch }))) && matches(token)) {
+    if (removingFavorite) state.notice = `已移除所选 ${ids.length} 条成就的关注，可撤销。`
     selected.value = []
     batchMode.value = false
     await nextTick()

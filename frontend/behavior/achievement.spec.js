@@ -788,3 +788,42 @@ it('置底完成后停留6秒，统计立即更新，撤销恢复原始位置', 
     expect(names()).toEqual(['测试成就 1 未完成', '测试成就 2 未完成', '测试成就 3 未完成'])
   } finally { wrapper?.unmount(); vi.useRealTimers() }
 })
+
+
+it('批量移除关注只写所选关注字段，保留记录并支持撤销', async () => {
+  const records = achievementCatalog().entries.map((entry, index) => ({
+    achievement_id: entry.achievement_id, status: 'completed', favorite: index !== 1,
+    note: '保留备注', progress: 3, completed_on: '2026-10-01'
+  }))
+  mockArchiveWrites(records)
+  const wrapper = page(); await flushPromises()
+  await button(wrapper, '批量记录').trigger('click')
+  expect(button(wrapper, '移除关注').element.disabled).toBe(true)
+  const choices = wrapper.findAll('.achievement-selection input')
+  await choices[0].setValue(true); await choices[1].setValue(true)
+  await button(wrapper, '移除关注').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '确认批量移除关注？' }))
+  expect(api.writeAchievements).toHaveBeenLastCalledWith('a', 'owner', 1, records.slice(0, 2).map(record => ({ achievement_id: record.achievement_id, favorite: false })))
+  expect(wrapper.vm.state.archive.records).toEqual(records.map((record, index) => index < 2 ? { ...record, favorite: false } : record))
+  expect(wrapper.find('.achievement-batch').exists()).toBe(false)
+  expect(wrapper.get('.achievement-save-notice').text()).toContain('已移除所选 2 条')
+  await button(wrapper, '撤销').trigger('click'); await flushPromises()
+  expect(wrapper.vm.state.archive.records).toEqual(records)
+})
+
+it('批量移除关注取消不写入，失败保留选择供重试', async () => {
+  mockArchiveWrites()
+  const wrapper = page(); await flushPromises()
+  await button(wrapper, '批量记录').trigger('click')
+  await button(wrapper, '选择本页（3 条）').trigger('click')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await button(wrapper, '移除关注').trigger('click'); await flushPromises()
+  expect(api.writeAchievements).not.toHaveBeenCalled()
+  api.writeAchievements.mockRejectedValueOnce(new Error('网络断开'))
+  await button(wrapper, '移除关注').trigger('click'); await flushPromises()
+  expect(wrapper.get('.achievement-batch').text()).toContain('已选 3 条')
+  expect(wrapper.text()).toContain('网络断开')
+  await button(wrapper, '移除关注').trigger('click'); await flushPromises()
+  expect(api.writeAchievements).toHaveBeenCalledTimes(2)
+  expect(wrapper.find('.achievement-batch').exists()).toBe(false)
+})
