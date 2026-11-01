@@ -22,17 +22,7 @@ on:
       - 'docs/development/testing.md'
       - '.gitattributes'
       - '.gitignore'
-  pull_request:
-    paths:
-      - 'backend/**'
-      - '.github/**'
-      - 'scripts/**'
-      - 'dev.sh'
-      - 'release.sh'
-      - 'AGENTS.md'
-      - 'docs/development/testing.md'
-      - '.gitattributes'
-      - '.gitignore'
+  workflow_call:
   workflow_dispatch:
 
 concurrency:

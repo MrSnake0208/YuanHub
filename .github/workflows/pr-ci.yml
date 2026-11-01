@@ -1,0 +1,90 @@
+name: PR CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yuanhub-pr-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Select affected components
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.scope.outputs.frontend }}
+      backend: ${{ steps.scope.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Check CI gate regressions
+        run: python3 scripts/testing/test_monorepo_ci.py
+      - name: Select components
+        id: scope
+        shell: python
+        run: |
+          import os
+          import subprocess
+
+          # Compare the tested merge tree to its base; include both sides of renames.
+          changed = subprocess.check_output([
+              'git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD', '--'
+          ]).split(b'\0')
+          frontend = backend = False
+          for raw in filter(None, changed):
+              path = os.fsdecode(raw)
+              if path.startswith('frontend/'):
+                  frontend = True
+              elif path.startswith('backend/'):
+                  backend = True
+                  frontend |= path.startswith('backend/src/')
+              elif path.startswith('docs/') and path != 'docs/development/testing.md':
+                  continue
+              else:
+                  frontend = backend = True
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'frontend={str(frontend).lower()}\nbackend={str(backend).lower()}\n')
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/frontend-ci.yml
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+
+  gate:
+    name: PR merge gate
+    if: ${{ always() }}
+    needs: [changes, frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all affected checks
+        shell: python
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          import json
+          import os
+
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          if needs['changes']['result'] != 'success':
+              raise SystemExit('Component selection failed or was cancelled')
+          for component in ('frontend', 'backend'):
+              required = needs['changes']['outputs'].get(component)
+              result = needs[component]['result']
+              if required not in ('true', 'false'):
+                  raise SystemExit(f'{component}: missing or invalid selection')
+              expected = 'success' if required == 'true' else 'skipped'
+              if result != expected:
+                  raise SystemExit(f'{component}: expected {expected}, got {result}')
+              print(f'{component}: {result}')
