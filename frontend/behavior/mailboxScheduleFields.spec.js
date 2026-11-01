@@ -5,7 +5,7 @@ import MailboxScheduleFields from '../src/components/inventory/MailboxScheduleFi
 let wrapper
 afterEach(() => wrapper?.unmount())
 function open(today = '2026-11-01', modelValue = { start_date: '2026-11-02', end_date: '', coins_per_mail: 90 }) {
-  wrapper = mount(MailboxScheduleFields, { props: {
+  wrapper = mount(MailboxScheduleFields, { attachTo: document.body, props: {
     title: '白金币邮件', today, coins: true, coinOptions: [90], modelValue,
     'onUpdate:modelValue': value => wrapper.setProps({ modelValue: value })
   } })
@@ -60,10 +60,10 @@ it('重开显示真实剩余天数，跨日递减到零且不改已保存配置'
 })
 it('修改已存配置时回填天数，但不推断今天领取状态', async () => {
   open('2026-11-01', { start_date: '2026-10-20', end_date: '2026-11-26', coins_per_mail: 90 })
-  await wrapper.get('[aria-label="修改白金币邮件月卡天数"]').trigger('click')
+  await wrapper.get('[aria-label="白金币邮件月卡设置"]').trigger('click')
   expect(days().element.value).toBe('25')
   expect(wrapper.findAll('input:checked')).toHaveLength(0)
-  expect(status()).toMatchObject({ valid: false, dirty: false })
+  expect(status()).toMatchObject({ valid: true, dirty: false })
   await claimed('已经领取').setValue()
   expect(status()).toMatchObject({ valid: true, dirty: true })
   expect(end()).toBe('2026-11-26')
@@ -84,4 +84,23 @@ it('闰日十年上限落在二月末', async () => {
   open('2028-02-29')
   await days().setValue(days().attributes('max'))
   expect(end()).toBe('2038-02-28')
+})
+
+it('月卡设置默认收起，展开不修改配置，收起再展开保留编辑草稿', async () => {
+  open('2026-11-01', { start_date: '2026-10-20', end_date: '2026-11-26', coins_per_mail: 90 })
+  const toggle = wrapper.get('[aria-label="白金币邮件月卡设置"]')
+  const stop = wrapper.get('[aria-label="停止白金币邮件自动累计"]')
+  expect(stop.isVisible()).toBe(false)
+  expect(wrapper.get('h4').text()).toBe('白金币邮件')
+  await toggle.trigger('click')
+  expect(stop.isVisible()).toBe(true)
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  expect(status()).toMatchObject({ editing: true, valid: true, dirty: false })
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  await days().setValue('30')
+  await claimed('还没领取').setValue()
+  await toggle.trigger('click')
+  await toggle.trigger('click')
+  expect(days().element.value).toBe('30')
+  expect(claimed('还没领取').element.checked).toBe(true)
 })

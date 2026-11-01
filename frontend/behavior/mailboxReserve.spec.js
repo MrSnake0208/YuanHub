@@ -33,6 +33,8 @@ it('初始化不覆盖保存，折算多行并覆盖保存，清零合法', asyn
   await input('第2行每封白金币').setValue('60')
   await input('符传邮件封数').setValue('20')
   expect(ui().text()).toContain('1,920 白金币 · 60 普通符传')
+  expect(ui().get('.mail-manage-total').text()).toContain('合计待领 42 封')
+  expect(ui().findAll('.mail-card-summary')[0].text()).toContain('2 封 · 每封 60 白金币')
   saveMailboxReserve.mockImplementation(async (account, user, body) => ({ account_id: account, ...body, version: 2, updated_at: '2026-10-22T01:00:00Z' }))
   await submit()
   expect(saveMailboxReserve).toHaveBeenCalledWith('a', 'owner', { expected_version: 1, white_coin_mails: [{ count: 20, coins_per_mail: 90 }, { count: 2, coins_per_mail: 60 }], fu_chuan_mail_count: 20, white_coin_schedule: null, fu_chuan_schedule: null })
@@ -44,7 +46,8 @@ it('初始化不覆盖保存，折算多行并覆盖保存，清零合法', asyn
   await input('符传邮件封数').setValue('0')
   await input('第1行白金币邮件封数').setValue('0')
   await input('第2行白金币邮件封数').setValue('0')
-  expect(ui().text()).toContain('当前待领：0 白金币')
+  expect(ui().get('.mail-manage-total').text()).toContain('合计待领 0 封')
+  expect(ui().get('.mail-manage-total').text()).toContain('0 白金币')
   await submit()
   expect(saveMailboxReserve.mock.lastCall[2].expected_version).toBe(2)
 })
@@ -347,6 +350,7 @@ it('零封开启建立奖励分组，符传独立，取消保留原数据', asyn
 it('关闭只清配置，保持已有邮件，服务端进度不作为请求字段', async () => {
   getMailboxReserve.mockResolvedValue({ ...record(), white_coin_schedule: { start_date: '2026-01-01', end_date: '2026-02-01', coins_per_mail: 90, through_date: '2026-02-01' } })
   await open()
+  await ui().get('[aria-label="白金币邮件月卡设置"]').trigger('click')
   await ui().get('[aria-label="停止白金币邮件自动累计"]').trigger('click')
   saveMailboxReserve.mockImplementation(async (account, user, body) => ({ account_id: account, ...body, version: 2, updated_at: new Date().toISOString() }))
   await submit()
@@ -369,7 +373,7 @@ it('默认紧凑展示，完成退出不写入，底部操作关联管理表单'
 it('重复修改月卡只提交配置，不在前端重复增加今天的邮件', async () => {
   getMailboxReserve.mockResolvedValue({ ...record(), white_coin_schedule: { start_date: businessDate(), end_date: addCalendarDays(businessDate(), 25), coins_per_mail: 90, through_date: businessDate() } })
   await open()
-  await ui().get('[aria-label="修改白金币邮件月卡天数"]').trigger('click')
+  await ui().get('[aria-label="白金币邮件月卡设置"]').trigger('click')
   await ui().get('[aria-label="白金币邮件月卡剩余天数"]').setValue('26')
   await ui().get('[aria-label="白金币邮件还没领取"]').setValue()
   await ui().get('[aria-label="白金币邮件已经领取"]').setValue()
@@ -442,4 +446,37 @@ it('打开设置不提前报错，未选领取状态仍不能保存', async () =
   await ui().get('[aria-label="白金币邮件已经领取"]').setValue()
   expect(ui().get('[role=dialog]').find('[role=alert]').exists()).toBe(false)
   expect(button('保存设置').element.disabled).toBe(false)
+})
+
+it.each([
+  ['白金币邮件', 'white_coin_schedule'],
+  ['符传邮件', 'fu_chuan_schedule']
+])('%s一次展开即可编辑，查看不阻塞其他邮件保存，修改后要求领取状态', async (title, key) => {
+  const today = businessDate()
+  const schedules = {
+    white_coin_schedule: { start_date: today, end_date: addCalendarDays(today, 25), coins_per_mail: 90 },
+    fu_chuan_schedule: { start_date: today, end_date: addCalendarDays(today, 25) }
+  }
+  getMailboxReserve.mockResolvedValue({ ...record(), ...schedules })
+  await open()
+  await ui().get(`[aria-label="${title}月卡设置"]`).trigger('click')
+  const days = input(`${title}月卡剩余天数`)
+  expect(days.isVisible()).toBe(true)
+  expect(days.element.value).toBe('25')
+  expect(button('完成')).toBeDefined()
+  expect(ui().get('form').element.checkValidity()).toBe(true)
+  await input('符传邮件封数').setValue('11')
+  expect(button('保存设置').element.disabled).toBe(false)
+  expect(ui().get('form').element.checkValidity()).toBe(true)
+  saveMailboxReserve.mockImplementation(async (account, user, body) => ({ account_id: account, ...body, version: 2, updated_at: new Date().toISOString() }))
+  await submit()
+  expect(saveMailboxReserve.mock.lastCall[2]).toMatchObject({ ...schedules, fu_chuan_mail_count: 11 })
+  await manage()
+  await ui().get(`[aria-label="${title}月卡设置"]`).trigger('click')
+  await input(`${title}月卡剩余天数`).setValue('30')
+  expect(button('保存设置').element.disabled).toBe(true)
+  await ui().get(`[aria-label="${title}还没领取"]`).setValue()
+  expect(button('保存设置').element.disabled).toBe(false)
+  await submit()
+  expect(saveMailboxReserve.mock.lastCall[2][key].end_date).toBe(addCalendarDays(today, 30))
 })

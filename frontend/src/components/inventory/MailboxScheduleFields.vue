@@ -1,34 +1,32 @@
 <template>
   <section class="mail-schedule">
-    <div class="schedule-heading">
-      <div class="schedule-title"><h4>{{ coins ? '白金币月卡' : '符传月卡' }}</h4><span class="schedule-badge">{{ !modelValue ? '未开启' : editing ? '设置中' : daysLeft > 0 ? '自动累计中' : '已到期' }}</span></div>
-      <button v-if="!modelValue" type="button" class="schedule-action" :aria-label="`${title}设置自动累计`" @click="enable">设置 <ChevronRight :size="16" aria-hidden="true" /></button>
-    </div>
-    <div v-if="modelValue && !editing" class="schedule-overview">
-      <p class="schedule-countdown">剩余 <strong>{{ daysLeft }}</strong> 天</p>
-      <button type="button" class="schedule-action" :aria-label="`修改${title}月卡天数`" @click="edit">修改 <ChevronRight :size="16" aria-hidden="true" /></button>
-    </div>
+    <h4>{{ title }}</h4>
     <slot />
-    <template v-if="modelValue">
+    <div class="schedule-overview">
+      <p class="schedule-state"><span v-if="modelValue" class="schedule-countdown">剩余 {{ daysLeft }} 天</span><span>{{ !modelValue ? '月卡未开启' : editing && needsConfirmation ? '设置中' : daysLeft > 0 ? '自动累计中' : '已停止累计，已有邮件保留' }}</span></p>
+      <button v-if="!modelValue" type="button" class="schedule-action" :aria-label="`${title}设置自动累计`" @click="enable">月卡设置 <ChevronRight :size="16" aria-hidden="true" /></button>
+      <button v-else type="button" class="schedule-action" :aria-label="`${title}月卡设置`" :aria-expanded="settingsOpen" :aria-controls="`${hintId}-settings`" @click="toggleSettings">{{ settingsOpen ? '收起设置' : '月卡设置' }} <ChevronRight :size="16" :class="{ 'is-expanded': settingsOpen }" aria-hidden="true" /></button>
+    </div>
+    <div v-if="modelValue" v-show="settingsOpen" :id="`${hintId}-settings`">
       <div v-if="editing" class="schedule-editor">
         <label class="schedule-days">月卡剩余天数
-          <span class="schedule-number"><input ref="daysInput" v-model="remainingDays" type="number" min="1" :max="maximumDays" step="1" inputmode="numeric" required placeholder="例如 285" :aria-label="`${title}月卡剩余天数`" :aria-describedby="touched && daysError ? hintId : undefined" :aria-invalid="touched && !!daysError" @input="updateDays($event.target.value)" /><span>天</span></span>
+          <span class="schedule-number"><input ref="daysInput" v-model="remainingDays" type="number" min="1" :max="maximumDays" step="1" inputmode="numeric" :required="needsConfirmation" placeholder="例如 285" :aria-label="`${title}月卡剩余天数`" :aria-describedby="touched && daysError ? hintId : undefined" :aria-invalid="touched && !!daysError" @input="updateDays($event.target.value)" /><span>天</span></span>
         </label>
         <p v-if="touched && daysError" :id="hintId" class="schedule-error" role="alert">{{ daysError }}</p>
         <fieldset class="schedule-claim"><legend>今天的月卡邮件领了吗？</legend>
           <div class="schedule-options">
             <label v-for="option in claimOptions" :key="option.value" :class="{ selected: claimedToday === option.value }">
-              <input v-model="claimedToday" type="radio" :name="hintId" :value="option.value" required :aria-label="`${title}${option.label}`" @change="setClaimedToday(option.value)" />{{ option.label }}
+              <input v-model="claimedToday" type="radio" :name="hintId" :value="option.value" :required="needsConfirmation" :aria-label="`${title}${option.label}`" @change="setClaimedToday(option.value)" />{{ option.label }}
             </label>
           </div>
         </fieldset>
-        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天这封会计入待领邮件；已累计过的不会重复增加。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : '请选择今天的领取状态。' }}</p>
+        <p class="schedule-note" aria-live="polite">{{ claimedToday === 'no' ? '今天这封会计入待领邮件；已累计过的不会重复增加。' : claimedToday === 'yes' ? '从明天开始累计；已有待领邮件不变。' : needsConfirmation ? '请选择今天的领取状态。' : '修改配置时，请确认今天的领取状态。' }}</p>
         <label v-if="coins && (coinOptions.length > 1 || !coinOptions.includes(modelValue.coins_per_mail))" class="schedule-reward">累计到哪组邮件
-          <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
+          <select :value="modelValue.coins_per_mail" :aria-label="`${title}自动累计单封奖励`" @change="touched = true; update('coins_per_mail', Number($event.target.value))"><option v-if="!coinOptions.includes(modelValue.coins_per_mail)" :value="modelValue.coins_per_mail" disabled>请选择累计分组</option><option v-for="amount in coinOptions" :key="amount" :value="amount">每封 {{ amount }} 白金币</option></select>
         </label>
       </div>
-      <div class="schedule-footnote"><p class="schedule-note">{{ daysLeft === 0 && !editing ? '已停止累计，已有邮件保留。' : '每天北京时间 05:00 更新，剩余 0 天时停止。' }}</p><button type="button" class="schedule-action schedule-stop" :aria-label="`停止${title}自动累计`" @click="stop">停止累计</button></div>
-    </template>
+      <div class="schedule-footnote"><button type="button" class="schedule-action schedule-stop" :aria-label="`停止${title}自动累计`" @click="stop">停止累计</button></div>
+    </div>
   </section>
 </template>
 <script setup>
@@ -38,6 +36,7 @@ import { addCalendarDays } from '../../utils/businessDay.js'
 const props = defineProps({ modelValue: { type: Object, default: null }, title: String, today: String, coinOptions: { type: Array, default: () => [] }, coins: Boolean })
 const emit = defineEmits(['update:modelValue', 'status'])
 const editing = ref(!!props.modelValue && !props.modelValue.end_date)
+const settingsOpen = ref(editing.value)
 const remainingDays = ref(''), claimedToday = ref(''), touched = ref(false), daysInput = ref(null)
 const hintId = useId()
 const claimOptions = [{ value: 'no', label: '还没领取' }, { value: 'yes', label: '已经领取' }]
@@ -51,9 +50,10 @@ const daysError = computed(() => {
   const days = Number(remainingDays.value)
   return Number.isInteger(days) && days >= 1 && days <= maximumDays.value ? '' : `请输入 1–${maximumDays.value} 的整数天数。`
 })
-watch([editing, daysError, claimedToday, touched], () => emit('status', {
+const needsConfirmation = computed(() => editing.value && (touched.value || !props.modelValue?.end_date))
+watch([editing, daysError, claimedToday, touched, needsConfirmation], () => emit('status', {
   editing: editing.value,
-  valid: !editing.value || !daysError.value && !!claimedToday.value,
+  valid: !needsConfirmation.value || !daysError.value && !!claimedToday.value,
   dirty: editing.value && touched.value
 }), { immediate: true })
 function update(key, value) { emit('update:modelValue', { ...props.modelValue, [key]: value }) }
@@ -66,7 +66,12 @@ function setClaimedToday(value) {
   touched.value = true
   update('start_date', value === 'yes' ? addCalendarDays(props.today, 1) : props.today)
 }
+function toggleSettings() {
+  if (!editing.value) edit()
+  else settingsOpen.value = !settingsOpen.value
+}
 async function edit() {
+  settingsOpen.value = true
   remainingDays.value = daysLeft.value || ''
   claimedToday.value = ''
   touched.value = false
@@ -86,14 +91,13 @@ function stop() {
 </script>
 <style scoped>
 .mail-schedule { min-width: 0; }
-.schedule-heading, .schedule-title, .schedule-overview, .schedule-footnote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
-.schedule-title { justify-content: flex-start; }
-.schedule-title h4 { margin: 0; font: 750 21px/1.5 var(--font-s); }
-.schedule-badge { padding: 3px 10px; border-radius: 20px; background: var(--cream); color: var(--ink-60); font-size: 12px; }
-.schedule-action { display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 6px 0; border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); font: 14px/1.5 var(--font-b); cursor: pointer; }
-.schedule-overview { margin-top: 14px; }
-.schedule-countdown { margin: 0; font-size: 16px; }
-.schedule-countdown strong { margin-inline: 4px; font: 600 38px/1.2 var(--font-d); color: var(--theme-strong-text, var(--tea)); font-variant-numeric: tabular-nums; }
+.schedule-overview, .schedule-footnote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.mail-schedule h4 { margin: 0; font: 750 21px/1.5 var(--font-s); }
+.schedule-action { display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 6px 0; border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); font: 14px/1.5 var(--font-b); cursor: pointer; flex-shrink: 0; }
+.schedule-action .is-expanded { transform: rotate(-90deg); }
+.schedule-overview { margin-top: 14px; padding: 8px 12px; border-radius: 8px; background: var(--cream); }
+.schedule-state { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
+.schedule-countdown { font-variant-numeric: tabular-nums; }
 .schedule-editor { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
 .schedule-days, .schedule-reward { display: grid; gap: 6px; font-size: 14px; }
 .schedule-number { display: flex; align-items: center; width: min(100%, 250px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
@@ -112,5 +116,5 @@ function stop() {
 .schedule-stop { font-size: 12px; color: var(--ink-60); }
 :is(button, input, select):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .schedule-number input:focus-visible { outline: 0; }
-@media (max-width: 380px) { .schedule-title h4 { font-size: 18px; } .schedule-options label { gap: 5px; } }
+@media (max-width: 380px) { .mail-schedule h4 { font-size: 18px; } .schedule-options label { gap: 5px; } }
 </style>

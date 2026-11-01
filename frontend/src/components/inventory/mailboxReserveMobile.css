@@ -68,11 +68,13 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 767px) {
 
 .mail-card-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 14px; }
-.mail-card-summary strong { font: 650 22px/1.4 var(--font-d); color: var(--theme-strong-text, var(--tea)); }
+.mail-card-summary > div { min-width: 0; overflow-wrap: anywhere; }
+.mail-card-summary p { margin: 0; }
+.mail-card-reward { font-size: 14px; line-height: 1.6; color: var(--ink-60); }
+.mail-card-summary strong { font: 650 42px/1.2 var(--font-d); color: var(--theme-strong-text, var(--tea)); }
 .mail-card-summary .mail-manage { display: inline-flex; align-items: center; gap: 3px; color: var(--theme-strong-text, var(--tea)); }
 .mail-adjustments { display: grid; gap: 12px; margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .mail-adjustments label { font-size: 13px; }
-.mail-ticket-adjust { margin-top: 4px; }
 .mail-manage-footer { display: grid; gap: 8px; }
 .mail-manage-footer .panel-note { font-size: 12px; color: var(--ink-60); }
 .mail-manage-footer [role=alert] { color: var(--theme-danger-text, var(--rouge)); font-size: 13px; }

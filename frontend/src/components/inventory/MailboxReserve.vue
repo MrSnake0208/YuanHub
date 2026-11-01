@@ -10,14 +10,15 @@
     <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
     <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>
     <p v-if="loading" class="mail-feedback" role="status">正在读取邮件…</p>
-    <InventoryQuickDialog :open="!!panel" :title="panel === 'claim' ? '记录邮件领取' : '月卡与待领邮件'" :locked="locked" @close="closePanel">
+    <InventoryQuickDialog :open="!!panel" :title="panel === 'claim' ? '记录邮件领取' : '待领邮件'" :locked="locked" @close="closePanel">
       <template #default>
         <p v-if="loading" class="panel-note" role="status">正在读取邮件…</p>
         <div v-else-if="!loaded && error"><p role="alert">{{ error }}</p><button type="button" class="mail-manage" @click="reload">重新读取</button></div>
       <form v-if="panel === 'manage' && loaded" :id="`${claimId}-manage`" class="mailbox-manage-form" @submit.prevent="save">
-        <fieldset aria-label="白金币月卡" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
+        <p class="panel-note">查看待领数量，管理月卡累计</p>
+        <fieldset aria-label="白金币邮件" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
           <MailboxScheduleFields :key="`coins-${editorRevision}`" v-model="draft.white_coin_schedule" title="白金币邮件" :today="today" :coin-options="coinOptions" coins @status="scheduleStatus.coins = $event">
-            <div class="mail-card-summary"><p>当前待领 <strong>{{ draft.white_coin_mails.reduce((sum, row) => sum + (Number(row.count) || 0), 0) }}</strong> 封 <span v-if="draft.white_coin_mails.length === 1">· 每封 {{ draft.white_coin_mails[0].coins_per_mail }} 白金币</span></p><button type="button" class="mail-manage" aria-label="调整白金币邮件" :aria-expanded="adjustCoins" @click="adjustCoins = !adjustCoins">{{ adjustCoins ? '收起调整' : '调整' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
+            <div class="mail-card-summary"><div><p>待领 <strong>{{ draft.white_coin_mails.reduce((sum, row) => sum + (Number(row.count) || 0), 0) }}</strong> 封</p><p v-if="draft.white_coin_mails.length === 1" class="mail-card-reward">每封 {{ draft.white_coin_mails[0].coins_per_mail }} 白金币</p><p v-else v-for="(row, index) in draft.white_coin_mails" :key="index" class="mail-card-reward">{{ row.count }} 封 · 每封 {{ row.coins_per_mail }} 白金币</p></div><button type="button" class="mail-manage" aria-label="调整白金币邮件" :aria-expanded="adjustCoins" @click="adjustCoins = !adjustCoins">{{ adjustCoins ? '收起调整' : '调整封数' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
             <div v-if="adjustCoins" class="mail-adjustments">
               <p class="panel-note">调整已有待领邮件，不会转入背包。</p>
           <div v-for="(row, index) in draft.white_coin_mails" :key="index" class="mailbox-row">
@@ -33,10 +34,9 @@
             </div>
           </MailboxScheduleFields>
         </fieldset>
-        <fieldset aria-label="符传月卡" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
+        <fieldset aria-label="符传邮件" class="panel-fields mail-card" :disabled="locked || disabled || conflict">
           <MailboxScheduleFields :key="`tickets-${editorRevision}`" v-model="draft.fu_chuan_schedule" title="符传邮件" :today="today" @status="scheduleStatus.tickets = $event">
-            <div v-if="draft.fu_chuan_mail_count || draft.fu_chuan_schedule || adjustTickets" class="mail-card-summary"><p>当前待领 <strong>{{ draft.fu_chuan_mail_count }}</strong> 封 · 每封 3 普通符传</p><button type="button" class="mail-manage" aria-label="调整符传邮件" :aria-expanded="adjustTickets" @click="adjustTickets = !adjustTickets">{{ adjustTickets ? '收起调整' : '调整' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
-            <button v-else type="button" class="mail-manage mail-ticket-adjust" aria-label="调整符传邮件" @click="adjustTickets = true">录入已有邮件</button>
+            <div class="mail-card-summary"><div><p>待领 <strong>{{ draft.fu_chuan_mail_count }}</strong> 封</p><p class="mail-card-reward">每封 3 普通符传</p></div><button type="button" class="mail-manage" aria-label="调整符传邮件" :aria-expanded="adjustTickets" @click="adjustTickets = !adjustTickets">{{ adjustTickets ? '收起调整' : '调整封数' }}<ChevronRight :size="14" aria-hidden="true" /></button></div>
             <div v-if="adjustTickets" class="mail-adjustments">
               <p class="panel-note">调整已有待领邮件，不会转入背包。</p>
 <div class="mail-count-field"><label :for="`${claimId}-reserve-tickets`">未领取封数</label><div class="mail-stepper">
@@ -47,6 +47,7 @@
             </div>
           </MailboxScheduleFields>
         </fieldset>
+        <p class="panel-note">每天北京时间 05:00 累计，到期停止；已有邮件保留。</p>
       </form>
 
       <form v-if="panel === 'claim' && selection" class="mailbox-claim-form" @submit.prevent="claim">
@@ -89,7 +90,7 @@
           <p v-if="saveHint" class="panel-note" :role="valid && !conflict ? 'status' : 'alert'">{{ saveHint }}</p>
           <p v-if="error" role="alert">{{ error }}</p>
           <button v-if="conflict || staleDay" type="button" class="mail-manage" :disabled="locked" @click="reload">重新读取</button>
-          <div class="mail-footer-row"><p class="mail-manage-total" aria-live="polite">当前待领：<strong>{{ totals.coins.toLocaleString() }}</strong> 白金币<span v-if="totals.tickets"> · {{ totals.tickets.toLocaleString() }} 普通符传</span></p>
+          <div class="mail-footer-row"><div class="mail-manage-total" aria-live="polite"><p>合计待领 <strong>{{ draftMailCount }}</strong> 封</p><p class="mail-card-reward">{{ totals.coins.toLocaleString() }} 白金币 · {{ totals.tickets.toLocaleString() }} 普通符传</p></div>
             <div class="panel-actions"><button v-if="canSave" type="button" class="btn ghost" :disabled="locked" @click="closePanel">取消</button><button v-if="canSave" :form="`${claimId}-manage`" type="submit" class="btn primary" :disabled="locked || disabled || conflict || !valid">{{ busy ? '保存中…' : '保存设置' }}</button><button v-else type="button" class="btn primary" :disabled="locked" @click="closePanel">完成</button></div>
           </div>
         </div>
@@ -175,7 +176,7 @@ const scheduleError = computed(() => {
     if (!value) continue
     if (!addCalendarDays(value.start_date, 0) || !addCalendarDays(value.end_date, 0) || value.end_date < value.start_date) return '请填写有效的月卡剩余天数。'
     if (value.start_date !== stored.value[key]?.start_date && value.start_date < today.value) return '请重新设置月卡剩余天数和今日领取状态。'
-    if (key === 'white_coin_schedule' && !coinOptions.value.includes(value.coins_per_mail)) return '累计分组已变化，请点月卡「修改」选择分组，或在「调整」中恢复原奖励。'
+    if (key === 'white_coin_schedule' && !coinOptions.value.includes(value.coins_per_mail)) return '累计分组已变化，请在「月卡设置」选择分组，或在「调整封数」中恢复原奖励。'
   }
   return ''
 })
@@ -192,6 +193,7 @@ watch(() => draft.value.white_coin_schedule, value => {
   if (value && !draft.value.white_coin_mails.length) draft.value.white_coin_mails.push({ count: 0, coins_per_mail: value.coins_per_mail })
 })
 const editableSchedule = (value, coins) => value ? { start_date: value.start_date, end_date: value.end_date, ...(coins ? { coins_per_mail: value.coins_per_mail } : {}) } : null
+const draftMailCount = computed(() => draft.value.white_coin_mails.reduce((sum, row) => sum + (amountValid(row.count) ? row.count : 0), 0) + (amountValid(draft.value.fu_chuan_mail_count) ? draft.value.fu_chuan_mail_count : 0))
 const totals = computed(() => ({
   coins: draft.value.white_coin_mails.reduce((sum, row) => sum + (amountValid(row.count) && amountValid(row.coins_per_mail) ? row.count * row.coins_per_mail : 0), 0),
   tickets: amountValid(draft.value.fu_chuan_mail_count) ? draft.value.fu_chuan_mail_count * 3 : 0
