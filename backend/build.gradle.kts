@@ -48,7 +48,6 @@ repositories {
     mavenCentral()
 }
 
-
 dependencies {
     val hutoolVersion = "5.8.39"
     val mapstructVersion = "1.6.3"

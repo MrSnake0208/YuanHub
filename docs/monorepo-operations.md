@@ -16,7 +16,7 @@
 
 局域网访问：运行 `./dev.sh` 后，在同一网络的设备打开 `http://<电脑局域网 IP>:<前端端口>`；端口可通过 `./dev.sh --print-env` 查看，将输出中的 127.0.0.1 替换为电脑局域网 IP。若无法连接，检查系统防火墙及 Wi-Fi 客户端隔离。开发前端及其 API 代理会向可达该端口的设备开放，仅在可信网络使用；Tunnel 和 Agent 测试模式仍仅监听本机。
 
-本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。默认启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose；原有 `./dev.sh containers` 仍可显式使用本树私有容器。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
+本机需要 JDK21、MongoDB 副本集、Redis、mongosh 和 redis-cli。默认启动器只检查现有数据库服务，不安装、启动或重配它们，不执行 Compose；`./dev.sh containers` 显式通过本树的 Compose 项目启动私有 MongoDB/Redis，并等待副本集和服务就绪。后端先执行 bootJar，再复制至本树 .dev/backend-running.jar 并 java -jar 启动；源码变化后重建，构建失败保留当前进程。build/libs 中必须只有一个非 plain JAR；若存在旧版本产物，先人工确认清理。
 
 集成测试不依赖 Docker/Testcontainers。TestMongo 仅访问自己注册的随机 yuanhub_test_ 数据库；TestRedis 使用本机 Redis DB 15，并给所有键及清理模式加进程专属前缀。退出时尽力清理自有数据；强制终止 JVM 可能留下测试数据，不得因此清空共享 Redis 或批量删除其他会话测试库。普通单元测试仍使用不可连接的占位地址。详见 [测试说明](development/testing.md)。
 

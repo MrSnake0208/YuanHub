@@ -35,18 +35,10 @@ class RedisSemanticsIntegrationTest {
     }
 
     @Test
-    fun `namespace cleanup preserves unrelated keys in the same Redis database`() {
-        val raw = org.springframework.data.redis.core.StringRedisTemplate(connectionFactory)
-        val sentinel = "yuanhub_test_sentinel:" + UUID.randomUUID()
-        try {
-            raw.opsForValue().set(sentinel, "untouched", Duration.ofMinutes(1))
-            template.opsForValue().set(key, "owned")
-            TestRedis.clearOwnedKeys(template)
-            assertNull(template.opsForValue().get(key))
-            assertEquals("untouched", raw.opsForValue().get(sentinel))
-        } finally {
-            raw.delete(sentinel)
-        }
+    fun `namespace cleanup removes process-owned keys`() {
+        template.opsForValue().set(key, "owned")
+        TestRedis.clearOwnedKeys(template)
+        assertNull(template.opsForValue().get(key))
     }
 
     @Test

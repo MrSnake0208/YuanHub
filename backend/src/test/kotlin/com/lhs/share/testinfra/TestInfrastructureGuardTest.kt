@@ -27,6 +27,7 @@ class TestInfrastructureGuardTest {
         val key = serializer.serialize("star-capture:upload-expiry:v1")!!
         assertTrue(pattern.startsWith("yuanhub_test:"))
         assertTrue(key.toString(Charsets.UTF_8).startsWith(pattern.removeSuffix("*")))
+        assertTrue(!"yuanhub_test:00000000-0000-0000-0000-000000000000:sentinel".startsWith(pattern.removeSuffix("*")))
         org.junit.jupiter.api.Assertions.assertEquals("star-capture:upload-expiry:v1", serializer.deserialize(key))
         assertThrows(IllegalArgumentException::class.java) { serializer.deserialize("developer-key".toByteArray()) }
     }

@@ -23,13 +23,35 @@ class WorktreeEnvironmentTest(unittest.TestCase):
                 binary.write_text('#!/bin/sh\n' + script + '\n')
                 binary.chmod(0o700)
             values = dict(os.environ, PATH=directory+os.pathsep+os.environ['PATH'])
-            command = ['bash', str(MODULE.parents[1]/'backend/scripts/dev-up.sh')]
+            command = ['python3', str(MODULE.parents[1]/'scripts/check_local_services.py')]
             result = subprocess.run(command, env=values, capture_output=True, text=True, timeout=5)
             self.assertEqual(0, result.returncode, result.stderr)
             (root/'redis-cli').write_text('#!/bin/sh\necho NOAUTH\n')
             result = subprocess.run(command, env=values, capture_output=True, text=True, timeout=5)
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('Redis is unavailable', result.stderr)
+            self.assertIn('Redis did not return PONG', result.stderr)
+
+    def test_private_container_launcher_uses_its_project_and_rejects_remote_docker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            docker = root/'docker'
+            docker.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$DOCKER_CALLS"\n')
+            docker.chmod(0o700)
+            calls = root/'calls'
+            values = dict(os.environ, PATH=directory+os.pathsep+os.environ['PATH'],
+                          DOCKER_HOST='unix:///tmp/test-docker.sock', DOCKER_CALLS=str(calls),
+                          COMPOSE_PROJECT_NAME='yuanhub-test-owned', YUANHUB_MONGO_PORT='27018',
+                          YUANHUB_REDIS_PORT='6380')
+            command = ['bash', str(MODULE.parents[1]/'backend/scripts/dev-up.sh')]
+            result = subprocess.run(command, env=values, capture_output=True, text=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('compose -p yuanhub-test-owned -f compose.dev.yml up -d', calls.read_text())
+            self.assertIn('up -d --wait --wait-timeout 90', calls.read_text())
+            calls.unlink()
+            result = subprocess.run(command, env=dict(values, DOCKER_HOST='tcp://remote:2375'),
+                                    capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(calls.exists())
 
     def test_launcher_does_not_start_apps_after_database_failure(self):
         with tempfile.TemporaryDirectory() as directory:
