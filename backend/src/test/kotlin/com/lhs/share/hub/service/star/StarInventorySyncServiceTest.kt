@@ -119,6 +119,15 @@ class StarInventorySyncServiceTest {
         assertEquals(snapshot, service().inheritanceSource("owner", "a")!!.sourceState)
     }
 
+    @Test fun `observed bag reaches rebuild and changed capacity cannot reuse a receipt`() {
+        val req = request().copy(bag = com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest(2, 270))
+        service().sync("owner", "a", req)
+        verify { states.rebuild("owner", "a", match { it.bag == req.bag }) }
+        assertEquals("star_sync_scan_conflict", assertThrows(InventoryApiException::class.java) {
+            service().sync("owner", "a", req.copy(bag = req.bag!!.copy(capacity = 500)))
+        }.code)
+    }
+
     @Test fun `durable receipt wins over newer state and pending while changed same batch is rejected`() {
         val req = request()
         val result = service().sync("owner", "a", req)

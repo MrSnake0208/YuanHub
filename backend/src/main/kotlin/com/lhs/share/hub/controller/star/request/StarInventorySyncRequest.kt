@@ -1,5 +1,6 @@
 package com.lhs.share.hub.controller.star.request
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonAnySetter
 import com.fasterxml.jackson.annotation.JsonSetter
 import com.fasterxml.jackson.annotation.Nulls
@@ -16,6 +17,7 @@ data class StarInventorySyncRequest(
     val counts: StarInventorySyncCounts,
     val inventory: List<StarInventorySyncEntry>,
     val experience: StarInventorySyncExperience,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val bag: StarWorkspaceBagRequest? = null,
 ) {
     @JsonAnySetter fun rejectUnknownField(name: String, value: Any?) {
         throw IllegalArgumentException("Unknown inventory sync field: $name")
@@ -31,7 +33,13 @@ data class StarInventorySyncRequest(
             }
             fun text(node: JsonNode): String = if (node.isTextual) node.textValue() else invalid()
             fun integer(node: JsonNode): Int = if (node.isIntegralNumber && node.canConvertToInt()) node.intValue() else invalid()
-            fields(root, "format", "version", "scan_id", "complete", "counts", "inventory", "experience")
+            val required = arrayOf("format", "version", "scan_id", "complete", "counts", "inventory", "experience")
+            fields(root, *(required + if (root.has("bag")) arrayOf("bag") else emptyArray()))
+            val bag = if (root.has("bag")) {
+                val node = root.path("bag")
+                fields(node, "current_count", "capacity")
+                StarWorkspaceBagRequest(integer(node.path("current_count")), if (node.path("capacity").isNull) null else integer(node.path("capacity")))
+            } else null
             val counts = root.path("counts")
             fields(counts, "main", "support")
             val experience = root.path("experience")
@@ -58,6 +66,7 @@ data class StarInventorySyncRequest(
                     integer(experience.path("purple")),
                     integer(experience.path("white")),
                 ),
+                bag,
             )
         }
     }

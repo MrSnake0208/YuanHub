@@ -88,7 +88,7 @@ class StarInventorySyncService(
                         },
                         emptyMap(),
                         StarWorkspaceExperienceRequest(request.experience.orange, request.experience.purple, request.experience.white),
-                        StarWorkspaceBagRequest(currentCount = request.inventory.size),
+                        request.bag ?: StarWorkspaceBagRequest(currentCount = request.inventory.size),
                         "pre_ocr_rebuild",
                     ),
                 )
@@ -243,6 +243,11 @@ class StarInventorySyncService(
                 request.counts.support != request.inventory.count { it.kind == "support" }
             ) {
                 invalid("主辅星数量与条目不一致")
+            }
+            request.bag?.let {
+                if (it.currentCount != request.inventory.size || it.capacity?.let { capacity -> capacity <= 0 || capacity < request.inventory.size } == true) {
+                    invalid("背包数量或容量与条目不一致")
+                }
             }
             request.inventory.forEach {
                 val names = when (it.kind) {

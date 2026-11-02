@@ -58,6 +58,29 @@ class OpenApiStarInventorySyncControllerContractTest {
         }
     }
 
+    @Test fun `optional bag is strictly typed bounded and legacy receipt payload stays unchanged`() {
+        val legacy = StarInventorySyncRequest.fromWire(mapper.readTree(body))
+        assertEquals(mapper.readTree(body), mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(legacy))
+        assertEquals(mapper.readTree(body).toString(), mapper.writeValueAsString(legacy))
+        for (capacity in listOf("270", "null")) {
+            val wire = mapper.readTree(body) as ObjectNode
+            wire.set<ObjectNode>("bag", mapper.readTree("""{"current_count":2,"capacity":$capacity}"""))
+            val request = StarInventorySyncRequest.fromWire(wire)
+            StarInventorySyncService.validate(request, "如鸢")
+            assertEquals(mapper.readTree(wire.toString()), mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(request))
+        }
+        for (bag in listOf("null", "{}", """{"current_count":2}""", """{"current_count":"2","capacity":270}""", """{"current_count":2,"capacity":2.5}""", """{"current_count":2,"capacity":true}""", """{"current_count":2,"capacity":270,"extra":1}""")) {
+            val wire = mapper.readTree(body) as ObjectNode
+            wire.set<ObjectNode>("bag", mapper.readTree(bag))
+            assertThrows(InventoryApiException::class.java) { StarInventorySyncRequest.fromWire(wire) }
+        }
+        for (bag in listOf("""{"current_count":1,"capacity":270}""", """{"current_count":2,"capacity":1}""", """{"current_count":2,"capacity":0}""", """{"current_count":2,"capacity":-1}""")) {
+            val wire = mapper.readTree(body) as ObjectNode
+            wire.set<ObjectNode>("bag", mapper.readTree(bag))
+            assertThrows(InventoryApiException::class.java) { StarInventorySyncService.validate(StarInventorySyncRequest.fromWire(wire), "如鸢") }
+        }
+    }
+
     @Test fun `validation uses canonical kinds quality limits count integrity and real experience`() {
         val valid = StarInventorySyncRequest.fromWire(mapper.readTree(body))
         val bad = listOf(

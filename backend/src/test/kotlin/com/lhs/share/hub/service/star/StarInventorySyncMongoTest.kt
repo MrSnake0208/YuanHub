@@ -192,6 +192,20 @@ class StarInventorySyncMongoTest {
         )
     }
 
+    @Test fun `optional bag capacity persists while legacy scans keep capacity unknown`() {
+        val syncs = service()
+        val req = request().copy(bag = StarWorkspaceBagRequest(3, 270))
+        val first = syncs.sync("owner", "a", req)
+        assertEquals(270, stateService.current("owner", "a").bag.capacity)
+        assertEquals(3, stateService.current("owner", "a").bag.currentCount)
+        assertEquals(first, syncs.sync("owner", "a", req))
+        val legacy = syncs.sync("owner", "a", request())
+        assertEquals(first.generation + 1, legacy.generation)
+        assertEquals(null, stateService.current("owner", "a").bag.capacity)
+        assertEquals(3, stateService.current("owner", "a").bag.currentCount)
+        assertEquals(270, points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", legacy.recoveryPointId!!)!!.state.bag.capacity)
+    }
+
     @Test fun `sync rebuilds distinct instances clears level mismatches and preserves a readable pinned plan source`() {
         seed()
         val syncs = service()
