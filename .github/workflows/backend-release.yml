@@ -180,7 +180,6 @@ jobs:
           test -n "$DEPLOY_KEY" || { echo "::error::YUANHUB_BACKEND_VPS_SSH_KEY is not configured"; exit 1; }
 
           key_file="$(mktemp)"
-          trap 'rm -f "$key_file"' EXIT
           chmod 600 "$key_file"
           printf '%s\n' "$DEPLOY_KEY" > "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null

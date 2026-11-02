@@ -59,7 +59,10 @@ elif name == 'curl':
 elif name == 'sha256sum':
     print(hashlib.sha256(pathlib.Path(args[0]).read_bytes()).hexdigest() + '  ' + args[0])
 elif name == 'mv':
-    if args[0] == '-T':
+    if args[:2] == ['-T', '-n']:
+        if not pathlib.Path(args[3]).exists():
+            os.rename(args[2], args[3])
+    elif args[0] == '-T':
         os.replace(args[1], args[2])  # GNU mv's atomic symlink replacement, also runnable on macOS.
     else:
         sys.exit(subprocess.run([os.environ['REAL_MV'], *args]).returncode)
@@ -183,18 +186,21 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assertEqual([], self.events('sudo'))
         self.assertFalse((self.server / 'releases/v0.1.13').exists())
 
-    def test_backend_refuses_overwriting_either_slots_rollback_artifact(self):
-        for slot in ('blue', 'green'):
-            self.bootstrap_backend(jar_version='v0.1.13')
-            (self.server / ('slots/' + slot + '.env')).write_text(
-                'YUANHUB_JAR=' + str(self.server / 'releases/v0.1.13/app.jar') + '\n')
-            result = self.backend()
-            self.assertNotEqual(0, result.returncode)
-            self.assertIn('Refusing to replace', result.stderr)
-            self.assertEqual(b'old jar', (self.server / 'releases/v0.1.13/app.jar').read_bytes())
-            self.assertEqual([], self.events('gradlew'))
-            (self.server / ('slots/' + slot + '.env')).unlink()
-            (self.server / 'slots/blue.env').unlink(missing_ok=True)
+    def assert_backend_preserves_slot_rollback_artifact(self, slot):
+        self.bootstrap_backend(jar_version='v0.1.13')
+        (self.server / ('slots/' + slot + '.env')).write_text(
+            'YUANHUB_JAR=' + str(self.server / 'releases/v0.1.13/app.jar') + '\n')
+        result = self.backend()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('Refusing to replace', result.stderr)
+        self.assertEqual(b'old jar', (self.server / 'releases/v0.1.13/app.jar').read_bytes())
+        self.assertEqual([], self.events('gradlew'))
+
+    def test_backend_preserves_blue_rollback_artifact(self):
+        self.assert_backend_preserves_slot_rollback_artifact('blue')
+
+    def test_backend_preserves_green_rollback_artifact(self):
+        self.assert_backend_preserves_slot_rollback_artifact('green')
 
     def test_backend_activation_reuses_prepare_and_preserves_drain(self):
         self.bootstrap_backend()
@@ -205,6 +211,9 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assertEqual([], self.events('gradlew'))
         self.assertEqual('green\n', (self.server / 'state/active-slot').read_text())
         self.assertIn('8081', (self.server / 'nginx/active.conf').read_text())
+        self.assertTrue((self.server / 'releases/v0.1.12/app.jar').is_file())
+        history = next(self.server.glob('.deploy-history.*'))
+        self.assertEqual('blue\n', (history / 'active-slot').read_text())
         self.assertIn(['45'], [e['args'] for e in self.events('sleep')])
         self.assertIn(['stop', 'yuanhub-backend@blue.service'], [e['args'] for e in self.events('systemctl')])
 
@@ -220,21 +229,21 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assertNotIn(['stop', 'yuanhub-backend@blue.service'], commands)
         self.assertEqual([], self.events('gradlew'))
 
-    def test_backend_missing_prepared_artifact_installs_ci_jar_during_release(self):
+    def test_backend_incomplete_existing_release_is_preserved(self):
         self.bootstrap_backend()
-        self.assert_ok(self.backend())
-        (self.server / 'releases/v0.1.13/app.jar').unlink()
-        self.assert_ok(self.backend('release'))
-        self.assertEqual([], self.events('gradlew'))
-        self.assertEqual(b'fixture jar', (self.server / 'releases/v0.1.13/app.jar').read_bytes())
-        self.assertEqual('green\n', (self.server / 'state/active-slot').read_text())
+        release = self.server / 'releases/v0.1.13'
+        release.mkdir()
+        marker = release / 'important'
+        marker.write_text('keep')
+        self.assertNotEqual(0, self.backend('release').returncode)
+        self.assertEqual('keep', marker.read_text())
+        self.assertEqual([], self.events('systemctl'))
 
     def test_backend_missing_ci_jar_does_not_activate_or_compile(self):
         self.bootstrap_backend()
         self.assert_ok(self.backend())
         before = self.active_backend()
-        self.ci_jar.unlink()
-        self.assertNotEqual(0, self.backend('release').returncode)
+        self.assertNotEqual(0, self.backend('release', PREBUILT_JAR=str(self.root / 'missing.jar')).returncode)
         self.assertEqual(before, self.active_backend())
         self.assertEqual([], self.events('gradlew'))
         self.assertEqual([], self.events('sudo'))
@@ -244,29 +253,34 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.frontend())
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
         self.assertEqual('old frontend', (self.server / 'releases/old/index.html').read_text())
-        meta = json.loads((self.server / 'releases/0.0.1-beta.20/deploy-meta.json').read_text())
+        meta = json.loads((self.server / ('releases/0.0.1-beta.20-' + self.sha) / 'deploy-meta.json').read_text())
         self.assertEqual(self.sha, meta['commit'])
         self.assertEqual(self.env['API_BASE'], meta['apiBase'])
         self.assert_ok(self.frontend())
         self.assert_ok(self.frontend('release'))
         self.assertEqual(2, len(self.events('npm')))  # one install, one build across three runs
-        self.assertEqual('releases/0.0.1-beta.20', os.readlink(self.server / 'current'))
+        self.assertEqual('releases/0.0.1-beta.20-' + self.sha, os.readlink(self.server / 'current'))
+        self.assertEqual('releases/old', os.readlink(next(self.server.glob('.switch.*')) / 'previous'))
+        self.assertEqual('old frontend', (self.server / 'releases/old/index.html').read_text())
 
-    def test_frontend_api_config_change_rebuilds_before_activation(self):
+    def test_frontend_changed_config_preserves_prepared_release(self):
         self.bootstrap_frontend()
         self.assert_ok(self.frontend())
-        self.assert_ok(self.frontend('release', API_BASE='https://new.invalid/api'))
-        self.assertEqual(4, len(self.events('npm')))
-        meta = json.loads((self.server / 'current/deploy-meta.json').read_text())
-        self.assertEqual('https://new.invalid/api', meta['apiBase'])
+        release = self.server / ('releases/0.0.1-beta.20-' + self.sha)
+        before = (release / 'deploy-meta.json').read_bytes()
+        self.assertNotEqual(0, self.frontend('release', API_BASE='https://new.invalid/api').returncode)
+        self.assertEqual(before, (release / 'deploy-meta.json').read_bytes())
+        self.assertEqual('releases/old', os.readlink(self.server / 'current'))
 
-    def test_frontend_incomplete_prepared_artifact_rebuilds_during_release(self):
+    def test_frontend_incomplete_existing_release_is_preserved(self):
         self.bootstrap_frontend()
-        self.assert_ok(self.frontend())
-        (self.server / 'releases/0.0.1-beta.20/sw.js').unlink()
-        self.assert_ok(self.frontend('release'))
-        self.assertEqual(4, len(self.events('npm')))
-        self.assertTrue((self.server / 'current/sw.js').is_file())
+        release = self.server / ('releases/0.0.1-beta.20-' + self.sha)
+        release.mkdir()
+        marker = release / 'important'
+        marker.write_text('keep')
+        self.assertNotEqual(0, self.frontend('release').returncode)
+        self.assertEqual('keep', marker.read_text())
+        self.assertEqual('releases/old', os.readlink(self.server / 'current'))
 
     def test_frontend_legacy_deployed_metadata_can_be_released_again(self):
         self.bootstrap_frontend()
@@ -278,28 +292,26 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.frontend('release'))
         self.assertEqual(2, len(self.events('npm')))
 
-    def test_both_servers_replace_artifacts_with_wrong_commit_metadata(self):
+    def test_both_servers_preserve_artifacts_with_wrong_commit_metadata(self):
         self.bootstrap_frontend()
-        for prepare, version, compiler, expected_calls in (
-            (self.backend, 'v0.1.13', 'gradlew', 0),
-            (self.frontend, '0.0.1-beta.20', 'npm', 4),
-        ):
+        for prepare, version in ((self.backend, 'v0.1.13'),
+                                 (self.frontend, '0.0.1-beta.20-' + self.sha)):
             with self.subTest(version=version):
                 self.assert_ok(prepare())
                 path = self.server / 'releases' / version / 'deploy-meta.json'
                 meta = json.loads(path.read_text())
                 meta['commit'] = 'a' * 40
                 path.write_text(json.dumps(meta, separators=(',', ':')))
-                self.assert_ok(prepare())
-                self.assertEqual(expected_calls, len(self.events(compiler)))
-                self.assertEqual(self.sha, json.loads(path.read_text())['commit'])
+                before = path.read_bytes()
+                self.assertNotEqual(0, prepare().returncode)
+                self.assertEqual(before, path.read_bytes())
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
 
     def test_frontend_prepare_build_failure_preserves_current(self):
         self.bootstrap_frontend()
         self.assertNotEqual(0, self.frontend(BUILD_FAIL='1').returncode)
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
-        self.assertFalse((self.server / 'releases/0.0.1-beta.20').exists())
+        self.assertFalse((self.server / ('releases/0.0.1-beta.20-' + self.sha)).exists())
 
     def test_frontend_refuses_overwriting_active_release_on_config_change(self):
         self.bootstrap_frontend()
@@ -307,7 +319,7 @@ class ServerPrebuildTest(unittest.TestCase):
         before = (self.server / 'current/deploy-meta.json').read_bytes()
         result = self.frontend(API_BASE='https://new.invalid/api')
         self.assertNotEqual(0, result.returncode)
-        self.assertIn('Refusing to replace', result.stdout)
+        self.assertIn('Refusing to replace', result.stderr)
         self.assertEqual(before, (self.server / 'current/deploy-meta.json').read_bytes())
 
 

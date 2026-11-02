@@ -9,7 +9,6 @@ set -euo pipefail
 [[ "$RELEASE_ROOT" =~ ^/[A-Za-z0-9_./-]+$ && "$RELEASE_ROOT" != / ]] || exit 1
 
 work="$(mktemp -d)"
-trap 'rm -rf -- "$work"' EXIT
 chmod 700 "$work"
 printf '%s\n' "$DEPLOY_KEY" > "$work/key"
 chmod 600 "$work/key"
@@ -46,7 +45,6 @@ done
 command+='bash -s'
 ssh "${ssh_opts[@]}" -p "$DEPLOY_PORT" "$target" "$command" <<'REMOTE'
 set -euo pipefail
-trap 'rm -rf -- "$INCOMING"' EXIT
 cd "$INCOMING"
 printf '%s  bundle.tar.gz\n' "$ARCHIVE_SHA256" | sha256sum -c -
 mkdir content

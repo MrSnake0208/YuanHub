@@ -66,6 +66,8 @@ elif tool == 'scp':
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(marker.read_text(), 'installed')
                 self.assertIn('Upload:', summary.read_text())
+                self.assertTrue((self.site / '.incoming/1-3/bundle.tar.gz').is_file())
+                self.assertTrue((self.site / '.incoming/1-2/bundle.tar.gz').is_file())
 
 
 
