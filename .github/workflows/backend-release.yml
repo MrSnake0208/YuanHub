@@ -196,6 +196,13 @@ jobs:
             --name "yuanhub-backend-jar-$BACKEND_RELEASE_COMMIT" --dir "$input"
           mapfile -t jars < <(find "$input" -type f -name '*.jar' ! -name '*-plain.jar')
           [ "${#jars[@]}" = 1 ] || { echo "Expected exactly one CI bootJar"; exit 1; }
+          python3 - "${jars[0]}" "$BACKEND_RELEASE_COMMIT" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as jar:
+              properties = jar.read('BOOT-INF/classes/git.properties').decode().splitlines()
+          if 'git.commit.id=' + sys.argv[2] not in properties:
+              raise SystemExit('CI jar commit does not match the release commit')
+          PY
           mkdir -p "$bundle/payload"
           cp "${jars[0]}" "$bundle/payload/app.jar"
           cp backend/deploy/blue-green-deploy.sh "$bundle/deploy.sh"
