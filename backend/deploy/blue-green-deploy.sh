@@ -14,7 +14,6 @@ if [ "$DEPLOY_PHASE" = release ]; then
 fi
 [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "RELEASE_COMMIT must be a full SHA" >&2; exit 1; }
 
-KEEP_RELEASES="${KEEP_RELEASES:-5}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-45}"
 LEGACY_SERVICE="${LEGACY_SERVICE:-yuanhub-backend}"
 LEGACY_CAPTURE_DRAIN_SECONDS="${LEGACY_CAPTURE_DRAIN_SECONDS:-2100}"
@@ -26,7 +25,6 @@ NGINX="${NGINX:-/usr/sbin/nginx}"
 [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || {
   echo "RELEASE_VERSION must be a v-prefixed semantic version" >&2; exit 1;
 }
-case "$KEEP_RELEASES" in ''|*[!0-9]*) KEEP_RELEASES=5 ;; esac
 case "$DRAIN_SECONDS" in ''|*[!0-9]*) DRAIN_SECONDS=45 ;; esac
 case "$LEGACY_CAPTURE_DRAIN_SECONDS" in ''|*[!0-9]*) LEGACY_CAPTURE_DRAIN_SECONDS=2100 ;; esac
 
@@ -145,9 +143,10 @@ if [ "$reuse_release" -ne 1 ]; then
       exit 1
     fi
   done
-  stage_dir="$RELEASES_DIR/.$RELEASE_VERSION.tmp"
-  rm -rf "$stage_dir"
-  mkdir -p "$stage_dir"
+  [ ! -e "$RELEASE_DIR" ] && [ ! -L "$RELEASE_DIR" ] || {
+    echo "Refusing to replace existing release: $RELEASE_DIR" >&2; exit 1;
+  }
+  stage_dir="$(mktemp -d "$RELEASES_DIR/.$RELEASE_VERSION.XXXXXXXX")"
   cp "$PREBUILT_JAR" "$stage_dir/app.jar"
   python3 - "$stage_dir/deploy-meta.json" "$RELEASE_VERSION" "$RELEASE_COMMIT" <<'PY'
 import json, sys
@@ -162,8 +161,8 @@ with open(path, "w", encoding="utf-8") as fh:
     )
     fh.write("\n")
 PY
-  rm -rf "$RELEASE_DIR"
-  mv "$stage_dir" "$RELEASE_DIR"
+  mv -T -n "$stage_dir" "$RELEASE_DIR"
+  [ ! -d "$stage_dir" ] || { echo "Release appeared concurrently: $RELEASE_DIR" >&2; exit 1; }
   echo "Installed CI jar: $RELEASE_DIR"
 fi
 
@@ -172,7 +171,11 @@ if [ "$DEPLOY_PHASE" = prepare ]; then
   exit 0
 fi
 
-slot_env_tmp="$SLOTS_DIR/.$target_slot.env.tmp"
+history_dir="$(mktemp -d "$BACKEND_ROOT/.deploy-history.XXXXXXXX")"
+for path in "$SLOTS_DIR/$target_slot.env" "$ACTIVE_SLOT_FILE" "$NGINX_ACTIVE_FILE"; do
+  if [ -f "$path" ]; then cp -p "$path" "$history_dir/$(basename "$path")"; fi
+done
+slot_env_tmp="$(mktemp "$SLOTS_DIR/.$target_slot.env.XXXXXXXX")"
 cat > "$slot_env_tmp" <<EOF
 SERVER_PORT=$target_port
 MANAGEMENT_SERVER_PORT=$target_management_port
@@ -238,12 +241,13 @@ fi
 
 old_upstream="$(cat "$NGINX_ACTIVE_FILE")"
 restore_upstream() {
-  local tmp="$BACKEND_ROOT/nginx/.active.rollback.tmp"
+  local tmp
+  tmp="$(mktemp "$BACKEND_ROOT/nginx/.active.rollback.XXXXXXXX")"
   printf '%s\n' "$old_upstream" > "$tmp"
   mv -f "$tmp" "$NGINX_ACTIVE_FILE"
 }
 
-new_upstream_tmp="$BACKEND_ROOT/nginx/.active.$target_slot.tmp"
+new_upstream_tmp="$(mktemp "$BACKEND_ROOT/nginx/.active.$target_slot.XXXXXXXX")"
 printf 'server 127.0.0.1:%s max_fails=1 fail_timeout=3s;\n' "$target_port" > "$new_upstream_tmp"
 mv -f "$new_upstream_tmp" "$NGINX_ACTIVE_FILE"
 
@@ -287,10 +291,10 @@ if [ "$public_ready" -ne 1 ]; then
   else
     # The live Nginx master may still be serving the target configuration.
     # Keep the target JVM alive and keep the on-disk upstream aligned with that live state.
-    live_tmp="$BACKEND_ROOT/nginx/.active.rollback-failed.tmp"
+    live_tmp="$(mktemp "$BACKEND_ROOT/nginx/.active.rollback-failed.XXXXXXXX")"
     printf 'server 127.0.0.1:%s max_fails=1 fail_timeout=3s;\n' "$target_port" > "$live_tmp"
     mv -f "$live_tmp" "$NGINX_ACTIVE_FILE"
-    state_tmp="$STATE_DIR/.active-slot.tmp"
+    state_tmp="$(mktemp "$STATE_DIR/.active-slot.XXXXXXXX")"
     printf '%s\n' "$target_slot" > "$state_tmp"
     mv -f "$state_tmp" "$ACTIVE_SLOT_FILE"
     echo "CRITICAL: rollback reload failed; target slot was left running. Manual Nginx intervention is required." >&2
@@ -298,7 +302,7 @@ if [ "$public_ready" -ne 1 ]; then
   exit 1
 fi
 
-state_tmp="$STATE_DIR/.active-slot.tmp"
+state_tmp="$(mktemp "$STATE_DIR/.active-slot.XXXXXXXX")"
 printf '%s\n' "$target_slot" > "$state_tmp"
 mv -f "$state_tmp" "$ACTIVE_SLOT_FILE"
 
@@ -314,29 +318,5 @@ case "$active_slot" in
     sudo -n "$SYSTEMCTL" stop "$LEGACY_SERVICE" || echo "Warning: could not stop legacy service $LEGACY_SERVICE" >&2
     ;;
 esac
-
-protect_release() {
-  local slot="$1"
-  local env_file="$SLOTS_DIR/$slot.env"
-  [ -f "$env_file" ] || return 0
-  sed -n 's#^YUANHUB_JAR=\(.*\)/app\.jar$#\1#p' "$env_file" | tail -n 1
-}
-
-blue_release="$(protect_release blue || true)"
-green_release="$(protect_release green || true)"
-if [ "$KEEP_RELEASES" -gt 0 ]; then
-  kept=0
-  while IFS= read -r release_path; do
-    [ -n "$release_path" ] || continue
-    kept=$((kept + 1))
-    if [ "$kept" -le "$KEEP_RELEASES" ]; then
-      continue
-    fi
-    if [ "$release_path" = "$blue_release" ] || [ "$release_path" = "$green_release" ] || [ "$release_path" = "$RELEASE_DIR" ]; then
-      continue
-    fi
-    rm -rf -- "$release_path"
-  done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -not -name '.*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
-fi
 
 echo "Blue/green release complete: $RELEASE_VERSION -> $target_slot"
