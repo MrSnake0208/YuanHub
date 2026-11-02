@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/src/components/operator/PlannerOverallSummary.vue"
+        ],
+        "createdAt": "2026-11-02T08:11:40.410Z",
+        "reason": "Agent triage: 3px accent is on the table caption label, not the card edge; preserves the original screenshot category accent and the mockup the user confirmed for implementation."
+      }
+    ]
+  }
+}
