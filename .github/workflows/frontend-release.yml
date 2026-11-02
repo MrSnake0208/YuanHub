@@ -212,8 +212,14 @@ jobs:
             case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "Invalid phase"; exit 1 ;; esac
 
             release_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION-$RELEASE_COMMIT"
+            legacy_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION"
+            if [ -f "$legacy_dir/deploy-meta.json" ] &&
+               grep -qF "\"version\":\"$RELEASE_VERSION\"" "$legacy_dir/deploy-meta.json" &&
+               grep -qF "\"commit\":\"$RELEASE_COMMIT\"" "$legacy_dir/deploy-meta.json"; then
+              release_dir="$legacy_dir"
+            fi
             meta_file="$release_dir/deploy-meta.json"
-            expected_link="releases/$RELEASE_VERSION-$RELEASE_COMMIT"
+            expected_link="releases/$(basename "$release_dir")"
             export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new'
             mkdir -p "$FRONTEND_ROOT/releases"
 

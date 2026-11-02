@@ -292,6 +292,20 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.frontend('release'))
         self.assertEqual(2, len(self.events('npm')))
 
+    def test_frontend_reuses_matching_legacy_candidate_without_build(self):
+        self.bootstrap_frontend()
+        release = self.server / 'releases/0.0.1-beta.20'
+        (release / 'assets').mkdir(parents=True)
+        (release / 'assets/app.js').write_text('old candidate')
+        (release / 'index.html').write_text('old candidate')
+        (release / 'sw.js').write_text('old worker')
+        (release / 'deploy-meta.json').write_text(json.dumps({
+            'version': '0.0.1-beta.20', 'commit': self.sha, 'apiBase': self.env['API_BASE']
+        }, separators=(',', ':')))
+        self.assert_ok(self.frontend('release'))
+        self.assertEqual('releases/0.0.1-beta.20', os.readlink(self.server / 'current'))
+        self.assertEqual([], self.events('npm'))
+
     def test_both_servers_preserve_artifacts_with_wrong_commit_metadata(self):
         self.bootstrap_frontend()
         for prepare, version in ((self.backend, 'v0.1.13'),
