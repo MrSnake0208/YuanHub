@@ -28,7 +28,6 @@ class RestrictedFeatureInterceptor(
             path == "/v1/operator/relationships" || path.startsWith("/v1/operator/relationships/") ->
                 AdminPermission.OPERATOR_RELATIONSHIP_USE
             path == "/v1/operator/reserve-workspace" -> AdminPermission.OPERATOR_RESERVE_USE
-            path == "/v1/star/scans" || path.startsWith("/v1/star/scans/") -> AdminPermission.STAR_SCAN_REVIEW
             else -> return true
         }
         response.setHeader("Cache-Control", "no-store")

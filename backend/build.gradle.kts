@@ -126,7 +126,6 @@ val safeTestProperties = mapOf(
     "share.avatar.dir" to layout.buildDirectory.dir("test-data/avatars").get().asFile.absolutePath,
     "share.media.dir" to layout.buildDirectory.dir("test-data/media").get().asFile.absolutePath,
     "share.media.private-dir" to layout.buildDirectory.dir("test-data/private").get().asFile.absolutePath,
-    "share.star-capture.dir" to layout.buildDirectory.dir("test-data/star-captures").get().asFile.absolutePath,
     "logging.file.name" to layout.buildDirectory.file("test-logs/spring.log").get().asFile.absolutePath,
 )
 

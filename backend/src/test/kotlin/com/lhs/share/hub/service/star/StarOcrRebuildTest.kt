@@ -14,8 +14,8 @@ import com.lhs.share.hub.repository.entity.StarLoadoutCurrent
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
 import com.lhs.share.hub.repository.entity.StarOperatorLoadout
 import com.lhs.share.hub.repository.entity.StarRecoveryPoint
-import com.lhs.share.hub.repository.entity.StarStateCurrent
 import com.lhs.share.hub.repository.entity.StarStateBag
+import com.lhs.share.hub.repository.entity.StarStateCurrent
 import com.lhs.share.hub.repository.entity.StarStateEntry
 import com.lhs.share.hub.repository.entity.StarStateExperience
 import com.lhs.share.hub.repository.entity.StarStateSnapshot
@@ -48,8 +48,12 @@ class StarOcrRebuildTest {
     private var rollbacks = 0
     private val tx = TransactionTemplate(object : PlatformTransactionManager {
         override fun getTransaction(definition: TransactionDefinition?): TransactionStatus = SimpleTransactionStatus()
-        override fun commit(status: TransactionStatus) { commits++ }
-        override fun rollback(status: TransactionStatus) { rollbacks++ }
+        override fun commit(status: TransactionStatus) {
+            commits++
+        }
+        override fun rollback(status: TransactionStatus) {
+            rollbacks++
+        }
     })
     private val service = StarStateService(states, points, loadouts, operators, accounts, tx)
     private val old = StarStateCurrent(
@@ -58,13 +62,23 @@ class StarOcrRebuildTest {
         planTargets = emptyList(), experience = StarStateExperience(), bag = StarStateBag(), updatedAt = Instant.EPOCH,
     )
     private val oldWear = StarLoadoutCurrent(
-        userId = "owner", accountId = "a", generation = 4, revision = 3,
+        userId = "owner",
+        accountId = "a",
+        generation = 4,
+        revision = 3,
         loadouts = listOf(StarOperatorLoadout("op", StarLoadoutSlots(main1 = "old1", main2 = "old2"))),
     )
     private fun request(reason: String = "pre_ocr_rebuild") = StarStateRebuildRequest(
-        4, 9,
-        listOf(StarInventoryEntryRequest("z-first", "main", " 天府 ", "orange", 40), StarInventoryEntryRequest("a-second", "main", "天府", "orange", 40)),
-        emptyMap(), StarWorkspaceExperienceRequest(), StarWorkspaceBagRequest(), reason,
+        4,
+        9,
+        listOf(
+            StarInventoryEntryRequest("z-first", "main", " 天府 ", "orange", 40),
+            StarInventoryEntryRequest("a-second", "main", "天府", "orange", 40),
+        ),
+        emptyMap(),
+        StarWorkspaceExperienceRequest(),
+        StarWorkspaceBagRequest(),
+        reason,
     )
 
     @BeforeEach fun setup() {
@@ -72,7 +86,14 @@ class StarOcrRebuildTest {
         every { states.findByUserIdAndAccountId("owner", "a") } returns old
         every { loadouts.findByUserIdAndAccountId("owner", "a") } returns oldWear
         every { operators.findByUserIdAndAccountIdOrderByUpdatedAtDesc("owner", "a") } returns listOf(
-            OperatorCurrent(userId = "owner", accountId = "a", game = "如鸢", entries = mapOf("op" to OperatorEntry(elite = 0, starLevel = 0, level = 1))),
+            OperatorCurrent(
+                userId = "owner",
+                accountId = "a",
+                game = "如鸢",
+                entries = mapOf(
+                    "op" to OperatorEntry(elite = 0, starLevel = 0, level = 1),
+                ),
+            ),
         )
         every { points.findTop3ByUserIdAndAccountIdOrderByCreatedAtDescIdDesc("owner", "a") } returns emptyList()
         every { points.findByUserIdAndAccountIdOrderByCreatedAtDescIdDesc("owner", "a") } returns emptyList()
@@ -93,7 +114,14 @@ class StarOcrRebuildTest {
         assertEquals(5, result.loadout.generation)
         verify(exactly = 1) { states.replace("owner", "a", 4, 9, 5, any(), any()) }
         verify(exactly = 1) { loadouts.replaceForGeneration("owner", "a", 3, 5, any(), any()) }
-        verify { points.insert(match<StarRecoveryPoint> { it.sourceGeneration == 4L && it.loadouts == oldWear.loadouts && it.state.inventory == old.inventory }) }
+        verify {
+            points.insert(
+                match<StarRecoveryPoint> {
+                    it.sourceGeneration == 4L && it.loadouts == oldWear.loadouts &&
+                        it.state.inventory == old.inventory
+                },
+            )
+        }
         assertEquals(1, commits)
     }
 
@@ -104,14 +132,30 @@ class StarOcrRebuildTest {
 
     @Test fun `JSON replacement keeps clearing wear and local restore keeps ID based semantics`() {
         assertTrue(service.rebuild("owner", "a", request("import_data_safety")).loadout.loadouts.isEmpty())
-        assertTrue(service.rebuild("owner", "a", request("restore_local")).loadout.loadouts.values.all { slots -> slots.values.all { it == null } })
-        val sameIds = request("restore_local").copy(inventory = old.inventory.map { StarInventoryEntryRequest(it.instanceId, it.kind, it.name, it.quality, it.level) })
+        assertTrue(
+            service.rebuild("owner", "a", request("restore_local")).loadout.loadouts.values.all { slots ->
+                slots.values.all {
+                    it ==
+                        null
+                }
+            },
+        )
+        val sameIds = request("restore_local").copy(
+            inventory = old.inventory.map {
+                StarInventoryEntryRequest(it.instanceId, it.kind, it.name, it.quality, it.level)
+            },
+        )
         assertEquals("old1", service.rebuild("owner", "a", sameIds).loadout.loadouts["op"]?.get("main1"))
     }
 
     @Test fun `OCR cannot reuse old generation instance IDs`() {
         val reused = request().copy(inventory = listOf(StarInventoryEntryRequest("old1", "main", "天府", "orange", 40)))
-        assertEquals("star_state_invalid_snapshot", assertThrows(InventoryApiException::class.java) { service.rebuild("owner", "a", reused) }.code)
+        assertEquals(
+            "star_state_invalid_snapshot",
+            assertThrows(InventoryApiException::class.java) {
+                service.rebuild("owner", "a", reused)
+            }.code,
+        )
         verify(exactly = 0) { states.replace(any(), any(), any(), any(), any(), any(), any()) }
         verify(exactly = 0) { points.insert(any<StarRecoveryPoint>()) }
     }
@@ -126,15 +170,23 @@ class StarOcrRebuildTest {
 
     @Test fun `loadout CAS failure signals rollback instead of returning a partial success`() {
         every { loadouts.replaceForGeneration("owner", "a", 3, 5, any(), any()) } returns null
-        assertEquals("star_loadout_revision_conflict", assertThrows(InventoryApiException::class.java) { service.rebuild("owner", "a", request()) }.code)
+        assertEquals(
+            "star_loadout_revision_conflict",
+            assertThrows(InventoryApiException::class.java) {
+                service.rebuild("owner", "a", request())
+            }.code,
+        )
         assertEquals(1, rollbacks)
         assertEquals(0, commits)
     }
 
     @Test fun `stale state version rejects before checkpoint or wear write`() {
-        assertEquals("star_state_revision_conflict", assertThrows(InventoryApiException::class.java) {
-            service.rebuild("owner", "a", request().copy(expectedRevision = 8))
-        }.code)
+        assertEquals(
+            "star_state_revision_conflict",
+            assertThrows(InventoryApiException::class.java) {
+                service.rebuild("owner", "a", request().copy(expectedRevision = 8))
+            }.code,
+        )
         verify(exactly = 0) { points.insert(any<StarRecoveryPoint>()) }
         verify(exactly = 0) { loadouts.replaceForGeneration(any(), any(), any(), any(), any(), any()) }
         assertEquals(1, rollbacks)
@@ -142,9 +194,12 @@ class StarOcrRebuildTest {
 
     @Test fun `state CAS failure rolls back without attempting inherited wear write`() {
         every { states.replace("owner", "a", 4, 9, 5, any(), any()) } returns null
-        assertEquals("star_state_revision_conflict", assertThrows(InventoryApiException::class.java) {
-            service.rebuild("owner", "a", request())
-        }.code)
+        assertEquals(
+            "star_state_revision_conflict",
+            assertThrows(InventoryApiException::class.java) {
+                service.rebuild("owner", "a", request())
+            }.code,
+        )
         verify(exactly = 0) { loadouts.replaceForGeneration(any(), any(), any(), any(), any(), any()) }
         assertEquals(1, rollbacks)
         assertEquals(0, commits)

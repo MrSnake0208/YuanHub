@@ -11,7 +11,6 @@ export const FEATURE_KEYS = Object.freeze({
   BOND_ARCHIVE: 'bondArchive',
   OPERATOR_RELATIONSHIPS: 'operatorRelationships',
   OPERATOR_RESERVE: 'operatorReserve',
-  STAR_SCAN_REVIEW: 'starScanReview'
 })
 
 const isViteDev = import.meta.env?.DEV === true
@@ -33,7 +32,6 @@ export const FEATURE_FLAGS = Object.freeze({
   // 普通用户暂不开放；管理员凭服务端权限预览。
   [FEATURE_KEYS.OPERATOR_RELATIONSHIPS]: false,
   [FEATURE_KEYS.OPERATOR_RESERVE]: false,
-  [FEATURE_KEYS.STAR_SCAN_REVIEW]: false
 })
 
 export function isFeatureEnabled(key) {

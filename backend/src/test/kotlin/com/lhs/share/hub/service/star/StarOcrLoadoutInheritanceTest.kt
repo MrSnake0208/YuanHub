@@ -55,8 +55,11 @@ class StarOcrLoadoutInheritanceTest {
     @Test fun `current level quality kind and exact normalized name must all match`() {
         val old = listOf(star("old"))
         for (candidate in listOf(
-            star("new", level = 50), star("new", quality = "purple"),
-            star("new", kind = "support"), star("new", name = "天同"), star("new", name = "天府星"),
+            star("new", level = 50),
+            star("new", quality = "purple"),
+            star("new", kind = "support"),
+            star("new", name = "天同"),
+            star("new", name = "天府星"),
         )) {
             assertTrue(inherit(old, listOf(candidate)).isEmpty(), "Unexpected match: $candidate")
         }

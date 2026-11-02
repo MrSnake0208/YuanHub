@@ -26,7 +26,7 @@ class BetaAccessPolicyTest {
             "/v1/star-state/current",
             "/v1/star-loadout",
             "/v1/star-loadout-presets",
-            "/v1/star/captures/{id}",
+            "/v1/star/inventory-sync/preview",
             "/hub/ledger/plan",
         ).forEach {
             assertTrue(BetaAccessPolicy.requiresBeta("GET", it), it)

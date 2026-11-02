@@ -108,10 +108,6 @@ share:
     private-dir: ${SHARE_PRIVATE_MEDIA_DIR:./data/private-media}
     # 单个业务媒体文件大小上限(字节),10 MiB
     max-size: 10485760
-  star-capture:
-    # 临时私有星石截图目录；不映射为公开静态资源。
-    dir: ${SHARE_STAR_CAPTURE_DIR:./data/star-captures}
-    ttl-minutes: 30
   mails:
     # 邮件服务器 SMTP 配置(可配置多个,发送时轮询)
     # - host: smtp.qq.com

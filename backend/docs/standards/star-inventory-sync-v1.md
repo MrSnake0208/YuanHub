@@ -41,8 +41,7 @@ Receipts have no TTL and are removed only with their owning account.
 The existing StarState rebuild command executes within the same Mongo transaction
 as the account fence, pending-source insert and receipt insert. It checks the
 generation/revision observed before the transaction, creates a checkpoint, assigns
-new UUID instance IDs, increments generation, clears plan targets and replaces the
-current wear relations with an empty list. A failed commit rolls all of these back.
+new UUID instance IDs, increments generation, clears plan targets and uses the existing exact-instance wear inheritance and mismatch cleanup rules. A failed commit rolls all of these back.
 An account SSE `star_inventory_synced` event is published only after commit.
 It notifies the current account; an already-open star page needs to be reopened to
 load the new generation. Ordinary local drafts continue to use their existing CAS.
@@ -92,3 +91,17 @@ task run retries a failed/uncertain saved batch before scanning again. A local
 account/service binding prevents redirecting retries to another token account.
 Only a confirmed success returns task success; OCR success and sync failure are
 reported separately. The local full result and diagnostics remain available.
+
+## Web JSON supplementation
+
+The JWT endpoints `/v1/star/inventory-sync/preview` and `/v1/star/inventory-sync`
+use `account_id`, require current ownership/game, and reuse this same strict DTO,
+validation and rebuild transaction. Preview reads only. Confirmation requires the
+preview generation/revision. It cannot bypass pending old-plan protection.
+Raw OCR files lack their sender's UUID: the browser derives a stable business-only
+UUID and the manual raw path streams only that owner's durable receipts to find
+an equivalent complete payload, ignoring scan_id only. An already-saved equivalent
+result is a no-op even after later edits. This conservative equivalence intentionally
+treats identical independent raw scans as saved; use the original compact batch
+when an explicit upload scan_id is available. No history migration is needed.
+See the [web format and UI details](../../../frontend/docs/developers/api-star.md).

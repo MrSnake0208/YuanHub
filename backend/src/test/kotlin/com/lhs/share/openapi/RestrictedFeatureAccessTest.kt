@@ -17,7 +17,6 @@ import com.lhs.share.hub.controller.operator.OperatorPanelController
 import com.lhs.share.hub.controller.operator.OperatorRelationshipController
 import com.lhs.share.hub.controller.operator.OperatorReserveWorkspaceController
 import com.lhs.share.hub.controller.operator.response.OperatorPanelResponse
-import com.lhs.share.hub.controller.star.StarScanController
 import com.lhs.share.hub.repository.entity.BondPublication
 import com.lhs.share.hub.service.achievement.AchievementCatalogService
 import com.lhs.share.hub.service.achievement.AchievementService
@@ -29,7 +28,6 @@ import com.lhs.share.hub.service.bond.BondService
 import com.lhs.share.hub.service.operator.OperatorPanelService
 import com.lhs.share.hub.service.operator.OperatorRelationshipService
 import com.lhs.share.hub.service.operator.OperatorReserveWorkspaceService
-import com.lhs.share.hub.service.star.StarScanService
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
@@ -57,7 +55,6 @@ class RestrictedFeatureAccessTest {
     private val panels = mockk<OperatorPanelService>()
     private val relationships = mockk<OperatorRelationshipService>()
     private val reserves = mockk<OperatorReserveWorkspaceService>()
-    private val scans = mockk<StarScanService>()
     private val mapper = jacksonObjectMapper()
     private val mvc = MockMvcBuilders.standaloneSetup(
         AchievementController(achievements, achievementCatalog, helper, mapper),
@@ -68,7 +65,6 @@ class RestrictedFeatureAccessTest {
         OperatorPanelController(panels, helper),
         OperatorRelationshipController(relationships, helper),
         OperatorReserveWorkspaceController(reserves, helper),
-        StarScanController(scans, helper),
     ).addInterceptors(RestrictedFeatureInterceptor(authorization, helper))
         .setControllerAdvice(InventoryExceptionHandler(), OperatorExceptionHandler())
         .setMessageConverters(ByteArrayHttpMessageConverter(), MappingJackson2HttpMessageConverter(mapper)).build()
@@ -108,20 +104,13 @@ class RestrictedFeatureAccessTest {
                 put("/v1/operator/reserve-workspace").param("account_id", "a").contentType(MediaType.APPLICATION_JSON).content("{}"),
             )
                 .andExpect(status().`is`(expected))
-            for (path in listOf("/v1/star/scans/pending", "/v1/star/scans/r")) {
-                mvc.perform(get(path).param("account_id", "a")).andExpect(status().`is`(expected))
-            }
-            for (suffix in listOf("apply", "discard")) {
-                mvc.perform(post("/v1/star/scans/r/$suffix").param("account_id", "a").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().`is`(expected))
-            }
             mvc.perform(
                 patch("/v1/operator/relationships").param("account_id", "a")
                     .contentType(MediaType.APPLICATION_JSON).content("{}"),
             )
                 .andExpect(status().`is`(expected))
         }
-        verify { listOf(achievements, achievementCatalog, bonds, bondCatalog, panels, relationships, reserves, scans) wasNot Called }
+        verify { listOf(achievements, achievementCatalog, bonds, bondCatalog, panels, relationships, reserves) wasNot Called }
     }
 
     @Test
@@ -153,13 +142,8 @@ class RestrictedFeatureAccessTest {
         every { authorization.hasPermission("member", AdminPermission.OPERATOR_RESERVE_USE) } returns true
         every { reserves.workspace("member", "a") } returns mapper.createObjectNode().put("revision", 0)
         mvc.perform(get("/v1/operator/reserve-workspace").param("account_id", "a")).andExpect(status().isOk)
-        every { authorization.hasPermission("member", AdminPermission.STAR_SCAN_REVIEW) } returns true
-        every { scans.pending("member", "a") } returns emptyList()
-        mvc.perform(get("/v1/star/scans/pending").param("account_id", "a")).andExpect(status().isOk)
         every { authorization.hasPermission("member", AdminPermission.OPERATOR_RESERVE_USE) } returns false
-        every { authorization.hasPermission("member", AdminPermission.STAR_SCAN_REVIEW) } returns false
         mvc.perform(get("/v1/operator/reserve-workspace").param("account_id", "a")).andExpect(status().isForbidden)
-        mvc.perform(get("/v1/star/scans/pending").param("account_id", "a")).andExpect(status().isForbidden)
     }
 
     @Test

@@ -7,7 +7,7 @@
           <span v-if="completionDemo" class="star-sync-meta">隔离演示 · 虚构账号，未连接完成接口</span>
           <DataAccountContextBar v-else compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError"
-            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
+            :switch-disabled="!productReady || starExchangeBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
         </template>
         <template #actions>
           <details class="tool-more">
@@ -42,19 +42,16 @@
       </CompactToolHeader>
       <section>
         <div class="wrap">
-          <p v-if="!completionDemo && auth.isLoggedIn && accountId && productReady && !cloudWriteBusy && !starExchangeBusy && !captureImportBusy && !growthBottlePending">
-            <router-link v-if="canReviewScans" class="btn ghost" :to="{ path: '/star/scans', query: { account_id: accountId } }">核对 MaaYuan 本地识别结果</router-link>
-          </p>
           <div class="tool-summary" aria-label="星石概览">
             <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
-            <span v-if="activeTab === 'import'" class="star-privacy-note" title="图片识别在本机完成。手动截图由浏览器读取；MaaYuan 截图从临时服务器获取。登录后同步背包数据。">本机识别</span>
+            <span v-if="activeTab === 'import'" class="star-privacy-note" title="图片识别在本机完成。手动截图由浏览器读取。登录后同步背包数据。">本机识别</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRecoveryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
           </div>
           <ArchiveExchangePanel
             v-if="showArchive"
-            description="备份当前账号的星石背包、养成计划和经验星曜。导入将替换这些数据；备份不含密探佩戴关系或识别原始资料。"
+            description="可导入 YuanHub 备份或 MaaYuan 本地完整识别结果（JSON），确认前可预览。导出可备份星石背包、养成计划和经验星曜。"
             :import-open="showStarImport"
             :import-disabled="!productReady || starExchangeBusy"
             :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
@@ -66,19 +63,27 @@
           >
             <template #import>
               <section v-if="showStarImport" class="star-exchange-import">
-                <p class="tip">选择本工具导出的 JSON 备份。确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
+                <p class="tip">选择 YuanHub 备份或 MaaYuan 本地完整识别结果，核对目标账号及预览后确认。</p>
                 <label class="btn ghost file-label">
                   选择 JSON 文件
-                  <input ref="starImportFile" type="file" accept=".json,application/json" @change="onStarImportFile" />
+                  <input ref="starImportFile" type="file" accept=".json,application/json" :disabled="starExchangeBusy" @change="onStarImportFile" />
                 </label>
                 <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
                 <div v-if="starImportPreview" class="star-exchange-preview">
                   <dl>
                     <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
-                    <div><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
+                    <div v-if="!starImportPreview.preview.maayuan"><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
+                    <template v-if="starImportPreview.preview.maayuan">
+                      <div><dt>类型</dt><dd>{{ starImportPreview.preview.sourceLabel }}</dd></div>
+                      <div><dt>目标账号</dt><dd>{{ starImportPreview.preview.accountName }} · {{ starImportPreview.preview.game }}</dd></div>
+                      <div><dt>星石</dt><dd>主星 {{ starImportPreview.preview.counts.main }} 颗 · 辅星 {{ starImportPreview.preview.counts.support }} 颗</dd></div>
+                    </template>
                     <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
                     <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '—' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '—' }} · 白 {{ starImportPreview.preview.experience.white ?? '—' }}</dd></div>
                   </dl>
+                  <p v-if="starImportPreview.preview.maayuan" class="tip">将使用本次识别结果更新当前星石背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
+                  <p v-if="starImportPreview.preview.alreadySynced" class="tip">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
+                  <p v-if="!starImportPreview.preview.maayuan" class="tip">确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
                   <button type="button" class="btn primary" :disabled="starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换当前账号数据' }}</button>
                 </div>
               </section>
@@ -87,37 +92,21 @@
           <AccountShareManager v-if="showShare && !completionDemo && auth.isLoggedIn && accountId" id="star-account-share" :account-id="accountId" class="star-share-manager" />
           <p v-else-if="showShare && !completionDemo" id="star-account-share" class="star-share-placeholder">登录并选择游戏账号后，可管理密探与星石分享。</p>
           <p
-            v-if="cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRecoveryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
+            v-if="cloudSyncError || cloudNeedsRetry || cloudRecoveryBusy"
             class="star-sync-state"
-            :class="{ 'is-error': cloudSyncError || captureTransportError, 'is-warning': captureVersionWarning || cloudNeedsRetry || captureNeedsRetry || captureImportNeedsRetry }"
+            :class="{ 'is-error': cloudSyncError, 'is-warning': cloudNeedsRetry }"
             role="status"
             aria-live="polite"
           >
             <span v-if="cloudSyncError || cloudNeedsRetry || cloudRecoveryBusy">{{ cloudSyncError || cloudSyncMessage }}</span>
-            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudNeedsRetry || cloudRecoveryBusy) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
-            <span v-if="captureVersionWarning"> · {{ captureVersionWarning }}</span>
             <button
               v-if="(cloudRecoveryAction && productReady && accountId) || cloudRecoveryBusy"
               type="button"
               class="star-sync-retry star-sync-cloud"
-              :disabled="cloudRecoveryBusy || captureImportBusy || starExchangeBusy"
+              :disabled="cloudRecoveryBusy || starExchangeBusy"
               :aria-busy="cloudRecoveryBusy"
               @click="recoverStarCloud"
             >{{ cloudRecoveryBusy ? (cloudRecoveryMode === 'recover' ? '恢复中…' : '加载中…') : (cloudRecoveryAction === 'recover' ? '恢复云端' : '重新加载') }}</button>
-            <button
-              v-if="captureNeedsRetry || captureRetryBusy"
-              type="button"
-              class="star-sync-retry"
-              :disabled="captureRetryBusy"
-              @click="retryCaptureConsume"
-            >{{ captureRetryBusy ? '重试中…' : '重试清理' }}</button>
-            <button
-              v-if="captureImportNeedsRetry"
-              type="button"
-              class="star-sync-retry"
-              :disabled="captureImportBusy"
-              @click="retryCaptureImport"
-            >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
@@ -150,7 +139,7 @@
             <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" :inert="cloudRecoveryBusy" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady && (summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError)" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <div id="product-root" ref="mountRoot" :inert="starExchangeBusy || cloudRecoveryBusy" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady && (summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError)" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionExampleModal :items="recognitionTutorialExamples[helpExampleKind] || []" @close="helpExampleKind = null" />
           <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="summary.planInheritancePending || summary.planInheritanceOpen || cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
@@ -177,11 +166,13 @@
 
 <script setup>
 import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
+import { normalizeMaaYuanInventory, starImportKind } from './maayuanInventoryImport.js'
+import { assertNoStarImportDraft } from './starImportDraftGuard.js'
+import { previewStarInventoryImport, confirmStarInventoryImport } from '../../api/starInventoryImport.js'
 import { relabelStarArchive } from './starArchiveExport.js'
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import { Archive, CircleHelp, Check, Plus } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
@@ -201,7 +192,6 @@ import { createStarCompletionApi } from '../../api/starCompletions.js';
 import { createStarCompletionPort } from './starCompletionPort.js';
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js';
 import { auth } from "../../store/auth.js";
-import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js';
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
   disposeYuanStarHandle,
@@ -213,20 +203,13 @@ import { starCloudFeedback } from "./starCloudStatus.js";
 import { createLatestAccountSync } from "./latestAccountSync.js";
 import { migrateLegacyYuanStarHostAccount } from "./legacyHostAccountMigration.js";
 import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
-import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
-import { subscribeAccountEvents } from "../../store/accountEvents.js";
-import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isRetryableCaptureImportError, isStarCaptureReadyEvent, loadAndImportStarCapture, starCaptureGameVersionWarning } from "./captureTransport.js";
-import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecycle, importAndMarkStarCapture } from "./starCaptureLifecycle.js";
-import { isStarCaptureDraftPersisted } from "./captureDraftReceipt.js";
 
-const canReviewScans = computed(() => auth.isLoggedIn &&
-  (isFeatureEnabled(FEATURE_KEYS.STAR_SCAN_REVIEW) || hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.STAR_SCAN_REVIEW)));
+import { observeLocalOcrProgressCopy } from "./localOcrProgressCopy.js";
+
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
 const completionDemo = import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO);
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";
 const EMBED_STYLESHEET_ID = "yuanstar-embed-styles";
-const route = useRoute();
-const router = useRouter();
 const mountRoot = ref(null);
 const mountError = ref("");
 const mountBusy = ref(false);
@@ -289,6 +272,7 @@ const bagTutorialGate = createBagTutorialGate();
 const bagTutorialOwner = () => bagTutorialKey.value + ":" + (accountId.value || "guest");
 let tutorialCheckSequence = 0;
 let recognitionTutorialOwnerKey = "";
+let localOcrProgressObserver = null;
 let tutorialStatusObserver = null;
 let tutorialStatusFrame = 0;
 
@@ -356,58 +340,12 @@ const starImportPreview = ref(null);
 const starImportFile = ref(null);
 const starExchangeError = ref("");
 const starExchangeBusy = ref(false);
-const captureTransportMessage = ref("");
-const captureTransportError = ref("");
-const captureNeedsRetry = ref(false);
-const captureRetryBusy = ref(false);
-const captureImportNeedsRetry = ref(false);
-const captureImportBusy = ref(false);
-const captureGameVersion = ref("");
-const captureVersionWarning = computed(() => starCaptureGameVersionWarning(captureGameVersion.value, summary.value.gameVersion));
-const captureLifecycle = createStarCaptureLifecycle();
-const captureInbox = createStarCaptureInbox(captureLifecycle);
-const captureHost = createStarCaptureHost({
-  lifecycle: captureLifecycle,
-  consume: consumeStarCapture,
-  onState: function (state) {
-    if (state.type === 'consumed') {
-      captureInbox.markConsumed(state.accountId, state.captureId);
-      captureQueueVersion += 1;
-    }
-    if (state.accountId !== accountId.value || unmounted) return;
-    if (state.type === 'retrying') {
-      captureRetryBusy.value = true;
-      captureTransportError.value = '';
-      captureTransportMessage.value = '识别结果已保存，正在清理临时截图…';
-    } else if (state.type === 'failed') {
-      captureRetryBusy.value = false;
-      captureNeedsRetry.value = true;
-      captureTransportError.value = '';
-      captureTransportMessage.value = '识别结果已保存，临时截图还未清理。可以继续核对背包，稍后重试清理。';
-    } else if (state.type === 'consumed') {
-      captureRetryBusy.value = false;
-      captureNeedsRetry.value = false;
-      captureTransportError.value = '';
-      captureTransportMessage.value = '';
-      clearCaptureRoute(state.accountId, state.captureId);
-    } else if (state.type === 'superseded') {
-      // 本次清理已被更新的 capture 取代：结束重试态，但不能清除新 capture 的待清理状态。
-      captureRetryBusy.value = false;
-      captureNeedsRetry.value = captureLifecycle.get(state.accountId)?.state === 'consume_pending';
-    } else if (state.type === 'storage_failed') {
-      captureRetryBusy.value = false;
-      captureTransportError.value = '本地截图清理状态保存失败，请检查浏览器存储。';
-    }
-  },
-});
 let handle = null;
 let unmounted = false;
 let mountedAccountId = "";
 let rejectedSwitchMessage = "";
-let pendingCapture = null;
-let captureQueueVersion = 0;
-let stopCaptureEvents = null;
 let starContextVersion = 0;
+let starImportSelection = 0;
 const queueAccountSync = createLatestAccountSync();
 
 const accountId = computed({
@@ -471,7 +409,7 @@ function clearCloudSyncFeedback() {
   cloudSyncError.value = "";
 }
 async function recoverStarCloud() {
-  if (!cloudRecoveryAction.value || cloudRecoveryBusy.value || captureImportBusy.value || starExchangeBusy.value || !handle || !selectedHostAccount()) return;
+  if (!cloudRecoveryAction.value || cloudRecoveryBusy.value || starExchangeBusy.value || !handle || !selectedHostAccount()) return;
   const mode = cloudRecoveryAction.value, session = starCloud.state(), currentHandle = handle;
   const context = starContextVersion, identity = accountIdentityVersion;
   const isCurrent = () => !unmounted && context === starContextVersion && identity === accountIdentityVersion && currentHandle === handle && session === starCloud.state();
@@ -491,6 +429,8 @@ async function recoverStarCloud() {
   } finally { cloudRecoveryBusy.value = false; }
 }
 function resetStarImportState() {
+  ++starImportSelection;
+  starExchangeBusy.value = false;
   starImportPreview.value = null;
   starExchangeError.value = "";
   showStarImport.value = false;
@@ -501,136 +441,6 @@ function rejectStaleStarImportPreview() {
   showStarImport.value = false;
   if (starImportFile.value) starImportFile.value.value = "";
   starExchangeError.value = "账号已切换，请重新选择 JSON 档案后再试。";
-}
-function captureApi() {
-  return { getManifest: getStarCaptureManifest, getImage: getStarCaptureImage };
-}
-function createCaptureFile(blob, name) {
-  return new File([blob], name, { type: "image/png" });
-}
-function currentCaptureStillActive(current) {
-  return !unmounted && productReady.value && Boolean(handle) && pendingCapture === current
-    && isCurrentStarCapture(current, accountId.value) && mountedAccountId === current.accountId;
-}
-function discardForeignPendingCapture() {
-  if (pendingCapture && !isCurrentStarCapture(pendingCapture, accountId.value)) pendingCapture = null;
-  captureRetryBusy.value = false;
-  captureImportNeedsRetry.value = false;
-  captureNeedsRetry.value = captureLifecycle.get(accountId.value)?.state === 'consume_pending';
-  captureTransportError.value = '';
-  captureTransportMessage.value = '';
-  captureGameVersion.value = '';
-}
-function clearCaptureRoute(account, capture) {
-  if (captureIdFromRouteQuery(route.query) !== capture) return;
-  const routeAccount = String(route.query.account_id || '').trim();
-  if (routeAccount && routeAccount !== account) return;
-  void router.replace({ path: route.path, query: clearStarCaptureRouteQuery(route.query), hash: route.hash });
-}
-async function retryCaptureConsume() {
-  const record = captureLifecycle.get(accountId.value);
-  if (record?.state === 'consume_pending') await captureHost.retry(record.accountId, record.captureId);
-}
-async function importPendingCapture() {
-  if (!pendingCapture || !handle || !productReady.value || unmounted || captureImportBusy.value) return;
-  const current = pendingCapture;
-  if (!currentCaptureStillActive(current)) return;
-  const currentHandle = handle;
-  const isCurrent = () => currentHandle === handle && currentCaptureStillActive(current);
-  captureImportBusy.value = true;
-  let markFailed = false;
-  let restored = false;
-  let handoffStale = false;
-  try {
-    const completed = await importAndMarkStarCapture({
-      lifecycle: captureLifecycle,
-      accountId: current.accountId,
-      captureId: current.captureId,
-      importCapture: async function () {
-        if (captureLifecycle.captureAction(current.accountId, current.captureId) === 'imported') {
-          const persisted = await isStarCaptureDraftPersisted(current.accountId, { captureId: current.captureId });
-          if (!isCurrent()) return false;
-          if (persisted) { restored = true; return true; }
-        }
-        return loadAndImportStarCapture(captureApi(), current, currentHandle, createCaptureFile, isCurrent);
-      },
-      isCurrent,
-      onMarkFailure: function () { markFailed = true; },
-    });
-    if (!completed || !isCurrent()) { handoffStale = true; return; }
-    captureGameVersion.value = current.batch?.gameVersion || "";
-    pendingCapture = null;
-    captureImportNeedsRetry.value = false;
-    captureNeedsRetry.value = false;
-    captureRetryBusy.value = false;
-    captureTransportError.value = "";
-    captureTransportMessage.value = markFailed
-      ? "截图已导入，但临时清理状态未保存。请保留截图并检查浏览器存储。"
-      : restored ? "已找回上次待识别的截图，可以继续识别。" : "";
-    clearCaptureRoute(current.accountId, current.captureId);
-  } catch (error) {
-    if (!isCurrent()) { handoffStale = true; return; }
-    captureTransportError.value = message(error, "星石截图导入失败。");
-    captureImportNeedsRetry.value = isRetryableCaptureImportError(error);
-  } finally {
-    captureImportBusy.value = false;
-    if (pendingCapture && (handoffStale || pendingCapture !== current || currentHandle !== handle) && currentCaptureStillActive(pendingCapture)) void importPendingCapture();
-  }
-}
-function retryCaptureImport() {
-  if (!pendingCapture || captureImportBusy.value) return;
-  captureImportNeedsRetry.value = false;
-  captureTransportError.value = "";
-  void importPendingCapture();
-}
-function queueCapture(captureId) {
-  const normalizedCaptureId = String(captureId || "").trim();
-  const currentAccountId = String(accountId.value || "").trim();
-  if (!normalizedCaptureId || !currentAccountId) return;
-  const action = captureInbox.captureAction(currentAccountId, normalizedCaptureId);
-  if (action !== 'import' && action !== 'imported') {
-    if (pendingCapture?.accountId === currentAccountId && pendingCapture.captureId === normalizedCaptureId) pendingCapture = null;
-    if (action === 'consume_pending') {
-      void captureHost.retry(currentAccountId, normalizedCaptureId);
-    } else {
-      clearCaptureRoute(currentAccountId, normalizedCaptureId);
-    }
-    return;
-  }
-  if (!pendingCapture || pendingCapture.captureId !== normalizedCaptureId || pendingCapture.accountId !== currentAccountId) {
-    captureQueueVersion += 1;
-    pendingCapture = { accountId: currentAccountId, captureId: normalizedCaptureId, batch: null };
-    captureImportNeedsRetry.value = false;
-    captureTransportMessage.value = "";
-    captureTransportError.value = "";
-    captureGameVersion.value = "";
-  }
-  void importPendingCapture();
-}
-function queueRouteCapture() {
-  const routeAccountId = String(route.query.account_id || "").trim();
-  if (routeAccountId && routeAccountId !== String(accountId.value || "").trim()) return;
-  queueCapture(route.query.capture_id);
-}
-async function recoverPendingCapture() {
-  if (!accountId.value) return;
-  const recoveryAccountId = accountId.value;
-  const recoveryQueueVersion = captureQueueVersion;
-  const record = captureLifecycle.get(recoveryAccountId);
-  if (record?.state === 'consume_pending') void captureHost.retry(recoveryAccountId, record.captureId);
-  try {
-    const pending = await getPendingStarCapture(recoveryAccountId);
-    if (recoveryAccountId !== accountId.value || recoveryQueueVersion !== captureQueueVersion || !pending) return;
-    queueCapture(pending.capture_id || pending.captureId);
-  } catch (error) {
-    if (recoveryAccountId !== accountId.value) return;
-    if (error?.status === 404) return;
-    captureTransportError.value = message(error, "读取待导入星石截图失败。");
-  }
-}
-function onStarCaptureEvent(event) {
-  if (!isStarCaptureReadyEvent(event, accountId.value)) return;
-  queueCapture(event.data.capture_id || event.data.captureId);
 }
 async function loadAccounts() {
   if (!auth.isLoggedIn) {
@@ -687,7 +497,6 @@ async function syncHostAccount({ readOnly = false } = {}) {
       currentHandle.setActiveTab(activeTab.value);
       currentHandle.setReviewView?.(starReviewView.value);
       if (entered) void currentHandle.recoverCompletion?.();
-      if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
@@ -761,47 +570,93 @@ async function exportStarArchive() {
 async function onStarImportFile(event) {
   const file = event?.target?.files?.[0];
   if (!file || !handle || !productReady.value) return;
-  const previewAccountId = accountId.value;
+  const source = handle, context = starContextVersion, identity = accountIdentityVersion;
+  const host = selectedHostAccount(), selection = ++starImportSelection;
+  const current = () => !unmounted && source === handle && context === starContextVersion && identity === accountIdentityVersion && selection === starImportSelection && productReady.value;
+  starImportPreview.value = null;
   starExchangeError.value = "";
+  starExchangeBusy.value = true;
   try {
-    const preview = await handle.previewDataExchangeImport(file);
-    if (previewAccountId !== accountId.value) return;
-    starImportPreview.value = bindStarExchangePreview(preview, previewAccountId);
+    if (file.size > 20 * 1024 * 1024) throw new Error('文件超过 20 MB 限制。');
+    const raw = JSON.parse(await file.text());
+    if (!current()) return;
+    let preview;
+    if (starImportKind(raw) === 'backup') {
+      preview = await source.previewDataExchangeImport(file);
+    } else {
+      if (!host) throw new Error('请先登录并选择目标游戏账号，再导入 MaaYuan 识别结果。');
+      const normalized = await normalizeMaaYuanInventory(raw);
+      if (!current()) return;
+      const body = { ...normalized, game: host.gameVersion };
+      const remote = await previewStarInventoryImport(host.accountId, body);
+      if (!current()) return;
+      if (remote.account_id !== host.accountId || remote.game !== host.gameVersion) throw new Error('目标账号已变化，请重新选择文件。');
+      const doc = normalized.document;
+      preview = { maayuan: true, fileName: file.name, format: 'json', sourceLabel: normalized.source_format === 'local-ocr' ? 'MaaYuan 本地完整识别' : 'MaaYuan 结构化同步批次',
+        accountName: host.displayName, game: host.gameVersion, counts: doc.counts, inventoryCount: doc.inventory.length,
+        bag: { currentCount: doc.inventory.length, capacity: doc.bag?.capacity ?? null }, experience: doc.experience,
+        alreadySynced: remote.already_synced, body: { ...body, expected_generation: remote.generation, expected_revision: remote.revision } };
+    }
+    if (current()) starImportPreview.value = { ...bindStarExchangePreview(preview, accountId.value), context, identity, selection };
   } catch (error) {
-    if (previewAccountId !== accountId.value) return;
-    starImportPreview.value = null;
-    starExchangeError.value = message(error, "导入档案校验失败。");
+    if (current()) starExchangeError.value = error instanceof SyntaxError ? "JSON 无法解析，请检查文件内容后重新选择。" : message(error, "导入档案校验失败，请核对文件后重新选择。");
+  } finally {
+    if (selection === starImportSelection) starExchangeBusy.value = false;
+    if (event?.target) event.target.value = '';
   }
 }
 async function confirmStarImport() {
   if (!handle || !starImportPreview.value || starExchangeBusy.value) return;
-  if (!isStarExchangePreviewCurrent(starImportPreview.value, accountId.value)) {
-    rejectStaleStarImportPreview();
-    return;
-  }
-  const preview = starImportPreview.value.preview;
+  const bound = starImportPreview.value, source = handle;
+  const current = () => !unmounted && source === handle && bound.context === starContextVersion && bound.identity === accountIdentityVersion && bound.selection === starImportSelection && isStarExchangePreviewCurrent(bound, accountId.value);
+  if (!current()) { rejectStaleStarImportPreview(); return; }
+  const preview = bound.preview;
   starExchangeBusy.value = true;
   starExchangeError.value = "";
+  let lease, submitted = false;
   try {
-    await handle.confirmDataExchangeImport(preview);
+    if (preview.maayuan) {
+      await assertNoStarImportDraft(bound.accountId, mountRoot.value);
+      if (!current()) return;
+      const scope = starCloud.ocrRebuildScope();
+      if (scope.generation !== preview.body.expected_generation || scope.revision !== preview.body.expected_revision) throw new Error('预览后背包已变化，请重新选择文件。');
+      lease = starCloud.beginCompletion(scope);
+      // No write before this point. The lease prevents local edits during POST/read/adoption.
+      await confirmStarInventoryImport(bound.accountId, preview.body);
+      submitted = true;
+      if (!current() || !lease.isCurrent()) return;
+      // Validated cloud read and adoption use the existing coordinator; no workspace remount.
+      await lease.refresh();
+      if (!current() || !lease.isCurrent()) return;
+      // The pending-plan port reads a command scope, which is available only
+      // after the import lease has released its write lock.
+      lease.release();
+      lease = null;
+      source.setReviewView?.(starReviewView.value);
+      cloudSyncMessage.value = preview.alreadySynced ? '本次识别结果已保存，未重复重建。' : '识别结果已保存；如有旧计划待继承，请前往养成计划处理。';
+    } else await source.confirmDataExchangeImport(preview);
+    if (!current()) return;
     starImportPreview.value = null;
     showStarImport.value = false;
   } catch (error) {
+    if (!current()) return;
+    if (lease && (submitted || ![400, 401, 403, 404, 409, 422].includes(Number(error?.status)))) {
+      const recovery = '补传结果尚待核对，请重新加载云端后重试同一文件；原文件与本机草稿保留。';
+      lease.fail(new Error(recovery));
+      starExchangeError.value = message(error, '暂时无法确认同步结果') + '。' + recovery;
+      return;
+    }
     if (error?.code === "cloud_replacement_local_pending" || error?.code === "star_rebuild_uncertain") {
       starImportPreview.value = null;
       starExchangeError.value = error?.code === "star_rebuild_uncertain"
         ? "尚无法确认档案是否已替换，请先重新加载核对，不要重复导入。"
         : message(error, "云端档案已替换，本机尚未同步完成，请重新加载核对。");
-      return;
-    }
-    const status = Number(error?.status || 0);
-    starExchangeError.value = status === 409
-      ? "云端数据已更新，请重新加载后重试。导入预览仍保留。"
-      : status === 422
-        ? "导入数据无效：" + message(error, "请检查文件内容。")
-        : message(error, "档案尚未导入，请核对文件后重试。");
+    } else starExchangeError.value = message(error, preview.maayuan
+      ? '补传未确认成功，请保留原文件并重试同一批次；不要生成新批次。'
+      : '档案尚未导入，请核对文件后重试。');
   } finally {
-    starExchangeBusy.value = false;
+    lease?.release();
+    if (bound.selection === starImportSelection) starExchangeBusy.value = false;
   }
 }
 async function mountProduct() {
@@ -841,7 +696,6 @@ async function mountProduct() {
       onAcceptBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.acceptCurrent(owner,id,count)),
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { return starCloud.committed(event); },
-      onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
       onApplyRecoveredPlan: function (snapshot, scope) { return starCloud.applyRecoveredPlan(snapshot, scope); },
       cloudPlanInheritance: createCloudPlanInheritancePort({ coordinator: starCloud }),
       getOcrRebuildScope: function () { return starCloud.ocrRebuildScope(); },
@@ -872,6 +726,8 @@ async function mountProduct() {
       return;
     }
     handle = mountedHandle;
+    localOcrProgressObserver?.disconnect();
+    localOcrProgressObserver = observeLocalOcrProgressCopy(mountRoot.value);
     await syncHostAccount();
   } catch (error) {
     productReady.value = false;
@@ -889,6 +745,7 @@ function setTab(tab) {
   activeTab.value = tab;
   if (productReady.value) handle?.setActiveTab(tab);
 }
+watch([() => auth.isLoggedIn, () => auth.userInfo?.id], resetStarImportState, { flush: 'sync' });
 watch([accountId, accountGame], () => {
   if (completionDemo) return;
   starContextVersion++;
@@ -903,7 +760,6 @@ watch([accountId, accountGame], () => {
   starCloud.leave();
   resetStarImportState();
   showArchive.value = false;
-  discardForeignPendingCapture();
   if (handle && !unmounted) void syncHostAccount().catch(() => {});
 }, { flush: "sync" });
 if (TUTORIALS_ENABLED) {
@@ -919,7 +775,6 @@ if (TUTORIALS_ENABLED) {
     if ((recognitionTutorialOpen.value || emptyBagTutorialOpen.value) && (tab !== (tutorialMode.value === "recognition" ? "import" : "review") || (tutorialMode.value === "plan" && view !== "plan"))) dismissRecognitionTutorial();
   });
 }
-watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
   if (completionDemo) { void mountProduct(); return; }
   // Draft restoration may finish after the first summary. Recheck on the
@@ -936,16 +791,14 @@ onMounted(async function () {
   }
   await loadAccounts();
   if (unmounted) return;
-  stopCaptureEvents = subscribeAccountEvents(onStarCaptureEvent);
   void mountProduct();
-  void recoverPendingCapture();
 });
 onBeforeUnmount(function () {
+  localOcrProgressObserver?.disconnect();
   tutorialStatusObserver?.disconnect();
   cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
   starCloud.leave();
-  if (stopCaptureEvents) stopCaptureEvents();
   productReady.value = false;
   const current = handle;
   handle = null;

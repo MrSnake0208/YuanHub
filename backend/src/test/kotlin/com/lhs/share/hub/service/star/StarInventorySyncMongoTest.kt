@@ -271,11 +271,18 @@ class StarInventorySyncMongoTest {
         seed()
         val req = request().let { it.copy(inventory = it.inventory.map { entry -> entry.copy(level = 20) }) }
         val web = stateService.rebuild(
-            "owner", "a",
+            "owner",
+            "a",
             StarStateRebuildRequest(
-                0, 1,
-                req.inventory.mapIndexed { i, entry -> StarInventoryEntryRequest("web-$i", entry.kind, entry.name, entry.quality, entry.level) },
-                emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), "pre_ocr_rebuild",
+                0,
+                1,
+                req.inventory.mapIndexed { i, entry ->
+                    StarInventoryEntryRequest("web-$i", entry.kind, entry.name, entry.quality, entry.level)
+                },
+                emptyMap(),
+                StarWorkspaceExperienceRequest(0, 525, 91),
+                StarWorkspaceBagRequest(3),
+                "pre_ocr_rebuild",
             ),
         )
         assertEquals("web-0", web.loadout.loadouts["op"]?.get("main1"))
@@ -421,7 +428,8 @@ class StarInventorySyncMongoTest {
                 userId = "owner",
                 accountId = "a",
                 token = "isolated-old-token",
-                scope = listOf(OpenApiPermission.STAR_SCAN_WRITE.code),
+                // Retired legacy scope must remain rejected.
+                scope = listOf(30002),
                 remark = null,
             ),
         )
@@ -520,5 +528,70 @@ class StarInventorySyncMongoTest {
         override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>>) {
             converters.add(MappingJackson2HttpMessageConverter(mapper))
         }
+    }
+
+    @Test fun `manual compact import commits once with preview scope and enforces account ownership`() {
+        seed()
+        val syncs = service()
+        val req = request().copy(bag = StarWorkspaceBagRequest(3, 270))
+        val preview = syncs.previewImport("owner", "a", req, StarInventoryImportScope("如鸢"))
+        val scope = StarInventoryImportScope("如鸢", preview.generation, preview.revision)
+        val receipt = syncs.importInventory("owner", "a", req, scope)
+        val saved = stateService.current("owner", "a")
+        assertEquals(3, saved.inventory.size)
+        assertEquals(3, saved.inventory.map { it.instanceId }.toSet().size)
+        assertEquals(270, saved.bag.capacity)
+        assertEquals(525, saved.experience.purple)
+        assertEquals(receipt, syncs.importInventory("owner", "a", req, scope))
+        assertEquals(saved, stateService.current("owner", "a"))
+        assertEquals(1, receipts.count())
+        assertThrows(InventoryApiException::class.java) { syncs.importInventory("foreign", "a", req, scope) }
+        assertThrows(InventoryApiException::class.java) { syncs.importInventory("owner", "foreign", req, scope) }
+        assertEquals(saved, stateService.current("owner", "a"))
+    }
+
+    @Test fun `manual import receipt failure rolls back backpack wear pending source and checkpoint`() {
+        seed()
+        val old = states.findByUserIdAndAccountId("owner", "a")
+        val oldWear = loadouts.findByUserIdAndAccountId("owner", "a")
+        val oldPoints = points.findAll().map { it.id }.toSet()
+        val req = request()
+        val before = stateService.current("owner", "a")
+        val broken = object : StarInventorySyncRepository by receipts {
+            override fun <S : StarInventorySync> insert(entity: S): S = throw IllegalStateException("manual receipt failure")
+        }
+        assertThrows(IllegalStateException::class.java) {
+            service(broken).importInventory("owner", "a", req, StarInventoryImportScope("如鸢", before.generation, before.revision))
+        }
+        assertEquals(old, states.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(oldWear, loadouts.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(oldPoints, points.findAll().map { it.id }.toSet())
+        assertEquals(0, receipts.count())
+        assertEquals(0, pending.count())
+    }
+
+    @Test fun `manual raw supplementation uses durable automatic receipt and preserves pinned plan and wear`() {
+        seed()
+        val req = request().copy(bag = StarWorkspaceBagRequest(3, 270))
+        val automatic = service().sync("owner", "a", req)
+        val before = stateService.current("owner", "a")
+        val wear = loadouts.findByUserIdAndAccountId("owner", "a")
+        val manual = req.copy(scanId = "22222222-2222-5222-8222-222222222222")
+        val preview = service().previewImport("owner", "a", manual, StarInventoryImportScope("如鸢", raw = true))
+        assertTrue(preview.alreadySynced)
+        assertEquals(automatic, service().importInventory("owner", "a", manual, StarInventoryImportScope("如鸢", 0, 0, true)))
+        assertEquals(before, stateService.current("owner", "a"))
+        assertEquals(wear, loadouts.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(1, receipts.count())
+        assertNotNull(service().inheritanceSource("owner", "a"))
+        assertThrows(InventoryApiException::class.java) {
+            service().importInventory(
+                "owner",
+                "a",
+                manual.copy(experience = manual.experience.copy(orange = 4)),
+                StarInventoryImportScope("如鸢", before.generation, before.revision, true),
+            )
+        }
+        assertEquals(before, stateService.current("owner", "a"))
     }
 }

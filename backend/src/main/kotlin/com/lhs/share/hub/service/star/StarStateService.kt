@@ -285,8 +285,12 @@ class StarStateService(
             val slots = loadout.slots
             loadout.copy(
                 slots = StarLoadoutSlots(
-                    match(slots.main1), match(slots.main2), match(slots.main3),
-                    match(slots.support1), match(slots.support2), match(slots.support3),
+                    match(slots.main1),
+                    match(slots.main2),
+                    match(slots.main3),
+                    match(slots.support1),
+                    match(slots.support2),
+                    match(slots.support3),
                 ),
             ).takeIf { it.slots.values().any { (_, id) -> id != null } }
         }

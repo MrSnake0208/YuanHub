@@ -37,22 +37,92 @@ class StarInventorySyncService(
     private val mapper: ObjectMapper,
     @param:Qualifier("hubTransactionTemplate") private val transactions: TransactionTemplate,
 ) {
-    fun sync(userId: String, accountId: String, request: StarInventorySyncRequest): StarInventorySyncResponse {
+    fun sync(userId: String, accountId: String, request: StarInventorySyncRequest): StarInventorySyncResponse =
+        synchronize(userId, accountId, request)
+
+    fun previewImport(
+        userId: String,
+        accountId: String,
+        request: StarInventorySyncRequest,
+        scope: StarInventoryImportScope,
+    ): StarInventoryImportPreview {
         val account = accounts.requireAccount(userId, accountId)
+        if (account.game != scope.game) conflict("star_sync_account_changed", "目标账号游戏版本已变化，请重新选择文件")
+        validate(request, account.game)
+        val existing = importReceipt(userId, accountId, request, scope.raw)
+        if (existing == null &&
+            pending.findByUserIdAndAccountId(userId, accountId)?.let { it.resolution == null } == true
+        ) {
+            conflict("star_plan_inheritance_pending", "旧养成计划仍待继承，请先在养成计划中确认继承或放弃，再重新导入")
+        }
+        val state = states.current(userId, accountId)
+        return StarInventoryImportPreview(accountId, account.game, state.generation, state.revision, existing != null)
+    }
+
+    fun importInventory(
+        userId: String,
+        accountId: String,
+        request: StarInventorySyncRequest,
+        scope: StarInventoryImportScope,
+    ): StarInventorySyncResponse {
+        require(scope.generation != null && scope.revision != null)
+        return synchronize(userId, accountId, request, scope)
+    }
+
+    // Raw OCR files have no upload scan_id. Match the complete normalized payload
+    // against durable receipts, including older receipts, so an automatic success
+    // cannot be replayed as a second manual rebuild. Stream only this owner's history.
+    private fun importReceipt(userId: String, accountId: String, request: StarInventorySyncRequest, raw: Boolean): StarInventorySync? {
+        val payload = mapper.readTree(mapper.writeValueAsString(request))
+        receipts.findByUserIdAndAccountIdAndScanId(userId, accountId, request.scanId)?.let {
+            if (mapper.readTree(it.payload) != payload) conflict("star_sync_scan_conflict", "同一扫描批次已保存不同内容")
+            return it
+        }
+        if (!raw) return null
+        val comparison = payload.deepCopy<com.fasterxml.jackson.databind.node.ObjectNode>().also {
+            it.remove("scan_id")
+            it.remove("scanId")
+        }
+        return receipts.findAllByUserIdAndAccountId(userId, accountId).use { history ->
+            history.filter { item ->
+                val stored = mapper.readTree(item.payload).deepCopy<com.fasterxml.jackson.databind.node.ObjectNode>()
+                stored.remove("scan_id")
+                stored.remove("scanId")
+                stored == comparison
+            }.findFirst().orElse(null)
+        }
+    }
+
+    private fun synchronize(
+        userId: String,
+        accountId: String,
+        request: StarInventorySyncRequest,
+        scope: StarInventoryImportScope? = null,
+    ): StarInventorySyncResponse {
+        val account = accounts.requireAccount(userId, accountId)
+        if (scope != null && account.game != scope.game) conflict("star_sync_account_changed", "目标账号游戏版本已变化，请重新选择文件")
         validate(request, account.game)
         val payload = mapper.writeValueAsString(request)
         fun existing(): StarInventorySyncResponse? = receipts.findByUserIdAndAccountIdAndScanId(userId, accountId, request.scanId)?.let {
             if (mapper.readTree(it.payload) != mapper.readTree(payload)) conflict("star_sync_scan_conflict", "同一扫描批次已保存不同内容")
             response(it)
         }
-        existing()?.let { return it }
+        fun manualExisting(): StarInventorySyncResponse? = if (scope?.raw == true) {
+            importReceipt(userId, accountId, request, true)?.let(::response)
+        } else {
+            existing()
+        }
+        manualExisting()?.let { return it }
         // Capture the expected version before entering the transaction. Never retry a new
         // generation against a newer version after CAS failure.
         val before = states.current(userId, accountId)
+        if (scope != null && (before.generation != scope.generation || before.revision != scope.revision)) {
+            conflict("star_state_revision_conflict", "预览后云端背包已变化，请重新选择文件并确认")
+        }
         return try {
-            commit(userId, accountId, account.game, request, payload, before.generation, before.revision, ::existing)
+            commit(userId, accountId, account.game, request, payload, before.generation, before.revision, ::manualExisting)
         } catch (error: InventoryApiException) {
-            if (error.status == HttpStatus.CONFLICT) existing() ?: throw error else throw error
+            if (error.status == HttpStatus.CONFLICT) manualExisting() ?: throw error else throw error
         }
     }
 
@@ -245,14 +315,16 @@ class StarInventorySyncService(
                 invalid("主辅星数量与条目不一致")
             }
             request.bag?.let {
-                if (it.currentCount != request.inventory.size || it.capacity?.let { capacity -> capacity <= 0 || capacity < request.inventory.size } == true) {
+                if (it.currentCount != request.inventory.size ||
+                    it.capacity?.let { capacity -> capacity <= 0 || capacity < request.inventory.size } == true
+                ) {
                     invalid("背包数量或容量与条目不一致")
                 }
             }
             request.inventory.forEach {
                 val names = when (it.kind) {
-                    "main" -> StarScanService.MAIN_NAMES
-                    "support" -> StarScanService.SUPPORT_NAMES
+                    "main" -> StarStoneCatalog.MAIN_NAMES
+                    "support" -> StarStoneCatalog.SUPPORT_NAMES
                     else -> invalid("星石分类无效")
                 }
                 // Both supported games currently share this canonical star catalog.
@@ -307,4 +379,15 @@ data class StarPlanInheritanceResolutionResponse(
     val targetGeneration: Long,
     val revision: Long,
     val action: String,
+)
+
+/** Expected cloud version comes from the preview; raw enables conservative receipt equivalence. */
+data class StarInventoryImportScope(val game: String, val generation: Long? = null, val revision: Long? = null, val raw: Boolean = false)
+
+data class StarInventoryImportPreview(
+    val accountId: String,
+    val game: String,
+    val generation: Long,
+    val revision: Long,
+    val alreadySynced: Boolean,
 )

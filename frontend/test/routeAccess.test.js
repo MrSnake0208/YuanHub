@@ -117,12 +117,7 @@ test('成就面向登录用户开放，羁绊与目录编辑仍需授权', async
   }
 })
 
-test('星石扫描核对直达路由需要专用管理员权限，原背包不受影响', () => {
-  const meta = metaFor('/star/scans')
-  assert.equal(meta.requiresAuth, true)
-  assert.equal(needsAdminAccess(meta), true)
-  assert.equal(isRouteAccessAllowed(meta, access()), false)
-  assert.equal(isRouteAccessAllowed(meta, access({ roles: ['PLATFORM_ADMIN'] })), false)
-  assert.equal(isRouteAccessAllowed(meta, access({ permissions: ['star_scan:review'] })), true)
+test('退役的星石扫描核对路由不再注册，原背包不受影响', () => {
+  assert.equal(routes.some(route => route.path === '/star/scans'), false)
   assert.equal(needsAdminAccess(metaFor('/star')), false)
 })

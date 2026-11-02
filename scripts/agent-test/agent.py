@@ -109,7 +109,7 @@ def properties(data, directory):
         "share.cors.allowed-origin-patterns": "http://127.0.0.1:5173",
         "share.avatar.dir": str(directory / "avatar"), "share.media.dir": str(directory / "media"),
         "share.media.private-dir": str(directory / "private-media"),
-        "share.star-capture.dir": str(directory / "captures"), "logging.file.name": str(directory / "backend.log"),
+        "logging.file.name": str(directory / "backend.log"),
     }
 
 

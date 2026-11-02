@@ -1,7 +1,7 @@
 package com.lhs.share.hub.controller.star.request
 
-import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonAnySetter
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonSetter
 import com.fasterxml.jackson.annotation.Nulls
 import com.fasterxml.jackson.databind.JsonNode
@@ -38,8 +38,13 @@ data class StarInventorySyncRequest(
             val bag = if (root.has("bag")) {
                 val node = root.path("bag")
                 fields(node, "current_count", "capacity")
-                StarWorkspaceBagRequest(integer(node.path("current_count")), if (node.path("capacity").isNull) null else integer(node.path("capacity")))
-            } else null
+                StarWorkspaceBagRequest(
+                    integer(node.path("current_count")),
+                    if (node.path("capacity").isNull) null else integer(node.path("capacity")),
+                )
+            } else {
+                null
+            }
             val counts = root.path("counts")
             fields(counts, "main", "support")
             val experience = root.path("experience")

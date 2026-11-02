@@ -47,7 +47,6 @@ import { betaLandingFor } from '@/utils/betaAccess.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
 import { stopAccountEventStream, subscribeAccountEvents, syncAccountEventStream } from '@/store/accountEvents.js'
-import { starCaptureRouteForEvent } from '@/pages/star/captureTransport.js'
 import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
@@ -56,7 +55,6 @@ import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '@/config/feat
 
 let stopWatch = null
 let stopEventPrompt = null
-let stopStarCaptureRoute = null
 let stopOnboarding = null
 let stopBetaSubscription = null
 let stopNotificationUnread = null
@@ -132,17 +130,6 @@ async function promptOperatorMonitor(message) {
   }
 }
 
-function routeStarCapture(message) {
-  if (!beta.canUseBetaFeatures) return
-  const target = starCaptureRouteForEvent(message, activeAccount.id)
-  if (!target) return
-  if (route.path === '/star') {
-    void router.replace(target)
-    return
-  }
-  void router.push(target)
-}
-
 onMounted(function () {
   if (TUTORIALS_ENABLED) stopOnboarding = initializeOnboardingTour(router)
   resetMonitorPromptForFreshNavigation()
@@ -198,13 +185,11 @@ onMounted(function () {
     { immediate: true }
   )
   stopEventPrompt = subscribeAccountEvents(promptOperatorMonitor)
-  stopStarCaptureRoute = subscribeAccountEvents(routeStarCapture)
 })
 
 onBeforeUnmount(function () {
   if (stopWatch) stopWatch()
   if (stopEventPrompt) stopEventPrompt()
-  if (stopStarCaptureRoute) stopStarCaptureRoute()
   if (stopOnboarding) stopOnboarding()
   if (stopIdentityWatch) stopIdentityWatch()
   if (stopAccessWatch) stopAccessWatch()

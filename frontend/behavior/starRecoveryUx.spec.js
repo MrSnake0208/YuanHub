@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { reactive } from 'vue'
@@ -9,28 +10,26 @@ import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { getCurrentStarState, patchCurrentStarState, rebuildStarState } from '../src/api/starState.js'
+import { previewStarInventoryImport, confirmStarInventoryImport } from '../src/api/starInventoryImport.js'
+import { assertNoStarImportDraft } from '../src/pages/star/starImportDraftGuard.js'
 import { dialog } from '../src/utils/dialog.js'
-import { consumeStarCapture, getStarCaptureImage, getStarCaptureManifest } from '../src/api/starCaptures.js'
-import { isStarCaptureDraftPersisted } from '../src/pages/star/captureDraftReceipt.js'
-import { STAR_CAPTURE_LIFECYCLE_KEY } from '../src/pages/star/starCaptureLifecycle.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 
 const navigation = vi.hoisted(() => ({ route: null, replace: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => navigation.route, useRouter: () => ({ replace: navigation.replace }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: reactive({ isLoggedIn: false }) }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), importInventory: vi.fn() }))
+vi.mock('../src/api/starInventoryImport.js', () => ({ previewStarInventoryImport: vi.fn(), confirmStarInventoryImport: vi.fn() }))
+vi.mock('../src/pages/star/starImportDraftGuard.js', () => ({ assertNoStarImportDraft: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({
   getCurrentStarState: vi.fn(), patchCurrentStarState: vi.fn(), rebuildStarState: vi.fn(),
   listStarRecoveryPoints: vi.fn(), restoreStarRecoveryPoint: vi.fn(),
+  getPendingStarPlanInheritance: vi.fn().mockResolvedValue(null), confirmStarPlanInheritance: vi.fn(), discardStarPlanInheritance: vi.fn(),
 }))
-vi.mock('../src/api/starCaptures.js', () => ({
-  consumeStarCapture: vi.fn(), getPendingStarCapture: vi.fn().mockResolvedValue(null),
-  getStarCaptureImage: vi.fn(), getStarCaptureManifest: vi.fn(),
-}))
+
 vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: vi.fn(() => () => {}) }))
 vi.mock('../src/pages/star/legacyHostAccountMigration.js', () => ({ migrateLegacyYuanStarHostAccount: vi.fn().mockResolvedValue(null) }))
-vi.mock('../src/pages/star/captureDraftReceipt.js', () => ({ isStarCaptureDraftPersisted: vi.fn() }))
 
 const emptySnapshot = {
   inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null },
@@ -45,11 +44,11 @@ const nativeFunction = Function
 let embedMount
 afterEach(() => document.getElementById('yuanstar-embed-styles')?.remove())
 
-function render(options = {}) {
+function render({ exchange = false, ...options } = {}) {
   return mount(StarPage, { ...options, global: {
     stubs: {
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
-      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
+      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: !exchange,
     },
     directives: { reveal: () => {} },
   } })
@@ -73,18 +72,8 @@ beforeEach(() => {
   activeAccount.set('')
   listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }])
   getCurrentStarState.mockResolvedValue(emptyRemote)
-  isStarCaptureDraftPersisted.mockReset().mockResolvedValue(true)
-  getStarCaptureManifest.mockReset().mockResolvedValue({
-    capture_id: 'capture-1', game_version: '代号鸢',
-    sections: Object.fromEntries(['main', 'support', 'experience'].map((section, index) => [section, {
-      images: [{ source_image_id: section + '-1', source_order: index + 1, file_name: section + '.png' }],
-      adjacent_relations: [], complete: true, stop_reason: section === 'experience' ? 'single_capture' : 'bottom_no_move',
-    }])),
-  })
-  getStarCaptureImage.mockResolvedValue({ blob: new Blob(['fixture'], { type: 'image/png' }) })
   embedMount = vi.fn(() => ({
     setHostAccount: vi.fn().mockResolvedValue(undefined), setActiveTab: vi.fn(), setReviewView: vi.fn(),
-    importCaptureBatch: vi.fn().mockResolvedValue(undefined),
     getCloudBusinessSnapshot: vi.fn().mockResolvedValue(emptySnapshot),
     dispose: vi.fn().mockResolvedValue(undefined),
   }))
@@ -156,7 +145,7 @@ it('默认进入背包，导入不再显示冗余标题且保留识别教程与�
   expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
   expect(wrapper.findAll('.star-tabs [role="tab"]')).toHaveLength(2)
   expect(wrapper.get('.star-privacy-note').text()).toContain('本机识别')
-  expect(wrapper.get('.star-privacy-note').attributes('title')).toBe('图片识别在本机完成。手动截图由浏览器读取；MaaYuan 截图从临时服务器获取。登录后同步背包数据。')
+  expect(wrapper.get('.star-privacy-note').attributes('title')).toBe('图片识别在本机完成。手动截图由浏览器读取。登录后同步背包数据。')
   expect(wrapper.find('.star-availability-note').exists()).toBe(false)
   await wrapper.get('.star-tutorial-replay').trigger('click')
   await flushPromises()
@@ -488,11 +477,12 @@ it('disabled tutorials preserve all read records, initialize no tutorial observe
   enableTutorialStatus('tutorials-disabled-owner')
   const records = ['recognition:v1', 'bag:v1', 'plan:v1', 'onboarding:v2'].map(kind => `yuanhub:star-${kind}:tutorials-disabled-owner`)
   for (const key of records) localStorage.setItem(key, 'seen')
-  const observers = vi.spyOn(globalThis, 'MutationObserver')
+  const observe = vi.spyOn(MutationObserver.prototype, 'observe')
   const wrapper = render(); await flushPromises(); await loadStylesheet()
   const handle = embedMount.mock.results[0].value
   expect(handle.getRecognitionTutorialStatus).not.toHaveBeenCalled()
-  expect(observers).not.toHaveBeenCalled()
+  // The host copy adapter remains active; the tutorial observer must stay off.
+  expect(observe).toHaveBeenCalledExactlyOnceWith(wrapper.get('#product-root').element, { childList: true, subtree: true, characterData: true })
   expect(wrapper.find('.star-tutorial-replay, .star-help-tutorial').exists()).toBe(false)
   await wrapper.get('.compact-tool-help').trigger('click')
   expect(wrapper.get('.compact-tool-help-content').text()).toContain('核对识别结果')
@@ -776,7 +766,6 @@ it('lost OCR POST response can be reconciled from the page without starting OCR 
   expect(localStorage.getItem('yuanhub.star-rebuild-pending:acc-1')).toBeNull()
   expect(wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
   expect(rebuildStarState).toHaveBeenCalledTimes(1)
-  expect(product.importCaptureBatch).not.toHaveBeenCalled()
   wrapper.unmount()
 })
 
@@ -869,103 +858,6 @@ it('卸载期间账号准备晚到不会切页或继续读取云状态', async (
   expect(handle.setActiveTab).not.toHaveBeenCalled()
   expect(handle.getCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(getCurrentStarState).not.toHaveBeenCalled()
-})
-
-it('没有持久化证明时保留路由和重试入口，重试成功后展示跨版本告警', async () => {
-  auth.isLoggedIn = true
-  activeAccount.set('acc-1')
-  navigation.route.query = { account_id: 'acc-1', capture_id: 'capture-1', tab: 'import' }
-  isStarCaptureDraftPersisted.mockResolvedValueOnce(false).mockResolvedValue(true)
-  const wrapper = render()
-  await flushPromises()
-  await loadStylesheet()
-  const handle = embedMount.mock.results[0].value
-  expect(wrapper.get('.star-sync-state').text()).toContain('未保存或已被其他操作替换')
-  expect(navigation.replace).not.toHaveBeenCalled()
-  expect(localStorage.getItem(STAR_CAPTURE_LIFECYCLE_KEY)).toBeNull()
-  expect(consumeStarCapture).not.toHaveBeenCalled()
-  expect(wrapper.get('.star-sync-retry').text()).toBe('重试导入')
-  await wrapper.get('.star-sync-retry').trigger('click')
-  await flushPromises()
-  expect(handle.importCaptureBatch).toHaveBeenCalledTimes(2)
-  expect(getStarCaptureManifest).toHaveBeenCalledTimes(1)
-  expect(wrapper.get('.star-sync-state').text()).not.toContain('三段截图已导入')
-  expect(wrapper.get('.star-sync-state').text()).toContain('截图版本为“代号鸢”')
-  expect(wrapper.get('.star-sync-state').text()).toContain('当前工作区为“如鸢”')
-  expect(JSON.parse(localStorage.getItem(STAR_CAPTURE_LIFECYCLE_KEY)).records['acc-1'].state).toBe('imported')
-  expect(navigation.replace).toHaveBeenCalledWith({ path: '/star', query: { tab: 'import' }, hash: '' })
-  expect(consumeStarCapture).not.toHaveBeenCalled()
-  wrapper.unmount()
-})
-
-it('存储核对晚到成功时已换账号，不标记旧批次、不清路由也不误报成功', async () => {
-  auth.isLoggedIn = true
-  activeAccount.set('acc-1')
-  listAccounts.mockResolvedValue([
-    { id: 'acc-1', name: '账号 A', game: '如鸢' },
-    { id: 'acc-2', name: '账号 B', game: '如鸢' },
-  ])
-  navigation.route.query = { account_id: 'acc-1', capture_id: 'capture-1' }
-  const gate = deferred()
-  isStarCaptureDraftPersisted.mockReturnValue(gate.promise)
-  const wrapper = render()
-  await flushPromises()
-  await loadStylesheet()
-  expect(isStarCaptureDraftPersisted).toHaveBeenCalledTimes(1)
-  activeAccount.set('acc-2')
-  await flushPromises()
-  gate.resolve(true)
-  await flushPromises()
-  expect(localStorage.getItem(STAR_CAPTURE_LIFECYCLE_KEY)).toBeNull()
-  expect(navigation.replace).not.toHaveBeenCalled()
-  expect(wrapper.text()).not.toContain('三段截图已导入')
-  expect(wrapper.text()).not.toContain('截图版本为')
-  expect(consumeStarCapture).not.toHaveBeenCalled()
-  wrapper.unmount()
-})
-
-it.each([true, false])('旧 imported 缓存仍需 Draft 证明（持久化=%s）才能报告恢复', async persisted => {
-  auth.isLoggedIn = true
-  activeAccount.set('acc-1')
-  navigation.route.query = { account_id: 'acc-1', capture_id: 'capture-1' }
-  localStorage.setItem(STAR_CAPTURE_LIFECYCLE_KEY, JSON.stringify({ version: 1, records: {
-    'acc-1': { accountId: 'acc-1', captureId: 'capture-1', state: 'imported', updatedAt: 123 },
-  } }))
-  isStarCaptureDraftPersisted.mockResolvedValue(persisted)
-  const wrapper = render()
-  await flushPromises()
-  await loadStylesheet()
-  expect(isStarCaptureDraftPersisted).toHaveBeenCalledWith('acc-1', { captureId: 'capture-1' })
-  if (persisted) {
-    expect(wrapper.get('.star-sync-state').text()).toContain('已找回上次待识别的截图')
-    expect(getStarCaptureManifest).not.toHaveBeenCalled()
-    expect(navigation.replace).toHaveBeenCalledTimes(1)
-  } else {
-    expect(wrapper.text()).not.toContain('已找回上次待识别的截图')
-    expect(wrapper.get('.star-sync-retry').text()).toBe('重试导入')
-    expect(getStarCaptureManifest).toHaveBeenCalledTimes(1)
-    expect(navigation.replace).not.toHaveBeenCalled()
-  }
-  expect(consumeStarCapture).not.toHaveBeenCalled()
-  wrapper.unmount()
-})
-
-it('持久化核对在卸载后返回不标记 imported、不清路由、不 consume', async () => {
-  auth.isLoggedIn = true
-  activeAccount.set('acc-1')
-  navigation.route.query = { account_id: 'acc-1', capture_id: 'capture-1' }
-  const gate = deferred()
-  isStarCaptureDraftPersisted.mockReturnValue(gate.promise)
-  const wrapper = render()
-  await flushPromises()
-  await loadStylesheet()
-  expect(isStarCaptureDraftPersisted).toHaveBeenCalledTimes(1)
-  wrapper.unmount()
-  gate.resolve(true)
-  await flushPromises()
-  expect(localStorage.getItem(STAR_CAPTURE_LIFECYCLE_KEY)).toBeNull()
-  expect(navigation.replace).not.toHaveBeenCalled()
-  expect(consumeStarCapture).not.toHaveBeenCalled()
 })
 
 it('账号列表在卸载后晚到不覆盖全局账号、不订阅事件、不启动 embed', async () => {
@@ -1199,22 +1091,134 @@ it.each([[390, 1440], [1440, 390]])('宿主 %i→%i 保持唯一嵌入、计划�
 })
 
 
-it('本地报告核对入口仅管理员可见，撤权即隐藏而背包继续可用', async () => {
-  auth.isLoggedIn = true
-  auth.userInfo = { id: 'owner' }
-  activeAccount.set('acc-1')
-  const wrapper = render()
-  await flushPromises(); await loadStylesheet()
-  const scanLinks = () => wrapper.findAllComponents(RouterLinkStub).filter(link => link.props('to')?.path === '/star/scans')
-  expect(scanLinks()).toHaveLength(0)
-  auth.adminAccess = { permissions: ['star_scan:review'] }
-  await flushPromises()
-  expect(scanLinks()).toHaveLength(1)
-  expect(scanLinks()[0].props('to').query.account_id).toBe('acc-1')
-  auth.adminAccess = { permissions: [] }
-  await flushPromises()
-  expect(scanLinks()).toHaveLength(0)
-  expect(wrapper.find('#product-root').exists()).toBe(true)
-  expect(embedMount).toHaveBeenCalledTimes(1)
+
+
+const compactImportFile = () => ({ name: 'renamed.json', size: 500, text: async () => JSON.stringify({
+  format: 'maayuan-star-inventory', version: 1, scan_id: '11111111-1111-4111-8111-111111111111', complete: true,
+  counts: { main: 2, support: 0 }, inventory: Array.from({ length: 2 }, () => ({ kind: 'main', name: '天府', quality: 'orange', level: 60 })),
+  experience: { orange: 1, purple: 525, white: 91 }, bag: { current_count: 2, capacity: 270 },
+}) })
+async function jsonImportHost() {
+  auth.isLoggedIn = true; auth.userInfo = { id: 'json-owner' }; activeAccount.set('acc-1')
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: '目标 A', game: '如鸢' }, { id: 'acc-2', name: '目标 B', game: '如鸢' }])
+  getCurrentStarState.mockReset().mockResolvedValue(emptyRemote)
+  previewStarInventoryImport.mockReset().mockResolvedValue({ account_id: 'acc-1', game: '如鸢', generation: 0, revision: 0, already_synced: false })
+  confirmStarInventoryImport.mockReset().mockResolvedValue({ status: 'synced', account_id: 'acc-1' })
+  assertNoStarImportDraft.mockReset().mockResolvedValue(undefined)
+  const wrapper = render({ exchange: true }); await flushPromises(); await loadStylesheet()
+  const handle = embedMount.mock.results.at(-1).value
+  handle.applyCloudBusinessSnapshot = vi.fn().mockResolvedValue()
+  handle.previewDataExchangeImport = vi.fn().mockResolvedValue({ format: 'json', fileName: 'backup.json', inventoryCount: 0, plannedCount: 0, bag: {}, experience: {} })
+  handle.confirmDataExchangeImport = vi.fn().mockResolvedValue()
+  await wrapper.get('.archive-toggle').trigger('click')
+  await wrapper.get('.archive-import').trigger('click')
+  return { wrapper, handle }
+}
+async function selectJson(wrapper, file = compactImportFile()) {
+  Object.defineProperty(wrapper.get('input[type=file]').element, 'files', { configurable: true, value: [file] })
+  await wrapper.get('input[type=file]').trigger('change'); await flushPromises()
+}
+it('JSON compact preview uses one existing import entry, never writes before confirmation and adopts current cloud data once', async () => {
+  const { wrapper, handle } = await jsonImportHost()
+  await selectJson(wrapper)
+  expect(wrapper.findAll('.archive-import')).toHaveLength(1)
+  expect(wrapper.get('.star-exchange-preview').text()).toContain('目标 A')
+  expect(wrapper.get('.star-exchange-preview').text()).toContain('主星 2 颗')
+  expect(wrapper.get('.star-exchange-preview').text()).toContain('270')
+  expect(wrapper.get('.star-exchange-preview').text()).toContain('原有佩戴与养成计划按现有保护和继承规则处理')
+  expect(confirmStarInventoryImport).not.toHaveBeenCalled()
+  const callback = embedMount.mock.calls.at(-1)[1], pendingScopes = []
+  handle.setReviewView.mockImplementation(() => { pendingScopes.push(callback.getOcrRebuildScope()) })
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 1, revision: 1, inventory: [{ instance_id: 'new', kind: 'main', name: '天府', quality: 'orange', level: 60 }] })
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
+  expect(confirmStarInventoryImport.mock.calls[0][0]).toBe('acc-1')
+  expect(confirmStarInventoryImport.mock.calls[0][1]).toMatchObject({ expected_generation: 0, expected_revision: 0, game: '如鸢', source_format: 'compact' })
+  expect(handle.applyCloudBusinessSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({ generation: 1, inventory: [expect.objectContaining({ starInstanceId: 'new', kind: '主星', quality: '橙' })] }))
+  expect(handle.setHostAccount).toHaveBeenCalledTimes(1)
+  expect(pendingScopes).toEqual([{ accountId: 'acc-1', generation: 1, revision: 1 }])
+  expect(rebuildStarState).not.toHaveBeenCalled()
   wrapper.unmount()
+})
+it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a JSON file read that finishes after %s cannot publish or submit an old preview', async change => {
+  const { wrapper } = await jsonImportHost(), gate = deferred()
+  const selecting = selectJson(wrapper, { ...compactImportFile(), text: () => gate.promise })
+  await flushPromises()
+  if (change === 'unmount') wrapper.unmount()
+  else if (change === 'identity') auth.userInfo = { id: 'another-user' }
+  else { activeAccount.set('acc-2'); await flushPromises(); if (change === 'roundtrip') activeAccount.set('acc-1') }
+  gate.resolve(await compactImportFile().text()); await selecting; await flushPromises()
+  expect(previewStarInventoryImport).not.toHaveBeenCalled()
+  expect(confirmStarInventoryImport).not.toHaveBeenCalled()
+  if (change !== 'unmount') { expect(wrapper.find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
+})
+it('invalid reselection clears the previous JSON preview and a switched account cannot confirm it', async () => {
+  const { wrapper } = await jsonImportHost(); await selectJson(wrapper)
+  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  await selectJson(wrapper, { name: 'bad.json', size: 4, text: async () => 'oops' })
+  expect(wrapper.find('.star-exchange-preview').exists()).toBe(false)
+  expect(wrapper.get('.star-exchange-error').text()).toContain('JSON 无法解析')
+  await selectJson(wrapper); activeAccount.set('acc-2'); await flushPromises()
+  expect(wrapper.find('.star-exchange-preview').exists()).toBe(false)
+  expect(confirmStarInventoryImport).not.toHaveBeenCalled(); wrapper.unmount()
+})
+it('drafts and real backend rejections retain old business data and actionable error details', async () => {
+  const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
+  assertNoStarImportDraft.mockRejectedValueOnce(new Error('请先处理本机截图草稿'))
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(confirmStarInventoryImport).not.toHaveBeenCalled()
+  confirmStarInventoryImport.mockRejectedValueOnce(Object.assign(new Error('旧养成计划仍待继承，请先处理'), { status: 409, code: 'star_plan_inheritance_pending' }))
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(wrapper.get('.star-exchange-error').text()).toContain('旧养成计划仍待继承')
+  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
+  expect(handle.confirmDataExchangeImport).not.toHaveBeenCalled(); wrapper.unmount()
+})
+it('uncertain JSON upload does not refresh or overwrite local data and blocks further cloud writes until recovery', async () => {
+  const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
+  confirmStarInventoryImport.mockRejectedValueOnce(new TypeError('network unavailable'))
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('补传结果尚待核对')
+  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  expect(patchCurrentStarState).not.toHaveBeenCalled(); wrapper.unmount()
+})
+it('YuanHub backup files keep the existing embedded preview and full replacement confirmation', async () => {
+  const { wrapper, handle } = await jsonImportHost()
+  await selectJson(wrapper, { name: 'backup.json', size: 20, text: async () => '{"schemaVersion":1}' })
+  expect(handle.previewDataExchangeImport).toHaveBeenCalledTimes(1)
+  expect(previewStarInventoryImport).not.toHaveBeenCalled()
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(handle.confirmDataExchangeImport).toHaveBeenCalledTimes(1)
+  expect(confirmStarInventoryImport).not.toHaveBeenCalled(); wrapper.unmount()
+})
+
+it('a real complete local OCR file previews and submits business fields without diagnostic data or instance IDs', async () => {
+  const { wrapper } = await jsonImportHost()
+  const text = readFileSync('test/fixtures/maayuan-full-inventory.json', 'utf8')
+  await selectJson(wrapper, { name: 'inventory.json', size: text.length, text: async () => text })
+  await vi.waitFor(() => expect(wrapper.find('.star-exchange-preview').exists()).toBe(true))
+  expect(wrapper.get('.star-exchange-preview').text()).toContain('主星 69 颗 · 辅星 105 颗')
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
+  const body = confirmStarInventoryImport.mock.calls[0][1]
+  expect(body.source_format).toBe('local-ocr')
+  expect(body.document.inventory).toHaveLength(174)
+  expect(body.document.experience).toEqual({ orange: 1, purple: 525, white: 91 })
+  expect(Object.keys(body.document.inventory[0])).toEqual(['kind', 'name', 'quality', 'level'])
+  wrapper.unmount()
+})
+
+it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a confirmed POST finishing after %s cannot refresh or unlock another account', async change => {
+  const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
+  const gate = deferred(); confirmStarInventoryImport.mockReturnValueOnce(gate.promise)
+  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
+  if (change === 'unmount') wrapper.unmount()
+  else if (change === 'identity') auth.userInfo = { id: 'changed-owner' }
+  else { activeAccount.set('acc-2'); await flushPromises(); if (change === 'roundtrip') { activeAccount.set('acc-1'); await flushPromises() } }
+  gate.resolve({ status: 'synced', account_id: 'acc-1' }); await flushPromises()
+  expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
+  expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
+  if (change !== 'unmount') { expect(wrapper.find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
 })

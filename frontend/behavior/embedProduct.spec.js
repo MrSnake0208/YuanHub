@@ -3,8 +3,6 @@ import { IDBObjectStore } from 'fake-indexeddb'
 import { setImmediate as waitForTask } from 'node:timers/promises'
 import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { loadAndImportStarCapture, STAR_CAPTURE_IMPORT_SUPERSEDED_CODE } from '../src/pages/star/captureTransport.js'
-import { createStarCaptureLifecycle, importAndMarkStarCapture } from '../src/pages/star/starCaptureLifecycle.js'
 import { recognitionTutorialSteps, resolveTutorialTargets } from '../src/pages/star/recognitionTutorial.js'
 import { bagTutorialSteps } from '../src/pages/star/bagTutorial.js'
 
@@ -27,7 +25,7 @@ function pngFile(name) {
   return new File([new Uint8Array([137, 80, 78, 71])], name, { type: 'image/png' })
 }
 
-// 宿主 captureTransport.js 组装出的批次结构：三段完整采集 + 全局 sourceOrder。
+// 冻结嵌入资源的测试夹具：仅用于播种图片以覆盖共享 OCR/Worker 行为，不连接已退役传输接口。
 function captureBatch(gameVersion) {
   let order = 0
   const section = (count, stopReason) => ({
@@ -84,6 +82,28 @@ function planRows(root) {
 }
 
 describe('vendored YuanStar embed behavior', () => {
+  it('round trips the actual embedded JSON backup schema without changing plans experience or instances', async () => {
+    const { root, handle } = await mountEmbed()
+    async function exported() {
+      const archive = handle.exportDataExchange()
+      const text = typeof archive.blob.text === 'function' ? await archive.blob.text() : await new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsText(archive.blob)
+      })
+      return { archive, text, parsed: JSON.parse(text) }
+    }
+    try {
+      await handle.applyCloudBusinessSnapshot(businessSnapshot)
+      const before = await exported()
+      expect(before.parsed.schemaVersion).toBe(1) // The current panel badge says v2; the committed parser still exports schemaVersion 1.
+      expect(before.parsed.inventory).toHaveLength(3)
+      const preview = await handle.previewDataExchangeImport({ name: before.archive.filename, size: before.text.length, text: async () => before.text })
+      expect(preview.inventoryCount).toBe(3)
+      await handle.confirmDataExchangeImport(preview)
+      const after = await exported()
+      for (const field of ['inventory', 'bag', 'experience', 'gameVersion']) expect(after.parsed[field]).toEqual(before.parsed[field])
+    } finally { await handle.dispose(); root.remove() }
+  }, 60000)
+
   it('single bag table follows the same instance, preserves scroll and deleting clears the editor', async () => {
     const { root, handle } = await mountEmbed()
     const inventory = Array.from({ length: 25 }, (_, index) => ({ starInstanceId: 'follow-' + index, kind: '主星', name: '天府', level: 60 - index * 2, quality: '橙' }))
@@ -549,38 +569,6 @@ describe('vendored OCR prewarming', () => {
       await embed.handle.dispose()
       await vi.advanceTimersByTimeAsync(10000)
       expect(embed.workers).toHaveLength(0)
-    } finally { await cleanup(embed) }
-  }, 60000)
-
-  it('accepts the actual legacy embed only after its complete Draft is persisted', async () => {
-    let embed
-    try {
-      embed = await clockedEmbed()
-      const current = { accountId: embed.account.accountId, captureId: 'capture-embed-probe', batch: captureBatch('如鸢') }
-      const lifecycle = createStarCaptureLifecycle(localStorage)
-      expect(await importAndMarkStarCapture({
-        lifecycle, accountId: current.accountId, captureId: current.captureId, isCurrent: () => true,
-        importCapture: () => loadAndImportStarCapture({}, current, embed.handle, () => {}, () => true),
-      })).toBe(true)
-      expect(lifecycle.get(current.accountId)).toMatchObject({ captureId: current.captureId, state: 'imported' })
-      expect(embed.root.querySelector('#file-summary').textContent).toContain('3 张')
-    } finally { await cleanup(embed) }
-  }, 60000)
-
-  it('a same-account concurrent replacement cannot turn an undefined verdict into imported', async () => {
-    let embed
-    try {
-      embed = await clockedEmbed()
-      const current = { accountId: embed.account.accountId, captureId: 'capture-embed-probe', batch: captureBatch('如鸢') }
-      const lifecycle = createStarCaptureLifecycle(localStorage)
-      const first = importAndMarkStarCapture({
-        lifecycle, accountId: current.accountId, captureId: current.captureId, isCurrent: () => true,
-        importCapture: () => loadAndImportStarCapture({}, current, embed.handle, () => {}, () => true),
-      }).catch(error => error)
-      await embed.handle.importCaptureBatch({ ...captureBatch('如鸢'), captureId: 'capture-replacement' })
-      expect(await first).toMatchObject({ code: STAR_CAPTURE_IMPORT_SUPERSEDED_CODE })
-      expect(lifecycle.get(current.accountId)).toBeNull()
-      expect(lifecycle.captureAction(current.accountId, current.captureId)).toBe('import')
     } finally { await cleanup(embed) }
   }, 60000)
 

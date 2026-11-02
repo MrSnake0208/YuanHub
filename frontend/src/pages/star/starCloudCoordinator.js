@@ -313,6 +313,16 @@ export function createStarCloudCoordinator({
           if (next.generation < session.generation || (next.generation === session.generation && next.revision < session.writer.state().revision)) throw new Error('回执版本已过期，请重新读取。')
           if (!session.writer.adopt(next)) throw new Error('云端版本无法采用，请恢复原操作。')
         },
+        async refresh() {
+          assertCurrent(session)
+          const next = await readBusiness(session.accountId)
+          assertCurrent(session)
+          if (next.generation < session.generation || (next.generation === session.generation && next.revision < session.writer.state().revision)) throw new Error('云端回执版本已过期，请重新核对。')
+          await session.handle.applyCloudBusinessSnapshot(next)
+          assertCurrent(session)
+          if (!session.writer.adopt(next)) throw new Error('云端已保存，本机版本尚未采用，请重新加载核对。')
+        },
+        fail(error) { if (active === session) { session.error = error; emit() } },
         release() { session.replacing = false; if (active === session) emit() },
       }
     },

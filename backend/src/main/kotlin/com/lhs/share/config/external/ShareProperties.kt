@@ -30,8 +30,6 @@ data class ShareProperties(
     var avatar: Avatar = Avatar(),
     @NestedConfigurationProperty
     var media: Media = Media(),
-    @NestedConfigurationProperty
-    var starCapture: StarCapture = StarCapture(),
 ) {
     /**
      * JWT 配置
@@ -154,13 +152,5 @@ data class ShareProperties(
          * 私有附件存储目录,生产用环境变量 SHARE_PRIVATE_MEDIA_DIR / Docker volume 覆盖
          */
         var privateDir: String = "./data/private-media",
-    )
-
-    /** MaaYuan 星石采集的短期私有中转目录。 */
-    data class StarCapture(
-        /** 不映射到任何静态 URL 的运行时目录。 */
-        var dir: String = "./data/star-captures",
-        /** 未消费采集的保留时间，单位分钟。 */
-        var ttlMinutes: Long = 30,
     )
 }

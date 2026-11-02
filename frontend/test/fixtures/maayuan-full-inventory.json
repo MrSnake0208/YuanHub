@@ -1,0 +1,1070 @@
+{
+  "schemaVersion": 2,
+  "mode": "local-shadow",
+  "complete": true,
+  "sections": {
+    "main": {
+      "complete": true,
+      "count": 69,
+      "items": [
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天相",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天相",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "破军",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "破军",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "贪狼",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天同",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天同",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阴",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阴",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天梁",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "七杀",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "紫微",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "破军",
+          "level": 41,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "紫微",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "七杀",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "紫微",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "武曲",
+          "level": 40,
+          "quality": "紫"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天相",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "七杀",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "廉贞",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天府",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天相",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天相",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阳",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "巨门",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "七杀",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "破军",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "贪狼",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "贪狼",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "紫微",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "紫微",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天同",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天同",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阴",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阴",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "太阴",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天机",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "天梁",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "main",
+          "name": "破军",
+          "level": 1,
+          "quality": "紫"
+        }
+      ]
+    },
+    "support": {
+      "complete": true,
+      "count": 105,
+      "items": [
+        {
+          "section": "support",
+          "name": "天魁",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天钺",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "右弼",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "右弼",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "擎羊",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "擎羊",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "阴煞",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文曲",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "解神",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "解神",
+          "level": 60,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "左辅",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天马",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文曲",
+          "level": 50,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天钺",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "禄存",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "左辅",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "擎羊",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "火星",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "铃星",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地空",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天巫",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "解神",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "禄存",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "左辅",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天巫",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天魁",
+          "level": 40,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天魁",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "陀螺",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "陀螺",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天刑",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地劫",
+          "level": 30,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "阴煞",
+          "level": 15,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天魁",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天魁",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天钺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天钺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天钺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "左辅",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "左辅",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "右弼",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "右弼",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "右弼",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天马",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天马",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天马",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天马",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "擎羊",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "擎羊",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "陀螺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "陀螺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "陀螺",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "火星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "火星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "火星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "火星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "铃星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "铃星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "铃星",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地空",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地空",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地空",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地空",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天刑",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天刑",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天刑",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天刑",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天姚",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "阴煞",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "阴煞",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "阴煞",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天巫",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天巫",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天巫",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "三台",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "天贵",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文昌",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文曲",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文曲",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "文曲",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "解神",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "解神",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "禄存",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "禄存",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "禄存",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "地劫",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "红鸾",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "红鸾",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "红鸾",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "红鸾",
+          "level": 1,
+          "quality": "橙"
+        },
+        {
+          "section": "support",
+          "name": "红鸾",
+          "level": 1,
+          "quality": "橙"
+        }
+      ]
+    }
+  },
+  "experience": {
+    "structured": true,
+    "complete": true,
+    "orangeCount": 1,
+    "purpleCount": 525,
+    "whiteCount": 91
+  }
+}

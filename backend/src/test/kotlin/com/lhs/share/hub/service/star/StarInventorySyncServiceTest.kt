@@ -123,9 +123,12 @@ class StarInventorySyncServiceTest {
         val req = request().copy(bag = com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest(2, 270))
         service().sync("owner", "a", req)
         verify { states.rebuild("owner", "a", match { it.bag == req.bag }) }
-        assertEquals("star_sync_scan_conflict", assertThrows(InventoryApiException::class.java) {
-            service().sync("owner", "a", req.copy(bag = req.bag!!.copy(capacity = 500)))
-        }.code)
+        assertEquals(
+            "star_sync_scan_conflict",
+            assertThrows(InventoryApiException::class.java) {
+                service().sync("owner", "a", req.copy(bag = req.bag!!.copy(capacity = 500)))
+            }.code,
+        )
     }
 
     @Test fun `durable receipt wins over newer state and pending while changed same batch is rejected`() {
@@ -149,5 +152,34 @@ class StarInventorySyncServiceTest {
         )
         verify(exactly = 1) { states.rebuild(any(), any(), any()) }
         verify(exactly = 1) { receipts.insert(any<StarInventorySync>()) }
+    }
+
+    @Test fun `raw manual retry finds automatic receipt even after later edits and pending plan`() {
+        val automatic = request()
+        val receipt = service().sync("owner", "a", automatic)
+        every { receipts.findAllByUserIdAndAccountId("owner", "a") } answers { saved.values.stream() }
+        val manual = automatic.copy(scanId = "22222222-2222-5222-8222-222222222222")
+        every { states.current("owner", "a") } returns StarStateCurrentResponse.empty("a").copy(generation = 8, revision = 22)
+        every { pending.findByUserIdAndAccountId("owner", "a") } returns
+            StarPlanInheritancePending("p", "owner", "a", "point", 5, automatic.scanId)
+        val preview = service().previewImport("owner", "a", manual, StarInventoryImportScope("如鸢", raw = true))
+        assertTrue(preview.alreadySynced)
+        assertEquals(receipt, service().importInventory("owner", "a", manual, StarInventoryImportScope("如鸢", 4, 9, true)))
+        verify(exactly = 1) { states.rebuild(any(), any(), any()) }
+        verify(exactly = 1) { receipts.insert(any<StarInventorySync>()) }
+    }
+
+    @Test fun `manual stale preview wrong game and pending source cannot overwrite old inventory`() {
+        val req = request()
+        for (scope in listOf(StarInventoryImportScope("代号鸢", 4, 9), StarInventoryImportScope("如鸢", 4, 8))) {
+            assertThrows(InventoryApiException::class.java) { service().importInventory("owner", "a", req, scope) }
+        }
+        every { pending.findByUserIdAndAccountId("owner", "a") } returns StarPlanInheritancePending("p", "owner", "a", "point", 4, "older")
+        assertThrows(InventoryApiException::class.java) { service().previewImport("owner", "a", req, StarInventoryImportScope("如鸢")) }
+        assertThrows(InventoryApiException::class.java) {
+            service().importInventory("owner", "a", req, StarInventoryImportScope("如鸢", 4, 9))
+        }
+        verify(exactly = 0) { states.rebuild(any(), any(), any()) }
+        verify(exactly = 0) { receipts.insert(any<StarInventorySync>()) }
     }
 }

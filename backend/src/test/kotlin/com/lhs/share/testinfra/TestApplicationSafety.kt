@@ -45,7 +45,7 @@ class TestApplicationSafety {
             require(redis == "redis://127.0.0.1:1" || TestRedis.isOwnedUri(redis)) { "Refusing external Redis in test JVM" }
             require(environment.getProperty("debug.email.no-send", Boolean::class.java, false)) { "Tests must not send mail" }
             val base = Path.of("build/test-data").toAbsolutePath().normalize()
-            for (key in listOf("share.avatar.dir", "share.media.dir", "share.media.private-dir", "share.star-capture.dir")) {
+            for (key in listOf("share.avatar.dir", "share.media.dir", "share.media.private-dir")) {
                 val value = requireNotNull(environment.getProperty(key)) { "Explicit test storage required: $key" }
                 require(Path.of(value).toAbsolutePath().normalize().startsWith(base)) { "Refusing storage outside build/test-data: $key" }
             }

@@ -88,7 +88,7 @@ test('scope key 前后端一致：inventory、operator 与星石采集写权限'
   for (const k of [
     'inventory:read', 'inventory:write', 'inventory:export',
     'operator:read', 'operator:write', 'operator:export', 'operator:scan:write',
-    'star:capture:write'
+    'star:sync:write'
   ]) {
     assert.ok(backendPermission.includes(k), '后端缺 ' + k)
     // openApi.js 只透传 scopes，不枚举 key；实际前端兜底/展示在 utils 与 profile

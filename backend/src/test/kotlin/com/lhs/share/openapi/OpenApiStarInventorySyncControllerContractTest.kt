@@ -69,15 +69,30 @@ class OpenApiStarInventorySyncControllerContractTest {
             StarInventorySyncService.validate(request, "如鸢")
             assertEquals(mapper.readTree(wire.toString()), mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(request))
         }
-        for (bag in listOf("null", "{}", """{"current_count":2}""", """{"current_count":"2","capacity":270}""", """{"current_count":2,"capacity":2.5}""", """{"current_count":2,"capacity":true}""", """{"current_count":2,"capacity":270,"extra":1}""")) {
+        for (bag in listOf(
+            "null",
+            "{}",
+            """{"current_count":2}""",
+            """{"current_count":"2","capacity":270}""",
+            """{"current_count":2,"capacity":2.5}""",
+            """{"current_count":2,"capacity":true}""",
+            """{"current_count":2,"capacity":270,"extra":1}""",
+        )) {
             val wire = mapper.readTree(body) as ObjectNode
             wire.set<ObjectNode>("bag", mapper.readTree(bag))
             assertThrows(InventoryApiException::class.java) { StarInventorySyncRequest.fromWire(wire) }
         }
-        for (bag in listOf("""{"current_count":1,"capacity":270}""", """{"current_count":2,"capacity":1}""", """{"current_count":2,"capacity":0}""", """{"current_count":2,"capacity":-1}""")) {
+        for (bag in listOf(
+            """{"current_count":1,"capacity":270}""",
+            """{"current_count":2,"capacity":1}""",
+            """{"current_count":2,"capacity":0}""",
+            """{"current_count":2,"capacity":-1}""",
+        )) {
             val wire = mapper.readTree(body) as ObjectNode
             wire.set<ObjectNode>("bag", mapper.readTree(bag))
-            assertThrows(InventoryApiException::class.java) { StarInventorySyncService.validate(StarInventorySyncRequest.fromWire(wire), "如鸢") }
+            assertThrows(InventoryApiException::class.java) {
+                StarInventorySyncService.validate(StarInventorySyncRequest.fromWire(wire), "如鸢")
+            }
         }
     }
 

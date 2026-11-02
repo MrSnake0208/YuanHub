@@ -72,7 +72,7 @@ class AgentTestSafety {
                 "spring.data.mongodb.uri", "share.mongo.hub-uri", "spring.data.redis.url",
                 "debug.email.no-send", "share.jwt.secret", "share.jwt.expire", "share.beta.local-test-mode", "share.beta.campaign-id",
                 "share.info.product-version", "share.avatar.dir", "share.media.dir", "share.media.private-dir",
-                "share.star-capture.dir", "logging.file.name",
+                "logging.file.name",
             )
             for (key in keys) {
                 val expected = data.path("properties").path(key).asText()
@@ -111,7 +111,6 @@ class AgentTestSafety {
                 "share.avatar.dir",
                 "share.media.dir",
                 "share.media.private-dir",
-                "share.star-capture.dir",
                 "logging.file.name",
             )) {
                 require(Path.of(environment.getProperty(key)!!).toAbsolutePath().normalize().startsWith(base)) {

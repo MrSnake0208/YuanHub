@@ -38,7 +38,7 @@ class OpenApiPermissionTest {
     fun listAll_returns_key_code_desc_entries() {
         val list = OpenApiPermission.listAll()
 
-        assertEquals(12, list.size)
+        assertEquals(10, list.size)
         val read = list.first { it.scope == "inventory:read" }
         assertEquals("库存数据读取", read.description)
 
@@ -47,11 +47,9 @@ class OpenApiPermissionTest {
         assertEquals("inventory:export", list.first { it.scope == "inventory:export" }.scope)
         assertEquals("密探数据读取", list.first { it.scope == "operator:read" }.description)
         assertEquals(20004, OpenApiPermission.codeByKey("operator:scan:write"))
-        assertEquals(30001, OpenApiPermission.codeByKey("star:capture:write"))
-        assertEquals("上传星石背包临时采集结果", list.first { it.scope == "star:capture:write" }.description)
-        assertEquals(30002, OpenApiPermission.codeByKey("star:scan:write"))
+        assertEquals(null, OpenApiPermission.codeByKey("star:capture:write"))
+        assertEquals(null, OpenApiPermission.codeByKey("star:scan:write"))
         assertEquals(30003, OpenApiPermission.codeByKey("star:sync:write"))
-        assertEquals("上传星石本地识别结果（网页核对后导入）", list.first { it.scope == "star:scan:write" }.description)
 
         assertEquals(40001, OpenApiPermission.codeByKey("calendar:read"))
         assertEquals("calendar:read", OpenApiPermission.CALENDAR_READ.key)
