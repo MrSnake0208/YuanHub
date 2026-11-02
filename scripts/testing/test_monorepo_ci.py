@@ -133,6 +133,10 @@ class MonorepoWorkflowTest(unittest.TestCase):
             self.assertIn('--workflow '+component+'-ci.yml',text)
             self.assertNotIn('--workflow ci.yml',text)
 
+    def test_frontend_release_fetches_public_repository_over_https(self):
+        text=(ROOT/'.github/workflows/frontend-release.yml').read_text()
+        self.assertIn('REPO_URL: https://github.com/${{ github.repository }}.git', text)
+
 
 if __name__=='__main__':
     unittest.main()
