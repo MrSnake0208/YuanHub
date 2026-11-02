@@ -9,6 +9,7 @@ import re
 import textwrap
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -133,9 +134,39 @@ class MonorepoWorkflowTest(unittest.TestCase):
             self.assertIn('--workflow '+component+'-ci.yml',text)
             self.assertNotIn('--workflow ci.yml',text)
 
-    def test_frontend_release_fetches_public_repository_over_https(self):
+    def test_backend_release_only_installs_successful_ci_artifacts(self):
+        for component in ['backend']:
+            text=(ROOT/'.github/workflows'/f'{component}-release.yml').read_text()
+            gate=text.split('      - name: Require successful CI for release commit\n',1)[1].split('      - name:',1)[0]
+            self.assertNotIn("inputs.phase != 'prepare'", gate)
+            self.assertIn('gh run download "$CI_RUN_ID"', text)
+            self.assertIn('bash scripts/deploy/transfer-release.sh', text)
+            for forbidden in ['git clone', 'git fetch', 'npm ci', 'npm run build', './gradlew']:
+                self.assertNotIn(forbidden, text)
+        deploy=(ROOT/'backend/deploy/blue-green-deploy.sh').read_text()
+        self.assertNotIn('./gradlew', deploy)
+        self.assertIn('PREBUILT_JAR from successful CI is required', deploy)
+
+    def test_frontend_keeps_server_build_for_limited_bandwidth(self):
         text=(ROOT/'.github/workflows/frontend-release.yml').read_text()
         self.assertIn('REPO_URL: https://github.com/${{ github.repository }}.git', text)
+        self.assertIn('npm ci --no-audit --no-fund', text)
+        self.assertIn('npm run build', text)
+        self.assertNotIn('transfer-release.sh', text)
+
+    def test_backend_rejects_stale_or_missing_jar_commit_before_upload(self):
+        text=(ROOT/'.github/workflows/backend-release.yml').read_text()
+        block=text.split("<<'PY'\n",1)[1].split('\n          PY',1)[0]
+        script=textwrap.dedent(block)
+        artifacts=ROOT/'.test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=artifacts) as directory:
+            jar=Path(directory)/'app.jar'
+            for content, expected in [('git.commit.id='+'a'*40,0), ('git.commit.id='+'b'*40,1), ('',1)]:
+                with zipfile.ZipFile(jar,'w') as archive:
+                    archive.writestr('BOOT-INF/classes/git.properties',content+'\n')
+                result=subprocess.run(['python3','-c',script,str(jar),'a'*40],capture_output=True)
+                self.assertEqual(result.returncode,expected,result.stderr)
 
 
 if __name__=='__main__':

@@ -4,6 +4,8 @@ set -euo pipefail
 : "${BACKEND_ROOT:?BACKEND_ROOT is required}"
 : "${RELEASE_VERSION:?RELEASE_VERSION is required}"
 : "${RELEASE_COMMIT:?RELEASE_COMMIT is required}"
+: "${PREBUILT_JAR:?PREBUILT_JAR from successful CI is required}"
+[ -s "$PREBUILT_JAR" ] || { echo "CI jar is missing; server builds are disabled" >&2; exit 1; }
 DEPLOY_PHASE="${DEPLOY_PHASE:-release}"
 case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "Invalid DEPLOY_PHASE" >&2; exit 1 ;; esac
 if [ "$DEPLOY_PHASE" = release ]; then
@@ -28,8 +30,6 @@ case "$KEEP_RELEASES" in ''|*[!0-9]*) KEEP_RELEASES=5 ;; esac
 case "$DRAIN_SECONDS" in ''|*[!0-9]*) DRAIN_SECONDS=45 ;; esac
 case "$LEGACY_CAPTURE_DRAIN_SECONDS" in ''|*[!0-9]*) LEGACY_CAPTURE_DRAIN_SECONDS=2100 ;; esac
 
-CHECKOUT_DIR="$BACKEND_ROOT/.monorepo-source"
-SOURCE_DIR="$CHECKOUT_DIR/backend"
 RELEASES_DIR="$BACKEND_ROOT/releases"
 RELEASE_DIR="$RELEASES_DIR/$RELEASE_VERSION"
 SLOTS_DIR="$BACKEND_ROOT/slots"
@@ -38,10 +38,11 @@ ACTIVE_SLOT_FILE="$STATE_DIR/active-slot"
 NGINX_ACTIVE_FILE="$BACKEND_ROOT/nginx/active.conf"
 
 mkdir -p "$RELEASES_DIR"
-[ -d "$CHECKOUT_DIR/.git" ] || { echo "Source cache is missing: $SOURCE_DIR" >&2; exit 1; }
-for tool in git java javac python3; do
+for tool in java python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "$tool is required on the deployment server" >&2; exit 1; }
 done
+java_major="$(java -version 2>&1 | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+[ "$java_major" = "21" ] || { echo "Java 21 runtime is required" >&2; exit 1; }
 
 if [ "$DEPLOY_PHASE" = release ]; then
   mkdir -p "$SLOTS_DIR" "$STATE_DIR" "$BACKEND_ROOT/nginx" "$BACKEND_ROOT/logs"
@@ -132,7 +133,7 @@ if [ -f "$meta_file" ] && [ -f "$RELEASE_DIR/app.jar" ]; then
   meta_version="$(python3 -c 'import json,sys; print((json.load(open(sys.argv[1])).get("version") or ""))' "$meta_file" 2>/dev/null || true)"
   if [ "$meta_commit" = "$RELEASE_COMMIT" ] && [ "$meta_version" = "$RELEASE_VERSION" ]; then
     reuse_release=1
-    echo "Reusing server-built release $RELEASE_DIR"
+    echo "Reusing CI release $RELEASE_DIR"
   fi
 fi
 
@@ -144,41 +145,10 @@ if [ "$reuse_release" -ne 1 ]; then
       exit 1
     fi
   done
-  build_started="$(date +%s)"
-  cd "$SOURCE_DIR"
-  actual_commit="$(git rev-parse HEAD)"
-  [ "$actual_commit" = "$RELEASE_COMMIT" ] || {
-    echo "Source checkout mismatch: got $actual_commit, expected $RELEASE_COMMIT" >&2
-    exit 1
-  }
-
-  java_major="$(java -version 2>&1 | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
-  javac_major="$(javac -version 2>&1 | sed -n 's/^javac \([0-9][0-9]*\).*/\1/p' | head -n 1)"
-  [ "$java_major" = "21" ] || {
-    echo "Java 21 runtime is required on the deployment server; found $(java -version 2>&1 | head -n1)" >&2
-    exit 1
-  }
-  [ "$javac_major" = "21" ] || {
-    echo "Java 21 JDK compiler is required on the deployment server; found $(javac -version 2>&1 | head -n1)" >&2
-    exit 1
-  }
-
-  chmod +x ./gradlew
-  # The source/build cache is deliberately retained between releases. Remove the generated
-  # Git metadata so this checkout always regenerates /version commit information for the tag.
-  rm -f build/resources/main/git.properties
-  ./gradlew --no-daemon --max-workers=2 bootJar -x test --build-cache --console=plain
-
-  jar_path="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n 1)"
-  [ -n "$jar_path" ] && [ -f "$jar_path" ] || {
-    echo "No Spring Boot jar was produced" >&2
-    exit 1
-  }
-
   stage_dir="$RELEASES_DIR/.$RELEASE_VERSION.tmp"
   rm -rf "$stage_dir"
   mkdir -p "$stage_dir"
-  cp "$jar_path" "$stage_dir/app.jar"
+  cp "$PREBUILT_JAR" "$stage_dir/app.jar"
   python3 - "$stage_dir/deploy-meta.json" "$RELEASE_VERSION" "$RELEASE_COMMIT" <<'PY'
 import json, sys
 from datetime import datetime, timezone
@@ -194,7 +164,7 @@ with open(path, "w", encoding="utf-8") as fh:
 PY
   rm -rf "$RELEASE_DIR"
   mv "$stage_dir" "$RELEASE_DIR"
-  echo "Backend build seconds: $(( $(date +%s) - build_started ))"
+  echo "Installed CI jar: $RELEASE_DIR"
 fi
 
 if [ "$DEPLOY_PHASE" = prepare ]; then

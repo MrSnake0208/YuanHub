@@ -2,8 +2,8 @@ name: Backend release
 run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inputs.tag, inputs.commit, inputs.request) || format('Release {0}', inputs.tag || github.ref_name) }}
 
 # Production backend release:
-# GitHub-hosted runner performs the release gate, then server B fetches the exact commit
-# and builds the Spring Boot jar locally. No large jar is uploaded through GitHub Actions.
+# GitHub-hosted runner downloads the exact successful CI artifact and uploads it.
+# Production servers never compile code; missing artifacts fail the release.
 # Traffic switches between blue:8080 and green:8081 only after the inactive slot passes
 # local readiness checks. Public verification failure automatically restores the old upstream.
 
@@ -17,7 +17,7 @@ on:
         description: "Backend tag (prepare uses a new tag; release uses an existing tag)"
         required: true
       phase:
-        description: "Prepare builds only; release activates after successful CI"
+        description: "Prepare uploads only; release activates after successful CI"
         type: choice
         options: [release, prepare]
         default: release
@@ -39,7 +39,7 @@ permissions:
 jobs:
   release:
     if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' }}
-    name: Server-build blue/green release
+    name: CI artifact blue/green release
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: backend-production
@@ -109,7 +109,6 @@ jobs:
           echo "Releasing $RELEASE_TAG (${release_commit::7})"
 
       - name: Require successful CI for release commit
-        if: ${{ inputs.phase != 'prepare' }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -131,6 +130,7 @@ jobs:
             exit 1
           }
           echo "Using successful CI run $ci_run_id for $BACKEND_RELEASE_COMMIT"
+          echo "CI_RUN_ID=$ci_run_id" >> "$GITHUB_ENV"
 
       - name: Resolve product version
         id: product-version
@@ -185,53 +185,33 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Preflight deployment server
-        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+      - name: Download and package CI jar
         env:
-          BACKEND_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
-          REPO_URL: git@github.com:${{ github.repository }}.git
-        with:
-          host: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
-          username: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
-          key: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
-          port: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
-          command_timeout: 2m
-          envs: BACKEND_ROOT,REPO_URL
-          script: |
-            set -euo pipefail
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/release-input"
+          bundle="$RUNNER_TEMP/release-bundle"
+          gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "yuanhub-backend-jar-$BACKEND_RELEASE_COMMIT" --dir "$input"
+          mapfile -t jars < <(find "$input" -type f -name '*.jar' ! -name '*-plain.jar')
+          [ "${#jars[@]}" = 1 ] || { echo "Expected exactly one CI bootJar"; exit 1; }
+          python3 - "${jars[0]}" "$BACKEND_RELEASE_COMMIT" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as jar:
+              properties = jar.read('BOOT-INF/classes/git.properties').decode().splitlines()
+          if 'git.commit.id=' + sys.argv[2] not in properties:
+              raise SystemExit('CI jar commit does not match the release commit')
+          PY
+          mkdir -p "$bundle/payload"
+          cp "${jars[0]}" "$bundle/payload/app.jar"
+          cp backend/deploy/blue-green-deploy.sh "$bundle/deploy.sh"
 
-            for tool in git java javac curl python3; do
-              command -v "$tool" >/dev/null 2>&1 || {
-                echo "$tool is required on the deployment server" >&2
-                exit 1
-              }
-            done
-
-            java_major="$(java -version 2>&1 | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
-            javac_major="$(javac -version 2>&1 | sed -n 's/^javac \([0-9][0-9]*\).*/\1/p' | head -n 1)"
-            [ "$java_major" = "21" ] || {
-              echo "Java 21 runtime is required; found $(java -version 2>&1 | head -n1)" >&2
-              exit 1
-            }
-            [ "$javac_major" = "21" ] || {
-              echo "Java 21 JDK compiler is required; found $(javac -version 2>&1 | head -n1)" >&2
-              exit 1
-            }
-
-            [ -f "$BACKEND_ROOT/shared/backend.env" ] || {
-              echo "Missing $BACKEND_ROOT/shared/backend.env" >&2
-              exit 1
-            }
-            command -v nginx >/dev/null 2>&1 || { echo "nginx is required on the deployment server" >&2; exit 1; }
-            command -v systemctl >/dev/null 2>&1 || { echo "systemctl is required on the deployment server" >&2; exit 1; }
-
-            export GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new'
-            git ls-remote "$REPO_URL" HEAD >/dev/null
-            echo "Deployment server preflight passed: Java/Javac 21 and repository access are ready."
-
-      - name: Fetch, build and blue-green deploy on server B
-        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+      - name: Transfer and install CI artifact
         env:
+          COMPONENT: backend
+          BUNDLE_DIR: ${{ runner.temp }}/release-bundle
+          RELEASE_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
           BACKEND_ROOT: ${{ vars.YUANHUB_BACKEND_DEPLOY_DIR }}
           BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
           PRODUCT_VERSION: ${{ steps.product-version.outputs.value }}
@@ -240,65 +220,11 @@ jobs:
           LEGACY_SERVICE: ${{ vars.YUANHUB_BACKEND_LEGACY_SERVICE }}
           RELEASE_VERSION: ${{ env.BACKEND_RELEASE_VERSION }}
           RELEASE_COMMIT: ${{ env.BACKEND_RELEASE_COMMIT }}
-          REPO_URL: git@github.com:${{ github.repository }}.git
-          DEPLOY_PHASE: ${{ env.DEPLOY_PHASE }}
-        with:
-          host: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
-          username: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
-          key: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
-          port: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
-          command_timeout: 60m
-          envs: BACKEND_ROOT,BACKEND_URL,PRODUCT_VERSION,KEEP_RELEASES,DRAIN_SECONDS,LEGACY_SERVICE,RELEASE_VERSION,RELEASE_COMMIT,REPO_URL,DEPLOY_PHASE
-          script: |
-            set -euo pipefail
-
-            : "${BACKEND_ROOT:?}"
-            : "${BACKEND_URL:?}"
-            : "${PRODUCT_VERSION:?}"
-            : "${RELEASE_VERSION:?}"
-            : "${RELEASE_COMMIT:?}"
-            : "${REPO_URL:?}"
-
-            source_dir="$BACKEND_ROOT/.monorepo-source"
-            mkdir -p "$BACKEND_ROOT"
-            export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new'
-
-            if [ ! -d "$source_dir/.git" ]; then
-              rm -rf "$source_dir"
-              git clone --filter=blob:none "$REPO_URL" "$source_dir"
-            fi
-
-            cd "$source_dir"
-            git remote set-url origin "$REPO_URL"
-
-            # .source is only a deployment cache: discard server-side edits before
-            # switching commits so stale manual changes cannot block a release.
-            git reset --hard HEAD
-            git clean -ffdx -e backend/.gradle/ -e backend/build/
-
-            git fetch --force --prune --tags origin
-            git checkout --force --detach "$RELEASE_COMMIT"
-            git reset --hard "$RELEASE_COMMIT"
-            git clean -ffdx -e backend/.gradle/ -e backend/build/
-
-            actual_commit="$(git rev-parse HEAD)"
-            [ "$actual_commit" = "$RELEASE_COMMIT" ] || {
-              echo "Checked-out commit $actual_commit does not match expected $RELEASE_COMMIT"
-              exit 1
-            }
-
-            cd backend
-            chmod +x deploy/blue-green-deploy.sh
-            KEEP_RELEASES="${KEEP_RELEASES:-5}" \
-            DRAIN_SECONDS="${DRAIN_SECONDS:-45}" \
-            LEGACY_SERVICE="${LEGACY_SERVICE:-yuanhub-backend}" \
-            BACKEND_ROOT="$BACKEND_ROOT" \
-            BACKEND_URL="$BACKEND_URL" \
-            PRODUCT_VERSION="$PRODUCT_VERSION" \
-            RELEASE_VERSION="$RELEASE_VERSION" \
-            RELEASE_COMMIT="$RELEASE_COMMIT" \
-            DEPLOY_PHASE="$DEPLOY_PHASE" \
-              ./deploy/blue-green-deploy.sh
+          DEPLOY_HOST: ${{ secrets.YUANHUB_BACKEND_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.YUANHUB_BACKEND_VPS_USER }}
+          DEPLOY_PORT: ${{ secrets.YUANHUB_BACKEND_VPS_PORT }}
+          DEPLOY_KEY: ${{ secrets.YUANHUB_BACKEND_VPS_SSH_KEY }}
+        run: bash scripts/deploy/transfer-release.sh
 
       - name: Verify public deployment from GitHub runner
         if: ${{ inputs.phase != 'prepare' }}
@@ -342,10 +268,10 @@ jobs:
             echo
             echo "- backendVersion: $BACKEND_RELEASE_VERSION"
             echo "- backendCommit: ${BACKEND_RELEASE_COMMIT::7}"
-            echo "- deployment: server-build blue/green"
+            echo "- deployment: CI-artifact blue/green"
             echo "- deployedTo: $BACKEND_URL"
             echo
-            echo "The production jar is built on server B from the exact tagged commit; no large jar is uploaded by GitHub Actions."
+            echo "The production jar comes from the successful CI run for the exact tagged commit; production servers do not compile code."
           } > "$notes"
 
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

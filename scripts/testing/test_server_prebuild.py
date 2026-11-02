@@ -70,7 +70,9 @@ else:
 
 class ServerPrebuildTest(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='yuanhub-server-test-')
+        artifacts = ROOT / '.test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix='yuanhub-server-test-', dir=artifacts)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.bin = self.root / 'bin'
@@ -96,6 +98,9 @@ class ServerPrebuildTest(unittest.TestCase):
         self.git('commit', '-m', 'fixture')
         self.sha = self.git('rev-parse', 'HEAD')
         self.server = self.source.parent
+        self.ci_jar = self.root / 'ci-app.jar'
+        self.ci_jar.write_bytes(b'fixture jar')
+        self.env['PREBUILT_JAR'] = str(self.ci_jar)
         self.env.update(BACKEND_ROOT=str(self.server), FRONTEND_ROOT=str(self.server),
                         RELEASE_COMMIT=self.sha, KEEP_RELEASES='0', PRODUCT_VERSION='0.0.1-beta.20',
                         BACKEND_URL='https://fixture.invalid/api', API_BASE='https://fixture.invalid/api',
@@ -165,15 +170,15 @@ class ServerPrebuildTest(unittest.TestCase):
         meta = json.loads((self.server / 'releases/v0.1.13/deploy-meta.json').read_text())
         self.assertEqual(self.sha, meta['commit'])
         self.assert_ok(self.backend())
-        self.assertEqual(1, len(self.events('gradlew')))
+        self.assertEqual([], self.events('gradlew'))
         for tool in ('sudo', 'curl', 'systemctl', 'nginx', 'sleep'):
             self.assertEqual([], self.events(tool))
         self.assertFalse((self.server / 'slots').exists())
 
-    def test_backend_prepare_build_failure_preserves_active_state(self):
+    def test_backend_prepare_missing_ci_jar_preserves_active_state(self):
         self.bootstrap_backend()
         before = self.active_backend()
-        self.assertNotEqual(0, self.backend(BUILD_FAIL='1').returncode)
+        self.assertNotEqual(0, self.backend(PREBUILT_JAR=str(self.root / 'missing-ci.jar')).returncode)
         self.assertEqual(before, self.active_backend())
         self.assertEqual([], self.events('sudo'))
         self.assertFalse((self.server / 'releases/v0.1.13').exists())
@@ -197,7 +202,7 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.backend())
         self.assertEqual(before, self.active_backend())
         self.assert_ok(self.backend('release'))
-        self.assertEqual(1, len(self.events('gradlew')))
+        self.assertEqual([], self.events('gradlew'))
         self.assertEqual('green\n', (self.server / 'state/active-slot').read_text())
         self.assertIn('8081', (self.server / 'nginx/active.conf').read_text())
         self.assertIn(['45'], [e['args'] for e in self.events('sleep')])
@@ -213,15 +218,26 @@ class ServerPrebuildTest(unittest.TestCase):
         commands = [e['args'] for e in self.events('systemctl')]
         self.assertIn(['stop', 'yuanhub-backend@green.service'], commands)
         self.assertNotIn(['stop', 'yuanhub-backend@blue.service'], commands)
-        self.assertEqual(1, len(self.events('gradlew')))
+        self.assertEqual([], self.events('gradlew'))
 
-    def test_backend_missing_prepared_artifact_builds_during_release(self):
+    def test_backend_missing_prepared_artifact_installs_ci_jar_during_release(self):
         self.bootstrap_backend()
         self.assert_ok(self.backend())
         (self.server / 'releases/v0.1.13/app.jar').unlink()
         self.assert_ok(self.backend('release'))
-        self.assertEqual(2, len(self.events('gradlew')))
+        self.assertEqual([], self.events('gradlew'))
+        self.assertEqual(b'fixture jar', (self.server / 'releases/v0.1.13/app.jar').read_bytes())
         self.assertEqual('green\n', (self.server / 'state/active-slot').read_text())
+
+    def test_backend_missing_ci_jar_does_not_activate_or_compile(self):
+        self.bootstrap_backend()
+        self.assert_ok(self.backend())
+        before = self.active_backend()
+        self.ci_jar.unlink()
+        self.assertNotEqual(0, self.backend('release').returncode)
+        self.assertEqual(before, self.active_backend())
+        self.assertEqual([], self.events('gradlew'))
+        self.assertEqual([], self.events('sudo'))
 
     def test_frontend_prepare_leaves_current_and_reuses_for_activation(self):
         self.bootstrap_frontend()
@@ -262,10 +278,10 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.frontend('release'))
         self.assertEqual(2, len(self.events('npm')))
 
-    def test_both_servers_rebuild_artifacts_with_wrong_commit_metadata(self):
+    def test_both_servers_replace_artifacts_with_wrong_commit_metadata(self):
         self.bootstrap_frontend()
         for prepare, version, compiler, expected_calls in (
-            (self.backend, 'v0.1.13', 'gradlew', 2),
+            (self.backend, 'v0.1.13', 'gradlew', 0),
             (self.frontend, '0.0.1-beta.20', 'npm', 4),
         ):
             with self.subTest(version=version):
