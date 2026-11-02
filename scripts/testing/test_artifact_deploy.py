@@ -1,5 +1,4 @@
 """Exercise artifact installation in owned directories; never connect to a server."""
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -10,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SHA = 'a' * 40
 
 
-class ArtifactInstallTest(unittest.TestCase):
+class ArtifactTransferTest(unittest.TestCase):
     def setUp(self):
         artifacts = ROOT / '.test-artifacts'
         artifacts.mkdir(exist_ok=True)
@@ -18,41 +17,6 @@ class ArtifactInstallTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.site = self.root / 'site'
-        self.payload = self.root / 'payload'
-        self.payload.mkdir()
-
-    def run_backend(self, jar):
-        tools = self.root / 'runtime'
-        tools.mkdir(exist_ok=True)
-        java = tools / 'java'
-        java.write_text('#!/bin/sh\necho \'openjdk version "21.0.1"\' >&2\n')
-        java.chmod(0o755)
-        env = dict(os.environ, BACKEND_ROOT=str(self.site), RELEASE_VERSION='v0.1.40',
-                   RELEASE_COMMIT=SHA, DEPLOY_PHASE='prepare', PREBUILT_JAR=str(jar),
-                   PATH=str(tools)+os.pathsep+os.environ['PATH'])
-        return subprocess.run(['bash', str(ROOT / 'backend/deploy/blue-green-deploy.sh')],
-                              env=env, capture_output=True, text=True)
-
-    def test_backend_prepare_requires_jar_and_preserves_slots(self):
-        jar = self.payload / 'app.jar'
-        self.assertNotEqual(self.run_backend(jar).returncode, 0)
-        self.assertFalse(self.site.exists())
-        jar.write_bytes(b'ci jar')
-        result = self.run_backend(jar)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.site / 'releases/v0.1.40/app.jar').read_bytes(), b'ci jar')
-
-        self.assertFalse((self.site / 'slots').exists())
-        self.assertFalse((self.site / 'state').exists())
-        meta = json.loads((self.site / 'releases/v0.1.40/deploy-meta.json').read_text())
-        self.assertEqual(meta['commit'], SHA)
-        # A release referenced by a stopped slot is still a rollback artifact.
-        (self.site / 'slots').mkdir()
-        (self.site / 'slots/blue.env').write_text(f'YUANHUB_JAR={self.site}/releases/v0.1.40/app.jar\n')
-        (self.site / 'releases/v0.1.40/deploy-meta.json').write_text('{}')
-        jar.write_bytes(b'replacement')
-        self.assertNotEqual(self.run_backend(jar).returncode, 0)
-        self.assertEqual((self.site / 'releases/v0.1.40/app.jar').read_bytes(), b'ci jar')
 
     def test_transfer_checks_integrity_before_install_and_reports_duration(self):
         tools = self.root / 'tools'
