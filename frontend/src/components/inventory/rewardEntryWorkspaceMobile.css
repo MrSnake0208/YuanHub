@@ -180,7 +180,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .preview-heading { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
 .preview-count { font-size: 11px; }
 .preview-count b { font-family: 'Archivo',var(--font-b); }
-.preview-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.preview-tools { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .preview-list { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow-y: auto; scrollbar-width: thin; }
 .preview-list > li { padding: 15px 0; }
 .preview-record { display: flex; align-items: center; gap: 18px; }
@@ -293,7 +293,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .file-drop > svg { display: none; }
   .preview-section { padding: 18px 16px 0; }
   .preview-heading { gap: 7px; }
-  .preview-tools { width: 100%; justify-content: flex-end; }
+  .preview-tools { justify-content: flex-start; }
   .preview-record { gap: 8px; align-items: flex-start; }
   .record-date { width: 53px; padding-right: 5px; margin-top: 3px; }
   .record-date b { font-size: 15px; }
@@ -375,6 +375,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .quick-rules-content { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); }
 .quick-rules-content p { margin: 0; }
 .quick-rules-content p + p { margin-top: 8px; }
+.daily-mailbox-note { grid-column: 1 / -1; min-width: 0; margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .quick-feedback { min-width: 0; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 
 
