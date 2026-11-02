@@ -311,7 +311,7 @@ class ServerPrebuildTest(unittest.TestCase):
         self.bootstrap_frontend()
         self.assertNotEqual(0, self.frontend(BUILD_FAIL='1').returncode)
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
-        self.assertFalse((self.server / 'releases/0.0.1-beta.20').exists())
+        self.assertFalse((self.server / ('releases/0.0.1-beta.20-' + self.sha)).exists())
 
     def test_frontend_refuses_overwriting_active_release_on_config_change(self):
         self.bootstrap_frontend()
