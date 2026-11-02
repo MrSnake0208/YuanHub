@@ -48,12 +48,14 @@ CI 门禁回归：`python3 scripts/testing/test_monorepo_ci.py`，覆盖模块�
 
 生产及 promo jobs 默认禁用，需要显式仓库变量 YUANHUB_MONOREPO_DEPLOY_ENABLED=true，分别使用 frontend-production/backend-production 环境。既有 Secrets 不代表配置已适配；环境审批、Webhook、服务器只读拉取权限与构建路径必须单独审查。当前候选不操作线上。
 
-服务器脚本从 `.monorepo-source` 缓存取对应子目录构建，保留旧 `.source` 与已有 releases/slots。接口需要兼容不同时刻部署的两端；有兼容性变化时先发布兼容后端，验 readiness、/version 和业务链路后才发布前端。数据库变更必须另做兼容方案。
+后端只接收指定提交的成功 Backend CI 产物：Runner 下载 JAR、打包并经 SSH 上传，服务器校验归档摘要后安装，不执行 Git/Gradle/Kotlin 编译；产物缺失或过期时停止，在 CI 重建，禁止回退到服务器构建。`prepare` 同样要求对应 CI 成功，只上传安装，不启动实例或切流。上传限制为 4 MiB/s，工作流日志与 Summary 记录归档字节数和上传秒数（不含下载、打包及安装）。蓝绿双实例仍需足够运行内存，移除编译不能替代容量检查。
+
+前端服务器带宽有限，继续从 `.monorepo-source/frontend` 构建，不传输 CI dist。保留两端旧 `.source` 与已有 releases/slots。接口需要兼容不同时刻部署的两端；有兼容性变化时先发布兼容后端，验 readiness、/version 和业务链路后才发布前端。数据库变更必须另做兼容方案。
 
 ## 独立回滚
 
 前端选择已有完整 releases/VERSION，核对 deploy-meta.json、index.html、sw.js 后，经授权在实际 FRONTEND_ROOT 以临时 symlink + 原子替换切回 current；遵循原 Nginx 配置兼容要求。不需要后端发布或 Git 回退。
 
-后端使用以前成功的 backend/v* Release 精确旧 SHA/metadata，启动非活动 slot，通过 readiness、公共 /version 和 HubBackend 链路后再切流；失败恢复旧 slot。旧多仓版本继续从保留的后端 Release 和原发布路径恢复，不重打旧标签、不回滚数据库。
+后端使用保留的旧 JAR 与精确 SHA/metadata，启动非活动 slot，通过 readiness、公共 /version 和 HubBackend 链路后再切流；失败恢复旧 slot。自动发布需要对应 CI artifact（当前保留 7 天）；过期时先在 GitHub Runner 重建并验证，不能在生产服务器补编译。旧多仓版本继续从保留产物恢复，不重打旧标签、不回滚数据库。
 
 本轮离线 fixture 验证不能替代生产演练。迁移历史、PR37 处理及正式 clone 顺序见 [迁移说明](migration/README.md) 与 [切换清单](migration/cutover.md)。
