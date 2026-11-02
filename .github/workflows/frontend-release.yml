@@ -193,7 +193,7 @@ jobs:
           RELEASE_COMMIT: ${{ env.YUANHUB_RELEASE_COMMIT }}
           API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
           KEEP_RELEASES: ${{ vars.YUANHUB_KEEP_RELEASES }}
-          REPO_URL: git@github.com:${{ github.repository }}.git
+          REPO_URL: https://github.com/${{ github.repository }}.git
           DEPLOY_PHASE: ${{ env.DEPLOY_PHASE }}
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
