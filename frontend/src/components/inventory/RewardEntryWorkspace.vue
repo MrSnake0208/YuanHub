@@ -10,11 +10,10 @@
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
-          <small v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins" class="shortcut-note">按邮件设置</small>
+          <small v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins" class="shortcut-note">数量来自邮件设置</small>
           <button v-else type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
       </fieldset>
-      <p v-if="mailboxMonthlyCoins" class="shortcut-note">记录月卡领取会扣除当天邮件；调整奖励请前往库存的邮件管理。</p>
       <div class="daily-quick-actions">
         <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : homeDaily && manual.presets.length && !result ? `记录所选（${manual.presets.length}）` : '记录所选' }}</button>
         <router-link v-if="homeDaily" class="quick-inventory text-button" to="/inventory">前往库存 ›</router-link>
@@ -28,6 +27,7 @@
           </div>
         </details>
       </div>
+      <p v-if="mailboxMonthlyCoins" class="shortcut-note daily-mailbox-note">领取月卡奖励会扣除当天邮件；奖励数量请到库存 → 邮件管理调整。</p>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
       <p v-if="dailyZhuyuSelectionNote" class="quick-feedback" role="status">{{ dailyZhuyuSelectionNote }}</p>
       <p v-if="dailyZhuyuPreferenceNote" class="quick-feedback" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyZhuyuPreference">重试</button></p>
@@ -250,7 +250,18 @@
       <div v-if="previewed && (!compact || mode === 'report' || pendingDocument || dispatchAnnotation) && (!dailyMode || pendingDocument)" class="preview-section">
         <p v-if="dispatchAnnotation" class="shortcut-note" role="status">{{ annotationPreview?.can_confirm ? '本次仅补充历史与获得报告，库存数量不增加。' : '预览已失效，请重新预览。' }}消耗体力：{{ selectedRecords[0]?.stamina_cost }} 点。</p>
         <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已同步或录入过的同一笔奖励，请勿再次补录；换一种录入方式仍可能重复计数。</p>
-        <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
+        <div class="preview-heading">
+          <h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4>
+          <span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b><template v-if="mode === 'report'"> / 可选 {{ selectableCount }}</template> 条</span>
+          <div v-if="mode === 'report' && rows.length" class="preview-tools">
+            <button type="button" class="text-button select-all" :disabled="disabled || locked || !!result || !selectableCount" @click="selectAll">全选</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" class="text-button" :disabled="disabled || locked || !!result" @click="selectFailed">仅选失败</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" class="text-button" :disabled="disabled || locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button>
+          </div>
+        </div>
+        <p v-if="mode === 'report' && selectedRecords.length > 1000" class="row-error" role="alert">单次最多补传 1000 条，请减少选择或按日期拆分报告。</p>
         <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
         <ul v-else class="preview-list"><li v-for="row in rows" :key="row.key" :class="{ invalid: row.error, selected: row.selected }">
           <div v-if="row.record" class="preview-record">
@@ -429,6 +440,7 @@ const closeLockMessage = computed(() => {
   if (pendingDocument.value) return '上次提交结果未确认，请先原样重试；为避免重复入账，当前工作台暂不能关闭。'
   return ''
 })
+const selectableCount = computed(() => rows.value.filter(row => !row.error).length)
 const selectedRecords = computed(() => rows.value.filter(row => row.selected && !row.error).map(row => row.record))
 const dispatchAnnotation = computed(() => mode.value === 'manual' && !manual.value.presets.length && manual.value.channel === '派遣-寿春' && manual.value.dispatchPurpose === 'annotation')
 const channelIcons = { bird: Bird, flower: Flower2, scroll: ScrollText, book: BookOpen, pencil: Pencil }
@@ -1041,6 +1053,7 @@ function previewReport() {
     rows.value = preview.rows; previewed.value = true
   } catch (err) { showError(err.message) }
 }
+function selectAll() { rows.value.forEach(row => { row.selected = !row.error }) }
 function selectFailed() { rows.value.forEach(row => { row.selected = !row.error && !!row.status?.includes('上报失败') }) }
 function toggleDetails(key) { if (expandedRows.value.has(key)) expandedRows.value.delete(key); else expandedRows.value.add(key) }
 async function submit() {
@@ -1254,6 +1267,9 @@ fieldset { border: 0; }
 .preview-count { color: var(--ink-60); }
 .preview-count b { color: var(--ink); }
 .preview-tools { color: var(--ink-60); }
+.preview-tools .text-button { color: var(--ink); white-space: nowrap; }
+.preview-tools .select-all { border: 1px solid var(--reward-gold); border-radius: 7px; background: var(--cream); color: var(--theme-accent-text, var(--tea)); }
+.preview-tools .select-all:hover:not(:disabled) { background: var(--paper); text-decoration: none; }
 .preview-list { scrollbar-color: var(--reward-gold-soft) transparent; }
 .preview-list > li { border-bottom: 1px solid var(--line); }
 .preview-list > li:first-child { border-top: 1px solid var(--line); }

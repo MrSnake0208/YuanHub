@@ -196,13 +196,21 @@
           </div>
         </div>
         <fieldset v-if="planRows.length || fixedSchedule" class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
+        <template v-if="plannerDisplay === 'daily' || viewMode === 'edit'">
         <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
         <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
         <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<span v-for="date in outsideManualDates" :key="date" class="outside-manual-date"><time :datetime="date">{{ formatLongDate(date) }}</time><button type="button" class="workspace-link" :aria-label="'查看 ' + formatLongDate(date) + ' 日程'" :title="'查看 ' + formatLongDate(date) + ' 日程'" @click="selectDate(date); viewMode = 'edit'; setPlannerStep('daily', false)"><CalendarDays :size="18" aria-hidden="true" /></button></span></p>
         <p v-if="currentDay.errors?.length" class="balance-warning" role="alert">{{ currentDay.errors.join('；') }}。当日与后续推进暂停，修正后重算。</p>
         <p v-else-if="currentDay.paused" class="balance-warning" role="status">前面的日期有无效日程，修正后继续推进。</p>
         <p v-if="currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
+        </template>
         <section v-if="viewMode === 'display' || reviewingHistory" class="planner-view planner-display" aria-label="体力规划展示">
+          <div class="planner-display-switch" role="group" aria-label="规划展示方式">
+            <button type="button" :aria-pressed="plannerDisplay === 'daily'" aria-controls="planner-daily-view" @click="plannerDisplay = 'daily'">每日安排</button>
+            <button type="button" :aria-pressed="plannerDisplay === 'overall'" aria-controls="planner-overall-view" @click="plannerDisplay = 'overall'">总体规划</button>
+          </div>
+          <PlannerOverallSummary v-show="plannerDisplay === 'overall'" id="planner-overall-view" :today="plannerToday" :timeline="plannerTimeline" :status="plannerSimulation.status" :awaiting-recalculation="plannerSimulation.awaitingRecalculation" :loading="loading || targetLoading || cloudLoading || scheduleLoading" :unavailable="Boolean(error || targetError || cloudError) || !inventoryReady" />
+          <div v-show="plannerDisplay === 'daily'" id="planner-daily-view" class="planner-daily-view">
           <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :preview-dates="derivedPreviewDates" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
@@ -254,6 +262,7 @@
           </div>
           <p class="planner-footnote">{{ deadlineAlternativePlanAdopted ? '已采用期限补足方案，请按每日安排准备体力，并核对购买与派遣。' : currentDay.manual ? '当前为手工计划；调整体力收支后，可重新计算当日及后续日程。' : '按当前偏好推荐；编辑任意一天后，整份日程会固定保存。' }} {{ aggregateMoneyLabel }}。</p>
           <p class="planner-footnote">培养进度从计划保存的起点模拟，不代表实际流水。按完整一天自然恢复与进膳预算计算，不计满体损失；日末结余不自动结转，可手工添加储备来源。</p>
+          </div>
         </section>
 
         <section v-else class="planner-view planner-edit" aria-label="体力规划编辑">
@@ -533,6 +542,7 @@ import { applyDailySourcesToSchedule, applyFixedCustomSpendToSchedule, applyFixe
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
+import PlannerOverallSummary from './PlannerOverallSummary.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
@@ -641,6 +651,8 @@ function confirmScheduleAction() {
 }
 const undoWorkspace = ref(null)
 const viewMode = ref('display')
+const plannerDisplay = ref('daily')
+watch(() => [props.accountId, props.game, workspace.value.activePlanId], () => { plannerDisplay.value = 'daily' })
 const plannerOpen = ref(true)
 const reserveOpen = ref(false)
 const reserveEntryRef = ref(null)
@@ -1790,6 +1802,7 @@ function openPlanner(mode = 'display', returnToDay = false) {
   plannerOpen.value = true
   if (mode === 'edit') { editSchedule('conditions'); return }
   viewMode.value = 'display'; goalMode.value = false
+  if (returnToDay) plannerDisplay.value = 'daily'
   nextTick(() => {
     const target = returnToDay ? dayEditRef.value || dayPlanRef.value : plannerWorkspaceRef.value
     target?.focus({ preventScroll: true })
@@ -1950,6 +1963,12 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 </script>
 
 <style scoped>
+.planner-daily-view { display: grid; gap: 12px; min-width: 0; }
+.planner-display-switch { display: flex; width: min(100%, 400px); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.planner-display-switch button { flex: 1; padding: 11px 12px; border: 0; border-bottom: 3px solid transparent; background: var(--surface); color: var(--ink-60); font: inherit; font-weight: 600; }
+.planner-display-switch button[aria-pressed="true"] { background: var(--paper); border-bottom-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
+.planner-display-switch button:focus-visible { outline-offset: -4px; }
+
 .planner-save-toast { position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: var(--z-sticky-controls); display: flex; align-items: center; gap: 12px; max-width: 460px; min-height: 58px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px rgba(var(--theme-shadow-rgb, 73, 59, 44), .16); }
 .planner-save-icon { flex: none; color: var(--theme-accent-text, var(--accent-strong)); }
 .planner-save-icon.is-success { color: var(--theme-success-text, #5f8568); }
