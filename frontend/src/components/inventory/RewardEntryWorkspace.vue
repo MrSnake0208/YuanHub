@@ -1268,7 +1268,7 @@ fieldset { border: 0; }
 .preview-count b { color: var(--ink); }
 .preview-tools { color: var(--ink-60); }
 .preview-tools .text-button { color: var(--ink); white-space: nowrap; }
-.preview-tools .select-all { padding: 4px 14px; border: 1px solid var(--reward-gold); border-radius: 7px; background: var(--cream); color: var(--theme-accent-text, var(--tea)); }
+.preview-tools .select-all { border: 1px solid var(--reward-gold); border-radius: 7px; background: var(--cream); color: var(--theme-accent-text, var(--tea)); }
 .preview-tools .select-all:hover:not(:disabled) { background: var(--paper); text-decoration: none; }
 .preview-list { scrollbar-color: var(--reward-gold-soft) transparent; }
 .preview-list > li { border-bottom: 1px solid var(--line); }
