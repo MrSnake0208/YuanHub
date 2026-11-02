@@ -259,6 +259,7 @@ jobs:
               fi
 
               build_dir="$(mktemp -d "$FRONTEND_ROOT/.monorepo-build.XXXXXXXX")"
+              trap 'rm -rf "$build_dir"' EXIT
               source_dir="$build_dir/source"
               git clone --filter=blob:none --no-checkout --reference-if-able "$FRONTEND_ROOT/.monorepo-source" "$REPO_URL" "$source_dir"
               cd "$source_dir"
@@ -272,7 +273,7 @@ jobs:
 
               cd frontend
               npm ci --no-audit --no-fund
-              NODE_ENV=production VITE_API_BASE="$API_BASE" npm run build
+              NODE_ENV=production VITE_API_BASE="$API_BASE" NODE_OPTIONS="--max-old-space-size=1152" npm run build
 
               test -f dist/index.html || {
                 echo "dist/index.html missing after server build"
