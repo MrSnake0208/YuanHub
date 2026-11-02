@@ -30,6 +30,7 @@ import com.lhs.share.hub.repository.entity.OperatorEntry
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
 import com.lhs.share.hub.repository.entity.StarOperatorLoadout
 import com.lhs.share.hub.repository.entity.StarRecoveryPoint
+import com.lhs.share.hub.repository.entity.StarStateCurrent
 import com.lhs.share.hub.repository.entity.StarStateSnapshot
 import com.lhs.share.hub.repository.entity.SubAccount
 import com.lhs.share.hub.repository.entity.snapshot
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.springframework.dao.DataAccessException
 import org.springframework.data.mongodb.MongoTransactionManager
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory
@@ -280,7 +282,7 @@ class StarStateMongoTransactionTest {
         assertEquals("old.1", equipped.loadouts["operator.1"]?.get("main1"))
         val rebuilt = stateService.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", listOf(main("new.1"))))
         assertEquals(2, rebuilt.state.generation)
-        assertTrue(rebuilt.loadout.loadouts.isEmpty())
+        assertEquals("new.1", rebuilt.loadout.loadouts["operator.1"]?.get("main1"))
         val pointId = rebuilt.recoveryPoint!!.recoveryPointId
         val point = points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", pointId)!!
         assertEquals("old.1", point.state.inventory.single().instanceId)
@@ -380,6 +382,97 @@ class StarStateMongoTransactionTest {
             template.getCollection("star_loadout_preset_current")
                 .find(Document("_id", "owner")).first()?.getString("sentinel"),
         )
+    }
+
+    private fun prepareOcrWear() {
+        stateService.rebuild(
+            "owner", "a", rebuild(0, 0, "pre_ocr_rebuild", listOf(main("old.1"), main("old.2"), main("old.3"),
+                main("old.support").copy(kind = "support", name = "文曲", quality = "purple"))),
+        )
+        // Intentionally persist reverse operator order; inheritance must not use Mongo list order.
+        requireNotNull(loadouts.replaceForGeneration("owner", "a", 1, 1, listOf(
+            StarOperatorLoadout("operator.2", StarLoadoutSlots(main1 = "old.2")),
+            StarOperatorLoadout("operator.1", StarLoadoutSlots(main1 = "old.1", main2 = "old.3", support1 = "old.support")),
+        ), now))
+    }
+
+    private fun matchingOcrInventory() = listOf(main("z-first"), main("a-second"), main("m-third"),
+        main("new.support").copy(kind = "support", name = "文曲", quality = "purple"))
+
+    @Test fun `OCR Mongo commits exact duplicate inheritance with fresh unique references and historical wear`() {
+        prepareOcrWear()
+        val oldState = states.findByUserIdAndAccountId("owner", "a")!!
+        val oldWear = loadouts.findByUserIdAndAccountId("owner", "a")!!
+        val result = stateService.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", matchingOcrInventory()))
+        assertEquals("z-first", result.loadout.loadouts["operator.1"]?.get("main1"))
+        assertEquals("a-second", result.loadout.loadouts["operator.1"]?.get("main2"))
+        assertEquals("m-third", result.loadout.loadouts["operator.2"]?.get("main1"))
+        assertEquals("new.support", result.loadout.loadouts["operator.1"]?.get("support1"))
+        val persisted = states.findByUserIdAndAccountId("owner", "a")!!
+        assertEquals(2, persisted.generation)
+        assertEquals(matchingOcrInventory().map { it.instanceId }.toSet(), persisted.inventory.map { it.instanceId }.toSet())
+        assertTrue(persisted.inventory.none { next -> oldState.inventory.any { it.instanceId == next.instanceId } })
+        val point = points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", result.recoveryPoint!!.recoveryPointId)!!
+        assertEquals(oldState.snapshot(), point.state)
+        assertEquals(oldWear.loadouts, point.loadouts)
+        assertLoadoutReferencesCurrentState()
+    }
+
+    @Test fun `OCR Mongo shortage commits stable first operator and slot without merging instances`() {
+        prepareOcrWear()
+        val result = stateService.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", listOf(main("only"))))
+        assertEquals(setOf("operator.1"), result.loadout.loadouts.keys)
+        assertEquals(StarLoadoutSlots(main1 = "only").asMap(), result.loadout.loadouts["operator.1"])
+        assertEquals(1, states.findByUserIdAndAccountId("owner", "a")!!.inventory.size)
+        assertLoadoutReferencesCurrentState()
+    }
+
+    @Test fun `OCR Mongo level and quality changes commit new generation with empty wear`() {
+        prepareOcrWear()
+        val next = listOf(main("level.changed").copy(level = 30), main("quality.changed").copy(quality = "purple"),
+            main("support.quality.changed").copy(kind = "support", name = "文曲", quality = "orange"))
+        val result = stateService.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", next))
+        assertEquals(2, states.findByUserIdAndAccountId("owner", "a")!!.generation)
+        assertTrue(result.loadout.loadouts.isEmpty())
+        assertTrue(loadouts.findByUserIdAndAccountId("owner", "a")!!.loadouts.isEmpty())
+        assertLoadoutReferencesCurrentState()
+    }
+
+    @Test fun `OCR Mongo rejected loadout write rolls back already written generation and checkpoint`() {
+        assertOcrWriteRollback("star_loadout_current")
+    }
+
+    @Test fun `OCR Mongo rejected generation write leaves no new wear or checkpoint`() {
+        assertOcrWriteRollback("star_state_current")
+    }
+
+    private fun assertOcrWriteRollback(rejectedCollection: String) {
+        prepareOcrWear()
+        val oldState = states.findByUserIdAndAccountId("owner", "a")!!
+        val oldWear = loadouts.findByUserIdAndAccountId("owner", "a")!!
+        val oldPoints = points.findAll()
+        // The validator belongs only to this test's random, disposable database.
+        // Mongo itself rejects generation 2 with code 121; this is not a mocked exception.
+        template.executeCommand(Document("collMod", rejectedCollection)
+            .append("validator", Document("generation", 1)).append("validationLevel", "strict"))
+        var stateWritten = false
+        val observedStates = object : StarStateCurrentRepository by states {
+            override fun replace(userId: String, accountId: String, expectedGeneration: Long, expectedRevision: Long,
+                newGeneration: Long, snapshot: StarStateSnapshot, now: Instant): StarStateCurrent? =
+                states.replace(userId, accountId, expectedGeneration, expectedRevision, newGeneration, snapshot, now).also {
+                    if (it != null) stateWritten = true
+                }
+        }
+        val service = StarStateService(observedStates, points, loadouts, operators, accounts, tx)
+        val error = assertThrows(DataAccessException::class.java) {
+            service.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", matchingOcrInventory()))
+        }
+        assertTrue(generateSequence<Throwable>(error) { it.cause }.filterIsInstance<com.mongodb.MongoException>().any { it.code == 121 })
+        assertEquals(rejectedCollection == "star_loadout_current", stateWritten)
+        assertEquals(oldState, states.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(oldWear, loadouts.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(oldPoints, points.findAll())
+        assertLoadoutReferencesCurrentState()
     }
 
     @Test fun `failed rebuild leaves current state loadout and recovery points untouched`() {
@@ -702,7 +795,9 @@ class StarStateMongoTransactionTest {
         val loadout = loadouts.findByUserIdAndAccountId("owner", "a")!!
         assertEquals(state.generation, loadout.generation)
         val inventoryIds = state.inventory.mapTo(HashSet()) { it.instanceId }
-        assertTrue(loadout.loadouts.flatMap { it.slots.values().mapNotNull { (_, id) -> id } }.all { it in inventoryIds })
+        val assigned = loadout.loadouts.flatMap { it.slots.values().mapNotNull { (_, id) -> id } }
+        assertTrue(assigned.all { it in inventoryIds })
+        assertEquals(assigned.size, assigned.toSet().size, "A new instance must never occupy multiple slots")
     }
 
     @Test fun `fourth checkpoint evicts oldest and restore safety obeys the same retention`() {

@@ -120,6 +120,11 @@ class StarStateService(
                 transactions.execute {
                     val current = states.findByUserIdAndAccountId(userId, accountId)
                     checkVersion(current, expectedGeneration, expectedRevision)
+                    val oldLoadout = loadouts.findByUserIdAndAccountId(userId, accountId)
+                    if (reason == "pre_ocr_rebuild") {
+                        val oldIds = current?.inventory.orEmpty().map { it.instanceId }.toSet()
+                        if (next.inventory.any { it.instanceId in oldIds }) throw invalid("OCR rebuild requires new instance IDs")
+                    }
                     val now = Instant.now()
                     val point = current?.let {
                         checkpoint(
@@ -138,7 +143,7 @@ class StarStateService(
                         )
                     }
                     val saved = save(userId, accountId, expectedGeneration, expectedRevision, expectedGeneration + 1, next, now)
-                    val existingLoadouts = loadouts.findByUserIdAndAccountId(userId, accountId)?.loadouts.orEmpty()
+                    val existingLoadouts = oldLoadout?.loadouts.orEmpty()
                     val kept = if (reason == "restore_local") {
                         filterLoadouts(
                             existingLoadouts,
@@ -148,7 +153,19 @@ class StarStateService(
                     } else {
                         null
                     }
-                    val updatedLoadout = replaceLoadout(userId, accountId, expectedGeneration + 1, kept?.loadouts.orEmpty(), now)
+                    val inherited = if (reason == "pre_ocr_rebuild" && current != null && oldLoadout?.generation == current.generation) {
+                        val byId = next.inventory.associateBy { it.instanceId }
+                        inheritOcrLoadouts(
+                            existingLoadouts,
+                            current.inventory,
+                            // normalize sorts IDs for storage; allocation follows submitted inventory order, never UUID order.
+                            request.inventory.orEmpty().map { byId.getValue(it.instanceId) },
+                            operatorIds(userId, accountId, accounts.requireAccount(userId, accountId).game),
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    val updatedLoadout = replaceLoadout(userId, accountId, expectedGeneration + 1, kept?.loadouts ?: inherited, now)
                     val summary = kept?.let {
                         StarRecoverySummary(
                             restoredOperators = it.loadouts.count { loadout -> loadout.slots.values().any { slot -> slot.second != null } },
@@ -252,6 +269,30 @@ class StarStateService(
         if (state != null && !states.fenceLoadoutWrite(userId, accountId, state.generation, state.revision)) throw stateConflict()
         reconcileLoadout(userId, accountId, state?.inventory.orEmpty(), Instant.now())
     }
+
+    internal fun inheritOcrLoadouts(
+        source: List<StarOperatorLoadout>,
+        oldInventory: List<StarStateEntry>,
+        newInventory: List<StarStateEntry>,
+        presentOperators: Set<String>,
+    ): List<StarOperatorLoadout> {
+        val valid = filterLoadouts(source.sortedBy { it.operatorId }, oldInventory, presentOperators).loadouts
+        val oldById = oldInventory.associateBy { it.instanceId }
+        fun key(entry: StarStateEntry) = OcrWearKey(entry.kind, entry.name.trim(), entry.quality, entry.level)
+        val available = newInventory.groupBy(::key).mapValues { (_, entries) -> ArrayDeque(entries.map { it.instanceId }) }
+        return valid.mapNotNull { loadout ->
+            fun match(id: String?): String? = id?.let { oldById[it] }?.let { available[key(it)]?.removeFirstOrNull() }
+            val slots = loadout.slots
+            loadout.copy(
+                slots = StarLoadoutSlots(
+                    match(slots.main1), match(slots.main2), match(slots.main3),
+                    match(slots.support1), match(slots.support2), match(slots.support3),
+                ),
+            ).takeIf { it.slots.values().any { (_, id) -> id != null } }
+        }
+    }
+
+    private data class OcrWearKey(val kind: String, val name: String, val quality: String, val level: Int)
 
     private fun filterLoadouts(
         source: List<StarOperatorLoadout>,

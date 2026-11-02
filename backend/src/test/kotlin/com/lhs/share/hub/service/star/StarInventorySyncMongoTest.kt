@@ -11,6 +11,8 @@ import com.lhs.share.hub.controller.star.request.StarInventorySyncEntry
 import com.lhs.share.hub.controller.star.request.StarInventorySyncExperience
 import com.lhs.share.hub.controller.star.request.StarInventorySyncRequest
 import com.lhs.share.hub.controller.star.request.StarStatePatchRequest
+import com.lhs.share.hub.controller.star.request.StarStateRebuildRequest
+import com.lhs.share.hub.controller.star.request.StarStateRestoreRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
 import com.lhs.share.hub.repository.OpenApiTokenRepository
@@ -45,6 +47,7 @@ import com.lhs.share.testinfra.TestMongo
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -168,7 +171,7 @@ class StarInventorySyncMongoTest {
                 StarWorkspaceBagRequest(1, 500),
             ),
         )
-        // Preserve historical operator loadouts in the checkpoint, clear all in new state.
+        // Preserve historical operator loadouts in the checkpoint; only exact attributes may inherit.
         every { operators.findByUserIdAndAccountIdOrderByUpdatedAtDesc("owner", "a") } returns listOf(
             OperatorCurrent(
                 userId = "owner",
@@ -189,7 +192,7 @@ class StarInventorySyncMongoTest {
         )
     }
 
-    @Test fun `sync rebuilds distinct instances clears wear and preserves a readable pinned plan source`() {
+    @Test fun `sync rebuilds distinct instances clears level mismatches and preserves a readable pinned plan source`() {
         seed()
         val syncs = service()
         val req = request()
@@ -250,7 +253,38 @@ class StarInventorySyncMongoTest {
         assertEquals(4, points.count()) // three ordinary checkpoints plus the pinned source
     }
 
-    @Test fun `failure at receipt insert rolls back state pending wear and checkpoint eviction`() {
+    @Test fun `web OCR and MaaYuan use the same wear inheritance while historical restore retains old IDs`() {
+        seed()
+        val req = request().let { it.copy(inventory = it.inventory.map { entry -> entry.copy(level = 20) }) }
+        val web = stateService.rebuild(
+            "owner", "a",
+            StarStateRebuildRequest(
+                0, 1,
+                req.inventory.mapIndexed { i, entry -> StarInventoryEntryRequest("web-$i", entry.kind, entry.name, entry.quality, entry.level) },
+                emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), "pre_ocr_rebuild",
+            ),
+        )
+        assertEquals("web-0", web.loadout.loadouts["op"]?.get("main1"))
+        assertEquals(1, web.state.generation)
+        val restored = stateService.restore("owner", "a", web.recoveryPoint!!.recoveryPointId, StarStateRestoreRequest(1, 2))
+        assertEquals("old", restored.loadout.loadouts["op"]?.get("main1"))
+        val result = service().sync("owner", "a", req)
+        val state = stateService.current("owner", "a")
+        val wear = loadouts.findByUserIdAndAccountId("owner", "a")!!
+        val assigned = wear.loadouts.single().slots.main1!!
+        assertEquals(3, state.generation)
+        assertEquals(state.generation, wear.generation)
+        assertTrue(assigned != "old" && !assigned.startsWith("web-"))
+        assertEquals(20, state.inventory.single { it.instanceId == assigned }.level)
+        assertEquals(3, state.inventory.map { it.instanceId }.toSet().size)
+        assertTrue(result.inheritancePending)
+        assertEquals(listOf(StarStatePlanTarget("old", 60)), service().inheritanceSource("owner", "a")!!.sourceState.planTargets)
+        assertEquals(result, service().sync("owner", "a", req))
+        assertEquals(3, stateService.current("owner", "a").generation)
+        verify(exactly = 1) { events.publishChange("owner", "a", "star_inventory_synced", any()) }
+    }
+
+    @Test fun `failure at receipt insert rolls back state pending inherited wear and checkpoint eviction`() {
         seed()
         repeat(3) {
             val current = stateService.current("owner", "a")
@@ -274,7 +308,8 @@ class StarInventorySyncMongoTest {
         val broken = object : StarInventorySyncRepository by receipts {
             override fun <S : StarInventorySync> insert(entity: S): S = throw IllegalStateException("injected write failure")
         }
-        val failure = assertThrows(IllegalStateException::class.java) { service(broken).sync("owner", "a", request()) }
+        val matching = request().let { it.copy(inventory = it.inventory.map { entry -> entry.copy(level = 20) }) }
+        val failure = assertThrows(IllegalStateException::class.java) { service(broken).sync("owner", "a", matching) }
         assertEquals("injected write failure", failure.message)
         assertEquals(old, states.findByUserIdAndAccountId("owner", "a"))
         assertEquals(oldWear, loadouts.findByUserIdAndAccountId("owner", "a"))

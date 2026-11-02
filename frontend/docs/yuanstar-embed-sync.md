@@ -1,5 +1,13 @@
 # YuanStar embed 同步说明
 
+## 完整 OCR 佩戴继承提示正式来源（2026-11-02）
+
+- 权威源码分支 `feature/yuanhub-embed`，source commit `31305a2469df2e10c65bc1b8a25ea4c94c60ccc4`。从已提交 source commit 的干净工作树正式 build：执行 `build:embed`，再由 `scripts/sync-yuanstar-embed.mjs` 官方同步完整 12 个资源；manifest 记录此来源及逐文件 SHA-256。
+- 完整 OCR 提示改为自动保留能够按名称、品质、当前等级及主辅类型匹配的密探佩戴，无法匹配的槽位清空；旧养成计划继续使用原有继承流程。仅调整现有说明，不增加按钮、弹窗或步骤，不改变历史恢复语义。
+- 本次仅生成 JS 和来源 manifest 必要更新；worker、CSS、模型、ORT 与规则资源字节不变。没有手改生成资源或绕过来源校验。
+- 首次完整识别成功即提交新 generation；此后的人工纠错走普通 PATCH，不再次继承，也不会自动补回首次未匹配的佩戴。GUI 人工验收与正式部署环境验证仍待后续进行。
+- 下述来源均为历史记录，保留供追溯。
+
 ## 云端养成计划继承正式来源（2026-11-01）
 
 - 权威源码分支 feature/yuanhub-embed，source commit 5b851bca031c19bae11876905caf584441e057ba。已提交 source commit 的干净工作树正式 build：执行 build:embed，再由 scripts/sync-yuanstar-embed.mjs 官方同步全部12个资源；manifest记录该提交和每个资源SHA-256。
