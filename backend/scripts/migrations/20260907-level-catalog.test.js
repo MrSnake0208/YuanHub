@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 const {
   buildImportDocument,
@@ -18,7 +19,8 @@ const {
   run,
 } = require("./20260907-level-catalog");
 
-const source = JSON.parse(fs.readFileSync("levels (2).json", "utf8"));
+const sourcePath = path.join(__dirname, "fixtures", "20260907-levels.json");
+const source = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 
 function record(overrides = {}) {
   return {
@@ -179,7 +181,7 @@ test("runner dry-run never asks for a Mongo database", () => {
   global.db = { getSiblingDB: () => { databaseAccessed = true; throw new Error("unexpected database access"); } };
   global.print = () => {};
   try {
-    const report = run(["--dry-run"]);
+    const report = run(["--dry-run", "--source", sourcePath]);
     assert.equal(report.mode, "dry-run");
     assert.equal(databaseAccessed, false);
   } finally {

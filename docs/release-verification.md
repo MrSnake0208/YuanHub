@@ -8,6 +8,10 @@
 
 本地定向通过不代表集中 CI 已通过。最终候选以 `.dev/release/candidate.json` 的完整 SHA/run ID，以及同 SHA、同 attempt 的成功 run 和 immutable candidate artifact 为准；失败修复后需重新提交并 prepare。实际运行链接和下载核验记录保存在本树忽略目录 `.dev/release-stage3/`，不能用下方历史验证代替。
 
+首次真实 run [41819486797](https://github.com/MrSnake0208/YuanHub/actions/runs/41819486797) / attempt 1 / SHA `82ac69675cea89e3daec9f6c81a837b02b128ba1`：前端静态/1710 项仓库测试/17 项契约/构建、195 文件共 3599 项行为回归、后端 lint/单测/构建以及隔离数据库 JUnit suites 均成功；safety 的后续 Node 测试因未入库的 `levels (2).json` 失败，最终 gate 失败。实际 `--status` 拒绝该候选，不能复用此 run 的部分成功或产物。
+
+修复仅涉及测试输入：从 `MrSnake0208/MaaYuan-Share-Backend@8c5869184cce43420ac67a613c734bd43f62fb28` 的 `resource/levels.json` 原样恢复 143 行公开历史目录为 tracked fixture，已与 GitHub 文件逐字节比对；测试和 dry-run 显式使用相对测试文件的路径，保留全部数量、映射、修正、冲突、幂等及不访问数据库的断言。根目录和 backend 目录分别执行两个迁移 Node 测试文件，均 12 pass / 0 skipped。未修改生产迁移默认输入或执行任何实际迁移；提交修复后必须重新 prepare，对新 SHA 完整验证。
+
 ## 前两阶段历史记录
 
 风险：L4。下表记录本地实施阶段的验证，当时 HEAD/origin/main 为 `19c8e9008c40caefe5b86fa5397a40cc65825d8a`，源码尚未提交。本记录不是正式发布凭据；不能把这些本地产物当作后续新 SHA 的集中 CI 结果。
