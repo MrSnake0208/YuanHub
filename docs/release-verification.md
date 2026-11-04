@@ -1,5 +1,15 @@
 # 本轮发布流程验证记录（2026-11-04）
 
+## 第 3 阶段：真实集中检查准备
+
+所有者已授权修复、commit/普通 Push 及 `./release.sh --prepare`，不含生产发布。已复现 `operatorGrowthOwnership.spec.js:668`：展示模式按钮先匹配 `aria-pressed=true`，没有 `data-date`；将选择器限定 `[data-date][aria-pressed="true"]` 后，该文件 46 tests 全部通过，账号、日期、保存次数及焦点断言均保留，未修改页面业务代码。
+
+启动前审查：集中 workflow 与三个 reusable CI 无生产 Environment、Secrets 继承、SSH 或部署步骤。GitHub-hosted Runner 创建一次性 Mongo 7 副本集和 Redis 7；TestMongo 注册随机自有库，TestRedis 使用 DB 15 和进程键前缀，Gradle 测试过滤生产连接环境变量并固定测试配置，beta Mongo 用例只清理随机自有库。前端行为测试使用 jsdom/API mocks，意外 fetch 会失败。prepare 仅对公开版本元数据执行 GET，不访问生产数据库；构建 API URL 仅注入配置。部署开关保持 false，不创建正式标签。
+
+本地定向通过不代表集中 CI 已通过。最终候选以 `.dev/release/candidate.json` 的完整 SHA/run ID，以及同 SHA、同 attempt 的成功 run 和 immutable candidate artifact 为准；失败修复后需重新提交并 prepare。实际运行链接和下载核验记录保存在本树忽略目录 `.dev/release-stage3/`，不能用下方历史验证代替。
+
+## 前两阶段历史记录
+
 风险：L4。下表记录本地实施阶段的验证，当时 HEAD/origin/main 为 `19c8e9008c40caefe5b86fa5397a40cc65825d8a`，源码尚未提交。本记录不是正式发布凭据；不能把这些本地产物当作后续新 SHA 的集中 CI 结果。
 
 远端切换第 1、2 步已获所有者授权。第 1 步实际回读确认 review Ruleset `26521810` active、仅 User `74225450` always bypass；经典 required PR/checks 已移除，enforce_admins 和禁止强推/删除仍保留。第 2 步提交/Push 后，以 GitHub main 的实际 commit/树和 CODEOWNERS errors 回读为准；不运行集中 CI。备份及 API 证据保存在 `.dev/release-cutover/20261104T094251Z/`。

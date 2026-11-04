@@ -665,7 +665,7 @@ it('编辑当日直达每日步骤，按原账号和日期保存，返回保留�
   await wrapper.findAll('button').find(button => button.text() === '返回日程').trigger('click'); await flushPromises()
   expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(writesBeforeReturn)
   expect(wrapper.vm.selectedDate).toBe(date)
-  expect(wrapper.get('.planner-display [aria-pressed="true"]').attributes('data-date')).toBe(date)
+  expect(wrapper.get('.planner-display [data-date][aria-pressed="true"]').attributes('data-date')).toBe(date)
   expect(document.activeElement).toBe(wrapper.get('.day-plan-actions button').element)
   await wrapper.findAll('button').find(button => button.text() === '规划设置').trigger('click'); await flushPromises()
   expect(wrapper.get('#planner-step-conditions').isVisible()).toBe(true)
