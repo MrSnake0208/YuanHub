@@ -112,3 +112,7 @@ Follow the Monorepo root `docs/development/testing.md` and the rules for this co
 - L0/L1 non-behavior edits may use an exact-file test-plan exception rather than creating artificial tests.
 
 Mongo/Redis integration tests share local services but use only process-owned test databases and namespaced Redis keys. Never use development/production data or flush shared Redis. Preserve unrelated dirty files; never reset, stash, clean, or include them to satisfy a gate.
+
+## 发布入口
+
+所有者所有风险等级均可直接开发/Push 根 main，不强制 PR；外部贡献者 PR 由所有者审核。日常事件不跑完整 CI。正式版本通过根 `./release.sh --prepare` 确定，`--status` 查询集中门禁，`--publish` 须另行授权；不单独提交版本 PR。以根 docs/monorepo-operations.md 为准。

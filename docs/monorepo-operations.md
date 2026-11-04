@@ -2,7 +2,7 @@
 
 ## 一个任务一个 Worktree
 
-在 Orca 添加正式 clone 的 Git 根目录，基础分支选择 main。一个任务创建一个 Worktree，启动一个 Codex；根 AGENTS.md 要求自动核对 Git 根、当前分支、状态，再同时读取两端规则。frontend/backend 是普通目录，不创建第二套仓库或跨树符号链接。
+所有者可在 main 直接开发任意风险等级的功能，无需 PR；需要隔离时可选 Worktree。在 Orca 添加正式 clone 的 Git 根目录，基础分支选择 main；根 AGENTS.md 要求自动核对 Git 根、当前分支、状态，再同时读取两端规则。frontend/backend 是普通目录，不创建第二套仓库或跨树符号链接。
 
 同 URL 的旧前端项目可能已在 Orca 登记。切换时先检查现有项目与工作树映射，再选择新 clone 路径；不要直接覆盖登记或移动有会话的旧目录。Git/CLI 验证不代表 Windows Orca/SSH 或新 Codex UI 已验收。
 
@@ -32,30 +32,68 @@
 
 预览的 Gradle 缓存保存在本树 `.gradle-user-home`；启动器使用 Kotlin in-process 编译，避免 Kotlin 2.2 daemon 参数文件破坏中文工作树路径。定向启动配置检查：`python3 scripts/testing/test_worktree_env.py`、`python3 scripts/testing/test_dev_preview.py`。这些检查使用临时 fixture，不对共享本机数据库进行语义测试。
 
-## 独立 CI 与发布
+## 日常开发与外部贡献
 
-根 .github/workflows/pr-ci.yml 对所有 PR 运行，以待测 merge commit 相对第一父提交的完整 Git diff 选择两端检查（包括删除和重命名两端，不受 API 文件列表截断影响）。frontend/** 运行前端，backend/** 运行后端，backend/src/** 同时运行前端契约检查；仅后端改动通过 contract-only 输入跳过前端 npm ci、静态/仓库测试和构建，前端/共享配置改动保留完整前端流程；普通根 docs/** 不运行两端构建，docs/development/testing.md、共享配置及未知根路径保守运行两端。选择器自身失败、必要检查失败/取消/意外跳过，都使统一 `PR merge gate` 失败；只有明确不涉及的模块允许跳过。
+所有者完成风险对应的最小自检后，可以直接 commit/push main，L0～L4 均不强制 PR。Agent 仍须分别获得 commit、push 的明确授权。其他贡献者通过分支/PR，由所有者人工审核；不设置日常 required checks。Worktree 是可选的开发隔离方式，不是强制 PR 流程。
 
-frontend-ci/backend-ci 通过 workflow_call 供 PR 入口复用；main/master push 的路径过滤、手动入口、工作流文件名及构建步骤保留，发布脚本仍查对应组件的 push CI。后端 CI 将 ktlintCheck、test、assemble 合为一次 Gradle 调用，任务覆盖不变。完整行为回归保留独立 schedule/manual 入口。子目录旧 workflows 作为源历史保留，GitHub 只执行根 workflows。
+普通 Push、PR、合并、Tag Push 均不自动运行根工作流。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者及 regression 同时是 reusable workflow。没有每日回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
 
-分支保护切换必须与工作流交付分开：先推送包含新门禁的 PR，确认 GitHub Actions 的 `PR merge gate` 在最新 SHA 成功，再把 main 必需检查从 `Frontend checks and build` 替换为 `PR merge gate`，绑定 GitHub Actions 来源，保留 strict/up-to-date、管理员约束、禁止强推/删除等既有规则，随后合并该 PR。不要保留旧检查名：复用工作流下的检查名称会变化，旧名称会一直等待。其余旧 PR 必须更新到包含新入口的 main 后重新检查。切换前暂停无人值守合并；未提交/推送的本地配置不代表线上门禁已生效。
+可疑 PR 可手动诊断完整差异，例如 `gh workflow run pr-ci.yml --repo MrSnake0208/YuanHub --ref main -f commit=HEAD_SHA -f base=BASE_SHA`，或分别运行 frontend-ci/backend-ci 并传 `commit`。这里只产生诊断结果，不能替代集中发布准入。
 
-CI 门禁回归：`python3 scripts/testing/test_monorepo_ci.py`，覆盖模块选择、失败/取消/跳过以及发布开关；不能代替 GitHub 上的实际工作流运行。CI/门禁文件变更属于 L4，自动化不得自行批准或合并这类 PR。本入口不创建发布标签、不触发部署，也不修改仓库部署开关。
+## 准备发布：冻结候选与集中 CI
 
-前端独立构建 `cd frontend && npm run build`，产品版本来自 frontend/VERSION，产物记录组件版本、Monorepo SHA 和资源信息。后端独立构建 `cd backend && ./gradlew assemble --console=plain`，JAR 记录后端版本与当前树 Git SHA。两端不统一包管理或发布节奏。
+从干净、已 push 且与 origin/main 一致的 main 执行：
 
-根 `./release.sh --dry-run --frontend auto` 或 `./release.sh --dry-run --backend VERSION` 仅预览。正式命令需要另行授权，要求 main 干净、远端同 SHA、对应组件 CI 成功。标签使用 frontend/vX.Y.Z、backend/vX.Y.Z；不会推旧 v* 标签，不自动提交版本文件或合并。两端同 SHA 也各自记录实际已部署版本。
+```bash
+./release.sh --prepare
+./release.sh --status
+```
 
-生产及 promo jobs 默认禁用，需要显式仓库变量 YUANHUB_MONOREPO_DEPLOY_ENABLED=true，分别使用 frontend-production/backend-production 环境。既有 Secrets 不代表配置已适配；环境审批、Webhook、服务器只读拉取权限与构建路径必须单独审查。当前候选不操作线上。
+prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版本与完整 SHA，比较各自已部署提交至当前 main 的差异，选择需要发布的组件。默认在各组件实际已部署版本上递增 patch；默认不修改 VERSION、不提交、不创建正式标签，也不连接服务器。计划和候选保存于本树忽略的 `.dev/release/candidate.json`，包含完整 SHA、两端版本、线上基线、变更文件、request/run ID。后续 main 的 Push 不改变这个候选。`--status` 显示失败/未完成状态及 Actions 链接，只有完整成功且证据有效才报告可继续发布。
 
-后端只接收指定提交的成功 Backend CI 产物：Runner 下载 JAR、打包并经 SSH 上传，服务器校验归档摘要后安装，不执行 Git/Gradle/Kotlin 编译；产物缺失或过期时停止，在 CI 重建，禁止回退到服务器构建。`prepare` 同样要求对应 CI 成功，只上传安装，不启动实例或切流。上传限制为 4 MiB/s，工作流日志与 Summary 记录归档字节数和上传秒数（不含下载、打包及安装）。蓝绿双实例仍需足够运行内存，移除编译不能替代容量检查。
+独立版本与范围可明确指定：
 
-前端服务器带宽有限，使用现有 `.monorepo-source` 作为 Git 对象参考，在独立源码副本中构建，不传输 CI dist。前端目录为 `releases/VERSION-COMMIT`；已准备的旧格式 `releases/VERSION` 在版本、提交及配置匹配时可继续复用。保留旧源码、构建目录、发布包、传输包和槽位配置的历史副本，不自动清理。同名发布目录不完整或内容不符时停止并保留原目录。接口需要兼容不同时刻部署的两端；有兼容性变化时先发布兼容后端，验 readiness、/version 和业务链路后才发布前端。数据库变更必须另做兼容方案。
+```bash
+./release.sh --prepare --frontend 0.1.15
+./release.sh --prepare --backend 0.1.42
+./release.sh --prepare --frontend 0.1.15 --backend 0.1.42
+./release.sh --prepare --stress
+./release.sh --prepare --dry-run
+```
+
+显式选择一个组件不会顺带部署另一个。`--frontend` / `--backend` 不带版本（或 `auto`）在 prepare 中从该组件线上版本递增。正式发版前需要人工判断接口兼容性；有相互依赖时选两端，先发布兼容后端。显式前端单发不能自动证明它与线上旧后端兼容。Git 历史缺失、生产元数据不可读、分支/远端不一致会停止，不猜测上次部署。离线旧式预览 `./release.sh --dry-run --frontend auto` 仍读取 VERSION 默认值；`--dry-run --frontend VERSION --backend VERSION` 只读本地 HEAD，不访问网络。`--prepare --dry-run` 会读取远端和生产元数据，但不触发 Actions。
+
+集中 release-check 绑定准确 main SHA，复用：前端 static/repo/build 与跨端契约、完整 `npm run test:all`（Node + Vitest/jsdom，非浏览器 E2E）、后端 ktlint/test/assemble、integration/api-schema/architecture/realistic 和迁移/beta 脚本测试。数据库只在一次性 GitHub Runner 上准备，JUnit 使用 TestMongo 自有随机库和 TestRedis 进程键空间；不访问共享开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它发布不默认 stress。现有独立 all/mutation/stress 能力保留，按变更风险追加，不把所有昂贵专项强制纳入每次发布。
+
+任一必需 job 失败、取消、跳过，都不产生通过凭据。最终 candidate artifact 绑定 SHA、run ID、attempt、两个版本、stress 和 API 配置；最多有效 7 天。重跑必须有同 attempt 的最终凭据及 JAR，不能继承旧批次结果。后端 artifact 自带完整 SHA 和构建版本；缺失/过期时停止。前端保留低带宽服务器构建，但从精确 SHA 注入同一版本并检查真实 build-info、资源和 SW。
+
+## 失败修复与正式发布
+
+先按日志判断是真实缺陷、过时断言、环境还是基础设施问题；按最终业务行为修复，禁止删除有效测试或无理由 skip。修复必须另行 commit/push，再执行 prepare 得到新候选；不自动提交。prepare 每次创建新检查，publish 复用冻结候选的成功结果。旧 SHA 的绿色结果不能放行新 SHA。已经存在的标签只有指向同一 SHA 才可复用；如果修复改变 SHA，需要选择尚未使用的新版本。调度找不到 run 时先检查 Actions，避免盲目重复调度。
+
+集中检查成功后，在另获正式发布授权时执行：
+
+```bash
+./release.sh --publish --dry-run
+./release.sh --publish
+```
+
+publish 重新核对 main、冻结 SHA、成功 run/attempt、版本、产物、证据有效期、API 配置、线上基线与部署开关；交互输入 `publish` 才创建/推送不可变 `frontend/vX.Y.Z` / `backend/vX.Y.Z` 标签并手动 dispatch。`--yes` 代表调用者明确授予正式发布授权，不是 prepare 的默认选项。发布工作流还要求所有者、main、准确提交及 `deploy TAG@SHA` 确认值；Tag Push 自身不部署。
+
+两端同发时等待后端蓝绿、readiness、公开 /version 健康检查完成，并核对实际后端版本/SHA 后，再激活前端；手动绕过 CLI 运行前端工作流也检查所选后端是否就绪。失败立即停止，显示具体 Actions 链接；不继续前端，不移动标签。相同版本/SHA 已在线则安全跳过；未完成的步骤可重试，线上基线变化则要求重新准备候选。Environment 如启用审批，还需所有者在 Actions 批准。
+
+后端仍从集中检查所在 run 下载 JAR，校验内置版本/SHA、传输摘要，再调用原蓝绿部署脚本。服务器不编译；prepare phase 仅安装不切流，亦需完整集中门禁及单独授权。前端仍在服务器独立源码副本构建，版本通过 YUANHUB_VERSION 注入，输出 build-info.json 与相同页面构建信息；current 原子切换、SW 摘要、历史 releases、旧 slot 失败恢复及 GitHub Release 都保留。前后端版本不绑定。VERSION 只是日常本地构建默认值，不要求版本 PR。
+
+## 远端切换边界
+
+本地 YAML 不代表线上保护已经修改。实际规则状态、待批准 JSON、应用顺序和官方依据见 [远端切换配置](release-settings/README.md)。先建立仅所有者 PR bypass 的 Ruleset，再去掉叠加的经典 required PR/CI；禁止强推/删除仍保留。生产 Environment 另行授权配置所有者审批，并按实际 workflow ref 选择 branch/tag 策略：当前新版只接受 main-ref dispatch；合法 tag-ref 发布须显式允许对应 tag，不能无条件限制为 main。旧提交中的 tag-triggered 发布入口须单独核验集中门禁与人工确认，不能仅靠新版 YAML 判定安全。
+
+当前 `YUANHUB_MONOREPO_DEPLOY_ENABLED=false`，本任务不启用、不换服务器、不做真实发布。旧 BackEndV3-Share 的 Actions 和 Tag Release 仍活跃且不受此开关约束；新通道生产发布及回滚验证前保留旧能力，最终停用另行授权，切换窗口须协调两仓发布。prepare 可以在部署关闭时运行 CI；本轮尚未获准触发，publish 在关闭时拒绝创建标签。环境参数、生产目录、审批、GitHub 实跑和回滚演练都要另行验收。Environment 策略须匹配真实 branch/tag ref，只有所有者审批时保持 Prevent self-review 关闭。旧多仓脚本绝不能拿当前根仓运行。
 
 ## 独立回滚
 
 前端选择已有完整 release 目录，核对 deploy-meta.json、index.html、sw.js 后，经授权在实际 FRONTEND_ROOT 以临时 symlink + 原子替换切回 current；遵循原 Nginx 配置兼容要求。不需要后端发布或 Git 回退。
 
-后端使用保留的旧 JAR 与精确 SHA/metadata，启动非活动 slot，通过 readiness、公共 /version 和 HubBackend 链路后再切流；失败恢复旧 slot。自动发布需要对应 CI artifact（当前保留 7 天）；过期时先在 GitHub Runner 重建并验证，不能在生产服务器补编译。旧多仓版本继续从保留产物恢复，不重打旧标签、不回滚数据库。
+后端使用保留的旧 JAR 与精确 SHA/metadata，启动非活动 slot，通过 readiness、公共 /version 和 HubBackend 链路后再切流；失败恢复旧 slot。自动发布需要对应集中检查 artifact（当前保留 7 天）；过期时先在 GitHub Runner 重建并验证，不能在生产服务器补编译。旧多仓版本继续从保留产物恢复，不重打旧标签、不回滚数据库。
 
-本轮离线 fixture 验证不能替代生产演练。迁移历史、PR37 处理及正式 clone 顺序见 [迁移说明](migration/README.md) 与 [切换清单](migration/cutover.md)。
+本地 fixture 验证不能替代生产演练。迁移历史、PR37 处理及正式 clone 顺序见 [迁移说明](migration/README.md) 与 [切换清单](migration/cutover.md)。

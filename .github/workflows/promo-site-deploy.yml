@@ -1,13 +1,17 @@
 name: Build and Deploy Promo Site
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "frontend/promo-site/**"
-      - ".github/workflows/promo-site-deploy.yml"
   workflow_dispatch:
+    inputs:
+      commit:
+        description: Frozen full main SHA
+        required: true
+      check_run:
+        description: Successful concentrated release-check run ID
+        required: true
+      confirmation:
+        description: "Explicit approval: deploy promo@FULL_SHA"
+        required: true
 
 concurrency:
   group: yuanhub-promo-deploy-${{ github.ref }}
@@ -15,10 +19,12 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-and-deploy:
-    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' && github.actor == github.repository_owner }}
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -27,8 +33,30 @@ jobs:
         working-directory: frontend/promo-site
 
     steps:
+      - name: Require explicit production approval
+        working-directory: .
+        env:
+          COMMIT: ${{ inputs.commit }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ]
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [ "$CONFIRMATION" = "deploy promo@$COMMIT" ]
+
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Require concentrated release evidence
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_RUN: ${{ inputs.check_run }}
+          COMMIT: ${{ inputs.commit }}
+          API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
+        run: python3 -m scripts.release_gate --run "$CHECK_RUN" --commit "$COMMIT" --api-base "$API_BASE"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -84,7 +112,7 @@ jobs:
           key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
           port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
           source: "frontend/promo-site/dist/*"
-          target: "/tmp/yuanhub-promo-site-${{ github.sha }}/"
+          target: "/tmp/yuanhub-promo-site-${{ inputs.commit }}/"
           overwrite: true
           strip_components: 3
 
@@ -92,7 +120,7 @@ jobs:
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         env:
           DEPLOY_DIR: ${{ secrets.YUANHUB_PROMO_DEPLOY_DIR }}
-          TMP_DIR: /tmp/yuanhub-promo-site-${{ github.sha }}
+          TMP_DIR: /tmp/yuanhub-promo-site-${{ inputs.commit }}
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
           username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
@@ -110,6 +138,7 @@ jobs:
       - name: Verify deployed promo resources
         env:
           SITE_URL: https://hub.maayuan.com
+          COMMIT: ${{ inputs.commit }}
         run: |
           set -eu
           check_url() {
@@ -123,7 +152,7 @@ jobs:
               --retry-delay 2 \
               --retry-all-errors \
               -H 'Cache-Control: no-cache' \
-              "${SITE_URL}${path}?deploy=${GITHUB_SHA}" \
+              "${SITE_URL}${path}?deploy=${COMMIT}" \
               >/dev/null
           }
 

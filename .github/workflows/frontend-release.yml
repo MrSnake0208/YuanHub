@@ -1,8 +1,8 @@
 name: Frontend release
-run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inputs.tag, inputs.commit, inputs.request) || format('Release {0}', inputs.tag || github.ref_name) }}
+run-name: Deploy ${{ inputs.tag }} [${{ inputs.request }}]
 
-# 生产发布：由 v* tag 或指定已有 tag 的 dispatch 触发；prepare dispatch 仅预构建。
-# 发布前强制校验 VERSION 与 tag 完全一致，不一致立即停止。
+# 生产发布只接受 main 上明确确认的 dispatch，并验证集中检查的 SHA/版本。
+# prepare dispatch 仅在同样门禁通过后预构建；版本来自发布参数。
 #
 # 普通 CI 继续使用 GitHub-hosted runner；Release 通过 SSH 驱动服务器 A：
 #   服务器缓存源码 → checkout 精确 tag/commit → npm ci/build → 原子切换 current。
@@ -21,11 +21,14 @@ run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inp
 # Web 服务器（nginx 等）的 root 应指向 .../current。
 
 on:
-  push:
-    tags:
-      - "frontend/v*"
   workflow_dispatch:
     inputs:
+      check_run:
+        description: Successful concentrated release-check run ID
+        required: true
+      confirmation:
+        description: "Explicit approval: deploy COMPONENT/vVERSION@FULL_SHA"
+        required: true
       tag:
         description: "目标 tag（prepare 使用新 tag；release 使用已有 tag）"
         required: true
@@ -35,7 +38,7 @@ on:
         options: [release, prepare]
         default: release
       commit:
-        description: "prepare 必填：main 完整提交 SHA"
+        description: "冻结的 main 完整提交 SHA"
         required: false
       request:
         description: "prepare 请求唯一标识"
@@ -55,7 +58,7 @@ permissions:
 
 jobs:
   release:
-    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' && github.actor == github.repository_owner }}
     name: Build and deploy to production
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -66,6 +69,8 @@ jobs:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       DEPLOY_PHASE: ${{ inputs.phase || 'release' }}
       REQUESTED_COMMIT: ${{ inputs.commit }}
+      CHECK_RUN: ${{ inputs.check_run }}
+      CONFIRMATION: ${{ inputs.confirmation }}
       PREPARE_REQUEST: ${{ inputs.request }}
 
     steps:
@@ -74,6 +79,10 @@ jobs:
         run: |
           set -eu
           [[ "$RELEASE_TAG" =~ ^frontend/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || { echo "::error::Invalid frontend tag"; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "Only main workflow dispatch is allowed"; exit 1; }
+          [[ "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$CHECK_RUN" =~ ^[0-9]+$ ]] || exit 1
+          [ "$CONFIRMATION" = "deploy $RELEASE_TAG@$REQUESTED_COMMIT" ] || { echo "Explicit deployment confirmation required"; exit 1; }
           case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "::error::Invalid phase"; exit 1 ;; esac
           if [ "$DEPLOY_PHASE" = prepare ]; then
             [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::prepare must run from main"; exit 1; }
@@ -85,7 +94,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.phase == 'prepare' && (inputs.commit || 'main') || (github.event_name == 'workflow_dispatch' && inputs.tag || github.ref) }}
+          ref: ${{ inputs.commit }}
           fetch-depth: 0
 
       - name: Validate prepared commit
@@ -100,38 +109,29 @@ jobs:
             echo "::error::prepare cannot overwrite an existing tag"; exit 1;
           fi
 
-      # 关键闸门：VERSION 去掉前缀后必须与 tag 完全一致，否则不发布。
-      - name: Verify VERSION matches tag
+      - name: Resolve release version and commit
         run: |
           set -eu
-          version="$(tr -d '[:space:]' < VERSION)"
-          expected="${RELEASE_TAG#frontend/v}"
-          test -n "$version" || { echo "::error::VERSION is empty"; exit 1; }
-          if [ "$version" != "$expected" ]; then
-            echo "::error::VERSION ($version) does not match tag $RELEASE_TAG (expected $expected). Refusing to publish."
-            exit 1
+          [ "$(git rev-parse HEAD)" = "$REQUESTED_COMMIT" ]
+          git merge-base --is-ancestor "$REQUESTED_COMMIT" origin/main
+          if [ "$DEPLOY_PHASE" = release ]; then
+            [ "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$REQUESTED_COMMIT" ]
           fi
-          release_commit="$(git rev-parse HEAD)"
-          echo "VERSION matches tag: $version"
-          echo "YUANHUB_VERSION=$version" >> "$GITHUB_ENV"
-          echo "YUANHUB_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
+          echo "YUANHUB_VERSION=${RELEASE_TAG#frontend/v}" >> "$GITHUB_ENV"
+          echo "YUANHUB_RELEASE_COMMIT=$REQUESTED_COMMIT" >> "$GITHUB_ENV"
 
-      # 复用同一提交的快速 CI（static/repo/build）；完整回归独立运行，直接推 tag 也无法绕过 CI。
-      - name: Require successful CI for release commit
-        if: ${{ inputs.phase != 'prepare' }}
+      - name: Require concentrated release evidence
+        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
+          API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
+          DEPLOYMENT_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
+          BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
         run: |
-          set -eu
-          ci_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" \
-            --workflow frontend-ci.yml --branch main \
-            --commit "$YUANHUB_RELEASE_COMMIT" --status success \
-            --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
-          test -n "$ci_run_id" || {
-            echo "::error::No successful main push CI run exists for release commit $YUANHUB_RELEASE_COMMIT"
-            exit 1
-          }
-          echo "Using successful CI run $ci_run_id for $YUANHUB_RELEASE_COMMIT"
+          python3 -m scripts.release_gate --run "$CHECK_RUN" --commit "$REQUESTED_COMMIT" \
+            --component frontend --version "${RELEASE_TAG#frontend/v}" --api-base "$API_BASE" --deployment-url "$DEPLOYMENT_URL" \
+            --backend-url "$BACKEND_URL" --phase "$DEPLOY_PHASE"
+          echo "CI_RUN_ID=$CHECK_RUN" >> "$GITHUB_ENV"
 
       - name: Validate deployment configuration
         env:
@@ -273,8 +273,13 @@ jobs:
 
               cd frontend
               npm ci --no-audit --no-fund
-              NODE_ENV=production VITE_API_BASE="$API_BASE" NODE_OPTIONS="--max-old-space-size=1152" npm run build
+              NODE_ENV=production YUANHUB_VERSION="$RELEASE_VERSION" VITE_API_BASE="$API_BASE" NODE_OPTIONS="--max-old-space-size=1152" npm run build
 
+              node --input-type=module -e '
+                import fs from "node:fs";
+                const info = JSON.parse(fs.readFileSync("dist/build-info.json", "utf8"));
+                if (info.productVersion !== process.env.RELEASE_VERSION || info.frontendCommit !== process.env.RELEASE_COMMIT) process.exit(1);
+              '
               test -f dist/index.html || {
                 echo "dist/index.html missing after server build"
                 exit 1

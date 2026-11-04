@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+legacy_git_root="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$legacy_git_root" ] && [ -d "$legacy_git_root/frontend" ] && [ -d "$legacy_git_root/backend" ]; then
+  echo 'Historical polyrepo release is disabled in this Monorepo; use root ./release.sh --prepare' >&2
+  exit 1
+fi
+
 # 候选分支准备 VERSION；main 发布已通过 CI 的提交。
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

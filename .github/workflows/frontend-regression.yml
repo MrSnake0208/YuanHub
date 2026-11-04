@@ -1,13 +1,21 @@
 name: Full regression
 
-# 完整回归独立运行，不阻塞 ci.yml 的发布门禁。
+# 完整回归属于集中发布门禁，也可单独手动诊断。
+
 on:
-  schedule:
-    - cron: '17 19 * * *' # UTC；定时运行默认分支，GitHub 可能延迟调度。
+  workflow_call:
+    inputs:
+      commit:
+        type: string
+        default: ""
   workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact commit to diagnose
+        type: string
 
 concurrency:
-  group: yuanhub-regression-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.run_id }}-yuanhub-regression-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -25,6 +33,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v4

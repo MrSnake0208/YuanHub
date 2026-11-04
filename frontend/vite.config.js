@@ -12,9 +12,15 @@ const DEFAULT_DEV_API_TARGET = 'http://127.0.0.1:8080'
 const UNKNOWN_BUILD_VALUE = 'unknown'
 
 /**
- * 产品版本唯一来源：仓库根目录 VERSION。缺失时降级，不让构建失败。
+ * 正式构建使用发布参数；VERSION 保留为日常本地构建默认值。
  */
 export function readProductVersion(root = process.cwd()) {
+  if (process.env.YUANHUB_VERSION) {
+    if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(process.env.YUANHUB_VERSION)) {
+      throw new Error('Invalid YUANHUB_VERSION')
+    }
+    return process.env.YUANHUB_VERSION
+  }
   try {
     return readFileSync(resolve(root, 'VERSION'), 'utf8').trim() || UNKNOWN_BUILD_VALUE
   } catch (error) {
@@ -27,7 +33,7 @@ export function readProductVersion(root = process.cwd()) {
  */
 export function readFrontendCommit(root = process.cwd()) {
   try {
-    const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: root,
       stdio: ['ignore', 'pipe', 'ignore']
     })
@@ -98,10 +104,17 @@ export function buildDevServerConfig(mode, env = {}) {
 // @ 别名与参考项目（frontend-v2-plus）保持一致：'@' -> src
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const buildInfo = collectBuildInfo()
 
   return {
     plugins: [
       vue(),
+      {
+        name: 'yuanhub-build-info',
+        generateBundle() {
+          this.emitFile({ type: 'asset', fileName: 'build-info.json', source: JSON.stringify(buildInfo) })
+        }
+      },
       ocrModelCdn(),
       VitePWA({
         // 不让旧 Service Worker 长时间等待用户手动确认更新。
@@ -168,7 +181,7 @@ export default defineConfig(({ mode }) => {
     },
     // 版本 / commit / 构建时间只在构建期注入一次，页面统一从 src/config/buildInfo.js 读取。
     define: {
-      __YUANHUB_BUILD_INFO__: JSON.stringify(collectBuildInfo())
+      __YUANHUB_BUILD_INFO__: JSON.stringify(buildInfo)
     },
     server: buildDevServerConfig(mode, env)
   }

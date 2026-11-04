@@ -1,7 +1,7 @@
 # Monorepo 工作树边界（首先执行）
 
 - 在编辑前执行 `git rev-parse --show-toplevel`、`git branch --show-current`、`git status --short`；所有路径以本次 Worktree 的 Git 根为准。frontend 和 backend 共享当前分支，没有独立 Git 仓库。
-- 只编辑当前 Worktree 内的文件，不跳到原主工作区或其它任务工作树；不得将当前分支切换到某个写死的功能分支。主分支只接受已完成集成的工作。
+- 只编辑当前 Worktree 内的文件，不跳到原主工作区或其它任务工作树；不得将当前分支切换到某个写死的功能分支。所有者可直接在 main 开发并 Push 任意风险等级的工作，不强制 PR；外部贡献者必须 PR 并经所有者审核。
 - frontend/ 负责 Vue/Vite 页面、API 调用和公开开发者文档；backend/ 负责 Kotlin/Spring API、权限和持久化。保留二端子目录 AGENTS.md 的安全与领域约束。API/DTO/协议变更须同时检查两端契约与兼容发布顺序。
 - 一个任务使用一个根 Git Worktree，一个 PR 可包含两端；不创建子仓、跨工作区符号链接或第二套分支。不要擅自 commit、push、merge 或远端写入。
 - 开发统一用当前树 `./dev.sh`。按用户选择，默认共用本机 MongoDB 的 MaaBackend/HubBackend 和 Redis DB 0 开发数据，各工作树只隔离应用端口与本地配置；保存、删除等会影响共享数据，不做自动清库或迁移。`./dev.sh preview` 自动准备前后端，前端监听 `0.0.0.0`，局域网也可访问；不操作 Tailscale Serve/Funnel。`./dev.sh containers` 显式使用原有私有容器。用 `./dev.sh --print-env` 查看本树地址。自动测试仅使用 TestMongo 注册的随机测试库与 TestRedis 的进程专属键命名空间，不得对共享开发数据运行事务或 Redis 语义测试。
@@ -97,3 +97,10 @@
 依据 `docs/development/testing.md` 按 L0–L4 风险选择最小充分验证，不因改动自动执行全量测试。通用开发不要求安装个人任务工作流。
 
 Mongo transaction/Redis semantics tests share local services but must use process-owned disposable test databases and namespaced Redis keys; never use development/production data or flush shared Redis. Preserve unrelated dirty files; do not reset, stash, clean, or include them in the task.
+
+## 开发与发版流程
+
+- 所有者 L0～L4 均可直接提交/Push main，不强制 PR；Agent 的 commit/push 仍须当前会话明确授权。必要最小安全自检不因取消日常 CI 而省略。
+- 普通 Push、PR、合并与 tag 不自动启动 CI/生产部署；完整回归只在明确准备发布时集中执行，也保留手动诊断。
+- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本并启动集中检查；`--status` 查询；`--publish` 另行获明确授权后才部署。不得修改 VERSION 只为创建版本 PR，不得复用其它 SHA/attempt 的结果。
+- GitHub 远端配置、正式 tag、部署与回滚必须分别确认；保持部署开关现状。待批准方案见 docs/release-settings/README.md，操作见 docs/monorepo-operations.md。

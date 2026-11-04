@@ -32,7 +32,7 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 
 ## 独立发布
 
-Git 统一在 Monorepo 根，仍可只发布本组件。从根执行 `./release.sh --dry-run --frontend auto` 预览，正式发布须授权与独立 CI 门禁。详见 [部署说明](docs/deployment.md)。
+Git 统一在 Monorepo 根，仍可只发布本组件。从根执行 `./release.sh --dry-run --frontend auto` 预览，正式发布用根 --prepare/--status/--publish，须授权与集中发布门禁。详见 [部署说明](docs/deployment.md)。
 
 ## 开发规范
 

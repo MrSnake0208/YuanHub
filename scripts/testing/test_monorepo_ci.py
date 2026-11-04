@@ -1,5 +1,4 @@
 """Execute the actual root workflow's request validation without GitHub or SSH."""
-import fnmatch
 import itertools
 import json
 import os
@@ -102,28 +101,70 @@ class MonorepoWorkflowTest(unittest.TestCase):
         backend = (ROOT / '.github/workflows/backend-ci.yml').read_text()
         self.assertIn('./gradlew ktlintCheck test assemble --console=plain', backend)
 
-    def test_promo_push_filter_covers_its_build_directory(self):
-        workflow='.github/workflows/promo-site-deploy.yml'
-        text=(ROOT/workflow).read_text()
-        paths=text.split('    paths:\n',1)[1].split('  workflow_dispatch:',1)[0]
-        patterns=re.findall(r'^\s+- ["\']([^"\']+)["\']\s*$',paths,re.MULTILINE)
-        build_dir=re.search(r'working-directory:\s*(\S+)',text).group(1)
-        package=f'{build_dir}/package.json'
-        self.assertTrue((ROOT/package).is_file())
-        for changed in [package,workflow]:
-            self.assertTrue(any(fnmatch.fnmatchcase(changed,pattern) for pattern in patterns),changed)
-        for changed in ['backend/build.gradle.kts','frontend/src/main.js']:
-            self.assertFalse(any(fnmatch.fnmatchcase(changed,pattern) for pattern in patterns),changed)
-        self.assertIn("vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true'",text)
+    def test_no_automatic_test_or_deploy_triggers(self):
+        for path in (ROOT / '.github/workflows').glob('*.yml'):
+            text = path.read_text()
+            triggers = text.split('\non:\n', 1)[1].split('\npermissions:', 1)[0].split('\nconcurrency:', 1)[0]
+            for event in ('push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_run', 'release'):
+                self.assertNotRegex(triggers, r'(?m)^  ' + event + r':', str(path))
+        text = (ROOT / '.github/workflows/promo-site-deploy.yml').read_text()
+        self.assertIn('working-directory: frontend/promo-site', text)
+        self.assertIn('scripts.release_gate', text)
+        self.assertIn('environment: production', text)
+
+    def test_concentrated_gate_rejects_any_incomplete_job(self):
+        text = (ROOT / '.github/workflows/release-check.yml').read_text()
+        block = text.split('      - name: Require all checks and record evidence\n', 1)[1].split('      - uses:', 1)[0]
+        script = textwrap.dedent(block.split('        run: |\n', 1)[1])
+        artifacts = ROOT / '.test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=artifacts) as directory:
+            for job in ('candidate', 'frontend', 'backend', 'regression', 'safety'):
+                for status in ('success', 'failure', 'cancelled', 'skipped'):
+                    needs = {n:dict(result='success') for n in ('candidate','frontend','backend','regression','safety')}
+                    needs[job]['result'] = status
+                    candidate = Path(directory)/'candidate.json'
+                    candidate.unlink(missing_ok=True)
+                    env = dict(os.environ, RESULTS=json.dumps(needs), SHA='a'*40, FRONTEND='1.2.3',BACKEND='',
+                               GITHUB_RUN_ID='12', GITHUB_RUN_ATTEMPT='1', STRESS='false', API_BASE='https://api.example',
+                               GITHUB_STEP_SUMMARY=str(Path(directory)/'summary'),BASELINES='{}')
+                    result = subprocess.run(['bash','-e','-c',script],cwd=directory,env=env,capture_output=True)
+                    self.assertEqual(result.returncode == 0, status == 'success', (job,status,result.stderr))
+                    self.assertEqual(candidate.exists(), status == 'success')
+
+    def test_runner_mongosh_keeps_host_paths_working_directory_and_repair_env(self):
+        text = (ROOT / '.github/workflows/release-check.yml').read_text()
+        self.assertIn('--volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE"', text)
+        script = textwrap.dedent(text.split("<<'SH'\n",1)[1].split('\n          SH',1)[0])
+        artifacts = ROOT / '.test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=artifacts) as directory:
+            folder = Path(directory)
+            docker = folder/'docker'
+            docker.write_text('#!/usr/bin/env python3\nimport json,os,sys\nprint(json.dumps(dict(args=sys.argv[1:],action=os.environ.get("YUANHUB_REPAIR_ACTION"),revision=os.environ.get("YUANHUB_REPAIR_REVISION"))))\n')
+            docker.chmod(0o755)
+            wrapper = folder/'mongosh'
+            wrapper.write_text(script)
+            wrapper.chmod(0o755)
+            env = dict(os.environ,PATH=str(folder)+os.pathsep+os.environ['PATH'],YUANHUB_REPAIR_ACTION='apply',YUANHUB_REPAIR_REVISION='48')
+            result = json.loads(subprocess.check_output([str(wrapper),'mongodb://127.0.0.1/test','--file','fixture.js'],cwd=folder,env=env,text=True))
+            args = result['args']
+            self.assertEqual(args[args.index('-w')+1],str(folder.resolve()))
+            self.assertEqual(result['action'],'apply')
+            self.assertEqual(result['revision'],'48')
+            self.assertIn('YUANHUB_REPAIR_ACTION',args)
+            self.assertEqual(args[-3:],['mongodb://127.0.0.1/test','--file','fixture.js'])
+        self.assertIn('npm ci --prefix scripts/beta', text)
+        self.assertIn('BETA_TEST_MONGO_URI: mongodb://127.0.0.1:27017/yuanhub_test_beta_runner', text)
 
     def test_component_prepare_tags_are_validated_before_checkout(self):
         for component in ['frontend','backend']:
             text=(ROOT/'.github/workflows'/f'{component}-release.yml').read_text()
             block=text.split('      - name: Validate release request\n',1)[1].split('      - name: Checkout',1)[0]
             script=textwrap.dedent(block.split('        run: |\n',1)[1])
-            env=dict(os.environ,DEPLOY_PHASE='prepare',GITHUB_REF='refs/heads/main',REQUESTED_COMMIT='a'*40,PREPARE_REQUEST='offline-check')
+            env=dict(os.environ,DEPLOY_PHASE='prepare',GITHUB_REF='refs/heads/main',REQUESTED_COMMIT='a'*40,PREPARE_REQUEST='offline-check',CHECK_RUN='123')
             for tag,expected in [(f'{component}/v0.1.2',0),('v0.1.2',1),('wrong/v0.1.2',1),(f'{component}/v0.1.2;echo bad',1)]:
-                result=subprocess.run(['bash','-c',script],env=dict(env,RELEASE_TAG=tag),capture_output=True,text=True)
+                result=subprocess.run(['bash','-c',script],env=dict(env,RELEASE_TAG=tag,CONFIRMATION='deploy '+tag+'@'+'a'*40),capture_output=True,text=True)
                 self.assertEqual(expected,result.returncode,(component,tag,result.stdout,result.stderr))
 
     def test_each_release_is_explicitly_disabled_until_repository_opt_in(self):
@@ -131,13 +172,15 @@ class MonorepoWorkflowTest(unittest.TestCase):
             text=(ROOT/'.github/workflows'/f'{component}-release.yml').read_text()
             self.assertIn("vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true'",text)
             self.assertIn('environment: '+component+'-production',text)
-            self.assertIn('--workflow '+component+'-ci.yml',text)
+            self.assertIn('scripts.release_gate',text)
+            self.assertIn('CHECK_RUN',text)
+            self.assertIn('CONFIRMATION',text)
             self.assertNotIn('--workflow ci.yml',text)
 
     def test_backend_release_only_installs_successful_ci_artifacts(self):
         for component in ['backend']:
             text=(ROOT/'.github/workflows'/f'{component}-release.yml').read_text()
-            gate=text.split('      - name: Require successful CI for release commit\n',1)[1].split('      - name:',1)[0]
+            gate=text.split('      - name: Require concentrated release evidence\n',1)[1].split('      - name:',1)[0]
             self.assertNotIn("inputs.phase != 'prepare'", gate)
             self.assertIn('gh run download "$CI_RUN_ID"', text)
             self.assertIn('bash scripts/deploy/transfer-release.sh', text)
@@ -162,10 +205,11 @@ class MonorepoWorkflowTest(unittest.TestCase):
         artifacts.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=artifacts) as directory:
             jar=Path(directory)/'app.jar'
-            for content, expected in [('git.commit.id='+'a'*40,0), ('git.commit.id='+'b'*40,1), ('',1)]:
+            for content, build_version, expected in [('git.commit.id='+'a'*40,'0.1.2',0), ('git.commit.id='+'b'*40,'0.1.2',1), ('','0.1.2',1), ('git.commit.id='+'a'*40,'0.1.1',1)]:
                 with zipfile.ZipFile(jar,'w') as archive:
                     archive.writestr('BOOT-INF/classes/git.properties',content+'\n')
-                result=subprocess.run(['python3','-c',script,str(jar),'a'*40],capture_output=True)
+                    archive.writestr('META-INF/build-info.properties','build.version='+build_version+'\n')
+                result=subprocess.run(['python3','-c',script,str(jar),'a'*40,'0.1.2'],capture_output=True)
                 self.assertEqual(result.returncode,expected,result.stderr)
 
 

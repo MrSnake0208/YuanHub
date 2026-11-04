@@ -1,5 +1,5 @@
 name: Backend release
-run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inputs.tag, inputs.commit, inputs.request) || format('Release {0}', inputs.tag || github.ref_name) }}
+run-name: Deploy ${{ inputs.tag }} [${{ inputs.request }}]
 
 # Production backend release:
 # GitHub-hosted runner downloads the exact successful CI artifact and uploads it.
@@ -8,11 +8,14 @@ run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inp
 # local readiness checks. Public verification failure automatically restores the old upstream.
 
 on:
-  push:
-    tags:
-      - "backend/v*"
   workflow_dispatch:
     inputs:
+      check_run:
+        description: Successful concentrated release-check run ID
+        required: true
+      confirmation:
+        description: "Explicit approval: deploy COMPONENT/vVERSION@FULL_SHA"
+        required: true
       tag:
         description: "Backend tag (prepare uses a new tag; release uses an existing tag)"
         required: true
@@ -22,7 +25,7 @@ on:
         options: [release, prepare]
         default: release
       commit:
-        description: "Full main commit SHA, required for prepare"
+        description: "Frozen full main commit SHA"
         required: false
       request:
         description: "Unique prepare request identifier"
@@ -38,7 +41,7 @@ permissions:
 
 jobs:
   release:
-    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.YUANHUB_MONOREPO_DEPLOY_ENABLED == 'true' && github.actor == github.repository_owner }}
     name: CI artifact blue/green release
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -48,6 +51,8 @@ jobs:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       DEPLOY_PHASE: ${{ inputs.phase || 'release' }}
       REQUESTED_COMMIT: ${{ inputs.commit }}
+      CHECK_RUN: ${{ inputs.check_run }}
+      CONFIRMATION: ${{ inputs.confirmation }}
       PREPARE_REQUEST: ${{ inputs.request }}
 
     steps:
@@ -55,6 +60,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "Only main workflow dispatch is allowed"; exit 1; }
+          [[ "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$CHECK_RUN" =~ ^[0-9]+$ ]] || exit 1
+          [ "$CONFIRMATION" = "deploy $RELEASE_TAG@$REQUESTED_COMMIT" ] || { echo "Explicit deployment confirmation required"; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^backend/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || exit 1
           case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "::error::Invalid phase"; exit 1 ;; esac
           if [ "$DEPLOY_PHASE" = prepare ]; then
             [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::prepare must run from main"; exit 1; }
@@ -66,7 +76,7 @@ jobs:
       - name: Checkout release ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.phase == 'prepare' && (inputs.commit || 'main') || (github.event_name == 'workflow_dispatch' && inputs.tag || github.ref) }}
+          ref: ${{ inputs.commit }}
           fetch-depth: 0
 
       - name: Validate prepared commit
@@ -108,29 +118,16 @@ jobs:
           echo "BACKEND_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
           echo "Releasing $RELEASE_TAG (${release_commit::7})"
 
-      - name: Require successful CI for release commit
+      - name: Require concentrated release evidence
+        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
+          API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
+          DEPLOYMENT_URL: ${{ vars.YUANHUB_BACKEND_URL }}
         run: |
-          set -euo pipefail
-          ci_run_id="$(
-            gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow backend-ci.yml \
-              --branch main \
-              --commit "$BACKEND_RELEASE_COMMIT" \
-              --status success \
-              --limit 1 \
-              --json databaseId \
-              --jq '.[0].databaseId // empty'
-          )"
-          test -n "$ci_run_id" || {
-            echo "::error::No successful main push CI run exists for release commit $BACKEND_RELEASE_COMMIT"
-            exit 1
-          }
-          echo "Using successful CI run $ci_run_id for $BACKEND_RELEASE_COMMIT"
-          echo "CI_RUN_ID=$ci_run_id" >> "$GITHUB_ENV"
+          python3 -m scripts.release_gate --run "$CHECK_RUN" --commit "$REQUESTED_COMMIT" \
+            --component backend --version "${RELEASE_TAG#backend/v}" --api-base "$API_BASE" --deployment-url "$DEPLOYMENT_URL"
+          echo "CI_RUN_ID=$CHECK_RUN" >> "$GITHUB_ENV"
 
       - name: Resolve product version
         id: product-version
@@ -192,15 +189,18 @@ jobs:
           input="$RUNNER_TEMP/release-input"
           bundle="$RUNNER_TEMP/release-bundle"
           gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --name "yuanhub-backend-jar-$BACKEND_RELEASE_COMMIT" --dir "$input"
+            --name "yuanhub-backend-jar-$CI_ARTIFACT_SUFFIX" --dir "$input"
           mapfile -t jars < <(find "$input" -type f -name '*.jar' ! -name '*-plain.jar')
           [ "${#jars[@]}" = 1 ] || { echo "Expected exactly one CI bootJar"; exit 1; }
-          python3 - "${jars[0]}" "$BACKEND_RELEASE_COMMIT" <<'PY'
+          python3 - "${jars[0]}" "$BACKEND_RELEASE_COMMIT" "${RELEASE_TAG#backend/v}" <<'PY'
           import sys, zipfile
           with zipfile.ZipFile(sys.argv[1]) as jar:
               properties = jar.read('BOOT-INF/classes/git.properties').decode().splitlines()
+              build = jar.read('META-INF/build-info.properties').decode().splitlines()
           if 'git.commit.id=' + sys.argv[2] not in properties:
               raise SystemExit('CI jar commit does not match the release commit')
+          if 'build.version=' + sys.argv[3] not in build:
+              raise SystemExit('CI jar version does not match the release version')
           PY
           mkdir -p "$bundle/payload"
           cp "${jars[0]}" "$bundle/payload/app.jar"

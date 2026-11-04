@@ -1,7 +1,14 @@
-name: PR CI
+name: Manual affected checks
 
 on:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: PR head full SHA to diagnose
+        required: true
+      base:
+        description: Frozen base SHA for the entire PR diff
+        required: true
 
 permissions:
   contents: read
@@ -22,20 +29,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
           persist-credentials: false
       - name: Check CI gate regressions
         run: python3 -m unittest scripts.testing.test_monorepo_ci scripts.testing.test_artifact_deploy scripts.testing.test_server_prebuild
       - name: Select components
         id: scope
         shell: python
+        env:
+          BASE_REF: ${{ inputs.base }}
         run: |
           import os
           import subprocess
 
-          # Compare the tested merge tree to its base; include both sides of renames.
+          # Compare the entire requested PR diff; include both sides of renames.
           changed = subprocess.check_output([
-              'git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD', '--'
+              'git', 'diff', '--name-only', '--no-renames', '-z', os.environ.get('BASE_REF') or 'HEAD^1', 'HEAD', '--'
           ]).split(b'\0')
           frontend = backend = frontend_full = False
           for raw in filter(None, changed):
@@ -58,14 +68,17 @@ jobs:
     uses: ./.github/workflows/frontend-ci.yml
     with:
       contract-only: ${{ needs.changes.outputs.frontend_full == 'false' }}
+      commit: ${{ inputs.commit }}
 
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     uses: ./.github/workflows/backend-ci.yml
+    with:
+      commit: ${{ inputs.commit }}
 
   gate:
-    name: PR merge gate
+    name: Manual affected gate
     if: ${{ always() }}
     needs: [changes, frontend, backend]
     runs-on: ubuntu-latest

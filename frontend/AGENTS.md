@@ -64,7 +64,7 @@ npm run test:repo
 npm run build
 ```
 
-完整回归使用 `npm run test:all`（包含 `npm run test:behavior`），由独立 `regression.yml` 每日或手动运行，不阻塞发布。以上命令是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整 `.github/workflows/ci.yml`。
+完整回归使用 `npm run test:all`（包含 `npm run test:behavior`），由根 `frontend-regression.yml` 在集中发布检查中或手动运行，失败阻止发布。以上命令是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整根 `.github/workflows/frontend-ci.yml`。
 
 ## 浏览器自动化默认禁用（UI 由用户验收）
 
@@ -135,3 +135,7 @@ Follow the Monorepo root `docs/development/testing.md` and the rules for this co
 - When using an optional personal task workflow, record honest exact-file risk-based exceptions where checks are unnecessary; do not create a task or artificial tests merely because a local L0/L1 edit changes behavior.
 
 Preserve unrelated dirty files; never reset, stash, clean, or include them merely to make a gate pass.
+
+## 发布入口
+
+所有者所有风险等级均可直接开发/Push 根 main，不强制 PR；外部贡献者 PR 由所有者审核。日常事件不跑完整 CI。正式版本通过根 `./release.sh --prepare` 确定，`--status` 查询集中门禁，`--publish` 须另行授权；不单独提交版本 PR。以根 docs/monorepo-operations.md 为准。

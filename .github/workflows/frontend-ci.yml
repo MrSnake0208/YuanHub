@@ -1,34 +1,31 @@
 name: Frontend CI
 
-# 普通 push / PR 跑快速检查与构建；完整行为测试由 regression.yml 每日/手动运行。
-# 生产发布由 tag 触发的 release.yml 负责。
+# 手动或集中发布检查复用；普通 Push/PR 不运行。
 
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'frontend/**'
-      - 'backend/src/**'
-      - '.github/**'
-      - 'scripts/**'
-      - 'dev.sh'
-      - 'release.sh'
-      - 'AGENTS.md'
-      - 'docs/development/testing.md'
-      - '.gitattributes'
-      - '.gitignore'
   workflow_call:
     inputs:
+      commit:
+        type: string
+        default: ""
+      release-version:
+        type: string
+        default: ""
       contract-only:
         description: Run only paired contracts for backend-only PR changes
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact commit to diagnose
+        type: string
+      release-version:
+        description: Optional build version
+        type: string
 
 concurrency:
-  group: yuanhub-ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.run_id }}-yuanhub-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -47,6 +44,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          persist-credentials: false
 
       - name: Set up Node
         if: ${{ inputs.contract-only }}
@@ -84,27 +84,39 @@ jobs:
         if: ${{ !inputs.contract-only }}
         env:
           NODE_ENV: production
+          YUANHUB_VERSION: ${{ inputs.release-version }}
+          VITE_API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
         run: npm run build
 
       # 校验 VERSION / commit / buildTime 确实进入了构建产物，
       # 否则版本入口与 Feedback 诊断会在线上显示错误信息。
       - name: Verify injected build info
+        env:
+          RELEASE_VERSION: ${{ inputs.release-version }}
+          RELEASE_COMMIT: ${{ inputs.commit || github.sha }}
         if: ${{ !inputs.contract-only }}
         run: |
           set -eu
-          version="$(tr -d '[:space:]' < VERSION)"
+          version="${RELEASE_VERSION:-$(tr -d '[:space:]' < VERSION)}"
           test -n "$version" || { echo "::error::VERSION is empty"; exit 1; }
           test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
           if ! grep -rqF "$version" dist/assets; then
             echo "::error::productVersion $version was not found in the built assets"
             exit 1
           fi
+          python3 - "$version" "$RELEASE_COMMIT" <<'PYVERIFY'
+          import json, sys
+          info = json.load(open("dist/build-info.json"))
+          assert info["productVersion"] == sys.argv[1]
+          assert info["frontendCommit"] == sys.argv[2]
+          PYVERIFY
+          test -f dist/sw.js
           echo "Injected productVersion: $version"
 
       - name: Upload build output
         if: ${{ !inputs.contract-only }}
         uses: actions/upload-artifact@v4
         with:
-          name: yuanhub-dist-${{ github.sha }}
+          name: yuanhub-dist-${{ inputs.commit || github.sha }}-${{ github.run_attempt }}
           path: frontend/dist
           retention-days: 7

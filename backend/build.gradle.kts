@@ -17,9 +17,10 @@ plugins {
 }
 
 group = "com.lhs"
-version = "0.1.0-SNAPSHOT"
+version = providers.environmentVariable("YUANHUB_BACKEND_VERSION").orNull?.takeIf { it.isNotBlank() } ?: "0.1.0-SNAPSHOT"
 
 springBoot {
+    buildInfo()
     mainClass.set("com.lhs.share.ShareApplicationKt")
 }
 

@@ -10,7 +10,7 @@ import {
   versionLabel
 } from '../src/config/buildInfo.js'
 
-test('VERSION 是唯一产品版本来源且格式为可发布的版本号', function () {
+test('VERSION 是本地默认产品版本且格式为可发布的版本号', function () {
   const raw = readFileSync(new URL('../VERSION', import.meta.url), 'utf8')
   const value = raw.trim()
   assert.notEqual(value, '')
@@ -75,4 +75,17 @@ test('feedbackDiagnostics 使用后端 snake_case 契约且三种字段齐全', 
   assert.equal(typeof degraded.product_version, 'string')
   assert.notEqual(degraded.product_version, '')
   for (const value of Object.values(degraded)) assert.equal(typeof value, 'string')
+})
+
+test('发布参数覆盖 VERSION，非法参数拒绝构建', function () {
+  const previous = process.env.YUANHUB_VERSION
+  try {
+    process.env.YUANHUB_VERSION = '9.8.7-beta.1'
+    assert.equal(readProductVersion(), '9.8.7-beta.1')
+    process.env.YUANHUB_VERSION = '../../wrong'
+    assert.throws(() => readProductVersion(), /Invalid YUANHUB_VERSION/)
+  } finally {
+    if (previous === undefined) delete process.env.YUANHUB_VERSION
+    else process.env.YUANHUB_VERSION = previous
+  }
 })
