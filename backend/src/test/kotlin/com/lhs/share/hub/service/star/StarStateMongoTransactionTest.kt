@@ -12,6 +12,7 @@ import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
 import com.lhs.share.hub.repository.OperatorCurrentRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepositoryImpl
+import com.lhs.share.hub.repository.StarPlanInheritancePendingRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepositoryImpl
@@ -66,11 +67,12 @@ class StarStateMongoTransactionTest {
         StarLoadoutCurrentRepository::class.java,
         RepositoryFragments.just(StarLoadoutCurrentRepositoryImpl(template)),
     )
+    private val pending = factory.getRepository(StarPlanInheritancePendingRepository::class.java)
     private val points = factory.getRepository(StarRecoveryPointRepository::class.java)
     private val operators = mockk<OperatorCurrentRepository>()
     private val accounts = mockk<SubAccountService>()
     private val tx = TransactionTemplate(MongoTransactionManager(template.mongoDatabaseFactory))
-    private val stateService = StarStateService(states, points, loadouts, operators, accounts, tx)
+    private val stateService = StarStateService(states, points, pending, loadouts, operators, accounts, tx)
     private val loadoutService = StarLoadoutService(loadouts, states, accounts, stateService, tx)
     private val now = Instant.parse("2026-09-19T00:00:00Z")
     private val account = SubAccount(userId = "owner", accountId = "a", name = "test", game = "如鸢")
@@ -353,7 +355,7 @@ class StarStateMongoTransactionTest {
                     if (it != null) stateWritten = true
                 }
         }
-        val service = StarStateService(observedStates, points, loadouts, operators, accounts, tx)
+        val service = StarStateService(observedStates, points, pending, loadouts, operators, accounts, tx)
         val error = assertThrows(DataAccessException::class.java) {
             service.rebuild("owner", "a", rebuild(1, 1, "pre_ocr_rebuild", matchingOcrInventory()))
         }
@@ -658,7 +660,7 @@ class StarStateMongoTransactionTest {
             )
         }
         val racingLoadout = StarLoadoutService(loadouts, loadoutStates, accounts, stateService, tx)
-        val racingState = StarStateService(mutationStates, points, loadouts, operators, accounts, tx)
+        val racingState = StarStateService(mutationStates, points, pending, loadouts, operators, accounts, tx)
         val executor = Executors.newFixedThreadPool(2)
         try {
             val loadoutResult = executor.submit(

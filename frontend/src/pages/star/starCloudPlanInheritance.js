@@ -69,10 +69,12 @@ export function createCloudPlanInheritancePort({
     return { accountId, targetGeneration, sourceGeneration, sourceRecoveryPointId,
       sourceState: planSourceBusiness(field(raw, 'source_state', 'sourceState')) }
   }
-  async function resolve(action, source, snapshot, scope) {
+  async function resolve(action, source, snapshot, scope, adoptLocal) {
     assertScope(scope)
     if (source.accountId !== scope.accountId || source.targetGeneration !== scope.generation) fail()
+    if (action === 'confirm' && typeof adoptLocal !== 'function') throw new Error('请重新加载页面后继承计划。')
     const lease = coordinator.beginCompletion(scope)
+    let protectedPlan = false, writeStarted = false
     // During this lease ordinary autosaves cannot race the account-bound command.
     try {
       const raw = await readState(scope.accountId), current = currentBusiness(raw)
@@ -80,11 +82,20 @@ export function createCloudPlanInheritancePort({
       if (action === 'confirm' && (!sameInventory(snapshot,current) || Object.keys(current.planTargets).length)) fail()
       const body = { operation_id: operationId(), source_recovery_point_id: source.sourceRecoveryPointId,
         expected_generation: scope.generation, expected_revision: scope.revision }
-      if (action === 'confirm') body.plan_targets = clone(snapshot.planTargets)
+      if (action === 'confirm') {
+        body.plan_targets = clone(snapshot.planTargets)
+        lease.protectPlan({ account_id: scope.accountId, state: { ...raw, plan_targets: body.plan_targets,
+          revision: scope.revision + (Object.keys(body.plan_targets).length ? 1 : 0) } })
+        protectedPlan = true
+      }
       const send = () => (action === 'confirm' ? confirm : discard)(scope.accountId, body)
       let receipt
+      writeStarted = true
       try { receipt = await send() } catch (error) {
-        if (rejected(error)) throw error
+        if (rejected(error)) {
+          if (protectedPlan && error?.code !== 'request_identity_changed') { lease.cancelPlan(); protectedPlan = false }
+          throw error
+        }
         if (!lease.isCurrent()) fail()
         // One exact retry, with the same operation_id, can recover a committed response loss.
         receipt = await send()
@@ -97,10 +108,14 @@ export function createCloudPlanInheritancePort({
         field(receipt,'target_generation','targetGeneration') !== scope.generation || receipt.action !== action ||
         !Number.isInteger(receiptRevision) || !versionMatches(after,{...scope,revision:receiptRevision}) ||
         !sameInventory(saved,current) || stable(saved.planTargets) !== stable(action === 'confirm' ? snapshot.planTargets : current.planTargets)) fail()
-      lease.adopt({ account_id: scope.accountId, state: after })
+      if (action === 'confirm') await lease.completePlan({ account_id: scope.accountId, state: after }, adoptLocal)
+      else lease.adopt({ account_id: scope.accountId, state: after })
       return saved
+    } catch (error) {
+      if (protectedPlan || writeStarted && !rejected(error)) lease.fail(error)
+      throw error
     } finally { lease.release() }
   }
-  return { read, confirm: (source,snapshot,scope) => resolve('confirm',source,snapshot,scope),
+  return { read, confirm: (source,snapshot,scope,adoptLocal) => resolve('confirm',source,snapshot,scope,adoptLocal),
     discard: (source,scope) => resolve('discard',source,null,scope) }
 }

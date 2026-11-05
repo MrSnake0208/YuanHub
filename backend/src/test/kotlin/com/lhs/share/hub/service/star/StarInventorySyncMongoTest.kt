@@ -110,7 +110,7 @@ class StarInventorySyncMongoTest {
     private val operators = mockk<OperatorCurrentRepository>()
     private val events = mockk<AccountEventService>(relaxed = true)
     private val tx = TransactionTemplate(MongoTransactionManager(template.mongoDatabaseFactory))
-    private val stateService = StarStateService(states, points, loadouts, operators, accounts, tx)
+    private val stateService = StarStateService(states, points, pending, loadouts, operators, accounts, tx)
     private val mapper = jacksonObjectMapper().registerModule(
         JavaTimeModule(),
     ).setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)

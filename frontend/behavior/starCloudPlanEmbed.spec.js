@@ -14,7 +14,7 @@ afterEach(async()=>{
   await handle?.dispose(); coordinator?.leave(); database?.close(); root?.remove()
   handle=null; coordinator=null; database=null; vi.unstubAllGlobals()
 })
-async function setup() {
+async function setup({afterConfirm} = {}) {
   URL.createObjectURL ||= ()=>'blob:cloud-plan'
   URL.revokeObjectURL ||= ()=>{}
   window.scrollTo=()=>{}
@@ -31,19 +31,25 @@ async function setup() {
     expect(body.expected_generation).toBe(2);expect(body.expected_revision).toBe(7)
     if(action==='confirm'){state.plan_targets=clone(body.plan_targets);state.revision++}
     pending=null
+    if(action==='confirm') await afterConfirm?.()
     return {operation_id:body.operation_id,source_recovery_point_id:'source',target_generation:2,revision:state.revision,action}
   })
   const confirm=save('confirm'),discard=save('discard')
-  coordinator=createStarCloudCoordinator({selectedHostAccount:()=>account,getState:async()=>clone(state),storage:localStorage})
+  const patch=vi.fn(async(id,body)=>{
+    expect(id).toBe(account.accountId)
+    state={...state,inventory:clone(body.inventory),plan_targets:clone(body.plan_targets),experience:clone(body.experience),bag:clone(body.bag),revision:state.revision+1}
+    return {state:clone(state)}
+  })
+  coordinator=createStarCloudCoordinator({selectedHostAccount:()=>account,getState:async()=>clone(state),patchState:patch,storage:localStorage})
   const port=createCloudPlanInheritancePort({coordinator,readState:async()=>clone(state),readPending:async()=>clone(pending),confirm,discard})
   root=document.createElement('div');root.id='product-root';document.body.append(root)
   handle=mountYuanStar(root,{embedded:true,hostAccount:account,reviewView:'bag',cloudPlanInheritance:port,
-    getOcrRebuildScope:()=>coordinator.ocrRebuildScope()})
+    getOcrRebuildScope:()=>coordinator.ocrRebuildScope(),onBusinessStateCommitted:event=>coordinator.committed(event)})
   await handle.setHostAccount(account);await settle();await coordinator.enter(handle)
   handle.setActiveTab('review');await settle()
   database=await request(indexedDB.open('yuanstar-static'))
   const localPending=()=>request(database.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))
-  return {confirm,discard,state:()=>clone(state),pending:()=>clone(pending),localPending}
+  return {account,patch,confirm,discard,state:()=>clone(state),pending:()=>clone(pending),localPending}
 }
 async function openPlan() {
   handle.setReviewView('plan')
@@ -77,4 +83,49 @@ it('actual official embed discards cloud inheritance through its Host port witho
   await vi.waitFor(()=>expect(root.querySelector('[data-discard-pending-plan]')).toBeNull())
   expect(f.state()).toEqual(before);expect(f.pending()).toBeNull()
   expect(f.confirm).not.toHaveBeenCalled();expect(await f.localPending()).toBeUndefined()
+})
+
+for (const failure of ['IndexedDB quota', 'concurrent local revision']) it(`actual embed keeps confirmed plans fenced after ${failure} and safely reloads`,async()=>{
+  const f=await setup({afterConfirm:async()=>{
+    if(failure!=='concurrent local revision') return
+    const tx=database.transaction('workspaces','readwrite'),store=tx.objectStore('workspaces')
+    const record=await request(store.get(f.account.accountId))
+    record.revision++;record.snapshot.revision=record.revision
+    store.put(record)
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error)})
+  }})
+  const dialog=await openPlan()
+  let fault
+  if(failure==='IndexedDB quota') {
+    const original=IDBObjectStore.prototype.put
+    fault=vi.spyOn(IDBObjectStore.prototype,'put').mockImplementation(function(value,...args){
+      if(this.name==='workspaces' && Object.keys(value?.snapshot?.planTargets??{}).length)
+        throw new DOMException('injected quota failure','QuotaExceededError')
+      return original.call(this,value,...args)
+    })
+  }
+  document.querySelector('[data-inheritance-confirm]').click()
+  await vi.waitFor(()=>expect(coordinator.state().error).toBeTruthy())
+  expect(f.state().plan_targets).toEqual({'new.1':60})
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({})
+  expect(localStorage.getItem('yuanhub.star-plan-pending:'+f.account.accountId)).not.toBeNull()
+  const edited=await handle.getCloudBusinessSnapshot();edited.experience.orange++
+  expect(coordinator.committed({accountId:f.account.accountId,snapshot:edited})).toBe(false)
+  expect(await coordinator.retry()).toBe(false)
+  await settle();expect(f.patch).not.toHaveBeenCalled()
+  if(fault){
+    expect(await coordinator.enter(handle)).toBe(false)
+    expect(localStorage.getItem('yuanhub.star-plan-pending:'+f.account.accountId)).not.toBeNull()
+    fault.mockRestore()
+  }
+  // Match the page reload path: refresh the embed account context before cloud hydration.
+  await handle.setHostAccount(f.account)
+  expect(await coordinator.enter(handle)).toBe(true)
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({'new.1':60})
+  expect(localStorage.getItem('yuanhub.star-plan-pending:'+f.account.accountId)).toBeNull()
+  const recovered=await handle.getCloudBusinessSnapshot();recovered.experience.orange++
+  expect(coordinator.committed({accountId:f.account.accountId,snapshot:recovered})).toBe(true)
+  await vi.waitFor(()=>expect(f.patch).toHaveBeenCalledTimes(1))
+  expect(f.state().plan_targets).toEqual({'new.1':60})
+  expect(f.confirm).toHaveBeenCalledTimes(1)
 })

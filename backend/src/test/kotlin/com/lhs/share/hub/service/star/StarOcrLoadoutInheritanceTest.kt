@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 
 /** Pure matching checks; no database or transaction stand-ins. */
 class StarOcrLoadoutInheritanceTest {
-    private val service = StarStateService(mockk(), mockk(), mockk(), mockk(), mockk(), mockk())
+    private val service = StarStateService(mockk(), mockk(), mockk(), mockk(), mockk(), mockk(), mockk())
     private fun star(id: String, kind: String = "main", name: String = "天府", quality: String = "orange", level: Int = 40) =
         StarStateEntry(id, kind, name, quality, level)
 

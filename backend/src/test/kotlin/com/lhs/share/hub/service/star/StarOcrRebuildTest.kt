@@ -2,10 +2,12 @@ package com.lhs.share.hub.service.star
 
 import com.lhs.share.hub.controller.star.request.StarInventoryEntryRequest
 import com.lhs.share.hub.controller.star.request.StarStateRebuildRequest
+import com.lhs.share.hub.controller.star.request.StarStateRestoreRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
 import com.lhs.share.hub.repository.OperatorCurrentRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
+import com.lhs.share.hub.repository.StarPlanInheritancePendingRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.entity.OperatorCurrent
@@ -13,6 +15,8 @@ import com.lhs.share.hub.repository.entity.OperatorEntry
 import com.lhs.share.hub.repository.entity.StarLoadoutCurrent
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
 import com.lhs.share.hub.repository.entity.StarOperatorLoadout
+import com.lhs.share.hub.repository.entity.StarPlanInheritancePending
+import com.lhs.share.hub.repository.entity.StarPlanInheritanceResolution
 import com.lhs.share.hub.repository.entity.StarRecoveryPoint
 import com.lhs.share.hub.repository.entity.StarStateBag
 import com.lhs.share.hub.repository.entity.StarStateCurrent
@@ -40,6 +44,7 @@ import java.time.Instant
 /** Service dispatch and rollback signalling only; real atomicity belongs to TestMongo tests. */
 class StarOcrRebuildTest {
     private val states = mockk<StarStateCurrentRepository>()
+    private val pending = mockk<StarPlanInheritancePendingRepository>()
     private val points = mockk<StarRecoveryPointRepository>()
     private val loadouts = mockk<StarLoadoutCurrentRepository>()
     private val operators = mockk<OperatorCurrentRepository>()
@@ -55,7 +60,7 @@ class StarOcrRebuildTest {
             rollbacks++
         }
     })
-    private val service = StarStateService(states, points, loadouts, operators, accounts, tx)
+    private val service = StarStateService(states, points, pending, loadouts, operators, accounts, tx)
     private val old = StarStateCurrent(
         userId = "owner", accountId = "a", generation = 4, revision = 9,
         inventory = listOf(StarStateEntry("old1", "main", "天府", "orange", 40), StarStateEntry("old2", "main", "天府", "orange", 40)),
@@ -82,6 +87,7 @@ class StarOcrRebuildTest {
     )
 
     @BeforeEach fun setup() {
+        every { pending.findByUserIdAndAccountId(any(), any()) } returns null
         every { accounts.requireAccount("owner", "a") } returns SubAccount(userId = "owner", accountId = "a", name = "test", game = "如鸢")
         every { states.findByUserIdAndAccountId("owner", "a") } returns old
         every { loadouts.findByUserIdAndAccountId("owner", "a") } returns oldWear
@@ -105,6 +111,38 @@ class StarOcrRebuildTest {
         every { loadouts.replaceForGeneration("owner", "a", 3, 5, any(), any()) } answers {
             oldWear.copy(generation = 5, revision = 4, loadouts = arg(4))
         }
+    }
+
+    @Test fun `unresolved inheritance prevents every rebuild reason and restore inside the transaction`() {
+        every { pending.findByUserIdAndAccountId("owner", "a") } answers {
+            assertEquals(0, commits)
+            StarPlanInheritancePending("owner:a", "owner", "a", "source", 4, "scan")
+        }
+        for (reason in listOf("pre_ocr_rebuild", "import_data_safety", "restore_local")) {
+            val error = assertThrows(InventoryApiException::class.java) { service.rebuild("owner", "a", request(reason)) }
+            assertEquals("star_plan_inheritance_pending", error.code)
+        }
+        val error = assertThrows(InventoryApiException::class.java) {
+            service.restore("owner", "a", "source", StarStateRestoreRequest(4, 9))
+        }
+        assertEquals("star_plan_inheritance_pending", error.code)
+        assertEquals(0, commits)
+        assertEquals(4, rollbacks)
+        verify(exactly = 0) { states.replace(any(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { points.insert(any<StarRecoveryPoint>()) }
+        verify(exactly = 0) { loadouts.replaceForGeneration(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `resolved pending does not block the next generation`() {
+        for (action in listOf("confirm", "discard")) {
+            every { pending.findByUserIdAndAccountId("owner", "a") } returns StarPlanInheritancePending(
+                "owner:a", "owner", "a", "source", 4, "scan",
+                resolution = StarPlanInheritanceResolution("operation", action, "{}", 9),
+            )
+            assertEquals(5, service.rebuild("owner", "a", request()).state.generation)
+        }
+        assertEquals(2, commits)
+        assertEquals(0, rollbacks)
     }
 
     @Test fun `OCR dispatch uses normalized attributes submitted order and one generation write keeping historical IDs`() {

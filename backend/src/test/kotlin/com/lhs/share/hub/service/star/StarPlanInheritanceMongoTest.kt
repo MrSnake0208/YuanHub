@@ -11,6 +11,7 @@ import com.lhs.share.hub.controller.star.request.StarInventorySyncRequest
 import com.lhs.share.hub.controller.star.request.StarPlanInheritanceRequest
 import com.lhs.share.hub.controller.star.request.StarStatePatchRequest
 import com.lhs.share.hub.controller.star.request.StarStateRebuildRequest
+import com.lhs.share.hub.controller.star.request.StarStateRestoreRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceBagRequest
 import com.lhs.share.hub.controller.star.request.StarWorkspaceExperienceRequest
 import com.lhs.share.hub.repository.OperatorCurrentRepository
@@ -81,7 +82,7 @@ class StarPlanInheritanceMongoTest {
     private val operators = mockk<OperatorCurrentRepository>()
     private val events = mockk<AccountEventService>(relaxed = true)
     private val tx = TransactionTemplate(MongoTransactionManager(template.mongoDatabaseFactory))
-    private val stateService = StarStateService(states, points, loadouts, operators, accounts, tx)
+    private val stateService = StarStateService(states, points, pending, loadouts, operators, accounts, tx)
     private val mapper = jacksonObjectMapper().registerModule(
         JavaTimeModule(),
     ).setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
@@ -279,31 +280,56 @@ class StarPlanInheritanceMongoTest {
         assertTrue(points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", request.sourceRecoveryPointId)!!.inheritanceProtected)
     }
 
-    @Test fun changed_generation_cannot_confirm_or_discard_an_old_source() {
+    @Test fun pending_blocks_legacy_generation_changes_until_explicitly_resolved() {
         val request = preparePending()
         val before = stateService.current("owner", "a")
-        stateService.rebuild(
-            "owner",
-            "a",
+        val beforePoints = points.findAll().toSet()
+        val beforeLoadouts = loadouts.findByUserIdAndAccountId("owner", "a")
+        for (reason in listOf("pre_ocr_rebuild", "import_data_safety", "restore_local")) {
+            val error = assertThrows(InventoryApiException::class.java) {
+                stateService.rebuild(
+                    "owner", "a",
+                    StarStateRebuildRequest(
+                        before.generation, before.revision,
+                        before.inventory.map { StarInventoryEntryRequest("new-${it.instanceId}", it.kind, it.name, it.quality, it.level) },
+                        emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), reason,
+                    ),
+                )
+            }
+            assertEquals("star_plan_inheritance_pending", error.code)
+        }
+        val error = assertThrows(InventoryApiException::class.java) {
+            stateService.restore("owner", "a", request.sourceRecoveryPointId, StarStateRestoreRequest(before.generation, before.revision))
+        }
+        assertEquals("star_plan_inheritance_pending", error.code)
+        assertEquals(before, stateService.current("owner", "a"))
+        assertEquals(beforePoints, points.findAll().toSet())
+        assertEquals(beforeLoadouts, loadouts.findByUserIdAndAccountId("owner", "a"))
+        assertEquals(null, pending.findByUserIdAndAccountId("owner", "a")!!.resolution)
+        // Both source and original generation remain usable, rather than asserting an unrecoverable mismatch.
+        service().resolveInheritance("owner", "a", "confirm", request)
+        val confirmed = stateService.current("owner", "a")
+        val restored = stateService.restore("owner", "a", request.sourceRecoveryPointId, StarStateRestoreRequest(confirmed.generation, confirmed.revision))
+        assertEquals(confirmed.generation + 1, restored.state.generation)
+    }
+
+    @Test fun discarded_pending_allows_legacy_rebuild_and_the_next_structured_scan() {
+        val command = preparePending().copy(planTargets = null)
+        service().resolveInheritance("owner", "a", "discard", command)
+        val before = stateService.current("owner", "a")
+        val rebuilt = stateService.rebuild(
+            "owner", "a",
             StarStateRebuildRequest(
-                before.generation,
-                before.revision,
+                before.generation, before.revision,
                 before.inventory.map { StarInventoryEntryRequest(it.instanceId, it.kind, it.name, it.quality, it.level) },
-                emptyMap(),
-                StarWorkspaceExperienceRequest(0, 525, 91),
-                StarWorkspaceBagRequest(3),
-                "import_data_safety",
+                emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), "import_data_safety",
             ),
         )
-        val current = stateService.current("owner", "a")
-        for (action in listOf("confirm", "discard")) {
-            assertThrows(InventoryApiException::class.java) {
-                service().resolveInheritance("owner", "a", action, if (action == "confirm") request else request.copy(planTargets = null))
-            }
-        }
-        assertEquals(current, stateService.current("owner", "a"))
-        assertEquals(null, pending.findByUserIdAndAccountId("owner", "a")!!.resolution)
-        assertTrue(points.findByUserIdAndAccountIdAndRecoveryPointId("owner", "a", request.sourceRecoveryPointId)!!.inheritanceProtected)
+        assertEquals(before.generation + 1, rebuilt.state.generation)
+        val batch = request()
+        val synced = service().sync("owner", "a", batch)
+        assertEquals(rebuilt.state.generation + 1, synced.generation)
+        assertEquals(synced, service().sync("owner", "a", batch))
     }
 
     @Test fun failure_after_unpin_rolls_back_plans_resolution_and_protection_together() {

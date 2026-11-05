@@ -13,7 +13,7 @@ function setup() {
       plan_targets:[{instance_id:'old.1',target_level:60}],experience:{orange:0,purple:0,white:0},bag:{current_count:1,capacity:500}}}
   const coordinator={
     ocrRebuildScope:()=>clone(scope),
-    beginCompletion:()=>({isCurrent:()=>active,adopt:reply=>{adopted.push(reply);scope.revision=reply.state.revision},release:()=>{released++}})
+    beginCompletion:()=>({isCurrent:()=>active,adopt:reply=>{adopted.push(reply);scope.revision=reply.state.revision},protectPlan:()=>{},cancelPlan:()=>{},fail:()=>{},completePlan:async(reply,adoptLocal)=>{await adoptLocal(snapshot());adopted.push(reply);scope.revision=reply.state.revision},release:()=>{released++}})
   }
   const send=action=>async(account,body)=>{
     commands.push({account,body:clone(body),action})
@@ -37,7 +37,7 @@ test('cloud source maps typed backend plan values and read/later sends no mutati
 })
 test('confirm sends account source generation revision and only targets then adopts matching readback',async()=>{
   const f=setup(),port=createCloudPlanInheritancePort(f.deps),source=await port.read(f.scope())
-  assert.deepEqual(await port.confirm(source,snapshot(),f.scope()),snapshot())
+  assert.deepEqual(await port.confirm(source,snapshot(),f.scope(),async()=>{}),snapshot())
   assert.equal(f.commands.length,1)
   assert.deepEqual(f.commands[0].body,{operation_id:'11111111-1111-4111-8111-111111111111',source_recovery_point_id:'point',
     expected_generation:2,expected_revision:7,plan_targets:{new1:60}})
@@ -57,7 +57,7 @@ test('lost confirm response retries the same operation and never repeats a state
     f.commands.push({account:args[0],body:clone(args[1]),action:'retry'});return receipt
   }
   const port=createCloudPlanInheritancePort(f.deps),source=await port.read(f.scope())
-  await port.confirm(source,snapshot(),f.scope())
+  await port.confirm(source,snapshot(),f.scope(),async()=>{})
   assert.equal(f.state().revision,8)
   assert.deepEqual(f.commands[0].body,f.commands[1].body)
 })
@@ -76,7 +76,7 @@ test('account switch before request prevents the old account command',async()=>{
   const f=setup(),port=createCloudPlanInheritancePort(f.deps),source=await port.read(f.scope()),scope=f.scope()
   f.deps.readState=async()=>{f.switchAccount();return clone(f.state())}
   const switched=createCloudPlanInheritancePort(f.deps)
-  await assert.rejects(switched.confirm(source,snapshot(),scope),/已变化/)
+  await assert.rejects(switched.confirm(source,snapshot(),scope,async()=>{}),/已变化/)
   assert.equal(f.commands.length,0);assert.equal(f.adopted.length,0);assert.equal(f.released(),1)
 })
 test('explicit conflict is not retried or adopted and incoming inventory cannot change',async()=>{
@@ -84,8 +84,8 @@ test('explicit conflict is not retried or adopted and incoming inventory cannot 
   f.deps.confirm=async()=>{sends++;throw Object.assign(new Error('conflict'),{status:409})}
   const port=createCloudPlanInheritancePort(f.deps),source=await port.read(f.scope())
   const wrong=snapshot();wrong.inventory[0].level=50
-  await assert.rejects(port.confirm(source,wrong,f.scope()),/已变化/);assert.equal(sends,0)
-  await assert.rejects(port.confirm(source,snapshot(),f.scope()),/conflict/)
+  await assert.rejects(port.confirm(source,wrong,f.scope(),async()=>{}),/已变化/);assert.equal(sends,0)
+  await assert.rejects(port.confirm(source,snapshot(),f.scope(),async()=>{}),/conflict/)
   assert.equal(sends,1);assert.equal(f.adopted.length,0)
 })
 test('malformed source targets cannot be silently coerced into empty plans',()=>{
@@ -101,15 +101,87 @@ test('real coordinator adopts confirmation once and the resolved source is not o
     getState:async()=>clone(f.state()),
     storage:{getItem:key=>storageValues.get(key)??null,setItem:(key,value)=>storageValues.set(key,value),removeItem:key=>storageValues.delete(key)}
   })
-  const handle={getCloudBusinessSnapshot:async()=>({...snapshot(),planTargets:{}}),applyCloudBusinessSnapshot:async()=>{}}
+  let local={...snapshot(),planTargets:{}}
+  const handle={getCloudBusinessSnapshot:async()=>clone(local),applyCloudBusinessSnapshot:async next=>{local=clone(next)}}
   assert.equal(await coordinator.enter(handle),true)
   const port=createCloudPlanInheritancePort({...f.deps,coordinator})
   const scope=coordinator.ocrRebuildScope(),source=await port.read(scope)
-  await port.confirm(source,snapshot(),scope)
+  await port.confirm(source,snapshot(),scope,async saved=>{local=clone(saved)})
   assert.equal(coordinator.state().writer.state().revision,8)
   assert.deepEqual(coordinator.state().writer.state().base.planTargets,{new1:60})
   assert.equal(coordinator.state().replacing,false)
   assert.equal(await port.read(coordinator.ocrRebuildScope()),null)
   assert.equal(storageValues.size,0)
+  coordinator.leave()
+})
+
+for (const failure of ['QuotaExceededError', 'WorkspaceRevisionConflictError', 'silent non-adoption']) test(`confirmed plan stays fenced after local ${failure} until safe reload`, async () => {
+  const f=setup(),values=new Map(),patches=[]
+  let local={...snapshot(),planTargets:{}},failHydration=false
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)}
+  const handle={getCloudBusinessSnapshot:async()=>clone(local),applyCloudBusinessSnapshot:async next=>{
+    if(failHydration) throw new Error('IndexedDB still unavailable')
+    local=clone(next)
+  }}
+  const coordinator=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),getState:async()=>clone(f.state()),storage,
+    patchState:async(_id,body)=>{patches.push(body);return {state:clone(f.state())}}})
+  await coordinator.enter(handle)
+  const port=createCloudPlanInheritancePort({...f.deps,coordinator}),scope=coordinator.ocrRebuildScope(),source=await port.read(scope)
+  await assert.rejects(port.confirm(source,snapshot(),scope,async()=>{
+    assert.equal(coordinator.state().replacing,true)
+    assert.equal(coordinator.committed({accountId:'a',snapshot:local}),false)
+    if(failure!=='silent non-adoption') throw Object.assign(new Error(failure),{name:failure})
+  }))
+  assert.deepEqual(f.state().plan_targets,{new1:60})
+  assert.ok(values.has('yuanhub.star-plan-pending:a'))
+  assert.ok(coordinator.state().error)
+  assert.equal(coordinator.needsRetry(),true)
+  local.experience.orange++
+  assert.equal(coordinator.committed({accountId:'a',snapshot:local}),false)
+  assert.equal(await coordinator.retry(),false)
+  failHydration=true
+  assert.equal(await coordinator.enter(handle),false)
+  assert.ok(values.has('yuanhub.star-plan-pending:a'))
+  assert.equal(coordinator.committed({accountId:'a',snapshot:local}),false)
+  failHydration=false
+  assert.equal(await coordinator.enter(handle),true)
+  assert.deepEqual(local.planTargets,{new1:60})
+  assert.equal(values.has('yuanhub.star-plan-pending:a'),false)
+  assert.equal(coordinator.needsRetry(),false)
+  assert.equal(coordinator.committed({accountId:'a',snapshot:local}),true)
+  await new Promise(resolve=>setTimeout(resolve,0))
+  assert.equal(patches.length,0,'recovery never re-PATCHes the empty local plan')
+  coordinator.leave()
+})
+
+test('old cached embed cannot confirm without an awaited local adoption callback', async()=>{
+  const f=setup(),port=createCloudPlanInheritancePort(f.deps),scope=f.scope(),source=await port.read(scope)
+  await assert.rejects(port.confirm(source,snapshot(),scope),/重新加载/)
+  assert.equal(f.commands.length,0)
+})
+
+test('account switch during local adoption retains the original account fence',async()=>{
+  const f=setup(),values=new Map()
+  let selected='a',local={...snapshot(),planTargets:{}}
+  const b={...f.state(),account_id:'b',generation:1,revision:2}
+  const coordinator=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:selected}),
+    getState:async id=>clone(id==='a'?f.state():b),
+    storage:{getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)}})
+  const handle={getCloudBusinessSnapshot:async()=>clone(local),applyCloudBusinessSnapshot:async next=>{local=clone(next)}}
+  await coordinator.enter(handle)
+  const port=createCloudPlanInheritancePort({...f.deps,coordinator}),scope=coordinator.ocrRebuildScope(),source=await port.read(scope)
+  await assert.rejects(port.confirm(source,snapshot(),scope,async()=>{
+    selected='b'
+    assert.equal(await coordinator.enter(handle),true)
+  }),/账号/)
+  assert.equal(coordinator.state().accountId,'b')
+  assert.equal(coordinator.state().error,undefined)
+  assert.equal(coordinator.state().replacing,false)
+  assert.ok(values.has('yuanhub.star-plan-pending:a'))
+  assert.deepEqual(f.state().plan_targets,{new1:60})
+  selected='a'
+  assert.equal(await coordinator.enter(handle),true)
+  assert.deepEqual(local.planTargets,{new1:60})
+  assert.equal(values.has('yuanhub.star-plan-pending:a'),false)
   coordinator.leave()
 })

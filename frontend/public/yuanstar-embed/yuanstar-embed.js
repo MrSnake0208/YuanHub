@@ -25660,8 +25660,10 @@ async function yO() {
 			return a() && o.account.accountId === n && o.record.revision === i.record.revision && s?.sourceRecoveryPointId === e.sourceRecoveryPointId && s?.targetGeneration === e.targetGeneration;
 		}), c = await U.readLatestCommitted();
 		if (!a() || c.account.accountId !== n || c.record.revision !== i.record.revision || JSON.stringify(lC?.()) !== JSON.stringify(r)) throw Error("当前编辑或云端版本已变化，请重新预览。");
-		let l = Kn(o.old, c.record.snapshot, s, f, o.taskId), u = await U.applyRecoveredPlan(l, c.record.revision, (n) => t.confirm(e, n, r), !1, null, !0);
-		a() && (fC = null, gT(u), oE(Hn(s).replace("原恢复点仍保留", "旧来源恢复普通恢复点保留规则"), "info"));
+		let l = Kn(o.old, c.record.snapshot, s, f, o.taskId), u = c;
+		await t.confirm(e, Ge(l), r, async (e) => {
+			u = await U.applyRecoveredPlan(l, c.record.revision, async () => e, !1, null, !0);
+		}), a() && (fC = null, gT(u), oE(Hn(s).replace("原恢复点仍保留", "旧来源恢复普通恢复点保留规则"), "info"));
 	} catch (e) {
 		a() && (UC = e instanceof zn ? "" : e instanceof Error ? e.message : "云端计划保存未完成。");
 	} finally {

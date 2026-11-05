@@ -13,6 +13,7 @@ import com.lhs.share.hub.controller.star.response.StarStateCommandResponse
 import com.lhs.share.hub.controller.star.response.StarStateCurrentResponse
 import com.lhs.share.hub.repository.OperatorCurrentRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
+import com.lhs.share.hub.repository.StarPlanInheritancePendingRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
@@ -38,6 +39,7 @@ import java.util.UUID
 class StarStateService(
     private val states: StarStateCurrentRepository,
     private val recoveryPoints: StarRecoveryPointRepository,
+    private val pendingInheritance: StarPlanInheritancePendingRepository,
     private val loadouts: StarLoadoutCurrentRepository,
     private val operators: OperatorCurrentRepository,
     private val accounts: SubAccountService,
@@ -120,6 +122,7 @@ class StarStateService(
                 transactions.execute {
                     val current = states.findByUserIdAndAccountId(userId, accountId)
                     checkVersion(current, expectedGeneration, expectedRevision)
+                    requireResolvedInheritance(userId, accountId)
                     val oldLoadout = loadouts.findByUserIdAndAccountId(userId, accountId)
                     if (reason == "pre_ocr_rebuild") {
                         val oldIds = current?.inventory.orEmpty().map { it.instanceId }.toSet()
@@ -202,6 +205,7 @@ class StarStateService(
                 transactions.execute {
                     val current = states.findByUserIdAndAccountId(userId, accountId)
                     checkVersion(current, expectedGeneration, expectedRevision)
+                    requireResolvedInheritance(userId, accountId)
                     val target = recoveryPoints.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, pointId)
                         ?: throw InventoryApiException(HttpStatus.NOT_FOUND, "star_recovery_point_not_found", "Recovery point not found")
                     val now = Instant.now()
@@ -229,6 +233,14 @@ class StarStateService(
                     )
                 },
             )
+        }
+    }
+
+    // Read in the same transaction as the generation CAS write. A competing scan
+    // creates its pending slot atomically with that state write, so it cannot slip past this guard.
+    private fun requireResolvedInheritance(userId: String, accountId: String) {
+        if (pendingInheritance.findByUserIdAndAccountId(userId, accountId)?.let { it.resolution == null } == true) {
+            throw InventoryApiException(HttpStatus.CONFLICT, "star_plan_inheritance_pending", "旧养成计划仍待继承，请先继承或明确放弃，再替换或恢复背包")
         }
     }
 
