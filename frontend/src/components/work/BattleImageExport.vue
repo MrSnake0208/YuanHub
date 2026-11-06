@@ -17,7 +17,7 @@
     <div class="battle-export-footer">
       <div class="battle-export-format"><Image :size="16" aria-hidden="true" /><span>PNG · 1440px <small>{{ kind === 'team' ? '五人配队图' : '全部回合自动分段' }}</small></span><a class="battle-layout-jump" href="#battle-editor">返回编辑</a></div>
       <div class="battle-export-actions">
-        <button class="battle-primary" type="button" :disabled="busy" @click="generate"><Download :size="17" aria-hidden="true" />{{ busy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}</button>
+        <button v-if="showGenerateButton" class="battle-primary" type="button" :disabled="busy" @click="generate"><Download :size="17" aria-hidden="true" />{{ busy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}</button>
         <button v-if="busy" type="button" @click="reset">取消生成</button>
       </div>
       <p v-if="busy" class="battle-hint" role="status">正在生成第 {{ images.length + 1 }} 张…</p>
@@ -41,9 +41,11 @@ import { ChevronLeft, ChevronRight, Download, Image, Minimize2, ZoomIn } from '@
 import BattleImageSheet from './BattleImageSheet.vue'
 import { battleImageError, buildBattleImageModel } from '../../utils/battleImages.js'
 import { renderBattleImage } from '../../utils/battleImageCapture.js'
-const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, roundIndex: { type: Number, default: 0 } })
+const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, roundIndex: { type: Number, default: 0 }, showGenerateButton: { type: Boolean, default: true } })
+const emit = defineEmits(['busy'])
 const busy = ref(false), error = ref(''), images = shallowRef([]), sheetData = shallowRef(null), sheet = ref(null)
-const measure = ref(null), liveSheet = ref(null), previewWidth = ref(500), previewHeight = ref(700), zoom = ref(false), previewPage = ref(0)
+watch(busy, value => emit('busy', value), { flush: 'sync' })
+const measure = ref(null), liveSheet = ref(null), previewWidth = ref(500), previewHeight = ref(700), zoom = ref(false), previewPage = ref(Math.floor(props.roundIndex / 5))
 const liveModel = computed(() => buildBattleImageModel(props.draft))
 const pageCount = computed(() => Math.max(1, Math.ceil(liveModel.value.rows.length / 5)))
 const previewRows = computed(() => liveModel.value.rows.slice(previewPage.value * 5, previewPage.value * 5 + 5))
@@ -107,6 +109,7 @@ async function generate() {
     if (seq === generation) { busy.value = false; sheetData.value = null }
   }
 }
+defineExpose({ generate })
 </script>
 
 <style scoped>

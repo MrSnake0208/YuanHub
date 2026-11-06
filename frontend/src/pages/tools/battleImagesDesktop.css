@@ -1,10 +1,9 @@
 @media (min-width: 768px) {
-  .battle-tool .battle-slot-art { height: 104px; }
-  .battle-tool .battle-editor-panel, .battle-tool .battle-export { min-width: 0; }
+  .battle-tool .battle-export { max-width: 1000px; margin-inline: auto; }
+  .battle-tool .battle-preview-viewport { max-height: 620px; }
 }
-@media (min-width: 1200px) {
-  .battle-tool .battle-layout-jump { display: none; }
-  .battle-tool .battle-workspace { grid-template-columns: minmax(320px, .9fr) minmax(0, 1.1fr); gap: 22px; }
-  .battle-tool .battle-export { position: sticky; top: 20px; }
-  .battle-tool .battle-slot-art { height: 66px; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .battle-tool .battle-star-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .battle-tool .battle-action-list > li { grid-template-columns: 70px minmax(0, 1fr) 110px; }
+  .battle-tool .battle-action-tools { grid-column: 2 / -1; justify-content: flex-end; }
 }

@@ -1,26 +1,42 @@
 @media (max-width: 767px) {
+  .page-battle-images .wrap { padding-inline: 12px; }
+  .page-battle-images .compact-tool-header > .wrap { padding-inline: 12px; }
+  .page-battle-images .compact-tool-actions { flex-basis: 100%; justify-content: flex-start; }
   .battle-tool { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
-  .battle-tool .battle-modes { gap: 20px; margin-bottom: 16px; }
-  .battle-tool .battle-modes button { font-size: 14px; }
-  .battle-tool .battle-meta, .battle-tool .battle-editor-body { padding: 16px; }
-  .battle-tool .battle-workspace { gap: 20px; }
-  .battle-tool .battle-slot-art { height: 60px; }
-  .battle-tool .battle-slot-card strong { font-size: 11px; }
-  .battle-tool .battle-team-strip { gap: 5px; }
-  .battle-tool .battle-record-identity { gap: 5px; }
-  .battle-tool .battle-record-portrait { width: 32px; height: 40px; }
-  .battle-tool .battle-record-member { grid-template-columns: minmax(80px, 1fr) minmax(0, 1.8fr); gap: 7px; }
-  .battle-tool .battle-record-pad { gap: 4px; }
-  .battle-tool .battle-local-note { align-items: flex-start; font-size: 11px; }
-  .battle-tool .battle-local-note svg { margin-top: 3px; }
-  .battle-tool .battle-draft-tools > span { flex-basis: 100%; }
-  .battle-tool .battle-draft-tools > button { flex: 1; }
-  .battle-tool .battle-account-context > .battle-hint { flex-basis: 100%; margin: 0; }
-}
-@media (max-width: 360px) {
-  .battle-tool .battle-meta, .battle-tool .battle-editor-body { padding: 12px; }
-  .battle-tool .battle-record-portrait { display: none; }
-  .battle-tool .battle-record-member { grid-template-columns: minmax(52px, .8fr) minmax(0, 2.2fr); }
-  .battle-tool .battle-step-editor > summary span { display: none; }
-  .battle-tool .battle-step-editor > summary > svg { margin-left: auto; }
+  .battle-tool .compact-tool-heading h1 { font-size: 21px; }
+  .battle-tool .battle-save-status { width: 100%; font-size: 11px; }
+  .battle-tool .battle-meta { flex-wrap: wrap; gap: 8px; padding-block: 12px; }
+  .battle-tool .battle-title-field { flex-basis: 100%; }
+  .battle-tool .battle-title-field input { font-size: 20px; }
+  .battle-tool .battle-author-field { width: 100%; }
+  .battle-tool .battle-modes { gap: 8px; }
+  .battle-tool .battle-modes > button { padding-inline: 8px; font-size: 14px; }
+  .battle-tool .battle-modes > .battle-account-import { font-size: 11px; padding-inline: 6px; }
+  .battle-tool .battle-account-context { gap: 4px 8px; }
+  .battle-tool .battle-account-context > .battle-hint { flex-basis: 100%; margin: 4px 0; font-size: 11px; }
+  .battle-tool .battle-matrix { min-width: 700px; }
+  .battle-tool .battle-matrix th:first-child { position: sticky; left: 0; z-index: 1; width: 80px; background: var(--cream); box-shadow: 1px 0 var(--battle-border); font-size: 12px; }
+  .battle-tool .battle-action-matrix { min-width: 820px; }
+  .battle-tool .battle-action-matrix thead th:last-child { width: 140px; }
+  .battle-tool .battle-member-button { flex-direction: column; text-align: center; gap: 6px; }
+  .battle-tool .battle-slot-art { height: 56px; width: 44px; }
+  .battle-tool .battle-inline-editor { padding: 14px 12px; }
+  .battle-tool .battle-picker-toolbar { align-items: stretch; }
+  .battle-tool .battle-search { flex-basis: 100%; }
+  .battle-tool .battle-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 330px; }
+  .battle-tool .battle-picker-grid > button { padding-inline: 3px; }
+  .battle-tool .battle-picker-grid img { height: 58px; width: 48px; }
+  .battle-tool .battle-custom-name { align-items: stretch; flex-direction: column; }
+  .battle-tool .battle-custom-name label { max-width: none; }
+  .battle-tool .battle-star-slots { grid-template-columns: 1fr; }
+  .battle-tool .battle-star-slots fieldset { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .battle-tool .battle-recorder-context > label { flex: 1; min-width: 100px; }
+  .battle-tool .battle-action-list > li { grid-template-columns: 65px minmax(0, 1fr); gap: 10px; }
+  .battle-tool .battle-action-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 4px; }
+  .battle-tool .battle-action-target { grid-column: 1; min-width: 90px; }
+  .battle-tool .battle-action-tools { justify-content: flex-end; }
+  .battle-tool .battle-add-action > span { flex-basis: 100%; }
+  .battle-tool .battle-add-action > label { margin-left: 0; flex-basis: 100%; margin-top: 8px; }
+  .battle-tool .battle-round-toolbar > span { margin-left: 0; }
+  .battle-tool .battle-draft-menu > summary { font-size: 12px; }
 }
