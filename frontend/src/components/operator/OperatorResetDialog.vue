@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="modal-mask is-raised reset-mask" :style="viewportStyle" @click.self="close">
+    <div class="modal-mask is-raised reset-mask" :style="viewportStyle">
       <section ref="panel" class="reset-panel" :class="{ 'is-short': shortViewport }" role="dialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-help" :aria-busy="busy" tabindex="-1" @focusin="revealFocusedControl">
         <header class="reset-header">
           <button v-if="view === 'undo' || view === 'history' && (!historyOnly || pending || resultRecord)" type="button" class="icon-button" :aria-label="view === 'undo' ? '返回重置记录' : pending ? '返回原操作' : resultRecord ? '返回操作结果' : '返回重置核对'" :disabled="busy" @click="back"><ArrowLeft aria-hidden="true" /></button>

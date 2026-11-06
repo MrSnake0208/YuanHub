@@ -102,7 +102,7 @@
     </main>
 
     <Teleport to="body">
-      <div v-if="editing" class="modal-mask" @click.self="closeEditor">
+      <div v-if="editing" class="modal-mask">
         <div ref="editorPanel" class="modal access-modal" role="dialog" aria-modal="true" aria-labelledby="access-editor-title" tabindex="-1">
           <div class="modal-head">
             <h2 id="access-editor-title">{{ form.userName || '新增反馈授权' }}</h2>

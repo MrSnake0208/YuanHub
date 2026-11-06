@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="modal-mask is-raised" @click.self="$emit('close')">
+    <div class="modal-mask is-raised">
       <div ref="panel" class="modal plan-modal" role="dialog" aria-modal="true" aria-labelledby="cart-plans-title" tabindex="-1">
         <div class="modal-head">
           <h3 id="cart-plans-title">我的方案</h3>

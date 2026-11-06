@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body" :disabled="!compact">
-    <div v-show="!compact || open" :class="compact ? 'cart-receipt-mask' : 'cart-receipt-column'" @click.self="close">
+    <div v-show="!compact || open" :class="compact ? 'cart-receipt-mask' : 'cart-receipt-column'">
       <div ref="panel" :class="compact ? 'cart-receipt-drawer' : 'cart-receipt-desktop'"
         :role="compact ? 'dialog' : undefined" :aria-modal="compact ? 'true' : undefined"
         :aria-label="compact ? '购物清单' : undefined" :tabindex="compact ? -1 : undefined">

@@ -1,7 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="box-viewer-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle"
-      @pointerdown="backdropPressed = $event.target === $event.currentTarget" @click.self="onBackdrop">
+    <div v-if="open" class="box-viewer-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
       <section id="operator-box-viewer" ref="panel" class="box-viewer-dialog" :class="{ 'has-results': status !== 'input' }"
         role="dialog" aria-modal="true" aria-labelledby="box-viewer-title" tabindex="-1" @focusin="revealFocusedControl">
         <header class="box-viewer-header">
@@ -25,16 +24,11 @@ import { useModalViewport } from '../../composables/useModalViewport.js'
 const open = defineModel('open', { type: Boolean, default: false })
 const token = ref(''), status = ref('input')
 const panel = ref(null), closeButton = ref(null), scrollBody = ref(null)
-const backdropPressed = ref(false)
 // 短视口也只滚动内容，标题和关闭入口保持可见。
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, scrollBody)
 function close() {
   if (modalFocusState.panel && modalFocusState.panel !== panel.value) return
   open.value = false
-}
-function onBackdrop() {
-  if (backdropPressed.value) close()
-  backdropPressed.value = false
 }
 function onStatusChange(value) {
   status.value = value
@@ -44,7 +38,6 @@ useModalFocus(open, panel, { initialFocus: () => panel.value?.querySelector('inp
 watch(open, (visible, _, onCleanup) => {
   token.value = ''
   status.value = 'input'
-  backdropPressed.value = false
   if (!visible) return
   const body = document.body, root = document.documentElement
   const x = window.scrollX, y = window.scrollY

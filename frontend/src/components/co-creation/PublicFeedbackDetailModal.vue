@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-mask" role="presentation" @click.self="close">
+    <div v-if="open" class="modal-mask" role="presentation">
       <div ref="dialogPanel" class="modal public-detail-modal" role="dialog" aria-modal="true" aria-labelledby="public-detail-title" tabindex="-1">
         <div class="modal-head">
           <div>

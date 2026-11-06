@@ -18,7 +18,7 @@
       <slot name="actions" />
     </div>
   </div>
-  <dialog ref="dialog" class="plan-dialog" aria-labelledby="plan-editor-title" @click="onBackdrop" @close="resetTransientState">
+  <dialog ref="dialog" class="plan-dialog" aria-labelledby="plan-editor-title" @close="resetTransientState">
     <form class="plan-dialog-shell" :class="{ 'is-adding': addingMembers }" @submit.prevent="save">
       <header class="plan-dialog-head">
         <div class="plan-dialog-identity">
@@ -263,11 +263,6 @@ function save() {
 async function requestDelete() { confirmingDelete.value = true; await nextTick(); deleteConfirm.value?.focus() }
 function confirmDelete() { emit('remove', () => dialog.value.close()) }
 function resetTransientState() { confirmingDelete.value = false; filtersOpen.value = false }
-function onBackdrop(event) {
-  if (event.target !== dialog.value) return
-  const box = dialog.value.getBoundingClientRect()
-  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.value.close()
-}
 watch(() => props.accountId, () => { closeSwitcher(); dialog.value?.close() })
 onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPointerDown))

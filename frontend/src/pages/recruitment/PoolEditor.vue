@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open && pool" class="modal-mask" @click.self="close">
+    <div v-if="open && pool" class="modal-mask">
       <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging, 'is-header-compact': headerScrolled && !progressExpanded && !screenshotMode, 'is-progress-expanded': progressExpanded, 'is-screenshot': screenshotMode, 'is-choosing-agent': choosingAgent }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
         <header class="editor-header">
           <div class="editor-title">

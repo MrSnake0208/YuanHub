@@ -140,7 +140,7 @@
     </main>
 
     <Teleport to="body">
-      <div v-if="showNewForm" class="modal-mask feedback-new-mask" :style="newFormViewportStyle" role="presentation" @click.self="closeNewFeedback">
+      <div v-if="showNewForm" class="modal-mask feedback-new-mask" :style="newFormViewportStyle" role="presentation">
         <div ref="newFormPanel" class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" tabindex="-1" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
             <div>

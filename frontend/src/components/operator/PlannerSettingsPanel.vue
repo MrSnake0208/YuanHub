@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="planner-settings-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="requestClose">
+    <div v-if="open" class="planner-settings-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
       <section ref="panel" class="planner-settings-panel" role="dialog" aria-modal="true" :aria-labelledby="titleId" :aria-describedby="description ? descriptionId : undefined" tabindex="-1" @focusin="revealFocusedControl">
         <header class="settings-panel-heading">
           <div><h3 :id="titleId" ref="heading" tabindex="-1">{{ title }}</h3><p v-if="description" :id="descriptionId">{{ description }}</p></div>

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="draft" class="calendar-private-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="state.close">
+    <div v-if="draft" class="calendar-private-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
       <section ref="panel" @focusin="revealFocusedControl" class="calendar-private-dialog" role="dialog" aria-modal="true" aria-labelledby="private-item-title" tabindex="-1" :aria-busy="draft.busy">
         <header>
           <h2 id="private-item-title">{{ draft.record ? '编辑私人事项' : '添加私人事项' }}</h2>

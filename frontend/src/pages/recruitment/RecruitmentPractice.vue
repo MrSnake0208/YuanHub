@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="!selected" class="modal-mask is-raised" @click.self="$emit('close')">
+    <div v-if="!selected" class="modal-mask is-raised">
       <section ref="panel" class="practice-panel" role="dialog" aria-modal="true" aria-labelledby="practice-title" tabindex="-1">
         <header><div><h2 id="practice-title">练习 · 不会保存到你的账号</h2><p>这是临时示例。先点下面示例卡池的「记一笔」，再按提示操作。</p></div><button type="button" @click="$emit('close')">关闭练习</button></header>
         <RecruitmentTimeline :pools="[pool]" :catalog="catalog" :agents="agents" :pool-summaries="summaries" guide-active @select="selected = true" />

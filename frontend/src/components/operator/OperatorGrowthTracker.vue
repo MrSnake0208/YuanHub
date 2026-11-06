@@ -514,14 +514,14 @@
         </div>
         <button v-if="scheduleSaveStatus === 'error'" type="button" class="planner-save-retry" @click="recover('schedule')">重试</button>
       </div>
-      <dialog ref="scheduleActionDialog" class="tracker-remove-dialog schedule-action-dialog" aria-labelledby="schedule-action-title" aria-describedby="schedule-action-description" @cancel.prevent="closeScheduleAction" @click="event => { if (event.target === scheduleActionDialog) { const box = scheduleActionDialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeScheduleAction() } }">
+      <dialog ref="scheduleActionDialog" class="tracker-remove-dialog schedule-action-dialog" aria-labelledby="schedule-action-title" aria-describedby="schedule-action-description" @cancel.prevent="closeScheduleAction">
         <div class="tracker-remove-dialog-head"><div><span class="section-kicker">日程操作</span><h3 id="schedule-action-title">{{ scheduleActionTitle }}</h3></div><button type="button" class="tracker-dialog-close" aria-label="关闭" @click="closeScheduleAction"><X :size="17" aria-hidden="true" /></button></div>
         <div class="tracker-remove-dialog-body"><Info :size="18" aria-hidden="true" /><p id="schedule-action-description">{{ scheduleActionDescription }}</p></div>
         <p v-if="scheduleAction === 'reset' && planError" class="tracker-remove-dialog-error" role="alert">{{ planError }}</p>
         <div class="tracker-remove-dialog-actions"><button type="button" class="tracker-dialog-button ghost" autofocus @click="closeScheduleAction">取消</button><button type="button" class="tracker-dialog-button primary" :disabled="scheduleAction === 'reset' && scheduleActionBlocked" @click="confirmScheduleAction">{{ scheduleAction === 'reset' ? '确认从今天重新规划' : scheduleActionTitle }}</button></div>
       </dialog>
       <Transition name="tracker-dialog">
-        <div v-if="removePromptRow" class="tracker-remove-dialog-mask" @click.self="closeRemovePrompt">
+        <div v-if="removePromptRow" class="tracker-remove-dialog-mask">
           <div class="tracker-remove-dialog" role="dialog" aria-modal="true" aria-labelledby="tracker-remove-dialog-title" @keydown.esc.prevent="closeRemovePrompt">
             <div class="tracker-remove-dialog-head">
               <div>

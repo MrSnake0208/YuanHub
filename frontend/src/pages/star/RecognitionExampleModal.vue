@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="items.length || info" class="modal-mask is-raised recognition-example-mask" @click.self="emit('close')">
+    <div v-if="items.length || info" class="modal-mask is-raised recognition-example-mask">
       <section ref="panel" class="recognition-example-panel" :class="{ 'is-info': info }" role="dialog" aria-modal="true" aria-labelledby="recognition-example-title" tabindex="-1">
         <header>
           <h2 id="recognition-example-title">{{ info?.title || current.title }}</h2>

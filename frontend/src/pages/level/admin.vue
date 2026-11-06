@@ -184,7 +184,7 @@
       </section>
 
       <Teleport to="body">
-        <div v-if="editing" class="editor-mask" role="presentation" @click.self="closeEditor">
+        <div v-if="editing" class="editor-mask" role="presentation">
           <section class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="level-editor-title">
             <header class="editor-head">
               <div><span class="eyebrow">LEVEL CATALOG</span><h2 id="level-editor-title">{{ isNew ? '新建关卡' : '编辑关卡' }}</h2><p>{{ isNew ? '新关卡将自动分配编号。' : '保存前会检查是否有他人更新；冲突时请先核对最新内容。' }}</p></div>

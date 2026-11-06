@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="dialog">
-      <div v-if="state.visible" class="dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="onBackdrop">
+      <div v-if="state.visible" class="dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
         <div ref="dialogEl" @focusin="revealFocusedControl" class="dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message" tabindex="-1">
           <div class="dialog-head">
             <span id="app-dialog-title" class="dialog-title">
@@ -115,10 +115,6 @@ function onChoice(value) {
   dialog._choose(value)
 }
 function onCancel() {
-  dialog._cancel()
-}
-function onBackdrop() {
-  // 点遮罩关闭（alert / confirm / choice / prompt 共用，按模式结算结果）
   dialog._cancel()
 }
 

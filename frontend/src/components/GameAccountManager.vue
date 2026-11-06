@@ -42,7 +42,7 @@
     </template>
     <Teleport to="body">
       <div v-if="mode" class="modal-mask account-panel-mask" :class="{ 'is-more': mode === 'more' && presentation === 'page', 'is-manager-dialog': presentation === 'dialog' }"
-        :style="viewportStyle" @click.self="closePanel">
+        :style="viewportStyle">
         <section :id="panelId" ref="panel" class="modal account-panel" :class="{ 'more-panel': mode === 'more' && presentation === 'page' }"
           :style="mode === 'more' && desktop && presentation === 'page' ? menuPosition : undefined" role="dialog" aria-modal="true"
           :aria-labelledby="panelId + '-title'" :aria-busy="busy" tabindex="-1">

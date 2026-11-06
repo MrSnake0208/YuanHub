@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="relationship-mask" :style="viewportStyle" @click.self="close">
+    <div class="relationship-mask" :style="viewportStyle">
       <form ref="panel" class="relationship-editor" :class="{ 'is-short': shortViewport }" role="dialog" aria-modal="true" aria-labelledby="relationship-title" :aria-busy="saving" tabindex="-1" @submit.prevent="$emit('save')" @focusin="revealFocusedControl">
         <header><h2 id="relationship-title">{{ name }} · 编辑进度</h2><button ref="closeButton" type="button" :disabled="saving" aria-label="关闭进度编辑" @click="close"><X :size="20" aria-hidden="true" /></button></header>
         <div class="relationship-tabs" role="group" aria-label="编辑项目">

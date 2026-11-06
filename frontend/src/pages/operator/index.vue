@@ -2447,7 +2447,6 @@
         class="editor-mask"
         :class="{ 'is-short-viewport': editorShortViewport }"
         :style="editorViewportStyle"
-        @click.self="closeEditor"
         @keydown.esc="closeEditor"
       >
         <div

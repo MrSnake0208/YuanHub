@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="modal-mask is-raised milestone-mask" @click.self="close">
+    <div class="modal-mask is-raised milestone-mask">
       <section ref="panel" class="milestone-panel" role="dialog" aria-modal="true" aria-labelledby="milestone-title" aria-describedby="milestone-help" :aria-busy="busy" tabindex="-1">
         <header><h2 id="milestone-title">{{ entry.name || entry.id }} · 化极历程</h2><button class="close-button" type="button" :disabled="busy" @click="close">关闭<X :size="16" aria-hidden="true" /></button></header>
         <p id="milestone-help" class="intro">补录实际达成日期，查看各阶段耗时。</p>

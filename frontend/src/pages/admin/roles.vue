@@ -47,7 +47,7 @@
       </section>
 
       <Teleport to="body">
-        <div v-if="editor" class="modal-layer" role="presentation" @click.self="closeEditor">
+        <div v-if="editor" class="modal-layer" role="presentation">
           <section class="role-modal" role="dialog" aria-modal="true" aria-labelledby="role-editor-title">
             <header class="modal-head">
               <div><span class="eyebrow">ROLE BINDING</span><h2 id="role-editor-title">{{ editor.isNew ? '新增角色绑定' : '编辑管理员角色' }}</h2></div>

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="entry" class="disc-target-mask" @click.self="$emit('close')">
+    <div v-if="entry" class="disc-target-mask">
       <section ref="panel" class="disc-target-modal" role="dialog" aria-modal="true" aria-labelledby="disc-target-title" tabindex="-1">
         <header>
           <h3 id="disc-target-title">{{ entry.name }} · 命盘目标</h3>

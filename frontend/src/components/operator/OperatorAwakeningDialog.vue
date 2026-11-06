@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="modal-mask is-raised awakening-mask" @click.self="close">
+    <div v-if="visible" class="modal-mask is-raised awakening-mask">
       <section ref="panel" class="awakening-panel" role="dialog" aria-modal="true" aria-labelledby="awakening-title" aria-describedby="awakening-help" :aria-busy="pending" tabindex="-1">
         <h2 id="awakening-title">{{ entry.name }} · 记录已觉醒</h2>
         <p id="awakening-help">觉醒是五星后的可选阶段，未记录时按未觉醒计算。此处仅记录游戏内已完成的觉醒，不扣除材料。</p>

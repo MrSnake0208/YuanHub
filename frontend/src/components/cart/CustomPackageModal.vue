@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="show" class="modal-mask" @click.self="$emit('close')">
+    <div v-if="show" class="modal-mask">
       <div ref="panel" class="modal" role="dialog" aria-modal="true" aria-labelledby="cart-custom-title" tabindex="-1">
         <div class="modal-head">
           <h3 id="cart-custom-title">{{ editing ? '编辑自定义礼包' : '录入自定义礼包' }}</h3>

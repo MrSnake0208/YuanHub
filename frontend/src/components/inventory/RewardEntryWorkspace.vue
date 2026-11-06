@@ -72,7 +72,7 @@
 
     <Teleport v-if="!compactDaily" to="body">
       <Transition name="reward-dialog">
-        <div v-if="mode" class="reward-dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation" @click.self="requestClose">
+        <div v-if="mode" class="reward-dialog-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation">
           <section
             id="reward-entry-panel"
             ref="dialogEl"

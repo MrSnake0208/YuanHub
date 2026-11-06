@@ -8,7 +8,7 @@
       <button type="button" :disabled="!ready || !batchTag" @click="applyBatch(false)">移除标签</button>
     </div>
     <Teleport to="body" :disabled="!sheetOpen">
-    <div :class="{ 'organization-sheet-mask': sheetOpen }" :style="sheetOpen ? viewportStyle : undefined" @click.self="requestClose">
+    <div :class="{ 'organization-sheet-mask': sheetOpen }" :style="sheetOpen ? viewportStyle : undefined">
     <details :id="panelId" ref="panel" class="organization-settings" :class="{ 'organization-sheet': sheetOpen, 'is-short': sheetOpen && shortViewport }" :role="sheetOpen ? 'dialog' : undefined" :aria-modal="sheetOpen ? true : undefined" :aria-label="sheetOpen ? '分类设置' : undefined" :tabindex="sheetOpen ? -1 : undefined" @focusin="revealFocusedControl" @toggle="onToggle">
       <summary hidden>分类设置</summary>
       <header v-if="sheetOpen" class="organization-sheet-header">

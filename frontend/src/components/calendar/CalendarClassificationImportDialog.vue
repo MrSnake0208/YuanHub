@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="calendar-page calendar-import-mask" @click.self="close">
+    <div class="calendar-page calendar-import-mask">
       <section ref="panel" class="calendar-import-dialog" role="dialog" aria-modal="true" aria-labelledby="classification-import-title" tabindex="-1" :aria-busy="busy">
         <header class="calendar-import-head"><h2 id="classification-import-title" ref="heading" tabindex="-1">导入更新分类</h2><button type="button" :disabled="busy" @click="close">关闭</button></header>
         <div class="calendar-import-body">

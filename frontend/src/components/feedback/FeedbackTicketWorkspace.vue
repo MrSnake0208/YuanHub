@@ -84,7 +84,7 @@
     </footer>
 
     <Teleport to="body">
-      <div v-if="selectedItem" class="ticket-detail-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation" @click.self="$emit('close')">
+      <div v-if="selectedItem" class="ticket-detail-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" role="presentation">
         <section ref="detailPanel" @focusin="revealFocusedControl" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
           <header class="ticket-detail-head">
             <div>

@@ -10,6 +10,18 @@ function render(overrides = {}) {
   return mount(Picker, { attachTo: document.body, props: { accountId: 'a', plans: [plan], activePlan: plan, catalogEntries: [a, b], memberIds: new Set([a.id]), ...overrides } })
 }
 async function open(wrapper) { await wrapper.get('[aria-label="管理清单"]').trigger('click'); await flushPromises() }
+it('原生弹窗忽略外部点击并保留名称和成员草稿，明确关闭仍生效', async () => {
+  const wrapper = render(); await open(wrapper)
+  await wrapper.get('#plan-name-input').setValue('未保存名称')
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  await wrapper.get('dialog').trigger('click', { clientX: -100, clientY: -100 })
+  expect(wrapper.get('dialog').element.open).toBe(true)
+  expect(wrapper.get('#plan-name-input').element.value).toBe('未保存名称')
+  expect(wrapper.get('input[type="checkbox"]').element.checked).toBe(true)
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await wrapper.get('.plan-dialog-close').trigger('click')
+  expect(wrapper.get('dialog').element.open).toBe(false)
+})
 it.each(['custom', 'favorites'])('已有 %s 清单时，新建清单提示填写名称，填名后即可提交', async source => {
   const existing = { ...plan, source }
   const wrapper = render({ plans: [existing], activePlan: existing })

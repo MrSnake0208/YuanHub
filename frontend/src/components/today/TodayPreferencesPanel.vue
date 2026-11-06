@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-mask today-preferences-mask" @click.self="close">
+    <div v-if="open" class="modal-mask today-preferences-mask">
       <section ref="panel" class="today-preferences" role="dialog" aria-modal="true" aria-labelledby="today-preferences-title" aria-describedby="today-preferences-note" tabindex="-1" :aria-busy="state.loading || state.saving">
         <header class="preferences-heading">
           <h2 id="today-preferences-title">自定义今日一览</h2>

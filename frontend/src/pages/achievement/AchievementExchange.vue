@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="achievement-mask" :style="viewportStyle" @click.self="close">
+    <div v-if="open" class="achievement-mask" :style="viewportStyle">
       <section ref="panel" class="achievement-dialog" :class="{ 'is-short': shortViewport }" role="dialog" aria-modal="true" aria-labelledby="achievement-exchange-title" tabindex="-1" :aria-busy="working" @focusin="revealFocusedControl">
         <header><h2 id="achievement-exchange-title">导入与导出</h2><button type="button" :disabled="working" aria-label="关闭导入导出" @click="close"><X :size="18" aria-hidden="true" /></button></header>
         <div ref="scrollBody" class="achievement-dialog-body">

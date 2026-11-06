@@ -51,7 +51,7 @@ it('分组和当前行明确；点击整行原地更新唯一状态与持久化�
   expect(document.querySelector('.account-switch-panel a')).toBeNull()
   expect(document.querySelector('.switch-list').textContent).not.toMatch(/删除|改名|acc_/)
 })
-it('Escape、箭头、Home/End 和 Tab 焦点约束；点外部关闭', async () => {
+it('Escape、箭头、Home/End 和 Tab 焦点约束；点遮罩保持打开', async () => {
   const { wrapper } = await render(); await open(wrapper)
   option('a').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); expect(document.activeElement).toBe(option('b'))
   option('b').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); expect(document.activeElement).toBe(option('c'))
@@ -61,6 +61,8 @@ it('Escape、箭头、Home/End 和 Tab 焦点约束；点外部关闭', async ()
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
   expect(document.querySelector('[role=dialog]')).toBeNull(); expect(document.activeElement).toBe(wrapper.get('.context-selector').element)
   await open(wrapper); document.querySelector('.account-switch-mask').click(); await flushPromises()
+  expect(document.querySelector('[role=dialog]')).not.toBeNull()
+  document.querySelector('.switch-close').click(); await flushPromises()
   expect(document.querySelector('[role=dialog]')).toBeNull()
 })
 it('手机使用 Sheet，锁定滚动，实时断点变化和卸载恢复原滚动状态', async () => {

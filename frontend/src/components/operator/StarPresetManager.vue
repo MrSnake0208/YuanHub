@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="preset-overlay" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="cancel" @keydown.esc.prevent="cancel">
+    <div v-if="open" class="preset-overlay" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @keydown.esc.prevent="cancel">
       <section ref="panel" @focusin="revealFocusedControl" class="preset-modal" role="dialog" aria-modal="true" aria-label="管理星石预设">
         <header class="preset-header"><div><p>星石装配</p><h2>管理预设</h2><span>每套 1–3 颗；主星、辅星各最多 20 套。</span></div><button type="button" :disabled="saving" aria-label="关闭预设管理" @click="cancel"><X :size="16" aria-hidden="true" /></button></header>
         <div ref="scrollBody" class="preset-columns">

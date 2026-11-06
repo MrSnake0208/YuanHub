@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" ref="overlay" class="star-loadout-overlay" tabindex="-1" @click.self="$emit('request-close')" @keydown.esc.prevent="$emit('request-close')">
+    <div v-if="open" ref="overlay" class="star-loadout-overlay" tabindex="-1" @keydown.esc.prevent="$emit('request-close')">
       <section class="star-loadout-modal" role="dialog" aria-modal="true" aria-label="星石装配">
         <header class="star-loadout-header"><div class="star-loadout-title-line"><h2>星石装配</h2><p>{{ targetOperator?.name || '密探' }}<span v-if="targetOperator?.prof"> · {{ targetOperator.prof }}</span><span v-if="operatorSubProf"> · {{ operatorSubProf }}</span></p></div><button type="button" class="star-loadout-close" :disabled="saving" aria-label="关闭星石装配" @click="$emit('request-close')"><X :size="16" aria-hidden="true" /></button></header>
         <p v-if="error" class="star-loadout-error" role="alert">{{ error }}</p>

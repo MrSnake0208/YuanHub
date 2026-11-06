@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <!-- 保持管理器常驻，关闭弹窗不重置状态、引用或重复请求。 -->
-    <div v-show="open" class="operator-share-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @pointerdown="backdropPressed = $event.target === $event.currentTarget" @click.self="onBackdrop">
+    <div v-show="open" class="operator-share-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
       <section id="operator-share-dialog" ref="panel" class="operator-share-dialog" role="dialog" aria-modal="true" aria-labelledby="operator-share-title" aria-describedby="operator-share-account" tabindex="-1" @focusin="revealFocusedControl">
         <header class="operator-share-header">
           <div><h2 id="operator-share-title">分享当前账号</h2><p id="operator-share-account">{{ accountName }}</p></div>
@@ -63,16 +63,11 @@ defineEmits(['status-change', 'share-change'])
 const open = defineModel('open', { type: Boolean, default: false })
 const manager = ref(null)
 const mode = ref('link')
-const backdropPressed = ref(false)
 const panel = ref(null), closeButton = ref(null), scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, scrollBody)
 function close() {
   if (modalFocusState.panel && modalFocusState.panel !== panel.value) return
   open.value = false
-}
-function onBackdrop() {
-  if (backdropPressed.value) close()
-  backdropPressed.value = false
 }
 useModalFocus(open, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {

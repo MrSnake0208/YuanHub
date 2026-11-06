@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="capacity-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle" @click.self="close">
+    <div v-if="open" class="capacity-mask" :class="{ 'is-short-viewport': shortViewport }" :style="viewportStyle">
       <section ref="panel" class="capacity-dialog" role="dialog" aria-modal="true" :aria-labelledby="prefix + '-title'" :aria-describedby="prefix + '-help'" tabindex="-1" @focusin="revealFocusedControl">
         <header class="capacity-heading">
           <div><h2 :id="prefix + '-title'" ref="heading" tabindex="-1"><Calculator :size="26" aria-hidden="true" />修为人数试算</h2><p :id="prefix + '-help'">看看现有修为材料，还能支持多少位密探。</p></div>

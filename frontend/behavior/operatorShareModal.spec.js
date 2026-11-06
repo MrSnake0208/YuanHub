@@ -87,7 +87,7 @@ it('关闭后迟到状态照常更新，重新打开保持实例、链接及读�
   expect(api.setAccountShareScope).not.toHaveBeenCalled()
 })
 
-it('Escape、右上角和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗中', async () => {
+it('遮罩保持打开，Escape 和右上角关闭归还焦点与滚动锁，Tab 留在弹窗中', async () => {
   document.body.style.overflow = 'auto'
   document.documentElement.style.overflow = 'scroll'
   vi.spyOn(window, 'scrollY', 'get').mockReturnValue(320)
@@ -115,6 +115,8 @@ it('Escape、右上角和遮罩关闭归还焦点与滚动锁，Tab 留在弹窗
   expect(panel().isVisible()).toBe(true)
   await node('.operator-share-mask').trigger('pointerdown')
   await node('.operator-share-mask').trigger('click'); await flushPromises()
+  expect(panel().isVisible()).toBe(true)
+  await panel().get('[aria-label="关闭分享弹窗"]').trigger('click'); await flushPromises()
   expect(panel().isVisible()).toBe(false)
   expect(api.setAccountShareScope).not.toHaveBeenCalled()
   document.body.style.overflow = ''

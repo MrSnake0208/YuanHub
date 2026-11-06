@@ -30,7 +30,7 @@
         :conflict="trustState(editing).conflict" :conflict-sources="trustSourcesText(editing)" :resolve-trust="resolveTrust"
         @trust="draft.trust = $event" @rumors="draft.rumors = $event" @resolve="resolveTrust = $event" @save="saveDraft" @close="cancel" @reload="refresh" />
       <Teleport to="body">
-        <div v-if="backupOpen" class="relationship-backup-mask" :style="backupViewportStyle" @click.self="cancel">
+        <div v-if="backupOpen" class="relationship-backup-mask" :style="backupViewportStyle">
           <section ref="backupPanel" class="relationships relationship-backup-panel" :class="{ 'is-short': backupShortViewport }" role="dialog" aria-modal="true" aria-labelledby="relationship-backup-title" tabindex="-1" @focusin="revealBackupControl">
             <header><h2 id="relationship-backup-title">信赖与传闻备份</h2><button ref="backupClose" type="button" :disabled="saving" aria-label="关闭信赖备份" @click="cancel"><X :size="18" aria-hidden="true" /></button></header>
             <div ref="backupBody" class="relationships-exchange">

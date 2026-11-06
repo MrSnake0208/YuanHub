@@ -5,7 +5,6 @@
         v-if="betaCommunity.visible"
         class="community-mask"
         role="presentation"
-        @click.self="close"
       >
         <section
           ref="dialogEl"

@@ -96,7 +96,8 @@ it.each(['关闭按钮', '遮罩', 'Escape', '取消回复'])('管理员回复�
   else if (method === 'Escape') document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   else await wrapper.findAll('.feedback-reply-form .feedback-button').find(button => button.text() === '取消').trigger('click')
   await flushPromises()
-  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ cancelText: '继续编辑' }))
+  if (method === '遮罩') expect(dialog.confirm).not.toHaveBeenCalled()
+  else expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ cancelText: '继续编辑' }))
   expect(wrapper.get('.feedback-reply-form textarea').element.value).toBe('需要保留的回复')
   expect(media.items).toHaveLength(1)
   dialog.confirm.mockResolvedValue(true)
@@ -1203,7 +1204,7 @@ it('完成反馈须确认，成功后切到已完成列表并告知去向', asyn
   expect(wrapper.findAll('[role="tab"]').find(tab => tab.text() === '已完成').attributes('aria-selected')).toBe('true')
 })
 
-it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确认', async () => {
+it('遮罩不触发关闭，关闭按钮和 Esc 对文字与附件草稿使用放弃确认', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
   await wrapper.get('.page-header-action').trigger('click')
   await wrapper.get('[name="public-consent"]').setValue(true)
@@ -1216,7 +1217,12 @@ it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确�
   expect(wrapper.get('.feedback-modal .feedback-attachment-item').exists()).toBe(true)
   dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.modal-mask').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.feedback-modal textarea').element.value).toBe('草稿正文')
+  await wrapper.get('.feedback-modal').trigger('keydown', { key: 'Escape' }); await flushPromises()
+  expect(wrapper.find('.feedback-modal').exists()).toBe(true)
+  expect(wrapper.get('.feedback-modal .feedback-attachment-item').exists()).toBe(true)
+  dialog.confirm.mockResolvedValueOnce(true)
   await wrapper.get('.feedback-modal').trigger('keydown', { key: 'Escape' }); await flushPromises()
   expect(wrapper.find('.feedback-modal').exists()).toBe(false)
   await wrapper.get('.page-header-action').trigger('click')

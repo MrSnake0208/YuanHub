@@ -11,7 +11,7 @@
     <small v-if="disabled && disabledReason" class="switch-status" role="status">{{ disabledReason }}</small>
     <small v-if="failure" class="switch-error" role="alert">{{ failure }}</small>
     <Teleport to="body">
-      <div v-if="open" class="account-switch-mask" :class="{ 'is-desktop': desktop }" :style="desktop ? undefined : sheetViewport" @click.self="close">
+      <div v-if="open" class="account-switch-mask" :class="{ 'is-desktop': desktop }" :style="desktop ? undefined : sheetViewport">
         <section :id="panelId" ref="panel" class="account-switch-panel" :style="desktop ? position : sheetSize"
           role="dialog" aria-modal="true" :aria-labelledby="panelId + '-title'" tabindex="-1">
           <header><h2 :id="panelId + '-title'">{{ desktop ? (accounts.length > 1 ? '切换游戏账号' : '游戏账号') : '切换 BOX' }}</h2><button type="button" class="switch-close" aria-label="关闭游戏账号切换器" @click="close"><X :size="18" aria-hidden="true" /></button></header>

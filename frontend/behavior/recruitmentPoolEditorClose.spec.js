@@ -18,7 +18,7 @@ async function attemptClose(wrapper, via) {
 }
 afterEach(() => dialog._cancel())
 
-it.each(['button', 'mask', 'escape'])('%s关闭有修改时确认，取消保留输入，确认只关闭而不写入', async via => {
+it.each(['button', 'escape'])('%s关闭有修改时确认，取消保留输入，确认只关闭而不写入', async via => {
   const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(false)
   const wrapper = render()
   await wrapper.get('.remaining-field input').setValue('33')
@@ -30,6 +30,17 @@ it.each(['button', 'mask', 'escape'])('%s关闭有修改时确认，取消保留
   await attemptClose(wrapper, via)
   expect(wrapper.emitted('close')).toHaveLength(1)
   expect(wrapper.emitted('save')).toBeUndefined()
+})
+
+it('点击遮罩不关闭，也不弹出放弃草稿确认', async () => {
+  const confirm = vi.spyOn(dialog, 'confirm')
+  const wrapper = render()
+  await attemptClose(wrapper, 'mask')
+  await wrapper.get('.remaining-field input').setValue('33')
+  await attemptClose(wrapper, 'mask')
+  expect(confirm).not.toHaveBeenCalled()
+  expect(wrapper.emitted('close')).toBeUndefined()
+  expect(wrapper.get('.remaining-field input').element.value).toBe('33')
 })
 
 it('真实确认弹窗默认聚焦继续编辑，Esc只取消确认并保留卡池草稿', async () => {
@@ -90,6 +101,7 @@ it.each(['reopen', 'switch-pool', 'unmount', 'busy'])('确认不重复打开，%
   const confirm = vi.spyOn(dialog, 'confirm').mockReturnValue(answer.promise)
   const wrapper = render()
   await wrapper.get('.remaining-field input').setValue('33')
+  await attemptClose(wrapper, 'button')
   await attemptClose(wrapper, 'button')
   await attemptClose(wrapper, 'mask')
   expect(confirm).toHaveBeenCalledTimes(1)

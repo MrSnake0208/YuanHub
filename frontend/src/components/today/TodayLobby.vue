@@ -29,7 +29,7 @@
   </header>
 
   <Teleport to="body">
-    <div v-if="pickerOpen" class="modal-mask" @click.self="pickerOpen = false">
+    <div v-if="pickerOpen" class="modal-mask">
       <section ref="panel" class="duty-picker" role="dialog" aria-modal="true" aria-labelledby="duty-picker-title" aria-describedby="duty-picker-note" tabindex="-1">
         <header class="duty-picker-heading">
           <h2 id="duty-picker-title">更换值守密探</h2>

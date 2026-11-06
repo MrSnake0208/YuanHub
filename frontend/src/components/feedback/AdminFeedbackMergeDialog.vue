@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-mask is-raised" role="presentation" @click.self="close">
+    <div v-if="open" class="modal-mask is-raised" role="presentation">
       <div ref="panel" class="modal merge-dialog" role="dialog" aria-modal="true" aria-labelledby="merge-dialog-title" tabindex="-1">
         <div class="modal-head">
           <h2 id="merge-dialog-title">合并反馈</h2>

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="calendar-reminder-mask" @click.self="close">
+    <div v-if="visible" class="calendar-reminder-mask">
       <section ref="panel" class="calendar-reminder" role="dialog" aria-modal="true" aria-labelledby="calendar-reminder-title" aria-describedby="calendar-reminder-hint" tabindex="-1">
         <header>
           <div class="calendar-reminder-heading">

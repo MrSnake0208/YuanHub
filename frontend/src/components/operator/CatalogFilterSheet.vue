@@ -9,7 +9,7 @@
       </button>
     </div>
     <Teleport to="body">
-      <div v-if="open" class="catalog-filter-mask" :style="viewportStyle" @click.self="open = false">
+      <div v-if="open" class="catalog-filter-mask" :style="viewportStyle">
         <section ref="panel" class="catalog-filter-sheet" :class="{ 'is-short': shortViewport }" role="dialog" aria-modal="true" :aria-labelledby="titleId" tabindex="-1" @focusin="revealFocusedControl">
           <header>
             <h2 :id="titleId">筛选密探</h2>

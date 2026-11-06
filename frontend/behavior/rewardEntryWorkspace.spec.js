@@ -1902,7 +1902,7 @@ describe('奖励补录工作台弹层', () => {
     expect(document.activeElement).toBe(trigger.element)
   })
 
-  it('点击遮罩可以关闭普通状态工作台', async () => {
+  it('点击遮罩保持普通状态工作台，关闭按钮仍可退出', async () => {
     const wrapper = mountWorkspace()
     await button(wrapper, '导入本地报告').trigger('click')
     await flushPromises()
@@ -1911,6 +1911,9 @@ describe('奖励补录工作台弹层', () => {
     mask.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await flushPromises()
 
+    expect(document.body.querySelector('#reward-entry-panel')).not.toBeNull()
+    document.body.querySelector('.close-button').click()
+    await flushPromises()
     expect(document.body.querySelector('#reward-entry-panel')).toBeNull()
   })
 

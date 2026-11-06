@@ -107,6 +107,21 @@ it('游客保存成功和本地存储失败均有页内反馈', async () => {
   expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('保存失败')
 })
 
+it('保存方案误点遮罩保留名称，随后仍能提交保存', async () => {
+  const wrapper = render()
+  await wrapper.get('.cart-plan-save').trigger('click')
+  const input = document.querySelector('[aria-label="方案名称"]')
+  input.value = '未保存方案名称'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  document.querySelector('.modal-mask').click()
+  await flushPromises()
+  expect(wrapper.findComponent(PlanSaveDialog).exists()).toBe(true)
+  expect(input.value).toBe('未保存方案名称')
+  document.querySelector('.modal-mask form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(JSON.parse(localStorage.getItem('yh_ledger_plans'))[0].name).toBe('未保存方案名称')
+})
+
 it('清单导出完成和失败均反馈', async () => {
   const wrapper = render()
   await addFirst(wrapper)

@@ -265,7 +265,7 @@ it.each(['success', 'failure'])('关闭后迟到%s不污染重新打开的新实
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('关闭、Escape、遮罩与卸载恢复滚动和焦点，拖出内容不误关闭', async () => {
+it('遮罩和拖出内容保持打开，关闭、Escape 与卸载恢复滚动和焦点', async () => {
   vi.spyOn(window, 'scrollY', 'get').mockReturnValue(420)
   document.body.style.overflow = 'auto'
   document.documentElement.style.overflow = 'scroll'
@@ -289,6 +289,8 @@ it('关闭、Escape、遮罩与卸载恢复滚动和焦点，拖出内容不误�
   await open()
   await node('.box-viewer-mask').trigger('pointerdown')
   await node('.box-viewer-mask').trigger('click'); await flushPromises()
+  expect(document.querySelector('#operator-box-viewer')).not.toBeNull()
+  await panel().get('.box-viewer-close').trigger('click'); await flushPromises()
   expect(document.querySelector('#operator-box-viewer')).toBeNull()
   await open(); wrapper.unmount()
   expect(document.body.style.position).toBe('')

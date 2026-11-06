@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="selection" v-show="!editing" class="calendar-page calendar-public calendar-detail-mask" :class="{ 'is-editing-todo': editingTodo }" :style="viewportStyle" :aria-hidden="editing ? 'true' : undefined" :inert="editing ? '' : undefined" @focusin="updateFocus" @focusout="updateFocus" @input="updateFocus" @click.self="$emit('close')">
+    <div v-if="selection" v-show="!editing" class="calendar-page calendar-public calendar-detail-mask" :class="{ 'is-editing-todo': editingTodo }" :style="viewportStyle" :aria-hidden="editing ? 'true' : undefined" :inert="editing ? '' : undefined" @focusin="updateFocus" @focusout="updateFocus" @input="updateFocus">
       <section ref="panel" class="calendar-detail-dialog" :class="{ 'is-single': !!selection.id }" role="dialog" aria-modal="true" aria-labelledby="calendar-detail-title" tabindex="-1" :aria-busy="loading">
         <header>
           <div><h2 id="calendar-detail-title" ref="heading" tabindex="-1">{{ selection.id ? entries[0]?.title || (loading ? '正在读取事项…' : '事项暂不可用') : calendarDateLabel(selection.date) }}</h2><p v-if="!selection.id" class="calendar-hint">当天全部事项 · {{ entries.length }} 项</p></div>

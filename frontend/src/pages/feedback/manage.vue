@@ -206,7 +206,7 @@
       @confirm="confirmMerge"
     />
     <Teleport to="body">
-      <div v-if="managementDialog === 'public' && selectedDetail && canManageSettings(selectedDetail)" class="modal-mask is-raised" role="presentation" @click.self="closeManagementDialog">
+      <div v-if="managementDialog === 'public' && selectedDetail && canManageSettings(selectedDetail)" class="modal-mask is-raised" role="presentation">
         <section ref="managementPanel" class="modal feedback-modal feedback-management-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-management-title" tabindex="-1">
           <header class="modal-head"><h2 id="feedback-management-title">反馈广场</h2><button ref="managementDialogCloseButton" type="button" aria-label="关闭管理弹窗" title="关闭" @click="closeManagementDialog"><X :size="20" aria-hidden="true" /></button></header>
           <div class="feedback-management-body">
@@ -225,7 +225,7 @@
       </div>
     </Teleport>
     <Teleport to="body">
-      <div v-if="workflowHistoryOpen" class="modal-mask is-raised" role="presentation" @click.self="closeWorkflowHistory">
+      <div v-if="workflowHistoryOpen" class="modal-mask is-raised" role="presentation">
         <section ref="historyPanel" class="modal feedback-modal feedback-history-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-history-title" tabindex="-1">
           <header class="modal-head"><div><h2 id="feedback-history-title">处理记录</h2><small>工单 {{ selectedId }}</small></div><button ref="workflowHistoryCloseButton" type="button" aria-label="关闭处理记录" title="关闭" @click="closeWorkflowHistory"><X :size="20" aria-hidden="true" /></button></header>
           <div class="feedback-history-body">

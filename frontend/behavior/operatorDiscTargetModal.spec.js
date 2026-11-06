@@ -61,9 +61,10 @@ it('未标记无目标只显示实际或空状态，编辑和关闭保留原有�
   expect(wrapper.findAll('h5')).toHaveLength(0)
   for (const card of cards) await card.get('button').trigger('click')
   expect(wrapper.emitted('edit')).toEqual([[0], [1]])
-  await wrapper.get('[aria-label="关闭命盘目标"]').trigger('click')
   await wrapper.get('.disc-target-mask').trigger('click')
-  expect(wrapper.emitted('close')).toHaveLength(2)
+  expect(wrapper.emitted('close')).toBeUndefined()
+  await wrapper.get('[aria-label="关闭命盘目标"]').trigger('click')
+  expect(wrapper.emitted('close')).toHaveLength(1)
 })
 
 it('编辑表单默认对照展示与复制、移除操作不受紧凑模式影响', async () => {

@@ -12,7 +12,7 @@
     <p v-if="readOnly" class="hint">当前账号暂不能导入，仍可导出。</p>
     <p v-if="error && !dialogOpen" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p><p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <Teleport to="body">
-      <div v-if="dialogOpen" class="exchange-mask" @click.self="closeDialog">
+      <div v-if="dialogOpen" class="exchange-mask">
         <section ref="panel" class="exchange-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" tabindex="-1" :aria-busy="loading || committing">
           <header class="dialog-header"><div><p class="eyebrow">招募档案</p><h2 id="import-dialog-title">{{ success ? '导入完成' : pasteMode ? '粘贴 JSON' : '导入招募记录' }}</h2></div><button class="close-button" type="button" aria-label="关闭导入弹窗" :disabled="committing" @click="closeDialog"><X :size="16" aria-hidden="true" /></button></header>
           <div class="dialog-body">

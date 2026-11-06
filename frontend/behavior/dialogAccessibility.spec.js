@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import AppDialog from '../src/components/AppDialog.vue'
 import BetaCommunityDialog from '../src/components/beta/BetaCommunityDialog.vue'
+import InventoryQuickDialog from '../src/components/inventory/InventoryQuickDialog.vue'
 import { dialog } from '../src/utils/dialog.js'
 import { betaCommunity } from '../src/store/betaCommunity.js'
 
@@ -77,7 +78,7 @@ describe('公共 Dialog 键盘行为', () => {
     expect(document.activeElement).toBe(opener)
   })
 
-  it('AppDialog 的 prompt 聚焦输入，关闭按钮与遮罩都归还焦点', async () => {
+  it('AppDialog 的 prompt 聚焦输入，明确关闭后归还焦点，遮罩保持打开', async () => {
     const opener = document.createElement('button')
     document.body.append(opener)
     opener.focus()
@@ -94,6 +95,9 @@ describe('公共 Dialog 键盘行为', () => {
     const alert = dialog.alert('提示内容')
     await flushPromises()
     document.body.querySelector('.dialog-mask').click()
+    await flushPromises()
+    expect(dialog._state.visible).toBe(true)
+    document.body.querySelector('.dlg-btn.primary').click()
     await flushPromises()
     expect(await alert).toBe(true)
     expect(document.activeElement).toBe(opener)
@@ -169,7 +173,7 @@ describe('公共 Dialog 键盘行为', () => {
     }
   })
 
-  it('内测弹窗的关闭按钮与遮罩都归还焦点', async () => {
+  it('内测弹窗忽略遮罩点击，关闭按钮归还焦点', async () => {
     const opener = document.createElement('button')
     document.body.append(opener)
     opener.focus()
@@ -184,8 +188,46 @@ describe('公共 Dialog 键盘行为', () => {
     await flushPromises()
     document.body.querySelector('.community-mask').click()
     await flushPromises()
+    expect(betaCommunity.visible).toBe(true)
+    document.body.querySelector('.community-close').click()
+    await flushPromises()
     expect(betaCommunity.visible).toBe(false)
     expect(document.activeElement).toBe(opener)
+  })
+
+  it.each(['alert', 'confirm', 'choose', 'prompt'])('%s 点击遮罩不结算结果，输入仍可继续提交', async mode => {
+    render(AppDialog)
+    const settled = vi.fn()
+    const result = dialog[mode]({ title: '继续操作', choices: [{ label: '继续', value: 'continue' }] })
+    result.then(settled)
+    await flushPromises()
+    if (mode === 'prompt') await new DOMWrapper(document.body.querySelector('.dialog-field input')).setValue('未保存名称')
+    document.body.querySelector('.dialog-mask').click()
+    await flushPromises()
+    expect(dialog._state.visible).toBe(true)
+    expect(settled).not.toHaveBeenCalled()
+    if (mode === 'prompt') expect(document.body.querySelector('.dialog-field input').value).toBe('未保存名称')
+    document.body.querySelector(mode === 'choose' ? '.dialog-choice' : '.dlg-btn.primary').click()
+    await flushPromises()
+    expect(await result).toEqual(mode === 'prompt' ? '未保存名称' : mode === 'choose' ? { value: 'continue', checked: false } : true)
+  })
+
+  it.each([false, true])('库存快捷弹窗忽略遮罩，保留输入与处理中关闭限制：locked=%s', async locked => {
+    const wrapper = mount(InventoryQuickDialog, {
+      attachTo: document.body, props: { open: true, title: '编辑奖励', locked }, slots: { default: '<input aria-label="奖励数量" />' }
+    })
+    mounted.push(wrapper)
+    await flushPromises()
+    const input = new DOMWrapper(document.body.querySelector('[aria-label="奖励数量"]'))
+    await input.setValue('123')
+    document.body.querySelector('.quick-dialog-mask').click()
+    await flushPromises()
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(input.element.value).toBe('123')
+    trigger('Escape')
+    await flushPromises()
+    expect(wrapper.emitted('close')?.length || 0).toBe(locked ? 0 : 1)
+    expect(document.body.querySelector('[aria-label="关闭编辑奖励"]').disabled).toBe(locked)
   })
 
   it('嵌套 AppDialog 只响应顶层 Esc，关闭后回到下层弹窗', async () => {

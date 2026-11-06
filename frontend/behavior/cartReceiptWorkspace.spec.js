@@ -56,7 +56,7 @@ it('one receipt is shared by drawer and desktop while resizing without reload', 
   expect(wrapper.get('.cart-mbar .mbtn.primary').attributes('aria-expanded')).toBe('false')
 })
 
-it('Escape, Tab and backdrop restore opener focus and the previous scroll-lock value', async () => {
+it('backdrop keeps the drawer open; explicit close and Escape restore focus and scroll lock', async () => {
   document.body.style.overflow = 'auto'
   const wrapper = render()
   const opener = await openReceipt(wrapper)
@@ -72,7 +72,13 @@ it('Escape, Tab and backdrop restore opener focus and the previous scroll-lock v
   await openReceipt(wrapper)
   await bodyElement('.cart-receipt-mask').trigger('click')
   await flushPromises()
+  expect(opener.attributes('aria-expanded')).toBe('true')
+  expect(document.body.style.overflow).toBe('hidden')
+  await bodyElement('[aria-label="关闭购物清单"]').trigger('click')
+  await flushPromises()
   expect(opener.attributes('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(opener.element)
+  expect(document.body.style.overflow).toBe('auto')
   document.body.style.overflow = ''
 })
 

@@ -204,7 +204,13 @@ it.each(['close', 'snooze', 'escape', 'backdrop', 'link'])('%s snoozes this batc
   if (action === 'close') await wrapper.get('button[aria-label="关闭私人日历提醒"]').trigger('click')
   if (action === 'snooze') await wrapper.findAll('button').find(node => node.text() === '稍后提醒').trigger('click')
   if (action === 'escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-  if (action === 'backdrop') await wrapper.get('.calendar-reminder-mask').trigger('click')
+  if (action === 'backdrop') {
+    await wrapper.get('.calendar-reminder-mask').trigger('click')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(sessionStorage.getItem(reminderStorageKey(owner, 'a'))).toBeNull()
+    expect(localStorage.getItem(reminderStorageKey(owner, 'a'))).toBeNull()
+    await wrapper.get('button[aria-label="关闭私人日历提醒"]').trigger('click')
+  }
   if (action === 'link') await wrapper.get('a').trigger('click')
   await flushPromises()
   const key = reminderStorageKey(owner, 'a')

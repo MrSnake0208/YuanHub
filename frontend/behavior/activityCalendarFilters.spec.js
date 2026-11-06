@@ -219,7 +219,13 @@ it.each(['完成', '遮罩', 'Escape'])('%s关闭后恢复入口焦点、滚动�
   expect(document.body.style.overflow).toBe('hidden')
   expect(document.documentElement.style.overflow).toBe('hidden')
   if (method === '完成') await clickSheet('完成')
-  else if (method === '遮罩') document.querySelector('.calendar-filter-mask').click()
+  else if (method === '遮罩') {
+    document.querySelector('.calendar-filter-mask').click()
+    await flushPromises()
+    expect(dialog()).not.toBeNull()
+    expect(document.body.style.overflow).toBe('hidden')
+    await clickSheet('完成')
+  }
   else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   await flushPromises()
   expect(dialog()).toBeNull()
