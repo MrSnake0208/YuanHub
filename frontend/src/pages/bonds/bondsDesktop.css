@@ -6,7 +6,6 @@
 }
 @media (min-width: 768px) {
   .bonds-codex .compact-tool-header > .wrap { padding-inline: 32px; }
-  .bonds-codex .wrap { max-width: 1600px; }
   .bonds-codex .bond-condition-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bonds-codex .bond-agent-pairs { container: bond-agents / inline-size; }
   .bond-find-list { container: bond-pairs / inline-size; }
@@ -14,14 +13,6 @@
   @container bond-agents (min-width: 1040px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
   @container bond-pairs (min-width: 520px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   @container bond-pairs (min-width: 1040px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
-  @container bond-agents (min-width: 1320px) {
-    .bond-pair.has-one-action { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); align-items: center; gap: 14px; }
-    .bond-pair.has-one-action .bond-pair-heading { gap: 8px; margin-bottom: 0; }
-  }
-  @container bond-pairs (min-width: 1320px) {
-    .bond-find-pair { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); align-items: center; gap: 14px; }
-    .bond-find-heading { margin-bottom: 0; }
-  }
   .bonds-codex .bond-summary { padding-block: 8px; }
   .bonds-codex .bond-summary strong { margin-block: 3px 6px; }
   .bond-pair { padding-block: 10px; }

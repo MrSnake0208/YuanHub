@@ -110,7 +110,7 @@
                 </summary>
                 <p v-if="available && state.archive && state.catalog && !state.loading && !state.catalogError" class="bond-mobile-hint">点选天气即可收录，再点取消</p>
                 <div class="bond-agent-pairs">
-                  <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :class="{ 'has-one-action': !!pairAction(pair) }" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
+                  <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
                     <div class="bond-pair-heading"><span>与</span><h3>{{ pair.members.map(operatorName).join('、') }}</h3><span class="bond-effect" :class="pair.effect">{{ pair.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span><span v-if="pairAction(pair)" class="bond-pair-action">行动：{{ ACTIONS[pairAction(pair)] }}</span></div>
                     <div v-for="actionGroup in groupBonds(pair.entries)" :key="actionGroup.key" class="bond-action-group">
                       <h4 v-if="!pairAction(pair)" class="bond-action-heading">行动：{{ ACTIONS[actionGroup.action] }}</h4>
