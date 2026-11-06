@@ -31,7 +31,7 @@ beforeEach(() => {
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()) })
 async function render(facts = huaji(), catalog = {}, extra = {}) {
-  const wrapper = mount(Tracker, { props: { accountId: 'acc', isLoggedIn: true, favoriteIds: new Set(['op']), quickUpgrade: vi.fn(),
+  const wrapper = mount(Tracker, { attachTo: document.body, props: { accountId: 'acc', isLoggedIn: true, favoriteIds: new Set(['op']), quickUpgrade: vi.fn(),
     catalogEntries: [{ id: 'op', name: '测试密探', rarity: 4, prof: '风', subProf: '神纪', ...catalog }],
     currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 25, huaji: facts }], ...extra },
     global: { stubs: { PlannerExactOptimizer: true } } })
@@ -61,6 +61,9 @@ it('多密探紧凑列表保留独立目标和完整材料，切换宽度不重�
   const rows = wrapper.findAll('.growth-card')
   expect(rows).toHaveLength(4)
   expect(rows.map(row => row.get('h3').text())).toEqual(catalogEntries.map(row => row.name))
+  expect(rows[0].get('.growth-row-detail').isVisible()).toBe(false)
+  await rows[0].get('.growth-details-toggle').trigger('click')
+  expect(rows[0].get('.growth-row-detail').isVisible()).toBe(true)
   const input = rows[0].get('[aria-label="陈登的目标等级"]')
   await input.setValue('95'); await flushPromises()
   const targets = plannerApi.putTrainingWorkspace.mock.lastCall[1].plans[0].targets
@@ -75,6 +78,68 @@ it('多密探紧凑列表保留独立目标和完整材料，切换宽度不重�
   expect(input.element.value).toBe('95')
   expect(details.element.open).toBe(true)
   expect(rows[1].get('[aria-label="阿蝉的目标等级"]').element.value).toBe('100')
+  await rows[0].get('.growth-details-toggle').trigger('click')
+  expect(rows[0].get('.growth-row-detail').isVisible()).toBe(false)
+  await rows[0].get('.growth-details-toggle').trigger('click')
+  expect(rows[0].get('[aria-label="陈登的目标等级"]').element).toBe(input.element)
+  expect(details.element.open).toBe(true)
+})
+
+it.each([
+  [90, 15, '先提升等级', '经验不足，修为暂受限'],
+  [70, 10, '补齐养成材料', '经验与养成材料不足'],
+  [100, 17, '已达养成目标', '可调整目标，继续追踪养成'],
+])('清单按真实进度给出下一步：等级%i／修为%i', async (level, elite, title, description) => {
+  const wrapper = await render(huaji(25, true), {}, {
+    currentEntries: [{ id: 'op', level, elite, starLevel: 25, huaji: huaji(25, true) }],
+  })
+  expect(wrapper.get('.growth-next-step strong').text()).toBe(title)
+  expect(wrapper.get('.growth-next-step p').text()).toBe(description)
+  expect(wrapper.get('.growth-overview-progress').findAll('.growth-track')).toHaveLength(3)
+  const input = wrapper.get('[aria-label="测试密探的目标等级"]')
+  await wrapper.get('.growth-primary-action').trigger('click')
+  expect(wrapper.get('.growth-row-detail').isVisible()).toBe(true)
+  expect(wrapper.get('[aria-label="测试密探的目标等级"]').element).toBe(input.element)
+  if (level < 100) expect(wrapper.get('.growth-row-materials').element.open).toBe(true)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
+})
+
+it('主操作复用修为升级预览，备注或提升保存期间不能收起详情', async () => {
+  const quickUpgrade = vi.fn()
+  const wrapper = await render(huaji(25, true), {}, {
+    currentEntries: [{ id: 'op', level: 100, elite: 15, starLevel: 25, huaji: huaji(25, true) }],
+    quickUpgrade, quickUpgradeState: (_row, _field, _step, label) => ({ visible: true, disabled: false, className: 'is-ready', label }),
+  })
+  expect(wrapper.get('.growth-next-step strong').text()).toBe('可提升修为')
+  expect(wrapper.get('.growth-primary-action').text()).toBe('修为升至 16')
+  expect(wrapper.get('.growth-primary-action').attributes('aria-label')).toBe('测试密探：修为升至 16')
+  await wrapper.get('.growth-primary-action').trigger('click')
+  expect(wrapper.get('.growth-row-detail').isVisible()).toBe(true)
+  expect(quickUpgrade).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'op' }), 'elite', 1)
+  await wrapper.setProps({ isRemarkSaving: () => true })
+  expect(wrapper.get('.growth-details-toggle').element.disabled).toBe(true)
+  await wrapper.setProps({ isRemarkSaving: () => false, growthActionExecuteBusy: () => true })
+  expect(wrapper.get('.growth-details-toggle').element.disabled).toBe(true)
+  await wrapper.setProps({ growthActionExecuteBusy: () => false, game: '如鸢' })
+  expect(wrapper.get('.growth-details-toggle').attributes('aria-expanded')).toBe('false')
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
+})
+
+it('库存失败与未知觉醒材料不显示可提升或备齐', async () => {
+  getCurrent.mockRejectedValueOnce(new Error('库存读取失败'))
+  const wrapper = await render(huaji(), {}, {
+    currentEntries: [{ id: 'op', level: 100, elite: 15, starLevel: 25, huaji: huaji() }],
+    quickUpgradeState: (_row, _field, _step, label) => ({ visible: true, disabled: false, className: 'is-ready', label }),
+  })
+  expect(wrapper.get('.planner-state.is-error').text()).toContain('库存读取失败')
+  expect(wrapper.find('.growth-primary-action.is-ready').exists()).toBe(false)
+  getCurrent.mockResolvedValue([])
+  plannerApi.getTrainingWorkspace.mockResolvedValue(workspace('custom', huaji(25, true)))
+  const unknown = await render()
+  expect(unknown.get('.growth-next-step strong').text()).toBe('部分养成需求待确认')
+  expect(unknown.get('.growth-primary-action').classes()).not.toContain('is-ready')
 })
 
 it('库存读取未完成时不把材料缺口当作已备齐', async () => {
@@ -159,7 +224,8 @@ it.each([null, false, true])('stage25+%s只有要求觉醒且已确认时显示�
   expect(wrapper.text()).not.toContain('觉醒待确认')
   expect(wrapper.get('.growth-card').classes().includes('complete')).toBe(awakened === true)
   if (awakened === true) {
-    expect(wrapper.find('.growth-track.rose').exists()).toBe(false)
+    expect(wrapper.get('.growth-overview-progress .growth-track.rose i').attributes('style')).toContain('100%')
+    expect(wrapper.find('.growth-row-detail .growth-track.rose').exists()).toBe(false)
     expect(wrapper.find('[aria-label*="快捷提升化极"]').exists()).toBe(false)
     expect(wrapper.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')
   } else {
@@ -212,7 +278,7 @@ it('旧31目标与当前旧31都表示五星后的觉醒', async () => {
   plannerApi.getTrainingWorkspace.mockResolvedValue(old)
   const wrapper = await render(huaji(null, true), {}, { currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 31 }] })
   expect(wrapper.get('.growth-card').text()).toContain('已觉醒')
-  expect(wrapper.find('.growth-track.rose').exists()).toBe(false)
+  expect(wrapper.find('.growth-row-detail .growth-track.rose').exists()).toBe(false)
   await wrapper.get('.tracker-star-trigger').trigger('click')
   expect(wrapper.get('[aria-label="目标星级"]').element.value).toBe('awakening')
   expect(wrapper.findAll('[aria-label="目标星级"] option').map(option => option.element.value)).toContain('5')

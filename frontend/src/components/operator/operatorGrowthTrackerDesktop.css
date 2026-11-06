@@ -59,7 +59,7 @@ button { touch-action: manipulation; }
 .planner-status .status-metrics { margin-top: 0; }
 .growth-roster-columns { display: none; }
 .growth-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
-.growth-card { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 10px 14px; min-width: 0; padding: 12px; }
+.growth-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr); align-items: center; gap: 14px 24px; min-width: 0; padding: 16px 12px; }
 .tracker-remove { display: flex; min-height: 36px; align-items: center; justify-content: center; gap: 5px; width: 100%; margin-top: 12px; padding: 6px 8px; font-size: 11px; font-weight: 700; }
 .tracker-dialog-enter-from .tracker-remove-dialog, .tracker-dialog-leave-to .tracker-remove-dialog { transform: translateY(12px) scale(.98); }
 .tracker-remove-dialog-mask { position: fixed; z-index: var(--z-overlay-blocking); inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -260,18 +260,6 @@ button { touch-action: manipulation; }
 .ledger-row .row-remove { min-height: 32px; }
 .planner-footnote { margin-top: 2px; }
 
-@container growth-roster (min-width: 980px) {
-  .growth-roster-columns, .growth-card { grid-template-columns: minmax(135px, .85fr) minmax(220px, 1.4fr) minmax(200px, 1.2fr) minmax(215px, 1.3fr) minmax(140px, .85fr); column-gap: 10px; }
-  .growth-roster-columns { display: grid; padding: 9px 12px; font-size: 13px; font-weight: 750; }
-  .growth-card-head { grid-column: 1; grid-row: 1; align-items: flex-start; flex-direction: column; }
-  .growth-progress-row { grid-row: 1; }
-  .growth-progress-row:nth-child(1) { grid-column: 2; }
-  .growth-progress-row:nth-child(2) { grid-column: 3; }
-  .growth-progress-row:nth-child(3) { grid-column: 4; }
-  .growth-progress-label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .growth-row-actions { grid-column: 5; grid-row: 1; }
-  .growth-row-actions.is-editing, .growth-row-actions:has(details[open]) { grid-column: 1 / -1; grid-row: auto; padding-top: 8px; border-top: 1px dashed var(--line); }
-}
 @media (prefers-reduced-motion: reduce) {.planner-workspace { scroll-behavior: auto; } }
 
 .edit-simulation { display: grid; gap: 12px; align-items: start; min-width: 0; }
@@ -395,9 +383,41 @@ button { touch-action: manipulation; }
 .roster-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin: 16px 0 10px; }
 .roster-title { margin: 0; font: 850 23px/1.4 var(--font-s); color: var(--ink); }
 .roster-count { color: var(--ink-60); font-size: 12px; }
-.roster-heading .roster-help { margin: 0; }
+.roster-heading .roster-help { margin: 0 0 0 auto; }
 .roster-footnote { margin: 8px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .material-readiness-track { height: 6px; margin-top: 10px; }
 .growth-progress-label .tracker-editable { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .growth-quick-label { white-space: nowrap; }
+.growth-column-progress { display: grid; gap: 4px; }
+.growth-column-progress > div, .growth-overview-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.growth-column-progress > div { color: var(--ink-60); font-size: 13px; font-weight: 500; }
+.growth-overview-progress { grid-column: 1 / -1; align-items: end; min-width: 0; }
+.growth-overview-stat { display: grid; align-content: center; gap: 9px; min-width: 0; }
+.growth-overview-label { color: var(--ink-60); font-size: 12px; }
+.growth-overview-stat p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 0; font: 500 13px/1.5 var(--font-d); }
+.growth-overview-stat b { font-weight: 750; }
+.growth-overview-stat .growth-huaji-values { flex-direction: column; align-items: flex-start; gap: 0; }
+.growth-huaji-target { max-width: 100%; }
+.growth-overview-stat .growth-track { height: 7px; }
+.growth-next-step { min-width: 0; }
+.growth-next-step strong { font: 700 14px/1.5 var(--font-b); }
+.growth-next-step p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; }
+.growth-overview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-width: 0; }
+.growth-primary-action { min-height: 38px; padding: 6px 18px; font: 700 13px/1.5 var(--font-b); }
+.growth-details-toggle { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 0; font: 13px/1.5 var(--font-b); }
+.growth-row-detail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; min-width: 0; padding: 18px 0 0; }
+.growth-detail-heading { grid-column: 1 / -1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
+.growth-detail-heading .growth-percent { margin: 0; }
+.growth-identity { gap: 12px; }
+
+@container growth-roster (min-width: 980px) {
+  .growth-roster-columns, .growth-card { grid-template-columns: minmax(140px, .95fr) minmax(300px, 1.65fr) minmax(180px, 1fr) minmax(220px, 1.2fr); column-gap: 24px; }
+  .growth-roster-columns { display: grid; align-items: center; padding: 12px; font-size: 13px; font-weight: 750; }
+  .growth-card-head { grid-column: 1; grid-row: 1; }
+  .growth-overview-progress { grid-column: 2; grid-row: 1; }
+  .growth-next-step { grid-column: 3; grid-row: 1; }
+  .growth-overview-actions { grid-column: 4; grid-row: 1; }
+  .growth-overview-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
 }

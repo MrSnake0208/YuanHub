@@ -2376,6 +2376,7 @@
               @annotation-updated="applyAnnotationItem"
               @refresh-annotations="loadOperatorAnnotations"
               :is-remark-editing="row => cardHasDraft(trackerRemarkEntry(row))"
+              :is-remark-saving="row => cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
               @refresh-operators="reloadCurrent(true)"
             >
               <template #remark="{ row }">

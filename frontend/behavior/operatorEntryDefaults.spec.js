@@ -526,6 +526,7 @@ async function renderTrackingRemark(note = '原备注') {
   listRecords.mockResolvedValue({ items: [] })
   const wrapper = renderPage({ attachTo: document.body }, { OperatorGrowthTracker: false, PlannerExactOptimizer: true })
   await vi.dynamicImportSettled(); await flushPromises()
+  await wrapper.get('.growth-details-toggle').trigger('click'); await flushPromises()
   return wrapper
 }
 
@@ -540,6 +541,13 @@ it('规划备注默认收起，取消恢复原文与焦点，切换宽度保留�
   const input = editor.get('textarea')
   expect(editor.element.open).toBe(true)
   await input.setValue('未保存的备注')
+  const outerToggle = wrapper.get('.growth-details-toggle')
+  await outerToggle.trigger('click')
+  expect(wrapper.get('.growth-row-detail').isVisible()).toBe(false)
+  expect(outerToggle.text()).toContain('未保存')
+  await outerToggle.trigger('click')
+  expect(editor.get('textarea').element).toBe(input.element)
+  expect(input.element.value).toBe('未保存的备注')
   expect(wrapper.get('.tracker-remove').isVisible()).toBe(false)
   await summary.trigger('click'); await flushPromises()
   expect(editor.element.open).toBe(false)
@@ -602,6 +610,9 @@ it('规划备注保存中禁止关闭，切账号后迟到响应不回填或抢�
   expect(editor.get('.ledger-card-save').element.disabled).toBe(true)
   await editor.get('summary').trigger('click')
   expect(editor.element.open).toBe(true)
+  expect(wrapper.get('.growth-details-toggle').element.disabled).toBe(true)
+  await wrapper.get('.growth-details-toggle').trigger('click')
+  expect(wrapper.get('.growth-row-detail').isVisible()).toBe(true)
   activeAccount.id = 'other'; await flushPromises()
   const focused = document.activeElement
   expect(editor.element.isConnected).toBe(false)

@@ -98,16 +98,42 @@
         <div v-if="activePlan" class="roster-heading">
           <h3 class="roster-title">养成清单</h3>
           <span class="roster-count">{{ planRows.length }} 位密探</span>
-          <p class="roster-help">当前 → 目标；点击目标可修改</p>
+          <p class="roster-help">当前 → 目标</p>
         </div>
         <div v-if="activePlan" class="status-roster">
-          <div v-if="planRows.length" class="growth-roster-columns" aria-hidden="true"><span>密探</span><span>等级</span><span>修为</span><span>化极</span><span>材料与备注</span></div>
+          <div v-if="planRows.length" class="growth-roster-columns" aria-hidden="true">
+            <span>密探</span><div class="growth-column-progress"><b>养成进度</b><div><span>等级</span><span>修为</span><span>化极</span></div></div><span>下一步</span><span>操作</span>
+          </div>
           <div class="growth-card-grid">
-              <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="{ complete: row.completed }">
-                <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p><span class="growth-percent"><span class="growth-progress-status">{{ row.completed ? '已达目标' : '练度参考' }}</span>{{ rowProgress(row) }}<small>%</small></span></div></div></div>
+              <article v-for="{ row, nextStep } in rosterRows" :key="row.id" class="growth-card" :class="{ complete: row.completed }">
+                <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div></div>
+                <div class="growth-overview-progress" :aria-label="row.name + '的养成进度'">
+                  <div class="growth-overview-stat">
+                    <span class="growth-overview-label">等级</span>
+                    <p><b>Lv{{ row.level }}</b><template v-if="row.level < targetFor(row).level"><span>→</span><span>{{ targetFor(row).level }}</span></template></p>
+                    <div class="growth-track" aria-hidden="true"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
+                  </div>
+                  <div class="growth-overview-stat">
+                    <span class="growth-overview-label">修为</span>
+                    <p><b>{{ row.elite }}</b><template v-if="row.elite < targetFor(row).elite"><span>→</span><span>{{ targetFor(row).elite }}</span></template></p>
+                    <div class="growth-track mint" aria-hidden="true"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
+                  </div>
+                  <div class="growth-overview-stat">
+                    <span class="growth-overview-label">化极</span>
+                    <p class="growth-huaji-values"><b>{{ currentStarLabel(row) }}</b><span v-if="growthHuajiProgress(row, targetFor(row)) < 100" class="growth-huaji-target">→ {{ targetStarLabel(row) }}</span></p>
+                    <div class="growth-track rose" aria-hidden="true"><i :style="{ width: growthHuajiProgress(row, targetFor(row)) + '%' }"></i></div>
+                  </div>
+                </div>
+                <div class="growth-next-step" :class="{ 'is-ready': nextStep.field, 'is-complete': row.completed }"><strong>{{ nextStep.title }}</strong><p>{{ nextStep.description }}</p></div>
+                <div class="growth-overview-actions">
+                  <button type="button" class="growth-primary-action" :class="{ 'is-ready': nextStep.field }" :disabled="nextStep.disabled" :aria-label="row.name + '：' + nextStep.label" @click="openRosterAction(row, nextStep)">{{ nextStep.label }}</button>
+                  <button type="button" class="growth-details-toggle" :aria-expanded="expandedRosterIds.has(row.id)" :aria-controls="'growth-details-' + row.id" :disabled="targetBusyIds.has(row.id) || isRemarkSaving(row) || isRosterUpgradeBusy(row)" @click="toggleRosterDetails(row)">{{ expandedRosterIds.has(row.id) ? '收起详情' : '详情与编辑' }}<span v-if="isRemarkEditing(row)" class="growth-detail-draft">未保存</span><ChevronRight :size="16" aria-hidden="true" /></button>
+                </div>
                 <p v-if="growthActionNotice(row)" class="growth-action-notice" role="status">{{ growthActionNotice(row) }}</p>
                 <p v-if="row.calculation.sharedUnsupported" class="growth-action-notice">本体目录缺失，暂不估算共享养成需求</p>
                 <p v-else-if="row.calculation.sharedGrowth" class="growth-action-notice">共享目标 {{ row.calculation.sharedTarget.level }} 级 / 修为 {{ row.calculation.sharedTarget.elite }}，按本体路径计入「{{ row.calculation.sharedCostOwner }}」一次</p>
+                <div v-show="expandedRosterIds.has(row.id)" :id="'growth-details-' + row.id" class="growth-row-detail">
+                  <div class="growth-detail-heading"><b>目标与材料</b><span class="growth-percent"><span class="growth-progress-status">{{ row.completed ? '已达目标' : '练度参考' }}</span>{{ rowProgress(row) }}<small>%</small></span></div>
                 <div class="growth-progress-list">
                   <div class="growth-progress-row">
                     <div class="growth-progress-label"><span>等级</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>Lv{{ row.level }}</b><span class="growth-value-divider" aria-hidden="true">{{ row.level >= targetFor(row).level ? '目标' : '→' }}</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" inputmode="numeric" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /><button v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'level', 5, '提升 5 级').className" :disabled="quickUpgradeState(row, 'level', 5, '提升 5 级').disabled" :aria-label="row.name + '快捷提升等级：' + quickUpgradeState(row, 'level', 5, '提升 5 级').label" :title="quickUpgradeState(row, 'level', 5, '提升 5 级').title" @click="requestQuickUpgrade(row, 'level', 5)"><ChevronUp v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /><span class="growth-quick-label">{{ quickUpgradeState(row, 'level', 5, '提升 5 级').label }}</span></button></div></div>
@@ -165,10 +191,11 @@
                 <details v-else class="growth-materials growth-row-materials"><summary>查看缺口 <span>{{ rowGapCount(row) }} 项<ChevronDown :size="13" aria-hidden="true" /></span></summary><div v-if="row.calculation.star.unsupported || row.calculation.sharedUnsupported" class="materials-clear">部分材料规则未确认，以下仅列已知需求</div><div v-else-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-if="row.calculation.gaps.length || row.calculation.experienceGap || row.calculation.heartGap" class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip experience-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>缺 {{ formatNumber(row.calculation.experienceGap) }}<small class="growth-material-eta">{{ experienceEtaLabel(row.calculation.experienceGap) }}</small></em></span><div v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}</em><span class="heart-history" role="img" :aria-label="heartHistorySummary(row)"><span class="heart-history-label" aria-hidden="true"><span>近 30 日获取</span><small v-if="heartHistoryError">暂不可用</small><small v-else-if="!heartHistoryReady">同步中…</small></span><span v-if="heartHistoryReady && !heartHistoryError && heartHasRecentAcquisition(row)" class="heart-history-bars" aria-hidden="true"><i v-for="point in heartSeries(row)" :key="point.date" class="heart-history-bar" :style="{ height: heartBarHeight(row, point) }"></i></span><span v-else-if="heartHistoryReady && !heartHistoryError" class="heart-history-empty" aria-hidden="true">暂无心纸获取记录</span></span></div></div><p class="growth-material-note">已扣除清单共用库存。单项耗时按只刷该项材料估算。</p></details>
                 <slot name="remark" :row="row" />
                 </div>
+                </div>
               </article>
             </div>
         </div>
-        <p v-if="planRows.length" class="roster-footnote">经验天数按仅刷绝境历练估算；材料明细与备注按需展开。</p>
+        <p v-if="planRows.length" class="roster-footnote">目标、材料与备注可在详情中查看和调整；经验天数按仅刷绝境历练估算。</p>
       </section>
 
       <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「新建清单」，可根据特别关注建立，或自行挑选成员。</span></div>
@@ -566,7 +593,7 @@ import PlannerOverallSummary from './PlannerOverallSummary.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, accountName: { type: String, default: '当前子账号' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
+const props = defineProps({ game: { type: String, default: '代号鸢' }, accountId: { type: String, default: '' }, accountName: { type: String, default: '当前子账号' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, isRemarkSaving: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
 const capacityOpen = ref(false)
@@ -897,6 +924,56 @@ const totalHeartStock = computed(() => planRows.value.reduce((sum, row) => sum +
 const baseRosterIds = computed(() => requirementPlanRows.value.map(row => row.id))
 const orderedRosterIds = computed(() => { const known = new Set(baseRosterIds.value); const saved = plannerOrder.value.filter(id => known.has(id)); return [...saved, ...baseRosterIds.value.filter(id => !saved.includes(id))] })
 const orderedPlanRows = computed(() => orderedRosterIds.value.map(id => planRows.value.find(row => row.id === id)).filter(Boolean))
+const expandedRosterIds = ref(new Set())
+const rosterRows = computed(() => orderedPlanRows.value.map(row => ({ row, nextStep: nextGrowthStep(row) })))
+watch([() => props.accountId, () => props.game, () => props.isLoggedIn, () => workspace.value.activePlanId], () => { expandedRosterIds.value = new Set() })
+function isRosterUpgradeBusy(row) { return ['level', 'elite', 'star'].some(field => callGrowthAction('growthActionExecuteBusy', growthActionEntry(row), field)) }
+function toggleRosterDetails(row) {
+  if (props.isRemarkSaving(row) || isRosterUpgradeBusy(row) || targetBusyIds.value.has(row.id)) return
+  const expanded = new Set(expandedRosterIds.value)
+  if (expanded.has(row.id)) { expanded.delete(row.id); closeStarTarget() }
+  else expanded.add(row.id)
+  expandedRosterIds.value = expanded
+}
+async function openRosterAction(row, action) {
+  expandedRosterIds.value = new Set([...expandedRosterIds.value, row.id])
+  await nextTick()
+  if (action.field) requestQuickUpgrade(row, action.field, action.step)
+  else {
+    const panel = document.getElementById('growth-details-' + row.id)
+    const materials = panel?.querySelector('.growth-row-materials')
+    if (materials) materials.open = true
+    const focusTarget = materials?.querySelector('summary') || panel?.querySelector('input')
+    focusTarget?.focus()
+  }
+}
+function nextGrowthStep(row) {
+  const detail = { label: '查看材料', disabled: false }
+  if (targetLoading.value || targetError.value) return { ...detail, title: targetLoading.value ? '目标同步中' : '目标未同步', description: '同步目标后查看下一步建议', label: '查看详情', disabled: targetLoading.value }
+  if (row.completed) return { ...detail, title: '已达养成目标', description: '可调整目标，继续追踪养成', label: '调整目标' }
+  if (!row.owned) return { ...detail, title: '当前养成待录入', description: '请先录入实际进度，再核对材料', label: '查看详情' }
+  if (loading.value || !inventoryReady.value || error.value) return { ...detail, title: loading.value ? '库存同步中' : '库存未同步', description: '同步库存后核对养成材料', label: '查看详情', disabled: loading.value }
+  const target = targetFor(row)
+  const candidates = [
+    { field: 'elite', step: 1, needed: row.elite < target.elite && row.elite < getMaxEliteForLevel(row.level), title: '可提升修为', label: '修为升至 ' + (row.elite + 1) },
+    { field: 'level', step: 5, needed: row.level < target.level, title: '可提升等级', label: '等级升至 ' + Math.min(100, row.level + 5) + ' 级' },
+    { field: 'star', step: 1, needed: growthHuajiProgress(row, target) < 100 && !row.calculation.star.unsupported, title: '可提升化极', label: operatorHuajiAction(row).kind === 'awakening' ? '觉醒' : '提升化极' },
+  ]
+  for (const candidate of candidates) {
+    if (!candidate.needed || (row.calculation.sharedUnsupported && candidate.field !== 'star') || typeof props.quickUpgrade !== 'function') continue
+    const state = quickUpgradeState(row, candidate.field, candidate.step, candidate.label)
+    if (state.visible && !state.disabled && state.className === 'is-ready') return { ...candidate, description: '本次提升材料已备齐，点击核对', disabled: cloudBlocked.value || schedulePending.value || targetBusyIds.value.has(row.id) }
+  }
+  if (row.elite < target.elite && row.elite >= getMaxEliteForLevel(row.level)) return { ...detail, title: '先提升等级', description: row.calculation.experienceGap ? '经验不足，修为暂受限' : '等级未达修为要求，先完成升级' }
+  if (row.calculation.star.unsupported || row.calculation.sharedUnsupported) return { ...detail, title: '部分养成需求待确认', description: '材料规则未完整，查看已知需求' }
+  if (rowGapCount(row)) {
+    let description = '查看材料缺口与获取建议'
+    if (row.calculation.experienceGap) description = row.calculation.gaps.length || row.calculation.heartGap ? '经验与养成材料不足' : '经验不足，先补充经验材料'
+    return { ...detail, title: '补齐养成材料', description }
+  }
+  return { ...detail, title: '目标材料已备齐', description: '完成养成后请同步实际进度', label: '详情与编辑' }
+}
+
 const plannerRequirementRows = computed(() => requirementPlanRows.value.map(row => ({ id: row.id, resources: plannerResourcesFromCalculation(row.calculation) })))
 const plannerRequirementState = computed(() => createInitialPlannerState(plannerRequirementRows.value))
 const plannerRows = computed(() => {
@@ -2050,6 +2127,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--surface); box-shadow: none; }
 .growth-card.complete { background: color-mix(in srgb, var(--cream) 55%, var(--surface)); }
 .growth-roster-columns { border-radius: 7px; background: var(--cream); color: var(--ink); }
+.growth-primary-action { border: 1px solid var(--theme-accent-text, var(--accent-strong)); border-radius: 8px; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); }
+.growth-primary-action.is-ready { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
+.growth-primary-action:hover:not(:disabled) { background: var(--cream); }
+.growth-primary-action.is-ready:hover:not(:disabled) { background: var(--accent-strong); }
+.growth-primary-action:disabled, .growth-details-toggle:disabled { opacity: .55; cursor: not-allowed; }
+.growth-details-toggle { border: 0; background: transparent; color: var(--ink-60); }
+.growth-details-toggle:hover:not(:disabled) { color: var(--ink); }
+.growth-detail-draft { font-size: 12px; color: var(--theme-accent-text, var(--accent-strong)); }
+.growth-details-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.growth-next-step p { color: var(--ink-60); }
+.growth-next-step.is-ready strong, .growth-next-step.is-complete strong { color: var(--theme-success-text, #58763b); }
+.growth-row-detail { border-top: 1px dashed var(--line); }
+.growth-overview-stat .growth-track { background: color-mix(in srgb, var(--theme-accent-text, var(--accent-strong)) 15%, var(--surface)); }
+.growth-overview-stat .growth-track i { background: var(--theme-accent-text, #dba24c); }
+.growth-overview-stat .growth-track.mint i { background: var(--theme-success-text, #9caf78); }
+.growth-overview-stat .growth-track.rose i { background: var(--theme-danger-text, #aa7c93); }
 .tracker-remove { border: 1px solid var(--planner-line); border-radius: 8px; background: var(--surface); color: var(--ink-60); }
 .tracker-remove:hover:not(:disabled) { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .tracker-dialog-enter-active, .tracker-dialog-leave-active { transition: opacity .2s var(--ease); }

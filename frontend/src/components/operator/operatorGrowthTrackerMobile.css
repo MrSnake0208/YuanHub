@@ -594,4 +594,28 @@ button { touch-action: manipulation; }
   .planner-heading > .planner-heading-actions { display: flex; flex-wrap: wrap; }
   .day-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.growth-card { display: grid; gap: 14px; padding: 16px 0; }
+.growth-overview-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 16px; min-width: 0; }
+.growth-overview-stat { display: grid; align-content: start; gap: 7px; min-width: 0; }
+.growth-overview-label { color: var(--ink-60); font-size: 12px; }
+.growth-overview-stat p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 0; font: 500 13px/1.5 var(--font-d); }
+.growth-overview-stat b { font-weight: 750; }
+.growth-overview-stat .growth-huaji-values { flex-direction: column; align-items: flex-start; gap: 0; }
+.growth-huaji-target { max-width: 100%; }
+.growth-next-step { min-width: 0; }
+.growth-next-step strong { font: 700 14px/1.5 var(--font-b); }
+.growth-next-step p { margin: 3px 0 0; font-size: 12px; line-height: 1.6; }
+.growth-overview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-width: 0; }
+.growth-primary-action { min-height: 38px; padding: 6px 18px; font: 700 13px/1.5 var(--font-b); }
+.growth-details-toggle { display: inline-flex; align-items: center; gap: 5px; min-height: 38px; padding: 4px 0; font: 13px/1.5 var(--font-b); }
+.growth-row-detail { display: grid; gap: 12px; min-width: 0; padding: 16px 0 0; }
+.growth-detail-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; font-size: 14px; }
+.growth-detail-heading .growth-percent { margin: 0; }
+.growth-row-detail .growth-progress-list, .growth-row-detail .growth-row-actions { margin-top: 0; }
+@media (max-width: 640px) {
+  .growth-overview-progress { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .growth-overview-stat { grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 5px 10px; }
+  .growth-overview-stat .growth-track { grid-column: 2; margin-left: 0; }
+}
+
 }
