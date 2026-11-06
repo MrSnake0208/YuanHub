@@ -1,3 +1,4 @@
+import { validPlannerDate, nextPlannerDate } from './plannerRoutinePeriods.js'
 const clone = value => JSON.parse(JSON.stringify(value))
 export const CUSTOM_DAILY_SPENDS_FEATURE = 'custom-daily-spends-v1'
 const validId = id => typeof id === 'string' && /^custom-spend-[A-Za-z0-9-]{1,100}$/.test(id)
@@ -75,7 +76,8 @@ export function markCustomSpendOverride(plan, rules, id) {
   return plan
 }
 
-export function replaceCustomSpendRule(rules, id, version) {
+export function replaceCustomSpendRule(rules, id, version, endDate = '') {
+  if (endDate && (!validPlannerDate(endDate) || endDate < version.fromDate)) throw new Error('请填写正确的每日安排结束日期')
   const next = clone(rules || []), rule = next.find(item => item.id === id)
   const earlier = (rule?.versions || []).filter(item => item.fromDate < version.fromDate)
   const updated = clone(version)
@@ -85,7 +87,12 @@ export function replaceCustomSpendRule(rules, id, version) {
       || rule?.versions.find(item => item.item)
     if (snapshot) Object.assign(updated, { item: snapshot.item, count: snapshot.count })
   }
-  const versions = [...earlier, updated]
+  const after = endDate ? nextPlannerDate(endDate) : ''
+  const restore = after ? customSpendRuleAt(rule, after) : null
+  const versions = [...earlier, updated, ...(after ? [
+    { ...(restore || { enabled: false }), fromDate: after },
+    ...(rule?.versions || []).filter(item => item.fromDate > after),
+  ] : [])]
   if (rule) rule.versions = versions
   else next.push({ id, versions })
   return normalizeCustomSpendRules(next)

@@ -8,7 +8,7 @@ import { dialog } from '../src/utils/dialog.js'
 const setup = props => mount(PlannerDailySources, { attachTo: document.body, props: { accountId: 'a', planId: 'plan', revision: 1, today: '2026-10-17', selectedDate: '2026-10-18', sources: emptyStaminaSources(), ...props }, global: { stubs: { teleport: true } } })
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
 const open = async (wrapper, index = 0) => { await wrapper.findAll('.condition-summary-card')[index].trigger('click'); await flushPromises() }
-const save = async wrapper => { await wrapper.get('form').trigger('submit'); await flushPromises() }
+const save = async wrapper => { const previews = wrapper.get('.settings-save').text() === '预览影响'; await wrapper.get('form').trigger('submit'); await flushPromises(); if (previews && wrapper.find('.source-preview[role="status"]').exists()) { await wrapper.get('form').trigger('submit'); await flushPromises() } }
 const preview = { fromDate: '2026-10-18', throughDate: '2027-01-14', affectedDates: 3, preservedManualDates: 1 }
 beforeEach(() => { vi.spyOn(dialog, 'confirm').mockResolvedValue(true) })
 

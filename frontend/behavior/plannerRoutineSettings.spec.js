@@ -10,6 +10,25 @@ const setup = props => mount(PlannerRoutineSettings, { attachTo: document.body, 
 const open = async (wrapper, index = 0) => { await wrapper.findAll('.condition-summary-card')[index].trigger('click'); await flushPromises() }
 const save = async wrapper => { await wrapper.get('form').trigger('submit'); await flushPromises() }
 
+it('日期区间先预览再保存，结束后的原安排保留，修改日期使预览失效', async () => {
+  const wrapper = setup({ today: '2026-11-06', lastDate: '2027-02-03', preferences: normalizePlannerPreferences({ luoyang: 2 }) })
+  await open(wrapper)
+  const dates = wrapper.findAll('input[type="date"]')
+  await dates[0].setValue('2026-11-10'); await dates[1].setValue('2026-11-16')
+  await wrapper.get('#pref-luoyang').setValue(4)
+  await save(wrapper)
+  expect(wrapper.emitted('save-preferences')).toBeUndefined()
+  expect(wrapper.get('.settings-save').text()).toBe('确认保存每日安排')
+  await dates[1].setValue('2026-11-17')
+  expect(wrapper.get('.settings-save').text()).toBe('预览影响')
+  await save(wrapper); await save(wrapper)
+  expect(wrapper.emitted('save-preferences')[0][0].routinePeriods).toEqual([
+    { fromDate: '2026-11-10', luoyang: 4, shouchun: 0, purchaseCount: 0 },
+    { fromDate: '2026-11-18', luoyang: 2, shouchun: 0, purchaseCount: 0 },
+  ])
+  wrapper.unmount()
+})
+
 it.each([390, 768, 1440])('首页无调节器，按需编辑保存后摘要同步、完整保留关卡选项：%ipx', async width => {
   const viewport = installViewport(width), wrapper = setup()
   expect(wrapper.find('input').exists()).toBe(false)

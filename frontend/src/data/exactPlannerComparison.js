@@ -10,7 +10,7 @@ export function exactComparisonScenarios(input) {
   const counts = deadline ? [0, 2] : [...new Set([0, 2, preferences.purchaseCount])]
   const scenarios = counts.map(purchaseCount => {
     const variant = clonePlannerValue(input)
-    variant.preferences = { ...preferences, purchaseCount }
+    variant.preferences = { ...preferences, purchaseCount, ...(preferences.routinePeriods ? { routinePeriods: preferences.routinePeriods.map(period => ({ ...period, purchaseCount })) } : {}) }
     if (deadline) variant.objective = 'overall'
     if (variant.firstDay) {
       variant.firstDay = normalizePlannerPlan(variant.firstDay)
@@ -19,6 +19,7 @@ export function exactComparisonScenarios(input) {
     }
     return { id: 'purchase-' + purchaseCount, purchaseCount, title: purchaseCount === 0 ? '零额外投入' : purchaseCount === 2 ? '每日购买两次' : `当前设置 · 每日购买 ${purchaseCount} 次`, input: variant }
   })
+  if (!deadline && preferences.routinePeriods?.length) scenarios.push({ id: 'current-routine', title: '当前日期安排', input: clonePlannerValue(input) })
   if (deadline) scenarios.push({ id: 'minimum-coins', title: '期限内最低白金币', input: clonePlannerValue(input) })
   return scenarios
 }
@@ -37,7 +38,7 @@ export function exactCurrentSettingsScenario(input) {
 export function exactDeadlineAlternatives(input) {
   if (input?.objective !== 'coins' || !input.dates?.length) return []
   const horizons = [...new Set(Array.from({ length: 8 }, (_, index) => index).map(delta => Math.min(PLANNER_RULES.maxEtaDays, input.dates.length + delta)))]
-  return horizons.flatMap(days => ['extra', 'coins', ...(input.preferences?.luoyang || input.preferences?.shouchun ? ['dispatch'] : [])].map(kind => {
+  return horizons.flatMap(days => ['extra', 'coins', ...(input.preferences?.luoyang || input.preferences?.shouchun || input.preferences?.routinePeriods?.some(period => period.luoyang || period.shouchun) ? ['dispatch'] : [])].map(kind => {
     const variant = clonePlannerValue(input)
     const objective = kind === 'dispatch' ? 'extra' : kind
     variant.objective = objective

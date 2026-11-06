@@ -1,3 +1,4 @@
+import { routineForDate } from './plannerRoutinePeriods.js'
 import { TRAINING_GROUPS } from './operatorTraining.js'
 import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
 import { mergeCustomSpendRules } from './customPlannerSpends.js'
@@ -12,6 +13,7 @@ function reserveGain(source, index) {
 }
 
 function defaultPlan(preferences, extra = 0, date = '') {
+  preferences = routineForDate(preferences, date)
   const gains = resolveDailyStaminaGains([createGain('natural'), createGain('meal')], preferences, date)
   if (preferences.purchaseCount) gains.push(createGain('buy', { value: preferences.purchaseCount }))
   if (extra) gains.push(createGain('custom', { label: '额外体力', value: extra }))

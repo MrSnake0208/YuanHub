@@ -25,7 +25,7 @@ test('月卡同步保留分期固定来源、手工收入支出及历史；有�
   const original = createFixedSchedule({ ...context(), date: '2026-10-16', preferences }, plans)
   original.context.planBaselines = { [today]: clonePlannerValue(manual) }
   const before = JSON.stringify({ original, plans })
-  const apply = (schedule, manualPlans, sources = cardSources()) => applyDailySourcesToSchedule(schedule, manualPlans, sources, today, today, false, { monthlyOnly: true })
+  const apply = (schedule, manualPlans, sources = cardSources()) => applyDailySourcesToSchedule(schedule, manualPlans, sources, today, today, true, { monthlyOnly: true })
   const next = apply(original, plans)
   assert.equal(JSON.stringify({ original, plans }), before)
   assert.deepEqual(next.schedule.history, original.result.timeline.filter(day => day.date < today))
@@ -170,13 +170,13 @@ test('workspace云端往返按账号共享；旧数据不产生月卡，日程�
   assert.deepEqual(fixedScheduleTimeline(remote.schedule), fixedScheduleTimeline(next.schedule))
 })
 
-test('停用月卡导致手工日超支时保留支出，暂停的后续日也显示新月卡体力', () => {
+test('显式覆盖手工来源：停用月卡导致手工日超支时保留支出，暂停的后续日也显示新月卡体力', () => {
   const sources = cardSources(); sources.monthlyCard.endDate = ''
   const preferences = withSourcePeriod({}, sources, today)
   const manual = clonePlannerValue({ gains: resolveDailyStaminaGains(free(), preferences, today), spends: [createSpend('luoyang', { value: 6 })] })
   const plans = { [today]: manual, '2026-10-18': manual }
   const original = createFixedSchedule({ ...context(), preferences }, plans)
-  const next = applyDailySourcesToSchedule(original, plans, emptyStaminaSources(), today, today, false, { monthlyOnly: true })
+  const next = applyDailySourcesToSchedule(original, plans, emptyStaminaSources(), today, today, true, { monthlyOnly: true })
   assert.equal(next.schedule.result.status, 'invalid')
   assert.deepEqual(next.manualPlans[today].spends, manual.spends)
   assert.equal(next.schedule.result.timeline[0].totals.gains, 408)

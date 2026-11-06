@@ -1,3 +1,4 @@
+import { ROUTINE_PERIODS_FEATURE } from './plannerRoutinePeriods.js'
 import { normalizeTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds } from './operatorTrainingPlans.js'
 import { PLANNER_RULES, normalizePlannerSnapshot, plannerStorageKey } from './cultivationPlanner.js'
 import { BUSINESS_TIMEZONE, dateInZone } from '../utils/businessDay.js'
@@ -9,7 +10,7 @@ const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperat
   'etaDays', 'lastProgressDay', 'costPer', 'groupId', 'stageLevel', 'colorKey', 'defaultValue', 'costCoins',
   'totalCoins', 'initialExtra', 'dailyCoins', 'beforePercent', 'todayPercent', 'startRemaining', 'planBaselines', 'awaitingRecalculation',
   'displayStartDate', 'fromDate', 'completionDays', 'agentDays', 'staminaSources', 'monthlyCard', 'fixedSources',
-  'dailyEnabled', 'shopEnabled', 'dailyAmount', 'shopAmount', 'endDate', 'sourcePeriods', 'customSpendRules', 'customSpendOverrides']
+  'dailyEnabled', 'shopEnabled', 'dailyAmount', 'shopAmount', 'endDate', 'sourcePeriods', 'customSpendRules', 'customSpendOverrides', 'routinePeriods']
 const snake = Object.fromEntries(fields.map(key => [key, key.replace(/[A-Z]/g, c => '_' + c.toLowerCase())]))
 const camel = Object.fromEntries(Object.entries(snake).map(([a, b]) => [b, a]))
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -19,7 +20,7 @@ function mapFields(value, names) {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [names[key] || key, mapFields(item, names)]))
 }
 export function workspaceBody(workspace, revision = workspace.revision) {
-  return { schema_version: 1, expected_revision: revision, ...mapFields({
+  return { schema_version: 1, expected_revision: revision, client_features: [ROUTINE_PERIODS_FEATURE], ...mapFields({
     activePlanId: workspace.activePlanId, trainingLevels: workspace.trainingLevels,
     ...(workspace.staminaSources ? { staminaSources: workspace.staminaSources } : {}),
     plans: workspace.plans.map(plan => ({ ...plan, targets: plan.source === 'favorites' ? {} : Object.fromEntries(
@@ -37,7 +38,7 @@ export function plannerDateInZone(timezone, value = new Date(), dayStartHour = 0
   return dateInZone(timezone, value, dayStartHour)
 }
 export function scheduleBody(snapshot, revision = snapshot.revision || 0) {
-  return { schema_version: 1, rules_version: PLANNER_RULES.version, expected_revision: revision, client_features: [CUSTOM_DAILY_SPENDS_FEATURE],
+  return { schema_version: 1, rules_version: PLANNER_RULES.version, expected_revision: revision, client_features: [CUSTOM_DAILY_SPENDS_FEATURE, ROUTINE_PERIODS_FEATURE],
     timezone: snapshot.timezone || BUSINESS_TIMEZONE, ...mapFields({ strategy: snapshot.strategy, agentOrder: snapshot.agentOrder,
       preferences: snapshot.preferences, manualPlans: snapshot.manualPlans, schedule: snapshot.schedule }, snake) }
 }

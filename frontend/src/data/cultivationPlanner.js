@@ -1,3 +1,4 @@
+import { normalizeRoutinePeriods, routineForDate } from './plannerRoutinePeriods.js'
 import { BOOK_VALUES, TRAINING_GROUPS, normalizeTrainingLevels } from './operatorTraining.js'
 import { resolveDailyStaminaGains } from './dailyStaminaSources.js'
 import { canonicalPlannerYield, mergeCustomSpendRules, normalizeCustomSpendRules } from './customPlannerSpends.js'
@@ -78,6 +79,7 @@ export function normalizePlannerPreferences(value = {}) {
     shouchun: integer(value.shouchun, 0, 0, PLANNER_RULES.maxDispatchCount),
     purchaseCount: integer(value.purchaseCount == null ? value.buy : value.purchaseCount, 0, 0, PLANNER_RULES.maxPurchaseCount),
     ...(Array.isArray(value.sourcePeriods) ? { sourcePeriods: clonePlannerValue(value.sourcePeriods) } : {}),
+    ...(value.routinePeriods?.length ? { routinePeriods: normalizeRoutinePeriods(value.routinePeriods) } : {}),
     ...(value.customSpendRules?.length ? { customSpendRules: normalizeCustomSpendRules(value.customSpendRules) } : {})
   }
 }
@@ -359,7 +361,7 @@ function spendColor(group) {
 
 
 export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, date = '', initialExtra = 0, gains, fixedSpends, customSpendOverrides }) {
-  const prefs = normalizePlannerPreferences(preferences)
+  const prefs = routineForDate(normalizePlannerPreferences(preferences), date)
   const plan = { gains: [
     { id: 'natural', label: '自然恢复', colorKey: 'natural', kind: 'energy', value: 288, rec: 288 },
     { id: 'meal', label: '每日进膳', colorKey: 'meal', kind: 'energy', value: 120, rec: 120 }
@@ -367,7 +369,7 @@ export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels =
   plan.gains = resolveDailyStaminaGains(plan.gains, prefs, date)
   const candidates = plannerActions(groups, levels)
   const useful = candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)
-  if (gains === undefined && !useful && !prefs.customSpendRules?.length) return plan
+  if (gains === undefined && !useful && !prefs.customSpendRules?.length && !prefs.routinePeriods?.length) return plan
   if (prefs.purchaseCount) plan.gains.push({ id: 'buy', label: '购买体力', colorKey: 'buy', kind: 'count', value: prefs.purchaseCount, rec: prefs.purchaseCount })
   if (initialExtra > 0) plan.gains.push({ id: 'reserve', label: '体力储备', colorKey: 'custom', kind: 'energy', value: decimal(initialExtra), rec: decimal(initialExtra), custom: true })
   for (const id of ['luoyang', 'shouchun']) {
@@ -508,8 +510,9 @@ export function simulatePlanner({ initialState, dates = [], groups = TRAINING_GR
     const changed = plannerStateRemaining(day.end) < plannerStateRemaining(start)
     if (changed) lastProgressDay = index + 1
     const futureManual = dates.slice(index + 1, maxDays).some(nextDate => manualPlans[nextDate])
-    const futureSourceChange = (preferences.customSpendRules || []).some(rule => rule.versions.some(version => version.fromDate > date && version.fromDate <= dates[Math.min(maxDays, dates.length) - 1])) || (preferences.sourcePeriods || []).some(period =>
+    const futureSourceChange = (preferences.routinePeriods || []).some(period => period.fromDate > date && period.fromDate <= dates[Math.min(maxDays, dates.length) - 1]) || (preferences.customSpendRules || []).some(rule => rule.versions.some(version => version.fromDate > date && version.fromDate <= dates[Math.min(maxDays, dates.length) - 1])) || (preferences.sourcePeriods || []).some(period =>
       period.fromDate > date && period.fromDate <= dates[Math.min(maxDays, dates.length) - 1] ||
+      (period.sources.fixedSources || []).some(source => source.startDate > date && source.startDate <= dates[Math.min(maxDays, dates.length) - 1] || source.endDate >= date && source.endDate < dates[Math.min(maxDays, dates.length) - 1]) ||
       period.sources.monthlyCard.startDate > date && period.sources.monthlyCard.startDate <= dates[Math.min(maxDays, dates.length) - 1])
     if (day.errors.length) {
       timeline.push(day)

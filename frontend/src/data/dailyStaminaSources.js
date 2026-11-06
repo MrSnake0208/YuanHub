@@ -1,3 +1,4 @@
+import { validPlannerDate, nextPlannerDate } from './plannerRoutinePeriods.js'
 import { monthlyCardTier } from './monthlyCard.js'
 
 export const MONTHLY_STAMINA_IDS = ['monthly-card-daily', 'monthly-card-shop']
@@ -11,7 +12,8 @@ export function normalizeStaminaSources(raw) {
     dailyEnabled: card.dailyEnabled === true, shopEnabled: card.shopEnabled === true,
     dailyAmount: amount(card.dailyAmount), shopAmount: card.shopAmount == null ? 20 : amount(card.shopAmount) },
   fixedSources: (raw?.fixedSources || []).map(source => ({ id: String(source.id), label: String(source.label).slice(0, 32),
-    value: amount(source.value), enabled: source.enabled === true })) }
+    value: amount(source.value), enabled: source.enabled === true,
+    ...(source.startDate ? { startDate: source.startDate } : {}), ...(source.endDate ? { endDate: source.endDate } : {}) })) }
 }
 export function validateStaminaSources(raw) {
   const card = raw.monthlyCard
@@ -25,6 +27,7 @@ export function validateStaminaSources(raw) {
   if (raw.fixedSources.length > 32) throw new Error('最多设置32个每日固定来源')
   for (const source of raw.fixedSources) {
     if (!source.label.trim() || source.label.trim().length > 32 || !source.id || ['buy', 'reserve', 'required-extra', 'diagnostic-budget', ...MONTHLY_STAMINA_IDS].includes(source.id) || source.id.startsWith('planner-reserve-') || ids.has(source.id)) throw new Error('固定来源名称不能为空，且同一来源只能设置一次；购买和一次性储备请使用原有设置')
+    if (source.startDate && !validPlannerDate(source.startDate) || source.endDate && !validPlannerDate(source.endDate) || source.startDate && source.endDate && source.startDate > source.endDate) throw new Error('请填写正确的固定来源日期范围')
     ids.add(source.id)
   }
   return normalizeStaminaSources({ ...raw, fixedSources: raw.fixedSources.map(source => ({ ...source, label: source.label.trim() })) })
@@ -37,6 +40,27 @@ export function withSourcePeriod(preferences, sources, fromDate) {
 
 export function sourcesForDate(preferences, date) {
   return (preferences?.sourcePeriods || []).filter(period => period.fromDate <= date).at(-1)?.sources
+}
+
+// Keep the old source outside each edited interval, including later saved versions.
+export function withFixedSourcePeriods(preferences, sources, fromDate) {
+  const next = validateStaminaSources(sources), periods = preferences.sourcePeriods || []
+  const dates = [...new Set([fromDate, ...periods.map(period => period.fromDate),
+    ...next.fixedSources.flatMap(source => [source.startDate, source.endDate && nextPlannerDate(source.endDate)]).filter(Boolean),
+  ])].filter(date => date >= fromDate).sort()
+  return { ...preferences, sourcePeriods: [
+    ...periods.filter(period => period.fromDate < fromDate),
+    ...dates.map(date => {
+      const previous = sourcesForDate(preferences, date)
+      const fixedSources = next.fixedSources.map(source => {
+        if (source.startDate && date < source.startDate || source.endDate && date > source.endDate) {
+          return previous?.fixedSources.find(item => item.id === source.id) || source
+        }
+        return source
+      })
+      return { fromDate: date, sources: { monthlyCard: previous?.monthlyCard || next.monthlyCard, fixedSources } }
+    }),
+  ] }
 }
 
 export function withMonthlyCardPeriod(preferences, monthlyCard, fromDate) {
@@ -57,7 +81,10 @@ export function resolveDailyStaminaGains(gains, preferences, date) {
   const replacements = new Map()
   const gain = (id, label, value, colorKey = 'custom') => ({ id, label, kind: 'energy', value, rec: value, colorKey,
     custom: !['natural', 'meal', 'mail', 'event', 'gift', ...MONTHLY_STAMINA_IDS].includes(id), name: label })
-  for (const source of sources.fixedSources) replacements.set(source.id, gain(source.id, source.label, source.enabled ? source.value : 0))
+  for (const source of sources.fixedSources) {
+    if (source.startDate && date < source.startDate || source.endDate && date > source.endDate) continue
+    replacements.set(source.id, gain(source.id, source.label, source.enabled ? source.value : 0))
+  }
   const card = sources.monthlyCard
   const active = card.tier !== 'none' && (!card.startDate || date >= card.startDate) && (!card.endDate || date <= card.endDate)
   replacements.set(MONTHLY_STAMINA_IDS[0], gain(MONTHLY_STAMINA_IDS[0], '月卡每日奖励', active && card.dailyEnabled ? card.dailyAmount : 0))

@@ -400,12 +400,14 @@
 </section>
     </details>
   </section>
-  <PlannerRoutineSettings :preferences="plannerPreferences" :levels="workspace.trainingLevels" :account-id="accountId" :plan-id="workspace.activePlanId" :revision="workspace.revision" :disabled="scheduleActionBlocked" @save-preferences="saveRoutinePreferences" @save-levels="saveTrainingLevels" />
-  <div v-if="customRuleEntries.length" class="custom-rule-list"><span>持续每日安排</span><button v-for="item in customRuleEntries" :key="item.id" type="button" class="workspace-link" :disabled="scheduleActionBlocked || goalMode" @click="customDailyRef?.open(item)">{{ item.label }} · {{ item.dailyStatus }} · 管理每日安排</button></div>
+  <PlannerRoutineSettings ref="routineSettingsRef" :today="plannerToday" :last-date="customDailyLastDate" :preferences="plannerPreferences" :levels="workspace.trainingLevels" :account-id="accountId" :plan-id="workspace.activePlanId" :revision="workspace.revision" :disabled="scheduleActionBlocked" @save-preferences="saveRoutinePreferences" @save-levels="saveTrainingLevels">
+  <div class="routine-custom-actions"><button type="button" class="action-button" :disabled="scheduleActionBlocked || goalMode" @click="customDailyRef?.open()">自定义每日支出</button><button type="button" class="action-button" :disabled="templatesLoading || !templateOwner" @click="templateManagerRef?.open()">管理常用支出</button><button v-if="dailySettingsOrigin" type="button" class="action-button" @click="returnToDaily">返回每日记录</button></div>
+  <div v-if="customRuleEntries.length" class="custom-rule-list"><span>持续每日安排</span><button v-for="item in customRuleEntries" :key="item.id" type="button" class="workspace-link workspace-text" :disabled="scheduleActionBlocked || goalMode" @click="customDailyRef?.open(item)">{{ item.label }} · {{ item.dailyStatus }} · 管理每日安排</button></div>
+  </PlannerRoutineSettings>
   <PlannerDailySources ref="dailySourcesRef" :sources="workspace.staminaSources" :account-id="accountId" :plan-id="workspace.activePlanId" :revision="workspace.revision" :game="game" :today="plannerToday" :selected-date="selectedDate" :gains="currentDay?.planned.gains || []" :disabled="scheduleActionBlocked" :allow-application="!goalMode" :preview="visibleDailySourcePreview" @save="saveDailySources" @preview="previewDailySources" @apply="applyDailySources" @clear-preview="dailySourcePreview = null" />
 </section>
                 <footer class="planner-step-actions">
-                  <button type="button" class="workspace-link" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" />直接编辑每日</button>
+                  <button type="button" class="workspace-link workspace-text" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" />直接编辑每日</button>
                   <button type="button" class="action-button primary" @click="setPlannerStep('comparison')">下一步：方案对比<ChevronRight :size="16" aria-hidden="true" /></button>
                 </footer>
               </section>
@@ -422,21 +424,33 @@
 <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :preview-dates="derivedPreviewDates" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
-          <div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力获取</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><p class="ledger-scope-note">直接修改数量只影响当天；每天都领的月卡体力请使用「设置每日月卡」。</p><template v-for="(gain, index) in currentDay.planned.gains" :key="gain.id">
+          <details ref="fixedLedgerRef" class="fixed-ledger">
+            <summary><strong>固定收支</strong><span>获取 {{ formatStamina(fixedLedgerTotals.gains) }} · 支出 {{ formatStamina(fixedLedgerTotals.spends) }}</span><span class="fixed-expand-label">展开</span><span class="fixed-collapse-label">收起</span></summary>
+            <p class="ledger-scope-note">已计入当日合计。这里只调整选中日期，不改变每日规则；过去记录只读。</p>
+            <div v-for="row in fixedLedgerRows" :key="row.kind + row.entry.id" class="fixed-ledger-row" :class="{ 'spend-added': row.kind === 'spends' && highlightedSpendId === row.entry.id }">
+              <span>{{ row.entry.label }}<small v-if="row.kind === 'spends'"> · {{ formatStamina(row.entry.value * row.entry.costPer) }} 体力</small><small v-for="(amount, id) in row.entry.yield" :key="id"> · {{ resourceName(id) }} {{ amount * row.entry.value }}</small><small v-if="row.entry.value !== row.entry.rec"> · 当天已调整</small></span>
+              <label>仅当天<input :id="(row.kind === 'gains' ? 'gain' : 'spend') + '-value-' + row.index" type="number" min="0" step="1" :aria-label="row.entry.label + '当天数量'" :value="row.entry.value" :disabled="scheduleActionBlocked || reviewingHistory" @change="updatePlanValue(row.kind, row.index, $event)" />{{ row.kind === 'spends' || row.entry.kind === 'count' ? '次' : '体力' }}</label>
+              <button type="button" class="action-button" :disabled="scheduleActionBlocked || reviewingHistory" @click="skipFixedDayRow(row)">当天跳过</button>
+              <button type="button" class="action-button" :disabled="scheduleActionBlocked || reviewingHistory" @click="openDailySettings(row.kind === 'spends' ? row.entry.custom ? 'custom' : 'routine' : ['monthly-card-daily', 'monthly-card-shop'].includes(row.entry.id) ? 'monthly' : row.entry.id === 'buy' ? 'routine' : 'sources', row.entry)">修改每日规则</button>
+            </div>
+            <p v-if="!fixedLedgerRows.length" class="ledger-scope-note">当天没有固定收支。</p>
+          </details>
+          <div class="routine-custom-actions"><button type="button" class="action-button" :disabled="scheduleActionBlocked || reviewingHistory" @click="openDailySettings('monthly')">设置每日月卡</button><button type="button" class="action-button" :disabled="scheduleActionBlocked || templatesLoading || !templateOwner" @click="openDailySettings('templates')">管理常用支出</button></div>
+          <div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>当天额外获取</h3><span title="包含固定来源的全部推荐获取">总推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><p class="ledger-scope-note">固定获取已收起在上方；下面只编辑当天额外获取。</p><template v-for="(gain, index) in currentDay.planned.gains" :key="gain.id"><template v-if="!isFixedLedgerEntry('gains', gain)">
   <PlannerCustomEntry v-if="gain.custom" :entry="gain" kind="gain" :index="index" :total="energyFromGain(gain)" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || reviewingHistory"
     @change-name="updateCustomName('gains', index, $event)" @change-value="updatePlanValue('gains', index, $event)" @remove="removePlanRow('gains', index)" />
   <div v-else class="ledger-row">
-    <div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span><button v-if="['monthly-card-daily', 'monthly-card-shop'].includes(gain.id)" type="button" class="workspace-link" :disabled="scheduleActionBlocked || reviewingHistory" @click="dailySourcesRef?.openMonthly()">设置每日月卡</button></div>
+    <div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span></div>
     <div class="ledger-input-wrap"><label :for="'gain-value-' + index">数量</label><input :id="'gain-value-' + index" type="number" min="0" step="1" :value="gain.value" :aria-label="gain.label + '数量'" @change="updatePlanValue('gains', index, $event)" /><span>{{ gain.kind === 'count' ? '次' : '体力' }}</span></div>
     <span class="recommendation" :class="{ 'matches-plan': gain.value === recommendedValue('gains', gain) }">推荐 {{ recommendedValue('gains', gain) }}</span>
     <button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button>
   </div>
-</template><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><template v-for="(spend, index) in currentDay.planned.spends" :key="spend.id">
+</template></template><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取（含固定）</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>当天支出与历练</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><template v-for="(spend, index) in currentDay.planned.spends" :key="spend.id"><template v-if="!isFixedLedgerEntry('spends', spend)">
   <PlannerCustomEntry v-if="spend.custom" :class="{ 'spend-added': highlightedSpendId === spend.id }" :entry="spend" kind="spend" :index="index" :total="spend.value * spend.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || reviewingHistory"
     @change-name="updateCustomName('spends', index, $event)" @change-value="updatePlanValue('spends', index, $event)" @change-cost="updateSpendCost(index, $event)"
     @change-yield="(id, event) => updateSpendYield(index, id, event)" @add-yield="addSpendYield(index, $event)" @remove-yield="removeSpendYield(index, $event)" @remove="removePlanRow('spends', index)">
-    <button type="button" class="workspace-link" :disabled="templatesBlocked || reviewingHistory" @click="pinCustomSpend(spend)">固定到支出列表</button>
-    <button type="button" class="workspace-link" :disabled="scheduleActionBlocked || reviewingHistory || goalMode" @click="customDailyRef?.open(spend)">设为持续每日安排</button>
+    <button type="button" class="workspace-link workspace-text" :disabled="templatesBlocked || reviewingHistory" @click="pinCustomSpend(spend)">固定到支出列表</button>
+    <button type="button" class="workspace-link workspace-text" :disabled="scheduleActionBlocked || reviewingHistory || goalMode" @click="openDailySettings('custom', spend)">设为持续每日安排</button>
     <PlannerRepeatedSpend :entry="spend" :date="selectedDate" :today="plannerToday" :last-date="repeatLastDate" :account-id="accountId" :plan-id="workspace.activePlanId" :schedule="fixedSchedule" :resource-name="resourceName" :disabled="scheduleActionBlocked || reviewingHistory || goalMode || scheduleDifferences.goalsChanged" :blocked-reason="reviewingHistory ? '已过日期不能修改' : goalMode ? '请先切换至常规日程规划' : scheduleDifferences.goalsChanged ? '请先更新当前日程' : ''" @apply="(request, context, done) => applyRepeatedSpend(request, context, done, spend)" />
   </PlannerCustomEntry>
   <div v-else class="ledger-row spend-ledger-row" :class="{ 'spend-added': highlightedSpendId === spend.id }">
@@ -445,15 +459,15 @@
     <span class="recommendation" :class="{ 'matches-plan': spend.value === recommendedValue('spends', spend) }">推荐 {{ recommendedValue('spends', spend) }}</span>
     <button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" :disabled="schedulePending" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button>
   </div>
-</template>
+</template></template>
 <div class="spend-add-area" @keydown.esc.prevent.stop="closeSpendMenu">
-  <p v-for="item in dayRuleOverrides" :key="item.id" class="ledger-scope-note">{{ currentDay.planned.spends.some(spend => spend.id === item.id) ? '当天已单独修改：' : '当天已跳过：' }}{{ item.label }} <button type="button" class="workspace-link" :disabled="scheduleActionBlocked || reviewingHistory" @click="restoreDailyRule(item.id)">恢复每日安排</button></p>
+  <p v-for="item in dayRuleOverrides" :key="item.id" class="ledger-scope-note">{{ currentDay.planned.spends.some(spend => spend.id === item.id) ? '当天已单独修改：' : '当天已跳过：' }}{{ item.label }} <button type="button" class="workspace-link workspace-text" :disabled="scheduleActionBlocked || reviewingHistory" @click="restoreDailyRule(item.id)">恢复每日安排</button></p>
   <button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />{{ addMenu === 'spend' ? '收起添加支出' : '添加支出' }}</button>
   <section v-if="addMenu === 'spend'" id="planner-spend-menu" ref="spendPanelRef" class="spend-add-panel" aria-labelledby="spend-panel-title" :aria-busy="schedulePending">
     <div class="spend-panel-heading">
       <button v-if="pendingSpendChannel" type="button" class="spend-back" :disabled="schedulePending" @click="backToSpendChannels"><ChevronLeft :size="16" aria-hidden="true" />返回渠道</button>
       <h4 id="spend-panel-title">{{ pendingTrainingGroup ? pendingTrainingGroup.name + '历练 · 选择层数' : spendDraft ? '自定义支出' : '选择支出项目' }}</h4>
-      <button type="button" class="workspace-link" :disabled="templatesLoading || !templateOwner" @click="templateManagerRef?.open()">管理常用支出</button>
+      <button type="button" class="workspace-link workspace-text" :disabled="templatesLoading || !templateOwner" @click="openDailySettings('templates')">管理常用支出</button>
       <button type="button" class="row-remove" aria-label="收起添加支出" @click="closeSpendMenu"><ChevronUp :size="16" aria-hidden="true" /></button>
     </div>
     <template v-if="pendingTrainingGroup">
@@ -475,7 +489,7 @@
       <button v-for="item in commonSpendTemplates" :key="item.id" type="button" :disabled="schedulePending || templatesBlocked" :style="channelStyle('custom')" @click="addCommonSpend(item)"><span class="channel-label custom common-spend-label"><i></i>{{ item.label }}</span></button>
     </div>
     <p v-if="templatesLoading" role="status">正在读取常用支出…</p>
-    <p v-if="templateError" class="spend-inline-error" role="alert">{{ templateError }} <button type="button" class="workspace-link" @click="templateManagerRef?.open()">恢复常用支出</button></p>
+    <p v-if="templateError" class="spend-inline-error" role="alert">{{ templateError }} <button type="button" class="workspace-link workspace-text" @click="templateManagerRef?.open()">恢复常用支出</button></p>
   </section>
   <p v-if="scheduleState.saving || (schedulePending && !scheduleState.error)" class="spend-save-status" role="status">正在核对并保存日程到云端，尚未确认…</p>
   <p v-else-if="scheduleState.error" class="spend-inline-error" role="alert">日程尚未确认保存：{{ scheduleState.error.message }}。待保存内容仍在当前页面，请勿重复添加。<a href="#planner-cloud-recovery-schedule" @click="focusScheduleRecovery">前往重试保存或读取云端</a></p>
@@ -483,7 +497,7 @@
   <p v-else-if="spendFeedback" class="spend-save-status" role="status">{{ spendFeedback }}</p>
 </div>
 <div class="spend-summary">
-  <div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div>
+  <div class="ledger-total spend-total"><span>当日支出（含固定）</span><b>{{ formatStamina(todayTotals.spends) }}</b></div>
   <div class="spend-balance" :class="{ negative: todayTotals.balance < 0 }" role="status" aria-live="polite" aria-atomic="true"><span>{{ todayTotals.balance < 0 ? '超出可用体力' : '未分配体力' }}</span><strong>{{ formatStamina(Math.abs(todayTotals.balance)) }}</strong></div>
 </div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" title="恢复当前套用方案中的当日安排" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天方案</button></div></section>
                 <footer class="planner-step-actions">
@@ -501,7 +515,7 @@
 
     </div>
     <PlannerCustomSpendManager ref="templateManagerRef" :templates="commonSpendTemplates" :owner="templateOwner" :busy="templateState.saving || templatesLoading" :error="templateError" :resources="yieldResourceOptions" :resource-name="resourceName" @save="saveCommonSpends" @retry="recoverCommonSpends('retry', $event)" @discard="recoverCommonSpends('discard', $event)" />
-    <PlannerCustomDailySpend ref="customDailyRef" :rules="customRules" :templates="commonSpendTemplates" :today="plannerToday" :date="selectedDate" :last-date="customDailyLastDate" :context-key="customDailyContext" :disabled="scheduleActionBlocked || goalMode" :resource-name="resourceName" @preview="previewCustomDaily" @apply="applyCustomDaily" />
+    <PlannerCustomDailySpend ref="customDailyRef" :rules="customRules" :templates="commonSpendTemplates" :today="plannerToday" :date="selectedDate" :last-date="customDailyLastDate" :context-key="customDailyContext" :disabled="scheduleActionBlocked || goalMode" :resource-name="resourceName" :resources="yieldResourceOptions" @preview="previewCustomDaily" @apply="applyCustomDaily" />
     <Teleport to="body">
       <div v-if="props.active && props.isLoggedIn && props.accountId && workspace.activePlanId && scheduleSaveStatus" class="planner-save-toast" :class="'is-' + scheduleSaveStatus">
         <RefreshCw v-if="scheduleSaveStatus === 'saving'" class="planner-save-icon spin" :size="22" aria-hidden="true" />
@@ -589,8 +603,9 @@ import { customSpendTemplate, customSpendFromTemplate, customSpendRuleAt, replac
 import { applyCustomSpendRulesToSchedule } from '../../data/fixedPlannerSchedule.js'
 import PlannerDailySources from './PlannerDailySources.vue'
 import PlannerRepeatedSpend from './PlannerRepeatedSpend.vue'
+import { routineForDate } from '../../data/plannerRoutinePeriods.js'
 import PlannerRoutineSettings from './PlannerRoutineSettings.vue'
-import { withSourcePeriod } from '../../data/dailyStaminaSources.js'
+import { withSourcePeriod, sourcesForDate } from '../../data/dailyStaminaSources.js'
 import { applyDailySourcesToSchedule, applyFixedCustomSpendToSchedule, applyFixedStage624ToSchedule, plannerDateAfter } from '../../data/fixedPlannerSchedule.js'
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
@@ -671,6 +686,7 @@ const { templates: commonSpendTemplates, owner: templateOwner, error: templateEr
 const templateManagerRef = ref(null), customDailyRef = ref(null)
 const customRules = computed(() => plannerPreferences.value.customSpendRules || [])
 const customDailyContext = computed(() => JSON.stringify([templateOwner.value, props.accountId, workspace.value.activePlanId, workspaceSession.value]))
+const hasDailyRules = computed(() => Boolean(customRules.value.length || plannerPreferences.value.routinePeriods?.length || plannerPreferences.value.sourcePeriods?.some(period => period.sources.fixedSources.some(source => source.startDate || source.endDate))))
 const customDailyLastDate = computed(() => plannerDateAfter(plannerToday.value, 89))
 const customRuleEntries = computed(() => customRules.value.map(rule => {
   const snapshot = [...rule.versions].reverse().find(version => version.item)
@@ -782,8 +798,8 @@ const plannerPreferences = ref(normalizePlannerPreferences())
 const strategy = ref('overall')
 const plannerConditionSummary = computed(() => [
   goalMode.value ? `${goalDays.value} 天内完成 · 最低白金币` : strategy.value === 'priority' ? '按清单顺序优先完成' : '整体最早完成',
-  `每日购买 ${plannerPreferences.value.purchaseCount} 次`,
-  `洛阳 ${plannerPreferences.value.luoyang} 次 · 寿春 ${plannerPreferences.value.shouchun} 次`
+  `每日购买 ${routineForDate(plannerPreferences.value, plannerToday.value).purchaseCount} 次`,
+  `洛阳 ${routineForDate(plannerPreferences.value, plannerToday.value).luoyang} 次 · 寿春 ${routineForDate(plannerPreferences.value, plannerToday.value).shouchun} 次`
 ].join(' · '))
 const plannerOrder = ref([])
 const manualPlans = shallowRef({})
@@ -1053,7 +1069,7 @@ const plannerTimeline = computed(() => fixedSchedule.value ? visibleFixedSchedul
 const plannerCycleDays = computed(() => Math.min(plannerRules.maxEtaDays, Math.max(1, plannerTimeline.value.length, dateOffset(selectedDate.value) + 1)))
 const allPlannerDates = computed(() => [...new Set([
   ...(fixedSchedule.value ? plannerTimeline.value.map(day => day.date) : Array.from({ length: plannerCycleDays.value }, (_, index) => addDays(plannerStartDate.value, index))),
-  ...(customRules.value.length ? Array.from({ length: 90 }, (_, index) => addDays(plannerToday.value, index)) : []),
+  ...(hasDailyRules.value ? Array.from({ length: 90 }, (_, index) => addDays(plannerToday.value, index)) : []),
   ...Object.keys(manualPlans.value).filter(date => !fixedSchedule.value?.context.displayStartDate || date >= fixedSchedule.value.context.displayStartDate)
 ])].sort())
 const pastScheduleCount = computed(() => allPlannerDates.value.filter(date => date < plannerToday.value).length)
@@ -1062,7 +1078,7 @@ const plannerDates = computed(() => {
   const future = allPlannerDates.value.filter(date => date >= plannerToday.value)
   return future.length ? future : [plannerToday.value]
 })
-const derivedPreviewDates = computed(() => customRules.value.length ? allPlannerDates.value.filter(date => date >= plannerToday.value && !manualPlans.value[date] && !plannerTimeline.value.some(day => day.date === date)) : [])
+const derivedPreviewDates = computed(() => hasDailyRules.value ? allPlannerDates.value.filter(date => date >= plannerToday.value && !manualPlans.value[date] && !plannerTimeline.value.some(day => day.date === date)) : [])
 const firstScheduleSaveReason = computed(() => {
   if (!props.isLoggedIn || !props.accountId) return '请先登录并选择子账号'
   if (cloudLoading.value || scheduleLoading.value) return '正在读取培养清单与日程，请稍候'
@@ -1118,7 +1134,7 @@ const currentDay = computed(() => {
   return { date: selectedDate.value, start, recommended, manual: Boolean(manualPlans.value[selectedDate.value]), ...settled,
     ...(paused ? { paused: true, end: start, yield: {}, used: {}, surplus: {} } : {}) }
 })
-const planBadgeLabel = computed(() => !plannerTimeline.value.some(day => day.date === selectedDate.value) && customRules.value.length && !currentDay.value.manual ? '每日规则预览 · 未保存日程' : deadlineAlternativePlanAdopted.value ? '期限补足方案' : currentDay.value.manual ? '自定义计划' : '自动推荐方案')
+const planBadgeLabel = computed(() => !plannerTimeline.value.some(day => day.date === selectedDate.value) && hasDailyRules.value && !currentDay.value.manual ? '每日规则预览 · 未保存日程' : deadlineAlternativePlanAdopted.value ? '期限补足方案' : currentDay.value.manual ? '自定义计划' : '自动推荐方案')
 const currentDateLabel = computed(() => formatLongDate(currentDay.value.date))
 const todayTotals = computed(() => planTotals(currentDay.value.planned))
 function isRoutineGain(gain) { return gain.id === 'natural' || gain.id === 'meal' }
@@ -1391,7 +1407,48 @@ async function removePlan(onRemoved) {
   if (await commitWorkspace(next, '培养清单已删除', true)) { closeStarTarget(); targetNotice.value = ''; onRemoved?.() }
 }
 function undoPlanChange() { if (undoWorkspace.value) commitWorkspace(JSON.parse(JSON.stringify(undoWorkspace.value)), '已恢复清单') }
-const dailySourcesRef = ref(null)
+function isFixedLedgerEntry(kind, entry) {
+  const preferences = routineForDate(plannerPreferences.value, selectedDate.value)
+  if (kind === 'spends') {
+    if (['luoyang', 'shouchun'].includes(entry.id)) return preferences[entry.id] > 0
+    return customRules.value.some(rule => rule.id === entry.id && customSpendRuleAt(rule, selectedDate.value)?.enabled)
+  }
+  if (['natural', 'meal'].includes(entry.id)) return true
+  if (entry.id === 'buy') return preferences.purchaseCount > 0
+  const sources = sourcesForDate(preferences, selectedDate.value)
+  if (['monthly-card-daily', 'monthly-card-shop'].includes(entry.id)) return Boolean(sources?.monthlyCard.tier && sources.monthlyCard.tier !== 'none')
+  return sources?.fixedSources.some(source => source.id === entry.id && source.enabled && (!source.startDate || source.startDate <= selectedDate.value) && (!source.endDate || source.endDate >= selectedDate.value))
+}
+function skipFixedDayRow(row) {
+  if (row.kind === 'spends' && row.entry.custom) removePlanRow(row.kind, row.index)
+  else updatePlanValue(row.kind, row.index, { target: { value: 0 } })
+}
+const fixedLedgerRef = ref(null)
+const fixedLedgerRows = computed(() => ['gains', 'spends'].flatMap(kind => currentDay.value.planned[kind].flatMap((entry, index) => isFixedLedgerEntry(kind, entry) ? [{ kind, entry, index }] : [])))
+watch(highlightedSpendId, id => {
+  if (id && fixedLedgerRows.value.some(row => row.kind === 'spends' && row.entry.id === id) && fixedLedgerRef.value) fixedLedgerRef.value.open = true
+}, { flush: 'post' })
+const fixedLedgerTotals = computed(() => planTotals({ gains: fixedLedgerRows.value.filter(row => row.kind === 'gains').map(row => row.entry), spends: fixedLedgerRows.value.filter(row => row.kind === 'spends').map(row => row.entry) }))
+const dailySourcesRef = ref(null), routineSettingsRef = ref(null), dailySettingsOrigin = ref(null)
+async function openDailySettings(kind, item) {
+  if (scheduleActionBlocked.value || reviewingHistory.value) return
+  const session = customDailyContext.value
+  dailySettingsOrigin.value = { date: selectedDate.value, accountId: props.accountId, planId: workspace.value.activePlanId }
+  await setPlannerStep('conditions', false)
+  if (session !== customDailyContext.value) return
+  if (kind === 'monthly') dailySourcesRef.value?.openMonthly()
+  else if (kind === 'sources') dailySourcesRef.value?.openFixed()
+  else if (kind === 'templates') templateManagerRef.value?.open()
+  else if (kind === 'custom') customDailyRef.value?.open(item)
+  else routineSettingsRef.value?.open('preferences')
+}
+function returnToDaily() {
+  const origin = dailySettingsOrigin.value
+  if (origin && sameRoutineContext(origin)) selectedDate.value = origin.date
+  dailySettingsOrigin.value = null
+  setPlannerStep('daily', false)
+}
+watch(() => [props.accountId, workspace.value.activePlanId], () => { dailySettingsOrigin.value = null })
 const repeatLastDate = computed(() => plannerDateAfter(fixedSchedule.value?.baselineDate || plannerToday.value, PLANNER_RULES.maxEtaDays - 1))
 const pendingRoutineSave = ref(null)
 async function saveCommonSpends(items, done) {
@@ -1435,8 +1492,8 @@ const customDailySnapshotKey = () => JSON.stringify([customDailyContext.value, p
 function previewCustomDaily(request, done) {
   try {
     if (scheduleActionBlocked.value || goalMode.value || scheduleDifferences.value.goalsChanged) throw new Error('请先处理当前日程，再打开每日安排')
-    if (request.version.fromDate < plannerToday.value || request.version.fromDate > customDailyLastDate.value) throw new Error('请选择当前90天内的生效日期')
-    const rules = replaceCustomSpendRule(customRules.value, request.id, request.version)
+    if (request.version.fromDate < plannerToday.value || request.version.fromDate > customDailyLastDate.value || request.endDate > customDailyLastDate.value) throw new Error('请选择当前90天内的生效日期')
+    const rules = replaceCustomSpendRule(customRules.value, request.id, request.version, request.endDate)
     const schedule = fixedSchedule.value || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
     const next = applyCustomSpendRulesToSchedule(schedule, manualPlans.value, rules, plannerToday.value, request.version.fromDate)
     const fromDate = plannerToday.value > schedule.baselineDate ? plannerToday.value : schedule.baselineDate
@@ -1445,7 +1502,7 @@ function previewCustomDaily(request, done) {
     done({ ...next, key: customDailySnapshotKey(), fromDate, throughDate,
       exceptions: affected.filter(([, plan]) => plan.customSpendOverrides?.includes(request.id)).length,
       takeovers: affected.filter(([, plan]) => !plan.customSpendOverrides?.includes(request.id) && plan.spends.some(spend => spend.id === request.id)).length,
-      replacedVersions: customRules.value.find(rule => rule.id === request.id)?.versions.filter(version => version.fromDate > request.version.fromDate).length || 0 })
+      replacedVersions: customRules.value.find(rule => rule.id === request.id)?.versions.filter(version => version.fromDate > request.version.fromDate && (!request.endDate || version.fromDate <= request.endDate)).length || 0 })
   } catch (err) { done({ error: err.message }) }
 }
 function applyCustomDaily(next, done) {
@@ -1471,9 +1528,19 @@ async function saveTrainingLevels(levels, context, done) {
 }
 function saveRoutinePreferences(preferences, context, done) {
   if (!sameRoutineContext(context) || scheduleActionBlocked.value || context.base !== JSON.stringify(plannerPreferences.value)) { done(false); return }
-  const previous = plannerPreferences.value
-  plannerPreferences.value = normalizePlannerPreferences(preferences)
-  if (!persistPlannerSnapshot()) { plannerPreferences.value = previous; done(false); return }
+  const previous = { preferences: plannerPreferences.value, schedule: fixedSchedule.value, plans: manualPlans.value }
+  try {
+    if (context.fromDate) {
+      const schedule = fixedSchedule.value || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
+      const next = applyCustomSpendRulesToSchedule(schedule, manualPlans.value, preferences.customSpendRules || [], plannerToday.value, context.fromDate, preferences)
+      fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
+    }
+    plannerPreferences.value = normalizePlannerPreferences(preferences)
+    if (!persistPlannerSnapshot(!context.fromDate)) throw new Error('未确认保存')
+  } catch (err) {
+    plannerPreferences.value = previous.preferences; fixedSchedule.value = previous.schedule; manualPlans.value = previous.plans
+    planError.value = err.message; done(false); return
+  }
   if (!schedulePending.value) { done(!scheduleState.value.error); return }
   pendingRoutineSave.value = { context, done, session: workspaceSession.value }
 }
@@ -1504,17 +1571,17 @@ async function saveDailySources(sources, revision, done, scope) {
   const session = workspaceSession.value
   let application
   try {
-    if (scope === 'monthly') {
+    if (scope === 'monthly' || scope === 'fixed') {
       if (!context.planId) throw new Error('请先选择培养清单')
       if (scheduleDifferences.value.goalsChanged) throw new Error('培养目标已变化，请先更新当前日程，再保存月卡')
       const schedule = fixedSchedule.value || createFixedSchedule(liveScheduleContext.value, manualPlans.value)
       const fromDate = schedule.baselineDate > plannerToday.value ? schedule.baselineDate : plannerToday.value
-      application = applyDailySourcesToSchedule(schedule, manualPlans.value, sources, fromDate, plannerToday.value, false, { monthlyOnly: true })
+      application = applyDailySourcesToSchedule(schedule, manualPlans.value, sources, fromDate, plannerToday.value, false, { monthlyOnly: scope === 'monthly', fixedOnly: scope === 'fixed' })
     }
   } catch (err) { done(false, err.message); return }
   const next = workspaceCopy(); next.staminaSources = sources
   const same = JSON.stringify(workspace.value.staminaSources) === JSON.stringify(sources)
-  const saved = same || await commitWorkspace(next, scope === 'monthly' ? '' : '子账号固定来源已保存；已保存清单请预览并应用')
+  const saved = same || await commitWorkspace(next, '')
   if (!sameRoutineContext(context) || session !== workspaceSession.value) { done(false); return }
   if (!saved) { done(false); return }
   if (!application) {
@@ -1522,8 +1589,8 @@ async function saveDailySources(sources, revision, done, scope) {
     done(true); return
   }
   const finish = success => {
-    if (success) planNotice.value = '月卡设置已保存，已同步当前方案今天及未来的体力'
-    done(success, success ? '' : '月卡设置已保存，方案同步未成功。请关闭面板处理页面的同步提示，再保存月卡重试；无需修改数值。')
+    if (success) planNotice.value = '每日来源已保存，已同步当前方案今天及未来的体力'
+    done(success, success ? '' : `${scope === 'monthly' ? '月卡' : '来源'}设置已保存，方案同步未成功。请关闭面板处理同步提示，再用原值保存重试。`)
   }
   const previous = { schedule: fixedSchedule.value, manualPlans: manualPlans.value, preferences: plannerPreferences.value }
   fixedSchedule.value = application.schedule; manualPlans.value = application.manualPlans; plannerPreferences.value = application.preferences
@@ -2079,6 +2146,17 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 </script>
 
 <style scoped>
+.routine-custom-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 12px; }
+.fixed-ledger { margin-block: 12px; padding: 14px; border: 1px solid var(--planner-line); border-radius: 12px; }
+.fixed-ledger summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; cursor: pointer; }
+.fixed-ledger .fixed-collapse-label, .fixed-ledger[open] .fixed-expand-label { display: none; }
+.fixed-ledger[open] .fixed-collapse-label { display: inline; }
+.fixed-ledger summary strong { margin-right: auto; }
+.fixed-ledger-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-block: 10px; border-bottom: 1px solid var(--planner-line); }
+.fixed-ledger-row > span { flex: 1; }
+.fixed-ledger-row label { display: flex; align-items: center; gap: 8px; }
+.fixed-ledger-row input { width: 70px; padding: 8px; color: var(--ink); background: var(--cream); border: 1px solid var(--planner-line); border-radius: 6px; }
+
 .planner-daily-view { display: grid; gap: 12px; min-width: 0; }
 .planner-display-switch { display: flex; width: min(100%, 400px); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .planner-display-switch button { flex: 1; padding: 11px 12px; border: 0; border-bottom: 3px solid transparent; background: var(--surface); color: var(--ink-60); font: inherit; font-weight: 600; }

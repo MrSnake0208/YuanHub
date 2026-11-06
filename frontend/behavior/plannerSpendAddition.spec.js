@@ -361,8 +361,10 @@ it('常用兰台从原网格添加，持续每日10次占100体力，跳过和�
   expect(savedPlan().spends.find(row => row.id === template.id).value).toBe(10)
   expect(remotes.a.preferences.custom_spend_rules[0].versions[0].count).toBe(10)
   expect(api.putTemplates).not.toHaveBeenCalled()
-  const row = wrapper.findAllComponents(PlannerCustomEntry).find(row => row.props('entry').id === template.id)
-  row.vm.$emit('remove'); await flushPromises()
+  await button(wrapper, '返回每日记录').trigger('click'); await flushPromises()
+  wrapper.get('.fixed-ledger').element.open = true
+  const row = wrapper.findAll('.fixed-ledger-row').find(row => row.text().includes('兰台扫荡'))
+  await button(row, '当天跳过').trigger('click'); await flushPromises()
   expect(savedPlan().customSpendOverrides).toEqual([template.id])
   expect(savedPlan().spends.some(row => row.id === template.id)).toBe(false)
   expect(wrapper.text()).toContain('当天已跳过：兰台扫荡')

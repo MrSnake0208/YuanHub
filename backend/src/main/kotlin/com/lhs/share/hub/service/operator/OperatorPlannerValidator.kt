@@ -32,9 +32,10 @@ class OperatorPlannerValidator(
     ) as ObjectNode
 
     fun workspace(request: ObjectNode): ObjectNode {
-        fields(request, setOf("schema_version", "active_plan_id", "training_levels", "plans", "stamina_sources", "expected_revision"))
+        fields(request, setOf("schema_version", "active_plan_id", "training_levels", "plans", "stamina_sources", "expected_revision", "client_features"))
         version(request)
         revision(request)
+        if (request.has("client_features")) stringIds(request.path("client_features"), "client_features")
         levels(request.path("training_levels"))
         if (request.has("stamina_sources")) staminaSources(request.path("stamina_sources"))
         val plans = array(request.path("plans"), "plans")
@@ -261,10 +262,24 @@ class OperatorPlannerValidator(
     }
 
     private fun preferences(node: JsonNode) {
-        fields(node, setOf("luoyang", "shouchun", "purchase_count", "source_periods", "custom_spend_rules"))
+        fields(node, setOf("luoyang", "shouchun", "purchase_count", "source_periods", "custom_spend_rules", "routine_periods"))
         integer(node.path("luoyang"), "luoyang", 0, 4)
         integer(node.path("shouchun"), "shouchun", 0, 4)
         integer(node.path("purchase_count"), "purchase_count", 0, 8)
+        if (node.has("routine_periods")) {
+            val periods = array(node.path("routine_periods"), "routine_periods")
+            if (periods.size() > 366) invalid("Too many routine periods", "routine_periods")
+            var previous: LocalDate? = null
+            periods.forEach { period ->
+                fields(period, setOf("from_date", "luoyang", "shouchun", "purchase_count"))
+                val from = date(text(period.path("from_date"), "from_date"))
+                if (previous?.let { from <= it } == true) invalid("Routine periods must be ordered and unique", "routine_periods")
+                previous = from
+                integer(period.path("luoyang"), "luoyang", 0, 4)
+                integer(period.path("shouchun"), "shouchun", 0, 4)
+                integer(period.path("purchase_count"), "purchase_count", 0, 8)
+            }
+        }
         if (node.has("custom_spend_rules")) {
             val rules = array(node.path("custom_spend_rules"), "custom_spend_rules")
             if (rules.size() > 32) invalid("最多保存32项每日安排", "custom_spend_rules")
@@ -351,6 +366,16 @@ class OperatorPlannerValidator(
         return containsOverride(node)
     }
 
+    fun hasRoutinePeriods(node: JsonNode): Boolean = when {
+        node.isObject -> node.fields().asSequence().any { (key, value) ->
+            (key == "routine_periods" && !value.isEmpty) ||
+                (key == "fixed_sources" && value.any { it.has("start_date") || it.has("end_date") }) ||
+                hasRoutinePeriods(value)
+        }
+        node.isArray -> node.any(::hasRoutinePeriods)
+        else -> false
+    }
+
     private fun staminaSources(node: JsonNode) {
         fields(node, setOf("monthly_card", "fixed_sources"))
         val card = node.path("monthly_card")
@@ -373,7 +398,10 @@ class OperatorPlannerValidator(
         if (sources.size() > 32) invalid("At most 32 daily sources", "fixed_sources")
         val reserved = setOf("buy", "reserve", "required-extra", "diagnostic-budget", "monthly-card-daily", "monthly-card-shop")
         sources.forEach { source ->
-            fields(source, setOf("id", "label", "value", "enabled"))
+            fields(source, setOf("id", "label", "value", "enabled", "start_date", "end_date"))
+            val sourceStart = if (source.has("start_date")) date(text(source.path("start_date"), "start_date")) else null
+            val sourceEnd = if (source.has("end_date")) date(text(source.path("end_date"), "end_date")) else null
+            if (sourceStart != null && sourceEnd != null && sourceStart > sourceEnd) invalid("Invalid source date range", "fixed_sources")
             val id = text(source.path("id"), "source.id")
             if (id.length !in 1..96 || id in reserved ||
                 id.startsWith("planner-reserve-") || !ids.add(id)

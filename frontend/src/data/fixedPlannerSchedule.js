@@ -1,7 +1,7 @@
 import { createSpend, isFixedStage624, aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, normalizePlannerSpend, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, planTotals, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
 import { evaluateExactPlans, prepareExactPlanner } from './exactPlanner.js'
 import { exactComparisonScenarios, exactDeadlineAlternatives } from './exactPlannerComparison.js'
-import { MONTHLY_STAMINA_IDS, resolveDailyStaminaGains, sourcesForDate, withMonthlyCardPeriod, withSourcePeriod } from './dailyStaminaSources.js'
+import { MONTHLY_STAMINA_IDS, resolveDailyStaminaGains, sourcesForDate, withMonthlyCardPeriod, withSourcePeriod, withFixedSourcePeriods } from './dailyStaminaSources.js'
 import { mergeCustomSpendRules, markCustomSpendOverride, normalizeCustomSpendRules } from './customPlannerSpends.js'
 
 export function plannerDateAfter(date, days) {
@@ -63,8 +63,8 @@ export function resetFixedSchedule(context, manualPlans = {}, previous = null) {
 
 // Validate the entire visible window, including dates after material completion,
 // before producing a new snapshot. Reading a rule never persists 90 manual days.
-export function applyCustomSpendRulesToSchedule(schedule, manualPlans, rules, today, fromDate = today) {
-  const preferences = { ...schedule.context.preferences, customSpendRules: normalizeCustomSpendRules(rules) }
+export function applyCustomSpendRulesToSchedule(schedule, manualPlans, rules, today, fromDate = today, routinePreferences = schedule.context.preferences) {
+  const preferences = { ...routinePreferences, customSpendRules: normalizeCustomSpendRules(rules) }
   const date = today > schedule.baselineDate ? today : schedule.baselineDate
   if (fromDate < date || fromDate > plannerDateAfter(date, 89)) throw new Error('请选择当前90天内的生效日期')
   const days = fixedScheduleTimeline(schedule)
@@ -96,19 +96,19 @@ export function visibleFixedScheduleTimeline(schedule) {
   return fixedScheduleTimeline(schedule).filter(day => !schedule.context.displayStartDate || day.date >= schedule.context.displayStartDate)
 }
 
-export function applyDailySourcesToSchedule(schedule, manualPlans, sources, fromDate, today, overwriteManual = false, { monthlyOnly = false } = {}) {
+export function applyDailySourcesToSchedule(schedule, manualPlans, sources, fromDate, today, overwriteManual = false, { monthlyOnly = false, fixedOnly = false } = {}) {
   if (fromDate < today || fromDate < schedule.baselineDate) throw new Error('固定来源只能应用于今天或未来日期')
   const baselineDate = today > schedule.baselineDate ? today : schedule.baselineDate
   const offset = dayOffset(baselineDate, fromDate)
   if (!Number.isInteger(offset) || offset < 0 || offset >= PLANNER_RULES.maxEtaDays) throw new Error('请选择未来90天内的日期')
   const throughDate = plannerDateAfter(baselineDate, PLANNER_RULES.maxEtaDays - 1)
   const preferences = monthlyOnly ? withMonthlyCardPeriod(schedule.context.preferences, sources.monthlyCard, fromDate)
-    : withSourcePeriod(schedule.context.preferences, sources, fromDate)
+    : fixedOnly ? withFixedSourcePeriods(schedule.context.preferences, sources, fromDate) : withSourcePeriod(schedule.context.preferences, sources, fromDate)
   const nextPlans = clonePlannerValue(manualPlans)
   const baselines = clonePlannerValue(schedule.context.planBaselines || {})
   const replaceMonthly = (gains, date) => [...gains.filter(gain => !MONTHLY_STAMINA_IDS.includes(gain.id)),
     ...resolveDailyStaminaGains([], preferences, date).filter(gain => MONTHLY_STAMINA_IDS.includes(gain.id))]
-  if (overwriteManual || monthlyOnly) for (const [date, plan] of Object.entries(nextPlans)) {
+  if (overwriteManual) for (const [date, plan] of Object.entries(nextPlans)) {
     if (date < fromDate || date > throughDate) continue
     if (monthlyOnly) {
       plan.gains = replaceMonthly(plan.gains, date)
@@ -128,7 +128,7 @@ export function applyDailySourcesToSchedule(schedule, manualPlans, sources, from
   const suffix = createFixedSchedule({ ...schedule.context, date: fromDate, initialState: startAt(fromDate), preferences }, nextPlans, schedule, PLANNER_RULES.maxEtaDays - offset)
   // 超支后的暂停日期沿用旧安排，也需要同步月卡明细和合计。
   if (monthlyOnly) for (const day of suffix.result.timeline) {
-    if (!day.paused) continue
+    if (!day.paused || !overwriteManual && nextPlans[day.date]) continue
     day.planned.gains = replaceMonthly(day.planned.gains, day.date)
     day.recommended.gains = replaceMonthly(day.recommended.gains, day.date)
     day.totals = planTotals(day.planned)
@@ -145,8 +145,8 @@ export function applyDailySourcesToSchedule(schedule, manualPlans, sources, from
   next.result.lastProgressDay = suffix.result.lastProgressDay ? offset + suffix.result.lastProgressDay
     : prefix.reduce((last, day) => plannerStateRemaining(day.end) < plannerStateRemaining(day.start) ? dayOffset(baselineDate, day.date) + 1 : last, 0)
   return { schedule: next, manualPlans: nextPlans, preferences, throughDate,
-    affectedDates: next.result.timeline.filter(day => day.date >= fromDate && day.date <= throughDate && (overwriteManual || monthlyOnly || !nextPlans[day.date])).length,
-    preservedManualDates: Object.keys(nextPlans).filter(date => date >= fromDate && date <= throughDate && !overwriteManual && !monthlyOnly).length }
+    affectedDates: next.result.timeline.filter(day => day.date >= fromDate && day.date <= throughDate && (overwriteManual || !nextPlans[day.date])).length,
+    preservedManualDates: Object.keys(nextPlans).filter(date => date >= fromDate && date <= throughDate && !overwriteManual).length }
 }
 
 export function pendingScheduleEdits(schedule, date) {

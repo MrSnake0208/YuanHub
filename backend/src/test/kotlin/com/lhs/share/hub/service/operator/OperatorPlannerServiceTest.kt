@@ -591,6 +591,60 @@ class OperatorPlannerServiceTest {
         assertEquals(rules, validator.schedule(request).path("preferences").path("custom_spend_rules"))
     }
 
+    @Test
+    fun `routine periods survive round trip and old clients cannot erase them`() {
+        val body = validator.emptySchedule().put("expected_revision", 0)
+        body.putArray("client_features").add("routine-periods-v1")
+        val periods = mapper.readTree(
+            """[{"from_date":"2026-11-10","luoyang":4,"shouchun":1,"purchase_count":2},
+                {"from_date":"2026-11-17","luoyang":2,"shouchun":1,"purchase_count":0}]""",
+        )
+        (body.path("preferences") as ObjectNode).set<JsonNode>("routine_periods", periods)
+        val saved = service.putSchedule("u1", "a1", "favorites", body)
+        assertEquals(periods, saved.path("preferences").path("routine_periods"))
+        assertTrue(!saved.has("client_features"))
+        val oldClient = validator.emptySchedule().put("expected_revision", 1)
+        assertEquals(
+            "routine_periods_client_outdated",
+            assertThrows(OperatorApiException::class.java) { service.putSchedule("u1", "a1", "favorites", oldClient) }.code,
+        )
+        val invalid = body.deepCopy().put("expected_revision", 1)
+        (invalid.path("preferences").path("routine_periods")[0] as ObjectNode).put("luoyang", 5)
+        assertEquals(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            assertThrows(OperatorApiException::class.java) { service.putSchedule("u1", "a1", "favorites", invalid) }.status,
+        )
+        assertEquals(1, service.schedule("u1", "a1", "favorites").path("revision").asInt())
+    }
+
+    @Test
+    fun `dated sources are validated and protected from outdated workspace clients`() {
+        val sources = staminaSources()
+        (sources.path("fixed_sources")[0] as ObjectNode).put("start_date", "2026-11-10").put("end_date", "2026-11-16")
+        val body = workspace().set<ObjectNode>("stamina_sources", sources)
+        body.putArray("client_features").add("routine-periods-v1")
+        val saved = service.putWorkspace("u1", "a1", body)
+        assertEquals(sources, saved.path("stamina_sources"))
+        assertTrue(!saved.has("client_features"))
+        val oldClient = workspace().put("expected_revision", 1).set<ObjectNode>("stamina_sources", staminaSources())
+        assertEquals(
+            "routine_periods_client_outdated",
+            assertThrows(OperatorApiException::class.java) { service.putWorkspace("u1", "a1", oldClient) }.code,
+        )
+        val invalid = body.deepCopy().put("expected_revision", 1)
+        (invalid.path("stamina_sources").path("fixed_sources")[0] as ObjectNode).put("end_date", "2026-11-09")
+        assertEquals(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            assertThrows(OperatorApiException::class.java) { service.putWorkspace("u1", "a1", invalid) }.status,
+        )
+        assertEquals(1, service.workspace("u1", "a1").path("revision").asInt())
+        val omittedSources = service.putWorkspace("u1", "a1", workspace().put("expected_revision", 1))
+        assertEquals(sources, omittedSources.path("stamina_sources"))
+        val removal = mapper.createObjectNode().put("expected_revision", 2).put("graduate", false)
+        val removed = service.removeMember("u1", "a1", "favorites", OPERATOR, removal)
+        assertEquals(sources, removed.path("workspace").path("stamina_sources"))
+    }
+
     private fun staminaSources() = mapper.readTree(
         """{"monthly_card":{"tier":"zhaoyang","daily_enabled":true,"shop_enabled":true,
             "daily_amount":60,"shop_amount":20,"start_date":"","end_date":""},

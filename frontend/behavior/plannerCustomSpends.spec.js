@@ -7,6 +7,17 @@ import PlannerDateTabs from '../src/components/operator/PlannerDateTabs.vue'
 const item = { id: 'custom-spend-lantai', label: '兰台扫荡', costPer: 10, yield: { __xp__: 1000 } }
 const global = { stubs: { teleport: true } }
 const daily = () => mount(PlannerCustomDailySpend, { attachTo: document.body, props: { rules: [], templates: [item], today: '2026-10-27', date: '2026-10-27', lastDate: '2027-01-24', contextKey: 'main/child/plan', resourceName: () => '经验' }, global })
+it('规划区无需先添加当天记录即可从模板建立有限日期的每日安排', async () => {
+  const wrapper = daily()
+  wrapper.vm.open(); await flushPromises()
+  await wrapper.get('[aria-label="选择常用支出"]').setValue(item.id)
+  const dates = wrapper.findAll('input[type="date"]')
+  await dates[0].setValue('2026-11-10'); await dates[1].setValue('2026-11-16')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(wrapper.emitted('preview')[0][0]).toMatchObject({ id: item.id, endDate: '2026-11-16', version: { fromDate: '2026-11-10', count: 1, item: { label: item.label, costPer: 10 } } })
+  expect(wrapper.emitted('apply')).toBeUndefined()
+  wrapper.unmount()
+})
 it('每日10次先预览100体力和10000经验，编辑后预览失效，确认保存后等待回执', async () => {
   const wrapper = daily(); wrapper.vm.open({ ...item, value: 10 }); await flushPromises()
   expect(wrapper.text()).toContain('每天 10 次，共 100 体力 · 经验 10000')
@@ -29,7 +40,7 @@ it('规则副本不会随模板改变，主动采用最新资料才替换；停�
   await wrapper.setProps({ rules: [{ id: item.id, versions: [{ fromDate: '2026-10-27', enabled: true, count: 10, item: { label: '旧兰台', costPer: 20, yield: { __xp__: 10 } } }] }] })
   wrapper.vm.open({ ...item, value: 1 }); await flushPromises()
   expect(wrapper.text()).toContain('每次 20 体力')
-  await wrapper.get('.daily-link').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '使用最新常用项目资料').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('每次 10 体力')
   await wrapper.get('input[type="checkbox"]').setValue(false)
   await wrapper.get('form').trigger('submit')

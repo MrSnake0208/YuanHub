@@ -53,6 +53,7 @@ button { touch-action: manipulation; }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 800; }
 .workspace-link { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; vertical-align: middle; }
 .workspace-link > svg { flex: none; }
+.workspace-link.workspace-text { width: auto; height: auto; padding: 8px 12px; white-space: normal; overflow-wrap: normal; line-height: 1.5; }
 .outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; font-size: 10px; }
 .planner-status .status-roster { display: block; container: growth-roster / inline-size; padding: 0; }

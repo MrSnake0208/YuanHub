@@ -28,7 +28,7 @@
       <p v-if="!sources" class="source-note">请先打开上方任一来源设置，保存为这个账号的日常设置。</p>
       <p v-if="applicationError" class="source-error" role="alert">{{ applicationError }}</p>
     </details>
-    <PlannerSettingsPanel :open="Boolean(editor)" :title="editor === 'monthly' ? '月卡与商店体力' : '其他每日固定来源'" :description="editor === 'monthly' ? '保存后直接同步当前方案今天及未来的月卡体力，保留其他收入和手工支出。' : '保存为这个账号的日常设置，以后规划自动沿用。已有日程需要单独更新。'" :save-label="editor === 'monthly' ? '保存并同步当前方案' : '保存为这个账号的日常设置'" :dirty="dirty" :busy="busy" :error="localError || (stale && !busy ? '云端配置已更新，请关闭后重新打开，再进行修改。' : '')" :save-disabled="disabled || stale || (editor !== 'monthly' && !dirty && Boolean(sources))" @close="close" @save="save">
+    <PlannerSettingsPanel :open="Boolean(editor)" :title="editor === 'monthly' ? '月卡与商店体力' : '其他每日固定来源'" :description="editor === 'monthly' ? '保存后直接同步当前方案今天及未来的月卡体力，保留过去记录和已单独编辑的日期。' : '保存为这个账号的日常设置，并同步当前清单；保留过去记录和手工日期。'" :save-label="editor === 'fixed' && !prepared ? '预览影响' : '保存并同步当前方案'" :dirty="dirty" :busy="busy" :error="localError || (stale && !busy ? '云端配置已更新，请关闭后重新打开，再进行修改。' : '')" :save-disabled="disabled || stale" @close="close" @save="save">
       <fieldset v-if="editor === 'monthly'" class="source-editor" :disabled="disabled || busy || stale">
         <legend class="sr-only">月卡与商店编辑</legend>
         <label>月卡权益档位<select v-model="draft.monthlyCard.tier" aria-label="月卡权益档位" @change="changeTier"><option v-for="tier in tiers" :key="tier.id" :value="tier.id">{{ tier.label }}</option></select></label>
@@ -44,14 +44,16 @@
       <fieldset v-else-if="editor === 'fixed'" class="source-editor" :disabled="disabled || busy || stale">
         <legend class="sr-only">其他每日固定来源管理</legend>
         <div class="source-actions source-create"><select v-model="selectedSource" aria-label="从已有体力来源创建固定模板" :disabled="draft.fixedSources.length >= 32" @change="addExisting"><option value="">选择已有来源，加入每日固定</option><option v-for="entry in availableSources" :key="entry.id" :value="entry.id">{{ entry.label }}</option></select><button type="button" :disabled="draft.fixedSources.length >= 32" @click="addCustom"><Plus :size="16" aria-hidden="true" />新增自定义来源</button></div>
-        <p class="source-note">勾选的来源每天预计领取一次；取消每日固定后，该来源不再自动计入。</p>
+        <p class="source-note">在所选日期范围内每天预计领取一次；日期留空表示不限制该端，到期后恢复原安排，新建来源停止。</p>
         <div class="fixed-sources-list">
           <div v-for="(source, index) in draft.fixedSources" :key="source.id" class="fixed-source-item">
             <div class="fixed-source-name"><input v-model="source.label" maxlength="32" required :aria-label="'固定来源名称' + (index + 1)" @input="changed" /><button type="button" :aria-label="'删除固定来源' + source.label" @click="draft.fixedSources.splice(index, 1); changed()"><Trash2 :size="16" aria-hidden="true" /></button></div>
             <div class="fixed-source-values"><label class="checkbox-label"><input v-model="source.enabled" type="checkbox" :aria-label="'启用固定来源' + source.label" @change="changed" /><span>{{ source.enabled ? '每日固定' : '已停用' }}</span></label><label class="amount-input"><span class="sr-only">{{ source.label }}每日体力</span><input v-model.number="source.value" type="number" min="0" max="99999" step="1" required :aria-label="'固定来源每日体力' + (index + 1)" @input="changed" /><span>体力/日</span></label></div>
+            <div class="source-fields date-fields"><label>开始日期<input v-model="source.startDate" type="date" :aria-label="'固定来源开始日期' + (index + 1)" @input="changed" /></label><label>结束日期（含当天）<input v-model="source.endDate" type="date" :min="source.startDate" :aria-label="'固定来源结束日期' + (index + 1)" @input="changed" /></label></div>
           </div>
           <p v-if="!draft.fixedSources.length" class="source-empty source-note">还没有其他每日固定来源。不设置也可以开始规划。</p>
         </div>
+        <p v-if="prepared" class="source-preview" role="status">从今天起同步当前清单；过去记录和手工日期保留。各来源按填写的起止日期生效，到期后恢复原安排，新建来源停止。其他清单不自动更新。</p>
         <div class="daily-total" role="status"><b>其他固定来源合计</b><strong>{{ fixedTotal }} 体力/日</strong></div>
         <details><summary>哪些体力会计入？</summary><p class="source-note">仅统计启用的固定来源，不含月卡和一次性储备。同一来源只计一次，并替换日程中同一项来源的数量，不会重复叠加；未领取不计库存。</p></details>
       </fieldset>
@@ -70,6 +72,7 @@ import PlannerSettingsPanel from './PlannerSettingsPanel.vue'
 
 const props = defineProps({ sources: Object, accountId: String, planId: String, revision: Number, game: { type: String, default: '代号鸢' }, today: String, selectedDate: String, gains: { type: Array, default: () => [] }, disabled: Boolean, preview: Object, allowApplication: { type: Boolean, default: true } })
 const emit = defineEmits(['save', 'preview', 'apply', 'clear-preview'])
+const prepared = ref(false)
 const draft = ref(emptyStaminaSources()), base = ref(''), busy = ref(false), localError = ref(''), loadedRevision = ref(0)
 const editor = ref(''), selectedSource = ref(''), fromDate = ref(''), overwrite = ref(false), notice = ref(''), confirming = ref(false), applicationError = ref('')
 let generation = 0, applicationGeneration = 0
@@ -99,16 +102,17 @@ const availableSources = computed(() => [...new Map([...GAIN_CHANNELS.filter(ent
   .filter(entry => !['buy', 'reserve', 'required-extra', 'diagnostic-budget', ...MONTHLY_STAMINA_IDS].includes(entry.id) && !entry.id.startsWith('planner-reserve-') && !draft.value.fixedSources.some(source => source.id === entry.id)))
 const validFromDate = computed(() => /^\d{4}-\d{2}-\d{2}$/.test(fromDate.value) && fromDate.value >= props.today)
 function open(type) {
+  prepared.value = false
   if (props.disabled) return
   generation++; editor.value = type; draft.value = normalizeStaminaSources(props.sources)
   base.value = JSON.stringify(draft.value); loadedRevision.value = props.revision
   busy.value = false; localError.value = ''; selectedSource.value = ''; notice.value = ''
 }
-defineExpose({ openMonthly: () => open('monthly') })
+defineExpose({ openMonthly: () => open('monthly'), openFixed: () => open('fixed') })
 function close() { generation++; editor.value = ''; busy.value = false; localError.value = '' }
 watch(() => [props.accountId, props.planId], () => { close(); notice.value = ''; applicationGeneration++; confirming.value = false; applicationError.value = ''; emit('clear-preview') })
 watch(() => [props.accountId, props.selectedDate, props.today], () => { fromDate.value = props.selectedDate >= props.today ? props.selectedDate : props.today; overwrite.value = false; emit('clear-preview') }, { immediate: true })
-function changed() { localError.value = ''; emit('clear-preview') }
+function changed() { prepared.value = false; localError.value = ''; emit('clear-preview') }
 function changeTier() {
   const card = draft.value.monthlyCard, tier = monthlyCardTier(card.tier, props.game)
   Object.assign(card, { dailyAmount: tier.stamina, shopAmount: tier.shop, dailyEnabled: tier.id !== 'none', shopEnabled: tier.id !== 'none' })
@@ -127,11 +131,12 @@ function save() {
   if (props.disabled || busy.value || stale.value) return
   try {
     const sources = validateStaminaSources(draft.value), token = generation, scope = editor.value
+    if (scope === 'fixed' && !prepared.value) { prepared.value = true; return }
     busy.value = true
     emit('save', sources, loadedRevision.value, async (saved, message) => {
       if (token !== generation) return
       busy.value = false
-      if (saved) { await nextTick(); if (token === generation) { close(); notice.value = scope === 'monthly' ? '月卡设置已保存，已同步当前方案今天及未来的体力。' : props.allowApplication ? '日常设置已保存。已有日程可在下方查看影响后更新。' : '日常设置已保存。已有日程请回到常规模式查看影响后更新。' } }
+      if (saved) { await nextTick(); if (token === generation) { close(); notice.value = scope === 'monthly' ? '月卡设置已保存，已同步当前方案今天及未来的体力。' : '日常设置已保存并同步当前清单，手工日期保留。' } }
       else {
         if (JSON.stringify(normalizeStaminaSources(props.sources)) === JSON.stringify(sources)) {
           loadedRevision.value = props.revision; base.value = JSON.stringify(sources)

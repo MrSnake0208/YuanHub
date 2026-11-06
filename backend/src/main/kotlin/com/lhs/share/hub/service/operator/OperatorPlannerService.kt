@@ -159,13 +159,23 @@ class OperatorPlannerService(
             mapper.readTree(it.responseJson) as ObjectNode
         }
 
-    private fun writeWorkspace(userId: String, accountId: String, expected: Long, content: ObjectNode): ObjectNode {
-        // Older clients omit account-wide sources when editing their training lists.
-        if (!content.has("stamina_sources")) {
-            workspaces.findByUserIdAndAccountId(userId, accountId)?.let { old ->
-                mapper.readTree(old.payloadJson).get("stamina_sources")?.let { content.set<JsonNode>("stamina_sources", it) }
-            }
+    private fun requireRoutineClient(content: ObjectNode, previous: String?) {
+        if ((validator.hasRoutinePeriods(content) || previous?.let { validator.hasRoutinePeriods(mapper.readTree(it)) } == true) &&
+            content.path("client_features").none { it.asText() == "routine-periods-v1" }
+        ) {
+            conflict("routine_periods_client_outdated")
         }
+    }
+
+    private fun writeWorkspace(userId: String, accountId: String, expected: Long, content: ObjectNode): ObjectNode {
+        val old = workspaces.findByUserIdAndAccountId(userId, accountId)
+        val previousSources = old?.let { mapper.readTree(it.payloadJson).get("stamina_sources") }
+        // Member removal and older list editors preserve server-owned sources verbatim.
+        if (!content.has("stamina_sources") && previousSources != null) {
+            content.set<JsonNode>("stamina_sources", previousSources)
+        }
+        if (content.get("stamina_sources") != previousSources) requireRoutineClient(content, old?.payloadJson)
+        content.remove("client_features")
         val saved = workspaces.replace(userId, accountId, expected, content.toString(), Instant.now()) ?: conflict(WORKSPACE_CONFLICT)
         return response(saved.payloadJson, accountId, saved.revision, saved.updatedAt)
     }
@@ -173,6 +183,7 @@ class OperatorPlannerService(
     private fun writeSchedule(userId: String, accountId: String, planId: String, expected: Long, content: ObjectNode): ObjectNode {
         val old = schedules.findByUserIdAndAccountIdAndPlanId(userId, accountId, planId)
         if ((old?.revision ?: 0L) != expected) conflict(SCHEDULE_CONFLICT)
+        requireRoutineClient(content, old?.payloadJson)
         val usesCustomRules = validator.hasCustomDailySpends(content) ||
             old?.let { validator.hasCustomDailySpends(mapper.readTree(it.payloadJson)) } == true
         if (usesCustomRules && content.path("client_features").none { it.asText() == "custom-daily-spends-v1" }) {
