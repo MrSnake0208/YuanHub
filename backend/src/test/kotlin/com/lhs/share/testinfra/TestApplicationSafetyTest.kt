@@ -12,7 +12,7 @@ class TestApplicationSafetyTest {
         setProperty("share.mongo.hub-uri", "mongodb://127.0.0.1:1/yuanhub_test_hub")
         setProperty("spring.data.redis.url", "redis://127.0.0.1:1")
         setProperty("debug.email.no-send", "true")
-        listOf("share.avatar.dir", "share.media.dir", "share.media.private-dir", "share.star-capture.dir").forEach {
+        listOf("share.avatar.dir", "share.media.dir", "share.media.private-dir").forEach {
             setProperty(it, "./build/test-data/fixture")
         }
     }
@@ -55,7 +55,7 @@ class TestApplicationSafetyTest {
             TestApplicationSafety.verify(safeEnvironment().withProperty("debug.email.no-send", "false"))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            TestApplicationSafety.verify(safeEnvironment().withProperty("share.star-capture.dir", "./data/star-captures"))
+            TestApplicationSafety.verify(safeEnvironment().withProperty("share.media.private-dir", "./data/private-media"))
         }
     }
 }

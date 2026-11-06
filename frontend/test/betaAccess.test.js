@@ -4,12 +4,15 @@ import { requiresBetaApi, safeBetaRedirect, betaEntryTarget, betaStatusCopy, bet
 
 const base = { accessMode: 'BETA', publicState: 'OPEN_REGISTRATION', reservedRemaining: 25, admissionsPaused: false }
 test('beta gate protects cloud roots and token writes, never public escape routes', () => {
-  for (const path of ['/v1/accounts', '/v1/accounts/a/events', '/v1/recruitment/archive', '/v1/recruitment/import/preview', '/v1/activity-calendar', '/v1/activity-calendar/suggestions/mine', '/v1/activity-calendar/subscriptions/summary', '/v1/activity-calendar/private-items', '/v1/inventory/current', '/v1/operator/training-workspace', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/v1/star/captures/abc', '/hub/ledger/plan']) {
+  for (const path of ['/v1/accounts', '/v1/accounts/a/events', '/v1/recruitment/archive', '/v1/recruitment/import/preview', '/v1/activity-calendar', '/v1/activity-calendar/suggestions/mine', '/v1/activity-calendar/subscriptions/summary', '/v1/activity-calendar/private-items', '/v1/inventory/current', '/v1/operator/training-workspace', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/hub/ledger/plan']) {
     assert.equal(requiresBetaApi('GET', path), true, path)
   }
   for (const path of ['/v1/inventory/catalog', '/v1/operator/catalog', '/v1/recruitment/catalog?game=代号鸢', '/v1/operator/share/view/token', '/v1/works', '/v1/reports', '/v1/notifications', '/v1/beta/me', '/v1/admin/beta', '/user/open-api/tokens', '/user/register']) {
     assert.equal(requiresBetaApi('GET', path), false, path)
   }
+  assert.equal(requiresBetaApi('POST', '/v1/star/inventory-sync'), true)
+  assert.equal(requiresBetaApi('POST', '/v1/star/inventory-sync/preview'), true)
+  assert.equal(requiresBetaApi('GET', '/v1/star/captures/abc'), false)
   assert.equal(requiresBetaApi('POST', '/user/open-api/token'), true)
   assert.equal(requiresBetaApi('PATCH', '/user/open-api/tokens/t/scopes'), true)
   assert.equal(requiresBetaApi('DELETE', '/user/open-api/tokens/t'), false)
@@ -63,7 +66,7 @@ test('every status copy carries a visual tone the beta page can style', () => {
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {
   const { routes } = await import('../src/router/routes.js')
-  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/star/scans', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment'].sort())
+  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment'].sort())
   const recruitment = routes.find(route => route.path === '/recruitment')
   assert.equal(recruitment.meta.requiresRecruitmentAccess, undefined)
   assert.equal(recruitment.meta.requiresBeta, true)

@@ -1,5 +1,5 @@
 export const recognitionTutorialSteps = [
-  { id: 'upload', title: '导入截图', body: '可以手动上传，也可以接收 MaaYuan 自动采集的截图。\n手动上传请使用原始截图，不要裁剪、拼接或涂改，并保留上下界面。', target: '.file-picker-panel', exampleAction: 'screenshots', exampleLabel: '查看截图示例' },
+  { id: 'upload', title: '导入截图', body: '在网页中手动上传游戏截图。\n手动上传请使用原始截图，不要裁剪、拼接或涂改，并保留上下界面。', target: '.file-picker-panel', exampleAction: 'screenshots', exampleLabel: '查看截图示例' },
   { id: 'classify', title: '检查分类', body: '系统会自动推荐截图分类。\n如果分错了，拖到正确的池里即可。', target: '.import-pools' },
   { id: 'confirm', title: '确认分类', body: '可以逐池点击「确认本池」，也可以使用下方的「一键确认全部分类」。', target: '[data-confirm-pool]', relatedTargets: '[data-confirm-pool], [data-confirm-all-pools]' },
   { id: 'overlap', title: '重复行标记', body: '多张截图有同一整行星石时，补充前后两张图的重叠关系。\n没有重复就直接跳过。', target: '.overlap-grid', exampleAction: 'overlap', exampleLabel: '查看重叠示例' },

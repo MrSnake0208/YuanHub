@@ -6,14 +6,12 @@ import com.lhs.share.hub.controller.achievement.AchievementController
 import com.lhs.share.hub.controller.inventory.InventoryController
 import com.lhs.share.hub.controller.inventory.response.InventoryError
 import com.lhs.share.hub.controller.inventory.response.InventoryErrorResponse
-import com.lhs.share.hub.controller.star.StarCaptureController
 import com.lhs.share.hub.controller.star.StarCompletionController
 import com.lhs.share.hub.controller.star.StarLoadoutController
 import com.lhs.share.hub.controller.star.StarLoadoutPresetController
 import com.lhs.share.hub.controller.star.StarStateController
 import com.lhs.share.hub.service.inventory.InventoryApiException
 import com.lhs.share.openapi.OpenApiInventoryController
-import com.lhs.share.openapi.OpenApiStarCaptureController
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
@@ -46,14 +44,13 @@ private val inventoryLog = KotlinLogging.logger { }
         com.lhs.share.hub.controller.inventory.MailboxReserveController::class,
         com.lhs.share.hub.controller.inventory.MailboxClaimController::class,
         StarStateController::class,
+        com.lhs.share.hub.controller.star.StarInventoryImportController::class,
+        com.lhs.share.hub.controller.star.StarPlanInheritanceController::class,
+        com.lhs.share.openapi.OpenApiStarInventorySyncController::class,
         StarCompletionController::class,
         StarLoadoutController::class,
         StarLoadoutPresetController::class,
-        StarCaptureController::class,
-        com.lhs.share.hub.controller.star.StarScanController::class,
-        com.lhs.share.openapi.OpenApiStarScanController::class,
         OpenApiInventoryController::class,
-        OpenApiStarCaptureController::class,
     ],
 )
 class InventoryExceptionHandler {

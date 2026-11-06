@@ -205,7 +205,7 @@ class OpenApiTokenServiceTest {
             OpenApiPermission.OPERATOR_SCAN_WRITE,
             OpenApiPermission.INVENTORY_WRITE,
             OpenApiPermission.INVENTORY_READ,
-            OpenApiPermission.STAR_CAPTURE_WRITE,
+            OpenApiPermission.STAR_SYNC_WRITE,
             OpenApiPermission.CALENDAR_READ,
         ).forEach { permission ->
             val error = assertThrows(InventoryApiException::class.java) {

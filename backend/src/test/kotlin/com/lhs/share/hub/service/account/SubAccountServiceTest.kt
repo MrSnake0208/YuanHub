@@ -26,7 +26,6 @@ import com.lhs.share.hub.repository.RecruitmentRepository
 import com.lhs.share.hub.repository.StarCompletionRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
-import com.lhs.share.hub.repository.StarScanRecordRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.SubAccount
@@ -78,7 +77,6 @@ class SubAccountServiceTest {
     private val milestoneRepository = mockk<OperatorMilestoneRepository>(relaxed = true)
     private val dailyTasksRepository = mockk<OperatorDailyTasksRepository>(relaxed = true)
     private val plannerImportRepository = mockk<OperatorPlannerImportRepository>(relaxed = true)
-    private val starScanRecords = mockk<StarScanRecordRepository>(relaxed = true)
     private val starStateRepository = mockk<StarStateCurrentRepository>(relaxed = true)
     private val starRecoveryRepository = mockk<StarRecoveryPointRepository>(relaxed = true)
     private val starLoadoutRepository = mockk<StarLoadoutCurrentRepository>(relaxed = true)
@@ -133,7 +131,6 @@ class SubAccountServiceTest {
         operatorDailyTasksRepository = dailyTasksRepository,
         operatorMilestoneRepository = milestoneRepository,
         operatorRelationships = relationships,
-        starScanRecords = starScanRecords,
         operatorResets = resetRepository,
         mailboxHistory = mailboxHistory,
         mailboxDeliveries = mailboxDeliveries,
@@ -287,7 +284,6 @@ class SubAccountServiceTest {
         verify(exactly = 1) { dailyTasksRepository.deleteAccount("u1", "main") }
         verify(exactly = 1) { plannerImportRepository.deleteAllByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { starStateRepository.deleteAllByUserIdAndAccountId("u1", "main") }
-        verify(exactly = 1) { starScanRecords.deleteByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { starRecoveryRepository.deleteAllByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { starLoadoutRepository.deleteAllByUserIdAndAccountId("u1", "main") }
 

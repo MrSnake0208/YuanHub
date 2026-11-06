@@ -47,7 +47,7 @@ test('后端返回的 calendar:read 能被选择器渲染出来', () => {
   const permissions = [
     { scope: 'inventory:read' },
     { scope: 'operator:read' },
-    { scope: 'star:capture:write' },
+    { scope: 'star:sync:write' },
     { scope: 'calendar:read' }
   ]
   const prefixes = groupPrefixes()
@@ -55,7 +55,7 @@ test('后端返回的 calendar:read 能被选择器渲染出来', () => {
   assert.deepEqual(rendered.map((p) => p.scope), [
     'inventory:read',
     'operator:read',
-    'star:capture:write',
+    'star:sync:write',
     'calendar:read'
   ])
 })

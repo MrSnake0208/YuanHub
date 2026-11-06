@@ -10,12 +10,12 @@
 | Token 完整密探 V5 导出 | `/open-api/operator/export` 固定 V2；不能表达完整突破、双命盘和主观数据 |
 | Token 完整密探恢复和主观写入 | V3/V4/V5 仅单来源 `scan + listed` 客观记录 |
 | Token 招募档案读取、导入和导出 | 无招募 OpenAPI Scope；现有备份接口只接受 JWT |
-| Token 星石背包结构化 CRUD/导出 | 只有临时截图上传；截图不直接写结构化背包 |
+| Token 星石背包结构化 CRUD/导出 | 完整识别背包可经 inventory-sync 重建；尚无 Token 任意 CRUD/完整备份导出 |
 | Token Work 创作及通用目标导出 | 原生创作需 JWT；Adapter 只返回确认无损的目标文档 |
 
 ## 部分支持
 
-Work V1 已有实际 HTTP 接口，MAAYUAN/YUANASSIST Adapter 仍存在未映射动作与未确认执行语义。MAAYUAN 目标结果不是完整 MaaFramework Pipeline；必须检查 `status/issues`，不得丢动作后包装成 exact。星石采集是临时私有中转，需用户在站内识别、核对后处理。
+Work V1 已有实际 HTTP 接口，MAAYUAN/YUANASSIST Adapter 仍存在未映射动作与未确认执行语义。MAAYUAN 目标结果不是完整 MaaFramework Pipeline；必须检查 `status/issues`，不得丢动作后包装成 exact。星石完整本地识别支持结构化自动同步及网页 JSON 补传；旧跨端临时截图传输已经退役，网页手动截图 OCR 保留。
 
 ## 没有正式承诺
 

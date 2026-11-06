@@ -1056,8 +1056,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `operator:export` | 密探 v2 导出 |
 | `operator:scan:write` | 密探 v3/v4/v5 自动采集 preview/commit |
 | `operator:daily-tasks:write` | 每日历练读取与完成勾选 |
-| `star:capture:write` | 星石临时 PNG 采集上传 |
-| `star:scan:write` | 星石本地识别 JSON 暂存（核对后导入） |
+| `star:sync:write` | 完整星石结构化同步，不上传截图 |
 | `calendar:read` | 活动与订阅读取 |
 
 生成结果：
@@ -1112,7 +1111,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 
 ### 11.3 日历、历练、星石与其他已实现能力
 
-以[公开 API 参考](./developers/api.md)及其功能分页为准：包含 calendar subscriptions/events、operator annotations/daily-tasks/completion、star captures/init/images/finalize。招募 V1 使用 JWT 备份恢复，Work V1 已有实际服务端接口；二者没有 OpenAPI Token Scope。详见[支持矩阵](./developers/protocols.md)。
+以[公开 API 参考](./developers/api.md)及其功能分页为准：包含 calendar subscriptions/events、operator annotations/daily-tasks/completion、star inventory-sync（旧 captures/scans 已退役）。招募 V1 使用 JWT 备份恢复，Work V1 已有实际服务端接口；二者没有 OpenAPI Token Scope。详见[支持矩阵](./developers/protocols.md)。
 
 ## 12. 广陵账房方案（/hub/ledger/plan）
 

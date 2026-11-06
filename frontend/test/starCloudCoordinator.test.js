@@ -457,3 +457,17 @@ test('unreadable local intent after a successful POST stays uncertain and blocks
   await assert.rejects(c.replaceImport(local()), /未完成/)
   assert.equal(posts, 1)
 })
+
+test('manual import lease refuses a malformed cloud read before applying a default empty backpack', async () => {
+  let read = remote(), applied = 0
+  const product = { ...handle(), applyCloudBusinessSnapshot: async () => { applied++ } }
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: storage(), getState: async () => read })
+  await c.enter(product)
+  applied = 0
+  const lease = c.beginCompletion(c.ocrRebuildScope())
+  read = { generation: 3, revision: 6 }
+  await assert.rejects(lease.refresh(), /不完整/)
+  assert.equal(applied, 0)
+  lease.fail(new Error('unconfirmed import')); lease.release()
+  assert.throws(() => c.ocrRebuildScope(), /未完成/)
+})

@@ -9,7 +9,7 @@
 | 库存 | 只接受交换 V2；JWT 与账号绑定 Token 导入/导出，V1 是历史文档，当前版本拒绝 |
 | 密探完整备份 | 浏览器/JWT 支持 V3/V4/V5，完整备份推荐 V5；export 服务端默认仍 V2 |
 | 密探第三方 | Token export 固定 V2；V3/V4/V5 scan 接口只允许单来源客观 scan+listed，不允许 annotation/full/manual |
-| 日历/历练/星石 | calendar:read；operator:daily-tasks:write（读取亦接受 operator:read）；star:capture:write（临时 PNG，不是结构化背包） |
+| 日历/历练/星石 | calendar:read；operator:daily-tasks:write（读取亦接受 operator:read）；star:sync:write（完整结构化背包；旧截图传输已退役） |
 | 招募/Work | 招募 V1 JWT 恢复已实现；Work V1 公共读和JWT原生创作已实现、Adapter部分支持；没有二者的 OpenAPI Scope |
 
 `ApiResult` 使用 snake_case 的 status_code/message/data，null 字段可省略。库存/密探 export 返回原始文档，招募 export 包装在 data。公共文档可读不取消 API 的账号所有权或 Beta 限制；Token 创建与 Scope 变更仍要求用户资格。

@@ -18,7 +18,6 @@ test('roadmap features remain closed to ordinary users in every build', async ()
     const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
     assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RELATIONSHIPS), false)
     assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RESERVE), false)
-    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.STAR_SCAN_REVIEW), false)
   }
 })
 

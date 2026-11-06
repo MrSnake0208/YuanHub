@@ -76,7 +76,6 @@ def exports(data, mode='local'):
         'SHARE_AVATAR_DIR': str(root / 'backend/data/avatar'),
         'SHARE_MEDIA_DIR': str(root / '.dev/media'),
         'SHARE_PRIVATE_MEDIA_DIR': str(root / '.dev/private-media'),
-        'SHARE_STAR_CAPTURE_DIR': str(root / '.dev/star-captures'),
         'DEBUG_EMAIL_NO_SEND': 'true',
         'VITE_API_BASE': '',
     }

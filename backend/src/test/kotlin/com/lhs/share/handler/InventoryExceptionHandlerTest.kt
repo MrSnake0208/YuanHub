@@ -1,8 +1,8 @@
 package com.lhs.share.handler
 
-import com.lhs.share.hub.controller.star.StarCaptureController
+import com.lhs.share.hub.controller.star.StarInventoryImportController
 import com.lhs.share.hub.service.inventory.InventoryApiException
-import com.lhs.share.openapi.OpenApiStarCaptureController
+import com.lhs.share.openapi.OpenApiStarInventorySyncController
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -26,16 +26,16 @@ class InventoryExceptionHandlerTest {
     }
 
     @Test
-    fun `star capture controllers use the inventory error advice`() {
+    fun `star inventory controllers use the inventory error advice`() {
         val advice = InventoryExceptionHandler::class.java.getAnnotation(RestControllerAdvice::class.java)
 
-        assertTrue(StarCaptureController::class in advice.assignableTypes)
-        assertTrue(OpenApiStarCaptureController::class in advice.assignableTypes)
+        assertTrue(StarInventoryImportController::class in advice.assignableTypes)
+        assertTrue(OpenApiStarInventorySyncController::class in advice.assignableTypes)
 
         val response = InventoryExceptionHandler().inventoryException(
-            InventoryApiException(HttpStatus.NOT_FOUND, "star_capture_not_found", "星石采集不存在"),
+            InventoryApiException(HttpStatus.NOT_FOUND, "star_sync_not_found", "扫描批次尚未成功保存"),
         )
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals("star_capture_not_found", response.body?.error?.code)
+        assertEquals("star_sync_not_found", response.body?.error?.code)
     }
 }

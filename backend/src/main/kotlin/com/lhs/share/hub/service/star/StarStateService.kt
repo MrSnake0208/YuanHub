@@ -13,6 +13,7 @@ import com.lhs.share.hub.controller.star.response.StarStateCommandResponse
 import com.lhs.share.hub.controller.star.response.StarStateCurrentResponse
 import com.lhs.share.hub.repository.OperatorCurrentRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
+import com.lhs.share.hub.repository.StarPlanInheritancePendingRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
@@ -38,6 +39,7 @@ import java.util.UUID
 class StarStateService(
     private val states: StarStateCurrentRepository,
     private val recoveryPoints: StarRecoveryPointRepository,
+    private val pendingInheritance: StarPlanInheritancePendingRepository,
     private val loadouts: StarLoadoutCurrentRepository,
     private val operators: OperatorCurrentRepository,
     private val accounts: SubAccountService,
@@ -120,6 +122,12 @@ class StarStateService(
                 transactions.execute {
                     val current = states.findByUserIdAndAccountId(userId, accountId)
                     checkVersion(current, expectedGeneration, expectedRevision)
+                    requireResolvedInheritance(userId, accountId)
+                    val oldLoadout = loadouts.findByUserIdAndAccountId(userId, accountId)
+                    if (reason == "pre_ocr_rebuild") {
+                        val oldIds = current?.inventory.orEmpty().map { it.instanceId }.toSet()
+                        if (next.inventory.any { it.instanceId in oldIds }) throw invalid("OCR rebuild requires new instance IDs")
+                    }
                     val now = Instant.now()
                     val point = current?.let {
                         checkpoint(
@@ -138,7 +146,7 @@ class StarStateService(
                         )
                     }
                     val saved = save(userId, accountId, expectedGeneration, expectedRevision, expectedGeneration + 1, next, now)
-                    val existingLoadouts = loadouts.findByUserIdAndAccountId(userId, accountId)?.loadouts.orEmpty()
+                    val existingLoadouts = oldLoadout?.loadouts.orEmpty()
                     val kept = if (reason == "restore_local") {
                         filterLoadouts(
                             existingLoadouts,
@@ -148,7 +156,19 @@ class StarStateService(
                     } else {
                         null
                     }
-                    val updatedLoadout = replaceLoadout(userId, accountId, expectedGeneration + 1, kept?.loadouts.orEmpty(), now)
+                    val inherited = if (reason == "pre_ocr_rebuild" && current != null && oldLoadout?.generation == current.generation) {
+                        val byId = next.inventory.associateBy { it.instanceId }
+                        inheritOcrLoadouts(
+                            existingLoadouts,
+                            current.inventory,
+                            // normalize sorts IDs for storage; allocation follows submitted inventory order, never UUID order.
+                            request.inventory.orEmpty().map { byId.getValue(it.instanceId) },
+                            operatorIds(userId, accountId, accounts.requireAccount(userId, accountId).game),
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    val updatedLoadout = replaceLoadout(userId, accountId, expectedGeneration + 1, kept?.loadouts ?: inherited, now)
                     val summary = kept?.let {
                         StarRecoverySummary(
                             restoredOperators = it.loadouts.count { loadout -> loadout.slots.values().any { slot -> slot.second != null } },
@@ -185,6 +205,7 @@ class StarStateService(
                 transactions.execute {
                     val current = states.findByUserIdAndAccountId(userId, accountId)
                     checkVersion(current, expectedGeneration, expectedRevision)
+                    requireResolvedInheritance(userId, accountId)
                     val target = recoveryPoints.findByUserIdAndAccountIdAndRecoveryPointId(userId, accountId, pointId)
                         ?: throw InventoryApiException(HttpStatus.NOT_FOUND, "star_recovery_point_not_found", "Recovery point not found")
                     val now = Instant.now()
@@ -212,6 +233,14 @@ class StarStateService(
                     )
                 },
             )
+        }
+    }
+
+    // Read in the same transaction as the generation CAS write. A competing scan
+    // creates its pending slot atomically with that state write, so it cannot slip past this guard.
+    private fun requireResolvedInheritance(userId: String, accountId: String) {
+        if (pendingInheritance.findByUserIdAndAccountId(userId, accountId)?.let { it.resolution == null } == true) {
+            throw InventoryApiException(HttpStatus.CONFLICT, "star_plan_inheritance_pending", "旧养成计划仍待继承，请先继承或明确放弃，再替换或恢复背包")
         }
     }
 
@@ -252,6 +281,34 @@ class StarStateService(
         if (state != null && !states.fenceLoadoutWrite(userId, accountId, state.generation, state.revision)) throw stateConflict()
         reconcileLoadout(userId, accountId, state?.inventory.orEmpty(), Instant.now())
     }
+
+    internal fun inheritOcrLoadouts(
+        source: List<StarOperatorLoadout>,
+        oldInventory: List<StarStateEntry>,
+        newInventory: List<StarStateEntry>,
+        presentOperators: Set<String>,
+    ): List<StarOperatorLoadout> {
+        val valid = filterLoadouts(source.sortedBy { it.operatorId }, oldInventory, presentOperators).loadouts
+        val oldById = oldInventory.associateBy { it.instanceId }
+        fun key(entry: StarStateEntry) = OcrWearKey(entry.kind, entry.name.trim(), entry.quality, entry.level)
+        val available = newInventory.groupBy(::key).mapValues { (_, entries) -> ArrayDeque(entries.map { it.instanceId }) }
+        return valid.mapNotNull { loadout ->
+            fun match(id: String?): String? = id?.let { oldById[it] }?.let { available[key(it)]?.removeFirstOrNull() }
+            val slots = loadout.slots
+            loadout.copy(
+                slots = StarLoadoutSlots(
+                    match(slots.main1),
+                    match(slots.main2),
+                    match(slots.main3),
+                    match(slots.support1),
+                    match(slots.support2),
+                    match(slots.support3),
+                ),
+            ).takeIf { it.slots.values().any { (_, id) -> id != null } }
+        }
+    }
+
+    private data class OcrWearKey(val kind: String, val name: String, val quality: String, val level: Int)
 
     private fun filterLoadouts(
         source: List<StarOperatorLoadout>,
@@ -315,9 +372,20 @@ class StarStateService(
                 sourceGeneration = state.generation, state = state.snapshot(), loadouts = safeLoadouts,
             ),
         )
-        recoveryPoints.findByUserIdAndAccountIdOrderByCreatedAtDescIdDesc(userId, accountId)
-            .drop(3).forEach(recoveryPoints::delete)
+        pruneRecoveryPoints(userId, accountId)
         return point
+    }
+
+    internal fun pruneRecoveryPoints(userId: String, accountId: String) {
+        recoveryPoints.findByUserIdAndAccountIdOrderByCreatedAtDescIdDesc(userId, accountId)
+            .filterNot { it.inheritanceProtected }
+            .drop(3).forEach(recoveryPoints::delete)
+    }
+
+    /** A real write fences no-op confirmations/discards against ordinary edits/rebuilds. Called inside the resolution transaction. */
+    internal fun fencePlanResolution(userId: String, accountId: String, generation: Long, revision: Long) {
+        checkVersion(states.findByUserIdAndAccountId(userId, accountId), generation, revision)
+        if (!states.fenceLoadoutWrite(userId, accountId, generation, revision)) throw stateConflict()
     }
 
     private fun replaceLoadout(

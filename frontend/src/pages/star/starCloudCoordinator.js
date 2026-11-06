@@ -153,7 +153,7 @@ export function createStarCloudCoordinator({
   }
   function committed(event) {
     const session = active
-    if (!session?.ready || !session.writer.isActive() || (session.replacing && !session.reloading) || session.error || event.accountId !== session.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
+    if (!session?.ready || !session.writer.isActive() || (session.replacing && !session.reloading) || session.error || hasCommandPending(session.accountId) || event.accountId !== session.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
     session.commitVersion = (session.commitVersion || 0) + 1
     void session.writer.save(draftState(event.snapshot, session.generation, session.writer.state().revision))
     return true
@@ -304,14 +304,57 @@ export function createStarCloudCoordinator({
       const session = commandSession()
       if (scope.accountId !== session.accountId || scope.generation !== session.generation || scope.revision !== session.writer.state().revision) throw new Error('云端版本已变化，请重新确认。')
       session.replacing = true; emit()
+      const pendingKey = 'yuanhub.star-plan-pending:' + session.accountId
+      let protectedPlan = null
+      const assertPlanOwner = () => {
+        assertCurrent(session)
+        if (!protectedPlan || storage.getItem(pendingKey) !== protectedPlan) throw new Error('计划保护记录已变化，请重新加载核对。')
+      }
       // Lease is session-bound: an old account response cannot unlock/adopt a new one.
       return {
+        protectPlan(context) {
+          assertCurrent(session)
+          if (context.account_id !== session.accountId || hasCommandPending(session.accountId)) throw new Error('计划保存仍待核对，请重新加载。')
+          protectedPlan = JSON.stringify(businessState(context.state))
+          storage.setItem(pendingKey, protectedPlan)
+          assertPlanOwner()
+        },
+        async completePlan(context, adoptLocal) {
+          assertPlanOwner()
+          const next = businessState(context.state), expected = JSON.parse(protectedPlan)
+          if (context.account_id !== session.accountId || next.revision !== expected.revision || !businessSame(next, expected)) throw new Error('计划回执与保护记录不一致，请重新加载核对。')
+          await adoptLocal(productSnapshot(next))
+          assertPlanOwner()
+          const local = await session.handle.getCloudBusinessSnapshot()
+          assertPlanOwner()
+          if (!businessSame(next, draftState(local, next.generation, next.revision))) throw new Error('云端计划已保存，本机尚未采用，请重新加载核对。')
+          if (!session.writer.adopt(next)) throw new Error('云端版本无法采用，请重新加载核对。')
+          assertPlanOwner()
+          storage.removeItem(pendingKey)
+          protectedPlan = null
+        },
+        cancelPlan() {
+          assertPlanOwner()
+          storage.removeItem(pendingKey)
+          protectedPlan = null
+        },
+        isCurrent() { return active === session && selectedHostAccount()?.accountId === session.accountId && session.writer.isActive() },
         adopt(context) {
           if (active !== session || selectedHostAccount()?.accountId !== session.accountId || context.account_id !== session.accountId) throw new Error('账号已切换，原操作仍待恢复。')
           const next = businessState(context.state)
           if (next.generation < session.generation || (next.generation === session.generation && next.revision < session.writer.state().revision)) throw new Error('回执版本已过期，请重新读取。')
           if (!session.writer.adopt(next)) throw new Error('云端版本无法采用，请恢复原操作。')
         },
+        async refresh() {
+          assertCurrent(session)
+          const next = await readBusiness(session.accountId)
+          assertCurrent(session)
+          if (next.generation < session.generation || (next.generation === session.generation && next.revision < session.writer.state().revision)) throw new Error('云端回执版本已过期，请重新核对。')
+          await session.handle.applyCloudBusinessSnapshot(next)
+          assertCurrent(session)
+          if (!session.writer.adopt(next)) throw new Error('云端已保存，本机版本尚未采用，请重新加载核对。')
+        },
+        fail(error) { if (active === session) { session.error = error; emit() } },
         release() { session.replacing = false; if (active === session) emit() },
       }
     },

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const page = readFileSync(new URL('../src/pages/star/index.vue', import.meta.url), 'utf8')
 
-test('star page uses one direct recovery action and preserves capture-specific retries', function () {
+test('star page preserves direct cloud recovery and removes retired capture retries', function () {
   assert.equal((page.match(/@click="recoverStarCloud"/g) || []).length, 1)
   assert.match(page, /class="star-sync-retry star-sync-cloud"/)
   assert.match(page, /:aria-busy="cloudRecoveryBusy"/)
@@ -14,7 +14,6 @@ test('star page uses one direct recovery action and preserves capture-specific r
   assert.match(page, /await starCloud\.discardAndReload\(\{ isCurrent \}\)/)
   assert.match(page, /await syncHostAccount\(\{ readOnly: true \}\)/)
   assert.doesNotMatch(page, /dialog\.confirm|window\.confirm|starCloud\.retry\(|retryStarCloud|discardStarCloud|star-sync-discard/)
-  assert.match(page, /@click="retryCaptureConsume"/)
-  assert.match(page, /@click="retryCaptureImport"/)
+  assert.doesNotMatch(page, /retryCaptureConsume|retryCaptureImport/)
   assert.match(page, /\.star-sync-retry:focus-visible/)
 })

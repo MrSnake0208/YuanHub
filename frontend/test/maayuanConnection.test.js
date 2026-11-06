@@ -6,13 +6,13 @@ import { MAAYUAN_REQUIRED_SCOPES, mergeScopes } from '../src/utils/openApiToken.
 const profile = readFileSync(new URL('../src/pages/user/profile.vue', import.meta.url), 'utf8')
 
 test('MaaYuan 创建连接保留密探读取并包含星石采集权限', () => {
-  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:scan:write'])
+  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'operator:read', 'star:sync:write'])
   assert.equal(MAAYUAN_REQUIRED_SCOPES.some(function (scope) { return scope === 'inventory:read' || /:export$/.test(scope) }), false)
   assert.match(profile, /scopes:\s*MAAYUAN_REQUIRED_SCOPES\.slice\(\)/)
   const grantReview = profile.slice(profile.indexOf('<div class="grant-review">'), profile.indexOf('</div>', profile.indexOf('<div class="grant-review">') + 1))
   assert.match(grantReview, /<h4>将会允许<\/h4>/)
-  assert.match(grantReview, /上传星石截图/)
-  assert.match(grantReview, /MaaYuan 自动采集接入中/)
+  assert.match(grantReview, /自动同步星石背包/)
+  assert.match(grantReview, /保留旧背包及计划来源，清空旧佩戴/)
 })
 
 test('MaaYuan 现有连接以 PATCH scope 原地升级而不创建新连接', () => {

@@ -29,7 +29,6 @@ import com.lhs.share.hub.repository.RecruitmentRepository
 import com.lhs.share.hub.repository.StarCompletionRepository
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
 import com.lhs.share.hub.repository.StarRecoveryPointRepository
-import com.lhs.share.hub.repository.StarScanRecordRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.SubAccount
@@ -88,11 +87,12 @@ class SubAccountService(
     private val operatorRelationships: OperatorRelationshipRepository? = null,
     private val bonds: com.lhs.share.hub.repository.BondRepository? = null,
     private val bondPreviews: com.lhs.share.hub.service.bond.BondImportPreviews? = null,
-    private val starScanRecords: StarScanRecordRepository? = null,
     private val reserveWorkspaces: OperatorReserveWorkspaceRepository? = null,
     private val mailboxHistory: com.lhs.share.hub.repository.MailboxReserveHistoryRepository? = null,
     private val operatorResets: com.lhs.share.hub.repository.OperatorResetTransactionRepository? = null,
     private val mailboxDeliveries: com.lhs.share.hub.repository.MailboxDeliveryRepository? = null,
+    private val starInventorySyncs: com.lhs.share.hub.repository.StarInventorySyncRepository? = null,
+    private val starPlanInheritance: com.lhs.share.hub.repository.StarPlanInheritancePendingRepository? = null,
 ) {
     fun create(userId: String, name: String, game: String? = null): SubAccountResponse {
         val normalizedGame = normalizeGame(game ?: DEFAULT_GAME)
@@ -251,7 +251,8 @@ class SubAccountService(
                 operatorUpgradeTransactionRepository?.deleteAllByUserIdAndAccountId(userId, accountId)
                 operatorResets?.deleteAllByUserIdAndAccountId(userId, accountId)
                 starCompletionRepository?.deleteAllByUserIdAndAccountId(userId, accountId)
-                starScanRecords?.deleteByUserIdAndAccountId(userId, accountId)
+                starInventorySyncs?.deleteAllByUserIdAndAccountId(userId, accountId)
+                starPlanInheritance?.deleteAllByUserIdAndAccountId(userId, accountId)
                 inventoryRevisionRepository?.deleteByUserIdAndAccountId(userId, accountId)
                 trainingWorkspaceRepository?.deleteAllByUserIdAndAccountId(userId, accountId)
                 reserveWorkspaces?.deleteAllByUserIdAndAccountId(userId, accountId)

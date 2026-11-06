@@ -15,7 +15,7 @@ export const MAAYUAN_REQUIRED_SCOPES = Object.freeze([
   'inventory:write',
   'operator:scan:write',
   'operator:read',
-  'star:scan:write'
+  'star:sync:write'
 ])
 
 export function hasEveryScope(scope, required) {
@@ -80,6 +80,7 @@ export function scopeDomain(scope) {
 
 // 内置权限兜底描述（后端权限列表不可用或离线时使用）
 export const FALLBACK_DESCRIPTIONS = {
+  'star:sync:write': '完整星石扫描自动同步（重建背包）',
   'inventory:read': '库存数据读取（只读）',
   'inventory:write': '库存数据写入（只写）',
   'inventory:export': '库存数据导出',
@@ -89,8 +90,6 @@ export const FALLBACK_DESCRIPTIONS = {
   'operator:scan:write': '密探自动采集写入',
   // 今日历练完成记录（对应后端 OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE，code 20005）
   'operator:daily-tasks:write': '今日历练完成记录（写入）',
-  'star:capture:write': '上传星石截图',
-  'star:scan:write': '上传星石本地识别结果（核对后导入）',
   // 活动日历（对应后端 OpenApiPermission.CALENDAR_READ，code 40001）
   'calendar:read': '活动日历读取'
 }

@@ -2,6 +2,10 @@
 
 本页记录文件格式、兼容约定及开发者 API 的变化，区别于[普通用户更新日志](/changelog)。以下日期按协议记录整理，不表示线上发布时间。
 
+## 2026-11-02 · 星石 JSON 补传与旧截图传输退役
+
+`star:sync:write`（30003）用于完整结构化背包同步；网页 JSON 补传使用 JWT 预览/确认并复用同一同步事务。旧 captures/scans 跨端图片及报告核对接口、页面、30001/30002 权限退役，历史数据本次不删除。网页手动截图 OCR 与原 JSON 备份保留。详见[星石 API](./api-star.md)。
+
 ## 2026-10-18 · 文档基线核对
 
 统一开发者入口，补齐 `calendar:read`、`operator:daily-tasks:write`、`star:capture:write` 及对应 API。修正普通成功响应为 `status_code/message/data`，null 字段可省略。Work V1 已实现；不再沿用总索引里的 Draft 判断。

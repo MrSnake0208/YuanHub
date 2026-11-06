@@ -27,8 +27,6 @@ share:
   media:
     dir: ./build/test-data/media
     private-dir: ./build/test-data/private
-  star-capture:
-    dir: ./build/test-data/star-captures
 debug:
   email:
     no-send: true

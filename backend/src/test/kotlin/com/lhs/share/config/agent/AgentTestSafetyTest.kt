@@ -48,7 +48,6 @@ class AgentTestSafetyTest {
             "share.avatar.dir",
             "share.media.dir",
             "share.media.private-dir",
-            "share.star-capture.dir",
             "logging.file.name",
         )) {
             properties[key] = directory.resolve(key).toString()

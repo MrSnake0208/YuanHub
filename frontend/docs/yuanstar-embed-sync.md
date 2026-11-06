@@ -1,5 +1,28 @@
 # YuanStar embed 同步说明
 
+## 云端继承本地采用写入保护（2026-11-05）
+
+- 权威源码为 D 盘现有 YuanStar-dev 工作树的 `feature/yuanhub-embed`，source commit `b10046dc402a5fae314f66e386f2a0f41f7cafe0`。已提交 source commit 的干净工作树正式 build，仅执行 `build:embed` 对应命令，再由 `scripts/sync-yuanstar-embed.mjs` 完整同步 12 个资源并核对字节。
+- `cloudPlanInheritance.confirm` 接收本地采用回调，宿主 lease 覆盖 IndexedDB 事务及业务回读；失败保留账号级保护和错误，通过原重新加载入口恢复，不自动重发确认。旧缓存 embed 缺少回调时，宿主在发送确认前要求重新加载。
+- 仅生成 JS 与来源 manifest 改变；CSS、worker、模型、ORT、规则文件字节保持原样。未手改生成产物、重构 OCR 或修改页面布局。
+
+
+## 完整 OCR 佩戴继承提示正式来源（2026-11-02）
+
+- 权威源码分支 `feature/yuanhub-embed`，source commit `31305a2469df2e10c65bc1b8a25ea4c94c60ccc4`。从已提交 source commit 的干净工作树正式 build：执行 `build:embed`，再由 `scripts/sync-yuanstar-embed.mjs` 官方同步完整 12 个资源；manifest 记录此来源及逐文件 SHA-256。
+- 完整 OCR 提示改为自动保留能够按名称、品质、当前等级及主辅类型匹配的密探佩戴，无法匹配的槽位清空；旧养成计划继续使用原有继承流程。仅调整现有说明，不增加按钮、弹窗或步骤，不改变历史恢复语义。
+- 本次仅生成 JS 和来源 manifest 必要更新；worker、CSS、模型、ORT 与规则资源字节不变。没有手改生成资源或绕过来源校验。
+- 首次完整识别成功即提交新 generation；此后的人工纠错走普通 PATCH，不再次继承，也不会自动补回首次未匹配的佩戴。GUI 人工验收与正式部署环境验证仍待后续进行。
+- 下述来源均为历史记录，保留供追溯。
+
+## 云端养成计划继承正式来源（2026-11-01）
+
+- 权威源码分支 feature/yuanhub-embed，source commit 5b851bca031c19bae11876905caf584441e057ba。已提交 source commit 的干净工作树正式 build：执行 build:embed，再由 scripts/sync-yuanstar-embed.mjs 官方同步全部12个资源；manifest记录该提交和每个资源SHA-256。
+- 新增 cloudPlanInheritance Host参数，云端来源直接复用原 previewPlanInheritance、adjustPlanInheritance、applyPlanInheritance 和同一个 PlanInheritanceDialog；原匹配/弹窗源码及网页OCR本地待办流程保留，不伪造IndexedDB pending。
+- 确认/放弃调用账号、来源、generation和revision绑定的云端接口；稍后不修改待办。本地未保存编辑及账号切换继续受保护，不继承佩戴。
+- 本次worker、CSS、模型、ORT和规则资源字节未变，仅正式生成JS及manifest哈希更新。没有手改生成资源、跳过SHA或放宽同步脚本。
+- 完成来源/字节校验、Host与实际embed的非浏览器定向兼容检查及前端构建；GUI视觉、触控和完整应用人工验收尚未执行。没有push、PR、merge或部署；下述旧来源记录保留供历史追溯。
+
 2026-10-21：宿主与后端增加星石实际突破次数；本轮未同步嵌入产物，私有源码改动由其拥有人接手，见[交接清单](./yuanstar-panel-handoff.md)。下述来源记录保持原样。
 
 ## 宿主初始空背包展示修复（2026-10-18）
