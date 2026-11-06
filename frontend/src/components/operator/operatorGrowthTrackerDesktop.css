@@ -44,7 +44,7 @@ button { touch-action: manipulation; }
 .status-main { padding: 4px 0 12px; }
 .status-title { min-width: 0; }
 .status-title :deep(.plan-heading) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px 16px; }
-.status-title :deep(.plan-source-note) { flex-basis: 100%; }
+.status-title :deep(.plan-title) { font-size: 23px; }
 .status-title :deep(.plan-member-add) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .status-title h2 { margin-top: 5px; font: 900 25px/1.22 var(--font-s); letter-spacing: .02em; }
 .status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
@@ -90,7 +90,7 @@ button { touch-action: manipulation; }
 .growth-prof img { width: 12px; height: 12px; flex: none; object-fit: contain; }
 .growth-prof-fallback, .growth-identity-separator { flex: none; }
 .growth-progress-status { display: inline; margin-right: 4px; font: 500 12px/1.5 var(--font-b); }
-.growth-percent { flex: none; text-align: right; font: 750 13px var(--font-d); }
+.growth-percent { display: block; margin-top: 2px; text-align: left; font: 750 13px var(--font-d); }
 .growth-percent small { margin-left: 2px; font: 700 10px var(--font-b); }
 .growth-progress-list { display: contents; }
 .growth-progress-row { position: relative; display: grid; align-content: start; gap: 5px; min-width: 0; }
@@ -105,8 +105,15 @@ button { touch-action: manipulation; }
 .growth-progress-label .tracker-editable { width: 60px; min-width: 0; min-height: 30px; padding: 3px 5px; }
 .growth-progress-label .tracker-star-trigger { width: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .growth-progress-label .growth-quick-action { margin-left: auto; }
+.growth-progress-label .growth-quick-action.is-follow-up { flex-basis: 100%; justify-content: flex-start; gap: 4px; min-height: 24px; margin-left: 0; padding: 0; }
 .growth-progress-label .tracker-number-input, .growth-progress-label .tracker-star-trigger { font: 750 13px/1.5 var(--font-d); }
 .growth-progress-row > small { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.growth-level-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.growth-level-meta > small { font-size: 12px; line-height: 1.6; color: var(--ink-60); }
+.growth-level-meta > .growth-materials, .growth-progress-row > .growth-xiuwei-materials { margin-top: 0; }
+.growth-level-meta > details[open] { flex-basis: 100%; }
+.growth-level-meta summary, .growth-xiuwei-materials summary { min-height: 24px; justify-content: flex-start; gap: 4px; font-size: 12px; font-weight: 500; }
+.growth-level-meta > small + details:not([open]) > summary::before { content: '·'; }
 .heart-gap { font-weight: inherit; }
 .heart-gap-number { font: inherit; font-weight: inherit; }
 .heart-progress-note { overflow: visible !important; line-height: 1.5; text-overflow: clip !important; white-space: normal !important; }
@@ -122,6 +129,12 @@ button { touch-action: manipulation; }
 .growth-row-actions summary { justify-content: flex-start; flex-wrap: wrap; gap: 4px; }
 .growth-row-actions :deep(.growth-card-remark) { min-width: 0; margin: 0; padding: 0; border: 0; }
 .growth-row-actions :deep(textarea) { width: 100%; max-width: 100%; }
+.growth-row-actions :deep(.growth-remark-editor summary) { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; min-height: 28px; list-style: none; cursor: pointer; font: 12px/1.5 var(--font-b); }
+.growth-row-actions :deep(.growth-remark-editor summary::-webkit-details-marker) { display: none; }
+.growth-row-actions :deep(.growth-remark-editor summary svg) { flex: none; }
+.growth-row-actions :deep(.growth-remark-editor summary span) { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.growth-row-actions :deep(.growth-remark-body) { display: grid; gap: 6px; padding-top: 6px; }
+.growth-row-actions :deep(.growth-remark-body textarea) { height: 64px; min-height: 64px; }
 .growth-row-materials .growth-material-chips { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
 .growth-materials { margin-top: 6px; padding-top: 0; }
 .growth-materials summary { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 800; }
@@ -251,14 +264,13 @@ button { touch-action: manipulation; }
   .growth-roster-columns, .growth-card { grid-template-columns: minmax(135px, .85fr) minmax(220px, 1.4fr) minmax(200px, 1.2fr) minmax(215px, 1.3fr) minmax(140px, .85fr); column-gap: 10px; }
   .growth-roster-columns { display: grid; padding: 9px 12px; font-size: 13px; font-weight: 750; }
   .growth-card-head { grid-column: 1; grid-row: 1; align-items: flex-start; flex-direction: column; }
-  .growth-percent { margin-left: 51px; text-align: left; }
   .growth-progress-row { grid-row: 1; }
   .growth-progress-row:nth-child(1) { grid-column: 2; }
   .growth-progress-row:nth-child(2) { grid-column: 3; }
   .growth-progress-row:nth-child(3) { grid-column: 4; }
   .growth-progress-label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .growth-row-actions { grid-column: 5; grid-row: 1; }
-  .growth-row-actions.is-editing, .growth-row-actions:has(> details[open]) { grid-column: 1 / -1; grid-row: auto; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .growth-row-actions.is-editing, .growth-row-actions:has(details[open]) { grid-column: 1 / -1; grid-row: auto; padding-top: 8px; border-top: 1px dashed var(--line); }
 }
 @media (prefers-reduced-motion: reduce) {.planner-workspace { scroll-behavior: auto; } }
 
@@ -384,6 +396,7 @@ button { touch-action: manipulation; }
 .roster-title { margin: 0; font: 850 23px/1.4 var(--font-s); color: var(--ink); }
 .roster-count { color: var(--ink-60); font-size: 12px; }
 .roster-heading .roster-help { margin: 0; }
+.roster-footnote { margin: 8px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .material-readiness-track { height: 6px; margin-top: 10px; }
 .growth-progress-label .tracker-editable { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .growth-quick-label { white-space: nowrap; }

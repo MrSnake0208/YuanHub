@@ -143,7 +143,7 @@ it('顶部添加密探可将非星标成员加入特别关注清单，保留隐�
   expect(actions.text()).toContain('添加密探')
   expect(actions.text()).toContain('新建清单')
   expect(actions.text()).toContain('管理清单')
-  expect(wrapper.get('.plan-source-note').text()).toContain('也可添加其他密探')
+  expect(wrapper.get('.plan-title-trigger').text()).toBe('特别关注')
   await actions.findAll('button').find(button => button.text() === '添加密探').trigger('click')
   await flushPromises()
   expect(wrapper.get('dialog').element.open).toBe(true)

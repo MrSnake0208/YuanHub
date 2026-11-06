@@ -478,18 +478,20 @@ it.each([
   })
   await flushPromises()
   const card = wrapper.get('.growth-card')
-  const note = card.get('.heart-progress-note').text()
+  const note = card.find('.heart-progress-note')
   expect(card.get('.growth-progress-status').text()).toBe('练度参考')
   if (unknown) {
-    expect(note).toBe('化极需求待确认，暂无法完整估算')
+    expect(note.text()).toBe('化极需求待确认，暂无法完整估算')
     expect(card.find('.heart-gap-number').exists()).toBe(false)
   } else {
-    expect(note).toContain('心纸')
-    expect(note).not.toContain('待确认')
     if (starLevel === 7) {
-      expect(note).toBe('当前目标无需心纸')
+      expect(note.exists()).toBe(false)
       expect(card.find('.heart-gap-number').exists()).toBe(false)
-    } else expect(Number(card.get('.heart-gap-number').text())).toBeGreaterThan(0)
+    } else {
+      expect(note.text()).toContain('心纸')
+      expect(note.text()).not.toContain('待确认')
+      expect(Number(card.get('.heart-gap-number').text())).toBeGreaterThan(0)
+    }
   }
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
@@ -515,7 +517,7 @@ it.each([390, 1440])('培养卡化极保留完整数值单位，并解释当前�
     expect(card.get(selector).text()).toBe('3 星 · 0 节点')
   }
   expect(card.get('.tracker-star-trigger').attributes('aria-label')).toBe('测试密探的目标化极：3 星 · 0 节点')
-  expect(card.get('.growth-limit-note').text()).toBe('已达当前等级修为上限，先提升等级')
+  expect(card.get('.growth-limit-note').text()).toBe('先提升等级')
   await wrapper.setProps({ currentEntries: [{ id: 'op', level: 90, elite: 14, starLevel: 13 }] })
   expect(card.find('.growth-limit-note').exists()).toBe(false)
   await wrapper.setProps({ currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 13 }] })

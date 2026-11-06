@@ -87,6 +87,29 @@ it('库存读取未完成时不把材料缺口当作已备齐', async () => {
   expect(wrapper.get('.growth-row-materials').text()).toContain('查看缺口')
 })
 
+it('已备齐材料的修为总需求仍保留完整数量，不伪装成库存缺口', async () => {
+  const items = calculateXiuweiRequirements(16, 17, 'fh').items
+  getCurrent.mockImplementation(async ({ entityType }) => entityType === 'item'
+    ? [{ entity_type: 'item', entries: Object.fromEntries(Object.entries(items).map(([id, count]) => [id, { count }])) }]
+    : [])
+  const wrapper = await render(huaji(), {}, { currentEntries: [{ id: 'op', level: 100, elite: 16, starLevel: 25, huaji: huaji() }] })
+  const requirements = wrapper.get('.growth-xiuwei-materials')
+  await requirements.get('summary').trigger('click')
+  expect(requirements.element.open).toBe(true)
+  expect(requirements.findAll('.growth-material-chip em').map(item => item.text())).toEqual(Object.values(items).filter(count => count > 0).map(count => count.toLocaleString('zh-CN')))
+  expect(requirements.text()).toContain('未扣除库存')
+  expect(wrapper.get('.growth-row-actions').text()).toBe('当前目标材料已备齐')
+})
+
+it('特别关注来源说明合并到清单说明，仍明确可添加其他密探', async () => {
+  plannerApi.getTrainingWorkspace.mockResolvedValue(workspace('favorites'))
+  const wrapper = await render()
+  const note = wrapper.get('.planner-independent-note').text()
+  expect(note).toContain('随特别关注同步，也可添加其他密探')
+  expect(note).toContain('未预留库存')
+  expect(note).toContain('材料备齐不等于已完成养成')
+})
+
 it('材料备齐独立于实际目标完成，零缺口不显示空展开入口', async () => {
   const items = calculateXiuweiRequirements(16, 17, 'fh').items
   getCurrent.mockImplementation(async ({ entityType }) => entityType === 'item'
@@ -96,7 +119,7 @@ it('材料备齐独立于实际目标完成，零缺口不显示空展开入口'
   expect(wrapper.get('.growth-card').classes()).not.toContain('complete')
   expect(wrapper.get('.growth-row-actions').text()).toBe('当前目标材料已备齐')
   expect(wrapper.find('.growth-row-materials').exists()).toBe(false)
-  expect(wrapper.get('.heart-progress-note').text()).toBe('当前目标无需心纸')
+  expect(wrapper.find('.heart-progress-note').exists()).toBe(false)
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
 })
 
@@ -135,15 +158,21 @@ it.each([null, false, true])('stage25+%s只有要求觉醒且已确认时显示�
   expect(wrapper.get('.growth-current-star').text()).toBe(awakened === true ? '已觉醒' : '5 星')
   expect(wrapper.text()).not.toContain('觉醒待确认')
   expect(wrapper.get('.growth-card').classes().includes('complete')).toBe(awakened === true)
-  expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain(awakened === true ? '100%' : '96%')
-  const button = wrapper.get('[aria-label*="快捷提升化极"]')
-  expect(button.text()).toBe(awakened === true ? '已觉醒' : '记录已觉醒')
-  expect(button.find('svg').exists()).toBe(true)
-  expect(button.element.disabled).toBe(awakened === true)
-  expect(button.classes().includes('is-complete')).toBe(awakened === true)
+  if (awakened === true) {
+    expect(wrapper.find('.growth-track.rose').exists()).toBe(false)
+    expect(wrapper.find('[aria-label*="快捷提升化极"]').exists()).toBe(false)
+    expect(wrapper.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')
+  } else {
+    expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain('96%')
+    const button = wrapper.get('[aria-label*="快捷提升化极"]')
+    expect(button.text()).toBe('记录已觉醒')
+    expect(button.find('svg').exists()).toBe(true)
+    expect(button.element.disabled).toBe(false)
+    await button.trigger('click')
+    expect(quickUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: 'op' }), 'star', 1)
+  }
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
-  if (awakened !== true) { await button.trigger('click'); expect(quickUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: 'op' }), 'star', 1) }
 })
 
 it.each(['up', 'alert'])('五星觉醒入口使用父页面的%s图标状态和动作说明', async icon => {
@@ -151,8 +180,8 @@ it.each(['up', 'alert'])('五星觉醒入口使用父页面的%s图标状态和�
   const wrapper = await render(huaji(), {}, { quickUpgrade, quickUpgradeState: () => ({
     visible: true, disabled: false, icon, label: '觉醒', title: '查看觉醒材料并确认扣除库存',
   }) })
-  const button = wrapper.get('[aria-label="测试密探快捷提升化极：觉醒"]')
-  expect(button.text()).toBe('觉醒')
+  const button = wrapper.get('[aria-label="测试密探的后续觉醒：觉醒"]')
+  expect(button.text()).toBe('后续觉醒 · 查看材料')
   expect(button.attributes('title')).toBe('查看觉醒材料并确认扣除库存')
   expect(button.findComponent(icon === 'up' ? ChevronUp : CircleAlert).exists()).toBe(true)
   await button.trigger('click')
@@ -183,7 +212,7 @@ it('旧31目标与当前旧31都表示五星后的觉醒', async () => {
   plannerApi.getTrainingWorkspace.mockResolvedValue(old)
   const wrapper = await render(huaji(null, true), {}, { currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 31 }] })
   expect(wrapper.get('.growth-card').text()).toContain('已觉醒')
-  expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain('100%')
+  expect(wrapper.find('.growth-track.rose').exists()).toBe(false)
   await wrapper.get('.tracker-star-trigger').trigger('click')
   expect(wrapper.get('[aria-label="目标星级"]').element.value).toBe('awakening')
   expect(wrapper.findAll('[aria-label="目标星级"] option').map(option => option.element.value)).toContain('5')

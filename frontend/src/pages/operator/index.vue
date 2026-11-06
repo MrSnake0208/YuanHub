@@ -2380,19 +2380,24 @@
             >
               <template #remark="{ row }">
                 <div class="ledger-card-footer growth-card-remark">
-                  <textarea
-                    :value="operatorRemark(trackerRemarkEntry(row))"
-                    rows="1"
-                    maxlength="1000"
-                    :aria-label="(row.name || row.id) + '备忘'"
-                    placeholder="添加备忘…"
-                    :disabled="!currentMap[row.id] || cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
-                    @input="setOperatorRemarkDraft(trackerRemarkEntry(row), $event.target.value)"
-                  ></textarea>
-                  <div v-if="cardHasDraft(trackerRemarkEntry(row))" class="ledger-card-actions">
-                    <button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="cancelCardDraft(trackerRemarkEntry(row))">取消</button>
-                    <button class="ledger-card-save" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="saveCardDraft(trackerRemarkEntry(row))"><Save :size="13" aria-hidden="true" />{{ cardSubmitStates[row.id] === 'submitting' ? '保存中…' : '保存' }}</button>
-                  </div>
+                  <details :key="accountId + ':' + saveGame" class="growth-remark-editor" :open="cardHasDraft(trackerRemarkEntry(row))" @toggle="focusPlannerRemark">
+                    <summary :aria-label="(row.name || row.id) + '的备注'" :aria-disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="(cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)) && $event.preventDefault()"><Pencil :size="14" aria-hidden="true" /><span :title="operatorRemark(trackerRemarkEntry(row))">{{ cardHasDraft(trackerRemarkEntry(row)) ? '备注未保存' : operatorRemark(trackerRemarkEntry(row)) || '添加备注' }}</span></summary>
+                    <div class="growth-remark-body">
+                      <textarea
+                        :value="operatorRemark(trackerRemarkEntry(row))"
+                        rows="1"
+                        maxlength="1000"
+                        :aria-label="(row.name || row.id) + '备忘'"
+                        placeholder="填写备注…"
+                        :disabled="!currentMap[row.id] || cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
+                        @input="setOperatorRemarkDraft(trackerRemarkEntry(row), $event.target.value)"
+                      ></textarea>
+                      <div class="ledger-card-actions">
+                        <button class="ledger-card-cancel" type="button" :disabled="!currentMap[row.id] || cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="cancelPlannerRemark(row, $event)">取消</button>
+                        <button class="ledger-card-save" type="button" :disabled="!cardHasDraft(trackerRemarkEntry(row)) || cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="savePlannerRemark(row, $event)"><Save :size="13" aria-hidden="true" />{{ cardSubmitStates[row.id] === 'submitting' ? '保存中…' : '保存' }}</button>
+                      </div>
+                    </div>
+                  </details>
                   <p v-if="cardSubmitStates[row.id] === 'error'" class="growth-remark-error" role="alert">{{ quickNotices[row.id] || '保存失败，请重试' }}</p>
                   <p v-else-if="cardSubmitStates[row.id] === 'success'" class="growth-remark-notice" role="status">已保存</p>
                 </div>
@@ -7438,6 +7443,30 @@ function operatorRemark(entry) {
 
 function trackerRemarkEntry(row) {
   return currentEntries.value.find(entry => entry.id === row.id) || row;
+}
+
+function focusPlannerRemark(event) {
+  if (event.currentTarget.open) event.currentTarget.querySelector('textarea:not(:disabled)')?.focus();
+}
+
+function cancelPlannerRemark(row, event) {
+  const entry = currentMap.value[row.id];
+  if (!entry) return;
+  const editor = event.currentTarget.closest('details');
+  cancelCardDraft(entry);
+  editor.open = false;
+  editor.querySelector('summary').focus();
+}
+
+async function savePlannerRemark(row, event) {
+  const entry = currentMap.value[row.id];
+  if (!entry) return;
+  const editor = event.currentTarget.closest('details');
+  const contextSeq = currentContextSeq;
+  await saveCardDraft(entry);
+  if (contextSeq !== currentContextSeq || !editor.isConnected || cardSubmitStates.value[row.id] !== 'success') return;
+  editor.open = false;
+  editor.querySelector('summary').focus();
 }
 
 function setOperatorRemarkDraft(entry, value) {

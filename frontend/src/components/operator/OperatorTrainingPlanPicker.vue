@@ -12,7 +12,6 @@
         <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
         <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
       </div>
-      <p v-if="activePlan" class="plan-source-note">{{ activePlan.source === 'favorites' ? '随特别关注同步，也可添加其他密探' : '手动管理成员，各清单独立保存养成目标' }}</p>
     </div>
     <div class="plan-heading-actions">
       <button v-if="activePlan" type="button" class="plan-member-add" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
@@ -286,7 +285,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--theme-strong-text, var(--tea)); }
 .plan-switcher-check { color: var(--theme-accent-text, var(--accent-strong)); }
 .plan-title-empty { color: var(--ink-60); }
-.plan-source-note, .plan-picker-help { color: var(--ink-60); }
+.plan-picker-help { color: var(--ink-60); }
 .plan-member-add { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .plan-member-add:hover:not(:disabled) { border-color: var(--ink); background: var(--theme-control-bg, var(--ink)); color: var(--on-strong); }
 .plan-text-action { border-color: transparent; background: transparent; color: var(--ink-60); }

@@ -3,7 +3,6 @@
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .plan-heading { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 0; }
 .plan-identity { min-width: 0; }
-.plan-source-note { margin: 3px 0 0; font-size: 12px; line-height: 1.6; }
 .plan-switcher { position: relative; z-index: 4; min-width: 0; max-width: min(100%, 390px); }
 .plan-title { min-width: 0; max-width: 100%; margin: 0; font: 900 25px/1.3 var(--font-s); letter-spacing: .02em; }
 .plan-title-trigger { display: flex; min-width: 0; max-width: 100%; min-height: 44px; align-items: center; gap: 8px; padding: 4px 7px 4px 2px; font: inherit; letter-spacing: inherit; text-align: left; }
@@ -170,5 +169,4 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .plan-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .plan-management-actions { flex-wrap: wrap; }
 .plan-management-actions > button { min-height: 34px; padding: 4px 8px; flex: none; }
-.plan-source-note { flex-basis: 100%; }
 }
