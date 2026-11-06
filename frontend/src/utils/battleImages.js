@@ -1,4 +1,5 @@
 import { AGENT_CATALOG } from '../data/inventory/catalog.js'
+import { DISC_SELECTION_LIMIT } from './operatorDiscLoadouts.js'
 
 export const BATTLE_ACTIONS = Object.freeze([
   { type: 'attack', symbol: 'A', label: '普攻' },
@@ -32,6 +33,25 @@ export function createBattleDraft() {
   }
 }
 
+export function battleDiscNames(value) {
+  return String(value ?? '').split(/\r\n?|\n/).map(name => name.trim()).filter(Boolean)
+}
+
+export function battleDiscError(value) {
+  const names = battleDiscNames(value)
+  if (names.length > DISC_SELECTION_LIMIT) return `携带命盘最多 ${DISC_SELECTION_LIMIT} 项，当前 ${names.length} 项，请移除多余词条。`
+  if (new Set(names).size !== names.length) return '携带命盘不能重复，请移除重复词条。'
+  return ''
+}
+
+export function battleDraftDiscError(draft) {
+  for (const [index, operator] of draft.operators.entries()) {
+    const error = battleDiscError(operator.discs)
+    if (error) return `${index + 1} 号位${operator.name ? '（' + operator.name + '）' : ''}：${error}`
+  }
+  return ''
+}
+
 export function battleRoundRows(rounds) {
   return rounds.map((round, index) => ({
     round: index + 1, remark: round.remark,
@@ -55,6 +75,8 @@ export function buildBattleImageModel(draft) {
 }
 
 export function battleImageError(draft, kind) {
+  const discError = battleDraftDiscError(draft)
+  if (discError) return discError
   if (!draft.operators.some(operator => operator.name.trim())) return '请先填写至少一位密探。'
   if (kind === 'actions' && !draft.rounds.some(round => round.actions.length)) return '请先记录至少一个动作。'
   if (kind === 'actions' && draft.rounds.some(round => round.actions.some(action => !draft.operators[action.slot]?.name.trim()))) {

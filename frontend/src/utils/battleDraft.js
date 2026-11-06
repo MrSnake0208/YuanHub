@@ -1,4 +1,4 @@
-import { BATTLE_ACTIONS, BATTLE_NOTES, BATTLE_STATS } from './battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_NOTES, BATTLE_STATS, battleDraftDiscError } from './battleImages.js'
 
 export const BATTLE_DRAFT_MAX_BYTES = 1024 * 1024
 export function battleDraftKey(userId, accountId) {
@@ -59,7 +59,10 @@ export function validateBattleDraft(value) {
 }
 
 export function encodeBattleDraft(draft) {
-  return JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft: validateBattleDraft(draft) }, null, 2)
+  const validated = validateBattleDraft(draft)
+  const error = battleDraftDiscError(validated)
+  if (error) throw new Error(error)
+  return JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft: validated }, null, 2)
 }
 
 export function decodeBattleDraft(text) {
@@ -67,5 +70,6 @@ export function decodeBattleDraft(text) {
   let doc
   try { doc = JSON.parse(text) } catch { throw new Error('无法读取草稿，请选择有效的 JSON 文件。') }
   if (doc?.format !== 'yuanhub-battle-draft' || doc.version !== 1) throw new Error('不支持此草稿格式或版本。')
+  // 旧版允许自由文本超限；完整恢复供修正，保存和出图另行阻止非法携带配置。
   return validateBattleDraft(doc.draft)
 }

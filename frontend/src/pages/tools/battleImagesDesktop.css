@@ -3,6 +3,7 @@
   .battle-tool .battle-editor-panel, .battle-tool .battle-export { min-width: 0; }
 }
 @media (min-width: 1200px) {
+  .battle-tool .battle-layout-jump { display: none; }
   .battle-tool .battle-workspace { grid-template-columns: minmax(320px, .9fr) minmax(0, 1.1fr); gap: 22px; }
   .battle-tool .battle-export { position: sticky; top: 20px; }
   .battle-tool .battle-slot-art { height: 66px; }

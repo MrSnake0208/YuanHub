@@ -15,7 +15,7 @@
       <button type="button" :disabled="previewPage === 0" @click="previewPage--"><ChevronLeft :size="16" aria-hidden="true" />上一段</button><span>{{ previewPage + 1 }} / {{ pageCount }}</span><button type="button" :disabled="previewPage >= pageCount - 1" @click="previewPage++">下一段<ChevronRight :size="16" aria-hidden="true" /></button>
     </div>
     <div class="battle-export-footer">
-      <div class="battle-export-format"><Image :size="16" aria-hidden="true" /><span>PNG · 1440px <small>{{ kind === 'team' ? '五人配队图' : '全部回合自动分段' }}</small></span><a href="#battle-editor">返回编辑</a></div>
+      <div class="battle-export-format"><Image :size="16" aria-hidden="true" /><span>PNG · 1440px <small>{{ kind === 'team' ? '五人配队图' : '全部回合自动分段' }}</small></span><a class="battle-layout-jump" href="#battle-editor">返回编辑</a></div>
       <div class="battle-export-actions">
         <button class="battle-primary" type="button" :disabled="busy" @click="generate"><Download :size="17" aria-hidden="true" />{{ busy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}</button>
         <button v-if="busy" type="button" @click="reset">取消生成</button>

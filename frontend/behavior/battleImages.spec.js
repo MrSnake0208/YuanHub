@@ -9,6 +9,7 @@ import { renderBattleImage } from '../src/utils/battleImageCapture.js'
 import { dialog } from '../src/utils/dialog.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
 import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
+import { battleDraftKey, decodeBattleDraft } from '../src/utils/battleDraft.js'
 
 const hooks = vi.hoisted(() => ({ leave: null }))
 vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn } }))
@@ -186,4 +187,76 @@ it('编辑第六回合时预览跟随到第二段，仍可前后查看并放大'
   expect(wrapper.get('.battle-preview-transform').attributes('style')).toContain('scale(1)')
   await button(wrapper, '适应宽度').trigger('click')
   expect(wrapper.get('.battle-preview-transform').attributes('style')).not.toContain('scale(1)')
+})
+
+it('手填超限不覆盖已保存草稿，阻止草稿导出和两种出图，修正后恢复保存与生成', async () => {
+  const wrapper = page()
+  await wrapper.get('[aria-label="1号位密探"]').setValue('贾诩')
+  const input = wrapper.get('[aria-label="1号位携带命盘"]')
+  const valid = '冷酷毒计\n初始能量+2\n技能伤害大幅增加'
+  await input.setValue(valid)
+  const key = battleDraftKey('', ''), saved = localStorage.getItem(key)
+  await input.setValue(valid + '\n抽到吉时伤害提升')
+  expect(input.attributes('aria-invalid')).toBe('true')
+  expect(wrapper.get('#battle-carried-disc-status').text()).toContain('当前 4 项')
+  expect(localStorage.getItem(key)).toBe(saved)
+  await button(wrapper, '导出草稿').trigger('click')
+  expect(wrapper.text()).toContain('最多 3 项')
+  expect(URL.createObjectURL).not.toHaveBeenCalled()
+  await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
+  await button(wrapper, '操作记录').trigger('click')
+  await wrapper.get('[aria-label="1号位普攻"]').trigger('click')
+  await button(wrapper, '生成操作图').trigger('click'); await flushPromises()
+  expect(renderBattleImage).not.toHaveBeenCalled()
+  dialog.confirm.mockResolvedValueOnce(false)
+  expect(await hooks.leave()).toBe(false)
+  await button(wrapper, '配队').trigger('click')
+  await input.setValue('冷酷毒计\n 冷酷毒计 ')
+  expect(wrapper.get('#battle-carried-disc-status').text()).toContain('不能重复')
+  expect(localStorage.getItem(key)).toBe(saved)
+  await input.setValue(valid)
+  expect(input.attributes('aria-invalid')).toBe('false')
+  expect(wrapper.text()).not.toContain('携带命盘最多 3 项')
+  expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].discs).toBe(valid)
+  expect(hooks.leave()).toBe(true)
+  await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
+  expect(renderBattleImage).toHaveBeenCalledTimes(1)
+})
+
+it('旧版六词条草稿完整恢复，修正前保留原文且不能生成', async () => {
+  const draft = createBattleDraft()
+  draft.operators[0].name = '贾诩'
+  draft.operators[0].discs = '甲\n乙\n丙\n丁\n戊\n己'
+  const key = battleDraftKey('', ''), raw = JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft })
+  localStorage.setItem(key, raw)
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.get('[aria-label="1号位携带命盘"]').element.value).toBe(draft.operators[0].discs)
+  expect(wrapper.text()).toContain('当前 6 项')
+  expect(localStorage.getItem(key)).toBe(raw)
+  await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
+  expect(renderBattleImage).not.toHaveBeenCalled()
+  await wrapper.get('[aria-label="1号位携带命盘"]').setValue('甲\n乙\n丙')
+  expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].discs).toBe('甲\n乙\n丙')
+})
+
+it('图鉴最多追加三个携带词条，删除后可换词条，必须与禁用要求不受携带数量限制', async () => {
+  const names = ['冷酷毒计', '初始能量+2', '技能伤害大幅增加', '抽到吉时伤害提升']
+  getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_002_jiaxu', name: '贾诩', games: ['如鸢'], discs: names.map(ot_name => ({ ot_name })) }] })
+  const wrapper = page(); await flushPromises()
+  await wrapper.get('[aria-label="1号位密探"]').setValue('贾诩')
+  for (const name of names.slice(0, 3)) await button(wrapper, name).trigger('click')
+  const input = wrapper.get('[aria-label="1号位携带命盘"]')
+  expect(input.element.value).toBe(names.slice(0, 3).join('\n'))
+  expect(button(wrapper, names[3]).attributes('disabled')).toBeDefined()
+  await button(wrapper, names[3]).trigger('click')
+  expect(input.element.value).toBe(names.slice(0, 3).join('\n'))
+  await input.setValue(names.slice(0, 2).join('\n'))
+  expect(button(wrapper, names[3]).attributes('disabled')).toBeUndefined()
+  await button(wrapper, names[3]).trigger('click')
+  expect(input.element.value).toBe([names[0], names[1], names[3]].join('\n'))
+  for (const [field, label] of [['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]) {
+    await wrapper.get('[aria-label="命盘填写位置"]').setValue(field)
+    for (const name of names) await button(wrapper, name).trigger('click')
+    expect(wrapper.get(`[aria-label="1号位${label}"]`).element.value).toBe(names.join('\n'))
+  }
 })

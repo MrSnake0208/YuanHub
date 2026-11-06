@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createBattleDraft } from '../src/utils/battleImages.js'
+import { createBattleDraft, battleImageError } from '../src/utils/battleImages.js'
 import { battleDraftKey, decodeBattleDraft, encodeBattleDraft } from '../src/utils/battleDraft.js'
 import { battleAccountEntries, findBattleCatalogOperator } from '../src/utils/battleAccountSnapshot.js'
 
@@ -98,4 +98,31 @@ test('拒绝损坏、超限和非法槽位动作，不截断导入内容', () =>
   ]) { const value = structuredClone(raw); change(value); assert.throws(() => decodeBattleDraft(JSON.stringify(value))) }
   assert.throws(() => decodeBattleDraft('{'), /JSON/)
   assert.throws(() => decodeBattleDraft('中'.repeat(400000)), /1 MB/)
+})
+
+test('携带命盘按非空行限三项且不重复，保存与两种出图均拦截，旧草稿完整恢复供修正', () => {
+  const draft = createBattleDraft()
+  draft.operators[4].name = '贾诩'
+  draft.rounds[0].actions = [{ slot: 4, type: 'attack', target: 0 }]
+  for (const [value, message] of [
+    ['甲\n乙\n丙\n丁', /5 号位（贾诩）.*最多 3 项.*当前 4 项/],
+    ['甲\r\n乙\r\n丙\r\n丁', /最多 3 项/],
+    ['甲\n 甲 ', /不能重复/],
+  ]) {
+    draft.operators[4].discs = value
+    const before = JSON.stringify(draft)
+    assert.throws(() => encodeBattleDraft(draft), message)
+    for (const kind of ['team', 'actions']) assert.match(battleImageError(draft, kind), message)
+    const restored = decodeBattleDraft(JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft }))
+    assert.equal(restored.operators[4].discs, value)
+    assert.throws(() => encodeBattleDraft(restored), message)
+    assert.equal(JSON.stringify(draft), before)
+  }
+  for (const value of ['', '甲', ' 甲 \r\n\r\n乙\r丙\n ']) {
+    draft.operators[4].discs = value
+    draft.operators[4].requiredDiscs = '要求一\n要求二\n要求三\n要求四'
+    draft.operators[4].forbiddenDiscs = '禁用一\n禁用二\n禁用三\n禁用四'
+    assert.equal(decodeBattleDraft(encodeBattleDraft(draft)).operators[4].discs, value)
+    for (const kind of ['team', 'actions']) assert.equal(battleImageError(draft, kind), '')
+  }
 })

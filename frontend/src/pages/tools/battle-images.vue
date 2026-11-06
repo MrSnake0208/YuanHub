@@ -9,7 +9,7 @@
         <nav class="battle-modes" aria-label="编辑内容">
           <button type="button" :aria-pressed="kind === 'team'" @click="kind = 'team'"><UsersRound :size="18" aria-hidden="true" />配队</button>
           <button type="button" :aria-pressed="kind === 'actions'" @click="kind = 'actions'"><ListOrdered :size="18" aria-hidden="true" />操作记录</button>
-          <a href="#battle-preview"><Eye :size="16" aria-hidden="true" />看预览</a>
+          <a class="battle-layout-jump" href="#battle-preview"><Eye :size="16" aria-hidden="true" />看预览</a>
         </nav>
         <div class="battle-draft-tools" aria-label="草稿保存">
           <span role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span>
@@ -19,7 +19,7 @@
           <input ref="fileInput" type="file" accept=".json,application/json" aria-label="选择草稿文件" hidden @change="importDraft">
         </div>
         <p v-if="fileError" role="alert" class="battle-hint">{{ fileError }}</p>
-        <p v-if="saveError" role="alert" class="battle-hint">{{ saveError }} <button type="button" @click="retrySave">{{ blocked ? '覆盖本机存档' : '重试保存' }}</button></p>
+        <p v-if="saveError" role="alert" class="battle-hint">{{ saveError }} <button v-if="!discError" type="button" @click="retrySave">{{ blocked ? '覆盖本机存档' : '重试保存' }}</button></p>
         <div v-if="userId" class="battle-account-context">
           <DataAccountContextBar compact :accounts="accounts" :account-id="sourceAccountId" :game="account?.game || ''" :is-logged-in="true" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" />
           <button v-if="accountError" type="button" @click="loadAccounts">重试读取账号</button>
@@ -30,13 +30,13 @@
           <div id="battle-editor" class="battle-editor-panel">
             <section class="battle-meta" aria-label="图片基本信息">
               <label class="battle-title-field">标题 / 关卡<input v-model="draft.title" aria-label="标题或关卡" maxlength="120" placeholder="给这份攻略起个名字"></label>
-              <div class="battle-byline-fields"><label>游戏{{ account ? '（跟随账号）' : '' }}<select v-model="draft.game" :disabled="Boolean(account)" aria-label="游戏"><option>如鸢</option><option>代号鸢</option></select></label><label>署名<input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="攻略作者（可选）"></label></div>
+              <div class="battle-byline-fields"><div v-if="account" class="battle-game-context"><span>游戏（跟随账号）</span><strong>{{ account.game }}</strong></div><label v-else>游戏<select v-model="draft.game" aria-label="游戏"><option>如鸢</option><option>代号鸢</option></select></label><label>署名<input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="攻略作者（可选）"></label></div>
             </section>
             <div class="battle-editor-body">
               <section v-show="kind === 'team'" aria-label="配队编辑">
                 <div v-if="account" class="battle-account-import">
                   <button type="button" :disabled="loading" @click="readAccount">{{ loading ? '正在读取我的密探…' : loaded ? '重新读取我的密探' : '从我的密探带入' }}</button>
-                  <p class="battle-hint">{{ loaded ? (entries.length ? '在各槽位选择密探带入；重新读取不会覆盖已编辑的阵容。' : '当前账号暂无已拥有的密探，可继续手动填写。') : '读取当前账号已保存的练度、两套命盘与星石配装，只用于本次攻略。' }}</p>
+                  <p class="battle-hint">{{ loaded ? (entries.length ? '账号数据已读取；更新数据不会覆盖已编辑阵容。' : '当前账号暂无已拥有的密探，可继续手动填写。') : '读取练度与配装后，在下方选人即可带入。' }}</p>
                   <p v-if="error" role="alert" class="battle-hint">{{ error }}</p>
                 </div>
                 <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
@@ -73,16 +73,16 @@ import { dialog } from '../../utils/dialog.js'
 
 const { userId, account, accounts, accountsLoading, accountError, loadAccounts, catalog, catalogError, loadCatalog, entries, loading, loaded, error, readAccount } = useBattleAccountSource()
 const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')
-const { draft, key, revision, dirty, status, saveError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
+const { draft, key, revision, dirty, status, saveError, discError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
 const kind = ref('team'), roundIndex = ref(0), fileInput = ref(null), fileError = ref(''), importing = ref(false)
 const pendingName = ref(false)
 const unsaved = computed(() => dirty.value || pendingName.value)
 let alive = true
 watch(revision, () => { roundIndex.value = 0; fileError.value = ''; pendingName.value = false })
 watch([account, revision], () => { if (account.value) draft.value.game = account.value.game }, { immediate: true })
-onBeforeRouteLeave(() => !unsaved.value || dialog.confirm({ title: '离开图片工具？', message: '仍有未确认或未保存的输入，离开后将丢失。请先确认密探名称并导出草稿文件。', confirmText: '仍然离开', cancelText: '继续编辑' }))
+onBeforeRouteLeave(() => !unsaved.value || dialog.confirm({ title: '离开图片工具？', message: '仍有未确认或未保存的输入，离开后将丢失。请先修正输入、确认密探名称并保存或导出草稿。', confirmText: '仍然离开', cancelText: '继续编辑' }))
 async function beforeAccountSwitch() {
-  return dialog.confirm({ title: '切换攻略账号？', message: unsaved.value ? '仍有未确认或未保存的输入。请取消并导出备份；继续切换会丢失未保存内容。' : '当前草稿保留在本机，切换后打开另一个账号的独立草稿。不会替换原草稿的阵容。', confirmText: '切换账号' })
+  return dialog.confirm({ title: '切换攻略账号？', message: unsaved.value ? '仍有未确认或未保存的输入。请取消，修正输入并保存或导出备份；继续切换会丢失未保存内容。' : '当前草稿保留在本机，切换后打开另一个账号的独立草稿。不会替换原草稿的阵容。', confirmText: '切换账号' })
 }
 async function retrySave() {
   const scope = key.value
@@ -98,6 +98,7 @@ async function newDraft() {
 function exportDraft() {
   fileError.value = ''
   if (pendingName.value) { fileError.value = '请先确认密探名称，再导出草稿。'; return }
+  if (discError.value) return
   try {
     const url = URL.createObjectURL(new Blob([encodeBattleDraft(draft.value)], { type: 'application/json' }))
     const link = document.createElement('a')
@@ -151,6 +152,8 @@ onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload'
 .battle-meta { display: grid; gap: 14px; padding: 22px; border-bottom: 1px solid var(--line); }
 .battle-title-field input { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 4px 0 10px; font-size: 20px; font-weight: 600; }
 .battle-byline-fields { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr); gap: 14px; }
+.battle-game-context { display: grid; align-content: start; gap: 7px; font-size: 12px; color: var(--ink-60); }
+.battle-game-context strong { padding-block: 10px; font-size: 14px; color: var(--ink); }
 .battle-editor-body { padding: 22px; }
 .battle-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .battle-section-heading h2 { margin: 0; font-size: 16px; font-weight: 700; }
@@ -164,6 +167,14 @@ onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload'
 .battle-slot-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .battle-slot-card strong { display: block; max-width: 100%; padding: 0 3px; color: var(--ink); font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
 .battle-member-detail { margin-top: 22px; }
+.battle-member-source { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.battle-tool .battle-member-source button { margin-left: auto; padding: 5px 0; border: 0; background: transparent; font-size: 12px; }
+.battle-loadout-options { display: flex; flex-wrap: wrap; gap: 8px 16px; min-width: 0; margin: 0 0 16px; padding: 0; border: 0; }
+.battle-loadout-options legend { margin-bottom: 8px; color: var(--ink-60); font-size: 12px; }
+.battle-tool .battle-loadout-options label { display: flex; align-items: center; gap: 8px; flex: 1 1 160px; padding-block: 6px; cursor: pointer; }
+.battle-tool .battle-loadout-options input { flex: 0 0 auto; width: 16px; height: 16px; padding: 0; accent-color: var(--tea); }
+.battle-loadout-options span { min-width: 0; color: var(--ink); }
+.battle-loadout-options small { display: block; margin-top: 3px; color: var(--ink-60); font-weight: 400; overflow-wrap: anywhere; }
 .battle-name-field { position: relative; display: flex; align-items: center; }
 .battle-name-field > svg { position: absolute; left: 11px; pointer-events: none; }
 .battle-name-field input { padding-left: 35px; }
@@ -175,8 +186,6 @@ onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload'
 .battle-stat-fields input { font-family: var(--font-d); }
 .battle-disc-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
 .battle-field-discs, .battle-field-stars { grid-column: 1 / -1; }
-.battle-member-empty { display: grid; justify-items: center; gap: 10px; padding: 40px 10px; color: var(--ink-60); text-align: center; }
-.battle-member-empty > svg { color: var(--ink-35); } .battle-member-empty p { font-size: 14px; } .battle-member-empty span { font-size: 12px; line-height: 1.7; }
 .battle-round-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 16px 0; }
 .battle-round-toolbar > label { flex: 1; min-width: 130px; }
 .battle-round-toolbar > button:last-child { font-size: 12px; }
