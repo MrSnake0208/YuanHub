@@ -1,0 +1,23 @@
+@media (max-width: 767px) {
+  .battle-tool { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .battle-tool .battle-modes { gap: 20px; margin-bottom: 16px; }
+  .battle-tool .battle-modes button { font-size: 14px; }
+  .battle-tool .battle-meta, .battle-tool .battle-editor-body { padding: 16px; }
+  .battle-tool .battle-workspace { gap: 20px; }
+  .battle-tool .battle-slot-art { height: 60px; }
+  .battle-tool .battle-slot-card strong { font-size: 11px; }
+  .battle-tool .battle-team-strip { gap: 5px; }
+  .battle-tool .battle-record-identity { gap: 5px; }
+  .battle-tool .battle-record-portrait { width: 32px; height: 40px; }
+  .battle-tool .battle-record-member { grid-template-columns: minmax(80px, 1fr) minmax(0, 1.8fr); gap: 7px; }
+  .battle-tool .battle-record-pad { gap: 4px; }
+  .battle-tool .battle-local-note { align-items: flex-start; font-size: 11px; }
+  .battle-tool .battle-local-note svg { margin-top: 3px; }
+}
+@media (max-width: 360px) {
+  .battle-tool .battle-meta, .battle-tool .battle-editor-body { padding: 12px; }
+  .battle-tool .battle-record-portrait { display: none; }
+  .battle-tool .battle-record-member { grid-template-columns: minmax(52px, .8fr) minmax(0, 2.2fr); }
+  .battle-tool .battle-step-editor > summary span { display: none; }
+  .battle-tool .battle-step-editor > summary > svg { margin-left: auto; }
+}

@@ -262,13 +262,13 @@ it('双端按确认方案分组排序，常用入口直达并使用相同图标'
   Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'navigation-groups' }, adminAccessLoaded: true, adminAccess: { superAdmin: true, permissions: ['archive:access'] } })
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/achievement', '/bonds', '/feedback', '/manage', '/developers', '/changelog', '/roadmap', '/beta', '/install']
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/tools/battle-images', '/calendar', '/achievement', '/bonds', '/feedback', '/manage', '/developers', '/changelog', '/roadmap', '/beta', '/install']
   const linksIn = selector => wrapper.get(selector).findAllComponents(RouterLinkStub)
   expect(linksIn('.nav').map(link => link.props('to'))).toEqual(expected)
   expect(linksIn('.mobile-drawer-nav').map(link => link.props('to'))).toEqual(expected)
   for (const selector of ['.nav', '.mobile-drawer-nav']) {
     expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(['玩家工具', '资料与记录', '管理'])
-    for (const link of linksIn(selector).slice(0, 11)) {
+    for (const link of linksIn(selector).slice(0, 12)) {
       expect(link.element.closest('details')).toBeNull()
       expect(link.find('svg').exists()).toBe(true)
     }
@@ -367,7 +367,7 @@ it('授权异步成功后双端同步显示，刷新与失败时立即隐藏并�
 it('普通功能保持直达，更多默认收起且版本信息不重复跳转', async () => {
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/feedback/plaza']
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/tools/battle-images', '/calendar', '/feedback/plaza']
   for (const selector of ['.nav', '.mobile-drawer-nav']) {
     const links = wrapper.get(selector).findAllComponents(RouterLinkStub).filter(link => !link.element.closest('details'))
     expect(links.map(link => link.props('to'))).toEqual(expected)

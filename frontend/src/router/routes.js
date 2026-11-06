@@ -13,6 +13,11 @@ import { FEATURE_KEYS } from '../config/features.js'
 
 export const routes = [
     {
+        path: '/tools/battle-images', name: 'battle-images', text: '配队与操作图', display: true, module: 'tools', icon: 'images',
+        component: () => import('/src/pages/tools/battle-images.vue'),
+        meta: { title: '配队与操作图 — YuanHub' }
+    },
+    {
         path: '/developers', name: 'developers', text: '开发者中心', display: false, module: 'developers', icon: 'book-open',
         component: () => import('/src/pages/developers/index.vue'),
         meta: { title: '开发者中心 — YuanHub' }

@@ -85,6 +85,9 @@
             <router-link to="/cart" :class="{ active: $route.path === '/cart' }" :aria-current="($route.path === '/cart') ? 'page' : undefined">
               <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
             </router-link>
+            <router-link to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
+              <Images :size="20" aria-hidden="true" /><span>配队与操作图</span>
+            </router-link>
           </section>
           <section class="mobile-drawer-section" aria-labelledby="mobile-records">
             <h2 id="mobile-records" class="nav-group-label">资料与记录</h2>
@@ -217,6 +220,9 @@
         :aria-current="($route.path === '/cart') ? 'page' : undefined">
         <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
       </router-link>
+      <router-link to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
+        <Images :size="20" aria-hidden="true" /><span>配队与操作图</span>
+      </router-link>
       <h2 class="nav-group-label">资料与记录</h2>
       <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }" :aria-current="(!managementActive && $route.path.startsWith('/calendar')) ? 'page' : undefined">
         <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
@@ -311,6 +317,7 @@ import {
   Download,
   Gem,
   House,
+  Images,
   LayoutDashboard,
   LogIn,
   LogOut,
