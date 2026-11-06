@@ -16,7 +16,7 @@
     <p class="battle-hint">点按密探动作，自动记录出手顺序。</p>
     <div class="battle-record-buttons">
       <div v-for="(operator, slot) in operators" :key="slot" class="battle-record-member">
-        <div class="battle-record-identity"><span class="battle-record-portrait"><img v-if="portraits[battleOperatorId(operator.name)]" :src="portraits[battleOperatorId(operator.name)]" alt=""><UserRound v-else :size="22" aria-hidden="true" /></span><strong><small>{{ slot + 1 }} 号位</small>{{ operator.name || '未选择' }}</strong></div>
+        <div class="battle-record-identity"><span class="battle-record-portrait"><img v-if="portraits[operator.id || battleOperatorId(operator.name)]" :src="portraits[operator.id || battleOperatorId(operator.name)]" alt=""><UserRound v-else :size="22" aria-hidden="true" /></span><strong><small>{{ slot + 1 }} 号位</small>{{ operator.name || '未选择' }}</strong></div>
         <div class="battle-record-pad"><button v-for="action in BATTLE_ACTIONS" :key="action.type" type="button" :disabled="!operator.name || round.actions.length >= 50" :aria-label="`${slot + 1}号位${action.label}`" :data-action="action.type" @click="record(slot, action.type)"><b>{{ action.symbol }}</b><small>{{ action.type === 'sp' ? '特殊' : action.label }}</small></button></div>
       </div>
     </div>

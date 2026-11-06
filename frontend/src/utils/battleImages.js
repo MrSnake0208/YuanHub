@@ -19,8 +19,8 @@ export function battleOperatorId(name) {
   return agents.get(String(name || '').trim()) || ''
 }
 
-export function createBattleOperator(name = '') {
-  return Object.fromEntries([['name', name], ...[...BATTLE_STATS, ...BATTLE_NOTES].map(([key]) => [key, ''])])
+export function createBattleOperator(name = '', id = '') {
+  return { id, name, ...Object.fromEntries([...BATTLE_STATS, ...BATTLE_NOTES].map(([key]) => [key, ''])), discLoadouts: [], discIndex: 0, panelNote: '' }
 }
 
 export function createBattleDraft() {
@@ -46,7 +46,7 @@ export function buildBattleImageModel(draft) {
     title: draft.title.trim() || '配队与操作记录', game: draft.game,
     author: draft.author.trim(), note: draft.note.trim(),
     operators: draft.operators.map(operator => ({
-      id: battleOperatorId(operator.name), name: operator.name.trim(),
+      id: operator.id || battleOperatorId(operator.name), name: operator.name.trim(), panelNote: operator.panelNote || '',
       ...Object.fromEntries([...BATTLE_STATS, ...BATTLE_NOTES].map(([key]) => [key, String(operator[key] ?? '').trim()])),
     })),
     targets: draft.targets.map((name, index) => String(name).trim() || ['左二', '左一', 'BOSS', '右一', '右二'][index]),

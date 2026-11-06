@@ -9,7 +9,7 @@
       </th></tr></thead>
       <tbody><tr v-for="[key, label] in [...BATTLE_STATS, ...noteFields]" :key="key" :class="key">
         <th scope="row">{{ label }}</th><td v-for="(operator, index) in model.operators" :key="index">{{ operator[key] || '—' }}</td>
-      </tr></tbody>
+      </tr><tr v-if="model.operators.some(operator => operator.panelNote)"><th scope="row">面板来源</th><td v-for="(operator, index) in model.operators" :key="index">{{ operator.panelNote || '手动填写' }}</td></tr></tbody>
     </table>
     <template v-else>
       <div class="sheet-action-key"><strong>回合行动表</strong><p class="legend">A 普攻 · ↑ 大招 · ↓ 防御 · 圈 特殊技能</p></div>

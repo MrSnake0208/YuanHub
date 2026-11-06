@@ -7,11 +7,14 @@ import BattleImageSheet from '../src/components/work/BattleImageSheet.vue'
 import { createBattleDraft, buildBattleImageModel } from '../src/utils/battleImages.js'
 import { renderBattleImage } from '../src/utils/battleImageCapture.js'
 import { dialog } from '../src/utils/dialog.js'
+import { getOperatorCatalog } from '../src/api/operator.js'
+import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
 
 const hooks = vi.hoisted(() => ({ leave: null }))
 vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn } }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/utils/battleImageCapture.js', () => ({ renderBattleImage: vi.fn() }))
+vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorCurrent: vi.fn(), getCurrentOperatorPanels: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -19,6 +22,7 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn()
   renderBattleImage.mockResolvedValue(new Blob(['png']))
   dialog.confirm.mockResolvedValue(true)
+  getOperatorCatalog.mockResolvedValue({ operators: AGENT_CATALOG })
 })
 const page = () => mount(BattleImages, { global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
@@ -29,7 +33,7 @@ const draftWithActions = () => {
   return draft
 }
 
-it('从配队到操作录入再到两种出图，无需作业或账号；离开时保护输入', async () => {
+it('游客可完成两种出图；已保存草稿可离开，保存失败时保护输入', async () => {
   const wrapper = page()
   expect(hooks.leave()).toBe(true)
   await wrapper.get('[aria-label="1号位密探"]').setValue('杨修')
@@ -49,6 +53,10 @@ it('从配队到操作录入再到两种出图，无需作业或账号；离开�
   expect(snapshot.textContent).toContain('先打左二')
   expect(snapshot.textContent).toContain('1A')
   expect(snapshot.textContent).toContain('2↑')
+  expect(await hooks.leave()).toBe(true)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+  await wrapper.get('[aria-label="本回合备注"]').setValue('未保存的修改')
+  expect(wrapper.text()).toContain('本机草稿未保存')
   dialog.confirm.mockResolvedValueOnce(false)
   expect(await hooks.leave()).toBe(false)
   const event = new Event('beforeunload', { cancelable: true })
@@ -56,6 +64,18 @@ it('从配队到操作录入再到两种出图，无需作业或账号；离开�
   expect(event.defaultPrevented).toBe(true)
   wrapper.unmount()
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-2')
+})
+
+it('名称尚未触发确认时，刷新仍保护未提交的输入', async () => {
+  const wrapper = page()
+  const input = wrapper.get('[aria-label="1号位密探"]')
+  input.element.value = '正在输入'
+  await input.trigger('input')
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(true)
+  await button(wrapper, '导出草稿').trigger('click')
+  expect(wrapper.text()).toContain('请先确认密探名称')
 })
 
 it('操作可修改、重排、撤回；删除回合取消后不丢记录', async () => {

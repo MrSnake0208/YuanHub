@@ -13,6 +13,9 @@
   .battle-tool .battle-record-pad { gap: 4px; }
   .battle-tool .battle-local-note { align-items: flex-start; font-size: 11px; }
   .battle-tool .battle-local-note svg { margin-top: 3px; }
+  .battle-tool .battle-draft-tools > span { flex-basis: 100%; }
+  .battle-tool .battle-draft-tools > button { flex: 1; }
+  .battle-tool .battle-account-context > .battle-hint { flex-basis: 100%; margin: 0; }
 }
 @media (max-width: 360px) {
   .battle-tool .battle-meta, .battle-tool .battle-editor-body { padding: 12px; }
