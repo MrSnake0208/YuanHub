@@ -8,7 +8,7 @@
           <span class="match-brand">联合共建</span>
         </div>
         <p class="match-account-range">账号范围：本人全部游戏账号</p>
-        <p class="match-description">一个连接码，切换本人的游戏账号，查找适合阵容与练度的作业。</p>
+        <p class="match-description">一个连接码，切换本人的游戏账号，按持有密探匹配作业，也可将养成档案导入作业编辑器。</p>
         <div class="match-capabilities" aria-label="作业匹配的数据能力">
           <span class="read-capability"><ShieldCheck :size="15" aria-hidden="true" />读取密探养成</span>
           <span class="read-only"><LockKeyhole :size="15" aria-hidden="true" />只读授权</span>

@@ -124,3 +124,13 @@ curl --fail-with-body -H 'Authorization: Bearer REPLACE_WITH_USER_JWT' \
 - 撤销阻止后续服务器读取，不能远程抹除接入方已缓存的副本。作业站提供「断开并清除本地档案」。
 
 部署顺序：YuanHub 后端 → Share 后端 → 两站前端。生产默认上游 `https://api-hub.maayuan.com`；Share 服务端受控配置 `yuanhub.matcher.base-url` 可指定本地开发上游，客户端不能指定目标 URL。YuanHub 前端 `VITE_SHARE_URL` 仅控制打开作业站的链接。
+
+
+### 作业编辑导入的兼容字段
+
+roster 继续使用 `version: 1`，旧字段含义不变；每个密探增补：
+
+- `disc_loadouts: [{id, name, discs: string[]}]`：命盘方案标识、名称与实际词条，不输出目标命盘；接入方选择一套后导入，不能跨方案拼接。
+- `star_slots: {main1, main2, main3, support1, support2, support3} | null`：固定六槽，值为当前佩戴名称或空槽 `null`，允许同名星石。没有该密探佩戴记录、背包与佩戴 generation 不一致、或实例无法解析时整个字段为 `null`；不得将其解释为空装备。
+
+这两个字段复用既有只读养成授权。攻击/生命仍遵守原有面板权限和 `calculated` 条件，不回退到扫描或手填数值。接入方需在导入前展示缺失字段，导入为一次快照复制，不回写 YuanHub。旧接入方可忽略新增字段；新版分享站读取旧响应时可使用原 `discs`，但不能从 `main_stars` / `assist_stars` 推测空槽位置。

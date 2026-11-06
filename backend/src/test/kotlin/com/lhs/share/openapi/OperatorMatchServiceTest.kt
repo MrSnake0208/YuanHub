@@ -1,5 +1,8 @@
 package com.lhs.share.openapi
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.lhs.share.hub.controller.operator.response.OperatorCurrentEntryDto
 import com.lhs.share.hub.controller.operator.response.OperatorCurrentResponse
 import com.lhs.share.hub.controller.operator.response.OperatorPanelResponse
@@ -120,6 +123,9 @@ class OperatorMatchServiceTest {
         assertEquals(2, first.operators.getValue("op").stars)
         assertEquals(0, first.operators.getValue("op").elite)
         assertEquals(listOf(listOf("实际")), first.operators.getValue("op").discs)
+        assertEquals("一", first.operators.getValue("op").discLoadouts.single().name)
+        assertEquals(listOf("实际"), first.operators.getValue("op").discLoadouts.single().discs)
+        assertNull(first.operators.getValue("op").starSlots)
         assertNull(first.operators.getValue("op").panel.attack)
         verify(exactly = 0) { panels.saved(any(), any(), any()) }
         every { permissions.hasPermission("owner", AdminPermission.OPERATOR_PANEL_USE) } returns true
@@ -127,7 +133,7 @@ class OperatorMatchServiceTest {
         assertEquals(123L, service.roster("Bearer $token", "a").operators.getValue("op").panel.attack)
         val state = StarStateCurrent(
             userId = "owner", accountId = "a", generation = 2, revision = 1,
-            inventory = listOf(StarStateEntry("star1", "main", "天府", "orange", 1)),
+            inventory = listOf(StarStateEntry("star1", "main", "天府", "orange", 1), StarStateEntry("star2", "main", "天府", "orange", 1)),
             planTargets = emptyList(), experience = StarStateExperience(),
             bag = StarStateBag(), updatedAt = Instant.EPOCH,
         )
@@ -135,12 +141,30 @@ class OperatorMatchServiceTest {
             userId = "owner",
             accountId = "a",
             generation = 2,
-            loadouts = listOf(StarOperatorLoadout("op", StarLoadoutSlots(main1 = "star1"))),
+            loadouts = listOf(StarOperatorLoadout("op", StarLoadoutSlots(main2 = "star1", main3 = "star2"))),
         )
         every { stars.findByUserIdAndAccountId("owner", "a") } returns state
         every { loadouts.findByUserIdAndAccountId("owner", "a") } returns equipped
-        assertEquals(listOf("天府"), service.roster("Bearer $token", "a").operators.getValue("op").mainStars)
+        assertEquals(listOf("天府", "天府"), service.roster("Bearer $token", "a").operators.getValue("op").mainStars)
+        val slots = service.roster("Bearer $token", "a").operators.getValue("op").starSlots!!
+        assertNull(slots["main1"])
+        assertEquals("天府", slots["main2"])
+        assertEquals("天府", slots["main3"])
+        assertEquals(6, slots.size)
+        val json = jacksonObjectMapper().findAndRegisterModules()
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .valueToTree<JsonNode>(service.roster("Bearer $token", "a"))
+        assertTrue(json.at("/operators/op/star_slots/main1").isNull)
+        assertEquals("天府", json.at("/operators/op/star_slots/main3").asText())
+        assertEquals("一", json.at("/operators/op/disc_loadouts/0/name").asText())
+        assertEquals("实际", json.at("/operators/op/disc_loadouts/0/discs/0").asText())
+        assertTrue(json.at("/operators/op/disc_loadouts/0/target_discs").isMissingNode)
+        every { loadouts.findByUserIdAndAccountId("owner", "a") } returns equipped.copy(
+            loadouts = listOf(StarOperatorLoadout("op", StarLoadoutSlots(main1 = "missing"))),
+        )
+        assertNull(service.roster("Bearer $token", "a").operators.getValue("op").starSlots)
         every { loadouts.findByUserIdAndAccountId("owner", "a") } returns equipped.copy(generation = 1)
         assertEquals(emptyList<String>(), service.roster("Bearer $token", "a").operators.getValue("op").mainStars)
+        assertNull(service.roster("Bearer $token", "a").operators.getValue("op").starSlots)
     }
 }

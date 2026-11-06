@@ -1,5 +1,6 @@
 package com.lhs.share.openapi
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
 import com.lhs.share.hub.repository.SubAccountRepository
@@ -67,6 +68,12 @@ class OperatorMatchService(
                 discs = entry.discLoadouts.map { loadout -> loadout.discs.map { it.otName } },
                 mainStars = stars("main"),
                 assistStars = stars("support"),
+                discLoadouts = entry.discLoadouts.map { loadout ->
+                    OperatorMatchDiscLoadout(loadout.id, loadout.name, loadout.discs.map { it.otName })
+                },
+                starSlots = equipment[id]?.takeIf { assigned ->
+                    assigned.values.filterNotNull().all { inventory[it]?.name?.isNotBlank() == true }
+                }?.mapValues { (_, instance) -> instance?.let { inventory.getValue(it).name } },
             )
         }
         return OperatorMatchRoster(
@@ -96,5 +103,9 @@ data class OperatorMatchEntry(
     val discs: List<List<String>>,
     val mainStars: List<String>,
     val assistStars: List<String>,
+    val discLoadouts: List<OperatorMatchDiscLoadout> = emptyList(),
+    @get:JsonInclude(value = JsonInclude.Include.ALWAYS, content = JsonInclude.Include.ALWAYS)
+    val starSlots: Map<String, String?>? = null,
 )
+data class OperatorMatchDiscLoadout(val id: String, val name: String, val discs: List<String>)
 data class OperatorMatchPanel(val status: String, val attack: Long?, val hp: Long?, val reason: String?)
