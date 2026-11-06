@@ -48,7 +48,7 @@ PUT 提交整个快照内容，将响应的 `account_id`、`revision` 去掉，�
 
 ## 验证
 
-在 `BackEndV3-Share/` 执行非容器单元/HTTP 契约测试：
+在当前 Monorepo 的 `backend/` 目录执行单元/HTTP 契约测试；Agent 按根规则选择受影响的必要定向验证，全量回归由用户或 CI 执行：
 
 ```sh
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew test --tests '*OperatorOrganizationServiceTest' --tests '*OperatorOrganizationControllerTest' --tests '*SubAccountServiceTest' --offline --console=plain

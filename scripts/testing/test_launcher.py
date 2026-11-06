@@ -35,13 +35,14 @@ class PublicTestLauncherTest(unittest.TestCase):
                                             cwd=cwd, env=env, capture_output=True, text=True, timeout=30)
                     self.assertEqual(0, result.returncode, result.stdout+result.stderr)
                     report = json.loads((root/'.test-artifacts/latest-plan.json').read_text())
-                    self.assertIsNone(report['task'])
+                    self.assertNotIn('task', report)
+                    self.assertNotIn('completion_eligible', report)
+                    self.assertNotIn('Completion gate:', result.stdout)
                     self.assertEqual([], report['checks'])
                     self.assertFalse((root/'.trellis').exists())
                     self.assertFalse((outside/'.test-artifacts').exists())
 
     def test_launcher_changes_are_included_in_shared_infrastructure_verification(self):
-        self.assertTrue(impact.runtime_file('scripts/test.sh'))
         with tempfile.TemporaryDirectory() as directory:
             result = impact.infer(Path(directory), ['scripts/test.sh'])
             self.assertTrue(result['conservative_full'])

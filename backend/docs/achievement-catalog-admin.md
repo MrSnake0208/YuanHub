@@ -57,7 +57,7 @@ strategy 默认页面选择 keep；冲突保留，明确 update 才更新。条�
 ./gradlew test --tests '*Achievement*ContractTest' --tests '*AdminAuthorizationServiceTest' integrationTest --tests '*AchievementCatalogMongoTest' --tests '*AchievementMongoTest'
 ```
 
-集成测试只使用 `TestMongo` 自有 disposable 容器，不连接开发/生产 Mongo。fixture 仅在 test；禁止把测试成就作为真实资料发布。真实 UI/触控由用户人工验收，未授权不运行浏览器自动化。
+集成测试复用本机 Mongo 服务，仅使用 `TestMongo` 分配并注册的随机测试库，不依赖容器，不访问 MaaBackend/HubBackend 或生产数据。fixture 仅在 test；禁止把测试成就作为真实资料发布。真实 UI/触控由用户人工验收，未授权不运行浏览器自动化。
 
 ## 十字段与兼容处理（2026-10-19）
 

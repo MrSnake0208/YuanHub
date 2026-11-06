@@ -54,4 +54,4 @@ node --test scripts/migrations/20261015-recruitment-duplicate-pools.test.js
 ./gradlew integrationTest --tests '*RecruitmentExchangeMongoTest' --tests '*RecruitmentMongoTest' --tests '*RecruitmentDuplicateRepairMongoTest' --console=plain
 ```
 
-Mongo 测试使用 TestMongo 自建可销毁容器，不连接开发或生产数据库，覆盖原子回滚、账号隔离、幂等补扣、实际 mongosh 入口和零总量备份恢复。没有自动启动服务或浏览器。
+当前 Mongo 测试复用本机服务，仅使用 TestMongo 分配并注册的随机测试库，不依赖容器，不访问 MaaBackend/HubBackend 或生产数据；保留原子回滚、账号隔离、幂等补扣、实际 mongosh 入口和零总量备份恢复的覆盖。没有自动启动服务或浏览器。

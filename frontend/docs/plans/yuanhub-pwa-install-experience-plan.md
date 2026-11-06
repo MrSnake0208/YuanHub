@@ -1097,7 +1097,7 @@ AppDialog > 关键阻塞操作 > PWA Install Prompt > 普通 Toast / 页面内�
 
 # 18. 移动端适配细节
 
-必须测试：
+以下为用户手动验收的参考视口，按实际布局影响选择，不要求 Agent 执行浏览器矩阵：
 
 ```text
 320px
@@ -1154,7 +1154,11 @@ visualViewport.height 明显因软键盘缩小时
 
 # 20. 测试方案
 
+本节的 Chrome DevTools、Android/iPhone 真机及安装体验检查均由用户手动完成，不是 Agent 本地交付门禁。历史方案不构成浏览器授权。Agent 只按根目录规则执行必要的非浏览器验证；保留已有测试与构建入口，不把它们作为每次改动的固定流程。
+
 ## 20.1 构建测试
+
+涉及 PWA 构建产物时检查构建；行为回归按影响选择已有测试，以下完整命令供集中验证使用：
 
 ```bash
 npm run build
@@ -1195,7 +1199,7 @@ Application → Service Workers：
 
 ## 20.3 Android 真机
 
-至少测试 Chrome：
+由用户在 Android Chrome 手动验收：
 
 ### 场景 A：首次访问
 
@@ -1344,14 +1348,14 @@ route
 Android/iOS tab
 ```
 
-## Step 5 — 真机验证
+## Step 5 — 用户手动真机验收
 
 ```text
 Android Chrome
 iPhone Safari
 ```
 
-不要只在桌面 DevTools 模拟完成后就认定功能结束。
+桌面 DevTools 模拟不能证明真机体验；Agent 交付时注明待用户验收，不以此阻塞本地实现交付。
 
 ## Step 6 — 更新策略
 

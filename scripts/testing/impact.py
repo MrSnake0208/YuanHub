@@ -1,9 +1,6 @@
 """Conservative monorepo impact selection. Evidence of relevance is not proof of test quality."""
 from __future__ import annotations
-import fnmatch
 import hashlib
-import json
-import os
 import re
 import subprocess
 from pathlib import Path
@@ -57,21 +54,7 @@ def changed_files(root, base=None):
     return sorted(found)
 
 
-def runtime_file(path):
-    if path.startswith(('frontend/src/', 'frontend/promo-site/src/', 'backend/src/main/')):
-        return True
-    if path.startswith(('scripts/testing/', '.trellis/scripts/', 'frontend/scripts/')):
-        return path.endswith(('.py', '.sh', '.js', '.mjs')) and not Path(path).name.startswith('test_')
-    return path in {'scripts/test.sh', 'dev.sh', 'frontend/package.json', 'frontend/vite.config.js',
-                    'frontend/vitest.config.js', 'backend/build.gradle.kts'}
-
-
-def is_test(path):
-    return ('/test/' in path or '/behavior/' in path or '/test-support/' in path or
-            path.startswith('scripts/testing/test_') or '/src/test/' in path)
-
-
-def fingerprint(root, changes, task=None):
+def fingerprint(root, changes):
     digest = hashlib.sha256()
     for name in sorted(changes):
         if name.startswith('.trellis/'):
@@ -79,43 +62,7 @@ def fingerprint(root, changes, task=None):
         path = root / name
         digest.update(name.encode('utf-8', errors='surrogateescape')); digest.update(b'\0')
         digest.update(path.read_bytes() if path.is_file() else b'<deleted>')
-    if task:
-        for name in ('prd.md', 'design.md', 'test-plan.json'):
-            path = task / name
-            if path.is_file():
-                digest.update(name.encode()); digest.update(path.read_bytes())
     return digest.hexdigest()
-
-
-def current_task(root, explicit=None):
-    if explicit:
-        task = (root / explicit).resolve()
-        if not task.is_relative_to(root / '.trellis/tasks') or not (task / 'task.json').is_file():
-            raise ValueError('--task must name an existing .trellis/tasks task')
-        return task
-    cli = root / '.trellis/scripts/task.py'
-    if cli.is_file():
-        result = subprocess.run([os.environ.get('PYTHON', 'python3'), str(cli), 'current', '--json'],
-                                cwd=root, capture_output=True, text=True, timeout=15)
-        if result.returncode == 0:
-            try:
-                name = (json.loads(result.stdout).get('current_task') or {}).get('dir')
-                if name:
-                    task = (root / name).resolve()
-                    if task.is_relative_to(root / '.trellis/tasks') and (task / 'test-plan.json').is_file():
-                        return task
-            except (ValueError, TypeError):
-                pass
-    # A terminal may lack the AI session id. An unambiguous planned task can be
-    # resolved without changing the user's default active-task pointer.
-    candidates = []
-    for plan in (root / '.trellis/tasks').glob('*/test-plan.json'):
-        try:
-            if json.loads((plan.parent / 'task.json').read_text()).get('status') == 'in_progress':
-                candidates.append(plan.parent)
-        except (OSError, ValueError):
-            pass
-    return candidates[0] if len(candidates) == 1 else None
 
 
 def import_graph(front):
@@ -175,7 +122,7 @@ def component_scope(changes):
             'full_backend': full['backend'], 'contract': contract, 'runner': runner}
 
 
-def infer(root, changes, task=None):
+def infer(root, changes):
     scope = component_scope(changes)
     contract_file = root / 'frontend/test/contract.test.js'
     if contract_file.is_file():
@@ -186,14 +133,6 @@ def infer(root, changes, task=None):
     # Cascade once from directly changed domains; recursively closing account
     # edges would turn every small star edit into an unnecessary whole-app run.
     domains |= set().union(*(CASCADES.get(d, {d}) for d in list(domains))) if domains else set()
-    task_documents = []
-    if task:
-        for name in ('prd.md', 'design.md', 'implement.md'):
-            file = task / name
-            if file.is_file():
-                text = file.read_text(errors='replace')
-                task_documents.append(file.relative_to(root).as_posix())
-                domains.update(d for d, words in WORDS.items() if any(re.search(r'(?<![A-Za-z])' + re.escape(w) + r'(?![A-Za-z])', text, re.I) for w in words))
     front = root / 'frontend'
     nodes = sorted(p.relative_to(front).as_posix() for folder in ('test', 'promo-site/test') for p in (front / folder).rglob('*.test.js'))
     components = sorted(p.relative_to(front).as_posix() for p in (front / 'behavior').rglob('*.spec.js'))
@@ -226,25 +165,5 @@ def infer(root, changes, task=None):
     return {'domains': sorted(domains), 'node': sorted(set(selected_node)), 'behavior': sorted(set(selected_behavior)),
             **{kind: sorted(set(names)) for kind, names in selections.items()},
             'scope': scope, 'conservative_full': scope['full_frontend'] or scope['full_backend'],
-            'task_documents': task_documents,
             'evidence': ['Monorepo diff including deletions/renames; component scope; domain cascades; JS reverse imports; Kotlin references',
                          'Unknown paths expand only their component; shared tooling expands both; CSS/docs require diff review']}
-
-
-def coverage_gaps(root, changes, task=None):
-    manifest = json.loads((task / 'test-plan.json').read_text()) if task and (task / 'test-plan.json').is_file() else {}
-    gaps, reviewed = [], []
-    for source in (p for p in changes if runtime_file(p) and not p.endswith(('.css', '.md'))):
-        matching = [e for e in manifest.get('coverage', []) if any(fnmatch.fnmatchcase(source, pattern) for pattern in e.get('sources', []))]
-        valid = [e for e in matching if e.get('invariants') and e.get('tests') and
-                 all((root / name).is_file() and is_test(name) for name in e['tests']) and any(name in changes for name in e['tests'])]
-        if valid:
-            reviewed.append({'source': source, 'tests': sorted({n for e in valid for n in e['tests']}), 'basis': 'reviewed invariants + changed tests'})
-            continue
-        exemptions = [e for e in manifest.get('exceptions', []) if source in e.get('sources', []) and len(e.get('reason', '').strip()) >= 30
-                      and (not e.get('baseline_sha256') or ((root / source).is_file() and hashlib.sha256((root / source).read_bytes()).hexdigest() == e['baseline_sha256']))]
-        if exemptions:
-            reviewed.append({'source': source, 'exception': exemptions[0]['reason']})
-        else:
-            gaps.append(source)
-    return gaps, reviewed

@@ -47,4 +47,4 @@ Hub 集合 `operator_daily_tasks`：`userId/accountId/planId/date/tasks/version/
 ./gradlew integrationTest --tests '*OperatorDailyTasksMongoTest' --console=plain
 ```
 
-第二条由用户执行，使用自有 `TestMongo` 可抛弃容器，覆盖首次创建竞争、CAS、所有者/子账号/清单/日期隔离、账号范围删除和事务回滚；不得改接现有开发/生产服务。真实服务器事件同步与前端手机布局另由用户人工验收。
+第二条按根目录规则在需要定向验证时执行，复用本机 Mongo 服务，仅使用 `TestMongo` 分配并注册的随机测试库，不依赖容器；覆盖首次创建竞争、CAS、所有者/子账号/清单/日期隔离、账号范围删除和事务回滚。自动测试不得访问共享开发库或生产数据；本地调试可在任务授权范围内使用开发数据。真实服务器事件同步与前端手机布局另由用户人工验收。

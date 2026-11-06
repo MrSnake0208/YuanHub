@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One local entrypoint. Failures stay failures, including missing services and test gaps."""
+"""One local entrypoint. Failures stay failures, including missing services and empty test discovery."""
 from __future__ import annotations
 import argparse
 import datetime as dt
@@ -13,7 +13,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from impact import changed_files, current_task, coverage_gaps, fingerprint, infer, git
+from impact import changed_files, fingerprint, infer, git
 
 ROOT = Path(__file__).resolve().parents[2]
 JUNIT_TASKS = {'backend-unit': 'test', 'integration': 'integrationTest', 'realistic': 'realisticTest',
@@ -194,7 +194,6 @@ def execute_plan(commands, env, output, timeout, budget):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['quick', 'smart', 'all', 'stress', 'plan', 'doctor'])
-    parser.add_argument('--task', help='Explicit .trellis/tasks/<task> when several contexts are active')
     parser.add_argument('--base', help='Git base ref in the current monorepo')
     parser.add_argument('--timeout', type=int, default=900, help='Per-command timeout in seconds')
     parser.add_argument('--budget', type=int, default=900, help='Total command execution budget in seconds')
@@ -213,16 +212,14 @@ def main(argv=None):
                 print(f'{label}: {error}'); failed = True
         print('Python:', sys.version.split()[0])
         return int(failed)
-    task = current_task(ROOT, args.task)
     if args.base:
         args.base = git(ROOT, 'rev-parse', '--verify', '--end-of-options', args.base + '^{commit}').decode().strip()
     changes = changed_files(ROOT, args.base)
     if not changes and not args.base and args.mode in {'quick', 'smart', 'plan'}:
         raise ValueError('No working-tree changes: pass --base <frozen-base-sha> for a committed PR; no tests were run')
     head = git(ROOT, 'rev-parse', 'HEAD').decode().strip()
-    impact = infer(ROOT, changes, task)
+    impact = infer(ROOT, changes)
     impact['kotlin_files'] = [p.removeprefix('backend/') for p in changes if p.startswith('backend/') and p.endswith(('.kt', '.kts')) and (ROOT / p).is_file()]
-    gaps, reviewed = coverage_gaps(ROOT, changes, task) if task else ([], [])
     stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
     output = ROOT / '.test-artifacts/runs' / (stamp + '-' + args.mode)
     output.mkdir(parents=True)
@@ -231,14 +228,10 @@ def main(argv=None):
                               'node_path': shutil.which('node', path=env['PATH']), 'java_home': env.get('JAVA_HOME'),
                               'fc_seed': env['FC_SEED'],
                               'databases': 'TestMongo owned random databases; TestRedis process-owned namespace'},
-              'task': task.relative_to(ROOT).as_posix() if task else None,
-              'fingerprint': fingerprint(ROOT, changes, task), 'changes': changes, 'impact': impact,
-              'missing_tests': gaps, 'reviewed_coverage': reviewed, 'checks': []}
-    print('Task:', report['task'] or '(not resolved; use --task for the completion gate)')
+              'fingerprint': fingerprint(ROOT, changes), 'changes': changes, 'impact': impact,
+              'checks': []}
     print('Changed files:', len(changes), '| affected domains:', ', '.join(impact['domains']) or '(shared)')
     print(f'Selected: {len(impact["node"])} node files, {len(impact["behavior"])} component files, {len(impact["unit"])} backend unit classes')
-    if gaps:
-        print('Missing reviewed tests/explanation for:\n  ' + '\n  '.join(gaps))
     commands = build_commands(args.mode, impact)
     report['planned_checks'] = [label for label, _, _ in commands]
     report['execution_status'] = 'planned'
@@ -249,25 +242,19 @@ def main(argv=None):
     report['finished_at'] = dt.datetime.now(dt.timezone.utc).isoformat()
     report['source_unchanged'] = (head == git(ROOT, 'rev-parse', 'HEAD').decode().strip() and
                                 changes == changed_files(ROOT, args.base) and
-                                report['fingerprint'] == fingerprint(ROOT, changes, task))
+                                report['fingerprint'] == fingerprint(ROOT, changes))
     report['success'] = (report['execution_status'] == 'completed' and report['source_unchanged'] and
                          all(c['exit_code'] == 0 for c in report['checks'])
-                         and not any(c['skipped'] or c['tests'] == 0 for c in report.get('junit', {}).values())
-                         and (not gaps or args.mode == 'quick'))
-    manifest = json.loads((task / 'test-plan.json').read_text()) if task and (task / 'test-plan.json').is_file() else {}
-    report['remaining_completion_checks'] = sorted(set(manifest.get('mandatory_checks', [])) - {c['name'] for c in report['checks']})
-    report['completion_eligible'] = report['success'] and args.mode in ('smart', 'all') and task is not None and not report['remaining_completion_checks']
+                         and not any(c['skipped'] or c['tests'] == 0 for c in report.get('junit', {}).values()))
     (output / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
     latest = ROOT / '.test-artifacts' / ('latest-' + args.mode + '.json')
     latest.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
     lines = [f'# {args.mode} — {"PASS" if report["success"] else "NOT PASSED"}', '',
-             f'Task: {report["task"]}', f'Fingerprint: `{report["fingerprint"]}`', '',
+             f'Fingerprint: `{report["fingerprint"]}`', '',
              *[f'- {c["name"]}: exit {c["exit_code"]}, {c["seconds"]}s — `{c["log"]}`' for c in report['checks']], '',
-             'Missing-test explanations: ' + (', '.join(gaps) if gaps else 'none'), '',
              'Selection is conservative relevance analysis, not a proof that every business invariant is covered.']
     (output / 'report.md').write_text('\n'.join(lines) + '\n')
     print('\nReport:', output.relative_to(ROOT) / 'report.md')
-    print('Completion gate:', 'eligible' if report['completion_eligible'] else 'not eligible')
     return 0 if args.mode == 'plan' or report['success'] else 1
 
 

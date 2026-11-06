@@ -52,7 +52,7 @@ npm run test:behavior -- behavior/recruitmentPoolEditorClose.spec.js behavior/re
 npm run test:behavior -- behavior/recruitmentPoolEditorClose.spec.js behavior/recruitmentPoolEditor.spec.js behavior/recruitmentOrder.spec.js behavior/recruitmentHistory.spec.js behavior/recruitmentTimeline.spec.js behavior/dialogAccessibility.spec.js
 ```
 
-浏览器合成案例复跑，复用既有服务：
+以下为保留的浏览器合成案例复跑入口，供用户选择使用；Agent 仅在当前任务另获明确浏览器授权后才可复用既有服务执行，本文历史授权与结果不沿用：
 
 ```bash
 mkdir -p .ux/audits
@@ -64,7 +64,7 @@ playwright-cli -s=recruitment-focus close
 
 本机 PATH 无 playwright-cli，开发时使用已缓存的 `node /Users/snake/.npm/_npx/31e32ef8478fbf80/node_modules/playwright/cli.js cli` 替代，无需安装。CLI 断言失败可能仍返回 shell 0，必须确认输出无 `### Error` 且存在 Result。
 
-集中回归必须保留以下清单：
+用户手动验收参考清单（非 Agent 本地交付门禁）：
 
 1. 390 / 768 / 1024 / 1440、430/520 临界宽度和手机横屏；两视图大量记录、长名字、同名重复、搜索隐藏邻项、长密探名单内部滚动、粗指针操作和无横向溢出。
 2. Tab/Shift+Tab、顶层 Escape、长页面关闭、连续删除首中尾/删空、取消/新增/完成、历史移动后的焦点；入口仍可键盘访问，固定头尾栏不遮挡焦点。

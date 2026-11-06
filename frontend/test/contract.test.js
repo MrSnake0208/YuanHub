@@ -1,6 +1,6 @@
-// 前后端跨仓库契约一致性测试（node:test，零依赖）
-// 默认读取当前工作树 backend，可用 YUANHUB_BACKEND_ROOT 指定其他完整检出。
-// 手动运行：npm run test:contract；YuanHub-All 完整入口显式执行，单仓入口不执行。
+// Monorepo 前后端契约一致性测试（node:test，零依赖）
+// 默认读取当前工作树 backend/，可用 YUANHUB_BACKEND_ROOT 指定其他后端源码目录。
+// 在 frontend/ 运行 npm run test:contract；根测试入口按范围选择，前端 test:all 不包含此项。
 // 校验后端 OpenApiTokenService/OpenApiPermission/InventoryController 与前端
 // openApi.js/inventory.js/profile.vue/utils 的字段名、路径、scope key 一致，
 // 防止再次出现 create_time vs created_at、{key,code,desc} vs {scope,description}、

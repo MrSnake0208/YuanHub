@@ -1,106 +1,76 @@
-# Monorepo 工作树边界（首先执行）
+# YuanHub 开发规则
 
-- 在编辑前执行 `git rev-parse --show-toplevel`、`git branch --show-current`、`git status --short`；所有路径以本次 Worktree 的 Git 根为准。frontend 和 backend 共享当前分支，没有独立 Git 仓库。
-- 只编辑当前 Worktree 内的文件，不跳到原主工作区或其它任务工作树；不得将当前分支切换到某个写死的功能分支。所有者可直接在 main 开发并 Push 任意风险等级的工作，不强制 PR；外部贡献者必须 PR 并经所有者审核。
-- frontend/ 负责 Vue/Vite 页面、API 调用和公开开发者文档；backend/ 负责 Kotlin/Spring API、权限和持久化。保留二端子目录 AGENTS.md 的安全与领域约束。API/DTO/协议变更须同时检查两端契约与兼容发布顺序。
-- 一个任务使用一个根 Git Worktree，一个 PR 可包含两端；不创建子仓、跨工作区符号链接或第二套分支。不要擅自 commit、push、merge 或远端写入。
-- 开发统一用当前树 `./dev.sh`。按用户选择，默认共用本机 MongoDB 的 MaaBackend/HubBackend 和 Redis DB 0 开发数据，各工作树只隔离应用端口与本地配置；保存、删除等会影响共享数据，不做自动清库或迁移。`./dev.sh preview` 自动准备前后端，前端监听 `0.0.0.0`，局域网也可访问；不操作 Tailscale Serve/Funnel。`./dev.sh containers` 显式使用原有私有容器。用 `./dev.sh --print-env` 查看本树地址。自动测试仅使用 TestMongo 注册的随机测试库与 TestRedis 的进程专属键命名空间，不得对共享开发数据运行事务或 Redis 语义测试。
-- 端口被占用时停止并报告，不终止他人的进程。临时数据、日志、构建及依赖只放本树的忽略目录。浏览器自动化与线上操作仍须当前任务明确授权。
-- 二端独立构建部署；发布及回滚入口见 docs/monorepo-operations.md。旧多仓发布脚本仅作历史资产，不对当前根仓执行。
+## 工作树与边界
 
-# AGENTS.md
+- 编辑前执行 `git rev-parse --show-toplevel`、`git branch --show-current`、`git status --short`；只编辑当前 Worktree，不切换写死的分支，不跳到旧工作区。保护已有修改，不 reset、stash、clean 或覆盖他人成果。
+- 这是一个 Monorepo：`frontend/` 和 `backend/` 共享根 Git 与分支，不创建子仓、第二套分支或跨工作区符号链接。前端负责 Vue/Vite 页面、API 调用与公开开发者文档；后端负责 Kotlin/Spring API、权限与持久化。保留两端 AGENTS.md 的领域约束。
+- 两端分别安装依赖、测试、构建与部署；API/DTO/协议变更同时检查调用方、两端契约及兼容发布顺序。操作见 [Monorepo 手册](docs/monorepo-operations.md)，旧多仓发布脚本仅作历史资产。
+- 未经当前会话明确授权，不 commit、push、创建 PR、merge、远端写入或部署。所有者可在 main 直接开发及 Push，不强制 PR；外部贡献者须 PR 并经所有者审核。
 
-## 玩家体验规范入口
+## Codex Native 与项目记忆
 
-涉及 YuanHub 页面、表单、提示文案、样式、响应式或影响用户交互的任务，按范围读取 [页面开发与玩家体验规范](frontend/docs/standards/page-development.md) 的相关章节，并使用实际可用的 `ui-ux-pro-max`；不可用时如实说明。纯后端且不影响交互的任务不触发此流程。规范正文只在前端仓库维护，本文件不复制；浏览器授权、风险验证、权限与数据安全边界继续遵守下文。
+- 普通开发直接进行，不强制 PRD、Design、Task、Research、Remember、固定阶段或归档门禁；复杂需求可用 Codex 原生 Plan。
+- 默认由主会话完成探索、实现与最小自检。专项 Skills 按任务调用；仅用户明确要求或适用 Skill 明确需要时启用子 Agent，不自动调用 DSH。
+- Mini-Trellis 只存放可复用知识与跨会话记忆。需要既有规则或历史决定时才检索，确认了长期有用的结论才记录；已有主题优先更新原文件，不重复存档。spec promotion 仍须用户确认。
+- `.trellis/` 是本地忽略目录；Codex 集成可选，未安装 CLI、未初始化记忆或未批准 Hook 不阻塞普通开发、组件测试和构建。不引用旧 YuanHub-All 作为开发依赖，不自动导入历史知识。
+- 先定位再读取，只加载相关规范与局部源码；搜索/日志输出通常控制在约 12 KB 或 160 行，必要安全证据不受此限制。改动接口、配置、脚本或用户行为时同步直接相关文档。
 
-新增或扩展前端功能默认按增量设计处理，不隐含整页重设计许可；按该规范第 6 节说明功能归属、页面保护和界面净变化，第 11 节同时检查新能力与受影响旧任务。局部扩展可用几句话，不增加固定审批、全量测试或自动多 Agent 流程。
+## 开发服务与数据安全
 
-## 本地开发服务
+- 统一使用当前树 `./dev.sh`，优先复用现有服务；只有确实需要且尚未运行时才按需执行 `./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh preview`。不得自行运行 bootRun、npm run dev、vite 等重复启动命令。
+- 不擅自重启、停止已有服务；确需操作先说明原因并获确认。端口占用时停止并报告，不终止他人进程。临时数据、日志、依赖与构建输出只放本树忽略目录。
+- 默认共用本机 MongoDB 的 MaaBackend/HubBackend 与 Redis DB 0 开发数据，仅隔离应用端口和本地配置；保存、删除会影响共享数据，不自动清库或迁移。`./dev.sh --print-env` 查看地址；`preview` 监听 `0.0.0.0`，局域网可访问；`containers` 才显式使用原私有容器。不操作 Tailscale Serve/Funnel。
+- 本地开发与调试可使用上述开发数据；写入限于当前任务已授权范围，破坏性操作仍须确认。此许可不适用于自动测试：自动测试继续使用下述隔离测试库与键命名空间，不把开发数据作为测试夹具或清理对象。
+- 自动测试仅使用 TestMongo 分配并注册的随机测试库和 TestRedis 的进程专属键命名空间。不得对共享开发/生产数据运行事务或 Redis 语义测试，不得绕过夹具、flush Redis 或使用开发库；具体约束见 [测试文档](docs/development/testing.md)。鉴权、账号隔离与数据保护不得因减轻流程而弱化。
 
-- 本项目统一通过仓库根目录的 `./dev.sh` 管理前端和后端开发服务。
-- 默认复用已经运行的开发服务；验证前先检查现有服务是否可用。
-- Agent 不得自行执行 `bootRun`、`./gradlew bootRun`、`npm run dev`、`vite`，或其他会重复启动前后端服务的命令。
-- 仅当所需服务尚未运行且当前任务确实需要时，才使用 `./dev.sh` 启动；可按需使用 `./dev.sh backend` 或 `./dev.sh frontend`。
-- 不得擅自重启或终止现有开发服务；确需重启时，先说明原因并取得用户确认。
+## 最小充分验证
 
-## 修改风险分级与最小充分验证
+- 默认检查相关源码与 diff；根据具体失败风险选择最小验证，说明检查要发现什么、失败会改变什么。文案、样式和局部交互不默认要求补测、跑测或 build。
+- 涉及鉴权/权限、账号隔离、API 契约、路由/共享状态、共享核心、数据正确性、持久化/迁移、事务/并发、缓存或幂等时，必须取得受影响关键约束的可复核定向证据，不能推给后续 DSH 或 CI。
+- 依赖、构建、CI、测试基础设施及部署发布改动执行对应专项检查；只有受影响范围确实需要时才运行全量或规模测试。测试入口与数据隔离要求见 [测试文档](docs/development/testing.md)；`./scripts/test.sh quick/smart/all/stress` 按需选用，不是固定流水线。
+- 优先复用有效测试，有具体覆盖缺口才补；不因行为变化或 Bug 修复一律新增/运行测试。不删除有效测试、弱化关键断言、无理由 skip/disable 或恢复废弃行为迎合旧测试。本节优先于子文档中的泛化补测要求，具体安全约束继续适用。
+- Codex 负责实现、diff 自检和必要最小验证；常规回归/全量由用户、独立 DSH 或 CI 负责。只报告实际执行的检查，不把源码检查当成浏览器或生产验收。
 
-本工作区不再把“每次改动都跑一遍完整检查”作为默认完成条件。核心原则是：
+## UI/UX 与浏览器边界
 
-> **先判断改动风险，再选择能覆盖该风险的最小验证。**
+- 涉及页面、表单、交互、提示文案、样式或响应式时，按范围读取 [页面开发与玩家体验规范](frontend/docs/standards/page-development.md)。`mobile-design-system` 主导移动端设计，`b-end-design-system` 主导管理后台与复杂业务页面设计；`ui-ux-pro-max` 负责调研、方案比较与建议，不主导最终设计。按任务读取适用 Skill，不机械叠加三套完整流程；不可用时如实说明。纯后端且不影响交互时不触发。
+- 功能扩展默认增量设计，不隐含整页重设计；按页面规范第 6 节说明玩家任务、功能归属、旧任务保护与界面净变化，第 11 节同时检查新能力和受影响旧路径。局部改动可用几句话，不增加固定审批或全量审计。
+- 浏览器自动化默认关闭。本任务未获用户明确授权时，不运行 Playwright/Puppeteer/Cypress/Chrome DevTools、真实页面访问/自动登录、E2E 回放、截图/视觉对比或视口矩阵；不为此启动浏览器/服务、安装依赖或修复无关测试环境。普通“测试”“验证”“集中回归”不构成浏览器授权。
+- 真实布局、交互、触控与浏览器表现由用户手动验收；按本次影响提供简短的页面、操作、预期及必要视口。取消浏览器自动化不取消必要的非浏览器安全/契约/隔离验证，不删除已有 E2E。
+- 子文档、历史方案及 Skill 中的实机、浏览器、截图和视口检查清单统一作为用户手动验收参考，不是 Agent 本地交付门禁；保留的浏览器脚本仅供用户选择使用，Agent 执行仍须当前任务另行明确授权。历史任务的授权与通过记录不延续到新任务。
 
-执行任何检查前先回答：**这个检查具体要防止本次修改出现什么问题？如果失败，我会据此改变什么？** 如果没有明确答案，就不要为了“保险”而运行它。
+## DSH 与交付
 
-### 风险等级
+- DSH 由用户在独立会话启动，以原始需求、真实使用预期和最终 diff 独立找反例；不照搬开发者测试设计，不自动派发，不作为低风险改动完成门槛。
+- DSH 按改动检查真实路径、边界、重复操作、失败/恢复及相关账号隔离；UI 扩展同时检查入口可发现与旧主任务，遵守相同浏览器授权和数据隔离边界。
+- 核实问题后修复，不削弱断言迎合验收。最终只报变更范围、风险、实际检查、未验证事项与必要下一步；需要 DSH 交接时提供原始目标、改动范围和已知边界，不将自测结论当唯一标准。
 
-| 等级 | 典型改动 | 默认验证策略 |
-| --- | --- | --- |
-| **L0 极低风险** | 文案、注释、静态资源引用、纯视觉样式、不会改变行为的间距/颜色/排版 | 检查 diff 与相关文件即可；不要求测试、build、全量 lint/typecheck |
-| **L1 低风险** | 单组件展示逻辑、局部 UI 交互、局部非共享配置 | diff/相关文件自检即可；不默认新增、运行自动化测试或执行 build |
-| **L2 中风险** | store/composable、API 请求、数据转换、缓存/轮询、一般业务分支 | 优先最小定向检查；是否补/跑测试取决于具体风险，不作默认要求；权限、跨账号或数据损坏风险上调至 L3 |
-| **L3 高风险** | API 契约、登录鉴权/权限、跨账号隔离、路由/全局状态、持久化语义、迁移、事务、并发、共享核心模块 | 必须对受影响关键约束取得可复核的定向验证证据；按需用相关测试或模块检查，不默认跑全量 |
-| **L4 基础设施/发布风险** | 依赖、Vite/Gradle、CI、测试基础设施、部署/发布流程、跨仓公共核心 | 才考虑完整 CI 对齐、`./scripts/test.sh all` 或专项 stress/integration 检查 |
+## 发布
 
-不得仅因为“改了代码”就自动把任务升级为 L3/L4。
+- 普通 Push、PR、merge、tag 不自动运行 CI 或部署；集中发布检查在明确准备发布时进行，手动诊断入口保留。
+- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本并启动集中检查；`--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
+- GitHub 远端配置、正式 tag、部署、回滚分别确认，保持部署开关现状。见 [发布设置](docs/release-settings/README.md) 与 [操作手册](docs/monorepo-operations.md)。
 
-### 测试同步原则
+<!-- TRELLIS:START -->
+# mini-trellis
 
-- **测试是否必要由具体风险决定；不因“修改代码”“行为变化”或“修复 Bug”自动强制新增/运行测试。**
-- L0/L1 默认只自检相关文件/diff；L2 可选择定向静态检查、已有测试或补充测试，但必须有明确的防错目的，不为覆盖率或流程门禁凑测试。
-- L3/L4 涉及鉴权、账号隔离、数据正确性、持久化、迁移、事务等关键约束时，必须安排足以发现相关回归的定向验证；新增测试是否必要取决于现有覆盖与风险，不能以“交给 DSH”为由放弃开发期必要的安全检查。
-- 不得为了通过检查删除有效测试、弱化关键断言、添加无理由的 skip/disable，或恢复已废弃行为迎合旧测试。
-- 本节是本工作区测试策略的统一解释：如分层质量指南仍写有“所有行为变更必须补测试”等泛化表述，以本节风险策略为准；数据库隔离、权限和数据保护等具体安全要求不因此降低。
+This project uses mini-trellis as a memory layer. Working knowledge lives under `.trellis/`:
 
-### 本工作区的验证责任
+- `.trellis/spec/` — durable contracts (short markdown; read `index.md` first)
+- `.trellis/research/` — topic inbox (`<topic>.md`; `README.md` is not a topic)
+- `.trellis/workspace/` — per-developer journals
 
-- **Codex 负责实现、相关 diff 自检及确有必要的最小开发期验证；常规回归/全量验证默认由用户、其单独安排的 DSH 或 CI 负责。**
-- Codex 不因小修复自动编写/运行测试，也不自动启动独立测试 Agent。对 L3/L4 关键风险仍必须保留必要的定向安全/契约/隔离验证；验证不足时如实标明风险。
-- `./scripts/test.sh quick`、`./scripts/test.sh smart`、`./scripts/test.sh all` 是按风险选用的工具，**不是每个任务都必须依次执行的固定流水线**。
-- L0/L1 任务不要求为了确认 CI 内容而预先通读整份 workflow；只有检查选择依赖 CI、准备提交/发布、或任务达到 L3/L4 时再核对对应 `.github/workflows/ci.yml`。
-- 不得声称未实际执行的检查“已通过”，也不得把尚未进行的 DSH 验收写成已通过。
+Record a session with `/mini-trellis:remember` (Claude/OpenCode), `/mini-trellis-remember` (Pi), `$mini-trellis-remember` (Codex), or the `mini-trellis-remember` skill (Cursor and DeepSeek Harness). When earlier decisions or relevant project rules are needed, use `mini-trellis mem recall "<topic or path>"`; expand evidence with `mini-trellis mem read "<ref>"`. No search is required for unrelated work. Promote lasting boundaries into spec with `mini-trellis-update-spec`.
 
-### 最终汇报
+Record only confirmed decisions, reusable research findings, or the session/compact handoff. Skip ordinary turns and unconfirmed guesses. New installs write notes without an automatic git commit; use `mini-trellis doctor` to check host wiring and `mini-trellis refresh --dry-run` before refreshing assets.
 
-- 简要说明变更范围、风险等级、实际做过的检查和未验证事项；L0/L1 不必为未补测试额外写长篇解释。
-- 用户准备交给 DSH 时，只提供简短交接材料：原始用户目标、变更文件/范围、已知边界风险及尚未验证之处；不要把开发实现或自测断言包装成唯一验收标准。
-- 如需建议后续检查，只给与本次风险直接相关的最小场景/命令，不照搬整套 CI。
+Keep confirmed rules short and faithful. Unconfirmed scope, exceptions, and implementation choices stay open or are labeled as inference, not added to the contract.
 
-## Codex 开发 × DSH 独立对抗验收
+For a confirmed update, follow this short order: read the existing topic; edit that file; read it back and check the new rule, limits, and negations; run `python3 ./.trellis/scripts/add_session.py --title "..." --summary "..." --topic <actual-topic-path>`; read the journal and check its topic link. Journal-only success is not topic success; report partial writes accurately. New notes follow the requested or discussion language; updates preserve the document language.
 
-- **角色分离：** Codex 实现与最小自检；用户另行启动 DSH，在独立会话/上下文中负责对抗式测试和验收。Codex 不自动调用 DSH、不默认产生子 Agent 工作流；低风险任务不以等待 DSH 为完成门槛。
-- **验收独立性：** DSH 以原始用户需求、真实使用预期及最终变更为依据，先独立寻找反例，再参考必要的开发交接信息；不照搬 Codex 的测试设计或“已经正确”的结论。
-- **找实际问题：** DSH 围绕改动选择真实用户路径、输入边界、重复操作、失败/恢复路径，以及确实相关的跨账号/数据安全场景；UI 功能扩展还应独立检查新入口是否可发现、旧主任务是否增加无理由的步骤或被挤走，不只验证新按钮能否使用。不为了对抗而强制生成大量测试文件或扩大检查范围。
-- **报告与修复：** DSH 对发现的问题提供可复现步骤、预期与实际结果、影响范围及证据；未覆盖的内容如实列出。Codex 只修复核实的问题，必要时交由 DSH 独立复验，不通过削弱断言或迎合测试掩盖缺陷。
-- **安全边界不变：** DSH 也必须遵守默认禁止浏览器自动化、隔离测试数据库、保护现有服务与用户改动的规则；仅当前任务获得明确授权时才可运行浏览器自动化。
+When recall excerpts already answer the question with source and qualifiers, cite them and stop. Expand only missing context; do not repeat a lookup or fall back to dialogue-only `search` merely to reconfirm sufficient evidence.
 
-## 浏览器自动化默认关闭：用户手动 UI 验收
+mini-trellis does not create or drive tasks.
 
-- **适用范围：** YuanHub-All 工作区及其中的 YuanHub 前端、BackEndV3-Share 后端开发任务。本节优先于本机通用规则中“页面验证优先 Playwright”的默认建议，以及旧任务说明中未获本次用户授权的浏览器测试要求。
-- **默认禁止：** Agent 不得自动运行 Playwright、Puppeteer、Cypress、Chrome DevTools 或其他真实浏览器自动化、E2E 页面回放、浏览器截图/视觉对比、自动登录/访问真实页面及响应式浏览器视口矩阵；不得为了这些检查启动浏览器、重复启动开发服务、安装浏览器依赖、生成临时浏览器脚本或修复无关的浏览器测试环境。
-- **开发期仍需必要的非浏览器验证：** 依据 L0–L4 风险等级，优先 diff 检查、必要的定向 lint/类型或编译检查、纯逻辑/组件/接口契约单元测试。L3/L4 的鉴权、账户隔离、数据正确性、事务、迁移等关键风险不得因为取消浏览器测试而放弃必要的安全、契约或隔离测试；若无法安全验证，明确说明阻塞与未验证风险。
-- **测试代码不等于每次运行完整测试：** 仅当具体回归风险需要时才新增/更新测试；L0–L2 不因行为变化或 Bug 修复自动补测试。允许按风险使用非浏览器 Node/Vitest/Vue Test Utils、后端定向测试等；不得删除现有 E2E、弱化断言或破坏 CI。全量回归与跨模块检查由用户主动发起。
-- **UI 由用户验收：** 桌面端/手机端真实布局、交互、触控和浏览器表现由用户手动检查。交付时提供简短、可操作的人工验收清单（页面、操作、预期结果及必要视口），明确标注未验证的运行时事项；不得将代码检查等同于视觉或浏览器验收通过。
-- **唯一启用条件：** 只有用户在当前任务中明确要求浏览器自动化时，才可在授权范围内运行。用户仅要求“测试”“验证”“集中回归”不自动包含 Playwright/浏览器 E2E，除非同时明确指定浏览器测试。
-
-## Codex 上下文与工具输出预算（减少无效压缩）
-
-- **先定位、后读取。** 已知模块、路径或符号时先在对应目录搜索；优先文件名、匹配行和局部源码，不把全仓搜索、整文件或整份工作流阅读当成每次任务的固定流程。仍需读取所有真正适用的规范与安全约束。
-- **避免无关的大输出。** 普通搜索、日志和文件读取单次以约 12 KB 或 160 行为目标；超过时缩小范围、使用 `rg -l`、定向行号、过滤结果或分页。它是默认目标，不是阻止必要证据的硬限制。
-- **限定审查范围。** 先看 `git status --short` / `git diff --stat`，再阅读受影响文件的 diff；测试只提取相关错误和必要日志，不重复输出整个脏工作区、完整日志或大生成文件。
-- **复用已知上下文。** 已确认的文件位置、规则和调查结论不要重复获取；优先读取直接相关的规范和阶段索引；Skills 按任务范围加载。
-- **复杂工作按自然阶段交接。** 对多阶段任务，简短记录关键决策、修改文件、验证与下一步；上下文临近耗尽且阶段已独立完成时，优先在新会话续做而非反复压缩后从头探索。不为小任务强制创建 task、文档或子 Agent。
-- **正确性优先。** UI/UX Skill、安全要求、必要源文件、测试和回归证据不能因为输出预算而跳过；必须读取完整内容时允许例外。
-
-## 验证与数据安全
-
-依据 `docs/development/testing.md` 按 L0–L4 风险选择最小充分验证，不因改动自动执行全量测试。通用开发不要求安装个人任务工作流。
-
-Mongo transaction/Redis semantics tests share local services but must use process-owned disposable test databases and namespaced Redis keys; never use development/production data or flush shared Redis. Preserve unrelated dirty files; do not reset, stash, clean, or include them in the task.
-
-## 开发与发版流程
-
-- 所有者 L0～L4 均可直接提交/Push main，不强制 PR；Agent 的 commit/push 仍须当前会话明确授权。必要最小安全自检不因取消日常 CI 而省略。
-- 普通 Push、PR、合并与 tag 不自动启动 CI/生产部署；完整回归只在明确准备发布时集中执行，也保留手动诊断。
-- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本并启动集中检查；`--status` 查询；`--publish` 另行获明确授权后才部署。不得修改 VERSION 只为创建版本 PR，不得复用其它 SHA/attempt 的结果。
-- GitHub 远端配置、正式 tag、部署与回滚必须分别确认；保持部署开关现状。待批准方案见 docs/release-settings/README.md，操作见 docs/monorepo-operations.md。
+Managed by mini-trellis. Edits outside this block are preserved.
+<!-- TRELLIS:END -->

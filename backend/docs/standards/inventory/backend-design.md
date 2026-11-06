@@ -396,4 +396,4 @@ resource_delta在删除/恢复时按每项基准应用有符号变动，同毫�
 
 新前端须在读取邮件/报表前调用sync，再使用现有version/inventory_revision/inventory_record_count栅栏。后端先发布；旧客户端GET不触发补算，其修改若遇到待补算版本变化会被拒绝，需新版客户端重新读取。不得删除凭据集合来回退功能。
 
-验证：`MailboxAccrualServiceTest`覆盖日期/配置/补算/校正；`MailboxAccrualMongoTest`覆盖独立Mongo事务、重复/并发、双入口领取、隔离、失败回滚；原邮件契约与领取集成测试保留。Mongo测试只能使用TestMongo拥有的可抛弃容器，不能指向开发/生产库。
+验证：`MailboxAccrualServiceTest`覆盖日期/配置/补算/校正；`MailboxAccrualMongoTest`覆盖独立Mongo事务、重复/并发、双入口领取、隔离、失败回滚；原邮件契约与领取集成测试保留。当前 Mongo 自动测试复用本机服务，仅使用 TestMongo 分配并注册的随机测试库，不依赖容器，不得访问共享开发库或生产数据；本地调试可按根规则使用开发数据。

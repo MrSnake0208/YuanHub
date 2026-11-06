@@ -63,10 +63,12 @@
 
 ## 最小定向验证
 
-L3：涉及单账号持久化、事务及计数。使用合成数据和 TestMongo 拥有的临时副本集，验证真实 mongosh 模块及与运维一致的 `--file` 入口；不使用开发或生产数据库。默认全量回归/发布验证由用户或 CI 执行。
+L3：涉及单账号持久化、事务及计数。自动测试使用合成数据，复用本机 MongoDB 副本集，仅使用 TestMongo 分配并注册的随机测试库，不依赖容器；验证真实 mongosh 模块及与运维一致的 `--file` 入口，不访问共享开发库或生产数据。Agent 按根规则执行受影响的必要定向验证，全量回归/发布验证由用户或 CI 执行。
+
+从当前 Monorepo 根目录执行：
 
 ```sh
-cd BackEndV3-Share
+cd backend
 node --test scripts/migrations/20261015-recruitment-duplicate-pools.test.js
 ./gradlew integrationTest --tests '*RecruitmentDuplicateRepairMongoTest' --console=plain
 ```

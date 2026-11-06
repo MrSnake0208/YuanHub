@@ -8,7 +8,7 @@
 
 没有从旧综合候选导入 Git 对象或提交祖先，也不导入外层 YuanHub-All 历史。根开发脚本、测试工具、规范和 CI 是新的迁移适配文件。外层旧任务、会话日志、备份、数据库归档及无关资产不在公开导出范围内。
 
-`.dev/` 和 `.trellis/` 仅供本地使用，不在当前源码或待发布历史中。个人 Trellis 工作流由本机私有副本保留，正常 clone/Worktree 不依赖它。公开测试入口为 `scripts/test.sh`，说明在 [开发测试文档](../development/testing.md)。
+`.dev/` 和 `.trellis/` 仅供本地使用，不在当前源码或待发布历史中。当前可选 Mini-Trellis 只作本地记忆层，旧任务资料仍在原私有副本保留；正常 clone/Worktree 不依赖任何个人工作流。公开测试入口为 `scripts/test.sh`，说明在 [开发测试文档](../development/testing.md)。
 
 PR37 的业务增量保持在独立 `feature/star-rebuild-recovery` 本地分支，不进入迁移基线。原 PR 不自动合并、关闭或改写；合入迁移后须另行决定如何替换其旧路径补丁。chore/feedback 的原两端源码与各自 main 一致，无额外业务增量。
 

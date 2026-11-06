@@ -1,14 +1,11 @@
 """Behavioral tests for the runner itself. Git commits exist ONLY in temporary fixtures."""
 from __future__ import annotations
-import datetime as dt
-import json
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-import gate
 import impact
 import run
 
@@ -36,17 +33,6 @@ class TemporaryProject(unittest.TestCase):
                 (directory / '.gitignore').write_text('.test-artifacts/\n')
                 self.command(directory, 'add', '.gitignore')
             self.command(directory, '-c', 'user.name=Local fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'temporary baseline')
-        self.task = self.root / '.trellis/tasks/test-task'
-        self.task.mkdir(parents=True)
-        (self.task / 'task.json').write_text('{"status":"in_progress"}')
-        self.manifest = {
-            'risk_level': 'L3',
-            'verification_owner': 'agent',
-            'coverage': [],
-            'exceptions': [],
-            'mandatory_checks': [],
-        }
-        self.write_manifest()
 
     def command(self, root, *args):
         return subprocess.run(['git', '-C', str(root), *args], check=True, capture_output=True)
@@ -56,9 +42,6 @@ class TemporaryProject(unittest.TestCase):
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(text)
         return file
-
-    def write_manifest(self):
-        (self.task / 'test-plan.json').write_text(json.dumps(self.manifest))
 
     def test_nested_staged_unstaged_and_untracked_paths_with_spaces(self):
         self.write('frontend/src/pages/star/new feature.js')
@@ -149,94 +132,29 @@ class ScaleTest {
         self.assertIn('useJUnitPlatform { includeTags(tag) }', source)
         self.assertIn('tasks.check { dependsOn(integrationTest, realisticTest, architectureTest, apiSchemaTest) }', source)
 
-    def test_current_task_documents_expand_relevant_test_selection(self):
-        (self.task / 'prd.md').write_text('This change must preserve star account migration.')
+    def test_memory_notes_do_not_expand_diff_test_selection(self):
+        self.write('.trellis/research/old-decision.md', 'star account migration')
+        self.write('frontend/test/works.test.js')
         self.write('frontend/test/starState.test.js')
-        result = impact.infer(self.root, ['frontend/src/pages/works/card.js'], self.task)
-        self.assertIn('test/starState.test.js', result['node'])
-        self.assertIn('.trellis/tasks/test-task/prd.md', result['task_documents'])
+        result = impact.infer(self.root, ['frontend/src/pages/works/card.js'])
+        self.assertIn('test/works.test.js', result['node'])
+        self.assertNotIn('test/starState.test.js', result['node'])
 
-    def test_task_resolution_never_accepts_an_external_path(self):
-        self.assertEqual(self.task, impact.current_task(self.root))
-        with self.assertRaises(ValueError):
-            impact.current_task(self.root, '../elsewhere')
-        other = self.root / '.trellis/tasks/other'
-        other.mkdir(); (other / 'task.json').write_text('{"status":"in_progress"}')
-        (other / 'test-plan.json').write_text('{}')
-        self.assertIsNone(impact.current_task(self.root))
-
-    def test_existing_test_name_alone_cannot_satisfy_new_code_coverage(self):
-        source = 'frontend/src/pages/star/bridge.js'
-        test = 'frontend/test/starState.test.js'
-        self.write(source); self.write(test)
-        self.manifest['coverage'] = [{'sources': [source], 'tests': [test], 'invariants': ['canonical identity is preserved']}]
-        self.write_manifest()
-        gaps, _ = impact.coverage_gaps(self.root, [source], self.task)
-        self.assertEqual([source], gaps)
-        gaps, reviewed = impact.coverage_gaps(self.root, [source, test], self.task)
-        self.assertFalse(gaps); self.assertEqual([test], reviewed[0]['tests'])
-
-    def test_exemptions_are_exact_file_and_require_a_real_explanation(self):
-        first = 'frontend/src/a.js'; second = 'frontend/src/b.js'
-        self.manifest['exceptions'] = [{'sources': [first], 'reason': 'TODO'}]
-        self.write_manifest()
-        self.assertEqual([first], impact.coverage_gaps(self.root, [first], self.task)[0])
-        self.manifest['exceptions'][0]['reason'] = 'Pre-existing unrelated user modification preserved byte-for-byte; this task does not own this source.'
-        self.write_manifest()
-        self.assertEqual([second], impact.coverage_gaps(self.root, [first, second], self.task)[0])
-
-    def test_fingerprint_tracks_code_tests_and_plan_but_not_completion_prose(self):
+    def test_fingerprint_tracks_code_tests_and_deletions_but_not_memory(self):
         source = 'frontend/src/a.js'; test = 'frontend/test/a.test.js'
         self.write(source, 'a'); self.write(test, 'test')
-        changes = [source, test, '.trellis/tasks/test-task/implement.md']
-        before = impact.fingerprint(self.root, changes, self.task)
-        (self.task / 'implement.md').write_text('Marked a verified step complete')
-        self.assertEqual(before, impact.fingerprint(self.root, changes, self.task))
+        changes = [source, test, '.trellis/research/decision.md']
+        before = impact.fingerprint(self.root, changes)
+        self.write('.trellis/research/decision.md', 'A reusable decision')
+        self.assertEqual(before, impact.fingerprint(self.root, changes))
         self.write(source, 'b')
-        self.assertNotEqual(before, impact.fingerprint(self.root, changes, self.task))
-        after = impact.fingerprint(self.root, changes, self.task)
-        self.manifest['mandatory_checks'] = ['integration']; self.write_manifest()
-        self.assertNotEqual(after, impact.fingerprint(self.root, changes, self.task))
-
-    def valid_report(self, changes=None):
-        changes = changes or []
-        return {'task': self.task.relative_to(self.root).as_posix(), 'mode': 'smart', 'success': True,
-                'completion_eligible': True, 'fingerprint': impact.fingerprint(self.root, changes, self.task),
-                'missing_tests': [], 'started_at': dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ'),
-                'checks': [{'name': name, 'exit_code': 0} for name in ['runner-self-tests', 'frontend-source', 'backend-compile', 'backend-ktlint', 'architecture']],
-                'junit': {'architecture': {'tests': 4, 'passed': 4, 'failures': 0, 'errors': 0, 'skipped': 0}}}
-
-    def test_completion_rejects_quick_stale_wrong_task_and_failed_checks(self):
-        report = self.valid_report()
-        self.assertEqual([], gate.validate_report(self.root, self.task, report, []))
-        for key, value in [('mode', 'quick'), ('fingerprint', 'stale'), ('task', 'other'), ('success', False)]:
-            with self.subTest(key=key):
-                self.assertTrue(gate.validate_report(self.root, self.task, {**report, key: value}, []))
-        report['checks'][0]['exit_code'] = 1
-        self.assertTrue(gate.validate_report(self.root, self.task, report, []))
-
-    def test_completion_rejects_skips_and_zero_test_suites(self):
-        for counts in [{'tests': 0}, {'tests': 4, 'skipped': 1}]:
-            report = self.valid_report(); report['junit'] = {'integration': counts}
-            self.assertTrue(gate.validate_report(self.root, self.task, report, []))
-
-    def test_completion_requires_declared_database_and_regression_evidence(self):
-        self.manifest['mandatory_checks'] = ['integration']
-        self.manifest['regressions'] = [{'name': 'historical migration', 'red_log': '.test-artifacts/red.log', 'green_log': '.test-artifacts/green.log'}]
-        self.write_manifest()
-        report = self.valid_report()
-        self.assertTrue(gate.validate_report(self.root, self.task, report, []))
-        report['checks'].append({'name': 'integration', 'exit_code': 0})
-        self.write('.test-artifacts/red.log', 'real failing assertion'); self.write('.test-artifacts/red.exit', '1')
-        self.write('.test-artifacts/green.log', 'passing assertion'); self.write('.test-artifacts/green.exit', '0')
-        self.assertEqual([], gate.validate_report(self.root, self.task, report, []))
-        self.write('.test-artifacts/red.exit', '0')
-        self.assertTrue(gate.validate_report(self.root, self.task, report, []))
-
-    def test_completion_rejects_old_evidence(self):
-        report = self.valid_report()
-        report['started_at'] = '20200101T000000.000000Z'
-        self.assertTrue(gate.validate_report(self.root, self.task, report, []))
+        after = impact.fingerprint(self.root, changes)
+        self.assertNotEqual(before, after)
+        self.write(test, 'updated assertion')
+        updated = impact.fingerprint(self.root, changes)
+        self.assertNotEqual(after, updated)
+        (self.root / source).unlink()
+        self.assertNotEqual(updated, impact.fingerprint(self.root, changes))
 
     def test_quick_never_runs_database_or_mutation_but_all_runs_them(self):
         selection = {'conservative_full': True, 'unit': ['ExampleTest'], 'node': [], 'behavior': [], 'integration': ['MongoTest'], 'api': [], 'domains': ['star']}
@@ -303,61 +221,6 @@ class ScaleTest {
             self.assertNotIn('BETA_TEST_MONGO_URI', env)
         with patch.dict(os.environ, {'DOCKER_HOST': 'tcp://remote.example.invalid:2375'}):
             self.assertEqual('test', run.environment()['SPRING_PROFILES_ACTIVE'])
-
-    def test_preexisting_exception_cannot_silently_exempt_new_edits_to_the_same_file(self):
-        import hashlib
-        source = 'frontend/src/preexisting.js'
-        self.write(source, 'original user work')
-        self.manifest['exceptions'] = [{'sources': [source], 'reason': 'Pre-existing unrelated user changes are preserved exactly and are outside this task scope.',
-                                        'baseline_sha256': hashlib.sha256((self.root / source).read_bytes()).hexdigest()}]
-        self.write_manifest()
-        self.assertFalse(impact.coverage_gaps(self.root, [source], self.task)[0])
-        self.write(source, 'new changes cannot reuse the old exception')
-        self.assertEqual([source], impact.coverage_gaps(self.root, [source], self.task)[0])
-
-    def test_bugfix_cannot_finish_with_an_empty_regression_list(self):
-        self.manifest['change_kind'] = 'bugfix'; self.write_manifest()
-        self.assertTrue(gate.validate_report(self.root, self.task, self.valid_report(), []))
-
-    def test_user_owned_verification_does_not_require_smart_or_all_report(self):
-        source = 'frontend/src/pages/star/notice.js'
-        self.write(source)
-        self.manifest.update({
-            'risk_level': 'L0',
-            'verification_owner': 'user',
-            'change_kind': 'non_behavior',
-            'exceptions': [{
-                'sources': [source],
-                'reason': 'Copy-only runtime edit with no state, API, persistence, routing, or interaction behavior change.'
-            }],
-        })
-        self.write_manifest()
-        self.assertEqual([], gate.completion_gate(self.root, self.task))
-
-    def test_agent_owned_l3_still_requires_fresh_smart_or_all_report(self):
-        source = 'frontend/src/pages/star/behavior.js'
-        test = 'frontend/test/starBehavior.test.js'
-        self.write(source)
-        self.write(test)
-        self.command(self.root / 'frontend', 'add', 'src', 'test')
-        self.manifest.update({
-            'risk_level': 'L3',
-            'verification_owner': 'agent',
-            'coverage': [{
-                'sources': [source],
-                'tests': [test],
-                'invariants': ['observable star behavior remains correct'],
-            }],
-        })
-        self.write_manifest()
-        errors = gate.completion_gate(self.root, self.task)
-        self.assertTrue(any('local verification report' in error for error in errors))
-
-    def test_unclassified_new_task_cannot_finish(self):
-        self.manifest['risk_level'] = 'unclassified'
-        self.manifest['verification_owner'] = 'user'
-        self.write_manifest()
-        self.assertTrue(any('risk_level' in error for error in gate.completion_gate(self.root, self.task)))
 
     def test_junit_counts_include_failures_errors_and_skips(self):
         folder = self.root / 'results'; folder.mkdir()

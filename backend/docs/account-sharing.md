@@ -17,7 +17,7 @@
 ./gradlew integrationTest --tests '*OperatorShareMongoTest' --console=plain
 ```
 
-Mongo 检查必须使用测试自建可销毁容器；不连接现有开发数据库。更广的实际 HTTP/schema 检查仍可按下列隔离回归命令由用户发起。
+Mongo 检查复用本机服务，仅使用 TestMongo 分配并注册的随机测试库，不依赖容器，不访问 MaaBackend/HubBackend 或生产数据。更广的实际 HTTP/schema 检查仍可按下列隔离回归命令由用户发起；隔离要求以根 `docs/development/testing.md` 为准。
 
 - 管理接口：GET / PATCH / DELETE `/v1/accounts/share?account_id=...`，POST `/v1/accounts/share/regenerate?account_id=...`。要求 JWT、内测权限和账号归属；PATCH 请求为 `{ "scope": "star", "enabled": true }`。
 - 匿名 GET `/v1/star/share/view/{code}` 返回分享码所属账号最新已保存 Inventory。条目只有 `kind/name/quality/level`，保留重复实例，不接受客户端指定 owner/account/generation，不公开计划、实例 ID、经验材料或佩戴关系；读取不修改状态。

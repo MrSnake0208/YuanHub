@@ -2,7 +2,7 @@
 
 ## 一个任务一个 Worktree
 
-所有者可在 main 直接开发任意风险等级的功能，无需 PR；需要隔离时可选 Worktree。在 Orca 添加正式 clone 的 Git 根目录，基础分支选择 main；根 AGENTS.md 要求自动核对 Git 根、当前分支、状态，再同时读取两端规则。frontend/backend 是普通目录，不创建第二套仓库或跨树符号链接。
+所有者可在 main 直接开发，无需 PR；需要隔离时可选 Worktree。在 Orca 添加正式 clone 的 Git 根目录，基础分支选择 main；根 AGENTS.md 要求自动核对 Git 根、当前分支、状态，再同时读取两端规则。frontend/backend 是普通目录，不创建第二套仓库或跨树符号链接。
 
 同 URL 的旧前端项目可能已在 Orca 登记。切换时先检查现有项目与工作树映射，再选择新 clone 路径；不要直接覆盖登记或移动有会话的旧目录。Git/CLI 验证不代表 Windows Orca/SSH 或新 Codex UI 已验收。
 
@@ -34,7 +34,7 @@
 
 ## 日常开发与外部贡献
 
-所有者完成风险对应的最小自检后，可以直接 commit/push main，L0～L4 均不强制 PR。Agent 仍须分别获得 commit、push 的明确授权。其他贡献者通过分支/PR，由所有者人工审核；不设置日常 required checks。Worktree 是可选的开发隔离方式，不是强制 PR 流程。
+所有者完成根 `AGENTS.md` 要求的最小自检后，可以直接 commit/push main，不强制 PR。Agent 仍须分别获得 commit、push 的明确授权。其他贡献者通过分支/PR，由所有者人工审核；不设置日常 required checks。Worktree 是可选的开发隔离方式，不是强制 PR 流程。
 
 普通 Push、PR、合并、Tag Push 均不自动运行根工作流。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者及 regression 同时是 reusable workflow。没有每日回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
 

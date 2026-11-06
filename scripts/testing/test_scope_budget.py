@@ -1,5 +1,6 @@
 """Focused regression checks; never start application, database or browser services."""
 import unittest
+import json
 import os
 import sys
 import tempfile
@@ -14,7 +15,6 @@ class ScopeTest(unittest.TestCase):
     setUp = TemporaryProject.setUp
     command = TemporaryProject.command
     write = TemporaryProject.write
-    write_manifest = TemporaryProject.write_manifest
     def test_css_and_documentation_select_no_execution(self):
         for path in ['frontend/src/pages/recruitment/recruitmentPreviewMobile.css', 'docs/guide.md']:
             selected = impact.infer(self.root, [path])
@@ -68,13 +68,41 @@ class ScopeTest(unittest.TestCase):
         full = {name: argv for name, _, argv in run.build_commands('all', selected)}
         self.assertNotIn('--tests', full['integration'])
 
-    def test_no_optional_task_does_not_require_coverage_manifest(self):
+    def test_smart_needs_no_task_or_coverage_manifest(self):
         self.write('frontend/src/example.js', 'export const value = 1')
-        with patch.object(run, 'ROOT', self.root), patch('run.current_task', return_value=None), \
+        self.write('.trellis/scripts/task.py', 'raise AssertionError("retired CLI must not run")')
+        self.write('.trellis/tasks/old/task.json', '{invalid old metadata')
+        with patch.object(run, 'ROOT', self.root), \
                 patch('run.environment', return_value={'PATH': '', 'FC_SEED': '1'}), \
-                patch('run.execute_plan', return_value=([], 'completed')), \
-                patch('run.coverage_gaps', side_effect=AssertionError('optional manifest must not gate')):
+                patch('run.execute_plan', return_value=([], 'completed')):
             self.assertEqual(0, run.main(['smart']))
+        report = json.loads((self.root / '.test-artifacts/latest-smart.json').read_text())
+        self.assertTrue(report['success'])
+        self.assertNotIn('completion_eligible', report)
+
+    def test_source_changes_during_execution_invalidate_report(self):
+        self.write('frontend/src/example.js', 'before')
+        def execute(*args):
+            self.write('frontend/src/example.js', 'after')
+            return [], 'completed'
+        with patch.object(run, 'ROOT', self.root), \
+                patch('run.environment', return_value={'PATH': '', 'FC_SEED': '1'}), \
+                patch('run.execute_plan', side_effect=execute):
+            self.assertEqual(1, run.main(['smart']))
+        report = json.loads((self.root / '.test-artifacts/latest-smart.json').read_text())
+        self.assertFalse(report['source_unchanged'])
+        self.assertFalse(report['success'])
+
+    def test_skipped_or_empty_junit_suite_cannot_pass_report(self):
+        self.write('backend/src/main/kotlin/Example.kt')
+        for counts in [{'tests': 0, 'skipped': 0}, {'tests': 4, 'skipped': 1}]:
+            with self.subTest(counts=counts), patch.object(run, 'ROOT', self.root), \
+                    patch('run.environment', return_value={'PATH': '', 'FC_SEED': '1'}), \
+                    patch('run.execute_plan', return_value=([{
+                        'name': 'backend-unit', 'exit_code': 0, 'counts': counts,
+                        'seconds': 0, 'log': 'fixture.log',
+                    }], 'completed')):
+                self.assertEqual(1, run.main(['smart']))
 
     def test_clean_committed_pr_requires_base_before_execution(self):
         with patch.object(run, 'ROOT', self.root), patch('run.environment', return_value={}), \

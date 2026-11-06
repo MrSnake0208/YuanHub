@@ -62,7 +62,7 @@ MongoDB 新增 `operator_training_workspace`、`operator_stamina_schedule`、`op
 
 先发布后端可选字段支持，再发布前端。后端回退前需评估已有扩展日程：旧后端会拒绝新字段写入；不得自动清除扩展数据来绕过校验。
 
-最小验证：`./gradlew test --tests '*OperatorPlannerServiceTest' --tests '*OperatorPlannerControllerContractTest' --tests '*InventoryServiceTest' --console=plain`。CAS的真实Mongo覆盖：`./gradlew integrationTest --tests '*OperatorPlannerMongoTest' --console=plain`，只使用TestMongo自有可抛弃容器，不连接开发/生产数据库。均由用户/CI执行。
+在当前 Monorepo 的 `backend/` 目录执行定向验证：`./gradlew test --tests '*OperatorPlannerServiceTest' --tests '*OperatorPlannerControllerContractTest' --tests '*InventoryServiceTest' --console=plain`。CAS 的 Mongo 验证：`./gradlew integrationTest --tests '*OperatorPlannerMongoTest' --console=plain`。自动测试复用本机 MongoDB 副本集，仅使用 TestMongo 分配并注册的随机测试库，不依赖容器，不访问共享开发库或生产数据。Agent 按根规则选择受影响的必要定向验证，全量回归由用户或 CI 执行。
 
 ### 日程读写
 

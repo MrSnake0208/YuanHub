@@ -439,7 +439,7 @@ node --test test/calendarPrivateItems.test.js test/activityCalendar.test.js test
 npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateItemsApi.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptions.spec.js
 ```
 
-浏览器复用既有开发服务，以模拟 API 验证六视口和保存，脚本 `test-support/calendarPrivateRange.browser.js`：`playwright-cli -s=private-range run-code --filename=test-support/calendarPrivateRange.browser.js`。先用该独立会话 `open http://localhost:5173`；不使用真实登录信息或数据库。真实手机软键盘、Safari及真实JWT联调仍需人工检查。
+以下浏览器脚本保留供用户选择使用，不是 Agent 本地交付门禁；Agent 执行须当前任务另行明确授权，历史验证记录不构成授权。复用既有开发服务，以模拟 API 验证六视口和保存，脚本 `test-support/calendarPrivateRange.browser.js`：`playwright-cli -s=private-range run-code --filename=test-support/calendarPrivateRange.browser.js`。先用该独立会话 `open http://localhost:5173`；不使用真实登录信息或数据库。真实浏览器、手机软键盘、Safari及真实JWT联调由用户手动验收。
 
 ## 招募 UP 名称（2026-10-12）
 
