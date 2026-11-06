@@ -17,7 +17,7 @@ export function useBonds() {
   const available = computed(() => !!identity.value && !!account.value)
   const game = computed(() => available.value ? account.value.game : publicGame.value)
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy && !state.catalogError && !state.error)
-  const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', recorded: '', hideRecorded: false, onlyOwned: false })
+  const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', recorded: '', onlyOwned: false })
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const filtered = computed(() => filterBonds(state.catalog?.entries || [], records.value, state.operators, filters, state.owned))
   const groups = computed(() => groupBonds(filtered.value))

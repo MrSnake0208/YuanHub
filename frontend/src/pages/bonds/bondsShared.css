@@ -61,18 +61,22 @@
 .bond-find-choices legend { margin-bottom: 8px; font-size: 13px; font-weight: 700; }
 .bond-choice-options { display: flex; flex-wrap: wrap; gap: 6px; }
 .bond-choice-options button { font-size: 13px; }
-.bond-find-results { display: grid; gap: 10px; }
+.bond-results-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 13px; }
+.bond-results-toolbar > button:first-of-type { margin-left: auto; }
+.bond-state-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0; color: var(--bond-muted); font-size: 12px; }
+.bond-state-legend svg { flex: none; }
+.bond-state-legend svg + svg { margin-left: 8px; }
+.bond-state-legend svg:last-of-type { color: var(--theme-success-text, #34633c); }
 .bond-find-count { margin: 0; font-size: 13px; color: var(--bond-muted); }
 .bond-find-list { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .bond-find-pair { min-width: 0; padding: 10px 14px; }
 .bond-find-pair + .bond-find-pair { border-top: 1px solid var(--line); }
 .bond-find-conditions { min-width: 0; }
+.bond-find-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; margin-bottom: 8px; }
 .bond-find-pair h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 6px; font-size: 15px; overflow-wrap: anywhere; }
 .bond-find-pair h2 small { color: var(--bond-muted); font-size: 13px; font-weight: 400; }
-.bond-find-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 4px; font-size: 13px; }
-.bond-find-entry + .bond-find-entry { border-top: 1px solid var(--line); }
-.bond-find-weather { display: inline-flex; align-items: center; gap: 6px; }
-.bond-find-record { margin-left: auto; }
+.bond-find-entry { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bond-find-entry > .bond-effect { align-self: start; }
 .bonds-codex .bond-hint { font-size: 12px; color: var(--bond-muted); }
 .bonds-codex .bond-hint { margin: -5px 0 12px; }
 .bond-empty { padding: 24px 12px; text-align: center; }
@@ -134,13 +138,6 @@
 .bond-view-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; font-size: 13px; }
 .bond-view-options > span { margin-right: 6px; color: var(--bond-muted); }
 .bond-view-options button { padding: 5px 10px; font-size: 13px; }
-
-.bond-find-pair.has-many-weather { display: block; }
-.bond-find-pair.has-many-weather h2 { margin-bottom: 8px; }
-.bond-find-pair.has-many-weather .bond-find-conditions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; }
-.bond-find-pair.has-many-weather .bond-find-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; }
-.bond-find-pair.has-many-weather .bond-find-record { grid-column: 1 / -1; margin-left: 0; }
-.bond-find-pair.has-many-weather .bond-batch-check { grid-column: 1 / -1; }
 
 .bond-record-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .bond-record-options > span { margin-right: 6px; }

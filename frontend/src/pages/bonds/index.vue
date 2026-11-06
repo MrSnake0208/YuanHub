@@ -21,7 +21,6 @@
         </section>
         <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
           <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
-          <label class="bond-check"><input v-model="batchMode" type="checkbox" :disabled="state.busy">批量选择天气（最多 50 条）</label>
           <h3>备份迁移</h3>
           <BondExchange :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
         </section>
@@ -48,7 +47,7 @@
               <div class="bond-record-options" role="group" aria-label="收录状态"><span>收录状态</span>
                 <button v-for="option in [{ value: '', label: '全部' }, { value: 'missing', label: '未收录' }, { value: 'collected', label: '已收录' }]" :key="option.value" type="button" :disabled="!state.archive" :aria-pressed="filters.recorded === option.value" @click="filters.recorded = option.value">{{ option.label }}</button>
               </div>
-              <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned">仅显示我拥有的密探</label>
+              <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned">仅显示成员均已拥有的组合</label>
           <div class="bond-view-options" role="group" aria-label="列表展示方式">
             <span>查看方式</span>
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
@@ -58,7 +57,6 @@
             <div v-show="filtersOpen" id="bond-advanced-filters" class="bond-advanced-filters">
               <label>效果<select v-model="filters.effect"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
               <label>资料范围<select v-model="filters.status"><option value="active">当前图鉴</option><option value="">含历史资料</option><option value="retired">历史下架</option><option value="invalid">误录</option></select></label>
-              <label class="bond-check"><input v-model="filters.hideRecorded" type="checkbox" :disabled="!state.archive">隐藏已收录</label>
             </div>
           </form>
 
@@ -68,19 +66,28 @@
           <p v-else-if="state.catalogError" class="bond-error" role="alert">{{ state.catalogError }} <button type="button" @click="refresh">重试目录读取</button></p>
           <p v-else-if="!state.catalog?.entries.length" class="bond-empty">当前游戏尚无已发布羁绊资料。目录收录后会在这里显示；这不代表你的游戏进度为零。</p>
           <template v-else>
-            <div v-if="batchMode" class="bond-batch-toolbar" role="group" aria-label="批量收录"><span>已选择 {{ selected.length }} / 50 条</span><button type="button" :disabled="!writable || !selected.length || !selectedCanCollect" @click="saveSelected(true)">收录选中项</button><button type="button" :disabled="!writable || !selected.length" @click="saveSelected(false)">取消选中项收录</button><button type="button" :disabled="state.busy" @click="batchMode = false">退出批量</button></div>
-            <p v-if="!filtered.length" class="bond-empty">没有匹配的组合。请调整搜索、收录状态、行动、天气或隐藏条件。</p>
+            <div class="bond-results-toolbar">
+              <p class="bond-find-count" role="status">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
+              <p class="bond-state-legend"><Plus :size="14" aria-hidden="true" />未收录 <Check :size="14" aria-hidden="true" />已收录 · 点击天气切换</p>
+              <button v-if="hasFilters" type="button" :disabled="state.busy" @click="clearFilters">清空筛选</button>
+              <button type="button" :disabled="state.busy || !batchMode && !writable" :aria-pressed="batchMode" aria-controls="bond-batch-toolbar" @click="batchMode = !batchMode">{{ batchMode ? '退出批量' : '批量收录' }}</button>
+            </div>
+            <div v-if="batchMode" id="bond-batch-toolbar" class="bond-batch-toolbar" role="group" aria-label="批量收录"><span>已选择 {{ selected.length }} / 50 条</span><button type="button" :disabled="!writable || !selected.length || !selectedCanCollect" @click="saveSelected(true)">收录选中项</button><button type="button" :disabled="!writable || !selected.length" @click="saveSelected(false)">取消选中项收录</button></div>
+            <p v-if="!filtered.length" class="bond-empty">没有匹配的组合。请调整搜索、收录状态、行动、天气或其他筛选。</p>
             <div v-if="view === 'find'" class="bond-find-results">
-              <p v-if="filtered.length" class="bond-find-count" role="status">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜找到 {{ groups.length }} 组配对<template v-if="filtered.length !== groups.length"> · {{ filtered.length }} 个天气条目</template></p>
               <div v-if="filtered.length" class="bond-find-list">
               <section v-for="pair in groups.slice(page * 20, (page + 1) * 20)" :key="pair.key" class="bond-find-pair" :class="{ 'has-many-weather': pair.entries.length > 1 }" :aria-label="pair.members.map(operatorName).join('与')">
-                <h2>{{ pair.members.map(operatorName).join(' × ') }}<small v-if="!filters.action">{{ ACTIONS[pair.action] }}</small></h2>
-                <div class="bond-find-conditions">
-                <div v-for="entry in pair.entries" :key="entry.bond_id" class="bond-find-entry">
-                  <span v-if="!filters.weather" class="bond-find-weather"><component :is="weatherIcons[entry.weather]" :size="20" aria-hidden="true" />{{ WEATHERS[entry.weather] }}</span>
-                  <span class="bond-effect" :class="entry.effect">{{ entry.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span>
-                  <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>
-                  <button type="button" class="bond-find-record" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)"><Check v-if="recorded(entry.bond_id)" :size="14" aria-hidden="true" />{{ savingId === entry.bond_id && state.busy ? '保存中…' : available && !state.archive ? '记录未读取' : recorded(entry.bond_id) ? '已收录 · 取消' : writable && entry.status === 'active' ? '标记收录' : '未收录' }}</button>
+                <div class="bond-find-heading"><h2>{{ pair.members.map(operatorName).join(' × ') }}<small v-if="!filters.action">{{ ACTIONS[pair.action] }}</small></h2><span v-if="pairEffect(pair)" class="bond-effect" :class="pairEffect(pair)">{{ pairEffect(pair) === 'positive' ? '一拍即合' : '貌合神离' }}</span></div>
+                <div class="bond-find-conditions bond-condition-grid">
+                <div v-for="entry in pair.entries" :key="entry.bond_id" class="bond-find-entry bond-condition-wrap">
+                  <button type="button" class="bond-condition bond-find-record" :aria-busy="savingId === entry.bond_id && state.busy" :class="{ 'is-saving': savingId === entry.bond_id && state.busy, 'has-compact-state': recorded(entry.bond_id) || (writable || state.busy) && entry.status === 'active' }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
+                    <component :is="weatherIcons[entry.weather]" class="bond-weather-icon" :class="'weather-' + entry.weather" :size="24" :stroke-width="1.5" aria-hidden="true" />
+                    <component :is="savingId === entry.bond_id && state.busy ? LoaderCircle : recorded(entry.bond_id) ? Check : Plus" class="bond-mobile-state" :size="16" aria-hidden="true" />
+                    <span class="bond-condition-copy bond-find-weather">{{ WEATHERS[entry.weather] }}</span>
+                    <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>
+                    <span class="bond-condition-status">{{ savingId === entry.bond_id && state.busy ? '保存中…' : available && !state.archive ? '记录未读取' : recorded(entry.bond_id) ? '已收录' : '未收录' }}</span>
+                  </button>
+                  <span v-if="!pairEffect(pair)" class="bond-effect" :class="entry.effect">{{ entry.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span>
                   <label v-if="batchMode" class="bond-batch-check"><input type="checkbox" :checked="selected.includes(entry.bond_id)" :disabled="!writable || !selected.includes(entry.bond_id) && selected.length >= 50" :aria-label="'批量选择' + entryLabel(entry)" @change="select(entry.bond_id)">选择此天气</label>
                 </div>
                 </div>
@@ -103,7 +110,7 @@
                 </summary>
                 <p v-if="available && state.archive && state.catalog && !state.loading && !state.catalogError" class="bond-mobile-hint">点选天气即可收录，再点取消</p>
                 <div class="bond-agent-pairs">
-                  <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
+                  <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :class="{ 'has-one-action': !!pairAction(pair) }" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
                     <div class="bond-pair-heading"><span>与</span><h3>{{ pair.members.map(operatorName).join('、') }}</h3><span class="bond-effect" :class="pair.effect">{{ pair.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span><span v-if="pairAction(pair)" class="bond-pair-action">行动：{{ ACTIONS[pairAction(pair)] }}</span></div>
                     <div v-for="actionGroup in groupBonds(pair.entries)" :key="actionGroup.key" class="bond-action-group">
                       <h4 v-if="!pairAction(pair)" class="bond-action-heading">行动：{{ ACTIONS[actionGroup.action] }}</h4>
@@ -157,6 +164,8 @@ const view = ref('codex'), settingsOpen = ref(false), filtersOpen = ref(false), 
 const weatherIcons = { sunny: Sun, rain: CloudRain, fog: CloudFog, wind: Wind, light_snow: CloudSnow, heavy_snow: Snowflake, hurricane: Tornado, thunder: CloudLightning }
 watch(view, () => { page.value = 0; selected.value = [] })
 const resultGroupCount = computed(() => view.value === 'find' ? groups.value.length : operatorGroups.value.length)
+const hasFilters = computed(() => filters.query.trim() || filters.weather || filters.action || filters.effect || filters.status !== 'active' || filters.recorded || filters.onlyOwned)
+function clearFilters() { Object.assign(filters, { query: '', weather: '', action: '', effect: '', status: 'active', recorded: '', onlyOwned: false }) }
 watch(batchMode, () => { selected.value = [] })
 const activeTotal = computed(() => state.catalog?.entries.filter(e => e.status === 'active').length || 0)
 const collectionCount = computed(() => available.value && summary.value ? summary.value.active_triggered_count : null)
@@ -171,7 +180,8 @@ const operatorName = id => operatorFor(id).name || id
 const selectedCanCollect = computed(() => selected.value.every(id => state.catalog?.entries.some(entry => entry.bond_id === id && entry.status === 'active')))
 // 同一配对可能包含多种行动，只合并完全一致的展示。
 const pairAction = pair => pair.entries.length && pair.entries.every(entry => entry.action === pair.entries[0].action) ? pair.entries[0].action : ''
-const entryLabel = entry => entry.members.map(operatorName).join('、') + '，' + WEATHERS[entry.weather] + '，' + ACTIONS[entry.action] + (recorded(entry.bond_id) ? '，已收录，点击取消' : '，未收录，点击收录')
+const pairEffect = pair => pair.entries.length && pair.entries.every(entry => entry.effect === pair.entries[0].effect) ? pair.entries[0].effect : ''
+const entryLabel = entry => entry.members.map(operatorName).join('、') + '，' + WEATHERS[entry.weather] + '，' + ACTIONS[entry.action] + '，' + (entry.effect === 'positive' ? '一拍即合' : '貌合神离') + (recorded(entry.bond_id) ? '，已收录，点击取消' : '，未收录，点击收录')
 async function toggleEntry(entry) {
   savingId.value = entry.bond_id
   await save([{ bond_id: entry.bond_id, triggered: !recorded(entry.bond_id) }])

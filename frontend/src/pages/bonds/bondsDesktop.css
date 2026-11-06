@@ -6,26 +6,35 @@
 }
 @media (min-width: 768px) {
   .bonds-codex .compact-tool-header > .wrap { padding-inline: 32px; }
+  .bonds-codex .wrap { max-width: 1600px; }
   .bonds-codex .bond-condition-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .bonds-codex .bond-agent-pairs { container-type: inline-size; }
-  @container (min-width: 520px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  @container (min-width: 1040px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  .bonds-codex .bond-agent-pairs { container: bond-agents / inline-size; }
+  .bond-find-list { container: bond-pairs / inline-size; }
+  @container bond-agents (min-width: 520px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @container bond-agents (min-width: 1040px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @container bond-pairs (min-width: 520px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @container bond-pairs (min-width: 1040px) { .bonds-codex .bond-condition-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @container bond-agents (min-width: 1320px) {
+    .bond-pair.has-one-action { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); align-items: center; gap: 14px; }
+    .bond-pair.has-one-action .bond-pair-heading { gap: 8px; margin-bottom: 0; }
+  }
+  @container bond-pairs (min-width: 1320px) {
+    .bond-find-pair { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); align-items: center; gap: 14px; }
+    .bond-find-heading { margin-bottom: 0; }
+  }
+  .bonds-codex .bond-summary { padding-block: 8px; }
+  .bonds-codex .bond-summary strong { margin-block: 3px 6px; }
+  .bond-pair { padding-block: 10px; }
+  .bonds-codex .bond-condition { grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; min-height: 48px; padding: 8px; gap: 5px; }
+  .bond-condition .bond-weather-icon { width: 24px; height: 24px; grid-column: 1; grid-row: 1; }
+  .bond-condition-copy { grid-column: 2; grid-row: 1; }
+  .bond-condition-copy, .bond-condition-copy > span { white-space: nowrap; }
+  .has-compact-state .bond-mobile-state { display: block; grid-column: 3; grid-row: 1; }
+  .bonds-codex .has-compact-state .bond-condition-status { display: none; }
+  .bond-condition[aria-pressed=true] .bond-mobile-state { color: var(--theme-success-text, #34633c); }
 }
 @media (min-width: 768px) and (max-width: 1100px) {
   .bonds-codex .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; }
-}
-
-@media (min-width: 768px) {
-  .bond-find-results { container: bond-results / inline-size; }
-  .bond-find-pair { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 14px; padding-block: 8px; }
-  .bond-find-pair h2 { min-width: 0; max-width: 100%; margin: 0; padding-block: 11px; }
-  .bond-find-conditions { flex: 1 1 190px; }
-  @container bond-results (min-width: 1000px) {
-    .bond-find-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .bond-find-pair + .bond-find-pair { border-top: 0; }
-    .bond-find-pair:nth-child(n + 3) { border-top: 1px solid var(--line); }
-    .bond-find-pair:nth-child(even) { border-left: 1px solid var(--line); }
-  }
 }
 
 @media (min-width: 768px) {
