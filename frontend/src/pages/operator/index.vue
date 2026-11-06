@@ -6684,10 +6684,14 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
         ? getMaxEliteForLevel(cardGrowthValue(entry, "level"))
         : operatorHuajiMax(entry);
   const complete = currentValue >= max && !(field === "star" && isQuickAwakening(entry));
+  const levelLimited = complete && field === "elite" && max < OPERATOR_ELITE_MAX;
+  const awakening = field === "star" && isQuickAwakening(entry);
   const fieldLabel = field === "level" ? "等级" : field === "elite" ? "修为" : "化极";
   const label = complete
-    ? "已满级"
-    : growthActionLabel(entry, field, step, field === "star" && isQuickAwakening(entry) ? "觉醒" : readyLabel);
+    ? (levelLimited ? "等级受限" : "已满级")
+    : awakening
+      ? (growthMaterialsReady(entry, field, step) ? "觉醒" : "查看觉醒材料")
+      : growthActionLabel(entry, field, step, readyLabel);
   return {
     visible: true,
     disabled: cardSubmitStates.value[entry.id] === "submitting" || complete,
@@ -6695,8 +6699,8 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
     icon: complete ? "check" : growthMaterialsReady(entry, field, step) ? "up" : "alert",
     label: label,
     title: complete
-      ? fieldLabel + "已满级"
-      : "在养成规划中查看" + fieldLabel + "快捷提升",
+      ? (levelLimited ? "已达当前等级修为上限，先提升等级" : fieldLabel + "已满级")
+      : awakening ? "查看觉醒材料并确认扣除库存" : "在养成规划中查看" + fieldLabel + "快捷提升",
   };
 }
 

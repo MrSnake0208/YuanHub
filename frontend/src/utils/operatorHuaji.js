@@ -62,7 +62,7 @@ export function operatorHuajiAction(entry) {
   if (value.stage < 1 || value.stage > operatorHuajiMax(entry)) return { kind: 'unknown', label: '化极待复核', disabled: true }
   if (value.stage < operatorHuajiMax(entry)) return { kind: 'upgrade', label: '提升至下一节点', disabled: false }
   if (operatorAwakeningSupported(entry) && value.awakened !== true) return { kind: 'awakening', label: '记录已觉醒', disabled: false }
-  return { kind: 'complete', label: operatorAwakeningSupported(entry) ? '养成已完成' : '化极已满阶', disabled: true }
+  return { kind: 'complete', label: operatorAwakeningSupported(entry) ? '已觉醒' : '化极已满阶', disabled: true }
 }
 
 export function operatorHuajiComplete(entry) {

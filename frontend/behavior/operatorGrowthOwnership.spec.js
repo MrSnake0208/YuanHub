@@ -479,16 +479,17 @@ it.each([
   await flushPromises()
   const card = wrapper.get('.growth-card')
   const note = card.get('.heart-progress-note').text()
-  expect(card.get('.growth-progress-status').text()).toBe('目标进度')
+  expect(card.get('.growth-progress-status').text()).toBe('练度参考')
   if (unknown) {
     expect(note).toBe('化极需求待确认，暂无法完整估算')
     expect(card.find('.heart-gap-number').exists()).toBe(false)
   } else {
     expect(note).toContain('心纸')
     expect(note).not.toContain('待确认')
-    const gap = Number(card.get('.heart-gap-number').text())
-    if (starLevel === 7) expect(gap).toBe(0)
-    else expect(gap).toBeGreaterThan(0)
+    if (starLevel === 7) {
+      expect(note).toBe('当前目标无需心纸')
+      expect(card.find('.heart-gap-number').exists()).toBe(false)
+    } else expect(Number(card.get('.heart-gap-number').text())).toBeGreaterThan(0)
   }
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()

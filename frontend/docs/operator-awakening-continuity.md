@@ -38,7 +38,7 @@
 | 普通已拥有，stage 1..24 | 下一化极节点；24 的下一步是五星 | 沿用升级 preview/execute 与库存检查，最大 25 |
 | 普通 stage25，awakened=false | 记录已觉醒 | 确认后仅 PATCH `huaji.awakened=true`，不扣库存 |
 | 普通 stage25，awakened=null | 确认觉醒状态 | 明确选择 true/false；取消保留 null |
-| 普通 stage25，awakened=true | 养成已完成 | 禁止重复记录 |
+| 普通 stage25，awakened=true | 已觉醒 | 禁止重复记录 |
 | 旧31、stage=null、awakened=true | 已觉醒（历史确认）／化极待确认 | 不猜 25；编辑器可单独补录阶段并保留 true |
 | 隐密 rarity=3 | 终点 24；异常历史显示待复核 | 不提供普通五星/觉醒入口，不改写历史 |
 | SP / movie | 保留自身稀疏化极与觉醒事实 | 无普通快捷化极/觉醒；不冒用普通材料表 |

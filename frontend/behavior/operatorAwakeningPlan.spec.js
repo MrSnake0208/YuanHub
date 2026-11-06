@@ -6,6 +6,8 @@ import * as plannerApi from '../src/api/operatorPlanner.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../src/api/operator.js'
 import { getCurrent, listRecords } from '../src/api/inventory.js'
 import { PLANNER_RULES } from '../src/data/cultivationPlanner.js'
+import { installViewport } from '../test-support/viewport.js'
+import { calculateXiuweiRequirements } from '../src/data/operatorRequirements.js'
 
 vi.mock('../src/api/operatorPlanner.js', async importOriginal => {
   const actual = await importOriginal(); return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
@@ -44,6 +46,60 @@ async function save(wrapper) {
   await flushPromises()
 }
 
+it('多密探紧凑列表保留独立目标和完整材料，切换宽度不重建输入', async () => {
+  const viewport = installViewport(1440)
+  const catalogEntries = ['陈登', '阿蝉', '史子眇', '夏侯惇'].map((name, index) => ({ id: index ? 'op' + index : 'op', name, rarity: 4, prof: '风', subProf: '神纪' }))
+  const ids = catalogEntries.map(row => row.id)
+  const plan = workspace()
+  plan.plans[0].operator_ids = ids
+  plan.plans[0].targets = Object.fromEntries(ids.map(id => [id, target(huaji())]))
+  plannerApi.getTrainingWorkspace.mockResolvedValue(plan)
+  const wrapper = await render(huaji(), {}, { catalogEntries,
+    currentEntries: ids.map(id => ({ id, level: 90, elite: 15, starLevel: 25, huaji: huaji() })),
+  })
+  expect(wrapper.get('.roster-count').text()).toBe('4 位密探')
+  const rows = wrapper.findAll('.growth-card')
+  expect(rows).toHaveLength(4)
+  expect(rows.map(row => row.get('h3').text())).toEqual(catalogEntries.map(row => row.name))
+  const input = rows[0].get('[aria-label="陈登的目标等级"]')
+  await input.setValue('95'); await flushPromises()
+  const targets = plannerApi.putTrainingWorkspace.mock.lastCall[1].plans[0].targets
+  expect(targets.op.level).toBe(95)
+  expect(targets.op1.level).toBe(100)
+  const details = rows[0].get('.growth-row-materials')
+  details.element.open = true
+  await details.trigger('toggle')
+  expect(details.get('.experience-chip').text()).toContain('缺')
+  viewport.resize(390); await flushPromises()
+  expect(rows[0].get('[aria-label="陈登的目标等级"]').element).toBe(input.element)
+  expect(input.element.value).toBe('95')
+  expect(details.element.open).toBe(true)
+  expect(rows[1].get('[aria-label="阿蝉的目标等级"]').element.value).toBe('100')
+})
+
+it('库存读取未完成时不把材料缺口当作已备齐', async () => {
+  let resolveInventory
+  getCurrent.mockReturnValue(new Promise(resolve => { resolveInventory = resolve }))
+  const wrapper = await render(huaji(), {}, { currentEntries: [{ id: 'op', level: 100, elite: 15, starLevel: 25, huaji: huaji() }] })
+  expect(wrapper.get('.growth-row-actions').text()).toContain('库存同步中')
+  expect(wrapper.get('.growth-row-actions').text()).not.toContain('材料已备齐')
+  resolveInventory([]); await flushPromises()
+  expect(wrapper.get('.growth-row-materials').text()).toContain('查看缺口')
+})
+
+it('材料备齐独立于实际目标完成，零缺口不显示空展开入口', async () => {
+  const items = calculateXiuweiRequirements(16, 17, 'fh').items
+  getCurrent.mockImplementation(async ({ entityType }) => entityType === 'item'
+    ? [{ entity_type: 'item', entries: Object.fromEntries(Object.entries(items).map(([id, count]) => [id, { count }])) }]
+    : [])
+  const wrapper = await render(huaji(25, true), {}, { currentEntries: [{ id: 'op', level: 100, elite: 16, starLevel: 25, huaji: huaji(25, true) }] })
+  expect(wrapper.get('.growth-card').classes()).not.toContain('complete')
+  expect(wrapper.get('.growth-row-actions').text()).toBe('当前目标材料已备齐')
+  expect(wrapper.find('.growth-row-materials').exists()).toBe(false)
+  expect(wrapper.get('.heart-progress-note').text()).toBe('当前目标无需心纸')
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+})
+
 it.each(['custom', 'favorites'])('%s连续目标在保存前不写云端，保存stage25+true并可回读', async source => {
   plannerApi.getTrainingWorkspace.mockResolvedValue(workspace(source))
   const wrapper = await render()
@@ -81,9 +137,10 @@ it.each([null, false, true])('stage25+%s只有要求觉醒且已确认时显示�
   expect(wrapper.get('.growth-card').classes().includes('complete')).toBe(awakened === true)
   expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain(awakened === true ? '100%' : '96%')
   const button = wrapper.get('[aria-label*="快捷提升化极"]')
-  expect(button.text()).toBe(awakened === true ? '养成已完成' : '记录已觉醒')
+  expect(button.text()).toBe(awakened === true ? '已觉醒' : '记录已觉醒')
   expect(button.find('svg').exists()).toBe(true)
   expect(button.element.disabled).toBe(awakened === true)
+  expect(button.classes().includes('is-complete')).toBe(awakened === true)
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(putOperatorGrowthTarget).not.toHaveBeenCalled()
   if (awakened !== true) { await button.trigger('click'); expect(quickUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: 'op' }), 'star', 1) }

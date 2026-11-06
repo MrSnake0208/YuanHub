@@ -100,12 +100,45 @@ afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear
 function renderPage(options = {}, stubs = {}) {
   const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true, RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
-      OperatorShareManager: true, OperatorGrowthTracker: { name: 'OperatorGrowthTracker', props: ['currentEntries'], template: '<div />' }, StarLoadoutEditor: true, StarLoadoutModal: true, ...stubs },
+      OperatorShareManager: true, OperatorGrowthTracker: { name: 'OperatorGrowthTracker', props: ['currentEntries', 'quickUpgradeState'], template: '<div />' }, StarLoadoutEditor: true, StarLoadoutModal: true, ...stubs },
     directives: { reveal: () => {} },
   } })
   wrappers.add(wrapper)
   return wrapper
 }
+it.each([
+  [90, 15, 'elite', '等级受限', true],
+  [70, 11, 'elite', '等级受限', true],
+  [100, 17, 'elite', '已满级', true],
+  [100, 17, 'level', '已满级', true],
+  [100, 15, 'elite', '查看材料缺口', false],
+])('规划快捷修为和等级区分受限与满级：等级%s、修为%s、%s', async (level, elite, field, label, disabled) => {
+  navigation.query = { tab: 'tracking' }
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level, elite, star_level: 25 } } }])
+  const wrapper = renderPage(); await flushPromises()
+  const tracker = wrapper.getComponent({ name: 'OperatorGrowthTracker' })
+  const state = tracker.props('quickUpgradeState')({ id: 'op' }, field, 1, '提升')
+  expect(state).toMatchObject({ visible: true, label, disabled })
+  if (label === '等级受限') expect(state.title).toBe('已达当前等级修为上限，先提升等级')
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})
+
+it.each([false, true])('规划快捷觉醒材料齐备=%s时使用具名操作', async ready => {
+  navigation.query = { tab: 'tracking' }
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [awakeningCatalog] })
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: awakeningCurrent() } }])
+  getInventoryCurrent.mockImplementation(async ({ entityType }) => entityType === 'agent'
+    ? [{ entity_type: 'agent', entries: { op: { count: ready ? 100 : 0 } } }]
+    : [{ entity_type: 'item', entries: { zhuangjinboli: { count: ready ? 1 : 0 } } }])
+  const wrapper = renderPage(); await flushPromises()
+  const tracker = wrapper.getComponent({ name: 'OperatorGrowthTracker' })
+  expect(tracker.props('quickUpgradeState')({ id: 'op' }, 'star', 1, '提升至下一节点')).toMatchObject({
+    visible: true, disabled: false, label: ready ? '觉醒' : '查看觉醒材料',
+    title: '查看觉醒材料并确认扣除库存', icon: ready ? 'up' : 'alert',
+  })
+  expect(operatorApi.executeOperatorUpgrade).not.toHaveBeenCalled()
+})
+
 async function openEditor(existing, catalog = operator, stubs = {}, options = {}) {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [catalog] })
   operatorApi.getOperatorCurrent.mockResolvedValue(existing ? [{ entries: { op: existing } }] : [])
