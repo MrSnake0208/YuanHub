@@ -91,3 +91,36 @@ curl --fail-with-body -H 'Authorization: Bearer REPLACE_WITH_USER_JWT' \
 觉醒是五星后的可选阶段。面板请求中 `huaji.awakened` 省略、null 或 false 均按未觉醒计算；只有 true 叠加觉醒加成。前端仅在五星显示可选开关，默认关闭，不要求用户确认未觉醒。普通 stage25 和 SP 的第5星对应同一前置阶段。
 
 已确认觉醒（含旧 starLevel31）的有效阶段为五星；前端降星会清除觉醒，后端拒绝明确的低星+觉醒组合。PATCH 省略字段仍表示保留已有记录，不能据此清除已经保存的觉醒。此次不需要重导私有规则或迁移用户数据库。
+
+
+## 独立作业匹配连接（多子账号，只读）
+
+个人中心「应用与数据连接 → MaaYuan 作业匹配」卡片可添加独立连接；已有连接可直接复制连接码、访问作业站或停止连接。复制失败时提供手动复制，首次加载失败时可重新加载。每个用户只有一个有效连接码，重复创建返回原码；历史多个连接仅保留最早创建的码有效，其余新码失效，停止连接会一并删除历史重复记录，防止旧码重新生效。并发首次创建通过固定用户记录 ID 保证唯一。一个连接授权本人现在及以后创建的全部游戏子账号；与原有绑定单个账号的 OpenAPI Token 分开存储和鉴权，不能用于写入接口，也不能扩权。入口支持 `/user/profile?connect=operator-match`。
+
+管理接口使用站内 JWT，所有响应 `Cache-Control: no-store`：
+
+| 方法 / 路径 | 结果 |
+| --- | --- |
+| `POST /user/operator-match/connections` | 创建，返回 `connection_id`、`token`（`ymatch_` 前缀） |
+| `GET /user/operator-match/connections` | 本人的连接列表，仅 `connection_id`、`created_at` |
+| `GET /user/operator-match/connections/{id}/secret` | 主动获取本人连接码 |
+| `DELETE /user/operator-match/connections/{id}` | 立即撤销，不删除账号或档案 |
+
+外部调用使用 `Authorization: Bearer <作业匹配连接码>`，沿用 `ApiResult` / snake_case：
+
+| 方法 / 路径 | data |
+| --- | --- |
+| `GET /open-api/operator-match/accounts` | `{connection_id, accounts: [{id, name, game}]}` |
+| `GET /open-api/operator-match/accounts/{accountId}/roster` | `{version: 1, connection_id, account, updated_at, operators}` |
+
+每次请求重新校验连接与 Beta 资格，档案读取额外校验 `(userId, accountId)`。不保存「当前所选账号」，新增子账号无需换连接码；已删除、他人的账号一律 404。原有单账号 Token 不接受为匹配连接。
+
+`operators` 按密探稳定 ID 索引，每项包含：`owned`、`level`、`elite`、`stars`、`panel`、`discs`（各套实际命盘的名称数组）、`main_stars`、`assist_stars`（当前佩戴名称，保留重复）。
+
+- 化极由 YuanHub 现有 canonical 规则解析普通/SP/旧 31 等记录，再投影整星；未知保留 null。等级未知不当 0，已记录的修为 0 保留。
+- `OperatorService.current` 合并 `*` / `universal` 和游戏专属记录，返回账号的实际游戏。命盘只取实际 `discs`，不读取目标配置，不拼盘。
+- 星石从当前背包实例与佩戴槽位解析，仅 generation 一致时投影；不导出完整背包或目标。缺失佩戴无法证明满足要求。
+- `panel` 返回 `status/attack/hp/reason`；只有持有 `OPERATOR_PANEL_USE` 权限且现有计算服务返回 `calculated` 才有数值。缺规则、缺输入或无权限不回退为零，也不使用可能过期的扫描/手动面板，不导出计算系数。
+- 撤销阻止后续服务器读取，不能远程抹除接入方已缓存的副本。作业站提供「断开并清除本地档案」。
+
+部署顺序：YuanHub 后端 → Share 后端 → 两站前端。生产默认上游 `https://api-hub.maayuan.com`；Share 服务端受控配置 `yuanhub.matcher.base-url` 可指定本地开发上游，客户端不能指定目标 URL。YuanHub 前端 `VITE_SHARE_URL` 仅控制打开作业站的链接。

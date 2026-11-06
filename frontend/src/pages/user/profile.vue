@@ -335,6 +335,12 @@
               <ul><li v-for="(failure, index) in recentFailures" :key="index">{{ failure }}</li></ul>
             </details>
 
+            <OperatorMatchConnection
+              :key="auth.userInfo?.id || 'guest'"
+              :user-id="auth.userInfo?.id"
+              :enabled="beta.canUseBetaFeatures"
+            />
+
             <section
               class="connections-section"
               aria-labelledby="connections-title"
@@ -580,6 +586,7 @@
 </template>
 
 <script setup>
+import OperatorMatchConnection from "../../components/OperatorMatchConnection.vue";
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useOnboardingStore } from '../../stores/onboarding.js'
 import { recordMaaYuanAction, refreshTutorialBusiness, tutorialBusiness } from '../../utils/onboardingTour.js'
