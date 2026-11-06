@@ -7,6 +7,7 @@ import { reservePlanRequirements } from '../src/data/operatorReservePlans.js'
 import OperatorGrowthTracker from '../src/components/operator/OperatorGrowthTracker.vue'
 import * as plannerApi from '../src/api/operatorPlanner.js'
 import { auth } from '../src/store/auth.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -364,7 +365,8 @@ it('管理员撤销储备权限后卸载储备但保留培养规划', async () =
 })
 
 
-it('储备独立工作区返回和重开保留草稿及组件，切换不保存，退出恢复入口焦点', async () => {
+it.each([1440, 390])('储备独立工作区返回和重开保留草稿及组件，切换不保存，退出恢复入口焦点（%ipx）', async width => {
+  installViewport(width)
   const original = HTMLElement.prototype.scrollIntoView
   HTMLElement.prototype.scrollIntoView = vi.fn()
   try {
@@ -378,7 +380,7 @@ it('储备独立工作区返回和重开保留草稿及组件，切换不保存�
     await input(reserve, 'target-elite').setValue('16')
     await button(wrapper, '返回培养清单').trigger('click'); await flushPromises()
     expect(wrapper.get('#planner-reserve-workspace').isVisible()).toBe(false)
-    expect(document.activeElement).toBe(wrapper.get('.planner-reserve-entry').element)
+    expect(document.activeElement).toBe(wrapper.get(width <= 900 ? '.planner-tools-trigger' : '.planner-reserve-entry').element)
     await wrapper.get('.planner-reserve-entry').trigger('click'); await flushPromises()
     expect(wrapper.getComponent(OperatorReserveWorkspace).vm.$).toBe(instance)
     expect(input(reserve, 'target-elite').element.value).toBe('16')

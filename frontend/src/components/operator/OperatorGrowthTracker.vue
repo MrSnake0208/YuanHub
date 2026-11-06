@@ -2,16 +2,19 @@
   <section class="growth-tracker" :class="{ 'planner-expanded': plannerOpen }" aria-labelledby="growth-tracker-title">
     <header class="planner-heading">
       <div>
-        <h2 id="growth-tracker-title">培养计划 · 体力规划</h2>
+        <h2 id="growth-tracker-title"><span class="planner-desktop-title">培养计划 · 体力规划</span><span class="planner-mobile-only">养成规划</span></h2>
         <p>按材料缺口，安排每日体力。</p>
       </div>
-      <div class="planner-heading-actions">
-        <button v-if="isLoggedIn && accountId" type="button" class="status-action secondary planner-capacity-entry" aria-haspopup="dialog" @click="capacityOpen = true"><Calculator :size="16" aria-hidden="true" />修为人数试算</button>
+      <div class="planner-heading-actions" @focusout="!$event.currentTarget.contains($event.relatedTarget) && (plannerToolsOpen = false)" @keydown.esc="closePlannerTools">
+        <button ref="plannerToolsTrigger" type="button" class="planner-tools-trigger planner-mobile-only" :aria-expanded="plannerToolsOpen" aria-controls="planner-tools-actions" @click="plannerToolsOpen = !plannerToolsOpen">工具<ChevronDown :size="15" aria-hidden="true" /></button>
+        <div id="planner-tools-actions" class="planner-tools-actions" :class="{ 'is-open': plannerToolsOpen }" @click="plannerToolsOpen = false">
+        <button v-if="isLoggedIn && accountId" type="button" class="status-action secondary planner-capacity-entry" aria-haspopup="dialog" @click="openCapacity"><Calculator :size="16" aria-hidden="true" />修为人数试算</button>
         <button v-if="canUseReserve && accountId && !reserveOpen" ref="reserveEntryRef" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace">未来储备</button>
         <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
           <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
           <span>{{ loading ? '同步中' : '刷新库存' }}</span>
         </button>
+        </div>
       </div>
     </header>
 
@@ -58,7 +61,7 @@
         <div class="cloud-actions"><button v-if="!migration.request && !migration.localError" type="button" :disabled="targetLoading || migrationBusy" @click="prepareMigration">预览导入结果</button><button v-else-if="migration.request" type="button" :disabled="migrationBusy" @click="importLocal">{{ migrationBusy ? '正在导入…' : migration.resume ? '重试本次导入' : '确认导入' }}</button><button v-if="migration.conflict" type="button" :disabled="migrationBusy" @click="compareMigrationAgain">重新比较本机与云端</button><button type="button" :disabled="migrationBusy" @click="keepCloud">使用云端，保留本机备份</button></div>
       </section>
       <fieldset class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
-      <section class="planner-status" aria-label="培养计划状态">
+      <section ref="plannerRosterRef" class="planner-status" tabindex="-1" aria-label="培养计划状态">
         <div class="status-main">
           <div class="status-title">
             <span class="section-kicker">当前培养清单</span>
@@ -91,14 +94,15 @@
         <div v-if="activePlan" class="status-metrics" role="group" aria-label="培养进度概览">
           <div class="status-metric status-metric-primary"><span>预计还需</span><strong :class="{ 'metric-state': loading || Boolean(error) || hasUnknownRequirements || scheduleDifferences.goalsChanged || scheduleTiming.remainingDays == null || scheduleTiming.remainingDays === 0 }">{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
           <div class="status-metric"><span>刷取材料备齐度</span><strong v-if="!materialProgressStatus">{{ plannerProgress }}<small>%</small></strong><strong v-else class="metric-state">{{ materialProgressStatus }}</strong><div v-if="!materialProgressStatus" class="material-readiness-track" aria-hidden="true"><i :style="{ width: plannerProgress + '%' }"></i></div></div>
-          <div class="status-metric"><span>清单心纸库存</span><strong v-if="inventoryReady && !loading && !error">{{ formatNumber(totalHeartStock) }}<small> 张</small></strong><strong v-else class="metric-state">{{ loading ? '同步中' : '库存未同步' }}</strong></div>
-          <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
+          <div class="status-metric status-metric-heart"><span>清单心纸库存</span><strong v-if="inventoryReady && !loading && !error">{{ formatNumber(totalHeartStock) }}<small> 张</small></strong><strong v-else class="metric-state">{{ loading ? '同步中' : '库存未同步' }}</strong></div>
+          <div class="status-metric status-metric-balance"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
         </div>
         <p v-if="loading" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
         <div v-if="activePlan" class="roster-heading">
           <h3 class="roster-title">养成清单</h3>
           <span class="roster-count">{{ planRows.length }} 位密探</span>
           <p class="roster-help">当前 → 目标</p>
+          <button class="planner-refresh planner-mobile-only" type="button" :disabled="loading || !accountId" aria-label="刷新当前库存快照" @click="refreshSnapshot()"><RefreshCw :size="15" :class="{ spin: loading }" aria-hidden="true" />{{ loading ? '同步中' : '刷新库存' }}</button>
         </div>
         <div v-if="activePlan" class="status-roster">
           <div v-if="planRows.length" class="growth-roster-columns" aria-hidden="true">
@@ -118,7 +122,7 @@
                     <p><b>{{ row.elite }}</b><template v-if="row.elite < targetFor(row).elite"><span>→</span><span>{{ targetFor(row).elite }}</span></template></p>
                     <div class="growth-track mint" aria-hidden="true"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
                   </div>
-                  <div class="growth-overview-stat">
+                  <div class="growth-overview-stat growth-overview-huaji">
                     <span class="growth-overview-label">化极</span>
                     <p class="growth-huaji-values"><b>{{ currentStarLabel(row) }}</b><span v-if="growthHuajiProgress(row, targetFor(row)) < 100" class="growth-huaji-target">→ {{ targetStarLabel(row) }}</span></p>
                     <div class="growth-track rose" aria-hidden="true"><i :style="{ width: growthHuajiProgress(row, targetFor(row)) + '%' }"></i></div>
@@ -212,7 +216,9 @@
             <p>此日程暂不支持交给 Maa 自动执行。</p>
           </div>
           <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display', true)"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
+          <button v-else type="button" class="workspace-return planner-mobile-only" @click="plannerRosterRef?.focus({ preventScroll: true }); plannerRosterRef?.scrollIntoView({ block: 'start' })">返回清单<ChevronUp :size="15" aria-hidden="true" /></button>
         </div>
+        <div v-if="activePlan && viewMode === 'display'" class="planner-mobile-day-balance planner-mobile-only"><span>{{ selectedDate }} · 体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
 
         <div class="workspace-feedback">
           <div class="cloud-status" role="status" aria-live="polite">
@@ -703,6 +709,20 @@ watch(() => [props.accountId, props.game, workspace.value.activePlanId], () => {
 const plannerOpen = ref(true)
 const reserveOpen = ref(false)
 const reserveEntryRef = ref(null)
+const plannerToolsOpen = ref(false)
+const plannerToolsTrigger = ref(null)
+const plannerRosterRef = ref(null)
+function openCapacity() {
+  if (plannerToolsOpen.value) plannerToolsTrigger.value?.focus({ preventScroll: true })
+  capacityOpen.value = true
+}
+function closePlannerTools(event) {
+  if (!plannerToolsOpen.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  plannerToolsOpen.value = false
+  plannerToolsTrigger.value?.focus()
+}
 const reserveWorkspaceRef = ref(null)
 function openReserveWorkspace() {
   reserveOpen.value = true
@@ -710,7 +730,7 @@ function openReserveWorkspace() {
 }
 function closeReserveWorkspace() {
   reserveOpen.value = false
-  nextTick(() => reserveEntryRef.value?.focus())
+  nextTick(() => (window.matchMedia?.('(max-width: 900px)').matches ? plannerToolsTrigger.value : reserveEntryRef.value)?.focus())
 }
 watch(canUseReserve, allowed => { if (!allowed) reserveOpen.value = false })
 const plannerSteps = [{ id: 'conditions', label: '规划条件' }, { id: 'comparison', label: '方案对比' }, { id: 'daily', label: '编辑每日' }]
@@ -2079,6 +2099,8 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 .custom-rule-list > span { font-weight: 700; }
 .spend-channel-grid .common-spend-label { white-space: normal; overflow-wrap: anywhere; }
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.growth-tracker .planner-mobile-only { display: none; }
+.planner-tools-actions { display: contents; }
 .growth-tracker { border: 1px solid var(--line); border-radius: 22px; background: var(--surface); color: var(--ink); }
 .planner-cloud-fields { border: 0; }
 .cloud-status { color: var(--ink-60); }
