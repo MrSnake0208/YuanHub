@@ -1,5 +1,5 @@
 <template>
-  <section class="match-connection" aria-labelledby="match-title" :aria-busy="busy">
+  <section class="match-connection" :class="{ 'is-empty': loaded && !connections.length }" :data-mobile-view="mobileView" aria-labelledby="match-title" :aria-busy="busy">
     <div class="match-card">
       <div class="match-seal" aria-hidden="true"><img src="/icons/maa.png" alt="" /></div>
       <div class="match-copy">
@@ -7,12 +7,13 @@
           <h3 id="match-title">MaaYuan <span class="match-subtitle">作业匹配</span></h3>
           <span class="match-brand">联合共建</span>
         </div>
-        <p>一个连接码，切换本人的游戏账号，查找适合阵容与练度的作业。</p>
+        <p class="match-account-range">账号范围：本人全部游戏账号</p>
+        <p class="match-description">一个连接码，切换本人的游戏账号，查找适合阵容与练度的作业。</p>
         <div class="match-capabilities" aria-label="作业匹配的数据能力">
           <span class="read-capability"><ShieldCheck :size="15" aria-hidden="true" />读取密探养成</span>
           <span class="read-only"><LockKeyhole :size="15" aria-hidden="true" />只读授权</span>
         </div>
-        <p>与 MaaYuan 同步连接相互独立，停止连接不会删除游戏账号或档案。</p>
+        <p class="match-note">与 MaaYuan 同步连接相互独立，停止连接不会删除游戏账号或档案。</p>
       </div>
       <div class="match-controls">
         <template v-if="connections.length">
@@ -50,7 +51,7 @@ import { createMatchConnection, getMatchSecret, listMatchConnections, revokeMatc
 import { dialog } from '../utils/dialog.js'
 
 const shareUrl = import.meta.env.VITE_SHARE_URL || 'https://share.maayuan.com/'
-const props = defineProps({ userId: String, enabled: Boolean })
+const props = defineProps({ userId: String, enabled: Boolean, mobileView: { type: String, default: 'add' } })
 const connections = ref([])
 const loaded = ref(false)
 const busy = ref(false)
@@ -148,6 +149,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .match-secret { margin-top: 16px; padding: 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
 input { display: block; box-sizing: border-box; width: 100%; min-width: 0; margin: 8px 0 12px; padding: 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .error { color: var(--theme-danger-text, var(--rouge)); }
+.match-account-range { display: none; }
 @container (min-width: 580px) {
   .match-card { grid-template-columns: 90px minmax(0, 1fr); gap: 22px; }
   .match-seal { width: 90px; height: 90px; border-radius: 28px 28px 28px 10px; }
@@ -159,5 +161,32 @@ input { display: block; box-sizing: border-box; width: 100%; min-width: 0; margi
 @container (min-width: 860px) {
   .match-card { grid-template-columns: 96px minmax(0, 1fr) auto; }
   .match-controls { grid-column: 3; max-width: 320px; padding-top: 32px; }
+}
+@media (max-width: 767px) {
+  .match-connection { margin-top: 18px; padding: 14px 12px; border-radius: 14px; background: var(--surface); }
+  .match-card { grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 10px; }
+  .match-seal { width: 40px; height: 40px; border-radius: 12px; }
+  .match-seal img { width: 34px; height: 34px; }
+  .match-copy { display: contents; }
+  .match-heading { align-self: center; min-width: 0; gap: 6px; }
+  h3 { gap: 4px; font-size: 18px; letter-spacing: 0; }
+  .match-subtitle { font-size: 16px; }
+  .match-brand { display: none; }
+  .match-copy > p, .match-capabilities, .match-controls { grid-column: 1 / -1; margin-top: 0; }
+  .match-account-range { display: block; font-size: 13px; }
+  .match-description { font-size: 14px; }
+  .match-capabilities { gap: 8px; }
+  .match-capabilities span { min-height: 26px; padding: 2px 6px; font-size: 12px; border-radius: 6px; }
+  .match-note { font-size: 12px; }
+  .match-control-row { justify-items: stretch; gap: 4px; }
+  .match-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  button, .visit { min-width: 0; min-height: 40px; padding: 8px; font-size: 13px; }
+  .stop { justify-self: end; color: var(--theme-danger-text, var(--rouge)); }
+  .match-connection[data-mobile-view="manage"] .match-description { display: none; }
+  .match-connection[data-mobile-view="manage"].is-empty .match-capabilities,
+  .match-connection[data-mobile-view="manage"].is-empty .match-note { display: none; }
+}
+@container (max-width: 260px) {
+  .match-actions { grid-template-columns: 1fr; }
 }
 </style>

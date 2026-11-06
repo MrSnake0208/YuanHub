@@ -24,7 +24,7 @@
               </template>
               <p v-else>尚未创建游戏账号</p>
             </div>
-            <button class="act-btn ghost account-summary-manage" type="button" data-tour="account-create"
+            <button class="act-btn ghost account-summary-manage" :class="{ 'account-summary-manage-existing': accounts.length > 0 }" type="button" data-tour="account-create"
               aria-haspopup="dialog" :aria-expanded="!!accountManagerView" :disabled="accountsLoading || !!accountLoadError"
               @click="openAccountManager(accounts.length ? 'list' : 'create', $event)">
               {{ accountsLoading || accountLoadError || accounts.length ? '管理游戏账号' : '创建游戏账号' }}
@@ -48,18 +48,23 @@
             @close="accountManagerView = ''"
           />
 
-          <div class="connection-card" v-reveal>
+          <div class="connection-card" :class="{ 'is-adding': addingConnection }" v-reveal>
+            <button v-if="addingConnection" class="mobile-connection-back text-btn" type="button" :disabled="!!creatingMode" @click="showConnectionManager">
+              <ArrowLeft :size="16" aria-hidden="true" />返回连接管理
+            </button>
             <div class="card-head">
               <div>
-                <h2>应用与数据连接</h2>
+                <h2 ref="connectionHeading" tabindex="-1"><span class="desktop-connection-title">应用与数据连接</span><span class="mobile-connection-title">{{ addingConnection ? '添加连接' : '现有连接' }}</span></h2>
                 <p class="card-sub">
                   连接码仅用于授权工具访问，你可以随时停止连接。
                 </p>
+                <p class="mobile-connection-hint">{{ addingConnection ? '选择要连接的应用，确认账号与访问权限。' : '以下展示全部游戏账号的连接。' }}</p>
               </div>
+              <button ref="addConnectionButton" class="mobile-add-connection act-btn ghost" type="button" @click="openConnectionSetup"><Plus :size="16" aria-hidden="true" />添加连接</button>
             </div>
 
             <article
-              class="app-pass"
+              class="app-pass connection-setup"
               aria-labelledby="maayuan-app-title"
             >
               <div class="app-seal" aria-hidden="true">
@@ -68,7 +73,7 @@
               <div class="app-copy">
                 <div class="app-title-row">
                   <h3 id="maayuan-app-title" tabindex="-1">
-                    MaaYuan
+                    MaaYuan 同步
                   </h3>
                   <span class="brand-outline">联合共建</span>
                   <button v-if="TUTORIALS_ENABLED" class="act-btn ghost maayuan-tutorial-entry" type="button" @click="beginMaaYuanTutorial()">连接教程</button>
@@ -102,7 +107,6 @@
                     />读取密探养成状态</span
                   >
                 </div>
-                <p class="capability-note">完整扫描将更新背包并清空旧佩戴；旧背包和未完成计划来源会保留。计划继承处理将在后续开放。</p>
                 <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-start" />
               </div>
               <button
@@ -126,7 +130,7 @@
               ref="maaYuanConnectPanel"
               tabindex="-1"
               id="maayuan-connect-panel"
-              class="connect-panel"
+              class="connect-panel connection-setup"
               aria-labelledby="connect-panel-title"
               @submit.prevent="createMaaYuanConnection"
             >
@@ -241,6 +245,11 @@
               <p class="stable-token-note">
                 <KeyRound :size="17" aria-hidden="true" />以后更新权限仍需你确认，连接码无需重新填写。
               </p>
+              <div class="scan-impact" role="note">
+                <p><TriangleAlert :size="17" aria-hidden="true" /><strong>完整扫描的数据影响</strong></p>
+                <p>将更新背包并清空旧佩戴；旧背包和未完成计划来源会保留。</p>
+                <p>计划继承处理暂未开放。</p>
+              </div>
               <div class="panel-actions">
                 <button
                   class="act-btn ghost"
@@ -339,6 +348,7 @@
               :key="auth.userInfo?.id || 'guest'"
               :user-id="auth.userInfo?.id"
               :enabled="beta.canUseBetaFeatures"
+              :mobile-view="addingConnection ? 'add' : 'manage'"
             />
 
             <section
@@ -347,9 +357,9 @@
             >
               <div class="subsection-head">
                 <div>
-                  <h3 id="connections-title">现有连接</h3>
+                  <h3 id="connections-title"><span class="desktop-connection-title">现有连接</span><span class="mobile-connection-title">同步与 API 连接</span></h3>
                 </div>
-                <span class="connection-count">{{ tokenCount }} 条</span>
+                <span v-if="!loading && !error" class="connection-count">{{ tokenCount }} 条</span>
               </div>
 
               <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-connection" />
@@ -364,7 +374,7 @@
                 <Link2 :size="25" aria-hidden="true" />
                 <strong>还没有连接任何工具</strong>
                 <span
-                  >从上方连接 MaaYuan，连接码只会访问你选择的游戏账号。</span
+                  >点击「连接 MaaYuan」选择游戏账号，连接码只会访问该账号。</span
                 >
                 <button
                   class="act-btn primary"
@@ -407,9 +417,14 @@
                         tokenItem.account_name || tokenItem.account_id
                       }}</b>
                     </p>
-                    <p class="connection-scope">
+                    <p class="connection-scope connection-scope-desktop">
                       可以：{{ scopeDesc(tokenItem.scopes) }}
                     </p>
+                    <details class="connection-permissions">
+                      <summary>{{ scopeSummary(tokenItem.scopes) }}<ChevronDown :size="15" aria-hidden="true" /></summary>
+                      <p>完整权限：{{ scopeDesc(tokenItem.scopes) }}</p>
+                      <button v-if="!scopeKeys(tokenItem.scopes).length" class="text-btn" type="button" :disabled="busy" @click="loadTokens">重新读取连接</button>
+                    </details>
                     <p v-if="tokenItem.created_at" class="connection-created">
                       创建于 {{ formatCreateTime(tokenItem.created_at) }}
                     </p>
@@ -425,19 +440,6 @@
                       <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
                     </button>
                     <button
-                      v-if="!supportsMaaYuan(tokenItem)"
-                      class="t-btn update"
-                      type="button"
-                      :disabled="busy"
-                      @click="upgradeForMaaYuan(tokenItem)"
-                    >
-                      {{
-                        updatingTokenId === tokenItem.token_id
-                          ? "正在更新…"
-                          : "适配 MaaYuan"
-                      }}
-                    </button>
-                    <button
                       class="t-btn del"
                       type="button"
                       :disabled="busy"
@@ -445,12 +447,21 @@
                     >
                       停止连接
                     </button>
+                    <button
+                      v-if="!supportsMaaYuan(tokenItem)"
+                      class="t-btn update"
+                      type="button"
+                      :disabled="busy"
+                      @click="upgradeForMaaYuan(tokenItem)"
+                    >
+                      {{ updatingTokenId === tokenItem.token_id ? "正在更新…" : "补齐 MaaYuan 同步权限" }}
+                    </button>
                   </div>
                 </li>
               </ul>
             </section>
 
-            <details class="advanced-zone">
+            <details class="advanced-zone" @focusin="addingConnection = true">
               <summary>
                 <span class="advanced-icon"
                   ><KeyRound :size="19" aria-hidden="true"
@@ -595,15 +606,18 @@ import '@/styles/page-header.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
+  ArrowLeft,
   Check,
   ChevronDown,
   Copy,
   KeyRound,
   Link2,
   PackageOpen,
+  Plus,
   ScanLine,
   ShieldCheck,
   Sparkles,
+  TriangleAlert,
   X,
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -672,6 +686,10 @@ let accountLoadVersion = 0;
 let profileAlive = true;
 
 const showMaaYuanConnect = ref(false);
+const addingConnection = ref(false);
+const connectionHeading = ref(null);
+const addConnectionButton = ref(null);
+let connectionManagerScroll = 0;
 const maaAccountId = ref("");
 const customAccountId = ref("");
 const maaAccountChosen = ref(false);
@@ -777,8 +795,13 @@ function scopeDesc(scope) {
           _scopeDesc([key], permissions.value, FALLBACK_SCOPES)
         );
       })
-      .join("、") || "未知权限"
+      .join("、") || "权限信息无法识别"
   );
+}
+function scopeSummary(scopes) {
+  const keys = scopeKeys(scopes);
+  if (!keys.length) return "权限信息无法识别";
+  return scopeDesc(keys.slice(0, 2)) + (keys.length > 2 ? ` 等 ${keys.length} 项权限` : "");
 }
 function supportsMaaYuan(tokenItem) {
   return hasEveryScope(tokenItem && tokenItem.scopes, MAAYUAN_REQUIRED_SCOPES);
@@ -918,10 +941,26 @@ function closeMaaYuanForm() {
   recordMaaYuanAction('connect', { open: false });
 }
 
+async function openConnectionSetup() {
+  connectionManagerScroll = window.scrollY;
+  addingConnection.value = true;
+  await nextTick();
+  connectionHeading.value?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  connectionHeading.value?.focus({ preventScroll: true });
+}
+
+async function showConnectionManager() {
+  addingConnection.value = false;
+  await nextTick();
+  window.scrollTo({ top: connectionManagerScroll, behavior: 'auto' });
+  addConnectionButton.value?.focus({ preventScroll: true });
+}
+
 function openMaaYuanConnect() {
   if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   showMaaYuanConnect.value = !showMaaYuanConnect.value;
   if (showMaaYuanConnect.value) {
+    addingConnection.value = true;
     applyDefaultAccounts();
     if (maaGuideActive.value && !onboarding.maaYuan.accountId) maaAccountId.value = "";
     void nextTick(() => {
@@ -934,6 +973,7 @@ function openMaaYuanConnect() {
 
 async function revealMaaYuanConnect() {
   if (!beta.canUseBetaFeatures) return;
+  addingConnection.value = true;
   showMaaYuanConnect.value = true;
   applyDefaultAccounts();
   await nextTick();
@@ -999,6 +1039,7 @@ async function createMaaYuanConnection() {
     showCreatedToken(created, "maayuan");
     recordMaaYuanAction('created', { connectionId: created.token_id, accountId: targetAccountId });
     showMaaYuanConnect.value = false;
+    addingConnection.value = false;
     await focusCreatedToken();
     if (userId !== auth.userInfo?.id) return;
     toast("MaaYuan 连接码已创建");
@@ -1037,6 +1078,7 @@ async function createAdvancedToken() {
     });
     if (userId !== auth.userInfo?.id) return;
     showCreatedToken(created, "advanced");
+    addingConnection.value = false;
     await focusCreatedToken();
     if (userId !== auth.userInfo?.id) return;
     customScopes.value = [];
@@ -1195,6 +1237,8 @@ watch(() => auth.userInfo?.id, () => {
   accountLoadVersion++;
   accounts.value = [];
   accountManagerView.value = "";
+  addingConnection.value = false;
+  showMaaYuanConnect.value = false;
   dismissNotice(); recentFailures.value = []; newToken.value = null;
   tokens.value = [];
   onboarding.initialize(String(auth.userInfo?.id || 'guest'));
@@ -1229,9 +1273,13 @@ onBeforeUnmount(function () {
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.mobile-connection-back, .mobile-add-connection, .mobile-connection-title, .mobile-connection-hint, .connection-permissions { display: none; }
+.scan-impact { margin-top: 16px; padding: 14px; border: 1px solid var(--theme-danger-text, var(--rouge)); border-radius: 12px; background: var(--surface); color: var(--theme-danger-text, var(--rouge)); font-size: 13px; line-height: 1.7; }
+.scan-impact p { margin: 0; }
+.scan-impact p:first-child { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.scan-impact svg { flex: none; }
 .tutorial-target { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .maayuan-other-tasks summary, details.paste-steps summary { cursor: pointer; }
-.capability-note { color: var(--theme-danger-text, var(--rouge)); }
 .connection-safety { color: var(--ink-60); }
 .account-summary-copy h2 { color: var(--theme-strong-text, var(--tea)); }
 .account-summary-copy p { color: var(--ink-60); }

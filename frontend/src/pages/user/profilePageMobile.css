@@ -16,7 +16,6 @@
 .profile-main {
   padding-bottom: 0;
 }
-.capability-note { font-size: 12px; }
 #maayuan-connect-panel { scroll-margin-top: 84px; }
 .page-header { padding-bottom: 8px; }
 .game-account-summary { padding: 0; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; }
@@ -817,13 +816,71 @@
   }
 }
 @media (max-width: 767px) {
- .game-account-summary { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .game-account-summary { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
   .profile-title-row { grid-column: 1 / -1; }
   .account-summary-copy { grid-column: 1 / -1; grid-row: 3; }
   .account-summary-manage { grid-column: 1 / -1; grid-row: 2; justify-self: start; padding: 8px 12px; }
-  .connection-card { margin-top: 8px; }
-  .app-copy > p { font-size: 14px; }
-  .connection-scope { font-size: 13px; }
-  .app-capabilities span { width: auto; }
+  .account-summary-manage-existing { display: none; }
+  .page-header-title { font-size: 24px; }
+  .profile-title-row { gap: 10px 14px; }
+  .connection-card { margin-top: 8px; padding: 18px 14px; border-radius: 16px; }
+  .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; }
+  .card-head > div { display: contents; }
+  .card-head h2 { margin: 0; font-size: 22px; letter-spacing: 0; scroll-margin-top: 84px; }
+  .desktop-connection-title, .card-sub { display: none; }
+  .mobile-connection-title { display: inline; }
+  .mobile-connection-hint { display: block; grid-column: 1 / -1; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
+  .mobile-add-connection, .mobile-connection-back { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; }
+  .mobile-add-connection { grid-column: 2; grid-row: 1; padding: 8px 12px; font-size: 13px; }
+  .mobile-connection-back { margin-bottom: 14px; }
+  .connection-card:not(.is-adding) .connection-setup,
+  .connection-card:not(.is-adding) .advanced-zone,
+  .connection-card.is-adding .connections-section,
+  .connection-card.is-adding .mobile-add-connection { display: none; }
+  .app-pass { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px 14px; margin-top: 18px; border-radius: 14px; align-items: start; }
+  .app-seal { width: 44px; height: 44px; border-radius: 13px; }
+  .app-seal img { width: 38px; height: 38px; }
+  .app-copy { display: contents; }
+  .app-title-row { min-width: 0; gap: 6px; align-self: center; }
+  .app-title-row h3 { font-size: 19px; letter-spacing: 0; overflow-wrap: anywhere; }
+  .app-copy > p, .app-capabilities, .app-connect, #maayuan-tutorial-start { grid-column: 1 / -1; }
+  .app-copy > p { margin: 0; font-size: 14px; }
+  .brand-outline { min-height: 20px; padding: 2px 5px; font-size: 10px; }
+  .app-capabilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; gap: 6px; }
+  .app-capabilities span { width: auto; min-width: 0; padding: 4px 0; background: transparent; border-radius: 0; font-size: 12px; }
+  .app-capabilities svg { flex: none; }
+  .app-capabilities .no-read { background: transparent; }
+  .app-connect { width: 100%; }
+  .connect-panel { padding: 16px 12px; border-radius: 14px; }
+  .connections-section { margin-top: 20px; }
+  .subsection-head { gap: 8px; }
+  .subsection-head h3 { font-size: 17px; letter-spacing: 0; }
+  .connection-count { padding: 3px 7px; }
+  .token-item { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 14px 12px; border-radius: 14px; }
+  .connection-icon { width: 36px; height: 36px; border-radius: 11px; }
+  .connection-icon img { width: 32px; height: 32px; }
+  .connection-title-row { gap: 6px; }
+  .connection-title-row h4 { font-size: 17px; letter-spacing: 0; overflow-wrap: anywhere; }
+  .connection-account { font-size: 13px; overflow-wrap: anywhere; }
+  .connection-scope-desktop { display: none; }
+  .connection-permissions { display: block; margin-top: 5px; color: var(--ink-60); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+  .connection-permissions summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; cursor: pointer; list-style: none; }
+  .connection-permissions summary::-webkit-details-marker { display: none; }
+  .connection-permissions summary svg { flex: none; }
+  .connection-permissions[open] summary svg { transform: rotate(180deg); }
+  .connection-permissions p { margin-top: 6px; overflow-wrap: anywhere; }
+  .connection-created { font-size: 11px; }
+  .connection-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+  .connection-actions .t-btn { min-height: 40px; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+  .connection-actions .copy { width: auto; }
+  .connection-actions .update { grid-column: 1 / -1; justify-self: start; min-height: 32px; padding: 4px 0; font-size: 12px; }
+  .empty-state { padding: 20px 12px; }
+  .advanced-zone > summary { padding: 12px; }
+  .advanced-zone summary small { display: none; }
+  .advanced-form { padding: 0 12px 16px; }
+  .connection-safety { font-size: 12px; }
+  :deep(.footer) { margin-top: 24px; padding: 20px 0 calc(24px + env(safe-area-inset-bottom)); background: transparent; color: var(--ink-60); border-radius: 0; }
+  :deep(.footer .big) { display: none; }
+  :deep(.footer .fine), :deep(.footer .fine b) { color: var(--ink-60); }
 }
 }

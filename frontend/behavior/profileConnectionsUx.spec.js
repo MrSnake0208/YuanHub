@@ -45,6 +45,7 @@ beforeEach(() => {
   deleteOpenApiToken.mockResolvedValue({})
   dialog.confirm.mockResolvedValue(true)
   Element.prototype.scrollIntoView = vi.fn()
+  window.scrollTo = vi.fn()
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
@@ -125,19 +126,23 @@ it.each([
   const accounts = wrapper.get('.game-account-summary').element
   const connections = wrapper.get('.connection-card').element
   expect(accounts.compareDocumentPosition(connections) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(wrapper.get('.connection-card h2').text()).toBe('应用与数据连接')
+  expect(wrapper.get('.connection-card h2 .desktop-connection-title').text()).toBe('应用与数据连接')
+  expect(wrapper.get('.connection-card h2 .mobile-connection-title').text()).toBe('现有连接')
   expect(wrapper.find('.admin-tools').exists()).toBe(false)
   expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).not.toContain('/manage')
   expect(wrapper.text()).not.toContain('当前可用的管理内容')
   wrapper.unmount()
 })
 
-it('连接设置区分星石上传权限与尚未接入的自动采集任务', async () => {
+it('连接设置明确星石扫描的数据影响，创建后保留实际设置路径', async () => {
   generateOpenApiToken.mockResolvedValue({ token: 'synthetic-secret', account_name: '大号', token_id: 'tok-new' })
   const wrapper = render()
   await flushPromises()
   await wrapper.get('.app-connect').trigger('click')
-  expect(wrapper.get('.grant-review').text()).toContain('上传星石截图（MaaYuan 自动采集接入中）')
+  expect(wrapper.get('.grant-review').text()).toContain('自动同步星石背包（保留旧背包及计划来源，清空旧佩戴）')
+  expect(wrapper.get('.scan-impact').text()).toContain('将更新背包并清空旧佩戴')
+  expect(wrapper.get('.scan-impact').text()).toContain('旧背包和未完成计划来源会保留')
+  expect(wrapper.get('.scan-impact').text()).toContain('计划继承处理暂未开放')
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
   await wrapper.get('.nt-row button').trigger('click'); await flushPromises()
@@ -207,6 +212,7 @@ it('创建时完整显示一次，关闭后仍可在现有连接中复制', asyn
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
   expect(wrapper.get('.new-token').exists()).toBe(true)
+  expect(wrapper.get('.connection-card').classes()).not.toContain('is-adding')
   await wrapper.get('.nt-footer button').trigger('click')
   expect(wrapper.find('.new-token').exists()).toBe(false)
   expect(dialog.confirm).not.toHaveBeenCalled()
@@ -301,7 +307,7 @@ it('顶部保留页面身份，连接区打开或收起既有表单且不提前�
   expect(wrapper.get('.page-header h1').text()).toBe('账号与连接码')
   expect(wrapper.get('.page-header .context-selector').attributes('aria-label')).toContain('当前游戏账号：代号鸢 · 大号')
   expect(wrapper.get('.page-header [data-tour="account-create"]').text()).toBe('管理游戏账号')
-  expect(wrapper.get('.app-copy').text()).toContain('星石自动采集仍在接入中')
+  expect(wrapper.get('.app-copy').text()).toContain('自动同步星石背包')
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')
   expect(wrapper.get('.app-connect').attributes('aria-expanded')).toBe('true')
@@ -309,6 +315,69 @@ it('顶部保留页面身份，连接区打开或收起既有表单且不提前�
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(false)
   expect(wrapper.get('.app-connect').attributes('aria-expanded')).toBe('false')
+  wrapper.unmount()
+})
+
+it('添加与返回保留两个表单草稿、权限展开和焦点，不额外请求或创建连接', async () => {
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  getOpenApiPermissions.mockResolvedValue([{ scope: 'calendar:read', description: '读取活动日历' }])
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  try {
+    const tokenReads = getOpenApiTokens.mock.calls.length
+    const accountReads = listAccounts.mock.calls.length
+    const permissionDetails = wrapper.get('.connection-permissions').element
+    permissionDetails.open = true
+    await wrapper.get('.mobile-add-connection').trigger('click'); await flushPromises()
+    expect(wrapper.get('.connection-card').classes()).toContain('is-adding')
+    expect(wrapper.get('.mobile-connection-title').text()).toBe('添加连接')
+    expect(document.activeElement).toBe(wrapper.get('.card-head h2').element)
+    await wrapper.get('.app-connect').trigger('click'); await flushPromises()
+    await wrapper.get('#maayuan-account').setValue('acc-b')
+    const advanced = wrapper.get('.advanced-zone').element
+    advanced.open = true
+    await wrapper.get('#advanced-account').setValue('acc-b')
+    await wrapper.get('.advanced-form input[type="checkbox"]').setValue(true)
+    await wrapper.get('#advanced-remark').setValue('保留我的草稿')
+    await wrapper.get('.mobile-connection-back').trigger('click'); await flushPromises()
+    expect(wrapper.get('.connection-card').classes()).not.toContain('is-adding')
+    expect(document.activeElement).toBe(wrapper.get('.mobile-add-connection').element)
+    expect(window.scrollTo).toHaveBeenCalled()
+    expect(permissionDetails.open).toBe(true)
+    await wrapper.get('.mobile-add-connection').trigger('click'); await flushPromises()
+    expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
+    expect(wrapper.get('#advanced-account').element.value).toBe('acc-b')
+    expect(wrapper.get('.advanced-form input[type="checkbox"]').element.checked).toBe(true)
+    expect(wrapper.get('#advanced-remark').element.value).toBe('保留我的草稿')
+    expect(wrapper.get('.advanced-zone').element).toBe(advanced)
+    expect(advanced.open).toBe(true)
+    expect(getOpenApiTokens).toHaveBeenCalledTimes(tokenReads)
+    expect(listAccounts).toHaveBeenCalledTimes(accountReads)
+    expect(generateOpenApiToken).not.toHaveBeenCalled()
+    expect(updateOpenApiTokenScopes).not.toHaveBeenCalled()
+    expect(deleteOpenApiToken).not.toHaveBeenCalled()
+  } finally { wrapper.unmount() }
+})
+
+it('权限摘要保留完整授权信息，无法识别时提供重读且不冒充已授权', async () => {
+  getOpenApiTokens.mockResolvedValue([
+    token,
+    { ...token, token_id: 'full', scopes: ['inventory:write', 'operator:scan:write', 'operator:read', 'star:sync:write'] },
+    { ...token, token_id: 'single', scopes: ['calendar:read'] },
+  ])
+  const wrapper = render(); await flushPromises()
+  const items = wrapper.findAll('.token-item')
+  expect(items[0].get('.connection-permissions summary').text()).toBe('权限信息无法识别')
+  expect(items[0].find('.status-tag.ready').exists()).toBe(false)
+  expect(items[0].get('.connection-permissions button').text()).toBe('重新读取连接')
+  expect(items[1].get('.connection-permissions summary').text()).toContain('等 4 项权限')
+  expect(items[1].get('.connection-permissions p').text()).toContain('查看当前密探数据与养成状态')
+  expect(items[1].get('.connection-permissions p').text()).toContain('完整星石扫描自动同步（重建背包）')
+  expect(items[1].get('.status-tag.ready').text()).toBe('已授权 MaaYuan')
+  expect(items[2].get('.connection-permissions summary').text()).toBe('查看活动日历与订阅')
+  await items[0].get('.connection-permissions button').trigger('click'); await flushPromises()
+  expect(getOpenApiTokens).toHaveBeenCalledTimes(2)
+  expect(updateOpenApiTokenScopes).not.toHaveBeenCalled()
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
   wrapper.unmount()
 })
 
@@ -336,6 +405,7 @@ it('今日一览的连接深链接自动展开、聚焦绑定表单且不创建�
   routeState.query = { connect: 'maayuan' }
   const wrapper = render({ attachTo: document.body }); await flushPromises()
   expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(true)
+  expect(wrapper.get('.connection-card').classes()).toContain('is-adding')
   expect(document.activeElement).toBe(wrapper.get('#maayuan-account').element)
   expect(wrapper.get('#maayuan-connect-panel').element.scrollIntoView).toHaveBeenCalled()
   expect(generateOpenApiToken).not.toHaveBeenCalled()
@@ -394,6 +464,7 @@ it('创建失败保留选定账号，重试和重复提交只生成一次在途�
   await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
   expect(wrapper.get('[role="alert"]').text()).toContain('synthetic failure')
+  expect(wrapper.get('.connection-card').classes()).toContain('is-adding')
   let finish
   generateOpenApiToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
