@@ -51,6 +51,8 @@
 .bonds-codex .bond-search input { width: 100%; padding: 10px 0; border: 0; background: transparent; }
 .bond-search svg { flex: none; }
 .bond-search-row > button { flex: none; font-size: 13px; }
+.bond-search-help { display: none; margin: 6px 0 0; color: var(--bond-muted); font-size: 12px; line-height: 1.6; }
+.bond-search-row:has(.bond-search:focus-within) + .bond-search-help { display: block; }
 .bond-common-filters, .bond-advanced-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 22px; margin-top: 12px; font-size: 13px; }
 .bond-common-filters > label, .bond-advanced-filters > label, .bond-check { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .bonds-codex .bond-check { gap: 5px; }
@@ -145,4 +147,6 @@
 .bond-action-group + .bond-action-group { margin-top: 10px; }
 .bond-action-heading { margin: 0 0 7px; color: var(--bond-muted); font-size: 13px; font-weight: 400; }
 
-.bond-mobile-state, .bond-mobile-hint { display: none; }
+.bond-mobile-state, .bond-choice-heading { display: none; }
+.bonds-codex span.bond-mobile-copy { display: none; }
+.bonds-codex .bond-owned-stat small > span { font: inherit; }

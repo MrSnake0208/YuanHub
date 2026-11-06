@@ -17,7 +17,7 @@
             <div class="bond-progress-line"><progress :value="collectionCount || 0" :max="activeTotal || 1" :aria-label="collectionCount == null ? '收集进度未读取' : '图鉴收集进度'" /><small>{{ collectionCount == null ? '—' : collectionPercent + '%' }}</small></div>
           </div>
           <div><span>下一档羁缘</span><strong data-testid="next-threshold">{{ !summary ? '—' : !thresholds.length ? '资料尚未配置' : nextThreshold == null ? '全部达标' : '还差 ' + (nextThreshold - summary.triggered_count) + ' 种' }}</strong><small>达标后需在成就页确认完成</small></div>
-          <div class="bond-owned-stat"><span>我的密探</span><strong data-testid="owned-progress">{{ ownedCount == null ? '—' : ownedCount }} / {{ state.operatorError || state.loading ? '—' : gameOperators.length }}</strong><small>基于当前账号的密探库统计</small></div>
+          <div class="bond-owned-stat"><span>我的密探</span><strong data-testid="owned-progress">{{ ownedCount == null ? '—' : ownedCount }} / {{ state.operatorError || state.loading ? '—' : gameOperators.length }}</strong><small><span class="bond-desktop-copy">基于当前账号的密探库统计</span><span class="bond-mobile-copy">按当前账号统计</span></small></div>
         </section>
         <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
           <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
@@ -29,25 +29,26 @@
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
             <div class="bond-find-choices">
-              <fieldset><legend>天气</legend><div class="bond-choice-options">
-                <button type="button" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
+              <fieldset><legend>天气</legend><div class="bond-choice-heading"><span aria-hidden="true">天气</span><button type="button" aria-label="全部天气" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部</button></div><div class="bond-choice-options">
+                <button type="button" class="bond-all-choice" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
                 <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><component :is="weatherIcons[value]" :size="18" aria-hidden="true" />{{ label }}</button>
               </div></fieldset>
-              <fieldset><legend>行动</legend><div class="bond-choice-options">
-                <button type="button" :aria-pressed="!filters.action" @click="filters.action = ''">全部行动</button>
+              <fieldset><legend>行动</legend><div class="bond-choice-heading"><span aria-hidden="true">行动</span><button type="button" aria-label="全部行动" :aria-pressed="!filters.action" @click="filters.action = ''">全部</button></div><div class="bond-choice-options">
+                <button type="button" class="bond-all-choice" :aria-pressed="!filters.action" @click="filters.action = ''">全部行动</button>
                 <button v-for="(label, value) in ACTIONS" :key="value" type="button" :aria-pressed="filters.action === value" @click="filters.action = value">{{ label }}</button>
               </div></fieldset>
             </div>
             <div class="bond-search-row">
-              <label class="bond-search"><Search :size="18" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索密探或配对" placeholder="搜索密探或配对，多个名称用空格分隔…"></label>
+              <label class="bond-search"><Search :size="18" aria-hidden="true" /><input v-model="filters.query" type="search" aria-label="搜索密探或配对" aria-describedby="bond-search-help" placeholder="搜索密探或配对"></label>
               <button type="button" :aria-expanded="filtersOpen" aria-controls="bond-advanced-filters" @click="filtersOpen = !filtersOpen">{{ filtersOpen ? '收起筛选' : '更多筛选' }}<ChevronDown :size="15" :class="{ 'is-flipped': filtersOpen }" aria-hidden="true" /></button>
             </div>
+            <p id="bond-search-help" class="bond-search-help">多个名称用空格或顿号分隔，可查找指定配对。</p>
 
             <div class="bond-common-filters">
               <div class="bond-record-options" role="group" aria-label="收录状态"><span>收录状态</span>
                 <button v-for="option in [{ value: '', label: '全部' }, { value: 'missing', label: '未收录' }, { value: 'collected', label: '已收录' }]" :key="option.value" type="button" :disabled="!state.archive" :aria-pressed="filters.recorded === option.value" @click="filters.recorded = option.value">{{ option.label }}</button>
               </div>
-              <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned">仅显示成员均已拥有的组合</label>
+              <label class="bond-check"><input v-model="filters.onlyOwned" type="checkbox" :disabled="!state.owned" aria-describedby="bond-owned-help"><span id="bond-owned-help" class="bond-desktop-copy">仅显示成员均已拥有的组合</span><span class="bond-mobile-copy">仅看全员已拥有</span></label>
           <div class="bond-view-options" role="group" aria-label="列表展示方式">
             <span>查看方式</span>
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
@@ -67,10 +68,10 @@
           <p v-else-if="!state.catalog?.entries.length" class="bond-empty">当前游戏尚无已发布羁绊资料。目录收录后会在这里显示；这不代表你的游戏进度为零。</p>
           <template v-else>
             <div class="bond-results-toolbar">
-              <p class="bond-find-count" role="status">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
+              <p class="bond-find-count" role="status"><span class="bond-result-conditions">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜</span>找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
               <p class="bond-state-legend"><Plus :size="14" aria-hidden="true" />未收录 <Check :size="14" aria-hidden="true" />已收录 · 点击天气切换</p>
-              <button v-if="hasFilters" type="button" :disabled="state.busy" @click="clearFilters">清空筛选</button>
-              <button type="button" :disabled="state.busy || !batchMode && !writable" :aria-pressed="batchMode" aria-controls="bond-batch-toolbar" @click="batchMode = !batchMode">{{ batchMode ? '退出批量' : '批量收录' }}</button>
+              <button v-if="hasFilters" type="button" class="bond-clear-filters" :disabled="state.busy" @click="clearFilters">清空筛选</button>
+              <button type="button" class="bond-batch-toggle" :disabled="state.busy || !batchMode && !writable" :aria-pressed="batchMode" aria-controls="bond-batch-toolbar" @click="batchMode = !batchMode">{{ batchMode ? '退出批量' : '批量收录' }}</button>
             </div>
             <div v-if="batchMode" id="bond-batch-toolbar" class="bond-batch-toolbar" role="group" aria-label="批量收录"><span>已选择 {{ selected.length }} / 50 条</span><button type="button" :disabled="!writable || !selected.length || !selectedCanCollect" @click="saveSelected(true)">收录选中项</button><button type="button" :disabled="!writable || !selected.length" @click="saveSelected(false)">取消选中项收录</button></div>
             <p v-if="!filtered.length" class="bond-empty">没有匹配的组合。请调整搜索、收录状态、行动、天气或其他筛选。</p>
@@ -108,7 +109,6 @@
                   <div class="bond-agent-progress"><span>{{ collectionCount == null ? '—' : group.collected }} / {{ group.total }}</span><progress :value="collectionCount == null ? 0 : group.collected" :max="group.total || 1" :aria-label="operatorName(group.id) + '当前图鉴收集进度'" /></div>
                   <ChevronDown class="bond-fold-icon" :size="16" aria-hidden="true" />
                 </summary>
-                <p v-if="available && state.archive && state.catalog && !state.loading && !state.catalogError" class="bond-mobile-hint">点选天气即可收录，再点取消</p>
                 <div class="bond-agent-pairs">
                   <section v-for="pair in group.pairs" :key="pair.key" class="bond-pair" :aria-label="operatorName(group.id) + '与' + pair.members.map(operatorName).join('、')">
                     <div class="bond-pair-heading"><span>与</span><h3>{{ pair.members.map(operatorName).join('、') }}</h3><span class="bond-effect" :class="pair.effect">{{ pair.effect === 'positive' ? '一拍即合' : '貌合神离' }}</span><span v-if="pairAction(pair)" class="bond-pair-action">行动：{{ ACTIONS[pairAction(pair)] }}</span></div>
