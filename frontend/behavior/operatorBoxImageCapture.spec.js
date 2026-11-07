@@ -3,10 +3,10 @@ import { prepareOperatorBoxImage } from '../src/utils/operatorBoxImageCapture.js
 
 afterEach(() => vi.restoreAllMocks())
 
-it('uses measured glyph positions for vertical names, including a supplementary Unicode character', async () => {
+it('uses measured glyph positions for vertical attribute labels, including a supplementary Unicode character', async () => {
   const root = document.createElement('section')
-  root.innerHTML = '<div class="box-image-name-tab"><h3>徐𠮷</h3></div>'
-  const name = root.querySelector('h3')
+  root.innerHTML = '<span class="box-image-prof-tab"><span>徐𠮷</span></span>'
+  const name = root.querySelector('.box-image-prof-tab > span')
   vi.spyOn(window, 'getComputedStyle').mockReturnValue({ writingMode: 'vertical-rl', content: 'none', getPropertyValue: () => '' })
   vi.spyOn(name, 'getBoundingClientRect').mockReturnValue({ left: 50, top: 10, width: 26, height: 70 })
   const starts = []

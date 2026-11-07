@@ -60,12 +60,13 @@ it('the screenshot three-character operator keeps nodes and all six colored fate
 })
 
 it.each([
-  ['char_084_chendengsp', '陈登·黍王', '黍王'],
-  ['char_085_shizimiaosp', '史子眇·赴烛', '赴烛'],
-])('the real long-name identity %s retains the overview continuation without inventing account progress', (id, name, continuation) => {
+  ['char_084_chendengsp', '陈登·黍王'],
+  ['char_085_shizimiaosp', '史子眇·赴烛'],
+])('the real long-name identity %s stacks every glyph without writing-mode or inventing account progress', (id, name) => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ id, name })] } })
   expect(wrapper.get('h3').text()).toBe(name)
-  expect(wrapper.get('.box-image-name-continuation').text()).toBe(continuation)
+  expect(wrapper.get('h3').attributes('aria-label')).toBe(name)
+  expect(wrapper.findAll('h3 > span').map(glyph => glyph.text())).toEqual(Array.from(name))
   expect(wrapper.get('.box-image-huaji-value').text()).not.toMatch(/\d/)
   expect(wrapper.find('.box-image-stars').exists()).toBe(false)
   expect(wrapper.find('.box-image-oddity').exists()).toBe(false)

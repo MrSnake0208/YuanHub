@@ -21,7 +21,8 @@ export async function prepareOperatorBoxImage(document, root) {
     if (available > 0 && required > available) text.style.transform = `scale(${available / required})`
   }
   // html2canvas does not paint writing-mode. Preserve the browser's actual glyph positions.
-  const vertical = [...root.querySelectorAll('.box-image-name-tab > h3, .box-image-prof-tab > span')].map(node => {
+  // Names are stacked glyphs already; only the short attribute label still uses writing-mode.
+  const vertical = [...root.querySelectorAll('.box-image-prof-tab > span')].map(node => {
     if (view.getComputedStyle(node).writingMode !== 'vertical-rl') return null
     const bounds = node.getBoundingClientRect(), glyphs = []
     const walker = document.createTreeWalker(node, 4)
@@ -43,7 +44,6 @@ export async function prepareOperatorBoxImage(document, root) {
     for (const glyph of glyphs) {
       const span = document.createElement('span')
       span.textContent = glyph.char
-      // Nested name continuations must retain the measured glyph geometry in the clone.
       span.style.cssText = `position:absolute!important;display:flex!important;align-items:center;justify-content:center;writing-mode:horizontal-tb!important;letter-spacing:0;line-height:1;left:${glyph.left}px;top:${glyph.top}px;width:${glyph.width}px;height:${glyph.height}px`
       node.append(span)
     }

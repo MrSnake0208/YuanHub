@@ -15,7 +15,7 @@
         <header class="box-image-card-head">
           <div class="box-image-name-tab">
             <div v-if="!portraits[entry.id]" class="box-image-avatar"><img v-if="entry.avatar" :src="avatarUrl(entry.avatar)" :alt="entry.name" /><span v-else>{{ Array.from(entry.name)[0] }}</span></div>
-            <h3 :class="{ 'is-three-char-name': Array.from(entry.name).length === 3, 'is-long-name': Array.from(entry.name).length > 3, 'is-single-column-name': entry.name === '史子眇·赴烛' }"><template v-if="entry.name === '陈登·黍王'">陈登·<span class="box-image-name-continuation box-image-name-continuation--natural">黍王</span></template><template v-else-if="entry.name === '史子眇·赴烛'">史子眇·<span class="box-image-name-continuation">赴烛</span></template><template v-else>{{ entry.name }}</template></h3>
+            <h3 :aria-label="entry.name" :class="{ 'is-three-char-name': Array.from(entry.name).length === 3, 'is-long-name': Array.from(entry.name).length > 3 }"><span v-for="(char, i) in Array.from(entry.name)" :key="i" aria-hidden="true">{{ char }}</span></h3>
           </div>
           <div class="box-image-identity"><div class="box-image-name-row">
             <span class="box-image-prof-tab" :class="{ 'box-image-prof-tab--fuzhu': entry.id === 'char_085_shizimiaosp' }">
@@ -110,10 +110,11 @@ defineExpose({ sheet })
 /* Plain RGB stops are supported by the PNG renderer; only the edges fade to paper. */
 .box-image-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 250, 240, 0) 76%, #fffaf0 96%); }
 .box-image-name-tab { position: absolute; top: 12px; right: 10px; padding: 10px 5px 12px; border: 1px solid #dac292; border-radius: 10px 0 10px 0; background: rgba(255, 250, 240, .94); }
-.box-image-name-tab h3 { margin: 0; width: max-content; height: max-content; max-height: none; white-space: nowrap; writing-mode: vertical-rl; text-orientation: upright; font: 900 28px/1.1 var(--font-s, serif); letter-spacing: 2px; color: #493b2c; }
+/* Stack one glyph per row instead of writing-mode: WebKit mis-sizes orthogonal flows, and html2canvas cannot paint them. */
+.box-image-name-tab h3 { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 1.1em; margin: 0; padding-bottom: 2px; font: 900 28px/1 var(--font-s, serif); color: #493b2c; }
+.box-image-name-tab h3 > span { display: block; width: 1em; height: 1em; text-align: center; white-space: nowrap; }
 .box-image-name-tab h3.is-three-char-name { font-size: 26px; }
-.box-image-name-tab h3.is-long-name { font-size: 21px; max-height: 196px; white-space: normal; overflow-wrap: anywhere; }
-.box-image-name-continuation { display: inline; }
+.box-image-name-tab h3.is-long-name { font-size: 21px; }
 .box-image-identity { position: absolute; top: 12px; left: 9px; }
 .box-image-prof-tab { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 3px 8px; border: 1px solid #d5b773; border-radius: 14px; background: #fffaf0; font: 700 13px/1.15 var(--font-s, serif); color: #5a4633; }
 .box-image-prof-tab img { width: 20px; height: 20px; }
