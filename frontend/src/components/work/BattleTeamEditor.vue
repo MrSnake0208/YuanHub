@@ -14,7 +14,10 @@
           <tr v-for="[key, label] in BATTLE_STATS" :key="key"><th scope="row">{{ label }}</th><td v-for="(member, index) in operators" :key="index" :class="{ selected: detail && slot === index }">
             <!-- 化极按星级/节点/觉醒选择，表格中只展示，点击进入练度页选择。 -->
             <button v-if="key === 'huaji'" type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位化极`" @click="open(index, 'stats', $event)"><span>{{ member.huaji || (member.name ? '选择' : '—') }}</span><Pencil v-if="member.name" :size="13" aria-hidden="true" /></button>
-            <input v-else v-model="member[key]" :disabled="!member.name" :aria-label="`${index + 1}号位${label}`" inputmode="numeric" maxlength="30" :placeholder="member.name ? '填写' : '—'" @input="markPanelEdited(member)" @focus="statBefore = member[key]" @change="commitStat(member, key)">
+            <template v-else>
+              <input v-model="member[key]" :disabled="!member.name" :aria-label="`${index + 1}号位${label}`" :aria-describedby="key === 'elite' && eliteOver(member) ? `battle-elite-over-${index}` : undefined" inputmode="numeric" maxlength="30" :placeholder="member.name ? '填写' : '—'" @focus="statBefore = member[key]" @change="commitStat(member, key)">
+              <span v-if="key === 'elite' && eliteOver(member)" :id="`battle-elite-over-${index}`" class="battle-cell-error">超出等级上限 {{ eliteOver(member) }}</span>
+            </template>
           </td></tr>
           <tr><th scope="row">携带命盘</th><td v-for="(member, index) in operators" :key="index" :class="{ selected: detail === 'discs' && slot === index }">
             <button type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位携带命盘`" :aria-expanded="detail === 'discs' && slot === index" aria-controls="battle-member-detail" @click="open(index, 'discs', $event)"><span class="battle-disc-full">{{ member.discs || (member.name ? '选择命盘' : '—') }}</span><span class="battle-disc-short" aria-hidden="true">{{ discShort(member) || (member.name ? '选择' : '—') }}</span><Pencil v-if="member.name" :size="13" aria-hidden="true" /></button>
@@ -102,7 +105,7 @@ import BattleMemberPicker from './BattleMemberPicker.vue'
 import BattleDiscEditor from './BattleDiscEditor.vue'
 import BattleStarEditor from './BattleStarEditor.vue'
 import BattleStatFields from './BattleStatFields.vue'
-import { OPERATOR_ELITE_MAX, OPERATOR_LEVEL_MAX } from '../../utils/operatorGrowthRules.js'
+import { OPERATOR_ELITE_MAX, OPERATOR_LEVEL_MAX, getMaxEliteForLevel } from '../../utils/operatorGrowthRules.js'
 const props = defineProps({ operators: { type: Array, required: true }, game: { type: String, default: '如鸢' }, catalog: { type: Array, default: () => AGENT_CATALOG }, accountEntries: { type: Array, default: () => [] } })
 const emit = defineEmits(['replace', 'pending-name'])
 const sortedAgents = computed(() => {
@@ -175,14 +178,27 @@ async function close() {
   await nextTick()
   if (opener?.isConnected) opener.focus({ preventScroll: true })
 }
-// 表格内直接输入等级/修为时，离开单元格才校验：最低为 1、不超过规则上限；清空或非数字恢复为输入前的值。
+// 表格内直接输入与练度弹窗同一规则，离开单元格才校验：最低为 1；等级不超过 100，修为不超过当前等级可解锁的上限
+// （未填等级时按 17）；清空或非数字恢复为输入前的值。值确有变化才标记面板已手动调整。
 let statBefore = ''
-const STAT_LIMITS = { level: OPERATOR_LEVEL_MAX, elite: OPERATOR_ELITE_MAX }
+const positiveInteger = value => (/^\d+$/.test(String(value ?? '').trim()) && Number(value) >= 1 ? Number(value) : null)
+function eliteLimit(member) {
+  const level = positiveInteger(member.level)
+  return level && level <= OPERATOR_LEVEL_MAX ? getMaxEliteForLevel(level) : OPERATOR_ELITE_MAX
+}
+// 先填修为后降低等级时不自动改写修为，与弹窗一样只提示超限，返回该等级的修为上限。
+function eliteOver(member) {
+  const elite = positiveInteger(member.elite), limit = eliteLimit(member)
+  return elite != null && elite > limit ? limit : 0
+}
 function commitStat(member, key) {
-  if (!STAT_LIMITS[key]) return
+  const limit = key === 'level' ? OPERATOR_LEVEL_MAX : key === 'elite' ? eliteLimit(member) : 0
   const raw = String(member[key] ?? '').trim()
-  if (!raw && !String(statBefore ?? '').trim()) return
-  member[key] = /^\d+$/.test(raw) && Number(raw) >= 1 ? String(Math.min(STAT_LIMITS[key], Number(raw))) : statBefore
+  if (limit && (raw || String(statBefore ?? '').trim())) {
+    const value = positiveInteger(raw)
+    member[key] = value != null ? String(Math.min(limit, value)) : statBefore
+  }
+  if (String(member[key] ?? '') !== String(statBefore ?? '')) markPanelEdited(member)
 }
 function markPanelEdited(member) {
   if (member.panelNote) member.panelNote = '本攻略已手动调整练度或配装，请核对生命与攻击；不会自动重算。'

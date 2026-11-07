@@ -2,7 +2,7 @@
   <section ref="sheet" class="battle-sheet" :class="'is-' + kind" data-theme="light">
     <img class="sheet-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="sheet-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
-    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p></header>
+    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p></header>
     <div v-if="kind === 'team'" class="team-cards">
       <article v-for="(operator, index) in model.operators" :key="index" class="team-card" :class="{ 'is-empty': !operator.name }" :data-prof="operator.prof">
         <img class="team-card-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
@@ -27,7 +27,7 @@
           <div class="team-card-huaji" :aria-label="operator.huaji || '化极未填写'">
             <template v-if="operator.huajiProgress">
               <span class="team-card-stars" role="img" :aria-label="operator.huajiProgress.stars + '星'"><img v-for="star in operator.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="18" height="18" alt="" /></span>
-              <small v-if="operator.huajiProgress.awakened">已觉醒</small><small v-else-if="operator.huajiProgress.nodes != null">{{ operator.huajiProgress.nodes }} 节点</small><small v-else-if="operator.huajiProgress.status" class="is-muted">{{ operator.huajiProgress.status }}</small>
+              <small v-if="operator.huajiProgress.awakened">已觉醒</small><small v-else-if="operator.huajiProgress.nodes != null">{{ operator.huajiProgress.nodes }} 节点</small><small v-else-if="operator.huajiProgress.status && operator.huajiProgress.status !== '觉醒待确认'" class="is-muted">{{ operator.huajiProgress.status }}</small>
             </template>
             <span v-else class="team-card-huaji-text">{{ operator.huaji || '化极 —' }}</span>
           </div>
@@ -41,18 +41,17 @@
           </div>
           <section v-for="group in discGroups" :key="group.key" class="team-card-discs" :class="group.key">
             <h4>{{ group.label }}</h4>
-            <div class="team-card-terms">
+            <div class="team-card-terms" :style="{ '--rows': group.rows }">
               <em v-for="term in operator.discTerms[group.key]" :key="term.name" class="box-image-term" :class="discClass[term.color]"><span>{{ term.label }}</span></em>
               <em v-if="!operator.discTerms[group.key].length" class="box-image-term is-none">{{ group.key === 'discs' ? '未填写' : '无' }}</em>
-              <template v-else-if="group.key === 'discs'"><span v-for="slot in Math.max(0, 3 - operator.discTerms.discs.length)" :key="'empty-' + slot" class="team-card-term-placeholder" aria-hidden="true">—</span></template>
+              <template v-else><span v-for="slot in Math.max(0, group.rows - operator.discTerms[group.key].length)" :key="'empty-' + slot" class="team-card-term-placeholder" aria-hidden="true">—</span></template>
             </div>
           </section>
           <section v-if="showStars" class="team-card-starstones" aria-label="星石">
             <div v-for="[kind, label] in STAR_KINDS" :key="kind" class="team-card-star-row">
               <h4>{{ label }}</h4>
               <div class="team-card-terms">
-                <template v-if="operator.starStones[kind].some(Boolean)"><template v-for="(stone, slot) in stoneSlots(operator.starStones[kind])" :key="slot"><em v-if="stone" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}</small></em><span v-else class="team-card-term-placeholder" aria-hidden="true">—</span></template></template>
-                <em v-else class="team-card-stone is-none">未填写</em>
+                <template v-for="(stone, slot) in stoneSlots(operator.starStones[kind])" :key="slot"><em v-if="stone" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}</small></em><span v-else class="team-card-term-placeholder" aria-hidden="true">—</span></template>
               </div>
             </div>
             <p v-if="operator.starStones.other.length">{{ operator.starStones.other.join('\n') }}</p>
@@ -90,8 +89,11 @@ import { TARGET_COLORS } from '../../utils/battleImages.js'
 const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] } })
 const COMBAT = [['attack', '攻击'], ['hp', '生命']]
 const DISC_GROUPS = [['discs', '携带命盘'], ['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]
-// 携带命盘始终占位；必须/禁用只要有一人填写就全队显示，保持五张卡分区对齐。
-const discGroups = computed(() => DISC_GROUPS.filter(([key]) => key === 'discs' || props.model.operators.some(operator => operator[key])).map(([key, label]) => ({ key, label })))
+// 携带命盘始终占位且至少三行；必须/禁用只要有一人填写就全队显示，行数按全队最多条数，保持五张卡分区对齐又不留整块空白。
+const discGroups = computed(() => DISC_GROUPS.filter(([key]) => key === 'discs' || props.model.operators.some(operator => operator[key])).map(([key, label]) => {
+  const most = Math.max(0, ...props.model.operators.map(operator => operator.discTerms[key].length))
+  return { key, label, rows: Math.max(key === 'discs' ? 3 : 1, most) }
+}))
 const showStars = computed(() => props.model.operators.some(operator => operator.stars))
 const STAR_KINDS = [['main', '主星'], ['support', '辅星']]
 // 星石按三个槽位逐行显示，空槽留虚线位，五张卡的行保持对齐。
@@ -168,23 +170,25 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .team-card-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; font: 500 13px/1.3 var(--font-b, sans-serif); color: #725c43; }
 .team-card-stat strong { min-width: 0; font: 800 19px/1.2 var(--font-d, sans-serif); color: #3e3023; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
 .team-card-stat sup { font-size: 12px; color: #a0522d; vertical-align: top; margin-left: 1px; }
-/* 命盘与星石：轻量列表，每区固定三行对齐五张卡；卡片剩余高度按行均分，不留整块空白。 */
+/* 命盘与星石：轻量列表，每区行数全队一致（--rows）以对齐五张卡；卡片剩余高度按行均分。 */
 .team-card-discs, .team-card-star-row { flex: 1 1 auto; display: flex; flex-direction: column; margin: 0; }
 .team-card-starstones { flex: 2 1 auto; display: flex; flex-direction: column; gap: 18px; margin: 0; }
-.team-card-discs h4, .team-card-star-row h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding-left: 8px; border-left: 3px solid #b58a45; font: 600 16px/1.3 var(--font-s, serif); color: #5a4633; letter-spacing: 1px; }
+.team-card-discs h4, .team-card-star-row h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding-left: 8px; border-left: 3px solid #b58a45; font: 700 17px/1.3 var(--font-s, serif); color: #4a3a2a; letter-spacing: 1px; }
 .team-card-discs h4::after, .team-card-star-row h4::after { content: ''; flex: 1; border-top: 1px solid #e4d2ad; }
 .team-card-discs.requiredDiscs h4 { color: #315b32; border-left-color: #6f9a63; } .team-card-discs.forbiddenDiscs h4 { color: #963f35; border-left-color: #c0705f; }
-.team-card-terms { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(50px, 1fr); min-height: 150px; }
+.team-card-terms { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(var(--rows, 3), minmax(44px, 1fr)); grid-auto-rows: 44px; }
 .box-image-term, .team-card-stone, .team-card-term-placeholder { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 0 4px; border-bottom: 1px solid #efe4cf; font-style: normal; white-space: nowrap; overflow: hidden; }
 .team-card-terms > :last-child { border-bottom: 0; }
 .box-image-term { font: 700 21px/1.3 var(--font-b, sans-serif); color: #3e3023; }
 .box-image-term > span { flex: none; display: inline-block; transform-origin: center; }
 /* 命盘品质用词条前的小圆点区分，不再整格铺底色。 */
-.box-image-term.rarity-gold::before, .box-image-term.rarity-purple::before, .box-image-term.rarity-blue::before { content: ''; flex: none; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+.box-image-term.rarity-gold::before, .box-image-term.rarity-purple::before, .box-image-term.rarity-blue::before { content: ''; flex: none; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; }
 .box-image-term.rarity-gold::before { background: #d4a43c; } .box-image-term.rarity-purple::before { background: #9b74c4; } .box-image-term.rarity-blue::before { background: #5b8db3; }
-.forbiddenDiscs .box-image-term:not(.is-none) > span { text-decoration: line-through; text-decoration-color: #963f35; }
+/* 禁用删除线用伪元素绘制：html2canvas 导出不会画出 text-decoration。 */
+.forbiddenDiscs .box-image-term:not(.is-none) > span { position: relative; color: #6e4b40; }
+.forbiddenDiscs .box-image-term:not(.is-none) > span::after { content: ''; position: absolute; left: -3px; right: -3px; top: 52%; border-top: 2px solid #b0483b; }
 .team-card-term-placeholder { font: 500 18px/1 var(--font-b, sans-serif); color: #d3c4a8; }
-.box-image-term.is-none, .team-card-stone.is-none { grid-row: span 3; border-bottom: 0; font: 500 16px/1.3 var(--font-b, sans-serif); color: #b3a28a; letter-spacing: 2px; }
+.box-image-term.is-none { grid-row: 1 / -1; border-bottom: 0; font: 500 16px/1.3 var(--font-b, sans-serif); color: #b3a28a; letter-spacing: 2px; }
 .team-card-stone > span { font: 700 21px/1.3 var(--font-b, sans-serif); color: #3e3023; }
 .team-card-stone > small { font: 600 15px/1 var(--font-d, sans-serif); color: #8a5a2b; font-variant-numeric: tabular-nums; }
 .team-card-starstones p { margin: -10px 0 0; font: 500 12px/1.55 var(--font-b, sans-serif); color: #5d4c3a; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -211,7 +215,7 @@ tbody td { background: #fffdf6; } tbody tr:nth-child(even) td { background: #faf
 .is-team .sheet-note { margin-top: 18px; padding: 16px 18px; border: 1px solid #d8c5a3; border-radius: 8px; background: #fffaf0; }
 .sheet-note strong { font: 600 20px var(--font-s, serif); } .sheet-note p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 19px; }
 footer { border-top: 1px solid #b9a58b; margin-top: 28px; padding-top: 18px; display: flex; justify-content: space-between; gap: 20px; font-size: 16px; color: #725c43; }
-.is-team footer { margin-top: 20px; padding-top: 12px; border-top-color: #d8c5a3; font-size: 14px; }
+.is-team footer { margin-top: 20px; padding-top: 12px; border-top-color: #d8c5a3; font-size: 14px; color: #5d4a36; }
 footer strong { font-weight: normal; }
 .sheet-spacer { flex: 1 0 0; } .is-team .sheet-spacer { display: none; }
 </style>

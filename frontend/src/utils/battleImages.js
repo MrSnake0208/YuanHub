@@ -99,7 +99,7 @@ export function battleDiscTerms(value, discs = []) {
 
 export function buildBattleImageModel(draft, catalog = []) {
   return {
-    title: draft.title.trim() || '配队与操作记录', game: draft.game,
+    title: draft.title.trim(), game: draft.game,
     author: draft.author.trim(), note: draft.note.trim(),
     operators: draft.operators.map(operator => {
       const id = operator.id || battleOperatorId(operator.name)
