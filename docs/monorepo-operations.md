@@ -88,7 +88,7 @@ publish 重新核对 main、冻结 SHA、成功 run/attempt、版本、产物、
 
 本地 YAML 不代表线上保护已经修改。实际规则状态、待批准 JSON、应用顺序和官方依据见 [远端切换配置](release-settings/README.md)。先建立仅所有者 PR bypass 的 Ruleset，再去掉叠加的经典 required PR/CI；禁止强推/删除仍保留。生产 Environment 另行授权配置所有者审批，并按实际 workflow ref 选择 branch/tag 策略：当前新版只接受 main-ref dispatch；合法 tag-ref 发布须显式允许对应 tag，不能无条件限制为 main。旧提交中的 tag-triggered 发布入口须单独核验集中门禁与人工确认，不能仅靠新版 YAML 判定安全。
 
-当前 `YUANHUB_MONOREPO_DEPLOY_ENABLED=false`，本任务不启用、不换服务器、不做真实发布。旧 BackEndV3-Share 的 Actions 和 Tag Release 仍活跃且不受此开关约束；新通道生产发布及回滚验证前保留旧能力，最终停用另行授权，切换窗口须协调两仓发布。prepare 可以在部署关闭时运行 CI；本轮尚未获准触发，publish 在关闭时拒绝创建标签。环境参数、生产目录、审批、GitHub 实跑和回滚演练都要另行验收。Environment 策略须匹配真实 branch/tag ref，只有所有者审批时保持 Prevent self-review 关闭。旧多仓脚本绝不能拿当前根仓运行。
+2026-11-07 经所有者授权，`YUANHUB_MONOREPO_DEPLOY_ENABLED=true`；`frontend-production`、`backend-production` 要求所有者审批、允许所有者审批自己的请求，且仅接受 main-ref dispatch。`frontend/v*`、`backend/v*` 标签禁止更新和删除，无 bypass。独立的 `production` Environment 保持原状。实际 API 回读与发布证据见 [发布设置](release-settings/README.md)。旧 BackEndV3-Share 的 Actions 和 Tag Release 仍活跃且不受此开关约束；完成新通道生产发布及回滚验证前保留旧能力，最终停用另行授权，切换窗口须协调两仓发布。prepare 可在部署关闭时运行 CI；publish 在关闭时拒绝创建标签，启用也不代表授权后续发布或回滚。旧多仓脚本绝不能拿当前根仓运行。
 
 ## 独立回滚
 
