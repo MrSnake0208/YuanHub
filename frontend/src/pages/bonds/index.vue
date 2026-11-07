@@ -9,7 +9,7 @@
         </template>
       </CompactToolHeader>
       <div class="wrap bond-workspace">
-        <div v-if="!available" class="bond-toolbar bond-public"><label>浏览游戏<select v-model="publicGame" :disabled="state.busy"><option>代号鸢</option><option>如鸢</option></select></label><p>公开图鉴可浏览；登录并选择游戏账号后才能收录。</p><button v-if="state.accountsError" type="button" @click="loadAccounts">重读账号</button></div>
+        <div v-if="!available" class="bond-toolbar bond-public"><label>浏览游戏<select v-model="publicGame" :disabled="state.busy"><option>代号鸢</option><option>如鸢</option></select></label><p>选择游戏账号后即可收录羁绊。</p><button v-if="state.accountsError" type="button" @click="loadAccounts">重读账号</button></div>
         <section class="bond-summary" aria-label="账号羁绊进度">
           <div class="bond-collection-stat">
             <span>图鉴收集进度</span>
@@ -136,7 +136,7 @@
         </section>
       </div><SiteFooter />
     </main>
-    <main v-else id="main-content" class="bonds-main"><p role="status">当前账号没有成就与羁绊访问权限。</p></main>
+    <main v-else id="main-content" class="bonds-main"><p role="status">请先登录并确认内测资格后使用羁绊图鉴。</p></main>
   </div>
 </template>
 
@@ -150,7 +150,7 @@ import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
-import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
+import { beta } from '../../store/beta.js'
 import { OPERATOR_RARITY_LABELS, subProfList, tokens } from '../../utils/operatorFilters.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
@@ -158,7 +158,7 @@ import BondExchange from './BondExchange.vue'
 import { useBonds } from './useBonds.js'
 import { ACTIONS, STATUS, WEATHERS, groupBonds } from './rules.js'
 
-const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS))
+const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && beta.canUseBetaFeatures)
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
 const view = ref('codex'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIcons = { sunny: Sun, rain: CloudRain, fog: CloudFog, wind: Wind, light_snow: CloudSnow, heavy_snow: Snowflake, hurricane: Tornado, thunder: CloudLightning }

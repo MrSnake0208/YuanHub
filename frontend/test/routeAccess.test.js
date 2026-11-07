@@ -87,9 +87,9 @@ test('日历使用内测准入且不等待管理权限；内容管理仍要求�
 })
 
 
-test('成就面向登录用户开放，羁绊与目录编辑仍需授权', async () => {
+test('成就与羁绊不要求管理权限，目录编辑仍需授权', async () => {
   const { routes } = await import('../src/router/routes.js')
-  for (const path of ['/achievement', '/achievement/suggestions']) {
+  for (const path of ['/achievement', '/achievement/suggestions', '/bonds']) {
     const meta = routes.find(route => route.path === path).meta
     assert.equal(meta.requiresAuth, true)
     assert.equal(needsAdminAccess(meta), false)
@@ -97,10 +97,11 @@ test('成就面向登录用户开放，羁绊与目录编辑仍需授权', async
   }
   for (const path of ['/bonds']) {
     const meta = routes.find(route => route.path === path).meta
-    assert.equal(needsAdminAccess(meta), true)
+    assert.equal(meta.requiresBeta, true)
+    assert.equal(needsAdminAccess(meta), false)
     assert.equal(meta.requiresAuth, true)
     for (const permissions of [[], ['operator_panel:use'], ['achievement_catalog:write', 'bond_catalog:write']]) {
-      assert.equal(isRouteAccessAllowed(meta, { permissions }), false)
+      assert.equal(isRouteAccessAllowed(meta, { permissions }), true)
     }
     assert.equal(isRouteAccessAllowed(meta, { permissions: ['archive:access'] }), true)
     const admin = routes.find(route => route.path === path + '/admin').meta

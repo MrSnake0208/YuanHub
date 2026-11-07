@@ -32,7 +32,7 @@ vi.mock('vue-router', async () => {
 })
 vi.mock('../src/store/beta.js', async () => {
   const { reactive } = await import('vue')
-  return { beta: reactive({ campaign: { accessMode: 'BETA' }, mine: { canUseBetaFeatures: false, enrollmentStatus: '' } }) }
+  return { beta: reactive({ campaign: { accessMode: 'BETA' }, mine: { canUseBetaFeatures: false, enrollmentStatus: '' }, get canUseBetaFeatures() { return this.mine.canUseBetaFeatures } }) }
 })
 vi.mock('../src/store/betaCommunity.js', () => ({ betaCommunity: { open: vi.fn() } }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
@@ -277,6 +277,7 @@ it('手机登出先确认，取消不清会话，确认后显示登录结果入�
 
 it('双端按确认方案分组排序，常用入口直达并使用相同图标', async () => {
   isFeatureEnabled.mockReturnValue(true)
+  beta.mine.canUseBetaFeatures = true
   Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'navigation-groups' }, adminAccessLoaded: true, adminAccess: { superAdmin: true, permissions: ['archive:access'] } })
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
@@ -548,21 +549,27 @@ it.each([
 })
 
 
-it('普通登录用户可见成就，羁绊仍需授权，退出后隐藏成就', async () => {
+it('普通内测用户双端可见羁绊，撤销资格、关闭开关或退出后隐藏', async () => {
   isFeatureEnabled.mockReturnValue(true)
   auth.accessToken = 'fixture'; auth.userInfo = { id: 'member' }
   auth.adminAccess = { permissions: ['achievement_catalog:write', 'bond_catalog:write'] }
   const wrapper = render()
   expect(routes(wrapper)).toContain('/achievement')
   expect(routes(wrapper)).not.toContain('/bonds')
-  auth.adminAccess = { permissions: ['archive:access'] }; await flushPromises()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  beta.mine.canUseBetaFeatures = true; auth.adminAccess = null; await flushPromises()
   expect(routes(wrapper)).toContain('/achievement')
-  expect(routes(wrapper)).toContain('/bonds')
-  auth.adminAccess = { permissions: [] }; await flushPromises()
+  expect(routes(wrapper).filter(path => path === '/bonds')).toHaveLength(2)
+  beta.mine.canUseBetaFeatures = false; await flushPromises()
+  isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.BOND_ARCHIVE)
+  beta.mine.canUseBetaFeatures = true; await flushPromises()
+  expect(routes(wrapper)).not.toContain('/bonds')
+  isFeatureEnabled.mockReturnValue(true); beta.mine.canUseBetaFeatures = false; await flushPromises()
   expect(routes(wrapper)).toContain('/achievement')
   expect(routes(wrapper)).not.toContain('/bonds')
   auth.adminAccess = { permissions: ['archive:access'] }; auth.accessToken = ''; await flushPromises()
   expect(routes(wrapper)).not.toContain('/achievement')
+  expect(routes(wrapper)).not.toContain('/bonds')
   wrapper.unmount()
 })
 

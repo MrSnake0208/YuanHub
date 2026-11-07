@@ -8,7 +8,6 @@ import com.lhs.share.hub.controller.bond.request.BondRequests
 import com.lhs.share.hub.repository.entity.BondEntry
 import com.lhs.share.hub.service.inventory.InventoryApiException
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -85,6 +84,6 @@ class BondRulesTest {
         }
         assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/bonds/batch"))
         assertTrue(BetaAccessPolicy.requiresBeta("GET", "/v1/bonds/archive"))
-        assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/bonds/catalog"))
+        assertTrue(BetaAccessPolicy.requiresBeta("GET", "/v1/bonds/catalog"))
     }
 }

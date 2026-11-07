@@ -2,7 +2,9 @@ package com.lhs.share.openapi
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.lhs.share.config.security.AuthenticationHelper
+import com.lhs.share.config.security.BetaAccessInterceptor
 import com.lhs.share.config.security.RestrictedFeatureInterceptor
+import com.lhs.share.handler.BetaExceptionHandler
 import com.lhs.share.handler.InventoryExceptionHandler
 import com.lhs.share.handler.OperatorExceptionHandler
 import com.lhs.share.hub.controller.achievement.AchievementCatalogAdminController
@@ -23,8 +25,12 @@ import com.lhs.share.hub.service.achievement.AchievementService
 import com.lhs.share.hub.service.achievement.AchievementSuggestionService
 import com.lhs.share.hub.service.admin.AdminAuthorizationService
 import com.lhs.share.hub.service.admin.AdminPermission
+import com.lhs.share.hub.service.beta.BetaApiException
+import com.lhs.share.hub.service.beta.BetaService
+import com.lhs.share.hub.service.bond.BondArchiveResponse
 import com.lhs.share.hub.service.bond.BondCatalogService
 import com.lhs.share.hub.service.bond.BondService
+import com.lhs.share.hub.service.bond.BondSummary
 import com.lhs.share.hub.service.operator.OperatorPanelService
 import com.lhs.share.hub.service.operator.OperatorRelationshipService
 import com.lhs.share.hub.service.operator.OperatorReserveWorkspaceService
@@ -33,6 +39,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.converter.ByteArrayHttpMessageConverter
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
@@ -41,12 +48,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 class RestrictedFeatureAccessTest {
     private val helper = mockk<AuthenticationHelper>()
     private val authorization = mockk<AdminAuthorizationService>()
+    private val beta = mockk<BetaService>(relaxed = true)
     private val achievements = mockk<AchievementService>()
     private val achievementCatalog = mockk<AchievementCatalogService>()
     private val achievementSuggestions = mockk<AchievementSuggestionService>()
@@ -65,8 +74,8 @@ class RestrictedFeatureAccessTest {
         OperatorPanelController(panels, helper),
         OperatorRelationshipController(relationships, helper),
         OperatorReserveWorkspaceController(reserves, helper),
-    ).addInterceptors(RestrictedFeatureInterceptor(authorization, helper))
-        .setControllerAdvice(InventoryExceptionHandler(), OperatorExceptionHandler())
+    ).addInterceptors(RestrictedFeatureInterceptor(authorization, helper), BetaAccessInterceptor(beta, helper))
+        .setControllerAdvice(BetaExceptionHandler(), InventoryExceptionHandler(), OperatorExceptionHandler())
         .setMessageConverters(ByteArrayHttpMessageConverter(), MappingJackson2HttpMessageConverter(mapper)).build()
 
     @Test
@@ -75,7 +84,7 @@ class RestrictedFeatureAccessTest {
             every { helper.obtainUserId() } returns user
             every { authorization.hasPermission(any(), any()) } returns false
             val expected = if (user == null) 401 else 403
-            val roots = if (user == null) listOf("/v1/achievements", "/v1/bonds") else listOf("/v1/bonds")
+            val roots = if (user == null) listOf("/v1/achievements", "/v1/bonds") else emptyList()
             for (root in roots) {
                 for (suffix in listOf("/catalog?game=如鸢", "/archive?account_id=a", "/export?account_id=a")) {
                     mvc.perform(get(root + suffix)).andExpect(status().`is`(expected))
@@ -133,7 +142,7 @@ class RestrictedFeatureAccessTest {
         mvc.perform(post("/v1/operator/panel/preview").contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isOk)
         mvc.perform(get("/v1/achievements/catalog").param("game", "如鸢")).andExpect(status().isOk)
-        mvc.perform(get("/v1/bonds/catalog").param("game", "如鸢")).andExpect(status().isForbidden)
+        mvc.perform(get("/v1/bonds/catalog").param("game", "如鸢")).andExpect(status().isOk)
         every { authorization.hasPermission("member", AdminPermission.OPERATOR_RELATIONSHIP_USE) } returns true
         every { relationships.catalog("如鸢") } returns emptyMap()
         mvc.perform(get("/v1/operator/relationships/catalog").param("game", "如鸢")).andExpect(status().isOk)
@@ -144,6 +153,59 @@ class RestrictedFeatureAccessTest {
         mvc.perform(get("/v1/operator/reserve-workspace").param("account_id", "a")).andExpect(status().isOk)
         every { authorization.hasPermission("member", AdminPermission.OPERATOR_RESERVE_USE) } returns false
         mvc.perform(get("/v1/operator/reserve-workspace").param("account_id", "a")).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `ordinary beta members can read and save bonds without archive grants but cannot manage catalogs`() {
+        every { helper.obtainUserId() } returns "beta-member"
+        every { helper.requireUserId() } returns "beta-member"
+        every { authorization.hasPermission("beta-member", any()) } returns false
+        every { bondCatalog.catalog("如鸢") } returns BondPublication("v", "如鸢")
+        val archive = BondArchiveResponse("a", "如鸢", 0, "v", emptyList(), BondSummary(0, 0, 0))
+        every { bonds.archive("beta-member", "a") } returns archive
+        every { bonds.update("beta-member", "a", 0, "v", listOf("fixture" to true)) } returns archive.copy(revision = 1)
+        mvc.perform(get("/v1/bonds/catalog").param("game", "如鸢")).andExpect(status().isOk)
+        mvc.perform(get("/v1/bonds/archive").param("account_id", "a")).andExpect(status().isOk)
+        mvc.perform(
+            post("/v1/bonds/batch").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"account_id":"a","expected_revision":0,"catalog_version":"v","records":[{"bond_id":"fixture","triggered":true}]}""",
+                ),
+        ).andExpect(status().isOk).andExpect(jsonPath("$.data.revision").value(1))
+        verify(exactly = 3) { beta.requireAccess("beta-member") }
+        verify { authorization wasNot Called }
+        verify { bonds.update("beta-member", "a", 0, "v", listOf("fixture" to true)) }
+        mvc.perform(get("/v1/admin/bonds/catalog").param("game", "如鸢")).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `bond catalog reads writes and backups fail closed when beta is missing revoked or unavailable`() {
+        every { helper.obtainUserId() } returns "member"
+        every { helper.requireUserId() } returns "member"
+        val errors = listOf(
+            BetaApiException(HttpStatus.FORBIDDEN, "beta_access_required", "join first"),
+            BetaApiException(HttpStatus.FORBIDDEN, "beta_service_closed", "maintenance"),
+            BetaApiException(HttpStatus.SERVICE_UNAVAILABLE, "beta_temporarily_unavailable", "retry"),
+        )
+        for (error in errors) {
+            every { beta.requireAccess("member") } throws error
+            val requests = listOf(
+                get("/v1/bonds/catalog").param("game", "如鸢"),
+                get("/v1/bonds/archive").param("account_id", "a"),
+                get("/v1/bonds/export").param("account_id", "a"),
+                patch("/v1/bonds/records/id"),
+                post("/v1/bonds/batch"),
+                post("/v1/bonds/import/preview"),
+                post("/v1/bonds/import/confirm"),
+            )
+            for (request in requests) {
+                mvc.perform(request.contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().`is`(error.status.value()))
+                    .andExpect(jsonPath("$.error.code").value(error.code))
+                    .andExpect(header().string("Cache-Control", "no-store"))
+            }
+        }
+        verify { listOf(bonds, bondCatalog, authorization) wasNot Called }
     }
 
     @Test

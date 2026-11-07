@@ -26,7 +26,6 @@ object BetaAccessPolicy {
                 "/v1/operator/catalog",
                 "/v1/recruitment/catalog",
                 "/v1/achievements/catalog",
-                "/v1/bonds/catalog",
             )
         ) {
             return false

@@ -10,7 +10,9 @@ import { listAccounts } from '../src/api/accounts.js'
 import { getOperatorCatalog, getOperatorCurrent } from '../src/api/operator.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
+import { beta } from '../src/store/beta.js'
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'owner' } }) }))
+vi.mock('../src/store/beta.js', async () => ({ beta: (await import('vue')).reactive({ canUseBetaFeatures: true }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/bonds.js', () => ({ getBondCatalog: vi.fn(), getBondArchive: vi.fn(), writeBonds: vi.fn(), exportBonds: vi.fn(), previewBonds: vi.fn(), confirmBonds: vi.fn() }))
@@ -26,7 +28,7 @@ function mountPage() {
   return w
 }
 beforeEach(() => {
-  vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['archive:access'] }; activeAccount.set('a')
+  vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: [] }; beta.canUseBetaFeatures = true; activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }])
   api.getBondCatalog.mockResolvedValue({ game: '代号鸢', catalog_version: 'fixture-v1', achievement_targets: [1, 3, 8], entries: [entry] })
   api.getBondArchive.mockImplementation(id => Promise.resolve(archive(id)))
@@ -34,6 +36,14 @@ beforeEach(() => {
   getOperatorCurrent.mockResolvedValue([])
 })
 afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
+it('普通内测用户可使用羁绊，失去内测资格或退出后隐藏内容', async () => {
+  const w = mountPage(); await flushPromises()
+  expect(w.find('.bond-browser').exists()).toBe(true)
+  beta.canUseBetaFeatures = false; await flushPromises()
+  expect(w.find('.bond-browser').exists()).toBe(false)
+  beta.canUseBetaFeatures = true; auth.accessToken = ''; await flushPromises()
+  expect(w.find('.bond-browser').exists()).toBe(false)
+})
 it('匿名及无账号只读目录，账号切换和退出立即清除旧档案', async () => {
   auth.accessToken = ''; auth.userInfo = null
   const m = model(); await flushPromises()
@@ -153,7 +163,7 @@ it('历史天气只能取消已有收录，退出后隐藏整个羁绊内容', a
   auth.accessToken = ''; auth.userInfo = null; await flushPromises()
   expect(w.find('.bond-common-filters').exists()).toBe(false)
   expect(w.find('.bond-condition').exists()).toBe(false)
-  expect(w.text()).toContain('当前账号没有成就与羁绊访问权限')
+  expect(w.text()).toContain('请先登录并确认内测资格')
   expect(api.writeBonds).not.toHaveBeenCalled()
 })
 it('旧文件显式选择来源和缺失游戏，切目标后预览失效且迟到确认不串号', async () => {

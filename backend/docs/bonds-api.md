@@ -2,7 +2,7 @@
 
 本模块原生复用网站JWT、Beta资格、游戏账号与密探目录；没有外部账号体系、个人localStorage权威存储或库存奖励写入。所有接口沿用ApiResult、snake_case及InventoryError，响应 `Cache-Control: no-store`。
 
-所有玩家及目录管理接口（含 catalog）要求网站登录和 `archive:access`：暂仅超级管理员和平台管理员拥有，普通用户、内测用户及历史 `ARCHIVE_USER` 不放行。目录管理另须原有 `bond_catalog:write`；历史记录与角色绑定保留。
+所有玩家接口（含 catalog、收录与备份导入导出）要求网站登录和现有 Beta 准入，有内测资格的普通用户无需 `archive:access` 或管理员角色即可使用；无资格、维护或资格查询失败时拒绝访问，管理员沿用现有 Beta 豁免。目录管理仍要求 `archive:access` 和 `bond_catalog:write`，仅配置的激活资料所有者且具有平台/超级管理员身份可用；历史记录与角色绑定保留。兼容发布时先部署后端，再部署前端。
 
 ## 数据与计数
 
@@ -18,7 +18,7 @@ summary.triggered_count 每次从记录与目录重算，包含 active/retired �
 
 | 方法与路径 | 输入与行为 |
 | --- | --- |
-| GET /v1/bonds/catalog | game；授权用户读取 published、版本，无草稿或个人信息，published_by为null |
+| GET /v1/bonds/catalog | game；具备 Beta 资格的登录用户读取 published、版本，无草稿或个人信息，published_by为null |
 | GET /v1/bonds/archive | account_id；返回账号、游戏、revision、catalog_version、records、summary |
 | PATCH /v1/bonds/records/{id} | account_id、expected_revision、catalog_version、triggered |
 | POST /v1/bonds/batch | 上述上下文和records数组，每项bond_id/triggered；1–50个不同ID，整批原子 |
@@ -26,7 +26,7 @@ summary.triggered_count 每次从记录与目录重算，包含 active/retired �
 | POST /v1/bonds/import/preview | account_id、document、strategy及可选source_account/source_game；只预览 |
 | POST /v1/bonds/import/confirm | 同上加expected_revision/catalog_version/preview_token/skip_unknown；原子确认 |
 
-除公共目录外均验证JWT/Beta及账号归属，游戏取服务器账号，拒绝客户端总数、归属、游戏、来源、时间等写入字段。档案/目录版本过期409，非法字段/游戏/条目422；JSON损坏或重复对象字段400，请求封装超限413。所有保存均返回完整档案和重算计数，相同状态不改变档案revision或时间。
+玩家接口均验证JWT/Beta；除目录读取外还验证账号归属，游戏取服务器账号，拒绝客户端总数、归属、游戏、来源、时间等写入字段。档案/目录版本过期409，非法字段/游戏/条目422；JSON损坏或重复对象字段400，请求封装超限413。所有保存均返回完整档案和重算计数，相同状态不改变档案revision或时间。
 
 写事务同时对现有账号和发布目录做fence，再执行档案CAS。批量失败全部回滚；账号删除/游戏更改与迟到写入竞争返回409，不复活孤儿。账号有任何羁绊记录即保护游戏修改；删除账号同时清理档案和本进程导入预览。
 

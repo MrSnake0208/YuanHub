@@ -79,7 +79,7 @@ export const routes = [
     {
         path: '/bonds', name: 'bonds', text: '羁绊图鉴', display: true, module: 'tools', icon: 'link',
         component: () => import('/src/pages/bonds/index.vue'),
-        meta: { requiresAuth: true, requiredPermission: 'archive:access', feature: FEATURE_KEYS.BOND_ARCHIVE, featureFallback: '/', title: '羁绊图鉴 — YuanHub' }
+        meta: { requiresAuth: true, requiresBeta: true, feature: FEATURE_KEYS.BOND_ARCHIVE, featureFallback: '/', title: '羁绊图鉴 — YuanHub' }
     },
     {
         path: '/achievement/suggestions', name: 'achievement-suggestions', text: '成就资料投稿', display: false, module: 'tools', icon: 'book-check',

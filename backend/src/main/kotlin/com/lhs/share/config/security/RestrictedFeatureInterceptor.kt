@@ -20,8 +20,8 @@ class RestrictedFeatureInterceptor(
         if (handler !is HandlerMethod) return true
         val path = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)?.toString() ?: return true
         val permission = when {
-            path == "/v1/achievements" || path.startsWith("/v1/achievements/") -> null
-            listOf("/v1/bonds", "/v1/admin/achievement-catalogs", "/v1/admin/bonds").any {
+            listOf("/v1/achievements", "/v1/bonds").any { path == it || path.startsWith("$it/") } -> null
+            listOf("/v1/admin/achievement-catalogs", "/v1/admin/bonds").any {
                 path == it || path.startsWith("$it/")
             } -> AdminPermission.ARCHIVE_ACCESS
             path == "/v1/operator/panel" || path.startsWith("/v1/operator/panel/") -> AdminPermission.OPERATOR_PANEL_USE

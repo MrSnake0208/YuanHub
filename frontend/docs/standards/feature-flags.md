@@ -43,13 +43,19 @@ or Beta switch needs changing. Per-user rollout is not implemented.
 `achievementArchive` is built in and available to signed-in users with existing
 site eligibility; its navigation, player routes and APIs require no admin role or
 `archive:access`. The existing Beta gate and account ownership checks remain.
-`bondArchive` is built in but remains restricted to PLATFORM_ADMIN and SUPER_ADMIN
-through `archive:access`. The operator relationship tab, backup,
+`bondArchive` is built in and available to signed-in users with existing Beta
+eligibility, without `archive:access` or an admin role. Navigation and page content
+require confirmed Beta access, routing uses `requiresBeta`, and all `/v1/bonds`
+APIs (including catalog reads and backups) enforce the same Beta gate. Existing
+administrator Beta exemptions and account ownership checks remain. Catalog
+management still requires `archive:access`, its write permission and the configured
+data-owner identity. Deploy the paired backend before the frontend.
+The operator relationship tab, backup,
 content mount and persisted-tab restoration allow administrator preview via
 `operator_relationship:use` while the `operatorRelationships` public flag defaults
 to `false` in development and production. Opening that flag also requires a paired
 backend permission-policy change; it never bypasses server authorization.
-Ordinary users and Beta enrollment do not grant access to these restricted features. Historical ARCHIVE_USER
+Ordinary users and Beta enrollment do not grant access to the restricted operator features. Historical ARCHIVE_USER
 and OPERATOR_PANEL_USER bindings are preserved but currently grant no feature access.
 Catalog management still requires its existing write permission and configured data-owner identity.
 

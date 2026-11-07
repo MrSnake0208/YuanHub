@@ -29,7 +29,7 @@ export const FEATURE_FLAGS = Object.freeze({
   [FEATURE_KEYS.WORK_SYSTEM]: false,
   [FEATURE_KEYS.RECRUITMENT_ARCHIVE]: true,
   [FEATURE_KEYS.ACTIVITY_CALENDAR]: true,
-  // 成就开放给具备站点使用资格的登录用户；羁绊仍按 archive:access 授权。
+  // 成就与羁绊开放给具备站点使用资格的登录用户；羁绊沿用内测准入。
   [FEATURE_KEYS.ACHIEVEMENT_ARCHIVE]: true,
   [FEATURE_KEYS.BOND_ARCHIVE]: true,
   // 普通用户暂不开放；管理员凭服务端权限预览。

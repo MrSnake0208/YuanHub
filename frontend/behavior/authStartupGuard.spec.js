@@ -231,7 +231,7 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
     expect(backend.count(ACCESS_ME)).toBe(2)
   })
 
-  it.each(['/recruitment?game=如鸢', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new'])('%s 只需内测资格，查询失败或维护仍关闭；不读取独立招募/管理权限', async target => {
+  it.each(['/recruitment?game=如鸢', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/bonds'])('%s 只需内测资格，查询失败或维护仍关闭；不读取独立招募/管理权限', async target => {
     auth.accessToken = 'valid-token'; auth.userInfo = { id: 'u1' }
     const backend = installFetch([])
     let allowed = false, unavailable = false
@@ -254,7 +254,7 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
     expect(beta.refresh).toHaveBeenCalledTimes(3)
   })
 
-  it.each(['/recruitment', '/calendar'])('%s 切换账号后重新校验内测，旧资格不复用', async target => {
+  it.each(['/recruitment', '/calendar', '/bonds'])('%s 切换账号后重新校验内测，旧资格不复用', async target => {
     auth.accessToken = 'account-a'; auth.userInfo = { id: 'a' }
     installFetch([])
     vi.spyOn(beta, 'refresh').mockImplementation(async () => {

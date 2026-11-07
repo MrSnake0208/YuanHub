@@ -4,6 +4,11 @@ import { requiresBetaApi, safeBetaRedirect, betaEntryTarget, betaStatusCopy, bet
 
 const base = { accessMode: 'BETA', publicState: 'OPEN_REGISTRATION', reservedRemaining: 25, admissionsPaused: false }
 test('beta gate protects cloud roots and token writes, never public escape routes', () => {
+  for (const path of ['/v1/bonds/catalog?game=如鸢', '/v1/bonds/archive', '/v1/bonds/export', '/v1/bonds/records/id', '/v1/bonds/batch', '/v1/bonds/import/preview', '/v1/bonds/import/confirm']) {
+    assert.equal(requiresBetaApi('GET', path), true, path)
+    assert.equal(requiresBetaApi('POST', path), true, path)
+  }
+  assert.equal(requiresBetaApi('GET', '/v1/bonds-lookalike'), false)
   for (const path of ['/v1/accounts', '/v1/accounts/a/events', '/v1/recruitment/archive', '/v1/recruitment/import/preview', '/v1/activity-calendar', '/v1/activity-calendar/suggestions/mine', '/v1/activity-calendar/subscriptions/summary', '/v1/activity-calendar/private-items', '/v1/inventory/current', '/v1/operator/training-workspace', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/hub/ledger/plan']) {
     assert.equal(requiresBetaApi('GET', path), true, path)
   }
@@ -66,7 +71,7 @@ test('every status copy carries a visual tone the beta page can style', () => {
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {
   const { routes } = await import('../src/router/routes.js')
-  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment'].sort())
+  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment', '/bonds'].sort())
   const recruitment = routes.find(route => route.path === '/recruitment')
   assert.equal(recruitment.meta.requiresRecruitmentAccess, undefined)
   assert.equal(recruitment.meta.requiresBeta, true)

@@ -19,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
@@ -102,7 +103,7 @@ class BetaSecurityTest {
     }
 
     @Test
-    fun `calendar and recruitment private requests fail closed for missing beta maintenance and lookup failures`() {
+    fun `calendar recruitment and bonds fail closed for missing beta maintenance and lookup failures`() {
         val token = jwt.issueAuthToken("beta-boundary", null, emptyList()).value
         val errors = listOf(
             BetaApiException(HttpStatus.FORBIDDEN, "beta_access_required", "join first"),
@@ -129,6 +130,13 @@ class BetaSecurityTest {
                 get("/v1/recruitment/export").param("account_id", "a"),
                 post("/v1/recruitment/import/preview"),
                 post("/v1/recruitment/import/commit"),
+                get("/v1/bonds/catalog").param("game", "如鸢"),
+                get("/v1/bonds/archive").param("account_id", "a"),
+                get("/v1/bonds/export").param("account_id", "a"),
+                patch("/v1/bonds/records/id"),
+                post("/v1/bonds/batch"),
+                post("/v1/bonds/import/preview"),
+                post("/v1/bonds/import/confirm"),
             ).forEach { request ->
                 mvc.perform(request.header("Authorization", "Bearer $token").contentType("application/json").content("{}"))
                     .andExpect(status().`is`(error.status.value()))

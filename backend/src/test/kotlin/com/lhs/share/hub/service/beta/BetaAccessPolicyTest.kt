@@ -20,6 +20,9 @@ class BetaAccessPolicyTest {
             "/v1/activity-calendar/private-items",
             "/v1/recruitment/archive",
             "/v1/recruitment/import/preview",
+            "/v1/bonds/catalog",
+            "/v1/bonds/archive",
+            "/v1/bonds/export",
             "/v1/accounts/{id}/events",
             "/v1/inventory/current",
             "/v1/operator/training-workspace",
@@ -52,6 +55,11 @@ class BetaAccessPolicyTest {
         assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/operator/catalog"))
         assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/recruitment/commands"))
         assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/recruitment/import/commit"))
+        assertTrue(BetaAccessPolicy.requiresBeta("PATCH", "/v1/bonds/records/{id}"))
+        assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/bonds/batch"))
+        assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/bonds/import/preview"))
+        assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/bonds/import/confirm"))
+        assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/bonds-other"))
         assertTrue(BetaAccessPolicy.requiresBeta("PUT", "/v1/activity-calendar/subscriptions/{id}/progress"))
         assertTrue(BetaAccessPolicy.requiresBeta("DELETE", "/v1/activity-calendar/private-items/{id}"))
         assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/activity-calendar-other"))

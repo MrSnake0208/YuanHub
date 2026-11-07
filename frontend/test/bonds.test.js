@@ -9,11 +9,12 @@ import { ADMIN_PERMISSIONS } from '../src/utils/authPermissions.js'
 const a = { bond_id: 'bond_a', game: '代号鸢', members: ['a', 'b'], action: 'arson', weather: 'sunny', effect: 'positive', status: 'active' }
 const entries = [a, { ...a, bond_id: 'bond_b', members: ['b', 'a'], weather: 'rain' }, { ...a, bond_id: 'bond_c', action: 'poison' }]
 const filters = { query: '', action: '', weather: '', status: '', effect: '', onlyOwned: false, hideRecorded: false }
-test('羁绊路由需要访问授权，目录管理同时需要写权限', () => {
+test('羁绊路由只需登录与内测资格，目录管理仍需要写权限', () => {
   const page = routes.find(r => r.path === '/bonds')
   const admin = routes.find(r => r.path === '/bonds/admin')
   assert.equal(page.meta.requiresAuth, true)
-  assert.equal(page.meta.requiredPermission, ADMIN_PERMISSIONS.ARCHIVE_ACCESS)
+  assert.equal(page.meta.requiresBeta, true)
+  assert.equal(page.meta.requiredPermission, undefined)
   assert.equal(admin.meta.requiresAuth, true)
   assert.equal(admin.meta.requiredPermission, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE)
   assert.equal(getVisibleAdminTools(null).some(t => t.to === '/bonds/admin'), false)
