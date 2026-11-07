@@ -1,4 +1,5 @@
 # Per-worktree dependencies, build output and local evidence
+docs/
 node_modules/
 dist/
 build/

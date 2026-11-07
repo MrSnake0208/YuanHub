@@ -17,7 +17,7 @@ export function useBattleAccountSource() {
   const userId = computed(() => auth.isLoggedIn ? String(auth.userInfo?.id || '') : '')
   const account = computed(() => userId.value ? accounts.value.find(item => item.id === activeAccount.id) : null)
   const scope = computed(() => JSON.stringify([userId.value, userId.value ? activeAccount.id : '', account.value?.game || '']))
-  let alive = true, accountSequence = 0, readSequence = 0
+  let alive = true, accountSequence = 0, readSequence = 0, catalogRequest = null
   function acceptAccounts(rows) {
     accounts.value = rows
     activeAccount.syncAccounts(rows)
@@ -39,15 +39,20 @@ export function useBattleAccountSource() {
   watch(scope, () => {
     readSequence++; entries.value = []; loading.value = false; loaded.value = false; error.value = ''
   }, { flush: 'sync' })
-  async function loadCatalog() {
+  // 挂载与自动读取账号会同时需要图鉴，共用同一个进行中的请求。
+  function loadCatalog() {
+    if (catalogRequest) return catalogRequest
     catalogError.value = ''
-    try {
-      const response = await getOperatorCatalog()
-      if (!Array.isArray(response?.operators)) throw new Error('invalid catalog')
-      if (alive) { catalog.value = response.operators; catalogReady.value = true }
-    } catch {
-      if (alive) catalogError.value = '公共图鉴读取失败，暂用本地名称目录；可重试读取命盘词条。'
-    }
+    catalogRequest = (async () => {
+      try {
+        const response = await getOperatorCatalog()
+        if (!Array.isArray(response?.operators)) throw new Error('invalid catalog')
+        if (alive) { catalog.value = response.operators; catalogReady.value = true }
+      } catch {
+        if (alive) catalogError.value = '公共图鉴读取失败，暂用本地名称目录；可重试读取命盘词条。'
+      } finally { catalogRequest = null }
+    })()
+    return catalogRequest
   }
   async function readAccount() {
     if (!account.value || loading.value) return
@@ -77,6 +82,8 @@ export function useBattleAccountSource() {
       if (valid()) error.value = reason.message || '密探读取失败，请重试。'
     } finally { if (valid()) loading.value = false }
   }
+  // 读取账号只生成选人候选，不改动草稿；进入页面或切换账号时自动读取，无需玩家手动带入。
+  watch(scope, () => { if (account.value) void readAccount() }, { immediate: true })
   onMounted(loadCatalog)
   onBeforeUnmount(() => { alive = false; accountSequence++; readSequence++ })
   return { userId, account, accounts, accountsLoading, accountError, loadAccounts, catalog, catalogError, loadCatalog, entries, loading, loaded, error, readAccount }

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { routes } from '../src/router/routes.js'
-import { battleImageError, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
+import { battleFileName, battleImageError, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
 
 test('独立工具公开可用，不受作业系统或账号开关限制', () => {
   const route = routes.find(route => route.path === '/tools/battle-images')
@@ -50,4 +50,11 @@ test('出图前阻止空阵容、无动作和动作对应的空槽位', () => {
   assert.match(battleImageError(draft, 'actions'), /槽位/)
   draft.operators[1].name = '贾诩'
   assert.equal(battleImageError(draft, 'actions'), '')
+})
+
+test('下载文件名带攻略标题，去除非法字符并在无标题时回退', () => {
+  assert.equal(battleFileName('  主线 7-12 / 困难  ', '配队草稿', 'json'), 'YuanHub-主线 7-12 困难-配队草稿.json')
+  assert.equal(battleFileName('a:b*c?"d<e>f|g\\h', '上阵密探', 'png'), 'YuanHub-a b c d e f g h-上阵密探.png')
+  assert.equal(battleFileName('', '配队草稿', 'json'), 'YuanHub-配队草稿.json')
+  assert.equal(battleFileName('长'.repeat(80), 'x', 'png'), `YuanHub-${'长'.repeat(40)}-x.png`)
 })

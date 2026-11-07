@@ -4,32 +4,66 @@
     <main id="main-content" class="battle-tool">
       <CompactToolHeader title="配队与操作图">
         <template #help>五位密探固定成列；点击练度直接填写，点击命盘、星石或动作展开编辑。草稿按站点用户与游戏账号保存在本机，修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
-        <template #primary-actions><span class="battle-save-status" role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span><button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport"><Download :size="16" aria-hidden="true" />{{ exportBusy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}</button></template>
-        <template #actions><details class="battle-draft-menu"><summary>草稿管理<ChevronDown :size="14" aria-hidden="true" /></summary><div class="battle-draft-tools"><button type="button" @click="exportDraft">导出草稿</button><button type="button" :disabled="importing || accountsLoading" @click="fileInput.click()">导入草稿</button><button type="button" :disabled="accountsLoading" @click="newDraft">新建草稿</button></div></details></template>
+        <template #primary-actions>
+          <span class="battle-save-status" role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span>
+          <button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">
+            <Download :size="16" aria-hidden="true" />{{ exportBusy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}
+          </button>
+        </template>
+        <template #actions>
+          <details ref="draftMenu" class="battle-draft-menu" @keydown.esc.stop="closeDraftMenu(true)">
+            <summary>草稿管理<ChevronDown :size="14" aria-hidden="true" /></summary>
+            <div class="battle-draft-tools">
+              <button type="button" @click="closeDraftMenu(); exportDraft()">导出草稿</button>
+              <button type="button" :disabled="importing || accountsLoading" @click="closeDraftMenu(); fileInput.click()">导入草稿</button>
+              <button type="button" :disabled="accountsLoading" @click="closeDraftMenu(); newDraft()">新建草稿</button>
+            </div>
+          </details>
+        </template>
       </CompactToolHeader>
       <div class="wrap battle-document">
         <input ref="fileInput" type="file" accept=".json,application/json" aria-label="选择草稿文件" hidden @change="importDraft">
         <p v-if="fileError" role="alert" class="battle-error">{{ fileError }}</p>
-        <p v-if="saveError" role="alert" class="battle-error">{{ saveError }} <button v-if="discError" type="button" @click="kind = 'team'; teamEditor?.revealDiscError()">定位命盘问题</button><button v-else type="button" @click="retrySave">{{ blocked ? '覆盖本机存档' : '重试保存' }}</button></p>
+        <p v-if="saveError" role="alert" class="battle-error">
+          {{ saveError }}
+          <button v-if="discError" type="button" @click="kind = 'team'; teamEditor?.revealDiscError()">定位命盘问题</button>
+          <button v-else type="button" @click="retrySave">{{ blocked ? '覆盖本机存档' : '重试保存' }}</button>
+        </p>
         <div class="battle-account-context">
           <DataAccountContextBar v-if="userId" compact :accounts="accounts" :account-id="sourceAccountId" :game="account?.game || ''" :is-logged-in="true" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" />
           <label v-if="!account" class="battle-game-field">游戏<select v-model="draft.game" aria-label="游戏"><option>如鸢</option><option>代号鸢</option></select></label>
           <button v-if="accountError" type="button" @click="loadAccounts">重试读取账号</button>
-          <span class="battle-hint">{{ account ? '攻略内修改不影响账号档案；切换账号打开独立草稿。' : '无需登录也可手动填写。' }}</span>
+          <template v-if="account && !accountsLoading">
+            <span v-if="loading" class="battle-account-status" role="status">正在读取我的密探…</span>
+            <span v-else-if="loaded" class="battle-account-status" role="status">{{ entries.length ? `已读取 ${entries.length} 位我的密探，选人时自动带入配置` : '当前账号暂无已拥有的密探，可手动填写' }}</span>
+            <button v-if="loaded || error" class="battle-account-import" type="button" :disabled="loading" :title="loaded ? '密探名册有改动时重新读取；不会覆盖已编辑的阵容' : undefined" @click="readAccount">{{ error ? '重试读取' : '重新读取我的密探' }}</button>
+          </template>
         </div>
+        <p v-if="error" role="alert" class="battle-error">{{ error }}</p>
         <p v-if="accountsLoading" role="status">正在读取账号与本机草稿…</p>
         <template v-else>
-          <section class="battle-meta" aria-label="图片基本信息"><label class="battle-title-field"><span class="sr-only">标题 / 关卡</span><input v-model="draft.title" aria-label="标题或关卡" maxlength="120" placeholder="给这份攻略起个名字"></label><label class="battle-author-field"><span class="sr-only">署名</span><input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="署名（可选）"></label></section>
-          <nav class="battle-modes" aria-label="编辑内容"><button type="button" :aria-pressed="kind === 'team'" @click="kind = 'team'"><UsersRound :size="17" aria-hidden="true" />配队表</button><button type="button" :aria-pressed="kind === 'actions'" @click="kind = 'actions'"><ListOrdered :size="17" aria-hidden="true" />操作表</button><button v-if="account" class="battle-account-import" type="button" :disabled="loading" @click="readAccount">{{ loading ? '正在读取我的密探…' : loaded ? '重新读取我的密探' : '从我的密探带入' }}</button></nav>
-          <p v-if="error" role="alert" class="battle-error">{{ error }}</p>
-          <p v-if="loaded" class="battle-hint">{{ entries.length ? '账号数据已读取；点表头选人可带入配置，重新读取不会覆盖已编辑阵容。' : '当前账号暂无已拥有的密探，可继续手动填写。' }}</p>
+          <section class="battle-meta" aria-label="图片基本信息">
+            <label class="battle-title-field"><span class="sr-only">标题 / 关卡</span><input v-model="draft.title" aria-label="标题或关卡" maxlength="120" placeholder="给这份攻略起个名字"></label>
+            <label class="battle-author-field"><span class="sr-only">署名</span><input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="署名（可选）"></label>
+          </section>
+          <div class="battle-modes" role="tablist" aria-label="编辑内容" @keydown="moveTab">
+            <button v-for="mode in MODES" :id="`battle-tab-${mode.value}`" :key="mode.value" type="button" role="tab" :aria-selected="kind === mode.value" :tabindex="kind === mode.value ? 0 : -1" aria-controls="battle-editor" @click="kind = mode.value">
+              <component :is="mode.icon" :size="17" aria-hidden="true" />{{ mode.label }}
+            </button>
+          </div>
           <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
-          <div id="battle-editor" class="battle-workspace">
+          <div id="battle-editor" class="battle-workspace" role="tabpanel" :aria-labelledby="`battle-tab-${kind}`">
             <BattleTeamEditor :key="revision" ref="teamEditor" v-show="kind === 'team'" :operators="draft.operators" :game="draft.game" :catalog="catalog" :account-entries="entries" @pending-name="pendingName = $event" @replace="(slot, operator) => draft.operators[slot] = operator" />
             <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @round-change="roundIndex = $event" />
           </div>
-          <details class="battle-common-note"><summary><FileText :size="15" aria-hidden="true" />打法说明<span>两种图片共用</span></summary><label><span class="sr-only">图片说明</span><textarea v-model="draft.note" aria-label="图片说明" maxlength="2000" rows="3" placeholder="配队要求、替换建议或打法说明"></textarea></label></details>
-          <section v-if="exportOpen" ref="exportPanel" class="battle-export-panel" aria-label="图片预览与下载" tabindex="-1"><header><h2>图片预览与下载</h2><button type="button" @click="closeExport"><X :size="16" aria-hidden="true" />返回编辑</button></header><BattleImageExport ref="exporter" :draft="draft" :kind="kind" :round-index="roundIndex" :show-generate-button="false" @busy="exportBusy = $event" /></section>
+          <details class="battle-common-note">
+            <summary><FileText :size="15" aria-hidden="true" />打法说明<span>两种图片共用</span></summary>
+            <label><span class="sr-only">图片说明</span><textarea v-model="draft.note" aria-label="图片说明" maxlength="2000" rows="3" placeholder="配队要求、替换建议或打法说明"></textarea></label>
+          </details>
+          <section v-if="exportOpen" ref="exportPanel" class="battle-export-panel" aria-label="图片预览与下载" tabindex="-1">
+            <header><h2>图片预览与下载</h2><button type="button" @click="closeExport"><X :size="16" aria-hidden="true" />返回编辑</button></header>
+            <BattleImageExport ref="exporter" :draft="draft" :kind="kind" :round-index="roundIndex" :show-generate-button="false" @busy="exportBusy = $event" />
+          </section>
         </template>
         <p class="battle-local-note"><Info :size="14" aria-hidden="true" />草稿仅保存在当前浏览器，清理浏览器数据会丢失。换设备前请导出草稿；图片与草稿均不会自动上传。</p>
       </div>
@@ -48,7 +82,7 @@ import BattleTeamEditor from '../../components/work/BattleTeamEditor.vue'
 import BattleRecorder from '../../components/work/BattleRecorder.vue'
 import BattleImageExport from '../../components/work/BattleImageExport.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
-import { battleImageError, createBattleDraft } from '../../utils/battleImages.js'
+import { battleFileName, battleImageError, createBattleDraft } from '../../utils/battleImages.js'
 import { BATTLE_DRAFT_MAX_BYTES, decodeBattleDraft, encodeBattleDraft } from '../../utils/battleDraft.js'
 import { useBattleDraft } from '../../composables/useBattleDraft.js'
 import { useBattleAccountSource } from '../../composables/useBattleAccountSource.js'
@@ -60,7 +94,23 @@ const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')
 const { draft, key, revision, dirty, status, saveError, discError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
 const kind = ref('team'), roundIndex = ref(0), fileInput = ref(null), fileError = ref(''), importing = ref(false)
 const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), teamEditor = ref(null), exportButton = ref(null)
-const exportBusy = ref(false)
+const exportBusy = ref(false), draftMenu = ref(null)
+const MODES = [{ value: 'team', label: '配队表', icon: UsersRound }, { value: 'actions', label: '操作表', icon: ListOrdered }]
+async function moveTab(event) {
+  const index = MODES.findIndex(mode => mode.value === kind.value)
+  const next = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: MODES.length - 1 }[event.key]
+  if (next === undefined) return
+  event.preventDefault()
+  kind.value = MODES[(next + MODES.length) % MODES.length].value
+  await nextTick()
+  document.getElementById(`battle-tab-${kind.value}`)?.focus()
+}
+function closeDraftMenu(restoreFocus = false) {
+  if (!draftMenu.value?.open) return
+  draftMenu.value.open = false
+  if (restoreFocus) draftMenu.value.querySelector('summary')?.focus()
+}
+function closeDraftMenuOutside(event) { if (draftMenu.value?.open && !draftMenu.value.contains(event.target)) closeDraftMenu() }
 async function openExport() {
   fileError.value = pendingName.value ? '请先确认密探名称，再生成图片。' : battleImageError(draft.value, kind.value)
   if (fileError.value) { if (discError.value) { kind.value = 'team'; await nextTick(); teamEditor.value?.revealDiscError() }; return }
@@ -94,11 +144,11 @@ async function newDraft() {
 function exportDraft() {
   fileError.value = ''
   if (pendingName.value) { fileError.value = '请先确认密探名称，再导出草稿。'; return }
-  if (discError.value) return
+  if (discError.value) { fileError.value = `草稿未导出：${discError.value}`; return }
   try {
     const url = URL.createObjectURL(new Blob([encodeBattleDraft(draft.value)], { type: 'application/json' }))
     const link = document.createElement('a')
-    link.href = url; link.download = 'YuanHub-配队草稿.json'; document.body.append(link); link.click(); link.remove()
+    link.href = url; link.download = battleFileName(draft.value.title, '配队草稿', 'json'); document.body.append(link); link.click(); link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (reason) { fileError.value = reason.message || '草稿导出失败，请重试。' }
 }
@@ -120,8 +170,8 @@ async function importDraft(event) {
   finally { importing.value = false }
 }
 function beforeUnload(event) { if (unsaved.value) { event.preventDefault(); event.returnValue = '' } }
-onMounted(() => window.addEventListener('beforeunload', beforeUnload))
-onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload', beforeUnload) })
+onMounted(() => { window.addEventListener('beforeunload', beforeUnload); document.addEventListener('pointerdown', closeDraftMenuOutside) })
+onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload', beforeUnload); document.removeEventListener('pointerdown', closeDraftMenuOutside) })
 </script>
 
 <style src="./battleImagesDesktop.css"></style>

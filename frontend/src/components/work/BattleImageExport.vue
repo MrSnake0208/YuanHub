@@ -39,7 +39,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Download, Image, Minimize2, ZoomIn } from '@lucide/vue'
 import BattleImageSheet from './BattleImageSheet.vue'
-import { battleImageError, buildBattleImageModel } from '../../utils/battleImages.js'
+import { battleFileName, battleImageError, buildBattleImageModel } from '../../utils/battleImages.js'
 import { renderBattleImage } from '../../utils/battleImageCapture.js'
 const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, roundIndex: { type: Number, default: 0 }, showGenerateButton: { type: Boolean, default: true } })
 const emit = defineEmits(['busy'])
@@ -80,6 +80,7 @@ async function generate() {
   if (error.value) return
   const seq = generation, kind = props.kind
   const model = buildBattleImageModel(props.draft)
+  const title = props.draft.title
   const queue = kind === 'team' ? [[]] : Array.from({ length: Math.ceil(model.rows.length / 5) }, (_, index) => model.rows.slice(index * 5, index * 5 + 5))
   busy.value = true
   try {
@@ -101,7 +102,7 @@ async function generate() {
       }
       if (seq !== generation) return
       const label = kind === 'team' ? '上阵密探' : `操作记录 · 第${rows[0].round}—${rows.at(-1).round}回合`
-      images.value = [...images.value, { url: URL.createObjectURL(blob), label, filename: `YuanHub-${label}.png` }]
+      images.value = [...images.value, { url: URL.createObjectURL(blob), label, filename: battleFileName(title, label, 'png') }]
     }
   } catch (reason) {
     if (seq === generation) error.value = (reason.message || '图片生成失败，请重试。') + (images.value.length ? ' 已生成的图片仍可保存。' : '')

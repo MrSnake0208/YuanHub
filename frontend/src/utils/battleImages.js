@@ -52,6 +52,12 @@ export function battleDraftDiscError(draft) {
   return ''
 }
 
+// 下载文件名：带攻略标题，去掉系统不允许的字符并限制长度。
+export function battleFileName(title, suffix, extension) {
+  const stem = String(title ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim()
+  return `YuanHub-${stem ? stem + '-' : ''}${suffix}.${extension}`
+}
+
 export function battleRoundRows(rounds) {
   return rounds.map((round, index) => ({
     round: index + 1, remark: round.remark,

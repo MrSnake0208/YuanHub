@@ -1,7 +1,9 @@
 @media (max-width: 767px) {
   .page-battle-images .wrap { padding-inline: 12px; }
   .page-battle-images .compact-tool-header > .wrap { padding-inline: 12px; }
-  .page-battle-images .compact-tool-actions { flex-basis: 100%; justify-content: flex-start; }
+  /* 选择器高于公共页头的 scoped 规则，避免按加载顺序决定布局；手机上标题独占一行。 */
+  .page-battle-images .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'actions' 'account'; }
+  .page-battle-images .compact-tool-header .compact-tool-actions { justify-content: flex-start; }
   .battle-tool { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   .battle-tool .compact-tool-heading h1 { font-size: 21px; }
   .battle-tool .battle-save-status { width: 100%; font-size: 11px; }
@@ -11,9 +13,7 @@
   .battle-tool .battle-author-field { width: 100%; }
   .battle-tool .battle-modes { gap: 8px; }
   .battle-tool .battle-modes > button { padding-inline: 8px; font-size: 14px; }
-  .battle-tool .battle-modes > .battle-account-import { font-size: 11px; padding-inline: 6px; }
   .battle-tool .battle-account-context { gap: 4px 8px; }
-  .battle-tool .battle-account-context > .battle-hint { flex-basis: 100%; margin: 4px 0; font-size: 11px; }
   .battle-tool .battle-matrix { min-width: 700px; }
   .battle-tool .battle-matrix th:first-child { position: sticky; left: 0; z-index: 1; width: 80px; background: var(--cream); box-shadow: 1px 0 var(--battle-border); font-size: 12px; }
   .battle-tool .battle-action-matrix { min-width: 820px; }
@@ -21,6 +21,15 @@
   .battle-tool .battle-member-button { flex-direction: column; text-align: center; gap: 6px; }
   .battle-tool .battle-slot-art { height: 56px; width: 44px; }
   .battle-tool .battle-inline-editor { padding: 14px 12px; }
+  .battle-tool.battle-dialog-mask { place-items: end stretch; padding: 0; }
+  .battle-dialog { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; border-bottom: 0; }
+  .battle-dialog-header { padding: 14px 16px 10px; gap: 10px; }
+  .battle-dialog-header h3 { font-size: 16px; }
+  .battle-dialog > .battle-config-tools { padding: 0 16px 10px; }
+  .battle-dialog-body { padding: 14px 16px; }
+  .battle-dialog-footer { padding: 10px 16px max(10px, env(safe-area-inset-bottom)); }
+  .battle-tool .battle-dialog-footer .battle-primary { min-height: 44px; }
+  .battle-stat-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .battle-tool .battle-picker-toolbar { align-items: stretch; }
   .battle-tool .battle-search { flex-basis: 100%; }
   .battle-tool .battle-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 330px; }
@@ -36,7 +45,6 @@
   .battle-tool .battle-action-target { grid-column: 1; min-width: 90px; }
   .battle-tool .battle-action-tools { justify-content: flex-end; }
   .battle-tool .battle-add-action > span { flex-basis: 100%; }
-  .battle-tool .battle-add-action > label { margin-left: 0; flex-basis: 100%; margin-top: 8px; }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
   .battle-tool .battle-draft-menu > summary { font-size: 12px; }
 }

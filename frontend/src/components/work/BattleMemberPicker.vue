@@ -4,7 +4,7 @@
       <label class="battle-search"><Search :size="16" aria-hidden="true" /><span class="sr-only">搜索密探</span><input v-model="search" aria-label="搜索密探" placeholder="搜索名字或别名"></label>
       <div class="battle-subnav" role="group" aria-label="密探来源"><button type="button" :aria-pressed="!ownedOnly" @click="ownedOnly = false">全部密探</button><button type="button" :aria-pressed="ownedOnly" @click="ownedOnly = true">我的密探</button></div>
     </div>
-    <p v-if="ownedOnly && !accountEntries.length" class="battle-hint">尚无账号候选，请先从页面上方读取我的密探；也可选择全部密探手动填写。</p>
+    <p v-if="ownedOnly && !accountEntries.length" class="battle-hint">尚无账号候选：登录并选择账号后会自动读取我的密探，读取失败时可在页面上方重试；也可选择全部密探手动填写。</p>
     <div v-if="filtered.length" class="battle-picker-grid" aria-label="密探候选">
       <button v-for="agent in filtered" :key="agent.id" type="button" :disabled="busy" :aria-label="`选择${agent.name}`" @click="emit('choose', agent.name)">
         <img v-if="portraits[agent.id]" :src="portraits[agent.id]" alt="" loading="lazy"><UserRound v-else :size="32" aria-hidden="true" />

@@ -1,7 +1,7 @@
 <template>
   <section class="battle-recorder" aria-label="战斗操作记录">
     <div class="battle-action-legend"><span>操作符号：<b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b></span><span>目标：<span v-for="(name, index) in targets" :key="index"><i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ name || `目标${index + 1}` }}</span></span></div>
-    <div class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
+    <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
         <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col"><span class="battle-slot-number">{{ index + 1 }}号位</span><span class="battle-record-identity"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '未选择' }}</strong></span></th><th scope="col">备注</th></tr></thead>
@@ -11,7 +11,7 @@
         </tr></tbody>
       </table>
     </div>
-    <p class="battle-scroll-hint">左右滑动查看五位密探；点击单元格修改动作。</p>
+    <p v-if="overflowing" class="battle-scroll-hint">左右滑动查看五位密探；点击单元格修改动作。</p>
     <div class="battle-round-toolbar"><button type="button" :disabled="rounds.length >= 50" @click="addRound"><Plus :size="16" aria-hidden="true" />新增回合</button><span>{{ rounds.length }} / 50 回合 · 出手顺序在本回合全队共用</span></div>
     <section v-if="expanded" id="battle-action-detail" class="battle-inline-editor" aria-label="当前回合编辑">
       <header class="battle-inline-heading"><h3 ref="heading" tabindex="-1">第 {{ current + 1 }} 回合 · {{ operators[slot].name || `${slot + 1}号位` }}</h3><button type="button" @click="close">收起<ChevronUp :size="15" aria-hidden="true" /></button></header>
@@ -23,11 +23,18 @@
           <label class="battle-order-field">出手顺序<input :value="index + 1" type="number" min="1" :max="round.actions.length" :aria-label="`第${index + 1}步顺序`" @change="reorder(index, $event)"></label>
           <fieldset class="battle-action-choices"><legend>动作</legend><label v-for="item in BATTLE_ACTIONS" :key="item.type"><input v-model="action.type" type="radio" :name="`battle-action-${index}`" :value="item.type" :aria-label="`第${index + 1}步${item.label}`"><span>{{ item.symbol }} {{ item.label }}</span></label></fieldset>
           <label class="battle-action-target">目标<select v-model.number="action.target" :aria-label="`第${index + 1}步目标`"><option v-for="(name, pos) in targets" :key="pos" :value="pos">{{ name || `目标${pos + 1}` }}</option></select></label>
-          <div class="battle-action-tools"><button type="button" :disabled="index === 0" :aria-label="`上移第${index + 1}步`" @click="moveBattleAction(round.actions, index, index - 1)"><ArrowUp :size="16" aria-hidden="true" /></button><button type="button" :aria-label="`删除第${index + 1}步`" @click="removeAction(index)"><Trash2 :size="16" aria-hidden="true" /></button></div>
+          <div class="battle-action-tools"><button type="button" :disabled="index === 0" :aria-label="`上移第${index + 1}步`" @click="moveBattleAction(round.actions, index, index - 1)"><ArrowUp :size="16" aria-hidden="true" /></button><button type="button" :disabled="index === round.actions.length - 1" :aria-label="`下移第${index + 1}步`" @click="moveBattleAction(round.actions, index, index + 1)"><ArrowDown :size="16" aria-hidden="true" /></button><button type="button" :aria-label="`删除第${index + 1}步`" @click="removeAction(index)"><Trash2 :size="16" aria-hidden="true" /></button></div>
         </li>
       </ol>
       <p v-if="orderError" role="alert" class="battle-error">{{ orderError }}</p>
-      <div class="battle-add-action"><span>添加动作</span><button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" :disabled="!operators[slot].name || round.actions.length >= 50" :aria-label="`${slot + 1}号位${item.label}`" @click="record(item.type)">{{ item.symbol }} {{ item.label }}</button><label>新动作目标<select v-model.number="target" aria-label="新动作目标"><option v-for="(name, index) in targets" :key="index" :value="index">{{ name || `目标${index + 1}` }}</option></select></label></div>
+      <fieldset class="battle-new-target">
+        <legend>新动作目标</legend>
+        <label v-for="(name, index) in targets" :key="index" :class="{ selected: target === index }">
+          <input v-model.number="target" type="radio" name="battle-new-target" :value="index">
+          <i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ name || `目标${index + 1}` }}
+        </label>
+      </fieldset>
+      <div class="battle-add-action"><span>添加动作</span><button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" :disabled="!operators[slot].name || round.actions.length >= 50" :aria-label="`${slot + 1}号位${item.label}`" @click="record(item.type)">{{ item.symbol }} {{ item.label }}</button></div>
       <div class="battle-sequence-tools"><span>{{ round.actions.length }} / 50 个动作 · 新动作追加到本回合末尾</span><button type="button" :disabled="!round.actions.length" @click="round.actions.pop()"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button></div>
       <details v-if="round.actions.length" class="battle-step-editor"><summary>全队出手顺序 / 更换执行密探</summary><ol class="battle-team-sequence"><li v-for="(action, index) in round.actions" :key="index"><b>{{ index + 1 }}</b><select v-model.number="action.slot" :aria-label="`第${index + 1}步密探`"><option v-for="(member, position) in operators" :key="position" :value="position" :disabled="!member.name">{{ position + 1 }} · {{ member.name || '未选择' }}</option></select><span>{{ BATTLE_ACTIONS.find(item => item.type === action.type)?.symbol }} · {{ targets[action.target] || `目标${action.target + 1}` }}</span></li></ol></details>
       <label class="battle-round-note">本回合备注<textarea v-model="round.remark" aria-label="本回合备注" rows="2" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></label>
@@ -38,14 +45,16 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { ArrowUp, ChevronUp, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronUp, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, TARGET_COLORS, battleOperatorId, battleRoundRows } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
+import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
 const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true } })
 const emit = defineEmits(['round-change'])
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), heading = ref(null), orderError = ref('')
+const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const rows = computed(() => battleRoundRows(props.rounds))
 const round = computed(() => props.rounds[current.value])
 const selectedActions = computed(() => round.value.actions.flatMap((action, index) => action.slot === slot.value ? [{ action, index }] : []))

@@ -1,6 +1,6 @@
 import { chooseBattleMember, battleField, battleCell } from '../test-support/battleEditor.js'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import BattleImages from '../src/pages/tools/battle-images.vue'
 import BattleImageExport from '../src/components/work/BattleImageExport.vue'
@@ -26,7 +26,11 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
   getOperatorCatalog.mockResolvedValue({ operators: AGENT_CATALOG })
 })
-const page = () => mount(BattleImages, { global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
+// 编辑弹窗经 Teleport 挂到 body；VTU 的 teleport 桩会重挂其内容，故用真实 Teleport 并从 body 查询。
+const page = () => {
+  const w = mount(BattleImages, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
+  return Object.assign(new DOMWrapper(document.body), { unmount: w.unmount.bind(w) })
+}
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
 const draftWithActions = () => {
   const draft = reactive(createBattleDraft())
@@ -45,8 +49,8 @@ it('游客可完成两种出图；已保存草稿可离开，保存失败时保�
   expect(renderBattleImage).toHaveBeenCalledTimes(1)
   await button(wrapper, '操作表').trigger('click'); await battleCell(wrapper)
   await wrapper.get('[aria-label="1号位普攻"]').trigger('click')
-  await wrapper.get('[aria-label="新动作目标"]').setValue('0')
-  expect(wrapper.get('[aria-label="新动作目标"]').element.value).toBe('0')
+  await wrapper.get('input[name="battle-new-target"][value="0"]').setValue(true)
+  expect(wrapper.get('input[name="battle-new-target"][value="0"]').element.checked).toBe(true)
   await wrapper.get('[aria-label="1号位大招"]').trigger('click')
   await wrapper.get('[aria-label="本回合备注"]').setValue('先打左二')
   await button(wrapper, '生成操作图').trigger('click'); await flushPromises()
@@ -80,9 +84,9 @@ it('名称尚未触发确认时，刷新仍保护未提交的输入', async () =
   await button(wrapper, '导出草稿').trigger('click')
   expect(wrapper.text()).toContain('请先确认密探名称')
   dialog.confirm.mockResolvedValueOnce(false)
-  await button(wrapper, '收起').trigger('click'); await flushPromises()
+  await button(wrapper, '完成').trigger('click'); await flushPromises()
   expect(wrapper.get('[aria-label="1号位密探"]').element.value).toBe('正在输入')
-  await button(wrapper, '收起').trigger('click'); await flushPromises()
+  await button(wrapper, '完成').trigger('click'); await flushPromises()
   expect(wrapper.find('[aria-label="1号位密探"]').exists()).toBe(false)
 })
 
@@ -94,6 +98,8 @@ it('清空槽位取消后保留配置，确认后保留动作但禁止缺人出�
   await wrapper.get('[aria-label="1号位普攻"]').trigger('click')
   await button(wrapper, '配队表').trigger('click')
   await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
+  expect(wrapper.get('#battle-member-detail [aria-pressed="true"]').text()).toBe('练度')
+  await button(wrapper, '更换密探').trigger('click')
   dialog.confirm.mockResolvedValueOnce(false)
   await button(wrapper, '清空该槽位').trigger('click'); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('200')
@@ -112,6 +118,12 @@ it('操作可修改、重排、撤回；删除回合取消后不丢记录', asyn
   await button(wrapper, '操作表').trigger('click'); await battleCell(wrapper)
   await wrapper.get('[aria-label="1号位普攻"]').trigger('click')
   await wrapper.get('[aria-label="1号位大招"]').trigger('click')
+  await wrapper.get('[aria-label="上移第2步"]').trigger('click')
+  expect(wrapper.get('[aria-label="第1步大招"]').element.checked).toBe(true)
+  expect(wrapper.get('[aria-label="上移第1步"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('[aria-label="下移第2步"]').attributes('disabled')).toBeDefined()
+  await wrapper.get('[aria-label="下移第1步"]').trigger('click')
+  expect(wrapper.get('[aria-label="第1步普攻"]').element.checked).toBe(true)
   await wrapper.get('[aria-label="上移第2步"]').trigger('click')
   expect(wrapper.get('[aria-label="第1步大招"]').element.checked).toBe(true)
   await button(wrapper, '撤回最后一步').trigger('click')
@@ -274,8 +286,8 @@ it('图鉴最多追加三个携带词条，删除后可换词条，必须与禁�
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_002_jiaxu', name: '贾诩', games: ['如鸢'], discs: names.map(ot_name => ({ ot_name })) }] })
   const wrapper = page(); await flushPromises()
   await chooseBattleMember(wrapper, '贾诩', 1)
-  for (const name of names.slice(0, 3)) await wrapper.get(`[aria-label="携带命盘：${name}"]`).setValue(true)
   const input = await battleField(wrapper, '携带命盘')
+  for (const name of names.slice(0, 3)) await wrapper.get(`[aria-label="携带命盘：${name}"]`).setValue(true)
   expect(input.element.value).toBe(names.slice(0, 3).join('\n'))
   expect(wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).attributes('disabled')).toBeDefined()
   await wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).trigger('click')
@@ -301,7 +313,7 @@ it('表格按槽位编辑多动，重排是全队移动而非覆盖，非法顺�
   await battleCell(wrapper, 1, 2)
   await wrapper.get('[aria-label="2号位大招"]').trigger('click')
   await battleCell(wrapper, 1, 1)
-  await wrapper.get('[aria-label="新动作目标"]').setValue('0')
+  await wrapper.get('input[name="battle-new-target"][value="0"]').setValue(true)
   await wrapper.get('[aria-label="1号位防御"]').trigger('click')
   expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').text()).toContain('3↓')
   await wrapper.get('[aria-label="第3步顺序"]').setValue('1')
@@ -341,9 +353,9 @@ it('星石六槽位使用现有草稿文本，旧说明不丢失，超限输入�
   expect(wrapper.get('.battle-team-matrix').text()).toContain('原作者说明')
 })
 
-it('选人可搜索别名、按来源筛选，打开和收起编辑器恢复焦点', async () => {
+it('选人可搜索别名、按来源筛选，打开和关闭编辑弹窗恢复焦点', async () => {
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_001_yangxiu', name: '杨修', alias: '杨少主', games: ['如鸢'] }, { id: 'char_002_jiaxu', name: '贾诩', games: ['如鸢'] }] })
-  const wrapper = mount(BattleImages, { attachTo: document.body, global: { stubs: { IslandSidebar: true } } }); await flushPromises()
+  const wrapper = page(); await flushPromises()
   const trigger = wrapper.get('[aria-label="编辑1号位"]')
   await trigger.trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('#battle-member-detail h3').element)
@@ -355,7 +367,78 @@ it('选人可搜索别名、按来源筛选，打开和收起编辑器恢复焦�
   await button(wrapper, '全部密探').trigger('click')
   await wrapper.get('[aria-label="选择杨修"]').trigger('click'); await flushPromises()
   expect(trigger.text()).toContain('杨修')
-  await button(wrapper, '收起').trigger('click'); await flushPromises()
+  await button(wrapper, '完成').trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(trigger.element)
+  wrapper.unmount()
+})
+
+it('草稿菜单选择后、点外部或按 Esc 收起；导出文件名带标题，命盘错误就近提示', async () => {
+  const wrapper = page()
+  const menu = wrapper.get('.battle-draft-menu').element
+  menu.open = true
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  expect(menu.open).toBe(false)
+  menu.open = true
+  await wrapper.get('.battle-draft-menu').trigger('keydown', { key: 'Escape' })
+  expect(menu.open).toBe(false)
+  expect(document.activeElement).toBe(menu.querySelector('summary'))
+  await wrapper.get('[aria-label="标题或关卡"]').setValue('主线 7-12')
+  await chooseBattleMember(wrapper, '杨修', 1)
+  let downloaded = ''
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { downloaded = this.download })
+  menu.open = true
+  await button(wrapper, '导出草稿').trigger('click')
+  expect(menu.open).toBe(false)
+  expect(downloaded).toBe('YuanHub-主线 7-12-配队草稿.json')
+  click.mockRestore()
+  const input = await battleField(wrapper, '携带命盘')
+  await input.setValue('甲\n乙\n丙\n丁')
+  await button(wrapper, '导出草稿').trigger('click')
+  expect(wrapper.get('.battle-error').text()).toContain('草稿未导出')
+  wrapper.unmount()
+})
+
+it('编辑内容是可用方向键切换的标签页，账号带入不混在标签中', async () => {
+  const wrapper = page()
+  const tabs = wrapper.findAll('[role="tab"]')
+  expect(tabs.map(tab => tab.text())).toEqual(['配队表', '操作表'])
+  expect(tabs[0].attributes('aria-selected')).toBe('true')
+  await tabs[0].trigger('keydown', { key: 'ArrowRight' }); await flushPromises()
+  expect(tabs[1].attributes('aria-selected')).toBe('true')
+  expect(document.activeElement).toBe(tabs[1].element)
+  expect(wrapper.get('[role="tabpanel"]').attributes('aria-labelledby')).toBe('battle-tab-actions')
+  await tabs[1].trigger('keydown', { key: 'Home' }); await flushPromises()
+  expect(tabs[0].attributes('aria-selected')).toBe('true')
+  expect(wrapper.find('.battle-scroll-hint').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('点击密探打开编辑弹窗：直接填写练度，可切换槽位；点遮罩不关闭，Esc 关闭并恢复焦点与页面滚动', async () => {
+  const wrapper = page()
+  await chooseBattleMember(wrapper, '杨修', 1)
+  const dialogEl = wrapper.get('#battle-member-detail')
+  expect(dialogEl.attributes('role')).toBe('dialog')
+  expect(dialogEl.attributes('aria-modal')).toBe('true')
+  expect(wrapper.get('#battle-member-detail [aria-pressed="true"]').text()).toBe('练度')
+  expect(document.body.style.overflow).toBe('hidden')
+  const hp = wrapper.findAll('#battle-member-detail .battle-stat-fields label').find(label => label.text().startsWith('生命')).get('input')
+  await hp.setValue('31415')
+  expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('31415')
+  expect(decodeBattleDraft(localStorage.getItem(battleDraftKey('', ''))).operators[0].hp).toBe('31415')
+  await wrapper.get('.battle-dialog-mask').trigger('click')
+  expect(wrapper.find('#battle-member-detail').exists()).toBe(true)
+  await wrapper.get('[aria-label="下一位：2号位"]').trigger('click'); await flushPromises()
+  expect(wrapper.get('#battle-member-detail h3').text()).toBe('2号位 · 选择密探')
+  expect(wrapper.find('[aria-label="2号位密探"]').exists()).toBe(true)
+  await wrapper.get('[aria-label="上一位：1号位"]').trigger('click'); await flushPromises()
+  expect(wrapper.get('#battle-member-detail [aria-pressed="true"]').text()).toBe('练度')
+  await button(wrapper, '完成').trigger('click'); await flushPromises()
+  const trigger = wrapper.get('[aria-label="编辑1号位"]')
+  trigger.element.focus()
+  await trigger.trigger('click'); await flushPromises()
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
+  expect(wrapper.find('#battle-member-detail').exists()).toBe(false)
+  expect(document.activeElement).toBe(trigger.element)
+  expect(document.body.style.overflow).toBe('')
   wrapper.unmount()
 })

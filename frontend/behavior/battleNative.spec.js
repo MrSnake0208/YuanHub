@@ -1,6 +1,6 @@
 import { chooseBattleMember, battleField, battleCell } from '../test-support/battleEditor.js'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
 import BattleImages from '../src/pages/tools/battle-images.vue'
 import DataAccountContextBar from '../src/components/DataAccountContextBar.vue'
@@ -29,7 +29,10 @@ const current = id => [{ account_id: id, game: '如鸢', entries: { [opId]: {
   level: 80, elite: 12, huaji: { owned: true, stage: 25, awakened: true }, combat_stats: { manual_hp: 12345, manual_attack: 0 },
   disc_loadouts: [{ discs: [{ ot_name: '实际一盘' }] }, { discs: [{ ot_name: '实际二盘' }] }],
 } } }]
-const page = () => mount(BattleImages, { global: { stubs: { IslandSidebar: true, DataAccountContextBar: true } } })
+const page = () => {
+  const w = mount(BattleImages, { attachTo: document.body, global: { stubs: { IslandSidebar: true, DataAccountContextBar: true } } })
+  return Object.assign(new DOMWrapper(document.body), { unmount: w.unmount.bind(w), findComponent: w.findComponent.bind(w) })
+}
 const button = (wrapper, text) => wrapper.findAll('button').find(node => node.text() === text)
 const login = id => { auth.userInfo = { id }; auth.isLoggedIn = true }
 function upload(wrapper, file) {
@@ -54,7 +57,9 @@ beforeEach(() => {
 it('账号密探带入、命盘二盘和图鉴要求可编辑；档案快照不随攻略改变', async () => {
   login('u1')
   const wrapper = page(); await flushPromises()
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
+  expect(button(wrapper, '从我的密探带入')).toBeUndefined()
+  expect(wrapper.text()).toContain('已读取 1 位我的密探')
+  expect(getOperatorCatalog).toHaveBeenCalledTimes(1)
   expect(wrapper.find('[aria-label="从我的密探选择"]').exists()).toBe(false)
   await chooseBattleMember(wrapper, '杨修', 1); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('12345')
@@ -85,7 +90,6 @@ it('重新带入账号配置与命盘切换均保留取消保护，确认后只�
   const wrapper = page(); await flushPromises()
   expect(wrapper.find('select[aria-label="游戏"]').exists()).toBe(false)
   expect(wrapper.findComponent(DataAccountContextBar).props('game')).toBe('如鸢')
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
   await chooseBattleMember(wrapper, '杨少主', 1); await flushPromises()
   expect(wrapper.get('[aria-label="编辑1号位"]').text()).toContain('杨修')
   await wrapper.get('[aria-label="1号位生命"]').setValue('777')
@@ -112,15 +116,15 @@ it('重新带入账号配置与命盘切换均保留取消保护，确认后只�
 it('命盘确认期间切换槽位不会将组合写入另一位密探', async () => {
   login('u1')
   const wrapper = page(); await flushPromises()
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
   await chooseBattleMember(wrapper, '杨修', 1); await flushPromises()
+  await battleField(wrapper, '携带命盘')
   let finish
   dialog.confirm.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
   await wrapper.get('[aria-label="带入命盘组合2"]').setValue()
   await wrapper.get('[aria-label="编辑2号位"]').trigger('click')
   await chooseBattleMember(wrapper, '自定义密探', 2); await flushPromises()
   finish(true); await flushPromises()
-  expect(wrapper.get('[aria-label="2号位携带命盘"]').element.value).toBe('')
+  expect((await battleField(wrapper, '携带命盘', 2)).element.value).toBe('')
   expect((await battleField(wrapper, '携带命盘')).element.value).toBe('实际一盘')
 })
 
@@ -148,25 +152,23 @@ it('账号请求未结束时切换账号，旧数据不能重新出现或写入�
   let finish
   getOperatorCurrent.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
   const wrapper = page(); await flushPromises()
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
+  expect(getOperatorCurrent).toHaveBeenCalledWith({ accountId: 'a', game: '如鸢' })
   activeAccount.set('b'); await flushPromises()
-  finish(current('a')); await flushPromises()
-  await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
-  expect(wrapper.get('[aria-label="选择杨修"]').text()).toContain('手动填写练度')
-  expect(wrapper.get('[aria-label="1号位密探"]').element.value).toBe('')
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
-  await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
-  expect(wrapper.get('[aria-label="选择杨修"]').text()).toContain('已有配置')
+  expect(getOperatorCurrent).toHaveBeenLastCalledWith({ accountId: 'b', game: '如鸢' })
+  const stale = current('a'); stale[0].entries[opId].combat_stats.manual_hp = 99999
+  finish(stale); await flushPromises()
+  expect(wrapper.get('[aria-label="编辑1号位"]').text()).toContain('选择密探')
+  await chooseBattleMember(wrapper, '杨修', 1); await flushPromises()
+  expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('12345')
 })
 
 it('读取失败不伪装成没有密探，重试后可继续', async () => {
   login('u1')
   getCurrentStarState.mockRejectedValueOnce(new Error('星石暂时不可读'))
   const wrapper = page(); await flushPromises()
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('星石暂时不可读')
   expect(wrapper.text()).not.toContain('暂无已拥有的密探')
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
+  await button(wrapper, '重试读取').trigger('click'); await flushPromises()
   await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
   expect(wrapper.get('[aria-label="选择杨修"]').text()).toContain('已有配置')
 })
@@ -175,7 +177,6 @@ it('自动面板按既有权限读取，失败回退记录值并注明，不影�
   login('u1'); auth.adminAccess = { permissions: ['operator_panel:use'] }
   getCurrentOperatorPanels.mockRejectedValueOnce(new Error('panel unavailable'))
   const wrapper = page(); await flushPromises()
-  await button(wrapper, '从我的密探带入').trigger('click'); await flushPromises()
   await chooseBattleMember(wrapper, '杨修', 1); await flushPromises()
   expect(getCurrentOperatorPanels).toHaveBeenCalledWith('a', [opId])
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('12345')
