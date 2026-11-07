@@ -4,11 +4,14 @@ const WIDTH = 1080
 const SCALE = 4 / 3
 
 // 按出图文字加载字体子集；字体服务不可用时退回系统字体，不阻断出图。
+// 配队图数据区另用宋体 500，样式表由 BattleImageSheet 挂载时按需加入，克隆文档会一并带上。
 function loadExportFonts(element) {
   const fonts = element.ownerDocument.fonts
   if (!fonts?.load) return Promise.resolve()
   const text = element.textContent || '代号鸢 0123456789'
-  return Promise.all(['600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"', '800 16px "Archivo"'].map(font => fonts.load(font, text))).catch(() => {})
+  const faces = ['600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"', '800 16px "Archivo"']
+  if (element.classList?.contains('is-team')) faces.push('500 16px "Noto Serif SC"')
+  return Promise.all(faces.map(font => fonts.load(font, text))).catch(() => {})
 }
 
 async function waitForAssets(element) {

@@ -61,6 +61,24 @@ beforeEach(() => {
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
 
+it.each(['PLATFORM_ADMIN', 'SUPER_ADMIN', 'CHANGELOG_EDITOR', 'ACTIVITY_CALENDAR_EDITOR', ''])('发布版双端配队图入口按角色 %s 显示，权限异常及退出后隐藏', async role => {
+  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'u' }, adminAccessLoaded: true, adminAccess: { roles: [role] } })
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const count = () => routes(wrapper).filter(path => path === '/tools/battle-images').length
+  expect(count()).toBe(['PLATFORM_ADMIN', 'SUPER_ADMIN'].includes(role) ? 2 : 0)
+  auth.adminAccessLoading = true
+  await flushPromises()
+  expect(count()).toBe(0)
+  Object.assign(auth, { adminAccessLoading: false, adminAccessError: 'failed' })
+  await flushPromises()
+  expect(count()).toBe(0)
+  Object.assign(auth, { adminAccessError: '', accessToken: '' })
+  await flushPromises()
+  expect(count()).toBe(0)
+  wrapper.unmount()
+})
+
 it.each([['/star', '星石背包'], ['/cart', '礼包计算器'], ['/feedback', '我的反馈']])('手机 %s 使用简洁页面标题，保留原路由元信息', (path, title) => {
   Object.assign(currentRoute, { path, meta: { title: '原有完整标题 — YuanHub' } })
   const wrapper = render()
@@ -367,7 +385,7 @@ it('授权异步成功后双端同步显示，刷新与失败时立即隐藏并�
 it('普通功能保持直达，更多默认收起且版本信息不重复跳转', async () => {
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/tools/battle-images', '/calendar', '/feedback/plaza']
+  const expected = ['/', '/operator', '/recruitment', '/inventory', '/star', '/cart', '/calendar', '/feedback/plaza']
   for (const selector of ['.nav', '.mobile-drawer-nav']) {
     const links = wrapper.get(selector).findAllComponents(RouterLinkStub).filter(link => !link.element.closest('details'))
     expect(links.map(link => link.props('to'))).toEqual(expected)

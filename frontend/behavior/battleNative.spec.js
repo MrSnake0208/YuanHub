@@ -14,8 +14,14 @@ import { dialog } from '../src/utils/dialog.js'
 import { useBattleDraft } from '../src/composables/useBattleDraft.js'
 import { battleDraftKey, decodeBattleDraft, encodeBattleDraft } from '../src/utils/battleDraft.js'
 import { createBattleDraft } from '../src/utils/battleImages.js'
+import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
 
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: vi.fn() }))
+const routeHooks = vi.hoisted(() => ({ replace: vi.fn(), leave: null }))
+vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { routeHooks.leave = fn }, useRouter: () => ({ replace: routeHooks.replace }) }))
+vi.mock('../src/config/features.js', async importOriginal => {
+  const original = await importOriginal()
+  return { ...original, isFeatureEnabled: vi.fn(original.isFeatureEnabled) }
+})
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: false, userInfo: null, adminAccess: null }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorCurrent: vi.fn(), getCurrentOperatorPanels: vi.fn() }))
@@ -41,8 +47,10 @@ function upload(wrapper, file) {
   return input.trigger('change')
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
+  const original = await vi.importActual('../src/config/features.js')
+  isFeatureEnabled.mockImplementation(original.isFeatureEnabled)
   auth.isLoggedIn = false; auth.userInfo = null; auth.adminAccess = null
   activeAccount.set('a')
   dialog.confirm.mockResolvedValue(true)
@@ -52,6 +60,39 @@ beforeEach(() => {
   getCurrentStarState.mockImplementation(id => Promise.resolve({ account_id: id, generation: 1, inventory: [{ instance_id: 'star', name: '天相', kind: 'main', quality: 'orange', level: 50, breakthrough_stage: 2 }] }))
   getCurrentStarLoadout.mockImplementation(id => Promise.resolve({ account_id: id, generation: 1, loadouts: { [opId]: { main1: 'star' } } }))
   getCurrentOperatorPanels.mockResolvedValue({})
+})
+
+it.each(['logout', 'revoked', 'failed'])('发布版已打开工具在 %s 后隐藏并离开，保留已存草稿', async reason => {
+  isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.BATTLE_IMAGES)
+  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'u' }, isLoggedIn: true,
+    adminAccessLoaded: true, adminAccessLoading: false, adminAccessError: '', adminAccess: { roles: ['PLATFORM_ADMIN'] } })
+  const wrapper = page(); await flushPromises()
+  await chooseBattleMember(wrapper, '杨修', 1)
+  const key = battleDraftKey('u', 'a'), saved = localStorage.getItem(key)
+  expect(saved).toBeTruthy()
+  expect(wrapper.find('.page-battle-images').exists()).toBe(true)
+  await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
+  await wrapper.get('[aria-label="更换1号位密探"]').trigger('click')
+  const input = wrapper.get('[aria-label="1号位密探"]')
+  input.element.value = '未确认输入'
+  await input.trigger('input')
+  dialog.confirm.mockClear()
+  if (reason === 'logout') auth.accessToken = ''
+  if (reason === 'revoked') auth.adminAccess = { roles: [] }
+  if (reason === 'failed') {
+    auth.adminAccessLoading = true
+    await flushPromises()
+    expect(wrapper.find('.page-battle-images').exists()).toBe(false)
+    expect(routeHooks.replace).not.toHaveBeenCalled()
+    Object.assign(auth, { adminAccessLoading: false, adminAccessError: 'failed' })
+  }
+  await flushPromises()
+  expect(wrapper.find('.page-battle-images').exists()).toBe(false)
+  expect(routeHooks.replace).toHaveBeenCalledWith('/cart')
+  expect(routeHooks.leave()).toBe(true)
+  expect(dialog.confirm).not.toHaveBeenCalled()
+  expect(localStorage.getItem(key)).toBe(saved)
+  wrapper.unmount()
 })
 
 it('账号密探带入、命盘二盘和图鉴要求可编辑；档案快照不随攻略改变', async () => {

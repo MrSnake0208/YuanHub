@@ -3,61 +3,37 @@
     <img class="sheet-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="sheet-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
     <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p></header>
-    <div v-if="kind === 'team'" class="team-cards">
-      <article v-for="(operator, index) in model.operators" :key="index" class="team-card" :class="{ 'is-empty': !operator.name }" :data-prof="operator.prof">
+    <div v-if="kind === 'team'" class="team-board" :style="{ '--rows': teamRows.length }">
+      <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
         <img class="team-card-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
-        <header class="team-card-head">
-          <div class="box-image-portrait" aria-hidden="true">
-            <img v-if="portraits[operator.id]" :src="portraits[operator.id]" alt="" width="480" height="350" />
-            <span v-else class="team-card-initial">{{ operator.name ? Array.from(operator.name)[0] : '空' }}</span>
-          </div>
-          <div class="team-card-identity">
-            <span class="team-card-slot" :aria-label="`${index + 1} 号位`">{{ index + 1 }}</span>
-            <span v-if="operator.job || profIcon(operator.prof)" class="box-image-prof-tab">
-              <img v-if="profIcon(operator.prof)" :src="profIcon(operator.prof)" :alt="operator.prof + '属性'" />
-              <span v-if="operator.job">{{ operator.job }}</span>
-            </span>
-          </div>
-          <div class="box-image-name-tab">
-            <h3 :class="nameClass(operator.name)">{{ operator.name || '未指定' }}</h3>
-          </div>
-        </header>
-        <div class="team-card-details">
-          <div class="team-card-basics">
-          <div class="team-card-huaji" :aria-label="operator.huaji || '化极未填写'">
-            <template v-if="operator.huajiProgress">
-              <span class="team-card-stars" role="img" :aria-label="operator.huajiProgress.stars + '星'"><img v-for="star in operator.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="18" height="18" alt="" /></span>
-              <small v-if="operator.huajiProgress.awakened">已觉醒</small><small v-else-if="operator.huajiProgress.nodes != null">{{ operator.huajiProgress.nodes }} 节点</small><small v-else-if="operator.huajiProgress.status && operator.huajiProgress.status !== '觉醒待确认'" class="is-muted">{{ operator.huajiProgress.status }}</small>
-            </template>
-            <span v-else class="team-card-huaji-text">{{ operator.huaji || '化极 —' }}</span>
-          </div>
-          <div class="team-card-growth">
-            <div data-stat="level"><span>等级</span><strong>{{ operator.level || '—' }}</strong></div>
-            <div data-stat="elite"><span>修为</span><strong>{{ operator.elite || '—' }}</strong></div>
-          </div>
-          <div class="team-card-combat">
-            <div v-for="[key, label] in COMBAT" :key="key" class="team-card-stat" :data-stat="key"><span>{{ label }}</span><strong>{{ operator[key] || '—' }}<sup v-if="markEach && manualPanel(operator) && operator[key]">*</sup></strong></div>
-          </div>
-          </div>
-          <section v-for="group in discGroups" :key="group.key" class="team-card-discs" :class="group.key">
-            <h4>{{ group.label }}</h4>
-            <div class="team-card-terms" :style="{ '--rows': group.rows }">
-              <em v-for="term in operator.discTerms[group.key]" :key="term.name" class="box-image-term" :class="discClass[term.color]"><span>{{ term.label }}</span></em>
-              <em v-if="!operator.discTerms[group.key].length" class="box-image-term is-none">{{ group.key === 'discs' ? '未填写' : '无' }}</em>
-              <template v-else><span v-for="slot in Math.max(0, group.rows - operator.discTerms[group.key].length)" :key="'empty-' + slot" class="team-card-term-placeholder" aria-hidden="true">—</span></template>
-            </div>
-          </section>
-          <section v-if="showStars" class="team-card-starstones" aria-label="星石">
-            <div v-for="[kind, label] in STAR_KINDS" :key="kind" class="team-card-star-row">
-              <h4>{{ label }}</h4>
-              <div class="team-card-terms">
-                <template v-for="(stone, slot) in stoneSlots(operator.starStones[kind])" :key="slot"><em v-if="stone" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}</small></em><span v-else class="team-card-term-placeholder" aria-hidden="true">—</span></template>
-              </div>
-            </div>
-            <p v-if="operator.starStones.other.length">{{ operator.starStones.other.join('\n') }}</p>
-          </section>
-        </div>
       </article>
+      <header v-for="(operator, index) in model.operators" :key="'head-' + index" class="team-card-head" :class="{ 'is-empty': !operator.name }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
+        <div class="box-image-portrait" aria-hidden="true">
+          <img v-if="portraits[operator.id]" :src="portraits[operator.id]" alt="" width="391" height="285" />
+          <span v-else class="team-card-initial">{{ operator.name ? Array.from(operator.name)[0] : '空' }}</span>
+        </div>
+        <img v-if="profIcon(operator.prof)" class="team-card-prof" :src="profIcon(operator.prof)" :alt="operator.prof + '属性'" width="26" height="26" />
+        <h3 class="team-card-name" :class="nameClass(operator.name)" :aria-label="operator.name || '未指定'"><span v-for="(char, i) in Array.from(operator.name || '未指定')" :key="i" aria-hidden="true">{{ char }}</span></h3>
+      </header>
+      <template v-for="(row, rowIndex) in teamRows" :key="row.key">
+        <div class="team-board-label" :class="[row.key, { 'is-stack': row.stack }]" :style="{ gridRow: rowIndex + 2 }">{{ row.label }}</div>
+        <div v-for="(operator, index) in model.operators" :key="row.key + index" class="team-card-cell" :class="[row.key, { 'is-stack': row.stack, 'is-alt': rowIndex % 2, 'is-last': rowIndex === teamRows.length - 1 }]" :style="{ gridColumn: index + 2, gridRow: rowIndex + 2 }" :data-slot="index" :data-stat="row.key">
+          <strong v-if="row.type === 'stat'" class="team-card-value">{{ operator[row.key] }}<sup v-if="row.combat && markEach && manualPanel(operator) && operator[row.key]">*</sup></strong>
+          <template v-else-if="row.type === 'huaji'">
+            <template v-if="operator.huajiProgress">
+              <span class="team-card-stars" role="img" :aria-label="operator.huajiProgress.stars + '星'"><img v-for="star in operator.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="22" height="22" alt="" /></span>
+              <small v-if="operator.huajiProgress.awakened" class="team-card-awakened">觉醒</small>
+              <small v-else-if="operator.huajiProgress.nodes != null">{{ operator.huajiProgress.nodes }} 节点</small>
+            </template>
+            <span v-else-if="operator.huaji" class="team-card-note">{{ operator.huaji }}</span>
+          </template>
+          <template v-else-if="row.type === 'disc'"><em v-for="term in operator.discTerms[row.key]" :key="term.name" class="box-image-term" :class="discClass[term.color]"><span>{{ term.label }}</span></em></template>
+          <template v-else>
+            <em v-for="(stone, slot) in operator.starStones[row.key].filter(Boolean)" :key="slot" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}</small></em>
+            <span v-if="row.key === 'support' && operator.starStones.other.length" class="team-card-note">{{ operator.starStones.other.join('\n') }}</span>
+          </template>
+        </div>
+      </template>
     </div>
     <template v-else>
       <div class="sheet-action-key"><strong>回合行动表</strong><p class="legend">A 普攻 · ↑ 大招 · ↓ 防御 · 圈 特殊技能</p></div>
@@ -78,37 +54,43 @@
     </template>
     <div v-if="model.note" class="sheet-note"><strong>打法说明</strong><p>{{ model.note }}</p></div>
     <div class="sheet-spacer" aria-hidden="true"></div>
-    <footer><strong>鸢鸢相抱 · YuanHub</strong><span>{{ kind === 'team' ? panelFootnote + '未填写的练度以 — 表示' : '数字为出手顺序 · 色块为攻击目标' }}</span></footer>
+    <footer><strong>鸢鸢相抱 · YuanHub</strong><span>{{ kind === 'team' ? panelFootnote : '数字为出手顺序 · 色块为攻击目标' }}</span></footer>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import portraits from '../../data/operatorPortraits.json'
 import { TARGET_COLORS } from '../../utils/battleImages.js'
 const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] } })
-const COMBAT = [['attack', '攻击'], ['hp', '生命']]
-const DISC_GROUPS = [['discs', '携带命盘'], ['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]
-// 携带命盘始终占位且至少三行；必须/禁用只要有一人填写就全队显示，行数按全队最多条数，保持五张卡分区对齐又不留整块空白。
-const discGroups = computed(() => DISC_GROUPS.filter(([key]) => key === 'discs' || props.model.operators.some(operator => operator[key])).map(([key, label]) => {
-  const most = Math.max(0, ...props.model.operators.map(operator => operator.discTerms[key].length))
-  return { key, label, rows: Math.max(key === 'discs' ? 3 : 1, most) }
-}))
-const showStars = computed(() => props.model.operators.some(operator => operator.stars))
-const STAR_KINDS = [['main', '主星'], ['support', '辅星']]
-// 星石按三个槽位逐行显示，空槽留虚线位，五张卡的行保持对齐。
-const stoneSlots = stones => Array.from({ length: Math.max(3, stones.length) }, (_, slot) => stones[slot] || null)
+// 配队图：五张独立角色卡，数据按字段成行横向对齐；字段名只在左列写一次，未填写直接留白。
+// 必须/禁用命盘只要有一人填写才出现；星石同理。多行内容（化极、命盘、星石）顶部对齐，五列首行齐平。
+const teamRows = computed(() => {
+  const operators = props.model.operators
+  const rows = [['hp', '生命', 'stat'], ['attack', '攻击', 'stat'], ['level', '等级', 'stat'], ['elite', '修为', 'stat'], ['huaji', '化极', 'huaji'], ['discs', '命盘', 'disc']]
+  if (operators.some(operator => operator.requiredDiscs)) rows.push(['requiredDiscs', '必须\n命盘', 'disc'])
+  if (operators.some(operator => operator.forbiddenDiscs)) rows.push(['forbiddenDiscs', '禁用\n命盘', 'disc'])
+  if (operators.some(operator => operator.stars)) rows.push(['main', '主星', 'stone'], ['support', '辅星', 'stone'])
+  return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat', combat: key === 'hp' || key === 'attack' }))
+})
 // 全员都有手动修正时逐个加星号没有区分度，改为底注统一说明。
 const manualCount = computed(() => props.model.operators.filter(operator => operator.name && manualPanel(operator)).length)
 const markEach = computed(() => manualCount.value > 0 && manualCount.value < props.model.operators.filter(operator => operator.name).length)
-const panelFootnote = computed(() => !manualCount.value ? '' : markEach.value ? '* 面板含手动修正 · ' : '攻击与生命为手动修正值 · ')
-const discClass = { 金: 'rarity-gold', 紫: 'rarity-purple', 蓝: 'rarity-blue' }
+const panelFootnote = computed(() => !manualCount.value ? '' : markEach.value ? '* 面板含手动修正' : '攻击与生命为手动修正值')
 const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.svg'
 const profFiles = { 阳: 'yang', 阴: 'yin', 火: 'fire', 风: 'wind', 水: 'water', 地: 'earth', 混沌: 'chaos' }
 const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.png' : ''
+const discClass = { 金: 'rarity-gold', 紫: 'rarity-purple', 蓝: 'rarity-blue' }
 const nameClass = name => { const length = Array.from(name || '未指定').length; return { 'is-three-char-name': length === 3, 'is-long-name': length > 4 } }
 const manualPanel = operator => operator.panelNote.includes('手动')
 const sheet = ref(null)
+// 数据区用思源宋体 500（不加粗）。全站字体链接只有 600/700/900，这一档只在出图组件挂载时按需加载，不改全站链接。
+const BODY_FONT_URL = 'https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@500&display=swap'
+onMounted(() => {
+  const document = sheet.value?.ownerDocument
+  if (!document || document.querySelector(`link[href="${BODY_FONT_URL}"]`)) return
+  document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: BODY_FONT_URL }))
+})
 defineExpose({ sheet })
 </script>
 
@@ -117,7 +99,8 @@ defineExpose({ sheet })
    宽 1080、最小高 1440，导出放大 4/3 后为小红书竖屏 3:4 的 1440×1920；内容过多时只向下延长。 */
 .battle-sheet { position: relative; isolation: isolate; box-sizing: border-box; display: flex; flex-direction: column; width: 1080px; min-height: 1440px; padding: 40px; background: #fffdf6; color: #493b2c; font: 22px/1.5 var(--font-b, sans-serif); color-scheme: only light; }
 .battle-sheet * { box-sizing: border-box; }
-.battle-sheet.is-team { padding: 34px 28px 30px; background: #f8f3e8; }
+/* 配队图用网格排版：最小高度下配队区吃掉剩余高度，3:4 画布不在底部留白。 */
+.battle-sheet.is-team { display: grid; grid-template-rows: auto 1fr; padding: 34px 28px 30px; background: #f8f3e8; }
 .sheet-bamboo, .sheet-mountains { position: absolute; left: 0; width: 100%; pointer-events: none; z-index: 0; }
 .sheet-bamboo { top: 0; height: 160px; } .sheet-mountains { bottom: 0; height: 100px; }
 .battle-sheet > :not(.sheet-bamboo, .sheet-mountains) { position: relative; z-index: 1; }
@@ -129,69 +112,62 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .is-team h1 { margin-top: 6px; font-size: 40px; }
 .sheet-heading p { margin: 12px 0 0; font-size: 19px; color: #725c43; overflow-wrap: anywhere; }
 
-/* 配队卡：与密探养成分享图同一套卡框、属性与命盘配色。 */
-.team-cards { flex: 1 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
-.team-card { --portrait-tone: #eee8de; position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #b58a45; border-radius: 8px; background: #fffaf0; }
-.team-card[data-prof="风"] { --portrait-tone: #e5ede2; } .team-card[data-prof="水"] { --portrait-tone: #e2eaf0; }
-.team-card[data-prof="火"] { --portrait-tone: #f1e4d9; } .team-card[data-prof="阴"] { --portrait-tone: #ebe4ef; }
-.team-card[data-prof="阳"] { --portrait-tone: #f0e9d6; } .team-card[data-prof="地"] { --portrait-tone: #eae4d8; }
-.team-card[data-prof="混沌"] { --portrait-tone: #e7e5ed; }
+/* 配队图：上半是角色卡（立绘、竖排名、属性底色、描金框），下半数据行跨卡对齐；
+   卡片底板跨满整列，数据格叠在其上，不画表格网格线，只用细金线和极淡的隔行底色分区。
+   数据行用 auto 而非 fr：fr 在高度未定时会把每行撑到最高行，auto 只均分剩余高度。 */
+.team-board { display: grid; grid-template-columns: 76px repeat(5, minmax(0, 1fr)); grid-template-rows: 344px repeat(var(--rows), auto); align-content: stretch; column-gap: 10px; }
+.team-card { --portrait-tone: #eee8de; position: relative; grid-row: 1 / -1; min-width: 0; border: 1px solid #b58a45; border-radius: 8px; background: #fffaf0; }
+.team-card-head { --portrait-tone: #eee8de; position: relative; grid-row: 1; min-width: 0; overflow: hidden; border-radius: 8px 8px 0 0; }
+.team-card[data-prof="风"], .team-card-head[data-prof="风"] { --portrait-tone: #e5ede2; } .team-card[data-prof="水"], .team-card-head[data-prof="水"] { --portrait-tone: #e2eaf0; }
+.team-card[data-prof="火"], .team-card-head[data-prof="火"] { --portrait-tone: #f1e4d9; } .team-card[data-prof="阴"], .team-card-head[data-prof="阴"] { --portrait-tone: #ebe4ef; }
+.team-card[data-prof="阳"], .team-card-head[data-prof="阳"] { --portrait-tone: #f0e9d6; } .team-card[data-prof="地"], .team-card-head[data-prof="地"] { --portrait-tone: #eae4d8; }
+.team-card[data-prof="混沌"], .team-card-head[data-prof="混沌"] { --portrait-tone: #e7e5ed; }
 .team-card.is-empty { border-style: dashed; border-color: #cdb894; }
 .team-card-frame { position: absolute; z-index: 3; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); pointer-events: none; }
-.team-card-head { position: relative; flex: none; height: 344px; }
-.box-image-portrait { position: absolute; inset: 3px 3px auto; height: 360px; overflow: hidden; border-radius: 5px 5px 0 0; background: var(--portrait-tone); }
-.box-image-portrait img { position: absolute; top: 0; left: 52%; display: block; width: auto; max-width: none; height: 360px; transform: translateX(-50%); }
-.box-image-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 250, 240, 0) 74%, #fffaf0 96%); }
+/* 数据格与字段名都要定位：html2canvas 按定位层绘制，未定位的格子会被卡片底板盖住。 */
+.team-board > .team-card-head, .team-board > .team-card-cell, .team-board > .team-board-label { position: relative; z-index: 1; }
+.box-image-portrait { position: absolute; inset: 3px 3px 0; overflow: hidden; border-radius: 5px 5px 0 0; background: var(--portrait-tone); }
+/* 立绘中心右移到 61%：按 125 张立绘估算，这个裁切下右上角名字区明显偏暗的只有 9 张；回正到 52% 时文丑等人的深色饰物会落到名字后面。 */
+.box-image-portrait img { position: absolute; top: 0; left: 61%; display: block; width: auto; max-width: none; height: 100%; transform: translateX(-50%); }
+.box-image-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 250, 240, 0) 76%, #fffaf0 98%); }
 .team-card-initial { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 72px var(--font-s, serif); color: #cdb894; }
-.team-card-identity { position: absolute; top: 10px; left: 9px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.team-card-slot { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #b58a45; border-radius: 50%; background: #5a4633; color: #fff3d1; font: 800 17px/1 var(--font-d, sans-serif); }
-.box-image-prof-tab { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 3px 9px; border: 1px solid #d5b773; border-radius: 14px; background: #fffaf0; font: 700 14px/1.15 var(--font-s, serif); color: #5a4633; }
-.box-image-prof-tab img { width: 22px; height: 22px; }
-.box-image-prof-tab > span { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; }
-.box-image-name-tab { position: absolute; top: 10px; right: 9px; padding: 10px 5px 12px; border: 1px solid #dac292; border-radius: 10px 0 10px 0; background: rgba(255, 250, 240, .94); }
-.box-image-name-tab h3 { margin: 0; width: max-content; white-space: nowrap; writing-mode: vertical-rl; text-orientation: upright; font: 900 30px/1.1 var(--font-s, serif); letter-spacing: 2px; color: #493b2c; }
-.box-image-name-tab h3.is-three-char-name { font-size: 27px; }
-.box-image-name-tab h3.is-long-name { font-size: 21px; max-height: 200px; white-space: normal; overflow-wrap: anywhere; }
-.is-empty .box-image-name-tab h3 { color: #a8957a; font-size: 22px; }
-.team-card-details { position: relative; flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 0 10px 24px; background: #fffaf0; }
-.team-card-details::before { content: ''; position: absolute; top: -7px; left: 0; width: 100%; height: 9px; border-radius: 50% 50% 0 0; background: #fffaf0; }
-.team-card-details > * { position: relative; }
-.team-card-huaji { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 28px; padding-bottom: 8px; border-bottom: 1px solid #d8bd8c; white-space: nowrap; }
-.team-card-stars { display: inline-flex; gap: 2px; } .team-card-stars img { display: block; width: 18px; height: 18px; }
-.team-card-huaji small { font: 600 13px var(--font-b, sans-serif); color: #8a5a2b; }
-.team-card-huaji small.is-muted { font-weight: 500; color: #8f7f6b; }
-.team-card-huaji-text { font: 600 14px/1.3 var(--font-b, sans-serif); color: #695b4b; white-space: normal; text-align: center; overflow-wrap: anywhere; }
-/* 等级/修为与攻击/生命合成一块浅底，四项基础数据一处读完。 */
-.team-card-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 10px; padding: 7px 0 6px; border-radius: 6px 6px 0 0; background: #f6efdf; }
-.team-card-growth > div { display: flex; align-items: baseline; justify-content: center; gap: 6px; font: 500 14px/1.4 var(--font-b, sans-serif); color: #695b4b; }
-.team-card-growth > div + div { border-left: 1px solid #e2d3b5; }
-.team-card-growth strong { font: 800 19px/1.2 var(--font-d, sans-serif); color: #493b2c; }
-.team-card-combat { display: grid; gap: 1px; padding: 6px 12px 7px; border-top: 1px solid #e8dcc2; border-radius: 0 0 6px 6px; background: #f6efdf; }
-.team-card-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; font: 500 13px/1.3 var(--font-b, sans-serif); color: #725c43; }
-.team-card-stat strong { min-width: 0; font: 800 19px/1.2 var(--font-d, sans-serif); color: #3e3023; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
-.team-card-stat sup { font-size: 12px; color: #a0522d; vertical-align: top; margin-left: 1px; }
-/* 命盘与星石：轻量列表，每区行数全队一致（--rows）以对齐五张卡；卡片剩余高度按行均分。 */
-.team-card-discs, .team-card-star-row { flex: 1 1 auto; display: flex; flex-direction: column; margin: 0; }
-.team-card-starstones { flex: 2 1 auto; display: flex; flex-direction: column; gap: 18px; margin: 0; }
-.team-card-discs h4, .team-card-star-row h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding-left: 8px; border-left: 3px solid #b58a45; font: 700 17px/1.3 var(--font-s, serif); color: #4a3a2a; letter-spacing: 1px; }
-.team-card-discs h4::after, .team-card-star-row h4::after { content: ''; flex: 1; border-top: 1px solid #e4d2ad; }
-.team-card-discs.requiredDiscs h4 { color: #315b32; border-left-color: #6f9a63; } .team-card-discs.forbiddenDiscs h4 { color: #963f35; border-left-color: #c0705f; }
-.team-card-terms { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(var(--rows, 3), minmax(44px, 1fr)); grid-auto-rows: 44px; }
-.box-image-term, .team-card-stone, .team-card-term-placeholder { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 0 4px; border-bottom: 1px solid #efe4cf; font-style: normal; white-space: nowrap; overflow: hidden; }
-.team-card-terms > :last-child { border-bottom: 0; }
-.box-image-term { font: 700 21px/1.3 var(--font-b, sans-serif); color: #3e3023; }
+/* 卡头只留属性图标和竖排名：号位由列序表达，职业不上图，免得左右两侧都压着立绘。图标自带圆底，不另加框。 */
+.team-card-prof { position: absolute; top: 12px; left: 11px; display: block; width: 26px; height: 26px; }
+/* 名字直接写在立绘上，不加底色和框；纸色柔光兜住少数右上角偏暗的立绘（html2canvas 导出时柔光半径不随 4/3 放大，比预览略紧）。
+   逐字竖排而不用 writing-mode：html2canvas 画不出竖排流。 */
+.team-card-name { position: absolute; top: 18px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 1em; margin: 0; font: 600 26px/1 var(--font-s, serif); color: #3e3023; text-shadow: 0 0 2px #fffaf0, 0 0 5px #fffaf0, 0 0 10px rgba(255, 250, 240, .85); }
+.team-card-name > span { display: block; width: 1em; height: 1em; text-align: center; white-space: nowrap; }
+.team-card-name.is-three-char-name { font-size: 24px; }
+.team-card-name.is-long-name { font-size: 20px; }
+.team-card-head.is-empty .team-card-name { color: #a8957a; font-size: 22px; }
+/* 数据区全部用字段名的思源宋体 500，不加粗，层级靠字号与颜色。
+   多行的行（化极、命盘、星石）顶部对齐：首行行高统一 30px，字段名与五列首行齐平。 */
+.team-board-label { grid-column: 1; display: flex; align-items: center; justify-content: center; min-height: 72px; padding: 0 4px; border-top: 1px solid #e0cba2; font: 500 24px/30px var(--font-s, serif); letter-spacing: 2px; color: #5a4633; text-align: center; white-space: pre-line; }
+.team-board-label.is-stack { align-items: flex-start; padding-top: 12px; }
+.team-board-label.requiredDiscs, .team-board-label.forbiddenDiscs { padding-top: 14px; font-size: 20px; line-height: 26px; letter-spacing: 1px; }
+.team-board-label.requiredDiscs { color: #315b32; } .team-board-label.forbiddenDiscs { color: #963f35; }
+.team-card-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; min-height: 72px; margin: 0 4px; padding: 8px 4px; border-top: 1px solid #ead9b6; font-family: var(--font-s, serif); text-align: center; }
+.team-card-cell.is-stack { justify-content: flex-start; padding: 12px 4px 14px; }
+.team-card-cell.is-alt { background: #f8efdc; }
+.team-card-cell.is-last { margin-bottom: 18px; }
+.team-card-value { font: 500 32px/1.1 var(--font-s, serif); color: #3e3023; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.team-card-value sup { font-size: 16px; color: #a0522d; margin-left: 2px; }
+/* 化极固定两行：第一行星星，第二行觉醒或节点；两种文字同字号同行高，五列逐行齐平。 */
+.team-card-stars { display: inline-flex; align-items: center; gap: 2px; height: 30px; } .team-card-stars img { display: block; width: 22px; height: 22px; }
+.team-card-cell.huaji small { font: 500 19px/26px var(--font-s, serif); letter-spacing: 1px; color: #8a5a2b; }
+.team-card-cell.huaji .team-card-awakened { letter-spacing: 3px; color: #8f5f12; }
+.team-card-stone { display: flex; align-items: baseline; justify-content: center; gap: 2px; width: 100%; min-width: 0; font: 500 22px/30px var(--font-s, serif); font-style: normal; color: #3e3023; white-space: nowrap; overflow: hidden; }
+.team-card-stone > small { font: 500 17px/1 var(--font-s, serif); color: #8a5a2b; font-variant-numeric: tabular-nums; }
 .box-image-term > span { flex: none; display: inline-block; transform-origin: center; }
-/* 命盘品质用词条前的小圆点区分，不再整格铺底色。 */
-.box-image-term.rarity-gold::before, .box-image-term.rarity-purple::before, .box-image-term.rarity-blue::before { content: ''; flex: none; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; }
-.box-image-term.rarity-gold::before { background: #d4a43c; } .box-image-term.rarity-purple::before { background: #9b74c4; } .box-image-term.rarity-blue::before { background: #5b8db3; }
+/* 命盘词条不加底色和描边，只用字色区分金/紫/蓝品质（在两种行底色上都不低于 4.5:1）；图鉴外词条用正文色。 */
+.team-card-cell .box-image-term { display: flex; justify-content: center; max-width: 100%; min-width: 0; font: 500 22px/30px var(--font-s, serif); font-style: normal; color: #3e3023; white-space: nowrap; overflow: hidden; }
+.team-card-cell .box-image-term.rarity-gold { color: #8f5f12; }
+.team-card-cell .box-image-term.rarity-purple { color: #71479b; }
+.team-card-cell .box-image-term.rarity-blue { color: #2b6191; }
 /* 禁用删除线用伪元素绘制：html2canvas 导出不会画出 text-decoration。 */
-.forbiddenDiscs .box-image-term:not(.is-none) > span { position: relative; color: #6e4b40; }
-.forbiddenDiscs .box-image-term:not(.is-none) > span::after { content: ''; position: absolute; left: -3px; right: -3px; top: 52%; border-top: 2px solid #b0483b; }
-.team-card-term-placeholder { font: 500 18px/1 var(--font-b, sans-serif); color: #d3c4a8; }
-.box-image-term.is-none { grid-row: 1 / -1; border-bottom: 0; font: 500 16px/1.3 var(--font-b, sans-serif); color: #b3a28a; letter-spacing: 2px; }
-.team-card-stone > span { font: 700 21px/1.3 var(--font-b, sans-serif); color: #3e3023; }
-.team-card-stone > small { font: 600 15px/1 var(--font-d, sans-serif); color: #8a5a2b; font-variant-numeric: tabular-nums; }
-.team-card-starstones p { margin: -10px 0 0; font: 500 12px/1.55 var(--font-b, sans-serif); color: #5d4c3a; white-space: pre-wrap; overflow-wrap: anywhere; }
+.forbiddenDiscs .box-image-term > span { position: relative; }
+.forbiddenDiscs .box-image-term > span::after { content: ''; position: absolute; left: -3px; right: -3px; top: 54%; border-top: 2px solid #b0483b; }
+.team-card-note { font: 500 17px/1.5 var(--font-s, serif); color: #5d4c3a; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* 操作表 */
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }

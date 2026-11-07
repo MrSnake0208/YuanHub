@@ -1,12 +1,29 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { routes } from '../src/router/routes.js'
+import { FEATURE_KEYS } from '../src/config/features.js'
+import { isFeatureAccessible } from '../src/utils/featureAccess.js'
 import { battleFileName, battleHuajiProgress, battleImageError, battleStarStones, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
 
-test('独立工具公开可用，不受作业系统或账号开关限制', () => {
+test('独立工具使用专属发布开关，不受作业系统或内测开关限制', () => {
   const route = routes.find(route => route.path === '/tools/battle-images')
   assert.ok(route)
-  for (const key of ['requiresAuth', 'requiresBeta', 'feature', 'requiredPermission']) assert.equal(route.meta[key], undefined)
+  assert.equal(route.meta.feature, FEATURE_KEYS.BATTLE_IMAGES)
+  for (const key of ['requiresAuth', 'requiresBeta', 'requiredPermission']) assert.equal(route.meta[key], undefined)
+})
+
+test('发布关闭时仅已加载的登录平台管理员或超级管理员可预览', () => {
+  const session = { accessToken: 'fixture', userInfo: { id: 'u' }, adminAccessLoaded: true }
+  for (const role of ['PLATFORM_ADMIN', 'SUPER_ADMIN', 'CHANGELOG_EDITOR', 'ACTIVITY_CALENDAR_EDITOR', 'ARCHIVE_USER', '']) {
+    const state = { ...session, adminAccess: { roles: [role] } }
+    assert.equal(isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, state), ['PLATFORM_ADMIN', 'SUPER_ADMIN'].includes(role))
+  }
+  const admin = { ...session, adminAccess: { roles: ['SUPER_ADMIN'] } }
+  for (const override of [{ accessToken: '' }, { userInfo: null }, { adminAccessLoaded: false }, { adminAccessLoading: true }, { adminAccessError: 'failed' }]) {
+    assert.equal(isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, { ...admin, ...override }), false)
+  }
+  assert.equal(isFeatureAccessible(FEATURE_KEYS.WORK_SYSTEM, admin), false)
+  assert.equal(isFeatureAccessible('unknown', admin), false)
 })
 
 test('出图按槽位归组但保留跨密探出手顺序、多动、目标与备注', () => {

@@ -85,7 +85,7 @@
             <router-link to="/cart" :class="{ active: $route.path === '/cart' }" :aria-current="($route.path === '/cart') ? 'page' : undefined">
               <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
             </router-link>
-            <router-link to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
+            <router-link v-if="showBattleImages" to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
               <Images :size="20" aria-hidden="true" /><span>配队与操作图</span>
             </router-link>
           </section>
@@ -220,7 +220,7 @@
         :aria-current="($route.path === '/cart') ? 'page' : undefined">
         <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
       </router-link>
-      <router-link to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
+      <router-link v-if="showBattleImages" to="/tools/battle-images" :class="{ active: $route.path === '/tools/battle-images' }" :aria-current="$route.path === '/tools/battle-images' ? 'page' : undefined">
         <Images :size="20" aria-hidden="true" /><span>配队与操作图</span>
       </router-link>
       <h2 class="nav-group-label">资料与记录</h2>
@@ -341,6 +341,7 @@ import { auth, logout as doLogout } from "@/store/auth.js";
 import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.js";
 import { beta } from "@/store/beta.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
+import { isFeatureAccessible } from "@/utils/featureAccess.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
@@ -361,6 +362,7 @@ const showManagement = computed(() =>
   hasManagementCapability(auth.adminAccess),
 );
 const showCalendar = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR));
+const showBattleImages = computed(() => isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, auth));
 const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE));
 const showAchievement = computed(() => isLoggedIn.value && isFeatureEnabled(FEATURE_KEYS.ACHIEVEMENT_ARCHIVE));
 const showBonds = computed(() => isLoggedIn.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ARCHIVE_ACCESS) && isFeatureEnabled(FEATURE_KEYS.BOND_ARCHIVE));

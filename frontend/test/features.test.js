@@ -16,6 +16,7 @@ test('roadmap features remain closed to ordinary users in every build', async ()
   for (const env of [{}, { DEV: true, PROD: false }, { DEV: false, PROD: true }]) {
     const source = featureConfig.replaceAll('import.meta.env', JSON.stringify(env))
     const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.BATTLE_IMAGES), env.DEV === true)
     assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RELATIONSHIPS), false)
     assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.OPERATOR_RESERVE), false)
   }
@@ -111,4 +112,5 @@ test('actual Vite production output enables completion without an opt-in or demo
   const compiled = await import('data:text/javascript;base64,' + Buffer.from(chunk.code).toString('base64'))
   assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION), true)
   assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION_DEMO), false)
+  assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.BATTLE_IMAGES), false)
 })

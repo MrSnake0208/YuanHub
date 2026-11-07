@@ -4,7 +4,9 @@
 
 All deferred frontend features are registered in `src/config/features.js`.
 Each feature has a stable camelCase key. Future deferred features must use an
-explicit boolean value and default to `false`.
+explicit boolean value and default to `false`. The explicitly requested
+`battleImages` development exception is documented below; its production default
+remains closed.
 
 `operatorGrowthTracking` opens the growth-planning tab on `/operator` in both development and production. The planning panel displays a persistent notice that it contains many Bugs and results need checking.
 
@@ -23,6 +25,20 @@ names, boolean values, or comment-out instructions in individual pages and
 components. Unknown keys are disabled by default.
 
 ## Integration rules
+
+`battleImages` keeps `/tools/battle-images` available in Vite development
+(`import.meta.env.DEV === true`) and closed to the public in production builds.
+In production, signed-in PLATFORM_ADMIN and SUPER_ADMIN users may preview it
+after `/v1/admin/access/me` has loaded successfully. Editor roles, feedback
+management grants and Beta enrollment do not grant preview access. Both navigation
+entries, direct routing and the mounted workspace use the same access predicate;
+denied navigation returns to `/cart`. Loss of access hides the workspace and
+returns there without deleting saved local drafts. This uses the current session's
+loaded roles; it does not add server-side role polling or a backend security boundary.
+The existing shared account APIs retain their own authorization.
+To release publicly, change `[FEATURE_KEYS.BATTLE_IMAGES]` to `true`, update the
+development/production assertions and rebuild/deploy the frontend. No work-system
+or Beta switch needs changing. Per-user rollout is not implemented.
 
 `achievementArchive` is built in and available to signed-in users with existing
 site eligibility; its navigation, player routes and APIs require no admin role or
@@ -102,7 +118,7 @@ npm run test:behavior -- behavior/operatorDiscardedGroup.spec.js behavior/operat
 
 - A standalone feature route declares `meta.feature` and may declare
   `meta.featureFallback`; the router redirects disabled routes to the fallback
-  or `/cart`.
+  or `/cart`, except for the explicitly allowed `battleImages` administrator preview.
 - A page-level feature must guard every user entry point, the content panel,
   and the state transition that selects the feature. Guarding only a button is
   not sufficient.

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-battle-images">
+  <div v-if="canUseBattleImages" class="page-battle-images">
     <IslandSidebar />
     <main id="main-content" class="battle-tool">
       <CompactToolHeader title="配队与操作图">
@@ -81,7 +81,10 @@
 <script setup>
 import './battleImages.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { auth } from '../../store/auth.js'
+import { FEATURE_KEYS } from '../../config/features.js'
+import { isFeatureAccessible } from '../../utils/featureAccess.js'
 import { ChevronDown, Download, FileText, Info, ListOrdered, UsersRound, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -96,6 +99,11 @@ import { useBattleAccountSource } from '../../composables/useBattleAccountSource
 import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 
+const router = useRouter()
+const canUseBattleImages = computed(() => isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, auth))
+watch([canUseBattleImages, () => auth.adminAccessLoading], ([allowed, loading]) => {
+  if (!allowed && !loading) void router.replace('/cart')
+})
 const { userId, account, accounts, accountsLoading, accountError, loadAccounts, catalog, catalogError, loadCatalog, entries, loading, loaded, error, readAccount } = useBattleAccountSource()
 const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')
 const { draft, key, revision, dirty, status, saveError, discError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
@@ -144,7 +152,7 @@ const unsaved = computed(() => dirty.value || pendingName.value)
 let alive = true
 watch(revision, () => { exportOpen.value = false; roundIndex.value = 0; fileError.value = ''; pendingName.value = false })
 watch([account, revision], () => { if (account.value) draft.value.game = account.value.game }, { immediate: true })
-onBeforeRouteLeave(() => !unsaved.value || dialog.confirm({ title: '离开图片工具？', message: '仍有未确认或未保存的输入，离开后将丢失。请先修正输入、确认密探名称并保存或导出草稿。', confirmText: '仍然离开', cancelText: '继续编辑' }))
+onBeforeRouteLeave(() => !canUseBattleImages.value || !unsaved.value || dialog.confirm({ title: '离开图片工具？', message: '仍有未确认或未保存的输入，离开后将丢失。请先修正输入、确认密探名称并保存或导出草稿。', confirmText: '仍然离开', cancelText: '继续编辑' }))
 async function beforeAccountSwitch() {
   return dialog.confirm({ title: '切换攻略账号？', message: unsaved.value ? '仍有未确认或未保存的输入。请取消，修正输入并保存或导出备份；继续切换会丢失未保存内容。' : '当前草稿保留在本机，切换后打开另一个账号的独立草稿。不会替换原草稿的阵容。', confirmText: '切换账号' })
 }

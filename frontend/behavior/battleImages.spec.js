@@ -13,7 +13,7 @@ import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
 import { battleDraftKey, decodeBattleDraft } from '../src/utils/battleDraft.js'
 
 const hooks = vi.hoisted(() => ({ leave: null }))
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn } }))
+vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn }, useRouter: () => ({ replace: vi.fn() }) }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/utils/battleImageCapture.js', () => ({ renderBattleImage: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorCurrent: vi.fn(), getCurrentOperatorPanels: vi.fn() }))
@@ -191,11 +191,11 @@ it('分享图以文字渲染用户内容，五槽位与明确的零均保留', (
   expect(wrapper.get('h1').text()).toBe(draft.title)
   expect(wrapper.find('h1 img').exists()).toBe(false)
   expect(wrapper.find('script').exists()).toBe(false)
-  const cards = wrapper.findAll('.team-card')
-  expect(cards).toHaveLength(5)
-  expect(cards[0].get('[data-stat="hp"] strong').text()).toBe('0')
-  expect(cards[1].get('[data-stat="hp"] strong').text()).toBe('—')
-  expect(cards[0].get('.forbiddenDiscs').text()).toContain('<script>坏内容</script>')
+  expect(wrapper.findAll('.team-card-head')).toHaveLength(5)
+  const cell = (slot, stat) => wrapper.get(`.team-card-cell[data-slot="${slot}"][data-stat="${stat}"]`)
+  expect(cell(0, 'hp').text()).toBe('0')
+  expect(cell(1, 'hp').text()).toBe('')
+  expect(cell(0, 'forbiddenDiscs').text()).toContain('<script>坏内容</script>')
 })
 
 it('五列表格直接编辑对应密探，切换槽位不丢数据，预览按需打开', async () => {

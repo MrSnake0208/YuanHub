@@ -15,7 +15,7 @@ export const routes = [
     {
         path: '/tools/battle-images', name: 'battle-images', text: '配队与操作图', display: true, module: 'tools', icon: 'images',
         component: () => import('/src/pages/tools/battle-images.vue'),
-        meta: { title: '配队与操作图 — YuanHub' }
+        meta: { title: '配队与操作图 — YuanHub', feature: FEATURE_KEYS.BATTLE_IMAGES }
     },
     {
         path: '/developers', name: 'developers', text: '开发者中心', display: false, module: 'developers', icon: 'book-open',

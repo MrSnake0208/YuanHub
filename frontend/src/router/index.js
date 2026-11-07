@@ -4,7 +4,8 @@ import { betaLandingFor, safeBetaRedirect } from '../utils/betaAccess.js'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { scrollBehavior } from './scrollBehavior.js'
-import { isFeatureEnabled } from '@/config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
+import { isFeatureAccessible } from '@/utils/featureAccess.js'
 import { auth, init as authInit } from '@/store/auth.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '@/utils/routeAccess.js'
 import { isNavigationCancelled } from '@/utils/navigationCancellation.js'
@@ -72,7 +73,12 @@ export async function authGuard(to, from, next) {
   const feature = to.meta && to.meta.feature
 
   if (feature && !isFeatureEnabled(feature)) {
-    return next(to.meta.featureFallback || '/cart')
+    if (feature === FEATURE_KEYS.BATTLE_IMAGES && authed &&
+        (!auth.adminAccessLoaded || auth.adminAccessLoading || auth.adminAccessError)) {
+      await auth.refreshAdminAccess({ suppressErrors: true })
+      if (isNavigationCancelled(to) || !auth.accessToken || auth.userInfo?.id !== navigationUserId) return next(false)
+    }
+    if (!isFeatureAccessible(feature, auth)) return next(to.meta.featureFallback || '/cart')
   }
 
   beta.setIdentity(authed ? auth.userInfo.id : '')
