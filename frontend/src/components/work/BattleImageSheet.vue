@@ -2,7 +2,7 @@
   <section ref="sheet" class="battle-sheet" :class="'is-' + kind" data-theme="light">
     <img class="sheet-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="sheet-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
-    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions' && (usedActions.length || multiTarget)" class="sheet-action-key"><span v-for="item in usedActions" :key="item.type"><i class="action-symbol" :class="ARROW_CLASS[item.symbol]" aria-hidden="true"><template v-if="ARROW_CLASS[item.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ item.symbol }}</template></i>{{ item.label }}</span><template v-if="multiTarget"><i class="sheet-action-sep" v-if="usedActions.length" aria-hidden="true"></i><span v-for="index in usedTargets" :key="'t' + index"><em :class="{ 'is-plain': index === mainTarget }" :style="index === mainTarget ? null : { background: TARGET_COLORS[index], borderLeftColor: TARGET_ACCENTS[index] }"></em>{{ model.targets[index] }}</span></template></div></header>
+    <header class="sheet-heading"><img class="sheet-logo" :src="brandLogoUrl" alt="YuanHub" width="64" height="64" /><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions' && (usedActions.length || multiTarget)" class="sheet-action-key"><span v-for="item in usedActions" :key="item.type"><i class="action-symbol" :class="ARROW_CLASS[item.symbol]" aria-hidden="true"><template v-if="ARROW_CLASS[item.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ item.symbol }}</template></i>{{ item.label }}</span><template v-if="multiTarget"><i class="sheet-action-sep" v-if="usedActions.length" aria-hidden="true"></i><span v-for="index in usedTargets" :key="'t' + index"><em :class="{ 'is-plain': index === mainTarget }" :style="index === mainTarget ? null : { background: TARGET_COLORS[index], borderLeftColor: TARGET_ACCENTS[index] }"></em>{{ model.targets[index] }}</span></template></div></header>
     <div class="team-board" :class="{ 'action-board': kind === 'actions', 'is-simple': simple }" :style="boardStyle">
       <div v-if="kind === 'actions'" class="team-board-label action-corner">回合</div>
       <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name, 'is-idle': idleSlots[index] }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
@@ -112,6 +112,7 @@ const manualCount = computed(() => props.model.operators.filter(operator => oper
 const markEach = computed(() => manualCount.value > 0 && manualCount.value < props.model.operators.filter(operator => operator.name).length)
 const panelFootnote = computed(() => !manualCount.value ? '' : markEach.value ? '* 面板含手动修正' : '攻击与生命为手动修正值')
 const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.svg'
+const brandLogoUrl = import.meta.env.BASE_URL + 'brand/yuanhub-logo.png'
 const profFiles = { 阳: 'yang', 阴: 'yin', 火: 'fire', 风: 'wind', 水: 'water', 地: 'earth', 混沌: 'chaos' }
 const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.png' : ''
 const discClass = { 金: 'rarity-gold', 紫: 'rarity-purple', 蓝: 'rarity-blue' }
@@ -148,6 +149,9 @@ defineExpose({ sheet })
 h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: anywhere; }
 :is(.is-team, .is-actions) h1 { margin-top: 6px; font-size: 40px; }
 .sheet-heading p { margin: 12px 0 0; font-size: 19px; color: #725c43; overflow-wrap: anywhere; }
+/* 右上角站点 logo（配队图、操作图共用）：压在竹叶装饰上方；分类行和标题右侧让出 logo 宽度，长标题换行而不被遮住。 */
+.sheet-logo { position: absolute; top: 0; right: 4px; display: block; width: 64px; height: 64px; }
+:is(.is-team, .is-actions) :is(.sheet-category, h1) { padding-right: 84px; }
 
 /* 配队图：上半是角色卡（立绘、竖排名、属性底色、描金框），下半数据行跨卡对齐；
    卡片底板跨满整列，数据格叠在其上，不画表格网格线，只用细金线和极淡的隔行底色分区。
