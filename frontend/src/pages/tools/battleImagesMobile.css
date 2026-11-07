@@ -1,6 +1,4 @@
 @media (max-width: 767px) {
-  .page-battle-images .wrap { padding-inline: 12px; }
-  .page-battle-images .compact-tool-header > .wrap { padding-inline: 12px; }
   /* 选择器高于公共页头的 scoped 规则，避免按加载顺序决定布局；手机上标题独占一行。 */
   .page-battle-images .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'actions' 'account'; }
   .page-battle-images .compact-tool-header .compact-tool-actions { justify-content: flex-start; }

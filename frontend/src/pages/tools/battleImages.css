@@ -3,10 +3,7 @@
   --battle-selection: color-mix(in srgb, var(--yellow) 22%, var(--surface));
   --battle-border: color-mix(in srgb, var(--tea) 26%, var(--surface));
 }
-.page-battle-images #main-content { background: var(--surface); }
 .battle-tool { color: var(--ink); padding-bottom: 32px; }
-.page-battle-images .wrap { max-width: 1500px; padding-inline: 28px; }
-.page-battle-images .compact-tool-header > .wrap { max-width: 1500px; padding-inline: 28px; }
 .page-battle-images .compact-tool-header .compact-tool-actions { flex-wrap: wrap; gap: 8px; }
 .battle-tool .compact-tool-heading h1 { font-size: 25px; }
 .battle-tool .compact-tool-header { border-bottom: 1px solid var(--line); margin-bottom: 16px; }
