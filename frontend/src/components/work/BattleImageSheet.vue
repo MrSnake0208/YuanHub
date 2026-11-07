@@ -12,7 +12,7 @@
           <img v-if="portraits[operator.id]" :src="portraits[operator.id]" alt="" width="391" height="285" />
           <span v-else class="team-card-initial">{{ operator.name ? Array.from(operator.name)[0] : '空' }}</span>
         </div>
-        <img v-if="profIcon(operator.prof)" class="team-card-prof" :src="profIcon(operator.prof)" :alt="operator.prof + '属性'" width="26" height="26" />
+        <img v-if="kind === 'team' && profIcon(operator.prof)" class="team-card-prof" :src="profIcon(operator.prof)" :alt="operator.prof + '属性'" width="26" height="26" />
         <h3 v-if="simple" class="action-card-name">{{ operator.name || '未指定' }}</h3>
         <h3 v-else class="team-card-name" :class="nameClass(operator.name)" :aria-label="operator.name || '未指定'"><span v-for="(char, i) in Array.from(operator.name || '未指定')" :key="i" aria-hidden="true">{{ char }}</span></h3>
       </header>
@@ -40,7 +40,7 @@
         <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong><small>回合</small></div>
         <template v-if="item.type === 'round'">
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
-            <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': !multiTarget }" :style="multiTarget ? { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] } : null"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
+            <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': !multiTarget || entry.box }" :style="multiTarget && !entry.box ? { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] } : null"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
           </div>
         </template>
         <p v-else class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
@@ -56,9 +56,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import portraits from '../../data/operatorPortraits.json'
-import { BATTLE_ACTIONS, TARGET_ACCENTS, TARGET_COLORS } from '../../utils/battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_ACCENTS, TARGET_COLORS } from '../../utils/battleImages.js'
 const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' }, partial: { type: Boolean, default: false } })
 // 操作图两种样式：完整款卡头与配队图一致（立绘 + 竖排名），简化款只放横排名字。配队图不受影响。
+// 属性图标只在配队图显示；操作图两种样式都不画。
 const simple = computed(() => props.kind === 'actions' && props.variant === 'simple')
 // 配队图：五张独立角色卡，数据按字段成行横向对齐；字段名只在左列写一次，未填写直接留白。
 // 必须/禁用命盘只要有一人填写才出现；星石同理。多行内容（化极、命盘、星石）顶部对齐，五列首行齐平。
@@ -91,7 +92,8 @@ const boardStyle = computed(() => {
 })
 // 图例只列本张图实际出现的动作与目标；全程只打一个目标时目标图例和目标色都不出现，动作块用中性底。
 const usedEntries = computed(() => props.kind === 'actions' ? props.rows.flatMap(row => row.slots.flat()) : [])
-const usedActions = computed(() => BATTLE_ACTIONS.filter(item => usedEntries.value.some(entry => entry.symbol === item.symbol)))
+// 箱（关卡互动）挂在紧邻密探格内，无目标，用中性底；用到时图例补一项。
+const usedActions = computed(() => [...BATTLE_ACTIONS.filter(item => usedEntries.value.some(entry => !entry.box && entry.symbol === item.symbol)), ...(usedEntries.value.some(entry => entry.box) ? [BATTLE_INTERACTION] : [])])
 const usedTargets = computed(() => [...new Set(usedEntries.value.map(entry => entry.target))].filter(index => index != null).sort((a, b) => a - b))
 const multiTarget = computed(() => usedTargets.value.length > 1)
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
@@ -205,8 +207,7 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .team-card-head.is-idle .box-image-portrait img { opacity: .5; }
 .team-card-head.is-idle .team-card-name { color: #8a7660; }
 .action-board.is-simple { grid-template-rows: 76px repeat(var(--rows), auto); }
-.is-simple .team-card-head { display: flex; align-items: center; justify-content: center; padding: 0 40px; background: var(--portrait-tone); border-bottom: 1px solid #e0cba2; }
-.is-simple .team-card-prof { top: 50%; transform: translateY(-50%); }
+.is-simple .team-card-head { display: flex; align-items: center; justify-content: center; padding: 0 12px; background: var(--portrait-tone); border-bottom: 1px solid #e0cba2; }
 .action-card-name { margin: 0; min-width: 0; font: 600 28px/1.2 var(--font-s, serif); letter-spacing: 2px; color: #3e3023; text-align: center; overflow-wrap: anywhere; }
 .is-simple .team-card-head.is-empty .action-card-name { color: #a8957a; font-size: 22px; }
 .sheet-action-key { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; font-size: 17px; color: #5d4a36; }

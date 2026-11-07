@@ -9,6 +9,10 @@ export const BATTLE_ACTIONS = Object.freeze([
   { type: 'defense', symbol: '↓', label: '防御' },
   { type: 'sp', symbol: '圈', label: '特殊技能' },
 ])
+// 关卡内互动（玩家口中的“箱”、MaaYuan 的局内工具箱）：不属于任何密探、无目标，只占全队出手顺序中的一步。
+// 数据只存 { type: 'interaction' }，与作业协议的 interaction 动作同义；表格与出图中挂在紧邻的密探格内显示。
+export const BATTLE_INTERACTION = Object.freeze({ type: 'interaction', symbol: '箱', label: '关卡互动' })
+export const isBattleInteraction = action => action?.type === BATTLE_INTERACTION.type
 export const BATTLE_STATS = Object.freeze([
   ['hp', '生命'], ['attack', '攻击'], ['level', '等级'], ['elite', '修为'], ['huaji', '化极 / 觉醒'],
 ])
@@ -63,13 +67,25 @@ export function battleFileName(title, suffix, extension) {
   return `YuanHub-${stem ? stem + '-' : ''}${suffix}.${extension}`
 }
 
-export function battleRoundRows(rounds) {
-  return rounds.map((round, index) => ({
-    round: index + 1, remark: round.remark,
-    slots: Array.from({ length: 5 }, (_, slot) => round.actions.flatMap((action, order) => action.slot === slot
-      ? [{ order: order + 1, symbol: BATTLE_ACTIONS.find(item => item.type === action.type)?.symbol || '?', target: action.target }]
-      : [])),
-  }))
+// 箱不单独成列：显示在本回合紧邻其前出手的密探格内；本回合开头的箱跟随其后第一位出手的密探，
+// 整回合只有箱时放在第一位已选密探处。只影响显示，数据中仍是独立一步。
+function battleBoxHost(actions, index, fallback) {
+  for (let i = index - 1; i >= 0; i--) if (!isBattleInteraction(actions[i])) return actions[i].slot
+  for (let i = index + 1; i < actions.length; i++) if (!isBattleInteraction(actions[i])) return actions[i].slot
+  return fallback
+}
+
+export function battleRoundRows(rounds, operators = []) {
+  const fallback = Math.max(0, operators.findIndex(operator => String(operator?.name || '').trim()))
+  return rounds.map((round, index) => {
+    const entries = round.actions.map((action, order) => isBattleInteraction(action)
+      ? { slot: battleBoxHost(round.actions, order, fallback), entry: { order: order + 1, symbol: BATTLE_INTERACTION.symbol, target: null, box: true } }
+      : { slot: action.slot, entry: { order: order + 1, symbol: BATTLE_ACTIONS.find(item => item.type === action.type)?.symbol || '?', target: action.target } })
+    return {
+      round: index + 1, remark: round.remark,
+      slots: Array.from({ length: 5 }, (_, slot) => entries.filter(item => item.slot === slot).map(item => item.entry)),
+    }
+  })
 }
 
 // 化极文本来自导入时的固定格式（如“5 星 · 3 节点 · 已觉醒”）；手填的其它写法保留原文。
@@ -117,7 +133,7 @@ export function buildBattleImageModel(draft, catalog = []) {
       }
     }),
     targets: draft.targets.map((name, index) => String(name).trim() || ['左二', '左一', 'BOSS', '右一', '右二'][index]),
-    rows: battleRoundRows(draft.rounds),
+    rows: battleRoundRows(draft.rounds, draft.operators),
   }
 }
 
@@ -126,7 +142,7 @@ export function battleImageError(draft, kind) {
   if (discError) return discError
   if (!draft.operators.some(operator => operator.name.trim())) return '请先填写至少一位密探。'
   if (kind === 'actions' && !draft.rounds.some(round => round.actions.length)) return '请先记录至少一个动作。'
-  if (kind === 'actions' && draft.rounds.some(round => round.actions.some(action => !draft.operators[action.slot]?.name.trim()))) {
+  if (kind === 'actions' && draft.rounds.some(round => round.actions.some(action => !isBattleInteraction(action) && !draft.operators[action.slot]?.name.trim()))) {
     return '有动作对应的槽位尚未填写密探，请先补全配队。'
   }
   return ''

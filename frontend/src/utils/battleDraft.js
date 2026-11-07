@@ -1,4 +1,4 @@
-import { BATTLE_ACTIONS, BATTLE_NOTES, BATTLE_STATS, battleDraftDiscError } from './battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_NOTES, BATTLE_STATS, battleDraftDiscError } from './battleImages.js'
 
 export const BATTLE_DRAFT_MAX_BYTES = 1024 * 1024
 export function battleDraftKey(userId, accountId) {
@@ -50,6 +50,7 @@ export function validateBattleDraft(value) {
         remark: text(round.remark, 2000, '回合备注'),
         actions: list(round.actions, 0, 50, '回合动作数').map(item => {
           const action = object(item, '动作')
+          if (action.type === BATTLE_INTERACTION.type) return { type: action.type }
           if (!BATTLE_ACTIONS.some(({ type }) => action.type === type)) fail('动作类型')
           return { slot: index(action.slot, 4, '密探槽位'), type: action.type, target: index(action.target, 4, '目标槽位') }
         }),

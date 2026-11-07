@@ -42,6 +42,24 @@ test('出图按槽位归组但保留跨密探出手顺序、多动、目标与�
   assert.equal(model.rows[0].slots[4][0].target, 0)
 })
 
+test('箱（关卡互动）挂在紧邻其前出手的密探格内，开头跟随其后密探，只有箱时放第一位已选密探；序号连续且出图不要求槽位', () => {
+  const draft = createBattleDraft()
+  draft.operators[1].name = '杨修'; draft.operators[3].name = '张辽'
+  const box = { type: 'interaction' }
+  draft.rounds = [
+    { remark: '', actions: [{ slot: 3, type: 'attack', target: 2 }, box, { slot: 1, type: 'ultimate', target: 1 }, box] },
+    { remark: '', actions: [box, box, { slot: 3, type: 'sp', target: 0 }] },
+    { remark: '', actions: [box] },
+  ]
+  const [first, second, third] = buildBattleImageModel(draft).rows
+  const orders = row => row.slots.map(entries => entries.map(entry => entry.order + entry.symbol))
+  assert.deepEqual(orders(first), [[], ['3↑', '4箱'], [], ['1A', '2箱'], []])
+  assert.deepEqual(orders(second), [[], [], [], ['1箱', '2箱', '3圈'], []])
+  assert.deepEqual(orders(third), [[], ['1箱'], [], [], []])
+  assert.deepEqual(first.slots[3][1], { order: 2, symbol: '箱', target: null, box: true })
+  assert.equal(battleImageError(draft, 'actions'), '')
+})
+
 test('未知练度不变成零，明确的零和自定义密探名保留，未授权字段不出图', () => {
   const draft = createBattleDraft()
   Object.assign(draft.operators[0], { name: ' 杨修 ', hp: 0, privateNote: '秘密', requiredDiscs: '技能额外效果' })

@@ -248,6 +248,8 @@
 .battle-target-option i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; flex-shrink: 0; }
 .battle-tool .battle-action-option { min-width: 88px; }
 .battle-action-option b { font: 600 16px/1 var(--font-d); }
+.battle-box-option b { font: 600 16px/1 var(--font-d); }
+.battle-action-mark.is-box { border: 1px dashed var(--battle-border); }
 .battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-top: 8px; }
 .battle-tool .battle-sequence-tools > button { padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
 .battle-round-note { margin-top: 16px; }

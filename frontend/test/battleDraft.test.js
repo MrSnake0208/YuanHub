@@ -87,6 +87,13 @@ test('草稿完整往返并只保留编辑字段，作用域区分用户、账�
   assert.equal(battleDraftKey('', 'a'), battleDraftKey('', 'b'))
 })
 
+test('箱（关卡互动）往返只保留类型，夹带的槽位与目标被丢弃', () => {
+  const draft = createBattleDraft()
+  draft.rounds[0].actions = [{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction', slot: 9, target: 9, note: 'x' }]
+  const decoded = decodeBattleDraft(encodeBattleDraft(draft))
+  assert.deepEqual(decoded.rounds[0].actions, [{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }])
+})
+
 test('拒绝损坏、超限和非法槽位动作，不截断导入内容', () => {
   const raw = JSON.parse(encodeBattleDraft(createBattleDraft()))
   for (const change of [

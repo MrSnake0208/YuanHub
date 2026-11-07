@@ -1,12 +1,12 @@
 <template>
   <section class="battle-recorder" aria-label="战斗操作记录">
-    <div class="battle-action-legend"><span>操作符号：<b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b></span><span>目标：<span v-for="(name, index) in targets" :key="index"><i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ targetName(index) }}</span></span></div>
+    <div class="battle-action-legend"><span>操作符号：<b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span><span>目标：<span v-for="(name, index) in targets" :key="index"><i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ targetName(index) }}</span></span></div>
     <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
         <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col"><span class="battle-slot-number">{{ index + 1 }}号位</span><span class="battle-record-identity"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '未选择' }}</strong></span></th><th scope="col">备注</th></tr></thead>
         <tbody><tr v-for="(row, rowIndex) in rows" :key="rowIndex" :class="{ 'battle-row-current': expanded && current === rowIndex }"><th scope="row"><button type="button" :aria-label="`编辑第${rowIndex + 1}回合`" @click="selectCell(rowIndex, slot, $event)">第 {{ rowIndex + 1 }} 回合</button></th>
-          <td v-for="(actions, index) in row.slots" :key="index" :class="{ selected: expanded && current === rowIndex && slot === index }"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex && slot === index" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length">{{ operators[index].name ? '添加动作' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :style="{ background: TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><small>{{ targetName(action.target) }}</small></span></button></td>
+          <td v-for="(actions, index) in row.slots" :key="index" :class="{ selected: expanded && current === rowIndex && slot === index }"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex && slot === index" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length">{{ operators[index].name ? '添加动作' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :class="{ 'is-box': action.box }" :style="action.box ? null : { background: TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><small v-if="!action.box">{{ targetName(action.target) }}</small></span></button></td>
           <td><button type="button" class="battle-cell-button battle-remark-cell" :aria-label="`编辑第${rowIndex + 1}回合备注`" @click="selectCell(rowIndex, slot, $event)">{{ row.remark || '添加备注' }}</button></td>
         </tr></tbody>
       </table>
@@ -32,12 +32,13 @@
         </div>
         <ol v-if="round.actions.length" class="battle-sequence-chips" aria-label="本回合出手顺序">
           <li v-for="(action, index) in round.actions" :key="index">
-            <button type="button" :aria-pressed="editing === index" :aria-label="`第${index + 1}步：${actorName(action.slot)} ${actionLabel(action.type)} ${targetName(action.target)}，点按修改`" @click="toggleEdit(index)">
-              <b>{{ index + 1 }}</b><span>{{ actorName(action.slot) }}</span><strong>{{ actionSymbol(action.type) }}</strong><small :style="{ background: TARGET_COLORS[action.target] }">{{ targetName(action.target) }}</small>
+            <button type="button" :aria-pressed="editing === index" :aria-label="`第${index + 1}步：${stepText(action)}，点按修改`" @click="toggleEdit(index)">
+              <b>{{ index + 1 }}</b><template v-if="isBattleInteraction(action)"><span>{{ BATTLE_INTERACTION.label }}</span><strong>{{ BATTLE_INTERACTION.symbol }}</strong></template>
+              <template v-else><span>{{ actorName(action.slot) }}</span><strong>{{ actionSymbol(action.type) }}</strong><small :style="{ background: TARGET_COLORS[action.target] }">{{ targetName(action.target) }}</small></template>
             </button>
           </li>
         </ol>
-        <p v-else class="battle-hint">本回合还没有动作。选好密探和目标，点下方动作即可依次记录。</p>
+        <p v-else class="battle-hint">本回合还没有动作。选好密探和目标，点下方动作即可依次记录；用到关卡里的箱子时选「箱」。</p>
         <div v-if="editingAction" class="battle-step-tools" role="group" :aria-label="`第${editing + 1}步操作`">
           <span>正在修改第 {{ editing + 1 }} 步，下方选择会直接改这一步</span>
           <button type="button" :disabled="editing === 0" :aria-label="`第${editing + 1}步提前`" @click="moveEditing(-1)"><ArrowLeft :size="15" aria-hidden="true" />提前</button>
@@ -49,25 +50,29 @@
       </div>
 
       <div class="battle-composer">
-        <div class="battle-composer-row" role="group" aria-label="出手密探">
-          <span class="battle-composer-label">密探</span>
+        <div class="battle-composer-row" role="group" aria-label="出手方">
+          <span class="battle-composer-label">出手</span>
           <button v-for="(member, index) in operators" :key="index" type="button" class="battle-actor-option" :disabled="!member.name" :aria-pressed="activeSlot === index" @click="pickSlot(index)">
             <img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt="">{{ member.name || `${index + 1}号位` }}
           </button>
+          <button type="button" class="battle-actor-option battle-box-option" :aria-pressed="activeSlot === BOX" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" @click="pickSlot(BOX)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}</button>
         </div>
         <div class="battle-composer-row" role="group" aria-label="动作目标">
           <span class="battle-composer-label">目标</span>
-          <button v-for="(name, index) in targets" :key="index" type="button" class="battle-target-option" :aria-pressed="activeTarget === index" @click="pickTarget(index)">
+          <button v-for="(name, index) in targets" :key="index" type="button" class="battle-target-option" :aria-pressed="activeSlot !== BOX && activeTarget === index" :disabled="activeSlot === BOX" @click="pickTarget(index)">
             <i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ targetName(index) }}
           </button>
         </div>
         <div class="battle-composer-row" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
           <span class="battle-composer-label">{{ editingAction ? '改为' : '记录' }}</span>
-          <button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="!editingAction && !canRecord" @click="pickAction(item.type)">
-            <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
+          <button v-if="activeSlot === BOX" type="button" class="battle-action-option" :aria-pressed="editingAction ? true : undefined" :disabled="!editingAction && !canRecord" @click="pickAction(BATTLE_INTERACTION.type)">
+            <b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}
           </button>
+          <template v-else><button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="!editingAction && !canRecord" @click="pickAction(item.type)">
+            <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
+          </button></template>
         </div>
-        <p v-if="!editingAction && !operators[slot]?.name" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
+        <p v-if="!editingAction && slot !== BOX && !operators[slot]?.name" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
         <p v-else-if="!editingAction && round.actions.length >= 50" class="battle-hint">本回合已达 50 个动作上限。</p>
       </div>
 
@@ -82,21 +87,23 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronUp, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
-import { BATTLE_ACTIONS, TARGET_COLORS, battleOperatorId, battleRoundRows } from '../../utils/battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_COLORS, battleOperatorId, battleRoundRows, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
 const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true } })
+// slot 为 BOX 时表示选中「箱」（关卡互动），它不属于任何密探槽位。
+const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), heading = ref(null)
 // editing：正在修改的步骤序号；null 表示密探/目标/动作按钮用于追加新动作。
 const editing = ref(null), removed = ref(null)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
-const rows = computed(() => battleRoundRows(props.rounds))
+const rows = computed(() => battleRoundRows(props.rounds, props.operators))
 const round = computed(() => props.rounds[current.value])
 const editingAction = computed(() => editing.value === null ? null : round.value?.actions[editing.value] || null)
-const activeSlot = computed(() => editingAction.value ? editingAction.value.slot : slot.value)
+const activeSlot = computed(() => editingAction.value ? (isBattleInteraction(editingAction.value) ? BOX : editingAction.value.slot) : slot.value)
 const activeTarget = computed(() => editingAction.value ? editingAction.value.target : target.value)
-const canRecord = computed(() => Boolean(props.operators[slot.value]?.name) && round.value.actions.length < 50)
+const canRecord = computed(() => (slot.value === BOX || Boolean(props.operators[slot.value]?.name)) && round.value.actions.length < 50)
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
 watch(round, () => { editing.value = null })
 watch(() => round.value?.actions.length, () => { if (editing.value !== null && !editingAction.value) editing.value = null })
@@ -106,6 +113,7 @@ onBeforeUnmount(() => { alive = false })
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
 const actionSymbol = type => BATTLE_ACTIONS.find(item => item.type === type)?.symbol || '?'
+const stepText = action => isBattleInteraction(action) ? `${BATTLE_INTERACTION.label}（箱）` : `${actorName(action.slot)} ${actionLabel(action.type)} ${targetName(action.target)}`
 const actionLabel = type => BATTLE_ACTIONS.find(item => item.type === type)?.label || '未知动作'
 
 async function selectCell(row, position, event) {
@@ -117,17 +125,23 @@ async function close() { expanded.value = false; editing.value = null; await nex
 function goRound(index) { if (index >= 0 && index < props.rounds.length) current.value = index }
 function toggleEdit(index) { editing.value = editing.value === index ? null : index }
 function pickSlot(index) {
-  if (!props.operators[index]?.name) return
-  if (editingAction.value) editingAction.value.slot = index
-  else slot.value = index
+  if (index !== BOX && !props.operators[index]?.name) return
+  const action = editingAction.value
+  if (!action) { slot.value = index; return }
+  if ((index === BOX) === isBattleInteraction(action)) { if (index !== BOX) action.slot = index; return }
+  // 密探动作与关卡互动互改：原位替换整步，出手顺序不变；改回密探时默认普攻、沿用当前目标。
+  round.value.actions.splice(editing.value, 1, index === BOX ? { type: BATTLE_INTERACTION.type } : { slot: index, type: BATTLE_ACTIONS[0].type, target: target.value })
 }
 function pickTarget(index) {
+  if (activeSlot.value === BOX) return
   if (editingAction.value) editingAction.value.target = index
   else target.value = index
 }
 function pickAction(type) {
-  if (editingAction.value) { editingAction.value.type = type; return }
-  if (canRecord.value) round.value.actions.push({ slot: slot.value, type, target: target.value })
+  const action = editingAction.value
+  if (action) { if (!isBattleInteraction(action) && type !== BATTLE_INTERACTION.type) action.type = type; return }
+  if (!canRecord.value) return
+  round.value.actions.push(slot.value === BOX ? { type: BATTLE_INTERACTION.type } : { slot: slot.value, type, target: target.value })
 }
 function moveEditing(offset) {
   const from = editing.value
