@@ -88,6 +88,16 @@ export function battleRoundRows(rounds, operators = []) {
   })
 }
 
+// 操作表目标用量：used 为用到的目标序号（升序）；main 为打得最多的主目标（并列取序号小的）。
+// 多目标时只标注“例外”目标，主目标与单目标都不逐格标注，编辑表与出图共用此规则。
+export function battleTargetUsage(rows) {
+  const counts = new Map()
+  for (const entry of rows.flatMap(row => row.slots.flat())) if (!entry.box && entry.target != null) counts.set(entry.target, (counts.get(entry.target) || 0) + 1)
+  const used = [...counts.keys()].sort((a, b) => a - b)
+  const main = used.reduce((best, index) => best == null || counts.get(index) > counts.get(best) ? index : best, null)
+  return { used, main, multi: used.length > 1 }
+}
+
 // 化极文本来自导入时的固定格式（如“5 星 · 3 节点 · 已觉醒”）；手填的其它写法保留原文。
 export function battleHuajiProgress(value) {
   const match = String(value ?? '').trim().match(/^([1-5])\s*(?:星|★)(?:\s*·\s*([0-5])\s*节点)?(?:\s*·\s*(已觉醒|未觉醒|觉醒待确认))?$/)

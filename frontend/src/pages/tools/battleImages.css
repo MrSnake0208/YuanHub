@@ -23,6 +23,7 @@
 .battle-draft-menu > summary::-webkit-details-marker { display: none; }
 .battle-draft-tools { position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-popover); display: grid; gap: 6px; min-width: 150px; padding: 8px; border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); box-shadow: 0 5px 16px rgba(var(--theme-shadow-rgb, 73,59,44), .12); }
 .battle-draft-tools > button { display: flex; align-items: center; gap: 6px; }
+.battle-draft-prefix { flex-shrink: 0; font-size: 12px; color: var(--ink-60); }
 .battle-draft-current { max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .battle-draft-tools:has(.battle-draft-list) { min-width: 240px; }
 .battle-draft-caption { margin: 0 4px; font-size: 12px; color: var(--ink-60); }
@@ -43,7 +44,13 @@
 .battle-meta { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 15px; }
 .battle-title-field { flex: 1; }
 .battle-tool .battle-title-field input { border-color: transparent; padding-inline: 0; font-size: 23px; font-weight: 600; background: transparent; }
-.battle-author-field { width: 210px; }
+/* 署名填写后仍需看得出是署名，标签放在框内左侧。 */
+.battle-tool .battle-author-field { display: flex; align-items: center; gap: 8px; width: 240px; padding-left: 10px; border: 1px solid var(--battle-border); border-radius: 5px; background: var(--surface); }
+.battle-author-field > span { flex-shrink: 0; font-size: 13px; color: var(--ink-60); }
+/* 选择器需高于全局输入框规则；焦点框画在整个署名框上。 */
+.battle-tool .battle-meta .battle-author-field input { border: 0; padding-left: 0; background: transparent; }
+.battle-tool .battle-meta .battle-author-field input:focus-visible { outline: none; }
+.battle-tool .battle-author-field:focus-within { border-color: var(--battle-accent); outline: 2px solid var(--theme-focus, var(--battle-accent)); outline-offset: 3px; }
 .battle-modes { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .battle-modes > button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 10px 12px; font-size: 16px; }
 .battle-modes > button[aria-selected=true] { border-bottom-color: var(--battle-accent); color: var(--battle-accent); font-weight: 700; }
@@ -128,9 +135,12 @@
 .battle-pending-tag { justify-self: start; margin: 0; padding: 4px 10px; border-radius: 5px; background: color-mix(in srgb, var(--yellow) 30%, var(--surface)); color: var(--battle-accent); font-size: 12px; line-height: 1.6; }
 .battle-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-60); }
 .battle-tool .battle-dialog-footer .battle-primary { min-width: 96px; min-height: 40px; }
-.battle-inline-editor { border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); padding: 18px 20px; margin-top: 16px; scroll-margin-top: 24px; }
+/* 编辑区展开在当前回合行下方：外层单元格即容器，不再套一层卡片边框。横向滚动时贴左、宽度不超过可见区域。 */
+.battle-tool .battle-action-matrix tr.battle-editor-row > td { padding: 16px 18px 14px; text-align: left; white-space: normal; overflow-wrap: normal; vertical-align: top; background: var(--cream); }
+.battle-inline-editor { position: sticky; left: 18px; box-sizing: border-box; max-width: calc(var(--battle-view-width, 100%) - 36px); }
 .battle-inline-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
-.battle-inline-heading h3 { margin: 0; font-size: 16px; font-weight: 650; }
+/* 上方留出被编辑的那一行，下方避开手机底部生成栏。 */
+.battle-inline-heading h3 { margin: 0; font-size: 16px; font-weight: 650; scroll-margin: 88px 0 140px; }
 .battle-inline-heading > button { border: 0; padding: 6px; font-size: 12px; }
 .battle-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 14px 0 10px; }
 .battle-section-heading h3 { margin: 0; font-size: 14px; }
@@ -206,9 +216,13 @@
 .battle-action-legend b { color: var(--ink); font-weight: 500; }
 .battle-action-legend > span > span { display: inline-flex; align-items: center; gap: 5px; }
 .battle-action-legend i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; }
+.battle-action-legend i.is-plain { background: transparent; }
+.battle-action-legend small { font-size: 12px; }
+.battle-tool .battle-target-rename { gap: 4px; min-height: 32px; padding: 4px 8px; border-color: transparent; background: transparent; color: var(--battle-accent); font-size: 12px; }
 .battle-action-matrix { min-width: 920px; }
 .battle-action-matrix thead th:last-child { width: 180px; }
-.battle-action-matrix tbody th > button { font-size: 12px; border: 0; padding: 0; background: transparent; }
+.battle-action-matrix th:first-child { width: 56px; }
+.battle-tool .battle-action-matrix tbody th > button { width: 100%; min-height: 40px; border: 0; padding: 0; background: transparent; font: 500 15px/1.4 var(--font-d); }
 .battle-record-identity { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
 .battle-record-identity img { height: 48px; width: 38px; object-fit: cover; object-position: top; border-radius: 3px; }
 .battle-record-identity strong { font-size: 13px; }
@@ -216,13 +230,18 @@
 .battle-action-mark { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; justify-content: center; padding: 3px 5px; border-radius: 3px; color: #493b2c; }
 .battle-action-mark b { font: 500 16px/1.4 var(--font-d); }
 .battle-action-mark small { font-size: 10px; }
+.battle-action-mark.is-plain { background: transparent; }
+.battle-cell-empty { color: var(--ink-60); opacity: .7; font-size: 16px; }
 .battle-tool .battle-remark-cell { justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.7; }
 .battle-round-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-block: 12px; }
 .battle-round-toolbar > span { margin-left: auto; font-size: 12px; color: var(--ink-60); }
 .battle-round-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .battle-tool .battle-round-nav > button { padding: 6px 10px; font-size: 12px; }
 .battle-tool .battle-round-nav > .battle-collapse { border: 0; }
-.battle-action-matrix tr.battle-row-current > th { background: var(--battle-selection); }
+/* 插入编辑行后 nth-child 奇偶会错位，操作表按回合序号决定斑马纹。 */
+.battle-action-matrix tbody tr:nth-child(even) td { background: var(--surface); }
+.battle-action-matrix tbody tr.is-alt > td { background: color-mix(in srgb, var(--cream) 65%, var(--surface)); }
+.battle-action-matrix tbody tr.battle-row-current > :is(th, td) { background: var(--battle-selection); }
 .battle-sequence { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .battle-sequence-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-60); }
 .battle-tool .battle-sequence-head > button { border: 0; padding: 6px; font-size: 12px; }
@@ -251,11 +270,9 @@
 .battle-box-option b { font: 600 16px/1 var(--font-d); }
 .battle-action-mark.is-box { border: 1px dashed var(--battle-border); }
 .battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-top: 8px; }
-.battle-tool .battle-sequence-tools > button { padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-sequence-tools > button { margin-left: auto; padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
 .battle-round-note { margin-top: 16px; }
-.battle-target-edit { margin-top: 16px; }
-.battle-target-edit summary { display: flex; gap: 6px; align-items: center; }
-.battle-target-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 12px; }
+.battle-target-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: -4px 0 14px; }
 .battle-common-note { margin-bottom: 16px; padding: 12px 14px 14px; border: 1px solid var(--battle-border); border-left: 3px solid var(--battle-accent); border-radius: 8px; background: var(--cream); }
 .battle-note-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 8px; color: var(--battle-accent); }
 .battle-note-heading h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }

@@ -28,16 +28,18 @@
   .battle-tool .battle-disc-short { display: block; }
   .battle-tool .battle-cell-error { margin: 0 2px 6px; font-size: 10px; }
   /* 操作表手机端隐藏备注列（展开编辑区仍可填写备注），六列排满屏宽。 */
-  .battle-tool .battle-action-matrix tr > :last-child { display: none; }
+  .battle-tool .battle-action-matrix tr:not(.battle-editor-row) > :last-child { display: none; }
   .battle-tool .battle-action-matrix tr > :nth-last-child(2) { border-right: 0; }
   .battle-tool .battle-record-identity { flex-direction: column; gap: 4px; }
   .battle-tool .battle-record-identity img { width: 100%; height: auto; aspect-ratio: 3 / 4; }
   .battle-tool .battle-record-identity strong { font-size: 12px; }
-  .battle-tool .battle-action-matrix tbody th > button { min-height: 0; padding: 0; font-size: 11px; }
+  .battle-tool .battle-action-matrix tbody th > button { min-height: 40px; padding: 0; font-size: 13px; }
   .battle-tool .battle-matrix .battle-action-cell { gap: 3px; padding-inline: 1px; }
   .battle-tool .battle-action-mark { padding: 2px 3px; }
   .battle-tool .battle-action-mark b { font-size: 13px; }
-  .battle-tool .battle-inline-editor { padding: 14px 12px; }
+  .battle-tool .battle-action-matrix tr.battle-editor-row > td { padding: 12px 10px; }
+  .battle-tool .battle-inline-editor { left: 10px; max-width: calc(var(--battle-view-width, 100%) - 20px); }
+  .battle-tool .battle-target-rename { min-height: 44px; }
   .battle-tool.battle-dialog-mask { place-items: end stretch; padding: 0; }
   .battle-dialog { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; border-bottom: 0; }
   .battle-dialog-header { padding: 14px 16px 10px; gap: 10px; }

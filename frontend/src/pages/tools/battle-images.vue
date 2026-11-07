@@ -12,7 +12,7 @@
         </template>
         <template #actions>
           <details ref="draftMenu" class="battle-draft-menu" @keydown.esc.stop="closeDraftMenu(true)">
-            <summary><span v-if="cloud" class="battle-draft-current">{{ currentTitle }}</span><template v-else>草稿管理</template><ChevronDown :size="14" aria-hidden="true" /></summary>
+            <summary><template v-if="cloud"><span class="battle-draft-prefix">草稿</span><span class="battle-draft-current">{{ currentTitle }}</span></template><template v-else>草稿管理</template><ChevronDown :size="14" aria-hidden="true" /></summary>
             <div class="battle-draft-tools">
               <template v-if="cloud">
                 <p class="battle-draft-caption">云草稿 {{ drafts.length }}/{{ BATTLE_CLOUD_DRAFT_LIMIT }} · 当前游戏账号</p>
@@ -64,7 +64,7 @@
         <template v-else-if="!cloudUnavailable">
           <section class="battle-meta" aria-label="图片基本信息">
             <label class="battle-title-field"><span class="sr-only">标题 / 关卡</span><input v-model="draft.title" aria-label="标题或关卡" maxlength="120" placeholder="给这份攻略起个名字"></label>
-            <label class="battle-author-field"><span class="sr-only">署名</span><input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="署名（可选）"></label>
+            <label class="battle-author-field"><span>署名</span><input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="可选"></label>
           </section>
           <!-- 打法说明是攻略的核心文字，两种图片共用，常驻在标题下方而不折叠到页尾。 -->
           <section class="battle-common-note" aria-labelledby="battle-note-title">

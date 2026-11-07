@@ -57,7 +57,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import portraits from '../../data/operatorPortraits.json'
-import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_ACCENTS, TARGET_COLORS } from '../../utils/battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_ACCENTS, TARGET_COLORS, battleTargetUsage } from '../../utils/battleImages.js'
 const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' }, partial: { type: Boolean, default: false } })
 // 操作图两种样式：完整款卡头与配队图一致（立绘 + 竖排名），简化款只放横排名字。配队图不受影响。
 // 属性图标只在配队图显示；操作图两种样式都不画。
@@ -95,15 +95,12 @@ const boardStyle = computed(() => {
 const usedEntries = computed(() => props.kind === 'actions' ? props.rows.flatMap(row => row.slots.flat()) : [])
 // 箱（关卡互动）挂在紧邻密探格内，无目标，用中性底；用到时图例补一项。
 const usedActions = computed(() => [...BATTLE_ACTIONS.filter(item => usedEntries.value.some(entry => !entry.box && entry.symbol === item.symbol)), ...(usedEntries.value.some(entry => entry.box) ? [BATTLE_INTERACTION] : [])])
-const usedTargets = computed(() => [...new Set(usedEntries.value.map(entry => entry.target))].filter(index => index != null).sort((a, b) => a - b))
-const multiTarget = computed(() => usedTargets.value.length > 1)
 // 多目标时只给“例外”上色：打得最多的主目标用中性底（并列取序号小的），其余目标才带目标色，避免满表同一种颜色。
 // 图例里主目标的色块同样是中性底，与动作块一致。
-const mainTarget = computed(() => {
-  const counts = new Map()
-  for (const entry of usedEntries.value) if (!entry.box && entry.target != null) counts.set(entry.target, (counts.get(entry.target) || 0) + 1)
-  return usedTargets.value.reduce((best, index) => best == null || counts.get(index) > counts.get(best) ? index : best, null)
-})
+const targetUsage = computed(() => battleTargetUsage(props.kind === 'actions' ? props.rows : []))
+const usedTargets = computed(() => targetUsage.value.used)
+const multiTarget = computed(() => targetUsage.value.multi)
+const mainTarget = computed(() => targetUsage.value.main)
 const plainEntry = entry => !multiTarget.value || entry.box || entry.target == null || entry.target === mainTarget.value
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
 const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }

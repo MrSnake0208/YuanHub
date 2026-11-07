@@ -27,7 +27,8 @@ it('箱插入全队出手顺序，不需要目标；表格不加列，挂在上�
   await group('记录动作').findAll('button')[1].trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }, { slot: 0, type: 'ultimate', target: 2 }])
   expect(wrapper.findAll('thead th')).toHaveLength(7)
-  expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1ABOSS', '2箱', '3↑BOSS'])
+  // 只打一个目标时与出图一致，不逐格重复目标名。
+  expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2箱', '3↑'])
   expect(wrapper.get('[aria-label="第2步：关卡互动（箱），点按修改"]').text()).toContain('关卡互动')
 })
 
@@ -77,4 +78,28 @@ it('属性图标只出现在配队图，操作图完整款与简化款都不显�
   expect(icons({ kind: 'team' })).toBe(1)
   expect(icons({ kind: 'actions', rows: model.rows })).toBe(0)
   expect(icons({ kind: 'actions', rows: model.rows, variant: 'simple' })).toBe(0)
+})
+
+it('编辑区展开在当前回合行下方；多目标时只标注主目标以外的目标', async () => {
+  const { draft, wrapper, group } = setup()
+  draft.rounds.push({ actions: [], remark: '' })
+  draft.rounds[0].actions.push({ slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'ultimate', target: 1 })
+  await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
+  const bodyRows = wrapper.findAll('tbody > tr')
+  expect(bodyRows[1].find('#battle-action-detail').exists()).toBe(true)
+  expect(bodyRows[1].get('h3').text()).toBe('第 1 回合')
+  expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2A', '3↑左一'])
+  await wrapper.findAll('button').find(item => item.text().includes('下一回合')).trigger('click')
+  expect(wrapper.findAll('tbody > tr')[2].find('#battle-action-detail').exists()).toBe(true)
+  expect(group('动作目标').findAll('button')).toHaveLength(5)
+})
+
+it('敌方名称在图例旁改名，表格与选择同步更新', async () => {
+  const { draft, wrapper, button } = setup()
+  await button('改名').trigger('click')
+  await wrapper.get('[aria-label="敌方2名称（左一）"]').setValue('小怪')
+  expect(draft.targets[1]).toBe('小怪')
+  expect(wrapper.get('.battle-action-legend').text()).toContain('小怪')
+  await button('完成改名').trigger('click')
+  expect(wrapper.find('#battle-target-fields').exists()).toBe(false)
 })
