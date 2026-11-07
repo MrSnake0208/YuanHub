@@ -2,8 +2,9 @@
   <section ref="sheet" class="battle-sheet" :class="'is-' + kind" data-theme="light">
     <img class="sheet-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="sheet-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
-    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions' && (usedActions.length || multiTarget)" class="sheet-action-key"><span v-for="item in usedActions" :key="item.type"><b>{{ item.symbol }}</b>{{ item.label }}</span><template v-if="multiTarget"><i v-if="usedActions.length" aria-hidden="true"></i><span v-for="index in usedTargets" :key="'t' + index"><em :style="{ background: TARGET_COLORS[index], borderLeftColor: TARGET_ACCENTS[index] }"></em>{{ model.targets[index] }}</span></template></div></header>
+    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions' && (usedActions.length || multiTarget)" class="sheet-action-key"><span v-for="item in usedActions" :key="item.type"><i class="action-symbol" :class="ARROW_CLASS[item.symbol]" aria-hidden="true"><template v-if="ARROW_CLASS[item.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ item.symbol }}</template></i>{{ item.label }}</span><template v-if="multiTarget"><i class="sheet-action-sep" v-if="usedActions.length" aria-hidden="true"></i><span v-for="index in usedTargets" :key="'t' + index"><em :class="{ 'is-plain': index === mainTarget }" :style="index === mainTarget ? null : { background: TARGET_COLORS[index], borderLeftColor: TARGET_ACCENTS[index] }"></em>{{ model.targets[index] }}</span></template></div></header>
     <div class="team-board" :class="{ 'action-board': kind === 'actions', 'is-simple': simple }" :style="boardStyle">
+      <div v-if="kind === 'actions'" class="team-board-label action-corner">回合</div>
       <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name, 'is-idle': idleSlots[index] }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
         <img class="team-card-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
       </article>
@@ -37,10 +38,10 @@
       </template></template>
       <template v-else><template v-for="(item, rowIndex) in actionRows" :key="item.key">
         <div v-if="item.type === 'round'" class="action-band" :class="{ 'is-alt': item.alt }" :style="{ gridRow: `${rowIndex + 2} / span ${item.remark ? 2 : 1}` }" aria-hidden="true"></div>
-        <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong><small>回合</small></div>
+        <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong></div>
         <template v-if="item.type === 'round'">
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
-            <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': !multiTarget || entry.box }" :style="multiTarget && !entry.box ? { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] } : null"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
+            <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': plainEntry(entry) }" :style="plainEntry(entry) ? null : { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] }"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
           </div>
         </template>
         <p v-else class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
@@ -96,6 +97,14 @@ const usedEntries = computed(() => props.kind === 'actions' ? props.rows.flatMap
 const usedActions = computed(() => [...BATTLE_ACTIONS.filter(item => usedEntries.value.some(entry => !entry.box && entry.symbol === item.symbol)), ...(usedEntries.value.some(entry => entry.box) ? [BATTLE_INTERACTION] : [])])
 const usedTargets = computed(() => [...new Set(usedEntries.value.map(entry => entry.target))].filter(index => index != null).sort((a, b) => a - b))
 const multiTarget = computed(() => usedTargets.value.length > 1)
+// 多目标时只给“例外”上色：打得最多的主目标用中性底（并列取序号小的），其余目标才带目标色，避免满表同一种颜色。
+// 图例里主目标的色块同样是中性底，与动作块一致。
+const mainTarget = computed(() => {
+  const counts = new Map()
+  for (const entry of usedEntries.value) if (!entry.box && entry.target != null) counts.set(entry.target, (counts.get(entry.target) || 0) + 1)
+  return usedTargets.value.reduce((best, index) => best == null || counts.get(index) > counts.get(best) ? index : best, null)
+})
+const plainEntry = entry => !multiTarget.value || entry.box || entry.target == null || entry.target === mainTarget.value
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
 const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }
 // 全员都有手动修正时逐个加星号没有区分度，改为底注统一说明。
@@ -211,32 +220,40 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .action-card-name { margin: 0; min-width: 0; font: 600 28px/1.2 var(--font-s, serif); letter-spacing: 2px; color: #3e3023; text-align: center; overflow-wrap: anywhere; }
 .is-simple .team-card-head.is-empty .action-card-name { color: #a8957a; font-size: 22px; }
 .sheet-action-key { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; font-size: 17px; color: #5d4a36; }
-.sheet-action-key span { display: inline-flex; align-items: center; gap: 6px; }
-.sheet-action-key b { font: 600 20px/1 var(--font-s, serif); color: #3e3023; }
-.sheet-action-key > i { width: 1px; height: 18px; background: #c9ac79; }
-.sheet-action-key em { display: inline-block; width: 18px; height: 18px; border: 1px solid rgba(62, 48, 35, .14); border-left-width: 4px; border-radius: 4px; }
+.sheet-action-key > span { display: inline-flex; align-items: center; gap: 6px; }
+/* 图例符号与动作块同一画法（Archivo 700、绘制箭头），对照时读作同一个符号。 */
+.sheet-action-key .action-symbol { color: #3e3023; }
+.sheet-action-key > .sheet-action-sep { width: 1px; height: 18px; background: #c9ac79; }
+.sheet-action-key em { display: inline-block; width: 18px; height: 18px; border: 1px solid #c9ac79; border-left-width: 4px; border-radius: 4px; }
+.sheet-action-key em.is-plain { border-left-width: 1px; background: transparent; }
+/* “回合”只在左上角写一次（同配队图字段名只写一次），每行只留回合数字。 */
+.action-corner { grid-row: 1; align-items: flex-end; padding-bottom: 14px; border-top: 0; font-size: 18px; color: #725c43; }
 .action-round-label { flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; border-top: 0; letter-spacing: 0; }
-/* 回合横带：卡片只占卡头一行，回合区没有竖向边框；行间留缝、横带跨过列缝连成整条，回合之间的分隔强于列之间。 */
+/* 回合横带：卡片只占卡头一行，回合区没有竖向边框；行间留缝、横带跨过列缝连成整条，回合之间的分隔强于列之间。
+   横带不描边，单行直接露纸色、双行加深底色：原先白条/极淡隔行色/纸色三种米色太接近，跟读某回合时容易抄错行。 */
 .action-board { row-gap: 8px; }
 .action-board .team-card { grid-row: 1; }
-.action-band { position: relative; z-index: 0; grid-column: 1 / -1; border: 1px solid #e6d4b0; border-radius: 8px; background: #fffaf0; }
-.action-band.is-alt { background: #f4e8cf; }
+.action-band { position: relative; z-index: 0; grid-column: 1 / -1; border-radius: 8px; background: transparent; }
+.action-band.is-alt { background: #f0e3c5; }
 .action-board .team-card-cell.action-cell { border-top: 0; background: transparent; }
 .action-board .team-card-cell.is-last, .action-remark.is-last { margin-bottom: 0; }
 .action-round-label strong { font: 600 32px/1.1 var(--font-s, serif); color: #3e3023; }
-.action-round-label small { font-size: 16px; letter-spacing: 2px; color: #725c43; }
 /* 动作块在格内水平、垂直居中换行：多数格只有一个动作，靠左会让每列右半空着。 */
 .team-card-cell.action-cell { flex-direction: row; flex-wrap: wrap; align-content: center; justify-content: center; gap: 8px; min-height: 72px; padding: 12px 4px; }
-/* 动作块为定宽小签：浅底 + 左侧目标色条，细描边给浅底轮廓；序号与符号同为 28px 高，紧挨着读作一个词。 */
-.action-chip { display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: 70px; height: 40px; padding: 0 6px 0 4px; border: 1px solid rgba(62, 48, 35, .14); border-left-width: 4px; border-radius: 6px; color: #3e3023; }
-/* 序号不加底色，直接加粗写在符号前（如“5A”）；字重用导出预加载的 Archivo 800，避免回退字体错位。 */
-.action-chip.is-plain { border-left-width: 1px; background: #f3e9d4; }
-.action-chip b { display: block; flex-shrink: 0; height: 28px; color: #3e3023; font: 800 24px/28px var(--font-d, sans-serif); }
-/* 符号与序号同用 Archivo 粗体（“圈”回退到无衬线），避免“1A”一半无衬线一半宋体的拼凑感。 */
-.action-symbol { position: relative; display: block; flex-shrink: 0; width: 24px; height: 28px; font: 700 22px/28px var(--font-d, sans-serif); font-style: normal; text-align: center; }
-/* 箭头线宽与 Archivo 800 数字笔画接近（3px），头部 12px 宽，避免比数字更抢眼。 */
-.arrow-shaft { position: absolute; left: 10.5px; width: 3px; height: 16px; border-radius: 1px; background: #3e3023; }
-.arrow-head { position: absolute; left: 6px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
+/* 动作块按内容收紧（原定宽 70px 两侧留白过多），min-width 让常见的一位序号动作（1A / 3↑ / 6箱）仍等宽；序号与符号同为 28px 高，紧挨着读作一个词。
+   描边用标题分隔线同款暖金 #c9ac79（原 #dcc395 与隔行横带 #f0e3c5 太接近、块形消失；半透明墨色在纸色上发灰）。主目标/单目标/箱只描边不加底色（空心）；
+   其他目标填目标色并加左侧色条（实心），空心对实心一眼区分，不引入新色相。 */
+.action-chip { display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 52px; height: 40px; padding: 0 8px; border: 1px solid #c9ac79; border-left-width: 4px; border-radius: 6px; color: #3e3023; }
+/* 序号不加底色，直接写在符号前（如“5A”）；字重用导出预加载的 Archivo 700（满表 800 显得压），避免回退字体错位。 */
+.action-chip.is-plain { border-left-width: 1px; background: transparent; }
+.action-chip b { display: block; flex-shrink: 0; height: 28px; color: #3e3023; font: 700 24px/28px var(--font-d, sans-serif); }
+/* 符号与序号同用 Archivo 700（“圈”回退到无衬线），避免“1A”一半无衬线一半宋体的拼凑感。
+   符号框按字宽收紧，不再固定 24px 居中，序号与符号读作一个词而不是“4 A”。 */
+.action-symbol { position: relative; display: block; flex-shrink: 0; min-width: 14px; height: 28px; font: 700 22px/28px var(--font-d, sans-serif); font-style: normal; text-align: center; }
+.action-symbol.is-up, .action-symbol.is-down { width: 14px; }
+/* 箭头线宽 3px 与数字笔画接近，头部 12px 宽，避免比数字更抢眼；在 14px 框内居中。 */
+.arrow-shaft { position: absolute; left: 5.5px; width: 3px; height: 16px; border-radius: 1px; background: #3e3023; }
+.arrow-head { position: absolute; left: 1px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
 .is-up .arrow-shaft { top: 9px; } .is-up .arrow-head { top: 3px; border-bottom: 8px solid #3e3023; }
 .is-down .arrow-shaft { top: 3px; } .is-down .arrow-head { top: 17px; border-top: 8px solid #3e3023; }
 .action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0 4px; padding: 10px 14px; border-top: 1px dashed #e0cba2; background: transparent; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }

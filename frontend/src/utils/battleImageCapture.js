@@ -9,7 +9,7 @@ function loadExportFonts(element) {
   const fonts = element.ownerDocument.fonts
   if (!fonts?.load) return Promise.resolve()
   const text = element.textContent || '代号鸢 0123456789'
-  const faces = ['600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"', '800 16px "Archivo"']
+  const faces = ['600 16px "Noto Serif SC"', '900 16px "Noto Serif SC"', '700 16px "Archivo"']
   if (element.classList?.contains('is-team')) faces.push('500 16px "Noto Serif SC"')
   return Promise.all(faces.map(font => fonts.load(font, text))).catch(() => {})
 }

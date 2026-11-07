@@ -57,7 +57,12 @@ it('操作图不加箱列：箱以中性底挂在密探格内，用到时图例�
   expect(chips.map(chip => chip.text())).toEqual(['1A', '2箱', '3A'])
   expect(chips[1].classes()).toContain('is-plain')
   expect(chips[1].attributes('style')).toBeUndefined()
-  expect(chips[0].attributes('style')).toContain('background')
+  // 多目标只给例外上色：目标 2 打得最多为主目标，用中性底；目标 0 才带目标色。图例里主目标色块同为中性底。
+  expect(chips[0].classes()).toContain('is-plain')
+  expect(chips[0].attributes('style')).toBeUndefined()
+  expect(chips[2].classes()).not.toContain('is-plain')
+  expect(chips[2].attributes('style')).toContain('background')
+  expect(used.findAll('.sheet-action-key em').map(swatch => swatch.classes().includes('is-plain'))).toEqual([false, true])
   expect(used.get('.sheet-action-key').text()).toContain('箱关卡互动')
   expect(sheet(model.rows.slice(1)).get('.sheet-action-key').text()).not.toContain('关卡互动')
 })
