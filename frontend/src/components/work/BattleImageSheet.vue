@@ -36,6 +36,7 @@
         </div>
       </template></template>
       <template v-else><template v-for="(item, rowIndex) in actionRows" :key="item.key">
+        <div v-if="item.type === 'round'" class="action-band" :class="{ 'is-alt': item.alt }" :style="{ gridRow: `${rowIndex + 2} / span ${item.remark ? 2 : 1}` }" aria-hidden="true"></div>
         <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong><small>回合</small></div>
         <template v-if="item.type === 'round'">
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
@@ -70,10 +71,11 @@ const teamRows = computed(() => {
   return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat', combat: key === 'hp' || key === 'attack' }))
 })
 // 操作图：每回合一行动作，填写了备注的回合在下方加一条横跨五列的备注；隔行底色按回合交替。
+// 每回合（含其备注）垫一条贯穿回合号与五列的横带，按回合横向阅读不错行；角色卡只包住立绘卡头，不再有贯穿全表的竖框。
 const actionRows = computed(() => {
   const items = props.rows.flatMap((row, index) => {
     const alt = index % 2 === 1, remark = String(row.remark || '').trim()
-    return [{ key: 'r' + row.round, type: 'round', row, alt }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
+    return [{ key: 'r' + row.round, type: 'round', row, alt, remark: Boolean(remark) }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
   })
   if (items.length) items.at(-1).last = true
   return items
@@ -212,8 +214,14 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .sheet-action-key b { font: 600 20px/1 var(--font-s, serif); color: #3e3023; }
 .sheet-action-key > i { width: 1px; height: 18px; background: #c9ac79; }
 .sheet-action-key em { display: inline-block; width: 18px; height: 18px; border: 1px solid rgba(62, 48, 35, .14); border-left-width: 4px; border-radius: 4px; }
-.action-round-label { flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding-top: 16px; letter-spacing: 0; }
-.action-round-label.is-alt { border-radius: 6px 0 0 6px; background: #f8efdc; }
+.action-round-label { flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; border-top: 0; letter-spacing: 0; }
+/* 回合横带：卡片只占卡头一行，回合区没有竖向边框；行间留缝、横带跨过列缝连成整条，回合之间的分隔强于列之间。 */
+.action-board { row-gap: 8px; }
+.action-board .team-card { grid-row: 1; }
+.action-band { position: relative; z-index: 0; grid-column: 1 / -1; border: 1px solid #e6d4b0; border-radius: 8px; background: #fffaf0; }
+.action-band.is-alt { background: #f4e8cf; }
+.action-board .team-card-cell.action-cell { border-top: 0; background: transparent; }
+.action-board .team-card-cell.is-last, .action-remark.is-last { margin-bottom: 0; }
 .action-round-label strong { font: 600 32px/1.1 var(--font-s, serif); color: #3e3023; }
 .action-round-label small { font-size: 16px; letter-spacing: 2px; color: #725c43; }
 /* 动作块在格内水平、垂直居中换行：多数格只有一个动作，靠左会让每列右半空着。 */
@@ -230,8 +238,7 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .arrow-head { position: absolute; left: 6px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
 .is-up .arrow-shaft { top: 9px; } .is-up .arrow-head { top: 3px; border-bottom: 8px solid #3e3023; }
 .is-down .arrow-shaft { top: 3px; } .is-down .arrow-head { top: 17px; border-top: 8px solid #3e3023; }
-.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0 4px; padding: 10px 14px; border-top: 1px dashed #e0cba2; background: #fffaf0; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
-.action-remark.is-alt { background: #f8efdc; }
+.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0 4px; padding: 10px 14px; border-top: 1px dashed #e0cba2; background: transparent; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
 .action-remark.is-last { margin-bottom: 18px; }
 .action-remark span { flex-shrink: 0; font-size: 16px; letter-spacing: 2px; color: #8a5a2b; }
 .legend, .range { font-size: 17px; color: #725c43; margin: 0; }
