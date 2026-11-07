@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content" class="battle-tool">
       <CompactToolHeader title="配队与操作图">
-        <template #help>五位密探固定成列；点击练度直接填写，点击命盘、星石或动作展开编辑。草稿按站点用户与游戏账号保存在本机，修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
+        <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，必须／禁用命盘在密探弹窗的“命盘要求”中填写。草稿按站点用户与游戏账号保存在本机，修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
         <template #primary-actions>
           <span class="battle-save-status" role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span>
           <button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">
@@ -46,6 +46,11 @@
             <label class="battle-title-field"><span class="sr-only">标题 / 关卡</span><input v-model="draft.title" aria-label="标题或关卡" maxlength="120" placeholder="给这份攻略起个名字"></label>
             <label class="battle-author-field"><span class="sr-only">署名</span><input v-model="draft.author" aria-label="署名" maxlength="60" placeholder="署名（可选）"></label>
           </section>
+          <!-- 打法说明是攻略的核心文字，两种图片共用，常驻在标题下方而不折叠到页尾。 -->
+          <section class="battle-common-note" aria-labelledby="battle-note-title">
+            <div class="battle-note-heading"><FileText :size="16" aria-hidden="true" /><h2 id="battle-note-title">打法说明</h2><span>配队图与操作图共用，显示在图片底部</span></div>
+            <textarea v-model="draft.note" aria-labelledby="battle-note-title" maxlength="2000" rows="3" placeholder="写下打法思路、配队要求或替换建议（可选）"></textarea>
+          </section>
           <div class="battle-modes" role="tablist" aria-label="编辑内容" @keydown="moveTab">
             <button v-for="mode in MODES" :id="`battle-tab-${mode.value}`" :key="mode.value" type="button" role="tab" :aria-selected="kind === mode.value" :tabindex="kind === mode.value ? 0 : -1" aria-controls="battle-editor" @click="kind = mode.value">
               <component :is="mode.icon" :size="17" aria-hidden="true" />{{ mode.label }}
@@ -54,16 +59,19 @@
           <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
           <div id="battle-editor" class="battle-workspace" role="tabpanel" :aria-labelledby="`battle-tab-${kind}`">
             <BattleTeamEditor :key="revision" ref="teamEditor" v-show="kind === 'team'" :operators="draft.operators" :game="draft.game" :catalog="catalog" :account-entries="entries" @pending-name="pendingName = $event" @replace="(slot, operator) => draft.operators[slot] = operator" />
-            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @round-change="roundIndex = $event" />
+            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" />
           </div>
-          <details class="battle-common-note">
-            <summary><FileText :size="15" aria-hidden="true" />打法说明<span>两种图片共用</span></summary>
-            <label><span class="sr-only">图片说明</span><textarea v-model="draft.note" aria-label="图片说明" maxlength="2000" rows="3" placeholder="配队要求、替换建议或打法说明"></textarea></label>
-          </details>
-          <section v-if="exportOpen" ref="exportPanel" class="battle-export-panel" aria-label="图片预览与下载" tabindex="-1">
-            <header><h2>图片预览与下载</h2><button type="button" @click="closeExport"><X :size="16" aria-hidden="true" />返回编辑</button></header>
-            <BattleImageExport ref="exporter" :draft="draft" :kind="kind" :round-index="roundIndex" :catalog="catalog" :show-generate-button="false" @busy="exportBusy = $event" />
-          </section>
+          <Teleport to="body">
+            <div v-if="exportOpen" class="page-battle-images battle-tool battle-dialog-mask">
+              <section ref="exportPanel" class="battle-dialog battle-export-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-export-title" tabindex="-1">
+                <header class="battle-dialog-header">
+                  <h3 id="battle-export-title" ref="exportHeading" tabindex="-1">{{ kind === 'team' ? '配队图' : '操作图' }}</h3>
+                  <button type="button" class="battle-dialog-close" aria-label="关闭图片预览，返回编辑" @click="closeExport"><X :size="18" aria-hidden="true" /></button>
+                </header>
+                <BattleImageExport ref="exporter" :draft="draft" :kind="kind" :catalog="catalog" @busy="exportBusy = $event" />
+              </section>
+            </div>
+          </Teleport>
         </template>
         <p class="battle-local-note"><Info :size="14" aria-hidden="true" />草稿仅保存在当前浏览器，清理浏览器数据会丢失。换设备前请导出草稿；图片与草稿均不会自动上传。</p>
       </div>
@@ -96,6 +104,7 @@ import { battleFileName, battleImageError, createBattleDraft } from '../../utils
 import { BATTLE_DRAFT_MAX_BYTES, decodeBattleDraft, encodeBattleDraft } from '../../utils/battleDraft.js'
 import { useBattleDraft } from '../../composables/useBattleDraft.js'
 import { useBattleAccountSource } from '../../composables/useBattleAccountSource.js'
+import { useModalFocus } from '../../composables/useModalFocus.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 
@@ -107,8 +116,8 @@ watch([canUseBattleImages, () => auth.adminAccessLoading], ([allowed, loading]) 
 const { userId, account, accounts, accountsLoading, accountError, loadAccounts, catalog, catalogError, loadCatalog, entries, loading, loaded, error, readAccount } = useBattleAccountSource()
 const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')
 const { draft, key, revision, dirty, status, saveError, discError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
-const kind = ref('team'), roundIndex = ref(0), fileInput = ref(null), fileError = ref(''), importing = ref(false)
-const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), teamEditor = ref(null), exportButton = ref(null), dockExportButton = ref(null), fileErrorEl = ref(null)
+const kind = ref('team'), fileInput = ref(null), fileError = ref(''), importing = ref(false)
+const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), exportHeading = ref(null), teamEditor = ref(null), exportButton = ref(null), dockExportButton = ref(null), fileErrorEl = ref(null)
 const exportBusy = ref(false), draftMenu = ref(null)
 const MODES = [{ value: 'team', label: '配队表', icon: UsersRound }, { value: 'actions', label: '操作表', icon: ListOrdered }]
 async function moveTab(event) {
@@ -136,10 +145,16 @@ async function openExport() {
   }
   exportOpen.value = true
   await nextTick()
-  exportPanel.value?.focus({ preventScroll: true })
-  exportPanel.value?.scrollIntoView?.({ block: 'start', behavior: 'auto' })
   await exporter.value?.generate()
 }
+// 预览弹窗无录入内容：Esc、关闭按钮都直接返回编辑；生成中关闭会取消生成。
+useModalFocus(exportOpen, exportPanel, { initialFocus: () => exportHeading.value, onEscape: () => closeExport() })
+watch(exportOpen, (isOpen, _, onCleanup) => {
+  if (!isOpen) return
+  const previous = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  onCleanup(() => { document.body.style.overflow = previous })
+})
 async function closeExport() {
   exportOpen.value = false
   await nextTick()
@@ -150,7 +165,7 @@ async function closeExport() {
 watch(kind, () => { exportOpen.value = false; fileError.value = '' })
 const unsaved = computed(() => dirty.value || pendingName.value)
 let alive = true
-watch(revision, () => { exportOpen.value = false; roundIndex.value = 0; fileError.value = ''; pendingName.value = false })
+watch(revision, () => { exportOpen.value = false; fileError.value = ''; pendingName.value = false })
 watch([account, revision], () => { if (account.value) draft.value.game = account.value.game }, { immediate: true })
 onBeforeRouteLeave(() => !canUseBattleImages.value || !unsaved.value || dialog.confirm({ title: '离开图片工具？', message: '仍有未确认或未保存的输入，离开后将丢失。请先修正输入、确认密探名称并保存或导出草稿。', confirmText: '仍然离开', cancelText: '继续编辑' }))
 async function beforeAccountSwitch() {

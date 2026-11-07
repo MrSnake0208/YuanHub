@@ -48,6 +48,8 @@
   .battle-dialog-body { padding: 14px 16px; }
   .battle-dialog-footer { padding: 10px 16px max(10px, env(safe-area-inset-bottom)); }
   .battle-tool .battle-dialog-footer .battle-primary { min-height: 44px; }
+  .battle-dialog.battle-export-dialog { height: 92dvh; }
+  .battle-note-heading span { flex-basis: 100%; margin-left: 0; }
   .battle-stat-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: none; }
   .battle-stepper { height: 44px; grid-template-columns: 40px minmax(0, 1fr) 40px; }
   .battle-tool .battle-stat-fields > label > input { height: 44px; }

@@ -32,9 +32,6 @@
       </table>
     </div>
     <p v-if="overflowing" class="battle-scroll-hint">左右滑动查看五位密探；点击数值直接修改。</p>
-    <details class="battle-requirements"><summary>攻略要求 · 必须 / 禁用命盘<span>{{ operators.some(member => member.requiredDiscs || member.forbiddenDiscs) ? '已填写' : '可选' }}</span></summary>
-      <div class="battle-table-scroll" role="region" aria-label="五人命盘要求" tabindex="0"><table class="battle-matrix"><thead class="sr-only"><tr><th>要求</th><th v-for="(member, index) in operators" :key="index">{{ index + 1 }}号位 {{ member.name }}</th></tr></thead><tbody><tr v-for="[field, label] in [['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]" :key="field"><th scope="row">{{ label }}</th><td v-for="(member, index) in operators" :key="index"><button type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位${label}`" @click="open(index, field, $event)">{{ member[field] || '—' }}</button></td></tr></tbody></table></div>
-    </details>
     <Teleport to="body">
       <div v-if="detail" class="page-battle-images battle-tool battle-dialog-mask">
         <section id="battle-member-detail" ref="panel" class="battle-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-member-dialog-title" tabindex="-1">
@@ -58,8 +55,7 @@
           </div>
           <div v-else-if="operator.name" class="battle-config-tools">
             <nav class="battle-subnav" aria-label="配置内容">
-              <button v-for="[key, label] in SECTIONS" :key="key" type="button" :aria-pressed="detail === key" @click="open(slot, key)">{{ label }}</button>
-              <button v-if="['requiredDiscs', 'forbiddenDiscs'].includes(detail)" type="button" aria-pressed="true">{{ detailLabel }}</button>
+              <button v-for="[key, label] in SECTIONS" :key="key" type="button" :aria-pressed="key === 'requiredDiscs' ? isRequirement : detail === key" @click="open(slot, key === 'requiredDiscs' && isRequirement ? detail : key)">{{ label }}<small v-if="key === 'requiredDiscs' && requirementCount(operator)" class="battle-subnav-count">{{ requirementCount(operator) }}</small></button>
             </nav>
             <div class="battle-member-actions">
               <button v-if="savedMember" type="button" :disabled="busy" @click="importMember">重新带入账号配置</button>
@@ -75,6 +71,12 @@
                 <legend>带入的命盘组合<span v-if="activeLoadout(operator) < 0">（当前命盘已手动调整）</span></legend>
                 <label v-for="(loadout, index) in operator.discLoadouts" :key="index" :class="{ selected: activeLoadout(operator) === index }"><input ref="loadoutInputs" type="radio" name="battle-disc-loadout" :value="index" :checked="activeLoadout(operator) === index" :aria-label="`带入命盘组合${index + 1}`" @change="selectLoadout(index)"><span>{{ loadoutTitle(loadout, index) }}<small>{{ loadout.discNames.join('、') || '未带命盘' }}</small></span></label>
               </fieldset>
+              <template v-if="isRequirement">
+                <div class="battle-requirement-switch" role="group" aria-label="命盘要求类型">
+                  <button v-for="[key, label] in REQUIREMENTS" :key="key" type="button" :aria-pressed="detail === key" @click="open(slot, key)">{{ label }}<small>{{ battleDiscNames(operator[key]).length }}</small></button>
+                </div>
+                <p class="battle-hint">写入攻略图片，提示读者该密探必须携带或不要携带的命盘；可选填，不受携带三项限制。</p>
+              </template>
               <BattleStarEditor v-if="detail === 'stars'" :key="slot" :model-value="operator.stars" :slot="slot" @update:model-value="updateField('stars', $event)" />
               <BattleDiscEditor v-else :key="slot + detail" :operator="operator" :slot="slot" :catalog="discTerms" :field="detail" @change="updateField" />
             </template>
@@ -115,8 +117,11 @@ const sortedAgents = computed(() => {
 const slot = ref(0), detail = ref(''), returnSection = ref('stats'), heading = ref(null), busy = ref(false), loadoutInputs = ref([]), namePending = ref(false)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const operator = computed(() => props.operators[slot.value])
-const SECTIONS = [['stats', '练度'], ['discs', '携带命盘'], ['stars', '星石']]
-const detailLabel = computed(() => ({ discs: '命盘', stars: '星石', requiredDiscs: '必须命盘', forbiddenDiscs: '禁用命盘' })[detail.value])
+// 必须／禁用命盘是攻略要求，归入单个密探的配置弹窗，不在页面表格常驻。
+const SECTIONS = [['stats', '练度'], ['discs', '携带命盘'], ['stars', '星石'], ['requiredDiscs', '命盘要求']]
+const REQUIREMENTS = [['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]
+const isRequirement = computed(() => REQUIREMENTS.some(([key]) => key === detail.value))
+const requirementCount = member => battleDiscNames(member.requiredDiscs).length + battleDiscNames(member.forbiddenDiscs).length
 const panel = ref(null), dialogOpen = computed(() => Boolean(detail.value))
 // 遮罩点击不关闭；Esc 与“完成”走同一关闭流程，未确认的自定义名称仍需确认。
 useModalFocus(dialogOpen, panel, { initialFocus: () => heading.value, onEscape: () => close() })

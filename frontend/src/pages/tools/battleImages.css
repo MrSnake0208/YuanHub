@@ -66,10 +66,6 @@
 .battle-cell-error { display: block; color: var(--theme-danger-text, var(--rouge)); font-size: 11px; margin: 0 6px 7px; }
 .battle-source-note { padding: 8px!important; font-size: 11px; line-height: 1.7; color: var(--ink-60); }
 .battle-scroll-hint { color: var(--ink-60); font-size: 12px; margin: 9px 0; }
-.battle-requirements { margin: 10px 0; }
-.battle-requirements > summary { padding: 10px 12px; background: var(--cream); border: 1px solid var(--line); border-radius: 5px; }
-.battle-requirements > summary span { margin-left: 12px; font-size: 11px; color: var(--ink-60); }
-.battle-requirements > .battle-table-scroll { margin-top: 8px; }
 .battle-tool.battle-dialog-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel, 60); display: grid; place-items: center; padding: 24px; background: var(--theme-overlay, rgba(73, 59, 44, .38)); }
 .battle-dialog { box-sizing: border-box; display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(86dvh, 820px); min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 40px rgba(var(--theme-shadow-rgb, 73,59,44), .18); }
 .battle-dialog:focus { outline: none; }
@@ -225,13 +221,18 @@
 .battle-target-edit { margin-top: 16px; }
 .battle-target-edit summary { display: flex; gap: 6px; align-items: center; }
 .battle-target-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 12px; }
-.battle-common-note { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
-.battle-common-note summary { display: flex; align-items: center; gap: 8px; padding-block: 8px; }
-.battle-common-note summary span { margin-left: auto; color: var(--ink-60); font-size: 11px; }
-.battle-export-panel { margin-top: 24px; scroll-margin-top: 24px; }
-.battle-export-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.battle-export-panel h2 { font-size: 16px; }
-.battle-export-panel .battle-layout-jump { display: none; }
+.battle-common-note { margin-bottom: 16px; padding: 12px 14px 14px; border: 1px solid var(--battle-border); border-left: 3px solid var(--battle-accent); border-radius: 8px; background: var(--cream); }
+.battle-note-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 8px; color: var(--battle-accent); }
+.battle-note-heading h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+.battle-note-heading span { margin-left: auto; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-common-note textarea { min-height: 72px; background: var(--surface); }
+.battle-dialog.battle-export-dialog { width: min(1040px, 100%); height: min(90dvh, 960px); max-height: none; overflow: hidden; }
+.battle-export-dialog > .battle-dialog-header { border-bottom: 1px solid var(--line); }
+.battle-requirement-switch { display: inline-flex; gap: 0; margin-bottom: 4px; border: 1px solid var(--battle-border); border-radius: 6px; overflow: hidden; }
+.battle-tool .battle-requirement-switch > button { border: 0; border-radius: 0; padding: 7px 14px; }
+.battle-tool .battle-requirement-switch > button + button { border-left: 1px solid var(--battle-border); }
+.battle-tool .battle-requirement-switch > button[aria-pressed=true] { background: var(--battle-selection); color: var(--battle-accent); font-weight: 600; }
+.battle-requirement-switch small, .battle-subnav-count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--cream); color: var(--ink-60); font-size: 11px; line-height: 18px; text-align: center; }
 .battle-local-note { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.7; color: var(--ink-60); margin-top: 22px; }
 .battle-local-note svg { flex-shrink: 0; margin-top: 3px; }
 .battle-tool .battle-error { font-size: 13px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.7; }

@@ -52,13 +52,12 @@ import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
 const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true } })
-const emit = defineEmits(['round-change'])
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), heading = ref(null), orderError = ref('')
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const rows = computed(() => battleRoundRows(props.rounds))
 const round = computed(() => props.rounds[current.value])
 const selectedActions = computed(() => round.value.actions.flatMap((action, index) => action.slot === slot.value ? [{ action, index }] : []))
-watch(current, value => { emit('round-change', value); orderError.value = '' })
+watch(current, () => { orderError.value = '' })
 let alive = true, opener
 onBeforeUnmount(() => { alive = false })
 async function selectCell(row, position, event) {
