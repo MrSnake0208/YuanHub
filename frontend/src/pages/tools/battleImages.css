@@ -22,6 +22,20 @@
 .battle-draft-menu > summary { display: flex; align-items: center; gap: 6px; padding: 9px 12px; list-style: none; border: 1px solid var(--battle-border); border-radius: 6px; }
 .battle-draft-menu > summary::-webkit-details-marker { display: none; }
 .battle-draft-tools { position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-popover); display: grid; gap: 6px; min-width: 150px; padding: 8px; border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); box-shadow: 0 5px 16px rgba(var(--theme-shadow-rgb, 73,59,44), .12); }
+.battle-draft-tools > button { display: flex; align-items: center; gap: 6px; }
+.battle-draft-current { max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.battle-draft-tools:has(.battle-draft-list) { min-width: 240px; }
+.battle-draft-caption { margin: 0 4px; font-size: 12px; color: var(--ink-60); }
+.battle-draft-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.battle-draft-list li { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+.battle-draft-list li.is-current { background: var(--surface-2, rgba(var(--theme-shadow-rgb, 73,59,44), .06)); }
+.battle-draft-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: 6px; padding: 8px; border: 0; background: none; text-align: left; }
+.battle-draft-open > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.battle-draft-list li:not(.is-current) .battle-draft-open { padding-left: 28px; }
+.battle-draft-list li.is-current .battle-draft-open { font-weight: 600; }
+.battle-draft-delete { flex-shrink: 0; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--ink-60); }
+.battle-draft-delete:hover:not(:disabled) { color: var(--theme-danger-text, var(--rouge)); }
+.battle-draft-tools hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--line); }
 .battle-account-context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .battle-tool .battle-game-field { display: flex; align-items: center; gap: 8px; }
 .battle-game-field select { min-width: 100px; }

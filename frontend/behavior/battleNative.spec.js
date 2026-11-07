@@ -12,7 +12,8 @@ import { getCurrentStarState } from '../src/api/starState.js'
 import { getCurrentStarLoadout } from '../src/api/starLoadout.js'
 import { dialog } from '../src/utils/dialog.js'
 import { useBattleDraft } from '../src/composables/useBattleDraft.js'
-import { battleDraftKey, decodeBattleDraft, encodeBattleDraft } from '../src/utils/battleDraft.js'
+import { battleCloudCacheKey, battleDraftKey, decodeBattleCloudCache, decodeBattleDraft, encodeBattleDraft } from '../src/utils/battleDraft.js'
+import { saveBattleDraft } from '../src/api/battleDrafts.js'
 import { createBattleDraft } from '../src/utils/battleImages.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
 
@@ -28,6 +29,38 @@ vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOpera
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
+// 云草稿接口的内存实现：按站点用户 + 游戏账号隔离，带版本号冲突与 5 份上限。
+const cloudServer = vi.hoisted(() => ({ rows: new Map(), seq: 0 }))
+vi.mock('../src/api/battleDrafts.js', () => {
+  const owner = (user, account) => `${user}|${account}`
+  const failure = code => Object.assign(new Error(code), { code })
+  const view = row => ({ id: row.id, title: row.draft.title, game: row.draft.game, revision: row.revision, updated_at: String(row.at), draft: structuredClone(row.draft) })
+  const rows = (user, account) => [...cloudServer.rows.values()].filter(row => row.owner === owner(user, account)).sort((x, y) => y.at - x.at)
+  const find = (user, account, id) => {
+    const row = cloudServer.rows.get(id)
+    if (!row || row.owner !== owner(user, account)) throw failure('battle_draft_not_found')
+    return row
+  }
+  return {
+    listBattleDrafts: vi.fn(async (user, account) => ({ limit: 5, drafts: rows(user, account).map(row => { const { draft, ...summary } = view(row); return summary }) })),
+    getBattleDraft: vi.fn(async (user, account, id) => view(find(user, account, id))),
+    createBattleDraft: vi.fn(async (user, account, draft) => {
+      if (rows(user, account).length >= 5) throw failure('battle_draft_limit')
+      const row = { id: `draft-${++cloudServer.seq}`, owner: owner(user, account), revision: 1, at: ++cloudServer.seq, draft: structuredClone(draft) }
+      cloudServer.rows.set(row.id, row)
+      return view(row)
+    }),
+    saveBattleDraft: vi.fn(async (user, account, id, revision, draft) => {
+      const row = find(user, account, id)
+      if (row.revision !== revision) throw failure('battle_draft_revision_conflict')
+      Object.assign(row, { revision: revision + 1, at: ++cloudServer.seq, draft: structuredClone(draft) })
+      return view(row)
+    }),
+    deleteBattleDraft: vi.fn(async (user, account, id) => { find(user, account, id); cloudServer.rows.delete(id); return { deleted: true } }),
+  }
+})
+const cloudCache = (user, account) => decodeBattleCloudCache(localStorage.getItem(battleCloudCacheKey(user, account)))
+const cloudRows = (user, account) => [...cloudServer.rows.values()].filter(row => row.owner === `${user}|${account}`)
 
 const opId = 'char_001_yangxiu'
 const catalog = [{ id: opId, name: '杨修', alias: '杨少主', rarity: 5, games: ['如鸢'], discs: [{ ot_name: '图鉴词条' }] }]
@@ -60,6 +93,7 @@ beforeEach(async () => {
   getCurrentStarState.mockImplementation(id => Promise.resolve({ account_id: id, generation: 1, inventory: [{ instance_id: 'star', name: '天相', kind: 'main', quality: 'orange', level: 50, breakthrough_stage: 2 }] }))
   getCurrentStarLoadout.mockImplementation(id => Promise.resolve({ account_id: id, generation: 1, loadouts: { [opId]: { main1: 'star' } } }))
   getCurrentOperatorPanels.mockResolvedValue({})
+  cloudServer.rows.clear()
 })
 
 it.each(['logout', 'revoked', 'failed'])('发布版已打开工具在 %s 后隐藏并离开，保留已存草稿', async reason => {
@@ -68,8 +102,8 @@ it.each(['logout', 'revoked', 'failed'])('发布版已打开工具在 %s 后隐�
     adminAccessLoaded: true, adminAccessLoading: false, adminAccessError: '', adminAccess: { roles: ['PLATFORM_ADMIN'] } })
   const wrapper = page(); await flushPromises()
   await chooseBattleMember(wrapper, '杨修', 1)
-  const key = battleDraftKey('u', 'a'), saved = localStorage.getItem(key)
-  expect(saved).toBeTruthy()
+  const key = battleCloudCacheKey('u', 'a'), saved = localStorage.getItem(key)
+  expect(cloudCache('u', 'a').draft.operators[0].name).toBe('杨修')
   expect(wrapper.find('.page-battle-images').exists()).toBe(true)
   await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
   await wrapper.get('[aria-label="更换1号位密探"]').trigger('click')
@@ -125,7 +159,7 @@ it('账号密探带入、命盘二盘和图鉴要求可编辑；档案快照不�
   await button(wrapper, '重新读取我的密探').trigger('click'); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('777')
   expect(getCurrentOperatorPanels).not.toHaveBeenCalled()
-  const saved = decodeBattleDraft(localStorage.getItem(battleDraftKey('u1', 'a')))
+  const saved = cloudCache('u1', 'a').draft
   expect(saved.operators[0].id).toBe(opId)
   expect(saved.operators[0].discs).toBe('实际二盘\n图鉴词条')
   expect(saved.operators[0].requiredDiscs).toBe('图鉴词条')
@@ -285,11 +319,14 @@ it('文件读取期间变更账号或编辑内容，不能用迟到文件覆盖'
   const value = createBattleDraft(); value.title = '账号 A 的文件'
   finish(encodeBattleDraft(value)); await flushPromises()
   expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('')
+  expect(cloudRows('u1', 'a').map(row => row.draft.title)).toEqual([''])
+  // 云草稿导入总是另存为新草稿：读取期间的编辑先同步到原草稿，不被文件覆盖。
   await upload(wrapper, file)
   await wrapper.get('[aria-label="标题或关卡"]').setValue('读取期间编辑')
   finish(encodeBattleDraft(value)); await flushPromises()
-  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('读取期间编辑')
-  expect(wrapper.text()).toContain('草稿已变化')
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('账号 A 的文件')
+  expect(cloudRows('u1', 'b').map(row => row.draft.title).sort()).toEqual(['读取期间编辑', '账号 A 的文件'])
+  expect(dialog.confirm).not.toHaveBeenCalled()
 })
 
 it('超限文件及其他游戏文件不覆盖当前账号草稿', async () => {
@@ -308,10 +345,11 @@ it('超限文件及其他游戏文件不覆盖当前账号草稿', async () => {
 })
 
 it('损坏存档保留原文，存储失败不显示成功，可重试保存', () => {
-  const user = ref('u'), accountId = ref('a'), key = battleDraftKey('u', 'a')
+  // 已登录但没有游戏账号时仍使用单份本机草稿。
+  const user = ref('u'), accountId = ref(''), key = battleDraftKey('u', '')
   localStorage.setItem(key, '{broken')
   let workspace
-  mount(defineComponent({ setup() { workspace = useBattleDraft(user, accountId); return () => null } }))
+  mount(defineComponent({ setup() { workspace = useBattleDraft(user, accountId, ref('')); return () => null } }))
   workspace.draft.value.title = '新内容'
   expect(localStorage.getItem(key)).toBe('{broken')
   expect(workspace.dirty.value).toBe(true)
@@ -340,4 +378,74 @@ it('导入旧版超限携带命盘供修正，不覆盖当前本机存档，修�
   await wrapper.get('[aria-label="移除携带命盘第4项：丁"]').trigger('click')
   expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].discs).toBe('甲\n乙\n丙')
   expect(wrapper.text()).not.toContain('修正后自动保存，原存档未覆盖')
+})
+
+it('云草稿：迁移旧本机草稿，新建、切换与删除，按游戏账号隔离', async () => {
+  const legacy = createBattleDraft(); legacy.title = '旧本机攻略'
+  localStorage.setItem(battleDraftKey('u3', 'a'), encodeBattleDraft(legacy))
+  login('u3')
+  const wrapper = page(); await flushPromises()
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('旧本机攻略')
+  expect(localStorage.getItem(battleDraftKey('u3', 'a'))).toBeNull()
+  expect(wrapper.get('.battle-draft-menu summary').text()).toContain('旧本机攻略')
+  await button(wrapper, '新建草稿').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('')
+  await wrapper.get('[aria-label="标题或关卡"]').setValue('新攻略')
+  expect(wrapper.findAll('.battle-draft-open').map(node => node.text())).toEqual(['未命名攻略', '旧本机攻略'])
+  // 切换前立即同步当前草稿，再打开另一份。
+  await wrapper.findAll('.battle-draft-open')[1].trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('旧本机攻略')
+  expect(cloudRows('u3', 'a').map(row => row.draft.title).sort()).toEqual(['新攻略', '旧本机攻略'])
+  expect(cloudRows('u3', 'b')).toHaveLength(0)
+  // 删除当前草稿后打开剩余的一份；取消删除不改动。
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('[aria-label="删除草稿：旧本机攻略"]').trigger('click'); await flushPromises()
+  expect(cloudRows('u3', 'a')).toHaveLength(2)
+  await wrapper.get('[aria-label="删除草稿：旧本机攻略"]').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'danger', confirmText: '删除草稿' }))
+  expect(cloudRows('u3', 'a').map(row => row.draft.title)).toEqual(['新攻略'])
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('新攻略')
+  // 其他账号看不到这些草稿。
+  activeAccount.set('b'); await flushPromises()
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('')
+  expect(wrapper.findAll('.battle-draft-open')).toHaveLength(1)
+  wrapper.unmount()
+})
+
+it('云草稿最多 5 份，满额时禁止新建与导入', async () => {
+  login('u4')
+  const wrapper = page(); await flushPromises()
+  for (let i = 0; i < 4; i++) { await button(wrapper, '新建草稿').trigger('click'); await flushPromises() }
+  expect(cloudRows('u4', 'a')).toHaveLength(5)
+  expect(wrapper.get('.battle-draft-caption').text()).toContain('5/5')
+  expect(button(wrapper, '新建草稿').element.disabled).toBe(true)
+  expect(button(wrapper, '导入为新草稿').element.disabled).toBe(true)
+  wrapper.unmount()
+})
+
+it('云草稿版本冲突：未同步修改不丢失，可保留本机修改覆盖或载入云端版本', async () => {
+  login('u5')
+  const wrapper = page(); await flushPromises()
+  const [row] = cloudRows('u5', 'a')
+  // 另一设备先保存了新版本。
+  row.draft = { ...row.draft, title: '另一设备' }; row.revision = 2
+  await wrapper.get('[aria-label="标题或关卡"]').setValue('本机修改')
+  await wrapper.findComponent(DataAccountContextBar).props('beforeSwitch')(); await flushPromises()
+  expect(wrapper.text()).toContain('已在其他设备更新')
+  expect(cloudCache('u5', 'a').draft.title).toBe('本机修改')
+  // 冲突未处理时不能切到新草稿，避免覆盖本机缓存。
+  await button(wrapper, '新建草稿').trigger('click'); await flushPromises()
+  expect(cloudRows('u5', 'a')).toHaveLength(1)
+  await button(wrapper, '保留本机修改').trigger('click'); await flushPromises()
+  expect(row.draft.title).toBe('本机修改')
+  expect(row.revision).toBe(3)
+  expect(wrapper.text()).not.toContain('已在其他设备更新')
+  // 再次冲突时选择载入云端版本。
+  row.draft = { ...row.draft, title: '另一设备第二版' }; row.revision = 4
+  await wrapper.get('[aria-label="标题或关卡"]').setValue('将被丢弃')
+  await wrapper.findComponent(DataAccountContextBar).props('beforeSwitch')(); await flushPromises()
+  await button(wrapper, '载入云端版本').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('另一设备第二版')
+  expect(saveBattleDraft).toHaveBeenLastCalledWith('u5', 'a', row.id, 3, expect.objectContaining({ title: '将被丢弃' }))
+  wrapper.unmount()
 })

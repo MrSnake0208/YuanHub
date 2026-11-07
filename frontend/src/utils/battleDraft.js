@@ -73,3 +73,21 @@ export function decodeBattleDraft(text) {
   // 旧版允许自由文本超限；完整恢复供修正，保存和出图另行阻止非法携带配置。
   return validateBattleDraft(doc.draft)
 }
+
+// 云草稿的本机缓存：只保存当前打开的那份及其云端版本号，用于断网/未同步时恢复与冲突判断。
+export function battleCloudCacheKey(userId, accountId) {
+  return 'yh_battle_cloud_draft:v1:' + JSON.stringify([String(userId), String(accountId)])
+}
+
+export function encodeBattleCloudCache(id, revision, draft) {
+  const validated = validateBattleDraft(draft)
+  const error = battleDraftDiscError(validated)
+  if (error) throw new Error(error)
+  return JSON.stringify({ format: 'yuanhub-battle-cloud-cache', version: 1, id: String(id), revision, draft: validated })
+}
+
+export function decodeBattleCloudCache(text) {
+  const doc = JSON.parse(text)
+  if (doc?.format !== 'yuanhub-battle-cloud-cache' || doc.version !== 1 || typeof doc.id !== 'string' || !Number.isInteger(doc.revision)) throw new Error('invalid cache')
+  return { id: doc.id, revision: doc.revision, draft: validateBattleDraft(doc.draft) }
+}

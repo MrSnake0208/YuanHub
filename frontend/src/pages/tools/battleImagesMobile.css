@@ -71,6 +71,8 @@
   .battle-tool .battle-composer-row > .battle-action-option { flex: 1 1 calc(50% - 4px); }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
   .battle-tool .battle-draft-menu > summary { font-size: 12px; }
+  .battle-tool .battle-draft-current { max-width: 9em; }
+  .battle-tool .battle-draft-delete { width: 40px; height: 40px; }
 
   /* 账号状态：说明在上、操作在下，均左对齐。 */
   .battle-tool .battle-account-status { flex-basis: 100%; margin-left: 0; }
