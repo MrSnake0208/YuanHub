@@ -4,9 +4,9 @@ export const battleButton = (wrapper, text) => wrapper.findAll('button').find(bu
 
 export async function chooseBattleMember(wrapper, name, slot = 1) {
   await wrapper.get(`[aria-label="编辑${slot}号位"]`).trigger('click')
-  // 已有密探的槽位默认打开“练度”，需切到“更换密探”才出现选人。
+  // 已有密探的槽位默认打开“练度”，点击弹窗头像才进入选人。
   if (!wrapper.find(`[aria-label="${slot}号位密探"]`).exists()) {
-    await wrapper.findAll('#battle-member-detail .battle-subnav button').find(item => item.text() === '更换密探').trigger('click')
+    await wrapper.get(`[aria-label="更换${slot}号位密探"]`).trigger('click')
     await flushPromises()
   }
   await wrapper.get(`[aria-label="${slot}号位密探"]`).setValue(name)

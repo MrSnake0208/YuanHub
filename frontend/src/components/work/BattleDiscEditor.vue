@@ -1,13 +1,13 @@
 <template>
   <div class="battle-disc-editor">
-    <div class="battle-section-heading"><h3>{{ label }}</h3><span>{{ names.length }}{{ field === 'discs' ? ` / ${DISC_SELECTION_LIMIT} 项` : ' 项' }}</span></div>
+    <div class="battle-section-heading"><h3>{{ label }}</h3><span>{{ names.length === DISC_SELECTION_LIMIT && field === 'discs' ? '已选满，取消一项后可更换 · ' : '' }}{{ names.length }}{{ field === 'discs' ? ` / ${DISC_SELECTION_LIMIT} 项` : ' 项' }}</span></div>
     <p v-if="validation" role="alert" class="battle-error">{{ validation }}</p>
     <div v-if="names.length" class="battle-selected-terms" aria-label="已填写词条">
       <button v-for="(name, index) in names" :key="index" type="button" :aria-label="`移除${label}第${index + 1}项：${name}`" @click="remove(index)">{{ name }}<X :size="14" aria-hidden="true" /></button>
     </div>
     <div v-if="terms.length" class="battle-catalog-terms">
-      <label v-for="term in terms" :key="term.name" :class="{ selected: names.includes(term.name) }">
-        <input type="checkbox" :checked="names.includes(term.name)" :disabled="field === 'discs' && names.length >= DISC_SELECTION_LIMIT && !names.includes(term.name)" :aria-label="`${label}：${term.name}`" @change="toggle(term.name, $event)">
+      <label v-for="term in terms" :key="term.name" :class="{ selected: names.includes(term.name), disabled: full && !names.includes(term.name) }">
+        <input type="checkbox" :checked="names.includes(term.name)" :disabled="full && !names.includes(term.name)" :aria-label="`${label}：${term.name}`" @change="toggle(term.name, $event)">
         <span><strong>{{ term.name }}</strong><small v-if="term.description">{{ term.description }}</small></span>
       </label>
     </div>
@@ -29,6 +29,7 @@ const props = defineProps({ operator: { type: Object, required: true }, slot: { 
 const emit = defineEmits(['change'])
 const names = computed(() => battleDiscNames(props.operator[props.field]))
 const label = computed(() => ({ discs: '携带命盘', requiredDiscs: '必须命盘', forbiddenDiscs: '禁用命盘' })[props.field])
+const full = computed(() => props.field === 'discs' && names.value.length >= DISC_SELECTION_LIMIT)
 const validation = computed(() => props.field === 'discs' ? battleDiscError(props.operator.discs) : '')
 const terms = computed(() => [...new Map(props.catalog.map(term => [discNameOf(term), { name: discNameOf(term), description: typeof term === 'string' ? '' : String(term?.desp || term?.description || term?.desc || '').trim() }])).values()].filter(term => term.name))
 const error = ref('')

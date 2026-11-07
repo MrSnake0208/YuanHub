@@ -5,7 +5,7 @@ import { operatorHuaji, operatorHuajiLabel } from './operatorHuaji.js'
 import { calculateOperatorCombatStats, normalizeOperatorCombatStats, combatStatsSourceLabel } from './operatorCombatStats.js'
 import { operatorLevelBreakthroughStage } from './operatorGrowthRules.js'
 import { STAR_LOADOUT_SLOTS, normalizeStarInventoryEntry } from '../domain/starLoadout.js'
-import { STAR_QUALITY_LABELS } from '../data/starDiscs.js'
+import { formatBattleStar } from './battleEditor.js'
 
 export function findBattleCatalogOperator(catalog, name, game) {
   const query = name.trim()
@@ -48,7 +48,8 @@ export function battleAccountEntries({ catalog, current, state, loadout, panels 
       const star = hasEquipment ? stars.get(id) : { ...legacy, kind, breakthroughStage: legacy.breakthrough_stage }
       if (!star || star.kind !== kind) throw new Error('星石装备与背包不一致，请重新读取。')
       stones[hasEquipment ? slot : legacySlot] = hasEquipment ? star : { name: star.name, level: star.level, rarity: star.rarity }
-      lines.push(`${kind === 'main' ? '主星' : '辅星'}${slot.at(-1)}：${star.name} · ${STAR_QUALITY_LABELS[star.quality] || star.quality || '品质未知'} · ${star.level ?? '未知'}级 · ${star.breakthroughStage == null ? '突破未知' : '突破' + star.breakthroughStage}`)
+      // 攻略只需星石名称与等级；品质与突破不写入草稿。
+      lines.push(formatBattleStar({ label: (kind === 'main' ? '主星' : '辅星') + slot.at(-1), name: star.name, level: star.level == null ? '' : String(star.level) }))
     }
     member.stars = lines.join('\n')
     const stored = normalizeOperatorCombatStats(raw.combat_stats, op.oddity_schema)

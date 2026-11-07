@@ -67,7 +67,7 @@ it('账号密探带入、命盘二盘和图鉴要求可编辑；档案快照不�
   await chooseBattleMember(wrapper, '杨少主', 1); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('12345')
   expect(dialog.confirm).not.toHaveBeenCalled()
-  expect((await battleField(wrapper, '星石 / 辅星')).element.value).toContain('橙 · 50级 · 突破2')
+  expect((await battleField(wrapper, '星石 / 辅星')).element.value).toContain('天相 · 50级')
   await battleField(wrapper, '携带命盘')
   expect(wrapper.get('.battle-team-matrix').text()).toContain('手动修正')
   await wrapper.get('[aria-label="带入命盘组合2"]').setValue(); await flushPromises()
@@ -111,6 +111,17 @@ it('重新带入账号配置与命盘切换均保留取消保护，确认后只�
   await button(wrapper, '重新带入账号配置').trigger('click'); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('12345')
   expect(wrapper.get('[aria-label="1号位携带命盘"]').element.value).toBe('实际一盘')
+  // 手动改动携带命盘后不再显示为某个组合；再次选择该组合需确认后才恢复。
+  await (await battleField(wrapper, '携带命盘')).setValue('手动词条')
+  expect(wrapper.get('[aria-label="带入命盘组合1"]').element.checked).toBe(false)
+  expect(wrapper.get('.battle-loadout-options legend').text()).toContain('已手动调整')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('[aria-label="带入命盘组合1"]').setValue(); await flushPromises()
+  expect(wrapper.get('[aria-label="带入命盘组合1"]').element.checked).toBe(false)
+  expect(wrapper.get('[aria-label="1号位携带命盘"]').element.value).toBe('手动词条')
+  await wrapper.get('[aria-label="带入命盘组合1"]').setValue(); await flushPromises()
+  expect(wrapper.get('[aria-label="1号位携带命盘"]').element.value).toBe('实际一盘')
+  expect(wrapper.get('[aria-label="带入命盘组合1"]').element.checked).toBe(true)
 })
 
 it('命盘确认期间切换槽位不会将组合写入另一位密探', async () => {

@@ -350,7 +350,7 @@ it('已有数据时展示账号状态，不显示常用工具且初始化只请�
   const aside = wrapper.get('.today-secondary')
   expect(aside.find('.today-private-items').exists()).toBe(false)
   expect(wrapper.get('#today-reminders').element.children).toHaveLength(0)
-  expect(wrapper.get('.todo-subscription-status').text()).toContain('暂无临期活动。')
+  expect(wrapper.find('.todo-subscription-status').exists()).toBe(false)
   expect(wrapper.get('.today-primary').find('.today-training').exists()).toBe(true)
   expect(wrapper.findAll('.today-activity-summary')).toHaveLength(1)
   expect(aside.text()).not.toContain('账号详情')

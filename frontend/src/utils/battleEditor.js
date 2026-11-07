@@ -1,31 +1,49 @@
 export const BATTLE_STAR_SLOTS = ['主星1', '主星2', '主星3', '辅星1', '辅星2', '辅星3']
 
-// 只识别账号快照的完整格式，旧自由文本留在原处，不能靠猜测拆分后覆盖。
+// 星石只记名称与等级：精简格式“主星1：天相 · 40级”或“主星1：天相”；旧版“名 · 品质 · 等级 · 突破”也能识别。
+// 其它自由文本与同槽位重复行不猜测拆分，原样保留。
+function parseBattleStarLine(line, label) {
+  const match = line.trim().match(new RegExp(`^${label}[：:][ ]*(.+)$`))
+  if (!match) return null
+  const [name, ...rest] = match[1].split(/[ ]*·[ ]*/)
+  if (!name.trim()) return null
+  if (!rest.length) return { name: name.trim(), level: '' }
+  if (rest.length === 1 && /^\d{1,3}级$/.test(rest[0].trim())) return { name: name.trim(), level: rest[0].trim().slice(0, -1) }
+  const level = rest[1]?.trim().match(/^(未知|\d+)级$/)
+  if (rest.length === 3 && level && /^突破(未知|\d+)$/.test(rest[2].trim())) return { name: name.trim(), level: level[1] === '未知' ? '' : level[1] }
+  return null
+}
+
+export function formatBattleStar({ label, name, level }) {
+  return `${label}：${name}${level ? ' · ' + level + '级' : ''}`
+}
+
 export function battleStarFields(value) {
   const lines = String(value || '').split('\n')
   return BATTLE_STAR_SLOTS.map(label => {
     const matches = lines.flatMap((line, index) => {
-      const match = line.match(new RegExp(`^${label}：[ ]*([^·\\n]+) · ([^·\\n]+) · (未知|\\d+)级 · (突破未知|突破\\d+)$`))
-      return match ? [{ line: index, name: match[1].trim(), quality: match[2] === '品质未知' ? '' : match[2], level: match[3] === '未知' ? '' : match[3], breakthrough: match[4] === '突破未知' ? '' : match[4].slice(2) }] : []
+      const star = parseBattleStarLine(line, label)
+      return star ? [{ line: index, ...star }] : []
     })
-    return { label, line: -1, name: '', quality: '', level: '', breakthrough: '', ...(matches.length === 1 ? matches[0] : {}) }
+    return { label, line: -1, name: '', level: '', ...(matches.length === 1 ? matches[0] : {}) }
   })
 }
 
+// 每次修改按主星1→辅星3 重写已识别槽位，其余说明行保持原顺序附在后面。
 export function updateBattleStar(value, slot, field, content) {
   const fields = battleStarFields(value)
-  if (!fields[slot] || !['name', 'quality', 'level', 'breakthrough'].includes(field)) throw new Error('星石字段无效。')
-  const next = { ...fields[slot], [field]: String(content).trim() }
-  if (next.line < 0 && String(value || '').split('\n').some(line => line.trim().startsWith(next.label + '：') || line.trim().startsWith(next.label + ':'))) throw new Error('该槽位已有无法识别或重复的内容，请先在原文本中整理；原内容未改。')
-  if (field === 'name' && !next.name) { next.quality = ''; next.level = ''; next.breakthrough = '' }
-  if ([next.name, next.quality].some(text => /[·\r\n]/.test(text))) throw new Error('名称与品质不能包含分隔符或换行。')
-  if ([next.level, next.breakthrough].some(text => text && !/^\d{1,3}$/.test(text))) throw new Error('等级与突破请填写非负整数，未知可留空。')
-  if (!next.name && [next.quality, next.level, next.breakthrough].some(Boolean)) throw new Error('请先填写星石名称，再设置等级、品质与突破。')
+  if (!fields[slot] || !['name', 'level'].includes(field)) throw new Error('星石字段无效。')
   const lines = String(value || '').split('\n')
-  const line = next.name ? `${next.label}：${next.name} · ${next.quality || '品质未知'} · ${next.level || '未知'}级 · ${next.breakthrough ? '突破' + next.breakthrough : '突破未知'}` : ''
-  if (next.line >= 0) lines.splice(next.line, 1, line)
-  else if (line) { if (!value) lines.length = 0; lines.push(line) }
-  const result = lines.join('\n')
+  const next = { ...fields[slot], [field]: String(content).trim() }
+  if (next.line < 0 && lines.some(line => line.trim().startsWith(next.label + '：') || line.trim().startsWith(next.label + ':'))) throw new Error('该槽位已有无法识别或重复的内容，请先在原文本中整理；原内容未改。')
+  if (field === 'name' && !next.name) next.level = ''
+  if (/[·:：\r\n]/.test(next.name)) throw new Error('名称不能包含分隔符或换行。')
+  if (next.level && !/^\d{1,3}$/.test(next.level)) throw new Error('等级请填写非负整数，未知可留空。')
+  if (!next.name && next.level) throw new Error('请先填写星石名称，再设置等级。')
+  fields[slot] = next
+  const parsed = new Set(fields.map(star => star.line).filter(line => line >= 0))
+  const others = lines.filter((line, index) => !parsed.has(index) && line.trim())
+  const result = [...fields.filter(star => star.name).map(formatBattleStar), ...others].join('\n')
   if (result.length > 300) throw new Error('星石配置最多 300 字；原内容未改，请在原文本中整理后再试。')
   return result
 }

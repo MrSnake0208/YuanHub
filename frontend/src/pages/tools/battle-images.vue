@@ -23,7 +23,7 @@
       </CompactToolHeader>
       <div class="wrap battle-document">
         <input ref="fileInput" type="file" accept=".json,application/json" aria-label="选择草稿文件" hidden @change="importDraft">
-        <p v-if="fileError" role="alert" class="battle-error">{{ fileError }}</p>
+        <p v-if="fileError" ref="fileErrorEl" role="alert" class="battle-error">{{ fileError }}</p>
         <p v-if="saveError" role="alert" class="battle-error">
           {{ saveError }}
           <button v-if="discError" type="button" @click="kind = 'team'; teamEditor?.revealDiscError()">定位命盘问题</button>
@@ -62,10 +62,17 @@
           </details>
           <section v-if="exportOpen" ref="exportPanel" class="battle-export-panel" aria-label="图片预览与下载" tabindex="-1">
             <header><h2>图片预览与下载</h2><button type="button" @click="closeExport"><X :size="16" aria-hidden="true" />返回编辑</button></header>
-            <BattleImageExport ref="exporter" :draft="draft" :kind="kind" :round-index="roundIndex" :show-generate-button="false" @busy="exportBusy = $event" />
+            <BattleImageExport ref="exporter" :draft="draft" :kind="kind" :round-index="roundIndex" :catalog="catalog" :show-generate-button="false" @busy="exportBusy = $event" />
           </section>
         </template>
         <p class="battle-local-note"><Info :size="14" aria-hidden="true" />草稿仅保存在当前浏览器，清理浏览器数据会丢失。换设备前请导出草稿；图片与草稿均不会自动上传。</p>
+      </div>
+      <!-- 手机端页头随页面滚走，底部常驻生成入口；桌面端仍用页头按钮。 -->
+      <div class="battle-mobile-dock">
+        <span class="battle-save-status" role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span>
+        <button ref="dockExportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">
+          <Download :size="16" aria-hidden="true" />{{ exportBusy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}
+        </button>
       </div>
     </main>
   </div>
@@ -93,7 +100,7 @@ const { userId, account, accounts, accountsLoading, accountError, loadAccounts, 
 const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')
 const { draft, key, revision, dirty, status, saveError, discError, blocked, replace, overwrite } = useBattleDraft(userId, sourceAccountId)
 const kind = ref('team'), roundIndex = ref(0), fileInput = ref(null), fileError = ref(''), importing = ref(false)
-const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), teamEditor = ref(null), exportButton = ref(null)
+const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), teamEditor = ref(null), exportButton = ref(null), dockExportButton = ref(null), fileErrorEl = ref(null)
 const exportBusy = ref(false), draftMenu = ref(null)
 const MODES = [{ value: 'team', label: '配队表', icon: UsersRound }, { value: 'actions', label: '操作表', icon: ListOrdered }]
 async function moveTab(event) {
@@ -113,14 +120,25 @@ function closeDraftMenu(restoreFocus = false) {
 function closeDraftMenuOutside(event) { if (draftMenu.value?.open && !draftMenu.value.contains(event.target)) closeDraftMenu() }
 async function openExport() {
   fileError.value = pendingName.value ? '请先确认密探名称，再生成图片。' : battleImageError(draft.value, kind.value)
-  if (fileError.value) { if (discError.value) { kind.value = 'team'; await nextTick(); teamEditor.value?.revealDiscError() }; return }
+  if (fileError.value) {
+    if (discError.value) { kind.value = 'team'; await nextTick(); teamEditor.value?.revealDiscError(); return }
+    // 底部按钮触发时错误提示在页面顶部，滚到可见处避免“点了没反应”。
+    await nextTick(); fileErrorEl.value?.scrollIntoView?.({ block: 'center', behavior: 'auto' })
+    return
+  }
   exportOpen.value = true
   await nextTick()
   exportPanel.value?.focus({ preventScroll: true })
   exportPanel.value?.scrollIntoView?.({ block: 'start', behavior: 'auto' })
   await exporter.value?.generate()
 }
-async function closeExport() { exportOpen.value = false; await nextTick(); exportButton.value?.focus({ preventScroll: true }) }
+async function closeExport() {
+  exportOpen.value = false
+  await nextTick()
+  // 手机端页头按钮被隐藏，焦点回到当前可见的生成按钮。
+  const visible = [exportButton.value, dockExportButton.value].find(el => el?.getClientRects().length)
+  visible?.focus({ preventScroll: true })
+}
 watch(kind, () => { exportOpen.value = false; fileError.value = '' })
 const unsaved = computed(() => dirty.value || pendingName.value)
 let alive = true

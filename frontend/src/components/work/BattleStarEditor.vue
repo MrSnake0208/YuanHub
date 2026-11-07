@@ -1,13 +1,16 @@
 <template>
   <div class="battle-star-editor">
-    <p class="battle-hint">仅修改本攻略，不会自动重算生命与攻击。未知信息可留空。</p>
+    <p class="battle-hint">等级未知可留空；仅修改本攻略，不会自动重算生命与攻击。</p>
+    <!-- 主星、辅星各一组，列标题只出现一次；每个输入仍有独立的可访问名称。 -->
     <div class="battle-star-slots">
-      <fieldset v-for="(star, index) in slots" :key="star.label">
-        <legend>{{ star.label }}</legend>
-        <label class="battle-star-name">名称<input :value="star.name" :list="index < 3 ? 'battle-main-stars' : 'battle-support-stars'" :aria-label="star.label + '名称'" maxlength="30" placeholder="选择或输入" @input="update(index, 'name', $event)"></label>
-        <label>等级<input :value="star.level" inputmode="numeric" :aria-label="star.label + '等级'" maxlength="3" placeholder="未知" @input="update(index, 'level', $event)"></label>
-        <label>品质<select :value="star.quality" :aria-label="star.label + '品质'" @change="update(index, 'quality', $event)"><option value="">未知</option><option>橙</option><option>紫</option><option>蓝</option><option v-if="star.quality && !['橙', '紫', '蓝'].includes(star.quality)">{{ star.quality }}</option></select></label>
-        <label>突破<input :value="star.breakthrough" inputmode="numeric" :aria-label="star.label + '突破'" maxlength="3" placeholder="未知" @input="update(index, 'breakthrough', $event)"></label>
+      <fieldset v-for="group in groups" :key="group.kind">
+        <legend>{{ group.kind }}</legend>
+        <div class="battle-star-row battle-star-head" aria-hidden="true"><span></span><span>名称</span><span>等级</span></div>
+        <div v-for="{ star, index } in group.items" :key="star.label" class="battle-star-row">
+          <span class="battle-star-index" aria-hidden="true">{{ index % 3 + 1 }}</span>
+          <input :value="star.name" :list="index < 3 ? 'battle-main-stars' : 'battle-support-stars'" :aria-label="star.label + '名称'" maxlength="30" placeholder="选择或输入" @input="update(index, 'name', $event)">
+          <input :value="star.level" inputmode="numeric" :aria-label="star.label + '等级'" maxlength="3" placeholder="未知" @input="update(index, 'level', $event)">
+        </div>
       </fieldset>
     </div>
     <p v-if="error" role="alert" class="battle-error">{{ error }}</p>
@@ -25,6 +28,7 @@ import { battleStarFields, updateBattleStar } from '../../utils/battleEditor.js'
 const props = defineProps({ modelValue: { type: String, default: '' }, slot: { type: Number, required: true } })
 const emit = defineEmits(['update:modelValue'])
 const slots = computed(() => battleStarFields(props.modelValue)), error = ref('')
+const groups = computed(() => ['主星', '辅星'].map((kind, group) => ({ kind, items: slots.value.slice(group * 3, group * 3 + 3).map((star, offset) => ({ star, index: group * 3 + offset })) })))
 const unparsed = computed(() => props.modelValue.split('\n').some((line, index) => line.trim() && !slots.value.some(star => star.line === index)))
 watch(() => props.slot, () => { error.value = '' })
 function update(index, field, event) {

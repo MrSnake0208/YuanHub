@@ -1,7 +1,7 @@
 <template>
   <div class="reward-workspace" :class="{ 'compact-daily': compactDaily, 'home-daily': homeDaily }">
     <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
-      <div class="daily-quick-heading"><strong>今日奖励</strong><time :datetime="dailyDate" title="北京时间 05:00 换日">{{ dailyDate.slice(5).replace('-', '月') }}日</time></div>
+      <div class="daily-quick-heading"><strong>今日奖励</strong><time :datetime="dailyDate" title="北京时间 05:00 换日">{{ Number(dailyDate.slice(5, 7)) }}月{{ Number(dailyDate.slice(8, 10)) }}日</time></div>
       <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
@@ -15,8 +15,8 @@
         </div>
       </fieldset>
       <div class="daily-quick-actions">
-        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : homeDaily && manual.presets.length && !result ? `记录所选（${manual.presets.length}）` : '记录所选' }}</button>
-        <router-link v-if="homeDaily" class="quick-inventory text-button" to="/inventory">前往库存 ›</router-link>
+        <button class="primary-button" type="submit" :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length || !manual.presets.length || !!result || unconfirmedZhuyu">{{ busy ? '记录中…' : homeDaily && !result ? (manual.presets.length ? `记录所选（${manual.presets.length}）` : '勾选后记录') : '记录所选' }}</button>
+        <router-link v-if="homeDaily" class="quick-inventory text-button" to="/inventory">前往库存<ArrowRight :size="13" aria-hidden="true" /></router-link>
         <button v-else type="button" class="quick-history text-button" :disabled="disabled || locked" @click="openQuickHistory">补记历史</button>
         <details v-if="!homeDaily" class="quick-rules shortcut-note">
           <summary>领取规则</summary>

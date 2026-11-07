@@ -74,8 +74,15 @@
 .battle-dialog { box-sizing: border-box; display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(86dvh, 820px); min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 40px rgba(var(--theme-shadow-rgb, 73,59,44), .18); }
 .battle-dialog:focus { outline: none; }
 .battle-dialog-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px 12px; }
-.battle-dialog-art { display: grid; place-items: center; width: 40px; height: 52px; flex-shrink: 0; border-radius: 6px; background: var(--cream); color: var(--ink-60); overflow: hidden; }
+.battle-dialog-art { display: grid; place-items: center; width: 48px; height: 60px; flex-shrink: 0; border-radius: 6px; background: var(--cream); color: var(--ink-60); overflow: hidden; }
 .battle-dialog-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+/* 头像即“更换密探”入口：底部常驻“更换”文字条，不只靠悬停或图标猜测。
+   需压过 .battle-tool button 的 inline-flex/内边距/间距，否则立绘被挤窄、标签跑到旁边。 */
+.battle-tool .battle-dialog-header .battle-swap-trigger { position: relative; display: block; flex-shrink: 0; width: 48px; height: 60px; padding: 0; gap: 0; overflow: hidden; border: 1px solid var(--battle-border); border-radius: 6px; background: var(--cream); color: var(--ink-60); }
+.battle-tool .battle-dialog-header .battle-swap-trigger > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.battle-tool .battle-dialog-header .battle-swap-trigger > svg { display: block; margin: 12px auto 0; }
+.battle-tool .battle-dialog-header .battle-swap-trigger:hover:not(:disabled) { border-color: var(--battle-accent); }
+.battle-swap-label { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 1px 0 2px; background: rgba(40, 30, 20, .62); color: #fff; font-size: 10px; line-height: 14px; }
 .battle-dialog-header h3 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
 .battle-dialog-header h3:focus { outline: none; }
 .battle-dialog-steps { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-60); }
@@ -85,9 +92,34 @@
 .battle-dialog-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 20px; }
 .battle-dialog .battle-picker-grid { max-height: none; }
 .battle-dialog .battle-loadout-options { margin-top: 0; }
-.battle-clear-member { margin-top: 16px; }
-.battle-stat-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
-.battle-tool .battle-stat-fields label { font-size: 13px; color: var(--ink); }
+/* 两列、顶部对齐：等级/修为下方的提示不再把同行的生命/攻击输入框撑高。 */
+.battle-stat-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; max-width: 620px; }
+.battle-tool .battle-stat-fields label { align-content: start; font-size: 13px; color: var(--ink); }
+.battle-tool .battle-stat-fields > label > input { height: 40px; }
+.battle-stat-note { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: -4px 0 0; padding: 8px 10px; border-radius: 5px; background: var(--cream); font-size: 12px; line-height: 1.6; color: var(--ink-60); }
+.battle-stat-note > svg { flex-shrink: 0; margin-top: 2px; color: var(--battle-accent); }
+.battle-stepper-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.battle-stepper-field > small { font-size: 11px; line-height: 1.5; color: var(--ink-60); }
+.battle-stepper-field > small.battle-field-warning { color: var(--theme-danger-text, var(--rouge)); }
+/* 步进器为一个整体：只保留外框，内部用细线分隔，不再是三个独立方框。 */
+.battle-stepper { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; height: 40px; box-sizing: border-box; border: 1px solid var(--battle-border); border-radius: 5px; background: var(--surface); overflow: hidden; }
+.battle-stepper:focus-within { border-color: var(--battle-accent); }
+.battle-tool .battle-stepper > button { height: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-60); }
+.battle-tool .battle-stepper > button:first-child { border-right: 1px solid var(--line); }
+.battle-tool .battle-stepper > button:last-child { border-left: 1px solid var(--line); }
+.battle-tool .battle-stepper > button:hover:not(:disabled) { background: var(--battle-selection); color: var(--battle-accent); }
+.battle-tool .battle-stat-fields .battle-stepper > select { height: 100%; border: 0; border-radius: 0; background-color: transparent; text-align: center; text-align-last: center; font-family: var(--font-d); font-size: 15px; }
+.battle-tool .battle-stat-fields .battle-stepper > select:focus-visible { outline-offset: -2px; }
+.battle-tool .battle-link-button { justify-self: start; padding: 0; border: 0; background: none; color: var(--battle-accent); font-size: 12px; text-decoration: underline; }
+.battle-huaji-field { grid-column: 1 / -1; display: grid; gap: 10px; min-width: 0; margin: 0; padding: 14px 0; border: 0; border-block: 1px solid var(--line); }
+.battle-huaji-field > legend { margin-bottom: 6px; padding: 0; font-size: 13px; color: var(--ink); }
+.battle-choice-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.battle-choice-row > span { width: 36px; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-choice-row > button { min-width: 44px; min-height: 36px; padding: 6px 10px; font-weight: 400; }
+.battle-tool .battle-choice-row > button[aria-pressed=true] { background: var(--battle-selection); border-color: var(--battle-accent); color: var(--battle-accent); font-weight: 600; }
+.battle-tool .battle-choice-row > .battle-choice-clear { min-width: 0; margin-left: 4px; padding: 6px 4px; border: 0; background: none; color: var(--ink-60); text-decoration: none; }
+.battle-tool .battle-choice-row > .battle-choice-clear:hover { color: var(--battle-accent); }
+.battle-pending-tag { justify-self: start; margin: 0; padding: 4px 10px; border-radius: 5px; background: color-mix(in srgb, var(--yellow) 30%, var(--surface)); color: var(--battle-accent); font-size: 12px; line-height: 1.6; }
 .battle-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-60); }
 .battle-tool .battle-dialog-footer .battle-primary { min-width: 96px; min-height: 40px; }
 .battle-inline-editor { border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); padding: 18px 20px; margin-top: 16px; scroll-margin-top: 24px; }
@@ -101,16 +133,26 @@
 .battle-subnav button { padding: 7px 12px; border-color: transparent; }
 .battle-subnav button[aria-pressed=true] { color: var(--battle-accent); border-bottom-color: var(--battle-accent); background: var(--battle-selection); }
 .battle-config-tools, .battle-picker-toolbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.battle-config-tools > button { border: 0; font-size: 12px; }
+.battle-member-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.battle-tool :is(.battle-member-actions, .battle-config-tools) > button { border-color: transparent; padding-inline: 8px; font-size: 12px; }
+.battle-tool .battle-member-actions > .battle-danger-text { color: var(--theme-danger-text, var(--rouge)); }
+.battle-tool .battle-config-tools > .battle-back-button { gap: 2px; padding-left: 4px; font-size: 13px; color: var(--battle-accent); }
 .battle-tool .battle-search { position: relative; flex: 1; min-width: 200px; }
-.battle-search > svg { position: absolute; top: 12px; left: 10px; }
-.battle-tool .battle-search input { padding-left: 34px; }
+.battle-search > svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: var(--ink-60); pointer-events: none; }
+/* 与通用输入框规则同等特异性并后置，确保左侧留出图标位置，图标不压住占位文字。 */
+.battle-tool .battle-search input:not([type=radio]) { padding-left: 34px; }
 .battle-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 360px; overflow-y: auto; padding: 4px; }
 .battle-picker-grid > button { display: flex; flex-direction: column; min-width: 0; padding: 10px 6px; }
 .battle-picker-grid img { height: 68px; width: 60px; object-fit: cover; object-position: top; border-radius: 4px; }
 .battle-picker-grid > button > svg { margin-block: 18px; }
 .battle-picker-grid strong { font-size: 13px; }
-.battle-picker-grid small { font-size: 10px; font-weight: 400; color: var(--ink-60); }
+.battle-picker-grid small { font-size: 10px; font-weight: 400; color: var(--battle-accent); }
+.battle-picker-grid small.muted { color: var(--ink-60); }
+.battle-tool .battle-picker-grid > button.current { background: var(--battle-selection); border-color: var(--battle-accent); }
+.battle-custom-toggle { margin-bottom: 12px; }
+.battle-custom-toggle > summary { width: fit-content; padding-block: 4px; font-size: 12px; color: var(--battle-accent); }
+.battle-custom-toggle .battle-custom-name { margin-top: 8px; }
+.battle-picker-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .battle-custom-name { display: flex; align-items: end; gap: 10px; margin-top: 16px; }
 .battle-custom-name label { flex: 1; max-width: 360px; }
 .battle-custom-name button { flex-shrink: 0; }
@@ -118,6 +160,8 @@
 .battle-loadout-options legend { font-size: 12px; color: var(--ink-60); margin-bottom: 8px; }
 .battle-tool .battle-loadout-options label { display: flex; align-items: center; flex: 1 1 200px; gap: 8px; padding: 10px; border: 1px solid var(--battle-border); border-radius: 5px; cursor: pointer; }
 .battle-loadout-options small { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.battle-loadout-options legend > span { margin-left: 4px; color: var(--battle-accent); }
+.battle-tool .battle-loadout-options label.selected { background: var(--battle-selection); border-color: var(--battle-accent); color: var(--ink); }
 .battle-selected-terms { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .battle-selected-terms button { padding: 6px 9px; font-size: 12px; background: var(--cream); text-align: left; }
 .battle-selected-terms svg { flex-shrink: 0; }
@@ -127,12 +171,15 @@
 .battle-catalog-terms strong { color: var(--ink); font-size: 13px; }
 .battle-catalog-terms small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .battle-tool .battle-catalog-terms label.selected { background: var(--battle-selection); border-color: var(--battle-border); }
+.battle-tool .battle-catalog-terms label.disabled { opacity: .5; cursor: not-allowed; }
 .battle-text-editor { margin-top: 14px; }
 .battle-text-editor > summary { padding-block: 8px; color: var(--battle-accent); }
-.battle-star-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.battle-star-slots fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--battle-border); border-radius: 6px; }
+.battle-star-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.battle-star-slots fieldset { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 10px 12px 12px; border: 1px solid var(--battle-border); border-radius: 6px; }
 .battle-star-slots legend { font-size: 13px; font-weight: 600; padding-inline: 6px; }
-.battle-star-name { grid-column: 1 / -1; }
+.battle-star-row { display: grid; grid-template-columns: 18px minmax(0, 2fr) minmax(0, 1fr); align-items: center; gap: 8px; }
+.battle-star-head { font-size: 12px; color: var(--ink-60); }
+.battle-star-index { font-size: 12px; color: var(--ink-60); text-align: center; }
 .battle-action-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 14px; font-size: 12px; color: var(--ink-60); }
 .battle-action-legend > span { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .battle-action-legend b { color: var(--ink); font-weight: 500; }
@@ -189,6 +236,8 @@
 .battle-local-note svg { flex-shrink: 0; margin-top: 3px; }
 .battle-tool .battle-error { font-size: 13px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.7; }
 .battle-error button { margin-left: 8px; }
+/* 手机端底部生成栏，桌面端隐藏；见 battleImagesMobile.css。 */
+.battle-mobile-dock, .battle-disc-short { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (hover: hover) {
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }

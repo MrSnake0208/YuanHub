@@ -17,8 +17,11 @@
         <button v-if="!denied" type="button" :disabled="loading" @click="load">重试读取</button>
       </div>
       <template v-if="snapshot">
-        <div v-if="activePlan" ref="dailyPreview"></div>
-        <p v-if="!plans.length && !otherNotes.length">还没有培养成员或备注，可去密探养成设置计划。</p>
+        <div v-if="activePlan && (plans.length || otherNotes.length)" ref="dailyPreview"></div>
+        <div v-if="!plans.length && !otherNotes.length" class="training-empty">
+          <p>还没有培养成员。设置养成计划后，这里会显示培养清单和今日历练。</p>
+          <router-link class="training-cta" :to="{ path: '/operator', query: { tab: activePlan ? 'tracking' : 'current' } }">去设置养成计划<ArrowRight :size="14" aria-hidden="true" /></router-link>
+        </div>
         <article v-for="plan in plans.slice(0, 1)" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
           <header class="training-plan-heading">
             <h3>{{ plan.name }}</h3>
@@ -166,7 +169,8 @@ p { line-height: 1.7; }
 .training-target { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
 .training-list { list-style: none; }
 a, button { color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
-.training-manage, .training-member { text-decoration: none; }
+.training-manage, .training-member, .training-cta { text-decoration: none; }
+.training-cta { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .training-manage { font-weight: 500; }
 .training-member:focus-visible { background: var(--cream); }
 .training-note { border-left: 2px solid var(--line); background: var(--cream); color: var(--ink-60); }

@@ -27,7 +27,8 @@ test('快照保留明确零、未知、两套实际命盘和装备实例；不�
   assert.match(entry.huaji, /2 星/)
   assert.equal(entry.discs, '实际一盘')
   assert.deepEqual(entry.discLoadouts[1].discNames, ['实际二盘'])
-  assert.match(entry.stars, /主星1：天相 · 橙 · 50级 · 突破2/)
+  assert.match(entry.stars, /^主星1：天相 · 50级$/m)
+  assert.ok(!/橙|突破/.test(entry.stars))
   assert.match(entry.panelNote, /扫描值待重算/)
   assert.ok(!JSON.stringify(entry).includes('目标盘不导入'))
   assert.ok(!JSON.stringify(entry).includes('不公开'))
@@ -54,7 +55,7 @@ test('没有实例配装时兼容旧星石档案，明确空配装不回退旧�
   raw.huaji = { owned: true, stage: 25, awakened: null }
   raw.star_stones = [{ type: 'assist', name: '旧辅星', level: 30 }]
   const [entry] = battleAccountEntries(source)
-  assert.match(entry.stars, /辅星1：旧辅星.*30级.*突破未知/)
+  assert.equal(entry.stars, '辅星1：旧辅星 · 30级')
   assert.match(entry.huaji, /觉醒待确认/)
   source.loadout.loadouts.yangxiu = {}
   assert.equal(battleAccountEntries(source)[0].stars, '')

@@ -2,7 +2,8 @@
   <section v-if="showChecklist && (!hideEmpty || !ready || loading || error || count || total || unavailableCount || tasks.length || emptyRecords.length)" ref="root" class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
     <header class="todo-heading">
       <h2 id="today-subscriptions-title"><ListChecks :size="19" aria-hidden="true" /> 活动待办</h2>
-      <router-link :to="{ path: '/calendar', query: mineQuery }">查看全部</router-link>
+      <router-link v-if="ready && !count && !tasks.length" :to="{ path: '/calendar' }">去订阅活动<ArrowRight :size="14" aria-hidden="true" /></router-link>
+      <router-link v-else :to="{ path: '/calendar', query: mineQuery }">查看全部<ArrowRight :size="14" aria-hidden="true" /></router-link>
     </header>
     <p v-if="!identity">登录并选择游戏账号后，可查看自己的活动待办。</p>
     <p v-else-if="!accountId">选择游戏账号后，在活动日历订阅你关注的本期活动。</p>
@@ -11,7 +12,7 @@
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
         <p class="todo-scope"><template v-if="pendingTasks"><strong>{{ pendingTasks }}</strong> 项待办未完成</template><template v-else>来自已订阅活动的待办清单</template></p>
-        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办，去日历订阅活动并添加清单。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅后还需自行添加待办清单。' }}</p>
+        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办。在活动日历订阅活动并添加清单后，会显示在这里。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅后还需自行添加待办清单。' }}</p>
         <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>当前范围的清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
         <ul v-if="visibleTasks.length" id="today-todo-list" class="todo-list" :class="{ 'is-expanded': showAll }">
           <li v-for="task in visibleTasks" :key="taskKey(task)" class="todo-row" :class="{ 'is-complete': task.entry.completed }">
@@ -38,7 +39,7 @@
             <button type="button" :disabled="action.busy || loading" @click="readLatest(eventId)">{{ action.busy ? '读取中…' : '读取最新状态' }}</button>
           </div>
         </template>
-        <div class="todo-footer">
+        <div v-if="emptyRecords.length || count || unavailableCount" class="todo-footer">
           <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办</router-link>
           <details class="todo-subscription-status">
             <summary>订阅概况 · {{ count }} 项活动</summary>
@@ -57,7 +58,7 @@
 </template>
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CheckCheck, ChevronRight, ListChecks } from '@lucide/vue'
+import { ArrowRight, CheckCheck, ChevronRight, ListChecks } from '@lucide/vue'
 import TodayHighlights from './TodayHighlights.vue'
 import { aggregateTodayHighlights } from '../../data/todayHighlights.js'
 import { subscriptionCompleted } from '@/data/activityCalendarSubscriptions.js'

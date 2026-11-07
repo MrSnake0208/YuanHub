@@ -1,6 +1,6 @@
 /* Mobile：Checklist 以勾选、来源、截止组成紧凑任务行。 */
 @media not all and (min-width: 768px) {
-  .today-subscriptions { border-top: 3px solid var(--tea); padding: 12px; min-width: 0; border-radius: 12px; }
+  .today-subscriptions { padding: 12px; min-width: 0; border-radius: 12px; }
   .todo-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
   h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; }
   h2 svg { flex: none; }
@@ -25,7 +25,7 @@
   .todo-event-link { display: flex; align-items: center; justify-content: flex-end; max-width: 90px; min-height: 36px; text-align: right; }
   .todo-event-link time { font-size: 11px; line-height: 1.5; color: var(--ink-60); }
   .todo-event-link time.is-urgent { color: var(--theme-danger-text, var(--rouge)); }
-  .todo-heading a, .todo-add { display: inline-flex; align-items: center; min-height: 30px; }
+  .todo-heading a, .todo-add { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; }
   .todo-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; padding-top: 5px; border-top: 1px solid var(--line); }
   .todo-subscription-status { flex: 1; min-width: 0; border: 0; }
   .todo-subscription-status[open] { flex-basis: 100%; }

@@ -97,10 +97,9 @@ it('the export owns its five-column layout without importing editable overview s
   wrapper.unmount()
 })
 
-it('awakened progress stays visible alongside stars', () => {
+it('awakened progress is shown once beside the stars, not as a name badge', () => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ ...xushu, huaji: { owned: true, stage: 25, awakened: true } })] } })
-  expect(wrapper.get('.box-image-name-tab .box-image-awakening').text()).toBe('觉醒')
-  expect(wrapper.get('.box-image-awakening').attributes('aria-hidden')).toBe('true')
+  expect(wrapper.get('.box-image-name-tab').text()).not.toContain('觉醒')
   expect(wrapper.get('h3').text()).toBe(xushu.name)
   expect(wrapper.get('.box-image-huaji-value').text()).toContain('已觉醒')
   expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
@@ -109,9 +108,9 @@ it('awakened progress stays visible alongside stars', () => {
   wrapper.unmount()
 })
 
-it.each([false, null, undefined])('five stars without confirmed awakening (%s) do not show the name badge', awakened => {
+it.each([false, null, undefined])('five stars without confirmed awakening (%s) are not labelled awakened', awakened => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ ...xushu, huaji: { owned: true, stage: 25, awakened } })] } })
-  expect(wrapper.find('.box-image-awakening').exists()).toBe(false)
+  expect(wrapper.get('.box-image-huaji-value').text()).not.toContain('已觉醒')
   expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
   wrapper.unmount()
 })

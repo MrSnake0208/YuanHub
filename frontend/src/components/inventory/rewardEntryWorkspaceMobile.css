@@ -365,7 +365,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-quick-option small { font-size: 12px; overflow-wrap: anywhere; }
 .daily-quick-option input { flex: none; appearance: auto; width: 17px; height: 17px; margin: 0; }
 .daily-quick-option img { flex: none; width: 32px; height: 32px; object-fit: contain; }
-.quick-edit { display: grid; place-items: center; flex: none; width: 34px; min-height: 34px; padding: 4px; border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
+.quick-edit { display: grid; place-items: center; flex: none; width: 44px; min-height: 44px; padding: 4px; border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
 .daily-quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .daily-quick-actions > .primary-button { box-shadow: none; flex: 1 1 100px; min-height: 38px; padding: 8px 12px; white-space: nowrap; }
 .daily-quick-actions .quick-history { min-height: 34px; padding: 5px 0; font-size: 12px; white-space: nowrap; }
@@ -390,6 +390,6 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .home-daily .daily-quick-option label > span { gap: 2px 6px; }
   .home-daily .daily-quick-actions { display: contents; }
   .home-daily .daily-quick-actions > .primary-button { grid-column: 1 / -1; grid-row: 3; min-height: 34px; padding: 5px 10px; }
-  .home-daily .quick-inventory { grid-column: 2; grid-row: 1; font-size: 12px; padding-block: 5px; }
+  .home-daily .quick-inventory { display: inline-flex; align-items: center; justify-content: center; gap: 3px; grid-column: 2; grid-row: 1; font-size: 12px; padding-block: 5px; }
   .home-daily .quick-feedback { grid-column: 1 / -1; margin: 0; }
 }

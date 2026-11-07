@@ -41,12 +41,12 @@ import { ChevronLeft, ChevronRight, Download, Image, Minimize2, ZoomIn } from '@
 import BattleImageSheet from './BattleImageSheet.vue'
 import { battleFileName, battleImageError, buildBattleImageModel } from '../../utils/battleImages.js'
 import { renderBattleImage } from '../../utils/battleImageCapture.js'
-const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, roundIndex: { type: Number, default: 0 }, showGenerateButton: { type: Boolean, default: true } })
+const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, roundIndex: { type: Number, default: 0 }, catalog: { type: Array, default: () => [] }, showGenerateButton: { type: Boolean, default: true } })
 const emit = defineEmits(['busy'])
 const busy = ref(false), error = ref(''), images = shallowRef([]), sheetData = shallowRef(null), sheet = ref(null)
 watch(busy, value => emit('busy', value), { flush: 'sync' })
 const measure = ref(null), liveSheet = ref(null), previewWidth = ref(500), previewHeight = ref(700), zoom = ref(false), previewPage = ref(Math.floor(props.roundIndex / 5))
-const liveModel = computed(() => buildBattleImageModel(props.draft))
+const liveModel = computed(() => buildBattleImageModel(props.draft, props.catalog))
 const pageCount = computed(() => Math.max(1, Math.ceil(liveModel.value.rows.length / 5)))
 const previewRows = computed(() => liveModel.value.rows.slice(previewPage.value * 5, previewPage.value * 5 + 5))
 const scale = computed(() => zoom.value ? 1 : Math.min(1, previewWidth.value / 1080))
@@ -79,7 +79,7 @@ async function generate() {
   error.value = battleImageError(props.draft, props.kind)
   if (error.value) return
   const seq = generation, kind = props.kind
-  const model = buildBattleImageModel(props.draft)
+  const model = buildBattleImageModel(props.draft, props.catalog)
   const title = props.draft.title
   const queue = kind === 'team' ? [[]] : Array.from({ length: Math.ceil(model.rows.length / 5) }, (_, index) => model.rows.slice(index * 5, index * 5 + 5))
   busy.value = true
