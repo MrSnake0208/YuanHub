@@ -150,3 +150,8 @@
 .bond-mobile-state, .bond-choice-heading { display: none; }
 .bonds-codex span.bond-mobile-copy { display: none; }
 .bonds-codex .bond-owned-stat small > span { font: inherit; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .is-saving .bond-mobile-state { animation: bond-saving-spin 1s linear infinite; }
+}
+@keyframes bond-saving-spin { to { transform: rotate(360deg); } }

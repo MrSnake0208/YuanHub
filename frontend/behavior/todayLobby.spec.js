@@ -174,7 +174,7 @@ it('失效选择回退默认，读取或写入存储失败仍可使用且不声�
   expect(wrapper.get('.lobby-save-notice').text()).toContain('暂时无法保存')
 })
 
-it('Esc/遮罩取消不保存；立绘失败可更换并恢复图片', async () => {
+it('Esc和关闭按钮取消不保存，遮罩保持打开；立绘失败可更换并恢复图片', async () => {
   const wrapper = render()
   const write = vi.spyOn(Storage.prototype, 'setItem')
   await open(wrapper)
@@ -184,7 +184,11 @@ it('Esc/遮罩取消不保存；立绘失败可更换并恢复图片', async () 
   expect(document.activeElement).toBe(wrapper.get('.lobby-duty button').element)
   await open(wrapper)
   picker().parentElement.click(); await flushPromises()
+  expect(picker()).not.toBeNull()
+  expect(write).not.toHaveBeenCalled()
+  picker().querySelector('[aria-label="关闭值守选择"]').click(); await flushPromises()
   expect(picker()).toBeNull()
+  expect(document.activeElement).toBe(wrapper.get('.lobby-duty button').element)
   expect(write).not.toHaveBeenCalled()
   await wrapper.get('.lobby-portrait img').trigger('error')
   expect(wrapper.get('.lobby-art-error').text()).toContain('立绘暂未加载')

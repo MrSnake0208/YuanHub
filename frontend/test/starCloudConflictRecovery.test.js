@@ -234,9 +234,11 @@ test('a superseded coordinator refuses local callbacks and commands before any r
 test('ordinary PATCH cannot start behind an outstanding OCR rebuild from another page', async () => {
   const f = fixture(); await f.c.enter(f.handle)
   f.storage.setItem('yuanhub.star-rebuild-pending:a', 'other-page-intent')
-  await f.edit(2)
+  assert.equal(f.c.committed({ accountId: 'a', snapshot: local(2) }), false)
+  await tick()
   assert.equal(f.writes.length, 0)
-  assert.ok(f.storage.getItem(f.key))
+  assert.equal(f.storage.getItem(f.key), null)
+  assert.equal(f.storage.getItem('yuanhub.star-rebuild-pending:a'), 'other-page-intent')
   assert.equal(f.c.canReloadCloud(), false)
 })
 

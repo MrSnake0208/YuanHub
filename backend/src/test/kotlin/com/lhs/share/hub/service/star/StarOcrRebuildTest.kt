@@ -136,7 +136,12 @@ class StarOcrRebuildTest {
     @Test fun `resolved pending does not block the next generation`() {
         for (action in listOf("confirm", "discard")) {
             every { pending.findByUserIdAndAccountId("owner", "a") } returns StarPlanInheritancePending(
-                "owner:a", "owner", "a", "source", 4, "scan",
+                "owner:a",
+                "owner",
+                "a",
+                "source",
+                4,
+                "scan",
                 resolution = StarPlanInheritanceResolution("operation", action, "{}", 9),
             )
             assertEquals(5, service.rebuild("owner", "a", request()).state.generation)

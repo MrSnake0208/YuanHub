@@ -24,7 +24,7 @@
 .battle-draft-menu { position: relative; }
 .battle-draft-menu > summary { display: flex; align-items: center; gap: 6px; padding: 9px 12px; list-style: none; border: 1px solid var(--battle-border); border-radius: 6px; }
 .battle-draft-menu > summary::-webkit-details-marker { display: none; }
-.battle-draft-tools { position: absolute; top: calc(100% + 6px); right: 0; z-index: 10; display: grid; gap: 6px; min-width: 150px; padding: 8px; border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); box-shadow: 0 5px 16px rgba(var(--theme-shadow-rgb, 73,59,44), .12); }
+.battle-draft-tools { position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-popover); display: grid; gap: 6px; min-width: 150px; padding: 8px; border: 1px solid var(--battle-border); border-radius: 8px; background: var(--surface); box-shadow: 0 5px 16px rgba(var(--theme-shadow-rgb, 73,59,44), .12); }
 .battle-account-context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .battle-tool .battle-game-field { display: flex; align-items: center; gap: 8px; }
 .battle-game-field select { min-width: 100px; }

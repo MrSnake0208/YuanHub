@@ -32,7 +32,18 @@ class OperatorPlannerValidator(
     ) as ObjectNode
 
     fun workspace(request: ObjectNode): ObjectNode {
-        fields(request, setOf("schema_version", "active_plan_id", "training_levels", "plans", "stamina_sources", "expected_revision", "client_features"))
+        fields(
+            request,
+            setOf(
+                "schema_version",
+                "active_plan_id",
+                "training_levels",
+                "plans",
+                "stamina_sources",
+                "expected_revision",
+                "client_features",
+            ),
+        )
         version(request)
         revision(request)
         if (request.has("client_features")) stringIds(request.path("client_features"), "client_features")

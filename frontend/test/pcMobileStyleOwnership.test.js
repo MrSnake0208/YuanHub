@@ -40,6 +40,7 @@ const globalNamespacedStyles = new Map([
     ['bonds/bonds', /\.bonds?-/],
     ['developers/developerProduct', /\.developer-/],
     ['developers/developers', /\.developer-|\.page-developers|\.document-/],
+    ['tools/battleImages', /\.battle-|\.page-battle-images/],
   ].flatMap(([owner, namespace]) => ['Desktop', 'Mobile'].map(end =>
     [fileURLToPath(new URL(`../src/pages/${owner}${end}.css`, import.meta.url)), namespace])),
 ])

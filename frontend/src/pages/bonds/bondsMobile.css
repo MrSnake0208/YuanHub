@@ -91,8 +91,3 @@
   .bond-search-row { flex-wrap: wrap; }
   .bonds-codex .bond-search { flex: 1 1 180px; }
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  .is-saving .bond-mobile-state { animation: bond-saving-spin 1s linear infinite; }
-}
-@keyframes bond-saving-spin { to { transform: rotate(360deg); } }

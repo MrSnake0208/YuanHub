@@ -51,10 +51,12 @@ class OperatorMatchConnectionMongoTest {
         val barrier = CyclicBarrier(8)
         try {
             val futures = (1..8).map {
-                executor.submit(Callable {
-                    barrier.await(10, TimeUnit.SECONDS)
-                    service.create("owner")
-                })
+                executor.submit(
+                    Callable {
+                        barrier.await(10, TimeUnit.SECONDS)
+                        service.create("owner")
+                    },
+                )
             }
             val results = futures.map { it.get(15, TimeUnit.SECONDS) }
             assertEquals(1, results.toSet().size)

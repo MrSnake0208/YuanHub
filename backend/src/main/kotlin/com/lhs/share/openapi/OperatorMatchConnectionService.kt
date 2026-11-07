@@ -21,7 +21,9 @@ class OperatorMatchConnectionService(
         if (existing != null) return OperatorMatchSecret(existing.id, existing.token)
         // Stable per-user ID makes concurrent creation converge through MongoDB's unique _id.
         val connection = try {
-            repository.insert(OperatorMatchConnection("operator-match:$userId", userId, "ymatch_" + UUID.randomUUID().toString().replace("-", "")))
+            repository.insert(
+                OperatorMatchConnection("operator-match:$userId", userId, "ymatch_" + UUID.randomUUID().toString().replace("-", "")),
+            )
         } catch (error: DuplicateKeyException) {
             repository.findFirstByUserIdOrderByCreatedAtAscIdAsc(userId) ?: throw error
         }

@@ -288,11 +288,16 @@ class StarPlanInheritanceMongoTest {
         for (reason in listOf("pre_ocr_rebuild", "import_data_safety", "restore_local")) {
             val error = assertThrows(InventoryApiException::class.java) {
                 stateService.rebuild(
-                    "owner", "a",
+                    "owner",
+                    "a",
                     StarStateRebuildRequest(
-                        before.generation, before.revision,
+                        before.generation,
+                        before.revision,
                         before.inventory.map { StarInventoryEntryRequest("new-${it.instanceId}", it.kind, it.name, it.quality, it.level) },
-                        emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), reason,
+                        emptyMap(),
+                        StarWorkspaceExperienceRequest(0, 525, 91),
+                        StarWorkspaceBagRequest(3),
+                        reason,
                     ),
                 )
             }
@@ -309,7 +314,12 @@ class StarPlanInheritanceMongoTest {
         // Both source and original generation remain usable, rather than asserting an unrecoverable mismatch.
         service().resolveInheritance("owner", "a", "confirm", request)
         val confirmed = stateService.current("owner", "a")
-        val restored = stateService.restore("owner", "a", request.sourceRecoveryPointId, StarStateRestoreRequest(confirmed.generation, confirmed.revision))
+        val restored = stateService.restore(
+            "owner",
+            "a",
+            request.sourceRecoveryPointId,
+            StarStateRestoreRequest(confirmed.generation, confirmed.revision),
+        )
         assertEquals(confirmed.generation + 1, restored.state.generation)
     }
 
@@ -318,11 +328,16 @@ class StarPlanInheritanceMongoTest {
         service().resolveInheritance("owner", "a", "discard", command)
         val before = stateService.current("owner", "a")
         val rebuilt = stateService.rebuild(
-            "owner", "a",
+            "owner",
+            "a",
             StarStateRebuildRequest(
-                before.generation, before.revision,
+                before.generation,
+                before.revision,
                 before.inventory.map { StarInventoryEntryRequest(it.instanceId, it.kind, it.name, it.quality, it.level) },
-                emptyMap(), StarWorkspaceExperienceRequest(0, 525, 91), StarWorkspaceBagRequest(3), "import_data_safety",
+                emptyMap(),
+                StarWorkspaceExperienceRequest(0, 525, 91),
+                StarWorkspaceBagRequest(3),
+                "import_data_safety",
             ),
         )
         assertEquals(before.generation + 1, rebuilt.state.generation)
