@@ -15,7 +15,10 @@ export const BATTLE_STATS = Object.freeze([
 export const BATTLE_NOTES = Object.freeze([
   ['discs', '携带命盘'], ['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘'], ['stars', '星石 / 辅星'],
 ])
+// 目标色：浅底色作动作块底，深一档的强调色作左侧色条与图例，色相拉开（蓝、琥珀、珊瑚、绿、紫）。
+// 全部打同一目标时整页只是浅底，不会满屏饱和色块；正文在浅底上对比度均高于 9:1。
 export const TARGET_COLORS = ['#dce8f1', '#f6e4bb', '#edd6d0', '#deead6', '#e4dcf0']
+export const TARGET_ACCENTS = ['#5b8db8', '#d4a017', '#c8644f', '#6a9f55', '#8b6cc0']
 const agents = new Map(AGENT_CATALOG.map(agent => [agent.name, agent.id]))
 
 export function battleOperatorId(name) {

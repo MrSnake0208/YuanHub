@@ -65,12 +65,13 @@ async function generate() {
   // 末尾没有动作也没有备注的回合不出图；中间的空回合保留，回合编号不断开。
   const lastUsed = model.rows.findLastIndex(row => row.slots.some(entries => entries.length) || String(row.remark || '').trim())
   const rounds = model.rows.slice(0, lastUsed + 1)
-  const queue = kind === 'team' ? [[]] : Array.from({ length: Math.ceil(rounds.length / 5) }, (_, index) => rounds.slice(index * 5, index * 5 + 5))
+  // 操作图默认一张出完全部回合；只有超出单张像素上限时才对半拆分。
+  const queue = kind === 'team' ? [[]] : [rounds]
   busy.value = true
   try {
     while (queue.length && seq === generation) {
       const rows = queue.shift()
-      sheetData.value = { model, kind, rows, variant: variant.value }
+      sheetData.value = { model, kind, rows, variant: variant.value, partial: rows.length !== rounds.length }
       await nextTick()
       if (seq !== generation) return
       let blob
