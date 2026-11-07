@@ -64,7 +64,6 @@
 .battle-cell-button > span { min-width: 0; overflow-wrap: anywhere; }
 .battle-cell-button > svg { flex-shrink: 0; color: var(--battle-accent); }
 .battle-cell-error { display: block; color: var(--theme-danger-text, var(--rouge)); font-size: 11px; margin: 0 6px 7px; }
-.battle-source-note { padding: 8px!important; font-size: 11px; line-height: 1.7; color: var(--ink-60); }
 .battle-scroll-hint { color: var(--ink-60); font-size: 12px; margin: 9px 0; }
 .battle-tool.battle-dialog-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel, 60); display: grid; place-items: center; padding: 24px; background: var(--theme-overlay, rgba(73, 59, 44, .38)); }
 .battle-dialog { box-sizing: border-box; display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(86dvh, 820px); min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 40px rgba(var(--theme-shadow-rgb, 73,59,44), .18); }
@@ -158,18 +157,33 @@
 .battle-loadout-options small { display: block; margin-top: 4px; overflow-wrap: anywhere; }
 .battle-loadout-options legend > span { margin-left: 4px; color: var(--battle-accent); }
 .battle-tool .battle-loadout-options label.selected { background: var(--battle-selection); border-color: var(--battle-accent); color: var(--ink); }
-.battle-selected-terms { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.battle-selected-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.battle-term-group { min-width: 56px; color: var(--ink-60); font-size: 12px; }
 .battle-selected-terms button { padding: 6px 9px; font-size: 12px; background: var(--cream); text-align: left; }
+.battle-selected-terms button > small { padding: 0 5px; border-radius: 4px; background: var(--battle-selection); color: var(--battle-accent); font-size: 11px; font-weight: 600; }
+.battle-tool .battle-selected-terms button.forbiddenDiscs { color: var(--theme-danger-text, var(--rouge)); }
 .battle-selected-terms svg { flex-shrink: 0; }
-.battle-catalog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 10px; }
-.battle-tool .battle-catalog-terms label { display: flex; align-items: flex-start; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
-.battle-catalog-terms input { margin-top: 2px!important; }
-.battle-catalog-terms strong { color: var(--ink); font-size: 13px; }
-.battle-catalog-terms small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-.battle-tool .battle-catalog-terms label.selected { background: var(--battle-selection); border-color: var(--battle-border); }
-.battle-tool .battle-catalog-terms label.disabled { opacity: .5; cursor: not-allowed; }
-.battle-text-editor { margin-top: 14px; }
-.battle-text-editor > summary { padding-block: 8px; color: var(--battle-accent); }
+.battle-disc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: -4px 0 10px; color: var(--ink-60); font-size: 12px; }
+.battle-disc-legend > span { display: inline-flex; align-items: center; gap: 4px; }
+.battle-disc-legend > .carry, .battle-disc-legend > .required { color: var(--battle-accent); }
+.battle-disc-legend > .forbidden { color: var(--theme-danger-text, var(--rouge)); }
+.battle-catalog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.battle-catalog-terms > li { padding: 9px 10px 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+.battle-disc-term-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.battle-catalog-terms strong { min-width: 0; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.battle-catalog-terms small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.battle-catalog-terms > li:is(.carry, .required) { background: var(--battle-selection); border-color: var(--battle-border); }
+.battle-catalog-terms > li.forbidden { border-color: color-mix(in srgb, var(--theme-danger-text, var(--rouge)) 35%, var(--surface)); }
+.battle-catalog-terms > li.forbidden strong { text-decoration: line-through; text-decoration-color: var(--theme-danger-text, var(--rouge)); }
+/* 三态图标按钮：同一词条只能处于一种状态，再次点击已亮起的状态即取消；名称见图例与读屏标签。 */
+.battle-disc-states { display: flex; flex-shrink: 0; gap: 2px; padding: 2px; border: 1px solid var(--battle-border); border-radius: 7px; background: var(--surface); }
+.battle-tool .battle-disc-states > button { width: 32px; height: 30px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); }
+.battle-tool .battle-disc-states > button[aria-pressed=true] { background: var(--battle-accent); color: var(--surface); }
+.battle-tool .battle-disc-states > button.required[aria-pressed=true] svg { fill: currentColor; }
+.battle-tool .battle-disc-states > button.forbidden[aria-pressed=true] { background: var(--theme-danger-text, var(--rouge)); color: var(--surface); }
+.battle-tool .battle-disc-states > button:disabled { opacity: .35; cursor: not-allowed; }
+.battle-star-unparsed { margin-top: 14px; }
+.battle-star-unparsed ul { margin: 6px 0 8px; padding: 8px 12px 8px 28px; border: 1px solid var(--battle-border); border-radius: 6px; background: var(--cream); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .battle-star-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .battle-star-slots fieldset { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 10px 12px 12px; border: 1px solid var(--battle-border); border-radius: 6px; }
 .battle-star-slots legend { font-size: 13px; font-weight: 600; padding-inline: 6px; }
@@ -228,11 +242,6 @@
 .battle-tool .battle-common-note textarea { min-height: 72px; background: var(--surface); }
 .battle-dialog.battle-export-dialog { width: min(1040px, 100%); height: min(90dvh, 960px); max-height: none; overflow: hidden; }
 .battle-export-dialog > .battle-dialog-header { border-bottom: 1px solid var(--line); }
-.battle-requirement-switch { display: inline-flex; gap: 0; margin-bottom: 4px; border: 1px solid var(--battle-border); border-radius: 6px; overflow: hidden; }
-.battle-tool .battle-requirement-switch > button { border: 0; border-radius: 0; padding: 7px 14px; }
-.battle-tool .battle-requirement-switch > button + button { border-left: 1px solid var(--battle-border); }
-.battle-tool .battle-requirement-switch > button[aria-pressed=true] { background: var(--battle-selection); color: var(--battle-accent); font-weight: 600; }
-.battle-requirement-switch small, .battle-subnav-count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--cream); color: var(--ink-60); font-size: 11px; line-height: 18px; text-align: center; }
 .battle-local-note { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.7; color: var(--ink-60); margin-top: 22px; }
 .battle-local-note svg { flex-shrink: 0; margin-top: 3px; }
 .battle-tool .battle-error { font-size: 13px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.7; }
@@ -241,6 +250,7 @@
 .battle-mobile-dock, .battle-disc-short { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (hover: hover) {
+  .battle-tool .battle-disc-states > button:hover:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); color: var(--battle-accent); }
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }
   .battle-tool .battle-cell-button:hover:not(:disabled) { background: var(--battle-selection); }
 }

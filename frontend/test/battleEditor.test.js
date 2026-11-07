@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { battleStarFields, updateBattleStar, moveBattleAction } from '../src/utils/battleEditor.js'
+import { battleStarFields, updateBattleStar, moveBattleAction, battleStarUnparsed, battleStarWithoutUnparsed, battleStarNameError, battleStarConflicts } from '../src/utils/battleEditor.js'
 import { createBattleDraft } from '../src/utils/battleImages.js'
 import { encodeBattleDraft, decodeBattleDraft } from '../src/utils/battleDraft.js'
 
@@ -22,7 +22,12 @@ test('星石只记名称与等级，按槽位顺序重写，旧完整格式转�
 test('无法可靠识别与重复槽位不被猜测覆盖，非法数据拒绝写入', () => {
   const legacy = '主星1：旧版 · 随意 · 填写\n主星1：太阳 · 40级\n主星1：天府 · 50级'
   assert.equal(battleStarFields(legacy)[0].line, -1)
-  assert.throws(() => updateBattleStar(legacy, 0, 'name', '太阳'), /原文本中整理/)
+  assert.throws(() => updateBattleStar(legacy, 0, 'name', '太阳'), /清除下方无法识别的内容/)
+  // 歧义槽位的唯一修正路径：整体清除无法识别的行后，该槽位恢复可编辑，已识别槽位不受影响。
+  const mixed = '主星2：武曲\n' + legacy
+  assert.deepEqual(battleStarUnparsed(mixed), legacy.split('\n'))
+  assert.equal(battleStarWithoutUnparsed(mixed), '主星2：武曲')
+  assert.equal(updateBattleStar(battleStarWithoutUnparsed(mixed), 0, 'name', '太阳'), '主星1：太阳\n主星2：武曲')
   assert.equal(updateBattleStar(legacy, 1, 'name', '武曲'), '主星2：武曲\n' + legacy)
   assert.throws(() => updateBattleStar('', 0, 'level', '40'), /先填写星石名称/)
   assert.throws(() => updateBattleStar('', 0, 'name', '太阳\n辅星1：错误'), /分隔符/)
@@ -45,4 +50,18 @@ test('全队重排移动单个动作而不覆盖同回合其他密探动作', ()
   assert.equal(moveBattleAction(actions, 0, 3), false)
   assert.equal(moveBattleAction(actions, 0, 1.5), false)
   assert.deepEqual(actions, [original[2], original[0], original[1]])
+})
+
+test('星石佩戴规则：同一密探不能重复，限定从属／属性的星石只能给符合的密探', () => {
+  const yangxiu = { name: '杨修', prof: '阳', subProf: '神纪' }
+  const value = '主星1：武曲\n辅星1：解神'
+  assert.match(battleStarNameError(value, 2, '武曲', yangxiu), /主星1已选择「武曲」/)
+  assert.equal(battleStarNameError(value, 0, '武曲', yangxiu), '')
+  assert.equal(battleStarNameError(value, 1, '天机', yangxiu), '')
+  assert.match(battleStarNameError(value, 1, '紫微', yangxiu), /仅限龙盾从属，杨修不能佩戴/)
+  assert.match(battleStarNameError(value, 4, '天马', yangxiu), /仅限阴属性/)
+  assert.equal(battleStarNameError(value, 4, '擎羊', yangxiu), '')
+  // 图鉴外自定义密探没有从属／属性，不做限制；重复仍然禁止。
+  assert.equal(battleStarNameError(value, 1, '紫微', null), '')
+  assert.deepEqual(battleStarConflicts('主星1：武曲\n主星2：紫微\n主星3：武曲', yangxiu), ['主星2「紫微」仅限龙盾从属', '主星3「武曲」与主星1重复'])
 })

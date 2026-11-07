@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content" class="battle-tool">
       <CompactToolHeader title="配队与操作图">
-        <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，必须／禁用命盘在密探弹窗的“命盘要求”中填写。草稿按站点用户与游戏账号保存在本机，修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
+        <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，命盘在密探弹窗的“命盘”中按词条标记携带、必须或禁用。草稿按站点用户与游戏账号保存在本机，修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
         <template #primary-actions>
           <span class="battle-save-status" role="status">{{ pendingName ? '密探名称尚未确认' : status || '编辑后自动保存到本机' }}</span>
           <button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">

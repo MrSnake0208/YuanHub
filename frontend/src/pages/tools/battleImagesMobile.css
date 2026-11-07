@@ -86,4 +86,6 @@
   .battle-tool .battle-mobile-dock { position: fixed; right: 0; bottom: 0; left: 0; z-index: var(--z-sticky, 40); display: flex; align-items: center; gap: 12px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
   .battle-tool .battle-mobile-dock .battle-save-status { flex: 1; width: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .battle-tool .battle-mobile-dock .battle-primary { flex-shrink: 0; min-height: 44px; padding-inline: 16px; font-size: 14px; }
+  /* 命盘三态图标按钮满足手机 44px 触控热区。 */
+  .page-battle-images .battle-disc-states > button[type] { width: 44px; height: 44px; }
 }

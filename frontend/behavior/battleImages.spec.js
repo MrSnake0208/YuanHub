@@ -100,7 +100,7 @@ it('清空槽位取消后保留配置，确认后保留动作但禁止缺人出�
   await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
   expect(wrapper.get('#battle-member-detail [aria-pressed="true"]').text()).toBe('练度')
   // 页签只保留配置项；更换入口在头像上，清空槽位与重新带入同属整位密探操作。
-  expect(wrapper.findAll('#battle-member-detail .battle-subnav button').map(item => item.text())).toEqual(['练度', '携带命盘', '星石'])
+  expect(wrapper.findAll('#battle-member-detail .battle-subnav button').map(item => item.text())).toEqual(['练度', '命盘', '星石'])
   dialog.confirm.mockResolvedValueOnce(false)
   await button(wrapper, '清空该槽位').trigger('click'); await flushPromises()
   expect(wrapper.get('[aria-label="1号位生命"]').element.value).toBe('200')
@@ -234,19 +234,22 @@ it('编辑第六回合时预览跟随到第二段，仍可前后查看并放大'
   expect(wrapper.get('.battle-preview-transform').attributes('style')).not.toContain('scale(1)')
 })
 
-it('手填超限不覆盖已保存草稿，阻止草稿导出和两种出图，修正后恢复保存与生成', async () => {
-  const wrapper = page()
-  await chooseBattleMember(wrapper, '贾诩', 1)
-  const input = await battleField(wrapper, '携带命盘')
-  const valid = '冷酷毒计\n初始能量+2\n技能伤害大幅增加'
-  await input.setValue(valid)
-  const key = battleDraftKey('', ''), saved = localStorage.getItem(key)
-  await input.setValue(valid + '\n抽到吉时伤害提升')
-  expect(input.attributes('aria-invalid')).toBe('true')
-  expect(wrapper.get('#battle-disc-hint-discs').text()).toContain('当前 4 项')
-  expect(localStorage.getItem(key)).toBe(saved)
+const savedOperator = () => decodeBattleDraft(localStorage.getItem(battleDraftKey('', ''))).operators[0]
+const removeTerm = (wrapper, label, index) => wrapper.get(`[aria-label^="移除${label}第${index}项："]`).trigger('click')
+
+it('超限命盘草稿不覆盖已保存内容，阻止草稿导出和两种出图，移除多余词条后恢复保存与生成', async () => {
+  const draft = createBattleDraft()
+  draft.operators[0].name = '贾诩'
+  draft.operators[0].discs = '冷酷毒计\n初始能量+2\n技能伤害大幅增加\n抽到吉时伤害提升'
+  const key = battleDraftKey('', ''), raw = JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft })
+  localStorage.setItem(key, raw)
+  const wrapper = page(); await flushPromises()
+  await battleField(wrapper, '携带命盘')
+  expect(wrapper.get('#battle-member-detail .battle-error').text()).toContain('当前 4 项')
+  expect(localStorage.getItem(key)).toBe(raw)
   await button(wrapper, '导出草稿').trigger('click')
   expect(wrapper.text()).toContain('最多 3 项')
+  expect(wrapper.text()).toContain('草稿未导出')
   expect(URL.createObjectURL).not.toHaveBeenCalled()
   await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
   await button(wrapper, '操作表').trigger('click'); await battleCell(wrapper)
@@ -256,13 +259,10 @@ it('手填超限不覆盖已保存草稿，阻止草稿导出和两种出图，�
   dialog.confirm.mockResolvedValueOnce(false)
   expect(await hooks.leave()).toBe(false)
   await button(wrapper, '配队表').trigger('click')
-  await input.setValue('冷酷毒计\n 冷酷毒计 ')
-  expect(wrapper.get('#battle-disc-hint-discs').text()).toContain('不能重复')
-  expect(localStorage.getItem(key)).toBe(saved)
-  await input.setValue(valid)
-  expect(input.attributes('aria-invalid')).toBe('false')
+  await battleField(wrapper, '携带命盘')
+  await removeTerm(wrapper, '携带命盘', 4)
   expect(wrapper.text()).not.toContain('携带命盘最多 3 项')
-  expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].discs).toBe(valid)
+  expect(savedOperator().discs).toBe('冷酷毒计\n初始能量+2\n技能伤害大幅增加')
   expect(hooks.leave()).toBe(true)
   await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
   expect(renderBattleImage).toHaveBeenCalledTimes(1)
@@ -275,35 +275,64 @@ it('旧版六词条草稿完整恢复，修正前保留原文且不能生成', a
   const key = battleDraftKey('', ''), raw = JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft })
   localStorage.setItem(key, raw)
   const wrapper = page(); await flushPromises()
-  expect((await battleField(wrapper, '携带命盘')).element.value).toBe(draft.operators[0].discs)
+  await battleField(wrapper, '携带命盘')
+  expect(wrapper.findAll('.battle-selected-terms button').map(item => item.text())).toEqual(['甲', '乙', '丙', '丁', '戊', '己'])
   expect(wrapper.text()).toContain('当前 6 项')
   expect(localStorage.getItem(key)).toBe(raw)
   await button(wrapper, '生成配队图').trigger('click'); await flushPromises()
   expect(renderBattleImage).not.toHaveBeenCalled()
-  await wrapper.get('[aria-label="1号位携带命盘"]').setValue('甲\n乙\n丙')
-  expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].discs).toBe('甲\n乙\n丙')
+  for (let index = 6; index > 3; index -= 1) await removeTerm(wrapper, '携带命盘', index)
+  expect(savedOperator().discs).toBe('甲\n乙\n丙')
 })
 
-it('图鉴最多追加三个携带词条，删除后可换词条，必须与禁用要求不受携带数量限制', async () => {
+it('命盘按词条标记携带、必须或禁用：携带最多三项，必须属于携带，禁用不计入且与携带互斥', async () => {
   const names = ['冷酷毒计', '初始能量+2', '技能伤害大幅增加', '抽到吉时伤害提升']
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_002_jiaxu', name: '贾诩', games: ['如鸢'], discs: names.map(ot_name => ({ ot_name })) }] })
   const wrapper = page(); await flushPromises()
   await chooseBattleMember(wrapper, '贾诩', 1)
-  const input = await battleField(wrapper, '携带命盘')
-  for (const name of names.slice(0, 3)) await wrapper.get(`[aria-label="携带命盘：${name}"]`).setValue(true)
-  expect(input.element.value).toBe(names.slice(0, 3).join('\n'))
-  expect(wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).attributes('disabled')).toBeDefined()
-  await wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).trigger('click')
-  expect(input.element.value).toBe(names.slice(0, 3).join('\n'))
-  await input.setValue(names.slice(0, 2).join('\n'))
-  expect(wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).attributes('disabled')).toBeUndefined()
-  await wrapper.get(`[aria-label="携带命盘：${names[3]}"]`).setValue(true)
-  expect(input.element.value).toBe([names[0], names[1], names[3]].join('\n'))
-  for (const [field, label] of [['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]) {
-    await battleField(wrapper, label)
-    for (const name of names) await wrapper.get(`[aria-label="${label}：${name}"]`).setValue(true)
-    expect(wrapper.get(`[aria-label="1号位${label}"]`).element.value).toBe(names.join('\n'))
-  }
+  await battleField(wrapper, '携带命盘')
+  expect(wrapper.find('#battle-member-detail textarea').exists()).toBe(false)
+  expect(wrapper.findAll('.battle-subnav button').map(item => item.text())).toEqual(['练度', '命盘', '星石'])
+  const pick = (state, name) => wrapper.get(`[aria-label="${state}命盘：${name}"]`)
+  await pick('携带', names[0]).trigger('click')
+  await pick('必须', names[1]).trigger('click')
+  await pick('携带', names[2]).trigger('click')
+  expect(savedOperator().discs).toBe(names.slice(0, 3).join('\n'))
+  expect(savedOperator().requiredDiscs).toBe(names[1])
+  expect(pick('携带', names[3]).attributes('disabled')).toBeDefined()
+  expect(pick('必须', names[3]).attributes('disabled')).toBeDefined()
+  await pick('禁用', names[3]).trigger('click')
+  expect(savedOperator().forbiddenDiscs).toBe(names[3])
+  expect(savedOperator().discs).toBe(names.slice(0, 3).join('\n'))
+  // 禁用一个携带中的必须项：同时移出携带与必须，腾出携带位。
+  await pick('禁用', names[1]).trigger('click')
+  expect(savedOperator()).toMatchObject({ discs: [names[0], names[2]].join('\n'), requiredDiscs: '', forbiddenDiscs: [names[3], names[1]].join('\n') })
+  expect(pick('携带', names[3]).attributes('disabled')).toBeUndefined()
+  // 再点亮起的必须只取消要求，仍保留携带；移除携带项时一并取消必须。
+  await pick('必须', names[0]).trigger('click')
+  expect(savedOperator().requiredDiscs).toBe(names[0])
+  await pick('必须', names[0]).trigger('click')
+  expect(savedOperator()).toMatchObject({ discs: [names[0], names[2]].join('\n'), requiredDiscs: '' })
+  await pick('必须', names[2]).trigger('click')
+  await removeTerm(wrapper, '携带命盘', 2)
+  expect(savedOperator()).toMatchObject({ discs: names[0], requiredDiscs: '' })
+})
+
+it('旧草稿中必须未携带、禁用仍携带的冲突只提示不改写，可在命盘分区修正', async () => {
+  const draft = createBattleDraft()
+  Object.assign(draft.operators[0], { name: '贾诩', discs: '甲\n乙', requiredDiscs: '丙', forbiddenDiscs: '乙' })
+  const key = battleDraftKey('', ''), raw = JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft })
+  localStorage.setItem(key, raw)
+  const wrapper = page(); await flushPromises()
+  await battleField(wrapper, '携带命盘')
+  expect(wrapper.text()).toContain('「丙」标为必须但未携带')
+  expect(wrapper.text()).toContain('「乙」标为禁用却仍在携带')
+  expect(localStorage.getItem(key)).toBe(raw)
+  await removeTerm(wrapper, '必须命盘', 1)
+  await removeTerm(wrapper, '携带命盘', 2)
+  expect(wrapper.text()).not.toContain('标为必须但未携带')
+  expect(wrapper.text()).not.toContain('标为禁用却仍在携带')
+  expect(savedOperator()).toMatchObject({ discs: '甲', requiredDiscs: '', forbiddenDiscs: '乙' })
 })
 
 it('表格按槽位编辑多动，重排是全队移动而非覆盖，非法顺序保留原数据', async () => {
@@ -332,6 +361,24 @@ it('表格按槽位编辑多动，重排是全队移动而非覆盖，非法顺�
   expect(saved()[2].slot).toBe(1)
 })
 
+it('旧草稿中的重复、违规或图鉴外星石保留为当前值并标注，改选后才写入', async () => {
+  const draft = createBattleDraft()
+  draft.operators[0].name = '杨修'; draft.operators[0].stars = '主星1：武曲\n主星2：紫微\n主星3：武曲\n辅星1：自造星'
+  const key = battleDraftKey('', ''), raw = JSON.stringify({ format: 'yuanhub-battle-draft', version: 1, draft })
+  localStorage.setItem(key, raw)
+  const wrapper = page(); await flushPromises()
+  await battleField(wrapper, '星石 / 辅星')
+  expect(wrapper.text()).toContain('主星2「紫微」仅限龙盾从属；主星3「武曲」与主星1重复')
+  const current = label => wrapper.get(`[aria-label="${label}名称"]`).find('option:checked').text()
+  expect(current('主星2')).toBe('紫微（不符合佩戴规则）')
+  expect(current('主星3')).toBe('武曲（不符合佩戴规则）')
+  expect(current('辅星1')).toBe('自造星（图鉴外）')
+  expect(localStorage.getItem(key)).toBe(raw)
+  await wrapper.get('[aria-label="主星3名称"]').setValue('天府')
+  expect(decodeBattleDraft(localStorage.getItem(key)).operators[0].stars).toBe('主星1：武曲\n主星2：紫微\n主星3：天府\n辅星1：自造星')
+  expect(wrapper.text()).not.toContain('与主星1重复')
+})
+
 it('星石六槽位使用现有草稿文本，旧说明不丢失，超限输入不能覆盖原值', async () => {
   const draft = createBattleDraft()
   draft.operators[0].name = '杨修'; draft.operators[0].stars = '原作者说明：未填写不等于零'
@@ -352,6 +399,16 @@ it('星石六槽位使用现有草稿文本，旧说明不丢失，超限输入�
   expect(saved()).toBe(before)
   expect(wrapper.get('[aria-label="主星1等级"]').element.value).toBe('40')
   expect(wrapper.text()).toContain('非负整数')
+  // 名称只能下拉选择：已被其它槽位选中的太阳、杨修（神纪）不能佩戴的紫微都不在候选中。
+  const select = wrapper.get('[aria-label="主星2名称"]')
+  expect(select.element.tagName).toBe('SELECT')
+  const options = select.findAll('option').map(option => option.text())
+  expect(options[0]).toBe('未选择')
+  expect(options).not.toContain('太阳'); expect(options).not.toContain('紫微'); expect(options).toContain('天机')
+  await select.setValue('天机')
+  expect(saved()).toBe('主星1：太阳 · 40级\n主星2：天机\n辅星3：文曲\n原作者说明：未填写不等于零')
+  await select.setValue('')
+  expect(saved()).toBe(before)
   // 表格只显示“星名+等级”，完整槽位描述保留在 title 中。
   expect(wrapper.get('[aria-label="编辑1号位主星"]').text()).toBe('太阳40')
   const support = wrapper.get('[aria-label="编辑1号位辅星"] span')
@@ -389,7 +446,7 @@ it('选人可搜索别名、按来源筛选，打开和关闭编辑弹窗恢复�
   wrapper.unmount()
 })
 
-it('草稿菜单选择后、点外部或按 Esc 收起；导出文件名带标题，命盘错误就近提示', async () => {
+it('草稿菜单选择后、点外部或按 Esc 收起；导出文件名带标题', async () => {
   const wrapper = page()
   const menu = wrapper.get('.battle-draft-menu').element
   menu.open = true
@@ -408,10 +465,6 @@ it('草稿菜单选择后、点外部或按 Esc 收起；导出文件名带标�
   expect(menu.open).toBe(false)
   expect(downloaded).toBe('YuanHub-主线 7-12-配队草稿.json')
   click.mockRestore()
-  const input = await battleField(wrapper, '携带命盘')
-  await input.setValue('甲\n乙\n丙\n丁')
-  await button(wrapper, '导出草稿').trigger('click')
-  expect(wrapper.get('.battle-error').text()).toContain('草稿未导出')
   wrapper.unmount()
 })
 

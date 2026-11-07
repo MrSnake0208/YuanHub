@@ -1,6 +1,7 @@
 <template>
   <div class="battle-star-editor">
-    <p class="battle-hint">等级未知可留空；仅修改本攻略，不会自动重算生命与攻击。</p>
+    <p class="battle-hint">等级未知可留空；同一密探的星石不能重复，部分星石仅限指定从属或属性。仅修改本攻略，不会自动重算生命与攻击。</p>
+    <p v-if="conflicts.length" role="alert" class="battle-error">当前配置不符合佩戴规则：{{ conflicts.join('；') }}。请更换或清空对应槽位。</p>
     <!-- 主星、辅星各一组，列标题只出现一次；每个输入仍有独立的可访问名称。 -->
     <div class="battle-star-slots">
       <fieldset v-for="group in groups" :key="group.kind">
@@ -8,32 +9,56 @@
         <div class="battle-star-row battle-star-head" aria-hidden="true"><span></span><span>名称</span><span>等级</span></div>
         <div v-for="{ star, index } in group.items" :key="star.label" class="battle-star-row">
           <span class="battle-star-index" aria-hidden="true">{{ index % 3 + 1 }}</span>
-          <input :value="star.name" :list="index < 3 ? 'battle-main-stars' : 'battle-support-stars'" :aria-label="star.label + '名称'" maxlength="30" placeholder="选择或输入" @input="update(index, 'name', $event)">
+          <select :value="star.name" :aria-label="star.label + '名称'" @change="update(index, 'name', $event)">
+            <option value="">未选择</option>
+            <option v-if="star.name && !options[index].includes(star.name)" :value="star.name">{{ star.name }}（{{ legacyNote(star.name) }}）</option>
+            <option v-for="name in options[index]" :key="name" :value="name">{{ name }}</option>
+          </select>
           <input :value="star.level" inputmode="numeric" :aria-label="star.label + '等级'" maxlength="3" placeholder="未知" @input="update(index, 'level', $event)">
         </div>
       </fieldset>
     </div>
     <p v-if="error" role="alert" class="battle-error">{{ error }}</p>
-    <p v-if="unparsed" class="battle-hint">部分原文本无法按槽位识别，已完整保留；可在下方查看和编辑。</p>
-    <details class="battle-text-editor"><summary>原文本 / 其他说明</summary><label>星石原文本<textarea :value="modelValue" :aria-label="`${slot + 1}号位星石 / 辅星`" rows="4" maxlength="300" @input="emit('update:modelValue', $event.target.value)"></textarea></label></details>
-    <datalist id="battle-main-stars"><option v-for="name in MAIN_STAR_OPTIONS" :key="name">{{ name }}</option></datalist>
-    <datalist id="battle-support-stars"><option v-for="name in ASSIST_STAR_OPTIONS" :key="name">{{ name }}</option></datalist>
+    <!-- 旧草稿中无法按槽位识别的内容只读展示并原样保留（配队表“星石其他说明”行、出图辅星下方仍会显示），可整体清除，不提供自由文本编辑。 -->
+    <div v-if="unparsed.length" class="battle-star-unparsed">
+      <p class="battle-hint">以下内容无法按槽位识别，已原样保留，配队表与出图中仍会显示：</p>
+      <ul><li v-for="(line, index) in unparsed" :key="index">{{ line }}</li></ul>
+      <button type="button" class="battle-danger-text" @click="clearUnparsed">清除这些内容</button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS } from '../../data/starCatalog.js'
-import { battleStarFields, updateBattleStar } from '../../utils/battleEditor.js'
-const props = defineProps({ modelValue: { type: String, default: '' }, slot: { type: Number, required: true } })
+import { battleStarConflicts, battleStarFields, battleStarNameError, battleStarUnparsed, battleStarWithoutUnparsed, updateBattleStar } from '../../utils/battleEditor.js'
+import { dialog } from '../../utils/dialog.js'
+const props = defineProps({ modelValue: { type: String, default: '' }, slot: { type: Number, required: true }, agent: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue'])
 const slots = computed(() => battleStarFields(props.modelValue)), error = ref('')
 const groups = computed(() => ['主星', '辅星'].map((kind, group) => ({ kind, items: slots.value.slice(group * 3, group * 3 + 3).map((star, offset) => ({ star, index: group * 3 + offset })) })))
-const unparsed = computed(() => props.modelValue.split('\n').some((line, index) => line.trim() && !slots.value.some(star => star.line === index)))
+const unparsed = computed(() => battleStarUnparsed(props.modelValue))
+const conflicts = computed(() => battleStarConflicts(props.modelValue, props.agent))
+// 名称只能从图鉴下拉选择：每个槽位只列出可选的星石，排除其它槽位已选和该密探不能佩戴的。
+// 旧草稿里的图鉴外名称或违规星石仍作为当前值显示并标注，改选其它项后不能再选回。
+const options = computed(() => slots.value.map((star, index) => (index < 3 ? MAIN_STAR_OPTIONS : ASSIST_STAR_OPTIONS).filter(name => !battleStarNameError(props.modelValue, index, name, props.agent))))
 watch(() => props.slot, () => { error.value = '' })
+const legacyNote = name => ([...MAIN_STAR_OPTIONS, ...ASSIST_STAR_OPTIONS].includes(name) ? '不符合佩戴规则' : '图鉴外')
+async function clearUnparsed() {
+  const value = props.modelValue
+  if (!await dialog.confirm({ title: '清除无法识别的星石内容？', message: `将删除 ${unparsed.value.length} 行无法按槽位识别的内容，已识别的六个槽位保留。`, type: 'danger', confirmText: '清除内容' })) return
+  // 确认期间内容已变化（如切换槽位或继续编辑）时不覆盖。
+  if (props.modelValue !== value) return
+  error.value = ''
+  emit('update:modelValue', battleStarWithoutUnparsed(value))
+}
 function update(index, field, event) {
   error.value = ''
-  try { emit('update:modelValue', updateBattleStar(props.modelValue, index, field, event.target.value)) }
+  try {
+    const rule = field === 'name' ? battleStarNameError(props.modelValue, index, event.target.value, props.agent) : ''
+    if (rule) throw new Error(rule + '原内容未改。')
+    emit('update:modelValue', updateBattleStar(props.modelValue, index, field, event.target.value))
+  }
   catch (reason) { error.value = reason.message; event.target.value = slots.value[index][field] }
 }
 </script>

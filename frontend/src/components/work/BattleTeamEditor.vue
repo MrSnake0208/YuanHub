@@ -27,7 +27,6 @@
             <button type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位${kind}`" :aria-expanded="detail === 'stars' && slot === index" aria-controls="battle-member-detail" @click="open(index, 'stars', $event)"><span :title="battleStarSummary(member.stars, kind) || undefined">{{ starLabels(member.stars, kind) || (member.name ? '选择' : '—') }}</span><Pencil v-if="member.name" :size="13" aria-hidden="true" /></button>
           </td></tr>
           <tr v-if="operators.some(member => otherStars(member.stars))"><th scope="row">星石其他说明</th><td v-for="(member, index) in operators" :key="index"><button type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位星石说明`" @click="open(index, 'stars', $event)">{{ otherStars(member.stars) || '—' }}</button></td></tr>
-          <tr v-if="operators.some(member => member.panelNote)"><th scope="row">面板来源</th><td v-for="(member, index) in operators" :key="index" class="battle-source-note">{{ member.panelNote || (member.name ? '手动填写' : '—') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -55,7 +54,7 @@
           </div>
           <div v-else-if="operator.name" class="battle-config-tools">
             <nav class="battle-subnav" aria-label="配置内容">
-              <button v-for="[key, label] in SECTIONS" :key="key" type="button" :aria-pressed="key === 'requiredDiscs' ? isRequirement : detail === key" @click="open(slot, key === 'requiredDiscs' && isRequirement ? detail : key)">{{ label }}<small v-if="key === 'requiredDiscs' && requirementCount(operator)" class="battle-subnav-count">{{ requirementCount(operator) }}</small></button>
+              <button v-for="[key, label] in SECTIONS" :key="key" type="button" :aria-pressed="detail === key" @click="open(slot, key)">{{ label }}</button>
             </nav>
             <div class="battle-member-actions">
               <button v-if="savedMember" type="button" :disabled="busy" @click="importMember">重新带入账号配置</button>
@@ -64,21 +63,15 @@
           </div>
           <div class="battle-dialog-body">
             <BattleMemberPicker v-if="detail === 'picker'" :key="slot" :slot="slot" :agents="sortedAgents" :account-entries="accountEntries" :team="operators" :busy="busy" @choose="choose" @pending-name="setPending" />
-            <!-- 面板来源只在练度页说明一次，紧邻生命与攻击；表格“面板来源”行仍常驻显示。 -->
+            <!-- 面板来源只在练度页说明，紧邻生命与攻击；配队表不再常驻“面板来源”行。 -->
             <BattleStatFields v-else-if="detail === 'stats'" :operator="operator" :agent="catalogAgent" @change="updateField" />
             <template v-else>
               <fieldset v-if="detail === 'discs' && operator.discLoadouts?.length" class="battle-loadout-options">
                 <legend>带入的命盘组合<span v-if="activeLoadout(operator) < 0">（当前命盘已手动调整）</span></legend>
                 <label v-for="(loadout, index) in operator.discLoadouts" :key="index" :class="{ selected: activeLoadout(operator) === index }"><input ref="loadoutInputs" type="radio" name="battle-disc-loadout" :value="index" :checked="activeLoadout(operator) === index" :aria-label="`带入命盘组合${index + 1}`" @change="selectLoadout(index)"><span>{{ loadoutTitle(loadout, index) }}<small>{{ loadout.discNames.join('、') || '未带命盘' }}</small></span></label>
               </fieldset>
-              <template v-if="isRequirement">
-                <div class="battle-requirement-switch" role="group" aria-label="命盘要求类型">
-                  <button v-for="[key, label] in REQUIREMENTS" :key="key" type="button" :aria-pressed="detail === key" @click="open(slot, key)">{{ label }}<small>{{ battleDiscNames(operator[key]).length }}</small></button>
-                </div>
-                <p class="battle-hint">写入攻略图片，提示读者该密探必须携带或不要携带的命盘；可选填，不受携带三项限制。</p>
-              </template>
-              <BattleStarEditor v-if="detail === 'stars'" :key="slot" :model-value="operator.stars" :slot="slot" @update:model-value="updateField('stars', $event)" />
-              <BattleDiscEditor v-else :key="slot + detail" :operator="operator" :slot="slot" :catalog="discTerms" :field="detail" @change="updateField" />
+              <BattleStarEditor v-if="detail === 'stars'" :key="slot" :model-value="operator.stars" :slot="slot" :agent="starAgent" @update:model-value="updateField('stars', $event)" />
+              <BattleDiscEditor v-else :key="slot" :operator="operator" :slot="slot" :catalog="discTerms" @change="updateField" />
             </template>
           </div>
           <footer class="battle-dialog-footer">
@@ -117,11 +110,8 @@ const sortedAgents = computed(() => {
 const slot = ref(0), detail = ref(''), returnSection = ref('stats'), heading = ref(null), busy = ref(false), loadoutInputs = ref([]), namePending = ref(false)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const operator = computed(() => props.operators[slot.value])
-// 必须／禁用命盘是攻略要求，归入单个密探的配置弹窗，不在页面表格常驻。
-const SECTIONS = [['stats', '练度'], ['discs', '携带命盘'], ['stars', '星石'], ['requiredDiscs', '命盘要求']]
-const REQUIREMENTS = [['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘']]
-const isRequirement = computed(() => REQUIREMENTS.some(([key]) => key === detail.value))
-const requirementCount = member => battleDiscNames(member.requiredDiscs).length + battleDiscNames(member.forbiddenDiscs).length
+// 携带、必须、禁用是同一批命盘的不同状态，合并在“命盘”分区按词条标记；必须／禁用不在页面表格常驻。
+const SECTIONS = [['stats', '练度'], ['discs', '命盘'], ['stars', '星石']]
 const panel = ref(null), dialogOpen = computed(() => Boolean(detail.value))
 // 遮罩点击不关闭；Esc 与“完成”走同一关闭流程，未确认的自定义名称仍需确认。
 useModalFocus(dialogOpen, panel, { initialFocus: () => heading.value, onEscape: () => close() })
@@ -133,6 +123,12 @@ watch(dialogOpen, (isOpen, _, onCleanup) => {
 }, { immediate: true })
 const catalogAgent = computed(() => sortedAgents.value.find(agent => agent.id === operator.value.id || agent.name === operator.value.name) || null)
 const discTerms = computed(() => catalogAgent.value?.discs || [])
+// 星石佩戴限制按从属／属性判断；在线图鉴缺这两项时用本地图鉴补齐，图鉴外自定义密探不限制。
+const starAgent = computed(() => {
+  const local = AGENT_CATALOG.find(agent => agent.id === operator.value.id || agent.name === operator.value.name), remote = catalogAgent.value
+  if (!local && !remote) return null
+  return { ...local, ...remote, prof: remote?.prof || local?.prof, subProf: remote?.subProf || remote?.sub_prof || local?.subProf }
+})
 const savedMember = computed(() => props.accountEntries.find(entry => entry.id === operator.value.id))
 // 手机表格列宽有限，命盘用图鉴简称逐行显示；完整名称仍在桌面表格与编辑弹窗中。
 const discShort = member => battleDiscTerms(member.discs, sortedAgents.value.find(agent => agent.id === member.id || agent.name === member.name)?.discs || []).map(term => term.label).join('\n')
@@ -211,7 +207,7 @@ function markPanelEdited(member) {
 function updateField(field, value) { operator.value[field] = value; markPanelEdited(operator.value) }
 async function setMember(index, next) {
   const previous = props.operators[index], signature = JSON.stringify(previous), game = props.game
-  if (previous.name && !await dialog.confirm({ title: '更换密探或配装？', message: '该槽位的练度、携带命盘、命盘要求和星石将替换，已记录的槽位动作保留。不会修改账号档案。', confirmText: '替换槽位' })) return false
+  if (previous.name && !await dialog.confirm({ title: '更换密探或配装？', message: '该槽位的练度、命盘（携带／必须／禁用）和星石将替换，已记录的槽位动作保留。不会修改账号档案。', confirmText: '替换槽位' })) return false
   if (!alive || props.game !== game || props.operators[index] !== previous || JSON.stringify(previous) !== signature) return false
   emit('replace', index, next)
   return true
@@ -247,9 +243,16 @@ async function selectLoadout(index) {
   const active = activeLoadout(member)
   loadoutInputs.value.forEach(input => { input.checked = Number(input.value) === active })
   if (index === active) return
-  if (!await dialog.confirm({ title: '带入命盘组合？', message: '仅替换本攻略的携带命盘，必须／禁用要求保留。', confirmText: '带入组合' })) return
+  // 必须命盘只能是携带项：不在新组合里的必须要求随之取消；组合中被标为禁用的词条改为携带。
+  const names = battleDiscNames(member.discLoadouts[index].discNames.join('\n'))
+  const dropped = battleDiscNames(member.requiredDiscs).filter(name => !names.includes(name))
+  const unforbid = battleDiscNames(member.forbiddenDiscs).filter(name => names.includes(name))
+  const notes = [dropped.length && `必须要求「${dropped.join('、')}」不在该组合中，将一并取消`, unforbid.length && `「${unforbid.join('、')}」将取消禁用标记`].filter(Boolean)
+  if (!await dialog.confirm({ title: '带入命盘组合？', message: `仅替换本攻略的携带命盘${notes.length ? '；' + notes.join('；') : '，其余必须／禁用要求保留'}。`, confirmText: '带入组合' })) return
   if (!alive || props.game !== game || operator.value !== member || JSON.stringify(member) !== signature) return
-  member.discIndex = index; member.discs = member.discLoadouts[index].discNames.join('\n')
+  member.discIndex = index; member.discs = names.join('\n')
+  member.requiredDiscs = battleDiscNames(member.requiredDiscs).filter(name => names.includes(name)).join('\n')
+  member.forbiddenDiscs = battleDiscNames(member.forbiddenDiscs).filter(name => !names.includes(name)).join('\n')
   markPanelEdited(member)
 }
 function revealDiscError() {
