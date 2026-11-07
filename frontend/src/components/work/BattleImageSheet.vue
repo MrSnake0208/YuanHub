@@ -29,7 +29,7 @@
           </template>
           <template v-else-if="row.type === 'disc'"><em v-for="term in operator.discTerms[row.key]" :key="term.name" class="box-image-term" :class="discClass[term.color]"><span>{{ term.label }}</span></em></template>
           <template v-else>
-            <em v-for="(stone, slot) in operator.starStones[row.key].filter(Boolean)" :key="slot" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}</small></em>
+            <em v-for="(stone, slot) in operator.starStones[row.key].filter(Boolean)" :key="slot" class="team-card-stone"><span>{{ stone.name }}</span><small v-if="stone.label.length > stone.name.length">{{ stone.label.slice(stone.name.length) }}级</small></em>
             <span v-if="row.key === 'support' && operator.starStones.other.length" class="team-card-note">{{ operator.starStones.other.join('\n') }}</span>
           </template>
         </div>
@@ -156,8 +156,10 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .team-card-stars { display: inline-flex; align-items: center; gap: 2px; height: 30px; } .team-card-stars img { display: block; width: 22px; height: 22px; }
 .team-card-cell.huaji small { font: 500 19px/26px var(--font-s, serif); letter-spacing: 1px; color: #8a5a2b; }
 .team-card-cell.huaji .team-card-awakened { letter-spacing: 3px; color: #8f5f12; }
-.team-card-stone { display: flex; align-items: baseline; justify-content: center; gap: 2px; width: 100%; min-width: 0; font: 500 22px/30px var(--font-s, serif); font-style: normal; color: #3e3023; white-space: nowrap; overflow: hidden; }
-.team-card-stone > small { font: 500 17px/1 var(--font-s, serif); color: #8a5a2b; font-variant-numeric: tabular-nums; }
+/* 星石等级与名称同字号、同基线，隔约 1/4 字宽并带“级”（七杀 8级），只用字色区分；缩小后紧贴名称会被读成角标。
+   手填长名放不下时等级整体折到下一行，不被裁掉。 */
+.team-card-stone { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 6px; width: 100%; min-width: 0; font: 500 22px/30px var(--font-s, serif); font-style: normal; color: #3e3023; white-space: nowrap; overflow: hidden; }
+.team-card-stone > small { font: inherit; color: #8a5a2b; font-variant-numeric: tabular-nums; }
 .box-image-term > span { flex: none; display: inline-block; transform-origin: center; }
 /* 命盘词条不加底色和描边，只用字色区分金/紫/蓝品质（在两种行底色上都不低于 4.5:1）；图鉴外词条用正文色。 */
 .team-card-cell .box-image-term { display: flex; justify-content: center; max-width: 100%; min-width: 0; font: 500 22px/30px var(--font-s, serif); font-style: normal; color: #3e3023; white-space: nowrap; overflow: hidden; }

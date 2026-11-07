@@ -59,7 +59,14 @@ class OperatorMatchServiceTest {
         val created = connections.create("owner")
         assertTrue(created.token.matches(Regex("ymatch_[a-f0-9]{32}")))
         verify { beta.requireAccess("owner") }
-        verify { repository.insert(match<OperatorMatchConnection> { it.userId == "owner" && it.id == "operator-match:owner" && it.token == created.token }) }
+        verify {
+            repository.insert(
+                match<OperatorMatchConnection> {
+                    it.userId == "owner" && it.id == "operator-match:owner" &&
+                        it.token == created.token
+                },
+            )
+        }
         every { repository.findFirstByUserIdOrderByCreatedAtAscIdAsc("owner") } returns connection
         assertEquals(OperatorMatchSecret(connection.id, connection.token), connections.create("owner"))
         verify(exactly = 1) { repository.insert(any<OperatorMatchConnection>()) }
