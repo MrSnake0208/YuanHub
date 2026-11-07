@@ -17,6 +17,9 @@
       <p v-else-if="busy" class="battle-hint" role="status">正在生成第 {{ images.length + 1 }} 张…</p>
       <p v-else-if="images.length" class="battle-hint" role="status">PNG · 1440px，共 {{ images.length }} 张。点击图片查看原图，手机也可长按保存。</p>
       <p v-else class="battle-hint">点击生成图片后在此保存。</p>
+      <div v-if="kind === 'actions'" class="battle-export-variant" role="group" aria-label="操作图样式">
+        <button v-for="option in VARIANTS" :key="option.value" type="button" :aria-pressed="variant === option.value" :title="option.hint" @click="variant = option.value">{{ option.label }}</button>
+      </div>
       <div class="battle-export-actions">
         <button v-if="busy" type="button" @click="reset">取消生成</button>
         <a v-if="images.length === 1 && !busy" class="battle-primary battle-export-save" :href="images[0].url" :download="images[0].filename"><Download :size="17" aria-hidden="true" />保存图片</a>
@@ -36,6 +39,9 @@ import { battleFileName, battleImageError, buildBattleImageModel } from '../../u
 import { renderBattleImage } from '../../utils/battleImageCapture.js'
 const props = defineProps({ draft: { type: Object, required: true }, kind: { type: String, required: true }, catalog: { type: Array, default: () => [] } })
 const emit = defineEmits(['busy'])
+// 完整款：卡头与配队图一致；简化款：卡头只写名字，图更矮。切换后已生成的图片按新样式重新生成。
+const VARIANTS = [{ value: 'full', label: '完整款', hint: '卡头与配队图一致：立绘与名字' }, { value: 'simple', label: '简化款', hint: '卡头只显示密探名字' }]
+const variant = ref('full')
 const busy = ref(false), error = ref(''), images = shallowRef([]), sheetData = shallowRef(null), sheet = ref(null)
 watch(busy, value => emit('busy', value), { flush: 'sync' })
 let generation = 0
@@ -45,6 +51,7 @@ function reset() {
   images.value = []; sheetData.value = null; busy.value = false; error.value = ''
 }
 watch([() => props.draft, () => props.kind], reset, { deep: true, flush: 'sync' })
+watch(variant, () => { if (busy.value || images.value.length || error.value) { reset(); generate() } })
 onBeforeUnmount(reset)
 
 async function generate() {
@@ -55,12 +62,15 @@ async function generate() {
   const seq = generation, kind = props.kind
   const model = buildBattleImageModel(props.draft, props.catalog)
   const title = props.draft.title
-  const queue = kind === 'team' ? [[]] : Array.from({ length: Math.ceil(model.rows.length / 5) }, (_, index) => model.rows.slice(index * 5, index * 5 + 5))
+  // 末尾没有动作也没有备注的回合不出图；中间的空回合保留，回合编号不断开。
+  const lastUsed = model.rows.findLastIndex(row => row.slots.some(entries => entries.length) || String(row.remark || '').trim())
+  const rounds = model.rows.slice(0, lastUsed + 1)
+  const queue = kind === 'team' ? [[]] : Array.from({ length: Math.ceil(rounds.length / 5) }, (_, index) => rounds.slice(index * 5, index * 5 + 5))
   busy.value = true
   try {
     while (queue.length && seq === generation) {
       const rows = queue.shift()
-      sheetData.value = { model, kind, rows }
+      sheetData.value = { model, kind, rows, variant: variant.value }
       await nextTick()
       if (seq !== generation) return
       let blob
@@ -113,6 +123,10 @@ defineExpose({ generate })
 .battle-export-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--surface); }
 .battle-export-footer > p { flex: 1; min-width: 0; margin: 0; }
 .battle-export-actions { display: flex; flex-shrink: 0; gap: 10px; }
+.battle-export-variant { display: inline-flex; flex-shrink: 0; border: 1px solid var(--battle-border); border-radius: 6px; overflow: hidden; }
+.battle-tool .battle-export-variant > button { border: 0; border-radius: 0; padding: 8px 12px; }
+.battle-tool .battle-export-variant > button + button { border-left: 1px solid var(--battle-border); }
+.battle-tool .battle-export-variant > button[aria-pressed=true] { background: var(--battle-selection); color: var(--battle-accent); font-weight: 600; }
 .battle-export-save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 132px; min-height: 40px; padding: 9px 16px; border-radius: 6px; font-size: 14px; text-decoration: none; }
 @media (max-width: 767px) {
   .battle-export-scroll { padding: 12px; }

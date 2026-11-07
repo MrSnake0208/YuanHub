@@ -215,5 +215,4 @@ onMounted(() => { window.addEventListener('beforeunload', beforeUnload); documen
 onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload', beforeUnload); document.removeEventListener('pointerdown', closeDraftMenuOutside) })
 </script>
 
-<style src="./battleImagesDesktop.css"></style>
 <style src="./battleImagesMobile.css"></style>

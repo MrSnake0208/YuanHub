@@ -205,29 +205,37 @@
 .battle-tool .battle-remark-cell { justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.7; }
 .battle-round-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-block: 12px; }
 .battle-round-toolbar > span { margin-left: auto; font-size: 12px; color: var(--ink-60); }
-.battle-recorder-context { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
-.battle-recorder-context > label { min-width: 130px; }
-.battle-recorder-context > button { margin-left: auto; }
-.battle-action-list { list-style: none; padding: 0; margin: 12px 0; }
-.battle-action-list > li { display: grid; grid-template-columns: 76px minmax(0, 1fr) 120px auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.battle-action-choices { display: flex; flex-wrap: wrap; gap: 8px 12px; min-width: 0; border: 0; padding: 0; margin: 0; }
-.battle-action-choices legend { font-size: 12px; color: var(--ink-60); margin-bottom: 8px; }
-.battle-tool .battle-action-choices label { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 0; color: var(--ink); cursor: pointer; }
-.battle-action-tools { display: flex; gap: 6px; }
-.battle-action-tools button { padding: 8px; }
-.battle-add-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 10px; }
-.battle-add-action > span { font-size: 12px; color: var(--ink-60); margin-right: 8px; }
-.battle-new-target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 12px 0 0; padding: 0; border: 0; }
-.battle-new-target legend { margin-bottom: 8px; padding: 0; font-size: 12px; color: var(--ink-60); }
-.battle-tool .battle-new-target label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--battle-border); border-radius: 6px; font-size: 12px; color: var(--ink); cursor: pointer; }
-.battle-tool .battle-new-target label.selected { border-color: var(--battle-accent); background: var(--battle-selection); font-weight: 600; }
-.battle-tool .battle-new-target input[type=radio] { width: 14px; height: 14px; }
-.battle-new-target i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; flex-shrink: 0; }
-.battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-bottom: 12px; }
-.battle-sequence-tools > button { border: 0; font-size: 12px; padding: 6px; }
-.battle-step-editor > summary { padding-block: 8px; }
-.battle-team-sequence { padding: 0; list-style: none; display: grid; gap: 8px; }
-.battle-team-sequence > li { display: grid; grid-template-columns: 24px minmax(100px, 240px) 1fr; align-items: center; gap: 10px; font-size: 12px; }
+.battle-round-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.battle-tool .battle-round-nav > button { padding: 6px 10px; font-size: 12px; }
+.battle-tool .battle-round-nav > .battle-collapse { border: 0; }
+.battle-action-matrix tr.battle-row-current > th { background: var(--battle-selection); }
+.battle-sequence { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.battle-sequence-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-sequence-head > button { border: 0; padding: 6px; font-size: 12px; }
+.battle-sequence-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 8px 0 0; }
+.battle-tool .battle-sequence-chips button { gap: 6px; min-height: 36px; padding: 4px 6px 4px 4px; font-size: 13px; font-weight: 400; }
+.battle-sequence-chips button > b { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--battle-selection); color: var(--battle-accent); font: 600 12px/1 var(--font-d); }
+.battle-sequence-chips button > strong { font: 600 15px/1 var(--font-d); }
+.battle-sequence-chips button > small { padding: 2px 6px; border-radius: 3px; color: #493b2c; font-size: 11px; }
+.battle-tool .battle-sequence-chips button[aria-pressed=true] { border-color: var(--battle-accent); box-shadow: 0 0 0 1px var(--battle-accent); background: var(--battle-selection); }
+.battle-step-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: var(--battle-selection); }
+.battle-step-tools > span { flex: 1 1 200px; font-size: 12px; color: var(--battle-accent); }
+.battle-tool .battle-step-tools > button { padding: 6px 10px; font-size: 12px; }
+.battle-tool .battle-step-tools > .battle-step-done { border-color: var(--battle-accent); color: var(--battle-accent); font-weight: 600; }
+.battle-undo-note { margin-bottom: 0; }
+.battle-undo-note .battle-link-button { margin-left: 4px; }
+.battle-composer { display: grid; gap: 10px; padding-top: 14px; }
+.battle-composer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.battle-composer-label { width: 36px; flex-shrink: 0; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; font-weight: 400; }
+.battle-tool .battle-composer-row > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-selection); color: var(--battle-accent); font-weight: 600; }
+.battle-tool .battle-actor-option { padding-left: 4px; }
+.battle-actor-option img { width: 24px; height: 30px; object-fit: cover; object-position: top; border-radius: 3px; }
+.battle-target-option i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; flex-shrink: 0; }
+.battle-tool .battle-action-option { min-width: 88px; }
+.battle-action-option b { font: 600 16px/1 var(--font-d); }
+.battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-top: 8px; }
+.battle-tool .battle-sequence-tools > button { padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
 .battle-round-note { margin-top: 16px; }
 .battle-target-edit { margin-top: 16px; }
 .battle-target-edit summary { display: flex; gap: 6px; align-items: center; }

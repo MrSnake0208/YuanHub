@@ -2,20 +2,21 @@
   <section ref="sheet" class="battle-sheet" :class="'is-' + kind" data-theme="light">
     <img class="sheet-bamboo" :src="decorationUrl('bamboo')" alt="" aria-hidden="true" />
     <img class="sheet-mountains" :src="decorationUrl('mountains')" alt="" aria-hidden="true" />
-    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p></header>
-    <div v-if="kind === 'team'" class="team-board" :style="{ '--rows': teamRows.length }">
+    <header class="sheet-heading"><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions'" class="sheet-action-key"><span v-for="item in BATTLE_ACTIONS" :key="item.type"><b>{{ item.symbol }}</b>{{ item.label }}</span><i aria-hidden="true"></i><span v-for="(target, index) in model.targets" :key="'t' + index"><em :style="{ background: TARGET_COLORS[index] }"></em>{{ target }}</span></div></header>
+    <div class="team-board" :class="{ 'action-board': kind === 'actions', 'is-simple': simple }" :style="{ '--rows': kind === 'team' ? teamRows.length : actionRows.length }">
       <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
         <img class="team-card-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
       </article>
       <header v-for="(operator, index) in model.operators" :key="'head-' + index" class="team-card-head" :class="{ 'is-empty': !operator.name }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
-        <div class="box-image-portrait" aria-hidden="true">
+        <div v-if="!simple" class="box-image-portrait" aria-hidden="true">
           <img v-if="portraits[operator.id]" :src="portraits[operator.id]" alt="" width="391" height="285" />
           <span v-else class="team-card-initial">{{ operator.name ? Array.from(operator.name)[0] : '空' }}</span>
         </div>
         <img v-if="profIcon(operator.prof)" class="team-card-prof" :src="profIcon(operator.prof)" :alt="operator.prof + '属性'" width="26" height="26" />
-        <h3 class="team-card-name" :class="nameClass(operator.name)" :aria-label="operator.name || '未指定'"><span v-for="(char, i) in Array.from(operator.name || '未指定')" :key="i" aria-hidden="true">{{ char }}</span></h3>
+        <h3 v-if="simple" class="action-card-name">{{ operator.name || '未指定' }}</h3>
+        <h3 v-else class="team-card-name" :class="nameClass(operator.name)" :aria-label="operator.name || '未指定'"><span v-for="(char, i) in Array.from(operator.name || '未指定')" :key="i" aria-hidden="true">{{ char }}</span></h3>
       </header>
-      <template v-for="(row, rowIndex) in teamRows" :key="row.key">
+      <template v-if="kind === 'team'"><template v-for="(row, rowIndex) in teamRows" :key="row.key">
         <div class="team-board-label" :class="[row.key, { 'is-stack': row.stack }]" :style="{ gridRow: rowIndex + 2 }">{{ row.label }}</div>
         <div v-for="(operator, index) in model.operators" :key="row.key + index" class="team-card-cell" :class="[row.key, { 'is-stack': row.stack, 'is-alt': rowIndex % 2, 'is-last': rowIndex === teamRows.length - 1 }]" :style="{ gridColumn: index + 2, gridRow: rowIndex + 2 }" :data-slot="index" :data-stat="row.key">
           <strong v-if="row.type === 'stat'" class="team-card-value">{{ operator[row.key] }}<sup v-if="row.combat && markEach && manualPanel(operator) && operator[row.key]">*</sup></strong>
@@ -33,36 +34,31 @@
             <span v-if="row.key === 'support' && operator.starStones.other.length" class="team-card-note">{{ operator.starStones.other.join('\n') }}</span>
           </template>
         </div>
-      </template>
+      </template></template>
+      <template v-else><template v-for="(item, rowIndex) in actionRows" :key="item.key">
+        <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong><small>回合</small></div>
+        <template v-if="item.type === 'round'">
+          <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
+            <span v-for="entry in entries" :key="entry.order" class="action-chip" :style="{ background: TARGET_COLORS[entry.target] }"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
+          </div>
+        </template>
+        <p v-else class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
+      </template></template>
     </div>
-    <template v-else>
-      <div class="sheet-action-key"><strong>回合行动表</strong><p class="legend">A 普攻 · ↑ 大招 · ↓ 防御 · 圈 特殊技能</p></div>
-      <div class="target-legend"><span v-for="(target, index) in model.targets" :key="index"><i :style="{ background: TARGET_COLORS[index] }"></i>{{ target }}</span></div>
-      <table class="action-sheet">
-        <colgroup><col style="width: 6%"><col v-for="slot in 5" :key="slot" style="width: 15%"><col style="width: 19%"></colgroup>
-        <thead><tr><th>回合</th><th v-for="(operator, index) in model.operators" :key="index"><span class="slot">{{ index + 1 }} 号位</span><div class="sheet-action-portrait"><img v-if="portraits[operator.id]" :src="portraits[operator.id]" alt="" /></div><strong>{{ operator.name || '未指定' }}</strong></th><th>备注</th></tr></thead>
-        <tbody><tr v-for="row in rows" :key="row.round">
-          <th scope="row">{{ row.round }}</th>
-          <td v-for="(entries, slot) in row.slots" :key="slot"><span v-if="!entries.length">—</span>
-            <span v-for="entry in entries" :key="entry.order" class="action-mark" :style="{ background: TARGET_COLORS[entry.target] }">
-              <b><sup>{{ entry.order }}</sup>{{ entry.symbol }}</b><small>{{ model.targets[entry.target] }}</small>
-            </span>
-          </td><td class="remark">{{ row.remark || '—' }}</td>
-        </tr></tbody>
-      </table>
-      <p v-if="rows.length" class="range">第 {{ rows[0].round }}—{{ rows.at(-1).round }} 回合</p>
-    </template>
+    <p v-if="kind === 'actions' && rows.length" class="range">第 {{ rows[0].round }}—{{ rows.at(-1).round }} 回合</p>
     <div v-if="model.note" class="sheet-note"><strong>打法说明</strong><p>{{ model.note }}</p></div>
     <div class="sheet-spacer" aria-hidden="true"></div>
-    <footer><strong>鸢鸢相抱 · YuanHub</strong><span>{{ kind === 'team' ? panelFootnote : '数字为出手顺序 · 色块为攻击目标' }}</span></footer>
+    <footer><strong>鸢鸢相抱 · YuanHub</strong><span>{{ kind === 'team' ? panelFootnote : '数字为全队出手顺序 · 底色为攻击目标' }}</span></footer>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import portraits from '../../data/operatorPortraits.json'
-import { TARGET_COLORS } from '../../utils/battleImages.js'
-const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] } })
+import { BATTLE_ACTIONS, TARGET_COLORS } from '../../utils/battleImages.js'
+const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' } })
+// 操作图两种样式：完整款卡头与配队图一致（立绘 + 竖排名），简化款只放横排名字。配队图不受影响。
+const simple = computed(() => props.kind === 'actions' && props.variant === 'simple')
 // 配队图：五张独立角色卡，数据按字段成行横向对齐；字段名只在左列写一次，未填写直接留白。
 // 必须/禁用命盘只要有一人填写才出现；星石同理。多行内容（化极、命盘、星石）顶部对齐，五列首行齐平。
 const teamRows = computed(() => {
@@ -73,6 +69,17 @@ const teamRows = computed(() => {
   if (operators.some(operator => operator.stars)) rows.push(['main', '主星', 'stone'], ['support', '辅星', 'stone'])
   return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat', combat: key === 'hp' || key === 'attack' }))
 })
+// 操作图：每回合一行动作，填写了备注的回合在下方加一条横跨五列的备注；隔行底色按回合交替。
+const actionRows = computed(() => {
+  const items = props.rows.flatMap((row, index) => {
+    const alt = index % 2 === 1, remark = String(row.remark || '').trim()
+    return [{ key: 'r' + row.round, type: 'round', row, alt }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
+  })
+  if (items.length) items.at(-1).last = true
+  return items
+})
+// 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
+const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }
 // 全员都有手动修正时逐个加星号没有区分度，改为底注统一说明。
 const manualCount = computed(() => props.model.operators.filter(operator => operator.name && manualPanel(operator)).length)
 const markEach = computed(() => manualCount.value > 0 && manualCount.value < props.model.operators.filter(operator => operator.name).length)
@@ -100,16 +107,17 @@ defineExpose({ sheet })
 .battle-sheet { position: relative; isolation: isolate; box-sizing: border-box; display: flex; flex-direction: column; width: 1080px; min-height: 1440px; padding: 40px; background: #fffdf6; color: #493b2c; font: 22px/1.5 var(--font-b, sans-serif); color-scheme: only light; }
 .battle-sheet * { box-sizing: border-box; }
 /* 配队图用网格排版：最小高度下配队区吃掉剩余高度，3:4 画布不在底部留白。 */
-.battle-sheet.is-team { display: grid; grid-template-rows: auto 1fr; padding: 34px 28px 30px; background: #f8f3e8; }
+.battle-sheet.is-team, .battle-sheet.is-actions { padding: 34px 28px 30px; background: #f8f3e8; }
+.battle-sheet.is-team { display: grid; grid-template-rows: auto 1fr; }
 .sheet-bamboo, .sheet-mountains { position: absolute; left: 0; width: 100%; pointer-events: none; z-index: 0; }
 .sheet-bamboo { top: 0; height: 160px; } .sheet-mountains { bottom: 0; height: 100px; }
 .battle-sheet > :not(.sheet-bamboo, .sheet-mountains) { position: relative; z-index: 1; }
 .sheet-heading { border-top: 4px solid #5a4633; border-bottom: 1px solid #b9a58b; padding: 22px 0 26px; margin-bottom: 26px; }
-.is-team .sheet-heading { border-top: 0; border-bottom-color: #c9ac79; padding: 0 4px 18px; margin-bottom: 18px; }
+:is(.is-team, .is-actions) .sheet-heading { border-top: 0; border-bottom-color: #c9ac79; padding: 0 4px 18px; margin-bottom: 18px; }
 .sheet-category { display: flex; gap: 10px; font-size: 19px; letter-spacing: 2px; color: #725c43; }
 .sheet-category i { font-style: normal; color: #b9a58b; }
 h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: anywhere; }
-.is-team h1 { margin-top: 6px; font-size: 40px; }
+:is(.is-team, .is-actions) h1 { margin-top: 6px; font-size: 40px; }
 .sheet-heading p { margin: 12px 0 0; font-size: 19px; color: #725c43; overflow-wrap: anywhere; }
 
 /* 配队图：上半是角色卡（立绘、竖排名、属性底色、描金框），下半数据行跨卡对齐；
@@ -172,29 +180,43 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .forbiddenDiscs .box-image-term > span::after { content: ''; position: absolute; left: -3px; right: -3px; top: 54%; border-top: 2px solid #b0483b; }
 .team-card-note { font: 500 17px/1.5 var(--font-s, serif); color: #5d4c3a; white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* 操作表 */
-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-th, td { border: 1px solid #d5c7b2; padding: 14px 10px; text-align: center; overflow-wrap: anywhere; white-space: pre-wrap; }
-thead { background: #f6efdf; color: #493b2c; } tbody th { background: #f6efdf; font-size: 19px; font-weight: normal; }
-tbody td { background: #fffdf6; } tbody tr:nth-child(even) td { background: #faf6ec; }
-.slot { display: block; font-size: 15px; font-weight: normal; color: #725c43; letter-spacing: 1px; }
-.action-sheet thead strong { font-size: 24px; }
-.sheet-action-key { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 14px; }
-.sheet-action-key strong { font-size: 24px; } .legend, .range { font-size: 17px; color: #725c43; margin: 0; }
-.target-legend { display: flex; gap: 20px; margin-bottom: 20px; }
-.target-legend span { display: flex; align-items: center; gap: 8px; font-size: 17px; overflow-wrap: anywhere; max-width: 180px; }
-.target-legend i { display: inline-block; width: 14px; height: 14px; border: 1px solid #b9a58b; flex-shrink: 0; }
-.sheet-action-portrait { margin: 8px 0; } .sheet-action-portrait img { display: block; width: 100%; height: auto; }
-.action-sheet td { vertical-align: top; } .action-sheet tbody th { font-size: 26px; font-weight: bold; }
-.action-mark { display: inline-block; min-width: 70px; margin: 4px 0; padding: 5px 10px; color: #493b2c; border-radius: 3px; }
-.action-mark b { font-size: 27px; } .action-mark sup { font-size: 17px; vertical-align: baseline; padding-right: 3px; }
-.action-mark small { display: block; font-size: 14px; }
-.remark { text-align: left; font-size: 19px; } .range { text-align: right; margin-top: 12px; }
+/* 操作图：沿用配队图的角色卡与跨卡对齐，左列写回合；完整款卡头与配队图同高，简化款只留名字条。
+   动作只写序号与符号，目标只用底色表达（图例在标题下方），没有动作的格子留白。 */
+.action-board { grid-template-rows: 344px repeat(var(--rows), auto); align-content: start; }
+.action-board.is-simple { grid-template-rows: 76px repeat(var(--rows), auto); }
+.is-simple .team-card-head { display: flex; align-items: center; justify-content: center; padding: 0 40px; background: var(--portrait-tone); border-bottom: 1px solid #e0cba2; }
+.is-simple .team-card-prof { top: 50%; transform: translateY(-50%); }
+.action-card-name { margin: 0; min-width: 0; font: 600 28px/1.2 var(--font-s, serif); letter-spacing: 2px; color: #3e3023; text-align: center; overflow-wrap: anywhere; }
+.is-simple .team-card-head.is-empty .action-card-name { color: #a8957a; font-size: 22px; }
+.sheet-action-key { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; font-size: 17px; color: #5d4a36; }
+.sheet-action-key span { display: inline-flex; align-items: center; gap: 6px; }
+.sheet-action-key b { font: 600 20px/1 var(--font-s, serif); color: #3e3023; }
+.sheet-action-key > i { width: 1px; height: 18px; background: #c9ac79; }
+.sheet-action-key em { display: inline-block; width: 18px; height: 18px; border: 1px solid #b9a58b; border-radius: 4px; }
+.action-round-label { flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding-top: 12px; letter-spacing: 0; }
+.action-round-label strong { font: 600 32px/1.1 var(--font-s, serif); color: #3e3023; }
+.action-round-label small { font-size: 16px; letter-spacing: 2px; color: #725c43; }
+.team-card-cell.action-cell { flex-direction: row; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 8px; min-height: 76px; padding: 14px 4px; }
+/* 动作块为定宽小方签（只有目标底色，无边框），一格两块对成网格；序号与符号同为 28px 高，上下居中。 */
+.action-chip { display: inline-flex; align-items: center; justify-content: center; gap: 2px; width: 64px; height: 36px; padding: 0 4px; border-radius: 6px; color: #3e3023; }
+/* 序号不加底色，直接加粗写在符号前（如“5A”）；字重用导出预加载的 Archivo 800，避免回退字体错位。 */
+.action-chip b { display: block; flex-shrink: 0; height: 28px; color: #3e3023; font: 800 22px/28px var(--font-d, sans-serif); }
+.action-symbol { position: relative; display: block; flex-shrink: 0; width: 28px; height: 28px; font: 600 24px/28px var(--font-s, serif); font-style: normal; text-align: center; }
+.arrow-shaft { position: absolute; left: 12px; width: 4px; height: 17px; border-radius: 1px; background: #3e3023; }
+.arrow-head { position: absolute; left: 6px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; }
+.is-up .arrow-shaft { top: 9px; } .is-up .arrow-head { top: 2px; border-bottom: 10px solid #3e3023; }
+.is-down .arrow-shaft { top: 2px; } .is-down .arrow-head { top: 16px; border-top: 10px solid #3e3023; }
+.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0 4px; padding: 10px 14px; border-top: 1px dashed #e0cba2; background: #fffaf0; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
+.action-remark.is-alt { background: #f8efdc; }
+.action-remark.is-last { margin-bottom: 18px; }
+.action-remark span { flex-shrink: 0; font-size: 16px; letter-spacing: 2px; color: #8a5a2b; }
+.legend, .range { font-size: 17px; color: #725c43; margin: 0; }
+.range { text-align: right; margin-top: 12px; }
 .sheet-note { border-top: 1px solid #d5c7b2; margin-top: 26px; padding-top: 20px; }
-.is-team .sheet-note { margin-top: 18px; padding: 16px 18px; border: 1px solid #d8c5a3; border-radius: 8px; background: #fffaf0; }
+:is(.is-team, .is-actions) .sheet-note { margin-top: 18px; padding: 16px 18px; border: 1px solid #d8c5a3; border-radius: 8px; background: #fffaf0; }
 .sheet-note strong { font: 600 20px var(--font-s, serif); } .sheet-note p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 19px; }
 footer { border-top: 1px solid #b9a58b; margin-top: 28px; padding-top: 18px; display: flex; justify-content: space-between; gap: 20px; font-size: 16px; color: #725c43; }
-.is-team footer { margin-top: 20px; padding-top: 12px; border-top-color: #d8c5a3; font-size: 14px; color: #5d4a36; }
+:is(.is-team, .is-actions) footer { margin-top: 20px; padding-top: 12px; border-top-color: #d8c5a3; font-size: 14px; color: #5d4a36; }
 footer strong { font-weight: normal; }
 .sheet-spacer { flex: 1 0 0; } .is-team .sheet-spacer { display: none; }
 </style>
