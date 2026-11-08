@@ -60,10 +60,10 @@ test('v2 进一步压缩等级修为化极面板高度', () => {
   assert.match(v2Styles, /@media \(max-width: 640px\)[\s\S]*?min-height: 30px;[\s\S]*?width: 30px;/)
 })
 
-test('v2 化极材料不足时直接显示当前库存与下一节点需求', () => {
+test('v2 化极材料不足时显示缺少数量', () => {
   assert.match(
     operatorPage,
-    /class="ledger-action-ratio"[\s\S]*?growthActionLabel\(e, "star", 1, "下一节点"\)/,
+    /<span\s+v-if="!growthMaterialsReady\(e, 'star', 1\)"\s+class="ledger-lack-label"\s+aria-hidden="true"\s*>\{\{\s*growthShortageCount\(e, 'star', 1\) \? '缺' \+ growthShortageCount\(e, 'star', 1\) : growthActionLabel\(e, 'star', 1, '下一节点'\)\s*\}\}<\/span/,
   )
   assert.match(
     operatorPage,

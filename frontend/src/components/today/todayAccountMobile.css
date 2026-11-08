@@ -9,6 +9,6 @@
 .today-loading { font-size: 13px; }
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .today-customize { padding-inline: 4px; line-height: 1.5; }
 }

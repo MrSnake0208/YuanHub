@@ -13,6 +13,7 @@ internal class RecruitmentGoldStatistics {
     private var knownCount = 0L
     private var smallCount = 0L
     private var smallWins = 0L
+
     /** Previous gold's pity-relevant status: null before the first gold, otherwise "up", "non_up" or "unknown". */
     private var previousGold: String? = null
     private var guaranteedCount = 0L

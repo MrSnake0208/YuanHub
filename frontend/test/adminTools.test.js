@@ -93,7 +93,7 @@ test('adds a single accessible workbench back link to management detail pages', 
   for (const page of ['admin/roles', 'admin/audit', 'admin/beta', 'operator/admin', 'level/admin', 'changelog/admin']) {
     const source = readSource(`../src/pages/${page}.vue`)
     assert.equal((source.match(/to="\/manage"/g) || []).length, 1)
-    assert.match(source, /<header class="page-header">[\s\S]*?<router-link[^>]+class="page-header-back"[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/)
+    assert.match(source, /<header class="page-header(?:\s+[^"]+)?">[\s\S]*?<router-link[^>]+class="page-header-back"[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/)
     assert.doesNotMatch(source, /class="hero"|class="hero-stats"/)
   }
   assert.doesNotMatch(workbench, /AdminBackLink/)
