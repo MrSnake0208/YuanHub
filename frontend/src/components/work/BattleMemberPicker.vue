@@ -31,18 +31,18 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { Search, UserRound } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
+import { sameBattleOperator } from '../../utils/battleImages.js'
 const props = defineProps({ agents: { type: Array, required: true }, accountEntries: { type: Array, default: () => [] }, team: { type: Array, default: () => [] }, slot: { type: Number, required: true }, busy: Boolean })
 const emit = defineEmits(['choose', 'pending-name'])
 const search = ref(''), ownedOnly = ref(false), customName = ref('')
 const ownedIds = computed(() => new Set(props.accountEntries.map(entry => entry.id)))
 const filtered = computed(() => props.agents.filter(agent => (!ownedOnly.value || ownedIds.value.has(agent.id)) && `${agent.name} ${agent.alias || ''}`.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())))
-// 标出当前槽位与已在其他号位的密探，避免重复上阵时不自知；仍允许选择，替换前由上层确认。
-const sameAgent = (member, agent) => Boolean(member?.name) && (member.id ? member.id === agent.id : member.name === agent.name)
-const placement = agent => sameAgent(props.team[props.slot], agent) ? props.slot : props.team.findIndex(member => sameAgent(member, agent))
+// 标出当前槽位与其它号位的密探；选中其它号位时，由上层确认并连同配置移来。
+const placement = agent => sameBattleOperator(props.team[props.slot], agent) ? props.slot : props.team.findIndex(member => sameBattleOperator(member, agent))
 function status(agent) {
   const index = placement(agent)
   if (index === props.slot) return '当前'
-  if (index >= 0) return `已在${index + 1}号位`
+  if (index >= 0) return `在${index + 1}号位，选中移来`
   return ownedIds.value.has(agent.id) ? '已有配置' : '需手动填写'
 }
 onBeforeUnmount(() => emit('pending-name', false))

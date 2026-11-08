@@ -91,7 +91,7 @@ import portraits from '../../data/operatorPortraits.json'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { findBattleCatalogOperator } from '../../utils/battleAccountSnapshot.js'
-import { BATTLE_STATS, battleOperatorId, createBattleOperator, battleDiscError, battleDiscNames, battleDiscTerms, battleStarStones } from '../../utils/battleImages.js'
+import { BATTLE_STATS, battleOperatorId, createBattleOperator, battleDiscError, battleDiscNames, battleDiscTerms, battleStarStones, sameBattleOperator } from '../../utils/battleImages.js'
 import { battleStarSummary } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
@@ -148,19 +148,24 @@ function starLabels(value, kind) {
   return [...labels, ...stones.other.filter(line => line.startsWith(kind))].join('\n')
 }
 const otherStars = value => String(value || '').split('\n').filter(line => !/^\s*(主星|辅星)/.test(line)).join('\n')
-let alive = true, opener
+let alive = true, opener, pickOnly = false
 onBeforeUnmount(() => { alive = false })
 async function open(index, section, event) {
   const trigger = event?.currentTarget
   if ((slot.value !== index || detail.value !== section) && !await discardPendingName()) return
   if (!alive) return
   const wasOpen = Boolean(detail.value)
-  if (!wasOpen) opener = trigger
+  if (!wasOpen) { opener = trigger; pickOnly = false }
   slot.value = index; detail.value = section
-  if (section !== 'picker') returnSection.value = section
+  if (section !== 'picker') { returnSection.value = section; pickOnly = false }
   await nextTick()
   // 首次打开由弹窗焦点管理负责；弹窗内切换分区或槽位时把焦点移回标题，方便读屏确认位置。
   if (wasOpen) heading.value?.focus({ preventScroll: true })
+  return true
+}
+// 操作表只选人；主动进入其它配置分区后，由 open 恢复常规编辑流程。
+async function pickMember(index, trigger) {
+  if (await open(index, 'picker', { currentTarget: trigger })) { opener = trigger; pickOnly = true }
 }
 function step(offset) {
   const index = (slot.value + offset + 5) % 5, member = props.operators[index]
@@ -174,7 +179,7 @@ async function discardPendingName() {
 }
 async function close() {
   if (!await discardPendingName() || !alive) return
-  detail.value = ''
+  detail.value = ''; pickOnly = false
   // Safari 点击按钮不会聚焦它，弹窗焦点栈记录不到触发者；在其恢复之后再显式回到表格中的触发按钮。
   await nextTick()
   if (opener?.isConnected) opener.focus({ preventScroll: true })
@@ -212,19 +217,35 @@ async function setMember(index, next) {
   emit('replace', index, next)
   return true
 }
+async function moveMember(index, from) {
+  const previous = props.operators[index], member = props.operators[from], signature = JSON.stringify([previous, member]), game = props.game
+  const displaced = previous.name ? `${index + 1}号位原来的 ${previous.name} 将移出阵容。` : ''
+  if (!await dialog.confirm({ title: `把${member.name}移到${index + 1}号位？`, message: `${member.name} 连同练度、命盘、星石从 ${from + 1} 号位移到 ${index + 1} 号位，${from + 1} 号位将清空。${displaced}两个号位已记录的动作都保留在原号位。`, confirmText: `移到${index + 1}号位` })) return false
+  if (!alive || props.game !== game || props.operators[index] !== previous || props.operators[from] !== member || JSON.stringify([previous, member]) !== signature) return false
+  emit('replace', index, member)
+  emit('replace', from, createBattleOperator())
+  return true
+}
 async function choose(name) {
   if (busy.value || !name.trim()) return
   const index = slot.value
   const found = findBattleCatalogOperator(props.catalog, name, props.game)
-  if (props.operators[index].name === name.trim() || (found && props.operators[index].id === found.id)) {
+  const selected = found || { name: name.trim() }
+  if (sameBattleOperator(props.operators[index], selected)) {
     if (found) props.operators[index].name = found.name
-    setPending(false); await open(index, 'stats'); return
+    setPending(false); await (pickOnly ? close() : open(index, 'stats')); return
   }
+  const from = props.operators.findIndex((member, position) => position !== index && sameBattleOperator(member, selected))
   const saved = props.accountEntries.find(entry => entry.id === found?.id)
   busy.value = true
   try {
-    const next = saved ? JSON.parse(JSON.stringify(saved)) : createBattleOperator(found?.name || name.trim(), found?.id || '')
-    if (await setMember(index, next) && slot.value === index) { setPending(false); await open(index, 'stats') }
+    let updated
+    if (from >= 0) updated = await moveMember(index, from)
+    else {
+      const next = saved ? JSON.parse(JSON.stringify(saved)) : createBattleOperator(found?.name || name.trim(), found?.id || '')
+      updated = await setMember(index, next)
+    }
+    if (updated && slot.value === index) { setPending(false); await (pickOnly ? close() : open(index, 'stats')) }
   } finally { busy.value = false }
 }
 async function importMember() {
@@ -259,5 +280,5 @@ function revealDiscError() {
   const index = props.operators.findIndex(member => battleDiscError(member.discs))
   if (index >= 0) open(index, 'discs')
 }
-defineExpose({ revealDiscError })
+defineExpose({ revealDiscError, pickMember })
 </script>

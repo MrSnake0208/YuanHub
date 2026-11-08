@@ -223,7 +223,7 @@
 .battle-action-matrix thead th:last-child { width: 180px; }
 .battle-action-matrix th:first-child { width: 56px; }
 .battle-tool .battle-action-matrix tbody th > button { width: 100%; min-height: 40px; border: 0; padding: 0; background: transparent; font: 500 15px/1.4 var(--font-d); }
-.battle-record-identity { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.battle-tool .battle-record-identity { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; width: 100%; min-height: 44px; padding: 0; border: 0; border-radius: 4px; background: transparent; font: inherit; color: inherit; cursor: pointer; }
 .battle-record-identity img { height: 48px; width: 38px; object-fit: cover; object-position: top; border-radius: 3px; }
 .battle-record-identity strong { font-size: 13px; }
 .battle-tool .battle-action-cell { flex-wrap: wrap; min-height: 54px; }
@@ -289,6 +289,7 @@
 .battle-mobile-panel, .battle-mobile-dock, .battle-disc-short, .battle-round-dock, .battle-action-matrix tr.battle-remark-row { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (hover: hover) {
+  .battle-tool .battle-record-identity:hover { background: var(--battle-selection); color: var(--battle-accent); }
   .battle-tool .battle-disc-states > button:hover:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); color: var(--battle-accent); }
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }
   .battle-tool .battle-cell-button:hover:not(:disabled) { background: var(--battle-selection); }

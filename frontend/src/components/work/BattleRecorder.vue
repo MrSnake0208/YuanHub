@@ -11,7 +11,7 @@
     <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
-        <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col"><span class="battle-slot-number">{{ index + 1 }}号位</span><span class="battle-record-identity"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '未选择' }}</strong></span></th><th scope="col">备注</th></tr></thead>
+        <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col"><span class="battle-slot-number">{{ index + 1 }}号位</span><button type="button" class="battle-record-identity" :aria-label="member.name ? `更换${index + 1}号位密探（当前：${member.name}）` : `选择${index + 1}号位密探`" aria-haspopup="dialog" @click="emit('pick-member', index, $event.currentTarget)"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '选择密探' }}</strong></button></th><th scope="col">备注</th></tr></thead>
         <tbody>
           <template v-for="(row, rowIndex) in rows" :key="rowIndex">
             <tr :class="{ 'battle-row-current': expanded && current === rowIndex, 'is-alt': rowIndex % 2 === 1 }"><th scope="row"><button type="button" :aria-label="`编辑第${rowIndex + 1}回合`" :aria-expanded="expanded && current === rowIndex" @click="selectCell(rowIndex, slot, $event)">{{ rowIndex + 1 }}</button></th>
@@ -128,7 +128,7 @@ import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
 const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true } })
 // recording：编辑区是否展开，页面据此在手机端用回合栏替换底部生成栏。
-const emit = defineEmits(['recording'])
+const emit = defineEmits(['recording', 'pick-member'])
 // slot 为 BOX 时表示选中「箱」（关卡互动），它不属于任何密探槽位。
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)

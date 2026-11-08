@@ -35,6 +35,8 @@ export function battleOperatorId(name) {
   return agents.get(String(name || '').trim()) || ''
 }
 
+export const sameBattleOperator = (member, agent) => Boolean(member?.name) && (member.id ? member.id === agent.id : member.name === agent.name)
+
 export function createBattleOperator(name = '', id = '') {
   return { id, name, ...Object.fromEntries([...BATTLE_STATS, ...BATTLE_NOTES].map(([key]) => [key, ''])), discLoadouts: [], discIndex: 0, panelNote: '' }
 }

@@ -79,7 +79,7 @@
           <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
           <div id="battle-editor" class="battle-workspace" role="tabpanel" :aria-labelledby="`battle-tab-${kind}`">
             <BattleTeamEditor :key="revision" ref="teamEditor" v-show="kind === 'team'" :operators="draft.operators" :game="draft.game" :catalog="catalog" :account-entries="entries" @pending-name="pendingName = $event" @replace="(slot, operator) => draft.operators[slot] = operator" />
-            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @recording="recording = $event" />
+            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @recording="recording = $event" @pick-member="(index, trigger) => teamEditor?.pickMember(index, trigger)" />
           </div>
           <Teleport to="body">
             <div v-if="exportOpen" class="page-battle-images battle-tool battle-dialog-mask">

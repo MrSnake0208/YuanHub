@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { routes } from '../src/router/routes.js'
 import { FEATURE_KEYS } from '../src/config/features.js'
 import { isFeatureAccessible } from '../src/utils/featureAccess.js'
-import { battleFileName, battleHuajiProgress, battleImageError, battleStarStones, battleTargetShortName, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
+import { battleFileName, battleHuajiProgress, battleImageError, battleStarStones, battleTargetShortName, buildBattleImageModel, createBattleDraft, sameBattleOperator } from '../src/utils/battleImages.js'
 
 test('独立工具使用专属发布开关，不受作业系统或内测开关限制', () => {
   const route = routes.find(route => route.path === '/tools/battle-images')
@@ -125,4 +125,17 @@ test('手机目标短名缩短默认名，自定义名按字符截取，完整�
   for (const [name, short] of [['作业目标1', '目标1'], ['作业目标12', '目标12'], ['四字目标', '四字目标'], ['自定义长目标', '自定义长…'], ['😀甲乙丙丁', '😀甲乙丙…'], ['', '']]) {
     assert.equal(battleTargetShortName(name), short)
   }
+})
+
+test('密探判定与选人状态共用：已有 ID 时只比 ID，无 ID 时按名称，空槽不匹配', () => {
+  const agent = { id: 'yangxiu', name: '杨修' }
+  assert.equal(sameBattleOperator({ id: 'yangxiu', name: '旧名称' }, agent), true)
+  assert.equal(sameBattleOperator({ id: 'other', name: '杨修' }, agent), false)
+  assert.equal(sameBattleOperator(agent, { name: '杨修' }), false)
+  assert.equal(sameBattleOperator({ name: '杨修' }, agent), true)
+  assert.equal(sameBattleOperator({ id: '', name: '自定义' }, { name: '自定义' }), true)
+  assert.equal(sameBattleOperator({ name: '自定义' }, { name: '其他' }), false)
+  assert.equal(sameBattleOperator({ id: 'yangxiu', name: '' }, agent), false)
+  assert.equal(sameBattleOperator({ name: '' }, { name: '' }), false)
+  assert.equal(sameBattleOperator(undefined, agent), false)
 })
