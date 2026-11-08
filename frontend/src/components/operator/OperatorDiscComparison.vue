@@ -1,9 +1,10 @@
 <template>
-  <div class="disc-comparison" :class="{ 'is-compact': compact, 'is-current-only': currentOnly }">
-    <section class="disc-comparison-side">
+  <div class="disc-comparison" :class="{ 'is-compact': compact, 'is-current-only': currentOnly, 'is-selectable': selectable }">
+    <section class="disc-comparison-side" :class="{ 'is-active': selectable && activeSide === 'current' }">
       <div v-if="!currentOnly" class="disc-comparison-heading">
-        <h5>当前命盘 <small v-if="editable">{{ actual.length }} / 3</small></h5>
-        <slot name="current-action"></slot>
+        <h5 v-if="selectable"><button type="button" class="disc-side-select" :aria-pressed="activeSide === 'current'" @click="$emit('select', 'current')">当前命盘 <small v-if="editable">{{ actual.length }} / 3</small></button></h5>
+        <h5 v-else>当前命盘 <small v-if="editable">{{ actual.length }} / 3</small></h5>
+        <slot v-if="!selectable" name="current-action"></slot>
       </div>
       <div class="disc-comparison-terms">
         <span v-for="name in actual" :key="name" :class="termClass(name)">{{ label(name) }}</span>
@@ -11,10 +12,11 @@
       </div>
     </section>
     <span v-if="!currentOnly && !compact" class="disc-comparison-arrow" aria-hidden="true">→</span>
-    <section v-if="!currentOnly" class="disc-comparison-side">
+    <section v-if="!currentOnly" class="disc-comparison-side" :class="{ 'is-active': selectable && activeSide === 'target' }">
       <div class="disc-comparison-heading">
-        <h5>目标命盘 <small v-if="!compact">{{ desired.length }} / 3</small></h5>
-        <slot name="target-action"></slot>
+        <h5 v-if="selectable"><button type="button" class="disc-side-select" :aria-pressed="activeSide === 'target'" @click="$emit('select', 'target')">目标命盘 <small v-if="!compact">{{ desired.length }} / 3</small></button></h5>
+        <h5 v-else>目标命盘 <small v-if="!compact">{{ desired.length }} / 3</small></h5>
+        <slot v-if="!selectable" name="target-action"></slot>
       </div>
       <div class="disc-comparison-terms">
         <span v-for="name in desired" :key="name" :class="[termClass(name), { 'is-changed': difference.added.includes(name) }]">
@@ -23,7 +25,7 @@
         </span>
         <small v-if="!desired.length">目标未设置</small>
       </div>
-      <button v-if="editable" type="button" class="disc-copy-current" :disabled="!actual.length" @click="$emit('copy')">复制当前为目标</button>
+      <button v-if="editable && (!selectable || actual.length)" type="button" class="disc-copy-current" :disabled="!actual.length" @click="$emit('copy')">复制当前为目标</button>
       <p v-if="differenceText" class="disc-comparison-difference" aria-live="polite">{{ differenceText }}</p>
     </section>
   </div>
@@ -40,8 +42,10 @@ const props = defineProps({
   editable: Boolean,
   compact: Boolean,
   currentOnly: Boolean,
+  selectable: Boolean,
+  activeSide: { type: String, default: 'current', validator: value => ['current', 'target'].includes(value) },
 })
-defineEmits(['copy', 'remove'])
+defineEmits(['copy', 'remove', 'select'])
 const actual = computed(() => normalizeDiscNames(props.current))
 const desired = computed(() => normalizeDiscNames(props.target))
 const difference = computed(() => discTargetDifference(actual.value, desired.value))
@@ -58,9 +62,9 @@ const differenceText = computed(() => {
     if (!diff.complete) return '已设置 ' + diff.targetCount + '/3，' + remaining
     return diff.added.length ? remaining : '当前已符合目标，标记由你确认'
   }
-  if (!diff.targetCount) return '可稍后设置目标'
-  if (!diff.complete) return '已设置 ' + diff.targetCount + '/3，待补全目标'
-  if (!diff.added.length) return '当前已符合目标，标记由你确认'
+  if (!diff.targetCount) return props.selectable ? '' : '可稍后设置目标'
+  if (!props.selectable && !diff.complete) return '已设置 ' + diff.targetCount + '/3，待补全目标'
+  if (!diff.added.length) return props.selectable ? '' : '当前已符合目标，标记由你确认'
   const names = values => values.map(label).join('、')
   if (!diff.removed.length) return '需补充：' + names(diff.added)
   if (diff.removed.length !== diff.added.length) return '需移除：' + names(diff.removed) + '；需补充：' + names(diff.added)
@@ -100,4 +104,16 @@ const differenceText = computed(() => {
 .is-compact .disc-comparison-term { border-radius: 6px; }
 .is-compact .disc-comparison-term.is-changed { border-color: currentColor; font-weight: 600; }
 .is-compact .disc-comparison-difference { margin-top: 8px; }
+@media (max-width: 640px) {
+  .disc-comparison.is-selectable { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .is-selectable .disc-comparison-side { position: relative; isolation: isolate; padding: 10px; }
+  .is-selectable .disc-comparison-side.is-active { border-color: var(--accent); background: var(--cream); }
+  .is-selectable .disc-comparison-arrow { display: none; }
+  .is-selectable h5 { font-size: 14px; }
+  .disc-side-select { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .disc-side-select small { white-space: nowrap; }
+  .disc-side-select::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 8px; }
+  .disc-side-select:focus-visible::after { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+  .is-selectable .disc-comparison-term > button, .is-selectable .disc-copy-current { position: relative; z-index: 2; }
+}
 </style>

@@ -7,9 +7,8 @@ it.each([10, 20, 30, 40, 50, 60, 70, 80, 90])('整十级 %i 显示行内突破�
   const input = wrapper.get('input[type="checkbox"]')
   expect(wrapper.find('select').exists()).toBe(false)
   expect(input.element.checked).toBe(false)
-  expect(input.element.indeterminate).toBe(true)
-  expect(input.attributes('aria-checked')).toBe('mixed')
-  expect(wrapper.text()).toContain('待核对')
+  expect(input.element.indeterminate).toBe(false)
+  expect(wrapper.text()).not.toContain('待核对')
   expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   await input.setValue(true)
   expect(wrapper.emitted('update:modelValue')).toEqual([[level / 10]])
@@ -34,7 +33,7 @@ it.each([null, 8, 9])('90→89→90 保留原始突破 %s', async stage => {
   await wrapper.setProps({ level: 90 })
   const input = wrapper.get('input')
   expect(input.element.checked).toBe(stage === 9)
-  expect(input.element.indeterminate).toBe(stage == null)
+  expect(input.element.indeterminate).toBe(false)
   expect(wrapper.emitted('update:modelValue')).toBeUndefined()
 })
 
@@ -44,4 +43,10 @@ it('保存中禁用突破操作；非弹窗调用保留原下拉协议', () => {
   const original = mount(OperatorLevelBreakthroughSelect, { props: { level: 90, modelValue: null } })
   expect(original.get('select').element.value).toBe('')
   expect(original.findAll('option').map(option => option.element.value)).toEqual(['', '8', '9'])
+})
+
+it('快捷突破下拉在未记录状态时默认未突破', () => {
+  const wrapper = mount(OperatorLevelBreakthroughSelect, { props: { inline: false, level: 90, modelValue: null, assumeNotBroken: true } })
+  expect(wrapper.get('select').element.value).toBe('8')
+  expect(wrapper.findAll('option').map(option => option.element.value)).toEqual(['8', '9'])
 })

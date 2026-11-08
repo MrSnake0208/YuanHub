@@ -1497,7 +1497,7 @@
                             growthTargetLabel(e, "level")
                           }}
                         </p>
-                        <OperatorLevelBreakthroughSelect v-model="ensureCardDraft(e).levelBreakthroughStage" :level="Number(cardGrowthValue(e, 'level')) || 0" :disabled="isGrowthPreviewBusy(e, 'level') || isGrowthExecuteBusy(e, 'level')" />
+                        <OperatorLevelBreakthroughSelect assume-not-broken v-model="ensureCardDraft(e).levelBreakthroughStage" :level="Number(cardGrowthValue(e, 'level')) || 0" :disabled="isGrowthPreviewBusy(e, 'level') || isGrowthExecuteBusy(e, 'level')" />
                         <label
                           v-if="showLevelBreakthroughOption(e, 5)"
                           class="ledger-breakthrough-toggle"
@@ -2496,31 +2496,33 @@
               </div>
             </div>
             <div class="editor-head-stats">
-              <div class="editor-panel-controls">
-                <label v-if="canUseAutomaticPanel" class="editor-panel-source">
-                  <span>面板来源</span>
-                  <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
-                    <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
-                    <option value="manual">使用手填／采集</option>
-                    <option value="auto" :disabled="!calculatedCombatStats.automaticResultAvailable && editorPanelSource !== 'auto'">使用自动计算</option>
-                    <option v-if="editorPanelSource === 'mixed'" value="mixed" disabled>攻击／生命分别设置</option>
-                  </select>
-                </label>
-                <details v-if="editorPanelDifference" class="editor-panel-comparison">
-                  <summary>录入值与自动结果有差异，查看对比</summary>
-                  <p>{{ editorPanelDifference }}</p>
-                  <p>切换来源不会删除原值；星石尚未录全时可继续使用录入值。</p>
-                </details>
-                <div
-                  v-if="editorPanelHint"
-                  class="editor-head-stats-toolbar"
-                >
-                  <span class="editor-head-stats-note">{{
-                    editorPanelHint
-                  }}</span>
-                  <button v-if="panelPreviewState.status === 'failed'" type="button" class="btn small" @click="panelPreviewRequest.retry()">重试计算</button>
+              <Teleport defer to="#operator-editor-panel-slot" :disabled="!compactStats">
+                <div class="editor-panel-controls">
+                  <label v-if="canUseAutomaticPanel" class="editor-panel-source">
+                    <span>面板来源</span>
+                    <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
+                      <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
+                      <option value="manual">使用手填／采集</option>
+                      <option value="auto" :disabled="!calculatedCombatStats.automaticResultAvailable && editorPanelSource !== 'auto'">使用自动计算</option>
+                      <option v-if="editorPanelSource === 'mixed'" value="mixed" disabled>攻击／生命分别设置</option>
+                    </select>
+                  </label>
+                  <details v-if="editorPanelDifference" class="editor-panel-comparison">
+                    <summary>录入值与自动结果有差异，查看对比</summary>
+                    <p>{{ editorPanelDifference }}</p>
+                    <p>切换来源不会删除原值；星石尚未录全时可继续使用录入值。</p>
+                  </details>
+                  <div
+                    v-if="editorPanelHint"
+                    class="editor-head-stats-toolbar"
+                  >
+                    <span class="editor-head-stats-note">{{
+                      editorPanelHint
+                    }}</span>
+                    <button v-if="panelPreviewState.status === 'failed'" type="button" class="btn small" @click="panelPreviewRequest.retry()">重试计算</button>
+                  </div>
                 </div>
-              </div>
+              </Teleport>
               <div class="editor-head-values">
                 <span
                   class="editor-head-live"
@@ -2575,7 +2577,7 @@
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    :placeholder="combatHpDisplayLabel"
+                    :placeholder="compactStats && calculatedCombatStats.hp == null ? '点击填写' : combatHpDisplayLabel"
                     aria-label="校正生命力，清空后按面板来源显示"
                     title="直接输入校正值；清空后按面板来源显示"
                     @input="setManualCombatStat('manualHp', $event)"
@@ -2626,7 +2628,7 @@
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    :placeholder="combatAttackDisplayLabel"
+                    :placeholder="compactStats && calculatedCombatStats.attack == null ? '点击填写' : combatAttackDisplayLabel"
                     aria-label="校正攻击力，清空后按面板来源显示"
                     title="直接输入校正值；清空后按面板来源显示"
                     @input="setManualCombatStat('manualAttack', $event)"
@@ -2654,10 +2656,12 @@
 
           <div ref="editorBodyEl" class="editor-body">
             <section v-show="editorSection === 'growth'" id="operator-editor-growth" class="editor-row editor-growth-section" role="tabpanel" aria-labelledby="operator-editor-tab-growth" tabindex="0" data-editor-section="growth">
-              <div class="editor-reset-action">
-                <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" @click="resetEntry = editingOp">鞭子重置 / 记录</button>
-                <span v-if="editorDirty" class="hint">保存或取消当前修改后可操作</span>
-              </div>
+              <Teleport defer to="#operator-editor-reset-slot" :disabled="!compactStats">
+                <div class="editor-reset-action">
+                  <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" @click="resetEntry = editingOp">鞭子重置 / 记录</button>
+                  <span v-if="editorDirty" class="hint">保存或取消当前修改后可操作</span>
+                </div>
+              </Teleport>
               <div class="num-fields">
                 <div class="editor-level-block">
                   <div class="editor-growth-heading">
@@ -2711,10 +2715,11 @@
                     <button
                       type="button"
                       class="btn ghost editor-fill-max"
+                      aria-label="一键拉满等级/修为/漆园蝶"
                       :disabled="savingEdit"
                       title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
                       @click="fillEditToMax()"
-                    >一键拉满等级/修为/漆园蝶</button>
+                    ><span v-show="!compactStats">一键拉满等级/修为/漆园蝶</span><span v-show="compactStats">拉满含漆园蝶</span></button>
                   </div>
                 </div>
                 <div
@@ -2779,7 +2784,7 @@
                     "
                     class="star-row"
                   >
-                    <span class="star-caption">化极节点</span>
+                    <span class="star-caption">{{ compactStats ? '节点' : '化极节点' }}</span>
                     <span class="star-nodes">
                       <button
                         v-for="n in NODE_RANGE"
@@ -2854,6 +2859,10 @@
                   <small v-if="editOddityErrorKey" id="operator-oddity-error" class="oddity-hint oddity-error" role="alert">{{ editNotice }}</small>
                 </div>
               </div>
+              <div v-show="compactStats" class="editor-growth-other">
+                <div v-show="canUseAutomaticPanel || editorPanelDifference || editorPanelHint" id="operator-editor-panel-slot"></div>
+                <div id="operator-editor-reset-slot"></div>
+              </div>
             </section>
 
             <section v-show="editorSection === 'discs'" id="operator-editor-discs" class="editor-row disc-editor-row" role="tabpanel" aria-labelledby="operator-editor-tab-discs" tabindex="0" data-editor-section="discs">
@@ -2897,7 +2906,7 @@
                     'disc-loadout-tab-' + selectedDiscLoadoutIndex
                   "
                 >
-                  <div class="disc-loadout-toolbar">
+                  <div class="disc-loadout-toolbar" :class="{ 'is-auto-name': selectedDiscLoadout.nameMode !== 'manual' }">
                     <label
                       class="disc-loadout-name"
                       :for="'disc-loadout-name-' + selectedDiscLoadoutIndex"
@@ -2935,6 +2944,7 @@
                   </div>
 
                   <OperatorDiscComparison class="disc-editor-comparison" :current="selectedDiscLoadout.discNames" :target="selectedDiscLoadout.targetDiscNames" :catalog="editingDiscs" editable
+                    :selectable="compactStats" :active-side="editingDiscTarget ? 'target' : 'current'" @select="editingDiscTarget = $event === 'target'"
                     @copy="copyCurrentDiscTarget" @remove="removeDiscTarget">
                     <template #current-action>
                       <button type="button" class="disc-edit-action" :aria-pressed="!editingDiscTarget" @click="editingDiscTarget = false">编辑当前</button>
@@ -2961,6 +2971,7 @@
                           :key="discKey(d)"
                           class="disc-option"
                           :class="[discColorClass(d), { on: isDiscSelected(d) }]"
+                          @click="recentDiscKey = discKey(d)"
                         >
                           <input
                             type="checkbox"
@@ -2972,15 +2983,16 @@
                             class="disc-name disc-term-label"
                             tabindex="0"
                             @mouseenter="
-                              showDiscTooltip($event, discDescription(d))
+                              !compactStats && showDiscTooltip($event, discDescription(d))
                             "
                             @mouseleave="hideDiscTooltip"
-                            @focus="showDiscTooltip($event, discDescription(d))"
+                            @focus="!compactStats && showDiscTooltip($event, discDescription(d))"
                             @blur="hideDiscTooltip"
                             >{{ discKey(d) }}</span
                           >
                         </label>
                       </div>
+                      <p v-if="discDescription(recentDisc)" v-show="compactStats" class="disc-option-detail" aria-live="polite">{{ discKey(recentDisc) }}：{{ discDescription(recentDisc) }}</p>
                     </div>
                     <OperatorDiscPresets
                       :key="editingId + ':' + selectedDiscLoadoutIndex + ':' + editingDiscTarget"
@@ -3037,7 +3049,7 @@
             <div
               v-if="!editConflictDraft"
               class="editor-action-status"
-              :class="{ err: editNoticeError, 'is-idle': !savingEdit && !editNotice && !editorDirty }"
+              :class="{ err: editNoticeError && !!editorVisibleNotice, 'is-idle': !savingEdit && !editorVisibleNotice && !editorDirty }"
               role="status"
             >
               {{ editorActionStatus }}
@@ -3247,6 +3259,7 @@ import {
   OPERATOR_ELITE_MAX,
   getMaxEliteForLevel,
   inferredLevelBreakthroughStage,
+  isLevelBreakthroughBoundary,
   operatorLevelBreakthroughStage,
 } from "../../utils/operatorGrowthRules.js";
 import {
@@ -3530,6 +3543,8 @@ const discTooltip = ref({
 // —— 单个密探编辑弹窗 ——
 const editing = ref(false);
 const editingId = ref("");
+const recentDiscKey = ref("");
+watch(editingId, () => { recentDiscKey.value = ""; });
 const editingOp = ref(null);
 const editorOpeningId = ref("");
 const editorOpenError = ref("");
@@ -3565,11 +3580,14 @@ const editorDirty = computed(function () {
   return editing.value &&
     (JSON.stringify([editForm.value, combatDisplayMode.value]) !== editBaseline.value || starLoadoutIsDirty());
 });
+const editorVisibleNotice = computed(() =>
+  compactStats.value && !editorDirty.value && editNotice.value.endsWith('请确认后保存') ? '' : editNotice.value
+);
 const editorActionStatus = computed(function () {
   if (savingEdit.value) return '正在保存到云端…';
-  if (editNoticeError.value) return editNotice.value;
-  if (editorDirty.value && editNotice.value === '养成资料已保存') return '有未保存的修改，请确认后保存';
-  return editNotice.value || (editorDirty.value ? '有未保存的修改，请确认后保存' : '尚未修改');
+  if (editNoticeError.value) return editorVisibleNotice.value;
+  if (editorDirty.value && editorVisibleNotice.value === '养成资料已保存') return '有未保存的修改，请确认后保存';
+  return editorVisibleNotice.value || (editorDirty.value ? '有未保存的修改，请确认后保存' : '尚未修改');
 });
 const confirmEditorDiscard = useUnsavedChanges(editorDirty, "密探编辑内容");
 // C2 source of truth: Current Inventory + Current Star Loadout only.
@@ -4241,6 +4259,7 @@ function sortDiscsForPicker(discs) {
 const editingDiscs = computed(function () {
   return sortDiscsForPicker((editingOp.value && editingOp.value.discs) || []);
 });
+const recentDisc = computed(() => editingDiscs.value.find(d => discKey(d) === recentDiscKey.value));
 
 function isMajorGoldDisc(disc) {
   if (!disc || disc.color !== "金") return false;
@@ -4600,13 +4619,22 @@ const maxEliteForLevel = computed(function () {
   return getMaxEliteForLevel(editForm.value.level);
 });
 
+function breakthroughStageOrDefault(source) {
+  const stage = operatorLevelBreakthroughStage(source);
+  return stage === null && isLevelBreakthroughBoundary(source.level) ? Number(source.level) / 10 - 1 : stage;
+}
+
+function editorBreakthroughStage(form = editForm.value) {
+  return breakthroughStageOrDefault(form);
+}
+
 const combatStatsInput = computed(function () {
   const existing = currentEntries.value.find((entry) => entry.id === editingOp.value?.id);
   const huaji = operatorHuajiDraft({ ...editingOp.value, ...existing, huaji: editForm.value.huaji }, editForm.value.starLevel);
   return {
     operatorName: editingOp.value && editingOp.value.name,
     level: editForm.value.level,
-    levelBreakthroughStage: operatorLevelBreakthroughStage(editForm.value),
+    levelBreakthroughStage: editorBreakthroughStage(),
     elite: editForm.value.elite,
     starLevel: editForm.value.starLevel,
     huaji: { ...huaji, awakened: huaji.owned ? editForm.value.awakened : null },
@@ -4645,12 +4673,17 @@ const panelPreviewInput = computed(() => {
 watch(() => panelBatchInput.value?.key, () => panelBatchRequest.update(panelBatchInput.value), { immediate: true });
 watch(() => panelPreviewInput.value?.key, () => panelPreviewRequest.update(panelPreviewInput.value), { immediate: true });
 const editorPanelResult = computed(() => canUseAutomaticPanel.value && panelPreviewState.value.key === panelPreviewInput.value?.key ? panelPreviewState.value.result : null);
-const editorPanelHint = computed(() => canUseAutomaticPanel.value ? operatorPanelHint(editorPanelResult.value, panelPreviewState.value.status) : "");
+const editorPanelHint = computed(() => {
+  if (!canUseAutomaticPanel.value) return "";
+  const result = editorPanelResult.value;
+  if (result?.status === 'unsupported' && result.reason !== 'not_owned') return '暂不支持自动计算，可在顶部手动填写';
+  return operatorPanelHint(result, panelPreviewState.value.status);
+});
 
 function cardPanelDraftChanged(entry) {
   const draft = operatorPanelPreviewBody(accountId.value, entry.id, cardCombatInput(entry));
   const saved = operatorPanelPreviewBody(accountId.value, entry.id, {
-    level: entry.level, levelBreakthroughStage: operatorLevelBreakthroughStage(entry), elite: entry.elite,
+    level: entry.level, levelBreakthroughStage: breakthroughStageOrDefault(entry), elite: entry.elite,
     huaji: operatorHuaji(entry), oddities: entry.combatStats?.oddities,
   });
   return JSON.stringify(draft) !== JSON.stringify(saved);
@@ -4757,10 +4790,10 @@ const combatHpInputValue = computed(function () {
 
 function markCombatCorrectionCurrent() {
   const signature = combatInputSignature(combatStatsInput.value);
-  editForm.value.combatStats.observedInputs = { level: editForm.value.level, levelBreakthroughStage: operatorLevelBreakthroughStage(editForm.value), signature: signature };
+  editForm.value.combatStats.observedInputs = { level: editForm.value.level, levelBreakthroughStage: editorBreakthroughStage(), signature: signature };
   editForm.value.combatStats.combatInputSignature = signature;
   editForm.value.combatStats.frontendObservedSignature = signature;
-  editForm.value.combatStats.observedStatus = operatorLevelBreakthroughStage(editForm.value) == null ? "unverified" : "valid";
+  editForm.value.combatStats.observedStatus = editorBreakthroughStage() == null ? "unverified" : "valid";
 }
 
 function toggleAutomaticCombatStat(key) {
@@ -7548,7 +7581,7 @@ function cardCombatInput(entry) {
     operatorName: entry.name,
     spOf: entry.spOf || "",
     level: Number(growth.level) || 0,
-    levelBreakthroughStage: operatorLevelBreakthroughStage(growth),
+    levelBreakthroughStage: breakthroughStageOrDefault(growth),
     elite: Number(growth.elite) || 0,
     starLevel: Number(growth.star) || 0,
     huaji: cardHuaji(entry),
@@ -7754,7 +7787,7 @@ function cardPatch(entry) {
     expected_revision: growth.revision,
     reason: "manual_correction",
     level: Number(growth.level) || 0,
-    level_breakthrough_stage: operatorLevelBreakthroughStage(growth),
+    level_breakthrough_stage: breakthroughStageOrDefault(growth),
     elite: Number(growth.elite) || 0,
     star_level: Number(growth.star) || 0,
     disc_loadouts: (growth.discLoadouts || []).map(discLoadoutPayload),
@@ -7808,7 +7841,7 @@ function cardPatch(entry) {
     patch.combat_stats.combat_input_signature = combatInputSignature(input);
     patch.combat_stats.observed_inputs = {
       level: growth.level,
-      level_breakthrough_stage: operatorLevelBreakthroughStage(growth),
+      level_breakthrough_stage: breakthroughStageOrDefault(growth),
       elite: growth.elite,
       star_level: growth.star,
       huaji: input.huaji,
@@ -8026,7 +8059,7 @@ async function saveCardCombat(entry) {
     patch.combat_stats.combat_input_signature = signature;
     patch.combat_stats.observed_inputs = {
       level: entry.level,
-      level_breakthrough_stage: operatorLevelBreakthroughStage(entry),
+      level_breakthrough_stage: breakthroughStageOrDefault(entry),
       elite: entry.elite,
       star_level: entry.starLevel,
       huaji: input.huaji,
@@ -8149,10 +8182,10 @@ function applyEditorEntry(existing, op, id, allowCache) {
   if (
     (combatStats.observedStatus !== "stale" && combatStats.observedStatus !== "unverified" &&
       operatorLevelBreakthroughStage(observedInputs) != null &&
-      operatorLevelBreakthroughStage(observedInputs) === operatorLevelBreakthroughStage(editForm.value)) ||
+      operatorLevelBreakthroughStage(observedInputs) === editorBreakthroughStage()) ||
     (combatStats.source === "manual" &&
       operatorLevelBreakthroughStage(observedInputs) != null &&
-      operatorLevelBreakthroughStage(observedInputs) === operatorLevelBreakthroughStage(editForm.value) &&
+      operatorLevelBreakthroughStage(observedInputs) === editorBreakthroughStage() &&
       observedInputs.level != null &&
       Number(observedInputs.level) === Number(editForm.value.level) &&
       observedInputs.elite != null &&
@@ -8322,7 +8355,7 @@ async function saveEdit() {
         combatStats.observedInputs.signature === currentCombatSignature));
   const patch = {
     level: level,
-    level_breakthrough_stage: operatorLevelBreakthroughStage(editForm.value),
+    level_breakthrough_stage: editorBreakthroughStage(),
     elite: elite,
     star_level: starLevel,
     disc_loadouts: discLoadouts,
@@ -8347,7 +8380,7 @@ async function saveEdit() {
     patch.combat_stats.combat_input_signature = currentCombatSignature;
     patch.combat_stats.observed_inputs = {
       level: level,
-      level_breakthrough_stage: operatorLevelBreakthroughStage(editForm.value),
+      level_breakthrough_stage: editorBreakthroughStage(),
       elite: elite,
       star_level: starLevel,
       huaji: combatStatsInput.value.huaji,
