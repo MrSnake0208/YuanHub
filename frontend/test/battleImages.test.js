@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { routes } from '../src/router/routes.js'
 import { FEATURE_KEYS } from '../src/config/features.js'
 import { isFeatureAccessible } from '../src/utils/featureAccess.js'
-import { battleFileName, battleHuajiProgress, battleImageError, battleStarStones, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
+import { battleFileName, battleHuajiProgress, battleImageError, battleStarStones, battleTargetShortName, buildBattleImageModel, createBattleDraft } from '../src/utils/battleImages.js'
 
 test('独立工具使用专属发布开关，不受作业系统或内测开关限制', () => {
   const route = routes.find(route => route.path === '/tools/battle-images')
@@ -119,4 +119,10 @@ test('出图星石按主辅槽位归位并写成名字加等级，旧完整格�
   assert.deepEqual(stones.main, [{ name: '七杀', label: '七杀' }, null, { name: '天相', label: '天相60' }])
   assert.deepEqual(stones.support, [null, { name: '擎羊', label: '擎羊' }, null])
   assert.deepEqual(stones.other, ['自定义说明'])
+})
+
+test('手机目标短名缩短默认名，自定义名按字符截取，完整数据不变', () => {
+  for (const [name, short] of [['作业目标1', '目标1'], ['作业目标12', '目标12'], ['四字目标', '四字目标'], ['自定义长目标', '自定义长…'], ['😀甲乙丙丁', '😀甲乙丙…'], ['', '']]) {
+    assert.equal(battleTargetShortName(name), short)
+  }
 })

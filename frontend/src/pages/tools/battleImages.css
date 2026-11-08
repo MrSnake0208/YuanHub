@@ -286,7 +286,7 @@
 .battle-error button { margin-left: 8px; }
 /* 手机端底部生成栏，桌面端隐藏；见 battleImagesMobile.css。 */
 /* 回合栏与备注带仅手机端显示：桌面端用编辑区顶部的翻回合按钮和备注列。 */
-.battle-mobile-dock, .battle-disc-short, .battle-round-dock, .battle-action-matrix tr.battle-remark-row { display: none; }
+.battle-mobile-panel, .battle-mobile-dock, .battle-disc-short, .battle-round-dock, .battle-action-matrix tr.battle-remark-row { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (hover: hover) {
   .battle-tool .battle-disc-states > button:hover:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); color: var(--battle-accent); }

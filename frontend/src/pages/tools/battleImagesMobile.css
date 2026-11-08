@@ -27,34 +27,36 @@
   .battle-tool .battle-disc-full { display: none; }
   .battle-tool .battle-disc-short { display: block; }
   .battle-tool .battle-cell-error { margin: 0 2px 6px; font-size: 10px; }
-  /* 操作表手机端隐藏备注列，有备注的回合改在行下显示备注带（编辑区仍可填写），六列排满屏宽。 */
+  /* 手机备注独占可见六列，编辑区移出表格，避免隐藏的第七列占宽。 */
   .battle-tool .battle-action-matrix tr:not(.battle-editor-row):not(.battle-remark-row) > :last-child { display: none; }
   .battle-tool .battle-action-matrix tr > :nth-last-child(2) { border-right: 0; }
   /* 图例收成一行：符号含义已写在录入按钮上，只留出手序号说明；目标只列表中用到的，单目标时不列。 */
-  .battle-tool .battle-action-legend { gap: 6px 16px; margin-bottom: 10px; }
+  .battle-tool .battle-action-legend { flex-wrap: nowrap; gap: 6px; margin-bottom: 10px; overflow-x: auto; white-space: nowrap; }
+  .battle-tool .battle-action-legend > span { flex-wrap: nowrap; flex-shrink: 0; gap: 6px; }
+  .battle-tool .battle-legend-symbols > b { font-size: 12px; }
+  .battle-tool .battle-legend-targets > span { flex-shrink: 0; }
   .battle-tool .battle-legend-prefix, .battle-tool .battle-legend-symbols > b:not(:first-of-type) { display: none; }
   .battle-tool .battle-legend-targets > span.is-unused, .battle-tool .battle-legend-targets.is-single > span { display: none; }
   /* 手机端表格不横滑，外层改为 clip 而非滚动容器，表头才能吸附在站点顶栏下方；表头压成小头像加名字。 */
   .battle-tool .battle-recorder > .battle-table-scroll { overflow: clip; }
-  .battle-tool .battle-action-matrix thead th { position: sticky; top: calc(64px + env(safe-area-inset-top)); z-index: var(--z-sticky-low, 30); padding: 4px 2px; }
-  .battle-tool .battle-action-matrix tbody tr { scroll-margin-top: calc(64px + env(safe-area-inset-top) + 68px); }
+  .battle-tool .battle-action-matrix thead th { position: sticky; top: calc(var(--mobile-shell-follow-top, calc(72px + env(safe-area-inset-top))) - 8px); z-index: var(--z-sticky-low, 30); padding: 4px 2px; }
+  .battle-tool .battle-action-matrix tbody tr { scroll-margin-top: calc(var(--mobile-shell-follow-top, calc(72px + env(safe-area-inset-top))) - 8px + 68px); }
   .battle-tool .battle-action-matrix .battle-slot-number { display: none; }
   .battle-tool .battle-record-identity { flex-direction: column; gap: 2px; }
   .battle-tool .battle-record-identity img { width: 32px; height: 40px; }
   .battle-tool .battle-record-identity strong { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.3; }
   .battle-tool .battle-action-matrix tbody th > button, .battle-tool .battle-action-matrix .battle-cell-button { min-height: 44px; }
   .battle-tool .battle-action-matrix tbody th > button { padding: 0; font-size: 13px; }
-  .battle-tool .battle-matrix .battle-action-cell { gap: 3px; padding-inline: 1px; }
-  .battle-tool .battle-action-mark { padding: 2px 3px; }
+  .battle-tool .battle-matrix .battle-action-cell { flex-direction: row; flex-wrap: wrap; gap: 3px; padding-inline: 1px; }
+  .battle-tool .battle-action-mark { flex-wrap: nowrap; gap: 1px; padding: 2px; white-space: nowrap; }
   .battle-tool .battle-action-mark b { font-size: 13px; }
-  .battle-tool .battle-action-mark small { font-size: 11px; }
+  .battle-tool .battle-action-mark small { align-self: flex-end; font: 500 10px/1 var(--font-d); }
   .battle-tool .battle-action-matrix tr.battle-remark-row { display: table-row; }
   .battle-tool .battle-action-matrix tr.battle-remark-row > td { padding: 0; text-align: left; }
   .battle-tool .battle-remark-band { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 100%; min-height: 44px; padding: 13px 10px; border: 0; border-radius: 0; background: transparent; color: var(--ink-60); font-size: 12px; font-weight: 400; line-height: 1.5; text-align: left; white-space: pre-wrap; }
   .battle-tool .battle-remark-band::before { content: '备注　'; color: var(--battle-accent); }
-  .battle-tool .battle-action-matrix tr.battle-editor-row > td { padding: 12px 10px; }
-  .battle-tool .battle-inline-editor { left: 10px; max-width: calc(var(--battle-view-width, 100%) - 20px); }
-  .battle-tool .battle-target-rename { min-height: 44px; }
+  .battle-tool .battle-inline-editor { position: static; max-width: none; }
+  .battle-tool .battle-target-rename { min-width: 44px; min-height: 44px; padding: 4px; }
   .battle-tool.battle-dialog-mask { place-items: end stretch; padding: 0; }
   .battle-dialog { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; border-bottom: 0; }
   .battle-dialog-header { padding: 14px 16px 10px; gap: 10px; }
@@ -82,22 +84,37 @@
   .battle-tool .battle-star-slots { grid-template-columns: 1fr; }
   .battle-tool .battle-dialog > .battle-config-tools { align-items: flex-start; gap: 4px; }
   .battle-tool .battle-member-actions { margin-left: -8px; }
-  /* 翻回合与收起改由底部回合栏承担，编辑区顶部只留标题。 */
-  .battle-tool .battle-inline-heading { margin-bottom: 8px; }
-  .battle-tool .battle-inline-heading .battle-round-nav { display: none; }
+  /* 标题只保留焦点目标，回合信息由面板最后一行展示。 */
+  .battle-tool .battle-inline-heading { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .battle-tool .battle-inline-heading .battle-round-nav, .battle-tool .battle-sequence-head > button, .battle-tool .battle-sequence-tools { display: none; }
+  .battle-tool .battle-sequence { padding-bottom: 6px; }
+  .battle-tool .battle-sequence-chips { position: relative; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-top: 4px; padding: 2px; }
+  .battle-tool .battle-sequence-chips > li { flex-shrink: 0; }
+  .battle-tool .battle-sequence-chips button { white-space: nowrap; }
+  .battle-tool .battle-sequence > .battle-hint { margin: 4px 0; }
+  .battle-tool .battle-step-tools { gap: 4px; margin-top: 4px; padding: 4px; }
+  .battle-tool .battle-step-tools > span { flex-basis: 100%; }
+  .battle-tool .battle-step-tools > button { flex: 1; min-width: 44px; padding: 4px; }
+  .battle-tool .battle-undo-note .battle-link-button { min-width: 44px; min-height: 44px; }
+  .battle-tool .battle-round-note { margin-top: 0; }
+  .battle-tool .battle-round-note textarea { min-height: 100px; max-height: 35dvh; }
+  .battle-tool .battle-note-done { min-width: 64px; min-height: 44px; margin-top: 8px; }
   .battle-tool .battle-composer-row > button, .battle-tool .battle-sequence-chips button, .battle-tool .battle-step-tools > button { min-height: 44px; }
   /* 录入三排按网格排满：出手 3 列两行、目标 5 格、动作 4 格，标签留在左侧窄列，不单独占行。 */
-  .battle-tool .battle-composer { gap: 8px; padding-top: 12px; }
-  .battle-tool .battle-composer-row { display: grid; grid-template-columns: 28px repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .battle-tool .battle-composer-actors { grid-template-columns: 28px repeat(3, minmax(0, 1fr)); }
+  .battle-tool .battle-composer { gap: 6px; padding-top: 6px; }
+  .battle-tool .battle-composer-row { display: grid; grid-template-columns: 24px repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .battle-tool .battle-composer-actors { grid-template-columns: 24px repeat(3, minmax(0, 1fr)); }
   .battle-tool .battle-composer-actors > .battle-composer-label { grid-row: span 2; }
-  .battle-tool .battle-composer-targets { grid-template-columns: 28px repeat(5, minmax(0, 1fr)); }
+  .battle-tool .battle-composer-targets { grid-template-columns: 24px repeat(5, minmax(0, 1fr)); }
   .battle-tool .battle-composer-label { width: auto; align-self: center; }
   .battle-tool .battle-composer-row > button { min-width: 0; padding: 4px; }
   .battle-tool .battle-actor-option { justify-content: flex-start; padding-left: 4px; overflow: hidden; white-space: nowrap; }
-  .battle-tool .battle-target-option { gap: 4px; }
-  .battle-tool .battle-target-option > span, .battle-tool .battle-actor-option { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .battle-tool .battle-target-option i { width: 10px; height: 10px; }
+  .battle-tool .battle-target-option { gap: 2px; padding-inline: 2px; }
+  .battle-tool .battle-actor-option { min-width: 0; text-overflow: ellipsis; }
+  .battle-tool .battle-target-option > span { min-width: 0; font-size: 11px; line-height: 1.2; text-align: center; }
+  .battle-tool .battle-target-option b { font: 600 11px/1.2 var(--font-d); }
+  .battle-tool .battle-target-short { display: block; overflow-wrap: anywhere; }
+  .battle-tool .battle-target-option i { width: 6px; height: 6px; }
   .battle-tool .battle-action-option { flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
   .battle-tool .battle-draft-menu > summary { font-size: 12px; }
@@ -114,16 +131,29 @@
   .battle-tool .battle-mobile-dock { position: fixed; right: 0; bottom: 0; left: 0; z-index: var(--z-sticky, 40); display: flex; align-items: center; gap: 12px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
   .battle-tool .battle-mobile-dock .battle-save-status { flex: 1; width: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .battle-tool .battle-mobile-dock .battle-primary { flex-shrink: 0; min-height: 44px; padding-inline: 16px; font-size: 14px; }
-  /* 操作表录入中：底部改为回合栏（上一回合／当前回合／下一回合或新增／收起），生成栏收起后恢复。 */
+  /* 面板高度随内容变化，页面末行始终能滚到面板上方；收起后恢复生成栏。 */
+  .battle-tool.is-recording { padding-bottom: calc(var(--battle-panel-height, 55dvh) + 16px); }
   .battle-tool.is-recording .battle-mobile-dock { display: none; }
-  .battle-tool .battle-round-dock { position: fixed; right: 0; bottom: 0; left: 0; z-index: var(--z-sticky, 40); display: flex; align-items: center; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
-  .battle-tool .battle-round-dock > button { flex-shrink: 0; gap: 2px; min-height: 44px; padding: 6px 10px; font-size: 13px; }
+  .battle-tool .battle-mobile-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: var(--z-sticky, 40); display: flex; flex-direction: column; box-sizing: border-box; max-height: 55dvh; padding: 6px 10px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
+  .battle-mobile-panel > #battle-mobile-panel-body { min-height: 0; overflow-y: auto; }
+  .battle-tool .battle-round-dock { position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .battle-tool .battle-round-dock > button { flex-shrink: 0; gap: 2px; min-height: 44px; padding: 6px 4px; font-size: 12px; }
   .battle-tool .battle-round-dock > .battle-round-dock-close { width: 44px; padding: 0; }
   .battle-round-dock-title { display: grid; flex: 1; justify-items: center; min-width: 0; line-height: 1.3; }
-  .battle-round-dock-title > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14px/1.3 var(--font-d); }
+  .battle-round-dock-title > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px/1.3 var(--font-d); }
   .battle-round-dock-title > small { font-size: 11px; color: var(--ink-60); }
-  /* 输入文字时软键盘会把固定底栏顶到键盘上方遮住输入框，聚焦期间隐藏两种底栏。 */
-  .battle-tool:has(:is(textarea, input:not([type=checkbox]):not([type=radio])):focus) :is(.battle-mobile-dock, .battle-round-dock) { display: none; }
+  .battle-round-more { flex-shrink: 0; }
+  .battle-tool .battle-round-more > button { width: 44px; min-height: 44px; padding: 0; font-size: 20px; }
+  .battle-round-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: var(--z-popover, 55); display: grid; gap: 4px; min-width: 160px; padding: 6px; border: 1px solid var(--battle-border); border-radius: 6px; background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
+  .battle-tool .battle-round-menu > button { min-height: 44px; justify-content: flex-start; }
+  /* 面板内的备注输入保留面板；页面其它输入仍避让软键盘。 */
+  .battle-tool:has(:is(textarea, input:not([type=checkbox]):not([type=radio])):focus):not(:has(.battle-mobile-panel :focus)) :is(.battle-mobile-dock, .battle-mobile-panel) { display: none; }
+  body:has(.battle-tool:not(.is-recording) .battle-mobile-dock):not(:has(.battle-tool :is(textarea, input):focus)) .back-to-top { bottom: calc(88px + env(safe-area-inset-bottom)); }
+  body:has(.battle-tool.is-recording) .back-to-top { display: none; }
+  /* 极窄屏保留完整回合号，上一/下一已有文字，不再占位放箭头。 */
+  @media (max-width: 359px) {
+    .battle-tool .battle-round-dock > button:not(.battle-round-dock-close) > svg { display: none; }
+  }
   /* 命盘三态图标按钮满足手机 44px 触控热区。 */
   .page-battle-images .battle-disc-states > button[type] { width: 44px; height: 44px; }
 }

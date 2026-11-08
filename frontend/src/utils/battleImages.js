@@ -25,6 +25,12 @@ export const TARGET_COLORS = ['#dce8f1', '#f6e4bb', '#edd6d0', '#deead6', '#e4dc
 export const TARGET_ACCENTS = ['#5b8db8', '#d4a017', '#c8644f', '#6a9f55', '#8b6cc0']
 const agents = new Map(AGENT_CATALOG.map(agent => [agent.name, agent.id]))
 
+export function battleTargetShortName(name) {
+  if (/^作业目标\d+$/.test(name)) return name.slice(2)
+  const chars = Array.from(name)
+  return chars.length > 4 ? chars.slice(0, 4).join('') + '…' : name
+}
+
 export function battleOperatorId(name) {
   return agents.get(String(name || '').trim()) || ''
 }
