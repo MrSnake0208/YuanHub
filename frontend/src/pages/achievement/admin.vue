@@ -2,7 +2,7 @@
   <div class="page-achievement-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context page-header--keep-description">
         <div class="wrap">
           <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">返回管理工作台</router-link>
           <h1 class="page-header-title">成就目录管理</h1>

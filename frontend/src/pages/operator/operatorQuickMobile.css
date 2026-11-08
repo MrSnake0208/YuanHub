@@ -8,6 +8,10 @@
 }
 .quick-header-context { display: grid; gap: 0 16px; margin-top: 8px; }
 .quick-mode-context { align-self: center; font-size: 13px; line-height: 1.7; }
+@media (max-width: 767px) {
+  .page-header--mobile-context .quick-header-context { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; margin-top: 8px; }
+  .page-header--mobile-context .quick-mode-context { font-size: 12px; line-height: 1.6; }
+}
 .quick-content { padding-block: 12px 24px; }
 .quick-save-guidance { font-size: 13px; line-height: 1.7; }
 .quick-session-summary { margin-top: 8px; font-size: 12px; }

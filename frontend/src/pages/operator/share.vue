@@ -2,7 +2,7 @@
   <div class="page-operator-share">
     <IslandSidebar />
     <main id="main-content" class="share-main">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context page-header--keep-description">
         <div class="wrap">
           <router-link class="page-header-back" to="/operator"><ArrowLeft :size="16" aria-hidden="true" /> 密探名册</router-link>
           <h1 class="page-header-title">密探 BOX</h1>

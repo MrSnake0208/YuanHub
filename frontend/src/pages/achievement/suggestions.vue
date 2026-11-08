@@ -2,12 +2,14 @@
   <div class="achievement-suggestions">
     <IslandSidebar />
     <main id="main-content" class="wrap suggestions-main">
-      <router-link :to="review ? '/achievement/admin' : '/achievement'">{{ review ? '返回成就目录管理' : '返回成就档案' }}</router-link>
-      <h1>{{ review ? '审核成就投稿' : '补充成就资料' }}</h1>
-      <p v-if="!identity">请先登录。</p>
-      <p v-else-if="!allowed">需要成就目录管理权限。</p>
+      <header class="suggestions-header">
+        <router-link :to="review ? '/achievement/admin' : '/achievement'">{{ review ? '返回成就目录管理' : '返回成就档案' }}</router-link>
+        <h1>{{ review ? '审核成就投稿' : '补充成就资料' }}</h1>
+      </header>
+      <p v-if="!identity" class="suggestion-introduction">请先登录。</p>
+      <p v-else-if="!allowed" class="suggestion-introduction">需要成就目录管理权限。</p>
       <template v-else>
-        <p>{{ review ? '采纳只追加到草稿；发布仍需在成就目录管理中预览确认。' : '提交候选新成就，管理员审核后加入目录草稿；不修改你的个人完成记录。' }}</p>
+        <p class="suggestion-introduction">{{ review ? '采纳只追加到草稿；发布仍需在成就目录管理中预览确认。' : '提交候选新成就，管理员审核后加入目录草稿；不修改你的个人完成记录。' }}</p>
         <div v-if="error || Object.keys(errors).length" ref="errorSummary" tabindex="-1" role="alert" class="suggestion-error">
           <p>{{ error || '请修正以下内容后再提交。' }}</p>
           <p v-for="(message, field) in errors" :key="field"><a :href="'#candidate-' + field" @click.prevent="focusField(field)">{{ message }}</a></p>
@@ -191,4 +193,11 @@ nav, .suggestion-toolbar { display: flex; gap: 12px; align-items: end; flex-wrap
 .suggestion-list li { margin-block: 10px; }
 .suggestion-list button { text-align: left; overflow-wrap: anywhere; max-width: 100%; }
 .suggestion-error { border: 1px solid currentColor; padding: 12px; }
+@media (max-width: 767px) {
+  .suggestions-main { padding-top: 0; padding-inline: 16px; }
+  .suggestions-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding-block: 12px 8px; }
+  .suggestions-header > a { grid-column: 1; display: inline-flex; align-items: center; min-height: 44px; justify-self: start; }
+  .suggestions-header h1 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .suggestion-introduction { font-size: 12px; line-height: 1.6; }
+}
 </style>

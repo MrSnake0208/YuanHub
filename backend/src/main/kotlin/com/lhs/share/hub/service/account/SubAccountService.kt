@@ -9,6 +9,7 @@ import com.lhs.share.hub.repository.InventoryCurrentRepository
 import com.lhs.share.hub.repository.InventoryDeletedRecordRepository
 import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.InventoryRevisionRepository
+import com.lhs.share.hub.repository.LedgerPlanRepository
 import com.lhs.share.hub.repository.OperatorAnnotationRepository
 import com.lhs.share.hub.repository.OperatorCorrectionRecordRepository
 import com.lhs.share.hub.repository.OperatorCurrentRepository
@@ -93,6 +94,7 @@ class SubAccountService(
     private val mailboxDeliveries: com.lhs.share.hub.repository.MailboxDeliveryRepository? = null,
     private val starInventorySyncs: com.lhs.share.hub.repository.StarInventorySyncRepository? = null,
     private val starPlanInheritance: com.lhs.share.hub.repository.StarPlanInheritancePendingRepository? = null,
+    private val ledgerPlans: LedgerPlanRepository? = null,
 ) {
     fun create(userId: String, name: String, game: String? = null): SubAccountResponse {
         val normalizedGame = normalizeGame(game ?: DEFAULT_GAME)
@@ -161,6 +163,9 @@ class SubAccountService(
                     val nextGame = game?.let(::normalizeGame) ?: account.game
                     fenceAccount(account)
                     if (nextGame != account.game) {
+                        if (ledgerPlans?.existsByUserIdAndAccountId(userId, accountId) == true) {
+                            throw InventoryApiException(HttpStatus.CONFLICT, "ledger_plan_game_locked", "已有广陵账房方案，不能修改所属游戏；请使用另一个游戏账号")
+                        }
                         if (operatorRelationships?.hasSubstantiveData(userId, accountId) == true) {
                             throw InventoryApiException(HttpStatus.CONFLICT, "operator_relationship_game_locked", "已有信赖与传闻记录，不能修改所属游戏")
                         }
@@ -235,6 +240,7 @@ class SubAccountService(
             transactionTemplate.executeWithoutResult {
                 val account = requireAccount(userId, accountId)
                 fenceAccount(account)
+                ledgerPlans?.deleteAllByUserIdAndAccountId(userId, accountId)
                 mailboxHistory?.deleteAllByUserIdAndAccountId(userId, accountId)
                 mailboxDeliveries?.deleteAllByUserIdAndAccountId(userId, accountId)
                 inventoryCurrentRepository.deleteAllByUserIdAndAccountId(userId, accountId)

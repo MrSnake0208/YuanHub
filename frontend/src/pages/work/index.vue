@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="page-header discovery-page-header">
+      <header class="page-header page-header--mobile-context discovery-page-header">
         <div class="wrap">
           <div class="page-header-row">
             <div class="page-header-identity">

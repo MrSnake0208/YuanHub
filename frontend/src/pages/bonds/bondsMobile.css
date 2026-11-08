@@ -1,3 +1,5 @@
+@import '../../styles/page-headerMobile.css' (max-width: 767px);
+
 @media (max-width: 767px) {
   .bonds-page .wrap { padding-inline: 12px; }
   .bond-toolbar { gap: 8px; }
@@ -9,11 +11,12 @@
 }
 
 @media (max-width: 767px) {
-  .bonds-codex .compact-tool-header.mobile-context-header { padding-block: 8px 4px; }
   .bonds-codex .compact-tool-header.mobile-context-header.mobile-description .compact-tool-description { margin-top: 4px; }
+  .bonds-codex .compact-tool-header .compact-tool-account { padding-top: 0; }
+  .bonds-codex .compact-tool-header .compact-tool-actions { gap: 4px; }
   .bonds-codex span.bond-desktop-copy { display: none; }
   .bonds-codex span.bond-mobile-copy { display: inline; }
-  .bonds-codex .bond-header-action { padding: 6px; font-size: 12px; }
+  .bonds-codex .bond-header-action { min-height: 44px; border: 0; background: transparent; padding: 6px 4px; font-size: 12px; line-height: 1.5; color: var(--ink-60); }
   .bonds-codex .bond-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px 0; }
   .bonds-codex .bond-summary > div { padding: 4px 12px; }
   .bonds-codex .bond-summary .bond-collection-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; grid-column: 1 / -1; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }

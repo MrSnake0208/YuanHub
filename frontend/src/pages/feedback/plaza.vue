@@ -2,7 +2,7 @@
   <div class="feedback-page feedback-center feedback-plaza-page">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap"><div class="page-header-row">
+      <header class="page-header page-header--mobile-context"><div class="wrap"><div class="page-header-row">
         <div class="page-header-identity"><h1 class="page-header-title">反馈广场</h1><p class="page-header-description">浏览公开的问题与建议，查看处理进展。</p></div>
         <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" @change="changeSpace" />
         <router-link class="page-header-action plaza-submit" :to="feedbackLocation('/feedback', spaceId, { new: '1' })"><Plus :size="18" aria-hidden="true" />提交反馈</router-link>

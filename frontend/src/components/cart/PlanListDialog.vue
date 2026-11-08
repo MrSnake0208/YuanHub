@@ -14,14 +14,15 @@
             <button type="button" class="banner-login" @click="$emit('login')">去登录</button>
           </p>
 
-          <div v-if="loggedIn" class="plan-sec">
+          <template v-if="loggedIn">
+          <div v-for="group in cloudGroups" :key="group.title" class="plan-sec">
             <div class="sec-head">
-              <Cloud :size="14" /><span>云端方案</span><span class="cnt">{{ plans.length }}</span>
+              <Cloud :size="14" /><span>{{ group.title }}</span><span class="cnt">{{ group.plans.length }}</span>
             </div>
             <div v-if="loading" class="plan-empty"><Loader2 :size="16" class="spin" />加载中…</div>
-            <div v-else-if="plans.length === 0" class="plan-empty">还没有云端方案，点「保存方案」创建一份吧</div>
+            <div v-else-if="group.plans.length === 0" class="plan-empty">还没有云端方案，点「保存方案」创建一份吧</div>
             <div v-else class="plan-list">
-              <div v-for="p in plans" :key="p.id" class="plan-item">
+              <div v-for="p in group.plans" :key="p.id" class="plan-item">
                 <template v-if="renamingId === p.id">
                   <input
                     v-model="renameDraft"
@@ -49,6 +50,7 @@
               </div>
             </div>
           </div>
+          </template>
 
           <div class="plan-sec">
             <div class="sec-head">
@@ -81,16 +83,25 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { X, Cloud, HardDrive, LogIn, Loader2, Pencil, Trash2, Check } from '@lucide/vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { formatMoney } from '../../utils/ledgerPricing.js'
 
-defineProps({
+const props = defineProps({
   plans: { type: Array, default: () => [] },
   guestPlans: { type: Array, default: () => [] },
   loggedIn: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  accountId: { type: String, default: '' }
+})
+
+const cloudGroups = computed(() => {
+  if (!props.accountId) return [{ title: '云端方案', plans: props.plans }]
+  const groups = [{ title: '当前账号方案', plans: props.plans.filter(plan => plan.account_id === props.accountId) }]
+  const legacy = props.plans.filter(plan => plan.account_id == null)
+  if (legacy.length) groups.push({ title: '未归属账号的旧方案（保存后归入当前账号）', plans: legacy })
+  return groups
 })
 
 const emit = defineEmits(['close', 'load', 'load-guest', 'rename', 'remove', 'remove-guest', 'login'])

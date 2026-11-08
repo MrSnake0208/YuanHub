@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="page-header"><div class="wrap"><div class="page-header-row">
+      <header class="page-header page-header--mobile-context"><div class="wrap"><div class="page-header-row">
         <div class="page-header-identity"><h1 class="page-header-title">反馈中心</h1><p class="page-header-description">你的声音，让 {{ currentSpace?.label || 'YuanHub' }} 变得更好。</p></div>
         <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" :disabled="submitting || replying || updatingStatus" @change="changeSpace" />
         <div v-if="loading || error || feedbacks.length || hasFilters" class="page-header-actions">

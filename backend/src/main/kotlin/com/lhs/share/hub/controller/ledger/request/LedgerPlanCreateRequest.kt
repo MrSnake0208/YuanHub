@@ -33,6 +33,7 @@ data class LedgerPlanCreateRequest(
     @field:Size(max = 50, message = "自定义礼包最多 50 个")
     val customPackages: List<CustomPackageRequest> = emptyList(),
     val pricing: LedgerPricing? = null,
+    val accountId: String? = null,
 )
 
 /**

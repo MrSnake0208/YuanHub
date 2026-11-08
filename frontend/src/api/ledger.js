@@ -9,11 +9,12 @@ import { request } from './request.js'
 const PATH = '/hub/ledger/plan'
 
 // 创建方案（POST）——返回全量快照，自定义礼包 id 以响应为准
-export function createPlan({ name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing }) {
+export function createPlan({ name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing, accountId }) {
   return request(PATH, {
     method: 'POST',
     auth: true,
     body: {
+      ...(accountId !== undefined ? { account_id: accountId } : {}),
       name,
       pricing,
       version,
@@ -26,11 +27,12 @@ export function createPlan({ name, version, exchangeRate, initialPoints, cartIte
 }
 
 // 整体替换更新（PUT {id}）——请求体同创建
-export function updatePlan(id, { name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing }) {
+export function updatePlan(id, { name, version, exchangeRate, initialPoints, cartItems, customPackages, pricing, accountId }) {
   return request(PATH + '/' + id, {
     method: 'PUT',
     auth: true,
     body: {
+      ...(accountId !== undefined ? { account_id: accountId } : {}),
       name,
       pricing,
       version,
@@ -47,9 +49,13 @@ export function getPlan(id) {
   return request(PATH + '/' + id, { auth: true })
 }
 
-// 我的方案列表（GET /）——轻量字段 + summary，加载单方案前先 getPlan 拿明细
-export function listPlans() {
-  return request(PATH, { auth: true })
+// 我的方案列表（GET /）——可按账号与版本筛选；轻量字段 + summary，加载前先 getPlan 拿明细
+export function listPlans({ accountId, version } = {}) {
+  const query = new URLSearchParams()
+  if (accountId !== undefined) query.set('account_id', accountId)
+  if (version !== undefined) query.set('version', version)
+  const search = query.toString()
+  return request(PATH + (search ? '?' + search : ''), { auth: true })
 }
 
 // 删除方案（DELETE {id}）——后端已定案返回 success(true)，data=true

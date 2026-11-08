@@ -66,6 +66,7 @@ data class LedgerPlan(
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),
     val pricing: LedgerPricing? = null,
+    val accountId: String? = null,
 ) : Serializable
 
 /** Personal budget settings; rates are CNY per unit of foreign currency. Null pricing denotes a legacy plan. */

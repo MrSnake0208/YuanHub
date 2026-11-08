@@ -72,8 +72,10 @@ class LedgerPlanController(
     @Operation(summary = "我的方案列表")
     @RequireJwt
     @GetMapping
-    fun list(@RequestParam(name = "version", required = false) version: String?): ApiResult<List<PlanListItemDto>> =
-        success(ledgerPlanService.list(helper.requireUserId(), version))
+    fun list(
+        @RequestParam(name = "version", required = false) version: String?,
+        @RequestParam(name = "account_id", required = false) accountId: String?,
+    ): ApiResult<List<PlanListItemDto>> = success(ledgerPlanService.list(helper.requireUserId(), version, accountId))
 
     /**
      * 删除方案(需登录,仅本人;成功返回 data=true,不存在/越权统一 404)

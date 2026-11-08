@@ -33,6 +33,12 @@ Missing `pricing` denotes legacy storage and preserves legacy arithmetic. No bul
 
 PUT to a plan already containing pricing without sending pricing returns a business conflict (409) with a refresh message, preventing old clients from silently erasing new settings. Owner lookup precedes this check; other users continue to receive the same not-found response. Deploy the compatible backend before exposing the frontend. Rolling back the frontend leaves new records protected but requires the new frontend again to edit them correctly.
 
+## Subaccount ownership
+
+Create/update accept optional `account_id`; detail and list items return it in snake_case. A supplied account must belong to the JWT user (otherwise 404) and match the plan version (`代号鸢=daihao`, `如鸢=ru`, otherwise 400). Quota remains per user. Updating without `account_id` preserves ownership; an unassigned plan can be assigned on save, while changing an existing binding returns 409. Renaming should omit `account_id`.
+
+List accepts optional `account_id` and `version`: an account filter is ownership-checked and returns its plans plus unassigned legacy plans, intersected with the version filter. Without the account filter, listing is unchanged. Legacy documents remain unassigned; there is no migration or new index. Account deletion removes its bound plans inside the existing transaction; a game change with bound plans returns 409 `ledger_plan_game_locked`. Deploy this compatible backend before the account-aware frontend.
+
 ## Focused validation
 
 `LedgerPricingServiceTest` covers snake-case request binding, mixed HKD/JPY prices, exclusions, new-format name preservation, canonical snapshot/summary consistency, USD fallback persistence, rejected invalid inputs, old-client write protection and ownership. Existing ledger service/MVC tests preserve legacy behavior. Frontend Node pricing tests and cart component tests cover guest/cloud/rename/export flows. No development Mongo/Redis or live browser is needed for these checks.

@@ -2,7 +2,7 @@
   <div class="page-developers">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-title page-header--keep-description"><div class="wrap">
         <router-link v-if="documentId !== 'home'" class="page-header-back" to="/developers">开发者中心</router-link>
         <h1 class="page-header-title">{{ current?.title || '文档不存在' }}</h1>
         <p class="page-header-description">{{ current?.summary || '请从目录选择已公开的文档。' }}</p>

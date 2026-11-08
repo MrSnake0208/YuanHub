@@ -7,6 +7,7 @@ import com.lhs.share.hub.repository.InventoryCurrentRepository
 import com.lhs.share.hub.repository.InventoryDeletedRecordRepository
 import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.InventoryRevisionRepository
+import com.lhs.share.hub.repository.LedgerPlanRepository
 import com.lhs.share.hub.repository.OperatorAnnotationRepository
 import com.lhs.share.hub.repository.OperatorCorrectionRecordRepository
 import com.lhs.share.hub.repository.OperatorCurrentRepository
@@ -83,6 +84,7 @@ class SubAccountServiceTest {
     private val calendarSubscriptions = mockk<ActivityCalendarSubscriptionRepository>()
     private val calendarPrivateItems = mockk<CalendarPrivateItemRepository>()
     private val recruitmentRepository = mockk<RecruitmentRepository>()
+    private val ledgerPlans = mockk<LedgerPlanRepository>(relaxed = true)
     init {
         every { calendarSubscriptions.exists(any(), any()) } returns false
         every { calendarPrivateItems.exists(any(), any()) } returns false
@@ -134,6 +136,7 @@ class SubAccountServiceTest {
         operatorResets = resetRepository,
         mailboxHistory = mailboxHistory,
         mailboxDeliveries = mailboxDeliveries,
+        ledgerPlans = ledgerPlans,
     )
 
     @Test
@@ -273,6 +276,7 @@ class SubAccountServiceTest {
         every { accountRepository.deleteById("mongo-id") } just runs
 
         service.delete("u1", "main")
+        verify(exactly = 1) { ledgerPlans.deleteAllByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { mailboxHistory.deleteAllByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { mailboxDeliveries.deleteAllByUserIdAndAccountId("u1", "main") }
         verify(exactly = 1) { calendarSubscriptions.deleteAccount("u1", "main") }
@@ -438,6 +442,19 @@ class SubAccountServiceTest {
         every { accountRepository.updateDetails(any(), any(), any(), any(), any()) } just runs
         val error = assertThrows(InventoryApiException::class.java) { service.update("u1", "main", null, "如鸢") }
         assertEquals("calendar_private_game_locked", error.code)
+        verify(exactly = 0) { accountRepository.updateDetails(any(), any(), any(), any(), any()) }
+        assertEquals("改名", service.update("u1", "main", "改名", null).name)
+    }
+
+    @Test
+    fun `bound ledger plans lock game but allow renaming`() {
+        every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
+            SubAccount(userId = "u1", accountId = "main", name = "大号", game = "代号鸢")
+        every { ledgerPlans.existsByUserIdAndAccountId("u1", "main") } returns true
+        every { accountRepository.updateDetails(any(), any(), any(), any(), any()) } just runs
+        val error = assertThrows(InventoryApiException::class.java) { service.update("u1", "main", null, "如鸢") }
+        assertEquals("ledger_plan_game_locked", error.code)
+        assertEquals(HttpStatus.CONFLICT, error.status)
         verify(exactly = 0) { accountRepository.updateDetails(any(), any(), any(), any(), any()) }
         assertEquals("改名", service.update("u1", "main", "改名", null).name)
     }

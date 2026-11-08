@@ -2,7 +2,7 @@
   <div class="page-work-editor">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context page-header--keep-title">
         <div class="wrap">
           <router-link class="page-header-back" :to="savedId ? '/work/' + savedId : '/works'"><ArrowLeft :size="16" aria-hidden="true" /> {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
           <h1 class="page-header-title">{{ savedId ? (loading || loadError ? '编辑作业' : document.doc.title || '未命名作业') : '新建作业' }}</h1>

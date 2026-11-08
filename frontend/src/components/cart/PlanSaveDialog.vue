@@ -7,6 +7,7 @@
           <button type="button" aria-label="关闭保存方案弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <form @submit.prevent="submitSave(existing)">
+          <p v-if="account" class="save-tip">保存到：{{ account.game }} · {{ account.name }}</p>
           <div class="fgrid">
             <div class="full">
               <label>方案名称 <em>*</em></label>
@@ -51,7 +52,8 @@ const props = defineProps({
   name: { type: String, default: '' },
   existing: { type: Boolean, default: false },
   saving: { type: Boolean, default: false },
-  loggedIn: { type: Boolean, default: false }
+  loggedIn: { type: Boolean, default: false },
+  account: { type: Object, default: null }
 })
 
 const emit = defineEmits(['close', 'save'])

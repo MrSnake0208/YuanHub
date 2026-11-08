@@ -5,7 +5,10 @@
     <main id="main-content" class="cart-main">
       <CompactToolHeader mobile-context mobile-description title="礼包预算" description="作者：binary · 独立创作">
         <template #account>
-          <div class="cart-header-context">
+          <DataAccountContextBar v-if="auth.isLoggedIn && (account || accountsLoading || accountError)" compact
+            :accounts="accounts" :account-id="accountId" :game="account?.game || ''" :is-logged-in="auth.isLoggedIn"
+            :loading="accountsLoading" :error="accountError" :switch-disabled="planSaving" switch-disabled-reason="正在保存方案，请等待完成后再切换账号。" />
+          <div v-if="!account && !accountsLoading" class="cart-header-context">
             <select class="cart-version-selector" :value="version" aria-label="游戏版本" @change="setVersion($event.target.value)">
               <option value="daihao">代号鸢{{ daihaoCount ? ' · ' + daihaoCount + ' 件' : '' }}</option>
               <option value="ru">如鸢{{ ruCount ? ' · ' + ruCount + ' 件' : '' }}</option>
@@ -70,7 +73,7 @@
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
           <p class="cart-draft-hint">清单仅保留在当前标签页；<br />刷新、关闭或切换账号前请保存方案。</p>
-          <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
+          <p v-if="!account && (daihaoCount || ruCount)" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
           <div class="cart-layout">
@@ -193,6 +196,7 @@
       :existing="!!currentPlan.id"
       :saving="planSaving"
       :logged-in="auth.isLoggedIn"
+      :account="account"
       @close="showPlanSave = false"
       @save="onConfirmSave"
     />
@@ -200,8 +204,9 @@
     <PlanListDialog
       v-if="showPlanList"
       :plans="myPlans"
-      :guest-plans="guestPlans"
+      :guest-plans="account ? guestPlans.filter(plan => plan.version === version) : guestPlans"
       :logged-in="auth.isLoggedIn"
+      :account-id="accountId"
       :loading="planLoading"
       @close="showPlanList = false"
       @load="loadPlan"
@@ -248,7 +253,11 @@ import {
 } from "../../api/ledger.js";
 import { auth } from "../../store/auth.js";
 import { defaultPricing, ledgerCurrencies, currencyNames, finiteNumber, packagePrice, pricePackage, referenceRate, pricingError, pricingPayload, formatMoney } from "../../utils/ledgerPricing.js";
-import { useCartDraft } from "../../store/cartDraft.js";
+import { selectCartDraftAccount, useCartDraft } from "../../store/cartDraft.js";
+import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
+import { listAccounts } from "../../api/accounts.js";
+import { activeAccount } from "../../store/activeAccount.js";
+import { useAccountListUpdates } from "../../store/accountList.js";
 import { dialog } from "../../utils/dialog.js";
 
 const cloudIdentity = () => auth.isLoggedIn ? String(auth.userInfo?.id || "authenticated") : "";
@@ -294,10 +303,54 @@ let timer = null;
 let alive = true;
 let planLoadSequence = 0;
 let cloudGeneration = 0;
-const cloudContext = () => `${cloudGeneration}:${cloudIdentity()}`;
+const accounts = ref([]);
+const accountsLoading = ref(false);
+const accountError = ref("");
+let accountsLoadSequence = 0;
+const account = computed(() => auth.isLoggedIn && !accountError.value
+  ? accounts.value.find(item => item.id === activeAccount.id) || accounts.value[0] || null : null);
+const accountId = computed(() => account.value?.id || "");
+function acceptAccounts(next) {
+  accounts.value = next;
+  activeAccount.syncAccounts(next);
+  if (!next.some(item => item.id === activeAccount.id)) activeAccount.set(next[0]?.id || "");
+}
+useAccountListUpdates(acceptAccounts);
+async function loadAccounts() {
+  const sequence = ++accountsLoadSequence;
+  const identity = cloudIdentity();
+  if (!auth.isLoggedIn) return;
+  accountsLoading.value = true;
+  accountError.value = "";
+  try {
+    const next = await listAccounts();
+    if (!alive || sequence !== accountsLoadSequence || identity !== cloudIdentity()) return;
+    acceptAccounts(next);
+  } catch (error) {
+    if (alive && sequence === accountsLoadSequence && identity === cloudIdentity()) accountError.value = humanErr(error, "子账号加载失败");
+  } finally {
+    if (alive && sequence === accountsLoadSequence) accountsLoading.value = false;
+  }
+}
+const cloudContext = () => `${cloudGeneration}:${cloudIdentity()}:${accountId.value}`;
+watch([accountId, () => account.value?.game], () => {
+  // 账号列表未就绪或加载失败时保持当前草稿，不切到空草稿。
+  if (accountId.value) selectCartDraftAccount(accountId.value);
+  if (account.value) version.value = account.value.game === "代号鸢" ? "daihao" : "ru";
+  cloudGeneration++;
+  planLoadSequence++;
+  planLoading.value = false;
+  myPlans.value = [];
+  showPlanList.value = false;
+  showPlanSave.value = false;
+  showCustomForm.value = false;
+  customSeed.value = null;
+  editingCustomId.value = null;
+}, { immediate: true, flush: "sync" });
 watch(cloudIdentity, () => {
   cloudGeneration++;
   planLoadSequence++;
+  planLoading.value = false;
   myPlans.value = [];
   showPlanList.value = false;
   showPlanSave.value = false;
@@ -305,6 +358,11 @@ watch(cloudIdentity, () => {
   customSeed.value = null;
   editingCustomId.value = null;
   useCartDraft(cloudIdentity());
+  accountsLoadSequence++;
+  accounts.value = [];
+  accountError.value = "";
+  accountsLoading.value = false;
+  loadAccounts();
   replaceCatalog(publicCatalog.value);
   showResult("账号已变化，当前草稿已清空；可从「我的方案」重新加载。");
 }, { flush: "sync" });
@@ -313,6 +371,7 @@ onMounted(() => {
     now.value = Date.now();
   }, 1000);
   loadPublicCatalog();
+  loadAccounts();
   guestPlans.value = readGuestPlans(); // 恢复游客本地暂存（改动点 E5）
 });
 onBeforeUnmount(() => {
@@ -819,7 +878,7 @@ async function onConfirmSave(payload) {
   const sourceState = JSON.stringify(body);
   try {
     // 本地和云端 id 都是 string；用 isLocal 区分，上传本机方案走 POST。
-    const args = toLedgerArgs(body);
+    const args = { ...toLedgerArgs(body), ...(account.value ? { accountId: accountId.value } : {}) };
     const saved =
       savingPlan.id && overwrite && !savingPlan.isLocal
         ? await updatePlan(savingPlan.id, args) // 覆盖：PUT {id}
@@ -958,12 +1017,12 @@ async function openPlanList() {
   planLoading.value = true;
   const identity = cloudContext();
   try {
-    const plans = await listPlans();
+    const plans = account.value ? await listPlans({ accountId: accountId.value, version: version.value }) : await listPlans();
     if (alive && cloudContext() === identity) myPlans.value = plans;
   } catch (err) {
     if (alive && cloudContext() === identity) showResult(humanErr(err, "加载方案列表失败"), true);
   } finally {
-    planLoading.value = false;
+    if (alive && cloudContext() === identity) planLoading.value = false;
   }
 }
 
@@ -1012,7 +1071,7 @@ async function renamePlan(plan, newName) {
     payload.name = newName.trim();
     await updatePlan(full.id, toLedgerArgs(payload)); // 整体替换
     if (!alive || identity !== cloudContext()) return;
-    const plans = await listPlans();
+    const plans = account.value ? await listPlans({ accountId: accountId.value, version: version.value }) : await listPlans();
     if (!alive || identity !== cloudContext()) return;
     myPlans.value = plans;
     const state = plansByVersion.value[full.version];

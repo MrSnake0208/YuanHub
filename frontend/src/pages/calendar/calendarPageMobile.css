@@ -10,7 +10,6 @@
 @media (max-width: 767px) {
   .calendar-public .calendar-header { padding-block: 12px 8px; gap: 8px; }
   .calendar-public .calendar-header h1 { font-size: 26px; }
-  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-header { padding-block: 8px; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-header h1 { font-size: 20px; }
 }
 @media (min-width: 768px) {

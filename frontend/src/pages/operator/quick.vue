@@ -3,11 +3,11 @@
     <IslandSidebar />
 
     <main id="main-content" class="quick-main">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context">
         <div class="wrap">
           <router-link class="page-header-back" to="/operator"><ArrowLeft :size="16" aria-hidden="true" /> 返回密探名册</router-link>
           <h1 class="page-header-title">快捷录入</h1>
-          <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" class="page-header-mobile-actions" />
           <div class="quick-header-context">
             <DataAccountContextBar
               compact

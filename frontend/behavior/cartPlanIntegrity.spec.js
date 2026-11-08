@@ -7,10 +7,13 @@ import PlanListDialog from '../src/components/cart/PlanListDialog.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import { packagesDaihao, packagesRu } from '../src/data/packages.js'
 import { auth } from '../src/store/auth.js'
+import { listAccounts } from '../src/api/accounts.js'
+import { activeAccount } from '../src/store/activeAccount.js'
 import * as ledger from '../src/api/ledger.js'
 import html2canvas from 'html2canvas'
 
 vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
+vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), listAccounts: vi.fn() }))
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ isLoggedIn: false, userInfo: null }) }
@@ -55,7 +58,64 @@ beforeEach(() => {
   vi.resetAllMocks()
   auth.isLoggedIn = false
   auth.userInfo = null
+  activeAccount.clear()
+  listAccounts.mockResolvedValue([])
   ledger.listPlans.mockResolvedValue([])
+})
+
+it('account saves include accountId while legacy renaming keeps ownership unchanged', async () => {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: 'user-a' }
+  listAccounts.mockResolvedValue([{ id: 'main', name: '主账号', game: '代号鸢' }])
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.find('.cart-version-selector').exists()).toBe(false)
+  await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
+  ledger.createPlan.mockResolvedValue({ ...plan(), id: 'bound', name: '账号预算', account_id: 'main' })
+  await save(wrapper, '账号预算')
+  expect(ledger.createPlan).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'main', version: 'daihao' }))
+
+  const legacy = { ...plan(), id: 'legacy', account_id: null }
+  ledger.listPlans.mockResolvedValue([legacy])
+  ledger.getPlan.mockResolvedValue(legacy)
+  ledger.updatePlan.mockResolvedValue({ ...legacy, name: '改名' })
+  await wrapper.get('.cart-plan-list').trigger('click')
+  await flushPromises()
+  expect(ledger.listPlans).toHaveBeenLastCalledWith({ accountId: 'main', version: 'daihao' })
+  const list = wrapper.getComponent(PlanListDialog)
+  expect(document.body.textContent).toContain('当前账号方案')
+  expect(document.body.textContent).toContain('未归属账号的旧方案（保存后归入当前账号）')
+  list.vm.$emit('rename', legacy, '改名')
+  await flushPromises()
+  expect(ledger.updatePlan).toHaveBeenCalledWith('legacy', expect.objectContaining({ name: '改名' }))
+  expect(ledger.updatePlan.mock.lastCall[1]).not.toHaveProperty('accountId')
+  wrapper.unmount()
+})
+
+it('switching accounts ignores an earlier account plan response', async () => {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: 'user-a' }
+  listAccounts.mockResolvedValue([
+    { id: 'main', name: '主账号', game: '代号鸢' },
+    { id: 'other', name: '如鸢账号', game: '如鸢' },
+  ])
+  const wrapper = render()
+  await flushPromises()
+  const pending = deferred()
+  ledger.getPlan.mockReturnValueOnce(pending.promise)
+  await wrapper.get('.cart-plan-list').trigger('click')
+  await flushPromises()
+  wrapper.getComponent(PlanListDialog).vm.$emit('load', { id: 'old', version: 'daihao' })
+  activeAccount.set('other')
+  await flushPromises()
+  pending.resolve({ ...plan(), id: 'old', account_id: 'main' })
+  await flushPromises()
+  expect(wrapper.findComponent(PlanListDialog).exists()).toBe(false)
+  expect(wrapper.get('.cart-mbar .sum .v').text()).toBe('¥0.00')
+  await wrapper.get('.cart-plan-list').trigger('click')
+  await flushPromises()
+  expect(ledger.listPlans).toHaveBeenLastCalledWith({ accountId: 'other', version: 'ru' })
+  wrapper.unmount()
 })
 
 it('existing catalog IDs use saved price, points and draws and preserve the snapshot on resave', async () => {

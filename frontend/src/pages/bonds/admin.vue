@@ -1,5 +1,5 @@
 <template>
-  <div class="bonds-page"><IslandSidebar /><main id="main-content" class="bonds-main"><header class="page-header"><div class="wrap"><router-link to="/manage">返回管理工作台</router-link><h1>羁绊目录管理</h1><p>按成员、行动和天气维护目录。先保存草稿，再核对发布预览；历史身份始终保留。</p></div></header>
+  <div class="bonds-page"><IslandSidebar /><main id="main-content" class="bonds-main"><header class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap"><router-link class="page-header-mobile-back" to="/manage">返回管理工作台</router-link><h1>羁绊目录管理</h1><p>按成员、行动和天气维护目录。先保存草稿，再核对发布预览；历史身份始终保留。</p></div></header>
     <div class="wrap bond-workspace">
       <p v-if="!permitted" role="alert">需要羁绊目录管理权限。</p>
       <template v-else>

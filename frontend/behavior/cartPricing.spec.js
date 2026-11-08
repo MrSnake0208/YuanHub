@@ -6,12 +6,14 @@ import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import PlanListDialog from '../src/components/cart/PlanListDialog.vue'
 import { resetCartDraft } from '../src/store/cartDraft.js'
 import { auth } from '../src/store/auth.js'
+import { listAccounts } from '../src/api/accounts.js'
 import { dialog } from '../src/utils/dialog.js'
 import * as ledger from '../src/api/ledger.js'
 import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import html2canvas from 'html2canvas'
 
 vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
+vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), listAccounts: vi.fn() }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: false, userInfo: null }) }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/api/ledger.js', () => ({ createPlan: vi.fn(), updatePlan: vi.fn(), getPlan: vi.fn(), listPlans: vi.fn(), deletePlan: vi.fn() }))
@@ -45,6 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   auth.isLoggedIn = false
   auth.userInfo = null
+  listAccounts.mockResolvedValue([])
   dialog.confirm.mockResolvedValue(true)
   ledger.listPlans.mockResolvedValue([])
 })

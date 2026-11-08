@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context page-header--keep-description">
         <div class="wrap">
           <div class="page-header-row"><h1 class="page-header-title">反馈工作台</h1>
             <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" :disabled="loadingAccess || actionBusy || publicBusy || mergeBusy || markingAllRead" @change="changeSpace" /></div>

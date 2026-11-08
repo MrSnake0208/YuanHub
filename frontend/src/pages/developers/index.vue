@@ -3,7 +3,7 @@
   <div v-else class="page-developers developer-product">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-title"><div class="wrap">
         <h1 class="page-header-title">将 YuanHub 数据接入你的应用</h1>
         <p class="page-header-description">为你的小程序、网站、App 或桌面软件接入 YuanHub 游戏数据。</p>
       </div></header>

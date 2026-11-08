@@ -8,3 +8,7 @@
 .today-alert button { min-height: 44px; padding: 8px 12px; border-radius: 7px; }
 .today-loading { font-size: 13px; }
 }
+
+@media (max-width: 767px) {
+  .today-customize { padding-inline: 4px; line-height: 1.5; }
+}

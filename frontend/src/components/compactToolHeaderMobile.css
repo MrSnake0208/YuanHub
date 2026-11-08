@@ -57,8 +57,9 @@
   .compact-tool-header.mobile-context-header .compact-tool-primary { grid-area: primary; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
   .compact-tool-header.mobile-context-header .compact-tool-summary { grid-area: summary; display: block; min-width: 0; margin-top: 8px; }
   .compact-tool-header.mobile-context-header .compact-tool-help-content { grid-area: help; margin-top: 8px; min-width: 0; }
-  .compact-tool-header.mobile-context-header .compact-tool-help { min-height: 40px; }
+  .compact-tool-header.mobile-context-header .compact-tool-help { min-height: 44px; }
   .compact-tool-header.mobile-context-header :deep(.tool-more) { position: static; }
   .compact-tool-header.mobile-context-header :deep(.tool-more-content) { left: auto; right: 0; max-width: calc(100vw - 32px); }
-  .compact-tool-header.mobile-context-header :deep(.tool-more > summary) { min-height: 40px; }
+  .compact-tool-header.mobile-context-header :deep(.tool-more > summary) { min-height: 44px; }
+  .compact-tool-header.mobile-context-header:not(.mobile-description):not(:has(.compact-tool-account, .compact-tool-actions, .compact-tool-summary, .compact-tool-help-content)) { padding-block: 0; }
 }

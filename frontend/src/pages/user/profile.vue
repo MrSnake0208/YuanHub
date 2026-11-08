@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="profile-main">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context">
         <div class="wrap">
           <section class="game-account-summary" aria-label="游戏账号" :aria-busy="accountsLoading">
             <span id="game-accounts" class="account-summary-anchor" aria-hidden="true" />

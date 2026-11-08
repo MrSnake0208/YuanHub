@@ -2,7 +2,7 @@
   <div class="page-changelog-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context">
         <div class="wrap">
           <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
           <h1 class="page-header-title">更新日志管理</h1>

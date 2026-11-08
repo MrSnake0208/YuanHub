@@ -10,8 +10,7 @@ import org.springframework.data.mongodb.repository.MongoRepository
  * 铁律:本接口必须位于 com.lhs.share.hub.repository 顶层包,否则不被
  * HubMongoConfig 扫描而落入主库(MaaBackend)。
  *
- * 删除不在此定义派生 delete 方法,服务层采用「先查归属再 deleteById」,
- * 避免派生删除返回类型的版本差异且保证归属校验在前。
+ * 单条删除先查归属;账号级删除供子账号删除事务调用。
  */
 interface LedgerPlanRepository : MongoRepository<LedgerPlan, String> {
     /**
@@ -28,4 +27,8 @@ interface LedgerPlanRepository : MongoRepository<LedgerPlan, String> {
      * 按 id + userId 查询(归属校验,仓储层杜绝越权)
      */
     fun findByIdAndUserId(id: String, userId: String): LedgerPlan?
+
+    fun deleteAllByUserIdAndAccountId(userId: String, accountId: String)
+
+    fun existsByUserIdAndAccountId(userId: String, accountId: String): Boolean
 }

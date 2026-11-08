@@ -7,7 +7,9 @@ import com.lhs.share.hub.controller.ledger.request.CustomPackageRequest
 import com.lhs.share.hub.controller.ledger.request.LedgerPlanCreateRequest
 import com.lhs.share.hub.controller.ledger.request.PackageSnapshotRequest
 import com.lhs.share.hub.repository.LedgerPlanRepository
+import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.LedgerPlan
+import com.lhs.share.hub.repository.entity.SubAccount
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -24,7 +26,8 @@ import java.time.Instant
 class LedgerPlanServiceTest {
     private val repository = mockk<LedgerPlanRepository>()
     private val properties = ShareProperties()
-    private val service = LedgerPlanService(repository, properties)
+    private val accounts = mockk<SubAccountRepository>()
+    private val service = LedgerPlanService(repository, properties, accounts)
 
     private val created = Instant.parse("2024-01-15T10:00:00Z")
 
@@ -73,6 +76,78 @@ class LedgerPlanServiceTest {
         createdAt = created,
         updatedAt = created,
     )
+
+    @Test
+    fun `他人账号创建方案返回 404`() {
+        every { accounts.findByUserIdAndAccountId("u1", "foreign") } returns null
+        val error = assertThrows(ApiResultException::class.java) {
+            service.create("u1", daihaoRequest().copy(accountId = "foreign"))
+        }
+        assertEquals(404, error.statusCode)
+        verify(exactly = 0) { repository.save(any()) }
+    }
+
+    @Test
+    fun `账号游戏与方案版本不一致返回 400`() {
+        every { accounts.findByUserIdAndAccountId("u1", "ru-account") } returns
+            SubAccount(userId = "u1", accountId = "ru-account", name = "如鸢账号", game = "如鸢")
+        val error = assertThrows(ApiResultException::class.java) {
+            service.create("u1", daihaoRequest().copy(accountId = "ru-account"))
+        }
+        assertEquals(400, error.statusCode)
+        verify(exactly = 0) { repository.save(any()) }
+    }
+
+    @Test
+    fun `更新不传账号保留原归属`() {
+        every { repository.findByIdAndUserId("p1", "u1") } returns existingPlan().copy(accountId = "main")
+        every { repository.save(any()) } answers { firstArg<LedgerPlan>() }
+        assertEquals("main", service.update("u1", "p1", daihaoRequest()).accountId)
+    }
+
+    @Test
+    fun `旧方案明确保存时归入所选账号`() {
+        every { repository.findByIdAndUserId("p1", "u1") } returns existingPlan()
+        every { accounts.findByUserIdAndAccountId("u1", "main") } returns
+            SubAccount(userId = "u1", accountId = "main", name = "主账号")
+        every { repository.save(any()) } answers { firstArg<LedgerPlan>() }
+        assertEquals("main", service.update("u1", "p1", daihaoRequest().copy(accountId = "main")).accountId)
+    }
+
+    @Test
+    fun `已绑定方案换账号返回 409`() {
+        every { repository.findByIdAndUserId("p1", "u1") } returns existingPlan().copy(accountId = "main")
+        every { accounts.findByUserIdAndAccountId("u1", "other") } returns
+            SubAccount(userId = "u1", accountId = "other", name = "其他账号")
+        val error = assertThrows(ApiResultException::class.java) {
+            service.update("u1", "p1", daihaoRequest().copy(accountId = "other"))
+        }
+        assertEquals(409, error.statusCode)
+        verify(exactly = 0) { repository.save(any()) }
+    }
+
+    @Test
+    fun `按账号列出本账号及未归属方案且排除其他账号和版本`() {
+        every { accounts.findByUserIdAndAccountId("u1", "main") } returns
+            SubAccount(userId = "u1", accountId = "main", name = "主账号")
+        every { repository.findByUserIdOrderByUpdatedAtDesc("u1") } returns listOf(
+            existingPlan("mine").copy(accountId = "main"),
+            existingPlan("legacy"),
+            existingPlan("other").copy(accountId = "other"),
+            existingPlan("ru-legacy", "ru"),
+        )
+        val plans = service.list("u1", "daihao", "main")
+        assertEquals(listOf("mine", "legacy"), plans.map { it.id })
+        assertEquals(listOf("main", null), plans.map { it.accountId })
+    }
+
+    @Test
+    fun `他人账号列表返回 404`() {
+        every { accounts.findByUserIdAndAccountId("u1", "foreign") } returns null
+        val error = assertThrows(ApiResultException::class.java) { service.list("u1", null, "foreign") }
+        assertEquals(404, error.statusCode)
+        verify(exactly = 0) { repository.findByUserIdOrderByUpdatedAtDesc(any()) }
+    }
 
     @Test
     fun `创建成功 自定义礼包 id 重生成 快照归一化 摘要正确`() {

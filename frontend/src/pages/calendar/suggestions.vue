@@ -1,6 +1,6 @@
 <template>
   <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
-    <header class="calendar-header wrap">
+    <header class="calendar-header wrap page-header--mobile-context">
       <router-link class="calendar-source-link" to="/calendar"><ArrowLeft :size="16" aria-hidden="true" /> 返回活动日历</router-link>
       <h1>我的活动建议</h1>
       <nav class="calendar-submission-nav" aria-label="活动建议"><router-link class="calendar-primary-link" to="/calendar/suggestions/new">建议补充活动</router-link></nav>

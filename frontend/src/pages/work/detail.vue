@@ -39,7 +39,7 @@
       </div>
 
       <template v-else-if="detail">
-        <header class="page-header work-detail-header">
+        <header class="page-header page-header--mobile-context page-header--keep-title page-header--keep-description work-detail-header">
           <div class="wrap">
             <router-link class="page-header-back" :to="backTarget"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
             <div class="page-header-row">

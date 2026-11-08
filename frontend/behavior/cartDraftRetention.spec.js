@@ -5,8 +5,9 @@ import CustomPackageModal from '../src/components/cart/CustomPackageModal.vue'
 import PlanListDialog from '../src/components/cart/PlanListDialog.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import ReceiptPanel from '../src/components/cart/ReceiptPanel.vue'
-import { resetCartDraft } from '../src/store/cartDraft.js'
+import { resetCartDraft, selectCartDraftAccount, useCartDraft } from '../src/store/cartDraft.js'
 import { auth } from '../src/store/auth.js'
+import { listAccounts } from '../src/api/accounts.js'
 import * as catalog from '../src/api/ledgerCatalog.js'
 import * as ledger from '../src/api/ledger.js'
 import { dialog } from '../src/utils/dialog.js'
@@ -17,6 +18,7 @@ vi.mock('../src/store/auth.js', async () => {
   return { auth: reactive({ isLoggedIn: false, userInfo: null }) }
 })
 vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn() }))
+vi.mock('../src/api/accounts.js', async importOriginal => ({ ...await importOriginal(), listAccounts: vi.fn() }))
 vi.mock('../src/api/ledger.js', () => ({ createPlan: vi.fn(), updatePlan: vi.fn(), getPlan: vi.fn(), listPlans: vi.fn(), deletePlan: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
@@ -43,9 +45,46 @@ beforeEach(() => {
   vi.resetAllMocks()
   auth.isLoggedIn = false
   auth.userInfo = null
+  listAccounts.mockResolvedValue([])
   catalog.getLedgerCatalog.mockResolvedValue(ledgerFixture())
   ledger.listPlans.mockResolvedValue([])
   dialog.confirm.mockResolvedValue(true)
+})
+
+it('account drafts retain their own contents and pricing settings without rolling back FX', () => {
+  const draft = useCartDraft('owner')
+  draft.cartDaihao = { 1: 2 }
+  draft.customPackagesDaihao = [{ id: 900, name: '主账号礼包' }]
+  draft.initialPointsDaihao = 12
+  draft.builtinSnapshots.daihao = [{ id: 1, name: '旧价格' }]
+  draft.plansByVersion.daihao = { id: 'main-plan', name: '主账号预算', isLocal: false }
+  draft.pricingByVersion.daihao = { currency: 'JPY', rates: { USD: 8, JPY: 0.05 }, discount_percent: 95, custom_only: true }
+  draft.exchangeRate = 8
+  draft.rateDraft = '8.'
+  draft.rateError = '未完成输入'
+  draft.rateOwned = true
+  selectCartDraftAccount('main')
+  expect(draft.cartDaihao).toEqual({ 1: 2 })
+  selectCartDraftAccount('other')
+  expect(draft.cartDaihao).toEqual({})
+  expect(draft.pricingByVersion.daihao).toMatchObject({ currency: 'CNY', discount_percent: 100, rates: { USD: 8, JPY: 0.05 } })
+  draft.cartDaihao = { 2: 1 }
+  draft.pricingByVersion.daihao.currency = 'USD'
+  draft.pricingByVersion.daihao.rates.USD = 9
+  selectCartDraftAccount('main')
+  expect(draft.cartDaihao).toEqual({ 1: 2 })
+  expect(draft.customPackagesDaihao).toEqual([{ id: 900, name: '主账号礼包' }])
+  expect(draft.initialPointsDaihao).toBe(12)
+  expect(draft.builtinSnapshots.daihao).toEqual([{ id: 1, name: '旧价格' }])
+  expect(draft.plansByVersion.daihao.id).toBe('main-plan')
+  expect(draft.pricingByVersion.daihao).toMatchObject({ currency: 'JPY', discount_percent: 95, custom_only: true, rates: { USD: 9, JPY: 0.05 } })
+  expect([draft.exchangeRate, draft.rateDraft, draft.rateError, draft.rateOwned]).toEqual([8, '8.', '未完成输入', true])
+  selectCartDraftAccount('other')
+  expect(draft.cartDaihao).toEqual({ 2: 1 })
+  resetCartDraft('another-owner')
+  selectCartDraftAccount('main')
+  expect(draft.cartDaihao).toEqual({})
+  expect(draft.plansByVersion.daihao.id).toBeNull()
 })
 
 it('leaving and returning retains both unsaved game carts, customs, points, FX and selected snapshots', async () => {

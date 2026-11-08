@@ -1,4 +1,6 @@
 @media (max-width: 767px) {
+  .battle-tool .battle-game-field { min-width: 0; gap: 0; font-size: 0; }
+  .battle-tool .battle-header-account .battle-game-field select { box-sizing: border-box; height: 44px; min-height: 44px; min-width: 0; border: 0; box-shadow: none; background: var(--cream); border-radius: 10px; padding: 8px 10px; font: 600 13px/1.5 var(--font-b); color: var(--theme-strong-text, var(--tea)); }
   .battle-tool { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   .battle-tool .battle-save-status { width: 100%; font-size: 11px; }
   .battle-tool .battle-document { display: flex; flex-direction: column; }
@@ -115,10 +117,10 @@
   .battle-tool .battle-target-option i { width: 6px; height: 6px; }
   .battle-tool .battle-action-option { flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
-  .battle-tool .battle-draft-menu > summary { min-height: 40px; font-size: 12px; }
+  .battle-tool .battle-draft-menu > summary { min-height: 44px; font-size: 12px; }
   .battle-tool .battle-draft-current { display: none; }
   .battle-tool .battle-draft-tools { right: 0; max-width: calc(100vw - 32px); }
-  .battle-tool .battle-draft-delete { width: 40px; height: 40px; }
+  .battle-tool .battle-draft-delete { width: 44px; height: 44px; }
   .battle-tool .battle-header-account > .data-account-context-bar { min-width: 0; max-width: 100%; }
 
   /* 页头生成按钮随页面滚走，改由底部常驻栏提供，保持页面只有一个主操作。 */

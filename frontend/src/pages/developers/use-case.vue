@@ -2,7 +2,7 @@
   <div class="page-developers developer-product">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-title page-header--keep-description"><div class="wrap">
         <router-link class="page-header-back" to="/developers">返回开发者中心</router-link>
         <h1 class="page-header-title">{{ guide.title }}</h1>
         <p class="page-header-description">{{ guide.description }}</p>

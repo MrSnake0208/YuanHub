@@ -1,6 +1,6 @@
 <template>
   <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
-    <header class="calendar-header wrap">
+    <header class="calendar-header wrap page-header--mobile-context page-header--keep-description">
       <router-link class="calendar-source-link" to="/calendar"><ArrowLeft :size="16" aria-hidden="true" /> 返回活动日历</router-link>
       <h1>建议补充活动</h1>
       <p>发现漏掉的游戏活动？提交资料，审核通过后会加入日历。</p>

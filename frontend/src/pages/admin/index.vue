@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="page-header admin-page-header">
+      <header class="page-header page-header--mobile-context admin-page-header">
         <div class="wrap">
           <h1 class="page-header-title">管理工作台</h1>
           <p class="page-header-description">反馈处理、公共内容维护与平台治理。</p>

@@ -25,6 +25,7 @@ data class LedgerPlanResponse(
     val createdAt: Instant,
     val updatedAt: Instant,
     val pricing: LedgerPricing? = null,
+    val accountId: String? = null,
 ) {
     companion object {
         fun of(plan: LedgerPlan): LedgerPlanResponse = LedgerPlanResponse(
@@ -40,6 +41,7 @@ data class LedgerPlanResponse(
             createdAt = plan.createdAt,
             updatedAt = plan.updatedAt,
             pricing = plan.pricing,
+            accountId = plan.accountId,
         )
     }
 }
@@ -56,6 +58,7 @@ data class PlanListItemDto(
     val summary: PlanSummaryDto?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val accountId: String? = null,
 ) {
     companion object {
         fun of(plan: LedgerPlan): PlanListItemDto = PlanListItemDto(
@@ -67,6 +70,7 @@ data class PlanListItemDto(
             summary = plan.summary?.let { PlanSummaryDto.of(it) },
             createdAt = plan.createdAt,
             updatedAt = plan.updatedAt,
+            accountId = plan.accountId,
         )
     }
 }

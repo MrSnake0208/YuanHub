@@ -2,7 +2,7 @@
   <div class="feedback-page feedback-center page-feedback-access">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header">
+      <header class="page-header page-header--mobile-context">
         <div class="wrap">
           <div class="page-header-row"><h1 class="page-header-title">反馈权限</h1>
             <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaces" :disabled="saving || categorySaving || spaceSaving || editing" @change="changeSpace" /></div>

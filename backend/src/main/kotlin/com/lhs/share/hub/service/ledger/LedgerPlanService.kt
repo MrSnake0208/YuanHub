@@ -9,6 +9,7 @@ import com.lhs.share.hub.controller.ledger.request.PackageSnapshotRequest
 import com.lhs.share.hub.controller.ledger.response.LedgerPlanResponse
 import com.lhs.share.hub.controller.ledger.response.PlanListItemDto
 import com.lhs.share.hub.repository.LedgerPlanRepository
+import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.CartItem
 import com.lhs.share.hub.repository.entity.CustomPackage
 import com.lhs.share.hub.repository.entity.LedgerPlan
@@ -29,11 +30,13 @@ import java.time.Instant
 class LedgerPlanService(
     private val repository: LedgerPlanRepository,
     private val properties: ShareProperties,
+    private val accounts: SubAccountRepository,
 ) {
     /**
      * 创建方案(超出每用户上限抛 429)
      */
     fun create(userId: String, request: LedgerPlanCreateRequest): LedgerPlanResponse {
+        request.accountId?.let { validateAccount(userId, it, request.version) }
         val maxPlans = properties.ledger.maxPlansPerUser
         if (repository.countByUserId(userId) >= maxPlans) {
             throw ApiResultException(HttpStatus.TOO_MANY_REQUESTS.value(), "方案数量已达上限($maxPlans),请删除后再创建")
@@ -47,10 +50,18 @@ class LedgerPlanService(
     fun update(userId: String, id: String, request: LedgerPlanCreateRequest): LedgerPlanResponse {
         val existing = repository.findByIdAndUserId(id, userId)
             ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "方案不存在: $id")
+        request.accountId?.let { validateAccount(userId, it, request.version) }
+        if (existing.accountId != null && request.accountId != null && existing.accountId != request.accountId) {
+            throw ApiResultException(HttpStatus.CONFLICT.value(), "方案已绑定其他游戏账号")
+        }
         if (existing.pricing != null && request.pricing == null) {
             throw ApiResultException(HttpStatus.CONFLICT.value(), "此方案包含新版币种或折扣设置，请刷新页面后再保存")
         }
-        val merged = normalize(userId, request).copy(id = id, createdAt = existing.createdAt)
+        val merged = normalize(userId, request).copy(
+            id = id,
+            createdAt = existing.createdAt,
+            accountId = request.accountId ?: existing.accountId,
+        )
         return LedgerPlanResponse.of(repository.save(merged))
     }
 
@@ -64,11 +75,22 @@ class LedgerPlanService(
     }
 
     /**
-     * 我的方案列表(按 updatedAt 倒序;可选 version 过滤;轻量摘要不含大明细)
+     * 我的方案列表(按 updatedAt 倒序;账号过滤包含未归属旧方案;可选 version 过滤)
      */
-    fun list(userId: String, version: String?): List<PlanListItemDto> = repository.findByUserIdOrderByUpdatedAtDesc(userId)
-        .filter { version == null || it.version == version }
-        .map { PlanListItemDto.of(it) }
+    fun list(userId: String, version: String?, accountId: String? = null): List<PlanListItemDto> {
+        accountId?.let { validateAccount(userId, it) }
+        return repository.findByUserIdOrderByUpdatedAtDesc(userId)
+            .filter { version == null || it.version == version }
+            .filter { accountId == null || it.accountId == accountId || it.accountId == null }
+            .map { PlanListItemDto.of(it) }
+    }
+
+    private fun validateAccount(userId: String, accountId: String, version: String? = null) {
+        val account = accounts.findByUserIdAndAccountId(userId, accountId)
+            ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "账号不存在")
+        val accountVersion = if (account.game == "代号鸢") VERSION_DAIHAO else "ru"
+        if (version != null && version != accountVersion) invalid("方案版本与账号所属游戏不一致")
+    }
 
     /**
      * 删除方案(硬删除;不存在或非本人抛 404)
@@ -131,6 +153,7 @@ class LedgerPlanService(
 
         return LedgerPlan(
             userId = userId,
+            accountId = request.accountId,
             name = request.name.trim(),
             version = request.version,
             exchangeRate = if (isDaihao) request.exchangeRate else null,

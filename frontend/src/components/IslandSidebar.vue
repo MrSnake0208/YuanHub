@@ -396,7 +396,7 @@ const menuPanel = ref(null);
 const navEl = ref(null);
 const navHasMore = ref(false);
 useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEscape: closeMenu });
-const mobileTitle = computed(() => ({ '/star': '星石背包', '/cart': '礼包计算器', '/feedback': '我的反馈' }[route.path] || route.meta?.title?.split(" — ")[0] || "YuanHub"));
+const mobileTitle = computed(() => ({ '/star': '星石背包', '/cart': '礼包计算器', '/feedback': '我的反馈' }[route.path] || route.meta?.title?.split(" — ")[0]?.split(" · ").at(-1) || "YuanHub"));
 
 watch(() => route.fullPath, () => {
   cancelSwipe();

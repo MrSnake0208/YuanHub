@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="notifications-main">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap">
         <h1 class="page-header-title">通知中心</h1>
         <p class="page-header-description">查看反馈回复与状态更新。需要跟进问题？前往 <router-link to="/feedback">我的反馈</router-link>。</p>
       </div></header>

@@ -2,7 +2,7 @@
   <div class="page-changelog">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context"><div class="wrap">
         <h1 class="page-header-title">更新日志</h1>
         <p class="page-header-description">查看 YuanHub 已发布的功能与改进。</p>
         <p class="page-header-context">当前站点版本 {{ productVersionLabel }}</p>

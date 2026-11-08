@@ -2,7 +2,7 @@
   <div class="page-star-share">
     <IslandSidebar />
     <main id="main-content" class="share-main">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap">
         <router-link class="page-header-back" to="/star">← 星石背包</router-link>
         <h1 class="page-header-title">星石背包分享</h1>
         <p class="page-header-description">只读查看分享者云端已保存的当前背包，无需登录。</p>

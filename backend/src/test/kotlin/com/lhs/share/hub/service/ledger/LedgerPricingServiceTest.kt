@@ -10,6 +10,7 @@ import com.lhs.share.hub.controller.ledger.request.CustomPackageRequest
 import com.lhs.share.hub.controller.ledger.request.LedgerPlanCreateRequest
 import com.lhs.share.hub.controller.ledger.request.PackageSnapshotRequest
 import com.lhs.share.hub.repository.LedgerPlanRepository
+import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.LedgerPlan
 import com.lhs.share.hub.repository.entity.LedgerPricing
 import io.mockk.every
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.Test
 
 class LedgerPricingServiceTest {
     private val repository = mockk<LedgerPlanRepository>()
-    private val service = LedgerPlanService(repository, ShareProperties())
+    private val service = LedgerPlanService(repository, ShareProperties(), mockk<SubAccountRepository>())
     private var saved: LedgerPlan? = null
 
     init {

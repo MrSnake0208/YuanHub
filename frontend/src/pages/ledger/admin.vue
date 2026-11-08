@@ -2,7 +2,7 @@
   <div class="ledger-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header"><div class="wrap">
+      <header class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap">
         <router-link class="page-header-back" to="/manage"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">广陵账房管理</h1>
         <p class="page-header-description">维护公共数据。保存后，用户刷新账房即可读取；私人方案仍使用原快照。</p>

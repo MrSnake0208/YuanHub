@@ -823,6 +823,12 @@
   .account-summary-manage-existing { display: none; }
   .page-header-title { font-size: 24px; }
   .profile-title-row { gap: 10px 14px; }
+  .page-header--mobile-context .game-account-summary { grid-column: 1 / -1; column-gap: 8px; row-gap: 0; }
+  .page-header--mobile-context .profile-title-row { display: contents; }
+  .page-header--mobile-context .profile-title-row :deep(.account-switcher) { grid-column: 1; grid-row: 1; min-width: 0; justify-self: start; }
+  .page-header--mobile-context .profile-title-row .tutorial-entry { grid-column: 2; grid-row: 1; justify-self: end; }
+  .page-header--mobile-context .account-summary-manage { grid-column: 2; grid-row: auto; justify-self: end; }
+  .page-header--mobile-context .account-summary-copy { grid-row: auto; margin-top: 8px; font-size: 12px; line-height: 1.6; }
   .connection-card { margin-top: 8px; padding: 18px 14px; border-radius: 16px; }
   .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; }
   .card-head > div { display: contents; }
