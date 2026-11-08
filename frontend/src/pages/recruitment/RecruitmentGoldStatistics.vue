@@ -6,6 +6,7 @@
         <dt><component :is="metric.key === 'total-up' ? BadgePercent : Trophy" v-if="account" class="metric-icon" :size="18" aria-hidden="true" />{{ metric.label }}</dt>
         <dd>
           <strong>{{ metric.value }}</strong>
+          <small v-if="metric.unit" class="number-unit">{{ metric.unit }}</small>
           <p v-if="account && metric.key === 'total-up' && accountSamples" class="sample-note"><span v-for="sample in accountSamples" :key="sample">{{ sample }}</span></p>
           <p v-else>{{ metric.note }}</p>
         </dd>
@@ -44,6 +45,7 @@ const accountSamples = computed(() => {
 dt { font-size: 13px; line-height: 1.6; }
 dd { margin: 4px 0 0; }
 strong { display: inline-block; white-space: nowrap; font: 700 20px/1.4 var(--font-d); }
+.number-unit { margin-left: 5px; color: var(--ink); font-size: 12px; line-height: 1.5; white-space: nowrap; }
 p { margin: 4px 0 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .pity-assumption { margin-top: 10px; }
 .gold-statistics-help { margin-top: 6px; font-size: 13px; line-height: 1.7; }

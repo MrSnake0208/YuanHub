@@ -25,13 +25,18 @@
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
           <section class="account-overview" aria-label="当前账号招募摘要">
             <header class="overview-heading"><h2>抽卡概览</h2><p>当前账号的招募总体情况</p></header>
-            <RecruitmentGoldStatistics class="summary" :summary="state.archive.summary" account :context-version="state.contextVersion">
+            <div v-if="archiveEmpty" class="overview-empty">
+              <strong>还没有招募记录</strong>
+              <p>在下方卡池点「记一笔」开始；已有备份可以导入。</p>
+              <button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button>
+            </div>
+            <RecruitmentGoldStatistics v-else class="summary" :summary="state.archive.summary" account :context-version="state.contextVersion">
               <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span>已知累计抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></dd></div>
               <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span>密探记录</dt><dd class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></dd></div>
-              <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span>平均出绝密抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
-              <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span>绣衣天下已知抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small class="number-unit">抽</small></dd></div>
+              <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span>平均出绝密抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small v-if="state.archive.summary.average_gold_pulls != null" class="number-unit">抽</small></dd></div>
+              <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span>绣衣天下已知抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small v-if="state.archive.summary.permanent_known_total_pulls != null" class="number-unit">抽</small></dd></div>
             </RecruitmentGoldStatistics>
-            <section class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty }" aria-label="抽卡趣闻">
+            <section v-if="!archiveEmpty" class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty }" aria-label="抽卡趣闻">
               <header class="overview-heading"><h2>抽卡趣闻</h2><p>{{ highlightsEmpty ? '暂无记录，记录后查看抽卡趣闻' : '一些有趣的抽卡数据统计' }}</p></header>
               <div v-if="!highlightsEmpty" class="highlight-grid">
                 <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
@@ -85,6 +90,7 @@ const expandedGoldHighlights = ref({})
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
+const archiveEmpty = computed(() => state.archive?.summary.event_count === 0 && state.archive.summary.known_total_pulls === 0)
 const goldAgentHighlights = computed(() => [
   { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents, collapsible: true },
   { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents },
@@ -197,6 +203,7 @@ button{border:1px solid var(--line);border-radius:10px;color:var(--ink);backgrou
 @media(prefers-reduced-motion:reduce){.archive-toggle{transition:none}}
 
 .account-overview{container-type:inline-size;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--surface) 94%,transparent)}
+.overview-empty{font-size:13px;line-height:1.6}.overview-empty p{margin:4px 0 10px;color:var(--ink-60)}.overview-empty button{padding:8px 14px;font:inherit}
 .overview-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:10px}.overview-heading h2{margin:0;font:900 22px/1.4 var(--font-s);color:var(--theme-strong-text,var(--tea))}.overview-heading p{margin:0;font-size:12px;color:var(--ink-60)}
 .recruitment-highlights{border-top:1px solid var(--line)}.summary-item{min-width:0}.summary-item>div{min-width:0}.summary-item dt{margin:0}.summary-item dd{margin:4px 0 0}.summary-item dt,.summary-item small{font-size:12px;line-height:1.5}.summary-icon{flex:none}.summary-number{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}.summary-number strong{color:var(--theme-strong-text,var(--tea));font:800 24px/1.25 var(--font-d);white-space:nowrap}.summary-item .number-unit{white-space:nowrap}
 .summary .summary-icon{position:absolute;left:9px;top:15px}.summary-agent{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:8px;background:color-mix(in srgb,var(--cream) 65%,var(--surface))}.summary-agent .summary-icon{padding-top:2px}.summary-agent>div{flex:1}.highlight-grid{display:grid;gap:10px}

@@ -14,9 +14,9 @@ test('预览与编辑共用40抽刻度、颜色、未知及4星状态', () => {
 
 test('总UP与大保底、小保底分别使用服务器摘要，零值保留', () => {
   const metrics = recruitmentGoldMetrics({ total_up_rate: 66.7, up_gold_count: 2, known_up_gold_count: 3, unknown_up_gold_count: 0, guaranteed_gold_count: 1, small_pity_win_rate: 50, pity_status: 'inferred' })
-  assert.deepEqual(metrics.map(metric => metric.value), ['66.7%', '1 次', '50%'])
+  assert.deepEqual(metrics.map(metric => [metric.value, metric.unit]), [['66.7%', undefined], ['1', '次'], ['50%', undefined]])
   assert.match(metrics[0].note, /UP 2 \/ 归属已知 3 条；未知 0 条/)
-  assert.deepEqual(recruitmentGoldMetrics({ total_up_rate: 0, guaranteed_gold_count: 0, small_pity_win_rate: 0 }).map(metric => metric.value), ['0%', '0 次', '0%'])
+  assert.deepEqual(recruitmentGoldMetrics({ total_up_rate: 0, guaranteed_gold_count: 0, small_pity_win_rate: 0 }).map(metric => [metric.value, metric.unit]), [['0%', undefined], ['0', '次'], ['0%', undefined]])
 })
 
 test('未知样本单列，历史不足不显示大保底次数或小保底率', () => {
@@ -29,7 +29,7 @@ test('未知样本单列，历史不足不显示大保底次数或小保底率',
 
 test('无样本为零次且命中率未知，归属全未知不当作0%', () => {
   const metrics = recruitmentGoldMetrics({ up_gold_count: 0, known_up_gold_count: 0, unknown_up_gold_count: 0, total_up_rate: null, guaranteed_gold_count: 0, pity_status: 'no_samples' })
-  assert.deepEqual(metrics.map(metric => metric.value), ['—', '0 次', '—'])
+  assert.deepEqual(metrics.map(metric => [metric.value, metric.unit]), [['—', undefined], ['0', '次'], ['—', undefined]])
   assert.match(metrics[0].note, /暂无已知归属/)
   assert.equal(metrics[1].note, '暂无五星样本')
   const unknown = recruitmentGoldMetrics({ up_gold_count: 0, known_up_gold_count: 0, unknown_up_gold_count: 2, pity_status: 'insufficient_history' })

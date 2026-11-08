@@ -14,7 +14,7 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
 
 @media (max-width: 767px) {
   .recruitment-main { background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 30%, transparent), color-mix(in srgb, var(--paper) 90%, transparent) 180px); }
-  .archive-toggle { min-height: 32px; padding: 6px 4px; font-weight: 500; }
+  .archive-toggle { min-height: 44px; padding: 6px 4px; font-weight: 500; }
   .recruitment-content { padding-top: 0; }
   .recruitment-content :deep(.timeline-heading h2) { font-size: 22px; }
 }

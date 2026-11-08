@@ -9,12 +9,12 @@
       <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" @click="year = 'unknown'">日期未知</button>
     </div>
     <div class="overview-tools" aria-label="卡池明细显示">
-      <div class="overview-views" role="group" aria-label="主页面明细视图">
-        <button type="button" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条</button>
-        <button type="button" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
+      <div v-if="pools.some(hasRecords)" class="overview-views" role="group" aria-label="主页面明细视图">
+        <button type="button" aria-label="进度条视图" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条</button>
+        <button type="button" aria-label="密探视图" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探</button>
       </div>
       <button type="button" class="sort-button" :aria-label="descending ? '按时间排序，当前最新优先，点击切换最早优先' : '按时间排序，当前最早优先，点击切换最新优先'" @click="descending = !descending">按时间<ArrowDownWideNarrow v-if="descending" :size="16" aria-hidden="true" /><ArrowUpWideNarrow v-else :size="16" aria-hidden="true" /></button>
-      <button type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
+      <button v-if="pools.some(hasRecords)" type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
     </div>
     <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先找你抽过的池子，看池名、UP 密探和日期，再点「记一笔／查看记录」。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
     <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无可用卡池，可导入已有备份，或稍后再试。</p>
@@ -26,7 +26,7 @@
           <div class="pool-card" role="group" :aria-label="cardLabel(pool)" @click="onSummaryClick($event, pool)">
             <span class="pool-cover" :class="'cover-tone-' + recruitmentPoolType(details(pool).pool_type).coverTone" :style="recruitmentCoverStyle(details(pool).pool_type)">
               <span class="cover-heading">
-                <span class="cover-caption">{{ details(pool).pool_type || '招募档案' }}</span>
+                <span class="cover-caption">{{ recruitmentPoolType(details(pool).pool_type).label }}</span>
                 <span class="cover-name">{{ details(pool).name }}</span>
               </span>
               <span class="cover-art">
