@@ -47,14 +47,15 @@ it.each([390, 1440])('公开页真实筛选跨布局保持搜索、焦点和只�
     expect(fetch).not.toHaveBeenCalled()
   }
 })
-it.each([[7, null, ''], [25, null, '未觉醒'], [25, false, '未觉醒'], [25, true, '已觉醒']])('化极%s觉醒%s的公开摘要未填按未觉醒且不在低星显示觉醒', async (stage, awakened, label) => {
+it.each([[7, null, '2 星 · 0 节点'], [25, null, '5 星'], [25, false, '5 星'], [25, true, '觉醒']])('化极%s觉醒%s的公开摘要统一星级显示，未知不标为觉醒', async (stage, awakened, label) => {
   getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator, rarity: 4 }] })
   viewOperatorShare.mockResolvedValue({ ...share, entries: { [operator.id]: { ...operator.growth, huaji: { owned: true, stage, awakened } } } })
   const wrapper = mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true,
     ShareCardStats: { template: '<div><slot name="growth" /></div>' } } } })
   await flushPromises()
-  expect(wrapper.find('.ledger-huaji-value small').exists()).toBe(Boolean(label))
-  if (label) expect(wrapper.get('.ledger-huaji-value small').text()).toBe(label)
+  expect(wrapper.find('.ledger-huaji-value small').exists()).toBe(false)
+  expect(wrapper.get('.ledger-huaji-value').attributes('title')).toBe(label)
+  expect(wrapper.get('.ledger-huaji-value').text()).toBe(awakened ? '觉醒' : stage === 25 ? '5' : '20')
   expect(fetch).not.toHaveBeenCalled()
   wrapper.unmount()
 })

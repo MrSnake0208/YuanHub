@@ -40,7 +40,7 @@
               <button type="button" :disabled="draftBusy" @click="closeDraftMenu(); exportDraft()">导出草稿</button>
               <template v-if="account && !accountsLoading && (loaded || error)">
                 <hr>
-                <p class="battle-draft-caption">{{ entries.length ? `已读取 ${entries.length} 位我的密探，选人时自动带入配置` : '当前账号暂无已拥有的密探，可手动填写' }}</p>
+                <p v-if="!error" class="battle-draft-caption">{{ entries.length ? `已读取 ${entries.length} 位我的密探，选人时自动带入配置` : '当前账号暂无已拥有的密探，可手动填写' }}</p>
                 <button type="button" :disabled="loading" :title="loaded ? '密探名册有改动时重新读取；不会覆盖已编辑的阵容' : undefined" @click="closeDraftMenu(); readAccount()">{{ error ? '重试读取' : '重新读取我的密探' }}</button>
               </template>
             </div>

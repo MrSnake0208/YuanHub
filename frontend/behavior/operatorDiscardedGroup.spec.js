@@ -89,7 +89,10 @@ it('批量标注直接展开属性、职业和品质筛选，退出后恢复紧�
   await flushPromises()
   const filters = wrapper.get('#operator-panel-current .operator-filter-dossier')
   expect(filters.get('.current-filter-secondary').findAll('button').map(button => button.text()))
-    .toEqual(['特别关注优先', '分类设置', '批量选择'])
+    .toEqual(['特别关注优先', '管理', '分类设置', '批量选择'])
+  expect(filters.get('.current-manage-trigger').attributes('aria-expanded')).toBe('false')
+  await filters.get('.current-manage-trigger').trigger('click')
+  expect(filters.get('.current-manage-trigger').attributes('aria-expanded')).toBe('true')
   expect(filters.get('.dossier-extra').isVisible()).toBe(false)
   await filters.get('.current-batch-toggle[title="批量选择密探"]').trigger('click')
   for (const selector of ['.pf-prof-row', '.pf-subprof-row', '.pf-rarity-row']) {

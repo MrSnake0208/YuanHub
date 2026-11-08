@@ -244,7 +244,7 @@ it.each(['custom', 'favorites'])('%s连续目标在保存前不写云端，保�
     expect(putOperatorGrowthTarget).toHaveBeenCalledExactlyOnceWith({ accountId: 'acc', operatorId: 'op', target: { expected_revision: 3, huaji: huaji(25, true) } })
     getOperatorGrowthTargets.mockResolvedValue({ items: [{ operator_id: 'op', revision: 4, ...target(huaji(25, true)) }] })
   }
-  expect(wrapper.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')
+  expect(wrapper.get('.tracker-star-trigger').text()).toBe('觉醒')
   expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain('96%')
   expect(wrapper.get('.growth-card').classes()).not.toContain('complete')
   expect(wrapper.get('.status-metric-primary').text()).toContain('暂不估算')
@@ -252,21 +252,21 @@ it.each(['custom', 'favorites'])('%s连续目标在保存前不写云端，保�
   expect(wrapper.findAll('.status-metric')[1].text()).not.toContain('%')
   wrapper.unmount()
   const reopened = await render()
-  expect(reopened.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')
+  expect(reopened.get('.tracker-star-trigger').text()).toBe('觉醒')
 })
 
 it.each([null, false, true])('stage25+%s只有要求觉醒且已确认时显示完成', async awakened => {
   plannerApi.getTrainingWorkspace.mockResolvedValue(workspace('custom', huaji(25, true)))
   const quickUpgrade = vi.fn()
   const wrapper = await render(huaji(25, awakened), {}, { quickUpgrade })
-  expect(wrapper.get('.growth-current-star').text()).toBe(awakened === true ? '已觉醒' : '5 星')
+  expect(wrapper.get('.growth-current-star').text()).toBe(awakened === true ? '觉醒' : '5 星')
   expect(wrapper.text()).not.toContain('觉醒待确认')
   expect(wrapper.get('.growth-card').classes().includes('complete')).toBe(awakened === true)
   if (awakened === true) {
     expect(wrapper.get('.growth-overview-progress .growth-track.rose i').attributes('style')).toContain('100%')
     expect(wrapper.find('.growth-row-detail .growth-track.rose').exists()).toBe(false)
     expect(wrapper.find('[aria-label*="快捷提升化极"]').exists()).toBe(false)
-    expect(wrapper.get('.tracker-star-trigger').text()).toBe('5 星 → 觉醒')
+    expect(wrapper.get('.tracker-star-trigger').text()).toBe('觉醒')
   } else {
     expect(wrapper.get('.growth-track.rose i').attributes('style')).toContain('96%')
     const button = wrapper.get('[aria-label*="快捷提升化极"]')
@@ -316,7 +316,7 @@ it('旧31目标与当前旧31都表示五星后的觉醒', async () => {
   const old = workspace(); old.plans[0].targets.op = { level: 100, elite: 17, star_level: 31 }
   plannerApi.getTrainingWorkspace.mockResolvedValue(old)
   const wrapper = await render(huaji(null, true), {}, { currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 31 }] })
-  expect(wrapper.get('.growth-card').text()).toContain('已觉醒')
+  expect(wrapper.get('.growth-card').text()).toContain('觉醒')
   expect(wrapper.find('.growth-row-detail .growth-track.rose').exists()).toBe(false)
   await wrapper.get('.tracker-star-trigger').trigger('click')
   expect(wrapper.get('[aria-label="目标星级"]').element.value).toBe('awakening')

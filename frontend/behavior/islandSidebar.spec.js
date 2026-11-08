@@ -286,7 +286,7 @@ it('双端按确认方案分组排序，常用入口直达并使用相同图标'
   expect(linksIn('.nav').map(link => link.props('to'))).toEqual(expected)
   expect(linksIn('.mobile-drawer-nav').map(link => link.props('to'))).toEqual(expected)
   for (const selector of ['.nav', '.mobile-drawer-nav']) {
-    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(['玩家工具', '资料与记录', '管理'])
+    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(selector === '.nav' ? ['玩家工具', '资料与记录', '管理'] : ['玩家工具', '资料与记录', '管理', '外观'])
     for (const link of linksIn(selector).slice(0, 12)) {
       expect(link.element.closest('details')).toBeNull()
       expect(link.find('svg').exists()).toBe(true)
@@ -390,7 +390,7 @@ it('普通功能保持直达，更多默认收起且版本信息不重复跳转'
   for (const selector of ['.nav', '.mobile-drawer-nav']) {
     const links = wrapper.get(selector).findAllComponents(RouterLinkStub).filter(link => !link.element.closest('details'))
     expect(links.map(link => link.props('to'))).toEqual(expected)
-    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(['玩家工具', '资料与记录'])
+    expect(wrapper.get(selector).findAll('.nav-group-label').map(label => label.text())).toEqual(selector === '.nav' ? ['玩家工具', '资料与记录'] : ['玩家工具', '资料与记录', '外观'])
   }
   expect(wrapper.get('.sidebar-more').attributes('open')).toBeUndefined()
   expect(wrapper.get('.mobile-more').attributes('open')).toBeUndefined()

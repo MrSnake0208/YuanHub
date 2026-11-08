@@ -62,7 +62,9 @@ it('觉醒独立筛选，预设启用或关闭后仍保留星数范围', async (
   await awakenedPreset.trigger('click')
   expect(wrapper.emitted('update:growthFilters').at(-1)[0]).toMatchObject({ awakened: '', starMin: '2', starEnabled: true })
   await wrapper.get('summary').trigger('click')
-  expect(wrapper.get('[aria-label="星数至少"]').attributes('max')).toBe('5')
+  expect(wrapper.findAll('[aria-label="星数至少"] option').map(option => [option.element.value, option.text()])).toEqual([
+    ['', '不限'], ['1', '1 星'], ['2', '2 星'], ['3', '3 星'], ['4', '4 星'], ['5', '5 星'], ['6', '觉醒'],
+  ])
   expect(wrapper.find('.growth-awakened').exists()).toBe(false)
   await wrapper.get('[aria-label="星数至多"]').setValue('5')
   expect(wrapper.emitted('update:growthFilters').at(-1)[0]).toMatchObject({ starMax: '5' })

@@ -91,7 +91,7 @@ async function render(openReview = true) {
   return page
 }
 const button = (page, text) => page.findAll('button').find(item => item.text() === text)
-const setStage = async (page, value = 13) => { await page.get('[aria-label="复核化极星级与节点"]').setValue(value); await flushPromises() }
+const setStage = async (page, value = 13) => { await page.get('[aria-label="复核化极"]').setValue(value); await flushPromises() }
 const preview = async page => { await button(page, '校验并预览').trigger('submit'); await flushPromises() }
 const save = async page => { await button(page, '确认保存').trigger('click'); await flushPromises() }
 
@@ -179,13 +179,13 @@ it('蓝卡旧采集31与历史额外节点不自动拉满，可人工确认4星'
   fixture.entry.section_status.huaji = 'ready'
   fixture.review.warnings = [{ code: 'legacy_huaji_requires_review', field: 'star_level' }]
   const page = await render()
-  const stage = page.get('[aria-label="复核化极星级与节点"]')
-  expect(stage.element.selectedOptions[0]._value).toBeNull()
+  const stage = page.get('[aria-label="复核化极"]')
+  expect(stage.element.value).toBe('')
   expect(stage.findAll('option').at(-1).text()).toBe('4 星')
   expect(page.text()).toContain('满星后没有小节点，也不支持觉醒')
   await setStage(page, 19); await preview(page); await save(page)
   expect(api.importOperator.mock.calls[0][0].document.records[0].entries).toEqual([
-    { operator_id: 'review-op', huaji: { owned: true, stage: 19, awakened: null } },
+    { operator_id: 'review-op', huaji: { owned: true, stage: 19, awakened: false } },
   ])
   expect(api.closeOperatorScanReview).toHaveBeenCalledOnce()
 })
@@ -216,7 +216,7 @@ it('旧响应缺少逐项回执时保留提醒，不能声称每个字段成功'
   const page = await render(); await setStage(page); await preview(page); await save(page)
   expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
   expect(page.text()).toContain('不能确认每个字段已保存')
-  expect(page.get('[aria-label="复核化极星级与节点"]').element.value).toBe('13')
+  expect(page.get('[aria-label="复核化极"]').element.value).toBe('13')
 })
 
 it('安全：网络失败保留输入，重试沿用幂等键，重复点击只发一次提交', async () => {
@@ -224,7 +224,7 @@ it('安全：网络失败保留输入，重试沿用幂等键，重复点击只�
   api.importOperator.mockRejectedValueOnce(new TypeError('Failed to fetch'))
   await save(page)
   expect(page.text()).toContain('输入已保留')
-  expect(page.get('[aria-label="复核化极星级与节点"]').element.value).toBe('13')
+  expect(page.get('[aria-label="复核化极"]').element.value).toBe('13')
   const firstBody = api.importOperator.mock.calls[0][0]
   const pending = deferred()
   api.importOperator.mockReturnValueOnce(pending.promise)
@@ -241,7 +241,7 @@ it('冲突更新预览但保留表单，重新确认之前不写入', async () =
   await save(page)
   expect(api.importOperator).not.toHaveBeenCalled()
   expect(page.text()).toContain('已更新预览')
-  expect(page.get('[aria-label="复核化极星级与节点"]').element.value).toBe('13')
+  expect(page.get('[aria-label="复核化极"]').element.value).toBe('13')
   await save(page)
   expect(api.importOperator).toHaveBeenCalledOnce()
 })
@@ -311,15 +311,15 @@ it('关闭未保存内容复用共享弹窗；Tab 困在上层，Esc 只取消�
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   await flushPromises()
   expect(document.querySelector('.dialog')).toBeNull()
-  expect(page.get('[aria-label="复核化极星级与节点"]').element.value).toBe('13')
+  expect(page.get('[aria-label="复核化极"]').element.value).toBe('13')
   await button(page, '取消复核').trigger('click'); await flushPromises()
   document.querySelector('.dlg-btn.primary').click(); await flushPromises()
   expect(page.find('.scan-review-form').exists()).toBe(false)
   expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
   await page.get('.scan-review-panel button').trigger('click'); await flushPromises()
-  const unknownStage = page.get('[aria-label="复核化极星级与节点"]').element.selectedOptions[0]
+  const unknownStage = page.get('[aria-label="复核化极"]').element.selectedOptions[0]
   expect(unknownStage.textContent).toBe('未知，请核对')
-  expect(unknownStage._value).toBeNull()
+  expect(unknownStage.value).toBe('')
 })
 
 it('奇闻上限和未知值使用正常控件修正，错误摘要聚焦且有定位链接', async () => {
