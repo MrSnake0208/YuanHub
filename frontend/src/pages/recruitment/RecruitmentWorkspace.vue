@@ -31,14 +31,14 @@
               <button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button>
             </div>
             <RecruitmentGoldStatistics v-else class="summary" :summary="state.archive.summary" account :context-version="state.contextVersion">
-              <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span>已知累计抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></dd></div>
+              <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><BookOpen :size="18" /></span><span class="summary-label-full">已知累计抽数</span><span class="summary-label-short" aria-hidden="true">累计抽数</span></dt><dd class="summary-number"><strong>{{ state.archive.summary.known_total_pulls.toLocaleString() }}</strong><small class="number-unit">抽</small></dd></div>
               <div class="summary-item"><dt><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span>密探记录</dt><dd class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></dd></div>
-              <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span>平均出绝密抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small v-if="state.archive.summary.average_gold_pulls != null" class="number-unit">抽</small></dd></div>
-              <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span>绣衣天下已知抽数</dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small v-if="state.archive.summary.permanent_known_total_pulls != null" class="number-unit">抽</small></dd></div>
+              <div class="summary-item summary-average"><dt><span class="summary-icon" aria-hidden="true"><ChartNoAxesColumn :size="18" /></span><span class="summary-label-full">平均出绝密抽数</span><span class="summary-label-short" aria-hidden="true">平均出金</span></dt><dd class="summary-number"><strong>{{ state.archive.summary.average_gold_pulls?.toFixed(2) ?? '—' }}</strong><small v-if="state.archive.summary.average_gold_pulls != null" class="number-unit">抽</small></dd></div>
+              <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span><span class="summary-label-full">常驻池已知抽数</span><span class="summary-label-short" aria-hidden="true">常驻抽数</span></dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small v-if="state.archive.summary.permanent_known_total_pulls != null" class="number-unit">抽</small></dd></div>
             </RecruitmentGoldStatistics>
-            <section v-if="!archiveEmpty" class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty }" aria-label="抽卡趣闻">
-              <header class="overview-heading"><h2>抽卡趣闻</h2><p>{{ highlightsEmpty ? '暂无记录，记录后查看抽卡趣闻' : '一些有趣的抽卡数据统计' }}</p></header>
-              <div v-if="!highlightsEmpty" class="highlight-grid">
+            <section v-if="!archiveEmpty" class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty, 'highlights-open': highlightsOpen }" aria-label="抽卡趣闻">
+              <header class="overview-heading"><h3>抽卡趣闻</h3><p>{{ highlightsEmpty ? '暂无记录，记录后查看抽卡趣闻' : '一些有趣的抽卡数据统计' }}</p><button v-if="!highlightsEmpty" type="button" class="highlights-toggle" :aria-expanded="highlightsOpen" aria-controls="recruitment-highlight-grid" @click="highlightsOpen = !highlightsOpen">{{ highlightsOpen ? '收起' : `展开 ${goldAgentHighlights.length} 项` }}</button></header>
+              <div v-if="!highlightsEmpty" id="recruitment-highlight-grid" class="highlight-grid">
                 <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
                   <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>
                   <div><span>{{ metric.label }}</span>
@@ -64,7 +64,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Archive, BookOpen, ChartNoAxesColumn, CircleHelp, Gem, Layers3, Shuffle, Trophy } from '@lucide/vue'
+import { Archive, BookOpen, ChartNoAxesColumn, CircleHelp, Crown, Gem, Layers3, Shuffle } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -86,13 +86,13 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts, previews, loadPreview } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
-const expandedGoldHighlights = ref({})
+const expandedGoldHighlights = ref({}), highlightsOpen = ref(false)
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const archiveEmpty = computed(() => state.archive?.summary.event_count === 0 && state.archive.summary.known_total_pulls === 0)
 const goldAgentHighlights = computed(() => [
-  { key: 'most-obtained', label: '抽中最多的绝密', icon: Trophy, agents: state.archive?.summary.most_obtained_gold_agents, collapsible: true },
+  { key: 'most-obtained', label: '抽中最多的绝密', icon: Crown, agents: state.archive?.summary.most_obtained_gold_agents, collapsible: true },
   { key: 'most-non-up', label: '歪得最多的绝密', icon: Shuffle, agents: state.archive?.summary.most_non_up_gold_agents },
   { key: 'most-permanent', label: '常驻池抽中最多的绝密', icon: Layers3, agents: state.archive?.summary.most_permanent_gold_agents, collapsible: true }
 ])
@@ -136,7 +136,7 @@ function dismissPageGuide() {
   guidePicker.value = false; guideActive.value = false
   nextTick(() => guideEntry.value?.focus({ preventScroll: true }))
 }
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false; expandedGoldHighlights.value = {} })
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guidePicker.value = false; expandedGoldHighlights.value = {}; highlightsOpen.value = false })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
   if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
@@ -204,7 +204,8 @@ button{border:1px solid var(--line);border-radius:10px;color:var(--ink);backgrou
 
 .account-overview{container-type:inline-size;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--surface) 94%,transparent)}
 .overview-empty{font-size:13px;line-height:1.6}.overview-empty p{margin:4px 0 10px;color:var(--ink-60)}.overview-empty button{padding:8px 14px;font:inherit}
-.overview-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:10px}.overview-heading h2{margin:0;font:900 22px/1.4 var(--font-s);color:var(--theme-strong-text,var(--tea))}.overview-heading p{margin:0;font-size:12px;color:var(--ink-60)}
+.overview-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;margin-bottom:10px}.overview-heading h2,.overview-heading h3{margin:0;font:900 22px/1.4 var(--font-s);color:var(--theme-strong-text,var(--tea))}.overview-heading p{margin:0;font-size:12px;color:var(--ink-60)}
+.overview-heading h3{font-size:18px}.summary-label-short,.highlights-toggle{display:none}
 .recruitment-highlights{border-top:1px solid var(--line)}.summary-item{min-width:0}.summary-item>div{min-width:0}.summary-item dt{margin:0}.summary-item dd{margin:4px 0 0}.summary-item dt,.summary-item small{font-size:12px;line-height:1.5}.summary-icon{flex:none}.summary-number{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}.summary-number strong{color:var(--theme-strong-text,var(--tea));font:800 24px/1.25 var(--font-d);white-space:nowrap}.summary-item .number-unit{white-space:nowrap}
 .summary .summary-icon{position:absolute;left:9px;top:15px}.summary-agent{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:8px;background:color-mix(in srgb,var(--cream) 65%,var(--surface))}.summary-agent .summary-icon{padding-top:2px}.summary-agent>div{flex:1}.highlight-grid{display:grid;gap:10px}
 .summary-agent-list{display:flex;flex-wrap:wrap;gap:2px 14px;list-style:none;margin:4px 0 0;padding:0}.summary-agent-list li{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}.summary-agent-list strong{font:700 16px/1.5 var(--font-b);overflow-wrap:anywhere}.summary-agent-list small{white-space:nowrap}.summary-empty{margin:4px 0 0;color:var(--ink-60);font-size:13px}

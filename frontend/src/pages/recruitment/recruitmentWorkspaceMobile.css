@@ -39,10 +39,21 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
   .summary-agent-list small { font-size: 11px; }
   .summary-empty { margin: 0; }
 }
-@media (max-width: 1080px) {
+@media (min-width: 768px) and (max-width: 1080px) {
   @container (max-width: 520px) {
     .summary .summary-icon { position: static; display: inline-flex; vertical-align: middle; margin-right: 5px; }
     .summary-number strong { font-size: 22px; }
     .summary-item dt { font-size: 12px; }
   }
+}
+
+@media (max-width: 767px) {
+  .summary .summary-icon { display: none; }
+  .summary-item .summary-number { order: -1; margin: 0 0 4px; }
+  .summary-number strong { font-size: 22px; }
+  .summary-label-short { display: inline; }
+  .summary-label-full { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .overview-heading h3 { font-size: 16px; }
+  .highlights-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin-left: auto; padding: 6px 10px; font-size: 12px; }
+  .recruitment-highlights:not(.highlights-open) .highlight-grid { display: none; }
 }

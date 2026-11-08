@@ -3,7 +3,7 @@
     <dl class="gold-metrics">
       <slot />
       <div v-for="metric in metrics" :key="metric.key" :class="metric.key + '-metric'">
-        <dt><component :is="metric.key === 'total-up' ? BadgePercent : Trophy" v-if="account" class="metric-icon" :size="18" aria-hidden="true" />{{ metric.label }}</dt>
+        <dt><component :is="metric.key === 'total-up' ? BadgePercent : Trophy" v-if="account" class="metric-icon" :size="18" aria-hidden="true" /><span class="metric-label-full">{{ metric.label }}</span><span v-if="account" class="metric-label-short" aria-hidden="true">{{ metric.key === 'guaranteed-gold' ? '大保底' : metric.label }}</span></dt>
         <dd>
           <strong>{{ metric.value }}</strong>
           <small v-if="metric.unit" class="number-unit">{{ metric.unit }}</small>
@@ -12,6 +12,7 @@
         </dd>
       </div>
     </dl>
+    <p v-if="account" class="mobile-sample-note">{{ accountSamples ? `总 UP 率样本：${accountSamples.join(' / ')}` : metrics[0].note }}</p>
     <p v-if="!account" class="pity-assumption">按现有历史、首金小保底推断</p>
     <details v-if="!account" :key="contextVersion" class="gold-statistics-help">
       <summary>UP 与保底统计说明</summary>
@@ -39,6 +40,7 @@ const accountSamples = computed(() => {
 </script>
 
 <style scoped>
+.metric-label-short, .mobile-sample-note { display: none; }
 .gold-statistics { margin: 12px 0; padding: 12px 0; color: var(--ink); border-block: 1px solid var(--line); }
 .gold-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px 20px; margin: 0; }
 .gold-metrics > div { min-width: 0; }
@@ -72,5 +74,16 @@ summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); ou
   .account-statistics .metric-icon { position: static; display: inline-block; vertical-align: middle; margin-right: 5px; }
   .account-statistics strong { font-size: 22px; }
   .account-statistics dt { font-size: 12px; }
+}
+@media (max-width: 767px) {
+  .account-statistics .gold-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .account-statistics .gold-metrics > div, .account-statistics .gold-metrics > :slotted(.summary-item) { display: flex; flex-direction: column; padding: 8px 0; border: 0; border-radius: 0; background: transparent; }
+  .account-statistics dd { order: -1; margin: 0 0 4px; }
+  .account-statistics strong { font-size: 22px; }
+  .account-statistics .metric-icon, .account-statistics .total-up-metric dd p { display: none; }
+  .account-statistics .metric-label-short { display: inline; }
+  .account-statistics .metric-label-full { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .account-statistics .mobile-sample-note { display: block; margin-top: 8px; }
+  .account-statistics .guaranteed-gold-metric p { font-size: 11px; }
 }
 </style>

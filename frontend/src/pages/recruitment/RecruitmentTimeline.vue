@@ -107,8 +107,9 @@ const hasUndated = computed(() => props.pools.some(pool => !permanent(pool) && !
 watch([years, hasUndated], ([availableYears, undated]) => {
   if (year.value && (year.value === 'unknown' ? !undated : !availableYears.includes(year.value))) year.value = ''
 })
+const poolPriority = pool => permanent(pool) ? 1 : status(pool) === '进行中' ? 0 : 2
 const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) || !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))).slice().sort((a, b) => {
-  const pinned = Number(permanent(b)) - Number(permanent(a))
+  const pinned = poolPriority(a) - poolPriority(b)
   if (pinned) return pinned
   const first = startDate(a), second = startDate(b)
   if (!first || !second) return Number(!first) - Number(!second)
