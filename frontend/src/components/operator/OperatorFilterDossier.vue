@@ -1,7 +1,7 @@
 <template>
   <div
     class="prof-filter current-prof-filter operator-filter-dossier"
-    :class="{ 'is-compact': compact }"
+    :class="{ 'is-compact': compact, 'has-active-filters': hasFilters }"
     role="search"
     :aria-label="`筛选${contextLabel}`"
   >

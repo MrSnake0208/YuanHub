@@ -42,7 +42,7 @@
 .roster-header :deep(.compact-tool-actions .tool-more) { position: static; }
 .roster-header :deep(.tool-more-content) { left: 0; right: auto; max-width: 100%; }
 .roster-header .btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
-.roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid var(--surface); border-radius: 999px; background: var(--surface); color: var(--ink); line-height: 1.3; }
+.roster-header .roster-share small { margin-inline-start: 2px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); color: var(--ink); line-height: 1.3; }
 .roster-summary { margin: 4px 0 0; font-size: 12px; }
 .roster-summary .tool-updated { display: inline-flex; }
 .roster-box-actions { display: contents; }
@@ -4103,4 +4103,29 @@
   .operator-mobile-toolbar.is-simple-toolbar :deep(.catalog-filter-chips) { grid-area: 3 / 1 / 4 / 3; align-self: center; }
   .operator-mobile-toolbar.is-simple-toolbar :deep(.current-filter-result) { grid-area: 4 / 1 / 5 / -1; min-height: 0; line-height: 20px; }
   .operator-mobile-toolbar.is-simple-toolbar::after { grid-area: 4 / 1 / 5 / -1; }
+  /* 无筛选时不重复显示总数；结果数和分隔线只在筛选或搜索时出现。 */
+  .operator-mobile-toolbar.is-simple-toolbar:not(.has-active-filters) :deep(.current-filter-result) { display: none; }
+  .operator-mobile-toolbar.is-simple-toolbar:not(.has-active-filters)::after { content: none; }
+  /* 图鉴只有三个状态项，筛选入口并入状态行；其它简易工具栏状态项较多，保持独立一行。 */
+  .operator-mobile-toolbar.is-catalog-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-filter-search) { grid-area: 1 / 1; }
+  .operator-mobile-toolbar.is-catalog-toolbar .btn.primary { grid-area: 1 / 2; padding-inline: 12px; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.pf-status-row) { grid-area: 2 / 1; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.catalog-filter-trigger) { grid-area: 2 / 2; align-self: stretch; min-height: 36px; padding-inline: 12px; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.catalog-filter-chips) { grid-area: 3 / 1 / 4 / -1; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-filter-result),
+  .operator-mobile-toolbar.is-catalog-toolbar::after { grid-area: 4 / 1 / 5 / -1; }
+  .operator-mobile-toolbar.is-catalog-toolbar:not(:has(.catalog-filter-chips)) :deep(.current-filter-result),
+  .operator-mobile-toolbar.is-catalog-toolbar:not(:has(.catalog-filter-chips))::after { grid-row: 3; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-status-filter button) { flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; }
+  /* BOX 操作低频：分享并入账号行，整行让给内容。 */
+  .page-operator .roster-header.mobile-context-header > :deep(.wrap) { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'account primary utilities' 'heading heading heading' 'summary summary summary' 'help help help'; }
+  .page-operator .roster-header.mobile-context-header :deep(.compact-tool-primary) { flex-wrap: nowrap; margin-top: 0; }
+  .roster-share-suffix { display: none; }
+}
+
+@media (max-width: 359px) {
+  /* 超窄屏把数量放到第二行，避免「未招募115」被断开。 */
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-status-filter button) { flex-direction: column; gap: 0; line-height: 1.2; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-status-filter button small) { margin-left: 0; }
 }

@@ -245,8 +245,20 @@
 .catalog-portrait-grid .slot-grid { margin: 0; padding: 0; gap: 16px 12px; }
 @media (min-width: 768px) { .backpack.catalog-portrait-grid { margin-inline: -17px; padding: 16px; } }
 @media (max-width: 767px) {
-  .backpack.catalog-portrait-grid { margin-top: 10px; }
+  .backpack.catalog-portrait-grid { margin-top: 10px; padding: 0; border: 0; border-radius: 0; background: transparent; }
   .catalog-portrait-grid .slot-name { margin-top: 6px; min-height: 1.45em; }
   .catalog-portrait-grid .slot-count { left: 3px; bottom: 3px; padding: 3px 4px; font-size: 11px; }
+  /* 手机端点整张头像进入编辑：编辑按钮保留语义与状态，视觉上扩展为卡片热区。 */
+  .catalog-portrait-grid .edit-icon-btn { position: static; width: auto; height: auto; padding: 0; }
+  .catalog-portrait-grid .edit-icon-btn svg { display: none; }
+  .catalog-portrait-grid .edit-icon-btn::before { content: none; }
+  .catalog-portrait-grid .edit-icon-btn::after { content: ""; position: absolute; inset: 0; z-index: 2; }
+  .catalog-portrait-grid .edit-icon-btn:active:not(:disabled)::after { background: rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.14); }
+  .catalog-portrait-grid .edit-icon-btn:focus-visible { outline: 0; }
+  .catalog-portrait-grid .edit-icon-btn:focus-visible::after { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: -2px; border-radius: 6px; }
+  .catalog-portrait-grid .prof-badge { pointer-events: none; }
+  /* 未关注的星标减弱，已关注保持完整样式。 */
+  .catalog-portrait-grid .favorite-btn:not(.on) { color: var(--ink-60); }
+  .catalog-portrait-grid .favorite-btn:not(.on)::before { inset: 10px; border-color: transparent; background: color-mix(in srgb, var(--surface) 72%, transparent); box-shadow: none; }
 }
 @media (max-width: 640px) { .catalog-portrait-grid .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; } }

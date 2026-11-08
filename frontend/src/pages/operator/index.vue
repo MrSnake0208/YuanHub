@@ -11,17 +11,17 @@
         </template>
         <template #primary-actions>
           <div class="roster-box-actions">
-            <button type="button" class="btn primary roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
+            <button type="button" class="btn ghost roster-share" :aria-expanded="shareModalOpen" aria-controls="operator-share-dialog" aria-haspopup="dialog"
               :title="currentAccountName + ' · ' + ledgerShareStatus" @click="openOperatorShare(false)">
-              <Share2 :size="16" aria-hidden="true" />分享 BOX <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
+              <Share2 :size="16" aria-hidden="true" />分享<span class="roster-share-suffix"> BOX</span> <small :class="{ 'is-sharing': isOperatorSharing }">{{ ledgerShareStatus }}</small>
             </button>
-            <button type="button" class="btn ghost roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="16" aria-hidden="true" />查看他人 BOX</button>
           </div>
         </template>
         <template #actions>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
+              <button type="button" class="act-btn roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="15" aria-hidden="true" />查看他人 BOX</button>
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
               </button>
@@ -521,7 +521,7 @@
             <div class="catalog-tools">
               <OperatorFilterDossier
                 ref="catalogFilters"
-                class="operator-mobile-toolbar is-simple-toolbar"
+                class="operator-mobile-toolbar is-simple-toolbar is-catalog-toolbar"
                 compact
                 searchable
                 context-label="密探图鉴"
@@ -689,7 +689,7 @@
                       ></span>
                     </template>
                     <span class="slot-count" :class="{ zero: !e.owned }">{{
-                      e.owned ? "Lv" + e.level : "未养"
+                      e.owned ? "Lv" + e.level : "未招募"
                     }}</span>
                     <span
                       v-if="profIcon(e.prof)"
@@ -5065,8 +5065,8 @@ const filterSuffix = computed(function () {
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
     parts.push("职业「" + subProfFilter.value + "」");
-  if (manifestFilter.value === "owned") parts.push("「已拥有」");
-  if (manifestFilter.value === "missing") parts.push("「未拥有」");
+  if (manifestFilter.value === "owned") parts.push("「已招募」");
+  if (manifestFilter.value === "missing") parts.push("「未招募」");
   parts.push(...growthFilterParts(manifestGrowthFilters.value));
   return parts.length ? parts.join(" · ") : "";
 });
@@ -5450,7 +5450,7 @@ function slotTitle(e) {
         " · Lv" +
         e.level,
     );
-  else parts.push("未拥有");
+  else parts.push("未招募");
   if (e.prof) parts.push(e.prof);
   return parts.join(" ｜ ");
 }
