@@ -32,10 +32,17 @@
   .editor-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
   .editor-section-head p { margin: 0; color: var(--ink-60); font-size: 12px; }
   .editor-workspace .editor-growth-section { display: grid; padding: 0; background: transparent; }
-  .editor-growth-other { display: grid; gap: 8px; min-width: 0; padding: 12px; border-radius: 10px; background: var(--surface); }
-  .editor-workspace .editor-reset-action { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .editor-growth-other { display: grid; gap: 0; min-width: 0; padding: 4px 12px; border-radius: 10px; background: var(--surface); }
+  .editor-workspace .editor-growth-other .editor-panel-controls { padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .editor-workspace .editor-growth-other .editor-panel-source { flex-wrap: nowrap; gap: 12px; font-size: 14px; font-weight: 600; }
+  .editor-workspace .editor-growth-other .editor-panel-source > span { flex: none; }
+  .editor-workspace .editor-growth-other .editor-panel-source select { min-height: 44px; padding: 0 2px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); text-align: right; text-align-last: right; }
+  .editor-workspace .editor-reset-action { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 44px; }
   .editor-workspace .editor-reset-action .hint, .editor-workspace .editor-panel-comparison { font-weight: 400; }
-  .editor-workspace .editor-reset-action .btn { padding-inline: 0; border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); text-align: left; }
+  .editor-workspace .editor-reset-action .btn { display: flex; flex: 1; align-items: center; justify-content: space-between; min-width: 0; min-height: 44px; padding-inline: 0; border: 0; background: transparent; color: var(--ink); font-size: 14px; font-weight: 600; text-align: left; }
+  .editor-workspace .editor-reset-action .btn:not(:disabled)::after { content: ""; flex: none; width: 7px; height: 7px; margin-right: 3px; border-top: 1.5px solid var(--ink-60); border-right: 1.5px solid var(--ink-60); transform: rotate(45deg); }
+  .editor-workspace .editor-reset-action .btn:disabled { opacity: 1; color: var(--ink-60); }
+  .editor-workspace .editor-reset-action .hint { flex: none; color: var(--ink-60); font-size: 12px; line-height: 1.4; }
   .editor-workspace .num-fields { display: grid; min-width: 0; width: 100%; gap: 10px; }
   .editor-level-block, .editor-workspace .num-fields .star-card, .editor-workspace .oddity-editor { min-width: 0; padding: 12px; border: 0; border-radius: 10px; background: var(--surface); }
   .editor-growth-note { margin: 0; color: var(--ink-60); font-size: 11px; line-height: 1.5; }

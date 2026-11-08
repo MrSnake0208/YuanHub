@@ -2659,7 +2659,7 @@
               <Teleport defer to="#operator-editor-reset-slot" :disabled="!compactStats">
                 <div class="editor-reset-action">
                   <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" @click="resetEntry = editingOp">鞭子重置 / 记录</button>
-                  <span v-if="editorDirty" class="hint">保存或取消当前修改后可操作</span>
+                  <span v-if="editorDirty" class="hint">请先保存或取消修改</span>
                 </div>
               </Teleport>
               <div class="num-fields">
