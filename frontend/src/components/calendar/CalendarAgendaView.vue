@@ -57,7 +57,13 @@ function locate() {
   const target = groups.find(group => group.dataset.date >= props.anchorDate) || groups.at(-1)
   target?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
 }
-onMounted(() => { if (props.anchorDate !== props.today || props.locateRequest) locate() })
-watch(() => [props.anchorDate, props.locateRequest], locate, { flush: 'post' })
-watch(() => props.loading, loading => { if (!loading && (props.anchorDate !== props.today || props.locateRequest)) locate() }, { flush: 'post' })
+let pendingLocate = props.anchorDate !== props.today || !!props.locateRequest
+function locateWhenReady() {
+  if (!pendingLocate || props.loading) return
+  pendingLocate = false
+  locate()
+}
+onMounted(locateWhenReady)
+watch(() => [props.anchorDate, props.locateRequest], () => { pendingLocate = true; locateWhenReady() }, { flush: 'post' })
+watch(() => props.loading, locateWhenReady, { flush: 'post' })
 </script>
