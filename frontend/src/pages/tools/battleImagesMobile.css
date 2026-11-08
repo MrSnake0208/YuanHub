@@ -1,17 +1,15 @@
 @media (max-width: 767px) {
-  /* 选择器高于公共页头的 scoped 规则，避免按加载顺序决定布局；手机上标题独占一行。 */
-  .page-battle-images .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'actions' 'account'; }
-  .page-battle-images .compact-tool-header .compact-tool-actions { justify-content: flex-start; }
   .battle-tool { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
-  .battle-tool .compact-tool-heading h1 { font-size: 21px; }
   .battle-tool .battle-save-status { width: 100%; font-size: 11px; }
-  .battle-tool .battle-meta { flex-wrap: wrap; gap: 8px; padding-block: 12px; }
+  .battle-tool .battle-document { display: flex; flex-direction: column; }
+  .battle-tool .battle-meta { order: 1; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-block: 12px; }
+  .battle-tool .battle-common-note { order: 1; margin-bottom: 0; }
+  .battle-tool .battle-local-note { order: 2; }
   .battle-tool .battle-title-field { flex-basis: 100%; }
   .battle-tool .battle-title-field input { font-size: 20px; }
   .battle-tool .battle-author-field { width: 100%; }
-  .battle-tool .battle-modes { gap: 8px; }
+  .battle-tool .battle-modes { gap: 8px; margin-top: 4px; }
   .battle-tool .battle-modes > button { padding-inline: 8px; font-size: 14px; }
-  .battle-tool .battle-account-context { gap: 4px 8px; }
   /* 五列按屏宽等分排满，不依赖横向滑动：窄标签列、竖长立绘、命盘用简称。 */
   .battle-tool .battle-matrix, .battle-tool .battle-action-matrix { min-width: 0; }
   .battle-tool .battle-matrix th:first-child { width: 40px; padding: 6px 2px; font-size: 12px; line-height: 1.4; }
@@ -117,16 +115,14 @@
   .battle-tool .battle-target-option i { width: 6px; height: 6px; }
   .battle-tool .battle-action-option { flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
-  .battle-tool .battle-draft-menu > summary { font-size: 12px; }
-  .battle-tool .battle-draft-current { max-width: 9em; }
+  .battle-tool .battle-draft-menu > summary { min-height: 40px; font-size: 12px; }
+  .battle-tool .battle-draft-current { display: none; }
+  .battle-tool .battle-draft-tools { right: 0; max-width: calc(100vw - 32px); }
   .battle-tool .battle-draft-delete { width: 40px; height: 40px; }
-
-  /* 账号状态：说明在上、操作在下，均左对齐。 */
-  .battle-tool .battle-account-status { flex-basis: 100%; margin-left: 0; }
-  .battle-tool .battle-account-import { margin-left: 0; }
+  .battle-tool .battle-header-account > .data-account-context-bar { min-width: 0; max-width: 100%; }
 
   /* 页头生成按钮随页面滚走，改由底部常驻栏提供，保持页面只有一个主操作。 */
-  .battle-tool .compact-tool-header .battle-primary, .battle-tool .compact-tool-header .battle-save-status { display: none; }
+  .page-battle-images .battle-tool .compact-tool-header.mobile-context-header .compact-tool-primary { display: none; }
   .battle-tool { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
   .battle-tool .battle-mobile-dock { position: fixed; right: 0; bottom: 0; left: 0; z-index: var(--z-sticky, 40); display: flex; align-items: center; gap: 12px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
   .battle-tool .battle-mobile-dock .battle-save-status { flex: 1; width: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

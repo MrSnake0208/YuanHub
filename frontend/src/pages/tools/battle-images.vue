@@ -2,7 +2,16 @@
   <div v-if="canUseBattleImages" class="page-battle-images">
     <IslandSidebar />
     <main id="main-content" class="battle-tool" :class="{ 'is-recording': kind === 'actions' && recording }">
-      <CompactToolHeader title="配队与操作图">
+      <CompactToolHeader mobile-context title="配队与操作图">
+        <template #account>
+          <div class="battle-header-account">
+            <DataAccountContextBar v-if="userId" compact :accounts="accounts" :account-id="sourceAccountId" :game="account?.game || ''" :is-logged-in="true" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" />
+            <label v-if="!account" class="battle-game-field">游戏<select v-model="draft.game" aria-label="游戏"><option>如鸢</option><option>代号鸢</option></select></label>
+            <button v-if="accountError" type="button" @click="loadAccounts">重试读取账号</button>
+            <span v-if="account && !accountsLoading && loading" class="battle-header-status" role="status">正在读取我的密探…</span>
+            <button v-if="account && !accountsLoading && error" type="button" :disabled="loading" @click="readAccount">重试读取</button>
+          </div>
+        </template>
         <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，命盘在密探弹窗的“命盘”中按词条标记携带、必须或禁用。登录并选择游戏账号后，每个账号可保存 5 份云草稿，在“草稿”菜单中切换或新建；未登录时草稿只保存在本机。修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
         <template #primary-actions>
           <span class="battle-save-status" role="status">{{ saveStatus }}</span>
@@ -29,6 +38,11 @@
               <button type="button" :disabled="accountsLoading || draftBusy || draftsFull" :title="draftsFull ? `每个账号最多 ${BATTLE_CLOUD_DRAFT_LIMIT} 份云草稿，请先删除不需要的草稿` : undefined" @click="closeDraftMenu(); newDraft()"><Plus :size="14" aria-hidden="true" />新建草稿</button>
               <button type="button" :disabled="importing || accountsLoading || draftBusy || draftsFull" @click="closeDraftMenu(); fileInput.click()">{{ cloud ? '导入为新草稿' : '导入草稿' }}</button>
               <button type="button" :disabled="draftBusy" @click="closeDraftMenu(); exportDraft()">导出草稿</button>
+              <template v-if="account && !accountsLoading && (loaded || error)">
+                <hr>
+                <p class="battle-draft-caption">{{ entries.length ? `已读取 ${entries.length} 位我的密探，选人时自动带入配置` : '当前账号暂无已拥有的密探，可手动填写' }}</p>
+                <button type="button" :disabled="loading" :title="loaded ? '密探名册有改动时重新读取；不会覆盖已编辑的阵容' : undefined" @click="closeDraftMenu(); readAccount()">{{ error ? '重试读取' : '重新读取我的密探' }}</button>
+              </template>
             </div>
           </details>
         </template>
@@ -49,16 +63,6 @@
           </template>
           <button v-else-if="!cloudLoading" type="button" @click="retryCloud">重试</button>
         </p>
-        <div class="battle-account-context">
-          <DataAccountContextBar v-if="userId" compact :accounts="accounts" :account-id="sourceAccountId" :game="account?.game || ''" :is-logged-in="true" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" />
-          <label v-if="!account" class="battle-game-field">游戏<select v-model="draft.game" aria-label="游戏"><option>如鸢</option><option>代号鸢</option></select></label>
-          <button v-if="accountError" type="button" @click="loadAccounts">重试读取账号</button>
-          <template v-if="account && !accountsLoading">
-            <span v-if="loading" class="battle-account-status" role="status">正在读取我的密探…</span>
-            <span v-else-if="loaded" class="battle-account-status" role="status">{{ entries.length ? `已读取 ${entries.length} 位我的密探，选人时自动带入配置` : '当前账号暂无已拥有的密探，可手动填写' }}</span>
-            <button v-if="loaded || error" class="battle-account-import" type="button" :disabled="loading" :title="loaded ? '密探名册有改动时重新读取；不会覆盖已编辑的阵容' : undefined" @click="readAccount">{{ error ? '重试读取' : '重新读取我的密探' }}</button>
-          </template>
-        </div>
         <p v-if="error" role="alert" class="battle-error">{{ error }}</p>
         <p v-if="accountsLoading || cloudLoading" role="status">{{ accountsLoading ? '正在读取账号与草稿…' : '正在读取云草稿…' }}</p>
         <template v-else-if="!cloudUnavailable">

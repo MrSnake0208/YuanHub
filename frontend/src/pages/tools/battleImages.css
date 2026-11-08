@@ -37,7 +37,8 @@
 .battle-draft-delete { flex-shrink: 0; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--ink-60); }
 .battle-draft-delete:hover:not(:disabled) { color: var(--theme-danger-text, var(--rouge)); }
 .battle-draft-tools hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--line); }
-.battle-account-context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.battle-header-account { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.battle-header-status { font-size: 12px; color: var(--ink-60); }
 .battle-tool .battle-game-field { display: flex; align-items: center; gap: 8px; }
 .battle-game-field select { min-width: 100px; }
 .battle-hint { margin: 8px 0; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
@@ -54,9 +55,6 @@
 .battle-modes { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .battle-modes > button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 10px 12px; font-size: 16px; }
 .battle-modes > button[aria-selected=true] { border-bottom-color: var(--battle-accent); color: var(--battle-accent); font-weight: 700; }
-.battle-tool .battle-account-import { margin-left: auto; font-size: 12px; padding: 7px 10px; }
-.battle-account-status { margin-left: auto; font-size: 12px; color: var(--ink-60); }
-.battle-tool .battle-account-status + .battle-account-import { margin-left: 0; }
 .battle-workspace, .battle-team-editor, .battle-recorder { min-width: 0; }
 .battle-table-scroll { max-width: 100%; overflow: auto; border: 1px solid var(--battle-border); border-radius: 8px; }
 .battle-matrix { width: 100%; min-width: 800px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
