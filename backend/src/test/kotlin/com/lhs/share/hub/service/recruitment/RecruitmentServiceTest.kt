@@ -967,9 +967,9 @@ class RecruitmentServiceTest {
         val unknown = service.archive("u", "a")
         assertEquals(80.0, unknown.summary.totalUpRate)
         assertEquals(1L, unknown.summary.unknownUpGoldCount)
-        assertNull(unknown.summary.guaranteedGoldCount)
-        assertEquals("insufficient_history", unknown.summary.pityStatus)
-        assertNull(unknown.poolSummaries.getValue("a").smallPityWinRate)
+        assertEquals(1L, unknown.summary.guaranteedGoldCount)
+        assertEquals("inferred", unknown.summary.pityStatus)
+        assertEquals(50.0, unknown.poolSummaries.getValue("a").smallPityWinRate)
         assertEquals(0L, unknown.poolSummaries.getValue("b").guaranteedGoldCount)
 
         records = listOf(RecruitmentStatisticEvent("a", 5, null, "non_up"), RecruitmentStatisticEvent("b", 5, null, "up"))
@@ -979,7 +979,7 @@ class RecruitmentServiceTest {
         records = listOf(RecruitmentStatisticEvent("a", 5, null, "non_up"), RecruitmentStatisticEvent("a", 5, null, "non_up"))
         val invalid = service.archive("u", "a").summary
         assertEquals(0.0, invalid.totalUpRate)
-        assertNull(invalid.guaranteedGoldCount)
+        assertEquals(0L, invalid.guaranteedGoldCount)
         records = emptyList()
         val empty = service.archive("u", "a").summary
         assertEquals("no_samples", empty.pityStatus)

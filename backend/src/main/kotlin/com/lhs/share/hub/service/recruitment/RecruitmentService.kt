@@ -347,18 +347,13 @@ private fun RecruitmentSummary.withUpStatistics(statistics: List<RecruitmentGold
     val up = statistics.sumOf { it.upGoldCount }
     val known = statistics.sumOf { it.knownUpGoldCount }
     val unknown = statistics.sumOf { it.unknownUpGoldCount }
-    val validPity = statistics.all { it.guaranteedGoldCount != null }
     return copy(
         upGoldCount = up,
         knownUpGoldCount = known,
         unknownUpGoldCount = unknown,
         totalUpRate = if (known == 0L) null else (up.toDouble() / known * 1000).roundToLong() / 10.0,
-        guaranteedGoldCount = if (validPity) statistics.sumOf { checkNotNull(it.guaranteedGoldCount) } else null,
+        guaranteedGoldCount = statistics.sumOf { it.guaranteedGoldCount },
         pityHistoryAssumption = statistics.first().pityHistoryAssumption,
-        pityStatus = when {
-            !validPity -> "insufficient_history"
-            known + unknown == 0L -> "no_samples"
-            else -> "inferred"
-        },
+        pityStatus = if (known + unknown == 0L) "no_samples" else "inferred",
     )
 }

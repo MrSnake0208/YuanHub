@@ -9,10 +9,10 @@ class RecruitmentGoldStatisticsTest {
     private fun event(status: String?, span: Long? = null, rarity: Int? = 5) = RecruitmentStatisticEvent("p", rarity, span, status)
     private fun stats(vararg events: RecruitmentStatisticEvent) = RecruitmentGoldStatistics().also { stats -> events.forEach(stats::add) }
 
-    @Test fun `average uses only known positive gold spans even when pity is invalid`() {
+    @Test fun `average uses only known positive gold spans even after unknown gold`() {
         val stats = stats(event("unknown", 39), event("up", 38), event("up"), event("up", 1, 4), event("up", 0))
         assertEquals(38.5, stats.averageGoldPulls)
-        assertNull(stats.smallPityWinRate)
+        assertEquals(100.0, stats.smallPityWinRate)
         assertNull(stats(event("up"), event("up", 0), event("up", 5, 4)).averageGoldPulls)
         assertEquals(1.3, stats(event("up", 1), event("up", 1), event("up", 2)).averageGoldPulls)
     }
@@ -38,13 +38,15 @@ class RecruitmentGoldStatisticsTest {
         assertEquals(50.0, stats(event("non_up"), event("unknown", 1, 4), event("up"), event("up")).smallPityWinRate)
     }
 
-    @Test fun `empty unknown or inconsistent pity stays unknown and order matters`() {
+    @Test fun `small pity skips only unprovable outcomes and order matters`() {
         assertNull(stats().smallPityWinRate)
         assertNull(stats(event("up", rarity = 4)).smallPityWinRate)
         assertNull(stats(event("unknown"), event("up")).smallPityWinRate)
         assertNull(stats(event(null)).smallPityWinRate)
         assertNull(stats(event("up", rarity = null)).smallPityWinRate)
-        assertNull(stats(event("non_up"), event("non_up")).smallPityWinRate)
+        assertEquals(0.0, stats(event("non_up"), event("non_up")).smallPityWinRate)
+        assertEquals(100.0, stats(event("unknown"), event("up"), event("up")).smallPityWinRate)
+        assertEquals(50.0, stats(event("non_up"), event("non_up"), event("up"), event("up")).smallPityWinRate)
         assertEquals(66.7, stats(event("up"), event("up"), event("non_up")).smallPityWinRate)
         assertEquals(50.0, stats(event("non_up"), event("up"), event("up")).smallPityWinRate)
     }
@@ -77,9 +79,9 @@ class RecruitmentGoldStatisticsTest {
         assertEquals(1L, stats.knownUpGoldCount)
         assertEquals(1L, stats.unknownUpGoldCount)
         assertEquals(100.0, stats.totalUpRate)
-        assertNull(stats.guaranteedGoldCount)
+        assertEquals(0L, stats.guaranteedGoldCount)
         assertNull(stats.smallPityWinRate)
-        assertEquals("insufficient_history", stats.pityStatus)
+        assertEquals("inferred", stats.pityStatus)
 
         stats.add(event("non_up"))
         stats.add(event("up"))
@@ -88,22 +90,23 @@ class RecruitmentGoldStatisticsTest {
         assertEquals(3L, stats.knownUpGoldCount)
         assertEquals(2L, stats.unknownUpGoldCount)
         assertEquals(66.7, stats.totalUpRate)
-        assertNull(stats.guaranteedGoldCount)
-        assertNull(stats.smallPityWinRate)
+        assertEquals(1L, stats.guaranteedGoldCount)
+        assertEquals(0.0, stats.smallPityWinRate)
     }
 
-    @Test fun `invalid guarantee sequence invalidates pity but preserves attribution`() {
+    @Test fun `rule-breaking non-UP while guaranteed is skipped and the next UP is still guaranteed`() {
         val stats = stats(event("non_up"), event("non_up"))
         assertEquals(0L, stats.upGoldCount)
         assertEquals(2L, stats.knownUpGoldCount)
         assertEquals(0L, stats.unknownUpGoldCount)
         assertEquals(0.0, stats.totalUpRate)
-        assertNull(stats.guaranteedGoldCount)
-        assertNull(stats.smallPityWinRate)
-        assertEquals("insufficient_history", stats.pityStatus)
+        assertEquals(0L, stats.guaranteedGoldCount)
+        assertEquals(0.0, stats.smallPityWinRate)
+        assertEquals("inferred", stats.pityStatus)
         stats.add(event("up"))
         assertEquals(33.3, stats.totalUpRate)
-        assertNull(stats.guaranteedGoldCount)
+        assertEquals(1L, stats.guaranteedGoldCount)
+        assertEquals(0.0, stats.smallPityWinRate)
     }
 
     @Test fun `empty or four star only history has zero guarantees and no rate samples`() {
@@ -125,15 +128,16 @@ class RecruitmentGoldStatisticsTest {
         assertEquals(0L, unknown.knownUpGoldCount)
         assertEquals(2L, unknown.unknownUpGoldCount)
         assertNull(unknown.totalUpRate)
-        assertNull(unknown.guaranteedGoldCount)
-        assertEquals("insufficient_history", unknown.pityStatus)
+        assertEquals(0L, unknown.guaranteedGoldCount)
+        assertEquals("inferred", unknown.pityStatus)
 
         val noRarity = stats(event("up", rarity = null), event("up"))
         assertEquals(1L, noRarity.upGoldCount)
         assertEquals(1L, noRarity.knownUpGoldCount)
         assertEquals(0L, noRarity.unknownUpGoldCount)
         assertEquals(100.0, noRarity.totalUpRate)
-        assertNull(noRarity.guaranteedGoldCount)
+        assertEquals(0L, noRarity.guaranteedGoldCount)
+        assertNull(noRarity.smallPityWinRate)
     }
 
     @Test fun `only actual guaranteed gold is counted and four stars do not consume it`() {
@@ -146,8 +150,11 @@ class RecruitmentGoldStatisticsTest {
         stats.add(event("up"))
         assertEquals(2L, stats.guaranteedGoldCount)
         stats.add(event("unknown"))
-        assertNull(stats.guaranteedGoldCount)
-        assertEquals("insufficient_history", stats.pityStatus)
+        assertEquals(2L, stats.guaranteedGoldCount)
+        assertEquals("inferred", stats.pityStatus)
+        stats.add(event("non_up"))
+        stats.add(event("up"))
+        assertEquals(3L, stats.guaranteedGoldCount)
     }
 
     @Test fun `separate pools do not borrow guaranteed state`() {

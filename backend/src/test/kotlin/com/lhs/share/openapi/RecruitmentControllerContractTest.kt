@@ -123,8 +123,9 @@ class RecruitmentControllerContractTest {
                     knownUpGoldCount = 1,
                     unknownUpGoldCount = 1,
                     totalUpRate = 100.0,
+                    guaranteedGoldCount = 0,
                     pityHistoryAssumption = "first_gold_small_pity",
-                    pityStatus = "insufficient_history",
+                    pityStatus = "inferred",
                 ),
                 "no-samples" to summary.copy(
                     upGoldCount = 0,
@@ -167,8 +168,8 @@ class RecruitmentControllerContractTest {
             .andExpect(jsonPath("$.data.pool_summaries.p.guaranteed_gold_count").value(0))
             .andExpect(jsonPath("$.data.pool_summaries.unknown.total_up_rate").value(100.0))
             .andExpect(jsonPath("$.data.pool_summaries.unknown.unknown_up_gold_count").value(1))
-            .andExpect(jsonPath("$.data.pool_summaries.unknown.guaranteed_gold_count").value(org.hamcrest.Matchers.nullValue()))
-            .andExpect(jsonPath("$.data.pool_summaries.unknown.pity_status").value("insufficient_history"))
+            .andExpect(jsonPath("$.data.pool_summaries.unknown.guaranteed_gold_count").value(0))
+            .andExpect(jsonPath("$.data.pool_summaries.unknown.pity_status").value("inferred"))
             .andExpect(jsonPath("$.data.pool_summaries['no-samples'].total_up_rate").value(org.hamcrest.Matchers.nullValue()))
             .andExpect(jsonPath("$.data.pool_summaries['no-samples'].guaranteed_gold_count").value(0))
             .andExpect(jsonPath("$.data.pool_summaries['no-samples'].pity_status").value("no_samples"))

@@ -8,18 +8,18 @@
           <strong>{{ metric.value }}</strong>
           <small v-if="metric.unit" class="number-unit" :class="{ 'percentage-unit': metric.unit === '%' }">{{ metric.unit }}</small>
           <p v-if="account && metric.key === 'total-up' && accountSamples" class="sample-note"><span v-for="sample in accountSamples" :key="sample">{{ sample }}</span></p>
-          <p v-else>{{ metric.note }}</p>
+          <p v-else-if="metric.note">{{ metric.note }}</p>
         </dd>
       </div>
     </dl>
-    <p v-if="account" class="mobile-sample-note">{{ accountSamples ? `总 UP 率样本：${accountSamples.join(' / ')}` : metrics[0].note }}</p>
+    <p v-if="account && !accountSamples" class="mobile-sample-note">{{ metrics[0].note }}</p>
     <p v-if="account && metrics[1].note" class="mobile-pity-note">大保底：{{ metrics[1].note }}</p>
     <p v-if="!account" class="pity-assumption">按现有历史、首金小保底推断</p>
     <details v-if="!account" :key="contextVersion" class="gold-statistics-help">
       <summary>UP 与保底统计说明</summary>
       <p>总 UP 率 = UP 五星 ÷ UP 归属已知五星。归属未知单列，不计入分母；四星不计。</p>
-      <p>大保底次数只统计非 UP 后下一条实际获得的保证 UP，不是当前处于大保底的次数。未知记录或保证顺序矛盾时，历史不足以推断。</p>
-      <p>小保底不歪率仅统计小保底结果，保证 UP 不计入。未知记录会使保底推断失效，但后续已知 UP 仍计入总 UP 率。</p>
+      <p>大保底次数只统计紧跟在歪之后实际获得的 UP，不是当前处于大保底的次数。未知或不合规则的记录只跳过本身，不影响其他记录。</p>
+      <p>小保底不歪率仅统计能确定处于小保底的五星（首金或 UP 之后的下一金），保证 UP 不计入；未知记录之后的下一金无法判断，不计入。</p>
       <p>仅适用于有 UP 定义的非永久池；已退役的 UP 槽保留历史机制。没有五星样本时，次数为 0、命中率未知。</p>
     </details>
   </section>
@@ -86,6 +86,6 @@ summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); ou
   .account-statistics .metric-label-short { display: inline; }
   .account-statistics .metric-label-full { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .account-statistics .mobile-sample-note { display: block; margin-top: 8px; }
-  .account-statistics .mobile-pity-note { display: block; }
+  .account-statistics .mobile-pity-note { display: block; margin-top: 8px; }
 }
 </style>
