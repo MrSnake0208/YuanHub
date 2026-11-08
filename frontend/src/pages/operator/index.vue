@@ -2498,7 +2498,17 @@
             <div class="editor-head-stats">
               <Teleport defer to="#operator-editor-panel-slot" :disabled="!compactStats">
                 <div class="editor-panel-controls">
-                  <label v-if="canUseAutomaticPanel" class="editor-panel-source">
+                  <div v-if="canUseAutomaticPanel && compactStats" class="editor-source-field">
+                    <span id="editor-source-title" class="editor-source-title">面板来源</span>
+                    <div class="editor-source-segments" role="radiogroup" aria-labelledby="editor-source-title">
+                      <label v-for="option in editorPanelSourceOptions" :key="option.value" :class="{ on: editorPanelSource === option.value, disabled: option.disabled }">
+                        <input type="radio" name="editor-panel-source" :value="option.value" :checked="editorPanelSource === option.value" :disabled="option.disabled" @change="setEditorPanelSource(option.value)" />
+                        <span>{{ option.label }}</span>
+                      </label>
+                    </div>
+                    <p class="editor-source-desc">{{ editorPanelSourceDescription }}</p>
+                  </div>
+                  <label v-else-if="canUseAutomaticPanel" class="editor-panel-source">
                     <span>面板来源</span>
                     <select :value="editorPanelSource" aria-label="密探面板来源" @change="setEditorPanelSource($event.target.value)">
                       <option value="follow">跟随账号（自动补全{{ panelAutoFillEnabled ? '开' : '关' }}）</option>
@@ -2658,8 +2668,12 @@
             <section v-show="editorSection === 'growth'" id="operator-editor-growth" class="editor-row editor-growth-section" role="tabpanel" aria-labelledby="operator-editor-tab-growth" tabindex="0" data-editor-section="growth">
               <Teleport defer to="#operator-editor-reset-slot" :disabled="!compactStats">
                 <div class="editor-reset-action">
-                  <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" @click="resetEntry = editingOp">鞭子重置 / 记录</button>
-                  <span v-if="editorDirty" class="hint">请先保存或取消修改</span>
+                  <div v-if="compactStats" class="editor-reset-copy">
+                    <strong>鞭子重置</strong>
+                    <span>{{ editorDirty ? '请先保存或取消修改' : '记录游戏内重置、返还库存或撤销记录' }}</span>
+                  </div>
+                  <button type="button" class="btn secondary sm" :disabled="savingEdit || editorDirty || !accountId" :title="editorDirty ? '请先保存或取消当前修改' : '记录游戏内重置、返还库存，或撤销已记录的重置'" :aria-label="compactStats ? '鞭子重置 / 记录' : undefined" @click="resetEntry = editingOp">{{ compactStats ? '记录' : '鞭子重置 / 记录' }}</button>
+                  <span v-if="editorDirty && !compactStats" class="hint">请先保存或取消修改</span>
                 </div>
               </Teleport>
               <div class="num-fields">
@@ -4714,6 +4728,17 @@ function setEditorPanelSource(source) {
   const mode = source === "follow" ? null : source;
   combatDisplayMode.value = { attack: mode, hp: mode };
 }
+const editorPanelSourceOptions = computed(() => [
+  { value: "follow", label: "跟随账号" },
+  { value: "manual", label: "手填／采集" },
+  { value: "auto", label: "自动计算", disabled: !calculatedCombatStats.value.automaticResultAvailable && editorPanelSource.value !== "auto" },
+]);
+const editorPanelSourceDescription = computed(() => ({
+  follow: `按账号的自动补全设置显示，当前已${panelAutoFillEnabled.value ? "开启" : "关闭"}`,
+  manual: "显示手动填写或采集的面板",
+  auto: "显示根据养成数据计算的面板",
+  mixed: "攻击和生命来源不同，选择一项可统一",
+})[editorPanelSource.value]);
 const editorPanelDifference = computed(() => {
   const result = calculatedCombatStats.value;
   if (!result.automaticResultAvailable) return "";
