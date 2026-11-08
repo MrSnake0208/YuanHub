@@ -1810,12 +1810,12 @@
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         :class="{ 'is-terminal': operatorHuajiAction(e).kind !== 'upgrade' || cardGrowthValue(e, 'star') >= operatorHuajiMax(e) }"
                         type="button"
-                        :aria-label="'化极：' + (cardHuaji(e).awakened === true ? '已觉醒' : cardHuaji(e).stage === 25 ? '5 星' : operatorHuajiLabel({ ...e, huaji: cardHuaji(e) }))"
+                        :aria-label="'化极：' + operatorHuajiDisplayLabel({ ...e, huaji: cardHuaji(e) })"
                         title="化极"
                         :aria-expanded="cardPopoverKey === e.id + ':star-edit'"
                         @click="openCardPopover(e, 'star-edit')"
                       >
-                        <span v-if="cardHuaji(e).awakened === true">已觉醒</span>
+                        <span v-if="cardHuaji(e).awakened === true">觉醒</span>
                         <template
                           v-else-if="starCardHasIcon(cardGrowthValue(e, 'star'))"
                           ><span>{{
@@ -2736,7 +2736,7 @@
                   </div>
                   <div class="star-row">
                     <span class="star-caption">星级</span>
-                    <span class="star-groups" role="group" aria-label="化极星级">
+                    <span class="star-groups" :class="{ 'star-groups--awakening': operatorAwakeningSupported(editingOp) }" role="group" aria-label="化极星级">
                       <button
                         type="button"
                         class="star-pill"
@@ -2759,21 +2759,11 @@
                         {{ s }}星
                         <Check v-if="starGroupName === s" :size="14" aria-hidden="true" />
                       </button>
+                      <button v-if="operatorAwakeningSupported(editingOp)" type="button" class="star-pill" :class="{ on: starGroupName === 'awaken' }" :aria-pressed="starGroupName === 'awaken'" @click="pickStarGroup('awaken')">
+                        觉醒
+                        <Check v-if="starGroupName === 'awaken'" :size="14" aria-hidden="true" />
+                      </button>
                     </span>
-                    <div v-if="operatorAwakeningSupported(editingOp) && editorCanConfirmAwakening" class="editor-awakening">
-                      <span>觉醒</span>
-                      <button
-                        type="button"
-                        class="editor-awakening-switch"
-                        :class="{ on: editForm.owned && editForm.awakened === true }"
-                        role="switch"
-                        :aria-checked="editForm.owned && editForm.awakened === true"
-                        aria-label="五星后觉醒（可选）"
-                        :disabled="savingEdit || !operatorAwakeningSupported(editingOp) || editForm.owned === false || !editorCanConfirmAwakening"
-                        :title="!editorCanConfirmAwakening ? '达到五星后可记录觉醒' : '仅记录游戏内觉醒状态，不扣库存；点击切换，保存后生效'"
-                        @click="toggleEditAwakening"
-                      ><span>{{ editForm.owned && editForm.awakened === true ? '已觉醒' : '未觉醒' }}</span><span class="editor-awakening-thumb" aria-hidden="true"></span></button>
-                    </div>
                   </div>
                   <div
                     v-if="
@@ -2800,7 +2790,6 @@
                       </button>
                     </span>
                   </div>
-                  <small v-if="operatorAwakeningSupported(editingOp) && editorCanConfirmAwakening" class="star-awakening-hint">觉醒为五星后的可选阶段，未开启时按未觉醒计算。</small>
                   <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" class="huaji-review-note" role="status"><CircleAlert :size="16" aria-hidden="true" />历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 </div>
                 <div class="oddity-editor">
@@ -3124,7 +3113,7 @@
 
 <script setup>
 import operatorV5Example from "../../../docs/examples/operator-growth-exchange-v5/boundary.valid.json?raw";
-import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
+import { operatorHuaji, operatorHuajiMax, operatorHuajiDisplayLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
 import OperatorResetDialog from '../../components/operator/OperatorResetDialog.vue';
@@ -4923,16 +4912,13 @@ function starLabel(v, spOf) {
 const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
   if (v === 0) return editForm.value.owned ? "unknown" : "none";
+  if (editForm.value.owned && editForm.value.awakened === true && editorCanConfirmAwakening.value) return "awaken";
   if (editingOp.value && editingOp.value.spOf) return v;
   if (v === STAR_LEVEL_AWAKEN) return "unknown";
   if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1;
   return "none";
 });
 const editorCanConfirmAwakening = computed(() => editForm.value.owned && Number(editForm.value.starLevel) === (editingOp.value?.spOf ? 5 : 25));
-function toggleEditAwakening() {
-  if (savingEdit.value || !operatorAwakeningSupported(editingOp.value) || editForm.value.owned === false || !editorCanConfirmAwakening.value) return;
-  editForm.value.awakened = editForm.value.awakened !== true;
-}
 const starNode = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
   if (v >= 1 && v < 25) return (v - 1) % 6;
@@ -4940,7 +4926,17 @@ const starNode = computed(function () {
 });
 
 function pickStarGroup(g) {
-  if (Number(g) !== 5 && editForm.value.awakened === true) {
+  if (g === "awaken") {
+    if (!(Number(editForm.value.starLevel) > 0)) {
+      if (editForm.value.level === 0) editForm.value.level = 1;
+      if (editForm.value.elite === 0) editForm.value.elite = 1;
+    }
+    editForm.value.owned = true;
+    editForm.value.awakened = true;
+    editForm.value.starLevel = editingOp.value?.spOf ? 5 : 25;
+    return;
+  }
+  if (editForm.value.awakened === true) {
     editForm.value.awakened = false;
   }
   editForm.value.owned = g !== "none";
@@ -8303,7 +8299,7 @@ async function saveEdit() {
   if (starChanged && (starLevel < 0 || starLevel > starMax)) {
     editNotice.value = editingOp.value.spOf
       ? "SP 密探星级需在 0..5 之间"
-      : "星级需在 0.." + starMax + " 之间（0=未拥有，觉醒独立确认）";
+      : "星级需在 0.." + starMax + " 之间（0=未拥有）";
     editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
@@ -9318,7 +9314,7 @@ function importFieldLabel(field) {
       level: "等级",
       elite: "修为",
       star_level: "化极",
-      huaji: "化极与觉醒",
+      huaji: "化极",
       huaji_legacy: "历史化极来源",
       disc_loadouts: "命盘",
       star_stones: "已装备星石",
@@ -12254,56 +12250,6 @@ onBeforeUnmount(function () {
   background: var(--yellow);
   border-color: var(--yellow-deep);
   color: var(--ink);
-}
-.editor-awakening {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
-  color: var(--ink);
-  font: 800 14px var(--font-b);
-}
-.editor-awakening-switch {
-  display: inline-flex;
-  flex-direction: row-reverse;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 80px;
-  min-height: 32px;
-  padding: 3px 6px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--cream);
-  color: var(--ink-60);
-  font: 700 12px var(--font-b);
-  cursor: pointer;
-}
-.editor-awakening-thumb {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--line);
-}
-.editor-awakening-switch:focus-visible {
-  outline: 2px solid var(--theme-focus, var(--tea));
-  outline-offset: 2px;
-}
-.editor-awakening-switch:disabled {
-  border-color: var(--line);
-  color: var(--ink-60);
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.editor-awakening-switch.on {
-  flex-direction: row;
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: var(--on-strong);
 }
 .node-chip {
   border: 1.5px solid var(--line);

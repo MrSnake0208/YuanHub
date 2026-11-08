@@ -41,6 +41,12 @@ export function operatorHuajiLabel(entry) {
   return label + (value.awakened === true ? ' · 已觉醒' : stage === 25 ? ' · 未觉醒' : '')
 }
 
+export function operatorHuajiDisplayLabel(entry) {
+  const value = operatorHuaji(entry)
+  if (value.owned && value.stage === 25 && value.awakened === true) return '觉醒'
+  return operatorHuajiLabel(entry).replace(' · 未觉醒', '')
+}
+
 export function operatorAwakeningSupported(entry) {
   const capabilities = entry?.huajiCapabilities || entry?.huaji_capabilities
   const knownSp = ['char_084_chendengsp', 'char_085_shizimiaosp'].includes(entry?.id ?? entry?.operatorId ?? entry?.operator_id)

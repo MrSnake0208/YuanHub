@@ -30,7 +30,7 @@
               <template v-if="entry.huajiProgress?.stars">
                 <span>化极</span>
                 <span class="box-image-stars" role="img" :aria-label="entry.huajiProgress.stars + '星'"><img v-for="star in entry.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="15" height="15" alt="" aria-hidden="true" /></span>
-                <small v-if="entry.huajiProgress.awakened">· 已觉醒</small><small v-else-if="entry.huajiProgress.nodes != null">· {{ entry.huajiProgress.nodes }}节点</small>
+                <small v-if="entry.huajiProgress.awakened">· 觉醒</small><small v-else-if="entry.huajiProgress.nodes != null">· {{ entry.huajiProgress.nodes }}节点</small>
               </template>
               <template v-else>{{ entry.huaji }}</template>
             </div>

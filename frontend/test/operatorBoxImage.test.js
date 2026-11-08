@@ -27,7 +27,7 @@ test('export allowlist contains actual fate terms, never private names, notes or
     discLoadouts: [{ name: 'private-loadout', discNames: ['实际词条'], targetDiscNames: ['private-target'], status: 'perfect' }],
   }
   const output = operatorBoxImageEntry(entry, { avatar: '/avatar/test.webp', discs: [{ ot_name: '实际词条', abbreviation: '实际', color: '金' }] }, { attackLabel: '12,345' })
-  assert.equal(output.huaji, '5★ · 已觉醒')
+  assert.equal(output.huaji, '觉醒')
   assert.equal(output.job, '神纪')
   assert.equal(output.attack, '12345')
   assert.equal(output.hp, '—')
@@ -47,7 +47,7 @@ test('export keeps real huaji stars, nodes and awakening without treating legacy
   for (const [growth, expected] of [
     [{ huaji: { owned: true, stage: 9, awakened: false }, starLevel: 25 }, '2★ · 2 节点'],
     [{ starLevel: 19 }, '4★ · 0 节点'],
-    [{ star_level: 31 }, '5★ · 已觉醒'],
+    [{ star_level: 31 }, '觉醒'],
     [{ spOf: 'base', starLevel: 3 }, '3★'],
     [{ huaji: { owned: true, stage: null } }, '化极待确认'],
   ]) {

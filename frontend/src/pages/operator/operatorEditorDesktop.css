@@ -54,7 +54,6 @@
   .editor-workspace .star-groups { grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
   .editor-workspace .star-pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: 10px; font-size: 13px; }
   .editor-workspace .node-chip { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 52px; height: 34px; }
-  .editor-workspace .star-awakening-hint { margin-left: 88px; line-height: 1.5; }
   .huaji-review-note { display: flex; align-items: center; gap: 6px; margin: 2px 0 0; padding: 0; color: var(--ink-60); font-size: 11px; line-height: 1.5; }
   .huaji-review-note svg { flex: none; }
   .editor-workspace .oddity-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 20px; }
@@ -121,7 +120,6 @@
   .editor-workspace .num-fields .level-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .editor-workspace .num-fields .elite-hint { grid-column: 2; padding: 0; }
   .editor-workspace .star-row { flex-wrap: wrap; }
-  .editor-workspace .editor-awakening { margin-left: auto; }
   .editor-workspace .star-groups { flex-basis: calc(100% - 88px); }
   .editor-workspace .oddity-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .editor-stars-section :deep(.star-filter-row) { grid-template-columns: repeat(2, minmax(0, 1fr)); }

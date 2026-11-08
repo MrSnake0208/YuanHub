@@ -14,6 +14,6 @@
 .growth-filter-enable input { width: 16px; height: 16px; }
 .growth-filter-bounds { display: flex; align-items: center; gap: 5px; }
 .growth-filter-bounds label { display: inline-flex; align-items: center; gap: 4px; font: 700 11px var(--font-b); }
-.growth-filter-bounds input { width: 63px; min-height: 34px; box-sizing: border-box; padding: 4px 6px; font: 700 12px var(--font-d); }
+.growth-filter-bounds input, .growth-filter-bounds select { width: 63px; min-height: 34px; box-sizing: border-box; padding: 4px 6px; font: 700 12px var(--font-d); }
 .growth-filter-error { margin: 6px 0 0; font: 700 11px var(--font-b); }
 }

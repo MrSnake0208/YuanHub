@@ -54,15 +54,14 @@
   .editor-workspace .editor-growth-actions .editor-fill-max { grid-column: auto; }
   .editor-workspace .num-fields .star-card { gap: 8px; }
   .editor-workspace .star-row { flex-wrap: wrap; align-items: center; gap: 8px; }
-  .editor-workspace .editor-awakening { margin-left: auto; padding-left: 0; border-left: 0; }
   .editor-workspace .star-caption { display: flex; flex: none; align-items: center; gap: 4px; width: 34px; padding-top: 0; font-size: 14px; }
   .editor-workspace .star-caption svg { color: var(--theme-accent-text, var(--accent-strong)); }
   .editor-workspace .star-row > .star-groups, .editor-workspace .star-row > .star-nodes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); flex: 0 0 calc(100% - 42px); min-width: 0; gap: 4px; }
+  .editor-workspace .star-row > .star-groups--awakening { grid-template-columns: minmax(0, 1.6fr) repeat(6, minmax(0, 1fr)); }
   .editor-workspace .star-groups > .star-pill, .editor-workspace .star-nodes > .node-chip { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 0; height: 34px; min-height: 34px; padding: 0; white-space: nowrap; font-size: clamp(11px, 3.1vw, 13px); font-weight: 600; }
   .editor-workspace .star-groups > .star-pill { border-radius: 8px; }
   .editor-workspace .star-groups > .star-pill.on, .editor-workspace .star-nodes > .node-chip.on { font-weight: 800; }
   .editor-workspace .star-groups > .star-pill > svg, .editor-workspace .star-nodes > .node-chip > svg { display: none; }
-  .editor-workspace .star-awakening-hint { font-size: 11px; line-height: 1.5; }
   .huaji-review-note { display: flex; align-items: start; gap: 6px; margin: 2px 0 0; padding: 0; color: var(--ink-60); font-size: 11px; line-height: 1.5; }
   .huaji-review-note svg { flex: none; margin-top: 1px; }
   .editor-workspace .oddity-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 8px; }

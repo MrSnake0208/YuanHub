@@ -70,7 +70,8 @@ const chips = computed(() => {
   for (const [key, label] of ranges) {
     const f = value.growthFilters, min = f[key + 'Min'], max = f[key + 'Max']
     if (!f[key + 'Enabled'] || ((min === '' || min == null) && (max === '' || max == null))) continue
-    result.push({ key, growth: true, label: `${label} ${min === max ? min : `${min === '' || min == null ? '不限' : min}–${max === '' || max == null ? '不限' : max}`}` })
+    const display = bound => bound === '' || bound == null ? '不限' : key === 'star' && bound === '6' ? '觉醒' : bound
+    result.push({ key, growth: true, label: `${label} ${min === max ? display(min) : `${display(min)}–${display(max)}`}` })
   }
   if (props.showDiscFilter && value.discStatusFilter !== 'all') result.push({ key: 'discStatusFilter', label: DISC_FILTER_OPTIONS.find(o => o.value === value.discStatusFilter)?.label || '命盘' })
   if (value.tagFilter) result.push({ key: 'tagFilter', label: props.tagOptions.find(o => o.value === value.tagFilter)?.label || '标签' })

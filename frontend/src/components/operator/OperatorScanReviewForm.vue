@@ -31,8 +31,7 @@
           <OperatorLevelBreakthroughSelect v-else-if="row.kind === 'breakthrough'" v-model="row.value" :level="Number(rows.find(item => item.id === 'level' && item.included)?.value ?? current?.level ?? row.level) || 0" @update:model-value="row.included = true" />
           <div v-else-if="row.kind === 'huaji'" class="huaji-fields">
             <label>拥有状态<select v-model="row.value.owned" aria-label="复核拥有状态" @change="changeOwned(row)"><option :value="null">未知</option><option :value="true">已拥有</option><option :value="false">未拥有</option></select></label>
-            <label>化极星级与节点<select v-model="row.value.stage" aria-label="复核化极星级与节点" :disabled="row.value.owned !== true" @change="row.included = true; row.stageEdited = true"><option :value="null">未知，请核对</option><option v-if="row.value.stage === 0" :value="0">未拥有</option><option v-for="stage in stages" :key="stage" :value="stage">{{ valueLabel({ owned: true, stage, awakened: null }, 'huaji').split(' · 觉醒')[0] }}</option></select></label>
-            <label>觉醒确认<select v-model="row.value.awakened" aria-label="复核觉醒确认" :disabled="row.value.owned !== true" @change="row.included = true; row.awakenedEdited = true"><option :value="null">待确认</option><option :value="false">确认未觉醒</option><option v-if="awakeningSupported" :value="true">确认已觉醒</option></select></label>
+            <label>化极<select :value="huajiChoice(row)" aria-label="复核化极" :disabled="row.value.owned !== true" @change="setHuajiChoice(row, $event.target.value)"><option value="">未知，请核对</option><option v-if="row.value.stage === 0" value="0">未拥有</option><template v-for="stage in stages" :key="stage"><option v-if="stage === 25 && huajiChoice(row) === 'pending'" value="pending">5 星（觉醒待确认）</option><option :value="String(stage)">{{ valueLabel({ owned: true, stage, awakened: false }, 'huaji') }}</option></template><option v-if="awakeningSupported" value="awakening">觉醒</option></select></label>
             <small>未修改的未知化极或觉醒值，不会清除现值中已确认的记录。</small>
             <small v-if="Number(catalog.rarity) === 3 && !isMovieOperator(catalog)">蓝卡（隐密）最高为 4 星，满星后没有小节点，也不支持觉醒。旧记录中的额外节点需按游戏实际状态重新确认。</small>
           </div>
@@ -123,6 +122,26 @@ function changeOwned(row) {
   row.included = true
   if (row.value.owned === false) { row.value.stage = 0; row.value.awakened = null }
   else if (row.value.stage === 0) row.value.stage = null
+}
+function huajiChoice(row) {
+  if (awakeningSupported.value && row.value.stage === 25 && row.value.awakened === true) return 'awakening'
+  if (awakeningSupported.value && row.value.stage === 25 && row.value.awakened == null) return 'pending'
+  return row.value.stage == null ? '' : String(row.value.stage)
+}
+function setHuajiChoice(row, choice) {
+  row.included = true
+  row.stageEdited = true
+  if (choice === 'awakening') {
+    row.value.stage = 25
+    row.value.awakened = true
+    row.awakenedEdited = true
+  } else {
+    row.value.stage = choice === '' ? null : Number(choice)
+    if (choice !== '' || row.value.awakened === true) {
+      row.value.awakened = false
+      row.awakenedEdited = true
+    }
+  }
 }
 const discOptions = loadout => [...new Set([...(loadout.discs || []).map(discNameOf).filter(name => !catalogDiscNames.value.includes(name)), ...catalogDiscNames.value])]
 function toggleDisc(row, loadout, name, selected) {

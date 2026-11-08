@@ -1,11 +1,11 @@
-import { operatorHuaji, operatorHuajiLabel, operatorHuajiMax } from './operatorHuaji.js'
+import { operatorAwakeningSupported, operatorHuaji, operatorHuajiDisplayLabel, operatorHuajiMax } from './operatorHuaji.js'
 import { isMovieOperator } from './operatorForms.js'
 import { getMaxEliteForLevel, OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX, operatorLevelBreakthroughStage, validLevelBreakthroughStage } from './operatorGrowthRules.js'
 import { OPERATOR_ODDITY_KEYS, normalizeOperatorOdditySchema, operatorOddityCurrentError } from './operatorCombatStats.js'
 import { DISC_LOADOUT_LIMIT, DISC_SELECTION_LIMIT, discNameOf } from './operatorDiscLoadouts.js'
 
 const clone = value => value == null ? value : JSON.parse(JSON.stringify(value))
-const labels = { level_breakthrough_stage: '等级突破', breakthrough: '等级突破', level: '等级', elite: '修为', huaji: '化极与觉醒', star_level: '化极', basic: '等级与修为', oddities: '奇闻属性', disc_loadouts: '命盘', equipment: '已装备星石', equipped_star_stones: '已装备星石', combat_stats: '战斗观测', match: '密探身份' }
+const labels = { level_breakthrough_stage: '等级突破', breakthrough: '等级突破', level: '等级', elite: '修为', huaji: '化极', star_level: '化极', basic: '等级与修为', oddities: '奇闻属性', disc_loadouts: '命盘', equipment: '已装备星石', equipped_star_stones: '已装备星石', combat_stats: '战斗观测', match: '密探身份' }
 function reviewHuaji(entry, catalog) {
   const legacy = entry?.star_level ?? entry?.starLevel
   if (typeof entry?.huaji?.owned === 'boolean' || (typeof legacy === 'number' && Number.isInteger(legacy) && legacy >= 0)) return operatorHuaji({ ...catalog, ...entry })
@@ -127,7 +127,8 @@ export function operatorReviewValueLabel(value, id, catalog) {
   if (value == null || value === '') return '未知'
   if (id === 'huaji') {
     if (typeof value.owned !== 'boolean') return '未知'
-    return operatorHuajiLabel({ ...catalog, huaji: value })
+    if (value.owned && value.stage === 25 && value.awakened == null && operatorAwakeningSupported(catalog)) return '5 星（觉醒待确认）'
+    return operatorHuajiDisplayLabel({ ...catalog, huaji: value })
   }
   if (id === 'disc_loadouts') return value.length ? value.map((item, index) => '组合' + (index + 1) + '：' + ((item.discs || []).map(discNameOf).join('、') || '未配置')).join('；') : '未配置命盘'
   if (id === 'equipment') return value.length ? value.map(item => (item.name || '星石') + ' ' + (item.level ?? '未知') + '级').join('、') : '未装备'

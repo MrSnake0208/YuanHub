@@ -1,6 +1,6 @@
 import { prepareOperatorBoxImage } from './operatorBoxImageCapture.js'
 import { normalizeDiscNames, discNameOf } from './operatorDiscLoadouts.js'
-import { operatorHuaji, operatorHuajiLabel } from './operatorHuaji.js'
+import { operatorHuaji, operatorHuajiDisplayLabel } from './operatorHuaji.js'
 import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from './operatorAnnotations.js'
 import { subProfList } from './operatorFilters.js'
 
@@ -33,7 +33,7 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     avatar: catalog.avatar || '',
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
-    huaji: operatorHuajiLabel(entry).replace(' 星', '★'),
+    huaji: operatorHuajiDisplayLabel(entry).replace(' 星', '★'),
     attack: (combat.attackLabel || '—').replaceAll(',', ''),
     hp: (combat.hpLabel || '—').replaceAll(',', ''),
     oddities: Object.fromEntries(['attack', 'hp'].map(kind => {

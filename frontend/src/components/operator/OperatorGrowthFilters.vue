@@ -23,12 +23,20 @@
           <div class="growth-filter-bounds">
             <label>
               <span>至少</span>
-              <input :value="modelValue[range.key + 'Min']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :aria-label="`${range.label}至少`" placeholder="不限" @input="updateBound(range.key + 'Min', range, $event)" />
+              <select v-if="range.options" :value="modelValue[range.key + 'Min'] ?? ''" :aria-label="`${range.label}至少`" @change="updateChoice(range.key + 'Min', $event)">
+                <option value="">不限</option>
+                <option v-for="option in range.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+              <input v-else :value="modelValue[range.key + 'Min']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :aria-label="`${range.label}至少`" placeholder="不限" @input="updateBound(range.key + 'Min', range, $event)" />
             </label>
             <span aria-hidden="true">—</span>
             <label>
               <span>至多</span>
-              <input :value="modelValue[range.key + 'Max']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :aria-label="`${range.label}至多`" placeholder="不限" @input="updateBound(range.key + 'Max', range, $event)" />
+              <select v-if="range.options" :value="modelValue[range.key + 'Max'] ?? ''" :aria-label="`${range.label}至多`" @change="updateChoice(range.key + 'Max', $event)">
+                <option value="">不限</option>
+                <option v-for="option in range.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+              <input v-else :value="modelValue[range.key + 'Max']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :aria-label="`${range.label}至多`" placeholder="不限" @input="updateBound(range.key + 'Max', range, $event)" />
             </label>
           </div>
         </fieldset>
@@ -50,7 +58,14 @@ const emit = defineEmits(['update:modelValue'])
 const ranges = [
   { key: 'level', label: '等级', min: 0, max: OPERATOR_LEVEL_MAX },
   { key: 'elite', label: '修为', min: 0, max: OPERATOR_ELITE_MAX },
-  { key: 'star', label: '星数', min: 1, max: 5 },
+  { key: 'star', label: '星数', options: [
+    { value: '1', label: '1 星' },
+    { value: '2', label: '2 星' },
+    { value: '3', label: '3 星' },
+    { value: '4', label: '4 星' },
+    { value: '5', label: '5 星' },
+    { value: '6', label: '觉醒' },
+  ] },
 ]
 const presets = [
   { key: 'level', label: '等级 100', min: '100', max: '100' },
@@ -101,6 +116,10 @@ function updateBound(field, range, event) {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
 }
 
+function updateChoice(field, event) {
+  emit('update:modelValue', { ...props.modelValue, [field]: event.target.value })
+}
+
 function toggleRange(key, event) {
   emit('update:modelValue', { ...props.modelValue, [key + 'Enabled']: event.target.checked })
 }
@@ -124,8 +143,8 @@ function toggleRange(key, event) {
 .growth-filter-enable { color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
 .growth-filter-enable input { accent-color: var(--accent); }
 .growth-filter-bounds label { color: var(--ink-60); }
-.growth-filter-bounds input { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
-.growth-filter-range input:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 1px; }
+.growth-filter-bounds input, .growth-filter-bounds select { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
+.growth-filter-range input:focus-visible, .growth-filter-bounds select:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 1px; }
 .growth-filter-error { color: var(--theme-danger-text, var(--rouge)); }
 </style>
 <style scoped src="./operatorGrowthFiltersDesktop.css"></style>

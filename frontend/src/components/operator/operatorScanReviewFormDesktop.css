@@ -31,5 +31,5 @@ input:not([type="checkbox"]), select { box-sizing: border-box; width: 100%; min-
 .technical { padding-top: 12px; }
 summary { display: flex; align-items: center; }
 pre { max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
-@media (min-width: 768px) { .huaji-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .huaji-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 }

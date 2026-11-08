@@ -61,7 +61,7 @@ import { listAgentFavorites } from '../../api/inventory.js'
 import { workspaceFromRemote } from '../../data/operatorPlannerRemote.js'
 import { trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
-import { operatorHuajiLabel } from '../../utils/operatorHuaji.js'
+import { operatorHuajiDisplayLabel } from '../../utils/operatorHuaji.js'
 
 const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' }, hideEmpty: Boolean, visible: { type: Boolean, default: true }, todosTarget: { type: String, default: '' }, showTodos: { type: Boolean, default: true } })
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
@@ -77,7 +77,7 @@ function member(id, target) {
   const labels = []
   if (target?.level != null) labels.push('等级 ' + target.level)
   if (target?.elite != null) labels.push('修为 ' + target.elite)
-  if (target?.huaji || target?.starLevel != null || target?.star_level != null) labels.push(operatorHuajiLabel({ ...entry, ...target }))
+  if (target?.huaji || target?.starLevel != null || target?.star_level != null) labels.push(operatorHuajiDisplayLabel({ ...entry, ...target }))
   return { id, name: entry.name, avatar: typeof entry.avatar === 'string' ? entry.avatar : '', rarity: Number(entry.rarity) || 3,
     note: snapshot.value.notes[id] || '', target: labels.length ? labels.join(' · ') : '未保存专属目标，详见养成页' }
 }

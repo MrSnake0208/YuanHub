@@ -208,14 +208,14 @@
                   </div>
                   <div class="ledger-growth-row" role="group" aria-label="化极">
                     <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">化极</span>
-                    <span class="share-ledger-growth-value ledger-huaji-value" :title="operatorHuajiLabel({ ...entry, ...entry.growth })">
-                      <template v-if="starCardHasIcon(shareHuajiValue(entry))">
+                    <span class="share-ledger-growth-value ledger-huaji-value" :title="operatorHuajiDisplayLabel({ ...entry, ...entry.growth })">
+                      <span v-if="operatorHuajiDisplayLabel({ ...entry, ...entry.growth }) === '觉醒'" class="share-growth-number">觉醒</span>
+                      <template v-else-if="starCardHasIcon(shareHuajiValue(entry))">
                         <span class="share-growth-number">{{ starCardNumber(shareHuajiValue(entry), entry.sp_of) }}</span>
                         <Star :size="12" fill="currentColor" aria-hidden="true" />
                         <span v-if="!entry.sp_of && shareHuajiValue(entry) < 25" class="share-growth-number">{{ starCardNode(shareHuajiValue(entry)) }}</span>
                       </template>
-                      <span v-else class="share-growth-number">{{ operatorHuajiLabel({ ...entry, ...entry.growth }) }}</span>
-                      <small v-if="shareHuajiValue(entry) != null && (operatorHuaji({ ...entry, ...entry.growth }).awakened === true || (shareHuajiValue(entry) === 25 && operatorAwakeningSupported(entry)))">{{ operatorHuaji({ ...entry, ...entry.growth }).awakened === true ? '已觉醒' : '未觉醒' }}</small>
+                      <span v-else class="share-growth-number">{{ operatorHuajiDisplayLabel({ ...entry, ...entry.growth }) }}</span>
                     </span>
                   </div>
                 </section>
@@ -284,7 +284,7 @@
 </template>
 
 <script setup>
-import { operatorHuaji, operatorHuajiLabel, operatorAwakeningSupported } from '../../utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiDisplayLabel } from '../../utils/operatorHuaji.js'
 function shareHuajiValue(entry) { const value = operatorHuaji({ ...entry, ...entry.growth }); return value.stage == null ? null : entry.sp_of ? value.stage > 0 ? (value.stage - 1) / 6 + 1 : 0 : value.stage }
 
 import { formatOperatorOddityCurrent } from '../../utils/operatorCombatStats.js'

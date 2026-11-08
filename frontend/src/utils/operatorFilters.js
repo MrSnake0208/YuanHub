@@ -93,6 +93,7 @@ export function isOperatorOwned(entry) {
 
 export function operatorStarNumber(entry) {
   const value = operatorHuaji(entry)
+  if (value.owned && value.stage === 25 && value.awakened === true) return 6
   return value.owned && value.stage != null ? Math.floor((value.stage - 1) / 6) + 1 : null
 }
 
