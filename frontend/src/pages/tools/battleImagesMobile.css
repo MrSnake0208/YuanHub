@@ -85,7 +85,11 @@
   .battle-tool .battle-inline-heading { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .battle-tool .battle-inline-heading .battle-round-nav, .battle-tool .battle-sequence-head > button, .battle-tool .battle-sequence-tools { display: none; }
   .battle-tool .battle-sequence { padding-bottom: 6px; }
-  .battle-tool .battle-sequence-chips { position: relative; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-top: 4px; padding: 2px; }
+  .battle-round-tools { display: flex; align-items: center; gap: 4px; }
+  .battle-tool .battle-round-tools > button { position: relative; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; }
+  .battle-tool .battle-round-tools > .battle-round-delete { color: var(--theme-danger-text, var(--rouge)); }
+  .battle-round-tools i { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--battle-accent); }
+  .battle-tool .battle-sequence-chips { position: relative; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-top: 0; padding: 2px; }
   .battle-tool .battle-sequence-chips > li { flex-shrink: 0; }
   .battle-tool .battle-sequence-chips button { white-space: nowrap; }
   .battle-tool .battle-sequence > .battle-hint { margin: 4px 0; }
@@ -135,10 +139,6 @@
   .battle-round-dock-title { display: grid; flex: 1; justify-items: center; min-width: 0; line-height: 1.3; }
   .battle-round-dock-title > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px/1.3 var(--font-d); }
   .battle-round-dock-title > small { font-size: 11px; color: var(--ink-60); }
-  .battle-round-more { flex-shrink: 0; }
-  .battle-tool .battle-round-more > button { width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; font-size: 20px; }
-  .battle-round-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: var(--z-popover, 55); display: grid; gap: 4px; min-width: 160px; padding: 6px; border: 1px solid var(--battle-border); border-radius: 6px; background: var(--surface); box-shadow: 0 -4px 14px rgba(var(--theme-shadow-rgb, 73,59,44), .08); }
-  .battle-tool .battle-round-menu > button { min-height: 44px; justify-content: flex-start; }
   /* 面板内的备注输入保留面板；页面其它输入仍避让软键盘。 */
   .battle-tool:has(:is(textarea, input:not([type=checkbox]):not([type=radio])):focus):not(:has(.battle-mobile-panel :focus)) :is(.battle-mobile-dock, .battle-mobile-panel) { display: none; }
   body:has(.battle-tool:not(.is-recording) .battle-mobile-dock):not(:has(.battle-tool :is(textarea, input):focus)) .back-to-top { bottom: calc(88px + env(safe-area-inset-bottom)); }

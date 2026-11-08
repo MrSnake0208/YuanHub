@@ -13,7 +13,7 @@
         <tbody>
           <tr v-for="[key, label] in BATTLE_STATS" :key="key"><th scope="row">{{ label }}</th><td v-for="(member, index) in operators" :key="index" :class="{ selected: detail && slot === index }">
             <!-- 化极按星级/节点/觉醒选择，表格中只展示，点击进入练度页选择。 -->
-            <button v-if="key === 'huaji'" type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位化极`" @click="open(index, 'stats', $event)"><span>{{ member.huaji || (member.name ? '选择' : '—') }}</span><Pencil v-if="member.name" :size="13" aria-hidden="true" /></button>
+            <button v-if="key === 'huaji'" type="button" class="battle-cell-button" :disabled="!member.name" :aria-label="`编辑${index + 1}号位化极`" @click="open(index, 'stats', $event)"><span>{{ battleHuajiLabel(member.huaji) || (member.name ? '选择' : '—') }}</span><Pencil v-if="member.name" :size="13" aria-hidden="true" /></button>
             <template v-else>
               <input v-model="member[key]" :disabled="!member.name" :aria-label="`${index + 1}号位${label}`" :aria-describedby="key === 'elite' && eliteOver(member) ? `battle-elite-over-${index}` : undefined" inputmode="numeric" maxlength="30" :placeholder="member.name ? '填写' : '—'" @focus="statBefore = member[key]" @change="commitStat(member, key)">
               <span v-if="key === 'elite' && eliteOver(member)" :id="`battle-elite-over-${index}`" class="battle-cell-error">超出等级上限 {{ eliteOver(member) }}</span>
@@ -91,7 +91,7 @@ import portraits from '../../data/operatorPortraits.json'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { findBattleCatalogOperator } from '../../utils/battleAccountSnapshot.js'
-import { BATTLE_STATS, battleOperatorId, createBattleOperator, battleDiscError, battleDiscNames, battleDiscTerms, battleStarStones, sameBattleOperator } from '../../utils/battleImages.js'
+import { BATTLE_STATS, battleOperatorId, createBattleOperator, battleDiscError, battleDiscNames, battleDiscTerms, battleHuajiLabel, battleStarStones, sameBattleOperator } from '../../utils/battleImages.js'
 import { battleStarSummary } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'

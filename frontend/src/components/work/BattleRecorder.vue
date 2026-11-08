@@ -35,9 +35,14 @@
               </header>
 
               <div v-show="!mobile || !noteMode" class="battle-sequence">
-                <div v-if="round.actions.length" class="battle-sequence-head">
+                <div class="battle-sequence-head">
                   <span>出手顺序</span>
                   <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
+                  <div v-if="mobile" class="battle-round-tools" role="group" aria-label="回合操作">
+                    <button type="button" aria-label="撤回最后一步" title="撤回最后一步" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="18" aria-hidden="true" /></button>
+                    <button :ref="setNoteButton" type="button" :aria-label="round.remark ? '编辑备注（已有备注）' : '编辑备注'" :title="round.remark ? '编辑备注（已有备注）' : '编辑备注'" @click="openNote"><NotebookPen :size="18" aria-hidden="true" /><i v-if="round.remark" aria-hidden="true"></i></button>
+                    <button type="button" class="battle-round-delete" aria-label="删除本回合" title="删除本回合" :disabled="rounds.length === 1" @click="removeRound"><ListX :size="18" aria-hidden="true" /></button>
+                  </div>
                 </div>
                 <ol v-if="round.actions.length" class="battle-sequence-chips" aria-label="本回合出手顺序">
                   <li v-for="(action, index) in round.actions" :key="index">
@@ -101,14 +106,6 @@
         <button type="button" aria-label="上一回合" title="上一回合" :disabled="current === 0" @click="dockNav(-1)"><ChevronLeft :size="16" aria-hidden="true" /></button>
         <span class="battle-round-dock-title"><b aria-live="polite">第 {{ current + 1 }} 回合</b><small>{{ round.actions.length }} 步</small></span>
         <button type="button" :aria-label="atLast ? '新增回合' : '下一回合'" :title="atLast ? '新增回合' : '下一回合'" :disabled="atLast && rounds.length >= 50" @click="dockNav(1)"><component :is="atLast ? Plus : ChevronRight" :size="16" aria-hidden="true" /></button>
-        <div ref="moreMenu" class="battle-round-more" @keydown.esc.stop.prevent="closeMore(true)">
-          <button type="button" aria-label="更多回合操作" :aria-expanded="menuOpen" aria-controls="battle-round-menu" @click="menuOpen = !menuOpen">⋯</button>
-          <div v-if="menuOpen" id="battle-round-menu" class="battle-round-menu" role="group" aria-label="更多回合操作">
-            <button type="button" @click="openNote">备注</button>
-            <button type="button" :disabled="!round.actions.length" @click="closeMore(true); undoLast()">撤回最后一步</button>
-            <button type="button" :disabled="rounds.length === 1" @click="closeMore(true); removeRound()">删除本回合</button>
-          </div>
-        </div>
         <button type="button" class="battle-round-dock-close" aria-label="收起回合编辑" @click="close"><ChevronDown :size="18" aria-hidden="true" /></button>
         <button type="button" class="battle-primary battle-round-export" aria-label="生成操作图" :disabled="exportDisabled" @click="emit('export', $event.currentTarget)"><Download :size="16" aria-hidden="true" />生成图</button>
       </div>
@@ -118,7 +115,7 @@
 
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ListX, NotebookPen, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetShortName, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
@@ -130,15 +127,15 @@ const emit = defineEmits(['recording', 'pick-member', 'export'])
 // BOX 仅表示修改箱步骤时的 activeSlot，不是可选的出手位。
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)
-const mobile = ref(false), panel = ref(null), moreMenu = ref(null), menuOpen = ref(false), noteMode = ref(false)
+const mobile = ref(false), panel = ref(null), noteMode = ref(false)
 // 手机只输出 Teleport 锚点，桌面保留原来的 tr/td 结构及编辑区位置。
 const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row' }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
 const TARGET_POSITIONS = ['左二', '左一', '主位', '右一', '右二']
 // 回合数、动作数接近上限才显示计数，平时不占位置。
 const LIMIT_HINT = 40
 // 编辑区在 v-for 行内渲染，用函数 ref 取唯一的标题与区块元素。
-let headingEl = null, sectionEl = null
-const setHeading = el => { headingEl = el }, setSection = el => { sectionEl = el }
+let headingEl = null, sectionEl = null, noteButton = null
+const setHeading = el => { headingEl = el }, setSection = el => { sectionEl = el }, setNoteButton = el => { noteButton = el }
 // editing：正在修改的步骤序号；null 表示密探/目标/动作按钮用于追加新动作。
 const editing = ref(null), removed = ref(null)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
@@ -154,7 +151,7 @@ const activeTarget = computed(() => editingAction.value ? editingAction.value.ta
 const canRecord = computed(() => Boolean(props.operators[slot.value]?.name) && round.value.actions.length < 50)
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
 const atLast = computed(() => current.value >= props.rounds.length - 1)
-watch(round, () => { editing.value = null; noteMode.value = false; menuOpen.value = false })
+watch(round, () => { editing.value = null; noteMode.value = false })
 watch(expanded, value => emit('recording', value))
 watch(() => round.value?.actions.length, () => { if (editing.value !== null && !editingAction.value) editing.value = null })
 watch([() => round.value?.actions.length, editing, current, mobile, expanded], async () => {
@@ -173,13 +170,11 @@ watch(panel, el => {
   panelObserver.observe(el)
 }, { flush: 'post' })
 let alive = true, opener, viewObserver, panelObserver, panelOwner, mediaQuery
-const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false; menuOpen.value = false }
-const onOutside = event => { if (menuOpen.value && !moreMenu.value?.contains(event.target)) closeMore() }
+const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false }
 onMounted(() => {
   mediaQuery = window.matchMedia?.('(max-width: 767px)')
   updateMobile()
   mediaQuery?.addEventListener('change', updateMobile)
-  document.addEventListener('pointerdown', onOutside)
   // 桌面编辑区随可见宽度贴左，不跟表格一起滑出视口。
   const el = scroller.value
   if (!el || typeof ResizeObserver !== 'function') return
@@ -187,7 +182,7 @@ onMounted(() => {
   viewObserver.observe(el)
 })
 // 草稿替换会按 revision 重建本组件，卸载时撤销录入状态，避免页面生成栏一直隐藏。
-onBeforeUnmount(() => { alive = false; viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); document.removeEventListener('pointerdown', onOutside); if (expanded.value) emit('recording', false) })
+onBeforeUnmount(() => { alive = false; viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
 
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
@@ -197,7 +192,7 @@ const actionLabel = type => BATTLE_ACTIONS.find(item => item.type === type)?.lab
 
 async function selectCell(row, position, event) {
   opener = event?.currentTarget || opener
-  current.value = row; slot.value = position; editing.value = null; noteMode.value = false; menuOpen.value = false; expanded.value = true
+  current.value = row; slot.value = position; editing.value = null; noteMode.value = false; expanded.value = true
   await nextTick(); revealHeading()
 }
 function revealHeading(focusEl = headingEl) {
@@ -207,18 +202,14 @@ function revealHeading(focusEl = headingEl) {
   if (row) row.scrollIntoView?.({ block: 'start', behavior: 'auto' })
   else if (!mobile.value) headingEl?.scrollIntoView?.({ block: 'nearest', behavior: 'auto' })
 }
-async function close() { expanded.value = false; editing.value = null; noteMode.value = false; menuOpen.value = false; await nextTick(); opener?.focus({ preventScroll: true }) }
-function closeMore(restoreFocus = false) {
-  menuOpen.value = false
-  if (restoreFocus) moreMenu.value?.querySelector('button')?.focus({ preventScroll: true })
-}
+async function close() { expanded.value = false; editing.value = null; noteMode.value = false; await nextTick(); opener?.focus({ preventScroll: true }) }
 async function openNote() {
-  closeMore(); noteMode.value = true
+  noteMode.value = true
   await nextTick(); sectionEl?.querySelector('textarea')?.focus({ preventScroll: true })
 }
 async function finishNote() {
   noteMode.value = false
-  await nextTick(); moreMenu.value?.querySelector('button')?.focus({ preventScroll: true })
+  await nextTick(); (noteButton || headingEl || panel.value?.querySelector('button:not(:disabled)'))?.focus({ preventScroll: true })
 }
 // 换回合时编辑区随行移动，按钮会重建：焦点回到新位置的同一按钮，便于连续翻回合。
 async function goRound(index, nav) {

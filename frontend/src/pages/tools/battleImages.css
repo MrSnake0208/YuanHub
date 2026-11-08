@@ -298,6 +298,6 @@
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }
   .battle-tool .battle-cell-button:hover:not(:disabled) { background: var(--battle-selection); }
   .battle-tool .is-target-cell .battle-cell-button:hover:not(:disabled) { background: transparent; }
-  .battle-tool :is(.battle-composer-row > button, .battle-sequence-chips button):hover:not(:disabled):not([aria-pressed=true]):not(.is-targeted), .battle-tool .battle-step-tools > button:hover:not(:disabled), .battle-tool :is(.battle-round-dock > button:not(.battle-round-export), .battle-round-more > button):hover:not(:disabled) { border-color: transparent; background: var(--battle-selection); }
+  .battle-tool :is(.battle-composer-row > button, .battle-sequence-chips button):hover:not(:disabled):not([aria-pressed=true]):not(.is-targeted), .battle-tool .battle-step-tools > button:hover:not(:disabled), .battle-tool :is(.battle-round-dock > button:not(.battle-round-export), .battle-round-tools > button):hover:not(:disabled) { border-color: transparent; background: var(--battle-selection); }
   .battle-tool .battle-sequence-chips button.is-targeted:hover:not([aria-pressed=true]) { border-color: transparent; }
 }

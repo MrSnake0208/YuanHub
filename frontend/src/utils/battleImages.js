@@ -14,7 +14,7 @@ export const BATTLE_ACTIONS = Object.freeze([
 export const BATTLE_INTERACTION = Object.freeze({ type: 'interaction', symbol: '箱', label: '关卡互动' })
 export const isBattleInteraction = action => action?.type === BATTLE_INTERACTION.type
 export const BATTLE_STATS = Object.freeze([
-  ['hp', '生命'], ['attack', '攻击'], ['level', '等级'], ['elite', '修为'], ['huaji', '化极 / 觉醒'],
+  ['hp', '生命'], ['attack', '攻击'], ['level', '等级'], ['elite', '修为'], ['huaji', '化极'],
 ])
 export const BATTLE_NOTES = Object.freeze([
   ['discs', '携带命盘'], ['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘'], ['stars', '星石 / 辅星'],
@@ -111,6 +111,14 @@ export function battleHuajiProgress(value) {
   const match = String(value ?? '').trim().match(/^([1-5])\s*(?:星|★)(?:\s*·\s*([0-5])\s*节点)?(?:\s*·\s*(已觉醒|未觉醒|觉醒待确认))?$/)
   if (!match) return null
   return { stars: Number(match[1]), nodes: match[2] == null ? null : Number(match[2]), awakened: match[3] === '已觉醒', status: match[3] || '' }
+}
+
+export function battleHuajiLabel(value) {
+  const text = String(value ?? '').trim()
+  const progress = battleHuajiProgress(text)
+  if (progress?.status === '已觉醒') return '觉醒'
+  if (progress?.status === '觉醒待确认' || progress?.status === '未觉醒') return `${progress.stars} 星`
+  return text
 }
 
 // 出图星石与编辑器同一解析：按槽位写成“天相60”，未知等级只写名字，无法识别的行原样保留。
