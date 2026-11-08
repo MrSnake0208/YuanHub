@@ -1907,7 +1907,7 @@
                             v-if="
                               !e.spOf &&
                               starDraftGroup(e) > 0 &&
-                              starDraftGroup(e) < 5
+                              6 * (starDraftGroup(e) - 1) + 1 < operatorHuajiMax(e)
                             "
                             :value="starDraftNode(e)"
                             @change="setStarDraftNode(e, $event)"
@@ -2770,7 +2770,7 @@
                       !editingOp.spOf &&
                       starGroupName !== 'none' &&
                       starGroupName !== 'awaken' &&
-                      starGroupName < 5
+                      6 * (starGroupName - 1) + 1 < operatorHuajiMax(editingOp)
                     "
                     class="star-row"
                   >
@@ -4861,7 +4861,6 @@ function showEditOddityError(key, message) {
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
 // 新化极阶段最高25；旧25..30懒兼容五星，旧31只作为觉醒事实读取。
-const MAX_STAR_LEVEL = 25;
 const STAR_LEVEL_AWAKEN = 31;
 const STAR_RANGE = [1, 2, 3, 4, 5];
 const NODE_RANGE = [0, 1, 2, 3, 4, 5];
@@ -4918,7 +4917,7 @@ function pickStarGroup(g) {
     editForm.value.starLevel = s;
     return;
   }
-  editForm.value.starLevel = s === 5 ? 25 : 6 * (s - 1) + starNode.value + 1;
+  editForm.value.starLevel = Math.min(s === 5 ? 25 : 6 * (s - 1) + starNode.value + 1, operatorHuajiMax(editingOp.value));
 }
 
 function pickStarNode(n) {
@@ -8259,7 +8258,7 @@ async function saveEdit() {
   if (starChanged && (starLevel < 0 || starLevel > starMax)) {
     editNotice.value = editingOp.value.spOf
       ? "SP 密探星级需在 0..5 之间"
-      : "星级需在 0.." + MAX_STAR_LEVEL + " 之间（0=未拥有，觉醒独立确认）";
+      : "星级需在 0.." + starMax + " 之间（0=未拥有，觉醒独立确认）";
     editorSection.value = 'growth';
     editNoticeError.value = true;
     return;
