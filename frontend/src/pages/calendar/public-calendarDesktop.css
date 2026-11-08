@@ -20,9 +20,6 @@
 .calendar-public .calendar-filter-summary { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; font-size: 13px; }
 .calendar-public .calendar-filter-empty button { margin: 8px 8px 0 0; }
 .calendar-public .calendar-summary-scope { margin: 0; font-size: 12px; }
-.calendar-public .calendar-summary-help { margin-left: auto; min-width: 0; font-size: 12px; }
-.calendar-public .calendar-summary-help summary { min-height: 44px; display: flex; align-items: center; }
-.calendar-public .calendar-summary-help[open] { flex-basis: 100%; margin-left: 0; }
 .calendar-public .calendar-filters fieldset { min-width: 0; }
 .calendar-public .calendar-filters .calendar-hint { margin: 4px 0 0; font-size: 12px; }
 .calendar-public .calendar-filter-exclude { min-height: 44px; margin: 0; padding-inline: 10px; font-size: 14px; }

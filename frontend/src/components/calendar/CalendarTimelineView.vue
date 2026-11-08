@@ -41,6 +41,7 @@
             </div>
           </div>
         </section>
+        <div v-if="compactPublic && !items.length && !loading && !error && $slots.empty" class="calendar-timeline-empty" role="status"><slot name="empty" /></div>
         <p v-if="compactPublic && items.length && !groups.length && !loading && !error" class="calendar-timeline-empty">这一周没有活动，可以翻到其他周或回到今天。</p>
       </div>
     </div>

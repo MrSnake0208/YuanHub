@@ -202,7 +202,7 @@ it.each(['loading', 'error', 'empty'])('月历%s不展示陈旧活动或虚假�
 it('公开筛选、账号与今天沿用原路径，时间轴/月历统计可展开', async () => {
   const { router } = await render(390, 'view=month&date=2026-10-19&ref=keep')
   expect(wrapper.get('.calendar-public-statistics').attributes('open')).toBeUndefined()
-  expect(wrapper.get('.calendar-public-statistics .calendar-today').text()).toContain('公开统计口径')
+  expect(wrapper.get('.calendar-public-statistics .calendar-today').text()).toContain('今日开始')
   await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(document.querySelector('.calendar-personal-filters')).toBeNull()
   await click('活动'); await click('完成'); expect(router.currentRoute.value.query.display_group).toBe('ACTIVITY')
