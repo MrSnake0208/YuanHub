@@ -1,6 +1,6 @@
 <template>
   <section class="cultivation-progress" :aria-label="dateLabel + '培养推进'">
-    <div class="progress-heading"><h3>全部材料预计进展</h3><div class="material-legend"><span><i class="legend-before" aria-hidden="true"></i>当日开始时已有</span><span><i class="legend-today" aria-hidden="true"></i>当日新增</span></div></div>
+    <div class="progress-heading"><h3>当天材料进展</h3><div v-if="visibleRows.length" class="material-legend"><span><i class="legend-before" aria-hidden="true"></i>当日开始时已有</span><span><i class="legend-today" aria-hidden="true"></i>当日新增</span></div></div>
     <div class="resource-list" aria-live="polite">
       <article v-for="item in visibleRows" :key="item.id" class="resource" :class="{ complete: item.required > 0 && item.remaining <= 0 }">
         <span class="resource-icon" aria-hidden="true"><img v-if="item.icon && !failedIcons.has(item.icon)" :src="item.icon" alt="" width="42" height="42" loading="lazy" draggable="false" @error="failedIcons.add(item.icon)" /><span v-else>{{ (item.name || item.id).slice(0, 1) }}</span></span>
@@ -12,28 +12,32 @@
         </div>
         </div>
       </article>
-      <p v-if="!visibleRows.length" class="resource-empty">当日开始时已无待补材料</p>
+      <p v-if="!visibleRows.length" class="resource-empty">{{ showAll ? '当日开始时已无待补材料' : '这一天没有新增材料' }}</p>
     </div>
+    <button v-if="showAll || allRows.length > visibleRows.length" type="button" class="materials-toggle" :aria-expanded="showAll" @click="showAll = !showAll">{{ showAll ? '收起' : '查看全部 ' + allRows.length + ' 项材料' }}</button>
   </section>
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 const props = defineProps({ rows: { type: Array, required: true }, dateLabel: { type: String, default: '' } })
 const failedIcons = reactive(new Set())
+const showAll = ref(false)
 // Keep materials completed today visible; hide only those already covered at day start.
-const visibleRows = computed(() => {
+const allRows = computed(() => {
   const rows = props.rows.filter(item => item.required > 0
     ? (item.startRemaining ?? (item.remaining + item.used)) > 0 : item.produced > 0)
   const experience = rows.find(item => item.id === '__xp__')
   return experience ? [experience, ...rows.filter(item => item !== experience)] : rows
 })
+const visibleRows = computed(() => showAll.value ? allRows.value : allRows.value.filter(item => item.produced > 0))
 function number(value) { return Number(value || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) }
 </script>
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .cultivation-progress { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
+.materials-toggle { min-height: 44px; max-width: 100%; padding: 8px 0; border: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); font: 13px/1.5 var(--font-b); cursor: pointer; }
 .resource { border-top: 1px dashed var(--line); }
 .progress-heading h3 { margin: 0; font: 800 18px/1.4 var(--font-s); }
 .material-legend { color: var(--ink-60); }

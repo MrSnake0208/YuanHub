@@ -1,5 +1,5 @@
 <template>
-  <div class="plan-heading">
+  <div class="plan-heading" :class="{ 'external-actions': externalActions }">
     <div class="plan-identity">
       <div v-if="activePlan" ref="planSwitcher" class="plan-switcher" @focusout="onSwitcherFocusout">
         <h2 class="plan-title"><button ref="switcherTrigger" type="button" class="plan-title-trigger" :disabled="disabled" aria-haspopup="menu" :aria-expanded="switcherOpen" aria-controls="plan-switcher-menu" @click="toggleSwitcher" @keydown.down.prevent="openSwitcher(true)" @keydown.esc.prevent="closeSwitcher"><span>{{ activePlan.name }}</span><ChevronDown :size="18" :class="{ open: switcherOpen }" aria-hidden="true" /></button></h2>
@@ -7,13 +7,13 @@
           <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @pointerdown.prevent @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
         </div>
       </div>
-      <h2 v-else class="plan-title plan-title-empty">尚未建立培养清单</h2>
-      <div class="plan-heading-actions plan-management-actions">
+      <h2 v-else-if="!externalActions" class="plan-title plan-title-empty">尚未建立培养清单</h2>
+      <div v-if="!externalActions" class="plan-heading-actions plan-management-actions">
         <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
         <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
       </div>
     </div>
-    <div class="plan-heading-actions">
+    <div v-if="!externalActions" class="plan-heading-actions">
       <button v-if="activePlan" type="button" class="plan-member-add" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
       <slot name="actions" />
     </div>
@@ -112,7 +112,7 @@ import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, isOperatorOwned, tokens } from '../../utils/operatorFilters.js'
 import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
-const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, currentEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
+const props = defineProps({ externalActions: { type: Boolean, default: false }, plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, currentEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
 const dialog = ref(null)
 const dialogTitle = ref(null)
@@ -244,7 +244,7 @@ function openMemberPicker() {
   if (!props.activePlan) return
   return openEditor(false, { selectNewMembers: true })
 }
-defineExpose({ openMemberPicker })
+defineExpose({ openEditor, openMemberPicker })
 function toggle(id) { const next = new Set(selected.value); if (next.has(id)) next.delete(id); else next.add(id); selected.value = next }
 function resetFilters() { search.value = ''; rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all'; selectionFilter.value = 'all' }
 function resetAdvancedFilters() { rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all' }

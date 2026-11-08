@@ -1,7 +1,7 @@
 <template>
   <section class="overall-summary" aria-label="总体规划">
     <header class="overall-heading">
-      <div><span class="overall-kicker">当前方案 · {{ range === 'all' ? '全周期汇总' : '今天起计划次数' }}</span><h3>历练总览</h3></div>
+      <div><span class="overall-kicker">当前方案 · {{ range === 'all' ? '全周期汇总' : '今天起计划次数' }}</span><h3>历练总览</h3><p class="overall-note">这张清单整个周期，每种历练要刷多少次</p></div>
       <span v-if="displayTimeline.length && !loading && !unavailable" class="overall-period">{{ displayTimeline[0].date }} 至 {{ displayTimeline.at(-1).date }}</span>
     </header>
     <div class="overall-range" role="group" aria-label="总体规划统计范围">
@@ -52,7 +52,8 @@ const groups = computed(() => TRAINING_GROUPS.map(group => {
   return { id: group.id, name: group.name, stages, total: stages.reduce((sum, stage) => sum + stage.count, 0) }
 }).filter(group => group.stages.length))
 const incomplete = computed(() => {
-  if (props.status === 'invalid' || props.timeline.some(day => day.errors?.length || day.paused)) return '日程存在错误或暂停，以下仅汇总已列出的安排；请先修正每日安排。'
+  if (props.status === 'invalid') return '日程有问题，这里只统计已排出的部分，请先处理顶部提示。'
+  if (props.timeline.some(day => day.date >= props.today && (day.errors?.length || day.paused))) return '日程存在错误或暂停，以下仅汇总已列出的安排；请先修正每日安排。'
   if (props.awaitingRecalculation) return '日程有待重算的修改，以下为当前已列出安排的合计。'
   if (props.status !== 'complete') return '当前规划尚未覆盖全部培养缺口，以下仅汇总已生成的安排。'
   return ''

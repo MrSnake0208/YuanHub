@@ -2,14 +2,16 @@
   <section class="growth-tracker" :class="{ 'planner-expanded': plannerOpen }" aria-labelledby="growth-tracker-title">
     <header class="planner-heading">
       <div>
-        <h2 id="growth-tracker-title"><span class="planner-desktop-title">培养计划 · 体力规划</span><span class="planner-mobile-only">养成规划</span></h2>
-        <p>按材料缺口，安排每日体力。</p>
+        <h2 id="growth-tracker-title">养成规划</h2>
       </div>
       <div class="planner-heading-actions" @focusout="!$event.currentTarget.contains($event.relatedTarget) && (plannerToolsOpen = false)" @keydown.esc="closePlannerTools">
-        <button ref="plannerToolsTrigger" type="button" class="planner-tools-trigger planner-mobile-only" :aria-expanded="plannerToolsOpen" aria-controls="planner-tools-actions" @click="plannerToolsOpen = !plannerToolsOpen">工具<ChevronDown :size="15" aria-hidden="true" /></button>
+        <button ref="plannerToolsTrigger" type="button" class="planner-tools-trigger" :aria-expanded="plannerToolsOpen" aria-controls="planner-tools-actions" @click="plannerToolsOpen = !plannerToolsOpen">更多<ChevronDown :size="15" aria-hidden="true" /></button>
         <div id="planner-tools-actions" class="planner-tools-actions" :class="{ 'is-open': plannerToolsOpen }" @click="plannerToolsOpen = false">
+        <button v-if="activePlan && !reserveOpen" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />规划设置</button>
+        <button v-if="trainingPlanPickerRef && !reserveOpen" type="button" class="status-action secondary" :disabled="planPickerDisabled" aria-haspopup="dialog" @click="plannerToolsTrigger?.focus({ preventScroll: true }); trainingPlanPickerRef?.openEditor(true)"><Plus :size="15" aria-hidden="true" />新建清单</button>
+        <button v-if="trainingPlanPickerRef && activePlan && !reserveOpen" type="button" class="status-action secondary" :disabled="planPickerDisabled" aria-label="管理清单" aria-haspopup="dialog" @click="plannerToolsTrigger?.focus({ preventScroll: true }); trainingPlanPickerRef?.openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
         <button v-if="isLoggedIn && accountId" type="button" class="status-action secondary planner-capacity-entry" aria-haspopup="dialog" @click="openCapacity"><Calculator :size="16" aria-hidden="true" />修为人数试算</button>
-        <button v-if="canUseReserve && accountId && !reserveOpen" ref="reserveEntryRef" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace">未来储备</button>
+        <button v-if="canUseReserve && accountId && !reserveOpen" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace"><Archive :size="16" aria-hidden="true" />未来储备</button>
         <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
           <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
           <span>{{ loading ? '同步中' : '刷新库存' }}</span>
@@ -23,7 +25,7 @@
     <section v-if="canUseReserve && accountId" v-show="reserveOpen" id="planner-reserve-workspace" ref="reserveWorkspaceRef" class="planner-reserve-workspace" tabindex="-1" aria-label="未来储备工作区">
       <header class="reserve-workspace-heading">
         <div><h3>未来储备</h3><p>为尚未实装的密探，提前估算培养材料。</p></div>
-        <button type="button" class="workspace-return" @click="closeReserveWorkspace"><ChevronLeft :size="16" aria-hidden="true" />返回培养清单</button>
+        <button type="button" class="workspace-return" @click="closeReserveWorkspace"><ChevronLeft :size="16" aria-hidden="true" />返回养成规划</button>
       </header>
       <OperatorReserveWorkspace :account-id="accountId" :game="game" :stock="inventoryReady && !loading && !error ? currentItems : null" />
     </section>
@@ -61,10 +63,7 @@
         <div class="cloud-actions"><button v-if="!migration.request && !migration.localError" type="button" :disabled="targetLoading || migrationBusy" @click="prepareMigration">预览导入结果</button><button v-else-if="migration.request" type="button" :disabled="migrationBusy" @click="importLocal">{{ migrationBusy ? '正在导入…' : migration.resume ? '重试本次导入' : '确认导入' }}</button><button v-if="migration.conflict" type="button" :disabled="migrationBusy" @click="compareMigrationAgain">重新比较本机与云端</button><button type="button" :disabled="migrationBusy" @click="keepCloud">使用云端，保留本机备份</button></div>
       </section>
       <fieldset class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
-      <section ref="plannerRosterRef" class="planner-status" tabindex="-1" aria-label="培养计划状态">
-        <div class="status-main">
-          <div class="status-title">
-            <span class="section-kicker">当前培养清单</span>
+        <div class="planner-list-picker" :class="{ 'is-editing': viewMode === 'edit' }">
             <OperatorTrainingPlanPicker
               ref="trainingPlanPickerRef"
               :plans="workspace.plans"
@@ -80,29 +79,28 @@
               @select="selectPlan"
               @save="savePlan"
               @remove="removePlan"
-            >
-              <template #actions>
-                <div v-if="activePlan" class="status-actions">
-                  <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />规划设置</button>
-                  <button type="button" class="status-action" @click="openPlanner('display')"><CalendarDays :size="15" aria-hidden="true" />查看体力日程</button>
-                </div>
-              </template>
-            </OperatorTrainingPlanPicker>
-            <p class="planner-independent-note"><template v-if="activePlan">{{ activePlan.source === 'favorites' ? '随特别关注同步，也可添加其他密探；' : '手动管理成员与目标；' }}</template>各清单独立试算，未预留库存。材料备齐不等于已完成养成。</p>
-          </div>
+              external-actions
+            />
         </div>
-        <div v-if="activePlan" class="status-metrics" role="group" aria-label="培养进度概览">
+        <PlannerNextStep v-if="viewMode === 'display'" :action="plannerNextAction" @action="plannerNextAction.run()">
+          <div v-if="activePlan && planRows.length && plannerSimulation.status !== 'invalid'" class="status-metrics" role="group" aria-label="养成进度概览">
           <div class="status-metric status-metric-primary"><span>预计还需</span><strong :class="{ 'metric-state': loading || Boolean(error) || hasUnknownRequirements || scheduleDifferences.goalsChanged || scheduleTiming.remainingDays == null || scheduleTiming.remainingDays === 0 }">{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
           <div class="status-metric"><span>刷取材料备齐度</span><strong v-if="!materialProgressStatus">{{ plannerProgress }}<small>%</small></strong><strong v-else class="metric-state">{{ materialProgressStatus }}</strong><div v-if="!materialProgressStatus" class="material-readiness-track" aria-hidden="true"><i :style="{ width: plannerProgress + '%' }"></i></div></div>
-          <div class="status-metric status-metric-heart"><span>清单心纸库存</span><strong v-if="inventoryReady && !loading && !error">{{ formatNumber(totalHeartStock) }}<small> 张</small></strong><strong v-else class="metric-state">{{ loading ? '同步中' : '库存未同步' }}</strong></div>
-          <div class="status-metric status-metric-balance"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
+          </div>
+          <details v-if="scheduleNeedsUpdate && scheduleDifferenceLabel" class="schedule-difference-details"><summary>查看库存差异</summary><p>{{ scheduleDifferenceLabel }}</p></details>
+        </PlannerNextStep>
+        <p v-if="loading && viewMode === 'display'" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
+        <div v-show="viewMode === 'display' && (planRows.length || fixedSchedule)" class="planner-display-switch" role="group" aria-label="规划展示方式">
+          <button type="button" :aria-pressed="plannerView === 'today'" aria-controls="planner-daily-view" @click="plannerView = 'today'">今日安排</button>
+          <button type="button" :aria-pressed="plannerView === 'roster'" aria-controls="planner-roster-view" @click="plannerView = 'roster'">密探进度 {{ planRows.length }}</button>
+          <button type="button" :aria-pressed="plannerView === 'overall'" aria-controls="planner-overall-view" @click="plannerView = 'overall'">总体规划</button>
         </div>
-        <p v-if="loading" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
+      <section v-show="viewMode === 'display' && plannerView === 'roster'" id="planner-roster-view" class="planner-status" aria-label="密探进度">
         <div v-if="activePlan" class="roster-heading">
           <h3 class="roster-title">养成清单</h3>
           <span class="roster-count">{{ planRows.length }} 位密探</span>
           <p class="roster-help">当前 → 目标</p>
-          <button class="planner-refresh planner-mobile-only" type="button" :disabled="loading || !accountId" aria-label="刷新当前库存快照" @click="refreshSnapshot()"><RefreshCw :size="15" :class="{ spin: loading }" aria-hidden="true" />{{ loading ? '同步中' : '刷新库存' }}</button>
+          <button type="button" class="status-action secondary" :disabled="planPickerDisabled" aria-haspopup="dialog" @click="trainingPlanPickerRef?.openMemberPicker()"><Plus :size="15" aria-hidden="true" />添加密探</button>
         </div>
         <div v-if="activePlan" class="status-roster">
           <div v-if="planRows.length" class="growth-roster-columns" aria-hidden="true">
@@ -114,13 +112,13 @@
                 <div class="growth-overview-progress" :aria-label="row.name + '的养成进度'">
                   <div class="growth-overview-stat">
                     <span class="growth-overview-label">等级</span>
-                    <p><b>Lv{{ row.level }}</b><template v-if="row.level < targetFor(row).level"><span>→</span><span>{{ targetFor(row).level }}</span></template></p>
-                    <div class="growth-track" aria-hidden="true"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
+                    <p><b>{{ row.owned ? 'Lv' + row.level : '未录入' }}</b><template v-if="!row.owned || row.level < targetFor(row).level"><span>→</span><span>{{ targetFor(row).level }}</span></template></p>
+                    <div class="growth-track" aria-hidden="true"><i :style="{ width: (row.owned ? progress(row.level, targetFor(row).level) : 0) + '%' }"></i></div>
                   </div>
                   <div class="growth-overview-stat">
                     <span class="growth-overview-label">修为</span>
-                    <p><b>{{ row.elite }}</b><template v-if="row.elite < targetFor(row).elite"><span>→</span><span>{{ targetFor(row).elite }}</span></template></p>
-                    <div class="growth-track mint" aria-hidden="true"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
+                    <p><b>{{ row.owned ? row.elite : '未录入' }}</b><template v-if="!row.owned || row.elite < targetFor(row).elite"><span>→</span><span>{{ targetFor(row).elite }}</span></template></p>
+                    <div class="growth-track mint" aria-hidden="true"><i :style="{ width: (row.owned ? progress(row.elite, targetFor(row).elite) : 0) + '%' }"></i></div>
                   </div>
                   <div class="growth-overview-stat growth-overview-huaji">
                     <span class="growth-overview-label">化极</span>
@@ -128,10 +126,10 @@
                     <div class="growth-track rose" aria-hidden="true"><i :style="{ width: growthHuajiProgress(row, targetFor(row)) + '%' }"></i></div>
                   </div>
                 </div>
-                <div class="growth-next-step" :class="{ 'is-ready': nextStep.field, 'is-complete': row.completed }"><strong>{{ nextStep.title }}</strong><p>{{ nextStep.description }}</p></div>
+                <div class="growth-next-step" :class="{ 'is-ready': nextStep.field, 'is-complete': row.completed }"><strong>{{ nextStep.title }}</strong><p>{{ nextStep.description }}</p><small v-if="nextStep.gapLabel" class="growth-next-gap">{{ nextStep.gapLabel }}</small></div>
                 <div class="growth-overview-actions">
                   <button type="button" class="growth-primary-action" :class="{ 'is-ready': nextStep.field }" :disabled="nextStep.disabled" :aria-label="row.name + '：' + nextStep.label" @click="openRosterAction(row, nextStep)">{{ nextStep.label }}</button>
-                  <button type="button" class="growth-details-toggle" :aria-expanded="expandedRosterIds.has(row.id)" :aria-controls="'growth-details-' + row.id" :disabled="targetBusyIds.has(row.id) || isRemarkSaving(row) || isRosterUpgradeBusy(row)" @click="toggleRosterDetails(row)">{{ expandedRosterIds.has(row.id) ? '收起详情' : '详情与编辑' }}<span v-if="isRemarkEditing(row)" class="growth-detail-draft">未保存</span><ChevronRight :size="16" aria-hidden="true" /></button>
+                  <button type="button" class="growth-details-toggle" :aria-label="row.name + '详情与编辑' + (isRemarkEditing(row) ? '，备注未保存' : '')" :aria-expanded="expandedRosterIds.has(row.id)" :aria-controls="'growth-details-' + row.id" :disabled="targetBusyIds.has(row.id) || isRemarkSaving(row) || isRosterUpgradeBusy(row)" @click="toggleRosterDetails(row)"><ChevronRight :size="16" aria-hidden="true" /><span v-if="isRemarkEditing(row)" class="growth-detail-draft-dot" aria-hidden="true"></span></button>
                 </div>
                 <p v-if="growthActionNotice(row)" class="growth-action-notice" role="status">{{ growthActionNotice(row) }}</p>
                 <p v-if="row.calculation.sharedUnsupported" class="growth-action-notice">本体目录缺失，暂不估算共享养成需求</p>
@@ -199,33 +197,17 @@
               </article>
             </div>
         </div>
-        <p v-if="planRows.length" class="roster-footnote">经验天数按仅刷绝境历练估算。</p>
+        <div v-if="activePlan" class="status-metric status-metric-heart"><span>清单心纸库存</span><strong v-if="inventoryReady && !loading && !error">{{ formatNumber(totalHeartStock) }}<small> 张</small></strong><strong v-else class="metric-state">{{ loading ? '同步中' : '库存未同步' }}</strong></div>
       </section>
 
-      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。可根据特别关注建立，或自行挑选成员。</span></div>
-      <div v-else-if="!planRows.length" class="planner-state empty"><Users :size="18" aria-hidden="true" /><span>当前清单还没有密探，未特别关注的密探也可以加入。</span></div>
-
       </fieldset>
-      <section ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
-        <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
-          <div class="workspace-heading-content"><span class="section-kicker">每日刷取建议</span>
-            <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
-              <button v-if="viewMode === 'display' && !fixedSchedule" type="button" class="action-button primary" :disabled="Boolean(firstScheduleSaveReason)" :aria-describedby="firstScheduleSaveReason ? 'first-schedule-save-hint' : undefined" @click="generateAndSaveSchedule"><Check :size="16" aria-hidden="true" />生成并保存日程</button>
-              <button v-if="viewMode === 'display' && !reviewingHistory" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="openExactOptimizer">方案对比</button>
-            </div></div>
-            <p>此日程暂不支持交给 Maa 自动执行。</p>
-          </div>
-          <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display', true)"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
-          <button v-else type="button" class="workspace-return planner-mobile-only" @click="plannerRosterRef?.focus({ preventScroll: true }); plannerRosterRef?.scrollIntoView({ block: 'start' })">返回清单<ChevronUp :size="15" aria-hidden="true" /></button>
+      <section ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力日程工作区">
+        <div v-if="viewMode === 'edit'" class="planner-workspace-head">
+          <button type="button" class="workspace-return" @click="openPlanner('display', true)"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
         </div>
-        <div v-if="activePlan && viewMode === 'display'" class="planner-mobile-day-balance planner-mobile-only"><span>{{ selectedDate }} · 体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
-
         <div class="workspace-feedback">
-          <div class="cloud-status" role="status" aria-live="polite">
-            {{ cloudStatusLabel }}
-            <span v-if="fixedSchedule"> · 日界线北京时间 05:00</span>
-          </div>
-          <p v-if="!fixedSchedule && firstScheduleSaveReason" id="first-schedule-save-hint" class="planner-footnote">{{ firstScheduleSaveReason }}</p>
+          <div v-if="cloudStatusLabel !== '日程已保存到云端'" class="cloud-status" role="status" aria-live="polite">{{ cloudStatusLabel }}</div>
+          <p v-if="viewMode === 'edit' && !fixedSchedule && firstScheduleSaveReason" id="first-schedule-save-hint" class="planner-footnote">{{ firstScheduleSaveReason }}</p>
           <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
           <template v-for="kind in ['workspace', 'schedule']" :key="kind">
             <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" :id="'planner-cloud-recovery-' + kind" class="cloud-recovery" role="alert" tabindex="-1">
@@ -234,37 +216,38 @@
               <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="discardCloudChanges(kind); planError = ''">放弃本次修改并读取云端</button></div>
             </div>
           </template>
-          <div v-if="planRows.length || fixedSchedule" class="schedule-guidance" :class="{ 'schedule-update': scheduleNeedsUpdate }" role="status">
-            <template v-if="scheduleNeedsUpdate">
-              <div>
-                <strong>{{ scheduleDifferences.goalsChanged ? '清单或培养目标已变更，日程需要更新' : '库存有变化，可更新日程' }}</strong>
-                <p>按当前库存和培养目标重新安排今天及之后的日程，保留过去的记录和未来的自定义安排。</p>
-                <details v-if="scheduleDifferenceLabel" class="schedule-difference-details"><summary>查看库存差异</summary><p>{{ scheduleDifferenceLabel }}</p></details>
-              </div>
-              <button type="button" class="action-button" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error)" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />更新日程</button>
-            </template>
-            <p v-else class="schedule-plan-note">
-              <span>{{ plannerCycleNotice }}</span>
-            </p>
-          </div>
         </div>
-        <fieldset v-if="planRows.length || fixedSchedule" class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
-        <template v-if="plannerDisplay === 'daily' || viewMode === 'edit'">
+        <fieldset v-show="planRows.length || fixedSchedule" class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
+        <div v-if="viewMode === 'edit'" class="planner-day-notices">
         <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
         <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
         <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<span v-for="date in outsideManualDates" :key="date" class="outside-manual-date"><time :datetime="date">{{ formatLongDate(date) }}</time><button type="button" class="workspace-link" :aria-label="'查看 ' + formatLongDate(date) + ' 日程'" :title="'查看 ' + formatLongDate(date) + ' 日程'" @click="selectDate(date); viewMode = 'edit'; setPlannerStep('daily', false)"><CalendarDays :size="18" aria-hidden="true" /></button></span></p>
         <p v-if="currentDay.errors?.length" class="balance-warning" role="alert">{{ currentDay.errors.join('；') }}。当日与后续推进暂停，修正后重算。</p>
         <p v-else-if="currentDay.paused" class="balance-warning" role="status">前面的日期有无效日程，修正后继续推进。</p>
         <p v-if="currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
-        </template>
-        <section v-if="viewMode === 'display' || reviewingHistory" class="planner-view planner-display" aria-label="体力规划展示">
-          <div class="planner-display-switch" role="group" aria-label="规划展示方式">
-            <button type="button" :aria-pressed="plannerDisplay === 'daily'" aria-controls="planner-daily-view" @click="plannerDisplay = 'daily'">每日安排</button>
-            <button type="button" :aria-pressed="plannerDisplay === 'overall'" aria-controls="planner-overall-view" @click="plannerDisplay = 'overall'">总体规划</button>
+        </div>
+        <section v-show="viewMode === 'display'" class="planner-view planner-display" aria-label="养成规划展示">
+          <div v-show="plannerView === 'overall'" id="planner-overall-view" class="planner-overall-view">
+            <PlannerOverallSummary :today="plannerToday" :timeline="plannerTimeline" :status="plannerSimulation.status" :awaiting-recalculation="plannerSimulation.awaitingRecalculation" :loading="loading || targetLoading || cloudLoading || scheduleLoading" :unavailable="Boolean(error || targetError || cloudError) || !inventoryReady" />
+            <div class="planner-comparison-entry"><button v-if="!reviewingHistory" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="openExactOptimizer">方案对比</button><p>比较不同策略的完成时间</p></div>
+            <p class="planner-footnote">{{ aggregateMoneyLabel }}。</p>
+            <p v-if="plannerCycleNotice" class="schedule-plan-note">{{ plannerCycleNotice }}</p>
+            <details class="planner-calc-notes">
+              <summary>计算说明</summary>
+              <p>各养成清单独立试算，未预留库存；材料备齐不等于已完成养成。</p>
+              <p>经验天数按仅刷绝境历练估算。此日程暂不支持交给 Maa 自动执行。</p>
+              <p>日界线为北京时间 05:00。培养进度从计划保存的起点模拟，不代表实际流水。</p>
+              <p>按完整一天自然恢复与进膳预算计算，不计满体损失；日末结余不自动结转，可手工添加储备来源。</p>
+            </details>
           </div>
-          <PlannerOverallSummary v-show="plannerDisplay === 'overall'" id="planner-overall-view" :today="plannerToday" :timeline="plannerTimeline" :status="plannerSimulation.status" :awaiting-recalculation="plannerSimulation.awaitingRecalculation" :loading="loading || targetLoading || cloudLoading || scheduleLoading" :unavailable="Boolean(error || targetError || cloudError) || !inventoryReady" />
-          <div v-show="plannerDisplay === 'daily'" id="planner-daily-view" class="planner-daily-view">
+          <div v-show="plannerView === 'today'" id="planner-daily-view" class="planner-daily-view">
           <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :preview-dates="derivedPreviewDates" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
+        <p v-if="currentDay.errors?.length" class="balance-warning" role="alert">{{ reviewingHistory ? '这一天的安排超出了体力。已过的日期不能修改，可以用上方按钮从今天重新安排。' : currentDay.errors.join('；') + '。当日与后续推进暂停，修正后重算。' }}</p>
+        <p v-else-if="currentDay.paused" class="balance-warning" role="status">前面的日期有无效日程，修正后继续推进。</p>
+        <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
+        <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
+        <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<span v-for="date in outsideManualDates" :key="date" class="outside-manual-date"><time :datetime="date">{{ formatLongDate(date) }}</time><button type="button" class="workspace-link" :aria-label="'查看 ' + formatLongDate(date) + ' 日程'" :title="'查看 ' + formatLongDate(date) + ' 日程'" @click="selectDate(date); viewMode = 'edit'; setPlannerStep('daily', false)"><CalendarDays :size="18" aria-hidden="true" /></button></span></p>
+        <p v-if="!reviewingHistory && currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
           <div class="display-grid">
@@ -273,17 +256,17 @@
                 <div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div>
                 <div class="day-plan-actions"><span class="plan-badge" :class="{ manual: currentDay.manual, exact: deadlineAlternativePlanAdopted }">{{ planBadgeLabel }}</span><button v-if="!reviewingHistory" ref="dayEditRef" type="button" class="status-action secondary" :disabled="scheduleActionBlocked" @click="editSchedule('daily')"><Pencil :size="15" aria-hidden="true" />编辑当日</button></div>
               </div>
-              <dl class="day-totals" aria-label="当日体力与白金币概览">
+              <dl class="day-totals" :class="{ 'without-coins': todayTotals.coinsSpent === 0 }" aria-label="当日体力与白金币概览">
                 <div class="gain"><dt>体力获取</dt><dd>{{ formatStamina(todayTotals.gains) }}</dd></div>
                 <div class="spend"><dt>体力支出</dt><dd>{{ formatStamina(todayTotals.spends) }}</dd></div>
                 <div class="day-balance" :class="{ negative: todayTotals.balance < 0 }"><dt>当日结余</dt><dd>{{ signedNumber(todayTotals.balance) }}</dd></div>
-                <div class="coin-spend"><dt>白金币支出</dt><dd>{{ formatNumber(todayTotals.coinsSpent) }}</dd></div>
+                <div v-if="todayTotals.coinsSpent !== 0" class="coin-spend"><dt>白金币支出</dt><dd>{{ formatNumber(todayTotals.coinsSpent) }}</dd></div>
               </dl>
-              <p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p>
+              <p v-if="todayTotals.balance < 0 && !currentDay.errors?.length" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p>
               <div class="flow-section spend-flow">
                 <div class="flow-heading"><span>刷取与派遣</span></div>
                 <div class="channel-chips spend-chips">
-                  <span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)">
+                  <span v-for="spend in displayedDaySpends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)">
                     <span class="channel-dot" aria-hidden="true"></span>
                     <span class="spend-main"><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small class="spend-count">×{{ formatStamina(spend.value) }}</small></span>
                     <strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong>
@@ -313,12 +296,11 @@
             </section>
             <CultivationProgress :rows="progressItems" :date-label="currentDateLabel" />
           </div>
-          <p class="planner-footnote">{{ deadlineAlternativePlanAdopted ? '已采用期限补足方案，请按每日安排准备体力，并核对购买与派遣。' : currentDay.manual ? '当前为手工计划；调整体力收支后，可重新计算当日及后续日程。' : '按当前偏好推荐；编辑任意一天后，整份日程会固定保存。' }} {{ aggregateMoneyLabel }}。</p>
-          <p class="planner-footnote">培养进度从计划保存的起点模拟，不代表实际流水。按完整一天自然恢复与进膳预算计算，不计满体损失；日末结余不自动结转，可手工添加储备来源。</p>
+          <p class="planner-footnote">{{ deadlineAlternativePlanAdopted ? '已采用期限补足方案，请按体力日程准备体力，并核对购买与派遣。' : currentDay.manual ? '当前为手工计划；调整体力收支后，可重新计算当日及后续日程。' : '按当前偏好推荐；编辑任意一天后，整份日程会固定保存。' }}</p>
           </div>
         </section>
 
-        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑">
+        <section v-if="viewMode === 'edit'" class="planner-view planner-edit" aria-label="体力规划编辑">
           <nav ref="plannerStepsRef" class="planner-steps" aria-label="日程编辑步骤">
             <ol>
               <li v-for="(step, index) in plannerSteps" :key="step.id">
@@ -570,7 +552,7 @@ import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } fr
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import Sortable from 'sortablejs'
-import { Calculator, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
+import { Archive, Calculator, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, ListOrdered, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Users, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
@@ -611,6 +593,7 @@ import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
 import PlannerOverallSummary from './PlannerOverallSummary.vue'
+import PlannerNextStep from './PlannerNextStep.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
@@ -720,14 +703,11 @@ function confirmScheduleAction() {
 }
 const undoWorkspace = ref(null)
 const viewMode = ref('display')
-const plannerDisplay = ref('daily')
-watch(() => [props.accountId, props.game, workspace.value.activePlanId], () => { plannerDisplay.value = 'daily' })
+const plannerView = ref('today')
 const plannerOpen = ref(true)
 const reserveOpen = ref(false)
-const reserveEntryRef = ref(null)
 const plannerToolsOpen = ref(false)
 const plannerToolsTrigger = ref(null)
-const plannerRosterRef = ref(null)
 function openCapacity() {
   if (plannerToolsOpen.value) plannerToolsTrigger.value?.focus({ preventScroll: true })
   capacityOpen.value = true
@@ -746,7 +726,7 @@ function openReserveWorkspace() {
 }
 function closeReserveWorkspace() {
   reserveOpen.value = false
-  nextTick(() => (window.matchMedia?.('(max-width: 900px)').matches ? plannerToolsTrigger.value : reserveEntryRef.value)?.focus())
+  nextTick(() => plannerToolsTrigger.value?.focus())
 }
 watch(canUseReserve, allowed => { if (!allowed) reserveOpen.value = false })
 const plannerSteps = [{ id: 'conditions', label: '规划条件' }, { id: 'comparison', label: '方案对比' }, { id: 'daily', label: '编辑每日' }]
@@ -1000,7 +980,10 @@ function nextGrowthStep(row) {
     const state = quickUpgradeState(row, candidate.field, candidate.step, candidate.label)
     if (state.visible && !state.disabled && state.className === 'is-ready') return { ...candidate, description: '本次提升材料已备齐，点击核对', disabled: cloudBlocked.value || schedulePending.value || targetBusyIds.value.has(row.id) }
   }
-  if (row.elite < target.elite && row.elite >= getMaxEliteForLevel(row.level)) return { ...detail, title: '先提升等级', description: row.calculation.experienceGap ? '经验不足，修为暂受限' : '等级未达修为要求，先完成升级' }
+  if (row.elite < target.elite && row.elite >= getMaxEliteForLevel(row.level)) return { ...detail, title: '先提升等级',
+    description: row.calculation.experienceGap ? '经验不足，修为暂受限' : '等级未达修为要求，先完成升级',
+    gapLabel: row.calculation.experienceGap > 0 ? '还差 ' + formatNumber(row.calculation.experienceGap) + ' 经验' : undefined,
+  }
   if (row.calculation.star.unsupported || row.calculation.sharedUnsupported) return { ...detail, title: '部分养成需求待确认', description: '材料规则未完整，查看已知需求' }
   if (rowGapCount(row)) {
     let description = '查看材料缺口与获取建议'
@@ -1093,6 +1076,34 @@ const firstScheduleSaveReason = computed(() => {
   if (!livePlannerSimulation.value.timeline?.length || livePlannerSimulation.value.status === 'invalid') return '当前推荐暂不可用，请检查每日安排与规划条件'
   return ''
 })
+const plannerNextAction = computed(() => {
+  if (!activePlan.value) return { message: '先建一张养成清单', label: '建立清单', onboarding: true, disabled: planPickerDisabled.value, run: () => trainingPlanPickerRef.value.openEditor(true) }
+  if (!planRows.value.length) return { message: '添加想养成的密探并设定目标', label: '添加密探', onboarding: true, disabled: planPickerDisabled.value, run: () => trainingPlanPickerRef.value.openMemberPicker() }
+  if (scheduleNeedsUpdate.value) return {
+    message: scheduleDifferences.value.goalsChanged ? '清单或养成目标已变更，日程需要更新' : '库存有变化，可更新日程', label: '更新日程',
+    disabled: cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || Boolean(error.value), run: updateSavedSchedule,
+  }
+  if (plannerSimulation.value.status === 'invalid') {
+    const day = plannerTimeline.value.find(day => day.errors?.length)
+    if (day && day.date >= plannerToday.value) return {
+      message: `${Number(day.date.slice(5, 7))}月${Number(day.date.slice(8))}日的安排有问题：${day.errors.join('；')}`,
+      detail: '修正后，这一天和之后的日程会继续推算。', label: '去修正', disabled: scheduleActionBlocked.value,
+      run: () => { selectDate(day.date); editSchedule('daily') },
+    }
+    return {
+      message: `${day ? Number(day.date.slice(5, 7)) + '月' + Number(day.date.slice(8)) + '日' : '有一天'}的安排超出了体力，之后的日程没有继续推算。`,
+      detail: fixedSchedule.value ? '过去的记录会保留，未来手动改过的安排也不会丢。' : undefined,
+      label: fixedSchedule.value ? '从今天重新安排' : '规划设置',
+      disabled: cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || Boolean(error.value),
+      run: fixedSchedule.value ? updateSavedSchedule : toggleSettings,
+    }
+  }
+  if (plannerSimulation.value.awaitingRecalculation) return { message: '体力收支已改，需要重新计算', label: plannerView.value === 'today' ? undefined : '切到今日安排', run: () => { plannerView.value = 'today' } }
+  if (plannerSimulation.value.status === 'blocked') return { message: '当前渠道补不齐剩余材料', label: '规划设置', run: toggleSettings }
+  if (!fixedSchedule.value) return { message: firstScheduleSaveReason.value || '根据当前库存生成每天的刷取安排', label: '生成并保存日程', onboarding: true,
+    disabled: Boolean(firstScheduleSaveReason.value), descriptionId: firstScheduleSaveReason.value ? 'first-schedule-save-hint' : undefined, run: generateAndSaveSchedule }
+  return { message: '今天按日程刷取即可' }
+})
 const cloudStatusLabel = computed(() => {
   if (cloudLoading.value || scheduleLoading.value) return '正在读取云端计划…'
   if (scheduleState.value.error) return fixedSchedule.value ? '日程尚未确认保存，可重试' : '规划条件尚未确认保存，日程尚未保存'
@@ -1105,6 +1116,7 @@ const cloudStatusLabel = computed(() => {
   return '日程已保存到云端'
 })
 const plannerCycleNotice = computed(() => {
+  if (scheduleNeedsUpdate.value || plannerSimulation.value.awaitingRecalculation || ['invalid', 'blocked'].includes(plannerSimulation.value.status)) return ''
   if (scheduleDifferences.value.goalsChanged) return '清单或培养目标已变更，当前显示的是更新前的日程。'
   if (deadlineAlternativePlanAdopted.value) return '已采用期限补足方案；当前日程按所选期限固定，具体补体力、购买与派遣安排请以每日方案为准。'
   const result = plannerSimulation.value
@@ -1114,9 +1126,6 @@ const plannerCycleNotice = computed(() => {
       ? `已采用从 ${formatLongDate(proof.fromDate)} 起的${proof.objective === 'priority' ? '按清单顺序全局最优' : '全局最短'}方案；结论基于当前规则与固定安排。`
       : '当前方案可完成培养目标，但不保证耗时最短。'
   }
-  if (result.awaitingRecalculation) return '体力获取与支出已修改；现有安排尚未备齐材料，点击「重新计算当日及后续日程」可更新推荐。'
-  if (result.status === 'invalid') return '日程包含体力不足、次数超限或未开放层数；无效日不计入产出，后续模拟暂停，请先修正。'
-  if (result.status === 'blocked') return (result.lastProgressDay ? '从计算基准日起，可模拟部分推进至第 ' + result.lastProgressDay + ' 天。' : '') + '剩余缺口无法由当前已配置渠道继续补齐，详见培养推进；增加体力不一定能解决。'
   if (result.status === 'horizon') return '快速估算未能在起算日起 90 天内备齐材料，可调整条件或计算更优方案；这不表示目标无法完成。'
   return '材料备齐即停止推荐；当前推荐为快速估算。'
 })
@@ -1867,6 +1876,8 @@ async function recalculateFromCurrentDay() {
   }
 }
 function spendChannelName(spend) { const group = trainingGroupForSpend(spend); return group ? group.name + '历练' : spend.label }
+const displayedDaySpends = computed(() => [...currentDay.value.planned.spends].sort((left, right) =>
+  spendChannelName(left).localeCompare(spendChannelName(right), 'zh-CN') || (left.stageLevel ?? 0) - (right.stageLevel ?? 0)))
 function spendStageName(spend) { const group = trainingGroupForSpend(spend); return group ? (group.id === 'experience' ? group.stages.find(stage => stage.level === spend.stageLevel)?.name || '' : spend.stageLevel + ' 层') : '' }
 function focusSpendMenu() {
   nextTick(() => {
@@ -1985,7 +1996,7 @@ function openPlanner(mode = 'display', returnToDay = false) {
   plannerOpen.value = true
   if (mode === 'edit') { editSchedule('conditions'); return }
   viewMode.value = 'display'; goalMode.value = false
-  if (returnToDay) plannerDisplay.value = 'daily'
+  plannerView.value = 'today'
   nextTick(() => {
     const target = returnToDay ? dayEditRef.value || dayPlanRef.value : plannerWorkspaceRef.value
     target?.focus({ preventScroll: true })
@@ -2141,6 +2152,9 @@ watch(() => [loading.value, targetLoading.value, activePlan.value?.id, scheduleL
   persistPlannerSnapshot(false)
 })
 watch(() => plannerDates.value, dates => { if (!dates.includes(selectedDate.value)) selectedDate.value = dates[0] }, { immediate: true })
+watch([() => props.accountId, () => props.game, () => workspace.value.activePlanId, () => Boolean(planRows.value.length)], () => {
+  plannerView.value = planRows.value.length ? 'today' : 'roster'
+}, { immediate: true })
 onMounted(() => { plannerClockTimer = setInterval(syncPlannerClock, 30000); window.addEventListener('focus', syncPlannerClock); window.addEventListener('beforeunload', beforeLeave); document.addEventListener('pointerdown', dismissStarTarget); document.addEventListener('focusin', dismissStarTarget); unsubscribeAccountEvents = subscribeAccountEvents(handleInventoryEvent) })
 onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventListener('focus', syncPlannerClock); window.removeEventListener('beforeunload', beforeLeave); document.removeEventListener('pointerdown', dismissStarTarget); document.removeEventListener('focusin', dismissStarTarget); if (targetNoticeTimer) clearTimeout(targetNoticeTimer); if (inventoryEventRefreshTimer != null) clearTimeout(inventoryEventRefreshTimer); if (targetEventRefreshTimer != null) clearTimeout(targetEventRefreshTimer); if (unsubscribeAccountEvents) unsubscribeAccountEvents() })
 </script>
@@ -2159,7 +2173,7 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 
 .planner-daily-view { display: grid; gap: 12px; min-width: 0; }
 .planner-display-switch { display: flex; width: min(100%, 400px); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.planner-display-switch button { flex: 1; padding: 11px 12px; border: 0; border-bottom: 3px solid transparent; background: var(--surface); color: var(--ink-60); font: inherit; font-weight: 600; }
+.planner-display-switch button { flex: 1; min-width: 0; padding: 11px 8px; border: 0; border-bottom: 3px solid transparent; background: var(--surface); color: var(--ink-60); font: inherit; font-weight: 600; }
 .planner-display-switch button[aria-pressed="true"] { background: var(--paper); border-bottom-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
 .planner-display-switch button:focus-visible { outline-offset: -4px; }
 
@@ -2176,9 +2190,15 @@ onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventList
 .custom-rule-list { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0; font-size: 13px; color: var(--ink); }
 .custom-rule-list > span { font-weight: 700; }
 .spend-channel-grid .common-spend-label { white-space: normal; overflow-wrap: anywhere; }
-/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.growth-tracker .planner-mobile-only { display: none; }
-.planner-tools-actions { display: contents; }
+.planner-list-picker.is-editing :deep(.plan-heading) { display: none; }
+.planner-overall-view { display: grid; min-width: 0; gap: 12px; }
+.planner-comparison-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.planner-comparison-entry p, .planner-calc-notes { color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.planner-calc-notes summary { width: fit-content; padding-block: 10px; color: var(--ink); cursor: pointer; }
+.planner-calc-notes p { margin: 6px 0; }
+.status-metric-heart { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; border-top: 1px solid var(--line); border-left: 0; }
+.roster-heading > button { margin-left: auto; }
+.day-totals.without-coins { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .growth-tracker { border: 1px solid var(--line); border-radius: 22px; background: var(--surface); color: var(--ink); }
 .planner-cloud-fields { border: 0; }
 .cloud-status { color: var(--ink-60); }
@@ -2200,7 +2220,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planner-state { color: var(--ink-60); }
 .planner-state.is-error { border-radius: 12px; background: var(--theme-danger-wash, rgba(166, 81, 74, .07)); color: var(--theme-danger-text, var(--rouge)); }
 .planner-state button, .planner-notice button { border: 0; background: transparent; color: var(--theme-accent-text, var(--accent-strong)); text-decoration: underline; }
-.planner-state.empty { border: 1px dashed var(--line); border-radius: 12px; }
 .planner-error { color: var(--theme-danger-text, var(--rouge)); }
 .planner-notice { color: var(--theme-accent-text, var(--accent-strong)); }
 .material-readiness-track { overflow: hidden; border-radius: 99px; background: var(--line); }
@@ -2218,12 +2237,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 @media (max-width: 640px) { .growth-tracker { border-radius: 17px; }.status-metric:nth-child(3), .status-metric:nth-child(4) { border-top: 1px solid var(--planner-line); }.status-metric:nth-child(3) { border-left: 0; } }
 /* The planner is a user-facing tool: the status header carries the visual identity,
    followed by the always-visible roster and schedule. */
-.status-title h2 { color: var(--ink); }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { border: 1px solid var(--planner-line); border-radius: 10px; background: var(--theme-surface, rgba(255, 253, 246, .84)); color: var(--ink); }
 .status-action:hover, .workspace-link:hover, .toolbar-button:hover { border-color: var(--accent); color: var(--theme-accent-text, var(--accent-strong)); }
-.status-actions .status-action:not(.secondary) { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }
 .status-sync-note { color: var(--theme-accent-text, var(--accent-strong)); }
-.planner-status .status-metric-primary { background: var(--cream); }
 .growth-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--surface); box-shadow: none; }
 .growth-card.complete { background: color-mix(in srgb, var(--cream) 55%, var(--surface)); }
 .growth-roster-columns { border-radius: 7px; background: var(--cream); color: var(--ink); }
@@ -2234,9 +2250,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-primary-action:disabled, .growth-details-toggle:disabled { opacity: .55; cursor: not-allowed; }
 .growth-details-toggle { border: 0; background: transparent; color: var(--ink-60); }
 .growth-details-toggle:hover:not(:disabled) { color: var(--ink); }
-.growth-detail-draft { font-size: 12px; color: var(--theme-accent-text, var(--accent-strong)); }
+.growth-details-toggle { position: relative; }
+.growth-detail-draft-dot { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--theme-accent-text, var(--accent-strong)); }
 .growth-details-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 .growth-next-step p { color: var(--ink-60); }
+.growth-next-gap { display: block; margin-top: 3px; color: var(--ink-60); font-size: 12px; }
 .growth-next-step.is-ready strong, .growth-next-step.is-complete strong { color: var(--theme-success-text, #58763b); }
 .growth-row-detail { border-top: 1px dashed var(--line); }
 .growth-overview-stat .growth-track { background: color-mix(in srgb, var(--theme-accent-text, var(--accent-strong)) 15%, var(--surface)); }
@@ -2326,15 +2344,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .tracker-popover-actions button { border: 1px solid transparent; border-radius: 5px; background: var(--theme-control-bg, var(--planner-deep)); color: var(--on-strong); }
 .tracker-popover-actions button.cancel { background: var(--paper); color: var(--ink-60); }
 .tracker-popover-actions button:hover:not(:disabled) { border-color: var(--accent); }
-.planner-workspace { border-top: 1px solid var(--theme-line, rgba(183, 144, 80, .28)); }
-.plan-heading-actions { flex-wrap: wrap; }
-.plan-heading-actions .plan-icon { border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
-.plan-heading-actions .plan-icon:hover:not(:disabled) { background: var(--paper); color: var(--theme-strong-text, var(--tea)); }
-.plan-heading-actions .plan-icon:disabled { opacity: .5; cursor: default; }
-.plan-heading-actions .plan-icon:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .schedule-action-dialog::backdrop { background: var(--theme-wash-strong, rgba(73, 59, 44, .5)); backdrop-filter: blur(3px); }
-.planner-workspace-head h2 { color: var(--ink); }
-.planner-workspace-head p { color: var(--planner-muted); }
 .workspace-return { color: var(--ink); }
 .workspace-return:hover { border-color: var(--rouge); color: var(--theme-danger-text, var(--rouge)); }
 .roster-remove { border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--planner-muted); }
@@ -2428,8 +2438,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .schedule-optimize:disabled { opacity: .5; cursor: default; }
 .schedule-optimize:active:not(:disabled) { color: var(--theme-strong-text, var(--tea)); }
 @media (hover: hover) { .schedule-optimize:hover:not(:disabled) { color: var(--theme-strong-text, var(--tea)); } }
-.schedule-update { border-left: 3px solid var(--accent); background: var(--cream); }
-.schedule-update strong { color: var(--theme-strong-text, var(--tea)); }.schedule-update p { color: var(--ink-60); }
 .schedule-difference-details { color: var(--ink-60); }
 .schedule-difference-details summary { cursor: pointer; }
 

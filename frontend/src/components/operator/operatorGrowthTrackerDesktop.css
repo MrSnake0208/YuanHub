@@ -20,12 +20,10 @@ button { touch-action: manipulation; }
 .planner-capacity-entry { white-space: nowrap; }
 .planner-state { display: flex; min-height: 96px; align-items: center; justify-content: center; gap: 8px; padding: 20px; font-size: 13px; text-align: center; }
 .planner-state button, .planner-notice button { font-weight: 800; }
-.planner-state.empty { min-height: 80px; margin-top: 14px; }
 .planner-error { margin: 8px 0; font-size: 12px; line-height: 1.6; }
 .planner-notice { display: flex; align-items: center; gap: 7px; margin: 10px 0; font-size: 12px; }
 .planner-inline-notice { display: block; }
 .planner-status { margin-top: 10px; padding-top: 0; }
-.status-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .status-metric { position: relative; min-width: 0; min-height: 84px; padding: 12px 16px; }
 .status-metric span { display: block; padding-right: 8px; font-size: 11px; font-weight: 800; }
 .status-metric strong { display: block; margin-top: 7px; font: 900 28px/1 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -40,16 +38,7 @@ button { touch-action: manipulation; }
 .side-actions { display: grid; gap: 6px; margin-top: 10px; }.side-button, .back-button, .action-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; font-size: 10px; font-weight: 800; }.side-details summary { font-size: 11px; font-weight: 800; }.training-levels { display: grid; gap: 7px; margin-top: 9px; }.training-levels label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }.training-level-select { flex: 0 1 132px; width: 132px; }
 .goal-panel { padding: 8px 2px 2px; }.goal-panel h3 { margin-top: 4px; font: 900 20px var(--font-s); }.goal-panel > p { margin-top: 6px; }.goal-panel label { margin-top: 14px; font-size: 11px; }.goal-panel input { min-height: 44px; margin-top: 1px; font-size: 15px; }.field-help { margin-top: 4px; }.goal-shortcuts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }.goal-shortcuts button { min-height: 32px; padding: 0 9px; font-size: 10px; font-weight: 800; }.goal-result { margin-top: 14px; padding: 11px; }.goal-result-title { font-size: 12px; font-weight: 850; }.goal-result p { margin-top: 7px; font-size: 10px; line-height: 1.6; }.goal-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }.goal-metrics div { padding: 8px; }.goal-metrics span, .goal-metrics b { display: block; }.goal-metrics span { font-size: 9px; }.goal-metrics b { margin-top: 3px; font: 800 13px var(--font-d); }.back-button { width: 100%; margin-top: 12px; }
 .editor-main { display: grid; min-width: 0; gap: 12px; }.ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.ledger-card { padding: 12px; }.ledger-heading h3, .compare-heading h3 { font-size: 13px; }.ledger-heading span, .compare-heading span { font-size: 9px; }.ledger-row { display: grid; grid-template-columns: minmax(100px, 1fr) 82px 55px 26px; align-items: center; gap: 7px; padding: 10px 0; }.ledger-row:first-of-type { margin-top: 5px; }.ledger-label-wrap { display: grid; min-width: 0; gap: 5px; }.channel-label { --channel: #887e8f; display: inline-flex; width: max-content; max-width: 100%; align-items: center; gap: 5px; padding: 4px 7px; font-size: 12px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }.channel-label i { width: 6px; height: 6px; }.ledger-input-wrap { display: flex; align-items: center; gap: 4px; }.ledger-input-wrap label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }.ledger-input-wrap input { width: 50px; min-height: 34px; padding: 4px; text-align: right; }.ledger-input-wrap > span { padding-bottom: 0; font-size: 8px; white-space: nowrap; }.recommendation { padding-top: 0; font-size: 8px; text-align: right; }.row-remove { display: grid; width: 26px; height: 32px; place-items: center; padding: 0; }.add-wrap { position: relative; margin-top: 6px; }.add-button { display: inline-flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 5px; font-size: 10px; font-weight: 780; }.add-menu { position: absolute; z-index: var(--z-popover); bottom: calc(100% + 5px); left: 0; width: min(100%, 320px); max-height: min(360px, 60vh); max-height: min(360px, 60dvh); overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; }.add-menu button { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 8px; padding: 8px; font: 13px/1.5 var(--font-b); text-align: left; overflow-wrap: anywhere; }.ledger-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: 7px; padding-top: 8px; font-size: 10px; }.ledger-total b { font: 850 15px var(--font-d); }.compare-card { padding: 12px; }.compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }.compare-option { min-width: 0; padding: 10px; }.compare-option span, .compare-option small, .compare-option em { display: block; font-size: 8px; line-height: 1.5; }.compare-option b { display: block; margin-top: 2px; font-size: 10px; }.compare-option strong { display: block; margin-top: 5px; font: 860 18px var(--font-d); }.compare-option em { margin-top: 4px; font-style: normal; }.editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }.editor-actions p { max-width: 560px; font-size: 10px; line-height: 1.6; }.editor-actions > div { display: flex; gap: 6px; flex-wrap: wrap; }.action-button { min-height: 38px; }
-@media (max-width: 1080px) { .edit-grid { grid-template-columns: 270px minmax(0, 1fr); } }
-.status-main { padding: 4px 0 12px; }
-.status-title { min-width: 0; }
-.status-title :deep(.plan-heading) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px 16px; }
-.status-title :deep(.plan-title) { font-size: 23px; }
-.status-title :deep(.plan-member-add) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-.status-title h2 { margin-top: 5px; font: 900 25px/1.22 var(--font-s); letter-spacing: .02em; }
-.status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.status-actions { margin-left: auto; }
-.status-actions .status-action { min-height: 40px; padding: 0 10px; font-size: 12px; }
+@media (max-width: 1080px) { .edit-grid { grid-template-columns: 270px minmax(0, 1fr); } } .workspace-head-actions, .edit-toolbar-actions  { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 800; }
 .workspace-link { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; vertical-align: middle; }
 .workspace-link > svg { flex: none; }
@@ -57,7 +46,6 @@ button { touch-action: manipulation; }
 .outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; font-size: 10px; }
 .planner-status .status-roster { display: block; container: growth-roster / inline-size; padding: 0; }
-.planner-status .status-metrics { margin-top: 0; }
 .growth-roster-columns { display: none; }
 .growth-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .growth-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr); align-items: center; gap: 14px 24px; min-width: 0; padding: 16px 12px; }
@@ -172,16 +160,10 @@ button { touch-action: manipulation; }
 .tracker-popover-actions button { min-height: 32px; padding: 5px 10px; font-size: 10px; font-weight: 800; }
 .growth-tracker.planner-expanded { display: flex; flex-direction: column; }
 .growth-tracker.planner-expanded > .planner-workspace { order: 2; }
-.planner-workspace { display: grid; min-width: 0; max-width: 100%; gap: 12px; margin-top: 18px; padding-top: 18px; scroll-margin-top: 16px; }
+.planner-workspace { display: grid; min-width: 0; max-width: 100%; gap: 12px; margin-top: 12px; padding-top: 0; scroll-margin-top: 16px; }
 .planner-workspace-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-.workspace-heading-content { min-width: 0; }
-.workspace-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
-.plan-heading-actions { display: flex; gap: 4px; }
-.plan-heading-actions .plan-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }
 .schedule-action-dialog { margin: auto; padding: 0; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; }
 .schedule-action-dialog .tracker-dialog-button, .schedule-action-dialog .tracker-dialog-close { min-height: 44px; min-width: 44px; font-size: 12px; }
-.planner-workspace-head h2 { display: flex; align-items: center; min-height: 44px; margin: 0; font: 900 20px/1.3 var(--font-s); }
-.planner-workspace-head p { max-width: 720px; margin-top: 5px; font-size: 11px; line-height: 1.6; }
 .workspace-return { flex: none; min-height: 44px; }
 .planner-view, .planner-display, .planner-edit, .editor-main, .edit-grid, .ledger-grid { min-width: 0; max-width: 100%; }
 
@@ -252,7 +234,6 @@ button { touch-action: manipulation; }
 .settings-fields { display: grid; gap: 6px; }
 .training-settings-block .training-levels { margin-top: 0; }
 
-
 .goal-panel { padding: 15px; }
 .goal-panel h3 { margin-top: 4px; }
 .goal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
@@ -298,9 +279,6 @@ button { touch-action: manipulation; }
 .workspace-feedback .cloud-status, .workspace-feedback .cloud-recovery { margin-top: 0; }
 .schedule-plan-note { margin: 0; font-size: 12px; line-height: 1.7; }
 .schedule-optimize { display: inline; margin-left: 6px; padding: 0; font: inherit; font-weight: 700; vertical-align: baseline; white-space: nowrap; }
-.schedule-update { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; }
-.schedule-update strong { font-size: 13px; }.schedule-update p { margin-top: 5px; font-size: 12px; line-height: 1.7; }
-.schedule-update button { flex: none; min-height: 44px; }
 .schedule-difference-details { margin-top: 8px; font-size: 12px; }
 .day-plan { gap: 10px; }
 .flow-heading { margin-bottom: 12px; }
@@ -344,8 +322,6 @@ button { touch-action: manipulation; }
 /* 规划条件首页仅承载策略和摘要；详细字段在按需面板编辑。 */
 .conditions-account { flex: 0 1 auto; padding: 5px 8px; font-size: 11px; overflow-wrap: anywhere; }
 .conditions-content { display: grid; min-width: 0; gap: 14px; padding: 0 18px 16px; }
-
-.planner-independent-note { margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-60); }
 .reserve-workspace-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 16px 0; }
 .reserve-workspace-heading h3 { margin: 0; font: 800 20px/1.4 var(--font-s); }
 .reserve-workspace-heading p { margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-60); }
@@ -385,7 +361,6 @@ button { touch-action: manipulation; }
 .roster-title { margin: 0; font: 850 23px/1.4 var(--font-s); color: var(--ink); }
 .roster-count { color: var(--ink-60); font-size: 12px; }
 .roster-heading .roster-help { margin: 0 0 0 auto; }
-.roster-footnote { margin: 8px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .material-readiness-track { height: 6px; margin-top: 10px; }
 .growth-progress-label .tracker-editable { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .growth-quick-label { white-space: nowrap; }
@@ -398,14 +373,13 @@ button { touch-action: manipulation; }
 .growth-overview-stat p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 0; font: 500 13px/1.5 var(--font-d); }
 .growth-overview-stat b { font-weight: 750; }
 .growth-overview-stat .growth-huaji-values { flex-direction: column; align-items: flex-start; gap: 0; }
-.growth-huaji-target { max-width: 100%; }
 .growth-overview-stat .growth-track { height: 7px; }
 .growth-next-step { min-width: 0; }
 .growth-next-step strong { font: 700 14px/1.5 var(--font-b); }
 .growth-next-step p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; }
 .growth-overview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-width: 0; }
 .growth-primary-action { min-height: 38px; padding: 6px 18px; font: 700 13px/1.5 var(--font-b); }
-.growth-details-toggle { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 0; font: 13px/1.5 var(--font-b); }
+.growth-details-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; }
 .growth-row-detail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; min-width: 0; padding: 18px 0 0; }
 .growth-detail-heading { grid-column: 1 / -1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
 .growth-detail-heading .growth-percent { margin: 0; }
@@ -421,4 +395,10 @@ button { touch-action: manipulation; }
   .growth-overview-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
+.status-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+.planner-heading > .planner-heading-actions { position: relative; }
+.planner-heading-actions > .planner-tools-trigger { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 4px 8px; border: 0; background: transparent; color: var(--ink); font: 13px/1.5 var(--font-b); }
+.planner-tools-actions { display: none; }
+.planner-tools-actions.is-open { position: absolute; z-index: var(--z-popover); top: 100%; right: 0; display: grid; gap: 4px; width: 180px; max-width: calc(100vw - 48px); padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 18px rgba(var(--theme-shadow-rgb, 70, 50, 32), .12); }
+.planner-tools-actions > button { justify-content: flex-start; min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
 }

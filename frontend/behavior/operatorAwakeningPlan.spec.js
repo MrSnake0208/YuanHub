@@ -35,7 +35,10 @@ async function render(facts = huaji(), catalog = {}, extra = {}) {
     catalogEntries: [{ id: 'op', name: '测试密探', rarity: 4, prof: '风', subProf: '神纪', ...catalog }],
     currentEntries: [{ id: 'op', level: 100, elite: 17, starLevel: 25, huaji: facts }], ...extra },
     global: { stubs: { PlannerExactOptimizer: true } } })
-  wrappers.push(wrapper); await flushPromises(); return wrapper
+  wrappers.push(wrapper); await flushPromises()
+  const rosterView = wrapper.find('[aria-controls="planner-roster-view"]')
+  if (rosterView.exists()) await rosterView.trigger('click')
+  return wrapper
 }
 async function choose(wrapper, value) {
   await wrapper.get('.tracker-star-trigger').trigger('click'); await flushPromises()
@@ -95,11 +98,11 @@ it('多密探紧凑列表保留独立目标和完整材料，切换宽度不重�
   expect(rows[0].get('[aria-label="陈登的目标等级"]').element).toBe(input.element)
   expect(input.element.value).toBe('95')
   expect(details.element.open).toBe(true)
-  const scrollToRoster = vi.fn()
-  wrapper.get('.planner-status').element.scrollIntoView = scrollToRoster
-  await wrapper.get('.planner-workspace-head .planner-mobile-only').trigger('click')
-  expect(scrollToRoster).toHaveBeenCalledWith({ block: 'start' })
-  expect(document.activeElement).toBe(wrapper.get('.planner-status').element)
+  await wrapper.get('[aria-controls="planner-daily-view"]').trigger('click')
+  expect(wrapper.get('#planner-roster-view').isVisible()).toBe(false)
+  await wrapper.get('[aria-controls="planner-roster-view"]').trigger('click')
+  expect(wrapper.get('[aria-controls="planner-roster-view"]').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('#planner-roster-view').isVisible()).toBe(true)
   expect(input.element.value).toBe('95')
   expect(rows[1].get('[aria-label="阿蝉的目标等级"]').element.value).toBe('100')
   await rows[0].get('.growth-details-toggle').trigger('click')
@@ -190,13 +193,25 @@ it('已备齐材料的修为总需求仍保留完整数量，不伪装成库存�
   expect(wrapper.get('.growth-row-actions').text()).toBe('当前目标材料已备齐')
 })
 
-it('特别关注来源说明合并到清单说明，仍明确可添加其他密探', async () => {
+it('清单计算说明默认折叠，特别关注清单仍可添加其他密探', async () => {
   plannerApi.getTrainingWorkspace.mockResolvedValue(workspace('favorites'))
   const wrapper = await render()
-  const note = wrapper.get('.planner-independent-note').text()
-  expect(note).toContain('随特别关注同步，也可添加其他密探')
-  expect(note).toContain('未预留库存')
-  expect(note).toContain('材料备齐不等于已完成养成')
+  expect(wrapper.find('.planner-independent-note').exists()).toBe(false)
+  await wrapper.get('[aria-controls="planner-overall-view"]').trigger('click')
+  const notes = wrapper.get('.planner-calc-notes')
+  expect(notes.element.open).toBe(false)
+  expect(notes.get('summary').text()).toBe('计算说明')
+  notes.element.open = true
+  await notes.trigger('toggle')
+  expect(notes.text()).toContain('未预留库存')
+  expect(notes.text()).toContain('材料备齐不等于已完成养成')
+  await wrapper.get('[aria-controls="planner-roster-view"]').trigger('click')
+  const add = wrapper.get('.roster-heading button')
+  expect(add.text()).toBe('添加密探')
+  await add.trigger('click'); await flushPromises()
+  expect(wrapper.get('dialog').element.open).toBe(true)
+  expect(wrapper.get('.plan-picker-help').text()).toContain('不会改变特别关注或养成状态')
+
 })
 
 it('材料备齐独立于实际目标完成，零缺口不显示空展开入口', async () => {

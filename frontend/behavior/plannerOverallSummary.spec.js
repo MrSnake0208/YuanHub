@@ -40,7 +40,7 @@ it('无效、待重算与未覆盖缺口的日程明确标注不完整', async (
   await wrapper.setProps({ status: 'complete', awaitingRecalculation: true })
   expect(wrapper.get('.overall-warning').text()).toContain('待重算')
   await wrapper.setProps({ status: 'invalid' })
-  expect(wrapper.get('.overall-warning').text()).toContain('错误或暂停')
+  expect(wrapper.get('.overall-warning').text()).toBe('日程有问题，这里只统计已排出的部分，请先处理顶部提示。')
 })
 
 it('加载和读取失败不冒充零安排，空方案清楚提示', async () => {

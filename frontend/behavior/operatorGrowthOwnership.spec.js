@@ -362,7 +362,7 @@ it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿�
   }
 })
 
-it('追踪页顶部直接添加密探，并将真实拥有状态传入养成中筛选', async () => {
+it('追踪页通过密探进度添加密探，并将真实拥有状态传入养成中筛选', async () => {
   const wrapper = mount(Tracker, { attachTo: document.body,
     props: { accountId: 'acc', isLoggedIn: true,
       currentEntries: [{ id: 'op', starLevel: 1 }], growthStates: { op: 'growing' },
@@ -370,14 +370,25 @@ it('追踪页顶部直接添加密探，并将真实拥有状态传入养成中�
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  const toolbar = wrapper.get('.plan-heading')
-  for (const label of ['添加密探', '新建清单', '管理清单', '规划设置', '查看体力日程']) {
-    expect(toolbar.text()).toContain(label)
+  expect(wrapper.get('.plan-heading').text()).not.toContain('添加密探')
+  expect(wrapper.find('.plan-management-actions').exists()).toBe(false)
+  await wrapper.get('.planner-tools-trigger').trigger('click')
+  const tools = wrapper.get('#planner-tools-actions')
+  expect(tools.classes()).toContain('is-open')
+  for (const label of ['新建清单', '管理清单', '规划设置']) {
+    expect(tools.text()).toContain(label)
   }
-  expect(wrapper.get('.plan-identity .plan-management-actions').text()).toContain('管理清单')
+  expect(wrapper.findAll('button').some(button => button.text() === '查看体力日程')).toBe(false)
+  const today = wrapper.get('[aria-controls="planner-daily-view"]')
+  await today.trigger('click')
+  expect(today.attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('#planner-daily-view').isVisible()).toBe(true)
   expect(wrapper.get('.status-metrics').text()).toContain('刷取材料备齐度')
-  expect(wrapper.get('.status-metrics').text()).toContain('清单心纸库存')
-  await wrapper.get('.plan-member-add').trigger('click')
+  expect(wrapper.get('.status-metrics').text()).not.toContain('清单心纸库存')
+  await wrapper.get('[aria-controls="planner-roster-view"]').trigger('click')
+  expect(wrapper.get('#planner-roster-view').isVisible()).toBe(true)
+  expect(wrapper.get('#planner-roster-view .status-metric-heart').text()).toContain('清单心纸库存')
+  await wrapper.get('.roster-heading button').trigger('click')
   await flushPromises()
   await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('养成中')).trigger('click')
   expect(wrapper.get('dialog').element.open).toBe(true)
@@ -710,14 +721,17 @@ it('同步中的材料及心纸统计明确显示状态，不把未取得的库�
   let finish
   getCurrent.mockImplementation(({ entityType }) => entityType === 'item' ? new Promise(resolve => { finish = resolve }) : Promise.resolve([]))
   const wrapper = await mountRoster()
-  const metrics = wrapper.findAll('.status-metric')
-  expect(metrics[1].text()).toContain('同步中')
-  expect(metrics[1].text()).not.toContain('%')
-  expect(metrics[2].text()).toContain('同步中')
-  expect(metrics[2].text()).not.toContain('0 张')
+  await wrapper.vm.openPlanner('display'); await flushPromises()
+  await wrapper.get('[aria-controls="planner-roster-view"]').trigger('click')
+  const material = wrapper.get('.status-metrics .status-metric:nth-child(2)')
+  const heart = wrapper.get('#planner-roster-view .status-metric-heart')
+  expect(material.text()).toContain('同步中')
+  expect(material.text()).not.toContain('%')
+  expect(heart.text()).toContain('同步中')
+  expect(heart.text()).not.toContain('0 张')
   finish([]); await flushPromises()
-  expect(metrics[1].text()).toContain('%')
-  expect(metrics[2].text()).toContain('0 张')
+  expect(material.text()).toContain('%')
+  expect(heart.text()).toContain('0 张')
 })
 
 
@@ -740,7 +754,7 @@ it.each(['display', 'edit'])('首次推荐在 %s 模式不改收支即可保存�
   expect(wrapper.get('.cloud-status').text()).toContain('正在保存日程')
   expect(wrapper.text()).not.toContain('日程已保存到云端')
   finish({ ...sent, account_id: 'acc', plan_id: 'plan', revision: 1 }); await flushPromises()
-  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(wrapper.find('.cloud-status').exists()).toBe(false)
   expect(wrapper.get('.planner-save-toast').text()).toContain('日程已保存到云端')
   wrapper.vm.generateAndSaveSchedule(); await flushPromises()
   expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
@@ -763,7 +777,7 @@ it.each(['network', 'null', 'incomplete', 'wrong-plan', 'old-revision'])('首次
   plannerApi.putStaminaSchedule.mockImplementation(async (_a, _p, body) => ({ ...body, account_id: 'acc', plan_id: 'plan', revision: 1 }))
   await wrapper.vm.recover('schedule'); await flushPromises()
   expect(plannerApi.putStaminaSchedule.mock.calls.at(-1)[2].schedule).toEqual(sent.schedule)
-  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(wrapper.find('.cloud-status').exists()).toBe(false)
   expect(localStorage.getItem('yuanhub:planner-cloud-draft:v1:acc:schedule:plan')).toBeNull()
 })
 
@@ -778,7 +792,7 @@ it('首次保存失败但服务端已提交，重试读取确认且不重复写�
   plannerApi.getStaminaSchedule.mockResolvedValue(saved)
   await wrapper.vm.recover('schedule'); await flushPromises()
   expect(plannerApi.putStaminaSchedule).toHaveBeenCalledTimes(1)
-  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(wrapper.find('.cloud-status').exists()).toBe(false)
 })
 
 
@@ -801,7 +815,7 @@ it.each(['account', 'plan'])('首次保存中切换 %s，迟到成功不能污�
   plannerApi.putStaminaSchedule.mockImplementation(async (account, plan, body) => ({ ...body, account_id: account, plan_id: plan, revision: 1 }))
   wrapper.vm.generateAndSaveSchedule(); await flushPromises()
   expect(plannerApi.putStaminaSchedule.mock.calls.at(-1).slice(0, 2)).toEqual(kind === 'account' ? ['b', 'plan'] : ['acc', 'other'])
-  expect(wrapper.get('.cloud-status').text()).toContain('日程已保存到云端')
+  expect(wrapper.find('.cloud-status').exists()).toBe(false)
 })
 
 it('只保存规划条件仍显示推荐未保存，不弹出日程成功提示', async () => {

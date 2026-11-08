@@ -115,4 +115,7 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .plan-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .plan-management-actions { flex-wrap: wrap; }
 .plan-management-actions > button { min-height: 34px; padding: 4px 8px; flex: none; }
+.plan-heading.external-actions { display: block; }
+.plan-heading.external-actions .plan-identity { display: block; }
+.plan-heading.external-actions .plan-title { font-size: 20px; font-weight: 650; }
 }

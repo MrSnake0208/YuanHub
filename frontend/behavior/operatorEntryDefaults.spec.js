@@ -526,6 +526,7 @@ async function renderTrackingRemark(note = '原备注') {
   listRecords.mockResolvedValue({ items: [] })
   const wrapper = renderPage({ attachTo: document.body }, { OperatorGrowthTracker: false, PlannerExactOptimizer: true })
   await vi.dynamicImportSettled(); await flushPromises()
+  await wrapper.get('[aria-controls="planner-roster-view"]').trigger('click')
   await wrapper.get('.growth-details-toggle').trigger('click'); await flushPromises()
   return wrapper
 }
@@ -544,7 +545,7 @@ it('规划备注默认收起，取消恢复原文与焦点，切换宽度保留�
   const outerToggle = wrapper.get('.growth-details-toggle')
   await outerToggle.trigger('click')
   expect(wrapper.get('.growth-row-detail').isVisible()).toBe(false)
-  expect(outerToggle.text()).toContain('未保存')
+  expect(outerToggle.attributes('aria-label')).toBe('测试密探详情与编辑，备注未保存')
   await outerToggle.trigger('click')
   expect(editor.get('textarea').element).toBe(input.element)
   expect(input.element.value).toBe('未保存的备注')
