@@ -102,6 +102,6 @@
 }
 
 @media (max-width: 767px) {
-  .context-selector { box-sizing: border-box; height: 44px; min-height: 44px; border: 0; box-shadow: none; background: var(--cream); border-radius: 10px; padding: 8px 10px; font: 600 13px/1.5 var(--font-b); color: var(--theme-strong-text, var(--tea)); }
+  .context-selector { box-sizing: border-box; height: 44px; min-height: 44px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); box-shadow: none; background: var(--cream); border-radius: 10px; padding: 8px 10px; font: 600 13px/1.5 var(--font-b); color: var(--theme-strong-text, var(--tea)); }
   .context-selector::before { display: none; }
 }

@@ -47,7 +47,7 @@
             <RewardEntryWorkspace ref="dailyRewards" :key="'daily:' + (auth.userInfo?.id || '')" compact-daily
               :account-id="accountId" :account-name="currentAccountName" :game="agentGameFilter"
               :disabled="rewardEntryDisabled || rewardImportBusy || mailboxBusy || !!rewardEntryWorkspace?.mode"
-              @busy="dailyBusy = $event" @imported="onRewardImported" />
+              @busy="dailyBusy = $event" @imported="onRewardImported" @manage-mailbox="openMailboxReserve" />
             <MailboxReserve ref="mailboxReserve" :account-id="accountId" :user-id="String(auth.userInfo?.id || '')"
               :disabled="rewardEntryDisabled || rewardImportBusy || dailyBusy || !!rewardEntryWorkspace?.mode"
               @busy="mailboxBusy = $event" @recorded="onRewardImported" @saved="onMailboxSaved" />

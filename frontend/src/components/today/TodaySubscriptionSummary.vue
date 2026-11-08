@@ -3,7 +3,7 @@
     <header class="todo-heading">
       <h2 id="today-subscriptions-title"><ListChecks :size="19" aria-hidden="true" /> 活动待办</h2>
       <router-link v-if="ready && !count && !tasks.length" :to="{ path: '/calendar' }">去订阅活动<ArrowRight :size="14" aria-hidden="true" /></router-link>
-      <router-link v-else :to="{ path: '/calendar', query: mineQuery }">查看全部<ArrowRight :size="14" aria-hidden="true" /></router-link>
+      <router-link v-else :to="{ path: '/calendar', query: pendingTasks ? mineQuery : { ...mineQuery, task: 'all' } }">查看全部<ArrowRight :size="14" aria-hidden="true" /></router-link>
     </header>
     <p v-if="!identity">登录并选择游戏账号后，可查看自己的活动待办。</p>
     <p v-else-if="!accountId">选择游戏账号后，在活动日历订阅你关注的本期活动。</p>
@@ -11,8 +11,8 @@
       <p v-if="loading && !ready" role="status">正在读取待办…</p>
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
-        <p class="todo-scope"><template v-if="pendingTasks"><strong>{{ pendingTasks }}</strong> 项待办未完成</template><template v-else>来自已订阅活动的待办清单</template></p>
-        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办。在活动日历订阅活动并添加清单后，会显示在这里。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : '当前范围暂无待办。订阅后还需自行添加待办清单。' }}</p>
+        <p v-if="pendingTasks" class="todo-scope"><strong>{{ pendingTasks }}</strong> 项待办未完成</p>
+        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办。在活动日历订阅活动并添加清单后，会显示在这里。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : emptyRecords.length ? '已订阅的活动还没有待办清单。' : '暂无待办。' }}</p>
         <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>当前范围的清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
         <ul v-if="visibleTasks.length" id="today-todo-list" class="todo-list" :class="{ 'is-expanded': showAll }">
           <li v-for="task in visibleTasks" :key="taskKey(task)" class="todo-row" :class="{ 'is-complete': task.entry.completed }">
@@ -40,13 +40,11 @@
           </div>
         </template>
         <div v-if="emptyRecords.length || count || unavailableCount" class="todo-footer">
-          <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办</router-link>
+          <router-link v-if="emptyRecords.length" class="todo-add" :to="eventLink(emptyRecords[0])">去添加待办<ArrowRight :size="14" aria-hidden="true" /></router-link>
           <details class="todo-subscription-status">
             <summary>订阅概况 · {{ count }} 项活动</summary>
-            <p class="todo-hint">{{ total }} 项活动尚未标记本期完成（含历史或不可用订阅）。</p>
-            <p v-if="!reminders.length" class="todo-hint">暂无临期活动。</p>
+            <p class="todo-hint">{{ total }} 项活动尚未标记本期完成。</p>
             <p v-if="unavailableCount" class="todo-hint">{{ unavailableCount }} 项订阅活动不可用，已有清单可在日历查看。</p>
-            <router-link :to="{ path: '/calendar', query: { ...mineQuery, task: 'all' } }">查看全部 {{ count }} 项订阅活动</router-link>
           </details>
         </div>
       </template>
@@ -280,6 +278,7 @@ time { color: var(--theme-accent-text, var(--accent-strong)); }
 time.is-urgent, .todo-error p { color: var(--theme-danger-text, var(--rouge)); }
 a, button { color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
 .todo-heading a, .todo-event-link, .todo-add { font-size: 12px; font-weight: 500; text-decoration: none; }
+.todo-add { color: var(--theme-strong-text, var(--tea)); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .todo-heading a:hover, .todo-event-link:hover, .todo-add:hover { text-decoration: underline; }
 button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }

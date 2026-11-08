@@ -4,9 +4,8 @@
       <div class="training-heading-copy">
         <h2 id="today-training-title"><UsersRound :size="19" aria-hidden="true" /> 我的养成计划</h2>
         <p v-if="snapshot && plans.length" class="training-hint">{{ plans.length }} 个清单 · {{ planMemberCount }} 条培养目标</p>
-        <p v-else class="training-hint">当前账号的培养清单与密探备注</p>
       </div>
-      <router-link class="training-manage" :to="{ path: '/operator', query: { tab: 'current' } }">管理养成<ArrowRight :size="14" aria-hidden="true" /></router-link>
+      <router-link v-if="!showTrainingSetup" class="training-manage" :to="{ path: '/operator', query: { tab: 'current' } }">管理养成<ArrowRight :size="14" aria-hidden="true" /></router-link>
     </header>
     <p v-if="!identity || !accountId">登录并选择游戏账号后，可查看养成计划。</p>
     <template v-else>
@@ -18,8 +17,8 @@
       </div>
       <template v-if="snapshot">
         <div v-if="activePlan && (plans.length || otherNotes.length)" ref="dailyPreview"></div>
-        <div v-if="!plans.length && !otherNotes.length" class="training-empty">
-          <p>还没有培养成员。设置养成计划后，这里会显示培养清单和今日历练。</p>
+        <div v-if="showTrainingSetup" class="training-empty">
+          <p>还没有培养成员。</p>
           <router-link class="training-cta" :to="{ path: '/operator', query: { tab: activePlan ? 'tracking' : 'current' } }">去设置养成计划<ArrowRight :size="14" aria-hidden="true" /></router-link>
         </div>
         <article v-for="plan in plans.slice(0, 1)" :key="plan.id" class="training-plan" :class="{ 'is-current': plan.id === snapshot.workspace.activePlanId }">
@@ -91,6 +90,7 @@ const otherNotes = computed(() => {
   const planned = new Set(plans.value.flatMap(plan => plan.members.map(item => item.id)))
   return Object.keys(snapshot.value?.notes || {}).filter(id => !planned.has(id) && snapshot.value.notes[id].trim()).map(id => member(id))
 })
+const showTrainingSetup = computed(() => identity.value && props.accountId && snapshot.value && !plans.value.length && !otherNotes.value.length)
 const notePreview = computed(() => {
   const note = Object.values(snapshot.value?.notes || {}).find(value => value.trim())?.trim() || ''
   return note.length > 80 ? note.slice(0, 80) + '…' : note

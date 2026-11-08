@@ -398,6 +398,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-quick-option input { flex: none; appearance: auto; width: 16px; height: 16px; margin: 0; }
 .daily-quick-option img { flex: none; width: 34px; height: 34px; object-fit: contain; }
 .quick-edit { display: grid; place-items: center; flex: none; width: 36px; min-height: 36px; padding: 3px; border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
+.quick-mail-adjust { display: inline-flex; align-items: center; flex: none; min-height: 36px; padding: 0 4px; font-size: 12px; white-space: nowrap; }
 .daily-quick-actions { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 5px 8px; }
 .daily-quick-actions > .primary-button { grid-column: 1 / -1; min-height: 36px; padding: 8px 12px; white-space: nowrap; }
 .daily-quick-actions .quick-history { padding: 5px 0; font-size: 12px; white-space: nowrap; }

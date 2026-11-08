@@ -1,7 +1,7 @@
 <template>
   <div class="reward-workspace" :class="{ 'compact-daily': compactDaily, 'home-daily': homeDaily }">
     <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
-      <div class="daily-quick-heading"><strong>今日奖励</strong><time :datetime="dailyDate" title="北京时间 05:00 换日">{{ Number(dailyDate.slice(5, 7)) }}月{{ Number(dailyDate.slice(8, 10)) }}日</time></div>
+      <div class="daily-quick-heading"><strong>今日奖励</strong><time v-if="!homeDaily || dailyDate !== serverToday()" :datetime="dailyDate" title="北京时间 05:00 换日">{{ Number(dailyDate.slice(5, 7)) }}月{{ Number(dailyDate.slice(8, 10)) }}日</time></div>
       <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
@@ -10,7 +10,10 @@
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
-          <small v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins" class="shortcut-note">数量来自邮件设置</small>
+          <template v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins">
+            <router-link v-if="homeDaily" class="quick-mail-adjust text-button" to="/inventory" aria-label="到库存调整月卡奖励数量">调整</router-link>
+            <button v-else type="button" class="quick-mail-adjust text-button" :disabled="disabled || locked" aria-label="调整月卡奖励数量" @click="emit('manage-mailbox')">调整</button>
+          </template>
           <button v-else type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>
       </fieldset>
@@ -27,7 +30,7 @@
           </div>
         </details>
       </div>
-      <p v-if="mailboxMonthlyCoins" class="shortcut-note daily-mailbox-note">领取月卡奖励会扣除当天邮件；奖励数量请到库存 → 邮件管理调整。</p>
+      <p v-if="mailboxMonthlyCoins" class="shortcut-note daily-mailbox-note">领取月卡后会扣除当天邮件。</p>
       <p v-if="monthlyPreferenceNote" class="quick-feedback" role="status">{{ monthlyPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadMonthlyPreference">重试设置</button></p>
       <p v-if="dailyZhuyuSelectionNote" class="quick-feedback" role="status">{{ dailyZhuyuSelectionNote }}</p>
       <p v-if="dailyZhuyuPreferenceNote" class="quick-feedback" role="alert">{{ dailyZhuyuPreferenceNote }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyZhuyuPreference">重试</button></p>
@@ -290,6 +293,7 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } fr
 import { matchedRouteKey, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import InventoryQuickDialog from './InventoryQuickDialog.vue'
 import { emptyStaminaSources } from '../../data/dailyStaminaSources.js'
+import { serverToday } from '../../data/activityCalendar.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { dialog } from '../../utils/dialog.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
@@ -311,7 +315,7 @@ import { getMailboxDailyStatus } from '../../api/mailboxReserve.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean, compact: Boolean, compactDaily: Boolean, homeDaily: Boolean, resourceBusy: Boolean, beforeClose: Function })
-const emit = defineEmits(['imported', 'busy'])
+const emit = defineEmits(['imported', 'busy', 'manage-mailbox'])
 const mode = ref(props.compactDaily ? 'manual' : '')
 const dailyMode = ref(props.compactDaily)
 const dailyRecorded = ref(new Set())

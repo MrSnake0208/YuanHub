@@ -3,7 +3,7 @@
   .achievement-page .wrap, .achievement-page main.achievement-main .compact-tool-header > .wrap { box-sizing: border-box; width: 100%; min-width: 0; padding-inline: 16px; }
   /* 页头仍用同一组件；窄屏只重排，账号与辅助操作持续可见。 */
   .achievement-page .compact-tool-actions { justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
-  .achievement-page .compact-tool-account .context-selector { box-sizing: border-box; height: 44px; min-height: 44px; border: 0; box-shadow: none; background: var(--cream); border-radius: 10px; padding: 8px 10px; font: 600 13px/1.5 var(--font-b); color: var(--theme-strong-text, var(--tea)); }
+  .achievement-page .compact-tool-account .context-selector { box-sizing: border-box; height: 44px; min-height: 44px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); box-shadow: none; background: var(--cream); border-radius: 10px; padding: 8px 10px; font: 600 13px/1.5 var(--font-b); color: var(--theme-strong-text, var(--tea)); }
   .achievement-page .compact-tool-actions > .act-btn { min-height: 44px; border: 0; background: transparent; padding-inline: 4px; font-size: 12px; line-height: 1.5; color: var(--ink-60); }
   .achievement-main::before { height: 260px; mask-size: auto 260px; mask-position: right top; }
   .achievement-workspace { padding-block: 4px 26px; }

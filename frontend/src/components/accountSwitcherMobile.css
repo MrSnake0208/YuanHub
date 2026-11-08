@@ -1,7 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media (max-width: 767px) {
 .account-switcher { display: inline-flex; align-items: center; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 0 8px; }
-.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 8px 10px; border-radius: 10px; font: 600 13px/1.5 var(--font-b); }
+.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 10px; font: 600 13px/1.5 var(--font-b); }
 .selector-game, svg { flex: none; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 16em; }
 .switch-status, .switch-error { flex-basis: 100%; font: 12px/1.6 var(--font-b); overflow-wrap: anywhere; }
