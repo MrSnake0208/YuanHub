@@ -140,7 +140,9 @@ defineExpose({ sheet })
 .sheet-bamboo { top: 0; height: 160px; } .sheet-mountains { bottom: 0; height: 100px; }
 .battle-sheet > :not(.sheet-bamboo, .sheet-mountains) { position: relative; z-index: 1; }
 .sheet-heading { border-top: 4px solid #5a4633; border-bottom: 1px solid #b9a58b; padding: 22px 0 26px; margin-bottom: 26px; }
-:is(.is-team, .is-actions) .sheet-heading { border-top: 0; border-bottom-color: #c9ac79; padding: 0 4px 18px; margin-bottom: 18px; }
+/* 标题区下沿用文武线（上粗下细双实线），沿用原分隔色，只强化“标题/正文”分界，不加新色相。 */
+:is(.is-team, .is-actions) .sheet-heading { border-top: 0; border-bottom: 2px solid #c9ac79; padding: 0 4px 18px; margin-bottom: 22px; }
+:is(.is-team, .is-actions) .sheet-heading::after { content: ''; position: absolute; left: 0; right: 0; bottom: -6px; border-top: 1px solid #c9ac79; }
 .sheet-category { display: flex; gap: 10px; font-size: 19px; letter-spacing: 2px; color: #725c43; }
 .sheet-category i { font-style: normal; color: #b9a58b; }
 h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: anywhere; }
