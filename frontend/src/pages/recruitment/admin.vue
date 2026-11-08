@@ -71,7 +71,7 @@
                     <h3>{{ pool.name }}</h3>
                     <span class="status-badge" :class="{ muted: pool.hidden || !pool.enabled }">{{ statusLabel(pool) }}</span>
                   </div>
-                  <p class="pool-meta">{{ pool.game }}<template v-if="pool.pool_type"> · {{ pool.pool_type }}</template> · {{ recruitmentPoolDateLabel(pool) }}</p>
+                  <p class="pool-meta">{{ pool.game }} · {{ recruitmentPoolType(pool.pool_type).label }} · {{ recruitmentPoolDateLabel(pool) }}</p>
                   <div v-if="activePoolSlots(pool).length" class="up-summary" aria-label="当前 UP">
                     <span v-for="slot in activePoolSlots(pool)" :key="slot.id" class="up-summary-item">
                       <OperatorAvatar class="up-summary-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
@@ -278,7 +278,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
-import { isPermanentRecruitmentPool, recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
+import { isPermanentRecruitmentPool, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { dialog } from '../../utils/dialog.js'

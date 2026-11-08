@@ -138,6 +138,8 @@ npx vitest run behavior/recruitmentPage.spec.js behavior/recruitmentPoolEditor.s
 
 ## 时间线封面色系
 
+管理目录列表使用与玩家卡片相同的中文类型标签；编辑卡池时仍显示并保存原始 `pool_type` 值。无法识别或未填写的类型在列表中显示「类型未标注」。
+
 封面只按当前目录优先、映射快照其次、原快照兜底的 `pool_type` 选择柔和纸色渐变，两游戏共用同一规则。优先级如下，排序、年份、账号、日期状态和屏幕宽度不参与配色：
 
 | 类型规则（从上到下匹配） | 色系 |
