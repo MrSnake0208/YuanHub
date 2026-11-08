@@ -116,13 +116,13 @@ it('切换view/date保留筛选与无关query，无新增组件请求；返回�
   await button(wrapper, '时间轴').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'timeline', game: '如鸢', category: 'ACTIVITY', ref: 'share' })
   expect(listActivityCalendar).toHaveBeenCalledTimes(2)
-  await wrapper.get('button[aria-label="后五周"]').trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query.date).toBe('2026-11-07')
+  await wrapper.get('button[aria-label="后一周"]').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query.date).toBe('2026-10-10')
   expect(router.currentRoute.value.query.category).toBe('ACTIVITY')
   await router.push('/calendar?view=month&date=2026-12-07&game=代号鸢'); await flushPromises()
   router.back(); await flushPromises()
   expect(router.currentRoute.value.query.view).toBe('timeline')
-  expect(router.currentRoute.value.query.date).toBe('2026-11-07')
+  expect(router.currentRoute.value.query.date).toBe('2026-10-10')
   expect(wrapper.findComponent(Timeline).exists()).toBe(true)
 })
 
@@ -329,7 +329,7 @@ it('Month月末导航钳制日号，点相邻月份格同步展示月份和请�
   expect(wrapper.findComponent(Month).props('anchorDate')).toBe('2026-03-01')
 })
 
-it.each([['month', '下个月'], ['timeline', '后五周']])('%s加载时保留日期导航按钮和键盘焦点', async (view, label) => {
+it.each([['month', '下个月'], ['timeline', '后一周']])('%s加载时保留日期导航按钮和键盘焦点', async (view, label) => {
   const { wrapper } = await render(`/calendar?view=${view}`)
   const pending = deferred()
   listActivityCalendar.mockReturnValue(pending.promise)
@@ -415,6 +415,7 @@ it('Timeline今天重复定位恢复内部scrollLeft而不移动页面；window�
 })
 
 it('页面日期已经是今天，重复今天导航仍定位时间轴且不重发请求', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   const { wrapper, router } = await render('/calendar?view=timeline&game=如鸢&ref=share')
   const viewport = wrapper.get('.calendar-timeline-scroll').element
   Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 252 })

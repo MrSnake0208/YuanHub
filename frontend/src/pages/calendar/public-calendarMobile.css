@@ -242,14 +242,16 @@
 
 /* 手机两种范围共用工具排版，私人事项单独占行，避免撑宽筛选所在列。 */
 @media (max-width: 767px) {
+  .calendar-public .calendar-content { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar { gap: 6px 8px; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .calendar-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1; grid-row: 1; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .calendar-chips button[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 30%, var(--surface)); border-color: var(--line); }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-filter-trigger { grid-column: 2; grid-row: 1; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) :is(.calendar-public-view-target, .calendar-mine-view-target, .calendar-view-tools) { display: contents; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-view-switcher { grid-column: 1 / -1; grid-row: 2; }
-  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-today-action { grid-column: 2; grid-row: 3; }
+  :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-today-action { flex: none; white-space: nowrap; }
   :is(.calendar-public-mobile, .calendar-mine-mobile) .calendar-subscription-toolbar > .account-switcher { grid-column: 1; grid-row: 3; width: 100%; min-width: 0; }
-  .calendar-mine-mobile .calendar-private-add { grid-column: 1 / -1; grid-row: 4; justify-self: end; min-width: 0; min-height: 38px; padding: 6px 8px; font-size: 13px; }
+  .calendar-mine-mobile .calendar-private-add { grid-column: 1 / -1; grid-row: 3; justify-self: end; min-width: 0; min-height: 38px; padding: 6px 8px; font-size: 13px; }
 }
 
 /* 我的日历手机端专属内容排版。 */
@@ -348,6 +350,23 @@
   .calendar-public-mobile .is-day-summary .calendar-event-title { font-size: 16px; }
   .calendar-public-mobile .is-day-summary .calendar-event-status { align-content: center; }
   .calendar-public-mobile .is-day-summary :is(.calendar-badges, .calendar-public-personal-status) { grid-column: 1 / -1; }
+  .calendar-public-mobile .calendar-timeline { --calendar-day-width: calc((100cqi - 2px) / 7); }
+  .calendar-public-mobile .calendar-timeline-scroll { overflow: clip; max-height: none; }
+  .calendar-public-mobile .calendar-timeline-axis { top: var(--mobile-shell-follow-top, 0px); }
+  .calendar-public-mobile .calendar-axis-day > span { display: none; }
+  .calendar-public-mobile .calendar-axis-day time { line-height: 24px; }
+  .calendar-public-mobile .calendar-axis-day small { line-height: 16px; }
+  /* 日期头：上下内边距 6 + 8、日期 24、星期 16、间距 3、下边框 1。 */
+  .calendar-public-mobile .calendar-today-line { top: 58px; z-index: 0; }
+  .calendar-public-mobile .calendar-axis-day.is-today { box-shadow: none; }
+  .calendar-public-mobile .calendar-axis-day.is-anchor time { text-decoration: none; }
+  .calendar-public-mobile button.calendar-timeline-bar { box-sizing: border-box; height: 50px; min-height: 50px; }
+  .calendar-public-mobile .calendar-timeline-bar-content { position: static; width: 100%; max-width: 100%; }
+  .calendar-public-mobile button.calendar-timeline-bar.is-narrow { padding-inline: 3px; }
+  .calendar-public-mobile .is-narrow .calendar-timeline-bar-title { font-size: 11px; }
+  .calendar-public-mobile .calendar-timeline-point { display: none; }
+  .calendar-public-mobile .is-ending:not(.is-narrow) .calendar-timeline-bar-title { -webkit-line-clamp: 1; }
+  .calendar-public-mobile .calendar-timeline-empty { position: static; width: auto; padding: 16px 12px; margin: 0; font-size: 13px; color: var(--ink-60); }
   @media (max-width: 359px) {
     .calendar-public-mobile .calendar-public-summary.is-day-summary { grid-template-columns: minmax(0, 1fr); }
     .calendar-public-mobile .is-day-summary .calendar-event-status { grid-column: 1; }

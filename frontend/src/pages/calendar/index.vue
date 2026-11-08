@@ -6,10 +6,13 @@
         <div class="calendar-header-copy">
           <h1>活动日历</h1>
         </div>
-        <div v-show="phone && enabled" ref="mobileAccountContext" class="calendar-mobile-context"></div>
+        <div v-show="phone && enabled" class="calendar-mobile-context-row">
+          <div ref="mobileAccountContext" class="calendar-mobile-context"></div>
+          <button v-if="phone && enabled" class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
+        </div>
         <Teleport :to="mobileViewTools || 'body'" :disabled="!(mobileMine || mobilePublic) || !mobileViewTools">
           <div v-if="enabled" class="calendar-view-tools">
-            <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
+            <button v-if="!phone" class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
             <CalendarViewSwitcher :model-value="currentView" @update:model-value="setView" />
           </div>
         </Teleport>
@@ -52,7 +55,7 @@
         </div>
         <CalendarFilterSheet :open="filterOpen" :anchor="filterTrigger" :filters="filters" :lock-game="mine" :personal="mobileMine" :task-status="taskStatus" :private-items-hidden="privateItemsHidden" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @task="setTask" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
         <details v-if="mobilePublic && currentView !== 'agenda'" class="calendar-public-statistics">
-          <summary>今日公开活动统计</summary>
+          <summary>{{ todayStatisticsLabel }}</summary>
           <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         </details>
         <CalendarTodaySummary v-else-if="!mobileMine" :today="today" :counts="todayCounts" :loading="loading" :error="error" />
@@ -95,7 +98,7 @@
         </section>
       </div>
       <CalendarPrivateItemEditor v-if="subscriptions.account.value" :account="subscriptions.account.value" />
-      <SiteFooter />
+      <SiteFooter v-if="!phone" />
     </main>
   </div>
 </template>
@@ -180,6 +183,7 @@ watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, display_group: filters.value.display_group, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
+const todayStatisticsLabel = computed(() => loading.value || error.value || !todayCounts.value.total ? '今日公开活动统计' : `今日开始 ${todayCounts.value.starts} · 结束 ${todayCounts.value.ends} · 进行中 ${todayCounts.value.ongoing}`)
 const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.display_group || filters.value.status || (mine.value && taskStatus.value === 'completed')))
 const visibleItems = computed(() => {
   const values = mine.value

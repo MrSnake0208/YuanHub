@@ -220,6 +220,7 @@ export function monthGridRange(date) {
 }
 
 export function timelineRange(date) { return { from: addCalendarDays(date, -7), to: addCalendarDays(date, 27) } }
+export function timelineWeekRange(date) { return { from: addCalendarDays(date, -1), to: addCalendarDays(date, 5) } }
 
 export function calendarRequestRange(view, date, today) {
   if (view === 'month') return monthGridRange(date)

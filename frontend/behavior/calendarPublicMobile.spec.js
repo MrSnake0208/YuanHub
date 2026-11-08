@@ -12,7 +12,7 @@ import { listCalendarSubscriptions, saveCalendarProgress } from '../src/api/acti
 import { listCalendarPrivateItems } from '../src/api/calendarPrivateItems.js'
 import { dialog } from '../src/utils/dialog.js'
 import { installViewport } from '../test-support/viewport.js'
-import { timelineItemPosition, timelineRange } from '../src/data/activityCalendar.js'
+import { timelineItemPosition, timelineWeekRange } from '../src/data/activityCalendar.js'
 
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, userInfo: { id: 'owner' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
@@ -141,12 +141,12 @@ it('月历跨日/持续日期保留真实数量，选日更新URL、下方清单
   expect(body().findAll('.calendar-detail-dialog article')).toHaveLength(2)
 })
 
-it('时间轴保留五周、今天线、跨度和详情，桌面不继承分类折叠', async () => {
+it('手机时间轴按周显示，保留今天线、跨度和详情，桌面不继承分类折叠', async () => {
   const { viewport } = await render(390, 'view=timeline')
-  expect(wrapper.findAll('.calendar-axis-day')).toHaveLength(35)
+  expect(wrapper.findAll('.calendar-axis-day')).toHaveLength(7)
   expect(wrapper.find('.calendar-today-line').exists()).toBe(true)
   const bar = wrapper.findAll('.calendar-timeline-bar').find(node => node.attributes('aria-label').startsWith(activity.title))
-  const position = timelineItemPosition(activity, timelineRange(today))
+  const position = timelineItemPosition(activity, timelineWeekRange(today))
   expect(bar.element.style.gridColumn).toBe(`${position.column} / span ${position.span}`)
   expect(bar.text()).toBe(activity.title)
   expect(bar.attributes('aria-label')).toContain('2026-10-14')

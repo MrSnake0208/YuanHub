@@ -1,17 +1,17 @@
 <template>
   <section class="calendar-timeline" aria-label="活动时间轴">
     <div class="calendar-window-heading">
-      <div><p class="calendar-eyebrow">五周范围 · 左右滑动查看日期</p><h2>{{ rangeLabel }}</h2></div>
+      <div><p v-if="!compactPublic" class="calendar-eyebrow">五周范围 · 左右滑动查看日期</p><h2>{{ rangeLabel }}</h2></div>
       <div class="calendar-window-nav" role="group" aria-label="时间轴导航">
-        <button type="button" aria-label="前五周" @click="$emit('select-date', addCalendarDays(anchorDate, -35))"><ChevronLeft :size="20" aria-hidden="true" /></button>
-        <button type="button" aria-label="后五周" @click="$emit('select-date', addCalendarDays(anchorDate, 35))"><ChevronRight :size="20" aria-hidden="true" /></button>
+        <button type="button" :aria-label="compactPublic ? '前一周' : '前五周'" @click="$emit('select-date', addCalendarDays(anchorDate, compactPublic ? -7 : -35))"><ChevronLeft :size="20" aria-hidden="true" /></button>
+        <button type="button" :aria-label="compactPublic ? '后一周' : '后五周'" @click="$emit('select-date', addCalendarDays(anchorDate, compactPublic ? 7 : 35))"><ChevronRight :size="20" aria-hidden="true" /></button>
       </div>
     </div>
-    <div v-if="showHelp" class="calendar-timeline-help">
+    <div v-if="!compactPublic && showHelp" class="calendar-timeline-help">
       <p id="calendar-timeline-help" class="calendar-hint">左右滑动查看日期 · 条的起止与长度表示活动时间 · 竖线标记今天 · 点击查看详情</p>
       <button type="button" @click="dismissHelp">知道了</button>
     </div>
-    <div ref="viewport" class="calendar-timeline-scroll" role="region" aria-label="可横向滚动的五周活动时间轴" :aria-describedby="showHelp ? 'calendar-timeline-help' : undefined" tabindex="0" @scroll.passive="syncViewport">
+    <div ref="viewport" class="calendar-timeline-scroll" role="region" :aria-label="compactPublic ? '一周活动时间轴' : '可横向滚动的五周活动时间轴'" :aria-describedby="!compactPublic && showHelp ? 'calendar-timeline-help' : undefined" :tabindex="compactPublic ? undefined : 0" @scroll.passive="syncViewport">
       <div class="calendar-timeline-canvas" :style="{ '--calendar-days': days.length }">
         <div class="calendar-timeline-axis">
           <div v-for="day in days" :key="day.date" class="calendar-axis-day" :class="{ 'is-today': day.date === today, 'is-weekend': day.weekend, 'is-anchor': day.date === anchorDate }" :aria-current="day.date === today ? 'date' : undefined">
@@ -26,7 +26,7 @@
           </h3>
           <div v-show="!compactPublic || !collapsedGroups.includes(group.category)" :id="`calendar-timeline-group-${group.category}`">
             <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
-              <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
+              <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'is-narrow': entry.position.span === 1, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
                 <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
                   <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
                   <span class="calendar-timeline-bar-title">{{ entry.item.title }} <Repeat2 v-if="entry.item.recurrence === 'MONTHLY'" :size="13" aria-label="每月固定" style="vertical-align: -2px" /></span>
@@ -35,11 +35,13 @@
                     <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
                     <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
                   </span>
+                  <span v-else-if="compactPublic && entry.ending && entry.deadline && entry.position.span > 1" class="calendar-timeline-bar-meta"><strong>{{ entry.deadline }}</strong></span>
                 </span>
               </button>
             </div>
           </div>
         </section>
+        <p v-if="compactPublic && items.length && !groups.length && !loading && !error" class="calendar-timeline-empty">这一周没有活动，可以翻到其他周或回到今天。</p>
       </div>
     </div>
     <CalendarDetailDialog :selection="selection" :items="items" :today="today" :loading="loading" :error="detailError" :can-create="canCreate" @close="closeDetail" @retry="$emit('retry')" @create-private="$emit('create-private', $event)" />
@@ -51,7 +53,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Repeat2, ChevronDown, ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarDetailDialog from './CalendarDetailDialog.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
-import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange } from '@/data/activityCalendar.js'
+import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange, timelineWeekRange } from '@/data/activityCalendar.js'
 import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean, compactPublic: Boolean })
@@ -69,6 +71,7 @@ function syncViewport() {
   viewportSize.value = { left: viewport.value.scrollLeft, width: viewport.value.clientWidth, dayWidth: viewport.value.querySelector('.calendar-axis-day')?.getBoundingClientRect().width || 0 }
 }
 function barContentStyle(position) {
+  if (props.compactPublic) return undefined
   const { left, width, dayWidth } = viewportSize.value
   if (!width || !dayWidth) return undefined
   // 留出边框与内边距，文字宽度只使用活动条和视口的交集。
@@ -85,7 +88,7 @@ function dismissHelp() {
   try { localStorage.setItem(helpStorageKey, '1') } catch { /* Dismissal still applies to this mounted view. */ }
   viewport.value?.focus({ preventScroll: true })
 }
-const range = computed(() => timelineRange(props.anchorDate))
+const range = computed(() => props.compactPublic ? timelineWeekRange(props.anchorDate) : timelineRange(props.anchorDate))
 const rangeLabel = computed(() => {
   const options = { month: 'long', day: 'numeric' }
   if (range.value.from.slice(0, 4) !== range.value.to.slice(0, 4)) options.year = 'numeric'
