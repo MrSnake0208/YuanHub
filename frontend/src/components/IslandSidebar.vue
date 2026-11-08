@@ -58,7 +58,7 @@
           </button>
         </header>
 
-        <nav class="mobile-drawer-nav" aria-label="全部导航">
+        <nav ref="navEl" class="mobile-drawer-nav" :class="{ 'has-more-below': navHasMore }" aria-label="全部导航" @scroll.passive="updateNavFade">
           <section class="mobile-drawer-section" aria-label="首页">
             <router-link to="/" :class="{ active: $route.path === '/' || $route.path === '/today' }" :aria-current="($route.path === '/' || $route.path === '/today') ? 'page' : undefined">
               <House :size="20" aria-hidden="true" /><span>今日一览</span>
@@ -121,7 +121,7 @@
               </router-link>
             </template>
           </section>
-          <details class="mobile-more" :open="moreActive">
+          <details class="mobile-more" :open="moreActive" @toggle="updateNavFade">
             <summary class="mobile-drawer-link" :class="{ 'in-current-section': moreActive }" aria-controls="mobile-service-nav" aria-label="更多">
               <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
               <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
@@ -147,9 +147,13 @@
               </button>
             </div>
           </details>
+          <section class="mobile-drawer-section mobile-appearance" aria-labelledby="mobile-appearance-label">
+            <h2 id="mobile-appearance-label" class="nav-group-label">外观</h2>
+            <ThemeSelector class="mobile-theme-selector" />
+            <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
+          </section>
         </nav>
 
-        <ThemeSelector class="mobile-theme-selector" />
         <footer class="mobile-drawer-foot">
           <router-link
             class="mobile-account-link"
@@ -169,7 +173,6 @@
           >
             <LogOut :size="18" aria-hidden="true" /><span>退出</span>
           </button>
-          <span class="foot-version" :title="buildInfoLine">YuanHub {{ productVersionLabel }}</span>
         </footer>
       </aside>
     </div>
@@ -390,6 +393,8 @@ const accountMenu = ref(null);
 const menuOpen = ref(false);
 const menuToggle = ref(null);
 const menuPanel = ref(null);
+const navEl = ref(null);
+const navHasMore = ref(false);
 useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEscape: closeMenu });
 const mobileTitle = computed(() => ({ '/star': '星石背包', '/cart': '礼包计算器', '/feedback': '我的反馈' }[route.path] || route.meta?.title?.split(" — ")[0] || "YuanHub"));
 
@@ -404,9 +409,20 @@ watch(() => route.fullPath, () => {
 watch(menuOpen, (open) => {
   if (typeof document === "undefined") return;
   document.body.classList.toggle("mobile-nav-open", open);
+  if (open) {
+    window.addEventListener("resize", updateNavFade);
+    void nextTick(updateNavFade);
+  } else {
+    window.removeEventListener("resize", updateNavFade);
+  }
 });
 
 watch(identity, () => closeAccountMenu());
+
+function updateNavFade() {
+  const nav = navEl.value;
+  navHasMore.value = !!nav && nav.scrollHeight - nav.scrollTop - nav.clientHeight > 4;
+}
 
 async function onLogout() {
   closeAccountMenu(true);
@@ -501,6 +517,7 @@ onMounted(function () {
 });
 
 onBeforeUnmount(function () {
+  window.removeEventListener("resize", updateNavFade);
   document.removeEventListener("pointerdown", onAccountPointerDown);
   document.removeEventListener("touchstart", onTouchStart);
   document.removeEventListener("touchmove", onTouchMove);
@@ -633,6 +650,13 @@ onBeforeUnmount(function () {
   }
   .mobile-more {
     border-top: 1px solid var(--line);
+  }
+  .mobile-drawer .mobile-theme-selector :deep(button) {
+    min-height: 44px;
+  }
+  .mobile-drawer .mobile-theme-selector :deep(button[aria-pressed=true]) {
+    background: var(--theme-wash-strong, rgba(232,193,91,.22));
+    color: var(--ink);
   }
   .mobile-drawer-section > a,
   .mobile-drawer-link {

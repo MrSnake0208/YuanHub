@@ -164,7 +164,7 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
     bottom: 0;
     left: 0;
     display: flex;
-    width: min(348px, 90vw);
+    width: min(320px, calc(100vw - 64px));
     min-width: 0;
     flex-direction: column;
     overflow: hidden;
@@ -204,7 +204,7 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   }
   .mobile-drawer-brand small {
     overflow: hidden;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -225,6 +225,11 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
     overscroll-behavior: contain;
     padding: 10px max(12px, env(safe-area-inset-right)) 18px max(12px, env(safe-area-inset-left));
   }
+  .mobile-drawer-nav.has-more-below {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+  }
+  .mobile-appearance .foot-version { margin: 8px 11px 0; }
   .mobile-drawer-section {
     display: grid;
     gap: 3px;
@@ -295,7 +300,7 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
     font-weight: 900;
   }
   .mobile-account-link small {
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
   }
   .mobile-drawer-logout {
@@ -333,4 +338,4 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   .mobile-drawer-nav { flex: none; overflow: visible; }
 }
 
-@media(max-width:1080px){.mobile-theme-selector{flex:none;margin:8px 16px}}
+@media(max-width:1080px){.mobile-theme-selector{margin:2px 0 0}}
