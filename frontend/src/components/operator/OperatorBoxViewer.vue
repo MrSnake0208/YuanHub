@@ -4,7 +4,7 @@
       <section id="operator-box-viewer" ref="panel" class="box-viewer-dialog" :class="{ 'has-results': status !== 'input' }"
         role="dialog" aria-modal="true" aria-labelledby="box-viewer-title" tabindex="-1" @focusin="revealFocusedControl">
         <header class="box-viewer-header">
-          <div><h2 id="box-viewer-title">查看他人 BOX</h2><p v-if="status === 'input'">通过分享码或链接查看他人公开的密探档案</p></div>
+          <div><h2 id="box-viewer-title">查看他人 BOX</h2><p v-if="status === 'input'">仅显示对方已公开的密探档案</p></div>
           <button ref="closeButton" type="button" class="box-viewer-close" aria-label="关闭查看他人 BOX" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
         <div ref="scrollBody" class="box-viewer-body">

@@ -2,7 +2,7 @@
   <section v-if="visible && (!hideEmpty || !identity || !accountId || loading || error || items.length)" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
     <header class="private-heading">
       <h2 id="today-private-title"><NotebookPen :size="18" aria-hidden="true" /> 私人安排</h2>
-      <router-link :to="calendarTo()">查看全部</router-link>
+      <router-link :to="calendarTo()">{{ empty ? '去添加' : '查看全部' }}</router-link>
     </header>
     <p class="private-hint private-scope" title="进行中及未来 7 天的私人安排"><span v-if="items.length">{{ items.length }} 项事项 · </span>仅当前账号可见</p>
     <p v-if="!identity || !accountId">登录并选择游戏账号后，可查看自己的事项与备注。</p>
@@ -13,7 +13,7 @@
         <p v-if="items.length" class="private-hint">下方保留上次读取内容。</p>
         <button v-if="!denied" type="button" :disabled="loading" @click="load">重试读取</button>
       </div>
-      <p v-if="!loading && !error && !items.length">还没有私人事项，可去我的日历记下计划和备注。</p>
+      <p v-if="empty">还没有私人事项。</p>
       <ul v-if="items.length" class="private-list">
         <li v-for="item in items.slice(0, 2)" :key="item.id">
           <time class="private-date" :datetime="item.start_date"><strong>{{ item.start_date.slice(5).replace('-', '/') }}</strong><span>{{ item.start_time || '全天' }}</span></time>
@@ -24,7 +24,7 @@
           </div>
         </li>
       </ul>
-      <p v-if="items.length > 2" class="private-hint">还有 {{ items.length - 2 }} 项，可在日历查看。</p>
+      <p v-if="items.length > 2" class="private-hint">还有 {{ items.length - 2 }} 项。</p>
     </template>
   </section>
 </template>
@@ -42,6 +42,7 @@ const emit = defineEmits(['highlight-state'])
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const items = ref([]), loading = ref(false), error = ref(''), denied = ref(false)
+const empty = computed(() => Boolean(identity.value && props.accountId && !loading.value && !error.value && !items.value.length))
 let generation = 0, timer = null, lastVisible = 0
 function calendarTo(item) {
   return { path: '/calendar', query: { scope: 'mine', task: 'todo', game: props.game, view: 'list', date: item && item.start_date > serverToday() ? item.start_date : serverToday(), ...(item ? { event: item.id } : {}) } }

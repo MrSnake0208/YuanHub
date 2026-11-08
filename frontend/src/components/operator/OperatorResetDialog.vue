@@ -100,7 +100,7 @@
           <p v-if="pending" class="undo-warning">上次提交结果尚未确认。请核对记录，或返回原操作原样重试。</p>
           <p v-if="historyBusy" role="status">正在读取重置记录…</p>
           <p v-if="historyError" role="alert" class="error">{{ historyError }} <button type="button" :disabled="historyBusy" @click="loadHistory(failedCursor)">重试读取记录</button></p>
-          <div v-else-if="historyLoaded && !historyBusy && !history.length" class="empty-history"><ScrollText :size="44" aria-hidden="true" /><h3>暂无重置记录</h3><p class="hint">目前没有已记录的鞭子重置。</p></div>
+          <div v-else-if="historyLoaded && !historyBusy && !history.length" class="empty-history"><ScrollText :size="44" aria-hidden="true" /><h3>暂无重置记录</h3></div>
           <article v-for="record in history" :key="record.id" :class="{ 'current-record': record.id === resultRecord?.id }">
             <div class="record-heading"><strong>{{ new Date(record.created_at).toLocaleString() }}</strong><span>{{ record.undone_at ? '已撤销' : '已记录重置' }}</span></div>
             <p class="hint">{{ Object.entries(record.refunds).map(([id, count]) => itemName(id) + ' ×' + count).join('、') || '未增加库存材料' }}</p>
@@ -111,7 +111,7 @@
         </div>
         <footer v-if="view === 'history'" class="reset-footer actions"><button type="button" :disabled="busy" @click="historyOnly && !pending && !resultRecord ? close() : back()">{{ pending ? '返回原操作' : resultRecord ? '返回操作结果' : historyOnly ? '完成并返回密探编辑' : '返回重置核对' }}</button><button type="button" :disabled="historyBusy" @click="loadHistory()">刷新记录</button></footer>
 
-        <div v-if="view === 'success'" class="reset-body success" role="status"><CheckCircle2 :size="38" aria-hidden="true" /><h3>{{ notice }}</h3><p class="hint">可从重置记录查看本次材料返还与撤销状态。</p></div>
+        <div v-if="view === 'success'" class="reset-body success" role="status"><CheckCircle2 :size="38" aria-hidden="true" /><h3>{{ notice }}</h3></div>
         <footer v-if="view === 'success'" class="reset-footer actions"><button type="button" @click="showHistory">查看本次重置记录</button><button type="button" class="primary" @click="close">完成并返回密探编辑</button></footer>
       </section>
     </div>

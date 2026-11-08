@@ -76,7 +76,6 @@
           >
             <template #empty>
               <template v-if="hasFilters">
-                <p>试试其他关键词，或清除筛选查看全部反馈。</p>
                 <button class="feedback-button" type="button" @click="clearFilters">清除筛选</button>
               </template>
               <template v-else>
@@ -150,7 +149,6 @@
           </div>
           <form @submit.prevent="submitFeedback">
             <div ref="newFormBody" class="feedback-new-body" @focusin="revealNewFeedbackControl">
-              <p class="feedback-submission-note">遇到问题，或者有什么新想法？直接告诉我们就好。</p>
               <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
               <div class="feedback-form-grid">
                 <label>

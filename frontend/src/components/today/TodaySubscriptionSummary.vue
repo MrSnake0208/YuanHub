@@ -12,8 +12,8 @@
       <div v-if="error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || busy" @click="load">重试读取</button></div>
       <template v-if="ready">
         <p v-if="pendingTasks" class="todo-scope"><strong>{{ pendingTasks }}</strong> 项待办未完成</p>
-        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办。在活动日历订阅活动并添加清单后，会显示在这里。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : emptyRecords.length ? '已订阅的活动还没有待办清单。' : '暂无待办。' }}</p>
-        <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>当前范围的清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
+        <p v-if="!tasks.length" class="todo-empty">{{ !count ? '还没有活动待办。' : !total ? '活动均已标记本期完成，可在日历查看已完成清单。' : emptyRecords.length ? '已订阅的活动还没有待办清单。' : '暂无待办。' }}</p>
+        <p v-else-if="!pendingTasks" class="todo-empty is-cleared"><CheckCheck :size="20" aria-hidden="true" /><span>待办清单已全部勾选。<small>清单勾选与活动本期完成分别记录。</small></span></p>
         <ul v-if="visibleTasks.length" id="today-todo-list" class="todo-list" :class="{ 'is-expanded': showAll }">
           <li v-for="task in visibleTasks" :key="taskKey(task)" class="todo-row" :class="{ 'is-complete': task.entry.completed }">
             <label class="todo-check" :class="{ 'is-disabled': locked(task.record) }">
@@ -31,7 +31,7 @@
           </li>
         </ul>
         <button v-if="tasks.length > previewTasks.length" type="button" class="todo-more" :aria-expanded="showAll" :aria-controls="visibleTasks.length ? 'today-todo-list' : undefined" @click="showAll = !showAll">{{ showAll ? '收起清单' : pendingTasks ? '展开完整清单' : '查看已勾选清单' }}</button>
-        <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成，可查看全部。</p>
+        <p v-if="!showAll && pendingTasks > previewTasks.length" class="todo-hint">还有 {{ pendingTasks - previewTasks.length }} 项未完成。</p>
         <p class="action-feedback" v-if="message" role="status" aria-live="polite">{{ message }}</p>
         <template v-for="(action, eventId) in actions" :key="eventId">
           <div v-if="action.error" class="todo-error" role="alert">

@@ -37,7 +37,7 @@
 
           <form class="work-form" :aria-invalid="validationIssues.length > 0" :aria-describedby="validationIssues.length ? 'work-validation-summary' : undefined" @submit.prevent="save">
             <section class="editor-section" aria-labelledby="basic-title">
-              <div class="section-head"><span>01</span><div><h2 id="basic-title">基本信息</h2><p>游戏、关卡和文档说明。</p></div></div>
+              <div class="section-head"><span>01</span><div><h2 id="basic-title">基本信息</h2></div></div>
               <div class="field-grid">
                 <label data-work-path="$.game" :class="{ 'has-issue': fieldInvalid('$.game') }">游戏<select v-model="document.game" :aria-invalid="fieldInvalid('$.game')" :aria-describedby="fieldInvalid('$.game') ? 'work-validation-summary' : undefined"><option>如鸢</option><option>代号鸢</option></select></label>
                 <label data-work-path="$.level_id" :class="{ 'has-issue': fieldInvalid('$.level_id') }">关卡目录
@@ -108,7 +108,7 @@
             </section>
 
             <section class="editor-section" aria-labelledby="exec-title" data-work-path="$.exec" :class="{ 'has-issue': issueWithin('$.exec') }">
-              <div class="section-head"><span>04</span><div><h2 id="exec-title">执行设置</h2><p>设置动作等待时间和目标平台的额外选项。</p></div></div>
+              <div class="section-head"><span>04</span><div><h2 id="exec-title">执行设置</h2></div></div>
               <div class="delay-grid">
                 <label v-for="key in ['attack', 'ultimate', 'defense', 'sp']" :key="key" :data-work-path="'$.exec.delays_ms.' + key">{{ key }} 延迟（ms）<input v-model.number="document.exec.delays_ms[key]" type="number" min="0" max="600000"></label>
               </div>

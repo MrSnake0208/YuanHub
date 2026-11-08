@@ -197,7 +197,7 @@
               >
                 <div class="quick-account-heading">
                   <h4 id="quick-account-title">还没有游戏账号</h4>
-                  <p>先创建游戏账号；创建完成后这里会自动出现可绑定账号。</p>
+                  <p>创建完成后这里会自动出现可绑定账号。</p>
                 </div>
                 <button class="act-btn primary quick-account-manage-link" type="button" aria-haspopup="dialog"
                   @click="openAccountManager('create', $event)">创建游戏账号</button>
@@ -374,7 +374,7 @@
                 <Link2 :size="25" aria-hidden="true" />
                 <strong>还没有连接任何工具</strong>
                 <span
-                  >点击「连接 MaaYuan」选择游戏账号，连接码只会访问该账号。</span
+                  >连接码只会访问所选账号。</span
                 >
                 <button
                   class="act-btn primary"

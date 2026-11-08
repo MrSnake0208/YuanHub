@@ -268,7 +268,7 @@ it('没有养成中成员时提供空态并可切回全部，已有成员仍可�
   await open(wrapper)
   await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('养成中')).trigger('click')
   expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
-  expect(wrapper.get('.plan-candidates').text()).toContain('可切换「全部」')
+  expect(wrapper.get('.plan-candidates').text()).toContain('当前筛选下没有已拥有的养成中密探')
   await wrapper.findAll('.plan-selection-tabs button').find(button => button.text().startsWith('全部')).trigger('click')
   expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(2)
   await wrapper.get('form').trigger('submit')

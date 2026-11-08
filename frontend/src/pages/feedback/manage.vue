@@ -20,7 +20,6 @@
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
             <ShieldAlert :size="24" aria-hidden="true" />
             <strong>{{ error || '暂无板块管理权限' }}</strong>
-            <span>当前账号仍可提交和跟踪自己的反馈。</span>
             <router-link class="feedback-primary-action" :to="feedbackLocation('/feedback', spaceId === 'all' ? 'yuanhub' : spaceId)">前往我的反馈</router-link>
           </div>
 

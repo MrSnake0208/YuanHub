@@ -5,7 +5,7 @@
         <span class="records-kicker">库存追踪 · 操作历史</span>
         <h2 id="records-overview-title">浏览库存变更记录</h2>
         <p>
-          新增奖励请用「记录奖励」；本地报告可在此导入。
+          新增奖励请用「记录奖励」。
         </p>
       </div>
       <div class="records-overview-actions">
@@ -89,7 +89,7 @@
     </div>
     <div v-else-if="recordsList.length === 0" class="state">
       <strong>还没有库存变更记录</strong><br />
-      更新库存、记录奖励或导入本地报告后，记录会出现在这里。请使用顶部「记录奖励」「更新库存」，或此处的「导入本地报告」。
+      更新库存、记录奖励或导入本地报告后，记录会出现在这里。
     </div>
     <template v-else>
       <slot />

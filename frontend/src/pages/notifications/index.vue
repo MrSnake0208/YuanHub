@@ -54,7 +54,7 @@
               <div class="empty-state">
                 <Bell :size="32" />
                 <strong>{{ filter === 'unread' ? '未读通知已看完' : '还没有收到通知' }}</strong>
-                <span>{{ filter === 'unread' ? '可以查看全部通知，或回到反馈继续跟进。' : '提交反馈后，管理员回复和处理进展会通知你。' }}</span>
+                <span v-if="filter !== 'unread'">提交反馈后，管理员回复和处理进展会通知你。</span>
                 <button v-if="filter === 'unread'" class="empty-action" type="button" @click="setFilter('all')">查看全部通知</button>
                 <router-link class="empty-action" to="/feedback">查看我的反馈</router-link>
               </div>

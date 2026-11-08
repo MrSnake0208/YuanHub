@@ -47,7 +47,6 @@
     <div v-else-if="!items.length" class="plaza-state empty">
       <Inbox :size="24" aria-hidden="true" />
       <strong>{{ hasFilters ? '当前筛选没有找到相关反馈。' : '暂时还没有公开的反馈。' }}</strong>
-      <span>{{ hasFilters ? '可以清除筛选查看全部反馈，或提交新的问题。' : '有问题或想法？欢迎提交反馈告诉我们。' }}</span>
       <button v-if="hasFilters" class="feedback-button" type="button" @click="clearFilters">清除筛选</button>
       <button class="feedback-primary-action" type="button" @click="goSubmit">提交反馈</button>
     </div>

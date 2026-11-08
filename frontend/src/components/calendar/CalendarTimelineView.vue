@@ -8,7 +8,7 @@
       </div>
     </div>
     <div v-if="!compactPublic && showHelp" class="calendar-timeline-help">
-      <p id="calendar-timeline-help" class="calendar-hint">左右滑动查看日期 · 条的起止与长度表示活动时间 · 竖线标记今天 · 点击查看详情</p>
+      <p id="calendar-timeline-help" class="calendar-hint">条的起止与长度表示活动时间 · 竖线标记今天 · 点击查看详情</p>
       <button type="button" @click="dismissHelp">知道了</button>
     </div>
     <div ref="viewport" class="calendar-timeline-scroll" role="region" :aria-label="compactPublic ? '一周活动时间轴' : '可横向滚动的五周活动时间轴'" :aria-describedby="!compactPublic && showHelp ? 'calendar-timeline-help' : undefined" :tabindex="compactPublic ? undefined : 0" @scroll.passive="syncViewport">

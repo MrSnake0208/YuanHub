@@ -36,7 +36,7 @@
       <div v-if="!filteredCandidates.length" class="star-empty-state" role="status">
         <component :is="inventoryEntries.length ? SearchX : PackageOpen" :size="40" aria-hidden="true" />
         <strong>{{ inventoryEntries.length ? '没有符合条件的星石。' : '暂无星石库存' }}</strong>
-        <p>{{ inventoryEntries.length ? '可以调整用途、搜索或隐藏已佩戴条件，也可切换主星 / 辅星。' : '先到星石背包添加星石，再回来装配。' }}</p>
+        <p v-if="!inventoryEntries.length">先到星石背包添加星石，再回来装配。</p>
       </div>
       <div v-else class="star-candidate-grid">
         <button v-for="candidate in decoratedCandidates" :key="candidate.instanceId" type="button" class="star-candidate" :class="['quality-' + (candidate.quality || 'neutral'), { disabled: candidate.disabled }]" :disabled="candidate.disabled" :title="candidate.disabledReason" @click="select(candidate)">

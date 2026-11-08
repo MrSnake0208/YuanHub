@@ -51,7 +51,7 @@
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
             <p class="tip">同一密探只显示最新待核结果，新采集会替换旧的待核内容。核对并保存后，点「已完成复核」消除该结果及更早的提醒；后续新结果仍会提示。</p>
-            <p>{{ currentAccountName }} · 部分内容仍待确认，请点「查看并修改」对照游戏核对；已保存内容可在档案查看。</p>
+            <p>{{ currentAccountName }} · 部分内容仍待确认。</p>
             <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
             <ul>
               <li v-for="review in scanReviews" :key="review.record_id + ':' + review.operator_id">
@@ -171,9 +171,6 @@
                 <div>
                   <span class="section-kicker">数据交换</span>
                   <h2>JSON 备份导入/导出</h2>
-                  <p>
-                    导入或导出密探档案、分类设置备份。
-                  </p>
                   <details>
                     <summary>备份范围与录入方式</summary>
                     <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。手动补录请点「录入密探」，采集复核请从待复核列表进入。</p>
@@ -596,7 +593,7 @@
                   favoriteError
                 }}</span>
               </div>
-              <ToolTaskPrompt v-if="manifestEntries.length === 0" title="没有符合条件的密探" :description="'没有匹配' + filterSuffix + '的密探，试试其他名称或清除筛选。'">
+              <ToolTaskPrompt v-if="manifestEntries.length === 0" title="没有符合条件的密探" :description="filterSuffix ? '没有匹配' + filterSuffix + '的密探。' : ''">
                 <button type="button" class="btn ghost" @click="focusCatalogEntry">清除筛选</button>
               </ToolTaskPrompt>
               <ul v-else class="slot-grid">
@@ -2855,7 +2852,7 @@
             </section>
 
             <section v-show="editorSection === 'discs'" id="operator-editor-discs" class="editor-row disc-editor-row" role="tabpanel" aria-labelledby="operator-editor-tab-discs" tabindex="0" data-editor-section="discs">
-              <div class="editor-section-head"><h4 class="editor-label"><Target :size="23" aria-hidden="true" />命盘</h4><p>配置命盘组合，提升密探的战斗能力。</p></div>
+              <div class="editor-section-head"><h4 class="editor-label"><Target :size="23" aria-hidden="true" />命盘</h4></div>
               <div class="disc-loadout-editor">
                 <div
                   class="disc-loadout-tabs"

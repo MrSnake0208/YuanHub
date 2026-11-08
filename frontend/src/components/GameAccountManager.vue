@@ -52,7 +52,7 @@
             <button type="button" class="panel-close" aria-label="关闭账号面板" :disabled="busy" @click="closePanel"><X :size="20" aria-hidden="true" /></button>
           </header>
           <div v-if="mode === 'list'" class="manager-dialog-list">
-            <div class="dialog-list-head"><p>管理你的游戏账号</p><button ref="createTrigger" type="button" class="primary-action" :disabled="loading || !!loadError || busy || contextDisabled" @click="openCreate"><Plus :size="16" aria-hidden="true" />新建账号</button></div>
+            <div class="dialog-list-head"><button ref="createTrigger" type="button" class="primary-action" :disabled="loading || !!loadError || busy || contextDisabled" @click="openCreate"><Plus :size="16" aria-hidden="true" />新建账号</button></div>
             <div v-if="loading" class="manager-state" role="status">正在读取游戏账号…</div>
             <div v-else-if="loadError" class="manager-state error" role="alert">{{ loadError }}</div>
             <ul v-else-if="accounts.length" class="account-list" aria-label="游戏账号列表">
@@ -61,7 +61,7 @@
                 <button type="button" class="more-trigger" :aria-label="account.name + '，更多操作'" :disabled="busy" @click="openMore(account, $event)"><MoreHorizontal :size="20" aria-hidden="true" /></button>
               </li>
             </ul>
-            <div v-else class="empty-state">还没有游戏账号，可以新建一个。</div>
+            <div v-else class="empty-state">还没有游戏账号。</div>
             <p v-if="localError" class="manager-message error" role="alert">{{ localError }}</p>
             <p v-if="localSuccess" class="manager-message" role="status">{{ localSuccess }}</p>
             <router-link class="manager-settings" :to="settingsTo" @click="closePanel">账号与连接码 <ArrowRight :size="16" aria-hidden="true" /></router-link>
@@ -351,7 +351,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--theme-focus
 .more-actions button:hover { background: var(--cream); }
 .more-actions .danger { border-top: 1px solid var(--line); border-radius: 0; color: var(--theme-danger-text, var(--rouge)); }
 .id-content code { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); user-select: text; }
-.dialog-list-head p { color: var(--ink-60); }
 .manager-settings { border-top: 1px solid var(--line); color: var(--theme-strong-text, var(--tea)); text-decoration: none; }
 a:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: -3px; }
 .danger-zone { border-top: 1px solid var(--line); color: var(--ink-60); }

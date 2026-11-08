@@ -26,8 +26,8 @@
           </div>
         </li>
       </ul>
-      <p v-else class="activity-message">{{ !currentItems.length ? (game || '全部游戏') + '近期暂无公开活动，可在日历查看其他日期。' : activeGroup === 'ending' ? '今天没有即将结束的活动。' : activeGroup === 'upcoming' ? '未来 7 天暂无即将开始的活动。' : '当前没有进行中的活动。' }}</p>
-      <p v-if="activeItems.length > preview.length" class="activity-message">另有 {{ activeItems.length - preview.length }} 项，查看活动日历了解详情。</p>
+      <p v-else class="activity-message">{{ !currentItems.length ? (game || '全部游戏') + '近期暂无公开活动。' : activeGroup === 'ending' ? '今天没有即将结束的活动。' : activeGroup === 'upcoming' ? '未来 7 天暂无即将开始的活动。' : '当前没有进行中的活动。' }}</p>
+      <p v-if="activeItems.length > preview.length" class="activity-message">另有 {{ activeItems.length - preview.length }} 项。</p>
       <button v-if="activeGroup !== 'upcoming' && upcoming.length" class="activity-next" type="button" @click="selectedGroup = 'upcoming'"><span>即将开始</span><strong>{{ upcoming[0].title }}</strong><ChevronRight :size="14" aria-hidden="true" /></button>
     </template>
   </section>

@@ -63,7 +63,7 @@
           >
             <template #import>
               <section v-if="showStarImport" class="star-exchange-import">
-                <p class="tip">选择 YuanHub 备份或 MaaYuan 本地完整识别结果，核对目标账号及预览后确认。</p>
+                <p class="tip">核对目标账号及预览后确认。</p>
                 <label class="btn ghost file-label">
                   选择 JSON 文件
                   <input ref="starImportFile" type="file" accept=".json,application/json" :disabled="starExchangeBusy" @change="onStarImportFile" />
@@ -108,12 +108,12 @@
               @click="recoverStarCloud"
             >{{ cloudRecoveryBusy ? (cloudRecoveryMode === 'recover' ? '恢复中…' : '加载中…') : (cloudRecoveryAction === 'recover' ? '恢复云端' : '重新加载') }}</button>
           </p>
-          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
+          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
             <button type="button" class="link" @click="helpExampleKind = 'screenshots'">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
-          <ToolTaskPrompt v-if="TUTORIALS_ENABLED && emptyBagTutorialOpen" class="star-empty-tutorial" title="背包暂时为空" description="可以先导入截图，建立背包后再查看使用教程。" role="status">
+          <ToolTaskPrompt v-if="TUTORIALS_ENABLED && emptyBagTutorialOpen" class="star-empty-tutorial" title="背包暂时为空" description="建立背包后可查看使用教程。" role="status">
             <button type="button" class="btn primary" @click="dismissRecognitionTutorial(); setTab('import')">导入截图</button>
             <button type="button" class="link" @click="dismissRecognitionTutorial">关闭说明</button>
           </ToolTaskPrompt>

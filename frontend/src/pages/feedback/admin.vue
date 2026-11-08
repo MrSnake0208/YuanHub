@@ -34,7 +34,7 @@
           <section class="category-panel" aria-labelledby="category-panel-title">
             <h2 id="category-panel-title">反馈板块</h2>
             <p>隐藏后，用户和管理员无法再从选项中选择该板块；已有反馈和授权保留，可随时恢复显示。改名不会改变归属。</p>
-            <p>使用上移、下移调整显示顺序，每次调整自动保存，反馈表单和筛选项刷新后使用该顺序。</p>
+            <p>顺序调整自动保存，反馈表单和筛选项刷新后生效。</p>
             <form id="feedback-category-create" class="category-create" @submit.prevent="addCategory">
               <label for="new-feedback-category">新增板块</label>
               <input id="new-feedback-category" v-model="newCategoryLabel" maxlength="24" required :disabled="categorySaving || loading || !!error" placeholder="板块名称" />

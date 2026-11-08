@@ -69,7 +69,7 @@
       </template>
     </section><SiteFooter>
       <template #big>内测运营<br><span>名额 · 候补 · 测试进展</span></template>
-      <template #fine>所有管理变更写入审计记录<br>公开名额始终按报名顺序分配</template>
+      <template #fine>公开名额始终按报名顺序分配</template>
     </SiteFooter>
   </main></div>
 </template>

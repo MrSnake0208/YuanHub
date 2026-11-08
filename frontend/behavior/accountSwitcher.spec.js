@@ -123,7 +123,7 @@ it('默认账号条也提供同一切换器；管理操作原地打开并恢复�
   option('c').click(); await flushPromises()
   expect(wrapper.get('.context-selector').text().replace(/\s/g, '')).toContain('代号鸢·主号')
   await wrapper.get('.context-action').trigger('click'); await flushPromises()
-  expect(document.querySelector('.account-panel').textContent).toContain('管理你的游戏账号')
+  expect(document.querySelector('.account-panel').textContent).toContain('新建账号')
   document.querySelector('.account-panel [aria-label="关闭账号面板"]').click(); await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.context-action').element)
 })

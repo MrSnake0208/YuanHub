@@ -229,7 +229,7 @@ it('真实 dirty 才确认放弃；取消放弃保留字段，未改列表可直
   await inputName('未保存'); await escape()
   expect(confirm).toHaveBeenCalledTimes(1); expect(panel().querySelector('input').value).toBe('未保存')
   panel().querySelector('[aria-label="返回账号列表"]').click(); await flushPromises()
-  expect(panel().textContent).toContain('管理你的游戏账号'); await escape()
+  expect(panel().textContent).toContain('新建账号'); await escape()
   expect(confirm).toHaveBeenCalledTimes(2); expect(panel()).toBeNull()
 })
 

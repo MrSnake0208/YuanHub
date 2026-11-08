@@ -25,7 +25,7 @@
                 <Check :size="16" aria-hidden="true" :class="{ 'is-hidden': account.id !== accountId }" /><span class="switch-option-copy"><span>{{ account.name }}</span><span class="switch-option-game">{{ group.game }}</span></span><small v-if="account.id === accountId">当前</small>
               </button>
             </section>
-            <p v-if="!groups.length">{{ accounts.length ? '没有匹配的游戏账号' : '还没有游戏账号，可以在这里新建。' }}</p>
+            <p v-if="!groups.length">{{ accounts.length ? '没有匹配的游戏账号' : '还没有游戏账号。' }}</p>
           </div>
           <footer><button type="button" @click="openManager('create')"><Plus :size="16" aria-hidden="true" />{{ desktop ? '新建游戏账号' : '新建 BOX' }}</button><button type="button" @click="openManager('list')"><Settings :size="16" aria-hidden="true" />{{ desktop ? '管理游戏账号' : '管理 BOX' }}</button></footer>
         </section>

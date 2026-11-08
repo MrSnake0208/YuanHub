@@ -69,7 +69,7 @@
         <p v-if="mine && privateItemsHidden" class="calendar-hint" role="status">{{ mobileMine ? '当前筛选仅显示订阅活动，私人事项已隐藏。请在筛选中调整类型、时间或本期状态。' : '当前类型、时间状态或已完成视图仅显示订阅活动，私人事项已隐藏；清除类型/时间筛选或切回我的待办即可查看。' }}</p>
         <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请先通过上方账号切换器选择或新建游戏账号，再使用我的日历。</p>
         <div v-else-if="!(mobilePublic && currentView === 'timeline') && !viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">
-          <p>{{ mobilePublic ? publicEmptyMessage : mine && !subscriptions.count.value && !privateItems.records.value.length ? '我的日历还是空的，可以添加私人事项，或去全部活动订阅。' : mine ? '当前条件下无事项，试试清除筛选或调整日期。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
+          <p>{{ mobilePublic ? publicEmptyMessage : mine && !subscriptions.count.value && !privateItems.records.value.length ? '我的日历还是空的。' : mine ? '当前条件下无事项，试试清除筛选或调整日期。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
           <button v-if="hasClearableFilters" type="button" @click="resetFilters">{{ mobilePublic ? '清除类型/时间' : '清除筛选' }}</button>
           <button v-if="mine" type="button" @click="setScope(false)">浏览全部活动</button>
           <button v-else-if="!todayInView" type="button" @click="goToday">回到今天</button>

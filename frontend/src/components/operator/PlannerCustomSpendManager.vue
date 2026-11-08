@@ -1,7 +1,7 @@
 <template>
   <PlannerSettingsPanel :open="opened" title="管理常用支出" description="同一大账号下所有子账号共享。修改模板仅影响以后添加的项目；移出列表不会停用已有每日安排。" :dirty="dirty" :busy="busy" :error="localError || error" :save-disabled="!!error" @close="opened = false" @save="save">
     <fieldset :disabled="busy">
-    <p v-if="!drafts.length">还没有常用支出。添加后即可在支出列表直接选用。</p>
+    <p v-if="!drafts.length">还没有常用支出。</p>
     <ul class="template-list">
       <li v-for="(item, index) in drafts" :key="item.id">
         <button type="button" :aria-pressed="selected === index" @click="selected = index">{{ item.name || item.label }}<small>每次 {{ item.costPer }} 体力</small></button>

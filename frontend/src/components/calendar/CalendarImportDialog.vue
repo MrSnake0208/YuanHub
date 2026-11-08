@@ -24,7 +24,6 @@
               <p>{{ finished ? '本次新建并公开' : '将新建并公开' }} {{ report.public_count }} 条；已有活动保持原状态。</p>
               <p v-if="report.invalid || report.conflicts">整批暂不能提交，请按条目号和字段修正 JSON 后重新预览。</p>
               <p v-if="report.failed">保留原 JSON，重新校验后安全重试；已创建活动会跳过。未确认的写入可能已成功，请以重新预览为准。</p>
-              <p v-else-if="finished">可关闭此窗口查看活动目录，或替换 JSON 导入下一批。</p>
             </div>
             <label class="calendar-import-filter">查看条目<select v-model="filter" :disabled="busy"><option value="all">全部（{{ report.total }}）</option><option value="issues">错误与差异提示（{{ issueCount }}）</option></select></label>
             <ol class="calendar-import-rows" aria-label="逐条导入结果">

@@ -65,7 +65,7 @@
           <p v-if="state.operatorError" class="bond-error" role="alert">{{ state.operatorError }} 暂以密探ID展示；请刷新重试。</p>
           <p v-if="state.loading" class="bond-empty" role="status">正在读取目录与账号记录…</p>
           <p v-else-if="state.catalogError" class="bond-error" role="alert">{{ state.catalogError }} <button type="button" @click="refresh">重试目录读取</button></p>
-          <p v-else-if="!state.catalog?.entries.length" class="bond-empty">当前游戏尚无已发布羁绊资料。目录收录后会在这里显示；这不代表你的游戏进度为零。</p>
+          <p v-else-if="!state.catalog?.entries.length" class="bond-empty">当前游戏尚无已发布羁绊资料；这不代表你的游戏进度为零。</p>
           <template v-else>
             <div class="bond-results-toolbar">
               <p class="bond-find-count" role="status"><span class="bond-result-conditions">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜</span>找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
@@ -74,7 +74,7 @@
               <button type="button" class="bond-batch-toggle" :disabled="state.busy || !batchMode && !writable" :aria-pressed="batchMode" aria-controls="bond-batch-toolbar" @click="batchMode = !batchMode">{{ batchMode ? '退出批量' : '批量收录' }}</button>
             </div>
             <div v-if="batchMode" id="bond-batch-toolbar" class="bond-batch-toolbar" role="group" aria-label="批量收录"><span>已选择 {{ selected.length }} / 50 条</span><button type="button" :disabled="!writable || !selected.length || !selectedCanCollect" @click="saveSelected(true)">收录选中项</button><button type="button" :disabled="!writable || !selected.length" @click="saveSelected(false)">取消选中项收录</button></div>
-            <p v-if="!filtered.length" class="bond-empty">没有匹配的组合。请调整搜索、收录状态、行动、天气或其他筛选。</p>
+            <p v-if="!filtered.length" class="bond-empty">没有匹配的组合。</p>
             <div v-if="view === 'find'" class="bond-find-results">
               <div v-if="filtered.length" class="bond-find-list">
               <section v-for="pair in groups.slice(page * 20, (page + 1) * 20)" :key="pair.key" class="bond-find-pair" :class="{ 'has-many-weather': pair.entries.length > 1 }" :aria-label="pair.members.map(operatorName).join('与')">

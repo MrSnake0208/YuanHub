@@ -5,7 +5,7 @@
       <section class="not-found-panel" aria-labelledby="not-found-title">
         <span class="eyebrow">404 · PAGE NOT FOUND</span>
         <h1 id="not-found-title">这里没有你要找的页面</h1>
-        <p>链接可能写错了，也可能已经失效。可以返回首页继续浏览。</p>
+        <p>链接可能写错了，也可能已经失效。</p>
         <router-link class="home-link" to="/">返回首页</router-link>
       </section>
     </main>

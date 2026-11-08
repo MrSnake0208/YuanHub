@@ -514,7 +514,7 @@ it('empty bag replay explains import without creating fixtures, changing pages o
   const switches = handle.setActiveTab.mock.calls.length
   await wrapper.get('.compact-tool-help').trigger('click')
   await wrapper.get('.star-help-tutorial').trigger('click')
-  expect(wrapper.get('.star-empty-tutorial').text()).toContain('可以先导入截图')
+  expect(wrapper.get('.star-empty-tutorial').text()).toContain('建立背包后可查看使用教程')
   expect(wrapper.get('.star-empty').isVisible()).toBe(true)
   expect(document.querySelector('.recognition-tour-card, .bag-tutorial-demo')).toBeNull()
   expect(handle.setActiveTab).toHaveBeenCalledTimes(switches)

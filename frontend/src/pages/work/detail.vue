@@ -14,7 +14,7 @@
       <div v-else-if="invalidId" class="detail-state-wrap" aria-live="polite">
         <div class="detail-state error-state">
           <strong>无效的作业链接</strong>
-          <span>作业链接格式有误，请返回广场重新选择。</span>
+          <span>作业链接格式有误。</span>
           <router-link to="/works"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
         </div>
       </div>
@@ -22,7 +22,6 @@
       <div v-else-if="notFound" class="detail-state-wrap" aria-live="polite">
         <div class="detail-state error-state">
           <strong>作业不存在、非公开或已删除</strong>
-          <span>请返回作业广场选择其他公开作业。</span>
           <router-link :to="backTarget"><ArrowLeft :size="16" aria-hidden="true" /> 返回作业广场</router-link>
         </div>
       </div>

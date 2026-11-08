@@ -5,7 +5,6 @@
       <template v-if="!embedded">
         <span class="section-kicker">公开查看</span>
         <h2>输入 BOX 分享码</h2>
-        <p>可粘贴代码，也可粘贴完整分享链接。</p>
       </template>
       <label :for="inputId" :class="{ 'box-step-title': embedded }"><span v-if="embedded" class="box-step-number" aria-hidden="true">1</span>{{ embedded ? '输入分享码或分享链接' : 'BOX 分享码或分享链接' }}</label>
       <div class="share-entry-row">
@@ -117,7 +116,6 @@
       <div v-else-if="!filteredEntries.length" class="share-state">
         <span class="state-mark" aria-hidden="true"><SearchX :size="16" aria-hidden="true" /></span>
         <h2>没有匹配的密探</h2>
-        <p>当前搜索或筛选条件没有找到分享中的密探。</p>
         <button type="button" @click="clearFilters">清空条件</button>
       </div>
 

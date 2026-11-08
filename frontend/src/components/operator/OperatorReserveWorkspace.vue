@@ -26,7 +26,7 @@
         <p v-if="workspace.plans.length >= 50" class="reserve-hint">已达到 50 个方案上限，删除不需要的方案后可新建。</p>
         <p v-if="error" ref="saveError" class="reserve-error" role="alert" tabindex="-1">{{ error }}</p>
         <p v-if="dirty" class="reserve-hint">页内返回会保留草稿；切换账号、切换页面区域或离开页面前，请先保存。</p>
-        <p v-if="!activePlan" class="reserve-empty">还没有储备方案，新建一个方案开始估算。</p>
+        <p v-if="!activePlan" class="reserve-empty">还没有储备方案。</p>
         <div v-if="conflict" class="reserve-conflict" role="alert">
           <p>云端方案已变化，当前草稿已保留。请先读回比较，再选择要保留的内容。</p>
           <button type="button" :disabled="comparing || saving" @click="compareRemote">{{ comparing ? '正在读取…' : '读回云端比较' }}</button>
@@ -60,7 +60,7 @@
               <section class="reserve-targets" :aria-labelledby="prefix + '-targets'">
                 <header class="reserve-section-heading"><h4 :id="prefix + '-targets'"><Sparkles :size="20" aria-hidden="true" />培养目标</h4><span>共 {{ activePlan.demands.length }} 个目标</span></header>
                 <p class="reserve-hint reserve-section-description">添加未来要培养的密探，设置目标等级与修为，自动计算所需材料。</p>
-                <p v-if="!activePlan.demands.length" class="reserve-empty">还没有培养目标，添加一位未来密探开始估算。</p>
+                <p v-if="!activePlan.demands.length" class="reserve-empty">还没有培养目标。</p>
                 <article v-for="(demand, index) in activePlan.demands" :id="controlId(demand, 'legacy')" :key="demand.id" class="reserve-demand" tabindex="-1" :aria-labelledby="controlId(demand, 'heading')">
                   <header><h5 :id="controlId(demand, 'heading')"><span class="reserve-target-number" aria-hidden="true">{{ index + 1 }}</span>培养目标 {{ index + 1 }}<small v-if="isLegacy(demand)">旧目标</small></h5><button type="button" class="reserve-remove" :aria-label="'移除培养目标 ' + (index + 1)" @click="removeDemand(index)"><Trash2 :size="15" aria-hidden="true" />移除</button></header>
                   <template v-if="isLegacy(demand)">

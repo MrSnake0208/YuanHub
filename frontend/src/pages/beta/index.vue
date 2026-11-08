@@ -116,7 +116,7 @@
                     <template v-else-if="waiting">
                       <div class="waiting-note">
                         <Clock3 :size="18" aria-hidden="true" />
-                        <span>已经排上啦，有位置时会自动开通；也可以点上方按钮确认当前状态。</span>
+                        <span>已经排上啦，有位置时会自动开通。</span>
                       </div>
                       <button class="beta-text-button" type="button" :disabled="submitting" @click="withdraw">
                         {{ submitting ? '正在处理…' : '不想等了，取消候补' }}
@@ -141,7 +141,7 @@
                         {{ submitting ? '正在确认…' : joinButtonLabel }}
                         <ArrowRight v-if="!submitting" :size="17" aria-hidden="true" />
                       </button>
-                      <p class="action-note">确认规则后即可报名；满额时会自动加入候补。</p>
+                      <p class="action-note">确认规则后即可报名。</p>
 
                       <details class="preference-details">
                         <summary>顺便告诉我们，你最想体验什么？<span>选填</span></summary>

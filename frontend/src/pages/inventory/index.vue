@@ -86,8 +86,7 @@
           <!-- 导入档案 -->
           <div v-if="showArchive && !editingStock && showImport" class="import-box">
             <p id="inventory-import-tip" class="tip">
-              粘贴符合《库存数据交换协议 v2》的 JSON
-              文档，或选择文件上传；导入结果会在下方展示。
+              粘贴或上传符合《库存数据交换协议 v2》的 JSON 文档。
             </p>
             <textarea
               id="inventory-import-json"
@@ -1249,7 +1248,7 @@
                       : "本期没有密探心纸奖励"
                 }}</strong>
                 <span
-                  >上方总账始终展示本周期的完整统计；可切换统计对象查看对应流水。</span
+                  >上方总账始终展示本周期的完整统计。</span
                 >
               </div>
               <template v-else>

@@ -132,7 +132,7 @@
             <p v-if="manual.presets.length" class="shortcut-note">如果这次领取已经包含在盘点数量中，选择“已包含在库存中，仅补记录”并填写实际领取时间；需要对应盘点覆盖实际领取时间。未包含的领取按新增收入记录。</p>
           </div>
           <details class="channel-section" :open="!compact || dailyMode"><summary v-if="compact && !dailyMode">来源与历史时间 · {{ manual.channel === '手动补录' ? (manual.customChannel || '手动记录') : manual.channel }}</summary>
-            <div v-if="!dailyMode" class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
+            <div v-if="!dailyMode" class="section-label">获取渠道</div>
               <div v-if="!dailyMode" class="channel-options" role="group" aria-label="获取渠道">
                 <button v-for="channel in REWARD_CHANNELS" :key="channel.id" type="button" class="channel-option" :class="{ selected: manual.channel === channel.id }" :aria-pressed="manual.channel === channel.id" @click="changeChannel(channel.id)">
                 <component :is="channelIcons[channel.icon]" :size="20" aria-hidden="true" /><span><b>{{ channel.label }}</b><small>{{ channel.hint }}</small></span><span v-if="manual.channel === channel.id" class="channel-check"><Check :size="11" aria-hidden="true" /></span>
@@ -191,8 +191,7 @@
               <p v-if="manual.training.notice" class="shortcut-note" role="status">{{ manual.training.notice }}</p>
               <div class="training-records" aria-label="本次历练记录">
                 <h4>已加入清单 <small>{{ manual.training.selections.length }} 条</small></h4>
-                <p v-if="!manual.training.selections.length" class="shortcut-note">尚未加入记录</p>
-                <ul v-else><li v-for="selection in manual.training.selections" :key="selection.key"><span><b>{{ trainingSelectionLabel(selection) }}</b><small>{{ selection.runs }} 次{{ manual.training.editingKey === selection.key ? ' · 正在编辑' : '' }}</small></span><div><button type="button" class="text-button" :aria-label="'编辑' + trainingSelectionLabel(selection)" @click="editTrainingSelection(selection)">编辑</button><button type="button" class="text-button" :aria-label="'删除' + trainingSelectionLabel(selection)" @click="removeTrainingSelection(selection.key)">删除</button></div></li></ul>
+                <ul v-if="manual.training.selections.length"><li v-for="selection in manual.training.selections" :key="selection.key"><span><b>{{ trainingSelectionLabel(selection) }}</b><small>{{ selection.runs }} 次{{ manual.training.editingKey === selection.key ? ' · 正在编辑' : '' }}</small></span><div><button type="button" class="text-button" :aria-label="'编辑' + trainingSelectionLabel(selection)" @click="editTrainingSelection(selection)">编辑</button><button type="button" class="text-button" :aria-label="'删除' + trainingSelectionLabel(selection)" @click="removeTrainingSelection(selection.key)">删除</button></div></li></ul>
               </div>
               <button v-if="trainingCalculation.field === 'catalog'" type="button" class="outline-button" @click="loadCatalog">重新加载奖励目录</button>
               <p v-if="trainingLevelNotice && !experienceTraining" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
@@ -216,7 +215,7 @@
                   <button v-if="countOf(entity)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity)}`" @click="decreaseRewardFromTile(entity, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
                 </div>
               </div>
-              <p v-if="!visibleOptions.length" class="empty-search">{{ manual.entityType === 'agent' ? '没有匹配的密探，试试其他名称、品质或属性。' : '没有匹配的奖励，试试其他名称。' }}</p>
+              <p v-if="!visibleOptions.length" class="empty-search">{{ manual.entityType === 'agent' ? '没有匹配的密探。' : '没有匹配的奖励。' }}</p>
               <p class="picker-caption">{{ entryOptions.length }} {{ manual.entityType === 'agent' ? '位密探可选' : '种道具可选' }}<span v-if="search || rarity || agentProf"> · 当前显示 {{ visibleOptions.length }} 项</span></p>
             </section>
 

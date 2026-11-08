@@ -183,7 +183,7 @@ it('distinguishes an empty workspace from a failed read and supports retry', asy
   operators.getOperatorAnnotations.mockResolvedValue({ account_id: 'a', items: [] })
   await wrapper.get('button').trigger('click'); await flushPromises()
   expect(wrapper.find('[role=alert]').exists()).toBe(false)
-  expect(wrapper.text()).toContain('设置养成计划后，这里会显示')
+  expect(wrapper.text()).toContain('还没有培养成员')
 })
 
 it.each(['account', 'identity', 'game', 'clear', 'logout', 'unmount'])('discards late old notes after %s changes', async change => {

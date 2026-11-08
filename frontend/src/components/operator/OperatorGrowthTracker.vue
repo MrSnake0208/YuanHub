@@ -174,7 +174,7 @@
                           <div v-if="count > 0" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(id)" alt="" loading="lazy" /><b>{{ itemName(id) }}</b><em>{{ formatNumber(count) }}</em></div>
                         </template>
                       </div>
-                      <p class="growth-material-note">以上为目标总需求，未扣除库存。库存不足的材料见「查看缺口」。</p>
+                      <p class="growth-material-note">以上为目标总需求，未扣除库存。</p>
                     </details>
                   </div>
                   <div class="growth-progress-row">
@@ -199,11 +199,11 @@
               </article>
             </div>
         </div>
-        <p v-if="planRows.length" class="roster-footnote">目标、材料与备注可在详情中查看和调整；经验天数按仅刷绝境历练估算。</p>
+        <p v-if="planRows.length" class="roster-footnote">经验天数按仅刷绝境历练估算。</p>
       </section>
 
-      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「新建清单」，可根据特别关注建立，或自行挑选成员。</span></div>
-      <div v-else-if="!planRows.length" class="planner-state empty"><Users :size="18" aria-hidden="true" /><span>当前清单还没有密探。点击上方「添加密探」，也可加入未特别关注的密探。</span></div>
+      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。可根据特别关注建立，或自行挑选成员。</span></div>
+      <div v-else-if="!planRows.length" class="planner-state empty"><Users :size="18" aria-hidden="true" /><span>当前清单还没有密探，未特别关注的密探也可以加入。</span></div>
 
       </fieldset>
       <section ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
@@ -361,7 +361,7 @@
             </aside>
             <div class="editor-main">
               <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel conditions-workspace" tabindex="-1" aria-label="规划条件">
-                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>选好培养方式，沿用日常设置，即可开始规划。</p></div><span class="conditions-account">当前子账号</span></header>
+                <header class="planning-panel-heading"><div><h3>规划条件</h3></div><span class="conditions-account">当前子账号</span></header>
   <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
 <section id="planning-conditions" class="conditions-content">
   <section class="condition-module strategy-conditions" aria-labelledby="core-conditions-title">
@@ -372,8 +372,8 @@
     </div>
 <div v-if="goalMode" class="goal-conditions">
   <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
-  <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title" aria-describedby="goal-date-picker-description">
-    <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4><p id="goal-date-picker-description">希望最晚在这一天完成当前清单的养成。</p></header>
+  <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title">
+    <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4></header>
     <div class="goal-calendar-heading"><button type="button" aria-label="上个月" :disabled="!goalDatePickerCanPrevious" @click="changeGoalDatePickerMonth(-1)"><ChevronLeft :size="18" aria-hidden="true" /></button><strong aria-live="polite">{{ goalDatePickerYear }} 年 {{ goalDatePickerMonth + 1 }} 月</strong><button type="button" aria-label="下个月" :disabled="!goalDatePickerCanNext" @click="changeGoalDatePickerMonth(1)"><ChevronRight :size="18" aria-hidden="true" /></button></div>
     <div class="goal-calendar-week" aria-hidden="true"><span v-for="day in ['一', '二', '三', '四', '五', '六', '日']" :key="day">{{ day }}</span></div>
     <div class="goal-calendar-days"><span v-for="blank in goalDatePickerOffset" :key="`goal-blank-${blank}`" /><button v-for="day in goalDatePickerDays" :key="day" :data-goal-day="day" :tabindex="day === goalDatePickerFocusedDay ? 0 : -1" :class="{ selected: goalDatePickerKey(day) === goalCompletionDate, today: goalDatePickerKey(day) === plannerToday }" :disabled="!isGoalDateSelectable(day)" :aria-label="`${goalDatePickerYear} 年 ${goalDatePickerMonth + 1} 月 ${day} 日`" :aria-pressed="goalDatePickerKey(day) === goalCompletionDate" :aria-current="goalDatePickerKey(day) === plannerToday ? 'date' : undefined" @keydown="moveGoalDatePickerDay($event, day)" @click="selectGoalDatePickerDay(day)">{{ day }}</button></div>
@@ -415,7 +415,7 @@
                 <div class="planning-condition-summary"><p>{{ plannerConditionSummary }}</p><button type="button" class="workspace-link" aria-label="修改条件" title="修改条件" @click="setPlannerStep('conditions')"><SlidersHorizontal :size="18" aria-hidden="true" /></button></div>
           <PlannerExactOptimizer embedded date-selection-hint="可在「编辑每日」步骤切换对比起点。" :input="exactPlannerInput" :agent-names="exactAgentNames" :date-label="goalMode ? formatLongDate(plannerToday) : currentDateLabel" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || (!goalMode && (currentDay.paused || scheduleDifferences.goalsChanged))" @apply="adoptExactPlan" @apply-alternative="adoptDeadlineAlternative" />
                 <footer class="planner-step-actions">
-                  <p>采用方案后进入每日编辑，也可继续调整当前日程。</p>
+                  <p>采用方案后进入每日编辑。</p>
                   <button type="button" class="workspace-link" aria-label="上一步：规划条件" title="上一步：规划条件" @click="setPlannerStep('conditions')"><ChevronLeft :size="18" aria-hidden="true" /></button>
                   <button type="button" class="action-button primary" @click="setPlannerStep('daily')">编辑当前日程<ChevronRight :size="16" aria-hidden="true" /></button>
                 </footer>

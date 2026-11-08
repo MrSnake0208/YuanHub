@@ -1,6 +1,6 @@
 <template>
   <section class="condition-module" aria-labelledby="routine-settings-title">
-    <header class="condition-module-heading"><h3 id="routine-settings-title">我的日常安排</h3><p>沿用当前习惯，需要时再调整。</p></header>
+    <header class="condition-module-heading"><h3 id="routine-settings-title">我的日常安排</h3></header>
     <div class="condition-summary-grid">
       <button type="button" class="condition-summary-card" aria-haspopup="dialog" :disabled="disabled" @click="open('preferences')">
         <span class="condition-summary-icon"><CalendarDays :size="25" aria-hidden="true" /></span>

@@ -98,7 +98,7 @@
             <header class="editor-header">
               <p class="eyebrow">{{ isNew ? '创建公开卡池' : '维护公开卡池' }}</p>
               <h2 id="catalog-editor-title">{{ form.name || '未命名卡池' }}</h2>
-              <p class="hint">{{ isNew ? '填写基础信息并直接添加需要的 UP 名额。' : '修改不会改变既有抽数事实；历史名额的稳定身份会继续保留。' }}</p>
+              <p v-if="!isNew" class="hint">修改不会改变既有抽数事实；历史名额的稳定身份会继续保留。</p>
             </header>
 
             <section v-if="conflict" class="card conflict-panel" aria-label="版本冲突核对">
@@ -150,12 +150,12 @@
                 <div class="section-head">
                   <div>
                     <h3 id="pool-up-title">当前 UP</h3>
-                    <p class="hint">添加或退役 UP 名额；已关联密探的名称随图鉴更新。</p>
+                    <p class="hint">已关联密探的名称随图鉴更新。</p>
                   </div>
                   <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
                 </div>
 
-                <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。可以直接添加第一个名额。</p>
+                <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。</p>
 
                 <div class="slot-list">
                   <article v-for="(slot, index) in activeSlots" :key="slot.id" class="up-slot-card">

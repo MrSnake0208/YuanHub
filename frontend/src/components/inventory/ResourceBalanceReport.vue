@@ -33,7 +33,7 @@
     </div>
     <div v-if="noBaseline" class="report-state report-empty" role="status">
       <strong>本期暂无可计算的库存基准</strong>
-      <p>这不代表从未盘点。可以调整日期范围查找已有盘点，或核对当前背包后录入库存，也可以导入 MaaYuan 库存报告。只有奖励流水时仍不能确定实际库存。</p>
+      <p>这不代表从未盘点。只有奖励流水时仍不能确定实际库存。</p>
       <div class="report-empty-actions"><slot name="empty-actions" /></div>
     </div>
     <template v-else-if="view === 'calendar' && !reportError && (!includeMailbox || !mailLoading)">

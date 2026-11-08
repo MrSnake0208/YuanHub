@@ -24,10 +24,10 @@
         <template v-if="state.archive">
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
           <section class="account-overview" aria-label="当前账号招募摘要">
-            <header class="overview-heading"><h2>抽卡概览</h2><p>当前账号的招募总体情况</p></header>
+            <header class="overview-heading"><h2>抽卡概览</h2></header>
             <div v-if="archiveEmpty" class="overview-empty">
               <strong>还没有招募记录</strong>
-              <p>在下方卡池点「记一笔」开始；已有备份可以导入。</p>
+              <p>在下方卡池点「记一笔」开始。</p>
               <button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button>
             </div>
             <RecruitmentGoldStatistics v-else class="summary" :summary="state.archive.summary" account :context-version="state.contextVersion">
@@ -37,7 +37,7 @@
               <div class="summary-item summary-permanent"><dt><span class="summary-icon" aria-hidden="true"><Layers3 :size="18" /></span><span class="summary-label-full">常驻池已知抽数</span><span class="summary-label-short" aria-hidden="true">常驻抽数</span></dt><dd class="summary-number"><strong>{{ state.archive.summary.permanent_known_total_pulls?.toLocaleString() ?? '—' }}</strong><small v-if="state.archive.summary.permanent_known_total_pulls != null" class="number-unit">抽</small></dd></div>
             </RecruitmentGoldStatistics>
             <section v-if="!archiveEmpty" class="recruitment-highlights" :class="{ 'highlights-empty': highlightsEmpty, 'highlights-open': highlightsOpen }" aria-label="抽卡趣闻">
-              <header class="overview-heading"><h3>抽卡趣闻</h3><p>{{ highlightsEmpty ? '暂无记录，记录后查看抽卡趣闻' : '一些有趣的抽卡数据统计' }}</p><button v-if="!highlightsEmpty" type="button" class="highlights-toggle" :aria-expanded="highlightsOpen" aria-controls="recruitment-highlight-grid" @click="highlightsOpen = !highlightsOpen">{{ highlightsOpen ? '收起' : `展开 ${goldAgentHighlights.length} 项` }}</button></header>
+              <header class="overview-heading"><h3>抽卡趣闻</h3><p v-if="highlightsEmpty">暂无记录，记录后查看抽卡趣闻</p><button v-if="!highlightsEmpty" type="button" class="highlights-toggle" :aria-expanded="highlightsOpen" aria-controls="recruitment-highlight-grid" @click="highlightsOpen = !highlightsOpen">{{ highlightsOpen ? '收起' : `展开 ${goldAgentHighlights.length} 项` }}</button></header>
               <div v-if="!highlightsEmpty" id="recruitment-highlight-grid" class="highlight-grid">
                 <div v-for="metric in goldAgentHighlights" :key="metric.key" class="summary-item summary-agent" :class="'summary-' + metric.key">
                   <span class="summary-icon" aria-hidden="true"><component :is="metric.icon" :size="18" /></span>

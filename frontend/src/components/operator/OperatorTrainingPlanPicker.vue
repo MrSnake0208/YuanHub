@@ -91,7 +91,7 @@
             </span>
             <Check v-if="selected.has(entry.id)" class="plan-selected-check" :size="12" aria-hidden="true" />
           </label>
-          <p v-if="!filteredEntries.length">{{ selectionFilter === 'growing' ? '当前筛选下没有已拥有的养成中密探，可切换「全部」或调整搜索条件。' : '当前筛选下没有密探' }}</p>
+          <p v-if="!filteredEntries.length">{{ selectionFilter === 'growing' ? '当前筛选下没有已拥有的养成中密探。' : '当前筛选下没有密探' }}</p>
         </div>
       </div>
 

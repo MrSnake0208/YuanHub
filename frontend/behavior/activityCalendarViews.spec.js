@@ -528,7 +528,7 @@ it('Timeline跨年窗口标题同时说明两端年份', () => {
 it('Timeline首次操作提示可关闭并记住，移走按钮后焦点进入时间轴，再打开不重复提示', async () => {
   const wrapper = mount(Timeline, { global: { stubs: { Teleport: true } }, attachTo: document.body, props: viewProps() })
   expect(wrapper.text()).not.toContain('活动起止，一眼可见')
-  expect(wrapper.get('#calendar-timeline-help').text()).toContain('左右滑动查看日期')
+  expect(wrapper.get('#calendar-timeline-help').text()).toContain('条的起止与长度表示活动时间')
   const viewport = wrapper.get('.calendar-timeline-scroll')
   expect(viewport.attributes('aria-describedby')).toBe('calendar-timeline-help')
   await button(wrapper, '知道了').trigger('click')

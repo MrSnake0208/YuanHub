@@ -38,8 +38,8 @@
           <p v-if="plan.members.length > 5" class="training-hint">另有 {{ plan.members.length - 5 }} 名密探</p>
         </article>
         <div v-if="plans.length > 1 || otherNotes.length" class="training-extra">
-          <p v-if="plans.length > 1" class="training-hint">另有 {{ plans.length - 1 }} 个清单，可在养成页查看。</p>
-          <p v-if="otherNotes.length" class="training-hint">{{ otherNotes.length }} 名清单外密探有备注，可在养成页查看。</p>
+          <p v-if="plans.length > 1" class="training-hint">另有 {{ plans.length - 1 }} 个清单。</p>
+          <p v-if="otherNotes.length" class="training-hint">{{ otherNotes.length }} 名清单外密探有备注。</p>
         </div>
         <p v-if="notePreview" class="training-note">{{ notePreview }}</p>
       </template>

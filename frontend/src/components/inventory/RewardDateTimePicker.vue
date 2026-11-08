@@ -27,7 +27,6 @@
         <div class="time-title"><span>选择时刻</span><small>24 小时制</small></div>
         <button type="button" aria-label="关闭选时" @click="closeTime"><X :size="16" aria-hidden="true" /></button>
       </div>
-      <p class="time-description">直接输入数值，精确到秒。</p>
       <div class="time-columns">
         <label v-for="(column, index) in timeColumns" :key="column.label" class="time-column">
           <span class="time-column-label">{{ column.label }}</span>
@@ -122,7 +121,7 @@ button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
 .clock-input:has(input[aria-invalid="true"]) { border-color: var(--rouge); }
 .time-popover { animation: time-reveal .16s ease-out; }
 .time-title small { border: 1px solid var(--line); border-radius: 99px; color: var(--ink-60); }
-.time-description, .time-hint, .time-column small { color: var(--ink-60); }
+.time-hint, .time-column small { color: var(--ink-60); }
 .time-column { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); transition: border-color .16s, box-shadow .16s; }
 .time-column:focus-within { border-color: var(--theme-focus, var(--tea)); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--tea); }
 .time-column input { text-align: center; caret-color: var(--tea); }

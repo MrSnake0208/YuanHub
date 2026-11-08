@@ -7,7 +7,7 @@
         <router-link v-if="canManage" class="page-header-back creation-admin-link" to="/co-creation/admin">管理开发目标</router-link>
       </div></div></header>
       <section class="feedback-content"><div class="wrap">
-        <p class="creation-context">这里展示团队的功能计划。目标完成表示完成标准已通过，实际发布请看 <router-link to="/changelog">更新日志</router-link>。有新想法？<router-link :to="{ path: '/feedback', query: { new: '1', type: 'FEATURE' } }">提交功能建议</router-link>。</p>
+        <p class="creation-context">目标完成表示完成标准已通过，实际发布请看 <router-link to="/changelog">更新日志</router-link>。有新想法？<router-link :to="{ path: '/feedback', query: { new: '1', type: 'FEATURE' } }">提交功能建议</router-link>。</p>
         <DevelopmentRoadmap />
       </div></section>
     </main>

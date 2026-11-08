@@ -36,7 +36,6 @@
 
             <div v-else-if="items.length === 0" class="works-state">
               <strong>暂时没有公开作业</strong>
-              <span>你可以创建第一份作业，或稍后再来看看。</span>
               <router-link to="/work/new">创建第一份作业</router-link>
             </div>
 

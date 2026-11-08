@@ -27,7 +27,6 @@
           <div v-else-if="!canManage" class="workbench-state" role="alert">
             <ShieldAlert :size="22" aria-hidden="true" />
             <strong>当前账号没有可用的管理能力</strong>
-            <span>仍可从个人中心管理账号与应用连接。</span>
             <router-link class="command secondary" to="/user/profile">返回个人中心</router-link>
           </div>
 
@@ -76,7 +75,7 @@
 
       <SiteFooter>
         <template #big>管理工作台<br><span>反馈 · 内容 · 平台治理</span></template>
-        <template #fine><b>YuanHub</b> · 管理工作台<br>仅显示当前账号已获授权的管理工具<br>账号与应用连接请前往个人中心</template>
+        <template #fine><b>YuanHub</b> · 管理工作台<br>账号与应用连接请前往个人中心</template>
       </SiteFooter>
     </main>
   </div>

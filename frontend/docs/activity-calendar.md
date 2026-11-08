@@ -25,7 +25,7 @@ npm run build
 
 浏览器合成场景：已有前端服务可用时，在隔离的 Playwright CLI 会话先 `open http://127.0.0.1:5173 --browser=chrome`，然后 `run-code --filename=test-support/calendarMonthWeeks.browser.js`。脚本拦截全部 API，只允许合成 GET，拒绝写请求和外部网络；使用12条混合类型重叠事项验证六视口、逐日折叠、键盘、全文、放大、横屏、reduced-motion、私人隔离与前进/后退。截图写 `/tmp/month-bars-after-<width>.png`，不提交。桌面模拟不代替真实 Safari、触屏和账号联调。
 
-时间轴标题只显示日期范围。“左右滑动查看日期 · 点击活动条查看完整信息 · 虚线标记今天”作为首次操作提示，点击“知道了”后通过当前浏览器的 `yuanhub.activity-calendar.timeline-help-dismissed.v1` 记住，不随刷新或视图切换重复显示；关闭后焦点进入时间轴。存储不可用时仍可关闭当前视图内的提示，之后重新打开可能再次提示。
+时间轴标题只显示日期范围。“点击活动条查看完整信息 · 虚线标记今天”作为首次操作提示，点击“知道了”后通过当前浏览器的 `yuanhub.activity-calendar.timeline-help-dismissed.v1` 记住，不随刷新或视图切换重复显示；关闭后焦点进入时间轴。存储不可用时仍可关闭当前视图内的提示，之后重新打开可能再次提示。
 
 合法 URL view 优先于 `yuanhub.activity-calendar.view.v1` 本地偏好；无 URL/偏好时，初始宽度 >=1024px 默认时间轴，其余默认日程。只有手动选择写入本地偏好，date 不持久化；存储读写失败时内存偏好仍可用，resize 不强制切换视图。“今天”保留游戏/类型/view/无关 query 并清理 date，日程定位今天、时间轴恢复局部滚动、月历返回当月并选中今天。
 

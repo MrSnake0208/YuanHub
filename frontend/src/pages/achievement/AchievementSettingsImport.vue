@@ -1,7 +1,7 @@
 <template>
   <details class="panel">
     <summary>奖励字典与积分配置</summary>
-    <p>选择你维护的 JSON 文件，核对后应用到本地草稿，再保存并预览发布。没有上传配置时，不会自动补充资料。</p>
+    <p>应用到草稿后，仍需保存并预览发布。没有上传配置时，不会自动补充资料。</p>
     <p>当前草稿：{{ draft.reward_items?.length || 0 }} 种奖励 · {{ draft.point_tracks?.length || 0 }} 个积分分类</p>
     <label>选择奖励配置<input type="file" accept=".json,application/json" :disabled="busy" @change="readFile"></label>
     <button type="button" :disabled="busy" @click="download">导出当前奖励配置</button>

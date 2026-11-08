@@ -45,8 +45,7 @@
 .id-content { display: grid; gap: 12px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 .id-content code { display: block; min-width: 0; padding: 12px; overflow-wrap: anywhere; }
 .manager-dialog-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.dialog-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; }
-.dialog-list-head p { font-size: 13px; }
+.dialog-list-head { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 16px; }
 .manager-settings { display: flex; align-items: center; min-height: 44px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .danger-zone { display: grid; padding-top: 12px; font-size: 12px; }
 .danger-zone .danger { justify-self: start; }

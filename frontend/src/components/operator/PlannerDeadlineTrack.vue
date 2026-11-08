@@ -1,7 +1,7 @@
 <template>
   <section class="deadline-journey" aria-labelledby="deadline-journey-title">
     <header class="deadline-heading">
-      <div><h4 id="deadline-journey-title">给计划多一点余地</h4><p>逐天探索完成期限，点开方案看看每天怎么安排。</p></div>
+      <div><h4 id="deadline-journey-title">给计划多一点余地</h4><p>逐天探索完成期限。</p></div>
       <span class="deadline-count"><Check :size="14" aria-hidden="true" />{{ readyCount }} 个期限有方案</span>
     </header>
     <p class="deadline-limit">先利用可用储备，再计算缺口 · 每日额外补充最多 {{ extraLimit.toLocaleString() }} 体力（估算）</p>
