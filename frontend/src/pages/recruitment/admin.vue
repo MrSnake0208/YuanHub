@@ -132,7 +132,7 @@
                     <input v-model.trim="form.name" required maxlength="128" :disabled="saving">
                   </label>
                   <label>卡池类型
-                    <input v-model.trim="form.pool_type" maxlength="64" placeholder="如：限时 / 常驻" :disabled="saving">
+                    <input v-model.trim="form.pool_type" maxlength="64" placeholder="如：限定 / 常驻" :disabled="saving">
                   </label>
                   <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
                     <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>

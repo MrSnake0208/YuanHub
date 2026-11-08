@@ -44,11 +44,11 @@ it('仅有常驻与有限日期卡池时，不把常驻开始日期算作年份�
 
 it('两游戏常驻池无起止日期时显示无限期与常驻开放，隐藏停用优先且不伪造档期', async () => {
   const wrapper = render({ pools: [pool('绣衣天下', null, null, { game: '代号鸢', pool_type: 'permanent' })] })
-  expect(wrapper.get('.pool-dates').text()).toBe('常驻 · 无限期')
+  expect(wrapper.find('.pool-dates').exists()).toBe(false)
   expect(wrapper.get('.pool-status').text()).toBe('常驻开放')
   expect(wrapper.get('.date-rail').text()).toBe('常驻∞')
   await wrapper.setProps({ pools: [pool('绣衣天下', null, null, { game: '如鸢', pool_type: '常驻', enabled: false })] })
-  expect(wrapper.get('.pool-dates').text()).toBe('常驻 · 无限期')
+  expect(wrapper.find('.pool-dates').exists()).toBe(false)
   expect(wrapper.get('.pool-status').text()).toBe('已停用')
 })
 

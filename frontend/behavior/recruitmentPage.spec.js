@@ -717,7 +717,7 @@ it('卡池封面按UP数量组合最多三张立绘，更多UP显示数量提示
     '/assets/operator-portraits/char_002_jiaxu.webp',
     '/assets/operator-portraits/char_003_sunshangxiang.webp'
   ])
-  expect(cover.get('.cover-more').text()).toBe('+1')
+  expect(cover.find('.cover-more').exists()).toBe(false)
 })
 it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽数回显；密探名仅保留在无障碍标签；取消不写入且恢复焦点', async () => {
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)

@@ -11,7 +11,7 @@ export const RECRUITMENT_POOL_TYPES = Object.freeze({
 
 const aliases = Object.freeze({
   limited: 'limited', rerun: 'rerun', zhaoying: 'zhaoying', choice: 'choice', select: 'choice',
-  permanent: 'permanent', standard: 'permanent', '傅融地宫': 'limited', '重逢限定': 'limited',
+  permanent: 'permanent', standard: 'permanent', '傅融地宫': 'limited', '重逢限定': 'limited', '限时': 'limited',
 })
 
 // pool_type is catalog data, never an event title. Only reviewed aliases/combinations qualify.
