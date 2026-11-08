@@ -11,11 +11,11 @@
     <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
-        <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col"><span class="battle-slot-number">{{ index + 1 }}号位</span><button type="button" class="battle-record-identity" :aria-label="member.name ? `更换${index + 1}号位密探（当前：${member.name}）` : `选择${index + 1}号位密探`" aria-haspopup="dialog" @click="emit('pick-member', index, $event.currentTarget)"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '选择密探' }}</strong></button></th><th scope="col">备注</th></tr></thead>
+        <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col" :class="{ 'is-active-column': expanded && activeSlot === index }"><span class="battle-slot-number">{{ index + 1 }}号位</span><button type="button" class="battle-record-identity" :aria-label="member.name ? `更换${index + 1}号位密探（当前：${member.name}）` : `选择${index + 1}号位密探`" aria-haspopup="dialog" @click="emit('pick-member', index, $event.currentTarget)"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '选择密探' }}</strong></button></th><th scope="col">备注</th></tr></thead>
         <tbody>
           <template v-for="(row, rowIndex) in rows" :key="rowIndex">
             <tr :class="{ 'battle-row-current': expanded && current === rowIndex, 'is-alt': rowIndex % 2 === 1 }"><th scope="row"><button type="button" :aria-label="`编辑第${rowIndex + 1}回合`" :aria-expanded="expanded && current === rowIndex" @click="selectCell(rowIndex, slot, $event)">{{ rowIndex + 1 }}</button></th>
-              <td v-for="(actions, index) in row.slots" :key="index"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length" :class="{ 'battle-cell-empty': operators[index].name }">{{ operators[index].name ? '+' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :class="{ 'is-box': action.box, 'is-plain': !action.box && targetPlain(action.target) }" :style="action.box || targetPlain(action.target) ? null : { background: TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><small v-if="!action.box && !targetPlain(action.target)" :aria-label="mobile ? targetName(action.target) : undefined" :title="mobile ? targetName(action.target) : undefined">{{ mobile ? action.target + 1 : targetName(action.target) }}</small></span></button></td>
+              <td v-for="(actions, index) in row.slots" :key="index" :class="{ 'is-target-cell': expanded && current === rowIndex && activeSlot === index }"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length" :class="{ 'battle-cell-empty': operators[index].name }">{{ operators[index].name ? '+' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :class="{ 'is-box': action.box, 'is-plain': !action.box && targetPlain(action.target) }" :style="action.box || targetPlain(action.target) ? null : { background: TARGET_COLORS[action.target], '--mark-color': TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><span v-if="!action.box && !targetPlain(action.target)" class="sr-only">打{{ targetName(action.target) }}</span></span></button></td>
               <td><button type="button" class="battle-cell-button battle-remark-cell" :aria-label="`编辑第${rowIndex + 1}回合备注`" @click="selectCell(rowIndex, slot, $event)"><span v-if="row.remark">{{ row.remark }}</span><span v-else class="battle-cell-empty">+</span></button></td>
             </tr>
             <!-- 手机端隐藏备注列，有备注的回合在行下显示一条贯穿整行的备注带（与操作图一致）；桌面端隐藏，仍用备注列。 -->
@@ -35,24 +35,23 @@
               </header>
 
               <div v-show="!mobile || !noteMode" class="battle-sequence">
-                <div class="battle-sequence-head">
+                <div v-if="round.actions.length" class="battle-sequence-head">
                   <span>出手顺序</span>
                   <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
                 </div>
                 <ol v-if="round.actions.length" class="battle-sequence-chips" aria-label="本回合出手顺序">
                   <li v-for="(action, index) in round.actions" :key="index">
-                    <button type="button" :aria-pressed="editing === index" :aria-label="`第${index + 1}步：${stepText(action)}，点按修改`" @click="toggleEdit(index)">
+                    <button type="button" :class="{ 'is-targeted': !isBattleInteraction(action) && !targetPlain(action.target) }" :style="!isBattleInteraction(action) && !targetPlain(action.target) ? { background: TARGET_COLORS[action.target], '--mark-color': TARGET_COLORS[action.target] } : null" :aria-pressed="editing === index" :aria-label="`第${index + 1}步：${stepText(action)}，点按修改`" @click="toggleEdit(index)">
                       <b>{{ index + 1 }}</b><template v-if="isBattleInteraction(action)"><span>{{ BATTLE_INTERACTION.label }}</span><strong>{{ BATTLE_INTERACTION.symbol }}</strong></template>
-                      <template v-else><span>{{ actorName(action.slot) }}</span><strong>{{ actionSymbol(action.type) }}</strong><small v-if="!mobile || !targetPlain(action.target)" :style="{ background: TARGET_COLORS[action.target] }" :title="mobile ? targetName(action.target) : undefined">{{ mobile ? action.target + 1 : targetName(action.target) }}</small></template>
+                      <template v-else><span>{{ actorName(action.slot) }}</span><strong>{{ actionSymbol(action.type) }}</strong></template>
                     </button>
                   </li>
                 </ol>
-                <p v-else class="battle-hint">本回合还没有动作。选好密探和目标，点下方动作即可依次记录；用到关卡里的箱子时选「箱」。</p>
-                <div v-if="editingAction" class="battle-step-tools" role="group" :aria-label="`第${editing + 1}步操作`">
-                  <span>正在修改第 {{ editing + 1 }} 步，下方选择会直接改这一步</span>
-                  <button type="button" :disabled="editing === 0" :aria-label="`第${editing + 1}步提前`" @click="moveEditing(-1)"><ArrowLeft :size="15" aria-hidden="true" />提前</button>
-                  <button type="button" :disabled="editing === round.actions.length - 1" :aria-label="`第${editing + 1}步延后`" @click="moveEditing(1)">延后<ArrowRight :size="15" aria-hidden="true" /></button>
-                  <button type="button" :aria-label="`删除第${editing + 1}步`" @click="removeAction(editing)"><Trash2 :size="15" aria-hidden="true" />删除</button>
+                <div v-if="editingAction" class="battle-step-tools" role="group" :aria-label="`修改第${editing + 1}步：下方选择会直接改这一步`">
+                  <span>修改第 {{ editing + 1 }} 步</span>
+                  <button type="button" :disabled="editing === 0" :aria-label="`第${editing + 1}步提前`" :title="`第${editing + 1}步提前`" @click="moveEditing(-1)"><ArrowLeft :size="15" aria-hidden="true" /></button>
+                  <button type="button" :disabled="editing === round.actions.length - 1" :aria-label="`第${editing + 1}步延后`" :title="`第${editing + 1}步延后`" @click="moveEditing(1)"><ArrowRight :size="15" aria-hidden="true" /></button>
+                  <button type="button" class="battle-step-delete" :aria-label="`删除第${editing + 1}步`" :title="`删除第${editing + 1}步`" @click="removeAction(editing)"><Trash2 :size="15" aria-hidden="true" /></button>
                   <button type="button" class="battle-step-done" @click="editing = null">完成</button>
                 </div>
                 <p v-if="removedHere" class="battle-hint battle-undo-note" role="status">已删除第 {{ removed.index + 1 }} 步。<button type="button" class="battle-link-button" @click="restoreRemoved">撤销删除</button></p>
@@ -62,9 +61,8 @@
                 <div class="battle-composer-row battle-composer-actors" role="group" aria-label="出手方">
                   <span class="battle-composer-label">出手</span>
                   <button v-for="(member, index) in operators" :key="index" type="button" class="battle-actor-option" :disabled="!member.name" :aria-pressed="activeSlot === index" @click="pickSlot(index)">
-                    <img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt="">{{ member.name || `${index + 1}号位` }}
+                    <img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><span class="battle-actor-name">{{ member.name || `${index + 1}号位` }}</span>
                   </button>
-                  <button type="button" class="battle-actor-option battle-box-option" :aria-pressed="activeSlot === BOX" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" @click="pickSlot(BOX)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}</button>
                 </div>
                 <div class="battle-composer-row battle-composer-targets" role="group" aria-label="动作目标">
                   <span class="battle-composer-label">目标</span>
@@ -74,14 +72,13 @@
                 </div>
                 <div class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
                   <span class="battle-composer-label">{{ editingAction ? '改为' : '记录' }}</span>
-                  <button v-if="activeSlot === BOX" type="button" class="battle-action-option" :aria-pressed="editingAction ? true : undefined" :disabled="!editingAction && !canRecord" @click="pickAction(BATTLE_INTERACTION.type)">
-                    <b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}
-                  </button>
-                  <template v-else><button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="!editingAction && !canRecord" @click="pickAction(item.type)">
+                  <button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="editingAction ? isBattleInteraction(editingAction) : !canRecord" @click="pickAction(item.type)">
                     <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
-                  </button></template>
+                  </button>
+                  <button type="button" class="battle-action-option" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b><span class="battle-actor-name">{{ BATTLE_INTERACTION.label }}</span></button>
                 </div>
-                <p v-if="!editingAction && slot !== BOX && !operators[slot]?.name" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
+                <p v-if="editingAction && isBattleInteraction(editingAction)" class="battle-hint">要改回密探动作，请先在上方「出手」选择密探。</p>
+                <p v-else-if="!editingAction && !operators[slot]?.name" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
                 <p v-else-if="!editingAction && round.actions.length >= 50" class="battle-hint">本回合已达 50 个动作上限。</p>
               </div>
 
@@ -101,9 +98,9 @@
     <div v-if="expanded" ref="panel" class="battle-mobile-panel">
       <div id="battle-mobile-panel-body"></div>
       <div v-show="!noteMode" class="battle-round-dock" role="group" aria-label="回合切换">
-        <button type="button" :disabled="current === 0" @click="dockNav(-1)"><ChevronLeft :size="16" aria-hidden="true" />上一回合</button>
+        <button type="button" aria-label="上一回合" title="上一回合" :disabled="current === 0" @click="dockNav(-1)"><ChevronLeft :size="16" aria-hidden="true" /></button>
         <span class="battle-round-dock-title"><b aria-live="polite">第 {{ current + 1 }} 回合</b><small>{{ round.actions.length }} 步</small></span>
-        <button type="button" :disabled="atLast && rounds.length >= 50" @click="dockNav(1)">{{ atLast ? '新增回合' : '下一回合' }}<component :is="atLast ? Plus : ChevronRight" :size="16" aria-hidden="true" /></button>
+        <button type="button" :aria-label="atLast ? '新增回合' : '下一回合'" :title="atLast ? '新增回合' : '下一回合'" :disabled="atLast && rounds.length >= 50" @click="dockNav(1)"><component :is="atLast ? Plus : ChevronRight" :size="16" aria-hidden="true" /></button>
         <div ref="moreMenu" class="battle-round-more" @keydown.esc.stop.prevent="closeMore(true)">
           <button type="button" aria-label="更多回合操作" :aria-expanded="menuOpen" aria-controls="battle-round-menu" @click="menuOpen = !menuOpen">⋯</button>
           <div v-if="menuOpen" id="battle-round-menu" class="battle-round-menu" role="group" aria-label="更多回合操作">
@@ -113,6 +110,7 @@
           </div>
         </div>
         <button type="button" class="battle-round-dock-close" aria-label="收起回合编辑" @click="close"><ChevronDown :size="18" aria-hidden="true" /></button>
+        <button type="button" class="battle-primary battle-round-export" aria-label="生成操作图" :disabled="exportDisabled" @click="emit('export', $event.currentTarget)"><Download :size="16" aria-hidden="true" />生成图</button>
       </div>
     </div>
   </section>
@@ -120,16 +118,16 @@
 
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetShortName, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
-const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true } })
+const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true }, exportDisabled: Boolean })
 // recording：编辑区是否展开，页面据此在手机端用回合栏替换底部生成栏。
-const emit = defineEmits(['recording', 'pick-member'])
-// slot 为 BOX 时表示选中「箱」（关卡互动），它不属于任何密探槽位。
+const emit = defineEmits(['recording', 'pick-member', 'export'])
+// BOX 仅表示修改箱步骤时的 activeSlot，不是可选的出手位。
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)
 const mobile = ref(false), panel = ref(null), moreMenu = ref(null), menuOpen = ref(false), noteMode = ref(false)
@@ -153,7 +151,7 @@ const round = computed(() => props.rounds[current.value])
 const editingAction = computed(() => editing.value === null ? null : round.value?.actions[editing.value] || null)
 const activeSlot = computed(() => editingAction.value ? (isBattleInteraction(editingAction.value) ? BOX : editingAction.value.slot) : slot.value)
 const activeTarget = computed(() => editingAction.value ? editingAction.value.target : target.value)
-const canRecord = computed(() => (slot.value === BOX || Boolean(props.operators[slot.value]?.name)) && round.value.actions.length < 50)
+const canRecord = computed(() => Boolean(props.operators[slot.value]?.name) && round.value.actions.length < 50)
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
 const atLast = computed(() => current.value >= props.rounds.length - 1)
 watch(round, () => { editing.value = null; noteMode.value = false; menuOpen.value = false })
@@ -241,12 +239,11 @@ async function dockNav(offset) {
 }
 function toggleEdit(index) { editing.value = editing.value === index ? null : index }
 function pickSlot(index) {
-  if (index !== BOX && !props.operators[index]?.name) return
+  if (!props.operators[index]?.name) return
   const action = editingAction.value
   if (!action) { slot.value = index; return }
-  if ((index === BOX) === isBattleInteraction(action)) { if (index !== BOX) action.slot = index; return }
-  // 密探动作与关卡互动互改：原位替换整步，出手顺序不变；改回密探时默认普攻、沿用当前目标。
-  round.value.actions.splice(editing.value, 1, index === BOX ? { type: BATTLE_INTERACTION.type } : { slot: index, type: BATTLE_ACTIONS[0].type, target: target.value })
+  if (!isBattleInteraction(action)) { action.slot = index; return }
+  round.value.actions.splice(editing.value, 1, { slot: index, type: BATTLE_ACTIONS[0].type, target: target.value })
 }
 function pickTarget(index) {
   if (activeSlot.value === BOX) return
@@ -255,9 +252,14 @@ function pickTarget(index) {
 }
 function pickAction(type) {
   const action = editingAction.value
-  if (action) { if (!isBattleInteraction(action) && type !== BATTLE_INTERACTION.type) action.type = type; return }
-  if (!canRecord.value) return
-  round.value.actions.push(slot.value === BOX ? { type: BATTLE_INTERACTION.type } : { slot: slot.value, type, target: target.value })
+  if (action) {
+    if (type === BATTLE_INTERACTION.type) round.value.actions.splice(editing.value, 1, { type })
+    else if (isBattleInteraction(action)) return
+    else action.type = type
+    return
+  }
+  if (round.value.actions.length >= 50 || (type !== BATTLE_INTERACTION.type && !canRecord.value)) return
+  round.value.actions.push(type === BATTLE_INTERACTION.type ? { type } : { slot: slot.value, type, target: target.value })
 }
 function moveEditing(offset) {
   const from = editing.value

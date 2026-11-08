@@ -227,7 +227,7 @@
 .battle-tool .battle-action-cell { flex-wrap: wrap; min-height: 54px; }
 .battle-action-mark { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; justify-content: center; padding: 3px 5px; border-radius: 3px; color: #493b2c; }
 .battle-action-mark b { font: 500 16px/1.4 var(--font-d); }
-.battle-action-mark small { font-size: 10px; }
+.battle-action-mark:not(.is-plain):not(.is-box) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mark-color) 70%, var(--ink)); }
 .battle-action-mark.is-plain { background: transparent; }
 .battle-cell-empty { color: var(--ink-60); opacity: .7; font-size: 16px; }
 .battle-tool .battle-remark-cell { justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.7; }
@@ -240,32 +240,38 @@
 .battle-action-matrix tbody tr:nth-child(even) td { background: var(--surface); }
 .battle-action-matrix tbody tr.is-alt > td { background: color-mix(in srgb, var(--cream) 65%, var(--surface)); }
 .battle-action-matrix tbody tr.battle-row-current > :is(th, td) { background: var(--battle-selection); }
+.battle-action-matrix tbody tr.battle-row-current > td.is-target-cell { background: color-mix(in srgb, var(--yellow) 40%, var(--surface)); box-shadow: inset 0 0 0 2px var(--battle-accent); }
+.battle-action-matrix td.is-target-cell .battle-cell-empty { color: var(--battle-accent); opacity: 1; }
+.battle-action-matrix thead th.is-active-column { box-shadow: inset 0 -3px var(--battle-accent); }
+.battle-action-matrix th.is-active-column .battle-record-identity strong { color: var(--battle-accent); font-weight: 700; }
+.battle-action-matrix th.is-active-column .battle-record-identity img { outline: 2px solid var(--battle-accent); outline-offset: -2px; }
 .battle-sequence { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .battle-sequence-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-60); }
 .battle-tool .battle-sequence-head > button { border: 0; padding: 6px; font-size: 12px; }
 .battle-sequence-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 8px 0 0; }
-.battle-tool .battle-sequence-chips button { gap: 6px; min-height: 36px; padding: 4px 6px 4px 4px; font-size: 13px; font-weight: 400; }
+.battle-tool .battle-sequence-chips button { gap: 6px; min-height: 36px; padding: 4px 6px 4px 4px; border: 2px solid transparent; border-radius: 6px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); font-size: 13px; font-weight: 400; }
 .battle-sequence-chips button > b { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--battle-selection); color: var(--battle-accent); font: 600 12px/1 var(--font-d); }
 .battle-sequence-chips button > strong { font: 600 15px/1 var(--font-d); }
-.battle-sequence-chips button > small { padding: 2px 6px; border-radius: 3px; color: #493b2c; font-size: 11px; }
-.battle-tool .battle-sequence-chips button[aria-pressed=true] { border-color: var(--battle-accent); box-shadow: 0 0 0 1px var(--battle-accent); background: var(--battle-selection); }
-.battle-step-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: var(--battle-selection); }
-.battle-step-tools > span { flex: 1 1 200px; font-size: 12px; color: var(--battle-accent); }
-.battle-tool .battle-step-tools > button { padding: 6px 10px; font-size: 12px; }
-.battle-tool .battle-step-tools > .battle-step-done { border-color: var(--battle-accent); color: var(--battle-accent); font-weight: 600; }
+.battle-tool .battle-sequence-chips button.is-targeted { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mark-color) 70%, var(--ink)); }
+.battle-tool .battle-sequence-chips button[aria-pressed=true] { border-color: var(--battle-accent); }
+.battle-step-tools { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+.battle-step-tools > span { font-size: 12px; color: var(--battle-accent); white-space: nowrap; }
+.battle-tool .battle-step-tools > button { min-width: 44px; min-height: 44px; padding: 4px; border: 0; background: transparent; font-size: 12px; }
+.battle-tool .battle-step-tools > .battle-step-delete { color: var(--theme-danger-text, var(--rouge)); }
+.battle-tool .battle-step-tools > .battle-step-done { margin-left: auto; color: var(--battle-accent); font-weight: 600; }
 .battle-undo-note { margin-bottom: 0; }
 .battle-undo-note .battle-link-button { margin-left: 4px; }
 .battle-composer { display: grid; gap: 10px; padding-top: 14px; }
-.battle-composer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.battle-composer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
 .battle-composer-label { width: 36px; flex-shrink: 0; font-size: 12px; color: var(--ink-60); }
-.battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; font-weight: 400; }
-.battle-tool .battle-composer-row > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-selection); color: var(--battle-accent); font-weight: 600; }
+.battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; border-color: transparent; border-radius: 6px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); font-weight: 400; }
+.battle-tool .battle-composer-row > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-accent); color: var(--surface); font-weight: 600; }
+.battle-tool .battle-composer-row > button[aria-pressed=true] i { border-color: var(--surface); }
 .battle-tool .battle-actor-option { padding-left: 4px; }
 .battle-actor-option img { width: 24px; height: 30px; object-fit: cover; object-position: top; border-radius: 3px; }
 .battle-target-option i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; flex-shrink: 0; }
 .battle-tool .battle-action-option { min-width: 88px; }
 .battle-action-option b { font: 600 16px/1 var(--font-d); }
-.battle-box-option b { font: 600 16px/1 var(--font-d); }
 .battle-action-mark.is-box { border: 1px dashed var(--battle-border); }
 .battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-top: 8px; }
 .battle-tool .battle-sequence-tools > button { margin-left: auto; padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
@@ -291,4 +297,7 @@
   .battle-tool .battle-disc-states > button:hover:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); color: var(--battle-accent); }
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }
   .battle-tool .battle-cell-button:hover:not(:disabled) { background: var(--battle-selection); }
+  .battle-tool .is-target-cell .battle-cell-button:hover:not(:disabled) { background: transparent; }
+  .battle-tool :is(.battle-composer-row > button, .battle-sequence-chips button):hover:not(:disabled):not([aria-pressed=true]):not(.is-targeted), .battle-tool .battle-step-tools > button:hover:not(:disabled), .battle-tool :is(.battle-round-dock > button:not(.battle-round-export), .battle-round-more > button):hover:not(:disabled) { border-color: transparent; background: var(--battle-selection); }
+  .battle-tool .battle-sequence-chips button.is-targeted:hover:not([aria-pressed=true]) { border-color: transparent; }
 }

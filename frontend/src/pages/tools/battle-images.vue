@@ -15,7 +15,7 @@
         <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，命盘在密探弹窗的“命盘”中按词条标记携带、必须或禁用。登录并选择游戏账号后，每个账号可保存 5 份云草稿，在“草稿”菜单中切换或新建；未登录时草稿只保存在本机。修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
         <template #primary-actions>
           <span class="battle-save-status" role="status">{{ saveStatus }}</span>
-          <button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">
+          <button ref="exportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExportFrom($event.currentTarget)">
             <Download :size="16" aria-hidden="true" />{{ exportBusy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}
           </button>
         </template>
@@ -83,7 +83,7 @@
           <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
           <div id="battle-editor" class="battle-workspace" role="tabpanel" :aria-labelledby="`battle-tab-${kind}`">
             <BattleTeamEditor :key="revision" ref="teamEditor" v-show="kind === 'team'" :operators="draft.operators" :game="draft.game" :catalog="catalog" :account-entries="entries" @pending-name="pendingName = $event" @replace="(slot, operator) => draft.operators[slot] = operator" />
-            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @recording="recording = $event" @pick-member="(index, trigger) => teamEditor?.pickMember(index, trigger)" />
+            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" :export-disabled="accountsLoading || exportBusy" @export="openExportFrom" @recording="recording = $event" @pick-member="(index, trigger) => teamEditor?.pickMember(index, trigger)" />
           </div>
           <Teleport to="body">
             <div v-if="exportOpen" class="page-battle-images battle-tool battle-dialog-mask">
@@ -103,7 +103,7 @@
       <!-- 手机端页头随页面滚走，底部常驻生成入口；桌面端仍用页头按钮。 -->
       <div class="battle-mobile-dock">
         <span class="battle-save-status" role="status">{{ saveStatus }}</span>
-        <button ref="dockExportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExport">
+        <button ref="dockExportButton" class="battle-primary" type="button" :disabled="accountsLoading || exportBusy" @click="openExportFrom($event.currentTarget)">
           <Download :size="16" aria-hidden="true" />{{ exportBusy ? '正在生成…' : kind === 'team' ? '生成配队图' : '生成操作图' }}
         </button>
       </div>
@@ -159,6 +159,7 @@ const recording = ref(false)
 const kind = ref('team'), fileInput = ref(null), fileError = ref(''), importing = ref(false)
 const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), exportHeading = ref(null), teamEditor = ref(null), exportButton = ref(null), dockExportButton = ref(null), fileErrorEl = ref(null)
 const exportBusy = ref(false), draftMenu = ref(null)
+let exportOpener = null
 const MODES = [{ value: 'team', label: '配队表', icon: UsersRound }, { value: 'actions', label: '操作表', icon: ListOrdered }]
 async function moveTab(event) {
   const index = MODES.findIndex(mode => mode.value === kind.value)
@@ -175,6 +176,7 @@ function closeDraftMenu(restoreFocus = false) {
   if (restoreFocus) draftMenu.value.querySelector('summary')?.focus()
 }
 function closeDraftMenuOutside(event) { if (draftMenu.value?.open && !draftMenu.value.contains(event.target)) closeDraftMenu() }
+function openExportFrom(el) { exportOpener = el; return openExport() }
 async function openExport() {
   fileError.value = pendingName.value ? '请先确认密探名称，再生成图片。' : battleImageError(draft.value, kind.value)
   if (fileError.value) {
@@ -199,7 +201,7 @@ async function closeExport() {
   exportOpen.value = false
   await nextTick()
   // 手机端页头按钮被隐藏，焦点回到当前可见的生成按钮。
-  const visible = [exportButton.value, dockExportButton.value].find(el => el?.getClientRects().length)
+  const visible = [exportOpener, exportButton.value, dockExportButton.value].find(el => el?.isConnected && el.getClientRects().length)
   visible?.focus({ preventScroll: true })
 }
 watch(kind, () => { exportOpen.value = false; fileError.value = '' })
