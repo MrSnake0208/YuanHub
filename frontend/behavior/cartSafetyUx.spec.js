@@ -175,6 +175,7 @@ it('修正汇率时保持设置展开，不打断连续输入', async () => {
 it('计价折叠摘要跟随设置，收起后错误与保存提醒仍可见', async () => {
   const wrapper = render()
   await flushPromises()
+  await addFirst(wrapper)
   const settings = wrapper.get('.cart-pricing-toolbar')
   const summary = wrapper.get('.cart-pricing-summary')
   expect(settings.element.open).toBe(false)

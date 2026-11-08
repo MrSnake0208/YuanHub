@@ -11,6 +11,8 @@
 .pkg-tag{font-size:12px;padding:3px 7px;white-space:normal;overflow-wrap:anywhere}
 .pkg-foot{flex-wrap:wrap;gap:6px;padding-top:8px}
 .pkg-personal-actions{flex:1 1 100%;font-size:13px;gap:8px}
+.pkg-foot.no-discount .pkg-personal-actions{flex:0 1 auto}
+.pkg-foot.no-discount .pkg-limit{margin-left:auto}
 .pkg-personal-actions label,.pkg-personal-actions button{min-height:32px}
 .pkg-personal-actions button{padding:4px 6px}
 .pkg-personal-actions input{width:16px;height:16px}

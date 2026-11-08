@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="cart-main">
-      <CompactToolHeader mobile-context mobile-description title="礼包预算" description="作者：binary · 独立创作">
+      <CompactToolHeader mobile-context mobile-description title="礼包计算器" description="作者：binary · 独立创作">
         <template #account>
           <DataAccountContextBar v-if="auth.isLoggedIn && (account || accountsLoading || accountError)" compact
             :accounts="accounts" :account-id="accountId" :game="account?.game || ''" :is-logged-in="auth.isLoggedIn"
@@ -15,10 +15,15 @@
             </select>
           </div>
         </template>
-        <template #primary-actions>
-          <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
-          <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建</button>
-          <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
+        <template #actions>
+          <div ref="planMenu" class="cart-plan-menu" @keydown.esc="closePlanMenu">
+            <button ref="planTrigger" type="button" class="cart-plan-trigger tool-utility" :aria-expanded="planMenuOpen" aria-controls="cart-plan-actions" @click="planMenuOpen = !planMenuOpen"><FolderOpen :size="15" aria-hidden="true" />方案<ChevronDown :size="15" aria-hidden="true" /></button>
+            <div id="cart-plan-actions" class="cart-plan-actions" :class="{ 'is-open': planMenuOpen }" @click="planMenuOpen = false">
+              <button type="button" class="cart-plan-save tool-utility" @click="openPlanSave"><Save :size="15" aria-hidden="true" />保存方案</button>
+              <button type="button" class="cart-plan-new tool-utility" @click="newBlankPlan"><Plus :size="15" aria-hidden="true" />新建</button>
+              <button type="button" class="cart-plan-list tool-utility" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" />我的方案</button>
+            </div>
+          </div>
         </template>
       </CompactToolHeader>
 
@@ -72,7 +77,7 @@
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
-          <p class="cart-draft-hint">清单仅保留在当前标签页；<br />刷新、关闭或切换账号前请保存方案。</p>
+          <p v-if="hasDraftContent" class="cart-draft-hint">刷新、关闭或切换账号前，请先保存方案。</p>
           <p v-if="!account && (daihaoCount || ruCount)" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
@@ -82,7 +87,7 @@
                 <div class="cart-search-row">
                   <label class="cart-search"><Search :size="18" aria-hidden="true" /><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
                   <label class="cart-category"><span>分类</span><select aria-label="分类" :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
-                  <label class="cart-sort"><span>排序</span><select aria-label="排序" v-model="sortMode"><option value="default">默认</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
+                  <label class="cart-sort"><span>排序</span><select aria-label="排序" v-model="sortMode"><option value="default">默认</option><option value="drawCost">每抽最低</option><option value="price">价格最低</option></select></label>
                   <details class="cart-more-filters">
                     <summary><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="activeFilterCount"> · {{ activeFilterCount }}</span></summary>
                     <div class="cart-advanced-content">
@@ -105,7 +110,7 @@
                 </div>
               </div>
 
-              <div class="cart-catalog-status">
+              <div v-if="catalogLoading || catalogMessage" class="cart-catalog-status">
                 <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
                 <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
               </div>
@@ -118,6 +123,7 @@
                   :is-custom="isCustomPkg(pkg.id)"
                   :show-usd="version === 'daihao'"
                   :currency="currentPricing.currency"
+                  :discount-active="Number(currentPricing.discount_percent) !== 100"
                   @edit-custom="openCustom(pkg, true)"
                   @copy-custom="openCustom(pkg)"
                   @discount="setPackageDiscount(pkg, $event)"
@@ -169,7 +175,7 @@
         <div class="v">{{ formatMoney(totalAmount, currentPricing.currency) }}</div>
       </div>
       <div class="btns">
-        <button class="mbtn primary" :aria-expanded="showReceipt" @click="showReceipt = true">
+        <button class="mbtn primary" :class="{ 'is-cart-empty': cartItems.length === 0 }" :aria-expanded="showReceipt" @click="showReceipt = true">
           <Receipt :size="15" aria-hidden="true" />查看清单 · {{ version === 'daihao' ? daihaoCount : ruCount }}
         </button>
       </div>
@@ -282,6 +288,17 @@ const query = ref("");
 const sortMode = ref("default");
 const selectedOnly = ref(false);
 const showReceipt = ref(false);
+const planMenu = ref(null);
+const planTrigger = ref(null);
+const planMenuOpen = ref(false);
+function closePlanMenu() {
+  if (!planMenuOpen.value) return;
+  planMenuOpen.value = false;
+  planTrigger.value?.focus();
+}
+function onPlanPointerDown(event) {
+  if (!planMenu.value?.contains(event.target)) planMenuOpen.value = false;
+}
 const now = ref(Date.now());
 const operationMessage = ref("");
 const operationError = ref(false);
@@ -367,6 +384,7 @@ watch(cloudIdentity, () => {
   showResult("账号已变化，当前草稿已清空；可从「我的方案」重新加载。");
 }, { flush: "sync" });
 onMounted(() => {
+  document.addEventListener("pointerdown", onPlanPointerDown);
   timer = setInterval(() => {
     now.value = Date.now();
   }, 1000);
@@ -375,6 +393,7 @@ onMounted(() => {
   guestPlans.value = readGuestPlans(); // 恢复游客本地暂存（改动点 E5）
 });
 onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", onPlanPointerDown);
   // 已选预算离页后沿用当时汇率，避免新目录默认值悄悄改变合计。
   if (daihaoCount.value) rateOwned.value = true;
   alive = false;
@@ -471,6 +490,7 @@ function validCurrentRate() {
 const cartItems = computed(() =>
   processedPackages.value.filter((pkg) => currentCart.value[pkg.id] > 0),
 );
+const hasDraftContent = computed(() => cartItems.value.length > 0 || currentCustoms.value.length > 0 || Boolean(currentInitialPoints.value));
 const cartPoints = computed(() =>
   cartItems.value.reduce((s, p) => s + p.points * currentCart.value[p.id], 0),
 );
@@ -534,7 +554,7 @@ async function loadPublicCatalog() {
     replaceCatalog(next);
     catalogHasLive = true;
     catalogError.value = false;
-    catalogMessage.value = next.packages.daihao.length || next.packages.ru.length ? "礼包信息已更新；已选礼包保持原信息。" : "管理员尚未发布可售礼包；已选礼包和私人方案仍保留。";
+    catalogMessage.value = next.packages.daihao.length || next.packages.ru.length ? "" : "管理员尚未发布可售礼包；已选礼包和私人方案仍保留。";
     try { localStorage.setItem(LEDGER_CACHE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), data: raw })); } catch { /* Catalog remains usable when browser storage is full. */ }
   } catch (error) {
     if (!alive || sequence !== catalogSequence) return;
@@ -1196,6 +1216,8 @@ function openPlanSave() {
 .tool-utility { border: 0; background: transparent; color: var(--ink-60); cursor: pointer; }
 .tool-utility:hover { color: var(--theme-strong-text, var(--tea)); }
 .tool-utility:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+.cart-plan-menu, .cart-plan-actions { display: contents; }
+.cart-plan-menu .cart-plan-trigger { display: none; }
 .cart-version-selector { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); color: var(--ink-60); cursor: pointer; }
 .cart-version-selector:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-currency { color: var(--ink-60); }
@@ -1213,6 +1235,7 @@ function openPlanSave() {
 .cart-more-filters > summary { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .cart-more-filters[open] > summary { border-color: var(--accent-strong); }
 .cart-mbar .mbtn.primary { background: var(--accent-strong); color: var(--on-surface); }
+.cart-mbar .mbtn.primary.is-cart-empty { background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
 .cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-category select,.cart-source select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .cart-advanced-content { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }

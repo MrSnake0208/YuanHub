@@ -21,14 +21,14 @@
       <span v-if="pkg._fromSnapshot" class="pkg-tag line">方案快照</span>
       <span v-if="pkg.extra" class="pkg-tag line">{{ pkg.extra }}</span>
     </div>
-    <div class="pkg-foot">
+    <div class="pkg-foot" :class="{ 'no-discount': !discountActive }">
       <div class="pkg-personal-actions">
-        <label><input type="checkbox" :checked="pkg.discountEligible !== false" :aria-label="`${pkg.name}参与方案折扣`" @change="$emit('discount', $event.target.checked)" />参与折扣</label>
-        <button type="button" @click="$emit(isCustom ? 'edit-custom' : 'copy-custom', pkg)">{{ isCustom ? '编辑礼包' : '复制自定义' }}</button>
+        <label v-if="discountActive"><input type="checkbox" :checked="pkg.discountEligible !== false" :aria-label="`${pkg.name}参与方案折扣`" @change="$emit('discount', $event.target.checked)" />参与折扣</label>
+        <button type="button" @click="$emit(isCustom ? 'edit-custom' : 'copy-custom', pkg)">{{ isCustom ? '编辑礼包' : '复制为自定义' }}</button>
       </div>
       <div class="pkg-limit">
         <template v-if="pkg.limit === 999">不限购</template>
-        <template v-else>已选 <b :class="{ max: qty >= pkg.limit }">{{ qty }}</b> / 限购 {{ pkg.limit }}</template>
+        <template v-else>限购 <b :class="{ max: qty >= pkg.limit }">{{ pkg.limit }}</b></template>
       </div>
       <div class="stepper">
         <button :disabled="qty === 0" :aria-label="`减少 ${pkg.name} 数量`" @click="$emit('remove')"><Minus :size="13" :stroke-width="2.5" /></button>
@@ -49,6 +49,7 @@ const props = defineProps({
   qty: { type: Number, default: 0 },
   isCustom: { type: Boolean, default: false },
   showUsd: { type: Boolean, default: false },
+  discountActive: { type: Boolean, default: false },
   currency: { type: String, default: 'CNY' }
 })
 

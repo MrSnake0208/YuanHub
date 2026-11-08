@@ -98,7 +98,7 @@
   .pkg-card{min-height:0;padding:16px}
   .pkg-add-card{min-height:92px}
   .cart-actions{flex-direction:column}
-  .cart-mbar{gap:10px;padding-inline:max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-right))}
+  .cart-mbar{gap:10px;padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right))}
   .cart-mbar .btns{gap:6px}
   .cart-mbar .mbtn{padding-inline:11px}
 }
