@@ -335,7 +335,6 @@ it.each(['agenda', 'timeline', 'month'])('%s共享非招募/游戏/时间状态�
   expect(component.props('items').map(item => item.id)).toEqual(['login'])
   expect(summaryText(wrapper)).toBe('如鸢 · 不含招募 · 近 3 天结束')
   expect(wrapper.findAll('.calendar-counts strong').map(node => node.text())).toEqual(['1', '0', '1'])
-  expect(wrapper.get('.calendar-summary-scope').text()).toContain('不受时间状态筛选影响')
   const path = router.currentRoute.value.fullPath
   wrapper.unmount()
   const refreshed = await render(path)

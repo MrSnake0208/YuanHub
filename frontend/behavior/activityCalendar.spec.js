@@ -92,6 +92,7 @@ it('快速筛选时旧响应不能覆盖新结果；卸载后不再处理返回'
   wrapper.unmount()
 })
 it('失败可重试，空状态不伪造日程，flag关闭不初始化API', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   listActivityCalendar.mockRejectedValueOnce(new Error('网络失败')).mockResolvedValue({ items: [] })
   const { wrapper } = await render(); await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toContain('网络失败')

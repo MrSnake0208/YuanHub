@@ -20,9 +20,12 @@ const button = (wrapper, name) => wrapper.findAll('button').find(item => item.te
 it('单池三项统计区分总UP与小保底、样本与推断，并可展开口径', async () => {
   const summary = { up_gold_count: 2, known_up_gold_count: 3, unknown_up_gold_count: 0, total_up_rate: 66.7, guaranteed_gold_count: 1, small_pity_win_rate: 50, pity_status: 'inferred' }
   const wrapper = mount(RecruitmentGoldStatistics, { props: { summary, contextVersion: 'a' } })
-  expect(wrapper.get('.total-up-metric strong').text()).toBe('66.7%')
-  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('1 次')
-  expect(wrapper.get('.small-pity-metric strong').text()).toBe('50%')
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('66.7')
+  expect(wrapper.get('.total-up-metric .number-unit').text()).toBe('%')
+  expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('1')
+  expect(wrapper.get('.guaranteed-gold-metric .number-unit').text()).toBe('次')
+  expect(wrapper.get('.small-pity-metric strong').text()).toBe('50')
+  expect(wrapper.get('.small-pity-metric .number-unit').text()).toBe('%')
   expect(wrapper.get('.pity-assumption').text()).toBe('按现有历史、首金小保底推断')
   expect(wrapper.get('details').attributes('open')).toBeUndefined()
   await wrapper.get('summary').trigger('click')
@@ -30,10 +33,11 @@ it('单池三项统计区分总UP与小保底、样本与推断，并可展开�
   expect(wrapper.get('details').text()).toContain('不是当前处于大保底的次数')
   await wrapper.setProps({ contextVersion: 'b', summary: { up_gold_count: 1, known_up_gold_count: 1, unknown_up_gold_count: 1, total_up_rate: 100, guaranteed_gold_count: null, small_pity_win_rate: null, pity_status: 'insufficient_history' } })
   expect(wrapper.get('details').attributes('open')).toBeUndefined()
-  expect(wrapper.get('.total-up-metric strong').text()).toBe('100%')
+  expect(wrapper.get('.total-up-metric strong').text()).toBe('100')
+  expect(wrapper.get('.total-up-metric .number-unit').text()).toBe('%')
   expect(wrapper.get('.total-up-metric').text()).toContain('未知 1 条（未计入比例）')
   expect(wrapper.get('.guaranteed-gold-metric strong').text()).toBe('—')
-  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('历史不足以推断')
+  expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('统计尚未提供')
   await wrapper.setProps({ summary: { pity_status: 'not_applicable' } })
   expect(wrapper.findAll('dd strong').map(item => item.text())).toEqual(['—', '—', '—'])
   expect(wrapper.get('.total-up-metric').text()).toContain('不适用')
@@ -260,7 +264,7 @@ it('首次渲染从摘要显示完整统计，不受明细未加载、分页、�
 })
 
 
-it('批量按钮随当前筛选和单池状态切换，无记录时禁用', async () => {
+it('批量按钮随当前筛选和单池状态切换，当前筛选无记录时禁用，全部无记录时隐藏', async () => {
   const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a'), pool('b', '2025')], poolSummaries: { a: { event_count: 1 }, b: { event_count: 1 } } }, global: { stubs: { RecruitmentRecordsPreview: true } } })
   expect(wrapper.get('.batch-toggle').text()).toBe('展开')
   await wrapper.get('.batch-toggle').trigger('click')
@@ -271,6 +275,8 @@ it('批量按钮随当前筛选和单池状态切换，无记录时禁用', asyn
   expect(wrapper.get('.batch-toggle').text()).toBe('折叠')
   await wrapper.get('.batch-toggle').trigger('click')
   expect(wrapper.get('.batch-toggle').text()).toBe('展开')
-  await wrapper.setProps({ poolSummaries: {} })
+  await wrapper.setProps({ poolSummaries: { a: { event_count: 1 }, b: { event_count: 0 } } })
   expect(wrapper.get('.batch-toggle').element.disabled).toBe(true)
+  await wrapper.setProps({ poolSummaries: {} })
+  expect(wrapper.find('.batch-toggle').exists()).toBe(false)
 })

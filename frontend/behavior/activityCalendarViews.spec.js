@@ -173,6 +173,7 @@ it('快速视图切换旧成功/失败响应不覆盖新视图，卸载响应不
 })
 
 it('切换到月份过程中今日补查晚到不污染当前筛选', async () => {
+  vi.stubGlobal('innerWidth', 1440)
   const summary = deferred()
   listActivityCalendar.mockImplementation(query => {
     if (query.game === '如鸢' && query.from === today && query.to === today) return summary.promise
@@ -193,7 +194,7 @@ it.each(['agenda', 'timeline', 'month'])('%s加载/错误/重试/空状态仍可
   pending.reject(new Error('网络失败')); await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toContain('网络失败')
   await wrapper.get('[role=alert] button').trigger('click'); await flushPromises()
-  expect(wrapper.text()).toContain('暂无')
+  expect(wrapper.text()).toContain(view === 'timeline' ? '没有活动' : '暂无')
   if (view === 'month') expect(wrapper.findAll('.calendar-month-day')).toHaveLength(35)
 })
 

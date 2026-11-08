@@ -53,17 +53,18 @@ it('两游戏常驻池无起止日期时显示无限期与常驻开放，隐藏�
 })
 
 it.each([
-  ['限定', 'limited'], ['重逢限定', 'limited'], ['傅融地宫', 'limited'], [' 傅融地宫 ', 'limited'],
-  ['复刻', 'rerun'], ['复刻限定', 'rerun'], ['照影', 'zhaoying'], ['照影复刻限定', 'zhaoying'],
-  ['自选', 'choice'], ['自选限定', 'choice'], ['自选照影复刻限定', 'choice'],
-  ['常驻', 'neutral'], ['示例', 'neutral'], ['未知地宫', 'neutral'], ['未知类型', 'neutral'],
-  ['', 'neutral'], ['   ', 'neutral'], [null, 'neutral'], [undefined, 'neutral']
-])('两游戏的类型 %s 都使用 %s 主题，保留类型文字', async (poolType, expected) => {
+  ['限定', 'limited', '限定'], ['重逢限定', 'limited', '限定'], ['傅融地宫', 'limited', '限定'], [' 傅融地宫 ', 'limited', '限定'],
+  ['复刻', 'rerun', '复刻'], ['复刻限定', 'rerun', '复刻'], ['照影', 'zhaoying', '照影'], ['照影复刻限定', 'zhaoying', '照影'],
+  ['自选', 'choice', '自选'], ['自选限定', 'choice', '自选'], ['自选照影复刻限定', 'choice', '自选'],
+  ['常驻', 'neutral', '常驻'], ['示例', 'neutral', '类型未标注'], ['未知地宫', 'neutral', '类型未标注'], ['未知类型', 'neutral', '类型未标注'],
+  ['', 'neutral', '类型未标注'], ['   ', 'neutral', '类型未标注'], [null, 'neutral', '类型未标注'], [undefined, 'neutral', '类型未标注']
+])('两游戏的类型 %s 都使用 %s 主题，显示归一后的类型标签 %s', async (poolType, expected, expectedLabel) => {
   const wrapper = render({ pools: [pool('p', null, null, { game: '代号鸢', pool_type: poolType })] })
   expect(tone(wrapper, 'p')).toBe('cover-tone-' + expected)
-  expect(wrapper.get('.cover-caption').text()).toBe((poolType || '招募档案').trim())
+  expect(wrapper.get('.cover-caption').text()).toBe(expectedLabel)
   await wrapper.setProps({ contextVersion: 2, pools: [pool('p', null, null, { game: '如鸢', pool_type: poolType })] })
   expect(tone(wrapper, 'p')).toBe('cover-tone-' + expected)
+  expect(wrapper.get('.cover-caption').text()).toBe(expectedLabel)
 })
 
 it('封面按目录类型稳定配色；排序、年份、刷新、账号和状态改变不换色，类型修改才换色', async () => {
