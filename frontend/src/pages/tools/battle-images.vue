@@ -1,7 +1,7 @@
 <template>
   <div v-if="canUseBattleImages" class="page-battle-images">
     <IslandSidebar />
-    <main id="main-content" class="battle-tool">
+    <main id="main-content" class="battle-tool" :class="{ 'is-recording': kind === 'actions' && recording }">
       <CompactToolHeader title="配队与操作图">
         <template #help>五位密探固定成列；点击练度直接填写，点击密探、命盘、星石或动作展开编辑，命盘在密探弹窗的“命盘”中按词条标记携带、必须或禁用。登录并选择游戏账号后，每个账号可保存 5 份云草稿，在“草稿”菜单中切换或新建；未登录时草稿只保存在本机。修改攻略不写回账号档案。未知信息可留空。PNG 无法恢复草稿。</template>
         <template #primary-actions>
@@ -79,7 +79,7 @@
           <p v-if="catalogError" role="alert" class="battle-hint">{{ catalogError }} <button type="button" @click="loadCatalog">重试图鉴</button></p>
           <div id="battle-editor" class="battle-workspace" role="tabpanel" :aria-labelledby="`battle-tab-${kind}`">
             <BattleTeamEditor :key="revision" ref="teamEditor" v-show="kind === 'team'" :operators="draft.operators" :game="draft.game" :catalog="catalog" :account-entries="entries" @pending-name="pendingName = $event" @replace="(slot, operator) => draft.operators[slot] = operator" />
-            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" />
+            <BattleRecorder :key="revision" v-show="kind === 'actions'" :operators="draft.operators" :rounds="draft.rounds" :targets="draft.targets" @recording="recording = $event" />
           </div>
           <Teleport to="body">
             <div v-if="exportOpen" class="page-battle-images battle-tool battle-dialog-mask">
@@ -150,6 +150,8 @@ const saveStatus = computed(() => {
   if (cloud.value && syncing.value) return '正在同步到云端…'
   return status.value || (cloud.value ? '编辑后自动同步到云端' : '编辑后自动保存到本机')
 })
+// recording：操作表编辑区展开中，手机端底部改显示回合栏（见 battleImagesMobile.css）。
+const recording = ref(false)
 const kind = ref('team'), fileInput = ref(null), fileError = ref(''), importing = ref(false)
 const pendingName = ref(false), exportOpen = ref(false), exporter = ref(null), exportPanel = ref(null), exportHeading = ref(null), teamEditor = ref(null), exportButton = ref(null), dockExportButton = ref(null), fileErrorEl = ref(null)
 const exportBusy = ref(false), draftMenu = ref(null)
