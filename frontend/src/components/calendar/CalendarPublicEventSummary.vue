@@ -9,7 +9,7 @@
       <span v-for="status in statuses" :key="status" class="calendar-state">{{ status }}</span>
       <strong v-if="!day && deadline" class="calendar-deadline">{{ deadline }}</strong>
     </div>
-    <p v-if="!day" class="calendar-range"><Clock3 :size="15" aria-hidden="true" />{{ calendarRangeLabel(item) }}<span v-if="item.start_time"> · {{ item.time_zone }}</span></p>
+    <p v-if="!day" class="calendar-range"><Clock3 :size="15" aria-hidden="true" />{{ calendarRangeLabel(item) }}</p>
     <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ display.path }}</span></div>
     <p v-if="!day && upAgents" class="calendar-description calendar-up-agents">{{ upAgents.full }}</p>
     <p v-if="!day && !item.end_time" class="calendar-hint">具体时间未提供</p>

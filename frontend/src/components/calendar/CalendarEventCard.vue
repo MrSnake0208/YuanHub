@@ -11,7 +11,7 @@
         <strong v-if="deadline" class="calendar-deadline">{{ deadline }}</strong>
       </div>
     </div>
-    <p class="calendar-range"><Repeat2 v-if="item.recurrence === 'MONTHLY'" :size="15" aria-label="每月固定" /><Clock3 :size="15" aria-hidden="true" /> {{ calendarRangeLabel(item) }}<span v-if="item.start_time && !privateItem"> · {{ item.time_zone }}</span></p>
+    <p class="calendar-range"><Repeat2 v-if="item.recurrence === 'MONTHLY'" :size="15" aria-label="每月固定" /><Clock3 :size="15" aria-hidden="true" /> {{ calendarRangeLabel(item) }}</p>
     <p v-if="variant === 'card' && !privateItem && !item.end_time" class="calendar-hint">具体时间未提供</p>
     <p v-if="item.description" class="calendar-description">{{ item.description }}</p>
     <p v-if="display.association" class="calendar-hint calendar-association">{{ display.association }}</p>
