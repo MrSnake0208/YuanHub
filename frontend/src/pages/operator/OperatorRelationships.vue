@@ -5,7 +5,7 @@
     <p v-if="favoriteError" role="alert">{{ favoriteError }}</p>
     <p v-if="!scope.enabled">请登录并选择游戏账号。</p>
     <template v-if="data && catalog">
-      <p v-if="(ownedCount ?? operators.length) === 0">当前账号没有已拥有密探，请先在名册录入。</p>
+      <p v-if="(ownedCount ?? operators.length) === 0">当前账号没有已拥有密探，<router-link :to="entryHref">去录入密探</router-link>。</p>
       <p v-else-if="!operators.length">没有符合筛选的密探。</p>
       <div class="backpack catalog-portrait-grid">
         <ul class="slot-grid relationships-list">
@@ -19,6 +19,7 @@
               <button type="button" class="edit-icon-btn relationship-edit" :disabled="!ready || !!preview" :aria-label="'编辑' + operator.name + '的进度'" aria-haspopup="dialog" @click="edit(operator.id)"><Pencil :size="15" aria-hidden="true" /></button>
             </div>
             <span class="slot-name">{{ operator.name }}</span>
+            <small v-if="domain(operator.id, 'rumors')" class="relationship-rumors">{{ rumorText(operator.id) }}</small>
             <small v-if="trustState(operator.id).conflict" class="relationship-conflict">历史记录冲突：{{ trustSourcesText(operator.id) }}</small>
           </li>
         </ul>
@@ -70,7 +71,7 @@ import { useModalFocus } from '../../composables/useModalFocus.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
-const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, profIcon: { type: Function, default: () => '' }, favoriteIds: { type: Set, default: () => new Set() }, favoriteBusyIds: { type: Set, default: () => new Set() }, favoriteLoading: Boolean, favoriteError: String, ownedCount: { type: Number, default: null }, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
+const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, entryHref: { type: [String, Object], default: '/operator/quick' }, profIcon: { type: Function, default: () => '' }, favoriteIds: { type: Set, default: () => new Set() }, favoriteBusyIds: { type: Set, default: () => new Set() }, favoriteLoading: Boolean, favoriteError: String, ownedCount: { type: Number, default: null }, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
 defineEmits(['favorite'])
 const scope = computed(() => ({ key: JSON.stringify([props.userId, props.loggedIn, props.accountId, props.game]), accountId: props.accountId, game: props.game, enabled: !!props.loggedIn && !!props.accountId }))
 const { data, catalog, loading, saving, error, ready, reload, save } = useOperatorRelationships(scope)
@@ -98,6 +99,12 @@ const trustState = id => relationshipTrustState(id, records.value, rules.value)
 const trustSourcesText = id => trustState(id).sources.map(source => (operatorMap.value[source.id]?.name || source.id) + ' ' + source.value).join('、')
 const owner = id => relationshipOwner(id, 'trust', rules.value)
 const domain = (id, kind) => rules.value[relationshipOwner(id, kind, rules.value)]?.[kind]
+const rumorText = id => {
+  const count = value(id, 'rumors')
+  if (count == null) return '传闻未记录'
+  const max = domain(id, 'rumors')?.max
+  return '传闻 ' + count + (max != null ? '/' + max : '')
+}
 async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key

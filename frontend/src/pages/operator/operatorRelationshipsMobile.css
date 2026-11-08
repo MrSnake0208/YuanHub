@@ -9,6 +9,7 @@
 .relationships label { display: grid; gap: 6px; min-width: 0; }
 .relationship-badge { box-sizing: border-box; max-width: calc(100% - 30px); padding-inline: 4px; font-size: 11px; white-space: nowrap; }
 .relationship-conflict { display: block; margin-top: 6px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.5; }
+.relationship-rumors { display: block; margin-top: 2px; color: var(--ink-60); font-size: 11px; line-height: 1.4; text-align: center; }
 .relationships details summary { cursor: pointer; padding-block: 8px; }
 .relationships-exchange { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 20px; }
 .relationships-exchange > label, .relationships-exchange > button { margin: 12px 0; }

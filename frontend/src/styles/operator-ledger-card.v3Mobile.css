@@ -9,7 +9,7 @@
 
 @media (max-width: 640px) {
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait) {
-    --ledger-control-paper: color-mix(in srgb, var(--surface) 76%, transparent);
+    --ledger-control-paper: color-mix(in srgb, var(--surface) 90%, transparent);
     --ledger-control-hover: color-mix(in srgb, var(--surface) 91%, transparent);
     isolation: isolate;
   }

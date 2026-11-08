@@ -949,8 +949,13 @@
                     :size="13"
                     :fill="favoriteFirst ? 'currentColor' : 'none'"
                     aria-hidden="true"
-                  />特别关注<span class="current-favorite-suffix">优先</span>
+                  /><span class="current-favorite-prefix">特别</span>关注<span class="current-favorite-suffix">优先</span>
                 </button>
+                <button v-if="auth.isLoggedIn" type="button" class="current-manage-trigger" :class="{ on: currentManageExpanded }"
+                  :aria-expanded="currentManageExpanded" aria-controls="current-manage-items" :disabled="currentManageActive"
+                  @click="currentManageOpen = !currentManageOpen">管理</button>
+                <div v-if="auth.isLoggedIn" id="current-manage-items" class="current-manage-items" :class="{ 'is-open': currentManageExpanded }"
+                  @click.capture="currentManageOpen = false">
                 <button v-if="auth.isLoggedIn" type="button" class="current-batch-toggle current-organization-toggle"
                   :class="{ on: organizationManager?.open }" :aria-expanded="Boolean(organizationManager?.open)" :aria-controls="organizationManager?.panelId"
                   @click="organizationManager?.toggle()"><SlidersHorizontal :size="13" aria-hidden="true" />分类设置<span v-if="organizationSaving" role="status"> · 保存中</span><span v-else-if="organizationDirty" role="status"> · 未保存</span></button>
@@ -968,6 +973,7 @@
                     >{{ batchSelectMode ? "退出批量" : "批量选择" }}</span
                   >
                 </button>
+                </div>
               </template>
               <template #footer>
                 <OperatorOrganizationManager
@@ -1421,6 +1427,7 @@
                         ><input
                           class="ledger-editable ledger-inline-input"
                           type="number"
+                          inputmode="numeric"
                           min="0"
                           max="100"
                           :value="cardGrowthValue(e, 'level')"
@@ -1450,11 +1457,11 @@
                           @click="openGrowthAction(e, 'level', 5)"
                         >
                           <template v-if="ledgerCardIsV2"
-                            ><CircleAlert
+                            ><span
                               v-if="!growthMaterialsReady(e, 'level', 5)"
-                              :size="14"
+                              class="ledger-lack-label"
                               aria-hidden="true"
-                            /><ChevronUp
+                            >缺料</span><ChevronUp
                               v-else
                               :size="15"
                               aria-hidden="true"
@@ -1601,6 +1608,7 @@
                         ><input
                           class="ledger-editable ledger-inline-input"
                           type="number"
+                          inputmode="numeric"
                           min="0"
                           :max="
                             getMaxEliteForLevel(cardGrowthValue(e, 'level'))
@@ -1657,11 +1665,11 @@
                             "
                             :size="14"
                             aria-hidden="true"
-                          /><CircleAlert
+                          /><span
                             v-else-if="!growthMaterialsReady(e, 'elite', 1)"
-                            :size="14"
+                            class="ledger-lack-label"
                             aria-hidden="true"
-                          /><ChevronUp
+                          >缺料</span><ChevronUp
                             v-else
                             :size="15"
                             aria-hidden="true"
@@ -1841,9 +1849,9 @@
                         <template v-if="ledgerCardIsV2"
                           ><span
                             v-if="!growthMaterialsReady(e, 'star', 1)"
-                            class="ledger-action-ratio"
+                            class="ledger-lack-label"
                             aria-hidden="true"
-                            >{{ growthActionLabel(e, "star", 1, "下一节点") }}</span
+                            >{{ growthShortageCount(e, 'star', 1) ? '缺' + growthShortageCount(e, 'star', 1) : growthActionLabel(e, 'star', 1, '下一节点') }}</span
                           /><span v-else class="ledger-upgrade-label" aria-hidden="true"
                             >提升</span
                           /><span class="sr-only">{{
@@ -2308,9 +2316,6 @@
               v-model:sub-prof-filter="subProfFilter" :status-filter="workbenchStatusFilter" :prof-icon="profIcon"
               :has-filters="hasRelationshipFilters" v-model:growth-filters="growthFilters"
               show-growth-filters :show-growth-presets="false" @update:status-filter="setWorkbenchStatusFilter" @reset="resetCurrentFilters">
-              <template #primary-tool>
-                <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport"><Plus :size="16" aria-hidden="true" /> 录入密探</router-link>
-              </template>
               <template v-if="upgradeReadyFilter" #extra-filters>
                 <button type="button" class="btn ghost" @click="upgradeReadyFilter = ''">{{ upgradeReadyFilter === 'huaji' ? '可提升化极' : '等级/修为可提升' }} · 取消筛选</button>
               </template>
@@ -2321,7 +2326,7 @@
                   :total-count="ownedCurrentEntries.length" :count-results="countCurrentResults" :reset-filters="emptyCurrentFilterState" />
               </template>
             </OperatorFilterDossier>
-            <OperatorRelationships ref="relationshipWorkspace" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
+            <OperatorRelationships ref="relationshipWorkspace" :entry-href="quickHref" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
               :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
               :operators="filteredRelationships.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" :owned-count="ownedCurrentEntries.length"
               :prof-icon="profIcon" :favorite-ids="favoriteAgentIds" :favorite-busy-ids="favoriteBusyIds" :favorite-loading="favoriteLoading" :favorite-error="favoriteError" @favorite="toggleAgentFavorite" />
@@ -3627,6 +3632,9 @@ const gameFilter = computed({
 
 const organizationTagFilter = ref("");
 const organizationManager = ref(null);
+const currentManageOpen = ref(false);
+const currentManageActive = computed(() => batchSelectMode.value || Boolean(organizationManager.value?.open));
+const currentManageExpanded = computed(() => currentManageOpen.value || currentManageActive.value);
 const organizationDirty = computed(() => Boolean(organizationManager.value?.changed));
 const confirmOrganizationDiscard = useUnsavedChanges(organizationDirty, "分类设置", { title: "放弃未保存的分类设置？" });
 const { data: organizationData, loading: organizationLoading, saving: organizationSaving, error: organizationError,
@@ -6659,6 +6667,10 @@ function growthActionLabel(entry, field, step, readyLabel) {
     if (shortage) return shortage.owned + "/" + shortage.required;
   }
   return "查看材料缺口";
+}
+function growthShortageCount(entry, field, step) {
+  const shortage = growthMaterials(entry, field, step).find(item => item.lack > 0);
+  return shortage ? shortage.lack : 0;
 }
 
 function cardAwakeningHeartLabel(entry) {
@@ -12827,6 +12839,9 @@ onBeforeUnmount(function () {
 .roster-header .roster-share small { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; }
 .roster-share small::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-60); }
 .roster-share small.is-sharing::before { background: var(--theme-success-bg, #6f9f76); box-shadow: 0 0 0 3px rgba(111, 159, 118, .14); }
+.current-manage-trigger { display: none; }
+.current-manage-items { display: contents; }
+.ledger-lack-label { font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap; writing-mode: horizontal-tb; }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
 </style>
