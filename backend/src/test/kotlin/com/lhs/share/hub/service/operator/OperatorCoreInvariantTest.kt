@@ -156,12 +156,20 @@ class OperatorCoreInvariantTest {
 
     @Test
     fun `normalized empty workspace and schedule are stable and do not persist CAS input`() {
-        for (request in listOf(validator.emptyWorkspace(), validator.emptySchedule())) {
+        for (request in listOf(validator.emptyWorkspace(), workspaceWithFavorites(), validator.emptySchedule())) {
             request.put("expected_revision", 0)
             val normalize = if (request.has("plans")) validator::workspace else validator::schedule
             val normalized = normalize(request)
             assertFalse(normalized.has("expected_revision"))
             assertEquals(normalized, normalize(normalized.deepCopy().put("expected_revision", 1)))
         }
+    }
+
+    private fun workspaceWithFavorites() = validator.emptyWorkspace().put("active_plan_id", "favorites").also {
+        it.withArray("plans").add(
+            mapper.readTree(
+                """{"id":"favorites","name":"特别关注","source":"favorites","operator_ids":[],"excluded_operator_ids":[],"targets":{}}""",
+            ),
+        )
     }
 }

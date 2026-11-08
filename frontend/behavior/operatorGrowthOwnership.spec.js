@@ -83,7 +83,8 @@ it('新建第三张培养清单后仍可切回特别关注和已有自定义清�
   plannerApi.putTrainingWorkspace.mockImplementation(async (_account, body) => ({ ...body, account_id: 'acc', revision: ++revision }))
   const wrapper = mount(Tracker, { attachTo: document.body, props: { accountId: 'acc', isLoggedIn: true }, global: { stubs: { PlannerExactOptimizer: true, teleport: true } } })
   await flushPromises()
-  await wrapper.findAll('button').find(button => button.text() === '新建清单').trigger('click')
+  await wrapper.get('.plan-title-trigger').trigger('click')
+  await wrapper.findAll('[role="menuitem"]').find(button => button.text() === '新建清单').trigger('click')
   await wrapper.get('#plan-name-input').setValue('备战阴泰山')
   await wrapper.get('.plan-dialog form').trigger('submit')
   await flushPromises()
@@ -345,7 +346,9 @@ it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿�
     global: { stubs: { PlannerExactOptimizer: true, teleport: true } },
   })
   await flushPromises()
-  await wrapper.get('[aria-label="管理清单"]').trigger('click'); await flushPromises()
+  await wrapper.get('.plan-title-trigger').trigger('click')
+  await wrapper.findAll('[role="menuitem"]').find(button => button.text() === '管理当前清单').trigger('click')
+  await flushPromises()
   const picker = wrapper.getComponent({ name: 'OperatorTrainingPlanPicker' }).vm.$
   const input = wrapper.get('#plan-name-input')
   await input.setValue('尚未保存的清单'); input.element.focus()
@@ -375,9 +378,15 @@ it('追踪页通过密探进度添加密探，并将真实拥有状态传入养�
   await wrapper.get('.planner-tools-trigger').trigger('click')
   const tools = wrapper.get('#planner-tools-actions')
   expect(tools.classes()).toContain('is-open')
-  for (const label of ['新建清单', '管理清单', '规划设置']) {
-    expect(tools.text()).toContain(label)
+  expect(tools.text()).toContain('规划设置')
+  for (const label of ['新建清单', '管理清单']) {
+    expect(tools.text()).not.toContain(label)
   }
+  await wrapper.get('.plan-title-trigger').trigger('click')
+  for (const label of ['新建清单', '管理当前清单']) {
+    expect(wrapper.get('#plan-switcher-menu').text()).toContain(label)
+  }
+  await wrapper.get('.plan-title-trigger').trigger('click')
   expect(wrapper.findAll('button').some(button => button.text() === '查看体力日程')).toBe(false)
   const today = wrapper.get('[aria-controls="planner-daily-view"]')
   await today.trigger('click')

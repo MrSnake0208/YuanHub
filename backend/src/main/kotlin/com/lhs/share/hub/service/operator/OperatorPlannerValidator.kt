@@ -21,9 +21,8 @@ class OperatorPlannerValidator(
     private val mapper: ObjectMapper,
 ) {
     fun emptyWorkspace(): ObjectNode = mapper.readTree(
-        """{"schema_version":1,"active_plan_id":"favorites","training_levels":{"fh":12,"ds":12,"yy":12,"experience":8},
-            "plans":[{"id":"favorites","name":"特别关注","source":"favorites","operator_ids":[],
-            "excluded_operator_ids":[],"targets":{}}]}""",
+        """{"schema_version":1,"active_plan_id":null,"training_levels":{"fh":12,"ds":12,"yy":12,"experience":8},
+            "plans":[]}""",
     ) as ObjectNode
 
     fun emptySchedule(): ObjectNode = mapper.readTree(

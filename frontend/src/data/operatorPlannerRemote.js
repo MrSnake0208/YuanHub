@@ -1,5 +1,5 @@
 import { ROUTINE_PERIODS_FEATURE } from './plannerRoutinePeriods.js'
-import { normalizeTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds } from './operatorTrainingPlans.js'
+import { legacyDefaultTrainingWorkspace, normalizeTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds } from './operatorTrainingPlans.js'
 import { PLANNER_RULES, normalizePlannerSnapshot, plannerStorageKey } from './cultivationPlanner.js'
 import { BUSINESS_TIMEZONE, dateInZone } from '../utils/businessDay.js'
 import { CUSTOM_DAILY_SPENDS_FEATURE } from './customPlannerSpends.js'
@@ -65,7 +65,7 @@ export function writeScheduleCache(storage, accountId, planId, snapshot) {
 }
 export function readLocalPlannerBundle(storage, accountId) {
   const hasWorkspace = storage.getItem(trainingWorkspaceKey(accountId)) != null
-  const workspace = readTrainingWorkspace(storage, accountId)
+  const workspace = hasWorkspace ? readTrainingWorkspace(storage, accountId) : legacyDefaultTrainingWorkspace(accountId)
   const schedules = {}
   for (const plan of workspace.plans) {
     const raw = storage.getItem(plannerStorageKey(accountId) + ':plan:' + encodeURIComponent(plan.id))

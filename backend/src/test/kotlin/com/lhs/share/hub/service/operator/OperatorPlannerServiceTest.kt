@@ -144,12 +144,34 @@ class OperatorPlannerServiceTest {
     @Test
     fun `empty reads do not create data and foreign accounts cannot read or write`() {
         assertEquals(0, service.workspace("u1", "a1").path("revision").asInt())
-        assertEquals(0, service.schedule("u1", "a1", "favorites").path("revision").asInt())
+        val empty = service.workspace("u1", "a1")
+        assertTrue(empty.path("plans").isEmpty)
+        assertTrue(empty.path("active_plan_id").isNull)
+        assertEquals(
+            "training_plan_not_found",
+            assertThrows(OperatorApiException::class.java) { service.schedule("u1", "a1", "favorites") }.code,
+        )
+        assertEquals(
+            "training_plan_not_found",
+            assertThrows(OperatorApiException::class.java) {
+                service.putSchedule("u1", "a1", "favorites", validator.emptySchedule().put("expected_revision", 0))
+            }.code,
+        )
         assertTrue(workspaceData.isEmpty())
         assertTrue(scheduleData.isEmpty())
         val foreign = assertThrows(OperatorApiException::class.java) { service.putWorkspace("u2", "a1", workspace()) }
         assertEquals(HttpStatus.NOT_FOUND, foreign.status)
         assertThrows(OperatorApiException::class.java) { service.schedule("u2", "a1", "favorites") }
+    }
+
+    @Test
+    fun `saving favorites at revision zero makes its schedule accessible`() {
+        val saved = service.putWorkspace("u1", "a1", workspace())
+        assertEquals(1, saved.path("revision").asInt())
+        assertEquals("favorites", saved.path("active_plan_id").asText())
+        assertEquals(0, service.schedule("u1", "a1", "favorites").path("revision").asInt())
+        val schedule = service.putSchedule("u1", "a1", "favorites", validator.emptySchedule().put("expected_revision", 0))
+        assertEquals(schedule, service.schedule("u1", "a1", "favorites"))
     }
 
     @Test
@@ -243,6 +265,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `real frontend fixed schedule round trips and past predictions cannot change`() {
+        service.putWorkspace("u1", "a1", workspace())
         val request = fixture()
         val saved = service.putSchedule("u1", "a1", "favorites", request)
         assertEquals(request.path("schedule"), saved.path("schedule"))
@@ -256,6 +279,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun customDailySpendRoundTrips() {
+        service.putWorkspace("u1", "a1", workspace())
         val request = fixture()
         val spend = mapper.readTree(
             """{"id":"custom-spend-example","label":"据点产出","name":"据点产出","kind":"custom","custom":true,"fixed":true,"value":1,"cost_per":0,"yield":{"__xp__":1000}}""",
@@ -296,6 +320,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `infeasible editable drafts can persist without modifying stock or generating fake history`() {
+        service.putWorkspace("u1", "a1", workspace())
         val request = validator.emptySchedule().put("expected_revision", 0)
         val day = fixture().path("manual_plans").path("2026-09-12").deepCopy<ObjectNode>()
         (day.path("spends")[0] as ObjectNode).put("value", 6.5)
@@ -324,6 +349,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `graduating removal preserves annotation note and returns both committed revisions`() {
+        service.putWorkspace("u1", "a1", workspace())
         every { annotations.findByUserIdAndAccountIdAndOperatorId("u1", "a1", OPERATOR) } returns null
         every { subjective.putAnnotation("u1", "a1", OPERATOR, any()) } answers {
             com.lhs.share.hub.controller.operator.response.OperatorAnnotationResponse(
@@ -334,10 +360,10 @@ class OperatorPlannerServiceTest {
                 java.time.Instant.now(),
             )
         }
-        val request = mapper.createObjectNode().put("expected_revision", 0).put("graduate", true)
+        val request = mapper.createObjectNode().put("expected_revision", 1).put("graduate", true)
             .put("expected_annotation_revision", 0)
         val result = service.removeMember("u1", "a1", "favorites", OPERATOR, request)
-        assertEquals(1, result.path("workspace").path("revision").asInt())
+        assertEquals(2, result.path("workspace").path("revision").asInt())
         assertEquals("graduated", result.path("annotation").path("growth_state").asText())
         assertEquals("继续追踪心纸", result.path("annotation").path("note").asText())
         verify {
@@ -412,6 +438,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `browser captured wire payload roundtrips without losing per day progress or changing quantities`() {
+        service.putWorkspace("u1", "a1", workspace())
         val request = mapper.readTree(javaClass.getResourceAsStream("/operator-planner/browser-fixed-schedule.json")) as ObjectNode
         val saved = service.putSchedule("u1", "a1", "favorites", request)
         assertEquals(request.path("schedule"), saved.path("schedule"))
@@ -465,6 +492,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `schedule source periods survive round trip and outdated clients cannot erase them`() {
+        service.putWorkspace("u1", "a1", workspace())
         val request = validator.emptySchedule().put("expected_revision", 0)
         val preferences = request.path("preferences") as ObjectNode
         val period = mapper.createObjectNode().put("from_date", "2026-10-17").set<ObjectNode>("sources", staminaSources())
@@ -593,6 +621,7 @@ class OperatorPlannerServiceTest {
 
     @Test
     fun `routine periods survive round trip and old clients cannot erase them`() {
+        service.putWorkspace("u1", "a1", workspace())
         val body = validator.emptySchedule().put("expected_revision", 0)
         body.putArray("client_features").add("routine-periods-v1")
         val periods = mapper.readTree(
@@ -651,7 +680,13 @@ class OperatorPlannerServiceTest {
             "fixed_sources":[{"id":"event","label":"每日活动","value":37,"enabled":true}]}""",
     ) as ObjectNode
 
-    private fun workspace() = validator.emptyWorkspace().put("expected_revision", 0)
+    private fun workspace() = validator.emptyWorkspace().put("expected_revision", 0).put("active_plan_id", "favorites").also {
+        it.withArray("plans").add(
+            mapper.readTree(
+                """{"id":"favorites","name":"特别关注","source":"favorites","operator_ids":[],"excluded_operator_ids":[],"targets":{}}""",
+            ),
+        )
+    }
     private fun fixture() = mapper.readTree(javaClass.getResourceAsStream("/operator-planner/frontend-fixed-schedule.json")) as ObjectNode
 
     companion object {

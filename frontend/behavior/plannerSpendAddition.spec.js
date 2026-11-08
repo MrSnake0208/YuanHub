@@ -7,7 +7,7 @@ import PlannerCustomDailySpend from '../src/components/operator/PlannerCustomDai
 import PlannerSelect from '../src/components/operator/PlannerSelect.vue'
 import PlannerDateTabs from '../src/components/operator/PlannerDateTabs.vue'
 import PlannerRepeatedSpend from '../src/components/operator/PlannerRepeatedSpend.vue'
-import { emptyTrainingWorkspace } from '../src/data/operatorTrainingPlans.js'
+import { legacyDefaultTrainingWorkspace } from '../src/data/operatorTrainingPlans.js'
 import { createFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
 import { createGain, createSpend, normalizePlannerPreferences, planTotals } from '../src/data/cultivationPlanner.js'
 import { migrationKey, plannerDateInZone, scheduleBody, scheduleFromRemote, workspaceBody } from '../src/data/operatorPlannerRemote.js'
@@ -45,7 +45,7 @@ beforeEach(() => {
   api.putTemplates.mockReset().mockImplementation(async body => ({ ...clone(body), revision: body.expected_revision + 1 }))
   remotes = { a: initial('a'), b: initial('b') }
   for (const account of ['a', 'b']) localStorage.setItem(migrationKey(account), JSON.stringify({ done: true }))
-  api.workspace.mockReset().mockImplementation(async account => ({ ...workspaceBody({ ...emptyTrainingWorkspace(account), trainingLevels: { fh: 3, ds: 5, yy: 2, experience: 4 } }), account_id: account, revision: 1 }))
+  api.workspace.mockReset().mockImplementation(async account => ({ ...workspaceBody({ ...legacyDefaultTrainingWorkspace(account), trainingLevels: { fh: 3, ds: 5, yy: 2, experience: 4 } }), account_id: account, revision: 1 }))
   api.schedule.mockReset().mockImplementation(async account => clone(remotes[account]))
   api.put.mockReset().mockImplementation(async (account, plan, body) => commit(account, body))
   api.inventory.mockReset().mockResolvedValue([])

@@ -159,7 +159,7 @@ class OperatorPlannerMongoTest {
     @Test
     fun `a schedule revision failure rolls back an inserted workspace in a real Mongo transaction`() {
         val request = mapper.createObjectNode().put("migration_id", "rollback")
-        request.set<ObjectNode>("workspace", validator.emptyWorkspace().put("expected_revision", 0))
+        request.set<ObjectNode>("workspace", workspaceWithFavorites())
         request.set<ObjectNode>(
             "schedules",
             mapper.createObjectNode().set<ObjectNode>("favorites", validator.emptySchedule().put("expected_revision", 7)),
@@ -173,5 +173,13 @@ class OperatorPlannerMongoTest {
         assertNotNull(workspaces.findByUserIdAndAccountId("owner", "account"))
         assertNotNull(schedules.findByUserIdAndAccountIdAndPlanId("owner", "account", "favorites"))
         assertNotNull(imports.findByUserIdAndAccountIdAndMigrationId("owner", "account", "rollback"))
+    }
+
+    private fun workspaceWithFavorites() = validator.emptyWorkspace().put("expected_revision", 0).put("active_plan_id", "favorites").also {
+        it.withArray("plans").add(
+            mapper.readTree(
+                """{"id":"favorites","name":"特别关注","source":"favorites","operator_ids":[],"excluded_operator_ids":[],"targets":{}}""",
+            ),
+        )
     }
 }

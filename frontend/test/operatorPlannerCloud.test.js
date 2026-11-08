@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyTrainingWorkspace, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
+import { emptyTrainingWorkspace, legacyDefaultTrainingWorkspace, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 import { createFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
 import { createGain, createSpend, normalizePlannerSnapshot, plannerStorageKey } from '../src/data/cultivationPlanner.js'
 import { buildPlannerMigration, plannerDateInZone, plannerTimezone, readLocalPlannerBundle, readScheduleCache, scheduleBody, scheduleCacheKey, scheduleFromRemote, workspaceBody, workspaceFromRemote, writeScheduleCache } from '../src/data/operatorPlannerRemote.js'
@@ -26,7 +26,7 @@ test('current simulator snapshot survives remote wire roundtrip including invali
   assert.deepEqual(restored.schedule, snapshot.schedule)
   assert.deepEqual(restored.manualPlans, snapshot.manualPlans)
   assert.throws(() => scheduleFromRemote({ ...wire, account_id: 'other' }, accountId))
-  const workspace = emptyTrainingWorkspace(accountId)
+  const workspace = legacyDefaultTrainingWorkspace(accountId)
   workspace.plans.push({ id: crypto.randomUUID(), name: '主队', source: 'custom', operatorIds: [], excludedOperatorIds: [], targets: { x: { level: 80, elite: 13, starLevel: 7, revision: 8 } } })
   const body = workspaceBody(workspace, 2)
   assert.deepEqual(Object.keys(body.plans[1].targets.x).sort(), ['elite', 'level', 'star_level'])
@@ -34,8 +34,6 @@ test('current simulator snapshot survives remote wire roundtrip including invali
 })
 test('empty workspace survives cloud wire roundtrip with no active plan', () => {
   const workspace = emptyTrainingWorkspace('account')
-  workspace.plans = []
-  workspace.activePlanId = null
   const body = workspaceBody(workspace, 4)
   assert.deepEqual(body.plans, [])
   assert.equal(body.active_plan_id, null)
@@ -45,11 +43,11 @@ test('empty workspace survives cloud wire roundtrip with no active plan', () => 
 })
 test('migration preserves originals, uses legacy default schedule, and adds independent plans to an existing cloud', () => {
   const { accountId, snapshot, id } = fixture(), storage = memory()
-  const local = emptyTrainingWorkspace(accountId)
+  const local = legacyDefaultTrainingWorkspace(accountId)
   storage.setItem(trainingWorkspaceKey(accountId), JSON.stringify(local))
   storage.setItem(plannerStorageKey(accountId), JSON.stringify(snapshot))
   const bundle = readLocalPlannerBundle(storage, accountId)
-  const cloud = emptyTrainingWorkspace(accountId); cloud.revision = 4
+  const cloud = legacyDefaultTrainingWorkspace(accountId); cloud.revision = 4
   const request = buildPlannerMigration(bundle, cloud, new Set([id]), { [id]: { level: 50, elite: 7, starLevel: 1 } })
   assert.deepEqual(request.workspace.plans[0], workspaceBody(cloud).plans[0])
   assert.equal(request.workspace.plans[1].source, 'custom')
@@ -60,6 +58,20 @@ test('migration preserves originals, uses legacy default schedule, and adds inde
   assert.equal(storage.getItem(plannerStorageKey(accountId)), JSON.stringify(snapshot))
   const first = buildPlannerMigration(bundle, emptyTrainingWorkspace(accountId), new Set(), {})
   assert.ok(first.schedules.favorites)
+})
+test('本机没有工作区但有旧账号级或 favorites 日程时仍可发现并导入', () => {
+  const { accountId, snapshot } = fixture()
+  for (const key of [plannerStorageKey(accountId), plannerStorageKey(accountId) + ':plan:favorites']) {
+    const storage = memory()
+    assert.equal(readLocalPlannerBundle(storage, accountId), null)
+    storage.setItem(key, JSON.stringify(snapshot))
+    const bundle = readLocalPlannerBundle(storage, accountId)
+    assert.deepEqual(bundle.workspace, legacyDefaultTrainingWorkspace(accountId))
+    assert.deepEqual(bundle.schedules.favorites.schedule, snapshot.schedule)
+    assert.ok(buildPlannerMigration(bundle, emptyTrainingWorkspace(accountId), new Set(), {}).schedules.favorites)
+    assert.equal(storage.getItem(trainingWorkspaceKey(accountId)), null)
+    assert.equal(storage.getItem(key), JSON.stringify(snapshot))
+  }
 })
 test('日期工具仍支持午夜兼容检查，并可按北京时间 5 点切日', () => {
   assert.equal(plannerTimezone(), 'Asia/Shanghai')

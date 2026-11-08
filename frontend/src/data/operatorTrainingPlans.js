@@ -8,7 +8,11 @@ const uniqueIds = value => [...new Set((Array.isArray(value) ? value : []).filte
 
 export function emptyTrainingWorkspace(accountId) {
   return { version: TRAINING_WORKSPACE_VERSION, accountId, revision: 0, updatedAt: null,
-    activePlanId: FAVORITES_PLAN_ID, trainingLevels: normalizeTrainingLevels(),
+    activePlanId: null, trainingLevels: normalizeTrainingLevels(), plans: [] }
+}
+
+export function legacyDefaultTrainingWorkspace(accountId) {
+  return { ...emptyTrainingWorkspace(accountId), activePlanId: FAVORITES_PLAN_ID,
     plans: [{ id: FAVORITES_PLAN_ID, name: '特别关注', source: 'favorites', operatorIds: [], excludedOperatorIds: [], targets: {} }] }
 }
 

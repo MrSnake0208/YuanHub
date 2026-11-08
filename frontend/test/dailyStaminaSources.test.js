@@ -162,6 +162,8 @@ test('workspace云端往返按账号共享；旧数据不产生月卡，日程�
   assert.deepEqual(restored.staminaSources, workspace.staminaSources)
   assert.throws(() => workspaceFromRemote({ ...wire, account_id: 'a' }, 'b'), /子账号/)
   assert.equal(emptyTrainingWorkspace('b').staminaSources, undefined)
+  assert.deepEqual(restored.plans, [])
+  assert.equal(restored.activePlanId, null)
   const original = createFixedSchedule(context())
   const next = applyDailySourcesToSchedule(original, {}, restored.staminaSources, today, today)
   const body = scheduleBody({ ...normalizePlannerSnapshot(null, 'a'), preferences: next.preferences, schedule: next.schedule, manualPlans: next.manualPlans })

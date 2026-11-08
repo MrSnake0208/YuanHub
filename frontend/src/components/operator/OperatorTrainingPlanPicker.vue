@@ -3,11 +3,17 @@
     <div class="plan-identity">
       <div v-if="activePlan" ref="planSwitcher" class="plan-switcher" @focusout="onSwitcherFocusout">
         <h2 class="plan-title"><button ref="switcherTrigger" type="button" class="plan-title-trigger" :disabled="disabled" aria-haspopup="menu" :aria-expanded="switcherOpen" aria-controls="plan-switcher-menu" @click="toggleSwitcher" @keydown.down.prevent="openSwitcher(true)" @keydown.esc.prevent="closeSwitcher"><span>{{ activePlan.name }}</span><ChevronDown :size="18" :class="{ open: switcherOpen }" aria-hidden="true" /></button></h2>
-        <div v-if="switcherOpen" id="plan-switcher-menu" ref="switcherMenu" class="plan-switcher-menu" role="menu" aria-label="切换培养清单" @keydown="onSwitcherKeydown">
+        <div v-if="switcherOpen" id="plan-switcher-menu" ref="switcherMenu" class="plan-switcher-menu" role="menu" aria-label="培养清单" @keydown="onSwitcherKeydown">
           <button v-for="plan in plans" :key="plan.id" type="button" role="menuitemradio" :aria-checked="plan.id === activePlan.id" :class="{ active: plan.id === activePlan.id }" @pointerdown.prevent @click="selectPlan(plan.id)"><span class="plan-switcher-check"><Check v-if="plan.id === activePlan.id" :size="14" aria-hidden="true" /></span><span>{{ plan.name }}</span></button>
+          <template v-if="externalActions">
+            <div class="plan-switcher-divider" role="separator"></div>
+            <button type="button" role="menuitem" class="plan-switcher-action" :disabled="disabled" aria-haspopup="dialog" @pointerdown.prevent @click="openEditorFromHeading(true)"><span class="plan-switcher-check"><Plus :size="15" aria-hidden="true" /></span><span>新建清单</span></button>
+            <button type="button" role="menuitem" class="plan-switcher-action" :disabled="disabled" aria-haspopup="dialog" @pointerdown.prevent @click="openEditorFromHeading(false)"><span class="plan-switcher-check"><Pencil :size="15" aria-hidden="true" /></span><span>管理当前清单</span></button>
+          </template>
         </div>
       </div>
       <h2 v-else-if="!externalActions" class="plan-title plan-title-empty">尚未建立培养清单</h2>
+      <button v-if="externalActions && activePlan && plans.length === 1" type="button" class="plan-text-action plan-first-create" :disabled="disabled" aria-haspopup="dialog" @click="openEditorFromHeading(true)"><Plus :size="15" aria-hidden="true" />新建清单</button>
       <div v-if="!externalActions" class="plan-heading-actions plan-management-actions">
         <button type="button" class="plan-text-action" :disabled="disabled" aria-haspopup="dialog" @click="openEditor(true)"><Plus :size="16" aria-hidden="true" />新建清单</button>
         <button v-if="activePlan" type="button" class="plan-text-action" :disabled="disabled" aria-label="管理清单" aria-haspopup="dialog" @click="openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
@@ -36,10 +42,10 @@
           <div><button type="button" :disabled="disabled" @click="confirmingDelete = false">保留清单</button><button ref="deleteConfirm" type="button" class="plan-delete-danger" :disabled="disabled" @click="confirmDelete">确认删除</button></div>
         </section>
 
-        <fieldset v-if="firstPlanSuggestion" class="plan-source-choice">
-          <legend>第一张清单</legend>
-          <label :class="{ selected: firstPlanMode === 'favorites' }"><input ref="sourceFirstInput" v-model="firstPlanMode" name="first-plan-source" type="radio" value="favorites" @change="applyFirstPlanMode" /><span><b>根据特别关注</b><small>预选 {{ validFavoriteIds.length }} 位，以后会自动跟随关注名单</small></span></label>
-          <label :class="{ selected: firstPlanMode === 'custom' }"><input v-model="firstPlanMode" name="first-plan-source" type="radio" value="custom" @change="applyFirstPlanMode" /><span><b>空白清单</b><small>自行命名并挑选成员</small></span></label>
+        <fieldset v-if="favoriteSourceOffered" class="plan-source-choice">
+          <legend>清单来源</legend>
+          <label :class="{ selected: planSourceMode === 'custom' }"><input ref="sourceFirstInput" v-model="planSourceMode" name="plan-source" type="radio" value="custom" @change="applyPlanSourceMode" /><span><b>空白清单</b><small>自行命名并挑选成员</small></span></label>
+          <label :class="{ selected: planSourceMode === 'favorites' }"><input v-model="planSourceMode" name="plan-source" type="radio" value="favorites" @change="applyPlanSourceMode" /><span><b>根据特别关注</b><small>预选 {{ validFavoriteIds.length }} 位，以后会自动跟随关注名单</small></span></label>
         </fieldset>
 
         <div class="plan-name-row" v-if="!addingMembers">
@@ -132,8 +138,8 @@ const profFilter = ref('all')
 const subProfFilter = ref('all')
 const selectionFilter = ref('all')
 const selected = ref(new Set())
-const firstPlanMode = ref('favorites')
-const firstPlanSuggestion = ref(false)
+const planSourceMode = ref('custom')
+const favoriteSourceOffered = ref(false)
 const confirmingDelete = ref(false)
 const filtersOpen = ref(false)
 const switcherOpen = ref(false)
@@ -146,7 +152,7 @@ const growingIds = computed(() => new Set(props.currentEntries.filter(entry => c
 const validSelectedCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id)).length)
 const addedMemberCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id) && !props.memberIds.has(id)).length)
 const invalidSelectedCount = computed(() => selected.value.size - validSelectedCount.value)
-const editingFavorites = computed(() => (!creating.value && props.activePlan?.source === 'favorites') || (firstPlanSuggestion.value && firstPlanMode.value === 'favorites'))
+const editingFavorites = computed(() => (!creating.value && props.activePlan?.source === 'favorites') || (favoriteSourceOffered.value && planSourceMode.value === 'favorites'))
 const hasAdvancedFilters = computed(() => rarityFilter.value !== 'all' || profFilter.value !== 'all' || subProfFilter.value !== 'all')
 const advancedFilterCount = computed(() => Number(rarityFilter.value !== 'all') + Number(profFilter.value !== 'all') + Number(subProfFilter.value !== 'all'))
 const profOptions = computed(() => {
@@ -165,7 +171,7 @@ async function openSwitcher(focusMenu = false) {
   switcherOpen.value = true
   if (!focusMenu) return
   await nextTick()
-  const items = [...(switcherMenu.value?.querySelectorAll('[role="menuitemradio"]') || [])]
+  const items = [...(switcherMenu.value?.querySelectorAll('[role^="menuitem"]') || [])]
   ;(items.find(item => item.getAttribute('aria-checked') === 'true') || items[0])?.focus()
 }
 function closeSwitcher(restoreFocus = false) {
@@ -178,7 +184,7 @@ function selectPlan(id) {
   closeSwitcher(true)
 }
 function onSwitcherKeydown(event) {
-  const items = [...(switcherMenu.value?.querySelectorAll('[role="menuitemradio"]') || [])]
+  const items = [...(switcherMenu.value?.querySelectorAll('[role^="menuitem"]') || [])]
   const current = items.indexOf(document.activeElement)
   if (event.key === 'Escape') { event.preventDefault(); closeSwitcher(true); return }
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !items.length) return
@@ -219,24 +225,29 @@ const filteredEntries = computed(() => {
     return true
   }).sort(compareOperatorIdDesc)
 })
+function openEditorFromHeading(isNew) {
+  closeSwitcher()
+  switcherTrigger.value?.focus({ preventScroll: true })
+  return openEditor(isNew)
+}
 async function openEditor(isNew, { selectNewMembers = false } = {}) {
   if (props.disabled) return
   const openingAccountId = props.accountId
   creating.value = isNew
   addingMembers.value = selectNewMembers
-  firstPlanSuggestion.value = isNew && !props.plans.length
-  firstPlanMode.value = firstPlanSuggestion.value ? 'favorites' : 'custom'
-  name.value = isNew ? (firstPlanMode.value === 'favorites' ? '特别关注' : '') : props.activePlan?.name || ''
+  favoriteSourceOffered.value = isNew && !props.plans.some(plan => plan.source === 'favorites') && validFavoriteIds.value.length > 0
+  planSourceMode.value = 'custom'
+  name.value = isNew ? '' : props.activePlan?.name || ''
   resetFilters()
   if (selectNewMembers) selectionFilter.value = 'unselected'
-  selected.value = isNew ? new Set(firstPlanMode.value === 'favorites' ? validFavoriteIds.value : []) : new Set(props.memberIds)
+  selected.value = isNew ? new Set() : new Set(props.memberIds)
   confirmingDelete.value = false
   filtersOpen.value = false
   await nextTick()
   if (!dialog.value || props.accountId !== openingAccountId || props.disabled) return
   dialog.value.showModal()
   if (selectNewMembers && window.matchMedia?.('(max-width: 700px)').matches) dialogTitle.value?.focus()
-  else if (firstPlanSuggestion.value) sourceFirstInput.value?.focus()
+  else if (favoriteSourceOffered.value) sourceFirstInput.value?.focus()
   else if (selectNewMembers || editingFavorites.value) searchInput.value?.focus()
   else nameInput.value?.focus()
 }
@@ -248,8 +259,8 @@ defineExpose({ openEditor, openMemberPicker })
 function toggle(id) { const next = new Set(selected.value); if (next.has(id)) next.delete(id); else next.add(id); selected.value = next }
 function resetFilters() { search.value = ''; rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all'; selectionFilter.value = 'all' }
 function resetAdvancedFilters() { rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all' }
-function applyFirstPlanMode() {
-  const favorites = firstPlanMode.value === 'favorites'
+function applyPlanSourceMode() {
+  const favorites = planSourceMode.value === 'favorites'
   name.value = favorites ? '特别关注' : ''
   selected.value = new Set(favorites ? validFavoriteIds.value : [])
   nextTick(() => (favorites ? searchInput.value : nameInput.value)?.focus())
@@ -279,6 +290,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .plan-switcher-menu button:hover, .plan-switcher-menu button:focus-visible { background: var(--cream); color: var(--ink); }
 .plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--theme-strong-text, var(--tea)); }
 .plan-switcher-check { color: var(--theme-accent-text, var(--accent-strong)); }
+.plan-switcher-divider { height: 1px; margin: 4px 2px; background: var(--line); }
+.plan-switcher-action .plan-switcher-check { color: inherit; }
 .plan-title-empty { color: var(--ink-60); }
 .plan-picker-help { color: var(--ink-60); }
 .plan-member-add { border-color: var(--tea); background: var(--tea); color: var(--on-strong); }

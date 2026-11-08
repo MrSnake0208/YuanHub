@@ -8,8 +8,6 @@
         <button ref="plannerToolsTrigger" type="button" class="planner-tools-trigger" :aria-expanded="plannerToolsOpen" aria-controls="planner-tools-actions" @click="plannerToolsOpen = !plannerToolsOpen">更多<ChevronDown :size="15" aria-hidden="true" /></button>
         <div id="planner-tools-actions" class="planner-tools-actions" :class="{ 'is-open': plannerToolsOpen }" @click="plannerToolsOpen = false">
         <button v-if="activePlan && !reserveOpen" type="button" class="status-action secondary" :disabled="cloudBlocked" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />规划设置</button>
-        <button v-if="trainingPlanPickerRef && !reserveOpen" type="button" class="status-action secondary" :disabled="planPickerDisabled" aria-haspopup="dialog" @click="plannerToolsTrigger?.focus({ preventScroll: true }); trainingPlanPickerRef?.openEditor(true)"><Plus :size="15" aria-hidden="true" />新建清单</button>
-        <button v-if="trainingPlanPickerRef && activePlan && !reserveOpen" type="button" class="status-action secondary" :disabled="planPickerDisabled" aria-label="管理清单" aria-haspopup="dialog" @click="plannerToolsTrigger?.focus({ preventScroll: true }); trainingPlanPickerRef?.openEditor(false)"><Pencil :size="15" aria-hidden="true" />管理清单</button>
         <button v-if="isLoggedIn && accountId" type="button" class="status-action secondary planner-capacity-entry" aria-haspopup="dialog" @click="openCapacity"><Calculator :size="16" aria-hidden="true" />修为人数试算</button>
         <button v-if="canUseReserve && accountId && !reserveOpen" type="button" class="status-action secondary planner-reserve-entry" aria-controls="planner-reserve-workspace" @click="openReserveWorkspace"><Archive :size="16" aria-hidden="true" />未来储备</button>
         <button class="planner-refresh" type="button" :disabled="loading || !accountId" title="刷新当前库存快照" @click="refreshSnapshot()">
@@ -1077,6 +1075,8 @@ const firstScheduleSaveReason = computed(() => {
   return ''
 })
 const plannerNextAction = computed(() => {
+  if (!activePlan.value && cloudLoading.value) return { message: '正在读取养成清单…' }
+  if (!activePlan.value && cloudError.value) return { message: cloudError.value, label: migration.value ? undefined : '重新读取', run: loadCloud }
   if (!activePlan.value) return { message: '先建一张养成清单', label: '建立清单', onboarding: true, disabled: planPickerDisabled.value, run: () => trainingPlanPickerRef.value.openEditor(true) }
   if (!planRows.value.length) return { message: '添加想养成的密探并设定目标', label: '添加密探', onboarding: true, disabled: planPickerDisabled.value, run: () => trainingPlanPickerRef.value.openMemberPicker() }
   if (scheduleNeedsUpdate.value) return {

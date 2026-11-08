@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { TRAINING_DAILY_LIMIT, TRAINING_GROUPS, bookExperience, experienceTrainingDays, levelBookGapBundle, trainingRate, trainingSchedule, trainingMaterialEtas, growthTargetReached } from '../src/data/operatorTraining.js'
-import { emptyTrainingWorkspace, normalizeTrainingWorkspace, readTrainingWorkspace, sanitizeTrainingWorkspaceOperators, writeTrainingWorkspace, trainingPlanMemberIds, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
+import { emptyTrainingWorkspace, legacyDefaultTrainingWorkspace, normalizeTrainingWorkspace, readTrainingWorkspace, sanitizeTrainingWorkspaceOperators, writeTrainingWorkspace, trainingPlanMemberIds, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 
 test('历练表覆盖三类十二层奖励以及八档经验奖励', () => {
   assert.deepEqual(TRAINING_GROUPS.map(group => group.stages.length), [12, 12, 12, 8])
@@ -87,9 +87,9 @@ function memoryStorage() {
   return { getItem: key => data.get(key) || null, setItem: (key, value) => data.set(key, value) }
 }
 
-test('默认清单跟随星标，移出只排除清单成员，自建清单独立', () => {
+test('特别关注清单跟随星标，移出只排除清单成员，自建清单独立', () => {
   const favorites = new Set(['a', 'b'])
-  const workspace = emptyTrainingWorkspace('acc')
+  const workspace = legacyDefaultTrainingWorkspace('acc')
   const plan = workspace.plans[0]
   plan.excludedOperatorIds = ['a']
   plan.operatorIds = ['c']
@@ -100,21 +100,21 @@ test('默认清单跟随星标，移出只排除清单成员，自建清单独�
 
 test('本地计划按子账号隔离并保留独立目标、修订和迁移版本', () => {
   const storage = memoryStorage()
-  const workspace = emptyTrainingWorkspace('acc-a')
+  const workspace = legacyDefaultTrainingWorkspace('acc-a')
   workspace.plans.push({ id: 'plan-a', name: '主队', source: 'custom', operatorIds: ['a'], targets: { a: { level: 80, elite: 13, starLevel: 7 } } })
   workspace.activePlanId = 'plan-a'
   const saved = writeTrainingWorkspace(storage, workspace)
   assert.equal(saved.revision, 1)
   assert.equal(saved.version, 1)
   assert.deepEqual(readTrainingWorkspace(storage, 'acc-a').plans[1].targets.a, { level: 80, elite: 13, starLevel: 7 })
-  assert.equal(readTrainingWorkspace(storage, 'acc-b').plans.length, 1)
+  assert.equal(readTrainingWorkspace(storage, 'acc-b').plans.length, 0)
   assert.throws(() => writeTrainingWorkspace(storage, workspace), /其他页面更新/)
   storage.setItem(trainingWorkspaceKey('acc-a'), JSON.stringify({ ...saved, version: 99 }))
   assert.throws(() => readTrainingWorkspace(storage, 'acc-a'), /版本/)
 })
 
 test('培养清单可全部删除，空工作区不会自动补回特别关注清单', () => {
-  const workspace = emptyTrainingWorkspace('acc')
+  const workspace = legacyDefaultTrainingWorkspace('acc')
   workspace.plans = []
   workspace.activePlanId = null
   const normalized = normalizeTrainingWorkspace(workspace, 'acc')
@@ -122,8 +122,18 @@ test('培养清单可全部删除，空工作区不会自动补回特别关注�
   assert.equal(normalized.activePlanId, null)
 })
 
-test('重新保存清单时移除未知密探的成员、排除项和目标', () => {
+test('新账号默认为空工作区，不会自动补出特别关注清单', () => {
   const workspace = emptyTrainingWorkspace('acc')
+  assert.deepEqual(workspace.plans, [])
+  assert.equal(workspace.activePlanId, null)
+  assert.deepEqual(readTrainingWorkspace(memoryStorage(), 'acc').plans, [])
+  const normalized = normalizeTrainingWorkspace(workspace, 'acc')
+  assert.deepEqual(normalized.plans, [])
+  assert.equal(normalized.activePlanId, null)
+})
+
+test('重新保存清单时移除未知密探的成员、排除项和目标', () => {
+  const workspace = legacyDefaultTrainingWorkspace('acc')
   workspace.plans[0].operatorIds = ['char_known', 'char_130_zhoutai']
   workspace.plans[0].excludedOperatorIds = ['char_130_zhoutai']
   workspace.plans.push({ id: 'custom', name: '主队', source: 'custom', operatorIds: ['char_known', 'char_unknown'], excludedOperatorIds: [], targets: {

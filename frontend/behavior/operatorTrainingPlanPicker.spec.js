@@ -47,6 +47,28 @@ it.each(['custom', 'favorites'])('已有 %s 清单时，新建清单提示填写
   onSaved()
   expect(wrapper.get('dialog').element.open).toBe(false)
 })
+it.each([false, true])('没有特别关注清单且有标星时提供来源选择，默认空白（已有自建清单：%s）', async hasCustom => {
+  const wrapper = render({ plans: hasCustom ? [plan] : [], activePlan: hasCustom ? plan : null, favoriteIds: new Set([a.id]) })
+  await wrapper.vm.openEditor(true)
+  await flushPromises()
+  expect(wrapper.get('.plan-source-choice legend').text()).toBe('清单来源')
+  expect(wrapper.get('input[name="plan-source"][value="custom"]').element.checked).toBe(true)
+  expect(wrapper.get('#plan-name-input').element.value).toBe('')
+  expect(wrapper.findAll('input[type="checkbox"]').every(input => !input.element.checked)).toBe(true)
+  await wrapper.get('input[name="plan-source"][value="favorites"]').setValue(true)
+  expect(wrapper.get('#plan-name-input').element.value).toBe('特别关注')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0]).toEqual({ id: null, name: '特别关注', source: 'favorites', operatorIds: [a.id] })
+})
+it.each(['existing-favorites', 'no-favorites', 'unknown-favorites'])('已有特别关注清单或没有有效标星时不显示来源选择：%s', async mode => {
+  const favorites = { ...plan, id: 'favorites', source: 'favorites' }
+  const wrapper = render({ plans: mode === 'existing-favorites' ? [favorites] : [], activePlan: null,
+    favoriteIds: new Set(mode === 'existing-favorites' ? [a.id] : mode === 'unknown-favorites' ? ['unknown'] : []) })
+  await wrapper.vm.openEditor(true)
+  await flushPromises()
+  expect(wrapper.find('.plan-source-choice').exists()).toBe(false)
+  expect(wrapper.get('#plan-name-input').element.value).toBe('')
+})
 it('候选项通过实际勾选更新草稿，保存事件携带完整成员且不修改传入 Set', async () => {
   const members = new Set([a.id]); const wrapper = render({ memberIds: members }); await open(wrapper)
   const row = wrapper.findAll('label').find(node => node.text().includes('颜良') && node.find('input[type="checkbox"]').exists())
