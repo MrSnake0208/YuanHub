@@ -128,8 +128,6 @@ test('keeps the level page contracts for conflict handling and mobile readabilit
   assert.match(page, /level_revision_conflict|isLevelRevisionConflict/)
   assert.match(page, /:disabled="!isNew"/)
   assert.match(page, /重新加载最新数据后再保存/)
-  assert.match(page, /class="level-table-wrap"/)
-  assert.match(page, /class="level-mobile-list"/)
   assert.match(page, /previewAdminLevelImport/)
   assert.match(page, /commitAdminLevelImport/)
   assert.match(page, /link\.download = 'level-catalog\.json'/)

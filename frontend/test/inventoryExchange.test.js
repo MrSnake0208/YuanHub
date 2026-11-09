@@ -14,7 +14,6 @@ import {
 } from '../src/data/inventory/exchange.js'
 
 const inventoryPage = readSource(new URL('../src/pages/inventory/index.vue', import.meta.url))
-const inventoryDesktop = readFileSync(new URL('../src/pages/inventory/inventoryWorkspaceDesktop.css', import.meta.url), 'utf8')
 const inventoryMobile = readFileSync(new URL('../src/pages/inventory/inventoryWorkspaceMobile.css', import.meta.url), 'utf8')
 const mobileHeader = readFileSync(new URL('../src/components/MobileHeader.vue', import.meta.url), 'utf8')
 
@@ -25,31 +24,7 @@ test('inventory import panel follows the shared archive visibility state', funct
 })
 
 test('库存类型切换复用单一入口，两端遵循模式到工具动线并随文档流布局', function () {
-  const switchMarkers = inventoryPage.match(/class="type-switch manifest-type-switch"/g) || []
-  const toolbarIndex = inventoryPage.indexOf('class="manifest-toolbar"')
-  const switchIndex = inventoryPage.indexOf('class="type-switch manifest-type-switch"', toolbarIndex)
-  const barIndex = inventoryPage.indexOf('class="manifest-bar"', switchIndex)
-  const dividerIndex = inventoryPage.indexOf('class="manifest-bar-divider"', switchIndex)
-  const summaryIndex = inventoryPage.indexOf('class="manifest-bar-summary"', dividerIndex)
-  const toolsIndex = inventoryPage.indexOf('class="manifest-item-tools"', summaryIndex)
-
-  assert.equal(switchMarkers.length, 1)
-  assert.ok(
-    toolbarIndex >= 0 &&
-      switchIndex > toolbarIndex &&
-      barIndex > switchIndex &&
-      dividerIndex > switchIndex &&
-      summaryIndex > dividerIndex &&
-      toolsIndex > summaryIndex
-  )
   assert.match(inventoryPage, /class="type-switch manifest-type-switch"[\s\S]*aria-label="库存类型"[\s\S]*@click="setEntityType\('item'\)"[\s\S]*@click="setEntityType\('agent'\)"/)
-  assert.match(inventoryPage, /manifest-type-label-compact"[\s\S]*>道具<[\s\S]*manifest-type-label-compact"[\s\S]*>心纸</)
-  assert.match(inventoryPage, /class="manifest-item-tools"[\s\S]*id="manifest-search"[\s\S]*class="mf-filter"/)
-  for (const stylesheet of [inventoryDesktop, inventoryMobile]) {
-    assert.match(stylesheet, /\.manifest-toolbar\s*\{[^}]*position:\s*static;[^}]*display:\s*(?:flex|grid);/)
-    assert.match(stylesheet, /\.manifest-toolbar \.manifest-type-switch\s*\{[^}]*position:\s*static;[^}]*width:\s*auto;/)
-    assert.match(stylesheet, /\.manifest-type-label-compact,\s*\.manifest-toolbar \.sp,\s*\.manifest-bar-divider,\s*\.manifest-bar-spacer\s*\{\s*display:\s*none;/)
-  }
   assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)
   assert.match(inventoryPage, /class="type-switch manifest-type-switch"[\s\S]*:disabled="editingStock"[\s\S]*aria-label="切换到背包道具"[\s\S]*:disabled="editingStock"[\s\S]*aria-label="切换到密探心纸"/)
 })

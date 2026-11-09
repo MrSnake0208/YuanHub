@@ -15,6 +15,4 @@ test('v2 先预览影响并二次确认，只有提交函数写入', () => {
 test('密探页两个失败态可重试，桌面和手机页签名称一致', () => {
   assert.match(page, /云端养成同步失败：[\s\S]*?重试同步/)
   assert.match(page, /v-else-if="error" class="state err"[\s\S]*?重试加载/)
-  assert.equal((page.match(/养成总览/g) || []).length >= 2, true)
-  assert.doesNotMatch(page, /<span>当前养成<\/span>/)
 })

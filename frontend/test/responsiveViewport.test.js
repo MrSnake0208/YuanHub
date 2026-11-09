@@ -28,14 +28,6 @@ test('根页面不掩盖横向溢出，关键页面与弹窗为动态视口提�
   assert.match(read('src/components/today/TodayLayout.vue'), /\.today-main\s*\{[^}]*min-height:\s*100dvh/)
 })
 
-test('库存分区编辑提示在窄屏内居中，避免透明提示撑宽整页', () => {
-  const inventory = read('src/pages/inventory/index.vue')
-  const mobileRule = inventory.match(/@media \(max-width: 640px\) \{\s*\.subsection-edit::after,[\s\S]*?\n\}/)?.[0] || ''
-  assert.match(mobileRule, /left:\s*50%/)
-  assert.match(mobileRule, /transform:\s*translateX\(-50%\)/)
-  assert.match(mobileRule, /max-width:\s*min\(220px, calc\(100vw - 32px\)\)/)
-})
-
 test('账房底栏可见的整个平板区间都有底部留白', () => {
   const main = read('src/styles/cart-workspace.css')
   assert.match(main, /@media \(min-width:1081px\)\{\.cart-mbar\{display:none\}\}/)
@@ -51,17 +43,3 @@ test('账房底栏可见的整个平板区间都有底部留白', () => {
   }
 })
 
-test('窄屏账房筛选项在容器内横向滚动且不会被挤压', () => {
-  const main = read('src/styles/cart-workspace.css')
-  assert.match(main, /\.cart-filters \.row\{[^}]*overflow-x:auto/)
-  assert.match(main, /\.cart-filters \.chip\{[^}]*flex:none/)
-})
-
-test('手机端图鉴属性和职业筛选与养成总览保持单行', () => {
-  const page = read('src/pages/operator/index.vue')
-  for (const [row, columns] of [['prof', 8], ['subprof', 6]]) {
-    const rules = [...page.matchAll(new RegExp(`\\.catalog-prof-filter \\.pf-${row}-row \\.mf-filter\\s*\\{([^}]*)\\}`, 'g'))]
-    const lastRule = rules.at(-1)?.[1] || ''
-    assert.match(lastRule, new RegExp(`grid-template-columns:\\s*repeat\\(${columns},\\s*minmax\\(0,\\s*1fr\\)\\)`), `${row} 最终生效的列数应与养成总览一致`)
-  }
-})

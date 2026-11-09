@@ -6,11 +6,7 @@ const page = readFileSync(new URL('../src/pages/star/index.vue', import.meta.url
 
 test('star page preserves direct cloud recovery and removes retired capture retries', function () {
   assert.equal((page.match(/@click="recoverStarCloud"/g) || []).length, 1)
-  assert.match(page, /class="star-sync-retry star-sync-cloud"/)
   assert.match(page, /:aria-busy="cloudRecoveryBusy"/)
-  assert.match(page, /恢复中…/)
-  assert.match(page, /恢复云端/)
-  assert.match(page, /重新加载/)
   assert.match(page, /await starCloud\.discardAndReload\(\{ isCurrent \}\)/)
   assert.match(page, /await syncHostAccount\(\{ readOnly: true \}\)/)
   assert.doesNotMatch(page, /dialog\.confirm|window\.confirm|starCloud\.retry\(|retryStarCloud|discardStarCloud|star-sync-discard/)

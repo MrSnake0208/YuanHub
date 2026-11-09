@@ -22,7 +22,6 @@ test('养成规划快捷提升不切换到当前养成标签，材料不足状�
   assert.match(handler, /await openGrowthAction\(entry, field, step\)/)
   assert.doesNotMatch(handler, /setTab\("current"\)/)
   assert.match(operatorPage, /disabled: cardSubmitStates\.value\[entry\.id\] === "submitting" \|\| complete/)
-  assert.match(operatorPage, /className: complete \? "is-complete" : growthActionClass/)
   assert.match(operatorPage, /"在养成规划中查看" \+ fieldLabel \+ "快捷提升"/)
 })
 

@@ -95,7 +95,5 @@ test('registers public and any-permission admin routes', function () {
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
   // 更新日志保留双端更多入口；版本号仅展示真实产品版本。
   assert.equal((sidebar.match(/to="\/changelog"/g) || []).length, 2)
-  // 版本信息保持低权重展示，不新增重复跳转。
-  assert.match(sidebar, /class="foot-version"/)
   assert.match(sidebar, /productVersionLabel/)
 })

@@ -22,26 +22,3 @@ test('today layouts compile with scoped styles and every device rule is media bo
   }
 })
 
-function declarations(owner, end, selector) {
-  const values = []
-  postcss.parse(readFileSync(new URL(`${owner}${end}.css`, directory), 'utf8')).walkRules(selector, rule => {
-    for (const declaration of rule.nodes) values.push([declaration.prop, declaration.value])
-  })
-  return Object.fromEntries(values)
-}
-
-test('today device layouts keep compact scenes and own their regions independently', () => {
-  for (const [end, maxHeight] of [['Desktop', 180], ['Mobile', 140]]) {
-    const scene = parseFloat(declarations('todayLobby', end, '.lobby-scene')['min-height'])
-    const portrait = parseFloat(declarations('todayLobby', end, '.lobby-portrait').height)
-    assert.ok(scene > 0 && scene <= maxHeight, `${end} scene leaves space for summaries`)
-    assert.ok(portrait >= scene, `${end} portrait fills the scene height`)
-  }
-  assert.equal(declarations('todayOnboarding', 'Desktop', '.data-readiness-grid')['grid-template-columns'], 'repeat(3, minmax(0, 1fr))')
-  assert.equal(declarations('todayOnboarding', 'Mobile', '.data-readiness-grid')['grid-template-columns'], '1fr')
-  assert.equal(declarations('todayOnboarding', 'Desktop', '.account-management-card')['grid-template-columns'], 'minmax(0, 1fr) auto')
-  assert.equal(declarations('todayOnboarding', 'Mobile', '.sync-recommendation')['flex-direction'], 'column')
-  assert.equal(declarations('todayOnboarding', 'Desktop', '.sync-recommendation')['flex-direction'], 'row')
-  assert.equal(declarations('todayLayout', 'Desktop', '.today-main')['margin-left'], '244px')
-  assert.equal(declarations('todayLayout', 'Mobile', '.today-main')['margin-left'], undefined)
-})

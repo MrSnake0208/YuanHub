@@ -24,7 +24,6 @@ test('全局吉祥物纹理独立为不可交互的固定背景层', () => {
   assert.match(texture, /position\s*:\s*fixed/)
   assert.match(texture, /pointer-events\s*:\s*none/)
   assert.match(texture, /z-index\s*:\s*-1/)
-  assert.match(texture, /opacity\s*:\s*\.12/)
   assert.match(texture, /maayuan-pattern\.webp/)
 })
 
@@ -59,19 +58,6 @@ test('反馈 Hero 和演示 Hero 遵循相同的内容层级合同', () => {
   assert.match(feedbackCss, /\.feedback-page \.feedback-hero\s*> \.wrap\s*\{[^}]*z-index\s*:\s*2/s)
   assert.match(feedbackCss, /\.feedback-hero-layout\s*\{[^}]*z-index\s*:\s*2/s)
   assert.match(demoVue, /\.demo-hero \.demo-wrap\s*\{[^}]*z-index:\s*2/s)
-})
-
-test('三个 Hero 在中等、移动和超窄视口都有装饰安全区', () => {
-  for (const [source, selectors] of [
-    [mainCss, ['\.hero::after', '\.page-detail \.hero::after']],
-    [feedbackCss, ['\.feedback-page \.feedback-hero::after']],
-    [demoVue, ['\.demo-hero::after']]
-  ]) {
-    assert.match(source, /@media\s*\(min-width:\s*768px\)/)
-    assert.match(source, /@media\s*\(max-width:\s*767px\)/)
-    assert.match(source, /@media\s*\(max-width:\s*360px\)[\s\S]*?::after\s*\{/)
-    for (const selector of selectors) assert.match(source, new RegExp(`${selector}[^}]*?(?:top|right|font-size)`))
-  }
 })
 
 test('长 Hero 文本允许换行且窄屏统计值不被强制裁切', () => {

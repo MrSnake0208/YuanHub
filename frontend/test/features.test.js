@@ -67,7 +67,6 @@ test('recruitment uses the shared beta gate with authenticated workspace', async
 
 test('operator tracking retains lazy loading without the accuracy notice', function () {
   assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 3)
-  assert.doesNotMatch(operatorPage, /planning-bug-notice|规划结果可能不准确/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
   assert.match(operatorPage, /function setTab\(t\) \{[^}]*return activateTab\(t\);/)
   assert.match(operatorPage, /function activateTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)

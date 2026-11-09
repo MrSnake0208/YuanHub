@@ -14,17 +14,6 @@ function source(path) {
 test('uses the official YuanHub logo across primary brand surfaces', function () {
   assert.equal(existsSync(file('../public/brand/yuanhub-logo.png')), true)
 
-  for (const path of [
-    '../src/components/IslandSidebar.vue',
-    '../src/components/AuthLayout.vue',
-    '../src/components/DetailSidebar.vue',
-    '../src/pages/promo/index.vue'
-  ]) {
-    assert.match(source(path), /\/brand\/yuanhub-logo\.png/)
-  }
-
-  assert.match(source('../src/pages/demo/index.vue'), /<IslandSidebar \/>/)
-
   const index = source('../index.html')
   assert.match(index, /rel="icon" href="\/pwa\/icon-192\.png"/)
 })

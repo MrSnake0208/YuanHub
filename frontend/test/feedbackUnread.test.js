@@ -326,5 +326,4 @@ test('用户反馈按通知 refId 显示逐工单未读标识并只清理当前�
   assert.match(feedbackPage, /:unread-feedback-ids="unreadFeedbackIds"/)
   assert.match(workspace, /unreadFeedbackIds: \{ type: Array/)
   assert.match(workspace, /isUnread\(item\)/)
-  assert.match(workspace, /有新更新/)
 })

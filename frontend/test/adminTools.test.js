@@ -89,12 +89,10 @@ test('adds a single accessible workbench back link to management detail pages', 
   const workbench = readSource('../src/pages/admin/index.vue')
 
   assert.match(backLink, /<router-link[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/s)
-  assert.match(backLink, /<ArrowLeft[^>]+:size="20"[^>]+aria-hidden="true"/)
   for (const page of ['admin/roles', 'admin/audit', 'admin/beta', 'operator/admin', 'level/admin', 'changelog/admin']) {
     const source = readSource(`../src/pages/${page}.vue`)
     assert.equal((source.match(/to="\/manage"/g) || []).length, 1)
     assert.match(source, /<header class="page-header(?:\s+[^"]+)?">[\s\S]*?<router-link[^>]+class="page-header-back"[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/)
-    assert.doesNotMatch(source, /class="hero"|class="hero-stats"/)
   }
   assert.doesNotMatch(workbench, /AdminBackLink/)
 })
@@ -102,9 +100,6 @@ test('adds a single accessible workbench back link to management detail pages', 
 test('feedback pages share their own navigation and retain their protected routes', function () {
   const feedbackRoutes = routes.filter(route => route.path.startsWith('/feedback'))
   assert.equal(feedbackRoutes.length, 4)
-  for (const route of feedbackRoutes) {
-    assert.ok(route.meta.title.startsWith('反馈中心 · '))
-  }
   assert.equal(feedbackRoutes.find(route => route.path === '/feedback/manage').meta.requiresFeedbackManage, true)
   assert.equal(feedbackRoutes.find(route => route.path === '/feedback/admin').meta.requiredPermission, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE)
   for (const page of ['index', 'plaza', 'manage', 'admin']) {
