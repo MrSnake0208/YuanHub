@@ -52,7 +52,7 @@
                       </div>
                       <div class="achievement-filter-row">
                         <span class="achievement-filter-label">分类</span>
-                        <div class="achievement-filter-options" role="group" aria-label="游戏分类筛选">
+                        <div class="achievement-filter-options achievement-filter-options-scroll" role="group" aria-label="游戏分类筛选">
                           <button type="button" value="" :aria-pressed="!filters.category" @click="filters.category = ''">全部</button>
                           <button v-for="category in state.catalog.categories" :key="category.category_id" type="button" :value="category.category_id" :aria-pressed="filters.category === category.category_id" @click="filters.category = category.category_id">{{ category.name }}</button>
                         </div>
@@ -94,7 +94,7 @@
                       <button v-for="item in activeAdvancedFilters" :key="item.key" type="button" :aria-label="'清除' + item.label" @click="clearAdvancedFilter(item)">{{ item.label }}<X :size="13" aria-hidden="true" /></button>
                     </div>
                   </div>
-                  <p class="achievement-results">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}<template v-if="rewardSources.length"> · {{ rewardSources.length }} 项分类积分奖励</template> <button class="achievement-undo" type="button" :disabled="!state.undo || !writable" @click="undo">撤销</button></p>
+                  <p class="achievement-results"><span :class="{ 'achievement-results-total': !hasFilters && !rewardSources.length }">{{ hasFilters ? '找到 ' + filtered.length + ' 项' : '全部成就 · 共 ' + filtered.length + ' 项' }}</span><template v-if="rewardSources.length"> · {{ rewardSources.length }} 项分类积分奖励</template> <button class="achievement-undo" type="button" :disabled="!state.undo || !writable" @click="undo">撤销</button></p>
                   <button ref="batchTrigger" class="achievement-batch-toggle" type="button" :disabled="!writable" :aria-pressed="batchMode" @click="batchMode = !batchMode; selected = []"><NotebookPen :size="16" aria-hidden="true" />{{ batchMode ? '退出批量' : '批量记录' }}</button>
                 </div>
                 <div v-if="batchMode" class="achievement-batch" aria-label="批量记录">
@@ -107,7 +107,7 @@
                 </section>
                 <div v-if="pageGroups.length" class="achievement-groups" tabindex="-1" aria-label="成就列表">
                   <section v-for="group in pageGroups" :key="group.category_id" class="achievement-group" :aria-label="group.name">
-                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><i class="achievement-chapter-rule" aria-hidden="true"></i><span>本类已完成 {{ available && !state.archive ? '—' : group.completed }} / 共 {{ group.total }} 项</span></header>
+                    <header class="achievement-group-heading"><h2>{{ group.name }}</h2><i class="achievement-chapter-rule" aria-hidden="true"></i><span>本类已完成 <span class="achievement-group-done">{{ available && !state.archive ? '—' : group.completed }}</span> / 共 {{ group.total }} 项</span></header>
                     <AchievementPointRewards v-if="group.pointTrack" :key="`${state.contextVersion}:${group.category_id}`" :category-name="group.name" :track="group.pointTrack" :points="group.points" :record-state="pointRecordState" :always-expanded="filters.category === group.category_id" />
                     <div v-if="group.entries.length" class="achievement-column-headings" aria-hidden="true"><span>成就</span><span>奖励</span><div><span>完成状态</span><span>操作</span></div></div>
                     <ul v-if="group.entries.length" class="achievement-list">
