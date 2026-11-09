@@ -22,7 +22,7 @@ it('the screenshot operator retains identity, growth and every configured fate t
   expect(wrapper.find('.ledger-status-button, .box-image-status-button').exists()).toBe(false)
   expect(wrapper.get('.box-image-huaji-value').text()).toBe('化极')
   expect(wrapper.get('.box-image-stars').attributes('aria-label')).toBe('5星')
-  expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
+  expect(wrapper.findAll('.box-image-stars svg')).toHaveLength(5)
   expect(wrapper.findAll('.box-image-growth-row').map(row => row.text())).toEqual(['等级100', '修为17'])
   expect(wrapper.findAll('.box-image-combat-head > span').map(row => row.text())).toEqual(['生命', '攻击'])
   expect(wrapper.findAll('.box-image-combat-value').map(row => row.text())).toEqual(['37195', '7706'])
@@ -103,7 +103,7 @@ it('awakened progress is shown once beside the stars, not as a name badge', () =
   expect(wrapper.get('.box-image-name-tab').text()).not.toContain('觉醒')
   expect(wrapper.get('h3').text()).toBe(xushu.name)
   expect(wrapper.get('.box-image-huaji-value').text()).toContain('觉醒')
-  expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
+  expect(wrapper.findAll('.box-image-stars svg')).toHaveLength(5)
   expect(wrapper.get('.box-image-huaji-value').attributes('aria-label')).toContain('觉醒')
   expect(wrapper.get('.box-image-huaji-value').text()).not.toContain('节点')
   wrapper.unmount()
@@ -112,16 +112,16 @@ it('awakened progress is shown once beside the stars, not as a name badge', () =
 it.each([false, null, undefined])('five stars without confirmed awakening (%s) are not labelled awakened', awakened => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ ...xushu, huaji: { owned: true, stage: 25, awakened } })] } })
   expect(wrapper.get('.box-image-huaji-value').text()).not.toContain('觉醒')
-  expect(wrapper.findAll('.box-image-stars img')).toHaveLength(5)
+  expect(wrapper.findAll('.box-image-stars svg')).toHaveLength(5)
   wrapper.unmount()
 })
 
 
 it.each([[1, 1], [7, 2], [13, 3], [19, 4], [25, 5]])('renders stage %s as exactly %s stars without empty slots', (stage, stars) => {
   const wrapper = mount(Sheet, { props: { entries: [operatorBoxImageEntry({ id: 'stars', rarity: 5, huaji: { owned: true, stage } })] } })
-  const icons = wrapper.findAll('.box-image-stars img')
+  const icons = wrapper.findAll('.box-image-stars svg')
   expect(icons).toHaveLength(stars)
-  expect(icons.every(icon => icon.attributes('src').endsWith('/assets/operator-box/star.svg'))).toBe(true)
+  expect(icons.every(icon => icon.attributes('data-export-svg') !== undefined)).toBe(true)
   expect(wrapper.get('.box-image-stars').attributes('aria-label')).toBe(stars + '星')
   expect(wrapper.get('.box-image-huaji-value').text()).not.toMatch(/化极\d|\d星/)
   if (stage < 25) expect(wrapper.get('.box-image-huaji-value').text()).toContain('0节点')

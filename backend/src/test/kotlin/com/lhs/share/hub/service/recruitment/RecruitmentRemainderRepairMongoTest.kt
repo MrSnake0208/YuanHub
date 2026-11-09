@@ -19,7 +19,8 @@ class RecruitmentRemainderRepairMongoTest {
         val uri = TestMongo.uri(database)
         assertTrue(TestMongo.isOwnedUri(uri))
         val mapper = jacksonObjectMapper()
-        val directory = Path.of("build/test-data", System.getProperty("org.gradle.test.worker", ""), "recruitment-remainder-repair").toAbsolutePath()
+        val worker = System.getProperty("org.gradle.test.worker", "")
+        val directory = Path.of("build/test-data", worker, "recruitment-remainder-repair").toAbsolutePath()
         Files.createDirectories(directory)
         val script = mapper.writeValueAsString(
             Path.of("scripts/migrations/20261016-recruitment-batch-remainders.mongo-test.js").toAbsolutePath().toString(),

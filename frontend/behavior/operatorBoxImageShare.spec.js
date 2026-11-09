@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.stubGlobal('URL', Object.assign(class extends URL {}, { createObjectURL: vi.fn(() => 'blob:preview-' + captures.length), revokeObjectURL: vi.fn() }))
   renderOperatorBoxImage.mockReset().mockImplementation(async element => {
     captures.push({ names: [...element.querySelectorAll('h3')].map(node => node.textContent), text: element.textContent,
-      stars: [...element.querySelectorAll('.box-image-huaji-value')].map(node => node.querySelectorAll('.box-image-stars img').length),
+      stars: [...element.querySelectorAll('.box-image-huaji-value')].map(node => node.querySelectorAll('.box-image-stars svg').length),
       controls: element.querySelectorAll('button, input, textarea, select, [role="button"]').length })
     return new Blob(['image'], { type: 'image/png' })
   })
