@@ -48,6 +48,7 @@ export function createBattleDraft() {
     operators: Array.from({ length: 5 }, () => createBattleOperator()),
     targets: ['左二', '左一', 'BOSS', '右一', '右二'],
     rounds: [{ actions: [], remark: '' }],
+    absentTargets: [],
   }
 }
 

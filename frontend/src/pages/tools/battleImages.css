@@ -277,6 +277,8 @@
 .battle-tool .battle-sequence-tools > button { margin-left: auto; padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
 .battle-round-note { margin-top: 16px; }
 .battle-target-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: -4px 0 14px; }
+.battle-target-fields input:disabled { opacity: .5; }
+.battle-tool .battle-target-presence { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .battle-common-note { margin-bottom: 16px; padding: 12px 14px 14px; border: 1px solid var(--battle-border); border-left: 3px solid var(--battle-accent); border-radius: 8px; background: var(--cream); }
 .battle-note-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 8px; color: var(--battle-accent); }
 .battle-note-heading h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }

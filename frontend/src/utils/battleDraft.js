@@ -1,4 +1,4 @@
-import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_NOTES, BATTLE_STATS, battleDraftDiscError } from './battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_MAIN_TARGET, BATTLE_NOTES, BATTLE_STATS, battleDraftDiscError } from './battleImages.js'
 
 export const BATTLE_DRAFT_MAX_BYTES = 1024 * 1024
 export function battleDraftKey(userId, accountId) {
@@ -26,6 +26,21 @@ export function validateBattleDraft(value) {
   }
   const draft = object(value, '正文')
   if (!['如鸢', '代号鸢'].includes(draft.game)) fail('游戏')
+  const rounds = list(draft.rounds, 1, 50, '回合数').map(item => {
+    const round = object(item, '回合')
+    return {
+      remark: text(round.remark, 2000, '回合备注'),
+      actions: list(round.actions, 0, 50, '回合动作数').map(item => {
+        const action = object(item, '动作')
+        if (action.type === BATTLE_INTERACTION.type) return { type: action.type }
+        if (!BATTLE_ACTIONS.some(({ type }) => action.type === type)) fail('动作类型')
+        return { slot: index(action.slot, 4, '密探槽位'), type: action.type, target: index(action.target, 4, '目标槽位') }
+      }),
+    }
+  })
+  const usedTargets = new Set(rounds.flatMap(round => round.actions.map(action => action.target)))
+  const absentTargets = [...new Set(list(draft.absentTargets ?? [], 0, 4, '缺席敌人').map(item => index(item, 4, '缺席敌人')))]
+    .filter(target => target !== BATTLE_MAIN_TARGET && !usedTargets.has(target))
   return {
     title: text(draft.title, 120, '标题'), author: text(draft.author, 60, '署名'),
     game: draft.game, note: text(draft.note, 2000, '说明'),
@@ -44,18 +59,8 @@ export function validateBattleDraft(value) {
       }
     }),
     targets: list(draft.targets, 5, 5, '敌方目标').map(name => text(name, 20, '敌方名称')),
-    rounds: list(draft.rounds, 1, 50, '回合数').map(item => {
-      const round = object(item, '回合')
-      return {
-        remark: text(round.remark, 2000, '回合备注'),
-        actions: list(round.actions, 0, 50, '回合动作数').map(item => {
-          const action = object(item, '动作')
-          if (action.type === BATTLE_INTERACTION.type) return { type: action.type }
-          if (!BATTLE_ACTIONS.some(({ type }) => action.type === type)) fail('动作类型')
-          return { slot: index(action.slot, 4, '密探槽位'), type: action.type, target: index(action.target, 4, '目标槽位') }
-        }),
-      }
-    }),
+    rounds,
+    absentTargets,
   }
 }
 

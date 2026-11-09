@@ -3,11 +3,21 @@
     <div class="battle-action-legend">
       <span class="battle-legend-symbols"><span class="battle-legend-prefix">操作符号：</span><b>{{ mobile ? '数字=出手顺序' : '数字 本回合全队出手顺序' }}</b><b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span>
       <!-- is-unused 供手机端只列出表中实际用到的非主位目标；只打主位时不列目标。 -->
-      <span class="battle-legend-targets" :class="{ 'is-single': !usage.multi }"><template v-if="mobile"> · 未标注={{ targetName(usage.main) }} · </template><template v-else>目标：</template><span v-for="(name, index) in targets" :key="index" :class="{ 'is-unused': !usage.used.includes(index) || (mobile && index === usage.main) }"><i :class="{ 'is-plain': legendPlain(index) }" :style="legendPlain(index) ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><template v-if="mobile">{{ index + 1 }}</template>{{ targetName(index) }}<small v-if="!mobile && index === usage.main">（表中未标注即此目标）</small></span>
-        <button type="button" class="battle-target-rename" :aria-label="mobile ? '改名' : undefined" :title="mobile ? (renaming ? '完成改名' : '改名') : undefined" :aria-expanded="renaming" aria-controls="battle-target-fields" @click="renaming = !renaming"><Pencil :size="13" aria-hidden="true" /><template v-if="!mobile">{{ renaming ? '完成改名' : '改名' }}</template></button>
+      <span class="battle-legend-targets" :class="{ 'is-single': !usage.multi }"><template v-if="mobile"> · 未标注={{ targetName(usage.main) }} · </template><template v-else>目标：</template><span v-for="(name, index) in targets" v-show="!absentTargets.includes(index)" :key="index" :class="{ 'is-unused': !usage.used.includes(index) || (mobile && index === usage.main) }"><i :class="{ 'is-plain': legendPlain(index) }" :style="legendPlain(index) ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ targetName(index) }}<small v-if="!mobile && index === usage.main">（表中未标注即此目标）</small></span>
+        <button v-if="!mobile" type="button" class="battle-target-rename" :aria-expanded="renaming" aria-controls="battle-target-fields" @click="renaming = !renaming"><Pencil :size="13" aria-hidden="true" />{{ renaming ? '完成设置' : '敌方设置' }}</button>
       </span>
     </div>
-    <div v-if="renaming" id="battle-target-fields" class="battle-target-fields" role="group" aria-label="敌方名称"><label v-for="(_, index) in targets" :key="index">{{ TARGET_POSITIONS[index] }}<input v-model="targets[index]" maxlength="20" :aria-label="`敌方${index + 1}名称（${TARGET_POSITIONS[index]}）`"></label></div>
+    <Teleport v-if="renaming && (!mobile || expanded)" defer to="#battle-mobile-panel-body" :disabled="!mobile">
+    <div id="battle-target-fields" class="battle-target-fields" role="group" aria-label="敌方设置">
+      <h3 v-if="mobile" ref="enemyHeading" tabindex="-1">敌方设置</h3>
+      <p v-if="mobile" class="battle-hint">关掉不在场的位置，也可以改名</p>
+      <div v-for="(_, index) in targets" :key="index" class="battle-target-field">
+        <label>{{ TARGET_POSITIONS[index] }}<input v-model="targets[index]" maxlength="20" :disabled="absentTargets.includes(index)" :aria-label="`敌方${index + 1}名称（${TARGET_POSITIONS[index]}）`"></label>
+        <label v-if="index !== BATTLE_MAIN_TARGET" class="battle-target-presence"><input type="checkbox" :checked="!absentTargets.includes(index)" :disabled="!absentTargets.includes(index) && targetCounts[index] > 0" :aria-label="`${TARGET_POSITIONS[index]}在场`" @change="setTargetPresent(index, $event.target.checked)">在场<span v-if="!absentTargets.includes(index) && targetCounts[index] > 0">已有 {{ targetCounts[index] }} 步</span></label>
+      </div>
+      <button v-if="mobile" type="button" class="battle-note-done" @click="closeEnemySettings">完成</button>
+    </div>
+    </Teleport>
     <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
@@ -34,7 +44,7 @@
                 </div>
               </header>
 
-              <div v-show="!mobile || !noteMode" class="battle-sequence">
+              <div v-show="!panelForm" class="battle-sequence">
                 <div class="battle-sequence-head">
                   <span v-if="!mobile || !round.actions.length">出手顺序</span>
                   <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
@@ -62,25 +72,32 @@
                 <p v-if="removedHere" class="battle-hint battle-undo-note" role="status">已删除第 {{ removed.index + 1 }} 步。<button type="button" class="battle-link-button" @click="restoreRemoved">撤销删除</button></p>
               </div>
 
-              <div v-show="!mobile || !noteMode" class="battle-composer">
+              <div v-show="!panelForm" class="battle-composer">
                 <div v-if="!mobile" class="battle-composer-row battle-composer-actors" role="group" aria-label="出手方">
                   <span class="battle-composer-label">出手</span>
                   <button v-for="(member, index) in operators" :key="index" type="button" class="battle-actor-option" :disabled="!member.name" :aria-pressed="activeSlot === index" @click="pickSlot(index)">
                     <img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><span class="battle-actor-name">{{ member.name || `${index + 1}号位` }}</span>
                   </button>
                 </div>
-                <div class="battle-composer-row battle-composer-targets" role="group" aria-label="动作目标">
+                <div v-if="!mobile" class="battle-composer-row battle-composer-targets" role="group" aria-label="动作目标">
                   <span class="battle-composer-label">目标</span>
-                  <button v-for="(name, index) in targets" :key="index" type="button" class="battle-target-option" :aria-label="mobile ? `${index + 1}：${targetName(index)}` : undefined" :title="mobile ? targetName(index) : undefined" :aria-pressed="activeSlot !== BOX && activeTarget === index" :disabled="activeSlot === BOX" @click="pickTarget(index)">
-                    <i :style="index === usage.main ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><span><template v-if="mobile"><b>{{ index + 1 }}</b><span class="battle-target-short">{{ battleTargetShortName(targetName(index)) }}</span></template><template v-else>{{ targetName(index) }}</template></span>
+                  <button v-for="(name, index) in targets" v-show="!absentTargets.includes(index)" :key="index" type="button" class="battle-target-option" :aria-pressed="activeSlot !== BOX && activeTarget === index" :disabled="activeSlot === BOX" @click="pickTarget(index)">
+                    <i :style="index === usage.main ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><span>{{ targetName(index) }}</span>
                   </button>
+                </div>
+                <div v-if="mobile" class="battle-composer-row battle-composer-ring">
+                  <div class="battle-enemy-controls">
+                    <span class="battle-composer-label">目标</span>
+                    <button :ref="setEnemyButton" type="button" class="battle-enemy-settings" :aria-expanded="renaming" aria-controls="battle-target-fields" @click="openEnemySettings">敌方设置</button>
+                  </div>
+                  <BattleTargetRing :names="targets.map((_, i) => targetName(i))" :present="presentTargets" :active="activeTarget ?? target" :plain-index="usage.main" :disabled="activeSlot === BOX" @select="pickTarget" />
                 </div>
                 <div v-if="mobile" class="battle-composer-row battle-composer-grid" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
                   <span aria-hidden="true"></span>
                   <span v-for="(member, index) in operators" :key="index" class="battle-grid-heading">{{ member.name || `${index + 1}号位` }}</span>
                   <template v-for="item in mobileActions" :key="item.type">
                     <span class="battle-composer-label">{{ item.label.slice(0, 2) }}</span>
-                    <button v-for="(member, index) in operators" :key="index" type="button" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
+                    <button v-for="(member, index) in operators" :key="index" type="button" :data-action="item.type" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
                   </template>
                 </div>
                 <div v-if="!mobile" class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
@@ -110,7 +127,7 @@
     <!-- 面板不锁页面滚动，仍可点表格其它回合直接切换。 -->
     <div v-if="expanded" ref="panel" class="battle-mobile-panel">
       <div id="battle-mobile-panel-body"></div>
-      <div v-show="!noteMode" class="battle-round-dock" role="group" aria-label="回合切换">
+      <div v-show="!panelForm" class="battle-round-dock" role="group" aria-label="回合切换">
         <button type="button" aria-label="上一回合" title="上一回合" :disabled="current === 0" @click="dockNav(-1)"><ChevronLeft :size="16" aria-hidden="true" /></button>
         <button ref="roundMenuButton" type="button" class="battle-round-dock-title" aria-haspopup="menu" :aria-expanded="roundMenuOpen" :aria-label="`第${current + 1}回合操作`" @click="roundMenuOpen = !roundMenuOpen"><b aria-live="polite">第 {{ current + 1 }} 回合</b><small>{{ round.actions.length }} 步</small><component :is="roundMenuOpen ? ChevronDown : ChevronUp" :size="12" aria-hidden="true" /></button>
         <button type="button" :aria-label="atLast ? '新增回合' : '下一回合'" :title="atLast ? '新增回合' : '下一回合'" :disabled="atLast && rounds.length >= 50" @click="dockNav(1)"><component :is="atLast ? Plus : ChevronRight" :size="16" aria-hidden="true" /></button>
@@ -129,27 +146,49 @@
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, NotebookPen, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
-import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetShortName, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
+import BattleTargetRing from './BattleTargetRing.vue'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_MAIN_TARGET, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
-const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true }, exportDisabled: Boolean })
+const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true }, absentTargets: { type: Array, required: true }, exportDisabled: Boolean })
 // recording：编辑区是否展开，页面据此在手机端用回合栏替换底部生成栏。
 const emit = defineEmits(['recording', 'pick-member', 'export'])
 // BOX 仅表示修改箱步骤时的 activeSlot，不是可选的出手位。
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)
 const mobile = ref(false), panel = ref(null), noteMode = ref(false)
+const panelForm = computed(() => mobile.value && (noteMode.value || renaming.value))
+const enemyHeading = ref(null)
 const roundMenuOpen = ref(false), roundMenu = ref(null), roundMenuButton = ref(null)
 const mobileActions = ['ultimate', 'attack', 'defense', 'sp'].map(type => BATTLE_ACTIONS.find(item => item.type === type))
 // 手机只输出 Teleport 锚点，桌面保留原来的 tr/td 结构及编辑区位置。
 const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row' }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
 const TARGET_POSITIONS = ['左二', '左一', '主位', '右一', '右二']
+const presentTargets = computed(() => props.targets.map((_, index) => index).filter(index => !props.absentTargets.includes(index)))
+const targetCounts = computed(() => {
+  const counts = [0, 0, 0, 0, 0]
+  for (const round of props.rounds) {
+    for (const action of round.actions) if (!isBattleInteraction(action)) counts[action.target]++
+  }
+  return counts
+})
+function setTargetPresent(index, present) {
+  if (index === BATTLE_MAIN_TARGET) return
+  const absentIndex = props.absentTargets.indexOf(index)
+  if (present) {
+    if (absentIndex !== -1) props.absentTargets.splice(absentIndex, 1)
+  } else if (absentIndex === -1 && !targetCounts.value[index]) {
+    props.absentTargets.push(index)
+    if (target.value === index) target.value = BATTLE_MAIN_TARGET
+  }
+}
 // 回合数、动作数接近上限才显示计数，平时不占位置。
 const LIMIT_HINT = 40
 // 编辑区在 v-for 行内渲染，用函数 ref 取唯一的标题与区块元素。
-let headingEl = null, sectionEl = null, noteButton = null
+let headingEl = null, sectionEl = null, noteButton = null, enemyButton = null
 const setHeading = el => { headingEl = el }, setSection = el => { sectionEl = el }, setNoteButton = el => { noteButton = el }
+const setEnemyButton = el => { enemyButton = el }
 // editing：正在修改的步骤序号；null 表示密探/目标/动作按钮用于追加新动作。
 const editing = ref(null), removed = ref(null)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
@@ -171,6 +210,7 @@ watch(() => round.value?.actions.length, () => { if (editing.value !== null && !
 watch([() => round.value?.actions.length, editing, current, mobile, expanded], async () => {
   if (!mobile.value || !expanded.value) return
   await nextTick()
+  keepCurrentRowVisible()
   const chips = sectionEl?.querySelector('.battle-sequence-chips')
   const chip = editing.value === null ? chips?.lastElementChild : chips?.children[editing.value]
   if (chip) chips.scrollTo?.({ left: chip.offsetLeft, behavior: 'auto' })
@@ -180,7 +220,10 @@ watch(panel, el => {
   panelOwner?.style.removeProperty('--battle-panel-height')
   panelOwner = el?.closest('.battle-tool')
   if (!el || typeof ResizeObserver !== 'function') return
-  panelObserver = new ResizeObserver(() => panelOwner?.style.setProperty('--battle-panel-height', `${el.getBoundingClientRect().height}px`))
+  panelObserver = new ResizeObserver(() => {
+    panelOwner?.style.setProperty('--battle-panel-height', `${el.getBoundingClientRect().height}px`)
+    keepCurrentRowVisible()
+  })
   panelObserver.observe(el)
 }, { flush: 'post' })
 let alive = true, opener, viewObserver, panelObserver, panelOwner, mediaQuery, recordingScrollY = 0
@@ -193,7 +236,7 @@ function onMenuKeydown(event) {
   roundMenuOpen.value = false
   roundMenuButton.value?.focus({ preventScroll: true })
 }
-const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false }
+const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false; renaming.value = false }
 onMounted(() => {
   document.addEventListener('pointerdown', onMenuPointerdown)
   document.addEventListener('keydown', onMenuKeydown)
@@ -228,7 +271,27 @@ function revealHeading(focusEl = headingEl) {
   if (row) row.scrollIntoView?.({ block: 'start', behavior: 'auto' })
   else if (!mobile.value) headingEl?.scrollIntoView?.({ block: 'nearest', behavior: 'auto' })
 }
-async function close() { expanded.value = false; editing.value = null; noteMode.value = false; await nextTick(); if (mobile.value) window.scrollTo(0, recordingScrollY); opener?.focus({ preventScroll: true }) }
+function keepCurrentRowVisible() {
+  if (!mobile.value || !expanded.value || !panel.value) return
+  const row = scroller.value?.querySelector('tr.battle-row-current')
+  if (!row) return
+  const rowRect = row.getBoundingClientRect()
+  const overlap = rowRect.bottom - panel.value.getBoundingClientRect().top
+  if (overlap <= 0) return
+  const headerBottom = scroller.value.querySelector('thead')?.getBoundingClientRect().bottom ?? 0
+  window.scrollBy(0, Math.min(overlap + 8, Math.max(0, rowRect.top - headerBottom)))
+}
+async function openEnemySettings() {
+  renaming.value = true
+  await nextTick()
+  enemyHeading.value?.focus({ preventScroll: true })
+}
+async function closeEnemySettings() {
+  renaming.value = false
+  await nextTick()
+  enemyButton?.focus({ preventScroll: true })
+}
+async function close() { expanded.value = false; editing.value = null; noteMode.value = false; renaming.value = false; await nextTick(); if (mobile.value) window.scrollTo(0, recordingScrollY); opener?.focus({ preventScroll: true }) }
 async function openNote() {
   noteMode.value = true
   await nextTick(); sectionEl?.querySelector('textarea')?.focus({ preventScroll: true })
@@ -303,6 +366,8 @@ function undoLast() { if (round.value.actions.length) removeAction(round.value.a
 function restoreRemoved() {
   const item = removed.value
   if (!item || item.round !== round.value || item.round.actions.length >= 50) return
+  const absentIndex = props.absentTargets.indexOf(item.action.target)
+  if (absentIndex !== -1) props.absentTargets.splice(absentIndex, 1)
   item.round.actions.splice(Math.min(item.index, item.round.actions.length), 0, item.action)
   removed.value = null
 }

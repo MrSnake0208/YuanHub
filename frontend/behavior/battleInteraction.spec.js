@@ -8,7 +8,7 @@ import { buildBattleImageModel, createBattleDraft } from '../src/utils/battleIma
 const setup = () => {
   const draft = reactive(createBattleDraft())
   draft.operators[0].name = '杨修'
-  const wrapper = mount(BattleRecorder, { props: { operators: draft.operators, rounds: draft.rounds, targets: draft.targets } })
+  const wrapper = mount(BattleRecorder, { props: { operators: draft.operators, rounds: draft.rounds, targets: draft.targets, absentTargets: draft.absentTargets } })
   const button = text => wrapper.findAll('button').find(item => item.text() === text)
   const group = label => wrapper.get(`[role="group"][aria-label="${label}"]`)
   return { draft, wrapper, button, group }
@@ -94,11 +94,11 @@ it('编辑区展开在当前回合行下方；多目标时只标注主目标以�
 
 it('敌方名称在图例旁改名，表格与选择同步更新', async () => {
   const { draft, wrapper, button } = setup()
-  await button('改名').trigger('click')
+  await button('敌方设置').trigger('click')
   await wrapper.get('[aria-label="敌方2名称（左一）"]').setValue('小怪')
   expect(draft.targets[1]).toBe('小怪')
   expect(wrapper.get('.battle-action-legend').text()).toContain('小怪')
-  await button('完成改名').trigger('click')
+  await button('完成设置').trigger('click')
   expect(wrapper.find('#battle-target-fields').exists()).toBe(false)
 })
 
