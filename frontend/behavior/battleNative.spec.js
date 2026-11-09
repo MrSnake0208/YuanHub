@@ -15,10 +15,12 @@ import { useBattleDraft } from '../src/composables/useBattleDraft.js'
 import { battleCloudCacheKey, battleDraftKey, decodeBattleCloudCache, decodeBattleDraft, encodeBattleDraft } from '../src/utils/battleDraft.js'
 import { saveBattleDraft } from '../src/api/battleDrafts.js'
 import { createBattleDraft } from '../src/utils/battleImages.js'
-import { FEATURE_KEYS, isFeatureEnabled } from '../src/config/features.js'
+import { isFeatureEnabled } from '../src/config/features.js'
+import { beta } from '../src/store/beta.js'
+import { betaLandingFor } from '../src/utils/betaAccess.js'
 
 const routeHooks = vi.hoisted(() => ({ replace: vi.fn(), leave: null }))
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { routeHooks.leave = fn }, useRouter: () => ({ replace: routeHooks.replace }) }))
+vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { routeHooks.leave = fn }, useRouter: () => ({ replace: routeHooks.replace, currentRoute: { value: { fullPath: '/tools/battle-images' } } }) }))
 vi.mock('../src/config/features.js', async importOriginal => {
   const original = await importOriginal()
   return { ...original, isFeatureEnabled: vi.fn(original.isFeatureEnabled) }
@@ -84,7 +86,8 @@ beforeEach(async () => {
   vi.clearAllMocks()
   const original = await vi.importActual('../src/config/features.js')
   isFeatureEnabled.mockImplementation(original.isFeatureEnabled)
-  auth.isLoggedIn = false; auth.userInfo = null; auth.adminAccess = null
+  auth.isLoggedIn = false; auth.userInfo = null; auth.adminAccess = null; auth.accessToken = ''
+  Object.assign(beta, { campaign: { accessMode: 'OPEN' }, mine: null, userId: '', publicError: '', personalError: '' })
   activeAccount.set('a')
   dialog.confirm.mockResolvedValue(true)
   listAccounts.mockResolvedValue([{ id: 'a', game: '如鸢', name: '账号 A' }, { id: 'b', game: '如鸢', name: '账号 B' }])
@@ -96,10 +99,9 @@ beforeEach(async () => {
   cloudServer.rows.clear()
 })
 
-it.each(['logout', 'revoked', 'failed'])('发布版已打开工具在 %s 后隐藏并离开，保留已存草稿', async reason => {
-  isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.BATTLE_IMAGES)
-  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'u' }, isLoggedIn: true,
-    adminAccessLoaded: true, adminAccessLoading: false, adminAccessError: '', adminAccess: { roles: ['PLATFORM_ADMIN'] } })
+it.each(['logout', 'revoked', 'failed'])('已打开工具在内测资格 %s 后隐藏并离开，保留已存草稿', async reason => {
+  Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'u' }, isLoggedIn: true })
+  Object.assign(beta, { campaign: { accessMode: 'BETA' }, userId: 'u', mine: { canUseBetaFeatures: true } })
   const wrapper = page(); await flushPromises()
   await chooseBattleMember(wrapper, '杨修', 1)
   const key = battleCloudCacheKey('u', 'a'), saved = localStorage.getItem(key)
@@ -112,17 +114,11 @@ it.each(['logout', 'revoked', 'failed'])('发布版已打开工具在 %s 后隐�
   await input.trigger('input')
   dialog.confirm.mockClear()
   if (reason === 'logout') auth.accessToken = ''
-  if (reason === 'revoked') auth.adminAccess = { roles: [] }
-  if (reason === 'failed') {
-    auth.adminAccessLoading = true
-    await flushPromises()
-    expect(wrapper.find('.page-battle-images').exists()).toBe(false)
-    expect(routeHooks.replace).not.toHaveBeenCalled()
-    Object.assign(auth, { adminAccessLoading: false, adminAccessError: 'failed' })
-  }
+  if (reason === 'revoked') beta.mine = { canUseBetaFeatures: false }
+  if (reason === 'failed') beta.personalError = 'failed'
   await flushPromises()
   expect(wrapper.find('.page-battle-images').exists()).toBe(false)
-  expect(routeHooks.replace).toHaveBeenCalledWith('/cart')
+  expect(routeHooks.replace).toHaveBeenCalledWith(betaLandingFor('/tools/battle-images'))
   expect(routeHooks.leave()).toBe(true)
   expect(dialog.confirm).not.toHaveBeenCalled()
   expect(localStorage.getItem(key)).toBe(saved)
