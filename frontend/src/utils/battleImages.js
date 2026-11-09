@@ -20,9 +20,10 @@ export const BATTLE_NOTES = Object.freeze([
   ['discs', '携带命盘'], ['requiredDiscs', '必须命盘'], ['forbiddenDiscs', '禁用命盘'], ['stars', '星石 / 辅星'],
 ])
 // 目标色：浅底色作动作块底，深一档的强调色作左侧色条与图例，色相拉开（蓝、琥珀、珊瑚、绿、紫）。
-// 全部打同一目标时整页只是浅底，不会满屏饱和色块；正文在浅底上对比度均高于 9:1。
+// 主位无色，下标 2 的颜色不用于动作，保留以对齐目标下标。
 export const TARGET_COLORS = ['#dce8f1', '#f6e4bb', '#edd6d0', '#deead6', '#e4dcf0']
 export const TARGET_ACCENTS = ['#5b8db8', '#d4a017', '#c8644f', '#6a9f55', '#8b6cc0']
+export const BATTLE_MAIN_TARGET = 2
 const agents = new Map(AGENT_CATALOG.map(agent => [agent.name, agent.id]))
 
 export function battleTargetShortName(name) {
@@ -96,14 +97,12 @@ export function battleRoundRows(rounds, operators = []) {
   })
 }
 
-// 操作表目标用量：used 为用到的目标序号（升序）；main 为打得最多的主目标（并列取序号小的）。
-// 多目标时只标注“例外”目标，主目标与单目标都不逐格标注，编辑表与出图共用此规则。
+// used 为用到的目标序号（升序）；主位固定无色，multi 表示存在需要上色的目标。
 export function battleTargetUsage(rows) {
-  const counts = new Map()
-  for (const entry of rows.flatMap(row => row.slots.flat())) if (!entry.box && entry.target != null) counts.set(entry.target, (counts.get(entry.target) || 0) + 1)
-  const used = [...counts.keys()].sort((a, b) => a - b)
-  const main = used.reduce((best, index) => best == null || counts.get(index) > counts.get(best) ? index : best, null)
-  return { used, main, multi: used.length > 1 }
+  const targets = new Set()
+  for (const entry of rows.flatMap(row => row.slots.flat())) if (!entry.box && entry.target != null) targets.add(entry.target)
+  const used = [...targets].sort((a, b) => a - b)
+  return { used, main: BATTLE_MAIN_TARGET, multi: used.some(index => index !== BATTLE_MAIN_TARGET) }
 }
 
 // 化极文本来自导入时的固定格式（如“5 星 · 3 节点 · 已觉醒”）；手填的其它写法保留原文。

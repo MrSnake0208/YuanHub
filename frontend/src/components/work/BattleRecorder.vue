@@ -2,8 +2,8 @@
   <section class="battle-recorder" aria-label="战斗操作记录">
     <div class="battle-action-legend">
       <span class="battle-legend-symbols"><span class="battle-legend-prefix">操作符号：</span><b>{{ mobile ? '数字=出手顺序' : '数字 本回合全队出手顺序' }}</b><b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span>
-      <!-- is-unused 供手机端只列出表中实际用到的目标；单目标时整组目标都不列。 -->
-      <span class="battle-legend-targets" :class="{ 'is-single': !usage.multi }"><template v-if="mobile"> · 未标注={{ targetName(usage.main ?? target) }} · </template><template v-else>目标：</template><span v-for="(name, index) in targets" :key="index" :class="{ 'is-unused': !usage.used.includes(index) || (mobile && index === usage.main) }"><i :class="{ 'is-plain': legendPlain(index) }" :style="legendPlain(index) ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><template v-if="mobile">{{ index + 1 }}</template>{{ targetName(index) }}<small v-if="!mobile && index === usage.main">（表中未标注即此目标）</small></span>
+      <!-- is-unused 供手机端只列出表中实际用到的非主位目标；只打主位时不列目标。 -->
+      <span class="battle-legend-targets" :class="{ 'is-single': !usage.multi }"><template v-if="mobile"> · 未标注={{ targetName(usage.main) }} · </template><template v-else>目标：</template><span v-for="(name, index) in targets" :key="index" :class="{ 'is-unused': !usage.used.includes(index) || (mobile && index === usage.main) }"><i :class="{ 'is-plain': legendPlain(index) }" :style="legendPlain(index) ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><template v-if="mobile">{{ index + 1 }}</template>{{ targetName(index) }}<small v-if="!mobile && index === usage.main">（表中未标注即此目标）</small></span>
         <button type="button" class="battle-target-rename" :aria-label="mobile ? '改名' : undefined" :title="mobile ? (renaming ? '完成改名' : '改名') : undefined" :aria-expanded="renaming" aria-controls="battle-target-fields" @click="renaming = !renaming"><Pencil :size="13" aria-hidden="true" /><template v-if="!mobile">{{ renaming ? '完成改名' : '改名' }}</template></button>
       </span>
     </div>
@@ -72,7 +72,7 @@
                 <div class="battle-composer-row battle-composer-targets" role="group" aria-label="动作目标">
                   <span class="battle-composer-label">目标</span>
                   <button v-for="(name, index) in targets" :key="index" type="button" class="battle-target-option" :aria-label="mobile ? `${index + 1}：${targetName(index)}` : undefined" :title="mobile ? targetName(index) : undefined" :aria-pressed="activeSlot !== BOX && activeTarget === index" :disabled="activeSlot === BOX" @click="pickTarget(index)">
-                    <i :style="{ background: TARGET_COLORS[index] }" aria-hidden="true"></i><span><template v-if="mobile"><b>{{ index + 1 }}</b><span class="battle-target-short">{{ battleTargetShortName(targetName(index)) }}</span></template><template v-else>{{ targetName(index) }}</template></span>
+                    <i :style="index === usage.main ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><span><template v-if="mobile"><b>{{ index + 1 }}</b><span class="battle-target-short">{{ battleTargetShortName(targetName(index)) }}</span></template><template v-else>{{ targetName(index) }}</template></span>
                   </button>
                 </div>
                 <div class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
@@ -140,9 +140,9 @@ const setHeading = el => { headingEl = el }, setSection = el => { sectionEl = el
 const editing = ref(null), removed = ref(null)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const rows = computed(() => battleRoundRows(props.rounds, props.operators))
-// 与出图一致：单目标或主目标的动作不逐格标注目标，只标注“例外”目标。
+// 与出图一致：主位动作无色，其余目标按位置上色。
 const usage = computed(() => battleTargetUsage(rows.value))
-const targetPlain = index => !usage.value.multi || index === usage.value.main
+const targetPlain = index => index === usage.value.main
 const legendPlain = index => index === usage.value.main
 const round = computed(() => props.rounds[current.value])
 const editingAction = computed(() => editing.value === null ? null : round.value?.actions[editing.value] || null)

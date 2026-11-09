@@ -91,17 +91,17 @@ const boardStyle = computed(() => {
   }
   return style
 })
-// 图例只列本张图实际出现的动作与目标；全程只打一个目标时目标图例和目标色都不出现，动作块用中性底。
+// 图例只列本张图实际出现的动作与目标；只打主位时不显示目标图例。
 const usedEntries = computed(() => props.kind === 'actions' ? props.rows.flatMap(row => row.slots.flat()) : [])
 // 箱（关卡互动）挂在紧邻密探格内，无目标，用中性底；用到时图例补一项。
 const usedActions = computed(() => [...BATTLE_ACTIONS.filter(item => usedEntries.value.some(entry => !entry.box && entry.symbol === item.symbol)), ...(usedEntries.value.some(entry => entry.box) ? [BATTLE_INTERACTION] : [])])
-// 多目标时只给“例外”上色：打得最多的主目标用中性底（并列取序号小的），其余目标才带目标色，避免满表同一种颜色。
+// 主位固定使用中性底，其余目标始终使用各自的目标色。
 // 图例里主目标的色块同样是中性底，与动作块一致。
 const targetUsage = computed(() => battleTargetUsage(props.kind === 'actions' ? props.rows : []))
 const usedTargets = computed(() => targetUsage.value.used)
 const multiTarget = computed(() => targetUsage.value.multi)
 const mainTarget = computed(() => targetUsage.value.main)
-const plainEntry = entry => !multiTarget.value || entry.box || entry.target == null || entry.target === mainTarget.value
+const plainEntry = entry => entry.box || entry.target == null || entry.target === mainTarget.value
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
 const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }
 // 全员都有手动修正时逐个加星号没有区分度，改为底注统一说明。
