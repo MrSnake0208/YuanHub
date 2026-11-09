@@ -92,11 +92,12 @@
   .achievement-main .achievement-progress-edit { display: flex; justify-content: space-between; align-items: center; gap: 5px; padding: 3px 0; font-size: 12px; }
   .achievement-progress progress { width: 100%; height: 5px; }
   .achievement-row-actions { position: absolute; top: 0; right: -8px; display: flex; align-items: center; gap: 8px; }
-  .achievement-row-actions .achievement-status { width: 96px; }
+  .achievement-status { position: absolute; top: 0; right: 36px; width: 96px; z-index: 1; }
   .achievement-main .achievement-row-actions button { width: 36px; height: 36px; padding: 0; flex-shrink: 0; }
-  .achievement-main .achievement-row-actions .achievement-status-toggle { width: 100%; gap: 4px; }
+  .achievement-main .achievement-status .achievement-status-toggle { width: 100%; height: 36px; padding: 0; flex-shrink: 0; gap: 4px; }
   .achievement-main .achievement-note-toggle { display: none; }
   .achievement-row-actions svg { width: 20px; height: 20px; }
+  .achievement-status svg { width: 20px; height: 20px; }
   .achievement-main .achievement-favorite { display: grid; place-items: center; }
   .achievement-inline-editor { display: grid; gap: 10px; margin-top: 12px; padding: 12px; font-size: 13px; }
   .achievement-inline-editor p { font-size: 12px; line-height: 1.6; }

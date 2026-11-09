@@ -1,6 +1,9 @@
 <template>
   <li class="achievement-row" :class="{ 'is-abandoned': record.status === 'abandoned' }" :aria-busy="saving">
     <div class="achievement-row-main">
+      <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
+        <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (saving ? ' 正在保存' : recordReady ? (completed ? ' 已完成' : record.status === 'abandoned' ? ' 已放弃' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><LoaderCircle v-if="saving" :size="18" aria-hidden="true" /><Check v-else-if="recordReady && completed" :size="18" aria-hidden="true" /><Ban v-else-if="recordReady && record.status === 'abandoned'" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ saving ? '保存中…' : recordReady ? (completed ? '已完成' : record.status === 'abandoned' ? '已放弃' : '未完成') : '未读取' }}</span></button>
+      </div>
       <div class="achievement-row-copy">
         <label v-if="batchMode" class="achievement-selection"><input type="checkbox" :checked="selected" :disabled="!writable" :aria-label="'选择 ' + entry.name" @change="$emit('select')"></label>
         <h3 class="achievement-title">{{ entry.name }}</h3>
@@ -27,9 +30,6 @@
         <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
       </div>
       <div class="achievement-row-actions">
-        <div class="achievement-status" role="group" :aria-label="entry.name + ' 完成状态'">
-          <button class="achievement-status-toggle" type="button" :aria-pressed="recordReady && completed" :aria-label="entry.name + (saving ? ' 正在保存' : recordReady ? (completed ? ' 已完成' : record.status === 'abandoned' ? ' 已放弃' : ' 未完成') : ' 未读取')" :title="completed ? '标记为未完成' : '标记为已完成'" :disabled="!writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: completed ? 'incomplete' : 'completed' })"><LoaderCircle v-if="saving" :size="18" aria-hidden="true" /><Check v-else-if="recordReady && completed" :size="18" aria-hidden="true" /><Ban v-else-if="recordReady && record.status === 'abandoned'" :size="18" aria-hidden="true" /><Circle v-else :size="18" aria-hidden="true" /><span>{{ saving ? '保存中…' : recordReady ? (completed ? '已完成' : record.status === 'abandoned' ? '已放弃' : '未完成') : '未读取' }}</span></button>
-        </div>
         <button class="achievement-favorite" type="button" :aria-pressed="record.favorite" :aria-label="(record.favorite ? '取消关注 ' : '关注 ') + entry.name" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, favorite: !record.favorite })"><Star :size="20" :fill="record.favorite ? 'currentColor' : 'none'" aria-hidden="true" /></button>
         <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /><span>备注</span></button>
       </div>
