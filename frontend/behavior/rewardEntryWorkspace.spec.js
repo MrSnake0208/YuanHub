@@ -2302,7 +2302,7 @@ describe('库存页紧凑录入', () => {
     await button(wrapper, '补记历史').trigger('click'); await flushPromises()
     await clickElement(document.querySelector('[aria-label=关闭补记历史奖励]')); await flushPromises()
     expect(wrapper.vm.hasDraft()).toBe(false)
-    expect(wrapper.findAll('.daily-quick-option input:checked')).toHaveLength(0)
+    expect(wrapper.findAll('.daily-quick-option:not(.recorded) input:checked')).toHaveLength(0)
   })
   it('今日茱萸可记录已领取白金币且沿用每日来源键', async () => {
     inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })

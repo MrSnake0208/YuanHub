@@ -2,7 +2,7 @@
   <div class="mailbox-container">
     <div class="mail-quick" :class="{ 'is-empty': loaded && !mailCount && !pendingClaim }">
       <Mail :size="22" class="mail-quick-icon" aria-hidden="true" />
-      <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
+      <strong>待领<span class="mail-word">邮件</span> <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
       <span v-if="loaded && scheduleSummary" class="mail-summary">{{ scheduleSummary }}</span>
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
       <div class="mail-quick-actions"><button v-if="loaded && mailCount || pendingClaim" type="button" class="btn ghost" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button><button type="button" :class="loaded && mailCount || pendingClaim ? 'mail-manage' : 'btn ghost'" aria-label="管理邮件储备（录入／调整储备）" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button></div>

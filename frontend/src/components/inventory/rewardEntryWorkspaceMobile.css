@@ -358,7 +358,7 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-quick > fieldset { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; margin: 0; padding: 0; }
 .daily-quick-option { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .daily-quick-option:last-child { border-bottom: 0; }
-.daily-quick-option:has(input:checked) { border-color: var(--line); border-radius: 8px; }
+.daily-quick-option:not(.recorded):has(input:checked) { border-color: var(--line); border-radius: 8px; }
 .daily-quick-option > label { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
 .daily-quick-option label > span { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; gap: 3px 10px; min-width: 0; }
 .daily-quick-option b { font-size: 14px; overflow-wrap: anywhere; }
@@ -379,15 +379,38 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 .daily-mailbox-note { grid-column: 1 / -1; min-width: 0; margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .quick-feedback { min-width: 0; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 
+.reward-workspace.compact-daily:not(.home-daily) .daily-recorded-toggle { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin-left: auto; padding: 4px 0; font-size: 12px; white-space: nowrap; }
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick > fieldset { gap: 2px; }
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick-option,
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick-option:last-child { padding: 2px 6px; border-bottom: 0; border-radius: 8px; }
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick-option > label { min-height: 36px; }
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick-option img { width: 28px; height: 28px; }
+.reward-workspace.compact-daily:not(.home-daily) .quick-edit { width: 40px; min-height: 36px; }
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick-option.recorded .quick-edit,
+.reward-workspace.compact-daily:not(.home-daily) .daily-quick:not(.is-recorded-expanded):has(.daily-recorded-toggle) .daily-quick-option.recorded,
+.reward-workspace.compact-daily:not(.home-daily) .is-all-recorded:not(.is-recorded-expanded) > :is(fieldset, .daily-quick-actions, .daily-mailbox-note),
+.reward-workspace.compact-daily:not(.home-daily) .is-all-recorded .daily-quick-actions > .primary-button,
+.reward-workspace.compact-daily:not(.home-daily) .is-all-recorded .daily-quick-result > button,
+.reward-workspace.compact-daily:not(.home-daily) .is-all-recorded .daily-quick-result.is-accepted { display: none; }
+
 
   .home-daily { padding: 10px 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
   .home-daily .daily-quick { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
   .home-daily .daily-quick-heading strong { font-size: 16px; }
+  .home-daily .daily-recorded-status { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--ink-60); white-space: nowrap; }
+  .home-daily .daily-quick.is-all-recorded { align-items: center; }
+  .home-daily .daily-quick:has(.daily-recorded-status) .daily-quick-option.recorded,
+  .home-daily .daily-quick.is-all-recorded > fieldset,
+  .home-daily .daily-quick.is-all-recorded .daily-quick-actions > .primary-button,
+  .home-daily .daily-quick.is-all-recorded .daily-mailbox-note,
+  .home-daily .daily-quick.is-all-recorded .daily-quick-result > button,
+  .home-daily .daily-quick.is-all-recorded .daily-quick-result.is-accepted { display: none; }
   .home-daily .daily-quick > fieldset { grid-column: 1 / -1; grid-row: 2; }
-  .home-daily .daily-quick-option { padding: 3px 0; min-height: 34px; }
+  .home-daily .daily-quick-option { padding: 2px 0; min-height: 34px; }
   .home-daily .daily-quick-option > label { min-height: 34px; gap: 6px; }
   .home-daily .daily-quick-option img { width: 26px; height: 26px; }
   .home-daily .daily-quick-option label > span { gap: 2px 6px; }
+  .home-daily .quick-edit { width: 40px; min-height: 36px; }
   .home-daily .daily-quick-actions { display: contents; }
   .home-daily .daily-quick-actions > .primary-button { grid-column: 1 / -1; grid-row: 3; min-height: 34px; padding: 5px 10px; }
   .home-daily .quick-inventory { display: inline-flex; align-items: center; justify-content: center; gap: 3px; grid-column: 2; grid-row: 1; font-size: 12px; padding-block: 5px; }

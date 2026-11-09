@@ -1,12 +1,23 @@
 <template>
   <div class="reward-workspace" :class="{ 'compact-daily': compactDaily, 'home-daily': homeDaily }">
-    <form v-if="compactDaily" class="daily-quick" aria-label="今日奖励" @submit.prevent="submitDaily">
-      <div class="daily-quick-heading"><strong>今日奖励</strong><time v-if="!homeDaily || dailyDate !== serverToday()" :datetime="dailyDate" title="北京时间 05:00 换日">{{ Number(dailyDate.slice(5, 7)) }}月{{ Number(dailyDate.slice(8, 10)) }}日</time></div>
+    <form v-if="compactDaily" class="daily-quick" :class="{ 'is-all-recorded': allDailyRecorded, 'is-recorded-expanded': recordedExpanded }" aria-label="今日奖励" @submit.prevent="submitDaily">
+      <div class="daily-quick-heading">
+        <strong>今日奖励</strong><time v-if="!homeDaily || dailyDate !== serverToday()" :datetime="dailyDate" title="北京时间 05:00 换日">{{ Number(dailyDate.slice(5, 7)) }}月{{ Number(dailyDate.slice(8, 10)) }}日</time>
+        <span v-if="homeDaily && recordedCount > 0 && !dailyLoading && !dailyStatusError" class="daily-recorded-status">
+          <Check v-if="allDailyRecorded" :size="14" aria-hidden="true" />
+          {{ allDailyRecorded ? `${recordedCount}/${recordableDaily.length} 已记录` : `已记录 ${recordedCount} 项` }}
+        </span>
+        <button v-if="!homeDaily && recordedCount > 0 && !dailyLoading && !dailyStatusError" type="button" class="daily-recorded-toggle text-button" :aria-expanded="recordedExpanded" @click="recordedExpanded = !recordedExpanded">
+          <Check v-if="allDailyRecorded" :size="14" aria-hidden="true" />
+          {{ allDailyRecorded ? `${recordedCount}/${recordableDaily.length} 已记录` : `已记录 ${recordedCount} 项` }}
+          <ChevronDown :size="14" :class="{ rotated: recordedExpanded }" aria-hidden="true" />
+        </button>
+      </div>
       <fieldset :disabled="disabled || locked || dailyLoading || !!dailyStatusError || catalogLoading || !entities.length">
         <legend class="sr-only">选择实际领取的奖励</legend>
         <div v-for="preset in dailyPresets" :key="preset.id" class="daily-quick-option" :class="{ recorded: dailyRecorded.has(preset.id) }">
           <label>
-            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id)" :disabled="preset.count === 0 && !manual.presets.some(entry => entry.id === preset.id) || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady && !mailboxMonthlyCoins || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" />
+            <input type="checkbox" :checked="manual.presets.some(entry => entry.id === preset.id) || !homeDaily && dailyRecorded.has(preset.id)" :disabled="preset.count === 0 && !manual.presets.some(entry => entry.id === preset.id) || dailyRecorded.has(preset.id) || preset.id === 'monthly-card' && !monthlyReady && !mailboxMonthlyCoins || preset.id === 'daily-zhuyu' && !dailyZhuyuReady && !unconfirmedZhuyu" @change="toggleQuickPreset(preset)" />
             <img :src="iconSrc({ id: preset.itemId, entity_type: 'item' })" alt="" width="28" height="28" />
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
@@ -37,7 +48,7 @@
       <p v-if="dailyLoading || catalogLoading" class="quick-feedback" role="status">正在核对今日奖励…</p>
       <p v-if="dailyStatusError" class="quick-feedback" role="alert">{{ dailyStatusError }} <button type="button" class="text-button" :disabled="locked" @click="loadDailyStatus">重试</button></p>
       <p v-if="error && !quickPanel" class="quick-feedback" role="alert">{{ error }} <button type="button" class="text-button" :disabled="busy || disabled" @click="pendingDocument ? submit() : !entities.length ? loadCatalog() : submitDaily()">{{ pendingDocument ? '原样重试' : '重试' }}</button></p>
-      <p v-if="result && !quickPanel" class="quick-feedback" role="status">{{ result.history_only ? '已补记录，已计入库存的部分未重复增加。' : result.accepted ? '今日领取已记录。' : '已记录，未重复增加。' }}<button type="button" class="text-button" @click="startNext">继续选择</button></p>
+      <p v-if="result && !quickPanel" class="quick-feedback daily-quick-result" :class="{ 'is-accepted': result.accepted && !result.history_only }" role="status">{{ result.history_only ? '已补记录，已计入库存的部分未重复增加。' : result.accepted ? '今日领取已记录。' : '已记录，未重复增加。' }}<button type="button" class="text-button" @click="startNext">继续选择</button></p>
     </form>
     <InventoryQuickDialog :open="!!quickPanel" :title="quickPanel === 'history' ? '补记历史奖励' : `编辑${quickEdit?.channel || '奖励'}`" :locked="locked" @close="closeQuickPanel">
       <form v-if="quickPanel === 'edit' && quickEdit" class="quick-reward-editor" @submit.prevent="saveQuickEdit">
@@ -320,6 +331,7 @@ const dailyMode = ref(props.compactDaily)
 const dailyRecorded = ref(new Set())
 const dailyLoading = ref(false)
 const dailyStatusError = ref('')
+const recordedExpanded = ref(false)
 let dailyStatusSeq = 0
 let catalogSeq = 0
 let ordinaryDraft = null
@@ -337,6 +349,9 @@ let monthlyPreferenceSeq = 0, monthlyTierTouched = false
 const monthlyTiers = computed(() => monthlyCardTiers(props.game))
 const mailboxMonthlyCoins = ref(null)
 const dailyPresets = computed(() => DAILY_REWARD_PRESETS.map(preset => ({ ...preset, ...(preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? { itemId: 'baijinbi', itemName: '白金币' } : {}), count: (preset.id === 'monthly-card' ? mailboxMonthlyCoins.value : null) ?? manual.value.presets.find(entry => entry.id === preset.id)?.count ?? quickCounts.value[preset.id] ?? (preset.id === 'monthly-card' ? (mailboxMonthlyCoins.value ?? monthlyCardTier(monthlyTier.value, props.game).coins) : preset.id === 'daily-zhuyu' && dailyZhuyuItem.value === 'baijinbi' ? 50 : preset.count) })))
+const recordableDaily = computed(() => dailyPresets.value.filter(preset => preset.count !== 0 || dailyRecorded.value.has(preset.id)))
+const recordedCount = computed(() => recordableDaily.value.filter(preset => dailyRecorded.value.has(preset.id)).length)
+const allDailyRecorded = computed(() => !dailyLoading.value && !dailyStatusError.value && recordableDaily.value.length > 0 && recordedCount.value === recordableDaily.value.length)
 function dailyZhuyuPreferenceKey() {
   return `yuanhub:inventory:daily-zhuyu:${encodeURIComponent(auth.userInfo?.id || '')}:${encodeURIComponent(props.game)}:${encodeURIComponent(props.accountId)}`
 }
@@ -733,6 +748,7 @@ watch(mode, (value, previous) => {
   if (!value && previous) unlockBackgroundScroll()
 })
 watch(() => [props.accountId, props.game, auth.userInfo?.id], () => {
+  recordedExpanded.value = false
   quickPanel.value = ''; quickEdit.value = null; quickCounts.value = {}; dailyZhuyuItem.value = 'zhuyu'; dailyZhuyuSelectionNote.value = ''; quickSaving.value = false
   if (props.compactDaily) void loadDailyZhuyuPreference()
   ++monthlyPreferenceSeq; monthlyTierTouched = false; monthlyTier.value = 'yinghuo'; monthlyPreferenceNote.value = ''; monthlyReady.value = false
@@ -1135,7 +1151,7 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .daily-quick fieldset { border: 0; }
 .daily-quick-heading small, .daily-quick-option small { color: var(--ink-60); }
 .daily-quick-option { border: 1px solid var(--line); border-radius: 9px; background: var(--cream); cursor: pointer; }
-.daily-quick-option:has(input:checked) { border-color: var(--theme-accent-text, var(--tea)); background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); }
+.daily-quick-option:not(.recorded):has(input:checked) { border-color: var(--theme-accent-text, var(--tea)); background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); }
 .daily-quick-option.recorded { background: var(--surface); cursor: default; }
 .daily-quick input { accent-color: var(--tea); }
 .daily-quick :is(button, input, select, summary):focus-visible, .entry-operations button:focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }

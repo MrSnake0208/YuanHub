@@ -1,5 +1,7 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
 @media not all and (max-width: 767px) {
+.daily-recorded-toggle { display: none; }
+.daily-recorded-status { display: none; }
 .daily-mode .manual-columns { grid-template-columns: minmax(0, 1fr); }
 .daily-mode .reward-receipt { border-left: 0; }
 .daily-mode .reward-metadata { margin-top: 0; grid-template-columns: minmax(0, 1fr); }
