@@ -9,7 +9,7 @@
       </div>
       <figure v-for="(image, index) in images" :key="image.url" class="battle-image-result">
         <figcaption v-if="images.length > 1 || busy"><span>{{ image.label }}</span><a :href="image.url" :download="image.filename">保存第 {{ index + 1 }} 张</a></figcaption>
-        <a :href="image.url" target="_blank" rel="noopener" :aria-label="`查看${image.label}原图（新窗口）`"><img :src="image.url" :alt="image.label" /></a>
+        <a :href="image.url" target="_blank" rel="noopener" :aria-label="`查看${image.label}原图（新窗口）`"><img :src="image.url" :alt="image.label" :style="{ '--image-ratio': image.ratio }" /></a>
       </figure>
     </div>
     <footer class="battle-export-footer">
@@ -86,8 +86,9 @@ async function generate() {
         throw reason
       }
       if (seq !== generation) return
+      const ratio = sheet.value.sheet.offsetWidth / sheet.value.sheet.offsetHeight
       const label = kind === 'team' ? '上阵密探' : `操作记录 · 第${rows[0].round}—${rows.at(-1).round}回合`
-      images.value = [...images.value, { url: URL.createObjectURL(blob), label, filename: battleFileName(title, label, 'png') }]
+      images.value = [...images.value, { url: URL.createObjectURL(blob), label, filename: battleFileName(title, label, 'png'), ratio }]
     }
   } catch (reason) {
     if (seq === generation) error.value = (reason.message || '图片生成失败，请重试。') + (images.value.length ? ' 已生成的图片仍可保存。' : '')
@@ -110,7 +111,7 @@ defineExpose({ generate })
 <style scoped>
 .battle-image-staging { position: fixed; top: 0; left: -100000px; pointer-events: none; }
 .battle-export { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
-.battle-export-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; background: var(--cream); }
+.battle-export-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; background: var(--cream); container-type: size; }
 .battle-export-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 100%; color: var(--ink-60); font-size: 14px; }
 .battle-export-empty p { margin: 0; }
 .battle-export-spin { animation: battle-export-spin 1s linear infinite; }
@@ -120,7 +121,8 @@ defineExpose({ generate })
 .battle-image-result:last-child { margin-bottom: 0; }
 .battle-image-result figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 12px; color: var(--ink-60); }
 .battle-image-result figcaption a { color: var(--theme-accent-text, var(--tea)); text-underline-offset: 4px; }
-.battle-image-result img { display: block; width: 100%; height: auto; box-shadow: 0 2px 8px rgba(73,59,44,.08); }
+/* 预览按可视高度完整显示，不低于最小宽度，长图可滚动；只影响预览，不影响导出文件。 */
+.battle-image-result img { display: block; width: min(100%, max(520px, calc(100cqh * var(--image-ratio)))); max-width: 100%; height: auto; margin-inline: auto; box-shadow: 0 2px 8px rgba(73,59,44,.08); }
 .battle-export-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--surface); }
 .battle-export-footer > p { flex: 1; min-width: 0; margin: 0; }
 .battle-export-actions { display: flex; flex-shrink: 0; gap: 10px; }
