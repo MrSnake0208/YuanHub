@@ -1,5 +1,9 @@
 # YuanStar embed 同步说明
 
+## 宿主等级步进
+
+- 星石等级弹窗在 1 级点击 +10 时跳到 10 级。YuanHub 将这一操作转交给嵌入弹窗已有的等级滑条，仍由原弹窗确认和保存。其他步进以及资源数量沿用嵌入组件行为。
+
 ## 云端继承本地采用写入保护（2026-11-05）
 
 - 权威源码为 D 盘现有 YuanStar-dev 工作树的 `feature/yuanhub-embed`，source commit `b10046dc402a5fae314f66e386f2a0f41f7cafe0`。已提交 source commit 的干净工作树正式 build，仅执行 `build:embed` 对应命令，再由 `scripts/sync-yuanstar-embed.mjs` 完整同步 12 个资源并核对字节。

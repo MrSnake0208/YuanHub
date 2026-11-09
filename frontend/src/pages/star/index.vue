@@ -196,6 +196,7 @@ import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
   disposeYuanStarHandle,
+  stepYuanStarLevelFromOne,
   waitForYuanStarDisposal,
 } from "./embedLifecycle.js";
 import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
@@ -777,6 +778,7 @@ if (TUTORIALS_ENABLED) {
   });
 }
 onMounted(async function () {
+  document.addEventListener('click', stepYuanStarLevelFromOne, true);
   if (completionDemo) { void mountProduct(); return; }
   // Draft restoration may finish after the first summary. Recheck on the
   // embed's actual render, without polling or changing its business lifecycle.
@@ -795,6 +797,7 @@ onMounted(async function () {
   void mountProduct();
 });
 onBeforeUnmount(function () {
+  document.removeEventListener('click', stepYuanStarLevelFromOne, true);
   localOcrProgressObserver?.disconnect();
   tutorialStatusObserver?.disconnect();
   cancelAnimationFrame(tutorialStatusFrame);

@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
+import { stepYuanStarLevelFromOne } from '../src/pages/star/embedLifecycle.js'
 import { createGrowthPlanInventoryWriter } from '../src/pages/star/growthPlanInventory.js'
 import { mountYuanStar } from '../public/yuanstar-embed/yuanstar-embed.js'
 const workbook=readFileSync('public/yuanstar-embed/reference/YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx')
@@ -311,6 +312,109 @@ it('resource divider follows full order, exact gaps are cumulative and selected 
 it('unknown inventory is never treated as zero or sufficient',async()=>{
   await setup();expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
   expect(root.querySelector('.growth-route-boundary')).toBeNull()
+})
+
+function openNumberPicker(selector) {
+  const field = root.querySelector(selector)
+  field.getBoundingClientRect = () => ({ left: 200, top: 300, right: 320, bottom: 332, width: 120, height: 32 })
+  field.click()
+  const picker = document.querySelector('.yuanstar-level-picker')
+  expect(picker).not.toBeNull()
+  return picker
+}
+
+it('level picker steps from 1 to 10, keeps ordinary steps, and clamps at 1 and 60', async () => {
+  await setup()
+  const snapshot = await handle.getCloudBusinessSnapshot()
+  await handle.applyCloudBusinessSnapshot({
+    ...snapshot, inventory: snapshot.inventory.map(star => star.starInstanceId === 'a' ? { ...star, level: 1 } : star),
+  })
+  root.querySelector('[data-star-id="a"]').click()
+  document.addEventListener('click', stepYuanStarLevelFromOne, true)
+  try {
+    const picker = openNumberPicker('#growth-current-level')
+    const value = () => picker.querySelector('[data-level-value]').textContent
+    expect(value()).toBe('1级')
+    const steps = [[-10, 1], [10, 10], [-10, 1], [1, 2], [-1, 1], [10, 10], [10, 20],
+      [10, 30], [10, 40], [10, 50], [10, 60], [10, 60], [-10, 50]]
+    for (const [step, level] of steps) {
+      picker.querySelector('[data-level-step="' + step + '"]').click()
+      expect(value()).toBe(level + '级')
+      expect(picker.querySelector('[data-level-range]').value).toBe(String(level))
+    }
+    picker.querySelector('[data-level-confirm]').click()
+    await vi.waitFor(() => expect(root.querySelector('#growth-current-level').value).toBe('50'))
+  } finally {
+    document.removeEventListener('click', stepYuanStarLevelFromOne, true)
+  }
+})
+
+it('edits all three unrecorded bottles in the existing picker and recalculates the plan', async () => {
+  const entries = {}
+  const writes = []
+  const writer = createGrowthPlanInventoryWriter({
+    isCurrent: () => true, getCurrent: async () => [{ entries }],
+    importInventory: async document => {
+      const record = document.records[0]
+      const [entry] = record.entries
+      writes.push(record)
+      entries[entry.id] = { count: entry.count, listed_baseline_at: record.effective_at }
+      return { accepted: 1 }
+    },
+  })
+  await setup({
+    onReadBreakthroughInventory: owner => writer.read(owner),
+    onSaveBreakthroughInventory: (owner, id, count) => writer.save(owner, id, count),
+  })
+  const snapshot = await handle.getCloudBusinessSnapshot()
+  await handle.applyCloudBusinessSnapshot({ ...snapshot, experience: { orange: 1000, purple: 0, white: 0 } })
+  expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
+
+  const bottles = [['jiezhuping', '解注瓶', 7], ['jiezheping', '解谪瓶', 0], ['jieyangping', '解殃瓶', 100]]
+  const selector = id => '[data-growth-bottle="' + id + '"]'
+  const enter = (picker, count) => {
+    picker.querySelector('[data-level-value]').click()
+    const field = picker.querySelector('[data-level-direct]')
+    field.value = String(count)
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+    picker.querySelector('[data-level-confirm]').click()
+  }
+  document.addEventListener('click', stepYuanStarLevelFromOne, true)
+  try {
+    for (const [id, name, count] of bottles) {
+      const field = root.querySelector(selector(id))
+      expect(field.disabled).toBe(false)
+      expect(field.value).toBe('')
+      const picker = openNumberPicker(selector(id))
+      expect(picker.querySelector('h2').textContent).toContain(name)
+      const value = () => picker.querySelector('[data-level-value]').textContent
+      expect(value()).toBe('未录入')
+      expect([...picker.querySelectorAll('[data-level-step]')].map(button => Number(button.dataset.levelStep))).toEqual([-100, -10, -1, 1, 10, 100])
+      picker.querySelector('[data-level-step="1"]').click()
+      picker.querySelector('[data-level-step="10"]').click()
+      expect(value()).toBe('11')
+      picker.querySelector('[data-level-restore]').click()
+      expect(value()).toBe('未录入')
+      expect(entries[id]).toBeUndefined()
+      enter(picker, count)
+      await vi.waitFor(() => {
+        expect(root.querySelector(selector(id)).value).toBe(String(count))
+        expect(picker.isConnected).toBe(false)
+      })
+      expect(writes.at(-1).snapshot_scope).toBe('listed')
+      expect(writes.at(-1).entries).toEqual([{ id, name, count }])
+    }
+    expect(root.querySelector('.growth-route-gap').textContent).toContain('缺解谪瓶')
+    enter(openNumberPicker(selector('jiezheping')), 55)
+    await vi.waitFor(() => {
+      expect(root.querySelector('.growth-route-boundary')?.textContent).toContain('预计可养至此')
+      expect(root.querySelector('.growth-route-gap').textContent).toContain('缺解谪瓶 ×55')
+    })
+    expect(writer.hasPending()).toBe(false)
+    expect(entries.jiezheping.count).toBe(55)
+  } finally {
+    document.removeEventListener('click', stepYuanStarLevelFromOne, true)
+  }
 })
 
 it('allows first bottle entry through the existing writer without filling unknown siblings',async()=>{

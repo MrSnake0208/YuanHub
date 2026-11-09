@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mountYuanStar } from '../public/yuanstar-embed/yuanstar-embed.js'
 import { createStarCloudCoordinator } from '../src/pages/star/starCloudCoordinator.js'
 import { createCloudPlanInheritancePort } from '../src/pages/star/starCloudPlanInheritance.js'
+import { normalizeMaaYuanInventory } from '../src/pages/star/maayuanInventoryImport.js'
 
 const workbook = readFileSync('public/yuanstar-embed/reference/YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx')
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -85,6 +86,67 @@ it('refreshes synced experience with unknown counts and withholds the complete a
     for (const [color, value] of Object.entries(experience)) expect(planValue(color)).toBe(value === null ? '' : String(value))
   }
   expect(f.patch).not.toHaveBeenCalled()
+})
+
+it.each(['automatic', 'local-ocr', 'compact'])('edits unknown MaaYuan experience after %s import and reopens saved inventory', async source => {
+  const f = await setup()
+  const raw = JSON.parse(readFileSync('test/fixtures/maayuan-full-inventory.json', 'utf8'))
+  raw.experience = source === 'local-ocr'
+    ? { complete: false, structured: false, orangeCount: null, purpleCount: null, whiteCount: null }
+    : { complete: false, structured: false, orangeCount: null, purpleCount: 0, whiteCount: 91 }
+  const local = await normalizeMaaYuanInventory(raw)
+  if (source === 'automatic') {
+    f.receiveSync(local.document.experience)
+    await handle.setHostAccount(f.account)
+    expect(await coordinator.enter(handle)).toBe(true)
+  } else {
+    const imported = source === 'compact' ? await normalizeMaaYuanInventory(local.document) : local
+    expect(imported.source_format).toBe(source)
+    const lease = coordinator.beginCompletion(coordinator.ocrRebuildScope())
+    try {
+      f.receiveSync(imported.document.experience)
+      await lease.refresh()
+    } finally {
+      lease.release()
+    }
+  }
+
+  const expected = { ...local.document.experience }
+  expect((await handle.getCloudBusinessSnapshot()).experience).toEqual(expected)
+  handle.setReviewView('plan')
+  await vi.waitFor(() => expect(root.querySelector('.growth-owned-total b')?.textContent).toBe('—'))
+  const values = { orange: 1, purple: 0, white: 2 }
+  for (const color of Object.keys(values).filter(color => expected[color] === null)) {
+    const field = root.querySelector('[data-growth-experience="' + color + '"]')
+    expect(field.value).toBe('')
+    field.getBoundingClientRect = () => ({ left: 200, top: 300, right: 320, bottom: 332, width: 120, height: 32 })
+    field.click()
+    const picker = document.querySelector('.yuanstar-level-picker')
+    expect(picker.querySelector('[data-level-value]').textContent).toBe('未录入')
+    picker.querySelector('[data-level-value]').click()
+    const direct = picker.querySelector('[data-level-direct]')
+    direct.value = String(values[color])
+    direct.dispatchEvent(new Event('input', { bubbles: true }))
+    picker.querySelector('[data-level-confirm]').click()
+    expected[color] = values[color]
+    await vi.waitFor(() => {
+      expect(f.state().experience).toEqual(expected)
+      expect(picker.isConnected).toBe(false)
+    })
+  }
+  const available = () => root.querySelector('.growth-owned-total b')?.textContent
+  await vi.waitFor(() => expect(available()).toMatch(/^\d/))
+  const total = available()
+
+  await handle.setHostAccount(f.account)
+  expect(await coordinator.enter(handle)).toBe(true)
+  expect((await handle.getCloudBusinessSnapshot()).experience).toEqual(expected)
+  handle.setReviewView('bag')
+  for (const [color, value] of Object.entries(expected)) {
+    expect(root.querySelector('[data-experience-field="' + color + '"]').value).toBe(String(value))
+  }
+  handle.setReviewView('plan')
+  await vi.waitFor(() => expect(available()).toBe(total))
 })
 
 async function openPlan() {
