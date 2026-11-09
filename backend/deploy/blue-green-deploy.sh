@@ -33,7 +33,19 @@ RELEASE_DIR="$RELEASES_DIR/$RELEASE_VERSION"
 SLOTS_DIR="$BACKEND_ROOT/slots"
 STATE_DIR="$BACKEND_ROOT/state"
 ACTIVE_SLOT_FILE="$STATE_DIR/active-slot"
+DRAIN_PID_FILE="$STATE_DIR/drain.pid"
+DRAIN_LOG_FILE="$STATE_DIR/drain.log"
 NGINX_ACTIVE_FILE="$BACKEND_ROOT/nginx/active.conf"
+
+stop_old_slot() {
+  local old_service
+  case "$1" in
+    blue|green) old_service="yuanhub-backend@$1.service" ;;
+    legacy) old_service="$LEGACY_SERVICE" ;;
+    *) return 1 ;;
+  esac
+  sudo -n "$SYSTEMCTL" stop "$old_service" || echo "Warning: could not stop $old_service" >&2
+}
 
 mkdir -p "$RELEASES_DIR"
 for tool in java python3; do
@@ -63,6 +75,21 @@ if [ "$DEPLOY_PHASE" = release ]; then
     '') active_slot=legacy ;;
     *) echo "Invalid active slot: $active_slot" >&2; exit 1 ;;
   esac
+
+  # Serialize cancellation with the delayed stop, so it cannot outlive the next slot start.
+  (
+    flock -x 9
+    if [ -s "$DRAIN_PID_FILE" ]; then
+      read -r pending_pid pending_slot pending_target < "$DRAIN_PID_FILE"
+      if kill -0 "$pending_pid" 2>/dev/null; then
+        kill -- "-$pending_pid"
+        if [ "$active_slot" = "$pending_target" ]; then
+          stop_old_slot "$pending_slot" >> "$DRAIN_LOG_FILE" 2>&1
+        fi
+      fi
+      rm -f "$DRAIN_PID_FILE"
+    fi
+  ) 9>"$STATE_DIR/drain.lock"
 
   slot_port() {
     case "$1" in
@@ -307,16 +334,39 @@ printf '%s\n' "$target_slot" > "$state_tmp"
 mv -f "$state_tmp" "$ACTIVE_SLOT_FILE"
 
 echo "Traffic is now on $target_slot. Draining old slot for ${DRAIN_SECONDS}s."
-sleep "$DRAIN_SECONDS"
-
-case "$active_slot" in
-  blue|green)
-    old_service="yuanhub-backend@$active_slot.service"
-    sudo -n "$SYSTEMCTL" stop "$old_service" || echo "Warning: could not stop $old_service" >&2
-    ;;
-  legacy)
-    sudo -n "$SYSTEMCTL" stop "$LEGACY_SERVICE" || echo "Warning: could not stop legacy service $LEGACY_SERVICE" >&2
-    ;;
-esac
+if [ "$DRAIN_SECONDS" -eq 0 ]; then
+  stop_old_slot "$active_slot" >> "$DRAIN_LOG_FILE" 2>&1
+else
+  export -f stop_old_slot
+  nohup setsid bash -c '
+    set -euo pipefail
+    DRAIN_SECONDS=$1 active_slot=$2 target_slot=$3 STATE_DIR=$4
+    ACTIVE_SLOT_FILE=$5 SYSTEMCTL=$6 LEGACY_SERVICE=$7
+    DRAIN_PID_FILE="$STATE_DIR/drain.pid"
+    printf "%s %s %s\n" "$$" "$active_slot" "$target_slot" > "$DRAIN_PID_FILE"
+    sleep "$DRAIN_SECONDS"
+    (
+      flock -x 9
+      current_slot="$(tr -d "[:space:]" < "$ACTIVE_SLOT_FILE")"
+      if [ "$current_slot" = "$target_slot" ]; then
+        stop_old_slot "$active_slot"
+      else
+        echo "Drain abandoned: active slot changed from $target_slot to $current_slot"
+      fi
+      rm -f "$DRAIN_PID_FILE"
+    ) 9>"$STATE_DIR/drain.lock"
+  ' _ "$DRAIN_SECONDS" "$active_slot" "$target_slot" "$STATE_DIR" \
+    "$ACTIVE_SLOT_FILE" "$SYSTEMCTL" "$LEGACY_SERVICE" \
+    </dev/null >>"$DRAIN_LOG_FILE" 2>&1 &
+  drain_launcher=$!
+  # Wait only for PID registration; the drain itself must not hold the SSH channel open.
+  while [ ! -s "$DRAIN_PID_FILE" ]; do
+    if ! kill -0 "$drain_launcher" 2>/dev/null; then
+      wait "$drain_launcher" || { echo "Drain task failed; see $DRAIN_LOG_FILE" >&2; exit 1; }
+      break
+    fi
+    sleep 0.05
+  done
+fi
 
 echo "Blue/green release complete: $RELEASE_VERSION -> $target_slot"

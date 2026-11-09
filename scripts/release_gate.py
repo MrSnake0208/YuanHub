@@ -44,16 +44,23 @@ def deployed(config, component):
     return result
 
 
-def validate_run(run, sha, now=None):
+def validate_run(run, sha, now=None, phase='release'):
     if not re.fullmatch(r'[0-9a-f]{40}', sha):
         raise ValueError('candidate requires full SHA')
     expected = dict(head_sha=sha, head_branch='main', event='workflow_dispatch',
-                    path='.github/workflows/release-check.yml', status='completed', conclusion='success')
+                    path='.github/workflows/release-check.yml')
     for key, value in expected.items():
         if run.get(key) != value:
             raise ValueError(f'release check {key}: expected {value}, got {run.get(key)}')
     if run.get('repository', {}).get('full_name') != REPO:
         raise ValueError('release check belongs to another repository')
+    if phase == 'prepare':
+        if (run.get('status') not in ('queued', 'in_progress', 'completed') or
+                run.get('conclusion') not in (None, '', 'success')):
+            raise ValueError('release check failed or cannot admit prebuild')
+        return
+    if run.get('status') != 'completed' or run.get('conclusion') != 'success':
+        raise ValueError('release check must be completed successfully')
     completed = datetime.fromisoformat(run['updated_at'].replace('Z', '+00:00'))
     age = (now or datetime.now(timezone.utc)) - completed
     if age < timedelta(0) or age > timedelta(days=7):
@@ -64,7 +71,7 @@ def validate_manifest(manifest, run, sha, component=None, release_version=None, 
     if (manifest.get('sha') != sha or manifest.get('run_id') != run['id'] or
             manifest.get('attempt') != run['run_attempt']):
         raise ValueError('candidate SHA/run/attempt mismatch')
-    if manifest.get('checks') != 'complete':
+    if manifest.get('checks') != 'artifact-only':
         raise ValueError('candidate checks are incomplete')
     versions = manifest.get('versions', {})
     if not any(versions.values()):
@@ -78,11 +85,13 @@ def validate_manifest(manifest, run, sha, component=None, release_version=None, 
         raise ValueError('frontend API configuration changed; prepare again')
 
 
-def verify(run_id, sha, component=None, release_version=None, api_base=None):
+def verify(run_id, sha, component=None, release_version=None, api_base=None, phase='release'):
     if not str(run_id).isdigit():
         raise ValueError('invalid run id')
     run = json.loads(command('gh', 'api', f'repos/{REPO}/actions/runs/{run_id}'))
-    validate_run(run, sha)
+    validate_run(run, sha, phase=phase)
+    if phase == 'prepare':
+        return run
     name = f'release-candidate-{run_id}-{run["run_attempt"]}'
     # Artifacts are immutable and attempt-specific; a rerun cannot inherit old evidence.
     artifacts = json.loads(command('gh', 'api', '--paginate', '--slurp',
@@ -115,7 +124,13 @@ def main():
     parser.add_argument('--backend-url')
     parser.add_argument('--phase', choices=['prepare', 'release'], default='release')
     args = parser.parse_args()
-    manifest = verify(args.run, args.commit, args.component, args.version, args.api_base)
+    manifest = verify(args.run, args.commit, args.component, args.version, args.api_base, phase=args.phase)
+    if args.phase == 'prepare':
+        if 'GITHUB_ENV' in os.environ:
+            with open(os.environ['GITHUB_ENV'], 'a') as output:
+                output.write(f'CI_ARTIFACT_SUFFIX={args.commit}-{manifest["run_attempt"]}\n')
+        print(json.dumps(manifest, indent=2))
+        return
     if args.deployment_url:
         if not args.component:
             raise ValueError('deployment requires a component')

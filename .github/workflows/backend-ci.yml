@@ -11,6 +11,9 @@ on:
       release-version:
         type: string
         default: ""
+      artifact-only:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       commit:
@@ -58,9 +61,16 @@ jobs:
 
       # 复用仓库既有命令，不重新发明测试体系。
       - name: Lint, unit tests and build jar
+        if: ${{ !inputs.artifact-only }}
         env:
           YUANHUB_BACKEND_VERSION: ${{ inputs.release-version }}
         run: ./gradlew ktlintCheck test assemble --console=plain
+
+      - name: Build release jar only
+        if: ${{ inputs.artifact-only }}
+        env:
+          YUANHUB_BACKEND_VERSION: ${{ inputs.release-version }}
+        run: ./gradlew assemble --console=plain
 
       - name: Verify jar output
         env:

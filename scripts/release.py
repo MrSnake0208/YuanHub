@@ -1,5 +1,6 @@
-"""Freeze main, run concentrated checks, then explicitly publish independent components."""
+"""Freeze main, test locally and prebuild releases, then explicitly publish components."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import subprocess
@@ -87,6 +88,86 @@ def dispatch(workflow, inputs, title):
     raise ValueError('dispatch accepted but run not located; inspect Actions before retrying')
 
 
+def local_test_commands(component, stress):
+    if component == 'frontend':
+        return [('frontend', ['npm', 'run', 'test:' + suite])
+                for suite in ('static', 'repo', 'behavior', 'contract')]
+    gradle = ['./gradlew', 'ktlintCheck', 'test', 'integrationTest', 'apiSchemaTest',
+              'architectureTest', 'realisticTest', '--console=plain', '-PintegrationForks=4']
+    if stress:
+        gradle.append('stressTest')
+    return [('backend', gradle), ('backend', ['node', '--test',
+            'scripts/migrations/20260907-level-catalog.test.js',
+            'scripts/migrations/20261015-recruitment-duplicate-pools.test.js']),
+            ('backend/scripts/beta', ['npm', 'test'])]
+
+
+def run_local_tests(state):
+    started = time.time()
+    folder = ROOT / '.dev/release/logs' / state['sha']
+    folder.mkdir(parents=True, exist_ok=True)
+    components = [row['component'] for row in state['rows']]
+
+    def run_component(component):
+        results = []
+        commands = local_test_commands(component, state['stress'])
+        if component == 'backend' and not (ROOT / 'backend/scripts/beta/node_modules').is_dir():
+            commands.insert(-1, ('backend/scripts/beta', ['npm', 'ci']))
+        for index, (cwd, args) in enumerate(commands, 1):
+            log = folder / f'{component}-{index}.log'
+            result = dict(component=component, cwd=cwd, command=args, log=str(log), started_at=time.time())
+            print(f'Local: {cwd}: {" ".join(args)} -> {log}', flush=True)
+            env = os.environ.copy()
+            if cwd == 'backend/scripts/beta':
+                # Keep the existing beta Mongo coverage enabled on the local test instance.
+                env['BETA_TEST_MONGO_URI'] = 'mongodb://127.0.0.1:27017/yuanhub_test_beta_release?replicaSet=rs0&directConnection=true'
+            with log.open('w') as output:
+                try:
+                    result['returncode'] = subprocess.run(args, cwd=ROOT / cwd, env=env,
+                                                          stdout=output, stderr=subprocess.STDOUT).returncode
+                except OSError as error:
+                    result['returncode'] = None
+                    output.write(str(error) + '\n')
+            result['finished_at'] = time.time()
+            results.append(result)
+        return results
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = [result for group in pool.map(run_component, components) for result in group]
+    return dict(sha=state['sha'], components=components, stress=state['stress'], commands=results,
+                started_at=started, finished_at=time.time(), success=all(r['returncode'] == 0 for r in results))
+
+
+def run_status(run_id):
+    return dict(run_id=run_id, **json.loads(command('gh', 'run', 'view', str(run_id), '--repo', REPO,
+                                                  '--json', 'status,conclusion,headSha,url')))
+
+
+def wait_run(run_id):
+    try:
+        command('gh', 'run', 'watch', str(run_id), '--repo', REPO, '--exit-status')
+    except subprocess.CalledProcessError:
+        pass  # Read the terminal status even when watch reports a failed job.
+    return run_status(run_id)
+
+
+def validate_preparation(state):
+    local = state.get('local_tests') or {}
+    components = {row['component'] for row in state['rows']}
+    results = local.get('commands', [])
+    recorded = {(r['component'], r['cwd'], tuple(r['command'])) for r in results}
+    required = {(c, cwd, tuple(args)) for c in components for cwd, args in local_test_commands(c, state['stress'])}
+    if (local.get('sha') != state['sha'] or local.get('success') is not True or
+            local.get('stress') != state['stress'] or not components.issubset(local.get('components', [])) or
+            not required.issubset(recorded) or any(r.get('returncode') != 0 for r in results)):
+        raise ValueError('local tests are missing, failed or mismatched; rerun ./release.sh --prepare')
+    if 'frontend' in components:
+        frontend = state.get('frontend_prepare_run') or {}
+        if (not frontend.get('run_id') or frontend.get('headSha') != state['sha'] or
+                frontend.get('status') != 'completed' or frontend.get('conclusion') != 'success'):
+            raise ValueError('frontend prebuild is missing or unsuccessful; rerun ./release.sh --prepare')
+
+
 def prepare(args):
     sha = require_main()
     config = variables()
@@ -115,9 +196,52 @@ def prepare(args):
     write_state(state)
     inputs = dict(commit=sha, frontend_version=selected.get('frontend', ''),
                   backend_version=selected.get('backend', ''), stress=str(args.stress).lower(), request=state['request'], baselines=json.dumps(baselines))
-    state['run_id'] = dispatch('release-check.yml', inputs, f'Check {sha} [{state["request"]}]')
-    write_state(state)
-    print(f'Candidate frozen: {sha}\nCheck: https://github.com/{REPO}/actions/runs/{state["run_id"]}\nNext: ./release.sh --status')
+    failures = []
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        pending = {'local_tests': pool.submit(run_local_tests, state)}
+        try:
+            state['run_id'] = dispatch('release-check.yml', inputs, f'Check {sha} [{state["request"]}]')
+            write_state(state)
+            pending['check_run'] = pool.submit(wait_run, state['run_id'])
+            if 'frontend' in selected:
+                row = next(r for r in rows if r['component'] == 'frontend')
+                frontend_inputs = dict(tag=row['tag'], phase='prepare', commit=sha, request=state['request'],
+                                       check_run=str(state['run_id']), confirmation=f'deploy {row["tag"]}@{sha}')
+                frontend_id = dispatch(row['workflow'], frontend_inputs, f'Deploy {row["tag"]} [{state["request"]}]')
+                state['frontend_prepare_run'] = dict(run_id=frontend_id, status='queued', conclusion=None)
+                write_state(state)
+                pending['frontend_prepare_run'] = pool.submit(wait_run, frontend_id)
+        except (ValueError, OSError, subprocess.CalledProcessError) as error:
+            failures.append(f'dispatch: {error}; Actions: https://github.com/{REPO}/actions')
+        for name, future in pending.items():
+            try:
+                state[name] = future.result()
+                if name == 'local_tests':
+                    failures.extend(f'local: {r["cwd"]}: {" ".join(r["command"])} -> {r["log"]}'
+                                    for r in state[name]['commands'] if r['returncode'] != 0)
+                elif (state[name]['status'] != 'completed' or state[name]['conclusion'] != 'success' or
+                      state[name]['headSha'] != sha):
+                    failures.append(f'{name}: {state[name]}')
+            except (ValueError, OSError, subprocess.CalledProcessError) as error:
+                run_id = state.get('run_id') if name == 'check_run' else (state.get(name) or {}).get('run_id')
+                failures.append(f'{name}: {error}; https://github.com/{REPO}/actions/runs/{run_id}'
+                                if run_id else f'{name}: {error}; logs: {ROOT / ".dev/release/logs" / sha}')
+            write_state(state)
+    if not failures:
+        try:
+            candidate_evidence(state, config)
+        except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
+            failures.append(f'candidate evidence: {error}; https://github.com/{REPO}/actions/runs/{state["run_id"]}')
+    if command('git', 'rev-parse', 'HEAD') != sha or command('git', 'status', '--porcelain'):
+        failures.append('HEAD or worktree changed during prepare; rerun ./release.sh --prepare')
+    if failures:
+        if 'local_tests' in state:
+            state['local_tests']['success'] = False
+        write_state(state)
+        raise ValueError('Prepare failed:\n' + '\n'.join(failures))
+    validate_preparation(state)
+    print(f'ready: {sha}\nLogs: {ROOT / ".dev/release/logs" / sha}\n'
+          f'Check: https://github.com/{REPO}/actions/runs/{state["run_id"]}\nNext: ./release.sh --publish')
 
 
 def ensure_tag(row, create=False):
@@ -151,6 +275,10 @@ def candidate_evidence(state, config):
 
 
 def publish(args, state):
+    validate_preparation(state)
+    if state.get('frontend_prepare_run'):
+        state['frontend_prepare_run'] = run_status(state['frontend_prepare_run']['run_id'])
+        validate_preparation(state)
     require_main()
     config = variables()
     candidate_evidence(state, config)
@@ -211,8 +339,12 @@ def main():
         if args.publish:
             publish(args, state)
         else:
-            print(command('gh', 'run', 'view', str(state['run_id']), '--repo', REPO,
-                          '--json', 'status,conclusion,headSha,url,jobs'))
+            print('Local tests: ' + json.dumps(state.get('local_tests'), indent=2))
+            print('Release check: ' + json.dumps(run_status(state['run_id']) if state.get('run_id') else None))
+            if state.get('frontend_prepare_run'):
+                state['frontend_prepare_run'] = run_status(state['frontend_prepare_run']['run_id'])
+            print('Frontend prepare: ' + json.dumps(state.get('frontend_prepare_run')))
+            validate_preparation(state)
             candidate_evidence(state, variables())
             print('This candidate passed; production publication still requires explicit approval.')
     elif args.dry_run and not args.prepare:

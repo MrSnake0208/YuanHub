@@ -117,51 +117,54 @@ class MonorepoWorkflowTest(unittest.TestCase):
 
     def test_concentrated_gate_rejects_any_incomplete_job(self):
         text = (ROOT / '.github/workflows/release-check.yml').read_text()
-        frontend = text.split('\n  frontend:\n', 1)[1].split('\n  backend:\n', 1)[0]
-        self.assertIn('uses: ./.github/workflows/frontend-ci.yml', frontend)
-        self.assertIn('      behavior: true', frontend)
+        self.assertNotIn('\n  frontend:\n', text)
+        self.assertNotIn('\n  safety:\n', text)
+        backend = text.split('\n  backend:\n', 1)[1].split('\n  gate:\n', 1)[0]
+        self.assertIn("if: ${{ inputs.backend_version != '' }}", backend)
+        self.assertIn('      artifact-only: true', backend)
+        self.assertIn('needs: [candidate, backend]', text)
         block = text.split('      - name: Require all checks and record evidence\n', 1)[1].split('      - uses:', 1)[0]
         script = textwrap.dedent(block.split('        run: |\n', 1)[1])
         artifacts = ROOT / '.test-artifacts'
         artifacts.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=artifacts) as directory:
-            for job in ('candidate', 'frontend', 'backend', 'safety'):
-                for status in ('success', 'failure', 'cancelled', 'skipped'):
-                    needs = {n:dict(result='success') for n in ('candidate','frontend','backend','safety')}
-                    needs[job]['result'] = status
-                    candidate = Path(directory)/'candidate.json'
-                    candidate.unlink(missing_ok=True)
-                    env = dict(os.environ, RESULTS=json.dumps(needs), SHA='a'*40, FRONTEND='1.2.3',BACKEND='',
-                               GITHUB_RUN_ID='12', GITHUB_RUN_ATTEMPT='1', STRESS='false', API_BASE='https://api.example',
-                               GITHUB_STEP_SUMMARY=str(Path(directory)/'summary'),BASELINES='{}')
-                    result = subprocess.run(['bash','-e','-c',script],cwd=directory,env=env,capture_output=True)
-                    self.assertEqual(result.returncode == 0, status == 'success', (job,status,result.stderr))
-                    self.assertEqual(candidate.exists(), status == 'success')
+            for backend_version, candidate_status, backend_status in itertools.product(
+                    ('', '4.5.6'), ('success', 'failure', 'cancelled', 'skipped'),
+                    ('success', 'failure', 'cancelled', 'skipped')):
+                needs = dict(candidate=dict(result=candidate_status), backend=dict(result=backend_status))
+                candidate = Path(directory)/'candidate.json'
+                candidate.unlink(missing_ok=True)
+                env = dict(os.environ, RESULTS=json.dumps(needs), SHA='a'*40,
+                           FRONTEND='' if backend_version else '1.2.3', BACKEND=backend_version,
+                           GITHUB_RUN_ID='12', GITHUB_RUN_ATTEMPT='1', STRESS='false', API_BASE='https://api.example',
+                           GITHUB_STEP_SUMMARY=str(Path(directory)/'summary'),BASELINES='{}')
+                expected = candidate_status == 'success' and backend_status == ('success' if backend_version else 'skipped')
+                result = subprocess.run(['bash','-e','-c',script],cwd=directory,env=env,capture_output=True)
+                self.assertEqual(result.returncode == 0, expected, (needs, backend_version, result.stderr))
+                self.assertEqual(candidate.exists(), expected)
+                if expected:
+                    self.assertEqual('artifact-only', json.loads(candidate.read_text())['checks'])
 
-    def test_runner_mongosh_keeps_host_paths_working_directory_and_repair_env(self):
+    def test_release_checks_keep_infrastructure_regressions_and_artifact_only_backend(self):
         text = (ROOT / '.github/workflows/release-check.yml').read_text()
-        self.assertIn('--volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE"', text)
-        script = textwrap.dedent(text.split("<<'SH'\n",1)[1].split('\n          SH',1)[0])
-        artifacts = ROOT / '.test-artifacts'
-        artifacts.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=artifacts) as directory:
-            folder = Path(directory)
-            docker = folder/'docker'
-            docker.write_text('#!/usr/bin/env python3\nimport json,os,sys\nprint(json.dumps(dict(args=sys.argv[1:],action=os.environ.get("YUANHUB_REPAIR_ACTION"),revision=os.environ.get("YUANHUB_REPAIR_REVISION"))))\n')
-            docker.chmod(0o755)
-            wrapper = folder/'mongosh'
-            wrapper.write_text(script)
-            wrapper.chmod(0o755)
-            env = dict(os.environ,PATH=str(folder)+os.pathsep+os.environ['PATH'],YUANHUB_REPAIR_ACTION='apply',YUANHUB_REPAIR_REVISION='48')
-            result = json.loads(subprocess.check_output([str(wrapper),'mongodb://127.0.0.1/test','--file','fixture.js'],cwd=folder,env=env,text=True))
-            args = result['args']
-            self.assertEqual(args[args.index('-w')+1],str(folder.resolve()))
-            self.assertEqual(result['action'],'apply')
-            self.assertEqual(result['revision'],'48')
-            self.assertIn('YUANHUB_REPAIR_ACTION',args)
-            self.assertEqual(args[-3:],['mongodb://127.0.0.1/test','--file','fixture.js'])
-        self.assertIn('npm ci --prefix scripts/beta', text)
-        self.assertIn('BETA_TEST_MONGO_URI: mongodb://127.0.0.1:27017/yuanhub_test_beta_runner', text)
+        for removed in ('services:', 'docker run', 'npm test', 'frontend-ci.yml'):
+            self.assertNotIn(removed, text)
+        candidate = text.split('\n  candidate:\n', 1)[1].split('\n  backend:\n', 1)[0]
+        self.assertIn('      - name: Release infrastructure regressions\n'
+                      '        run: python3 -m unittest scripts.testing.test_monorepo_ci scripts.testing.test_monorepo_release '
+                      'scripts.testing.test_artifact_deploy scripts.testing.test_server_prebuild\n', candidate)
+        self.assertIn('name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}', text)
+        backend = (ROOT / '.github/workflows/backend-ci.yml').read_text()
+        self.assertIn('artifact-only:\n        type: boolean\n        default: false', backend)
+        full = backend.split('      - name: Lint, unit tests and build jar\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('if: ${{ !inputs.artifact-only }}', full)
+        self.assertIn('./gradlew ktlintCheck test assemble --console=plain', full)
+        jar = backend.split('      - name: Build release jar only\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('if: ${{ inputs.artifact-only }}', jar)
+        self.assertIn('./gradlew assemble --console=plain', jar)
+        self.assertNotIn('ktlintCheck', jar)
+        self.assertNotIn(' test ', jar)
+        self.assertIn('name: yuanhub-backend-jar-${{ inputs.commit || github.sha }}-${{ github.run_attempt }}', backend)
 
     def test_component_prepare_tags_are_validated_before_checkout(self):
         for component in ['frontend','backend']:
@@ -202,6 +205,10 @@ class MonorepoWorkflowTest(unittest.TestCase):
         self.assertIn('npm ci --no-audit --no-fund', text)
         self.assertIn('npm run build', text)
         self.assertNotIn('transfer-release.sh', text)
+        gate = text.split('      - name: Require concentrated release evidence\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('--phase "$DEPLOY_PHASE"', gate)
+        self.assertIn('echo "CI_RUN_ID=$CHECK_RUN" >> "$GITHUB_ENV"', gate)
+        self.assertIn('echo "YUANHUB_VERSION=${RELEASE_TAG#frontend/v}" >> "$GITHUB_ENV"', text)
 
     def test_backend_rejects_stale_or_missing_jar_commit_before_upload(self):
         text=(ROOT/'.github/workflows/backend-release.yml').read_text()

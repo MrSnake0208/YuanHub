@@ -2,7 +2,7 @@ name: Frontend release
 run-name: Deploy ${{ inputs.tag }} [${{ inputs.request }}]
 
 # 生产发布只接受 main 上明确确认的 dispatch，并验证集中检查的 SHA/版本。
-# prepare dispatch 仅在同样门禁通过后预构建；版本来自发布参数。
+# prepare 仅校验集中 run 身份即可提前预构建；release 仍校验完整发布凭据。
 #
 # 普通 CI 继续使用 GitHub-hosted runner；Release 通过 SSH 驱动服务器 A：
 #   服务器缓存源码 → checkout 精确 tag/commit → npm ci/build → 原子切换 current。
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       check_run:
-        description: Successful concentrated release-check run ID
+        description: Release-check run ID (prepare may use a running check)
         required: true
       confirmation:
         description: "Explicit approval: deploy COMPONENT/vVERSION@FULL_SHA"

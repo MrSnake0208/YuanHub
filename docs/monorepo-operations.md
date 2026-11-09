@@ -40,7 +40,7 @@
 
 可疑 PR 可手动诊断完整差异，例如 `gh workflow run pr-ci.yml --repo MrSnake0208/YuanHub --ref main -f commit=HEAD_SHA -f base=BASE_SHA`，或分别运行 frontend-ci/backend-ci 并传 `commit`。这里只产生诊断结果，不能替代集中发布准入。
 
-## 准备发布：冻结候选与集中 CI
+## 准备发布：本地测试、GitHub JAR 与服务器预构建
 
 从干净、已 push 且与 origin/main 一致的 main 执行：
 
@@ -49,7 +49,7 @@
 ./release.sh --status
 ```
 
-prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版本与完整 SHA，比较各自已部署提交至当前 main 的差异，选择需要发布的组件。默认在各组件实际已部署版本上递增 patch；默认不修改 VERSION、不提交、不创建正式标签，也不连接服务器。计划和候选保存于本树忽略的 `.dev/release/candidate.json`，包含完整 SHA、两端版本、线上基线、变更文件、request/run ID。后续 main 的 Push 不改变这个候选。`--status` 显示失败/未完成状态及 Actions 链接，只有完整成功且证据有效才报告可继续发布。
+prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版本与完整 SHA，比较各自已部署提交至当前 main 的差异，选择需要发布的组件。默认在各组件实际已部署版本上递增 patch；不修改 VERSION、不提交、不创建正式标签。计划和候选保存于本树忽略的 `.dev/release/candidate.json`，包含完整 SHA、两端版本、线上基线、变更文件、request/run ID、本地测试结果及前端预构建 run。后续 main 的 Push 不改变这个候选。选中前端时提前通过工作流驱动服务器 A 构建，不切换线上，也不从 GitHub 上传前端产物。`--status` 显示本地测试结果、release-check 与前端预构建状态及 Actions 链接，只有完整成功且证据有效才报告可继续发布。
 
 独立版本与范围可明确指定：
 
@@ -61,28 +61,28 @@ prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版
 ./release.sh --prepare --dry-run
 ```
 
-显式选择一个组件不会顺带部署另一个。`--frontend` / `--backend` 不带版本（或 `auto`）在 prepare 中从该组件线上版本递增。正式发版前需要人工判断接口兼容性；有相互依赖时选两端，先发布兼容后端。显式前端单发不能自动证明它与线上旧后端兼容。Git 历史缺失、生产元数据不可读、分支/远端不一致会停止，不猜测上次部署。离线旧式预览 `./release.sh --dry-run --frontend auto` 仍读取 VERSION 默认值；`--dry-run --frontend VERSION --backend VERSION` 只读本地 HEAD，不访问网络。`--prepare --dry-run` 会读取远端和生产元数据，但不触发 Actions。
+显式选择一个组件不会顺带部署另一个，也不运行另一个组件的本地测试。`--frontend` / `--backend` 不带版本（或 `auto`）在 prepare 中从该组件线上版本递增。正式发版前需要人工判断接口兼容性；有相互依赖时选两端，先发布兼容后端。显式前端单发不能自动证明它与线上旧后端兼容。Git 历史缺失、生产元数据不可读、分支/远端不一致会停止，不猜测上次部署。离线旧式预览 `./release.sh --dry-run --frontend auto` 仍读取 VERSION 默认值；`--dry-run --frontend VERSION --backend VERSION` 只读本地 HEAD，不访问网络。`--prepare --dry-run` 会读取远端和生产元数据，但不跑测试、不触发 Actions。
 
-集中 release-check 绑定准确 main SHA，复用：前端 static/repo/behavior/contract/build 各一次（Node + Vitest/jsdom，非浏览器 E2E）、后端 ktlint/test/assemble、integration/api-schema/architecture/realistic 和迁移/beta 脚本测试。数据库只在一次性 GitHub Runner 上准备，JUnit 使用 TestMongo 自有随机库和 TestRedis 进程键空间；不访问共享开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它发布不默认 stress。现有独立 all/mutation/stress 能力保留，按变更风险追加，不把所有昂贵专项强制纳入每次发布。
+prepare 并发推进本地测试、release-check 和前端预构建，并等待全部结束。本地只测试所选组件，前后端各组并行、组内命令顺序执行：前端 static/repo/behavior/contract 各一次（Node + Vitest/jsdom，非浏览器 E2E）；后端 ktlintCheck/test/integrationTest/apiSchemaTest/architectureTest/realisticTest（`-PintegrationForks=4`）、迁移 Node 测试与 beta npm test，beta 缺少 node_modules 时先 npm ci。JUnit 使用本机 MongoDB 副本集和 Redis 的 TestMongo 自有随机库、TestRedis 进程键空间；beta 脚本沿用自有随机测试库，不访问开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它测试任务仍只使用一个 fork。GitHub release-check 绑定准确 main SHA，校验候选并保留 Release infrastructure regressions；选中后端时只 assemble、校验和保存 JAR，不运行组件业务测试。前端 prepare 取得此 run ID 后立即开始，不等 JAR 完成，仅检查 run 身份及未失败状态；发布阶段完整门禁不变。
 
-任一必需 job 失败、取消、跳过，都不产生通过凭据。最终 candidate artifact 绑定 SHA、run ID、attempt、两个版本、stress 和 API 配置；最多有效 7 天。重跑必须有同 attempt 的最终凭据及 JAR，不能继承旧批次结果。后端 artifact 自带完整 SHA 和构建版本；缺失/过期时停止。前端保留低带宽服务器构建，但从精确 SHA 注入同一版本并检查真实 build-info、资源和 SW。
+本地各命令结果、SHA、组件及起止时间写入 state，日志位于 `.dev/release/logs/<sha>/`；全部结束后复核 HEAD 未变且工作区干净，失败不记录为通过。candidate 必须成功；选中后端时 backend 必须成功，否则必须 skipped。最终 candidate artifact 标记 `checks=artifact-only`，绑定 SHA、run ID、attempt、两个版本、stress 和 API 配置，最多有效 7 天；测试通过由本地记录证明。重跑必须有同 attempt 的最终凭据及 JAR，不能继承旧批次结果。后端 artifact 自带完整 SHA 和构建版本；缺失/过期时停止。前端保留低带宽服务器构建，从精确 SHA 注入同一版本并检查真实 build-info、资源和 SW，release 复用已准备产物。
 
 ## 失败修复与正式发布
 
 先按日志判断是真实缺陷、过时断言、环境还是基础设施问题；按最终业务行为修复，禁止删除有效测试或无理由 skip。修复必须另行 commit/push，再执行 prepare 得到新候选；不自动提交。prepare 每次创建新检查，publish 复用冻结候选的成功结果。旧 SHA 的绿色结果不能放行新 SHA。已经存在的标签只有指向同一 SHA 才可复用；如果修复改变 SHA，需要选择尚未使用的新版本。调度找不到 run 时先检查 Actions，避免盲目重复调度。
 
-用户要求发版后，Agent 运行 `./release.sh --prepare` 并等待集中检查；通过后汇报候选 SHA、组件版本和变更内容，只询问一次是否部署到生产，取得用户明确确认后执行：
+用户要求发版后，Agent 运行 `./release.sh --prepare` 并等待本地测试、GitHub JAR 和服务器 A 前端预构建全部完成；通过后汇报候选 SHA、组件版本和变更内容，只询问一次是否部署到生产，取得用户明确确认后执行：
 
 ```bash
 ./release.sh --publish --dry-run
 ./release.sh --publish --yes
 ```
 
-publish 重新核对 main、冻结 SHA、成功 run/attempt、版本、产物、证据有效期、API 配置、线上基线与部署开关；交互输入 `publish` 才创建/推送不可变 `frontend/vX.Y.Z` / `backend/vX.Y.Z` 标签并手动 dispatch。`--yes` 代表调用者明确授予正式发布授权，不是 prepare 的默认选项。发布工作流还要求所有者、main、准确提交及 `deploy TAG@SHA` 确认值；Tag Push 自身不部署。
+publish 首先要求本地测试记录 SHA 匹配、覆盖所选组件且各命令全部通过，选中前端时还须预构建成功；缺失或不符必须重新 prepare。随后重新核对 main、冻结 SHA、成功 run/attempt、版本、产物、证据有效期、API 配置、线上基线与部署开关；交互输入 `publish` 才创建/推送不可变 `frontend/vX.Y.Z` / `backend/vX.Y.Z` 标签并手动 dispatch。`--yes` 代表调用者明确授予正式发布授权，不是 prepare 的默认选项。发布工作流还要求所有者、main、准确提交及 `deploy TAG@SHA` 确认值；Tag Push 自身不部署。
 
 两端同发时等待后端蓝绿、readiness、公开 /version 健康检查完成，并核对实际后端版本/SHA 后，再激活前端；手动绕过 CLI 运行前端工作流也检查所选后端是否就绪。失败立即停止，显示具体 Actions 链接；不继续前端，不移动标签。相同版本/SHA 已在线则安全跳过；未完成的步骤可重试，线上基线变化则要求重新准备候选。两端生产 Environment 不设人工 reviewer，发布授权由 CLI 流程的用户明确确认表达。
 
-后端仍从集中检查所在 run 下载 JAR，校验内置版本/SHA、传输摘要，再调用原蓝绿部署脚本。服务器不编译；prepare phase 仅安装不切流，亦需完整集中门禁及单独授权。前端仍在服务器独立源码副本构建，版本通过 YUANHUB_VERSION 注入，输出 build-info.json 与相同页面构建信息；current 原子切换、SW 摘要、历史 releases、旧 slot 失败恢复及 GitHub Release 都保留。前后端版本不绑定。VERSION 只是日常本地构建默认值，不要求版本 PR。
+后端仍从 release-check 所在 run 下载 JAR，校验内置版本/SHA、传输摘要，再调用原蓝绿部署脚本。服务器不编译；后端 prepare phase 仅安装不切流，release 仍需完整门禁及授权。切流并记录 active slot 后，排空任务通过 Linux 的 nohup/setsid 脱离 SSH，以 flock 协调取消与停止，等待 DRAIN_SECONDS，日志和 PID 写入 state/drain.log、state/drain.pid；停止前再次核对 active slot。下一次 release 在启动新 slot 前取消待排空任务并同步停止旧 slot，prepare 不触碰排空或运行服务；DRAIN_SECONDS=0 仍同步停止，回滚路径不变。前端仍在服务器独立源码副本提前构建，版本通过 YUANHUB_VERSION 注入，release 复用产物；current 原子切换、SW 摘要、历史 releases、旧 slot 失败恢复及 GitHub Release 都保留。前后端版本不绑定。VERSION 只是日常本地构建默认值，不要求版本 PR。
 
 ## 远端切换边界
 

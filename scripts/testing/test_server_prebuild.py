@@ -7,15 +7,17 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PROXY = r'''
-import hashlib, json, os, pathlib, subprocess, sys
+import fcntl, hashlib, json, os, pathlib, subprocess, sys, time
 name, args = pathlib.Path(sys.argv[0]).name, sys.argv[1:]
 root = pathlib.Path(os.environ['SERVER_FIXTURE'])
 with (root / 'events.jsonl').open('a') as stream:
@@ -24,7 +26,20 @@ if name == 'sudo':
     assert args[0] == '-n' and pathlib.Path(args[1]).parent == root / 'bin'
     assert pathlib.Path(args[1]).name in ('systemctl', 'nginx')
     sys.exit(subprocess.run(args[1:]).returncode)
-if name in ('systemctl', 'nginx', 'sleep'):
+if name == 'setsid':
+    os.setsid()
+    os.execvp(args[0], args)
+if name == 'flock':
+    fcntl.flock(int(args[-1]), fcntl.LOCK_EX)
+    sys.exit(0)
+if name == 'sleep':
+    if args == ['45'] and os.environ.get('DRAIN_HOLD_FILE'):
+        while not pathlib.Path(os.environ['DRAIN_HOLD_FILE']).exists():
+            time.sleep(0.01)
+    sys.exit(0)
+if name in ('systemctl', 'nginx'):
+    if name == 'systemctl' and args[0] == 'stop' and os.environ.get('STOP_FAIL'):
+        sys.exit(7)
     sys.exit(0)
 if name == 'java':
     print('openjdk version "21.0.1"', file=sys.stderr)
@@ -53,7 +68,8 @@ elif name == 'curl':
     elif '/v1/beta/status' in url:
         print('{"data":{}}')
     else:
-        old = ':8080/' in url or (url.startswith('https://') and os.environ.get('PUBLIC_FAIL'))
+        old_port = '8081' if os.environ.get('TARGET_PORT') == '8080' else '8080'
+        old = (':' + old_port + '/') in url or (url.startswith('https://') and os.environ.get('PUBLIC_FAIL'))
         print(json.dumps({'data': {'backend_version': 'v0.1.12' if old else os.environ['RELEASE_VERSION'],
                                   'backend_commit': 'b'*40 if old else os.environ['RELEASE_COMMIT']}}))
 elif name == 'sha256sum':
@@ -85,7 +101,7 @@ class ServerPrebuildTest(unittest.TestCase):
         for key in list(self.env):
             if key.startswith('GIT_') and key not in {'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'GIT_TERMINAL_PROMPT'}:
                 del self.env[key]
-        for name in ('sudo', 'systemctl', 'nginx', 'sleep', 'java', 'javac', 'node', 'npm', 'curl', 'sha256sum', 'mv'):
+        for name in ('sudo', 'systemctl', 'nginx', 'sleep', 'java', 'javac', 'node', 'npm', 'curl', 'sha256sum', 'mv', 'setsid', 'flock'):
             self.proxy(self.bin / name)
         self.env['PATH'] = str(self.bin) + os.pathsep + self.env['PATH']
         self.source = self.root / 'server/.monorepo-source'
@@ -101,6 +117,7 @@ class ServerPrebuildTest(unittest.TestCase):
         self.git('commit', '-m', 'fixture')
         self.sha = self.git('rev-parse', 'HEAD')
         self.server = self.source.parent
+        self.addCleanup(self.stop_pending_drain)
         self.ci_jar = self.root / 'ci-app.jar'
         self.ci_jar.write_bytes(b'fixture jar')
         self.env['PREBUILT_JAR'] = str(self.ci_jar)
@@ -124,8 +141,22 @@ class ServerPrebuildTest(unittest.TestCase):
 
     def backend(self, phase='prepare', **env):
         return subprocess.run(['bash', str(ROOT / 'backend/deploy/blue-green-deploy.sh')],
-                              env=dict(self.env, RELEASE_VERSION='v0.1.13', DEPLOY_PHASE=phase, **env),
+                              env=dict(self.env, RELEASE_VERSION='v0.1.13', DEPLOY_PHASE=phase) | env,
                               text=True, capture_output=True, timeout=10)
+
+    def stop_pending_drain(self):
+        pid_file = self.server / 'state/drain.pid'
+        if pid_file.is_file():
+            try:
+                os.killpg(int(pid_file.read_text().split()[0]), signal.SIGTERM)
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+
+    def wait_for(self, predicate):
+        deadline = time.monotonic() + 5
+        while not predicate():
+            self.assertLess(time.monotonic(), deadline, 'drain task did not reach the expected state')
+            time.sleep(0.01)
 
     def bootstrap_backend(self, jar_version='v0.1.12'):
         for directory in ('slots', 'state', 'nginx', 'shared', 'releases/' + jar_version):
@@ -208,6 +239,7 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assert_ok(self.backend())
         self.assertEqual(before, self.active_backend())
         self.assert_ok(self.backend('release'))
+        self.wait_for(lambda: not (self.server / 'state/drain.pid').exists())
         self.assertEqual([], self.events('gradlew'))
         self.assertEqual('green\n', (self.server / 'state/active-slot').read_text())
         self.assertIn('8081', (self.server / 'nginx/active.conf').read_text())
@@ -216,6 +248,54 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assertEqual('blue\n', (history / 'active-slot').read_text())
         self.assertIn(['45'], [e['args'] for e in self.events('sleep')])
         self.assertIn(['stop', 'yuanhub-backend@blue.service'], [e['args'] for e in self.events('systemctl')])
+
+    def test_delayed_drain_is_detached_and_rechecks_active_slot(self):
+        self.bootstrap_backend()
+        hold = self.root / 'finish-drain'
+        result = self.backend('release', DRAIN_HOLD_FILE=str(hold))
+        self.assert_ok(result)
+        self.assertIn('Blue/green release complete', result.stdout)
+        pid_file = self.server / 'state/drain.pid'
+        pid, old, target = pid_file.read_text().split()
+        self.assertEqual(('blue', 'green'), (old, target))
+        os.kill(int(pid), 0)
+        self.assertTrue(self.events('setsid'))
+        self.assertNotIn(['stop', 'yuanhub-backend@blue.service'], [e['args'] for e in self.events('systemctl')])
+        (self.server / 'state/active-slot').write_text('blue\n')
+        hold.touch()
+        self.wait_for(lambda: not pid_file.exists())
+        self.assertNotIn(['stop', 'yuanhub-backend@blue.service'], [e['args'] for e in self.events('systemctl')])
+        self.assertIn('Drain abandoned', (self.server / 'state/drain.log').read_text())
+
+    def test_next_release_cancels_pending_drain_and_stops_old_slot_before_start(self):
+        self.bootstrap_backend()
+        hold = self.root / 'finish-drain'
+        self.assert_ok(self.backend('release', DRAIN_HOLD_FILE=str(hold)))
+        pid_file = self.server / 'state/drain.pid'
+        pending = pid_file.read_text()
+        before = self.events('systemctl')
+        # Prepare neither cancels the pending drain nor touches live services.
+        self.assert_ok(self.backend('prepare'))
+        self.assertEqual(pending, pid_file.read_text())
+        self.assertEqual(before, self.events('systemctl'))
+        self.assert_ok(self.backend('release', RELEASE_VERSION='v0.1.14', TARGET_PORT='8080', DRAIN_SECONDS='0'))
+        self.assertFalse(pid_file.exists())
+        commands = [e['args'] for e in self.events('systemctl')]
+        stop_old = commands.index(['stop', 'yuanhub-backend@blue.service'])
+        start_new = commands.index(['restart', 'yuanhub-backend@blue.service'])
+        self.assertLess(stop_old, start_new)
+        self.assertEqual(1, commands.count(['stop', 'yuanhub-backend@blue.service']))
+        self.assertIn(['stop', 'yuanhub-backend@green.service'], commands)
+        self.assertEqual('blue\n', (self.server / 'state/active-slot').read_text())
+
+    def test_zero_drain_is_synchronous_and_stop_failure_is_logged(self):
+        self.bootstrap_backend()
+        self.assert_ok(self.backend('release', DRAIN_SECONDS='0', STOP_FAIL='1'))
+        self.assertFalse((self.server / 'state/drain.pid').exists())
+        self.assertEqual([], self.events('setsid'))
+        self.assertNotIn(['0'], [e['args'] for e in self.events('sleep')])
+        self.assertIn('Warning: could not stop yuanhub-backend@blue.service',
+                      (self.server / 'state/drain.log').read_text())
 
     def test_backend_public_failure_rolls_back_prepared_release(self):
         self.bootstrap_backend()

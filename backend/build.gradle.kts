@@ -110,6 +110,8 @@ tasks.test {
 
 // These properties belong to test JVMs, never the application or a developer's
 // live services. Full-context tests additionally validate them before bean creation.
+// Spring resolves this placeholder inside each test JVM after Gradle assigns its worker ID.
+val testWorker = "\${org.gradle.test.worker:single}"
 val safeTestProperties = mapOf(
     "spring.profiles.active" to "test",
     "spring.config.location" to "classpath:/application.yml,classpath:/application-test.yml",
@@ -123,10 +125,10 @@ val safeTestProperties = mapOf(
     "debug.email.no-send" to "true",
     "server.address" to "127.0.0.1",
     "share.info.public-base-url" to "http://127.0.0.1",
-    "share.avatar.dir" to layout.buildDirectory.dir("test-data/avatars").get().asFile.absolutePath,
-    "share.media.dir" to layout.buildDirectory.dir("test-data/media").get().asFile.absolutePath,
-    "share.media.private-dir" to layout.buildDirectory.dir("test-data/private").get().asFile.absolutePath,
-    "logging.file.name" to layout.buildDirectory.file("test-logs/spring.log").get().asFile.absolutePath,
+    "share.avatar.dir" to layout.buildDirectory.dir("test-data/$testWorker/avatars").get().asFile.absolutePath,
+    "share.media.dir" to layout.buildDirectory.dir("test-data/$testWorker/media").get().asFile.absolutePath,
+    "share.media.private-dir" to layout.buildDirectory.dir("test-data/$testWorker/private").get().asFile.absolutePath,
+    "logging.file.name" to layout.buildDirectory.file("test-logs/$testWorker/spring.log").get().asFile.absolutePath,
 )
 
 tasks.withType<Test>().configureEach {
@@ -153,6 +155,11 @@ fun isolatedSuite(taskName: String, tag: String) = tasks.register<Test>(taskName
     shouldRunAfter(tasks.test)
 }
 val integrationTest = isolatedSuite("integrationTest", "integration")
+integrationTest.configure {
+    maxParallelForks = providers.gradleProperty("integrationForks").orElse("1").get().toInt().also {
+        require(it > 0) { "integrationForks must be positive" }
+    }
+}
 val realisticTest = isolatedSuite("realisticTest", "realistic")
 val stressTest = isolatedSuite("stressTest", "stress").also { provider ->
     provider.configure {

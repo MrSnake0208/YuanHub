@@ -12,7 +12,7 @@ on:
       backend_version:
         description: Backend version (empty means do not deploy backend)
       stress:
-        description: Include scale-sensitive backend checks
+        description: Record local scale-sensitive backend checks
         type: boolean
         default: false
       baselines:
@@ -67,93 +67,18 @@ jobs:
       - name: Release infrastructure regressions
         run: python3 -m unittest scripts.testing.test_monorepo_ci scripts.testing.test_monorepo_release scripts.testing.test_artifact_deploy scripts.testing.test_server_prebuild
 
-  frontend:
-    needs: candidate
-    uses: ./.github/workflows/frontend-ci.yml
-    with:
-      commit: ${{ inputs.commit }}
-      release-version: ${{ inputs.frontend_version }}
-      behavior: true
-
   backend:
+    if: ${{ inputs.backend_version != '' }}
     needs: candidate
     uses: ./.github/workflows/backend-ci.yml
     with:
       commit: ${{ inputs.commit }}
       release-version: ${{ inputs.backend_version }}
-
-  safety:
-    needs: candidate
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    services:
-      redis:
-        image: redis:7
-        ports: ['6379:6379']
-        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.commit }}
-          persist-credentials: false
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
-      - name: Disposable runner Mongo replica set
-        run: |
-          docker run -d --name release-mongo --network host --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" mongo:7 --replSet rs0 --bind_ip_all
-          for n in $(seq 1 30); do
-            if docker exec release-mongo mongosh --quiet --eval 'db.adminCommand({ping:1})'; then break; fi
-            sleep 2
-          done
-          docker exec release-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
-          for n in $(seq 1 30); do
-            if docker exec release-mongo mongosh --quiet --eval 'if(!db.hello().isWritablePrimary) quit(1)'; then break; fi
-            sleep 2
-          done
-          docker exec release-mongo mongosh --quiet --eval 'if(!db.hello().isWritablePrimary) quit(1)'
-          mkdir -p .dev/bin
-          cat > .dev/bin/mongosh <<'SH'
-          #!/bin/sh
-          exec docker exec -i -w "$(pwd)" -e YUANHUB_REPAIR_ACTION -e YUANHUB_REPAIR_REVISION release-mongo mongosh "$@"
-          SH
-          chmod +x .dev/bin/mongosh
-          echo "$GITHUB_WORKSPACE/.dev/bin" >> "$GITHUB_PATH"
-      - name: Isolation, persistence, migration, schema and architecture
-        working-directory: backend
-        run: ./gradlew integrationTest apiSchemaTest architectureTest realisticTest --console=plain
-      - name: Optional scale checks
-        if: inputs.stress
-        working-directory: backend
-        run: ./gradlew stressTest --console=plain
-      - name: Backend script regressions
-        env:
-          BETA_TEST_MONGO_URI: mongodb://127.0.0.1:27017/yuanhub_test_beta_runner?replicaSet=rs0&directConnection=true
-        working-directory: backend
-        run: |
-          node --test scripts/migrations/20260907-level-catalog.test.js scripts/migrations/20261015-recruitment-duplicate-pools.test.js
-          npm ci --prefix scripts/beta --no-audit --no-fund
-          npm test --prefix scripts/beta
-      - name: Save safety reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-safety-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            backend/build/test-results/
-            backend/build/reports/tests/
-          retention-days: 7
+      artifact-only: true
 
   gate:
     if: always()
-    needs: [candidate, frontend, backend, safety]
+    needs: [candidate, backend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -174,10 +99,12 @@ jobs:
           import json, os
           from pathlib import Path
           results = json.loads(os.environ['RESULTS'])
-          assert set(results) == {'candidate', 'frontend', 'backend', 'safety'}
-          assert all(v['result'] == 'success' for v in results.values()), results
+          assert set(results) == {'candidate', 'backend'}
+          assert results['candidate']['result'] == 'success', results
+          expected_backend = 'success' if os.environ['BACKEND'] else 'skipped'
+          assert results['backend']['result'] == expected_backend, results
           manifest = dict(sha=os.environ['SHA'], run_id=int(os.environ['GITHUB_RUN_ID']),
-                          attempt=int(os.environ['GITHUB_RUN_ATTEMPT']), checks='complete',
+                          attempt=int(os.environ['GITHUB_RUN_ATTEMPT']), checks='artifact-only',
                           versions=dict(frontend=os.environ['FRONTEND'], backend=os.environ['BACKEND']),
                           stress=os.environ['STRESS'] == 'true', frontend_api_base=os.environ['API_BASE'],
                           baselines=json.loads(os.environ['BASELINES']))

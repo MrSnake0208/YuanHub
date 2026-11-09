@@ -70,3 +70,9 @@ gh api --method POST repos/MrSnake0208/YuanHub/environments/frontend-production/
 ```
 
 单用户 bypass、组件标签规则与前后端 Environment 均已通过实际 API 回读验证；生产发布结果见本页记录，回滚能力尚未演练。若后续平台拒绝保护配置，不扩大 bypass、不解除基础保护，停止发布并报告。主分支和 tag 规则只约束保留规则期间的操作；仓库所有者仍能管理规则本身，这不是对所有者的权限隔离。贡献者 PR 审核配置可从 API 和 CODEOWNERS 识别结果验收，本轮不使用另一个贡献者账号尝试真实写入。
+
+## 2026-11-09 发布提速改动（本地实现，未运行验证或发布）
+
+`--prepare` 改为并发执行所选组件本地测试、GitHub release-check 保留发布基础设施回归，组件构建仅 assemble/校验/保存 JAR，以及取得 check run ID 后立即在服务器 A 预构建前端；全部等待完成后才报告 ready。本地 state/日志保存测试 SHA、组件、命令结果与时间，publish 拒绝缺失或不匹配的记录，前端须预构建成功。GitHub manifest 使用 `checks=artifact-only`，只发前端时 backend job 必须 skipped，选中后端时必须 success。前端 prepare 只校验 run 身份和未失败状态，不查 manifest/JAR/基线；release 的完整证据、基线、API 配置和后端就绪校验保留，不新增 GitHub 向服务器 A 上传前端产物的路径。
+
+后端切流后的排空改为脱离 SSH 的后台任务，停止旧 slot 前核对 active slot；下一次 release 先取消待排空任务并同步收尾，prepare 不触碰运行服务，零等待仍同步停止。integrationTest 可按 fork 隔离目录并发执行，其它 Test task 仍为 1。以上仅为代码改动记录，不代表远端工作流已更新或运行通过；未改 Secrets、仓库变量、Environment、部署开关或服务器配置。Agent 仍须在 prepare 检查通过后汇报候选并询问用户，明确确认后才能执行 `--publish --yes`。历史检查与发布结果保持原样。
