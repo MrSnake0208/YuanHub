@@ -116,6 +116,8 @@ import './battleImages.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { auth } from '../../store/auth.js'
+import { beta } from '../../store/beta.js'
+import { betaLandingFor } from '../../utils/betaAccess.js'
 import { FEATURE_KEYS } from '../../config/features.js'
 import { isFeatureAccessible } from '../../utils/featureAccess.js'
 import { Check, ChevronDown, Download, FileText, Info, ListOrdered, Plus, Trash2, UsersRound, X } from '@lucide/vue'
@@ -134,9 +136,13 @@ import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 
 const router = useRouter()
-const canUseBattleImages = computed(() => isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, auth))
-watch([canUseBattleImages, () => auth.adminAccessLoading], ([allowed, loading]) => {
-  if (!allowed && !loading) void router.replace('/cart')
+const canUseBattleImages = computed(() => isFeatureAccessible(FEATURE_KEYS.BATTLE_IMAGES, auth) && (
+  auth.accessToken && auth.userInfo?.id
+    ? beta.userId === String(auth.userInfo.id) && beta.canUseBetaFeatures
+    : beta.campaign?.accessMode === 'OPEN' && !beta.publicError
+))
+watch(canUseBattleImages, allowed => {
+  if (!allowed) void router.replace(betaLandingFor(router.currentRoute.value.fullPath))
 })
 const { userId, account, accounts, accountsLoading, accountError, loadAccounts, catalog, catalogError, loadCatalog, entries, loading, loaded, error, readAccount } = useBattleAccountSource()
 const sourceAccountId = computed(() => userId.value ? activeAccount.id : '')

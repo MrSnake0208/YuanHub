@@ -14,6 +14,8 @@ class BetaAccessPolicyTest {
     fun `all supported cloud families protected and explicit public examples remain public`() {
         listOf(
             "/v1/accounts",
+            "/v1/battle-drafts",
+            "/v1/battle-drafts/{id}",
             "/v1/activity-calendar",
             "/v1/activity-calendar/suggestions/mine",
             "/v1/activity-calendar/subscriptions/summary",
@@ -65,6 +67,11 @@ class BetaAccessPolicyTest {
         assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/activity-calendar-other"))
         assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/recruitment-other"))
         assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/accounts-other"))
+        assertTrue(BetaAccessPolicy.requiresBeta("POST", "/v1/battle-drafts"))
+        assertTrue(BetaAccessPolicy.requiresBeta("PUT", "/v1/battle-drafts/{id}"))
+        assertTrue(BetaAccessPolicy.requiresBeta("DELETE", "/v1/battle-drafts/{id}"))
+        assertFalse(BetaAccessPolicy.requiresBeta("OPTIONS", "/v1/battle-drafts"))
+        assertFalse(BetaAccessPolicy.requiresBeta("GET", "/v1/battle-drafts-other"))
     }
 
     @Test

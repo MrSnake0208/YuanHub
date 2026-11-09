@@ -17,8 +17,7 @@ export const FEATURE_KEYS = Object.freeze({
 const isViteDev = import.meta.env?.DEV === true
 
 export const FEATURE_FLAGS = Object.freeze({
-  // 开发环境可直接调试；发布版仅允许平台管理员预览。
-  [FEATURE_KEYS.BATTLE_IMAGES]: isViteDev,
+  [FEATURE_KEYS.BATTLE_IMAGES]: true,
   // Public feature available in both development and production.
   [FEATURE_KEYS.STAR_COMPLETION]: true,
   // Explicit development-only opt-in URL; no demo module is imported in a production build.

@@ -23,6 +23,9 @@ test('beta gate protects cloud roots and token writes, never public escape route
   assert.equal(requiresBetaApi('DELETE', '/user/open-api/tokens/t'), false)
   assert.equal(requiresBetaApi('POST', '/v1/operator/catalog'), true)
   assert.equal(requiresBetaApi('GET', '/v1/accounts-lookalike'), false)
+  for (const method of ['GET', 'POST', 'PUT', 'DELETE']) assert.equal(requiresBetaApi(method, '/v1/battle-drafts/id'), true)
+  assert.equal(requiresBetaApi('OPTIONS', '/v1/battle-drafts'), false)
+  assert.equal(requiresBetaApi('GET', '/v1/battle-drafts-lookalike'), false)
   assert.equal(requiresBetaApi('POST', '/v1/recruitment/catalog'), true)
   assert.equal(requiresBetaApi('OPTIONS', '/v1/recruitment/commands'), false)
   assert.equal(requiresBetaApi('GET', '/v1/recruitment-lookalike'), false)
@@ -71,7 +74,7 @@ test('every status copy carries a visual tone the beta page can style', () => {
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {
   const { routes } = await import('../src/router/routes.js')
-  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment', '/bonds'].sort())
+  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/recruitment', '/bonds', '/tools/battle-images'].sort())
   const recruitment = routes.find(route => route.path === '/recruitment')
   assert.equal(recruitment.meta.requiresRecruitmentAccess, undefined)
   assert.equal(recruitment.meta.requiresBeta, true)

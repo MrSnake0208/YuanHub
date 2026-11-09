@@ -11,15 +11,17 @@ import { dialog } from '../src/utils/dialog.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
 import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
 import { battleDraftKey, decodeBattleDraft } from '../src/utils/battleDraft.js'
+import { beta } from '../src/store/beta.js'
 
 const hooks = vi.hoisted(() => ({ leave: null }))
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn }, useRouter: () => ({ replace: vi.fn() }) }))
+vi.mock('vue-router', () => ({ onBeforeRouteLeave: fn => { hooks.leave = fn }, useRouter: () => ({ replace: vi.fn(), currentRoute: { value: { fullPath: '/tools/battle-images' } } }) }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/utils/battleImageCapture.js', () => ({ renderBattleImage: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn(), getOperatorCurrent: vi.fn(), getCurrentOperatorPanels: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  beta.campaign = { accessMode: 'OPEN' }; beta.publicError = ''
   URL.createObjectURL = vi.fn(() => `blob:test-${URL.createObjectURL.mock.calls.length}`)
   URL.revokeObjectURL = vi.fn()
   renderBattleImage.mockResolvedValue(new Blob(['png']))

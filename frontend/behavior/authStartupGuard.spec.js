@@ -87,71 +87,40 @@ async function settle(router) {
   return router.currentRoute.value
 }
 
-describe('配队与操作图发布访问限制', () => {
-  beforeEach(async () => {
+describe('配队与操作图内测访问限制', () => {
+  beforeEach(() => {
     resetAuth()
     vi.restoreAllMocks()
+    isFeatureEnabled.mockReturnValue(true)
     beta.setIdentity('')
     beta.invalidate()
-    const original = await vi.importActual('@/config/features.js')
-    isFeatureEnabled.mockImplementation(key => key === FEATURE_KEYS.BATTLE_IMAGES ? false : original.isFeatureEnabled(key))
+    beta.publicError = ''
+    beta.personalError = ''
   })
 
-  it.each(['PLATFORM_ADMIN', 'SUPER_ADMIN', 'CHANGELOG_EDITOR', 'ACTIVITY_CALENDAR_EDITOR', ''])('冷启动按服务端角色 %s 判定，不提前加载工具页面', async role => {
+  it.each([true, false])('登录用户按内测资格 %s 判定，不依赖管理员角色', async allowed => {
     auth.accessToken = 'fixture'; auth.userInfo = { id: 'u' }
-    const response = deferred()
-    const backend = installFetch([{ path: ACCESS_ME, method: 'GET', respond: () => response.promise }])
-    const router = createGuardRouter()
-    const loadPage = vi.fn(async () => ({ template: '<div />' }))
-    router.addRoute({ ...routes.find(route => route.name === 'battle-images'), component: loadPage })
-    const navigation = router.push('/tools/battle-images')
-    await vi.waitFor(() => expect(backend.count(ACCESS_ME)).toBe(1))
-    expect(loadPage).not.toHaveBeenCalled()
-    response.resolve(jsonResponse({ status_code: 200, data: { roles: role ? [role] : [], permissions: [] } }))
-    await navigation
-    const allowed = ['PLATFORM_ADMIN', 'SUPER_ADMIN'].includes(role)
-    expect(router.currentRoute.value.path).toBe(allowed ? '/tools/battle-images' : '/cart')
-    expect(loadPage).toHaveBeenCalledTimes(allowed ? 1 : 0)
-  })
-
-  it('游客直达回到广陵账房，不请求管理权限', async () => {
-    const backend = installFetch([])
+    vi.spyOn(beta, 'refresh').mockImplementation(async () => {
+      beta.campaign = { accessMode: 'BETA' }; beta.mine = { canUseBetaFeatures: allowed }
+    })
     const router = createGuardRouter()
     await router.push('/tools/battle-images')
-    expect(router.currentRoute.value.path).toBe('/cart')
-    expect(backend.calls).toHaveLength(0)
+    expect(router.currentRoute.value.path).toBe(allowed ? '/tools/battle-images' : '/beta')
   })
 
-  it('权限读取失败不放行', async () => {
-    auth.accessToken = 'fixture'; auth.userInfo = { id: 'u' }
-    installFetch([{ path: ACCESS_ME, method: 'GET', respond: () => jsonResponse({ message: 'unavailable' }, 503) }])
+  it.each(['OPEN', 'BETA', 'CLOSED'])('游客按开放模式 %s 判定', async mode => {
+    vi.spyOn(beta, 'refresh').mockImplementation(async () => { beta.campaign = { accessMode: mode } })
     const router = createGuardRouter()
     await router.push('/tools/battle-images')
-    expect(router.currentRoute.value.path).toBe('/cart')
-    expect(auth.adminAccessError).toBeTruthy()
+    expect(router.currentRoute.value.path).toBe(mode === 'OPEN' ? '/tools/battle-images' : '/beta')
   })
 
-  it('等待权限期间换号取消导航，旧身份结果不能放行', async () => {
+  it('资格读取失败不放行', async () => {
     auth.accessToken = 'fixture'; auth.userInfo = { id: 'u' }
-    const response = deferred()
-    const backend = installFetch([{ path: ACCESS_ME, method: 'GET', respond: () => response.promise }])
-    const router = createGuardRouter()
-    await router.push('/cart')
-    const navigation = router.push('/tools/battle-images')
-    await vi.waitFor(() => expect(backend.count(ACCESS_ME)).toBe(1))
-    auth.userInfo = { id: 'other' }
-    response.resolve(jsonResponse(ADMIN_ACCESS))
-    await navigation
-    expect(router.currentRoute.value.path).toBe('/cart')
-  })
-
-  it('开发或公开开关开启时游客可进入，不等待管理员权限', async () => {
-    isFeatureEnabled.mockReturnValue(true)
-    const backend = installFetch([])
+    vi.spyOn(beta, 'refresh').mockImplementation(async () => { beta.personalError = 'offline' })
     const router = createGuardRouter()
     await router.push('/tools/battle-images')
-    expect(router.currentRoute.value.path).toBe('/tools/battle-images')
-    expect(backend.calls).toHaveLength(0)
+    expect(router.currentRoute.value.path).toBe('/beta')
   })
 })
 

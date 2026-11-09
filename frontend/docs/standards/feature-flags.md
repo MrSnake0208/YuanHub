@@ -26,19 +26,11 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
-`battleImages` keeps `/tools/battle-images` available in Vite development
-(`import.meta.env.DEV === true`) and closed to the public in production builds.
-In production, signed-in PLATFORM_ADMIN and SUPER_ADMIN users may preview it
-after `/v1/admin/access/me` has loaded successfully. Editor roles, feedback
-management grants and Beta enrollment do not grant preview access. Both navigation
-entries, direct routing and the mounted workspace use the same access predicate;
-denied navigation returns to `/cart`. Loss of access hides the workspace and
-returns there without deleting saved local drafts. This uses the current session's
-loaded roles; it does not add server-side role polling or a backend security boundary.
-The existing shared account APIs retain their own authorization.
-To release publicly, change `[FEATURE_KEYS.BATTLE_IMAGES]` to `true`, update the
-development/production assertions and rebuild/deploy the frontend. No work-system
-or Beta switch needs changing. Per-user rollout is not implemented.
+`battleImages` is enabled in development and production. Both navigation entries
+lead to `/tools/battle-images`, which uses the shared Beta route gate; guests may
+enter when the campaign is open. Losing eligibility closes the workspace without
+deleting local drafts. Cloud draft APIs require authentication, Beta eligibility,
+and the existing account authorization. The work-system switch is independent.
 
 `achievementArchive` is built in and available to signed-in users with existing
 site eligibility; its navigation, player routes and APIs require no admin role or

@@ -61,21 +61,22 @@ beforeEach(() => {
 const render = () => mount(Sidebar, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: currentRoute } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
 
-it.each(['PLATFORM_ADMIN', 'SUPER_ADMIN', 'CHANGELOG_EDITOR', 'ACTIVITY_CALENDAR_EDITOR', ''])('发布版双端配队图入口按角色 %s 显示，权限异常及退出后隐藏', async role => {
+it.each(['PLATFORM_ADMIN', 'SUPER_ADMIN', 'CHANGELOG_EDITOR', 'ACTIVITY_CALENDAR_EDITOR', ''])('双端配队图入口不受角色 %s 和登录状态限制', async role => {
+  isFeatureEnabled.mockImplementation(key => [FEATURE_KEYS.BATTLE_IMAGES, FEATURE_KEYS.ACTIVITY_CALENDAR, FEATURE_KEYS.RECRUITMENT_ARCHIVE].includes(key))
   Object.assign(auth, { accessToken: 'fixture', userInfo: { id: 'u' }, adminAccessLoaded: true, adminAccess: { roles: [role] } })
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
   const count = () => routes(wrapper).filter(path => path === '/tools/battle-images').length
-  expect(count()).toBe(['PLATFORM_ADMIN', 'SUPER_ADMIN'].includes(role) ? 2 : 0)
+  expect(count()).toBe(2)
   auth.adminAccessLoading = true
   await flushPromises()
-  expect(count()).toBe(0)
+  expect(count()).toBe(2)
   Object.assign(auth, { adminAccessLoading: false, adminAccessError: 'failed' })
   await flushPromises()
-  expect(count()).toBe(0)
+  expect(count()).toBe(2)
   Object.assign(auth, { adminAccessError: '', accessToken: '' })
   await flushPromises()
-  expect(count()).toBe(0)
+  expect(count()).toBe(2)
   wrapper.unmount()
 })
 
