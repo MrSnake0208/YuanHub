@@ -62,7 +62,7 @@ jobs:
     name: Build and deploy to production
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # 与 promo 部署同一目标机；若给该 environment 配 Required reviewers，可让发布需人工批准。
+    # 与 promo 部署同一目标机；该 Environment 不设人工 reviewer，发布授权由 CLI 流程的用户确认表达。
     environment: frontend-production
 
     env:

@@ -49,6 +49,7 @@
 
 - 普通 Push、PR、merge、tag 不自动运行 CI 或部署；集中发布检查在明确准备发布时进行，手动诊断入口保留。
 - 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本并启动集中检查；`--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
+- 两端生产 Environment 不设人工 reviewer；Agent 在 `--prepare` 检查通过后须向用户汇报候选并询问是否部署，取得明确确认后才能运行 `--publish --yes`。
 - GitHub 远端配置、正式 tag、部署、回滚分别确认，保持部署开关现状。见 [发布设置](docs/release-settings/README.md) 与 [操作手册](docs/monorepo-operations.md)。
 
 <!-- TRELLIS:START -->

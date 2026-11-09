@@ -36,7 +36,7 @@
 
 所有者完成根 `AGENTS.md` 要求的最小自检后，可以直接 commit/push main，不强制 PR。Agent 仍须分别获得 commit、push 的明确授权。其他贡献者通过分支/PR，由所有者人工审核；不设置日常 required checks。Worktree 是可选的开发隔离方式，不是强制 PR 流程。
 
-普通 Push、PR、合并、Tag Push 均不自动运行根工作流。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者及 regression 同时是 reusable workflow。没有每日回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
+普通 Push、PR、合并、Tag Push 均不自动运行根工作流。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者同时是 reusable workflow，frontend-regression 仅供手动诊断，不在集中检查内。没有每日回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
 
 可疑 PR 可手动诊断完整差异，例如 `gh workflow run pr-ci.yml --repo MrSnake0208/YuanHub --ref main -f commit=HEAD_SHA -f base=BASE_SHA`，或分别运行 frontend-ci/backend-ci 并传 `commit`。这里只产生诊断结果，不能替代集中发布准入。
 
@@ -63,7 +63,7 @@ prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版
 
 显式选择一个组件不会顺带部署另一个。`--frontend` / `--backend` 不带版本（或 `auto`）在 prepare 中从该组件线上版本递增。正式发版前需要人工判断接口兼容性；有相互依赖时选两端，先发布兼容后端。显式前端单发不能自动证明它与线上旧后端兼容。Git 历史缺失、生产元数据不可读、分支/远端不一致会停止，不猜测上次部署。离线旧式预览 `./release.sh --dry-run --frontend auto` 仍读取 VERSION 默认值；`--dry-run --frontend VERSION --backend VERSION` 只读本地 HEAD，不访问网络。`--prepare --dry-run` 会读取远端和生产元数据，但不触发 Actions。
 
-集中 release-check 绑定准确 main SHA，复用：前端 static/repo/build 与跨端契约、完整 `npm run test:all`（Node + Vitest/jsdom，非浏览器 E2E）、后端 ktlint/test/assemble、integration/api-schema/architecture/realistic 和迁移/beta 脚本测试。数据库只在一次性 GitHub Runner 上准备，JUnit 使用 TestMongo 自有随机库和 TestRedis 进程键空间；不访问共享开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它发布不默认 stress。现有独立 all/mutation/stress 能力保留，按变更风险追加，不把所有昂贵专项强制纳入每次发布。
+集中 release-check 绑定准确 main SHA，复用：前端 static/repo/behavior/contract/build 各一次（Node + Vitest/jsdom，非浏览器 E2E）、后端 ktlint/test/assemble、integration/api-schema/architecture/realistic 和迁移/beta 脚本测试。数据库只在一次性 GitHub Runner 上准备，JUnit 使用 TestMongo 自有随机库和 TestRedis 进程键空间；不访问共享开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它发布不默认 stress。现有独立 all/mutation/stress 能力保留，按变更风险追加，不把所有昂贵专项强制纳入每次发布。
 
 任一必需 job 失败、取消、跳过，都不产生通过凭据。最终 candidate artifact 绑定 SHA、run ID、attempt、两个版本、stress 和 API 配置；最多有效 7 天。重跑必须有同 attempt 的最终凭据及 JAR，不能继承旧批次结果。后端 artifact 自带完整 SHA 和构建版本；缺失/过期时停止。前端保留低带宽服务器构建，但从精确 SHA 注入同一版本并检查真实 build-info、资源和 SW。
 
@@ -71,24 +71,24 @@ prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版
 
 先按日志判断是真实缺陷、过时断言、环境还是基础设施问题；按最终业务行为修复，禁止删除有效测试或无理由 skip。修复必须另行 commit/push，再执行 prepare 得到新候选；不自动提交。prepare 每次创建新检查，publish 复用冻结候选的成功结果。旧 SHA 的绿色结果不能放行新 SHA。已经存在的标签只有指向同一 SHA 才可复用；如果修复改变 SHA，需要选择尚未使用的新版本。调度找不到 run 时先检查 Actions，避免盲目重复调度。
 
-集中检查成功后，在另获正式发布授权时执行：
+用户要求发版后，Agent 运行 `./release.sh --prepare` 并等待集中检查；通过后汇报候选 SHA、组件版本和变更内容，只询问一次是否部署到生产，取得用户明确确认后执行：
 
 ```bash
 ./release.sh --publish --dry-run
-./release.sh --publish
+./release.sh --publish --yes
 ```
 
 publish 重新核对 main、冻结 SHA、成功 run/attempt、版本、产物、证据有效期、API 配置、线上基线与部署开关；交互输入 `publish` 才创建/推送不可变 `frontend/vX.Y.Z` / `backend/vX.Y.Z` 标签并手动 dispatch。`--yes` 代表调用者明确授予正式发布授权，不是 prepare 的默认选项。发布工作流还要求所有者、main、准确提交及 `deploy TAG@SHA` 确认值；Tag Push 自身不部署。
 
-两端同发时等待后端蓝绿、readiness、公开 /version 健康检查完成，并核对实际后端版本/SHA 后，再激活前端；手动绕过 CLI 运行前端工作流也检查所选后端是否就绪。失败立即停止，显示具体 Actions 链接；不继续前端，不移动标签。相同版本/SHA 已在线则安全跳过；未完成的步骤可重试，线上基线变化则要求重新准备候选。Environment 如启用审批，还需所有者在 Actions 批准。
+两端同发时等待后端蓝绿、readiness、公开 /version 健康检查完成，并核对实际后端版本/SHA 后，再激活前端；手动绕过 CLI 运行前端工作流也检查所选后端是否就绪。失败立即停止，显示具体 Actions 链接；不继续前端，不移动标签。相同版本/SHA 已在线则安全跳过；未完成的步骤可重试，线上基线变化则要求重新准备候选。两端生产 Environment 不设人工 reviewer，发布授权由 CLI 流程的用户明确确认表达。
 
 后端仍从集中检查所在 run 下载 JAR，校验内置版本/SHA、传输摘要，再调用原蓝绿部署脚本。服务器不编译；prepare phase 仅安装不切流，亦需完整集中门禁及单独授权。前端仍在服务器独立源码副本构建，版本通过 YUANHUB_VERSION 注入，输出 build-info.json 与相同页面构建信息；current 原子切换、SW 摘要、历史 releases、旧 slot 失败恢复及 GitHub Release 都保留。前后端版本不绑定。VERSION 只是日常本地构建默认值，不要求版本 PR。
 
 ## 远端切换边界
 
-本地 YAML 不代表线上保护已经修改。实际规则状态、待批准 JSON、应用顺序和官方依据见 [远端切换配置](release-settings/README.md)。先建立仅所有者 PR bypass 的 Ruleset，再去掉叠加的经典 required PR/CI；禁止强推/删除仍保留。生产 Environment 另行授权配置所有者审批，并按实际 workflow ref 选择 branch/tag 策略：当前新版只接受 main-ref dispatch；合法 tag-ref 发布须显式允许对应 tag，不能无条件限制为 main。旧提交中的 tag-triggered 发布入口须单独核验集中门禁与人工确认，不能仅靠新版 YAML 判定安全。
+本地 YAML 不代表线上保护已经修改。实际规则状态、待批准 JSON、应用顺序和官方依据见 [远端切换配置](release-settings/README.md)。先建立仅所有者 PR bypass 的 Ruleset，再去掉叠加的经典 required PR/CI；禁止强推/删除仍保留。两端生产 Environment 已移除 required reviewer，保留 main 分支策略；按实际 workflow ref 选择 branch/tag 策略：当前新版只接受 main-ref dispatch；合法 tag-ref 发布须显式允许对应 tag，不能无条件限制为 main。旧提交中的 tag-triggered 发布入口须单独核验集中门禁与人工确认，不能仅靠新版 YAML 判定安全。
 
-2026-11-07 经所有者授权，`YUANHUB_MONOREPO_DEPLOY_ENABLED=true`；`frontend-production`、`backend-production` 要求所有者审批、允许所有者审批自己的请求，且仅接受 main-ref dispatch。`frontend/v*`、`backend/v*` 标签禁止更新和删除，无 bypass。独立的 `production` Environment 保持原状。实际 API 回读与发布证据见 [发布设置](release-settings/README.md)。旧 BackEndV3-Share 的 Actions 和 Tag Release 仍活跃且不受此开关约束；完成新通道生产发布及回滚验证前保留旧能力，最终停用另行授权，切换窗口须协调两仓发布。prepare 可在部署关闭时运行 CI；publish 在关闭时拒绝创建标签，启用也不代表授权后续发布或回滚。旧多仓脚本绝不能拿当前根仓运行。
+2026-11-07 经所有者授权，`YUANHUB_MONOREPO_DEPLOY_ENABLED=true`；2026-11-09 经所有者授权移除 `frontend-production`、`backend-production` 的 required reviewer，仍仅接受 main-ref dispatch，Secrets 和部署开关不变。`frontend/v*`、`backend/v*` 标签禁止更新和删除，无 bypass。独立的 `production` Environment 保持原状。实际 API 回读与发布证据见 [发布设置](release-settings/README.md)。旧 BackEndV3-Share 的 Actions 和 Tag Release 仍活跃且不受此开关约束；完成新通道生产发布及回滚验证前保留旧能力，最终停用另行授权，切换窗口须协调两仓发布。prepare 可在部署关闭时运行 CI；publish 在关闭时拒绝创建标签，启用也不代表授权后续发布或回滚。旧多仓脚本绝不能拿当前根仓运行。
 
 ## 独立回滚
 

@@ -96,6 +96,9 @@ class MonorepoWorkflowTest(unittest.TestCase):
         contract = text.split('      - name: Paired API contract\n', 1)[1].split('      - name:', 1)[0]
         self.assertNotIn('if:', contract)
         self.assertIn('npm run test:contract', contract)
+        behavior = text.split('      - name: Behavior tests\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('if: ${{ inputs.behavior && !inputs.contract-only }}', behavior)
+        self.assertIn('npm run test:behavior', behavior)
         self.assertIn("contract-only: ${{ needs.changes.outputs.frontend_full == 'false' }}",
                       (ROOT / '.github/workflows/pr-ci.yml').read_text())
         backend = (ROOT / '.github/workflows/backend-ci.yml').read_text()
@@ -114,14 +117,17 @@ class MonorepoWorkflowTest(unittest.TestCase):
 
     def test_concentrated_gate_rejects_any_incomplete_job(self):
         text = (ROOT / '.github/workflows/release-check.yml').read_text()
+        frontend = text.split('\n  frontend:\n', 1)[1].split('\n  backend:\n', 1)[0]
+        self.assertIn('uses: ./.github/workflows/frontend-ci.yml', frontend)
+        self.assertIn('      behavior: true', frontend)
         block = text.split('      - name: Require all checks and record evidence\n', 1)[1].split('      - uses:', 1)[0]
         script = textwrap.dedent(block.split('        run: |\n', 1)[1])
         artifacts = ROOT / '.test-artifacts'
         artifacts.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=artifacts) as directory:
-            for job in ('candidate', 'frontend', 'backend', 'regression', 'safety'):
+            for job in ('candidate', 'frontend', 'backend', 'safety'):
                 for status in ('success', 'failure', 'cancelled', 'skipped'):
-                    needs = {n:dict(result='success') for n in ('candidate','frontend','backend','regression','safety')}
+                    needs = {n:dict(result='success') for n in ('candidate','frontend','backend','safety')}
                     needs[job]['result'] = status
                     candidate = Path(directory)/'candidate.json'
                     candidate.unlink(missing_ok=True)

@@ -1,13 +1,8 @@
 name: Full regression
 
-# 完整回归属于集中发布门禁，也可单独手动诊断。
+# 完整回归仅供手动诊断，不作为集中发布门禁，也不提供 reusable workflow。
 
 on:
-  workflow_call:
-    inputs:
-      commit:
-        type: string
-        default: ""
   workflow_dispatch:
     inputs:
       commit:

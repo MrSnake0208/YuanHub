@@ -15,6 +15,10 @@ on:
         description: Run only paired contracts for backend-only PR changes
         type: boolean
         default: false
+      behavior:
+        description: Run behavior tests for concentrated release checks
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       commit:
@@ -76,6 +80,10 @@ jobs:
       - name: Repository tests
         if: ${{ !inputs.contract-only }}
         run: npm run test:repo
+
+      - name: Behavior tests
+        if: ${{ inputs.behavior && !inputs.contract-only }}
+        run: npm run test:behavior
 
       - name: Paired API contract
         run: npm run test:contract

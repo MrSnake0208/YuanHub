@@ -16,4 +16,4 @@ docs/            development/testing.md、跨端文档与迁移说明
 4. 独立构建：前端 `cd frontend && npm run build`；后端 `cd backend && ./gradlew assemble --console=plain`。验证入口与隔离要求见 [docs/development/testing.md](docs/development/testing.md)。前端为 JavaScript 项目，无 TypeScript typecheck 脚本，`test:static` 是源码编译检查。
 5. 日常所有者 `git push`，贡献者 PR 人工审核；普通提交不跑 CI。发版 `./release.sh --prepare` → `./release.sh --status` → 获明确授权后 `./release.sh --publish`。独立版本、远端设置切换及回滚见 [运维与工作树手册](docs/monorepo-operations.md)。
 
-当前仓库为公开 `MrSnake0208/YuanHub` Monorepo。2026-11-07 经所有者授权启用生产通道，前后端 Environment 仅接受 main 并要求所有者审批，组件标签禁止更新和删除；每次正式发布仍需明确授权。旧后端通道继续保留，回滚演练和旧通道退役另行授权。只保留原前端、后端的 Git 历史，不包含外层 YuanHub-All 的提交历史。配置证据见 [发布设置](docs/release-settings/README.md)，来源见 [迁移说明](docs/migration/README.md)。
+当前仓库为公开 `MrSnake0208/YuanHub` Monorepo。2026-11-07 经所有者授权启用生产通道，前后端 Environment 仅接受 main、不设人工 reviewer（2026-11-09 经所有者授权移除），由 Agent 在检查通过后询问用户确认，组件标签禁止更新和删除；每次正式发布仍需明确授权。旧后端通道继续保留，回滚演练和旧通道退役另行授权。只保留原前端、后端的 Git 历史，不包含外层 YuanHub-All 的提交历史。配置证据见 [发布设置](docs/release-settings/README.md)，来源见 [迁移说明](docs/migration/README.md)。

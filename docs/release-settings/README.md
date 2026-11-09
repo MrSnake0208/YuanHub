@@ -13,10 +13,12 @@
 | main review Ruleset | 创建 `main-review-ruleset.json`：外部贡献者必须 PR、1 个 CODEOWNER 审核、新提交撤销旧审核；仅 User 74225450 可以 always bypass | 不授予其他管理员、普通 write 成员或 App bypass；CODEOWNERS 全仓只有所有者 |
 | main 经典保护 | 用 `main-protection.json` 移除 required checks、required PR；继续 enforce_admins=true | 禁止任何人强推、删除 main；该保护与 owner 的 PR bypass 独立 |
 | 标签 Ruleset（已配置并回读） | `immutable-tags-ruleset.json` 已创建为 active Ruleset `26759576` | frontend/v*、backend/v* 禁止更新/删除，无 bypass；允许首次创建 |
-| 前后端生产 Environment（已配置并回读） | `frontend-production`、`backend-production` 应用 `production-environment.json` 和 main branch 策略；独立的 `production` 保持原状 | 仅 User `74225450` 审批，`prevent_self_review=false`，只接受 main-ref dispatch；现有 Secrets 不变 |
+| 前后端生产 Environment（已配置并回读） | `frontend-production`、`backend-production` 应用 `production-environment.json` 和 main branch 策略；独立的 `production` 保持原状 | 不设人工 reviewer，只接受 main-ref dispatch；现有 Secrets 不变；Agent 在 prepare 检查通过后汇报候选并询问是否部署，用户明确确认后才能运行 `--publish --yes` |
 | 部署通道（已启用） | Monorepo `YUANHUB_MONOREPO_DEPLOY_ENABLED=true`；旧后端 Actions/发布/回滚能力继续保留 | 每次正式发布仍须授权；`legacy-backend-actions.json` 仅为退役提案，回滚演练及旧通道停用未授权、未执行 |
 
 本次配置前后及逐项 API 回读快照位于本树忽略目录 `.dev/release-cutover/20261107T142958Z/`。只修改上述两个 Environment、组件标签保护和部署开关；没有修改 main 保护、Secrets、服务器目标或旧仓 Actions。
+
+2026-11-09 经所有者授权，主控已移除 `frontend-production`、`backend-production` 的 required reviewer 并回读确认；保留 main 分支策略、Secrets 和部署开关。发布改为 Agent 在 `--prepare` 检查通过后汇报候选并向用户询问一次是否部署到生产，取得明确确认后才运行 `./release.sh --publish --yes`。
 
 ## 2026-11-07 生产发布结果
 
