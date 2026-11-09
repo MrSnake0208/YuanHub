@@ -36,12 +36,12 @@
 
               <div v-show="!mobile || !noteMode" class="battle-sequence">
                 <div class="battle-sequence-head">
-                  <span>出手顺序</span>
+                  <span v-if="!mobile || !round.actions.length">出手顺序</span>
                   <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
                   <div v-if="mobile" class="battle-round-tools" role="group" aria-label="回合操作">
                     <button type="button" aria-label="撤回最后一步" title="撤回最后一步" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="18" aria-hidden="true" /></button>
+                    <button type="button" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)">箱</button>
                     <button :ref="setNoteButton" type="button" :aria-label="round.remark ? '编辑备注（已有备注）' : '编辑备注'" :title="round.remark ? '编辑备注（已有备注）' : '编辑备注'" @click="openNote"><NotebookPen :size="18" aria-hidden="true" /><i v-if="round.remark" aria-hidden="true"></i></button>
-                    <button type="button" class="battle-round-delete" aria-label="删除本回合" title="删除本回合" :disabled="rounds.length === 1" @click="removeRound"><ListX :size="18" aria-hidden="true" /></button>
                   </div>
                 </div>
                 <ol v-if="round.actions.length" class="battle-sequence-chips" aria-label="本回合出手顺序">
@@ -63,7 +63,7 @@
               </div>
 
               <div v-show="!mobile || !noteMode" class="battle-composer">
-                <div class="battle-composer-row battle-composer-actors" role="group" aria-label="出手方">
+                <div v-if="!mobile" class="battle-composer-row battle-composer-actors" role="group" aria-label="出手方">
                   <span class="battle-composer-label">出手</span>
                   <button v-for="(member, index) in operators" :key="index" type="button" class="battle-actor-option" :disabled="!member.name" :aria-pressed="activeSlot === index" @click="pickSlot(index)">
                     <img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><span class="battle-actor-name">{{ member.name || `${index + 1}号位` }}</span>
@@ -75,15 +75,23 @@
                     <i :style="index === usage.main ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i><span><template v-if="mobile"><b>{{ index + 1 }}</b><span class="battle-target-short">{{ battleTargetShortName(targetName(index)) }}</span></template><template v-else>{{ targetName(index) }}</template></span>
                   </button>
                 </div>
-                <div class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
+                <div v-if="mobile" class="battle-composer-row battle-composer-grid" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
+                  <span aria-hidden="true"></span>
+                  <span v-for="(member, index) in operators" :key="index" class="battle-grid-heading">{{ member.name || `${index + 1}号位` }}</span>
+                  <template v-for="item in mobileActions" :key="item.type">
+                    <span class="battle-composer-label">{{ item.label.slice(0, 2) }}</span>
+                    <button v-for="(member, index) in operators" :key="index" type="button" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
+                  </template>
+                </div>
+                <div v-if="!mobile" class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
                   <span class="battle-composer-label">{{ editingAction ? '改为' : '记录' }}</span>
                   <button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="editingAction ? isBattleInteraction(editingAction) : !canRecord" @click="pickAction(item.type)">
                     <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
                   </button>
                   <button type="button" class="battle-action-option" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b><span class="battle-actor-name">{{ BATTLE_INTERACTION.label }}</span></button>
                 </div>
-                <p v-if="editingAction && isBattleInteraction(editingAction)" class="battle-hint">要改回密探动作，请先在上方「出手」选择密探。</p>
-                <p v-else-if="!editingAction && !operators[slot]?.name" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
+                <p v-if="!mobile && editingAction && isBattleInteraction(editingAction)" class="battle-hint">要改回密探动作，请先在上方「出手」选择密探。</p>
+                <p v-else-if="!editingAction && (mobile ? !operators.some(o => o.name) : !operators[slot]?.name)" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
                 <p v-else-if="!editingAction && round.actions.length >= 50" class="battle-hint">本回合已达 50 个动作上限。</p>
               </div>
 
@@ -104,10 +112,14 @@
       <div id="battle-mobile-panel-body"></div>
       <div v-show="!noteMode" class="battle-round-dock" role="group" aria-label="回合切换">
         <button type="button" aria-label="上一回合" title="上一回合" :disabled="current === 0" @click="dockNav(-1)"><ChevronLeft :size="16" aria-hidden="true" /></button>
-        <span class="battle-round-dock-title"><b aria-live="polite">第 {{ current + 1 }} 回合</b><small>{{ round.actions.length }} 步</small></span>
+        <button ref="roundMenuButton" type="button" class="battle-round-dock-title" aria-haspopup="menu" :aria-expanded="roundMenuOpen" :aria-label="`第${current + 1}回合操作`" @click="roundMenuOpen = !roundMenuOpen"><b aria-live="polite">第 {{ current + 1 }} 回合</b><small>{{ round.actions.length }} 步</small><component :is="roundMenuOpen ? ChevronDown : ChevronUp" :size="12" aria-hidden="true" /></button>
         <button type="button" :aria-label="atLast ? '新增回合' : '下一回合'" :title="atLast ? '新增回合' : '下一回合'" :disabled="atLast && rounds.length >= 50" @click="dockNav(1)"><component :is="atLast ? Plus : ChevronRight" :size="16" aria-hidden="true" /></button>
         <button type="button" class="battle-round-dock-close" aria-label="收起回合编辑" @click="close"><ChevronDown :size="18" aria-hidden="true" /></button>
         <button type="button" class="battle-primary battle-round-export" aria-label="生成操作图" :disabled="exportDisabled" @click="emit('export', $event.currentTarget)"><Download :size="16" aria-hidden="true" />生成图</button>
+        <div v-if="roundMenuOpen" ref="roundMenu" class="battle-round-menu" role="menu" :aria-label="`第${current + 1}回合操作`">
+          <button type="button" role="menuitem" :disabled="!round.actions.length || rounds.length >= 50" @click="roundMenuOpen = false; copyRound()">复制到下一回合</button>
+          <button type="button" role="menuitem" class="battle-round-delete" :disabled="rounds.length === 1" @click="roundMenuOpen = false; removeRound()">删除本回合</button>
+        </div>
       </div>
     </div>
   </section>
@@ -115,7 +127,7 @@
 
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ListX, NotebookPen, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, NotebookPen, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetShortName, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
@@ -128,6 +140,8 @@ const emit = defineEmits(['recording', 'pick-member', 'export'])
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)
 const mobile = ref(false), panel = ref(null), noteMode = ref(false)
+const roundMenuOpen = ref(false), roundMenu = ref(null), roundMenuButton = ref(null)
+const mobileActions = ['ultimate', 'attack', 'defense', 'sp'].map(type => BATTLE_ACTIONS.find(item => item.type === type))
 // 手机只输出 Teleport 锚点，桌面保留原来的 tr/td 结构及编辑区位置。
 const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row' }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
 const TARGET_POSITIONS = ['左二', '左一', '主位', '右一', '右二']
@@ -151,8 +165,8 @@ const activeTarget = computed(() => editingAction.value ? editingAction.value.ta
 const canRecord = computed(() => Boolean(props.operators[slot.value]?.name) && round.value.actions.length < 50)
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
 const atLast = computed(() => current.value >= props.rounds.length - 1)
-watch(round, () => { editing.value = null; noteMode.value = false })
-watch(expanded, value => emit('recording', value))
+watch(round, () => { editing.value = null; noteMode.value = false; roundMenuOpen.value = false })
+watch(expanded, value => { if (!value) roundMenuOpen.value = false; emit('recording', value) })
 watch(() => round.value?.actions.length, () => { if (editing.value !== null && !editingAction.value) editing.value = null })
 watch([() => round.value?.actions.length, editing, current, mobile, expanded], async () => {
   if (!mobile.value || !expanded.value) return
@@ -169,9 +183,20 @@ watch(panel, el => {
   panelObserver = new ResizeObserver(() => panelOwner?.style.setProperty('--battle-panel-height', `${el.getBoundingClientRect().height}px`))
   panelObserver.observe(el)
 }, { flush: 'post' })
-let alive = true, opener, viewObserver, panelObserver, panelOwner, mediaQuery
+let alive = true, opener, viewObserver, panelObserver, panelOwner, mediaQuery, recordingScrollY = 0
+function onMenuPointerdown(event) {
+  if (!roundMenu.value?.contains(event.target) && !roundMenuButton.value?.contains(event.target)) roundMenuOpen.value = false
+}
+function onMenuKeydown(event) {
+  if (event.key !== 'Escape' || !roundMenuOpen.value) return
+  event.preventDefault()
+  roundMenuOpen.value = false
+  roundMenuButton.value?.focus({ preventScroll: true })
+}
 const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false }
 onMounted(() => {
+  document.addEventListener('pointerdown', onMenuPointerdown)
+  document.addEventListener('keydown', onMenuKeydown)
   mediaQuery = window.matchMedia?.('(max-width: 767px)')
   updateMobile()
   mediaQuery?.addEventListener('change', updateMobile)
@@ -182,7 +207,7 @@ onMounted(() => {
   viewObserver.observe(el)
 })
 // 草稿替换会按 revision 重建本组件，卸载时撤销录入状态，避免页面生成栏一直隐藏。
-onBeforeUnmount(() => { alive = false; viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
+onBeforeUnmount(() => { alive = false; document.removeEventListener('pointerdown', onMenuPointerdown); document.removeEventListener('keydown', onMenuKeydown); viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
 
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
@@ -191,6 +216,7 @@ const stepText = action => isBattleInteraction(action) ? `${BATTLE_INTERACTION.l
 const actionLabel = type => BATTLE_ACTIONS.find(item => item.type === type)?.label || '未知动作'
 
 async function selectCell(row, position, event) {
+  if (mobile.value && !expanded.value) recordingScrollY = window.scrollY
   opener = event?.currentTarget || opener
   current.value = row; slot.value = position; editing.value = null; noteMode.value = false; expanded.value = true
   await nextTick(); revealHeading()
@@ -202,7 +228,7 @@ function revealHeading(focusEl = headingEl) {
   if (row) row.scrollIntoView?.({ block: 'start', behavior: 'auto' })
   else if (!mobile.value) headingEl?.scrollIntoView?.({ block: 'nearest', behavior: 'auto' })
 }
-async function close() { expanded.value = false; editing.value = null; noteMode.value = false; await nextTick(); opener?.focus({ preventScroll: true }) }
+async function close() { expanded.value = false; editing.value = null; noteMode.value = false; await nextTick(); if (mobile.value) window.scrollTo(0, recordingScrollY); opener?.focus({ preventScroll: true }) }
 async function openNote() {
   noteMode.value = true
   await nextTick(); sectionEl?.querySelector('textarea')?.focus({ preventScroll: true })
@@ -229,6 +255,18 @@ async function dockNav(offset) {
   revealHeading(focused?.closest?.('.battle-round-dock') && !focused.disabled ? null : panel.value?.querySelector('.battle-round-dock button:not(:disabled)') || headingEl)
 }
 function toggleEdit(index) { editing.value = editing.value === index ? null : index }
+function recordCell(index, type) {
+  if (!props.operators[index]?.name) return
+  const action = editingAction.value
+  if (action) {
+    if (isBattleInteraction(action)) round.value.actions.splice(editing.value, 1, { slot: index, type, target: target.value })
+    else { action.slot = index; action.type = type }
+    return
+  }
+  if (round.value.actions.length >= 50) return
+  slot.value = index
+  round.value.actions.push({ slot: index, type, target: target.value })
+}
 function pickSlot(index) {
   if (!props.operators[index]?.name) return
   const action = editingAction.value
@@ -272,6 +310,12 @@ function addRound() {
   if (props.rounds.length >= 50) return
   props.rounds.push({ actions: [], remark: '' })
   selectCell(props.rounds.length - 1, slot.value)
+}
+async function copyRound() {
+  if (!round.value.actions.length || props.rounds.length >= 50) return
+  props.rounds.splice(current.value + 1, 0, { actions: round.value.actions.map(action => ({ ...action })), remark: '' })
+  current.value += 1
+  await nextTick(); revealHeading()
 }
 async function removeRound() {
   if (props.rounds.length <= 1) return

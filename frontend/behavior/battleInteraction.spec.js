@@ -109,7 +109,7 @@ it('手机回合栏：翻回合与新增回合不重建按钮、焦点留在栏�
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
   expect(wrapper.emitted('recording')).toEqual([[true]])
   const dock = wrapper.get('.battle-round-dock')
-  const [prev, next] = dock.findAll('button')
+  const [prev, , next] = dock.findAll('button')
   expect(prev.attributes('disabled')).toBeDefined()
   expect(next.attributes('aria-label')).toBe('新增回合')
   next.element.focus()
