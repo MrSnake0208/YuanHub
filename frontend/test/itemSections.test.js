@@ -85,7 +85,7 @@ test('密探养成资源四个子类别使用全宽行布局并保持游戏顺�
   const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
   const development = sections[1]
 
-  assert.equal(development.subsectionLayout, 'rows')
+  assert.equal(development.subsectionLayout, 'shelves')
   assert.deepEqual(development.subsections.map(function (section) { return section.name }), ['修为进阶材料', '等级突破材料', '羁绊突破材料', '觉醒材料'])
   assert.deepEqual(development.subsections[0].entries.map(function (item) { return item.name }), [
     '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',

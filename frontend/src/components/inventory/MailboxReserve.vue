@@ -5,7 +5,7 @@
       <strong>待领邮件 <b>{{ loaded ? mailCount : '—' }}</b> 封</strong>
       <span v-if="loaded && scheduleSummary" class="mail-summary">{{ scheduleSummary }}</span>
       <span v-if="loaded && mailCount" class="mail-summary">{{ storedTotals.coins.toLocaleString() }} 白金币 · {{ storedTotals.tickets.toLocaleString() }} 符传</span>
-      <div class="mail-quick-actions"><button type="button" class="btn ghost" aria-label="管理邮件储备（录入／调整储备）" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button><button v-if="loaded && mailCount || pendingClaim" type="button" class="mail-manage" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button></div>
+      <div class="mail-quick-actions"><button v-if="loaded && mailCount || pendingClaim" type="button" class="btn ghost" :disabled="disabled || busy || conflict" @click="pendingClaim ? panel = 'claim' : openPanel('claim')">{{ pendingClaim ? '确认领取结果' : '记录领取' }}</button><button type="button" :class="loaded && mailCount || pendingClaim ? 'mail-manage' : 'btn ghost'" aria-label="管理邮件储备（录入／调整储备）" :disabled="disabled || locked || !loaded || conflict" @click="openPanel('manage')">管理</button></div>
     </div>
     <p v-if="error && !panel" class="mail-feedback" role="alert">{{ error }}</p>
     <button v-if="!loaded && !loading || conflict" type="button" class="mail-manage" :disabled="locked || disabled" @click="reload">重新读取</button>

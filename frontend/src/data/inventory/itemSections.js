@@ -76,6 +76,11 @@ const CULTIVATION_SUBGROUPS = Object.freeze([
   { id: 'earth-water', name: '地&水', itemIds: ['mulanzhuilu', 'bawanglei', 'lingshanquan', 'baimozhijiu', 'qingjiu', 'zhuojiu'] },
   { id: 'yin-yang', name: '阴&阳', itemIds: ['xinghanjing', 'shuijing', 'baoshijing', 'liujinjing', 'liubojing', 'tongjing'] }
 ])
+const LEVEL_BREAKTHROUGH_SUBGROUPS = Object.freeze([
+  { id: 'tier-1', name: '', itemIds: ['fujunhaitang', 'panlonggu', 'yinwendao', 'yuguidun', 'xijiaogong'] },
+  { id: 'tier-2', name: '', itemIds: ['menghunlan', 'zhentiangu', 'qingtongdao', 'caiwendun', 'tietaigong', 'zuigucao'] },
+  { id: 'tier-3', name: '', itemIds: ['qingtingyan', 'ziyunying', 'yingqiongyao', 'jincuodao', 'diguanghe', 'yuanyu', 'jianjia'] }
+])
 const AGENT_EXPERIENCE_IDS = new Set(RESOURCE_SUBCATEGORIES[3].itemIds)
 
 export function sortItemsByGameOrder(entries) {
@@ -148,7 +153,21 @@ export function buildItemCategorySections(entries) {
       name: subgroup.name,
       entries: subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
     }
+  }).filter(function (subgroup) { return subgroup.entries.length > 0 })
+  const levelBreakthroughEntries = entries.filter(function (entry) {
+    return entry.category === '密探突破材料' && !AGENT_EXPERIENCE_IDS.has(entry.id)
   })
+  const levelBreakthroughSubgroups = LEVEL_BREAKTHROUGH_SUBGROUPS.map(function (subgroup) {
+    return {
+      id: subgroup.id,
+      name: subgroup.name,
+      entries: subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+    }
+  })
+  const groupedLevelIds = new Set(LEVEL_BREAKTHROUGH_SUBGROUPS.flatMap(function (subgroup) { return subgroup.itemIds }))
+  levelBreakthroughSubgroups[levelBreakthroughSubgroups.length - 1].entries.push(
+    ...levelBreakthroughEntries.filter(function (entry) { return !groupedLevelIds.has(entry.id) })
+  )
   const developmentSubsections = [
     {
       id: 'cultivation',
@@ -159,9 +178,8 @@ export function buildItemCategorySections(entries) {
     {
       id: 'level-breakthrough',
       name: '等级突破材料',
-      entries: entries.filter(function (entry) {
-        return entry.category === '密探突破材料' && !AGENT_EXPERIENCE_IDS.has(entry.id)
-      })
+      entries: levelBreakthroughEntries,
+      subgroups: levelBreakthroughSubgroups.filter(function (subgroup) { return subgroup.entries.length > 0 })
     },
     {
       id: 'bond-breakthrough',
@@ -189,7 +207,7 @@ export function buildItemCategorySections(entries) {
       name: '密探养成资源',
       entries: developmentSubsections.flatMap(function (section) { return section.entries }),
       primaryEntries: [],
-      subsectionLayout: 'rows',
+      subsectionLayout: 'shelves',
       subsections: developmentSubsections
     }
   ]

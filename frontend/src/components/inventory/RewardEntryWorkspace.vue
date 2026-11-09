@@ -11,8 +11,8 @@
             <span><b>{{ preset.channel }}</b><small>{{ dailyRecorded.has(preset.id) ? '已记录' : preset.count ? `+${preset.count} ${preset.itemName}` : '未启用' }}</small></span>
           </label>
           <template v-if="preset.id === 'monthly-card' && mailboxMonthlyCoins">
-            <router-link v-if="homeDaily" class="quick-mail-adjust text-button" to="/inventory" aria-label="到库存调整月卡奖励数量">调整</router-link>
-            <button v-else type="button" class="quick-mail-adjust text-button" :disabled="disabled || locked" aria-label="调整月卡奖励数量" @click="emit('manage-mailbox')">调整</button>
+            <router-link v-if="homeDaily" class="quick-edit" to="/inventory" aria-label="到库存调整月卡奖励数量"><Pencil :size="14" aria-hidden="true" /></router-link>
+            <button v-else type="button" class="quick-edit" :disabled="disabled || locked" aria-label="调整月卡奖励数量" @click="emit('manage-mailbox')"><Pencil :size="14" aria-hidden="true" /></button>
           </template>
           <button v-else type="button" class="quick-edit" :disabled="preset.id === 'daily-zhuyu' && !dailyZhuyuReady" :aria-label="`编辑${preset.channel}`" @click="openQuickEdit(preset)"><Pencil :size="14" aria-hidden="true" /></button>
         </div>

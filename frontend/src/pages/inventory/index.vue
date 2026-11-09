@@ -710,7 +710,7 @@
                   v-for="section in manifestCategorySections"
                   :key="section.id"
                   class="item-section"
-                  :class="{ 'is-legacy-resources': section.id === 'resources' }"
+                  :class="{ 'is-item-shelves': section.subsectionLayout === 'shelves' }"
                 >
                   <div class="section-head">
                     <h2>{{ section.name }}</h2>
@@ -768,8 +768,7 @@
                         :class="{
                           'is-divination-stone':
                             subcategory.id === 'divination-stone',
-                          'is-level-breakthrough':
-                            subcategory.id === 'level-breakthrough',
+                          'is-cultivation': subcategory.id === 'cultivation',
                         }"
                       >
                         <div class="subsection-head">
@@ -814,7 +813,7 @@
                             :key="group.id"
                             class="cultivation-group"
                           >
-                            <div class="cultivation-group-head">
+                            <div v-if="group.name" class="cultivation-group-head">
                               <h4>{{ group.name }}</h4>
                               <span>{{ group.entries.length }} 种</span>
                             </div>
@@ -842,9 +841,11 @@
                                     @load="onImgLoad"
                                     @error="onImgError"
                                   />
+                                  <span v-if="section.subsectionLayout === 'shelves'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
                                 </div>
                                 <InventoryItemName :entry="e" />
                                 <span
+                                  v-if="section.subsectionLayout !== 'shelves'"
                                   class="slot-count"
                                   :class="{ zero: !e.owned }"
                                   >{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span
@@ -875,10 +876,10 @@
                                 @load="onImgLoad"
                                 @error="onImgError"
                               />
-                              <span v-if="section.id === 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
+                              <span v-if="section.subsectionLayout === 'shelves'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
                             </div>
                             <InventoryItemName :entry="e" />
-                            <span v-if="section.id !== 'resources'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
+                            <span v-if="section.subsectionLayout !== 'shelves'" class="slot-count" :class="{ zero: !e.owned }">{{ inventorySetupNeeded ? '—' : fmtCount(e.count) }}</span>
                           </li>
                         </ul>
                       </div>
