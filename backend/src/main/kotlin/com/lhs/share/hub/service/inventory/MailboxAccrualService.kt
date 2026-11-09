@@ -112,7 +112,7 @@ class MailboxAccrualService(
     }
 
     fun sync(user: String, account: String): MailboxReserve {
-        repeat(3) { attempt ->
+        repeat(5) { attempt ->
             try {
                 return checkNotNull(transactions.execute { settle(user, account) })
             } catch (error: RuntimeException) {
@@ -121,7 +121,8 @@ class MailboxAccrualService(
                         it is org.springframework.dao.DuplicateKeyException
                 }
                 if (!transient) throw error
-                if (attempt == 2) conflict("邮件正在更新，请重新读取")
+                if (attempt == 4) conflict("邮件正在更新，请重新读取")
+                Thread.sleep((10L shl attempt) + (0L..15L).random())
             }
         }
         error("unreachable")
