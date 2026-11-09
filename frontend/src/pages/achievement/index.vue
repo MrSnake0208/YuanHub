@@ -45,7 +45,9 @@
                         <span class="achievement-filter-label">状态</span>
                         <div class="achievement-filter-options" role="group" aria-label="成就状态筛选">
                           <button type="button" value="" :aria-pressed="!filters.status" @click="filters.status = ''">全部</button>
-                          <button v-for="(label, value) in STATUS_LABELS" :key="value" type="button" :value="value" :aria-pressed="filters.status === value" @click="filters.status = value">{{ label }}</button>
+                          <button type="button" value="incomplete" :aria-pressed="filters.status === 'incomplete'" @click="filters.status = 'incomplete'">未完成</button>
+                          <button type="button" value="completed" :aria-pressed="filters.status === 'completed'" @click="filters.status = 'completed'">已完成</button>
+                          <button v-if="summary.abandoned > 0 || filters.status === 'abandoned'" type="button" value="abandoned" :aria-pressed="filters.status === 'abandoned'" @click="filters.status = 'abandoned'">已放弃 {{ summary.abandoned }}</button>
                         </div>
                       </div>
                       <div class="achievement-filter-row">
@@ -109,7 +111,7 @@
                     <AchievementPointRewards v-if="group.pointTrack" :key="`${state.contextVersion}:${group.category_id}`" :category-name="group.name" :track="group.pointTrack" :points="group.points" :record-state="pointRecordState" :always-expanded="filters.category === group.category_id" />
                     <div v-if="group.entries.length" class="achievement-column-headings" aria-hidden="true"><span>成就</span><span>奖励</span><div><span>完成状态</span><span>操作</span></div></div>
                     <ul v-if="group.entries.length" class="achievement-list">
-                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="filters.status === 'incomplete' && state.pendingRemoval.includes(entry.achievement_id)" :pending-reorder="!filters.status && filters.completedLast && state.pendingRemoval.includes(entry.achievement_id)" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" />
+                      <AchievementRow v-for="entry in group.entries" :key="entry.achievement_id" :entry="entry" :linked-metrics="state.archive?.linked_metrics" :legacy-reward="state.catalog?.legacy_rewards?.[entry.achievement_id]" :record="recordFor(entry.achievement_id)" :editor="editorFor(entry.achievement_id)" :writable="writable" :record-ready="!available || !!state.archive" :saving="state.savingIds.includes(entry.achievement_id)" :error="state.failedIds.includes(entry.achievement_id) ? state.error : ''" :pending-removal="filters.status === 'incomplete' && state.pendingRemoval.includes(entry.achievement_id)" :batch-mode="batchMode" :selected="selected.includes(entry.achievement_id)" @select="toggleSelection(entry.achievement_id)" @quick-save="saveInline" @edit="openEditor(entry.achievement_id, $event)" @cancel="cancelEditor(entry.achievement_id, $event)" @save="saveEditor(entry, $event)" />
                     </ul>
                     <div v-else class="achievement-empty"><p>当前筛选下没有匹配的单条成就。</p><button type="button" @click="resetFilters">清除条件并查看全部</button></div>
                   </section>
@@ -276,15 +278,21 @@ async function bulkSave(patch) {
   if (!writable.value || !selected.value.length) return
   const token = capture(), ids = [...selected.value]
   const removingFavorite = patch.favorite === false
+  const abandoning = patch.status === 'abandoned'
+  const targetIds = abandoning ? ids.filter(id => recordFor(id).status !== 'completed') : ids
+  if (!targetIds.length) { state.notice = '所选成就均已完成，无需放弃。'; return }
+  const skipped = ids.length - targetIds.length
   const confirmation = await dialog.confirm({
     title: removingFavorite ? '确认批量移除关注？' : '确认批量记录？',
     message: removingFavorite
       ? `目标：${account.value.name} · ${game.value}，将移除明确选中的 ${ids.length} 条成就的关注，完成状态、进度和备注保持不变。`
-      : `目标：${account.value.name} · ${game.value}，将把明确选中的 ${ids.length} 条标记为“${STATUS_LABELS[patch.status]}”。`,
+      : abandoning
+        ? `目标：${account.value.name} · ${game.value}，将把 ${targetIds.length} 条标记为“已放弃”，置底显示，可随时恢复。${skipped ? `其中 ${skipped} 条已完成，已跳过。` : ''}`
+        : `目标：${account.value.name} · ${game.value}，将把明确选中的 ${ids.length} 条标记为“${STATUS_LABELS[patch.status]}”。`,
     confirmText: removingFavorite ? '移除关注' : '确认记录', cancelText: '取消'
   })
   if (!confirmation || !matches(token) || ids.some(id => !selected.value.includes(id) || !pageEntries.value.some(entry => entry.achievement_id === id))) return
-  if (await save(ids.map(id => ({ achievement_id: id, ...patch }))) && matches(token)) {
+  if (await save(targetIds.map(id => ({ achievement_id: id, ...patch }))) && matches(token)) {
     if (removingFavorite) state.notice = `已移除所选 ${ids.length} 条成就的关注，可撤销。`
     selected.value = []
     batchMode.value = false

@@ -13,7 +13,7 @@ test('历史三态映射两态、目录分母固定，关注和移出目录记�
     { ...emptyRecord(entries[1].achievement_id), status: 'completed' },
     { ...emptyRecord('removed'), status: 'completed' }
   ]
-  assert.deepEqual(summarizeAchievements(entries, records), { total: 3, completed: 1, incomplete: 2, favorite: 1 })
+  assert.deepEqual(summarizeAchievements(entries, records), { total: 3, completed: 1, incomplete: 2, abandoned: 0, favorite: 1 })
   assert.equal(filterAchievements(entries, records, filters({ favorite: true })).length, 1)
   assert.equal(filterAchievements(entries, records, filters({ status: 'incomplete' })).length, 2)
   assert.equal(records[0].status, 'pending')
@@ -146,4 +146,17 @@ test('已完成仅在分类内置底，两段保持原始顺序，筛选与关�
   assert.deepEqual(order({ completedLast: true, status: 'incomplete' }), [2, 5, 6])
   assert.deepEqual(order({ completedLast: true, category: 'other' }), [5, 6, 4])
   assert.deepEqual(catalog.entries.map(entry => entry.sort), [1, 2, 3, 4, 5, 6])
+})
+
+test('已放弃独立统计与筛选，始终在同分类最后', () => {
+  const catalog = achievementCatalog(6)
+  catalog.categories.push({ category_id: 'other', name: '另一分类' })
+  catalog.entries.slice(3).forEach(entry => { entry.category_id = 'other' })
+  const records = [1, 2, 4, 5].map(index => ({ achievement_id: catalog.entries[index - 1].achievement_id, status: index === 1 || index === 4 ? 'abandoned' : 'completed' }))
+  const order = extra => filterAchievements([...catalog.entries].reverse(), records, filters(extra), catalog.categories).map(entry => entry.sort)
+  assert.deepEqual(summarizeAchievements(catalog.entries, records), { total: 6, completed: 2, incomplete: 2, abandoned: 2, favorite: 0 })
+  assert.deepEqual(order({ status: 'incomplete' }), [3, 6])
+  assert.deepEqual(order({ status: 'abandoned' }), [1, 4])
+  assert.deepEqual(order({}), [2, 3, 1, 5, 6, 4])
+  assert.deepEqual(order({ completedLast: true }), [3, 2, 1, 6, 5, 4])
 })

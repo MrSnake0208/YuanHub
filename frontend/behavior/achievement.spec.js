@@ -169,6 +169,7 @@ it('更多筛选原位展开，收起仍显示已选条件并可清除', async (
   catalog.entries[1].linked_metric = 'yuan_bond_variants'; catalog.entries[1].target = 20
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
+  await wrapper.get('[aria-label="成就排序"] input').setValue(false)
   const toolbar = wrapper.get('.achievement-toolbar')
   expect(toolbar.findAll('.achievement-filter-row').filter(row => row.isVisible())).toHaveLength(2)
   const more = toolbar.get('.achievement-more-filters')
@@ -426,6 +427,7 @@ it('两态仅提交状态，关注独立，进度和备注不随状态清空或�
   const catalog = achievementCatalog(); catalog.entries[0] = achievementEntry(1, { target: 10 })
   api.getAchievementCatalog.mockResolvedValue(catalog)
   const wrapper = page(); await flushPromises()
+  await wrapper.get('[aria-label="成就排序"] input').setValue(false)
   const row = wrapper.findAll('.achievement-row')[0]
   for (const status of ['completed', 'incomplete']) {
     await row.get('.achievement-status-toggle').trigger('click'); await flushPromises()
@@ -569,6 +571,7 @@ it('进度未知无假0或进度条；行内合法进度和备注分别保存、
 it('多个行内草稿在状态保存、筛选隐藏、翻页及恢复后仍保留，取消和切账号可拒绝', async () => {
   api.getAchievementCatalog.mockResolvedValue(achievementCatalog(55)); mockArchiveWrites()
   const wrapper = page(); await flushPromises()
+  await wrapper.get('[aria-label="成就排序"] input').setValue(false)
   const row = wrapper.findAll('.achievement-row')[0]
   await row.get('.achievement-note-toggle').trigger('click'); await row.get('textarea').setValue('未保存备注')
   await row.get('.achievement-status-toggle').trigger('click'); await flushPromises()
@@ -676,6 +679,7 @@ it('进度和备注同时编辑，分别保存不会丢弃另一个字段的草�
 it('完成日期草稿在两态切换和备注单独保存后保留，返回已完成再保存日期', async () => {
   mockArchiveWrites([{ achievement_id: 'yh_fixture_dhy_1', status: 'completed', completed_on: null }])
   const wrapper = page(); await flushPromises()
+  await wrapper.get('[aria-label="成就排序"] input').setValue(false)
   const row = wrapper.findAll('.achievement-row')[0]
   await row.get('.achievement-note-toggle').trigger('click')
   await row.get('input[type="date"]').setValue('2026-10-17')
@@ -749,7 +753,9 @@ it('分类内置底在分页前生效，切换回首页，清除筛选保留排�
   const wrapper = page(); await flushPromises()
   const names = () => wrapper.findAll('.achievement-status-toggle').map(item => item.attributes('aria-label'))
   const sort = wrapper.get('[aria-label="成就排序"] input')
-  expect(sort.element.checked).toBe(false)
+  expect(sort.element.checked).toBe(true)
+  expect(names()[0]).toBe('测试成就 2 未完成')
+  await sort.setValue(false)
   expect(names()[0]).toBe('测试成就 1 已完成')
   await button(wrapper, '下一页').trigger('click')
   await sort.setValue(true)
@@ -779,7 +785,7 @@ it('置底完成后停留6秒，统计立即更新，撤销恢复原始位置', 
     await wrapper.get('.achievement-status-toggle').trigger('click'); await flushPromises()
     expect(names()[0]).toBe('测试成就 1 已完成')
     expect(wrapper.get('.stat-completed b').text()).toBe('1')
-    expect(wrapper.get('.achievement-row-feedback').text()).toBe('即将移至本分类已完成区域')
+    expect(wrapper.find('.achievement-row-feedback').exists()).toBe(false)
     await vi.advanceTimersByTimeAsync(5999); await flushPromises()
     expect(names()[0]).toBe('测试成就 1 已完成')
     await vi.advanceTimersByTimeAsync(1); await flushPromises()

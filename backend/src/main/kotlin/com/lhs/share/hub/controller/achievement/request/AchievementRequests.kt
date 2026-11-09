@@ -52,7 +52,7 @@ object AchievementRequestDecoder {
         val fields = node.fieldNames().asSequence().filter { it in CONTENT_FIELDS }.toSet() - "achievement_id"
         if (fields.isEmpty()) invalid("未提供个人记录字段")
         val status = if ("status" in fields) text(node, "status") else "pending"
-        if (status !in setOf("pending", "incomplete", "completed")) invalid("status 只支持 pending/incomplete/completed")
+        if (status !in setOf("pending", "incomplete", "completed", "abandoned")) invalid("status 只支持 pending/incomplete/completed/abandoned")
         val favorite = if ("favorite" in
             fields
         ) {

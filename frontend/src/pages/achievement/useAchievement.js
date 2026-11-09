@@ -17,10 +17,14 @@ export function useAchievement() {
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy)
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const entries = computed(() => state.catalog?.entries || [])
-  const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false, metric: '', completedLast: false })
+  const filters = reactive({ query: '', category: '', reward: '', status: '', favorite: false, hidden: false, metric: '', completedLast: true })
   const page = ref(0), batchMode = ref(false), selected = ref([])
-  const filtered = computed(() => filterAchievements(entries.value, records.value.map(record =>
-    (filters.status === 'incomplete' || (!filters.status && filters.completedLast)) && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record), filters, state.catalog?.categories || [], state.catalog?.legacy_rewards || {}))
+  const filtered = computed(() => filterAchievements(entries.value, records.value.map(record => {
+    const holding = record.status === 'abandoned'
+      ? filters.status === 'incomplete' || !filters.status
+      : record.status === 'completed' && (filters.status === 'incomplete' || (!filters.status && filters.completedLast))
+    return holding && state.pendingRemoval.includes(record.achievement_id) ? { ...record, status: 'incomplete' } : record
+  }), filters, state.catalog?.categories || [], state.catalog?.legacy_rewards || {}))
   const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
   const summary = computed(() => summarizeAchievements(entries.value, records.value))
   const recordFor = id => records.value.find(record => record.achievement_id === id) || emptyRecord(id)
@@ -77,7 +81,10 @@ export function useAchievement() {
       if ('status' in patch) fields.completed_on = current.completed_on
       return fields
     })
-    const completing = patches.filter(patch => patch.status === 'completed' && completionStatus(recordFor(patch.achievement_id)) !== 'completed').map(patch => patch.achievement_id)
+    const pendingRemoval = patches.filter(patch =>
+      (patch.status === 'completed' && completionStatus(recordFor(patch.achievement_id)) !== 'completed' && (filters.status === 'incomplete' || (!filters.status && filters.completedLast))) ||
+      (patch.status === 'abandoned' && recordFor(patch.achievement_id).status !== 'abandoned' && (filters.status === 'incomplete' || !filters.status))
+    ).map(patch => patch.achievement_id)
     state.busy = true; state.savingIds = patches.map(patch => patch.achievement_id); state.failedIds = []; state.error = ''; state.notice = ''; read++
     try {
       const result = await api.writeAchievements(token.accountId, token.identity, revision, patches)
@@ -85,7 +92,7 @@ export function useAchievement() {
       if (result.account_id !== token.accountId || result.game !== token.game) throw new Error('档案归属不一致，请重新读取账号。')
       clearRemoval()
       state.savedIds = patches.map(patch => patch.achievement_id)
-      state.pendingRemoval = filters.status === 'incomplete' || (!filters.status && filters.completedLast) ? completing : []
+      state.pendingRemoval = pendingRemoval
       removalTimer = setTimeout(clearRemoval, 6000)
       state.archive = result
       state.undo = undoing ? null : { patches: before, revision: result.revision, token }

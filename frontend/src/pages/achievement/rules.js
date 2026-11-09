@@ -1,5 +1,6 @@
-export const STATUS_LABELS = Object.freeze({ incomplete: '未完成', completed: '已完成' })
+export const STATUS_LABELS = Object.freeze({ incomplete: '未完成', completed: '已完成', abandoned: '已放弃' })
 export const completionStatus = record => record?.status === 'completed' ? 'completed' : 'incomplete'
+export const trackingStatus = record => record?.status === 'abandoned' ? 'abandoned' : completionStatus(record)
 export const PAGE_SIZE = 50
 export const MAX_IMPORT_BYTES = 16 * 1024 * 1024
 export const MAX_IMPORT_RECORDS = 5000
@@ -34,10 +35,10 @@ export function pointRewardSources(catalog, filters) {
 
 export function summarizeAchievements(entries, records) {
   const byId = new Map(records.map(record => [record.achievement_id, record]))
-  const result = { total: entries.length, incomplete: 0, completed: 0, favorite: 0 }
+  const result = { total: entries.length, incomplete: 0, completed: 0, abandoned: 0, favorite: 0 }
   for (const entry of entries) {
     const record = byId.get(entry.achievement_id)
-    result[completionStatus(record)]++
+    result[trackingStatus(record)]++
     if (record?.favorite) result.favorite++
   }
   return result
@@ -55,7 +56,7 @@ export function filterAchievements(entries, records, filters, categories = [], l
       : entry.rewards.some(item => matchesReward(item, reward))
     return (!filters.category || entry.category_id === filters.category) &&
       (!filters.metric || entry.linked_metric === filters.metric) &&
-      (!filters.status || completionStatus(record) === filters.status) &&
+      (!filters.status || trackingStatus(record) === filters.status) &&
       (!filters.favorite || record.favorite) &&
       (!filters.hidden || entry.is_hidden === true) &&
       (!reward || rewardMatches) &&
@@ -63,6 +64,7 @@ export function filterAchievements(entries, records, filters, categories = [], l
         .join(' ').toLocaleLowerCase().includes(query))
   }).sort((a, b) =>
     (categories.findIndex(c => c.category_id === a.category_id) - categories.findIndex(c => c.category_id === b.category_id)) ||
+    Number(trackingStatus(byId.get(a.achievement_id)) === 'abandoned') - Number(trackingStatus(byId.get(b.achievement_id)) === 'abandoned') ||
     (filters.completedLast ? Number(completionStatus(byId.get(a.achievement_id)) === 'completed') - Number(completionStatus(byId.get(b.achievement_id)) === 'completed') : 0) ||
     a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id))
 }

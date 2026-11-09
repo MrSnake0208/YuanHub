@@ -75,9 +75,10 @@
   .achievement-title { display: flex; align-items: center; min-height: 36px; padding-right: 148px; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
   .achievement-row-copy p { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
   .achievement-row-copy small { font-size: 11px; }
-  .achievement-reward { flex-basis: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 12px; font-size: 13px; line-height: 1.6; }
+  .achievement-reward { flex: 1 1 0; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 12px; font-size: 13px; line-height: 1.6; }
   .achievement-reward .achievement-reward-icon { width: 24px; height: 24px; }
-  .achievement-progress { flex: 1 1 100%; display: grid; gap: 5px; padding-left: 12px; font-size: 12px; }
+  .achievement-main .achievement-abandon { order: 1; flex: 0 0 36px; width: 36px; min-height: 32px; padding: 0; font-size: 12px; align-self: center; }
+  .achievement-progress { order: 2; flex: 1 1 100%; display: grid; gap: 5px; padding-left: 12px; font-size: 12px; }
   .achievement-main .achievement-progress-edit { display: flex; justify-content: space-between; align-items: center; gap: 5px; padding: 3px 0; font-size: 12px; }
   .achievement-progress progress { width: 100%; height: 5px; }
   .achievement-row-actions { position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 8px; }

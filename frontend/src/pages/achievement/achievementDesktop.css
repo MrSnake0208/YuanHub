@@ -66,7 +66,7 @@
   .achievement-dialog.is-short .achievement-dialog-body { overflow: visible; flex-shrink: 0; }
   .achievement-group { margin-top: 12px; }
   .achievement-row { padding: 12px 16px; }
-  .achievement-row-main, .achievement-column-headings { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 238px; gap: 16px; align-items: center; }
+  .achievement-row-main, .achievement-column-headings { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 270px; gap: 16px; align-items: center; }
   .achievement-row-main { min-height: 44px; row-gap: 0; }
   .achievement-column-headings { padding: 10px 16px; border: 1px solid var(--achievement-line); border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--paper) 32%, var(--surface)); font-size: 12px; color: var(--ink-60); }
   .achievement-column-headings > span:first-child { padding-left: 14px; }
@@ -79,7 +79,8 @@
   .achievement-progress { grid-column: 1; grid-row: 2; display: grid; gap: 6px; max-width: 280px; padding-left: 14px; margin-top: 6px; font-size: 12px; }
   .achievement-main .achievement-progress-edit { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 24px; padding: 0; font-size: 12px; }
   .achievement-progress progress { width: 100%; height: 6px; }
-  .achievement-row-actions { grid-column: 3; grid-row: 1 / span 2; display: grid; grid-template-columns: 106px 36px 72px; align-items: center; gap: 12px; }
+  .achievement-row-actions { grid-column: 3; grid-row: 1 / span 2; display: grid; grid-template-columns: 106px 36px 72px; align-items: center; gap: 8px; padding-right: 40px; }
+  .achievement-main .achievement-abandon { grid-column: 3; grid-row: 1 / span 2; justify-self: end; width: 40px; padding: 5px 0; font-size: 13px; }
   .achievement-favorite, .achievement-note-toggle { display: grid; place-items: center; }
   .achievement-inline-editor { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 12px; padding: 12px; font-size: 13px; }
   .achievement-inline-editor > label { flex: 1 1 240px; }
@@ -100,11 +101,12 @@
   @container (max-width: 620px) {
     .achievement-column-headings { display: none; }
     .achievement-list { border-top: 1px solid var(--achievement-line); border-radius: 8px; }
-    .achievement-row-main { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .achievement-row-main { position: relative; grid-template-columns: minmax(0, 1fr); gap: 8px; }
     .achievement-row-main > * { grid-column: auto; grid-row: auto; }
     .achievement-reward { padding-left: 14px; }
     .achievement-progress { max-width: none; margin-top: 0; }
-    .achievement-row-actions { grid-template-columns: minmax(0, 1fr) 36px 72px; }
+    .achievement-row-actions { grid-template-columns: minmax(0, 1fr) 36px 72px; padding-right: 40px; }
+    .achievement-main .achievement-abandon { position: absolute; right: 0; bottom: 2px; grid-column: auto; grid-row: auto; }
     .achievement-status button { max-width: 160px; }
   }
 }
