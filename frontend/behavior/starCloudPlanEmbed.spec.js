@@ -49,8 +49,44 @@ async function setup({afterConfirm} = {}) {
   handle.setActiveTab('review');await settle()
   database=await request(indexedDB.open('yuanstar-static'))
   const localPending=()=>request(database.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))
-  return {account,patch,confirm,discard,state:()=>clone(state),pending:()=>clone(pending),localPending}
+  const receiveSync = experience => {
+    state = { ...state, generation: state.generation + 1, revision: state.revision + 1, experience }
+    pending = null
+  }
+  return {account,patch,confirm,discard,state:()=>clone(state),pending:()=>clone(pending),localPending,receiveSync}
 }
+it('refreshes synced experience with unknown counts and withholds the complete available total', async () => {
+  const f = await setup()
+  const bagValue = color => root.querySelector('[data-experience-field="' + color + '"]').value
+  const planValue = color => root.querySelector('[data-growth-experience="' + color + '"]').value
+  const available = () => root.querySelector('.growth-owned-total b')?.textContent
+  const refresh = async experience => {
+    f.receiveSync(experience)
+    await handle.setHostAccount(f.account)
+    expect(await coordinator.enter(handle)).toBe(true)
+    expect((await handle.getCloudBusinessSnapshot()).experience).toEqual(experience)
+  }
+
+  const known = { orange: 0, purple: 525, white: 91 }
+  await refresh(known)
+  expect(bagValue('orange')).toBe('0')
+  handle.setReviewView('plan')
+  await vi.waitFor(() => expect(available()).toBe('271.6k'))
+
+  for (const experience of [
+    { orange: null, purple: 0, white: 91 },
+    { orange: null, purple: null, white: null },
+  ]) {
+    handle.setReviewView('bag')
+    await refresh(experience)
+    for (const [color, value] of Object.entries(experience)) expect(bagValue(color)).toBe(value === null ? '' : String(value))
+    handle.setReviewView('plan')
+    await vi.waitFor(() => expect(available()).toBe('—'))
+    for (const [color, value] of Object.entries(experience)) expect(planValue(color)).toBe(value === null ? '' : String(value))
+  }
+  expect(f.patch).not.toHaveBeenCalled()
+})
+
 async function openPlan() {
   handle.setReviewView('plan')
   await vi.waitFor(()=>expect(document.querySelector('.plan-inheritance-dialog')).not.toBeNull(),{timeout:3000})

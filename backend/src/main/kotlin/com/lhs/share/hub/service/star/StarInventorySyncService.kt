@@ -335,8 +335,8 @@ class StarInventorySyncService(
                     invalid("星石品质或等级无效")
                 }
             }
-            if (listOf(request.experience.orange, request.experience.purple, request.experience.white).any { it == null || it < 0 }) {
-                invalid("三种经验星曜数量必须已识别且非负")
+            if (listOf(request.experience.orange, request.experience.purple, request.experience.white).any { it != null && it < 0 }) {
+                invalid("已识别的经验星曜数量必须非负")
             }
         }
 

@@ -45,6 +45,7 @@
           <div class="tool-summary" aria-label="星石概览">
             <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
+            <span v-if="productReady && activeTab === 'review'" class="star-sync-meta">经验星曜数量和可用经验若留空或显示「—」，表示未知。</span>
             <span v-if="activeTab === 'import'" class="star-privacy-note" title="图片识别在本机完成。手动截图由浏览器读取。登录后同步背包数据。">本机识别</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRecoveryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
@@ -79,7 +80,7 @@
                       <div><dt>星石</dt><dd>主星 {{ starImportPreview.preview.counts.main }} 颗 · 辅星 {{ starImportPreview.preview.counts.support }} 颗</dd></div>
                     </template>
                     <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
-                    <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '—' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '—' }} · 白 {{ starImportPreview.preview.experience.white ?? '—' }}</dd></div>
+                    <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '未知' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '未知' }} · 白 {{ starImportPreview.preview.experience.white ?? '未知' }}</dd></div>
                   </dl>
                   <p v-if="starImportPreview.preview.maayuan" class="tip">将使用本次识别结果更新当前星石背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
                   <p v-if="starImportPreview.preview.alreadySynced" class="tip">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
