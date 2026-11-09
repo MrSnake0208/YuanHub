@@ -73,7 +73,7 @@ const nextText = computed(() => {
   return result.next ? '下一档：' + result.next.at + ' · ' + (rewardText(result.next.rewards) || '无物品奖励') : '已达到全部已收录奖励条件'
 })
 function close() { if (!props.saving) emit('close') }
-useModalFocus(visible, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
+useModalFocus(visible, panel, { preventScroll: true, initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(visible, body, panel)
 const previousOverflow = document.body.style.overflow
 document.body.style.overflow = 'hidden'

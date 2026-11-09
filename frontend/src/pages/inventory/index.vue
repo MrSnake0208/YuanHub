@@ -243,7 +243,7 @@
                   <span v-else>{{ inventorySetupNeeded && entityType === 'item' ? '未盘点，— 表示数量未知' : '尚无完整盘点' }}</span>
                 </div>
                 <span v-if="error" class="mf-sync-error" role="status"
-                  >库存未能读取：{{ error }}。当前按 0 显示，不代表实际库存；请重试读取。</span
+                  >库存未能读取：{{ error }}。{{ currentEntries.length ? '下方保留上次读取内容，请重试确认最新库存。' : '当前按 0 显示，不代表实际库存；请重试读取。' }}</span
                 >
               </div>
             </div>
@@ -1844,6 +1844,7 @@ const acquiredTotalsObject = ref({});
 const acquiredTotalsByType = ref({ item: {}, agent: {} });
 const acquiredTotalsErrors = ref({ item: "", agent: "" });
 const appliedAcquiredKey = ref("");
+let acquiredStale = false;
 const selectedEntityId = ref("");
 const selectedDay = ref("");
 const rangePresets = [
@@ -1999,14 +2000,14 @@ function loadMailboxReport(from, to) {
 }
 function onMailboxSaved(targetAccountId) {
   if (targetAccountId !== accountId.value) return;
-  resetAcquiredData();
+  invalidateAcquiredData();
   if (activeTab.value === "acquired") loadAcquired();
 }
 
 function onRewardImported(targetAccountId) {
   if (targetAccountId !== accountId.value) return;
   reloadCurrent();
-  resetAcquiredData();
+  invalidateAcquiredData();
   loadRecords(true);
   if (activeTab.value === "acquired") loadAcquired();
 }
@@ -2052,7 +2053,7 @@ async function setTab(t) {
     loadAgentCatalog();
     loadAgentFavorites();
   }
-  if (t === "acquired" && appliedAcquiredKey.value !== currentAcquiredKey.value)
+  if (t === "acquired" && (acquiredStale || appliedAcquiredKey.value !== currentAcquiredKey.value))
     loadAcquired();
   if (t === "records") loadRecords(true);
 }
@@ -2165,8 +2166,15 @@ async function toggleAgentFavorite(entry) {
   }
 }
 
+function invalidateAcquiredData() {
+  acquiredSeq += 1;
+  acquiredStale = true;
+  acquiredLoading.value = false;
+}
+
 function resetAcquiredData() {
   acquiredSeq += 1;
+  acquiredStale = false;
   acquiredEntries.value = [];
   acquiredRecords.value = [];
   acquiredAllRecords.value = [];
@@ -3297,13 +3305,14 @@ async function saveStockEdit() {
 async function reloadCurrent(quiet, preserveContent) {
   const seq = ++currentLoadSeq;
   const context = stockContext.value;
-  currentLoadedContext.value = "";
+  if (!preserveContent) currentLoadedContext.value = "";
   // 未登录时不请求云端库存（避免 401 触发自动跳转登录页），数量保持初始 0
   if (!auth.isLoggedIn) {
     currentEntries.value = [];
     currentFullBaselineAt.value = null;
     error.value = "";
-    if (!preserveContent) loading.value = false;
+    currentLoadedContext.value = "";
+    loading.value = false;
     return;
   }
   // 未选择账号时不请求（后端 /current 需要 account_id）
@@ -3311,7 +3320,8 @@ async function reloadCurrent(quiet, preserveContent) {
     currentEntries.value = [];
     currentFullBaselineAt.value = null;
     error.value = "";
-    if (!preserveContent) loading.value = false;
+    currentLoadedContext.value = "";
+    loading.value = false;
     return;
   }
   if (!preserveContent) loading.value = true;
@@ -3352,10 +3362,13 @@ async function reloadCurrent(quiet, preserveContent) {
         return b.count - a.count;
       });
     currentLoadedContext.value = context;
+    error.value = "";
     if (entityType.value === 'item') inventoryCurrentRead.value = { ownerId: String(auth.userInfo?.id || ''), accountId: accountId.value, data };
   } catch (err) {
-    if (seq === currentLoadSeq && context === stockContext.value && !quiet)
-      error.value = humanErr(err, "加载失败，请稍后重试");
+    if (seq === currentLoadSeq && context === stockContext.value) {
+      currentLoadedContext.value = "";
+      if (!quiet || preserveContent) error.value = humanErr(err, "加载失败，请稍后重试");
+    }
   } finally {
     if (seq === currentLoadSeq && context === stockContext.value)
       loading.value = false;
@@ -3371,7 +3384,8 @@ function scheduleInventoryEventRefresh() {
   inventoryEventRefreshPending = false;
   accountEventRefreshTimer = setTimeout(function () {
     accountEventRefreshTimer = null;
-    reloadCurrent(true);
+    reloadCurrent(true, true);
+    invalidateAcquiredData();
     if (activeTab.value === "acquired") loadAcquired();
   }, 180);
 }
@@ -3505,16 +3519,20 @@ async function fetchAcquiredRecords(params, seq, trackProgress = true) {
 
 async function loadAcquired() {
   const seq = ++acquiredSeq;
-  acquiredError.value = "";
-  acquiredRecordsError.value = "";
-  acquiredRecordsTruncated.value = false;
-  acquiredAgentHistoryError.value = "";
-  acquiredAgentHistoryTruncated.value = false;
-  acquiredTotalsErrors.value = { item: "", agent: "" };
-  acquiredRecordProgress.value = { pages: 0, records: 0 };
-  selectedEntityId.value = "";
-  selectedDay.value = "";
-  acquiredSource.value = "all";
+  const queryKey = currentAcquiredKey.value;
+  const preserveContent = appliedAcquiredKey.value === queryKey;
+  if (!preserveContent) {
+    acquiredError.value = "";
+    acquiredRecordsError.value = "";
+    acquiredRecordsTruncated.value = false;
+    acquiredAgentHistoryError.value = "";
+    acquiredAgentHistoryTruncated.value = false;
+    acquiredTotalsErrors.value = { item: "", agent: "" };
+    acquiredRecordProgress.value = { pages: 0, records: 0 };
+    selectedEntityId.value = "";
+    selectedDay.value = "";
+    acquiredSource.value = "all";
+  }
   if (!auth.isLoggedIn) {
     acquiredEntries.value = [];
     acquiredRecords.value = [];
@@ -3544,14 +3562,15 @@ async function loadAcquired() {
     return;
   }
 
-  acquiredLoading.value = true;
-  acquiredEntries.value = [];
-  acquiredRecords.value = [];
-  acquiredAllRecords.value = [];
-  acquiredAgentHistoryRecords.value = [];
-  acquiredTotalsObject.value = {};
-  acquiredTotalsByType.value = { item: {}, agent: {} };
-  const queryKey = currentAcquiredKey.value;
+  acquiredLoading.value = !preserveContent;
+  if (!preserveContent) {
+    acquiredEntries.value = [];
+    acquiredRecords.value = [];
+    acquiredAllRecords.value = [];
+    acquiredAgentHistoryRecords.value = [];
+    acquiredTotalsObject.value = {};
+    acquiredTotalsByType.value = { item: {}, agent: {} };
+  }
   const baseParams = { accountId: accountId.value, from: from, to: to };
   const itemParams = Object.assign({}, baseParams, { entityType: "item" });
   const agentParams = Object.assign({}, baseParams, { entityType: "agent" });
@@ -3560,19 +3579,19 @@ async function loadAcquired() {
     const results = await Promise.allSettled([
       getAcquired(itemParams),
       getAcquired(agentParams),
-      fetchAcquiredRecords(baseParams, seq),
+      fetchAcquiredRecords(baseParams, seq, !preserveContent),
       fetchAcquiredRecords(
         { accountId: accountId.value, entityType: "agent", to: to },
         seq,
         false,
       ),
     ]);
-    if (seq !== acquiredSeq) return;
+    if (seq !== acquiredSeq || queryKey !== currentAcquiredKey.value) return;
     const itemTotalsResult = results[0];
     const agentTotalsResult = results[1];
     const recordsResult = results[2];
     const agentHistoryResult = results[3];
-    const nextTotals = { item: {}, agent: {} };
+    const nextTotals = preserveContent ? { ...acquiredTotalsByType.value } : { item: {}, agent: {} };
     const nextErrors = { item: "", agent: "" };
     if (itemTotalsResult.status === "fulfilled")
       nextTotals.item =
@@ -3603,6 +3622,7 @@ async function loadAcquired() {
     ) {
       acquiredAllRecords.value = recordsResult.value.records;
       acquiredRecordsTruncated.value = recordsResult.value.truncated;
+      acquiredRecordsError.value = "";
     } else if (recordsResult.status === "rejected") {
       acquiredRecordsError.value = humanErr(
         recordsResult.reason,
@@ -3615,6 +3635,7 @@ async function loadAcquired() {
     ) {
       acquiredAgentHistoryRecords.value = agentHistoryResult.value.records;
       acquiredAgentHistoryTruncated.value = agentHistoryResult.value.truncated;
+      acquiredAgentHistoryError.value = "";
     } else if (agentHistoryResult.status === "rejected") {
       acquiredAgentHistoryError.value = humanErr(
         agentHistoryResult.reason,
@@ -3624,6 +3645,8 @@ async function loadAcquired() {
     applyAcquiredEntityType();
     resourceReportRange.value = { from: localDate(fromDate), to: localDate(toDate) };
     appliedAcquiredKey.value = queryKey;
+    acquiredStale = false;
+    acquiredError.value = "";
     if (
       itemTotalsResult.status === "rejected" &&
       agentTotalsResult.status === "rejected" &&
@@ -3726,7 +3749,7 @@ async function onDeleteRecord(rec) {
     if (!isCurrent()) return;
     await reloadCurrent();
     if (!isCurrent()) return;
-    resetAcquiredData();
+    invalidateAcquiredData();
   } catch (err) {
     if (isCurrent()) recordsActionError.value = humanErr(err, "删除失败");
   } finally {
@@ -3748,7 +3771,7 @@ async function onRestoreRecord(notice) {
     if (!isCurrent()) return;
     await reloadCurrent();
     if (!isCurrent()) return;
-    resetAcquiredData();
+    invalidateAcquiredData();
   } catch (err) {
     if (isCurrent()) {
       recordsActionError.value = err?.code === "record_already_exists"
@@ -3894,7 +3917,7 @@ function afterImport() {
   importError.value = "";
   showImport.value = false;
   reloadCurrent();
-  resetAcquiredData();
+  invalidateAcquiredData();
   if (activeTab.value === "acquired") loadAcquired();
 }
 

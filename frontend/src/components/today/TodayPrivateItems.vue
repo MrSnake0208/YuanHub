@@ -1,5 +1,5 @@
 <template>
-  <section v-if="visible && (!hideEmpty || !identity || !accountId || loading || error || items.length)" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
+  <section v-if="visible && (!hideEmpty || !identity || !accountId || loading && !loaded || error || items.length)" class="today-private-items" aria-labelledby="today-private-title" :aria-busy="loading">
     <header class="private-heading">
       <h2 id="today-private-title"><NotebookPen :size="18" aria-hidden="true" /> 私人安排</h2>
       <router-link :to="calendarTo()">{{ empty ? '去添加' : '查看全部' }}</router-link>
@@ -42,6 +42,7 @@ const emit = defineEmits(['highlight-state'])
 const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const items = ref([]), loading = ref(false), error = ref(''), denied = ref(false)
+const loaded = ref(false)
 const empty = computed(() => Boolean(identity.value && props.accountId && !loading.value && !error.value && !items.value.length))
 let generation = 0, timer = null, lastVisible = 0
 function calendarTo(item) {
@@ -60,6 +61,7 @@ async function load() {
     if (!values || values.some(value => !value)) throw new Error('私人事项读取结果不完整，请重试。')
     items.value = values.filter(item => item.end_date >= from && item.start_date <= to)
       .sort((a, b) => a.start_date.localeCompare(b.start_date) || (a.start_time || '').localeCompare(b.start_time || '') || a.id.localeCompare(b.id))
+    loaded.value = true
   } catch (err) {
     if (token !== generation) return
     if ([401, 403].includes(err?.status) || err?.status === 404 && err?.code === 'account_not_found') {
@@ -75,7 +77,7 @@ async function load() {
 }
 watch(key, () => {
   generation++; clearTimeout(timer)
-  items.value = []; loading.value = false; error.value = ''; denied.value = false
+  items.value = []; loaded.value = false; loading.value = false; error.value = ''; denied.value = false
   void load()
 }, { immediate: true, flush: 'sync' })
 watch(() => ({ context: key.value, items: items.value, loading: loading.value, error: error.value, denied: denied.value }), state => emit('highlight-state', state), { immediate: true, deep: true, flush: 'sync' })

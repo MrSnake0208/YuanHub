@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { scrollBehavior } from '../src/router/scrollBehavior.js'
 
-const route = (name, patch = {}) => ({ name, hash: '', query: {}, ...patch })
+const route = (name, patch = {}) => ({ name, path: '/' + name, hash: '', query: {}, ...patch })
 
 test('calendar query navigation leaves scroll to the current selection', () => {
   for (const query of [{ date: '2026-10-15' }, { view: 'month' }, { scope: 'mine' }, {}]) {
@@ -23,5 +23,5 @@ test('saved history positions, hash links and other pages retain their scroll be
   assert.equal(scrollBehavior(route('calendar', { query: { event: 'pci_test' } }), route('calendar'), saved), saved)
   assert.deepEqual(scrollBehavior(route('calendar', { hash: '#detail' }), route('calendar'), saved), { el: '#detail', behavior: 'smooth', top: 0 })
   assert.deepEqual(scrollBehavior(route('today', { query: { event: 'any' } }), route('calendar')), { top: 0 })
-  assert.deepEqual(scrollBehavior(route('inventory'), route('inventory')), { top: 0 })
+  assert.equal(scrollBehavior(route('inventory', { query: { tab: 'acquired' } }), route('inventory')), false)
 })

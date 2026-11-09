@@ -96,7 +96,7 @@ function onEscape() {
   if (menu) menu.hidePopover()
   else close()
 }
-useModalFocus(visible, panel, { initialFocus: () => heading.value, onEscape, preventRestoreScroll: true })
+useModalFocus(visible, panel, { preventScroll: true, initialFocus: () => heading.value, onEscape, preventRestoreScroll: true })
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(visible, scrollBody, panel)
 watch(visible, (open, _, onCleanup) => {
   if (!open) return

@@ -268,6 +268,7 @@ const newFormPanel = ref(null)
 const newFormBody = ref(null)
 const newFormViewportStyle = ref({})
 useModalFocus(() => showNewForm.value, newFormPanel, {
+  preventScroll: true,
   initialFocus: () => newFormPanel.value?.querySelector('select'),
   onEscape: closeNewFeedback
 })

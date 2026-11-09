@@ -68,7 +68,7 @@ import { businessDate, nextBusinessDayStartIso } from '../../utils/businessDay.j
 import { dialog } from '../../utils/dialog.js'
 
 const props = defineProps({ accountId: { type: String, required: true }, game: { type: String, default: '' }, planId: { type: String, required: true },
-  planName: { type: String, default: '' }, contextReady: { type: Boolean, default: true }, contextError: { type: String, default: '' }, previewTarget: { default: null },
+  planName: { type: String, default: '' }, contextReady: { type: Boolean, default: true }, refreshVersion: { type: Number, default: 0 }, contextError: { type: String, default: '' }, previewTarget: { default: null },
   todosTarget: { type: String, default: '' }, showTodos: { type: Boolean, default: true } })
 const owner = computed(() => auth.isLoggedIn ? String(auth.userInfo?.id || '') : '')
 const emit = defineEmits(['retry-context'])
@@ -87,6 +87,7 @@ const completedTasks = computed(() => tasks.value.filter(task => task.done).leng
 const sourceMessage = computed(() => dailyTrainingStatus[snapshot.value?.source.status] || (!sourceItems.value.length ? '今日无需刷取历练。' : ''))
 const locked = computed(() => !owner.value || !props.contextReady || !snapshot.value || loading.value || saving.value || confirming.value || !!error.value || denied.value)
 let generation = 0, alive = true, refreshTimer = null, dayTimer = null, unsubscribe = null, refreshAgain = false
+let initialLoadPending = false
 const ticket = () => [generation, key.value]
 const current = token => alive && token[0] === generation && token[1] === key.value && !!owner.value
 function reject(errorValue) {
@@ -157,26 +158,27 @@ function checkDay() {
 function refresh() {
   if (!alive || document.visibilityState === 'hidden') return
   checkDay()
+  if (!props.contextReady || initialLoadPending) return
   if (refreshTimer != null) return
   refreshTimer = setTimeout(() => { refreshTimer = null; void load() }, 180)
 }
-watch(key, () => {
-  generation++; clearTimeout(refreshTimer); refreshTimer = null; refreshAgain = false
-  snapshot.value = null; loading.value = false; saving.value = false; confirming.value = false; error.value = ''; denied.value = false; notice.value = ''
-  const token = ticket()
-  nextTick(() => { if (current(token)) void load() })
+watch([key, () => props.contextReady, () => props.refreshVersion], ([context, ready], previous) => {
+  if (context !== previous?.[0]) {
+    generation++; clearTimeout(refreshTimer); refreshTimer = null; refreshAgain = false
+    snapshot.value = null; loading.value = false; saving.value = false; confirming.value = false; error.value = ''; denied.value = false; notice.value = ''
+    const token = ticket()
+    initialLoadPending = true
+    nextTick(() => { if (current(token)) { initialLoadPending = false; void load() } })
+  } else if (ready && !initialLoadPending) refresh()
 }, { immediate: true, flush: 'sync' })
-watch(() => props.contextReady, ready => { if (ready) refresh() })
 onMounted(() => {
   checkDay()
-  document.addEventListener('visibilitychange', refresh); window.addEventListener('pageshow', refresh)
   unsubscribe = subscribeAccountEvents(message => {
     if (message?.data?.account_id && message.data.account_id !== props.accountId || message?.data?.plan_id && message.data.plan_id !== props.planId) return
-    if (['operator_stamina_schedule', 'operator_training_tasks', 'account_stream_open'].includes(message?.event)) refresh()
+    if (['operator_stamina_schedule', 'operator_training_tasks'].includes(message?.event)) refresh()
   })
 })
-onBeforeUnmount(() => { alive = false; generation++; clearTimeout(refreshTimer); clearTimeout(dayTimer); unsubscribe?.()
-  document.removeEventListener('visibilitychange', refresh); window.removeEventListener('pageshow', refresh) })
+onBeforeUnmount(() => { alive = false; generation++; clearTimeout(refreshTimer); clearTimeout(dayTimer); unsubscribe?.() })
 </script>
 
 <style scoped>

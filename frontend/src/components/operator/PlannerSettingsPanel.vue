@@ -33,7 +33,7 @@ const titleId = 'planner-settings-' + useId(), descriptionId = titleId + '-descr
 const panel = ref(null), heading = ref(null), scrollBody = ref(null), form = ref(null), errorMessage = ref(null), confirming = ref(false)
 let generation = 0
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => props.open, scrollBody, panel)
-useModalFocus(() => props.open, panel, { initialFocus: () => heading.value, onEscape: escape, preventRestoreScroll: true })
+useModalFocus(() => props.open, panel, { preventScroll: true, initialFocus: () => heading.value, onEscape: escape, preventRestoreScroll: true })
 if (inject(matchedRouteKey, null)?.value) onBeforeRouteLeave(() => !props.open || requestClose())
 onBeforeUnmount(() => { generation++ })
 

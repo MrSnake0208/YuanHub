@@ -452,7 +452,7 @@ describe.each(['delete', 'restore'])('%s 写入完成上下文', action => {
     expect(stateOf(state)).toEqual(before)
   })
 
-  it('有效成功只刷新历史/当前库存一次并失效统计，失败不刷新且释放锁', async () => {
+  it('有效成功只刷新历史/当前库存一次并失效统计但保留筛选，失败不刷新且释放锁', async () => {
     const wrapper = render()
     await flushPromises()
     const state = wrapper.vm.$.setupState
@@ -464,7 +464,7 @@ describe.each(['delete', 'restore'])('%s 写入完成上下文', action => {
     write.resolve(true)
     await flushPromises()
     expect(reads()).toEqual([readCounts[0] + 1, readCounts[1] + 1, readCounts[2], readCounts[3]])
-    expect(state.acquiredSearch).toBe('')
+    expect(state.acquiredSearch).toBe('旧统计筛选')
     expect(state.recordsBusyId).toBe('')
     expect(Boolean(undo(wrapper))).toBe(action === 'delete')
     expect(history(wrapper).findAll('.record')).toHaveLength(action === 'delete' ? 0 : 1)

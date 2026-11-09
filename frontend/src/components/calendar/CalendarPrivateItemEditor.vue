@@ -98,7 +98,7 @@ watch(draft, () => { suggestedTitle.value = '' })
 const panel = ref(null), titleInput = ref(null), errorSummary = ref(null)
 const scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => !!draft.value, scrollBody, panel)
-useModalFocus(computed(() => !!draft.value), panel, { initialFocus: () => titleInput.value, onEscape: () => state.close() })
+useModalFocus(computed(() => !!draft.value), panel, { preventScroll: true, initialFocus: () => titleInput.value, onEscape: () => state.close() })
 function focusField(field) { panel.value?.querySelector(field === 'title' ? '#private-item-title-input' : '#private-item-' + field)?.focus() }
 async function save() {
   await state.save()

@@ -33,7 +33,7 @@ function syncModalProjection() {
   modalFocusState.panel = top()?.panel.value ? markRaw(top().panel.value) : null
 }
 
-function focusInside(entry, preferred, preventScroll = false) {
+function focusInside(entry, preferred, preventScroll = entry.preventScroll) {
   const panel = entry.panel.value
   if (!panel) return
   const target = preferred && panel.contains(preferred) && isVisible(preferred)
@@ -59,11 +59,11 @@ function onKeydown(event) {
   const active = document.activeElement
   if (!first) {
     event.preventDefault()
-    entry.panel.value?.focus()
+    entry.panel.value?.focus({ preventScroll: entry.preventScroll })
   } else if (!elements.includes(active) || (event.shiftKey && active === first) || (!event.shiftKey && active === last)) {
     event.preventDefault()
     const target = event.shiftKey ? last : first
-    target.focus()
+    target.focus({ preventScroll: entry.preventScroll })
   }
 }
 
@@ -95,7 +95,7 @@ function restore(entry) {
   target.focus({ preventScroll: entry.preventRestoreScroll })
 }
 
-export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFocus, blocking = false, preventRestoreScroll = false }) {
+export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFocus, blocking = false, preventRestoreScroll = false, preventScroll = false }) {
   let entry
   function close() {
     if (!entry) return
@@ -108,7 +108,7 @@ export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFoc
   }
   watch(visible, open => {
     if (!open) return close()
-    entry = { panel, initialFocus, onEscape, afterFocus, blocking, preventRestoreScroll, opener: document.activeElement }
+    entry = { panel, initialFocus, onEscape, afterFocus, blocking, preventRestoreScroll, preventScroll, opener: document.activeElement }
     stack.push(entry)
     syncModalProjection()
     listen()

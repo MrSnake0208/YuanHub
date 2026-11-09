@@ -123,6 +123,7 @@ function setFirstChoice(element) {
 }
 
 useModalFocus(() => state.visible, dialogEl, {
+  preventScroll: true,
   initialFocus: () => state.mode === 'choice' ? firstChoiceEl.value
     : state.mode === 'prompt' ? inputEl.value
       : state.type === 'danger' ? dialogEl.value?.querySelector('.dlg-btn.ghost')

@@ -97,7 +97,7 @@ function remove(chip) {
   emit('update:modelValue', value)
 }
 watch(() => props.contextKey, () => { open.value = false })
-useModalFocus(open, panel, { initialFocus: () => panel.value, onEscape: () => { open.value = false }, blocking: true, preventRestoreScroll: true })
+useModalFocus(open, panel, { preventScroll: true, initialFocus: () => panel.value, onEscape: () => { open.value = false }, blocking: true, preventRestoreScroll: true })
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, panel)
 watch(open, (visible, _, onCleanup) => {
   if (!visible) return

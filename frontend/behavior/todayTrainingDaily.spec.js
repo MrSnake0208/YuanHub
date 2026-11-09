@@ -200,7 +200,7 @@ it('preview and todo visibility are independent and permissions remove old data'
   expect(todos.querySelector('section')).toBeNull()
   expect(preview.textContent).toContain('首页待办已隐藏')
   api.getOperatorDailyTasks.mockRejectedValue(Object.assign(new Error('denied'), { status: 403 }))
-  publish('account_stream_open'); await vi.advanceTimersByTimeAsync(180); await flushPromises()
+  await wrapper.setProps({ refreshVersion: 1 }); await vi.advanceTimersByTimeAsync(180); await flushPromises()
   expect(preview.textContent).not.toContain('100')
   expect(preview.textContent).toContain('权限已失效')
 })

@@ -3,6 +3,7 @@ import * as api from '../api/beta.js'
 import { betaAccessError } from '../utils/betaAccess.js'
 
 const PERSONAL_RATE_LIMIT_COOLDOWN_MS = 65_000
+const isTemporaryError = error => !error.status || error.status === 408 || error.status >= 500
 
 /** Factory also lets Node tests verify real async race handling, rather than source-string guesses. */
 export function createBetaStore(client = api, now = () => Date.now()) {
@@ -13,12 +14,11 @@ export function createBetaStore(client = api, now = () => Date.now()) {
   let publicAt = 0
   let meAt = 0
   let meRateLimitedUntil = 0
-  let pollTimer = null
   let deadlineTimer = null
   let subscribers = 0
   const state = reactive({
     campaign: null, mine: null, userId: '', publicLoading: false, personalLoading: false,
-    publicError: '', personalError: '', personalLoaded: false, personalCooldownUntil: 0,
+    publicError: '', personalError: '', publicRefreshError: '', personalRefreshError: '', personalLoaded: false, personalCooldownUntil: 0,
     get canUseBetaFeatures() {
       // The backend owns the final access decision. This also lets administrators bypass
       // beta campaign state without the browser re-applying ordinary-user restrictions.
@@ -35,6 +35,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       state.userId = id
       state.mine = null
       state.personalError = ''
+      state.personalRefreshError = ''
       state.personalLoaded = false
       state.personalLoading = false
     },
@@ -48,19 +49,24 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       state.personalLoaded = true
       state.personalLoading = false
       state.personalError = error
+      state.personalRefreshError = ''
     },
     async loadPublic({ force = false } = {}) {
       if (publicRequest) return publicRequest
       if (!force && state.campaign && !state.publicError && now() - publicAt < 15000) return state.campaign
       const revision = ++publicRevision
       state.publicLoading = true
+      state.publicRefreshError = ''
       const pending = client.getBetaStatus().then(data => {
         if (revision === publicRevision) {
           state.campaign = data; state.publicError = ''; publicAt = now(); armDeadline()
         }
         return data
       }).catch(error => {
-        if (revision === publicRevision) state.publicError = error.message || '状态读取失败'
+        if (revision === publicRevision) {
+          if (state.campaign && isTemporaryError(error)) state.publicRefreshError = error.message || '状态刷新失败，保留上次读取结果'
+          else state.publicError = error.message || '状态读取失败'
+        }
         return null
       }).finally(() => {
         if (publicRequest === pending) { publicRequest = null; state.publicLoading = false }
@@ -76,13 +82,14 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       const owner = state.userId
       const revision = generation
       state.personalLoading = true
+      state.personalRefreshError = ''
       const pending = client.getBetaMe().then(data => {
         if (owner === state.userId && revision === generation) {
           meRateLimitedUntil = 0
           state.personalCooldownUntil = 0
           state.mine = data; state.personalError = ''; state.personalLoaded = true; meAt = now()
           publicRevision += 1
-          state.campaign = data.campaign; state.publicError = ''; publicAt = now(); armDeadline()
+          state.campaign = data.campaign; state.publicError = ''; state.publicRefreshError = ''; publicAt = now(); armDeadline()
         }
         return owner === state.userId && revision === generation ? data : null
       }).catch(error => {
@@ -92,6 +99,10 @@ export function createBetaStore(client = api, now = () => Date.now()) {
             state.personalCooldownUntil = meRateLimitedUntil
             state.personalLoaded = true
             if (!state.mine) state.personalError = '状态刷新过于频繁，已暂缓自动刷新，请稍后再试。'
+          } else if (state.mine && isTemporaryError(error)) {
+            meRateLimitedUntil = 0
+            state.personalCooldownUntil = 0
+            state.personalRefreshError = error.message || '资格刷新失败，保留上次读取结果'
           } else {
             meRateLimitedUntil = 0
             state.personalCooldownUntil = 0
@@ -109,7 +120,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       return state.userId ? state.loadMe({ force }) : state.loadPublic({ force })
     },
     async requireAccess() {
-      await state.loadMe()
+      if (!state.personalLoaded || !state.mine || state.personalError) await state.loadMe()
       if (!state.canUseBetaFeatures) throw betaAccessError(state)
     },
     async join(payload) {
@@ -122,6 +133,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
+        state.personalRefreshError = ''; state.publicRefreshError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
       } catch (error) {
@@ -142,6 +154,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
+        state.personalRefreshError = ''; state.publicRefreshError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
       } catch (error) {
@@ -161,6 +174,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
+        state.personalRefreshError = ''; state.publicRefreshError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
       } catch (error) {
@@ -174,9 +188,6 @@ export function createBetaStore(client = api, now = () => Date.now()) {
     subscribe() {
       subscribers += 1
       if (subscribers === 1 && typeof window !== 'undefined') {
-        pollTimer = setInterval(refreshVisible, 30000)
-        window.addEventListener('focus', refreshVisible)
-        document.addEventListener('visibilitychange', refreshVisible)
         armDeadline()
       }
       void state.refresh()
@@ -185,10 +196,8 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         if (stopped) return
         stopped = true; subscribers -= 1
         if (subscribers === 0 && typeof window !== 'undefined') {
-          clearInterval(pollTimer); clearTimeout(deadlineTimer)
-          window.removeEventListener('focus', refreshVisible)
-          document.removeEventListener('visibilitychange', refreshVisible)
-          pollTimer = null; deadlineTimer = null
+          clearTimeout(deadlineTimer)
+          deadlineTimer = null
         }
       }
     }

@@ -34,7 +34,7 @@ function onStatusChange(value) {
   status.value = value
   if (scrollBody.value) scrollBody.value.scrollTop = 0
 }
-useModalFocus(open, panel, { initialFocus: () => panel.value?.querySelector('input') || closeButton.value, onEscape: close, preventRestoreScroll: true })
+useModalFocus(open, panel, { preventScroll: true, initialFocus: () => panel.value?.querySelector('input') || closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {
   token.value = ''
   status.value = 'input'

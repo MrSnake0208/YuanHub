@@ -5,7 +5,6 @@ import { canManageAnyFeedback } from '../utils/authPermissions.js'
 
 const PAGE_SIZE = 100
 const MAX_PAGES = 100
-const POLL_INTERVAL = 30000
 const FRESH_TTL = 15000
 
 export const feedbackUnreadState = reactive({
@@ -38,7 +37,6 @@ const feedbackUnreadContext = computed(() => {
 
 let requestId = 0
 let requestPromise = null
-let pollTimer = null
 let stopPermissionWatch = null
 let subscriberCount = 0
 let managedFeedbackSnapshot = []
@@ -157,9 +155,8 @@ export async function markAllManagedFeedbackRead({ spaceId = 'all' } = {}) {
   return targets.length
 }
 
-function refreshVisible() {
-  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-  void refreshFeedbackUnread()
+export function refreshSubscribedFeedbackUnread() {
+  if (subscriberCount > 0) return refreshFeedbackUnread()
 }
 
 function startFeedbackUnread() {
@@ -181,18 +178,11 @@ function startFeedbackUnread() {
       void refreshFeedbackUnread({ force: true })
     }
   }, { immediate: true })
-  if (typeof window !== 'undefined') {
-    pollTimer = setInterval(refreshVisible, POLL_INTERVAL)
-  }
 }
 
 function stopFeedbackUnread() {
-  // 路由切换只释放 timer/watch；共享 in-flight Promise 保持到自然完成，
+  // 路由切换只释放 watch；共享 in-flight Promise 保持到自然完成，
   // 以便新的订阅者能继续复用同一请求。
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
   if (stopPermissionWatch) {
     stopPermissionWatch()
     stopPermissionWatch = null

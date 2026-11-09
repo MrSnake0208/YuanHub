@@ -18,7 +18,7 @@ const props = defineProps({ open: Boolean, title: String, locked: Boolean })
 const emit = defineEmits(['close'])
 const panel = ref(null), body = ref(null), heading = ref(null), titleId = useId()
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => props.open, body, panel)
-useModalFocus(() => props.open, panel, { initialFocus: () => heading.value, onEscape: () => { if (!props.locked) emit('close') } })
+useModalFocus(() => props.open, panel, { preventScroll: true, initialFocus: () => heading.value, onEscape: () => { if (!props.locked) emit('close') } })
 let previousOverflow
 watch(() => props.open, value => {
   if (value) { previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden' }

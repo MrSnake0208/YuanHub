@@ -741,7 +741,7 @@ function unlockBackgroundScroll() {
 }
 
 watch(ownLocked, value => emit('busy', value), { flush: 'sync' })
-useModalFocus(() => !props.compactDaily && !!mode.value, dialogEl, { initialFocus: () => heading.value, onEscape: requestClose })
+useModalFocus(() => !props.compactDaily && !!mode.value, dialogEl, { preventScroll: true, initialFocus: () => heading.value, onEscape: requestClose })
 watch(mode, (value, previous) => {
   if (props.compactDaily) return
   if (value && !previous) lockBackgroundScroll()

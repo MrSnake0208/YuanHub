@@ -19,11 +19,14 @@ test('late user A result can never authorize user B', async () => {
   a.resolve(me()); await requestA; assert.equal(beta.mine, null)
   b.resolve(me('WAITING')); await requestB; assert.equal(beta.canUseBetaFeatures, false)
 })
-test('server failure clears old ACTIVE and never pretends the account is full', async () => {
-  let fail = false
-  const beta = createBetaStore({ getBetaMe: async () => { if (fail) throw new Error('offline'); return me() } })
+test('temporary failure keeps confirmed ACTIVE but explicit denial clears it', async () => {
+  let failure = null
+  const beta = createBetaStore({ getBetaMe: async () => { if (failure) throw failure; return me() } })
   beta.setIdentity('A'); await beta.loadMe(); assert.equal(beta.canUseBetaFeatures, true)
-  fail = true; await beta.loadMe({ force: true }); assert.equal(beta.canUseBetaFeatures, false); assert.equal(beta.mine, null); assert.equal(beta.personalError, 'offline')
+  failure = new Error('offline'); await beta.loadMe({ force: true })
+  assert.equal(beta.canUseBetaFeatures, true); assert.equal(beta.mine.canUseBetaFeatures, true); assert.equal(beta.personalError, ''); assert.equal(beta.personalRefreshError, 'offline')
+  failure = Object.assign(new Error('forbidden'), { status: 403 }); await beta.loadMe({ force: true })
+  assert.equal(beta.canUseBetaFeatures, false); assert.equal(beta.mine, null); assert.equal(beta.personalError, 'forbidden')
 })
 test('join result wins over an old GET, returns result and never counts locally', async () => {
   const get = deferred(), join = deferred()

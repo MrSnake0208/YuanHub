@@ -171,6 +171,7 @@ const selectedItem = computed(() => props.selectedItem || props.items.find(item 
 const scrollBody = ref(null)
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => Boolean(selectedItem.value), scrollBody, detailPanel)
 useModalFocus(() => Boolean(selectedItem.value), detailPanel, {
+  preventScroll: true,
   initialFocus: () => detailCloseButton.value,
   onEscape: () => { if (!hasOpenOverlayAbove()) emit('close') }
 })

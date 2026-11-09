@@ -82,7 +82,7 @@ const editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref(
 const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
 const resolveTrust = ref(false)
 const backupOpen = ref(false), backupPanel = ref(null), backupClose = ref(null), backupBody = ref(null)
-useModalFocus(backupOpen, backupPanel, { initialFocus: () => backupClose.value, onEscape: cancel, preventRestoreScroll: true })
+useModalFocus(backupOpen, backupPanel, { preventScroll: true, initialFocus: () => backupClose.value, onEscape: cancel, preventRestoreScroll: true })
 const { viewportStyle: backupViewportStyle, shortViewport: backupShortViewport, revealFocusedControl: revealBackupControl } = useModalViewport(backupOpen, backupBody, backupPanel)
 watch(backupOpen, (open, _, onCleanup) => {
   if (!open) return

@@ -1,5 +1,5 @@
 <template>
-  <section v-if="visible && (!hideEmpty || !snapshot || loading || error || plans.length || otherNotes.length)" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
+  <section v-if="visible && (!hideEmpty || !snapshot || error || plans.length || otherNotes.length)" class="today-training" aria-labelledby="today-training-title" :aria-busy="loading">
     <header class="training-heading">
       <div class="training-heading-copy">
         <h2 id="today-training-title"><UsersRound :size="19" aria-hidden="true" /> 我的养成计划</h2>
@@ -45,7 +45,7 @@
       </template>
     </template>
   </section>
-  <TodayTrainingDaily v-if="activePlan" :account-id="accountId" :game="game" :plan-id="activePlan.id" :plan-name="activePlan.name" :context-ready="!loading && !error" :context-error="error" :preview-target="dailyPreview" :todos-target="todosTarget" :show-todos="showTodos" @retry-context="load" />
+  <TodayTrainingDaily v-if="activePlan" :account-id="accountId" :game="game" :plan-id="activePlan.id" :plan-name="activePlan.name" :context-ready="!loading && !error" :refresh-version="refreshVersion" :context-error="error" :preview-target="dailyPreview" :todos-target="todosTarget" :show-todos="showTodos" @retry-context="load" />
 </template>
 
 <script setup>
@@ -69,8 +69,9 @@ const key = computed(() => JSON.stringify([identity.value, props.accountId, prop
 const catalog = new Map(AGENT_CATALOG.map(entry => [entry.id, entry]))
 const snapshot = ref(null), loading = ref(false), error = ref(''), denied = ref(false)
 const dailyPreview = ref(null)
+const refreshVersion = ref(0)
 const activePlan = computed(() => snapshot.value?.workspace.plans.find(plan => plan.id === snapshot.value.workspace.activePlanId))
-let generation = 0, refreshTimer = null, unsubscribe = null
+let generation = 0, refreshTimer = null, unsubscribe = null, refreshAgain = false
 const operatorTo = id => ({ path: '/operator', query: { tab: 'current', focus: id } })
 function member(id, target) {
   const entry = snapshot.value.catalog.get(id) || { id, name: id }
@@ -124,27 +125,35 @@ async function load() {
     snapshot.value = { catalog: resolvedCatalog, workspace: workspaceFromRemote(workspace, account), favorites: new Set(favorites.agent_ids),
       notes: Object.fromEntries(notes.map(item => [item.operator_id, item.note || ''])),
       targets: Object.fromEntries(itemsFrom(targets, account).map(item => [item.operator_id, item])) }
+    refreshVersion.value++
   } catch (err) {
     if (token !== generation) return
     if ([401, 403].includes(err?.status) || err?.status === 404 && err?.code === 'account_not_found') {
       snapshot.value = null; denied.value = true
       error.value = '身份、权限或账号已失效，请重新登录或选择账号。'
     } else error.value = err?.message || '养成计划暂时无法读取，请重试。'
-  } finally { if (token === generation) loading.value = false }
+  } finally {
+    if (token === generation) {
+      loading.value = false
+      if (refreshAgain) { refreshAgain = false; refresh() }
+    }
+  }
 }
 watch(key, () => {
   const token = ++generation
-  clearTimeout(refreshTimer); refreshTimer = null
+  clearTimeout(refreshTimer); refreshTimer = null; refreshAgain = false
   snapshot.value = null; loading.value = false; error.value = ''; denied.value = false
   nextTick(() => { if (token === generation) void load() })
 }, { immediate: true, flush: 'sync' })
 function refresh() {
   if (document.visibilityState === 'hidden' || refreshTimer != null) return
+  if (loading.value) { refreshAgain = true; return }
   refreshTimer = setTimeout(() => { refreshTimer = null; void load() }, 180)
 }
 function onAccountEvent(message) {
   const account = message?.data?.account_id || message?.data?.accountId
   if (account && account !== props.accountId) return
+  if (message?.event === 'account_stream_open' && !message.data?.reconnected) return
   if (['operator_training_workspace', 'operator_growth_target', 'operator_annotation', 'operator_favorites', 'account_stream_open'].includes(message?.event)) refresh()
 }
 onMounted(() => {

@@ -69,7 +69,7 @@ function close() {
   if (modalFocusState.panel && modalFocusState.panel !== panel.value) return
   open.value = false
 }
-useModalFocus(open, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
+useModalFocus(open, panel, { preventScroll: true, initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
 watch(open, (visible, _, onCleanup) => {
   if (!visible) return
   mode.value = props.selectedOnly ? 'image' : 'link'

@@ -7,7 +7,6 @@ import {
 } from '../api/notifications.js'
 import { auth } from './auth.js'
 
-const POLL_INTERVAL = 30000
 const FRESH_TTL = 15000
 
 export const notificationUnreadState = reactive({
@@ -26,7 +25,6 @@ let countRequestPromise = null
 let detailsRequestPromise = null
 let countLoadedAt = 0
 let detailsLoadedAt = 0
-let pollTimer = null
 let stopIdentityWatch = null
 let subscriberCount = 0
 let detailsSubscriberCount = 0
@@ -169,10 +167,8 @@ function handleNotificationStateChange() {
   void refreshNotificationState({ force: true })
 }
 
-function refreshVisible() {
-  if (realtimeManaged) return
-  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-  void refreshNotificationState()
+export function refreshSubscribedNotificationUnread() {
+  if (subscriberCount > 0 && !realtimeManaged) return refreshNotificationState()
 }
 
 function startNotificationUnread() {
@@ -193,17 +189,12 @@ function startNotificationUnread() {
 
   if (typeof window !== 'undefined') {
     window.addEventListener(NOTIFICATION_STATE_EVENT, handleNotificationStateChange)
-    pollTimer = setInterval(refreshVisible, POLL_INTERVAL)
   }
 }
 
 function stopNotificationUnread() {
   // 仅释放订阅副作用，不取消共享中的 in-flight 请求。
   // 这样路由切换导致 Sidebar 短暂卸载/重挂时仍可复用同一个 Promise。
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
   if (stopIdentityWatch) {
     stopIdentityWatch()
     stopIdentityWatch = null

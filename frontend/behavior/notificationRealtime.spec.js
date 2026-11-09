@@ -4,7 +4,7 @@ import { auth } from '../src/store/auth.js'
 import { listUnreadNotifications } from '../src/api/notifications.js'
 import { openNotificationEventStream } from '../src/api/notificationEvents.js'
 import { notificationUnreadState } from '../src/store/notificationUnread.js'
-import { notificationRealtimeState, startNotificationRealtime, dismissFeedbackNotification, subscribeFeedbackNotificationRefresh } from '../src/store/notificationRealtime.js'
+import { notificationRealtimeState, startNotificationRealtime, dismissFeedbackNotification, subscribeFeedbackNotificationRefresh, refreshSubscribedNotifications } from '../src/store/notificationRealtime.js'
 import { playNotificationSound } from '../src/utils/notificationSound.js'
 import { claimFeedbackNotification } from '../src/utils/notificationClaims.js'
 
@@ -64,7 +64,7 @@ it('新反馈实时更新共享未读；重复事件不重复提醒，短时批�
   expect(notificationUnreadState.count).toBe(3)
 })
 
-it('健康连接跳过30秒重复轮询，120秒补偿；断线恢复30秒查询且只提醒新增ID', async () => {
+it('连接与断线均不轮询，切换功能和重连补查且只提醒新增ID', async () => {
   await start()
   streams[0].onOpen(); await flushPromises()
   const baselineCalls = listUnreadNotifications.mock.calls.length
@@ -72,10 +72,14 @@ it('健康连接跳过30秒重复轮询，120秒补偿；断线恢复30秒查询
   expect(listUnreadNotifications).toHaveBeenCalledTimes(baselineCalls)
   items = [notice('compensated')]
   await vi.advanceTimersByTimeAsync(30000)
+  expect(listUnreadNotifications).toHaveBeenCalledTimes(baselineCalls)
+  await refreshSubscribedNotifications(); await flushPromises()
   expect(notificationRealtimeState.toasts.map(item => item.id)).toEqual(['compensated'])
   streams[0].onError(new Error('offline'))
   const calls = listUnreadNotifications.mock.calls.length
   await vi.advanceTimersByTimeAsync(30000)
+  expect(listUnreadNotifications).toHaveBeenCalledTimes(calls)
+  streams[0].onOpen(); await flushPromises()
   expect(listUnreadNotifications).toHaveBeenCalledTimes(calls + 1)
   expect(playNotificationSound).toHaveBeenCalledTimes(1)
 })
@@ -110,17 +114,18 @@ it('账号切换关闭旧流、清空卡片，拒绝A的迟到响应与旧回调
   expect(streams.at(-1).close).toHaveBeenCalledOnce()
 })
 
-it('初次列表失败不把后续历史当新消息；退出清除轮询', async () => {
+it('初次列表失败后切换功能重试，不把后续历史当新消息；退出停止读取', async () => {
   listUnreadNotifications.mockRejectedValueOnce(new Error('offline'))
   await start()
   expect(streams).toHaveLength(0)
   items = [notice('delayed-history')]
-  await vi.advanceTimersByTimeAsync(30000)
+  await refreshSubscribedNotifications(); await flushPromises()
   expect(streams).toHaveLength(1)
   expect(notificationRealtimeState.toasts).toEqual([])
   stop(); stop = null
   const calls = listUnreadNotifications.mock.calls.length
   await vi.advanceTimersByTimeAsync(120000)
+  await refreshSubscribedNotifications()
   expect(listUnreadNotifications).toHaveBeenCalledTimes(calls)
 })
 
@@ -145,8 +150,10 @@ it('后台标签页延后提醒；前台标签已认领的消息不再发声或�
   expect(notificationRealtimeState.toasts).toEqual([])
   const claimed = await claimFeedbackNotification('user-a', 'cross-tab', true, () => true)
   expect(claimed.claimed).toBe(true)
+  const calls = listUnreadNotifications.mock.calls.length
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
   document.dispatchEvent(new Event('visibilitychange')); await flushPromises()
+  expect(listUnreadNotifications).toHaveBeenCalledTimes(calls)
   expect(notificationRealtimeState.toasts).toEqual([])
   expect(playNotificationSound).not.toHaveBeenCalled()
 })

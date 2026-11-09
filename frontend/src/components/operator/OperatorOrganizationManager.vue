@@ -119,7 +119,7 @@ onMounted(() => {
   phoneMedia.addEventListener('change', updatePhone)
 })
 onBeforeUnmount(() => phoneMedia?.removeEventListener('change', updatePhone))
-useModalFocus(sheetOpen, panel, { initialFocus: () => panel.value, onEscape: requestClose, blocking: true, preventRestoreScroll: true })
+useModalFocus(sheetOpen, panel, { preventScroll: true, initialFocus: () => panel.value, onEscape: requestClose, blocking: true, preventRestoreScroll: true })
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(sheetOpen, panel, panel)
 watch(sheetOpen, (open, _, cleanup) => {
   if (!open) return

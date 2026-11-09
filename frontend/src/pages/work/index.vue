@@ -121,9 +121,10 @@ async function loadWorks() {
   }
 }
 
-function goToPage(nextPage) {
+async function goToPage(nextPage) {
   if (!Number.isInteger(nextPage) || nextPage < 1) return
-  void router.push({ path: '/works', query: { page: nextPage } })
+  const failure = await router.push({ path: '/works', query: { page: nextPage } })
+  if (!failure) window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 watch(function () { return route.query.page }, function (value) {

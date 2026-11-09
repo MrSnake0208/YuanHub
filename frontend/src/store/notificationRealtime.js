@@ -4,6 +4,7 @@ import { openNotificationEventStream } from '../api/notificationEvents.js'
 import {
   notificationUnreadState,
   refreshNotificationUnreadDetails,
+  refreshSubscribedNotificationUnread,
   setNotificationRealtimeManaged,
   subscribeNotificationUnread
 } from './notificationUnread.js'
@@ -14,6 +15,11 @@ export const NOTIFICATION_RECEIVED_EVENT = 'yuanHub:notification-received'
 export const notificationRealtimeState = reactive({ toasts: [], connected: false })
 const detailRefreshers = new Set()
 const dismissTimers = new Map()
+let navigationSync = null
+
+export function refreshSubscribedNotifications() {
+  return navigationSync ? navigationSync() : refreshSubscribedNotificationUnread()
+}
 
 function identity() {
   const user = auth.userInfo
@@ -55,21 +61,22 @@ export function startNotificationRealtime() {
 
   const stopWatch = watch(identity, userId => {
     session?.close()
+    navigationSync = null
     clearToasts()
     notificationRealtimeState.connected = false
     if (!userId) { session = null; return }
-    const current = { closed: false, stream: null, seen: new Set(), unreadIds: new Set(), pending: new Map(), baseline: false, running: false, dirty: false, lastSync: 0 }
+    const current = { closed: false, stream: null, seen: new Set(), unreadIds: new Set(), pending: new Map(), baseline: false, running: false, dirty: false }
     session = current
     const active = () => !current.closed && identity() === userId
 
-    async function present() {
+    async function present({ refreshDetails = true } = {}) {
       if (document.visibilityState === 'hidden') return
       for (const [id, notification] of current.pending) {
         current.pending.delete(id)
         if (!active()) return
         if (!notificationUnreadState.unreadNotifications.some(item => item.id === id)) continue
         let refreshed = false
-        for (const handler of detailRefreshers) {
+        for (const handler of refreshDetails ? detailRefreshers : []) {
           try { if (await handler(notification)) { refreshed = true; break } } catch (_) { /* Show the card if detail refresh fails. */ }
           if (!active()) return
         }
@@ -84,16 +91,15 @@ export function startNotificationRealtime() {
       }
     }
 
-    async function sync() {
+    async function sync({ force = true } = {}) {
       if (!active()) return
-      if (current.running) { current.dirty = true; return }
+      if (current.running) { if (force) current.dirty = true; return }
       current.running = true
       try {
         do {
           current.dirty = false
-          const items = await refreshNotificationUnreadDetails({ force: true })
+          const items = await refreshNotificationUnreadDetails({ force })
           if (!active() || !notificationUnreadState.detailsLoaded || notificationUnreadState.detailsError) return
-          current.lastSync = Date.now()
           const added = items.filter(item => item.id && !current.seen.has(item.id))
           const unreadIds = new Set(items.map(item => item.id))
           const changed = added.length || unreadIds.size !== current.unreadIds.size || [...current.unreadIds].some(id => !unreadIds.has(id))
@@ -114,17 +120,15 @@ export function startNotificationRealtime() {
             })
           }
           await present()
+          force = true
         } while (active() && current.dirty)
       } finally {
         current.running = false
       }
     }
 
-    const poll = setInterval(() => {
-      if (document.visibilityState === 'hidden') return
-      if (!notificationRealtimeState.connected || Date.now() - current.lastSync >= 120000) void sync()
-    }, 30000)
-    const visible = () => { if (document.visibilityState !== 'hidden') void sync() }
+    navigationSync = () => sync({ force: false })
+    const visible = () => { if (document.visibilityState !== 'hidden') void present({ refreshDetails: false }) }
     document.addEventListener('visibilitychange', visible)
     current.close = () => {
       current.closed = true
@@ -132,7 +136,6 @@ export function startNotificationRealtime() {
       current.pending.clear()
       current.seen.clear()
       current.unreadIds.clear()
-      clearInterval(poll)
       document.removeEventListener('visibilitychange', visible)
     }
     void sync()
@@ -141,6 +144,7 @@ export function startNotificationRealtime() {
   return () => {
     stopWatch()
     session?.close()
+    navigationSync = null
     unsubscribeSound()
     unsubscribeUnread()
     setNotificationRealtimeManaged(false)

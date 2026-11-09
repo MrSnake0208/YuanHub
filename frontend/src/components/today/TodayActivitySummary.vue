@@ -7,12 +7,12 @@
       </div>
       <router-link class="activity-link" :to="calendarTo">活动日历 <ArrowRight :size="14" aria-hidden="true" /></router-link>
     </header>
-    <p v-if="loading" class="activity-message" role="status">正在读取今日活动…</p>
-    <div v-else-if="error" class="activity-error" role="alert">
+    <p v-if="loading && !loaded" class="activity-message" role="status">正在读取今日活动…</p>
+    <div v-if="error" class="activity-error" role="alert">
       <p>游戏活动暂时无法读取，可以重试或查看完整日历。</p>
       <button type="button" @click="load">重试</button>
     </div>
-    <template v-else>
+    <template v-if="loaded">
       <div v-if="currentItems.length" class="activity-counts" role="group" aria-label="游戏活动状态">
         <button v-for="group in groups" :key="group.key" type="button" :aria-pressed="activeGroup === group.key" @click="selectedGroup = group.key">{{ group.label }} <strong>{{ group.items.length }}</strong></button>
       </div>
@@ -45,6 +45,7 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const today = ref(serverToday())
 const now = ref(Date.now())
 const items = ref([]), loading = ref(false), error = ref(false)
+const loaded = ref(false)
 const currentItems = computed(() => items.value.filter(item => !calendarEnded(item, today.value, now.value)))
 const selectedGroup = ref('')
 const endingToday = item => (item.end_at ? serverToday(new Date(item.end_at)) : item.end_date) === today.value && calendarTimeBounds(item).start <= now.value
@@ -78,21 +79,24 @@ function detailLabel(item) {
 }
 let generation = 0
 let dayTimer = null
+let loadedContext = ''
 
 async function load() {
   if (!enabled) return
   const token = ++generation
   const game = props.game
   today.value = serverToday()
+  const context = JSON.stringify([game, today.value])
+  if (context !== loadedContext) { items.value = []; loaded.value = false; loadedContext = context }
   loading.value = true
   error.value = false
-  items.value = []
   try {
     const through = addCalendarDays(today.value, 7)
     const result = await listActivityCalendar({ game, from: today.value, to: through })
     if (token !== generation) return
     const normalized = normalizeCalendarItems(result?.items).filter(item => (!game || item.game === game) && (item.end_date == null || item.end_date >= today.value) && item.start_date <= through)
     items.value = [...new Map(normalized.map(item => [item.id, item])).values()]
+    loaded.value = true
   } catch {
     if (token === generation) error.value = true
   } finally {

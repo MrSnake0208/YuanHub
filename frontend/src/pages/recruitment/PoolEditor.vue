@@ -402,6 +402,7 @@ import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
+import { useBodyScrollLock } from '../../composables/useBodyScrollLock.js'
 import { usePersistedTab } from '../../utils/persistedTab.js'
 import { dialog } from '../../utils/dialog.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
@@ -433,6 +434,7 @@ function toggleProgress() {
   else revealProgress()
 }
 function onEditorScroll(event) {
+  if (viewportChanging || panel.value?.contains(document.activeElement) && document.activeElement.matches('input, select, textarea')) return
   const top = event.target.scrollTop
   if (top <= 0) headerScrolled.value = false
   else if (!headerScrolled.value) {
@@ -600,6 +602,7 @@ watch(receiptVerified, verified => {
 let requestId = ''
 let viewportFrame = 0
 let viewportSettleTimer = 0
+let viewportChanging = false
 const KEYBOARD_INSET_THRESHOLD = 80
 const ENTRY_VISIBLE_TOP_GAP = 16
 const ENTRY_VISIBLE_BOTTOM_GAP = 24
@@ -810,6 +813,7 @@ function ensureEntryVisible() {
     rect.bottom = actionsRect.bottom
     rect.height = rect.bottom - rect.top
   }
+  if (rect.top >= visibleTop && rect.bottom <= visibleBottom) return
   let delta = 0
   if (rect.height > availableHeight) delta = rect.top - visibleTop
   else if (rect.bottom > visibleBottom) delta = rect.bottom - visibleBottom
@@ -827,6 +831,7 @@ function scheduleEntryVisibility() {
   viewportSettleTimer = window.setTimeout(() => {
     viewportSettleTimer = 0
     ensureEntryVisible()
+    viewportChanging = false
   }, 180)
 }
 function resetKeyboardAvoidance() {
@@ -837,9 +842,10 @@ function resetKeyboardAvoidance() {
   if (viewportSettleTimer) window.clearTimeout(viewportSettleTimer)
   viewportFrame = 0
   viewportSettleTimer = 0
+  viewportChanging = false
 }
 function onViewportChange() {
-  if (props.open) scheduleEntryVisibility()
+  if (props.open) { viewportChanging = true; scheduleEntryVisibility() }
 }
 function focusEntry(preferPulls = false) {
   const session = editorSession
@@ -858,6 +864,7 @@ function focusInBody(target) {
   const viewport = window.visualViewport
   const top = Math.max(bounds.top, viewport?.offsetTop || 0) + 16
   const bottom = Math.min(bounds.bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - 16
+  if (rect.top >= top - 16 && rect.bottom <= bottom + 16) return
   const delta = rect.top < top ? rect.top - top : rect.bottom > bottom ? rect.bottom - bottom : 0
   if (Math.abs(delta) > 1) body.scrollBy?.({ top: delta, behavior: 'auto' })
 }
@@ -1037,7 +1044,8 @@ onBeforeUnmount(() => {
   window.clearTimeout(pointerReleaseTimer)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) choosingAgent.value ? cancelAgentPicker() : guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
+useBodyScrollLock(() => props.open && !!props.pool)
+useModalFocus(computed(() => props.open), panel, { preventScroll: true, preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) choosingAgent.value ? cancelAgentPicker() : guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
 async function submit() {
   if (screenshotMode.value || dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
   if (activeRow.value) {

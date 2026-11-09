@@ -174,7 +174,7 @@ function close(discard = false) {
   emit('close')
 }
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(() => true, scrollBody, panel)
-useModalFocus(() => true, panel, { initialFocus: () => panel.value, onEscape: close, blocking: true, preventRestoreScroll: true })
+useModalFocus(() => true, panel, { preventScroll: true, initialFocus: () => panel.value, onEscape: close, blocking: true, preventRestoreScroll: true })
 const viewScroller = (target = view.value) => shortViewport.value ? panel.value : target === 'history' ? historyBody.value : scrollBody.value
 
 function accept(value, initial = false) {

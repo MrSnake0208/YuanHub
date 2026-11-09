@@ -48,7 +48,7 @@ let generation = 0, alive = true
 const capture = () => ({ generation, accountId: props.accountId, identity: props.identity, game: props.game, contextVersion: props.contextVersion })
 const matches = token => alive && token.generation === generation && token.accountId === props.accountId && token.identity === props.identity && token.game === props.game && token.contextVersion === props.contextVersion
 const canConfirm = computed(() => props.canRecord && !working.value && !!preview.value && !preview.value.stats.invalid && (!preview.value.stats.unknown || skipUnknown.value))
-useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value, onEscape: close, preventRestoreScroll: true })
+useModalFocus(computed(() => props.open), panel, { preventScroll: true, initialFocus: () => panel.value, onEscape: close, preventRestoreScroll: true })
 watch(() => props.open, (visible, _, cleanup) => {
   if (!visible) return
   const overflow = document.body.style.overflow

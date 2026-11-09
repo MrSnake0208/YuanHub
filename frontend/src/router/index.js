@@ -9,6 +9,8 @@ import { isFeatureAccessible } from '@/utils/featureAccess.js'
 import { auth, init as authInit } from '@/store/auth.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '@/utils/routeAccess.js'
 import { isNavigationCancelled } from '@/utils/navigationCancellation.js'
+import { refreshSubscribedNotifications } from '@/store/notificationRealtime.js'
+import { refreshSubscribedFeedbackUnread } from '@/store/feedbackUnread.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -83,7 +85,9 @@ export async function authGuard(to, from, next) {
 
   beta.setIdentity(authed ? auth.userInfo.id : '')
   if (to.meta?.requiresBeta) {
-    await beta.refresh()
+    if ((authed ? !beta.personalLoaded : !beta.campaign) || to.path !== from.path || !from.matched.length) {
+      await beta.refresh()
+    }
     if (isNavigationCancelled(to) || (auth.accessToken && auth.userInfo ? auth.userInfo.id : null) !== navigationUserId) return next(false)
     if (authed) {
       if (!beta.canUseBetaFeatures) return next(betaLandingFor(to.fullPath))
@@ -122,9 +126,13 @@ export async function authGuard(to, from, next) {
 
 router.beforeEach(authGuard)
 
-router.afterEach((to) => {
+router.afterEach((to, from, failure) => {
   if (to.meta.title) document.title = to.meta.title
   finishRouteLoading(to)
+  if (!failure && to.path !== from.path) {
+    void refreshSubscribedNotifications()
+    void refreshSubscribedFeedbackUnread()
+  }
 })
 
 router.onError(() => {

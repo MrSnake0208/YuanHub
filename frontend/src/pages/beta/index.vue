@@ -84,7 +84,7 @@
                   <h2 id="beta-status-title">{{ copy.title }}</h2>
                   <p class="invite-description">{{ copy.description }}</p>
                   <p v-if="error" class="beta-error" role="alert">{{ error }}</p>
-                  <p v-if="refreshMessage || cooldownSeconds" class="beta-feedback" role="status">{{ cooldownSeconds ? `状态刷新暂缓，约 ${cooldownSeconds} 秒后可重试。` : refreshMessage }}</p>
+                  <p v-if="refreshMessage || beta.personalRefreshError || beta.publicRefreshError || cooldownSeconds" class="beta-feedback" role="status">{{ cooldownSeconds ? `状态刷新暂缓，约 ${cooldownSeconds} 秒后可重试。` : beta.personalRefreshError || beta.publicRefreshError ? '刷新失败，保留上次确认的状态：' + (beta.personalRefreshError || beta.publicRefreshError) : refreshMessage }}</p>
 
                   <div class="invite-action">
                     <template v-if="!auth.isLoggedIn">
@@ -458,7 +458,7 @@ async function refresh() {
   await beta.refresh({ force: true })
   now.value = Date.now()
   if (cooldownSeconds.value) return
-  refreshMessage.value = beta.publicError || beta.personalError || (before === JSON.stringify([beta.mine, beta.campaign]) ? '状态已是最新。' : '状态已更新。')
+  refreshMessage.value = beta.publicError || beta.personalError || beta.personalRefreshError || beta.publicRefreshError || (before === JSON.stringify([beta.mine, beta.campaign]) ? '状态已是最新。' : '状态已更新。')
 }
 
 async function join() {

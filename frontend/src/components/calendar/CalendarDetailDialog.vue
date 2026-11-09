@@ -47,7 +47,7 @@ const entries = computed(() => {
 })
 const panel = ref(null), heading = ref(null), body = ref(null)
 const viewportStyle = ref({}), editingTodo = ref(false)
-useModalFocus(open, panel, { initialFocus: () => heading.value, onEscape: () => emit('close'), preventRestoreScroll: true })
+useModalFocus(open, panel, { preventScroll: true, initialFocus: () => heading.value, onEscape: () => emit('close'), preventRestoreScroll: true })
 function focusedTodoControl() {
   const target = document.activeElement
   return open.value && !editing.value && body.value?.contains(target) && target.matches('.calendar-checklist input, .calendar-checklist button') ? target : null

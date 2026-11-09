@@ -89,6 +89,7 @@ const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false
 const expandedGoldHighlights = ref({}), highlightsOpen = ref(false)
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
+let savingPool = null
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const archiveEmpty = computed(() => state.archive?.summary.event_count === 0 && state.archive.summary.known_total_pulls === 0)
 const goldAgentHighlights = computed(() => [
@@ -177,19 +178,20 @@ async function retryPoolReadback(refreshArchive = true) {
   }
 }
 async function savePool(payload) {
-  if (!writable.value || payload.data.pool_id !== selectedPoolId.value) return
+  if (!writable.value || payload.data.pool_id !== selectedPoolId.value || savingPool && matches(savingPool)) return
   const token = capture()
+  savingPool = token
   try {
     const beforeSummary = state.archive?.pool_summaries?.[selectedPoolId.value] ? { ...state.archive.pool_summaries[selectedPoolId.value] } : null
     const result = await command(payload.operation, payload.data, { requestId: payload.requestId, expectedRevision: payload.revision })
-    if (result && matches(token)) {
+    if (result && matches(token) && payload.data.pool_id === selectedPoolId.value) {
       state.notice = ''
       saveReceipt.value = { ...payload.data, entries: payload.data.entries.map(entry => ({ ...entry })), revision: result.archive_revision, requestId: payload.requestId, beforeSummary }
       await retryPoolReadback(false)
     }
   } catch (error) {
-    if (error.status === 409 && matches(token)) await loadPoolRecords(selectedPoolId.value)
-  }
+    if (error.status === 409 && matches(token) && payload.data.pool_id === selectedPoolId.value) await loadPoolRecords(selectedPoolId.value)
+  } finally { if (savingPool === token) savingPool = null }
 }
 </script>
 
