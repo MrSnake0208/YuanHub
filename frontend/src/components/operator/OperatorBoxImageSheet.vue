@@ -8,7 +8,7 @@
     </header>
     <div class="box-image-grid">
       <article v-for="entry in entries" :key="entry.id" class="box-image-card" :data-prof="entry.prof" :data-operator="entry.id">
-        <img class="box-image-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
+        <ExportCardFrame class="box-image-frame" />
         <picture v-if="portraits[entry.id]" class="box-image-portrait" aria-hidden="true">
           <img :src="portraits[entry.id]" alt="" width="480" height="350" />
         </picture>
@@ -29,7 +29,7 @@
             <div class="box-image-huaji-value" :aria-label="entry.huaji">
               <template v-if="entry.huajiProgress?.stars">
                 <span>化极</span>
-                <span class="box-image-stars" role="img" :aria-label="entry.huajiProgress.stars + '星'"><img v-for="star in entry.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="15" height="15" alt="" aria-hidden="true" /></span>
+                <span class="box-image-stars" role="img" :aria-label="entry.huajiProgress.stars + '星'"><ExportStar v-for="star in entry.huajiProgress.stars" :key="star" /></span>
                 <small v-if="entry.huajiProgress.awakened">· 觉醒</small><small v-else-if="entry.huajiProgress.nodes != null">· {{ entry.huajiProgress.nodes }}节点</small>
               </template>
               <template v-else>{{ entry.huaji }}</template>
@@ -63,6 +63,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import ExportCardFrame from '../ExportCardFrame.vue'
+import ExportStar from '../ExportStar.vue'
 import { avatarUrl } from '../../api/request.js'
 import { BOX_IMAGE_LAYOUT_WIDTH } from '../../utils/operatorBoxImage.js'
 import portraits from '../../data/operatorPortraits.json'
@@ -125,7 +127,7 @@ defineExpose({ sheet })
 .box-image-training { padding: 0 0 10px; border-bottom: 1px solid #d8bd8c; }
 .box-image-huaji-value { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 24px; font: 500 13px/1.3 var(--font-b, sans-serif); white-space: nowrap; }
 .box-image-stars { display: inline-flex; align-items: center; gap: 2px; flex: none; }
-.box-image-stars img { display: block; width: 15px; height: 15px; }
+.box-image-stars svg { display: block; width: 15px; height: 15px; }
 .box-image-huaji-value small { font-size: 10px; font-weight: 500; color: #695b4b; }
 .box-image-details { position: relative; padding: 0 7px 18px; background: #fffaf0; }
 /* Rounded paper overlaps the portrait without masks or clip-path. */

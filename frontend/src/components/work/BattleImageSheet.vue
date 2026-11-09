@@ -6,7 +6,7 @@
     <div class="team-board" :class="{ 'action-board': kind === 'actions', 'is-simple': simple }" :style="boardStyle">
       <div v-if="kind === 'actions'" class="team-board-label action-corner">回合</div>
       <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name, 'is-idle': idleSlots[index] }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
-        <img class="team-card-frame" :src="decorationUrl('card-frame')" alt="" aria-hidden="true" />
+        <ExportCardFrame class="team-card-frame" />
       </article>
       <header v-for="(operator, index) in model.operators" :key="'head-' + index" class="team-card-head" :class="{ 'is-empty': !operator.name, 'is-idle': idleSlots[index] }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
         <div v-if="!simple" class="box-image-portrait" aria-hidden="true">
@@ -20,10 +20,10 @@
       <template v-if="kind === 'team'"><template v-for="(row, rowIndex) in teamRows" :key="row.key">
         <div class="team-board-label" :class="[row.key, { 'is-stack': row.stack }]" :style="{ gridRow: rowIndex + 2 }">{{ row.label }}</div>
         <div v-for="(operator, index) in model.operators" :key="row.key + index" class="team-card-cell" :class="[row.key, { 'is-stack': row.stack, 'is-alt': rowIndex % 2, 'is-last': rowIndex === teamRows.length - 1 }]" :style="{ gridColumn: index + 2, gridRow: rowIndex + 2 }" :data-slot="index" :data-stat="row.key">
-          <strong v-if="row.type === 'stat'" class="team-card-value">{{ operator[row.key] }}<sup v-if="row.combat && markEach && manualPanel(operator) && operator[row.key]">*</sup></strong>
+          <strong v-if="row.type === 'stat'" class="team-card-value">{{ operator[row.key] }}</strong>
           <template v-else-if="row.type === 'huaji'">
             <template v-if="operator.huajiProgress">
-              <span class="team-card-stars" role="img" :aria-label="operator.huajiProgress.stars + '星'"><img v-for="star in operator.huajiProgress.stars" :key="star" :src="decorationUrl('star')" width="22" height="22" alt="" /></span>
+              <span class="team-card-stars" role="img" :aria-label="operator.huajiProgress.stars + '星'"><ExportStar v-for="star in operator.huajiProgress.stars" :key="star" /></span>
               <small v-if="operator.huajiProgress.awakened" class="team-card-awakened">觉醒</small>
               <small v-else-if="operator.huajiProgress.nodes != null">{{ operator.huajiProgress.nodes }} 节点</small>
             </template>
@@ -50,12 +50,14 @@
     <p v-if="kind === 'actions' && partial && rows.length" class="range">第 {{ rows[0].round }}—{{ rows.at(-1).round }} 回合</p>
     <div v-if="model.note" class="sheet-note"><strong>打法说明</strong><p>{{ model.note }}</p></div>
     <div class="sheet-spacer" aria-hidden="true"></div>
-    <footer><strong>鸢鸢相抱 · YuanHub</strong><span v-if="kind === 'team' && panelFootnote">{{ panelFootnote }}</span></footer>
+    <footer><strong>鸢鸢相抱 · YuanHub</strong></footer>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import ExportCardFrame from '../ExportCardFrame.vue'
+import ExportStar from '../ExportStar.vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_ACCENTS, TARGET_COLORS, battleTargetUsage } from '../../utils/battleImages.js'
 const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' }, partial: { type: Boolean, default: false } })
@@ -70,7 +72,7 @@ const teamRows = computed(() => {
   if (operators.some(operator => operator.requiredDiscs)) rows.push(['requiredDiscs', '必须\n命盘', 'disc'])
   if (operators.some(operator => operator.forbiddenDiscs)) rows.push(['forbiddenDiscs', '禁用\n命盘', 'disc'])
   if (operators.some(operator => operator.stars)) rows.push(['main', '主星', 'stone'], ['support', '辅星', 'stone'])
-  return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat', combat: key === 'hp' || key === 'attack' }))
+  return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat' }))
 })
 // 操作图：每回合一行动作，填写了备注的回合在下方加一条横跨五列的备注；隔行底色按回合交替。
 // 每回合（含其备注）垫一条贯穿回合号与五列的横带，按回合横向阅读不错行；角色卡只包住立绘卡头，不再有贯穿全表的竖框。
@@ -104,17 +106,12 @@ const mainTarget = computed(() => targetUsage.value.main)
 const plainEntry = entry => entry.box || entry.target == null || entry.target === mainTarget.value
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
 const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }
-// 全员都有手动修正时逐个加星号没有区分度，改为底注统一说明。
-const manualCount = computed(() => props.model.operators.filter(operator => operator.name && manualPanel(operator)).length)
-const markEach = computed(() => manualCount.value > 0 && manualCount.value < props.model.operators.filter(operator => operator.name).length)
-const panelFootnote = computed(() => !manualCount.value ? '' : markEach.value ? '* 面板含手动修正' : '攻击与生命为手动修正值')
 const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.svg'
 const brandLogoUrl = import.meta.env.BASE_URL + 'brand/yuanhub-logo.png'
 const profFiles = { 阳: 'yang', 阴: 'yin', 火: 'fire', 风: 'wind', 水: 'water', 地: 'earth', 混沌: 'chaos' }
 const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.png' : ''
 const discClass = { 金: 'rarity-gold', 紫: 'rarity-purple', 蓝: 'rarity-blue' }
 const nameClass = name => { const length = Array.from(name || '未指定').length; return { 'is-three-char-name': length === 3, 'is-long-name': length > 4 } }
-const manualPanel = operator => operator.panelNote.includes('手动')
 const sheet = ref(null)
 // 数据区用思源宋体 500（不加粗）。全站字体链接只有 600/700/900，这一档只在出图组件挂载时按需加载，不改全站链接。
 const BODY_FONT_URL = 'https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@500&display=swap'
@@ -191,9 +188,8 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .team-card-cell.is-alt { background: #f8efdc; }
 .team-card-cell.is-last { margin-bottom: 18px; }
 .team-card-value { font: 500 32px/1.1 var(--font-s, serif); color: #3e3023; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.team-card-value sup { font-size: 16px; color: #a0522d; margin-left: 2px; }
 /* 化极固定两行：第一行星星，第二行觉醒或节点；两种文字同字号同行高，五列逐行齐平。 */
-.team-card-stars { display: inline-flex; align-items: center; gap: 2px; height: 30px; } .team-card-stars img { display: block; width: 22px; height: 22px; }
+.team-card-stars { display: inline-flex; align-items: center; gap: 2px; height: 30px; } .team-card-stars svg { display: block; width: 22px; height: 22px; }
 .team-card-cell.huaji small { font: 500 19px/26px var(--font-s, serif); letter-spacing: 1px; color: #8a5a2b; }
 .team-card-cell.huaji .team-card-awakened { letter-spacing: 3px; color: #8f5f12; }
 /* 星石等级与名称同字号、同基线，隔约 1/4 字宽并带“级”（七杀 8级），只用字色区分；缩小后紧贴名称会被读成角标。

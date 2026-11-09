@@ -1,6 +1,8 @@
 // The export template uses plain RGB colors and no filters or repeating gradients.
 export async function prepareOperatorBoxImage(document, root) {
   const view = document.defaultView
+  // Clear live computed pixel sizes and positions copied by html2canvas so SVG clones follow their cloned layout without serialization offsets.
+  for (const node of root.querySelectorAll('[data-export-svg], [data-export-svg] *')) node.removeAttribute('style')
   // html2canvas copies pseudo styles from the live viewport before creating its desktop clone.
   for (const portrait of root.querySelectorAll('.box-image-portrait')) {
     // A phone's live styles may have no ::after at all; materialize it in the desktop clone.
