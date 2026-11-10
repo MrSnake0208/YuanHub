@@ -284,8 +284,10 @@ class OperatorCatalogService(
                 val key = normalizeDiscName(alias)
                 val conflict = discs.firstOrNull { (otherOwner, other) ->
                     (other.otName != disc.otName && normalizeDiscName(other.otName) == key) ||
-                        (owner == otherOwner && other !== disc &&
-                            (normalizeDiscName(other.otName) == key || other.aliases.orEmpty().any { normalizeDiscName(it) == key }))
+                        (
+                            owner == otherOwner && other !== disc &&
+                                (normalizeDiscName(other.otName) == key || other.aliases.orEmpty().any { normalizeDiscName(it) == key })
+                        )
                 }
                 if (conflict != null) {
                     throw OperatorApiException(
@@ -298,8 +300,7 @@ class OperatorCatalogService(
         }
     }
 
-    private fun normalizeDiscName(value: String): String =
-        Normalizer.normalize(value, Normalizer.Form.NFKC).filterNot { it.isWhitespace() }
+    private fun normalizeDiscName(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC).filterNot { it.isWhitespace() }
 
     private fun requireSpecialOddityName(value: String?): String {
         val normalized = value?.trim()
