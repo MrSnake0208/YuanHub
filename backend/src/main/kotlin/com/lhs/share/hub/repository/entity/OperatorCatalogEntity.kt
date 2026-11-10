@@ -39,6 +39,7 @@ data class OperatorDiscCatalog(
     val color: String? = null,
     val desp: String? = null,
     val aliases: List<String>? = null,
+    val despAliases: List<String>? = null,
 )
 
 fun OperatorCatalogEntity.discByName(name: String): OperatorDiscCatalog? =

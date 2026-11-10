@@ -278,8 +278,11 @@
                   <label class="disc-aliases">OCR 别名（每行一个，最多 20 个，每个最多 64 字符）
                     <textarea v-model="d.aliasesText" rows="2" placeholder="输入错读或旧标准名，可空" />
                   </label>
+                  <label class="disc-aliases">描述别名（每行一个，最多 20 个，每个最多 256 字符）
+                    <textarea v-model="d.despAliasesText" rows="2" placeholder="输入描述的其他写法，用于未解锁命盘识别，可空" />
+                  </label>
                 </div>
-                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '' })"><Plus :size="16" aria-hidden="true" />添加命盘</button>
+                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '', despAliasesText: '' })"><Plus :size="16" aria-hidden="true" />添加命盘</button>
               </div>
             </div>
 
@@ -509,7 +512,8 @@ function fillForm(r) {
         abbreviation: d.abbreviation || '',
         color: d.color || '金',
         desp: d.desp || '',
-        aliasesText: Array.isArray(d.aliases) ? d.aliases.join('\n') : ''
+        aliasesText: Array.isArray(d.aliases) ? d.aliases.join('\n') : '',
+        despAliasesText: Array.isArray(d.desp_aliases) ? d.desp_aliases.join('\n') : ''
       }
     }),
     starStones: r.starStones.map(function (s) {
@@ -655,7 +659,8 @@ function buildBody() {
           abbreviation: (d.abbreviation && d.abbreviation.trim()) || null,
           color: d.color || null,
           desp: (d.desp && d.desp.trim()) || null,
-          aliases: [...new Set((d.aliasesText || '').split(/\r?\n/).map(function (alias) { return alias.trim() }).filter(Boolean))]
+          aliases: [...new Set((d.aliasesText || '').split(/\r?\n/).map(function (alias) { return alias.trim() }).filter(Boolean))],
+          desp_aliases: [...new Set((d.despAliasesText || '').split(/\r?\n/).map(function (alias) { return alias.trim() }).filter(Boolean))]
         }
       }),
     starStones: form.value.starStones

@@ -8,6 +8,8 @@
 
 `GET /open-api/operator/catalog` 无需 Token 或 Beta 资格，返回顶层 `OPERATORS`、`PROFESSIONS`、`catalog_schema_version`、`catalog_version`，无 `data` 包装。支持强 ETag 与 `If-None-Match → 304`；数据库或组装失败返回真实 HTTP 503。完整字段、顺序及别名规则见[公共目录交换规范](../exchange-specs/catalogs.md#3-maayuan-完整扫描目录)。
 
+`discs[].desp_aliases` 是可选字符串数组，仅在非空时输出，位于 `aliases` 之后，用于客户端按描述反查未解锁命盘；缺失按空数组处理，识别后上传标准 `ot_name`。管理员可在密探目录编辑器中每行维护一个描述别名：最多 20 项，每项去首尾空白后最多 256 字符，按 NFKC、去空白及去除非字母数字和非汉字字符后的归一键去重。同一密探内不得与其他命盘的描述或描述别名归一后相等或双向包含，空描述不参与包含判断，跨密探不校验；冲突返回 422 `invalid_disc`。管理更新省略或 null 保留，`[]` 清空，原位改名沿用 OCR 别名保留规则。公开 `/v1/operator/catalog` 不增加此字段。
+
 ## Token 读取和旧版兼容
 
 使用 `Authorization: Bearer <OPENAPI_TOKEN>`，不传账号 query。

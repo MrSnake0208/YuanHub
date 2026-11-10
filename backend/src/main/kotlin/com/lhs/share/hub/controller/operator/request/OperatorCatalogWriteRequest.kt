@@ -55,6 +55,9 @@ data class OperatorCatalogDiscRequest(
     @field:Size(max = 20)
     @field:Schema(description = "OCR 别名，每项去首尾空白后最多 64 字符；更新省略或 null 保留，[] 清空")
     val aliases: List<String>? = null,
+    @field:Size(max = 20)
+    @field:Schema(description = "描述别名，每项去首尾空白后最多 256 字符；更新省略或 null 保留，[] 清空")
+    val despAliases: List<String>? = null,
 )
 
 data class OperatorCatalogStarStoneRequest(

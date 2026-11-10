@@ -66,7 +66,7 @@
 
 ## 3. MaaYuan 完整扫描目录
 
-`GET /open-api/operator/catalog` 公开，无需 Token 或 Beta 资格，直接返回 JSON 文档，不使用 `ApiResult` 包装。原 `/v1/operator/catalog` 的响应字段保持不变，不新增 `discs[].aliases`。
+`GET /open-api/operator/catalog` 公开，无需 Token 或 Beta 资格，直接返回 JSON 文档，不使用 `ApiResult` 包装。原 `/v1/operator/catalog` 的响应字段保持不变，不新增 `discs[].aliases` 或 `discs[].desp_aliases`。
 
 ```json
 {
@@ -80,7 +80,7 @@
     "prof": ["阳"],
     "subProf": ["shenji"],
     "games": ["如鸢", "代号鸢"],
-    "discs": [{"ot_name":"初始能量+2","abbreviation":"初始+2","color":"金","desp":"初始能量+2","aliases":["示例错读"]}]
+    "discs": [{"ot_name":"初始能量+2","abbreviation":"初始+2","color":"金","desp":"初始能量+2","aliases":["示例错读"],"desp_aliases":["初始能量增加2点"]}]
   }],
   "PROFESSIONS": [{"id":"阳","name":"阳","name_en":"阳","sub":[{"id":"shenji","name":"神纪","name_en":"神纪"}]}],
   "catalog_schema_version": 1,
@@ -94,12 +94,16 @@
 |---|---|
 | 数据来源 | 每次读取数据库 `operator_catalog`，不触发 seed/backfill；`catalog_version` 取本次数据库快照中最大的持久化 `catalogVersion` |
 | 排序 | 密探按 ID 稳定排序；命盘严格保持存储顺序，自动编队依赖该顺序；`discs=[]` 草稿不输出 |
-| 字段 | `name_en`、`alt_name` 均派生自 `name`；`alias/abbreviation/color/desp` 的 null 输出空字符串；非空 `aliases` 才输出；`subProf` 大小写固定 |
+| 字段 | `name_en`、`alt_name` 均派生自 `name`；`alias/abbreviation/color/desp` 的 null 输出空字符串；`aliases`、`desp_aliases` 均仅在非空时输出，`desp_aliases` 为字符串数组，放在 `aliases` 之后；`subProf` 大小写固定 |
 | 缓存 | `Content-Type: application/json; charset=utf-8`、`Cache-Control: public, no-cache`；强 `ETag` 为完整响应序列化字节的 SHA-256（带双引号） |
 | 条件读取 | 带 `If-None-Match`，命中返回 HTTP 304、相同 ETag 和缓存头、无正文；内容变化返回 HTTP 200 和新完整文档 |
 | 失败与限流 | 数据库读取、空库或组装失败为真实 HTTP 503，正文 `{"error":"operator_catalog_unavailable"}`、`Cache-Control: no-store`，不返回部分目录；匿名 IP 每 60 秒最多 600 次，超限 HTTP 429、`Retry-After: 60` |
 
 客户端应在扫描前发起条件读取，收到 304 复用上次完整目录；503 或网络失败时保留可用缓存，不能用错误响应覆盖缓存。管理员提交修改后，下一次请求即可读取新内容；不提供实时推送。MaaYuan 需已接入此端点，且新密探仍符合客户端既有 OCR 与界面规则。
+
+`discs[].desp_aliases` 是管理员维护的描述写法，用于客户端按描述反查未解锁命盘；可省略，客户端按空数组处理。管理写入时每盘最多 20 项，每项去首尾空白后最多 256 字符，空项去除；按 NFKC、去空白及去除非字母数字和非汉字字符后的归一键去重。同一密探内，描述别名不得与其他命盘的 `desp` 或描述别名归一后相等或双向包含；空描述不参与包含判断，不同密探之间不校验。冲突返回 HTTP 422 `invalid_disc` 并说明冲突项。
+
+管理更新省略 `desp_aliases` 或传 null 时保留原值，显式 `[]` 清空；与 `aliases` 共用按标准名优先、原位改名回退原位置的保留规则。描述别名仅供客户端识别，识别后上传标准 `ot_name`，不作为导入词条或扫描上传字段。
 
 扫描 v3/v4/v5 导入的 `disc_loadouts[].discs` 与 `target_discs` 接受该密探标准 `ot_name` 或其 `aliases`，均为精确匹配。别名在补丁生成、变更比较与写入前归一为标准名；归一后同一套盘中的重复词条仍被拒绝。原始上传正文保留，`record_id` 幂等比较继续按原文进行。
 

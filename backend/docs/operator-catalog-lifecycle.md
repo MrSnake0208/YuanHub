@@ -25,7 +25,7 @@
 
 定向运行 `EntityCatalogServiceTest`、`InventoryServiceTest`、`InventoryAgentFavoriteServiceTest`、`OperatorCatalogServiceTest`、`OperatorCurrentFoundationServiceTest`、`OperatorControllerContractTest`，覆盖目录残留、修改/删除即时生效、旧流水幂等、取消旧关注、跨版本清理、账号隔离、有效 ID 拦截和历史重放。
 
-## OCR 别名维护与 MaaYuan 目录
+## OCR 别名、描述别名维护与 MaaYuan 目录
 
 公开 `GET /open-api/operator/catalog` 的完整契约见[公共目录交换规范](../../frontend/docs/exchange-specs/catalogs.md#3-maayuan-完整扫描目录)。目录数据直接来自数据库；职业定义位于 `src/main/resources/operator/professions.json`，内容取自 MaaYuan `agent/operators.json` 的 `PROFESSIONS`。公开旧 v1 目录继续只返回命盘原有四个字段。
 
@@ -33,7 +33,11 @@
 
 别名归一后，不得等于同一密探另一命盘的标准名或别名，也不得等于任何密探上不同 `ot_name` 的标准名。标准名修改同样检查已有别名，冲突以 HTTP 422 `invalid_disc` 返回具体密探、命盘与别名；管理页保留输入以便修正。跨密探别名可以共用，但不能据此假定密探身份唯一。
 
-`/operator/admin` 每盘增加序号与每行一个的 OCR 别名输入。已有密探命盘顺序影响自动编队，不要调整；普通保存会完整传递别名。改正标准名时应把旧名显式添加为别名，以兼容旧客户端及已保存命盘；仅改标准名不会自动生成别名。
+`discs[].desp_aliases` 是可选的描述别名字符串数组，Mongo 字段名为 `discs[].despAliases`；管理响应完整返回，公开扫描目录仅在非空时输出，顺序在 `aliases` 之后。每盘最多 20 项，每项去首尾空白后最多 256 字符，空项去除；按 NFKC、去空白及去除非字母数字和非汉字字符后的归一键去重。更新时省略或 null 保留、`[]` 清空，并沿用 `aliases` 的标准名匹配及原位改名保留逻辑；同时改名和重排时应显式传入两种别名。
+
+描述别名归一后，不得与同一密探其他命盘的 `desp` 或描述别名相等或双向包含，以免客户端描述匹配出现歧义；空描述不参与包含判断，不同密探之间不校验。修改标准描述同样校验已有描述别名，冲突返回 HTTP 422 `invalid_disc`，说明命盘及冲突项。
+
+`/operator/admin` 每盘提供序号、OCR 别名及其下方的描述别名输入，均每行一个。已有密探命盘顺序影响自动编队，不要调整；普通保存会完整传递两种别名。描述别名用于客户端按描述反查未解锁命盘，扫描上传仍使用识别后的标准 `ot_name`，不改变导入逻辑。改正标准名时应把旧名显式添加为 OCR 别名，以兼容旧客户端及已保存命盘；仅改标准名不会自动生成别名。
 
 当前数据的实际盘、目标盘在读取及 v3/v4/v5 导出时按该密探 aliases 投影为标准名，当前盘编辑及扫描导入也接受别名；历史正文与用户数据不做批量迁移。分享读取复用当前档案投影。旧 V2 历史备份、流水与纠错事件仍保留旧名；旧 V2 导入校验未扩展，含已改名词条的 V2 历史文档恢复前需更新名称，推荐改用当前 V5 备份。
 
@@ -50,7 +54,7 @@ APPLY=1 mongosh <连接参数> --file scripts/operator-catalog-ocr-aliases.mongo
 
 所有目标、改名后的重复名、全目录别名冲突均在任何写入前检查；任一失败整体中止。APPLY 在单次事务快照中重新预检，写入同时检查原 discs 和 catalogVersion，失败回滚，不降级为逐条非事务写入。只有内容实际变化的行更新 `catalogVersion`，重复执行无变化则不写。提交结果不确定或并发冲突时，重新 dry-run 核对后再决定是否重试。
 
-兼容发布顺序：先部署后端，再发布管理页；旧管理调用省略 aliases 会保留别名。一次性脚本必须单独审阅并授权执行；MaaYuan 侧切源后才能使用此目录。当前工作未运行测试、构建、浏览器或数据脚本，未验证部署状态。
+兼容发布顺序：先部署后端，再发布管理页；旧管理调用省略 aliases 或 desp_aliases 会分别保留对应别名。描述别名由管理员维护，不修改 seed，也不新增或执行数据脚本。上述 OCR 一次性脚本必须单独审阅并授权执行；MaaYuan 侧切源并读取描述别名后才能使用对应能力。当前工作未运行测试、构建、浏览器或数据脚本，未验证部署状态。
 
 ## SP 关系约束（2026-10-05）
 
