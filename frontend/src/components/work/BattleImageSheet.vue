@@ -37,13 +37,16 @@
         </div>
       </template></template>
       <template v-else><template v-for="(item, rowIndex) in actionRows" :key="item.key">
-        <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong></div>
+        <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: `${rowIndex + 2} / span ${item.remark ? 2 : 1}` }"><strong>{{ item.row.round }}</strong></div>
         <template v-if="item.type === 'round'">
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
             <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': plainEntry(entry) }" :style="plainEntry(entry) ? null : { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] }"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
           </div>
         </template>
-        <p v-else class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
+        <template v-else>
+          <p class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
+          <div v-for="slot in 5" :key="slot" class="action-remark-rail" :class="{ 'is-last': item.last }" :style="{ gridColumn: slot + 1, gridRow: rowIndex + 2 }" aria-hidden="true"></div>
+        </template>
       </template></template>
     </div>
     <p v-if="kind === 'actions' && partial && rows.length" class="range">第 {{ rows[0].round }}—{{ rows.at(-1).round }} 回合</p>
@@ -73,12 +76,12 @@ const teamRows = computed(() => {
   if (operators.some(operator => operator.stars)) rows.push(['main', '主星', 'stone'], ['support', '辅星', 'stone'])
   return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat' }))
 })
-// 操作图：每回合一行动作，填写了备注的回合在下方加一条横跨五列的备注；隔行底色按回合交替。
+// 操作图：每回合一行动作，隔行底色按回合交替；备注紧贴所属回合，作为该回合的下半部分，横跨五列。
 // 角色卡从立绘一路延伸到表底，靠卡间纸色分列；隔行底色铺在回合号与卡内，按回合横向阅读不错行。
 const actionRows = computed(() => {
   const items = props.rows.flatMap((row, index) => {
     const alt = index % 2 === 1, remark = String(row.remark || '').trim()
-    return [{ key: 'r' + row.round, type: 'round', row, alt }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
+    return [{ key: 'r' + row.round, type: 'round', row, alt, remark: Boolean(remark) }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
   })
   if (items.length) items.at(-1).last = true
   return items
@@ -258,9 +261,13 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .arrow-head { position: absolute; left: 1px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
 .is-up .arrow-shaft { top: 9px; } .is-up .arrow-head { top: 3px; border-bottom: 8px solid #3e3023; }
 .is-down .arrow-shaft { top: 3px; } .is-down .arrow-head { top: 17px; border-top: 8px solid #3e3023; }
-.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0; padding: 10px 18px; border-top: 1px solid #e0cba2; border-bottom: 1px solid #e0cba2; background: #fffaf0; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 备注是所属回合的下半部分：与回合同底色，长备注只让这一回合变高。每张卡在备注上下用横线连起自己的左右边线，列缝不封。 */
+.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; align-items: baseline; gap: 12px; margin: 0; padding: 0 17px 14px; border-right: 1px solid #b58a45; border-left: 1px solid #b58a45; background: #fffaf0; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
 .action-remark.is-alt { background: #f0e3c5; }
-.action-remark.is-last { border-radius: 0 0 8px 8px; }
+.action-remark.is-last { border-bottom: 1px solid #b58a45; border-radius: 0 0 8px 8px; }
+/* 横线占满卡宽，中间透明，露出备注文字与底色；表底由备注自身的下边线收口，避免方角戳出圆角。 */
+.action-remark-rail { position: relative; z-index: 2; border-top: 1px solid #b58a45; border-bottom: 1px solid #b58a45; }
+.action-remark-rail.is-last { border-bottom: 0; }
 .action-remark span { flex-shrink: 0; font-size: 16px; letter-spacing: 2px; color: #8a5a2b; }
 .legend, .range { font-size: 17px; color: #725c43; margin: 0; }
 .range { text-align: right; margin-top: 12px; }
