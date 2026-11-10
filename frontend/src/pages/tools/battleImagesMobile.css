@@ -107,7 +107,7 @@
   .battle-tool .battle-member-actions { margin-left: -8px; }
   /* 标题只保留焦点目标，回合信息由面板最后一行展示。 */
   .battle-tool .battle-inline-heading { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .battle-tool .battle-inline-heading .battle-round-nav, .battle-tool .battle-sequence-head > button, .battle-tool .battle-sequence-tools { display: none; }
+  .battle-tool .battle-inline-heading .battle-round-nav, .battle-tool .battle-sequence-tools { display: none; }
   .battle-tool .battle-sequence { display: contents; }
   .battle-tool .battle-sequence-head { display: contents; }
   .battle-sequence-head > span { display: flex; grid-column: 1; order: 2; align-items: center; font-size: 12px; color: var(--ink-60); }
@@ -136,13 +136,7 @@
   .battle-tool .battle-composer-ring { grid-template-columns: 52px minmax(0, 1fr); }
   .battle-enemy-controls { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
   .battle-tool .battle-enemy-settings { min-height: 32px; padding: 2px; border: 1px solid var(--battle-accent); border-radius: 5px; color: var(--battle-accent); font-size: 11px; white-space: nowrap; }
-  .battle-target-ring { --ring-disc: 48px; position: relative; isolation: isolate; width: 100%; height: 88px; touch-action: pan-y; user-select: none; }
-  .battle-target-ring.is-disabled { opacity: .5; }
-  .battle-tool .battle-target-ring-disc { position: absolute; left: calc(50% + var(--ring-x) * 40%); top: calc((100% - var(--ring-disc)) * (1 - var(--ring-y))); transform: translateX(-50%) scale(var(--ring-s)); transition: none; box-sizing: border-box; flex-direction: column; gap: 2px; width: var(--ring-disc); height: var(--ring-disc); min-width: 0; min-height: 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--on-pastel, #493b2c); }
-  .battle-tool .battle-target-ring-disc:active:not(:disabled) { transform: translateX(-50%) scale(calc(var(--ring-s) * .96)); }
-  .battle-tool .battle-target-ring-disc.is-plain { color: var(--ink); }
-  .battle-tool .battle-target-ring-disc[aria-pressed=true] { border: 2px solid var(--battle-accent); }
-  .battle-target-ring-disc > span { max-width: 42px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.2; }
+  .battle-target-ring { --ring-disc: 48px; --ring-height: 88px; }
   .battle-tool .battle-composer > .battle-hint { order: -1; }
   .battle-tool .battle-composer-label { width: auto; align-self: center; }
   .battle-tool .battle-composer-grid > .battle-composer-label { text-align: center; }
@@ -153,14 +147,6 @@
   .battle-tool .battle-composer-grid > button { height: 40px; min-height: 40px; margin-inline: 3px; }
   .battle-tool .battle-composer-grid > button > b { font: 600 18px/1 var(--font-d); color: var(--action-color, inherit); }
   .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { color: inherit; }
-  .battle-composer-grid > button[data-action=ultimate] { --action-color: #b23a2e; }
-  .battle-composer-grid > button[data-action=attack] { --action-color: #94600f; }
-  .battle-composer-grid > button[data-action=defense] { --action-color: #2f69a8; }
-  .battle-composer-grid > button[data-action=sp] { --action-color: #4c7d2e; }
-  :root[data-theme="dark"] .battle-composer-grid > button[data-action=ultimate] { --action-color: #f1a79d; }
-  :root[data-theme="dark"] .battle-composer-grid > button[data-action=attack] { --action-color: #e3b866; }
-  :root[data-theme="dark"] .battle-composer-grid > button[data-action=defense] { --action-color: #9cc3ee; }
-  :root[data-theme="dark"] .battle-composer-grid > button[data-action=sp] { --action-color: #a9d18a; }
   .battle-tool .battle-composer-grid > button:active:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
   .battle-tool .battle-draft-menu > summary { min-height: 44px; font-size: 12px; }
@@ -209,7 +195,7 @@
 }
 
 @media (max-width: 767px) and (max-height: 700px) {
-  .battle-target-ring { height: 68px; }
+  .battle-target-ring { --ring-height: 68px; }
   .battle-tool .battle-composer-grid > button { height: 36px; min-height: 36px; }
   .battle-grid-heading > img { width: 28px; height: 32px; }
 }

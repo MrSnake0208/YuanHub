@@ -14,33 +14,31 @@ const setup = () => {
   return { draft, wrapper, button, group }
 }
 
-it('箱插入全队出手顺序，不需要目标；表格不加列，挂在上一位出手密探格内', async () => {
+it('场景交互插入全队出手顺序，不需要目标；表格不加列，挂在上一位出手密探格内', async () => {
   const { draft, wrapper, group } = setup()
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
-  await group('记录动作').findAll('button')[0].trigger('click')
-  await wrapper.get('[aria-label="关卡互动（箱）"]').trigger('click')
+  await group('记录动作').get('[aria-label="杨修 普攻"]').trigger('click')
+  await wrapper.get('[aria-label="场景交互（互）"]').trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }])
   expect(group('动作目标').findAll('button').every(item => item.attributes('disabled') === undefined)).toBe(true)
-  await wrapper.findAll('.battle-actor-option')[0].trigger('click')
-  await group('记录动作').findAll('button')[1].trigger('click')
+  await group('记录动作').get('[aria-label="杨修 大招"]').trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }, { slot: 0, type: 'ultimate', target: 2 }])
   expect(wrapper.findAll('thead th')).toHaveLength(7)
   // 只打一个目标时与出图一致，不逐格重复目标名。
-  expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2箱', '3↑'])
-  expect(wrapper.get('[aria-label="第2步：关卡互动（箱），点按修改"]').text()).toContain('关卡互动')
+  expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2互', '3↑'])
+  expect(wrapper.get('[aria-label="第2步：场景交互（互），点按修改"]').text()).toContain('场景交互')
 })
 
-it('修改步骤时箱与密探动作可原位互改，序号不变；箱步骤不能改动作类型', async () => {
+it('修改场景交互步骤时，点矩阵直接改成密探动作，再点场景交互改回，序号不变', async () => {
   const { draft, wrapper, group } = setup()
   draft.rounds[0].actions.push({ slot: 0, type: 'attack', target: 1 }, { type: 'interaction' })
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
-  await wrapper.get('[aria-label="第2步：关卡互动（箱），点按修改"]').trigger('click')
-  expect(wrapper.get('[aria-label="关卡互动（箱）"]').attributes('aria-pressed')).toBe('true')
-  await group('修改第2步动作').findAll('button')[0].trigger('click')
-  expect(draft.rounds[0].actions[1]).toEqual({ type: 'interaction' })
-  await wrapper.findAll('.battle-actor-option')[0].trigger('click')
+  await wrapper.get('[aria-label="第2步：场景交互（互），点按修改"]').trigger('click')
+  expect(wrapper.get('[aria-label="场景交互（互）"]').attributes('aria-pressed')).toBe('true')
+  await group('修改第2步动作').get('[aria-label="杨修 普攻"]').trigger('click')
+  expect(draft.rounds[0].actions[1]).toEqual({ slot: 0, type: 'attack', target: 2 })
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 1 }, { slot: 0, type: 'attack', target: 2 }])
-  await wrapper.get('[aria-label="关卡互动（箱）"]').trigger('click')
+  await wrapper.get('[aria-label="场景交互（互）"]').trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 1 }, { type: 'interaction' }])
 })
 

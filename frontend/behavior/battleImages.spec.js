@@ -351,7 +351,7 @@ it('表格按槽位编辑多动，重排是全队移动而非覆盖，边界按�
   await battleCell(wrapper, 1, 1)
   await button(wrapper, 'A普攻').trigger('click')
   await battleCell(wrapper, 1, 2)
-  await button(wrapper, '↑大招').trigger('click')
+  await wrapper.get('[aria-label="贾诩 大招"]').trigger('click')
   await battleCell(wrapper, 1, 1)
   await wrapper.get('[aria-label="动作目标"] button').trigger('click')
   await button(wrapper, '↓防御').trigger('click')

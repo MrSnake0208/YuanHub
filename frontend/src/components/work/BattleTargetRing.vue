@@ -48,7 +48,7 @@ function stopAnimation() {
 function animateTo(value) {
   stopAnimation()
   animationTarget = value
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
     rotation.value = value
     return
   }

@@ -261,7 +261,6 @@
 .battle-action-matrix th.is-active-column .battle-record-identity img { outline: 2px solid var(--battle-accent); outline-offset: -2px; }
 .battle-sequence { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .battle-sequence-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-60); }
-.battle-tool .battle-sequence-head > button { border: 0; padding: 6px; font-size: 12px; }
 .battle-sequence-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 8px 0 0; }
 .battle-tool .battle-sequence-chips button { gap: 6px; min-height: 36px; padding: 4px 6px 4px 4px; border: 2px solid transparent; border-radius: 6px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); font-size: 13px; font-weight: 400; }
 .battle-sequence-chips button > b { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--battle-selection); color: var(--battle-accent); font: 600 12px/1 var(--font-d); }
@@ -278,17 +277,27 @@
 .battle-composer { display: grid; gap: 10px; padding-top: 14px; }
 .battle-composer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
 .battle-composer-label { width: 36px; flex-shrink: 0; font-size: 12px; color: var(--ink-60); }
+.battle-target-ring { position: relative; isolation: isolate; width: 100%; height: var(--ring-height); touch-action: pan-y; user-select: none; }
+.battle-target-ring.is-disabled { opacity: .5; }
+.battle-tool .battle-target-ring-disc { position: absolute; left: calc(50% + var(--ring-x) * 40%); top: calc((100% - var(--ring-disc)) * (1 - var(--ring-y))); transform: translateX(-50%) scale(var(--ring-s)); transition: none; box-sizing: border-box; flex-direction: column; gap: 2px; width: var(--ring-disc); height: var(--ring-disc); min-width: 0; min-height: 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--on-pastel, #493b2c); }
+.battle-tool .battle-target-ring-disc:active:not(:disabled) { transform: translateX(-50%) scale(calc(var(--ring-s) * .96)); }
+.battle-tool .battle-target-ring-disc.is-plain { color: var(--ink); }
+.battle-tool .battle-target-ring-disc[aria-pressed=true] { border: 2px solid var(--battle-accent); }
+.battle-target-ring-disc > span { max-width: calc(var(--ring-disc) - 6px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.2; }
 .battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; border-color: transparent; border-radius: 6px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); font-weight: 400; }
 .battle-tool .battle-composer-row > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-accent); color: var(--surface); font-weight: 600; }
-.battle-tool .battle-composer-row > button[aria-pressed=true] i { border-color: var(--surface); }
-.battle-tool .battle-actor-option { padding-left: 4px; }
-.battle-actor-option img { width: 24px; height: 30px; object-fit: cover; object-position: top; border-radius: 3px; }
-.battle-target-option i { width: 12px; height: 12px; border: 1px solid var(--battle-border); border-radius: 3px; flex-shrink: 0; }
-.battle-tool .battle-action-option { min-width: 88px; }
-.battle-action-option b { font: 600 16px/1 var(--font-d); }
+.battle-composer-grid > button[data-action=ultimate] { --action-color: #b23a2e; }
+.battle-composer-grid > button[data-action=attack] { --action-color: #94600f; }
+.battle-composer-grid > button[data-action=defense] { --action-color: #2f69a8; }
+.battle-composer-grid > button[data-action=sp] { --action-color: #4c7d2e; }
+:root[data-theme="dark"] .battle-composer-grid > button[data-action=ultimate] { --action-color: #f1a79d; }
+:root[data-theme="dark"] .battle-composer-grid > button[data-action=attack] { --action-color: #e3b866; }
+:root[data-theme="dark"] .battle-composer-grid > button[data-action=defense] { --action-color: #9cc3ee; }
+:root[data-theme="dark"] .battle-composer-grid > button[data-action=sp] { --action-color: #a9d18a; }
 .battle-action-mark.is-box { border: 1px dashed var(--battle-border); }
 .battle-sequence-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--ink-60); font-size: 12px; margin-top: 8px; }
 .battle-tool .battle-sequence-tools > button { margin-left: auto; padding: 6px 10px; font-size: 12px; color: var(--ink-60); }
+.battle-tool .battle-sequence-tools > button + button { margin-left: 0; }
 .battle-round-note { margin-top: 16px; }
 .battle-target-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: -4px 0 14px; }
 .battle-target-fields input:disabled { opacity: .5; }
@@ -308,6 +317,27 @@
 /* 回合栏与备注带仅手机端显示：桌面端用编辑区顶部的翻回合按钮和备注列。 */
 .battle-mobile-panel, .battle-mobile-dock, .battle-disc-short, .battle-round-dock, .battle-action-matrix tr.battle-remark-row { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 768px) {
+  /* 回合列 56px、备注列 180px 各减去单元格内边距 18px，得到 38px、162px。 */
+  .battle-tool .battle-inline-editor { display: grid; grid-template-columns: minmax(0, 1fr) 162px; align-items: stretch; }
+  .battle-tool .battle-inline-heading, .battle-tool .battle-sequence, .battle-tool .battle-sequence-tools { grid-column: 1 / -1; }
+  .battle-target-ring { --ring-disc: 56px; --ring-height: 100px; max-width: 420px; margin-inline: auto; cursor: grab; }
+  .battle-target-ring:active { cursor: grabbing; }
+  .battle-tool .battle-composer-ring { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; }
+  .battle-tool .battle-composer-grid { display: grid; grid-template-columns: 38px repeat(5, minmax(0, 1fr)); column-gap: 0; row-gap: 4px; }
+  .battle-grid-heading { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; font-size: 12px; }
+  .battle-grid-heading img { width: 24px; height: 30px; object-fit: cover; object-position: top; border-radius: 3px; }
+  .battle-grid-heading > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .battle-tool .battle-composer-grid > button { min-width: 0; min-height: 34px; padding: 4px 6px; gap: 4px; margin-inline: 3px; white-space: nowrap; }
+  .battle-tool .battle-composer-grid > button > b { font: 600 15px/1 var(--font-d); color: var(--action-color, inherit); }
+  .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { color: inherit; }
+  .battle-sequence-actions { display: flex; gap: 4px; }
+  .battle-tool .battle-sequence-actions > button { border: 0; padding: 6px; font-size: 12px; }
+  .battle-tool .battle-sequence-actions > button[aria-pressed=true] { background: var(--battle-accent); color: var(--surface); }
+  .battle-sequence-actions > button > b { font: 600 13px/1 var(--font-d); }
+  .battle-tool .battle-round-note { display: grid; grid-template-rows: auto minmax(0, 1fr); margin: 14px 0 0 10px; }
+  .battle-tool .battle-round-note textarea { height: 100%; min-height: 96px; resize: none; }
+}
 @media (hover: hover) {
   .battle-tool .battle-record-identity:hover { background: var(--battle-selection); color: var(--battle-accent); }
   .battle-tool .battle-disc-states > button:hover:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); color: var(--battle-accent); }
