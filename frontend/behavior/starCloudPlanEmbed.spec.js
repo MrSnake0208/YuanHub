@@ -135,8 +135,8 @@ it.each(['automatic', 'local-ocr', 'compact'])('edits unknown MaaYuan experience
     })
   }
   const available = () => root.querySelector('.growth-owned-total b')?.textContent
-  await vi.waitFor(() => expect(available()).toMatch(/^\d/))
-  const total = available()
+  const total = source === 'local-ocr' ? '1.2k' : '10.1k'
+  await vi.waitFor(() => expect(available()).toBe(total))
 
   await handle.setHostAccount(f.account)
   expect(await coordinator.enter(handle)).toBe(true)
