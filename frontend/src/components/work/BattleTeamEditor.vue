@@ -62,7 +62,7 @@
             </div>
           </div>
           <div class="battle-dialog-body">
-            <BattleMemberPicker v-if="detail === 'picker'" :key="slot" :slot="slot" :agents="sortedAgents" :account-entries="accountEntries" :team="operators" :busy="busy" @choose="choose" @pending-name="setPending" />
+            <BattleMemberPicker v-if="detail === 'picker'" :key="slot" v-model:filters="pickerFilters" :slot="slot" :agents="sortedAgents" :account-entries="accountEntries" :team="operators" :busy="busy" @choose="choose" @pending-name="setPending" />
             <!-- 面板来源只在练度页说明，紧邻生命与攻击；配队表不再常驻“面板来源”行。 -->
             <BattleStatFields v-else-if="detail === 'stats'" :operator="operator" :agent="catalogAgent" @change="updateField" />
             <template v-else>
@@ -108,6 +108,8 @@ const sortedAgents = computed(() => {
   return props.catalog.filter(agent => agentMatchesGame(agent, props.game)).sort((a, b) => Number(owned.has(b.id)) - Number(owned.has(a.id)))
 })
 const slot = ref(0), detail = ref(''), returnSection = ref('stats'), heading = ref(null), busy = ref(false), loadoutInputs = ref([]), namePending = ref(false)
+const defaultPickerFilters = () => ({ ownedOnly: false, rarity: 'all', prof: 'all', subProf: 'all' })
+const pickerFilters = ref(defaultPickerFilters())
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
 const operator = computed(() => props.operators[slot.value])
 // 携带、必须、禁用是同一批命盘的不同状态，合并在“命盘”分区按词条标记；必须／禁用不在页面表格常驻。
@@ -116,7 +118,7 @@ const panel = ref(null), dialogOpen = computed(() => Boolean(detail.value))
 // 遮罩点击不关闭；Esc 与“完成”走同一关闭流程，未确认的自定义名称仍需确认。
 useModalFocus(dialogOpen, panel, { initialFocus: () => heading.value, onEscape: () => close() })
 watch(dialogOpen, (isOpen, _, onCleanup) => {
-  if (!isOpen) return
+  if (!isOpen) { pickerFilters.value = defaultPickerFilters(); return }
   const previous = document.body.style.overflow
   document.body.style.overflow = 'hidden'
   onCleanup(() => { document.body.style.overflow = previous })
