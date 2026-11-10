@@ -33,6 +33,7 @@ data class StarInventorySyncRequest(
             }
             fun text(node: JsonNode): String = if (node.isTextual) node.textValue() else invalid()
             fun integer(node: JsonNode): Int = if (node.isIntegralNumber && node.canConvertToInt()) node.intValue() else invalid()
+            fun nullableInteger(node: JsonNode): Int? = if (node.isNull) null else integer(node)
             val required = arrayOf("format", "version", "scan_id", "complete", "counts", "inventory", "experience")
             fields(root, *(required + if (root.has("bag")) arrayOf("bag") else emptyArray()))
             val bag = if (root.has("bag")) {
@@ -40,7 +41,7 @@ data class StarInventorySyncRequest(
                 fields(node, "current_count", "capacity")
                 StarWorkspaceBagRequest(
                     integer(node.path("current_count")),
-                    if (node.path("capacity").isNull) null else integer(node.path("capacity")),
+                    nullableInteger(node.path("capacity")),
                 )
             } else {
                 null
@@ -67,9 +68,9 @@ data class StarInventorySyncRequest(
                     )
                 },
                 StarInventorySyncExperience(
-                    integer(experience.path("orange")),
-                    integer(experience.path("purple")),
-                    integer(experience.path("white")),
+                    nullableInteger(experience.path("orange")),
+                    nullableInteger(experience.path("purple")),
+                    nullableInteger(experience.path("white")),
                 ),
                 bag,
             )

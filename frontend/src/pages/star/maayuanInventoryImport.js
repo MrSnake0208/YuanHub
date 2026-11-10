@@ -15,7 +15,8 @@ function validateCompact(doc) {
     typeof doc.scan_id !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(doc.scan_id)) invalid('需要有效批次编号及完整扫描标记')
   exact(doc.counts, ['main', 'support'])
   exact(doc.experience, ['orange', 'purple', 'white'])
-  if (!Array.isArray(doc.inventory) || doc.inventory.length > 1000 || !Object.values(doc.experience).every(count)) invalid('星石或经验数量无效')
+  if (!Array.isArray(doc.inventory) || doc.inventory.length > 1000 ||
+    !Object.values(doc.experience).every(value => value === null || count(value))) invalid('星石或经验数量无效')
   for (const item of doc.inventory) {
     exact(item, ['kind', 'name', 'quality', 'level'])
     if (!['main', 'support'].includes(item.kind) || typeof item.name !== 'string' || !item.name.trim() ||
@@ -56,7 +57,9 @@ export async function normalizeMaaYuanInventory(value) {
     }
   }
   const exp = value.experience
-  if (!object(exp) || exp.complete !== true || exp.structured !== true) invalid('缺少完整且已结构化的三种经验星曜识别结果')
+  // MaaYuan sets both experience flags to false when a count is unknown.
+  const experienceComplete = ![exp?.orangeCount, exp?.purpleCount, exp?.whiteCount].includes(null)
+  if (!object(exp) || exp.complete !== experienceComplete || exp.structured !== experienceComplete) invalid('缺少完整且已结构化的三种经验星曜识别结果')
   const document = { format: 'maayuan-star-inventory', version: 1, scan_id: '00000000-0000-0000-0000-000000000000', complete: true,
     counts, inventory, experience: { orange: exp.orangeCount, purple: exp.purpleCount, white: exp.whiteCount } }
   if (Object.hasOwn(value, 'bag')) {

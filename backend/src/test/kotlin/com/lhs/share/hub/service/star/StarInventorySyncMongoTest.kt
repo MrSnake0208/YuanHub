@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.lhs.share.config.security.AuthenticationHelper
 import com.lhs.share.handler.InventoryExceptionHandler
+import com.lhs.share.hub.controller.star.StarStateController
 import com.lhs.share.hub.controller.star.request.StarInventoryEntryRequest
 import com.lhs.share.hub.controller.star.request.StarInventorySyncCounts
 import com.lhs.share.hub.controller.star.request.StarInventorySyncEntry
@@ -48,6 +50,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
+import org.bson.Document
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -190,6 +193,37 @@ class StarInventorySyncMongoTest {
             listOf(StarOperatorLoadout("op", StarLoadoutSlots(main1 = "old"))),
             java.time.Instant.now(),
         )
+    }
+
+    @Test fun `unknown experience replaces old counts and round trips through BSON current API and retry`() {
+        seed(plan = false)
+        val syncs = service()
+        val helper = mockk<AuthenticationHelper>()
+        every { helper.requireUserId() } returns "owner"
+        val controller = StarStateController(stateService, helper)
+        val cases = listOf(
+            StarInventorySyncExperience(0, null, 91),
+            StarInventorySyncExperience(null, null, null),
+        )
+        for (experience in cases) {
+            val expected = mapper.readTree(mapper.writeValueAsString(experience))
+            val request = request().copy(experience = experience, bag = StarWorkspaceBagRequest(3, 270))
+            val parsed = StarInventorySyncRequest.fromWire(mapper.readTree(mapper.writeValueAsString(request)))
+            val receipt = syncs.sync("owner", "a", parsed)
+            val stored = template.getCollection("star_state_current")
+                .find(Document("_id", "owner:a")).first()!!
+                .get("experience", Document::class.java)
+            assertEquals(expected, mapper.readTree(stored.toJson()))
+            val current = stateService.current("owner", "a")
+            val api = mapper.readTree(mapper.writeValueAsString(controller.current("a")))
+            assertEquals(expected, api["data"]["experience"])
+            assertEquals(3, current.inventory.size)
+            assertEquals(270, current.bag.capacity)
+            val saved = receipts.findByUserIdAndAccountIdAndScanId("owner", "a", request.scanId)!!
+            assertEquals(expected, mapper.readTree(saved.payload)["experience"])
+            assertEquals(receipt, syncs.sync("owner", "a", parsed))
+            assertEquals(receipt.generation, stateService.current("owner", "a").generation)
+        }
     }
 
     @Test fun `optional bag capacity persists while legacy scans keep capacity unknown`() {

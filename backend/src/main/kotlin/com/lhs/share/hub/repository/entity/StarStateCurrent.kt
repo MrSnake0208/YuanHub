@@ -3,6 +3,7 @@ package com.lhs.share.hub.repository.entity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.mapping.Document
+import org.springframework.data.mongodb.core.mapping.Field
 import java.time.Instant
 
 /** The account's complete current star business state. OCR evidence stays in YuanStar. */
@@ -34,7 +35,11 @@ data class StarStateEntry(
 
 data class StarStatePlanTarget(val instanceId: String, val targetLevel: Int)
 
-data class StarStateExperience(val orange: Int? = null, val purple: Int? = null, val white: Int? = null)
+data class StarStateExperience(
+    @field:Field(write = Field.Write.ALWAYS) val orange: Int? = null,
+    @field:Field(write = Field.Write.ALWAYS) val purple: Int? = null,
+    @field:Field(write = Field.Write.ALWAYS) val white: Int? = null,
+)
 
 data class StarStateBag(val currentCount: Int? = null, val capacity: Int? = null)
 

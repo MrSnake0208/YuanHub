@@ -44,9 +44,11 @@ class OpenApiStarInventorySyncControllerContractTest {
             { it.put("account_id", "another") },
             { it.put("game_version", "ruyuan") },
             { it.put("complete", "true") },
-            { (it["experience"] as ObjectNode).putNull("orange") },
             { (it["experience"] as ObjectNode).put("orange", "0") },
             { (it["experience"] as ObjectNode).put("orange", 0.5) },
+            { (it["experience"] as ObjectNode).put("orange", 0.0) },
+            { (it["experience"] as ObjectNode).put("orange", false) },
+            { (it["experience"] as ObjectNode).put("orange", 2147483648L) },
             { (it["experience"] as ObjectNode).remove("white") },
             { (it["counts"] as ObjectNode).remove("support") },
             { (it["inventory"][0] as ObjectNode).put("instance_id", "client") },
@@ -55,6 +57,23 @@ class OpenApiStarInventorySyncControllerContractTest {
             val value = mapper.readTree(body) as ObjectNode
             mutate(value)
             assertThrows(InventoryApiException::class.java) { StarInventorySyncRequest.fromWire(value) }
+        }
+    }
+
+    @Test fun `wire accepts explicit unknown counts independently of zero and confirmed counts`() {
+        val valid = mapper.readTree(body) as ObjectNode
+        val samples = listOf(
+            """{"orange":null,"purple":0,"white":2147483647}""",
+            """{"orange":0,"purple":null,"white":91}""",
+            """{"orange":0,"purple":525,"white":null}""",
+            """{"orange":null,"purple":null,"white":null}""",
+        )
+        for (sample in samples) {
+            val expected = mapper.readTree(sample)
+            valid.set<ObjectNode>("experience", expected)
+            val request = StarInventorySyncRequest.fromWire(valid)
+            StarInventorySyncService.validate(request, "如鸢")
+            assertEquals(expected, mapper.readTree(mapper.writeValueAsString(request))["experience"])
         }
     }
 
@@ -126,9 +145,10 @@ class OpenApiStarInventorySyncControllerContractTest {
         val mvc = MockMvcBuilders.standaloneSetup(OpenApiStarInventorySyncController(tokens, service))
             .setControllerAdvice(InventoryExceptionHandler())
             .setMessageConverters(MappingJackson2HttpMessageConverter(mapper)).build()
+        val mixed = (mapper.readTree(body) as ObjectNode).also { (it["experience"] as ObjectNode).putNull("purple") }
         val response = mvc.perform(
             post("/open-api/star/inventory-sync").header("Authorization", "Bearer sync")
-                .contentType(MediaType.APPLICATION_JSON).content(body),
+                .contentType(MediaType.APPLICATION_JSON).content(mixed.toString()),
         ).andExpect(status().isOk).andReturn()
         assertEquals("bound", mapper.readTree(response.response.contentAsString)["data"]["account_id"].asText())
         mvc.perform(get("/open-api/star/inventory-sync/${receipt.scanId}").header("Authorization", "Bearer sync")).andExpect(status().isOk)
@@ -139,7 +159,9 @@ class OpenApiStarInventorySyncControllerContractTest {
         mvc.perform(
             post("/open-api/star/inventory-sync").contentType(MediaType.APPLICATION_JSON).content(body),
         ).andExpect(status().isUnauthorized)
-        verify(exactly = 1) { service.sync("owner", "bound", any()) }
+        verify(exactly = 1) {
+            service.sync("owner", "bound", match { it.experience.orange == 0 && it.experience.purple == null && it.experience.white == 91 })
+        }
         assertEquals(30003, OpenApiPermission.codeByKey("star:sync:write"))
     }
 }

@@ -28,11 +28,63 @@ test('compact protocol keeps its original scan_id and strict wire body, not a ba
   await assert.rejects(normalizeMaaYuanInventory({ ...document, user_id: 'foreign' }))
   await assert.rejects(normalizeMaaYuanInventory({ ...document, inventory: [{ ...document.inventory[0], instanceId: 'local' }] }))
 })
-test('unconfirmed counts and incomplete sections cannot be promoted to a full inventory', async () => {
+test('compact MaaYuan inventory keeps unknown and confirmed zero counts distinct', async () => {
+  const { document } = await normalizeMaaYuanInventory(real())
+  for (const experience of [{ orange: null, purple: 0, white: 91 }, { orange: null, purple: null, white: null }]) {
+    const batch = { ...document, experience }
+    assert.deepEqual(await normalizeMaaYuanInventory(batch), { document: batch, source_format: 'compact' })
+  }
+  for (const orange of [undefined, -1, '0', true, 0.5, 2147483648]) {
+    await assert.rejects(normalizeMaaYuanInventory({ ...document, experience: { ...document.experience, orange } }))
+  }
+})
+test('raw OCR preserves explicit unknown counts and confirmed zero in the sync JSON', async () => {
+  for (const experience of [{ orange: 0, purple: null, white: 91 }, { orange: null, purple: null, white: null }]) {
+    const local = real()
+    local.experience = {
+      complete: false, structured: false,
+      orangeCount: experience.orange, purpleCount: experience.purple, whiteCount: experience.white,
+      warnings: ['experience_counts_incomplete'], detailsFile: 'experience-results.json',
+    }
+    const original = structuredClone(local)
+    const { document, source_format } = await normalizeMaaYuanInventory(local)
+    assert.equal(source_format, 'local-ocr')
+    assert.equal(document.complete, true)
+    const wire = JSON.parse(JSON.stringify(document))
+    assert.deepEqual(wire.experience, experience)
+    assert.deepEqual(await normalizeMaaYuanInventory(wire), { document: wire, source_format: 'compact' })
+    assert.deepEqual(local, original)
+  }
+})
+test('raw OCR rejects missing and invalid counts even when the experience flags are false', async () => {
+  const local = real()
+  Object.assign(local.experience, { complete: false, structured: false, orangeCount: null })
+  for (const value of [-1, 0.5, '0', false, 2147483648]) {
+    local.experience.purpleCount = value
+    await assert.rejects(normalizeMaaYuanInventory(local))
+  }
+  for (const field of ['orangeCount', 'purpleCount', 'whiteCount']) {
+    const incomplete = structuredClone(local)
+    Object.assign(incomplete.experience, { orangeCount: null, purpleCount: null, whiteCount: null })
+    delete incomplete.experience[field]
+    await assert.rejects(normalizeMaaYuanInventory(incomplete))
+  }
+})
+test('raw OCR requires consistent boolean experience flags', async () => {
+  for (const [complete, structured] of [[true, true], [true, false], [false, true], [undefined, false], [false, 'false']]) {
+    const local = real()
+    Object.assign(local.experience, { complete, structured, whiteCount: null })
+    await assert.rejects(normalizeMaaYuanInventory(local))
+  }
+  const local = real()
+  Object.assign(local.experience, { complete: false, structured: false })
+  await assert.rejects(normalizeMaaYuanInventory(local))
+})
+test('invalid quantities and incomplete sections cannot be promoted to a full inventory', async () => {
   const mutations = [
     x => { x.complete = false }, x => { x.schemaVersion = 1 }, x => { delete x.complete },
-    x => { x.sections.main.complete = false }, x => { x.sections.support.count++ },
-    x => { x.experience.structured = false }, x => { x.experience.orangeCount = null },
+    x => { x.sections.main.complete = false }, x => { x.sections.support.complete = false }, x => { x.sections.support.count++ },
+    x => { x.experience.structured = false }, x => { x.experience.orangeCount = null }, x => { delete x.experience.orangeCount },
     x => { x.experience.whiteCount = '0' }, x => { x.experience.whiteCount = -1 },
     x => { x.sections.main.items[0].level = 61 }, x => { x.sections.main.items[0].quality = 'gold' },
     x => { x.sections.main.items[0].section = 'support' }, x => { x.account_id = 'foreign' },

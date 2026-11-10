@@ -2,9 +2,8 @@
 
 `POST /open-api/star/inventory-sync` requires an account-bound OpenAPI token with
 `star:sync:write` (code 30003). Deploy the backend before enabling the sender.
-Existing image/scan-review endpoints, game-version fields and account game rules
-are unchanged. The account's stored game selects validation; both supported games
-currently share the canonical star-name sets in `StarScanService`.
+The account's stored game selects validation. Both supported games share the
+canonical name sets in `StarStoneCatalog`.
 
 ```json
 {
@@ -18,17 +17,24 @@ currently share the canonical star-name sets in `StarScanService`.
     {"kind": "main", "name": "天府", "quality": "orange", "level": 60},
     {"kind": "support", "name": "文曲", "quality": "purple", "level": 20}
   ],
-  "experience": {"orange": 0, "purple": 525, "white": 91}
+  "experience": {"orange": 0, "purple": 525, "white": null},
+  "bag": {"current_count": 3, "capacity": 270}
 }
 ```
 
-Every displayed field is required; extra fields are rejected at every level.
-`counts` is the only metadata beyond the proposed compact document, and must equal
-the respective array counts. Inventory has at most 1000 entries. Identical values
-represent distinct instances. Levels must be integral and between 1 and the quality
-limit: white 30, green 40, blue 50, purple/orange 60. Experience counts must be
-integral 0..2147483647; null, missing, strings and fractional numbers are rejected.
-No user/account ID, game version, instance ID or diagnostics are accepted.
+Every displayed field except `bag` is required. Extra fields are rejected at every
+level. `counts` must equal the respective array counts. Inventory has at most
+1000 entries. Identical values represent distinct instances. Levels must be
+integral and between 1 and the quality limit (white 30, green 40, blue 50,
+purple/orange 60). Each experience count must be an integer in 0..2147483647
+or explicit `null` for an unknown count. All three keys are required and any
+combination is accepted, including three unknowns. Zero is a confirmed count.
+Unknown counts replace the previous observation and are returned as `null`
+by `GET /v1/star-state/current?account_id=...`.
+When `bag` is present, its `current_count` must equal the number of entries
+and `capacity` must be a positive integer at least that large or `null`. Older
+batches without `bag` retain an unknown capacity. No user/account ID, game
+version, instance ID or diagnostics are accepted.
 
 The success envelope's `data` contains `scan_id`, `status: "synced"`, `account_id`,
 `generation`, `revision`, `recovery_point_id` (nullable), and `inheritance_pending`.
