@@ -4,6 +4,10 @@
 
 状态：Token 受限扫描正式支持，旧 V2 兼容保留；完整 V5 备份使用站内 JWT。版本与字段说明见[密探 V5](../operator-growth-data-exchange-protocol-v5.md)及其继承的[V4](../operator-growth-data-exchange-protocol-v4.md)、[V3](../operator-growth-data-exchange-protocol-v3.md)。
 
+## 公开扫描目录
+
+`GET /open-api/operator/catalog` 无需 Token 或 Beta 资格，返回顶层 `OPERATORS`、`PROFESSIONS`、`catalog_schema_version`、`catalog_version`，无 `data` 包装。支持强 ETag 与 `If-None-Match → 304`；数据库或组装失败返回真实 HTTP 503。完整字段、顺序及别名规则见[公共目录交换规范](../exchange-specs/catalogs.md#3-maayuan-完整扫描目录)。
+
 ## Token 读取和旧版兼容
 
 使用 `Authorization: Bearer <OPENAPI_TOKEN>`，不传账号 query。

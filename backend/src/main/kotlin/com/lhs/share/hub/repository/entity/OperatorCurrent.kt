@@ -109,3 +109,14 @@ fun OperatorEntry.normalized(): OperatorEntry {
         discLoadouts = loadouts,
     )
 }
+
+/** 只投影当前名称，不批量改写历史用户数据。未知名称原样保留。 */
+fun OperatorEntry.withCatalogDiscNames(catalog: OperatorCatalogEntity?): OperatorEntry {
+    val entry = normalized()
+    if (catalog == null) return entry
+    fun canonical(discs: List<OperatorDisc>) = discs.map { disc ->
+        catalog.discByName(disc.otName)?.let { disc.copy(otName = it.otName) } ?: disc
+    }
+    val loadouts = entry.discLoadouts.map { it.copy(discs = canonical(it.discs), targetDiscs = canonical(it.targetDiscs)) }
+    return entry.copy(discs = loadouts.firstOrNull()?.discs.orEmpty(), discLoadouts = loadouts)
+}

@@ -1,0 +1,226 @@
+[
+  {
+    "id": "混沌",
+    "name": "混沌",
+    "name_en": "混沌",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "地",
+    "name": "地",
+    "name_en": "地",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "水",
+    "name": "水",
+    "name_en": "水",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "火",
+    "name": "火",
+    "name_en": "火",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "风",
+    "name": "风",
+    "name_en": "风",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "阳",
+    "name": "阳",
+    "name_en": "阳",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  },
+  {
+    "id": "阴",
+    "name": "阴",
+    "name_en": "阴",
+    "sub": [
+      {
+        "id": "pojun",
+        "name": "破军",
+        "name_en": "破军"
+      },
+      {
+        "id": "longdun",
+        "name": "龙盾",
+        "name_en": "龙盾"
+      },
+      {
+        "id": "qihuang",
+        "name": "岐黄",
+        "name_en": "岐黄"
+      },
+      {
+        "id": "shenji",
+        "name": "神纪",
+        "name_en": "神纪"
+      },
+      {
+        "id": "guidao",
+        "name": "诡道",
+        "name_en": "诡道"
+      }
+    ]
+  }
+]

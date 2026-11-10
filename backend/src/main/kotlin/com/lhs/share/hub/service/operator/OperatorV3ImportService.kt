@@ -20,6 +20,7 @@ import com.lhs.share.hub.repository.entity.OperatorCatalogEntity
 import com.lhs.share.hub.repository.entity.OperatorScanReview
 import com.lhs.share.hub.repository.entity.OperatorV3ImportRecord
 import com.lhs.share.hub.repository.entity.SubAccount
+import com.lhs.share.hub.repository.entity.discByName
 import com.lhs.share.hub.service.account.AccountEventService
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.HttpStatus
@@ -491,10 +492,12 @@ class OperatorV3ImportService(
         userId: String,
         command: ImportCommand,
         record: ObjectNode,
-        entry: ObjectNode,
+        rawEntry: ObjectNode,
         target: SubAccount,
         targetGame: String,
     ): PreparedItem {
+        // 归一仅作用于补丁副本；审计正文仍保留原文以维持 record_id 幂等比较。
+        val entry = rawEntry.deepCopy()
         val recordId = text(record, "record_id")
         val operatorId = text(entry, "operator_id")
         return try {
@@ -754,16 +757,28 @@ class OperatorV3ImportService(
     private fun validateCatalogEntryFields(entry: ObjectNode, record: ObjectNode, catalog: OperatorCatalogEntity) {
         val recordId = text(record, "record_id")
         entry.path("disc_loadouts").takeIf(JsonNode::isArray)?.forEachIndexed { loadoutIndex, loadout ->
-            loadout.path("discs").takeIf(JsonNode::isArray)?.forEachIndexed { discIndex, disc ->
-                val name = disc.path("ot_name").asText()
-                if (catalog.discs.none { it.otName == name }) {
-                    invalid(
-                        "invalid_disc_loadout",
-                        "disc is not in the operator catalog",
-                        recordId,
-                        catalog.operatorId,
-                        "disc_loadouts[$loadoutIndex].discs[$discIndex].ot_name",
-                    )
+            listOf("discs", "target_discs").forEach { field ->
+                val names = mutableSetOf<String>()
+                loadout.path(field).takeIf(JsonNode::isArray)?.forEachIndexed { discIndex, disc ->
+                    val name = disc.path("ot_name").asText()
+                    val canonical = catalog.discByName(name)
+                        ?: invalid(
+                            "invalid_disc_loadout",
+                            "disc is not in the operator catalog",
+                            recordId,
+                            catalog.operatorId,
+                            "disc_loadouts[$loadoutIndex].$field[$discIndex].ot_name",
+                        )
+                    if (!names.add(canonical.otName)) {
+                        invalid(
+                            "invalid_disc_loadout",
+                            "disc ot_name must be unique within a loadout",
+                            recordId,
+                            catalog.operatorId,
+                            "disc_loadouts[$loadoutIndex].$field",
+                        )
+                    }
+                    (disc as ObjectNode).put("ot_name", canonical.otName)
                 }
             }
         }

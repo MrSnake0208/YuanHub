@@ -10,8 +10,8 @@ import com.lhs.share.hub.repository.OperatorGrowthTargetRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.OperatorEntry
 import com.lhs.share.hub.repository.entity.SubAccount
-import com.lhs.share.hub.repository.entity.normalized
 import com.lhs.share.hub.repository.entity.oddityNumberNode
+import com.lhs.share.hub.repository.entity.withCatalogDiscNames
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -75,13 +75,13 @@ class OperatorV3ExportService(
         val record = baseRecord(account, "myshare:export:$exportId:${account.accountId}:objective", "operator_snapshot", now)
         val array = record.putArray("entries")
         entries.toSortedMap().forEach { (operatorId, raw) ->
-            val entry = raw.normalized()
+            val catalog = catalogService.getOperator(operatorId)
+            val entry = raw.withCatalogDiscNames(catalog)
             val node = objectMapper.createObjectNode()
                 .put("operator_id", operatorId)
                 .put("level", entry.level)
                 .put("elite", entry.elite)
                 .put("star_level", entry.starLevel)
-            val catalog = catalogService.getOperator(operatorId)
             if (version >= 5) {
                 val stage = OperatorLevelBreakthroughRules.read(entry.level, entry.levelBreakthroughStage)
                 if (stage == null) node.putNull("level_breakthrough_stage") else node.put("level_breakthrough_stage", stage)

@@ -132,7 +132,7 @@ data class OperatorCatalogEntryResponse(
     val prof: List<String>,
     val subProf: List<String>,
     val games: List<String>,
-    val discs: List<OperatorDiscCatalog>,
+    val discs: List<OperatorCatalogDiscResponse>,
     // SP 形态指向其"本体"密探 id（如 史子眇·赴烛 -> 史子眇）；普通密探为 null。
     val spOf: String? = null,
     // 密探头像相对路径（如 "/avatar/char_001_yangxiu.webp"），前端拼 baseURL；未上传为 null。
@@ -151,7 +151,7 @@ data class OperatorCatalogEntryResponse(
             e.prof,
             e.subProf,
             e.games,
-            e.discs,
+            e.discs.map { OperatorCatalogDiscResponse(it.otName, it.abbreviation, it.color, it.desp) },
             e.spOf,
             e.avatar,
             OperatorHuajiCapabilities(
@@ -163,6 +163,9 @@ data class OperatorCatalogEntryResponse(
         )
     }
 }
+
+/** 公共 v1 保持原有命盘字段；OCR 别名只在管理端与 MaaYuan 目录公开。 */
+data class OperatorCatalogDiscResponse(val otName: String, val abbreviation: String?, val color: String?, val desp: String?)
 
 data class OperatorOdditySchemaResponse(
     val attack: OperatorOddityDefinitionResponse,

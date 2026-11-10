@@ -1,6 +1,9 @@
 package com.lhs.share.openapi
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.lhs.share.config.accesslimit.AccessLimit
 import com.lhs.share.config.doc.RequireOpenApiToken
 import com.lhs.share.controller.response.ApiResult
 import com.lhs.share.controller.response.ApiResult.Companion.success
@@ -17,11 +20,13 @@ import com.lhs.share.hub.controller.operator.response.OperatorV3ImportCommitResp
 import com.lhs.share.hub.controller.operator.response.OperatorV3ImportPreviewResponse
 import com.lhs.share.hub.service.account.SubAccountService
 import com.lhs.share.hub.service.operator.OperatorApiException
+import com.lhs.share.hub.service.operator.OperatorCatalogService
 import com.lhs.share.hub.service.operator.OperatorDailyTasksService
 import com.lhs.share.hub.service.operator.OperatorPlannerService
 import com.lhs.share.hub.service.operator.OperatorService
 import com.lhs.share.hub.service.operator.OperatorSubjectiveService
 import com.lhs.share.hub.service.operator.OperatorV3ImportService
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
@@ -42,9 +47,13 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.context.request.WebRequest
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.HexFormat
 import io.swagger.v3.oas.annotations.parameters.RequestBody as SwaggerRequestBody
 
 @RestController
@@ -58,7 +67,33 @@ class OpenApiOperatorController(
     private val plannerService: OperatorPlannerService? = null,
     private val dailyTasksService: OperatorDailyTasksService? = null,
     private val clock: Clock = Clock.systemUTC(),
+    private val catalogService: OperatorCatalogService? = null,
+    private val objectMapper: ObjectMapper? = null,
 ) {
+    @Operation(summary = "公开 MaaYuan 完整密探目录", description = "无需 Token；支持 ETag / If-None-Match，命盘保持数据库存储顺序。")
+    @AccessLimit(times = 600, second = 60)
+    @GetMapping("/catalog")
+    fun catalog(request: WebRequest): ResponseEntity<ByteArray> {
+        val mediaType = MediaType("application", "json", StandardCharsets.UTF_8)
+        return try {
+            val document = requireNotNull(catalogService).maaYuanCatalog()
+            val bytes = requireNotNull(objectMapper).writer().without(SerializationFeature.INDENT_OUTPUT).writeValueAsBytes(document)
+            val etag = "\"${HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))}\""
+            val unchanged = request.checkNotModified(etag)
+            ResponseEntity.status(if (unchanged) HttpStatus.NOT_MODIFIED else HttpStatus.OK)
+                .eTag(etag)
+                .header("Cache-Control", "public, no-cache")
+                .contentType(mediaType)
+                .body(if (unchanged) null else bytes)
+        } catch (e: Exception) {
+            KotlinLogging.logger { }.error(e) { "Failed to assemble MaaYuan operator catalog" }
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .cacheControl(CacheControl.noStore())
+                .contentType(mediaType)
+                .body("{\"error\":\"operator_catalog_unavailable\"}".toByteArray(StandardCharsets.UTF_8))
+        }
+    }
+
     @GetMapping("/account")
     fun account(@RequestHeader(value = "Authorization", required = false) authorization: String?): ApiResult<SubAccountResponse> {
         val principal = tokenService.authenticateAuthorization(authorization)

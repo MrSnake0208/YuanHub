@@ -33,5 +33,15 @@ data class OperatorCatalogEntity(
     val createdAt: Instant = Instant.now(),
 )
 
-data class OperatorDiscCatalog(val otName: String, val abbreviation: String? = null, val color: String? = null, val desp: String? = null)
+data class OperatorDiscCatalog(
+    val otName: String,
+    val abbreviation: String? = null,
+    val color: String? = null,
+    val desp: String? = null,
+    val aliases: List<String>? = null,
+)
+
+fun OperatorCatalogEntity.discByName(name: String): OperatorDiscCatalog? =
+    discs.firstOrNull { it.otName == name } ?: discs.firstOrNull { name in it.aliases.orEmpty() }
+
 data class OperatorStarStoneCatalog(val name: String, val type: String)

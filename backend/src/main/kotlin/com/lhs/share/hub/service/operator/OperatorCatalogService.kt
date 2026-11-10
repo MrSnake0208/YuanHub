@@ -2,6 +2,7 @@ package com.lhs.share.hub.service.operator
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.lhs.share.hub.controller.operator.request.OperatorCatalogWriteRequest
 import com.lhs.share.hub.controller.operator.response.AdminOperatorCatalogResponse
 import com.lhs.share.hub.controller.operator.response.OperatorCatalogEntryResponse
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.text.Normalizer
 import java.time.Instant
 import java.time.LocalDate
 
@@ -49,6 +51,44 @@ class OperatorCatalogService(
             catalogVersion = currentCatalogVersion(),
             operators = repository.findAllByOrderByOperatorIdAsc().map { OperatorCatalogEntryResponse.of(it) },
         )
+    }
+
+    /** 独立读取数据库快照，不触发 seed/backfill，也不使用进程内版本缓存。 */
+    fun maaYuanCatalog(): ObjectNode {
+        val entries = repository.findAllByOrderByOperatorIdAsc()
+        check(entries.isNotEmpty()) { "Operator catalog is empty" }
+        val root = objectMapper.createObjectNode()
+        val operators = root.putArray("OPERATORS")
+        entries.filter { it.discs.isNotEmpty() }.forEach { entry ->
+            val node = operators.addObject()
+                .put("id", entry.operatorId)
+                .put("name", entry.name)
+                .put("name_en", entry.name)
+                .put("alias", entry.alias.orEmpty())
+                .put("alt_name", entry.name)
+                .put("rarity", entry.rarity)
+            node.putArray("prof").also { array -> entry.prof.forEach { array.add(it) } }
+            node.putArray("subProf").also { array -> entry.subProf.forEach { array.add(it) } }
+            node.putArray("games").also { array -> entry.games.forEach { array.add(it) } }
+            // 命盘顺序是自动编队契约，不能排序。
+            val discs = node.putArray("discs")
+            entry.discs.forEach { disc ->
+                val value = discs.addObject()
+                    .put("ot_name", disc.otName)
+                    .put("abbreviation", disc.abbreviation.orEmpty())
+                    .put("color", disc.color.orEmpty())
+                    .put("desp", disc.desp.orEmpty())
+                if (!disc.aliases.isNullOrEmpty()) {
+                    value.putArray("aliases").also { array -> disc.aliases.forEach { array.add(it) } }
+                }
+            }
+        }
+        val professions = ClassPathResource("operator/professions.json").inputStream.use { objectMapper.readTree(it) }
+        check(professions.isArray && !professions.isEmpty) { "Invalid operator professions" }
+        root.set<JsonNode>("PROFESSIONS", professions)
+        root.put("catalog_schema_version", 1)
+        root.put("catalog_version", entries.maxOf { it.catalogVersion })
+        return root
     }
 
     /**
@@ -90,10 +130,11 @@ class OperatorCatalogService(
         if (repository.findByOperatorId(request.id) != null) {
             throw OperatorApiException(HttpStatus.CONFLICT, "operator_conflict", "Operator already exists")
         }
-        validate(request)
+        val normalized = normalizeAliases(request)
+        validate(normalized)
         val specialOddityName = requireSpecialOddityName(request.specialOddityName)
         val version = nextCatalogVersion()
-        return repository.save(request.toEntity(catalogVersion = version, specialOddityName = specialOddityName))
+        return repository.save(normalized.toEntity(catalogVersion = version, specialOddityName = specialOddityName))
             .also {
                 spIndexCache = null
             }
@@ -108,14 +149,15 @@ class OperatorCatalogService(
         }
         val existing = repository.findByOperatorId(operatorId)
             ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "Operator not found")
-        validate(request)
+        val normalized = normalizeAliases(request, existing)
+        validate(normalized)
         val specialOddityName = request.specialOddityName
             ?.let(::requireSpecialOddityName)
             ?: existing.specialOddityName
         val version = nextCatalogVersion()
         // avatar 不在写请求内，普通编辑整条覆盖时必须显式保留既有头像，否则会把已上传头像冲掉。
         return repository.save(
-            request.toEntity(
+            normalized.toEntity(
                 id = existing.id,
                 createdAt = existing.createdAt,
                 catalogVersion = version,
@@ -182,6 +224,7 @@ class OperatorCatalogService(
         if (discNames.toSet().size != discNames.size) {
             throw OperatorApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_disc", "disc ot_name must be unique")
         }
+        validateAliasConflicts(request)
         val stoneTypes = request.starStones.map { it.type }
         if (stoneTypes.toSet().size != stoneTypes.size) {
             throw OperatorApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_star_stone", "star stone type must be unique")
@@ -216,6 +259,48 @@ class OperatorCatalogService(
         }
     }
 
+    private fun normalizeAliases(
+        request: OperatorCatalogWriteRequest,
+        existing: OperatorCatalogEntity? = null,
+    ): OperatorCatalogWriteRequest = request.copy(
+        discs = request.discs.mapIndexed { index, disc ->
+            // 优先按标准名保留；原位改名且旧名已移除时，保留该位置的别名。
+            val previous = existing?.discs?.firstOrNull { it.otName == disc.otName }
+                ?: existing?.discs?.getOrNull(index)?.takeIf { old -> request.discs.none { it.otName == old.otName } }
+            val aliases = (disc.aliases ?: previous?.aliases).orEmpty().map(String::trim).filter(String::isNotEmpty)
+            if (aliases.size > 20 || aliases.any { it.length > 64 }) {
+                throw OperatorApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_disc", "${disc.otName}：OCR 别名最多 20 个，每个最多 64 字符")
+            }
+            disc.copy(aliases = aliases.distinctBy(::normalizeDiscName))
+        },
+    )
+
+    private fun validateAliasConflicts(request: OperatorCatalogWriteRequest) {
+        val entries = repository.findAllByOrderByOperatorIdAsc().filter { it.operatorId != request.id }
+        val discs = entries.flatMap { entry -> entry.discs.map { entry.operatorId to it } } +
+            request.discs.map { request.id to OperatorDiscCatalog(it.otName, aliases = it.aliases) }
+        discs.forEach { (owner, disc) ->
+            disc.aliases.orEmpty().forEach { alias ->
+                val key = normalizeDiscName(alias)
+                val conflict = discs.firstOrNull { (otherOwner, other) ->
+                    (other.otName != disc.otName && normalizeDiscName(other.otName) == key) ||
+                        (owner == otherOwner && other !== disc &&
+                            (normalizeDiscName(other.otName) == key || other.aliases.orEmpty().any { normalizeDiscName(it) == key }))
+                }
+                if (conflict != null) {
+                    throw OperatorApiException(
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        "invalid_disc",
+                        "$owner / ${disc.otName} 的别名「$alias」与 ${conflict.first} / ${conflict.second.otName} 冲突",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun normalizeDiscName(value: String): String =
+        Normalizer.normalize(value, Normalizer.Form.NFKC).filterNot { it.isWhitespace() }
+
     private fun requireSpecialOddityName(value: String?): String {
         val normalized = value?.trim()
         if (normalized == null || normalized.length !in 1..32) {
@@ -243,7 +328,7 @@ class OperatorCatalogService(
         prof = prof,
         subProf = subProf,
         games = games,
-        discs = discs.map { OperatorDiscCatalog(it.otName, it.abbreviation, it.color, it.desp) },
+        discs = discs.map { OperatorDiscCatalog(it.otName, it.abbreviation, it.color, it.desp, it.aliases) },
         starStones = starStones.map { OperatorStarStoneCatalog(it.name, it.type) },
         spOf = spOf,
         catalogVersion = catalogVersion,
@@ -347,6 +432,7 @@ class OperatorCatalogService(
                     it.get("abbreviation")?.asText(),
                     it.get("color")?.asText(),
                     it.get("desp")?.asText(),
+                    it.get("aliases")?.takeIf(JsonNode::isArray)?.map { alias -> alias.asText() },
                 )
             },
             starStones = node.path("starStones").map {

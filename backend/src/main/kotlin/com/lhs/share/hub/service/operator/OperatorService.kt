@@ -37,8 +37,10 @@ import com.lhs.share.hub.repository.entity.OperatorRecord
 import com.lhs.share.hub.repository.entity.OperatorRecordEntry
 import com.lhs.share.hub.repository.entity.OperatorStarStone
 import com.lhs.share.hub.repository.entity.ProducerInfo
+import com.lhs.share.hub.repository.entity.discByName
 import com.lhs.share.hub.repository.entity.normalized
 import com.lhs.share.hub.repository.entity.oddityNumberNode
+import com.lhs.share.hub.repository.entity.withCatalogDiscNames
 import com.lhs.share.hub.service.star.StarStateService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -411,10 +413,11 @@ class OperatorService(
     private fun normalizedCurrent(current: OperatorCurrent): OperatorCurrentResponse = OperatorCurrentResponse.of(
         current.copy(
             entries = current.entries.mapValues { (id, entry) ->
-                entry.copy(
-                    huaji = OperatorHuajiRules.read(entry, catalogService.getOperator(id)),
+                val catalog = catalogService.getOperator(id)
+                entry.withCatalogDiscNames(catalog).copy(
+                    huaji = OperatorHuajiRules.read(entry, catalog),
                     huajiLegacy =
-                    OperatorHuajiRules.trace(entry, catalogService.getOperator(id)),
+                    OperatorHuajiRules.trace(entry, catalog),
                     combatStats = entry.combatStats?.let { stats ->
                         if (stats.observedStatus == "valid" &&
                             (
@@ -617,8 +620,8 @@ class OperatorService(
             currentRepository.findByUserIdAndAccountIdAndGame(userId, accountId, UNIVERSAL_GAME)
                 ?: currentRepository.findByUserIdAndAccountIdAndGame(userId, accountId, GENERIC_GAME)
         }
-        val specificEntry = specificCurrent?.entries?.get(operatorId)?.normalized()
-        val genericEntry = genericCurrent?.entries?.get(operatorId)?.normalized()
+        val specificEntry = specificCurrent?.entries?.get(operatorId)?.withCatalogDiscNames(catalog)
+        val genericEntry = genericCurrent?.entries?.get(operatorId)?.withCatalogDiscNames(catalog)
         val entryExisted = specificEntry != null || genericEntry != null
         val materializingEntry = specificEntry == null && (specificCurrent == null || genericEntry != null)
         val sourceCurrent = when {
@@ -1008,14 +1011,14 @@ class OperatorService(
                     "$path[$discIndex].ot_name",
                     "invalid_disc_loadout",
                 )
-            val catalogDisc = catalog.discs.firstOrNull { it.otName == otName }
+            val catalogDisc = catalog.discByName(otName)
                 ?: invalid(
                     "disc is not in the operator catalog",
                     catalog.operatorId,
                     "$path[$discIndex].ot_name",
                     "invalid_disc_loadout",
                 )
-            if (!names.add(otName)) {
+            if (!names.add(catalogDisc.otName)) {
                 invalid(
                     "disc ot_name must be unique within a loadout",
                     catalog.operatorId,

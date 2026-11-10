@@ -33,7 +33,7 @@ import org.springframework.web.multipart.MultipartFile
  * 概念边界（与 `docs/operator-subaccounts-implementation-plan.md` §6 一致）：
  * - **公共开放 API（图鉴）**：`GET /v1/operator/catalog`，无需登录，回答"有哪些密探、长什么样"。
  * - **个人数据 API**：路径前缀 `/v1/operator`（除 catalog）与 `/open-api/operator`，登录 JWT / OpenAPI token，
- *   只能访问自己的密探养成档案。
+ *   只能访问自己的密探养成档案；`GET /open-api/operator/catalog` 是公开扫描目录例外。
  * - **本控制器（管理 API）**：路径前缀 `/v1/admin/operator-catalog`，管理员对支撑公共图鉴的
  *   `operator_catalog` 全局字典做增删改查。改动即时反映到公共图鉴；**不涉及**任何个人子账号密探数据。
  *

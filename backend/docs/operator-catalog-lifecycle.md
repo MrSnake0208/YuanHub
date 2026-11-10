@@ -25,6 +25,33 @@
 
 定向运行 `EntityCatalogServiceTest`、`InventoryServiceTest`、`InventoryAgentFavoriteServiceTest`、`OperatorCatalogServiceTest`、`OperatorCurrentFoundationServiceTest`、`OperatorControllerContractTest`，覆盖目录残留、修改/删除即时生效、旧流水幂等、取消旧关注、跨版本清理、账号隔离、有效 ID 拦截和历史重放。
 
+## OCR 别名维护与 MaaYuan 目录
+
+公开 `GET /open-api/operator/catalog` 的完整契约见[公共目录交换规范](../../frontend/docs/exchange-specs/catalogs.md#3-maayuan-完整扫描目录)。目录数据直接来自数据库；职业定义位于 `src/main/resources/operator/professions.json`，内容取自 MaaYuan `agent/operators.json` 的 `PROFESSIONS`。公开旧 v1 目录继续只返回命盘原有四个字段。
+
+管理端 `POST/PUT /v1/admin/operator-catalog` 的 `discs[].aliases` 是可选字符串数组；Mongo 字段名为 `discs[].aliases`，标准名字段为 `discs[].otName`。每盘最多 20 个别名，每项去首尾空白后最多 64 字符；空项去除，按 NFKC + 去空白后的值去重。更新时省略或 null 保留原有别名，显式 `[]` 清空；保留时优先匹配标准名，原位改名且旧名已从请求移除时使用原位置。若同时改名和重排，应显式传入别名。
+
+别名归一后，不得等于同一密探另一命盘的标准名或别名，也不得等于任何密探上不同 `ot_name` 的标准名。标准名修改同样检查已有别名，冲突以 HTTP 422 `invalid_disc` 返回具体密探、命盘与别名；管理页保留输入以便修正。跨密探别名可以共用，但不能据此假定密探身份唯一。
+
+`/operator/admin` 每盘增加序号与每行一个的 OCR 别名输入。已有密探命盘顺序影响自动编队，不要调整；普通保存会完整传递别名。改正标准名时应把旧名显式添加为别名，以兼容旧客户端及已保存命盘；仅改标准名不会自动生成别名。
+
+当前数据的实际盘、目标盘在读取及 v3/v4/v5 导出时按该密探 aliases 投影为标准名，当前盘编辑及扫描导入也接受别名；历史正文与用户数据不做批量迁移。分享读取复用当前档案投影。旧 V2 历史备份、流水与纠错事件仍保留旧名；旧 V2 导入校验未扩展，含已改名词条的 V2 历史文档恢复前需更新名称，推荐改用当前 V5 备份。
+
+### 一次性数据脚本（未执行）
+
+根目录 `scripts/operator-catalog-ocr-aliases.mongosh.js` 仅处理本次确认的 17 组别名、13 处标准名修正（含快照准确 11 位生命词条）及陈琳顺序，不覆盖其他线上字段或 seed。只操作 `HubBackend.operator_catalog`。
+
+```sh
+# 默认只读并打印计划；连接参数由运维在授权环境提供
+mongosh <连接参数> --file scripts/operator-catalog-ocr-aliases.mongosh.js
+# 确认计划后显式写入，需支持事务的 replica set / sharded cluster
+APPLY=1 mongosh <连接参数> --file scripts/operator-catalog-ocr-aliases.mongosh.js
+```
+
+所有目标、改名后的重复名、全目录别名冲突均在任何写入前检查；任一失败整体中止。APPLY 在单次事务快照中重新预检，写入同时检查原 discs 和 catalogVersion，失败回滚，不降级为逐条非事务写入。只有内容实际变化的行更新 `catalogVersion`，重复执行无变化则不写。提交结果不确定或并发冲突时，重新 dry-run 核对后再决定是否重试。
+
+兼容发布顺序：先部署后端，再发布管理页；旧管理调用省略 aliases 会保留别名。一次性脚本必须单独审阅并授权执行；MaaYuan 侧切源后才能使用此目录。当前工作未运行测试、构建、浏览器或数据脚本，未验证部署状态。
+
 ## SP 关系约束（2026-10-05）
 
 新增/修改 `spOf` 只允许指向存在的普通本体，禁止自引用、SP 指向 SP、把已有 SP 子形态的本体改为 SP。本体 games 必须覆盖各 SP 的 games；无效关系返回 422 `invalid_sp_relation`。删除仍有 SP 引用的本体返回 409 `operator_has_forms`，应先显式处理关联形态；不会级联删除。

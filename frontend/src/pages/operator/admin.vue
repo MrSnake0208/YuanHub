@@ -260,19 +260,26 @@
             <div class="editor-row">
               <span class="editor-label">命盘</span>
               <div class="sub-editor">
-                <div v-for="(d, i) in form.discs" :key="i" class="sub-row">
-                  <input v-model.trim="d.ot_name" placeholder="ot_name（必填，唯一）" class="sub-ot" />
-                  <input v-model.trim="d.abbreviation" placeholder="简称" class="sub-sm" />
-                  <select v-model="d.color" class="sub-color">
-                    <option value="">无色</option>
-                    <option value="金">金</option>
-                    <option value="紫">紫</option>
-                    <option value="蓝">蓝</option>
-                  </select>
-                  <input v-model.trim="d.desp" placeholder="描述" class="sub-desp" />
-                  <button class="sub-del" type="button" :aria-label="'删除第 ' + (i + 1) + ' 条命盘'" @click="form.discs.splice(i, 1)"><X :size="18" aria-hidden="true" /></button>
+                <p class="hint">已有密探的命盘顺序影响自动编队，不要调整。</p>
+                <div v-for="(d, i) in form.discs" :key="i" class="disc-editor-item">
+                  <span class="hint">命盘 {{ i + 1 }}</span>
+                  <div class="sub-row">
+                    <input v-model.trim="d.ot_name" placeholder="ot_name（必填，唯一）" class="sub-ot" />
+                    <input v-model.trim="d.abbreviation" placeholder="简称" class="sub-sm" />
+                    <select v-model="d.color" class="sub-color">
+                      <option value="">无色</option>
+                      <option value="金">金</option>
+                      <option value="紫">紫</option>
+                      <option value="蓝">蓝</option>
+                    </select>
+                    <input v-model.trim="d.desp" placeholder="描述" class="sub-desp" />
+                    <button class="sub-del" type="button" :aria-label="'删除第 ' + (i + 1) + ' 条命盘'" @click="form.discs.splice(i, 1)"><X :size="18" aria-hidden="true" /></button>
+                  </div>
+                  <label class="disc-aliases">OCR 别名（每行一个，最多 20 个，每个最多 64 字符）
+                    <textarea v-model="d.aliasesText" rows="2" placeholder="输入错读或旧标准名，可空" />
+                  </label>
                 </div>
-                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '' })"><Plus :size="16" aria-hidden="true" />添加命盘</button>
+                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '' })"><Plus :size="16" aria-hidden="true" />添加命盘</button>
               </div>
             </div>
 
@@ -501,7 +508,8 @@ function fillForm(r) {
         ot_name: d.ot_name || d.otName || '',
         abbreviation: d.abbreviation || '',
         color: d.color || '金',
-        desp: d.desp || ''
+        desp: d.desp || '',
+        aliasesText: Array.isArray(d.aliases) ? d.aliases.join('\n') : ''
       }
     }),
     starStones: r.starStones.map(function (s) {
@@ -646,7 +654,8 @@ function buildBody() {
           ot_name: d.ot_name.trim(),
           abbreviation: (d.abbreviation && d.abbreviation.trim()) || null,
           color: d.color || null,
-          desp: (d.desp && d.desp.trim()) || null
+          desp: (d.desp && d.desp.trim()) || null,
+          aliases: [...new Set((d.aliasesText || '').split(/\r?\n/).map(function (alias) { return alias.trim() }).filter(Boolean))]
         }
       }),
     starStones: form.value.starStones
@@ -902,6 +911,10 @@ load()
 .games-pick input { accent-color: var(--accent) }
 .sub-row input, .sub-row select { border: 1.5px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
 .sub-row input:focus, .sub-row select:focus { border-color: var(--theme-focus, var(--accent)) }
+.disc-editor-item { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+.disc-aliases { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-60) }
+.disc-aliases textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--paper); font: inherit; font-size: 16px; resize: vertical }
+.disc-aliases textarea:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
 .sub-del { border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
 .sub-del:hover { color: var(--theme-danger-text, var(--rouge)) }
 .hint { color: var(--ink-35) }
