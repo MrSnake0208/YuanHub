@@ -37,7 +37,6 @@
         </div>
       </template></template>
       <template v-else><template v-for="(item, rowIndex) in actionRows" :key="item.key">
-        <div v-if="item.type === 'round'" class="action-band" :class="{ 'is-alt': item.alt }" :style="{ gridRow: `${rowIndex + 2} / span ${item.remark ? 2 : 1}` }" aria-hidden="true"></div>
         <div v-if="item.type === 'round'" class="team-board-label action-round-label" :class="{ 'is-alt': item.alt }" :style="{ gridRow: rowIndex + 2 }"><strong>{{ item.row.round }}</strong></div>
         <template v-if="item.type === 'round'">
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
@@ -75,11 +74,11 @@ const teamRows = computed(() => {
   return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat' }))
 })
 // 操作图：每回合一行动作，填写了备注的回合在下方加一条横跨五列的备注；隔行底色按回合交替。
-// 每回合（含其备注）垫一条贯穿回合号与五列的横带，按回合横向阅读不错行；角色卡只包住立绘卡头，不再有贯穿全表的竖框。
+// 角色卡从立绘一路延伸到表底，靠卡间纸色分列；隔行底色铺在回合号与卡内，按回合横向阅读不错行。
 const actionRows = computed(() => {
   const items = props.rows.flatMap((row, index) => {
     const alt = index % 2 === 1, remark = String(row.remark || '').trim()
-    return [{ key: 'r' + row.round, type: 'round', row, alt, remark: Boolean(remark) }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
+    return [{ key: 'r' + row.round, type: 'round', row, alt }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
   })
   if (items.length) items.at(-1).last = true
   return items
@@ -100,7 +99,11 @@ const usedActions = computed(() => [...BATTLE_ACTIONS.filter(item => usedEntries
 // 主位固定使用中性底，其余目标始终使用各自的目标色。
 // 图例里主目标的色块同样是中性底，与动作块一致。
 const targetUsage = computed(() => battleTargetUsage(props.kind === 'actions' ? props.rows : []))
-const usedTargets = computed(() => targetUsage.value.used)
+// 图例里主目标（BOSS）排最左，其余目标保持站位顺序。
+const usedTargets = computed(() => {
+  const { used, main } = targetUsage.value
+  return [...used.filter(index => index === main), ...used.filter(index => index !== main)]
+})
 const multiTarget = computed(() => targetUsage.value.multi)
 const mainTarget = computed(() => targetUsage.value.main)
 const plainEntry = entry => entry.box || entry.target == null || entry.target === mainTarget.value
@@ -228,17 +231,17 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 /* “回合”只在左上角写一次（同配队图字段名只写一次），每行只留回合数字。 */
 .action-corner { grid-row: 1; align-items: flex-end; padding-bottom: 14px; border-top: 0; font-size: 18px; color: #725c43; }
 .action-round-label { flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; border-top: 0; letter-spacing: 0; }
-/* 回合横带：卡片只占卡头一行，回合区没有竖向边框；行间留缝、横带跨过列缝连成整条，回合之间的分隔强于列之间。
-   横带不描边，单行直接露纸色、双行加深底色：原先白条/极淡隔行色/纸色三种米色太接近，跟读某回合时容易抄错行。 */
-.action-board { row-gap: 8px; }
-.action-board .team-card { grid-row: 1; }
-.action-band { position: relative; z-index: 0; grid-column: 1 / -1; border-radius: 8px; background: transparent; }
-.action-band.is-alt { background: #f0e3c5; }
-.action-board .team-card-cell.action-cell { border-top: 0; background: transparent; }
-.action-board .team-card-cell.is-last, .action-remark.is-last { margin-bottom: 0; }
+/* 长卡列：与配队图同一结构，角色卡延伸到表底，卡间露纸色分列，不再画竖线。双数回合在卡内与回合号上加深底色，防抄错行。
+   装饰框的 SVG 按卡高拉伸，长卡上切角会变形，所以仍只框住立绘卡头（高度 = 卡头行 - 边框 2px - 内缩 4px）。 */
+.action-board .team-card-frame { height: 234px; }
+.action-board.is-simple .team-card-frame { height: 70px; }
+.action-round-label.is-alt { border-radius: 8px; background: #f0e3c5; }
+.action-board .team-card-cell.action-cell { margin: 0 1px; border-top: 0; background: transparent; }
+.action-board .team-card-cell.action-cell.is-alt { background: #f0e3c5; }
+.action-board .team-card-cell.action-cell.is-last { margin-bottom: 1px; border-radius: 0 0 7px 7px; }
 .action-round-label strong { font: 600 32px/1.1 var(--font-s, serif); color: #3e3023; }
 /* 动作块在格内水平、垂直居中换行：多数格只有一个动作，靠左会让每列右半空着。 */
-.team-card-cell.action-cell { flex-direction: row; flex-wrap: wrap; align-content: center; justify-content: center; gap: 8px; min-height: 72px; padding: 12px 4px; }
+.team-card-cell.action-cell { flex-direction: row; flex-wrap: wrap; align-content: center; justify-content: center; gap: 8px; min-height: 72px; padding: 12px 7px; }
 /* 动作块按内容收紧（原定宽 70px 两侧留白过多），min-width 让常见的一位序号动作（1A / 3↑ / 6箱）仍等宽；序号与符号同为 28px 高，紧挨着读作一个词。
    描边用标题分隔线同款暖金 #c9ac79（原 #dcc395 与隔行横带 #f0e3c5 太接近、块形消失；半透明墨色在纸色上发灰）。主目标/单目标/箱只描边不加底色（空心）；
    其他目标填目标色并加左侧色条（实心），空心对实心一眼区分，不引入新色相。 */
@@ -255,8 +258,9 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .arrow-head { position: absolute; left: 1px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
 .is-up .arrow-shaft { top: 9px; } .is-up .arrow-head { top: 3px; border-bottom: 8px solid #3e3023; }
 .is-down .arrow-shaft { top: 3px; } .is-down .arrow-head { top: 17px; border-top: 8px solid #3e3023; }
-.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0 4px; padding: 10px 14px; border-top: 1px dashed #e0cba2; background: transparent; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
-.action-remark.is-last { margin-bottom: 18px; }
+.action-remark { position: relative; z-index: 1; grid-column: 2 / -1; display: flex; gap: 12px; margin: 0; padding: 10px 18px; border-top: 1px solid #e0cba2; border-bottom: 1px solid #e0cba2; background: #fffaf0; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; white-space: pre-wrap; overflow-wrap: anywhere; }
+.action-remark.is-alt { background: #f0e3c5; }
+.action-remark.is-last { border-radius: 0 0 8px 8px; }
 .action-remark span { flex-shrink: 0; font-size: 16px; letter-spacing: 2px; color: #8a5a2b; }
 .legend, .range { font-size: 17px; color: #725c43; margin: 0; }
 .range { text-align: right; margin-top: 12px; }
