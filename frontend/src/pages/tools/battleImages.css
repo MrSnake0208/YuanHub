@@ -315,7 +315,7 @@
 .battle-tool .battle-error { font-size: 13px; color: var(--theme-danger-text, var(--rouge)); line-height: 1.7; }
 .battle-error button { margin-left: 8px; }
 /* 手机端底部生成栏，桌面端隐藏；见 battleImagesMobile.css。 */
-/* 回合栏与备注带仅手机端显示：桌面端用编辑区顶部的翻回合按钮和备注列。 */
+/* 回合栏与备注带仅手机端显示：桌面端用编辑区的翻回合按钮和备注列。 */
 .battle-mobile-panel, .battle-mobile-dock, .battle-disc-short, .battle-round-dock, .battle-action-matrix tr.battle-remark-row { display: none; }
 .battle-tool .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (min-width: 768px) {
@@ -330,18 +330,20 @@
   .battle-tool .battle-action-input-row .battle-record-action { box-sizing: border-box; width: calc(100% - 6px); min-width: 0; min-height: 34px; padding: 4px 6px; gap: 8px; margin-inline: 3px; white-space: nowrap; }
   .battle-tool .battle-record-action > b { display: inline-grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 5px; background: var(--action-color, var(--battle-accent)); color: var(--surface); font: 600 15px/1 var(--font-d); }
   .battle-tool .battle-record-action[aria-pressed=true] > b { background: var(--surface); color: var(--battle-accent); }
-  .battle-tool .battle-inline-heading { flex-wrap: wrap; justify-content: flex-start; gap: 8px 12px; }
-  .battle-inline-heading h3 { flex-shrink: 0; }
-  .battle-inline-heading .battle-round-nav { margin-left: auto; }
-  .battle-target-options { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
-  .battle-tool .battle-target-options > button { display: block; min-width: 0; max-width: 8em; padding: 5px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 2px solid transparent; color: var(--on-pastel, #493b2c); font-size: 12px; }
-  .battle-tool .battle-target-options > button.is-plain { color: var(--ink); }
-  .battle-tool .battle-target-options > button[aria-pressed=true] { border-color: var(--battle-accent); box-shadow: inset 0 0 0 1px var(--surface); font-weight: 700; }
   .battle-sequence-actions { display: flex; flex-wrap: wrap; gap: 4px; }
   .battle-tool .battle-sequence-actions > button { border-color: var(--battle-action-border); padding: 6px; font-size: 12px; }
   .battle-tool .battle-sequence-actions > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-accent); color: var(--surface); }
   .battle-sequence-actions > button > b { font: 600 13px/1 var(--font-d); }
   .battle-tool .battle-inline-editor > .battle-composer { gap: 0; padding-top: 0; }
+  .battle-sequence { padding-bottom: 0; border-bottom: 0; }
+  .battle-tool .battle-action-matrix tr.battle-editor-row-top > td { padding-bottom: 6px; border-bottom: 0; }
+  .battle-tool .battle-action-matrix tr.battle-record-tools-row > td { padding: 0 0 10px; border-right: 0; border-bottom: 0; background: var(--cream); }
+  .battle-record-tools-row .battle-target-ring { --ring-disc: 48px; --ring-height: 80px; width: 280px; margin-inline: auto; }
+  .battle-record-tools-row .battle-sequence-actions { flex-direction: column; flex-wrap: nowrap; padding-inline: 8px; }
+  .battle-tool .battle-action-matrix tr.battle-editor-row:not(.battle-editor-row-top) > td { padding-block: 8px; }
+  .battle-inline-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 10px; }
+  .battle-inline-footer > .battle-composer { flex: 0 0 100%; }
+  .battle-inline-footer > .battle-sequence-tools { margin-top: 0; }
 }
 @media (hover: hover) {
   .battle-tool .battle-record-identity:hover { background: var(--battle-selection); color: var(--battle-accent); }
