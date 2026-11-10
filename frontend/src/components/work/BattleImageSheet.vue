@@ -252,7 +252,7 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 /* 序号不加底色，直接写在符号前（如“5A”）；字重用导出预加载的 Archivo 700（满表 800 显得压），避免回退字体错位。 */
 .action-chip.is-plain { border-left-width: 1px; background: transparent; }
 .action-chip b { display: block; flex-shrink: 0; height: 28px; color: #3e3023; font: 700 24px/28px var(--font-d, sans-serif); }
-/* 符号与序号同用 Archivo 700（“圈”回退到无衬线），避免“1A”一半无衬线一半宋体的拼凑感。
+/* 符号与序号同用 Archivo 700（“特”“互”回退到无衬线），避免“1A”一半无衬线一半宋体的拼凑感。
    符号框按字宽收紧，不再固定 24px 居中，序号与符号读作一个词而不是“4 A”。 */
 .action-symbol { position: relative; display: block; flex-shrink: 0; min-width: 14px; height: 28px; font: 700 22px/28px var(--font-d, sans-serif); font-style: normal; text-align: center; }
 .action-symbol.is-up, .action-symbol.is-down { width: 14px; }

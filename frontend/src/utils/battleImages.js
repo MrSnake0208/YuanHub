@@ -7,14 +7,14 @@ export const BATTLE_ACTIONS = Object.freeze([
   { type: 'attack', symbol: 'A', label: '普攻' },
   { type: 'ultimate', symbol: '↑', label: '大招' },
   { type: 'defense', symbol: '↓', label: '防御' },
-  { type: 'sp', symbol: '圈', label: '特殊技能' },
+  { type: 'sp', symbol: '特', label: '特殊行动' },
 ])
 export const BATTLE_SPECIAL_OPERATOR_IDS = Object.freeze([
   'char_101_lvbu', 'char_107_guonvwang', 'char_124_simafu', 'char_085_shizimiaosp',
 ])
 // 关卡内互动（玩家口中的“箱”、MaaYuan 的局内工具箱）：不属于任何密探、无目标，只占全队出手顺序中的一步。
 // 数据只存 { type: 'interaction' }，与作业协议的 interaction 动作同义；表格与出图中挂在紧邻的密探格内显示。
-export const BATTLE_INTERACTION = Object.freeze({ type: 'interaction', symbol: '箱', label: '关卡互动' })
+export const BATTLE_INTERACTION = Object.freeze({ type: 'interaction', symbol: '互', label: '场景交互' })
 export const isBattleInteraction = action => action?.type === BATTLE_INTERACTION.type
 export const BATTLE_STATS = Object.freeze([
   ['hp', '生命'], ['attack', '攻击'], ['level', '等级'], ['elite', '修为'], ['huaji', '化极'],

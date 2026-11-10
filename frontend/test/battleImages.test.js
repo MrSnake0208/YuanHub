@@ -34,7 +34,7 @@ test('出图按槽位归组但保留跨密探出手顺序、多动、目标与�
     { slot: 4, type: 'sp', target: 3 }, { slot: 0, type: 'defense', target: 2 },
   ] }, { actions: [], remark: '等待敌方回合' }]
   const model = buildBattleImageModel(draft)
-  assert.deepEqual(model.rows[0].slots[4], [{ order: 1, symbol: 'A', target: 0 }, { order: 3, symbol: '圈', target: 3 }])
+  assert.deepEqual(model.rows[0].slots[4], [{ order: 1, symbol: 'A', target: 0 }, { order: 3, symbol: '特', target: 3 }])
   assert.equal(model.rows[0].slots[1][0].order, 2)
   assert.equal(model.rows[0].slots[0][0].symbol, '↓')
   assert.equal(model.rows[1].round, 2)
@@ -54,10 +54,10 @@ test('箱（关卡互动）挂在紧邻其前出手的密探格内，开头跟�
   ]
   const [first, second, third] = buildBattleImageModel(draft).rows
   const orders = row => row.slots.map(entries => entries.map(entry => entry.order + entry.symbol))
-  assert.deepEqual(orders(first), [[], ['3↑', '4箱'], [], ['1A', '2箱'], []])
-  assert.deepEqual(orders(second), [[], [], [], ['1箱', '2箱', '3圈'], []])
-  assert.deepEqual(orders(third), [[], ['1箱'], [], [], []])
-  assert.deepEqual(first.slots[3][1], { order: 2, symbol: '箱', target: null, box: true })
+  assert.deepEqual(orders(first), [[], ['3↑', '4互'], [], ['1A', '2互'], []])
+  assert.deepEqual(orders(second), [[], [], [], ['1互', '2互', '3特'], []])
+  assert.deepEqual(orders(third), [[], ['1互'], [], [], []])
+  assert.deepEqual(first.slots[3][1], { order: 2, symbol: '互', target: null, box: true })
   assert.equal(battleImageError(draft, 'actions'), '')
 })
 

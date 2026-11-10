@@ -50,7 +50,7 @@
                   <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
                   <div v-if="mobile" class="battle-round-tools" role="group" aria-label="回合操作">
                     <button type="button" aria-label="撤回最后一步" title="撤回最后一步" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="18" aria-hidden="true" /></button>
-                    <button type="button" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)">箱</button>
+                    <button type="button" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)">箱</button>
                     <button :ref="setNoteButton" type="button" :aria-label="round.remark ? '编辑备注（已有备注）' : '编辑备注'" :title="round.remark ? '编辑备注（已有备注）' : '编辑备注'" @click="openNote"><NotebookPen :size="18" aria-hidden="true" /><i v-if="round.remark" aria-hidden="true"></i></button>
                   </div>
                 </div>
@@ -108,7 +108,7 @@
                   <button v-for="item in activeActions" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="editingAction ? isBattleInteraction(editingAction) : !canRecord" @click="pickAction(item.type)">
                     <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
                   </button>
-                  <button type="button" class="battle-action-option" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b><span class="battle-actor-name">{{ BATTLE_INTERACTION.label }}</span></button>
+                  <button type="button" class="battle-action-option" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b><span class="battle-actor-name">{{ BATTLE_INTERACTION.label }}</span></button>
                 </div>
                 <p v-if="!mobile && editingAction && isBattleInteraction(editingAction)" class="battle-hint">要改回密探动作，请先在上方「出手」选择密探。</p>
                 <p v-else-if="!editingAction && (mobile ? !operators.some(o => o.name) : !operators[slot]?.name)" class="battle-hint">请先在配队表选择密探，再记录动作。</p>
@@ -261,7 +261,7 @@ onBeforeUnmount(() => { alive = false; document.removeEventListener('pointerdown
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
 const actionSymbol = type => BATTLE_ACTIONS.find(item => item.type === type)?.symbol || '?'
-const stepText = action => isBattleInteraction(action) ? `${BATTLE_INTERACTION.label}（箱）` : `${actorName(action.slot)} ${actionLabel(action.type)} ${targetName(action.target)}`
+const stepText = action => isBattleInteraction(action) ? `${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）` : `${actorName(action.slot)} ${actionLabel(action.type)} ${targetName(action.target)}`
 const actionLabel = type => BATTLE_ACTIONS.find(item => item.type === type)?.label || '未知动作'
 
 async function selectCell(row, position, event) {
