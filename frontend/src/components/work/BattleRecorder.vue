@@ -1,7 +1,7 @@
 <template>
   <section class="battle-recorder" aria-label="战斗操作记录">
     <div class="battle-action-legend">
-      <span class="battle-legend-symbols"><span class="battle-legend-prefix">操作符号：</span><b>{{ mobile ? '数字=出手顺序' : '数字 本回合全队出手顺序' }}</b><b v-for="item in BATTLE_ACTIONS" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span>
+      <span class="battle-legend-symbols"><span class="battle-legend-prefix">操作符号：</span><b>{{ mobile ? '数字=出手顺序' : '数字 本回合全队出手顺序' }}</b><b v-for="item in legendActions" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span>
       <!-- is-unused 供手机端只列出表中实际用到的非主位目标；只打主位时不列目标。 -->
       <span class="battle-legend-targets" :class="{ 'is-single': !usage.multi }"><template v-if="mobile"> · 未标注={{ targetName(usage.main) }} · </template><template v-else>目标：</template><span v-for="(name, index) in targets" v-show="!absentTargets.includes(index)" :key="index" :class="{ 'is-unused': !usage.used.includes(index) || (mobile && index === usage.main) }"><i :class="{ 'is-plain': legendPlain(index) }" :style="legendPlain(index) ? null : { background: TARGET_COLORS[index] }" aria-hidden="true"></i>{{ targetName(index) }}<small v-if="!mobile && index === usage.main">（表中未标注即此目标）</small></span>
         <button v-if="!mobile" type="button" class="battle-target-rename" :aria-expanded="renaming" aria-controls="battle-target-fields" @click="renaming = !renaming"><Pencil :size="13" aria-hidden="true" />{{ renaming ? '完成设置' : '敌方设置' }}</button>
@@ -97,12 +97,15 @@
                   <span v-for="(member, index) in operators" :key="index" class="battle-grid-heading"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><span>{{ member.name || `${index + 1}号位` }}</span></span>
                   <template v-for="item in mobileActions" :key="item.type">
                     <span class="battle-composer-label">{{ item.label.slice(0, 2) }}</span>
-                    <button v-for="(member, index) in operators" :key="index" type="button" :data-action="item.type" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
+                    <template v-for="(member, index) in operators" :key="index">
+                      <button v-if="item.type !== 'sp' || slotHasSpecial(index)" type="button" :data-action="item.type" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
+                      <span v-else aria-hidden="true"></span>
+                    </template>
                   </template>
                 </div>
                 <div v-if="!mobile" class="battle-composer-row battle-composer-actions" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
                   <span class="battle-composer-label">{{ editingAction ? '改为' : '记录' }}</span>
-                  <button v-for="item in BATTLE_ACTIONS" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="editingAction ? isBattleInteraction(editingAction) : !canRecord" @click="pickAction(item.type)">
+                  <button v-for="item in activeActions" :key="item.type" type="button" class="battle-action-option" :aria-pressed="editingAction ? editingAction.type === item.type : undefined" :disabled="editingAction ? isBattleInteraction(editingAction) : !canRecord" @click="pickAction(item.type)">
                     <b aria-hidden="true">{{ item.symbol }}</b>{{ item.label }}
                   </button>
                   <button type="button" class="battle-action-option" :aria-label="`${BATTLE_INTERACTION.label}（箱）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="pickAction(BATTLE_INTERACTION.type)"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b><span class="battle-actor-name">{{ BATTLE_INTERACTION.label }}</span></button>
@@ -147,7 +150,7 @@ import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'v
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, NotebookPen, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue'
 import portraits from '../../data/operatorPortraits.json'
 import BattleTargetRing from './BattleTargetRing.vue'
-import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_MAIN_TARGET, TARGET_COLORS, battleOperatorId, battleRoundRows, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
+import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_MAIN_TARGET, TARGET_COLORS, battleOperatorHasSpecial, battleOperatorId, battleRoundRows, battleTargetUsage, isBattleInteraction } from '../../utils/battleImages.js'
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
@@ -161,7 +164,6 @@ const mobile = ref(false), panel = ref(null), noteMode = ref(false)
 const panelForm = computed(() => mobile.value && (noteMode.value || renaming.value))
 const enemyHeading = ref(null)
 const roundMenuOpen = ref(false), roundMenu = ref(null), roundMenuButton = ref(null)
-const mobileActions = ['ultimate', 'attack', 'defense', 'sp'].map(type => BATTLE_ACTIONS.find(item => item.type === type))
 // 手机只输出 Teleport 锚点，桌面保留原来的 tr/td 结构及编辑区位置。
 const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row' }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
 const TARGET_POSITIONS = ['左二', '左一', '主位', '右一', '右二']
@@ -200,6 +202,10 @@ const legendPlain = index => index === usage.value.main
 const round = computed(() => props.rounds[current.value])
 const editingAction = computed(() => editing.value === null ? null : round.value?.actions[editing.value] || null)
 const activeSlot = computed(() => editingAction.value ? (isBattleInteraction(editingAction.value) ? BOX : editingAction.value.slot) : slot.value)
+const slotHasSpecial = index => battleOperatorHasSpecial(props.operators[index]) || (editingAction.value?.type === 'sp' && editingAction.value.slot === index)
+const mobileActions = computed(() => ['ultimate', 'attack', 'defense', 'sp'].filter(type => type !== 'sp' || props.operators.some((_, index) => slotHasSpecial(index))).map(type => BATTLE_ACTIONS.find(item => item.type === type)))
+const activeActions = computed(() => BATTLE_ACTIONS.filter(item => item.type !== 'sp' || slotHasSpecial(activeSlot.value)))
+const legendActions = computed(() => BATTLE_ACTIONS.filter(item => item.type !== 'sp' || props.operators.some(battleOperatorHasSpecial) || props.rounds.some(round => round.actions.some(action => action.type === 'sp'))))
 const activeTarget = computed(() => editingAction.value ? editingAction.value.target : target.value)
 const canRecord = computed(() => Boolean(props.operators[slot.value]?.name) && round.value.actions.length < 50)
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
@@ -319,7 +325,7 @@ async function dockNav(offset) {
 }
 function toggleEdit(index) { editing.value = editing.value === index ? null : index }
 function recordCell(index, type) {
-  if (!props.operators[index]?.name) return
+  if (!props.operators[index]?.name || (type === 'sp' && !slotHasSpecial(index))) return
   const action = editingAction.value
   if (action) {
     if (isBattleInteraction(action)) round.value.actions.splice(editing.value, 1, { slot: index, type, target: target.value })
@@ -334,7 +340,11 @@ function pickSlot(index) {
   if (!props.operators[index]?.name) return
   const action = editingAction.value
   if (!action) { slot.value = index; return }
-  if (!isBattleInteraction(action)) { action.slot = index; return }
+  if (!isBattleInteraction(action)) {
+    if (action.type === 'sp' && action.slot !== index && !battleOperatorHasSpecial(props.operators[index])) action.type = BATTLE_ACTIONS[0].type
+    action.slot = index
+    return
+  }
   round.value.actions.splice(editing.value, 1, { slot: index, type: BATTLE_ACTIONS[0].type, target: target.value })
 }
 function pickTarget(index) {
@@ -343,6 +353,7 @@ function pickTarget(index) {
   else target.value = index
 }
 function pickAction(type) {
+  if (type === 'sp' && !slotHasSpecial(activeSlot.value)) return
   const action = editingAction.value
   if (action) {
     if (type === BATTLE_INTERACTION.type) round.value.actions.splice(editing.value, 1, { type })

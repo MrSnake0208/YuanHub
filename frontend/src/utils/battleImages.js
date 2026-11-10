@@ -9,6 +9,9 @@ export const BATTLE_ACTIONS = Object.freeze([
   { type: 'defense', symbol: '↓', label: '防御' },
   { type: 'sp', symbol: '圈', label: '特殊技能' },
 ])
+export const BATTLE_SPECIAL_OPERATOR_IDS = Object.freeze([
+  'char_101_lvbu', 'char_107_guonvwang', 'char_124_simafu', 'char_085_shizimiaosp',
+])
 // 关卡内互动（玩家口中的“箱”、MaaYuan 的局内工具箱）：不属于任何密探、无目标，只占全队出手顺序中的一步。
 // 数据只存 { type: 'interaction' }，与作业协议的 interaction 动作同义；表格与出图中挂在紧邻的密探格内显示。
 export const BATTLE_INTERACTION = Object.freeze({ type: 'interaction', symbol: '箱', label: '关卡互动' })
@@ -35,6 +38,8 @@ export function battleTargetShortName(name) {
 export function battleOperatorId(name) {
   return agents.get(String(name || '').trim()) || ''
 }
+
+export const battleOperatorHasSpecial = member => BATTLE_SPECIAL_OPERATOR_IDS.includes(member?.id || battleOperatorId(member?.name))
 
 export const sameBattleOperator = (member, agent) => Boolean(member?.name) && (member.id ? member.id === agent.id : member.name === agent.name)
 
