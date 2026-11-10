@@ -94,7 +94,7 @@
                 </div>
                 <div v-if="mobile" class="battle-composer-row battle-composer-grid" role="group" :aria-label="editingAction ? `修改第${editing + 1}步动作` : '记录动作'">
                   <span aria-hidden="true"></span>
-                  <span v-for="(member, index) in operators" :key="index" class="battle-grid-heading">{{ member.name || `${index + 1}号位` }}</span>
+                  <span v-for="(member, index) in operators" :key="index" class="battle-grid-heading"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><span>{{ member.name || `${index + 1}号位` }}</span></span>
                   <template v-for="item in mobileActions" :key="item.type">
                     <span class="battle-composer-label">{{ item.label.slice(0, 2) }}</span>
                     <button v-for="(member, index) in operators" :key="index" type="button" :data-action="item.type" :aria-label="`${member.name || `${index + 1}号位`} ${item.label}`" :aria-pressed="editingAction ? editingAction.slot === index && editingAction.type === item.type : undefined" :disabled="!member.name || (!editingAction && round.actions.length >= 50)" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b></button>
