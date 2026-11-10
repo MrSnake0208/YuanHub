@@ -283,11 +283,11 @@ class OperatorCatalogService(
             disc.aliases.orEmpty().forEach { alias ->
                 val key = normalizeDiscName(alias)
                 val conflict = discs.firstOrNull { (otherOwner, other) ->
-                    (other.otName != disc.otName && normalizeDiscName(other.otName) == key) ||
-                        (
-                            owner == otherOwner && other !== disc &&
-                                (normalizeDiscName(other.otName) == key || other.aliases.orEmpty().any { normalizeDiscName(it) == key })
-                        )
+                    val otherName = normalizeDiscName(other.otName)
+                    val aliasHit = other.aliases.orEmpty().any { normalizeDiscName(it) == key }
+                    val differentDiscHit = other.otName != disc.otName && otherName == key
+                    val sameOwnerHit = owner == otherOwner && other !== disc && (otherName == key || aliasHit)
+                    differentDiscHit || sameOwnerHit
                 }
                 if (conflict != null) {
                     throw OperatorApiException(
