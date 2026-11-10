@@ -17,11 +17,11 @@ const setup = () => {
 it('场景交互插入全队出手顺序，不需要目标；表格不加列，挂在上一位出手密探格内', async () => {
   const { draft, wrapper, group } = setup()
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
-  await group('记录动作').get('[aria-label="杨修 普攻"]').trigger('click')
+  await wrapper.get('.battle-action-input-row [aria-label="杨修 普攻"]').trigger('click')
   await wrapper.get('[aria-label="场景交互（互）"]').trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }])
   expect(group('动作目标').findAll('button').every(item => item.attributes('disabled') === undefined)).toBe(true)
-  await group('记录动作').get('[aria-label="杨修 大招"]').trigger('click')
+  await wrapper.get('.battle-action-input-row [aria-label="杨修 大招"]').trigger('click')
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }, { slot: 0, type: 'ultimate', target: 2 }])
   expect(wrapper.findAll('thead th')).toHaveLength(7)
   // 只打一个目标时与出图一致，不逐格重复目标名。
@@ -30,12 +30,12 @@ it('场景交互插入全队出手顺序，不需要目标；表格不加列，�
 })
 
 it('修改场景交互步骤时，点矩阵直接改成密探动作，再点场景交互改回，序号不变', async () => {
-  const { draft, wrapper, group } = setup()
+  const { draft, wrapper } = setup()
   draft.rounds[0].actions.push({ slot: 0, type: 'attack', target: 1 }, { type: 'interaction' })
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
   await wrapper.get('[aria-label="第2步：场景交互（互），点按修改"]').trigger('click')
   expect(wrapper.get('[aria-label="场景交互（互）"]').attributes('aria-pressed')).toBe('true')
-  await group('修改第2步动作').get('[aria-label="杨修 普攻"]').trigger('click')
+  await wrapper.get('.battle-action-input-row [aria-label="杨修 普攻"]').trigger('click')
   expect(draft.rounds[0].actions[1]).toEqual({ slot: 0, type: 'attack', target: 2 })
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 1 }, { slot: 0, type: 'attack', target: 2 }])
   await wrapper.get('[aria-label="场景交互（互）"]').trigger('click')
@@ -81,12 +81,12 @@ it('编辑区展开在当前回合行下方；多目标时只标注主目标以�
   draft.rounds.push({ actions: [], remark: '' })
   draft.rounds[0].actions.push({ slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'ultimate', target: 1 })
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
-  const bodyRows = wrapper.findAll('tbody > tr')
+  const bodyRows = wrapper.findAll('tbody > tr:not(.battle-action-input-row)')
   expect(bodyRows[1].find('#battle-action-detail').exists()).toBe(true)
   expect(bodyRows[1].get('h3').text()).toBe('第 1 回合')
   expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2A', '3↑打左一'])
   await wrapper.findAll('button').find(item => item.text().includes('下一回合')).trigger('click')
-  expect(wrapper.findAll('tbody > tr')[2].find('#battle-action-detail').exists()).toBe(true)
+  expect(wrapper.findAll('tbody > tr:not(.battle-action-input-row)')[2].find('#battle-action-detail').exists()).toBe(true)
   expect(group('动作目标').findAll('button')).toHaveLength(5)
 })
 

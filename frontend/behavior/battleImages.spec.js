@@ -139,9 +139,9 @@ it('操作可修改、重排、撤回；删除回合取消后不丢记录', asyn
   await button(wrapper, '↓防御').trigger('click')
   dialog.confirm.mockResolvedValueOnce(false)
   await button(wrapper, '删除本回合').trigger('click'); await flushPromises()
-  expect(wrapper.findAll('.battle-action-matrix tbody > tr:not(.battle-editor-row):not(.battle-remark-row)')).toHaveLength(2)
+  expect(wrapper.findAll('.battle-action-matrix tbody > tr:not(.battle-editor-row):not(.battle-remark-row):not(.battle-action-input-row)')).toHaveLength(2)
   await button(wrapper, '删除本回合').trigger('click'); await flushPromises()
-  expect(wrapper.findAll('.battle-action-matrix tbody > tr:not(.battle-editor-row):not(.battle-remark-row)')).toHaveLength(1)
+  expect(wrapper.findAll('.battle-action-matrix tbody > tr:not(.battle-editor-row):not(.battle-remark-row):not(.battle-action-input-row)')).toHaveLength(1)
   expect(wrapper.get('.battle-sequence-chips li:first-child button').attributes('aria-label')).toBe('第1步：杨修 大招 BOSS，点按修改')
 })
 
