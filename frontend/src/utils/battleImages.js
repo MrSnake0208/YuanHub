@@ -28,6 +28,7 @@ export const TARGET_COLORS = ['#dce8f1', '#f6e4bb', '#edd6d0', '#deead6', '#e4dc
 export const TARGET_ACCENTS = ['#5b8db8', '#d4a017', '#c8644f', '#6a9f55', '#8b6cc0']
 export const BATTLE_MAIN_TARGET = 2
 const agents = new Map(AGENT_CATALOG.map(agent => [agent.name, agent.id]))
+const ZHAOYUN_FIRE_FORM = { id: 'char_125_zhaoyun', disc: '火随风起' }
 
 export function battleTargetShortName(name) {
   if (/^作业目标\d+$/.test(name)) return name.slice(2)
@@ -155,9 +156,10 @@ export function buildBattleImageModel(draft, catalog = []) {
       const id = operator.id || battleOperatorId(operator.name)
       const entry = (id && (catalog.find(item => item.id === id) || AGENT_CATALOG.find(item => item.id === id))) || {}
       const fields = Object.fromEntries([...BATTLE_STATS, ...BATTLE_NOTES].map(([key]) => [key, String(operator[key] ?? '').trim()]))
+      const isZhaoyunFire = id === ZHAOYUN_FIRE_FORM.id && ['discs', 'requiredDiscs'].some(key => battleDiscNames(fields[key]).includes(ZHAOYUN_FIRE_FORM.disc))
       return {
         id, name: operator.name.trim(), panelNote: operator.panelNote || '', ...fields,
-        prof: Array.isArray(entry.prof) ? entry.prof[0] : entry.prof || '', job: subProfList(entry)[0] || '',
+        prof: isZhaoyunFire ? '火' : (Array.isArray(entry.prof) ? entry.prof[0] : entry.prof || ''), job: subProfList(entry)[0] || '',
         huajiProgress: battleHuajiProgress(fields.huaji),
         starStones: battleStarStones(fields.stars),
         discTerms: Object.fromEntries(['discs', 'requiredDiscs', 'forbiddenDiscs'].map(key => [key, battleDiscTerms(fields[key], entry.discs || [])])),
