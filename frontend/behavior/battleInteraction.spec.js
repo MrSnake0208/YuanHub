@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import BattleRecorder from '../src/components/work/BattleRecorder.vue'
@@ -8,7 +8,8 @@ import { buildBattleImageModel, createBattleDraft } from '../src/utils/battleIma
 const setup = () => {
   const draft = reactive(createBattleDraft())
   draft.operators[0].name = '杨修'
-  const wrapper = mount(BattleRecorder, { props: { operators: draft.operators, rounds: draft.rounds, targets: draft.targets, absentTargets: draft.absentTargets } })
+  // 桌面标题与动作链 Teleport 到表格上方，锚点必须在 document 中。
+  const wrapper = mount(BattleRecorder, { attachTo: document.body, props: { operators: draft.operators, rounds: draft.rounds, targets: draft.targets, absentTargets: draft.absentTargets } })
   const button = text => wrapper.findAll('button').find(item => item.text() === text)
   const group = label => wrapper.get(`[role="group"][aria-label="${label}"]`)
   return { draft, wrapper, button, group }
@@ -42,7 +43,7 @@ it('修改场景交互步骤时，点矩阵直接改成密探动作，再点场�
   expect(draft.rounds[0].actions).toEqual([{ slot: 0, type: 'attack', target: 1 }, { type: 'interaction' }])
 })
 
-it('操作图不加箱列：箱以中性底挂在密探格内，用到时图例补一项', () => {
+it('操作图不加场景交互列：互以中性底挂在密探格内，用到时图例补一项', () => {
   const draft = createBattleDraft()
   draft.operators[0].name = '杨修'
   draft.rounds = [{ remark: '', actions: [{ slot: 0, type: 'attack', target: 2 }, { type: 'interaction' }, { slot: 0, type: 'attack', target: 0 }] }, { remark: '', actions: [{ slot: 0, type: 'attack', target: 2 }] }]
@@ -51,17 +52,19 @@ it('操作图不加箱列：箱以中性底挂在密探格内，用到时图例�
   const used = sheet(model.rows)
   expect(used.findAll('.team-card-head')).toHaveLength(5)
   const chips = used.findAll('.action-cell')[0].findAll('.action-chip')
-  expect(chips.map(chip => chip.text())).toEqual(['1A', '2箱', '3A'])
+  expect(chips.map(chip => chip.text())).toEqual(['1A', '2互', '3A'])
   expect(chips[1].classes()).toContain('is-plain')
   expect(chips[1].attributes('style')).toBeUndefined()
-  // 多目标只给例外上色：目标 2 打得最多为主目标，用中性底；目标 0 才带目标色。图例里主目标色块同为中性底。
+  // 主位固定中性底，目标 0 保留目标色；图例将主位排最左，色块与动作一致。
   expect(chips[0].classes()).toContain('is-plain')
   expect(chips[0].attributes('style')).toBeUndefined()
   expect(chips[2].classes()).not.toContain('is-plain')
   expect(chips[2].attributes('style')).toContain('background')
-  expect(used.findAll('.sheet-action-key em').map(swatch => swatch.classes().includes('is-plain'))).toEqual([false, true])
-  expect(used.get('.sheet-action-key').text()).toContain('箱关卡互动')
-  expect(sheet(model.rows.slice(1)).get('.sheet-action-key').text()).not.toContain('关卡互动')
+  const swatches = used.findAll('.sheet-action-key em')
+  expect(swatches.map(swatch => swatch.element.parentElement.textContent)).toEqual(['BOSS', '左二'])
+  expect(swatches.map(swatch => swatch.classes().includes('is-plain'))).toEqual([true, false])
+  expect(used.get('.sheet-action-key').text()).toContain('互场景交互')
+  expect(sheet(model.rows.slice(1)).get('.sheet-action-key').text()).not.toContain('场景交互')
 })
 
 it('属性图标只出现在配队图，操作图完整款与简化款都不显示', () => {
@@ -76,17 +79,21 @@ it('属性图标只出现在配队图，操作图完整款与简化款都不显�
   expect(icons({ kind: 'actions', rows: model.rows, variant: 'simple' })).toBe(0)
 })
 
-it('编辑区展开在当前回合行下方；多目标时只标注主目标以外的目标', async () => {
+it('桌面标题与目标在当前回合行上方，动作矩阵在下方；多目标时只标注非主目标', async () => {
   const { draft, wrapper, group } = setup()
   draft.rounds.push({ actions: [], remark: '' })
   draft.rounds[0].actions.push({ slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'attack', target: 2 }, { slot: 0, type: 'ultimate', target: 1 })
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
-  const bodyRows = wrapper.findAll('tbody > tr:not(.battle-action-input-row)')
-  expect(bodyRows[1].find('#battle-action-detail').exists()).toBe(true)
-  expect(bodyRows[1].get('h3').text()).toBe('第 1 回合')
+  const activeRow = wrapper.get('[aria-label="编辑第1回合1号位动作"]').element.closest('tr')
+  expect(activeRow.previousElementSibling.querySelector('[aria-label="动作目标"]')).not.toBeNull()
+  expect(activeRow.previousElementSibling.previousElementSibling.querySelector('h3').textContent).toBe('第 1 回合')
+  expect(activeRow.nextElementSibling.classList.contains('battle-action-input-row')).toBe(true)
+  expect(wrapper.get('#battle-action-detail').element.closest('tr').previousElementSibling.classList.contains('battle-action-input-row')).toBe(true)
   expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').findAll('.battle-action-mark').map(mark => mark.text())).toEqual(['1A', '2A', '3↑打左一'])
   await wrapper.findAll('button').find(item => item.text().includes('下一回合')).trigger('click')
-  expect(wrapper.findAll('tbody > tr:not(.battle-action-input-row)')[2].find('#battle-action-detail').exists()).toBe(true)
+  const nextRow = wrapper.get('[aria-label="编辑第2回合1号位动作"]').element.closest('tr')
+  expect(nextRow.previousElementSibling.previousElementSibling.querySelector('h3').textContent).toBe('第 2 回合')
+  expect(nextRow.nextElementSibling.classList.contains('battle-action-input-row')).toBe(true)
   expect(group('动作目标').findAll('button')).toHaveLength(5)
 })
 
@@ -101,8 +108,9 @@ it('敌方名称在图例旁改名，表格与选择同步更新', async () => {
 })
 
 it('手机回合栏：翻回合与新增回合不重建按钮、焦点留在栏内；展开与收起通知页面切换底栏', async () => {
+  vi.stubGlobal('matchMedia', vi.fn(query => ({ matches: query === '(max-width: 767px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  vi.stubGlobal('scrollTo', vi.fn())
   const { draft, wrapper } = setup()
-  document.body.appendChild(wrapper.element)
   expect(wrapper.find('.battle-round-dock').exists()).toBe(false)
   await wrapper.get('[aria-label="编辑第1回合1号位动作"]').trigger('click')
   expect(wrapper.emitted('recording')).toEqual([[true]])

@@ -258,7 +258,7 @@ it('读取失败不伪装成没有密探，重试后可继续', async () => {
   expect(wrapper.text()).not.toContain('暂无已拥有的密探')
   await button(wrapper, '重试读取').trigger('click'); await flushPromises()
   await wrapper.get('[aria-label="编辑1号位"]').trigger('click')
-  expect(wrapper.get('[aria-label="选择杨修"]').text()).toContain('已有配置')
+  expect(wrapper.get('[aria-label="选择杨修，已有配置"]').text()).toContain('已有配置')
 })
 
 it('自动面板按既有权限读取，失败回退记录值并注明，不影响草稿继续编辑', async () => {
@@ -299,7 +299,7 @@ it('文件导入先校验再确认，取消不覆盖，恢复回合时重置编�
   await upload(wrapper, file); await flushPromises()
   expect(wrapper.get('[aria-label="标题或关卡"]').element.value).toBe('导入草稿')
   await battleCell(wrapper)
-  expect(wrapper.get('#battle-action-detail h3').text()).toBe('第 1 回合')
+  expect(wrapper.get('#battle-editor-top h3').text()).toBe('第 1 回合')
   expect(wrapper.get('[aria-label="编辑第1回合1号位动作"]').attributes('aria-expanded')).toBe('true')
   await upload(wrapper, { size: 1, text: async () => '{' }); await flushPromises()
   expect(wrapper.text()).toContain('有效的 JSON')
