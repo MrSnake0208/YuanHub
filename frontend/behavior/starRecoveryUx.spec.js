@@ -595,7 +595,7 @@ it('首次GET失败只提供重新加载，读取成功后清除错误', async (
   expect(wrapper.find('.star-sync-state.is-error').exists()).toBe(false)
   expect(wrapper.get('.star-sync-meta[role="status"]').text()).toBe('已读取云端星石状态')
   expect(wrapper.find('.star-sync-meta svg').exists()).toBe(false)
-  expect(wrapper.get('.star-sync-meta').attributes('title')).toBe('已读取云端星石状态')
+  expect(wrapper.get('.star-sync-meta[role="status"]').attributes('title')).toBe('已读取云端星石状态')
   wrapper.unmount()
 })
 
