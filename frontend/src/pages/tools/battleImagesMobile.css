@@ -145,8 +145,8 @@
   .battle-grid-heading > img { width: 32px; height: 38px; object-fit: cover; object-position: top; border-radius: 3px; }
   .battle-grid-heading > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .battle-tool .battle-composer-grid > button { height: 40px; min-height: 40px; margin-inline: 3px; }
-  .battle-tool .battle-composer-grid > button > b { font: 600 18px/1 var(--font-d); color: var(--action-color, inherit); }
-  .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { color: inherit; }
+  .battle-tool .battle-composer-grid > button > b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 5px; background: var(--action-color, var(--battle-accent)); color: var(--surface); font: 600 16px/1 var(--font-d); }
+  .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { background: var(--surface); color: var(--battle-accent); }
   .battle-tool .battle-composer-grid > button:active:not(:disabled):not([aria-pressed=true]) { background: var(--battle-selection); }
   .battle-tool .battle-round-toolbar > span { margin-left: 0; }
   .battle-tool .battle-draft-menu > summary { min-height: 44px; font-size: 12px; }

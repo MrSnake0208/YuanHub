@@ -2,6 +2,7 @@
   --battle-accent: var(--theme-accent-text, #9b611b);
   --battle-selection: color-mix(in srgb, var(--yellow) 22%, var(--surface));
   --battle-border: color-mix(in srgb, var(--tea) 26%, var(--surface));
+  --battle-action-border: color-mix(in srgb, var(--ink) 38%, var(--surface));
 }
 .battle-tool { color: var(--ink); padding-bottom: 32px; }
 .page-battle-images .compact-tool-header .compact-tool-actions { flex-wrap: wrap; gap: 8px; }
@@ -284,7 +285,7 @@
 .battle-tool .battle-target-ring-disc.is-plain { color: var(--ink); }
 .battle-tool .battle-target-ring-disc[aria-pressed=true] { border: 2px solid var(--battle-accent); }
 .battle-target-ring-disc > span { max-width: calc(var(--ring-disc) - 6px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.2; }
-.battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; border-color: transparent; border-radius: 6px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); font-weight: 400; }
+.battle-tool .battle-composer-row > button { min-height: 38px; padding: 6px 12px; border-color: var(--battle-action-border); border-radius: 6px; background: var(--surface); font-weight: 400; }
 .battle-tool .battle-composer-row > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-accent); color: var(--surface); font-weight: 600; }
 .battle-composer-grid > button[data-action=ultimate] { --action-color: #b23a2e; }
 .battle-composer-grid > button[data-action=attack] { --action-color: #94600f; }
@@ -328,12 +329,12 @@
   .battle-grid-heading { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; font-size: 12px; }
   .battle-grid-heading img { width: 24px; height: 30px; object-fit: cover; object-position: top; border-radius: 3px; }
   .battle-grid-heading > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .battle-tool .battle-composer-grid > button { min-width: 0; min-height: 34px; padding: 4px 6px; gap: 4px; margin-inline: 3px; white-space: nowrap; }
-  .battle-tool .battle-composer-grid > button > b { font: 600 15px/1 var(--font-d); color: var(--action-color, inherit); }
-  .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { color: inherit; }
+  .battle-tool .battle-composer-grid > button { min-width: 0; min-height: 34px; padding: 4px 6px; gap: 8px; margin-inline: 3px; white-space: nowrap; }
+  .battle-tool .battle-composer-grid > button > b { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; background: var(--action-color, var(--battle-accent)); color: var(--surface); font: 600 15px/1 var(--font-d); }
+  .battle-tool .battle-composer-grid > button[aria-pressed=true] > b { background: var(--surface); color: var(--battle-accent); }
   .battle-sequence-actions { display: flex; gap: 4px; }
-  .battle-tool .battle-sequence-actions > button { border: 0; padding: 6px; font-size: 12px; }
-  .battle-tool .battle-sequence-actions > button[aria-pressed=true] { background: var(--battle-accent); color: var(--surface); }
+  .battle-tool .battle-sequence-actions > button { border-color: var(--battle-action-border); padding: 6px; font-size: 12px; }
+  .battle-tool .battle-sequence-actions > button[aria-pressed=true] { border-color: var(--battle-accent); background: var(--battle-accent); color: var(--surface); }
   .battle-sequence-actions > button > b { font: 600 13px/1 var(--font-d); }
   .battle-tool .battle-round-note { display: grid; grid-template-rows: auto minmax(0, 1fr); margin: 14px 0 0 10px; }
   .battle-tool .battle-round-note textarea { height: 100%; min-height: 96px; resize: none; }
@@ -344,6 +345,7 @@
   .battle-tool button:hover:not(:disabled), .battle-matrix input:hover:not(:disabled) { border-color: var(--battle-accent); }
   .battle-tool .battle-cell-button:hover:not(:disabled) { background: var(--battle-selection); }
   .battle-tool .is-target-cell .battle-cell-button:hover:not(:disabled) { background: transparent; }
-  .battle-tool :is(.battle-composer-row > button, .battle-sequence-chips button):hover:not(:disabled):not([aria-pressed=true]):not(.is-targeted), .battle-tool .battle-step-tools > button:hover:not(:disabled), .battle-tool :is(.battle-round-dock > button:not(.battle-round-export), .battle-round-tools > button):hover:not(:disabled) { border-color: transparent; background: var(--battle-selection); }
+  .battle-tool :is(.battle-sequence-chips button):hover:not(:disabled):not([aria-pressed=true]):not(.is-targeted), .battle-tool .battle-step-tools > button:hover:not(:disabled), .battle-tool :is(.battle-round-dock > button:not(.battle-round-export), .battle-round-tools > button):hover:not(:disabled) { border-color: transparent; background: var(--battle-selection); }
+  .battle-tool .battle-composer-row > button:hover:not(:disabled):not([aria-pressed=true]) { border-color: var(--battle-accent); background: var(--battle-selection); }
   .battle-tool .battle-sequence-chips button.is-targeted:hover:not([aria-pressed=true]) { border-color: transparent; }
 }
