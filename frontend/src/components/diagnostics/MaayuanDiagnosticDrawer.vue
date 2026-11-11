@@ -49,7 +49,7 @@
                 </button>
               </div>
             </section>
-            <MaayuanDiagnosticEvidence v-if="selectedEvent" :key="selectedEvent" :event-id="selectedEvent" />
+            <MaayuanDiagnosticEvidence v-if="selectedEvent" :key="`${id}:${selectedEvent}`" :event-id="selectedEvent" :issue="detail.issue" :operator-names="detail.operatorNames" />
             <details v-else class="diagnostic-section diagnostic-raw"><summary>原始问题数据</summary><pre tabindex="0">{{ JSON.stringify(detail.issue, null, 2) }}</pre></details>
           </template>
         </div>

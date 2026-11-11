@@ -40,6 +40,7 @@ data class DiagnosticEventImage(
     val expired: Boolean,
     val status: String = "ready",
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val url: String? = null,
+    val operatorId: String? = null,
 ) {
     override fun toString(): String = "DiagnosticEventImage(assetId=$assetId, role=$role, expired=$expired, status=$status)"
 }

@@ -101,8 +101,10 @@ class MaayuanDiagnosticCenterService(
             MaayuanDiagnosticEvent::class.java,
         )
         val operators = catalog.catalogReadOnly()
+        val eventOperatorIds = recent.flatMap { it.summary.operatorIds }.toSet()
         val names = operators.filter {
-            it.operatorId == issue.subject || it.operatorId in issue.candidateOperatorIds || it.operatorId in issue.operatorIds
+            it.operatorId == issue.subject || it.operatorId in issue.candidateOperatorIds ||
+                it.operatorId in issue.operatorIds || it.operatorId in eventOperatorIds
         }.associate { it.operatorId to it.name }
         val inCatalog = if (issue.subjectKind == "ocr_name") {
             operators.any { it.name == issue.subject || issue.subject in it.alias.orEmpty().split(Regex("[\\s,，;；、]+")) }
@@ -124,7 +126,7 @@ class MaayuanDiagnosticCenterService(
         val event = retainedEvent(id)
         val manifest = asset(event, event.manifestAssetId)
         val json = media.loadAuthorizedAsset(manifest).inputStream.use { mapper.readTree(it) }
-        val images = event.images.map { image ->
+        val images = event.images.mapIndexed { index, image ->
             val stored = mongo.findById(image.assetId, MediaAsset::class.java)
             val expired = stored == null || expired(stored)
             val status = stored?.status ?: image.status
@@ -135,7 +137,9 @@ class MaayuanDiagnosticCenterService(
             } else {
                 null
             }
-            DiagnosticEventImage(image.assetId, image.role, image.issueIndex, expired, status, url)
+            val operatorId = image.operatorId ?: json.path("images").path(index).path("operator_id")
+                .takeIf { it.isTextual }?.asText()
+            DiagnosticEventImage(image.assetId, image.role, image.issueIndex, expired, status, url, operatorId)
         }
         return DiagnosticEventDetail(event.id, event.createdAt, event.summary, json, images)
     }

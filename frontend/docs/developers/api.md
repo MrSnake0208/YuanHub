@@ -232,15 +232,17 @@ COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 
 | 方法与相对路径 | 语义 |
 |---|---|
 | `GET /issues` | `status=NEW|FIXED|IGNORED|ALL`（默认 NEW）、`reason` 精确匹配组的 `reason` 或 `reasons`、`q` 搜索 subject/OCR 样本/目录中的中文名或别名（最多 100 字符）；`sort=lastSeen|count|firstSeen`（默认 lastSeen，倒序）；`page` 从 1 开始、每页 1～100，管理端参数 `pageSize`、AI 参数 `page_size`，默认 20 |
-| `GET /issues/{id}` | 问题组、近 90 天去重用户数、最近 20 条事件摘要、对象/候选中文名及 `subject_in_catalog`；OCR 对象按目录名称或空白/逗号等分隔的别名精确匹配，其他对象返回 null |
-| `GET /events/{eventId}` | 完整事件摘要、内联 `manifest` JSON、`images[{asset_id,role,issue_index,expired,status,url?}]`；status 为 pending/ready/missing/invalid，旧数据缺省 ready；url 仅管理端为未过期 cos+ready 图片签发，AI 不返回；不返回上报用户或账号 ID；协议没有明确 issue 关联时 `issue_index` 为 null |
+| `GET /issues/{id}` | 问题组、近 90 天去重用户数、最近 20 条事件摘要、对象/候选及最近事件涉及密探的中文名与 `subject_in_catalog`；OCR 对象按目录名称或空白/逗号等分隔的别名精确匹配，其他对象返回 null |
+| `GET /events/{eventId}` | 完整事件摘要、内联 `manifest` JSON、`images[{asset_id,role,operator_id,issue_index,expired,status,url?}]`；`operator_id` 可空，来自 manifest 对应图片，旧事件仅在读取时从已保存的 manifest 回填、不写回数据库；status 为 pending/ready/missing/invalid，旧数据缺省 ready；url 仅管理端为未过期 cos+ready 图片签发，AI 不返回；不返回上报用户或账号 ID；协议没有明确 issue 关联时 `issue_index` 为 null |
 | `GET /events/{eventId}/media/{assetId}` | 校验资产属于事件、仍在保留期且为私有诊断文件后返回文件流；不可跨事件访问 |
 | `PATCH /issues/{id}`（仅管理端） | `{status,note?}`，status 必填，备注最多 4000 字；记录操作人与时间，省略 note 保留原备注 |
 | `PUT /issues/{id}/analysis`（仅 AI） | `{summary,suggested_action,source,model?}`；必填字段不为空，长度分别最多 4000、40、40，model 最多 120；仅替换 `agent_analysis`，不修改 status |
 
 列表同时返回 `status_counts`、`reason_counts` 和 `pending_count/recent_event_count/regressed_count`。状态计数保留搜索与原因条件，忽略当前状态；原因计数保留搜索与状态条件，忽略当前原因。三项页头统计为全局授权范围内的待处理组数、近 7 天事件数、当前待处理且曾修复后复发的组数。
 
-签名键为 `原因|对象`：原因优先 `issue.reason`，缺省使用 `issue.code`；仅 `identity_unresolved` 或 `data_review` 且有密探 ID 时使用 `op:<id>`（多个 ID 分组），identity_unresolved 无 ID 但有 OCR 样本时使用 `ocr:<第一条样本>`，其余一律使用 `stage:<stage>`，避免页面/环境问题按密探拆组。身份类 `identity_unresolved` 的 operator/ocr_name 对象统一以 code 作为签名原因；同一事件中与非 collector_exception issue 有相同明确 reason 的外层 collector_exception 不参与分组，但完整事件摘要保留所有 issue；组的 `reason` 保存签名原因，新增 `reasons` 去重保存实际原因（缺省取 code，旧文档默认空数组），管理端与 AI 响应均返回该字段，原因计数仍按组的 `reason` 聚合。问题组 ID 为键的 SHA-1 十六进制前 24 位。同一事件内相同签名只计一次、合并阶段；组的 `operator_ids` 记录进入该组的 issue 的密探 ID，按最近出现去重保留最多 10 个，旧文档缺省空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」（优先目录中文名，否则原 ID）；最近去重 OCR 样本最多 8 条，MaaFW 客户端/资源/目录版本各最多 10 个，资源和界面简繁按事件计数。FIXED 后再次出现回到 NEW 并记录 `regressed_at`；IGNORED 仍计数但不自动重开。用户数只按仍保留的事件去重计算，不永久保存用户集合。
+签名键为 `原因|对象`：原因优先 `issue.reason`，缺省使用 `issue.code`；仅 `identity_unresolved` 或 `data_review` 且有密探 ID 时使用 `op:<id>`（多个 ID 分组），identity_unresolved 无 ID 但有 OCR 样本时使用 `ocr:<第一条样本>`，其余一律使用 `stage:<stage>`，避免页面/环境问题按密探拆组。身份类 `identity_unresolved` 的 operator/ocr_name 对象统一以 code 作为签名原因；同一事件中与非 collector_exception issue 有相同明确 reason 的外层 collector_exception 不参与分组，但完整事件摘要保留所有 issue；组的 `reason` 保存签名原因，新增 `reasons` 去重保存实际原因（缺省取 code，旧文档默认空数组），管理端与 AI 响应均返回该字段，原因计数仍按组的 `reason` 聚合。问题组 ID 为键的 SHA-1 十六进制前 24 位。同一事件内相同签名只计一次、合并阶段；operator 组的 `operator_ids` 只记录本组密探本人，不混入同一 issue 的其他密探；其余组记录进入该组的 issue 的密探 ID，按最近出现去重保留最多 10 个，旧文档缺省空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」（优先目录中文名，否则原 ID）；最近去重 OCR 样本最多 8 条，MaaFW 客户端/资源/目录版本各最多 10 个，资源和界面简繁按事件计数。FIXED 后再次出现回到 NEW 并记录 `regressed_at`；IGNORED 仍计数但不自动重开。用户数只按仍保留的事件去重计算，不永久保存用户集合。
+
+multipart 与 intents 两条入口均保存图片 `operator_id`，manifest 仍为 schema_version 1、字段不变。管理端证据区在 operator 组仅显示归属本组密探的截图；本组无图时提示实际归属，提供默认折叠的「仍然查看」。非 operator 组展示全部截图；每张截图标注密探中文名，目录无对应项时显示原 ID，缺少归属时显示「未识别密探」。
 
 Integration Token 的 scope 单独从 `GET /user/integration-tokens/scopes`（JWT）读取，不能混入上方连接码 Scope 表。通过现有 `POST /user/integration-tokens` 创建时须明确设置 `feedback_areas:["MAAYUAN"]`（允许包含其他板块），并授予所需 scope；省略板块范围不视为诊断授权。Token 所有者仍须具备 MAAYUAN 的反馈查看权限。
 

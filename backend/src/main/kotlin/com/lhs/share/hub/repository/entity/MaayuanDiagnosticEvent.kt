@@ -17,4 +17,10 @@ data class MaayuanDiagnosticEvent(
     @Indexed val signatures: List<String>,
 )
 
-data class MaayuanDiagnosticImage(val assetId: String, val role: String, val issueIndex: Int? = null, val status: String = "ready")
+data class MaayuanDiagnosticImage(
+    val assetId: String,
+    val role: String,
+    val issueIndex: Int? = null,
+    val status: String = "ready",
+    val operatorId: String? = null,
+)

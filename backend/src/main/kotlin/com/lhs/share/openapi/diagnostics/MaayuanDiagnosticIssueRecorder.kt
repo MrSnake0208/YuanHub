@@ -50,7 +50,14 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 .set("code", issues.last().code)
                 .set("reasons", (previous?.reasons.orEmpty() + issues.map { it.reason ?: it.code }).distinct())
                 .set("stages", (previous?.stages.orEmpty() + issues.map { it.stage }).distinct())
-                .set("operatorIds", recent(previous?.operatorIds.orEmpty() + issues.flatMap { it.operatorIds }, 10))
+                .set(
+                    "operatorIds",
+                    if (signature.kind == "operator") {
+                        listOf(signature.subject)
+                    } else {
+                        recent(previous?.operatorIds.orEmpty() + issues.flatMap { it.operatorIds }, 10)
+                    },
+                )
                 .set("candidateOperatorIds", issues.lastOrNull { it.candidateOperatorIds.isNotEmpty() }?.candidateOperatorIds.orEmpty())
                 .set("ocrSamples", recent(previous?.ocrSamples.orEmpty() + issues.flatMap { it.ocrSamples }, 8))
                 .set("status", if (previous?.status == "IGNORED") "IGNORED" else "NEW")
@@ -94,7 +101,12 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 ),
                 manifestAssetId = checkNotNull(assets.first().id),
                 images = assets.drop(1).mapIndexed { index, asset ->
-                    MaayuanDiagnosticImage(checkNotNull(asset.id), manifest.images[index].role, status = asset.status)
+                    MaayuanDiagnosticImage(
+                        checkNotNull(asset.id),
+                        manifest.images[index].role,
+                        status = asset.status,
+                        operatorId = manifest.images[index].operatorId,
+                    )
                 },
                 signatures = groups.keys.map { it.id },
             ),

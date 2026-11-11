@@ -6,16 +6,20 @@
       <p v-else-if="error" class="diagnostic-error" role="alert">{{ error }} <button type="button" @click="load">重试</button></p>
       <template v-else-if="event">
         <p v-if="!event.images.length" class="diagnostic-muted">本次上报未保存图片。</p>
-        <div v-else class="diagnostic-evidence-grid">
-          <figure v-for="image in event.images" :key="image.assetId">
-            <figcaption>{{ diagnosticImageLabels[image.role] || '证据图片' }}</figcaption>
+        <template v-else-if="noOperatorImages">
+          <p class="diagnostic-muted">本次截图属于 {{ imageOwners }}，本组密探没有截图</p>
+          <button type="button" :aria-expanded="showOtherImages" @click="showOtherImages = !showOtherImages">{{ showOtherImages ? '收起其他截图' : '仍然查看' }}</button>
+        </template>
+        <div v-if="visibleImages.length" class="diagnostic-evidence-grid">
+          <figure v-for="image in visibleImages" :key="image.assetId">
+            <figcaption>{{ imageLabel(image) }}</figcaption>
             <p v-if="image.expired" class="diagnostic-muted">图片已过期（保留 14 天）</p>
             <p v-else-if="image.status === 'pending'" class="diagnostic-muted">图片未上传完成</p>
             <p v-else-if="image.status === 'missing'" class="diagnostic-muted">图片未上传或已丢失</p>
             <p v-else-if="image.status === 'invalid'" class="diagnostic-error">图片校验失败</p>
             <p v-else-if="imageErrors[image.assetId]" class="diagnostic-error" role="status">{{ imageErrors[image.assetId] }}</p>
-            <button v-else-if="urls[image.assetId]" type="button" class="diagnostic-image-button" :aria-label="`放大${diagnosticImageLabels[image.role] || '证据图片'}`" @click="zoom = { assetId: image.assetId, url: urls[image.assetId], label: diagnosticImageLabels[image.role] || '证据图片' }">
-              <img :src="urls[image.assetId]" :alt="diagnosticImageLabels[image.role] || '证据图片'" referrerpolicy="no-referrer" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
+            <button v-else-if="urls[image.assetId]" type="button" class="diagnostic-image-button" :aria-label="`放大${imageLabel(image)}`" @click="zoom = { assetId: image.assetId, url: urls[image.assetId], label: imageLabel(image) }">
+              <img :src="urls[image.assetId]" :alt="imageLabel(image)" referrerpolicy="no-referrer" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
             </button>
             <p v-else role="status">正在加载图片…</p>
           </figure>
@@ -46,8 +50,19 @@ import { diagnosticImageLabels } from '@/data/maayuanDiagnostics.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock.js'
 
-const props = defineProps({ eventId: { type: String, required: true } })
+const props = defineProps({
+  eventId: { type: String, required: true },
+  issue: { type: Object, default: () => ({}) },
+  operatorNames: { type: Object, default: () => ({}) }
+})
 const event = ref(null), loading = ref(false), error = ref(''), urls = ref({}), imageErrors = ref({}), copyMessage = ref('')
+const showOtherImages = ref(false)
+const operatorImages = computed(() => (event.value?.images || []).filter(image => image.operatorId === props.issue.subject))
+const noOperatorImages = computed(() => props.issue.subjectKind === 'operator' && event.value?.images.length > 0 && !operatorImages.value.length)
+const visibleImages = computed(() => props.issue.subjectKind !== 'operator' || (noOperatorImages.value && showOtherImages.value)
+  ? event.value?.images || [] : operatorImages.value)
+const imageOwners = computed(() => [...new Set((event.value?.images || []).map(image => image.operatorId
+  ? `${props.operatorNames[image.operatorId] || image.operatorId}（其他密探）` : '未识别密探'))].join('、'))
 const zoom = ref(null), zoomPanel = ref(null), zoomClose = ref(null)
 const zoomOpen = computed(() => Boolean(zoom.value))
 const manifestText = computed(() => JSON.stringify(event.value?.manifest, null, 2))
@@ -56,12 +71,13 @@ let refreshedForExpiry = false
 useBodyScrollLock(zoomOpen)
 useModalFocus(zoomOpen, zoomPanel, { initialFocus: () => zoomClose.value, onEscape: () => { zoom.value = null } })
 function revokeUrls() { Object.values(urls.value).filter(url => url.startsWith('blob:')).forEach(url => URL.revokeObjectURL(url)); urls.value = {} }
+function imageLabel(image) { return `${diagnosticImageLabels[image.role] || '证据图片'} · ${props.operatorNames[image.operatorId] || image.operatorId || '未识别密探'}` }
 async function load(options = {}) {
   const refresh = options?.refresh === true
   if (!refresh) refreshedForExpiry = false
   const zoomAssetId = refresh ? zoom.value?.assetId : null
   const token = ++generation, id = props.eventId
-  if (!refresh) zoom.value = null
+  if (!refresh) { zoom.value = null; showOtherImages.value = false }
   revokeUrls(); event.value = null; imageErrors.value = {}; copyMessage.value = ''
   loading.value = true; error.value = ''
   try {
@@ -107,5 +123,6 @@ async function copyManifest() {
   catch (_) { copyMessage.value = '复制失败，请选中下方文本复制' }
 }
 watch(() => props.eventId, load, { immediate: true })
+watch(() => [props.issue.subjectKind, props.issue.subject], () => { showOtherImages.value = false; zoom.value = null })
 onBeforeUnmount(() => { generation++; revokeUrls() })
 </script>
