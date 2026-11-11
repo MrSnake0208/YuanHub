@@ -10,11 +10,13 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletRequestWrapper
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.boot.web.servlet.FilterRegistrationBean
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
@@ -27,9 +29,23 @@ internal const val DIAGNOSTIC_BODY = "maayuan.diagnostic.body"
 internal const val DIAGNOSTIC_TYPE = "maayuan.diagnostic.type"
 internal const val DIAGNOSTIC_PRINCIPAL = "maayuan.diagnostic.principal"
 
-/** Run before DispatcherServlet's multipart resolver, including for chunked requests. */
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 20)
+/**
+ * Registered explicitly so MVC test slices do not pick it up as a scanned Filter.
+ * Runs before Spring Security and DispatcherServlet's multipart resolver, including for chunked requests.
+ */
+@Configuration(proxyBeanMethods = false)
+class MaayuanDiagnosticFilterConfiguration {
+    @Bean
+    fun maayuanDiagnosticFilterRegistration(
+        tokens: OpenApiTokenService,
+        quotas: MaayuanDiagnosticQuota,
+        mapper: ObjectMapper,
+    ): FilterRegistrationBean<MaayuanDiagnosticFilter> =
+        FilterRegistrationBean(MaayuanDiagnosticFilter(tokens, quotas, mapper)).apply {
+            order = Ordered.HIGHEST_PRECEDENCE + 20
+        }
+}
+
 class MaayuanDiagnosticFilter(
     private val tokens: OpenApiTokenService,
     private val quotas: MaayuanDiagnosticQuota,

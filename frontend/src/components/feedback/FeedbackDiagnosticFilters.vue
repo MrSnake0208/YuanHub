@@ -37,7 +37,7 @@ function reset() { emit('apply', { source: '', issueCode: '', operatorId: '', re
 <style scoped>
 .diagnostic-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 12px 0; }
 .diagnostic-filters label { display: grid; flex: 1 1 160px; min-width: 0; gap: 5px; font-size: 12px; }
-.diagnostic-filters input, .diagnostic-filters select { width: 100%; min-width: 0; min-height: 38px; padding: 8px; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--theme-border, #d6c9ad); border-radius: 6px; }
+.diagnostic-filters input, .diagnostic-filters select { width: 100%; min-width: 0; min-height: 38px; padding: 8px; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--theme-line, #d6c9ad); border-radius: 6px; }
 .diagnostic-filters p { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
 .diagnostic-advanced { flex-basis: 100%; font-size: 12px; }
 .diagnostic-advanced summary { cursor: pointer; }
