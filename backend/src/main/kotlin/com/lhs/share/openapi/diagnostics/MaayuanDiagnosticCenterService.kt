@@ -167,7 +167,11 @@ class MaayuanDiagnosticCenterService(
             )
         }
         return DiagnosticEventDetail(
-            event.id, event.createdAt, summary(event.summary, includeTrace), json, images,
+            event.id,
+            event.createdAt,
+            summary(event.summary, includeTrace),
+            json,
+            images,
             trace = if (includeTrace) event.trace else null,
         )
     }

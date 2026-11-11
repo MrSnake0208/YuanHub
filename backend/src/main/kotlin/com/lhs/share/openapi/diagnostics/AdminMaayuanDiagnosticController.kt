@@ -34,7 +34,9 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
 
     @GetMapping("/events/{eventId}")
     fun event(@PathVariable eventId: String) = authorized {
-        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(success(center.event(eventId, includeUrls = true, includeTrace = true)))
+        ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .body(success(center.event(eventId, includeUrls = true, includeTrace = true)))
     }
 
     @GetMapping("/events/{eventId}/media/{assetId}", produces = [MediaType.ALL_VALUE])

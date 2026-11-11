@@ -109,7 +109,16 @@ class MonorepoWorkflowTest(unittest.TestCase):
             text = path.read_text()
             triggers = text.split('\non:\n', 1)[1].split('\npermissions:', 1)[0].split('\nconcurrency:', 1)[0]
             for event in ('push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_run', 'release'):
-                self.assertNotRegex(triggers, r'(?m)^  ' + event + r':', str(path))
+                if path.name == 'ci.yml' and event in ('push', 'pull_request'):
+                    self.assertRegex(triggers, r'(?m)^  ' + event + r':', str(path))
+                else:
+                    self.assertNotRegex(triggers, r'(?m)^  ' + event + r':', str(path))
+            if path.name == 'ci.yml':
+                push = re.split(r'(?m)^  \S', triggers.split('  push:\n', 1)[1], maxsplit=1)[0]
+                self.assertRegex(push, r'(?m)^    branches: \[main\]$', str(path))
+                self.assertNotRegex(push, r'(?m)^    (branches-ignore|tags|tags-ignore):', str(path))
+                for forbidden in ('deploy', 'environment: production', 'secrets.'):
+                    self.assertNotIn(forbidden, text.lower(), str(path))
         text = (ROOT / '.github/workflows/promo-site-deploy.yml').read_text()
         self.assertIn('working-directory: frontend/promo-site', text)
         self.assertIn('scripts.release_gate', text)
