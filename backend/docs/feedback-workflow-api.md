@@ -10,10 +10,12 @@
 
 新集合与索引：
 
-- `maayuan_diagnostic_events`：`_id=eventId`，保存认证推导的 userId/accountId、createdAt、复用的 FeedbackDiagnosticSummary、manifestAssetId、图片 assetId/role/可选 issueIndex、问题组 signatures。索引为 createdAt、signatures；事件响应不返回上报用户和账号 ID。
-- `maayuan_diagnostic_issues`：永久问题组，索引为 `{status:1,lastSeenAt:-1}`、reason。键为 `原因|对象`（reason 缺省取 code；仅 identity_unresolved/data_review 有 operatorIds 时使用每个 `op:<operatorId>`，identity_unresolved 无 ID 但有 OCR 样本时使用首条 `ocr:<样本>`，其余所有 code 一律为 `stage:<stage>`，避免页面/环境问题按密探拆组），ID 为键的 SHA-1 十六进制前 24 位，落点为 `MaayuanDiagnosticIssueRecorder.Signature`。
+- `maayuan_diagnostic_events`：`_id=eventId`，保存认证推导的 userId/accountId、createdAt、复用的 FeedbackDiagnosticSummary（issue 可选 node）、manifestAssetId、校验后的完整 trace、图片 assetId/role/可选 issueIndex、可选 traceIndex/nodeRoi、问题组 signatures。索引为 createdAt、signatures；事件响应不返回上报用户和账号 ID；旧事件 trace 缺省空数组。
+- `maayuan_diagnostic_issues`：永久问题组，索引为 `{status:1,lastSeenAt:-1}`、reason。键为 `原因|对象`（reason 缺省取 code；仅 identity_unresolved/data_review 有 operatorIds 时使用每个 `op:<operatorId>`，identity_unresolved 无 ID 但有 OCR 样本时使用首条 `ocr:<样本>`；其余 issue 有 node 时用 `node:<node>`、subjectKind=node，无 node 才用 `stage:<stage>`），ID 为键的 SHA-1 十六进制前 24 位，落点为 `MaayuanDiagnosticIssueRecorder.Signature`。无 node 的旧签名、operator/ocr_name 分支不变，不回填或合并历史组。
 - 身份类 identity_unresolved 的 operator/ocr_name 对象以 code 代替 reason 作为签名原因；同事件与其他非 collector_exception issue 具有相同明确 reason 的外层 collector_exception 不参与分组，事件摘要仍保留所有 issue；组 `reason` 为签名原因，新增去重 `reasons` 记录实际 issue.reason（缺省取 code，旧文档默认空数组），管理端与 AI 响应随问题组返回该字段。
 - 同一事件内按签名分组，只增加一次 eventCount，并合并 stages；新增 operatorIds 收集进入该组的 issue 的 operatorIds，沿用 recent() 去重保留最近 10 个，旧文档默认空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」，中文名由只读目录解析，未命中保留原 ID；最近非空候选列表取当前事件，OCR 样本去重保留最近 8 条，MaaFW/资源/目录版本各保留最近去重 10 个，resourceCounts/uiScriptCounts 每个事件各计一次。FIXED 再次出现时回到 NEW 并记 regressedAt；IGNORED 只累计不重开。用户集合不永久存储，详情基于保留期内事件按 userId 去重计数。
+
+上述 stage/node 分支中，issue.node 为 `(direct)` 时回退 `stage:<stage>`，避免跨阶段合组；nodes 聚合时过滤该值（含已有列表），服务端字段校验仍接受它。operator/ocr_name 分组规则不变。
 
 管理端基路径 `/v1/admin/maayuan-diagnostics` 使用 JWT，复用 `FeedbackAccessService.operatorAreas(userId)` 包含 MAAYUAN 的判断，与原 UNASSIGNED 诊断工单的工作台可见规则一致（含超级管理员），不使用宽泛的旧 manageAreas 代替岗位授权；未授权返回 HTTP 403，不新增权限码。Integration Token 基路径 `/open-api/maayuan-diagnostics` 还要求 Token 明确包含 MAAYUAN、所有者仍满足同一查看判断，不能以省略 feedbackAreas 表示诊断授权。
 
@@ -33,6 +35,17 @@
 全局图片预算仍为 10 GiB；不足时保存无图事件及 manifest。接收事务失败只清理未被已提交事件引用的本次媒体，并保持原有预算回滚及孤儿文件回收。问题组并发写冲突会回滚整个事件，由客户端使用相同 eventId 重试，避免丢失或重复累计。
 
 前端 `/maayuan-diagnostics` 与反馈管理路由同级鉴权，以桌面表格/手机卡片承载问题组，右侧抽屉（手机全屏）提供结论、处理、环境、最近事件、完整证据及原始数据；反馈页只保留次级入口，旧详情图片也改为 contain。现有 MaayuanDiagnosticServiceMongoTest 与 feedbackPages.spec.js 中直接冲突的断言已静态更新，未运行检查；新中心的权限、事务、聚合及运行时 UI 均待另行授权验证。
+
+### 识别轨迹、失败画面与节点分组（schema_version=1）
+
+新增字段均为可选兼容增量，严格模式继续拒绝未知键、重复键、null 和类型强转。**发布顺序必须是 YuanHub 后端先发布，再发布 MaaYuan 客户端**；旧后端会将新增字段视为未知字段返回 400。字段完整定义见 [开发者 API](../../frontend/docs/developers/api.md#maayuan-百宝箱诊断)。
+
+- 顶层 trace 缺省空数组，最多 64 步，t 按非递减排序。kind 仅 reco/action；node 为 1～64 字符，匹配 `[\p{L}\p{N}_\-·@ ]+`，为契约所述兜底节点额外允许固定值 `(direct)`；stage 沿用 issue.stage；hit 必填布尔值；n 为 1～10000，t/dt 为 0～86400000 毫秒，dt 可省略。仅 reco 可带 algo（1～32 个 ASCII 字母/数字/下划线）、score（-1～100000，最多 3 位有效小数）；box 为 resolution 内的四整数矩形，w/h >0。仅 OCR reco 可带 text，1～32 字符，复用 OCR/SENSITIVE 校验；客户端还有短汉字/数字的更严格过滤。摘要与图片档均可发送 trace。
+- issue.node 可选，采用同一节点规则，由客户端关联同阶段最后一次未命中的识别步骤；服务端不推断。图片 trace_index 为 0～63 的整数且小于 trace 长度；node_roi 为 resolution 内的四整数正宽高矩形；两字段均仅 last_frame 可带。manifest 原样保存校验后的值，multipart 与直传共用解析、持久化路径，不新增数据迁移。
+- 问题组 nodes 最近去重保留 10 个；管理端问题组非空时返回 nodes，事件详情额外返回 trace、summary.issues[].node 和 images[].trace_index/node_roi（实体字段为 camelCase，JSON 沿用 snake_case）。旧事件不补写。保留期、配额、幂等、事务和权限规则不变。
+- 管理抽屉新增识别轨迹时间线，展示时间、中文阶段、节点、算法、结果、折叠次数、最高分和短 OCR 文本；突出当前组相关 issue.node 在同阶段最后一个未命中 reco，last_frame 引用的步骤标「对应画面」。缩略图与放大图均叠加黄色虚线节点 ROI 和绿/红识别框，按 resolution、图片 roi 及 contain 实际内容区定位，并随尺寸变化重算。原列表、备注、证据过期提示与重试路径保留，手机沿用全屏抽屉。
+
+`/open-api/maayuan-diagnostics/*` 保持既有请求与结构化响应字段，包括内联 manifest 的原字段投影，不透出本次新增节点/轨迹字段；读取完整 manifest 附件仍返回实际保存的协议文件。该兼容投影在共享读取服务完成，Integration Token Controller、`PUT /issues/{id}/analysis` 及分析实现未改动。
 
 交给后端验证会话运行（本次实现会话未运行 Gradle）：
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticTraceStep
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
@@ -41,6 +42,8 @@ data class DiagnosticEventImage(
     val status: String = "ready",
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val url: String? = null,
     val operatorId: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val traceIndex: Int? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val nodeRoi: List<Int>? = null,
 ) {
     override fun toString(): String = "DiagnosticEventImage(assetId=$assetId, role=$role, expired=$expired, status=$status)"
 }
@@ -51,6 +54,7 @@ data class DiagnosticEventDetail(
     val summary: FeedbackDiagnosticSummary,
     val manifest: JsonNode,
     val images: List<DiagnosticEventImage>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val trace: List<MaayuanDiagnosticTraceStep>? = null,
 )
 
 data class DiagnosticIssueUpdateRequest(

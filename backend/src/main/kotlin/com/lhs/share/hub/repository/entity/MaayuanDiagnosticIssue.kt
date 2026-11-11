@@ -1,5 +1,6 @@
 package com.lhs.share.hub.repository.entity
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
@@ -35,6 +36,7 @@ data class MaayuanDiagnosticIssue(
     val agentAnalysis: MaayuanDiagnosticAnalysis? = null,
     val reasons: List<String> = emptyList(),
     val operatorIds: List<String> = emptyList(),
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val nodes: List<String> = emptyList(),
 )
 
 data class MaayuanDiagnosticAnalysis(

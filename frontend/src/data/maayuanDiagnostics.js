@@ -36,6 +36,7 @@ export function diagnosticIssueTitle(issue) {
   const label = issue.reason === 'page_timeout' ? '页面等待超时' : diagnosticReasonLabel(issue)
   if (issue.subjectKind === 'operator') return `${issue.subjectName || '密探'} · ${label}`
   if (issue.subjectKind === 'ocr_name') return `OCR「${issue.subject}」· ${label}`
+  if (issue.subjectKind === 'node') return `节点 ${issue.subject} · ${label}`
   return `${label} · ${Object.hasOwn(diagnosticStageLabels, issue.subject) ? diagnosticStageLabels[issue.subject] : '采集阶段'}`
 }
 

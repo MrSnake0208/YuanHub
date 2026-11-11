@@ -1,7 +1,9 @@
 package com.lhs.share.openapi.diagnostics
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.lhs.share.controller.response.ApiResultException
+import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticAnalysis
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
@@ -42,7 +44,15 @@ class MaayuanDiagnosticCenterService(
         if (FeedbackArea.MAAYUAN !in access.operatorAreas(userId)) throw ApiResultException(403, "没有 MaaYuan 诊断的查看权限")
     }
 
-    fun list(status: String, reason: String?, q: String?, sort: String, page: Int, pageSize: Int): DiagnosticIssuePage {
+    fun list(
+        status: String,
+        reason: String?,
+        q: String?,
+        sort: String,
+        page: Int,
+        pageSize: Int,
+        includeTrace: Boolean = false,
+    ): DiagnosticIssuePage {
         if (status !in setOf("NEW", "FIXED", "IGNORED", "ALL") || page < 1 || pageSize !in 1..100) {
             throw ApiResultException(400, "无效的诊断状态或分页参数")
         }
@@ -80,7 +90,12 @@ class MaayuanDiagnosticCenterService(
         val names = operators.associate { it.operatorId to it.name }
         val now = Instant.now()
         return DiagnosticIssuePage(
-            items.map { DiagnosticIssueListItem(it, if (it.subjectKind == "operator") names[it.subject] else null) },
+            items.map {
+                DiagnosticIssueListItem(
+                    if (includeTrace) it else it.copy(nodes = emptyList()),
+                    if (it.subjectKind == "operator") names[it.subject] else null,
+                )
+            },
             mongo.count(Query(criteria), MaayuanDiagnosticIssue::class.java),
             page,
             pageSize,
@@ -92,7 +107,7 @@ class MaayuanDiagnosticCenterService(
         )
     }
 
-    fun detail(id: String): DiagnosticIssueDetail {
+    fun detail(id: String, includeTrace: Boolean = false): DiagnosticIssueDetail {
         val issue = issue(id)
         val events = Query(Criteria.where("signatures").`is`(id).and("createdAt").gt(retainedAfter()))
         val users = mongo.findDistinct(events, "userId", MaayuanDiagnosticEvent::class.java, String::class.java)
@@ -112,20 +127,26 @@ class MaayuanDiagnosticCenterService(
             null
         }
         return DiagnosticIssueDetail(
-            issue,
+            if (includeTrace) issue else issue.copy(nodes = emptyList()),
             users.size,
             recent.map {
-                DiagnosticEventSummary(it.id, it.createdAt, it.summary)
+                DiagnosticEventSummary(it.id, it.createdAt, summary(it.summary, includeTrace))
             },
             inCatalog,
             names,
         )
     }
 
-    fun event(id: String, includeUrls: Boolean = false): DiagnosticEventDetail {
+    fun event(id: String, includeUrls: Boolean = false, includeTrace: Boolean = false): DiagnosticEventDetail {
         val event = retainedEvent(id)
         val manifest = asset(event, event.manifestAssetId)
         val json = media.loadAuthorizedAsset(manifest).inputStream.use { mapper.readTree(it) }
+        // Keep the existing integration-token response schema; trace is an admin-only extension.
+        if (!includeTrace) {
+            (json as ObjectNode).remove("trace")
+            json.path("issues").forEach { (it as ObjectNode).remove("node") }
+            json.path("images").forEach { (it as ObjectNode).remove(listOf("trace_index", "node_roi")) }
+        }
         val images = event.images.mapIndexed { index, image ->
             val stored = mongo.findById(image.assetId, MediaAsset::class.java)
             val expired = stored == null || expired(stored)
@@ -139,10 +160,20 @@ class MaayuanDiagnosticCenterService(
             }
             val operatorId = image.operatorId ?: json.path("images").path(index).path("operator_id")
                 .takeIf { it.isTextual }?.asText()
-            DiagnosticEventImage(image.assetId, image.role, image.issueIndex, expired, status, url, operatorId)
+            DiagnosticEventImage(
+                image.assetId, image.role, image.issueIndex, expired, status, url, operatorId,
+                traceIndex = if (includeTrace) image.traceIndex else null,
+                nodeRoi = if (includeTrace) image.nodeRoi else null,
+            )
         }
-        return DiagnosticEventDetail(event.id, event.createdAt, event.summary, json, images)
+        return DiagnosticEventDetail(
+            event.id, event.createdAt, summary(event.summary, includeTrace), json, images,
+            trace = if (includeTrace) event.trace else null,
+        )
     }
+
+    private fun summary(value: FeedbackDiagnosticSummary, includeTrace: Boolean): FeedbackDiagnosticSummary =
+        if (includeTrace) value else value.copy(issues = value.issues.map { it.copy(node = null) })
 
     fun mediaResponse(eventId: String, assetId: String): ResponseEntity<Resource> {
         val asset = asset(retainedEvent(eventId), assetId)
@@ -161,7 +192,7 @@ class MaayuanDiagnosticCenterService(
         val update = Update().set("status", request.status).set("statusUpdatedBy", userId).set("statusUpdatedAt", Instant.now())
         request.note?.let { update.set("note", it) }
         mongo.updateFirst(Query(Criteria.where("_id").`is`(id)), update, MaayuanDiagnosticIssue::class.java)
-        return detail(id)
+        return detail(id, includeTrace = true)
     }
 
     fun analysis(id: String, request: DiagnosticAnalysisRequest): MaayuanDiagnosticAnalysis {

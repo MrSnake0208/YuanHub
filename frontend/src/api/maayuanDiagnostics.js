@@ -28,7 +28,11 @@ export async function updateDiagnosticIssue(id, body) {
 
 export async function getDiagnosticEvent(id) {
   const value = await request(`${base}/events/${encodeURIComponent(id)}`, options())
-  return { ...eventFrom(value), images: (value.images || []).map(image => ({ ...camelFields(image), status: image.status || 'ready' })) }
+  return {
+    ...eventFrom(value),
+    trace: (value.trace || []).map(camelFields),
+    images: (value.images || []).map(image => ({ ...camelFields(image), status: image.status || 'ready' }))
+  }
 }
 
 export function getDiagnosticMedia(eventId, assetId) {

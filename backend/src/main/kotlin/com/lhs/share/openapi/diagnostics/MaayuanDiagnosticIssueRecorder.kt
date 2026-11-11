@@ -5,6 +5,7 @@ import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticImage
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticTraceStep
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.openapi.OpenApiPrincipal
 import org.springframework.beans.factory.annotation.Qualifier
@@ -28,6 +29,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 issue.code in setOf("identity_unresolved", "data_review") && issue.operatorIds.isNotEmpty() ->
                     issue.operatorIds.distinct().map { "operator" to it }
                 issue.code == "identity_unresolved" && issue.ocrSamples.isNotEmpty() -> listOf("ocr_name" to issue.ocrSamples.first())
+                issue.node != null && issue.node != "(direct)" -> listOf("node" to issue.node)
                 else -> listOf("stage" to issue.stage)
             }
             subjects.map { (kind, subject) ->
@@ -50,6 +52,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 .set("code", issues.last().code)
                 .set("reasons", (previous?.reasons.orEmpty() + issues.map { it.reason ?: it.code }).distinct())
                 .set("stages", (previous?.stages.orEmpty() + issues.map { it.stage }).distinct())
+                .set("nodes", recent((previous?.nodes.orEmpty() + issues.mapNotNull { it.node }).filter { it != "(direct)" }, 10))
                 .set(
                     "operatorIds",
                     if (signature.kind == "operator") {
@@ -96,6 +99,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                             operatorIds = it.operatorIds,
                             candidateOperatorIds = it.candidateOperatorIds,
                             ocrSamples = it.ocrSamples,
+                            node = it.node,
                         )
                     },
                 ),
@@ -106,9 +110,14 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                         manifest.images[index].role,
                         status = asset.status,
                         operatorId = manifest.images[index].operatorId,
+                        traceIndex = manifest.images[index].traceIndex,
+                        nodeRoi = manifest.images[index].nodeRoi,
                     )
                 },
                 signatures = groups.keys.map { it.id },
+                trace = manifest.trace.map {
+                    MaayuanDiagnosticTraceStep(it.kind, it.node, it.stage, it.hit, it.n, it.t, it.dt, it.algo, it.score, it.box, it.text)
+                },
             ),
         )
     }
@@ -119,6 +128,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
         private val prefix = when (kind) {
             "operator" -> "op"
             "ocr_name" -> "ocr"
+            "node" -> "node"
             else -> "stage"
         }
         val key = "$reason|$prefix:$subject"

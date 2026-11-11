@@ -98,6 +98,7 @@ const environment = computed(() => {
   return [
     ['资源', counts(issue.resourceCounts, diagnosticResourceLabels)], ['界面文字', counts(issue.uiScriptCounts, diagnosticUiScriptLabels)],
     ['涉及密探', (issue.operatorIds || []).map(id => detail.value.operatorNames?.[id] || id).join('、')],
+    ['涉及节点', (issue.nodes || []).join('、')],
     ['客户端版本', issue.clientVersions?.join('、')], ['资源版本', issue.resourceVersions?.join('、')], ['目录版本', issue.catalogVersions?.join('、')],
     ['用户数（近 90 天）', String(detail.value.userCount)], ['首次出现', formatTime(issue.firstSeenAt)], ['最近出现', formatTime(issue.lastSeenAt)]
   ].filter(([, value]) => value !== '' && value != null)

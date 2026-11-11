@@ -1,5 +1,6 @@
 <template>
   <div>
+    <MaayuanDiagnosticTrace v-if="event" :trace="event.trace || []" :issues="event.summary?.issues || []" :issue="issue" :images="event.images" />
     <section class="diagnostic-section" aria-label="事件证据">
       <h3>证据</h3>
       <p v-if="loading" role="status">正在加载事件和证据…</p>
@@ -18,10 +19,11 @@
             <p v-else-if="image.status === 'missing'" class="diagnostic-muted">图片未上传或已丢失</p>
             <p v-else-if="image.status === 'invalid'" class="diagnostic-error">图片校验失败</p>
             <p v-else-if="imageErrors[image.assetId]" class="diagnostic-error" role="status">{{ imageErrors[image.assetId] }}</p>
-            <button v-else-if="urls[image.assetId]" type="button" class="diagnostic-image-button" :aria-label="`放大${imageLabel(image)}`" @click="zoom = { assetId: image.assetId, url: urls[image.assetId], label: imageLabel(image) }">
-              <img :src="urls[image.assetId]" :alt="imageLabel(image)" referrerpolicy="no-referrer" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
+            <button v-else-if="urls[image.assetId]" type="button" class="diagnostic-image-button" :aria-label="`放大${imageLabel(image)}`" @click="zoom = { assetId: image.assetId, image, url: urls[image.assetId], label: imageLabel(image) }">
+              <MaayuanDiagnosticImage :src="urls[image.assetId]" :alt="imageLabel(image)" v-bind="annotations(image)" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
             </button>
             <p v-else role="status">正在加载图片…</p>
+            <p v-if="annotationLabel(image)" class="diagnostic-muted">{{ annotationLabel(image) }}</p>
           </figure>
         </div>
         <button v-if="Object.keys(imageErrors).length" type="button" @click="load">重新加载证据</button>
@@ -36,7 +38,8 @@
       <div v-if="zoom" class="diagnostic-mask diagnostic-zoom-mask">
         <section ref="zoomPanel" class="diagnostic-zoom" role="dialog" aria-modal="true" :aria-label="zoom.label" tabindex="-1">
           <header><h3>{{ zoom.label }}</h3><button ref="zoomClose" type="button" @click="zoom = null">关闭大图</button></header>
-          <img :src="zoom.url" :alt="zoom.label" referrerpolicy="no-referrer" @error="imageFailed(zoom.assetId, $event.target.getAttribute('src'))" />
+          <MaayuanDiagnosticImage :src="zoom.url" :alt="zoom.label" v-bind="annotations(zoom.image)" expanded @error="imageFailed(zoom.assetId, $event.target.getAttribute('src'))" />
+          <p v-if="annotationLabel(zoom.image)" class="diagnostic-muted">{{ annotationLabel(zoom.image) }}</p>
         </section>
       </div>
     </Teleport>
@@ -49,6 +52,8 @@ import { getDiagnosticEvent, getDiagnosticMedia } from '@/api/maayuanDiagnostics
 import { diagnosticImageLabels } from '@/data/maayuanDiagnostics.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock.js'
+import MaayuanDiagnosticImage from './MaayuanDiagnosticImage.vue'
+import MaayuanDiagnosticTrace from './MaayuanDiagnosticTrace.vue'
 
 const props = defineProps({
   eventId: { type: String, required: true },
@@ -66,12 +71,26 @@ const imageOwners = computed(() => [...new Set((event.value?.images || []).map(i
 const zoom = ref(null), zoomPanel = ref(null), zoomClose = ref(null)
 const zoomOpen = computed(() => Boolean(zoom.value))
 const manifestText = computed(() => JSON.stringify(event.value?.manifest, null, 2))
+const resolution = computed(() => event.value?.manifest?.client?.resolution?.split('x').map(Number) || [])
 let generation = 0
 let refreshedForExpiry = false
 useBodyScrollLock(zoomOpen)
 useModalFocus(zoomOpen, zoomPanel, { initialFocus: () => zoomClose.value, onEscape: () => { zoom.value = null } })
 function revokeUrls() { Object.values(urls.value).filter(url => url.startsWith('blob:')).forEach(url => URL.revokeObjectURL(url)); urls.value = {} }
 function imageLabel(image) { return `${diagnosticImageLabels[image.role] || '证据图片'} · ${props.operatorNames[image.operatorId] || image.operatorId || '未识别密探'}` }
+function annotations(image) {
+  if (image.role !== 'last_frame') return {}
+  const step = event.value?.trace?.[image.traceIndex]
+  const index = event.value?.images.findIndex(item => item.assetId === image.assetId)
+  const imageRoi = event.value?.manifest?.images?.[index]?.roi
+  return { resolution: resolution.value, imageRoi, nodeRoi: image.nodeRoi, box: step?.box, hit: step?.hit }
+}
+function annotationLabel(image) {
+  if (image.role !== 'last_frame') return ''
+  const step = event.value?.trace?.[image.traceIndex]
+  return [step ? `节点 ${step.node}` : '', image.nodeRoi ? '节点 ROI：黄色虚线' : '',
+    step?.box ? `识别框：${step.hit ? '绿色（命中）' : '红色（未命中）'}` : ''].filter(Boolean).join(' · ')
+}
 async function load(options = {}) {
   const refresh = options?.refresh === true
   if (!refresh) refreshedForExpiry = false

@@ -27,14 +27,14 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
         @RequestParam(defaultValue = "lastSeen") sort: String,
         @RequestParam(defaultValue = "1") page: Int,
         @RequestParam(defaultValue = "20") pageSize: Int,
-    ) = authorized { success(center.list(status, reason, q, sort, page, pageSize)) }
+    ) = authorized { success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true)) }
 
     @GetMapping("/issues/{id}")
-    fun issue(@PathVariable id: String) = authorized { success(center.detail(id)) }
+    fun issue(@PathVariable id: String) = authorized { success(center.detail(id, includeTrace = true)) }
 
     @GetMapping("/events/{eventId}")
     fun event(@PathVariable eventId: String) = authorized {
-        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(success(center.event(eventId, includeUrls = true)))
+        ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(success(center.event(eventId, includeUrls = true, includeTrace = true)))
     }
 
     @GetMapping("/events/{eventId}/media/{assetId}", produces = [MediaType.ALL_VALUE])

@@ -130,6 +130,7 @@
 | `outcome` | `failed|upload_failed|data_review` |
 | `issues` | 1～32 项；`stage` 1～64 字符（文字、数字、空格及 `_ . -`），`count` 缺省 1，范围 1～10000 |
 | `issues[].reason` | 可选，1～64 字符，匹配 `[a-z][a-z0-9_]{0,63}`；省略表示原因未知，不能传 null；客户端使用下表固定枚举，服务端只校验格式，不做枚举白名单 |
+| `issues[].node` | 可选，1～64 字符，匹配 `[\p{L}\p{N}_\-·@ ]+`；额外允许契约保留值 `(direct)`。客户端取同阶段最后一个未命中的 reco 节点，无则省略 |
 | `operator_ids` / 图片 `operator_id` | `char_` 后接 1～80 个字母、数字或下划线；每项 issue 最多 100 个 |
 | `issues[].candidate_operator_ids` | 可选，缺省空数组，0～5 项且不得重复；每项匹配 `char_[A-Za-z0-9_]{1,80}`，按名称匹配相似度降序排列；不能传 null |
 | `error_type` / `blocking_errors` | 异常类型最多 100 字符；最多 32 项阻塞错误，`code` 1～64、`field` 1～100 字符；仅字母、数字及 `_.[]-` |
@@ -137,18 +138,35 @@
 | `section_status` | 最多 32 个键，键 1～64 字符，同上符号规则；状态为 1～32 字符的机器状态名，同上符号规则（例如 `partial`） |
 | `ocr_samples` | 服务端校验不变：最多 20 个样本，每个 1～80 字符；只允许短文本、数字及有限标点；拒绝 URL、邮箱、凭据关键词、账号标识及长数字/十六进制串。身份类姓名样本的客户端限制见下文 |
 | `images` | 缺省空数组；`index` 按文件出现顺序从 0 连续编号；`role=disc_cells|main_panel|last_frame|name_area`（姓名区域）；`roi=[x,y,w,h]` 位于声明分辨率内，图片宽高必须与 ROI 的宽高一致 |
+| `images[].trace_index` | 可选整数 0～63，必须小于 trace 长度；仅 `last_frame` 可带，指向该画面的轨迹步骤 |
+| `images[].node_roi` | 可选四整数 `[x,y,w,h]`，x/y ≥0，w/h >0，完整位于 client.resolution 内；仅 `last_frame` 可带，与 trace.box 使用同一坐标系 |
+| `trace` | 可选，缺省空数组，最多 64 步，按 t 非递减排列；连续相同 `(kind,node,stage,hit)` 由客户端折叠；摘要档和图片档均可发送 |
 
-issue 的可选字段 `reason/operator_ids/candidate_operator_ids/error_type/stack/blocking_errors/section_status/ocr_samples` 可以省略，不能传 null。图片必须完整解码，每边最多 4096、总计最多 4,194,304 像素。旧 multipart 路径由服务端从新像素缓冲区重新编码 JPEG 去除元数据，存入本地私有目录，启用 COS 时转存私有桶；不产生公开媒体 URL。下述直传路径只校验，不重新编码或上传，客户端须在直传前去除原始元数据，仍负责裁剪、遮挡与截图授权，不应发送完整日志、用户标识、账号名、绝对路径、token 或任意服务端响应正文。
+每个 trace 步骤的字段如下，均拒绝未知字段、null 与类型强转；越界或不合法的组合返回 422，JSON 结构/类型错误返回 400：
+
+| 字段 | 约束 |
+|---|---|
+| `kind/node/stage/hit` | 必填；kind 为 `reco` 或 `action`，node 同 issues[].node；stage 同 issues[].stage；hit 必须为布尔值（识别是否命中 / 动作是否成功） |
+| `n/t` | 必填整数；折叠次数 1～10000，首步相对会话开始毫秒数 0～86400000 |
+| `dt` | 可选整数，末次与首次的毫秒差 0～86400000 |
+| `algo` | 可选，仅 reco；1～32 字符，匹配 `[A-Za-z0-9_]+` |
+| `score` | 可选，仅 reco；数值 -1～100000，最多 3 位有效小数，表示折叠段最高分 |
+| `box` | 可选四整数 `[x,y,w,h]`，x/y ≥0，w/h >0，完整位于 client.resolution 内 |
+| `text` | 可选，仅 algo 为 OCR 的 reco（不区分大小写）；1～32 字符，沿用 ocr_samples 的 OCR 字符与 SENSITIVE 隐私规则；客户端进一步仅发送 `[㐀-鿿]{1,8}` 或 `[0-9+%.]{1,12}` 且通过隐私过滤的短文本 |
+
+节点名的普通正则不含括号；`(direct)` 是为兼容契约所述客户端兜底值而保留的唯一例外。`node_roi` 是资源配置的节点识别区域，`box` 是该轨迹步骤最后一次命中/最佳结果框，二者不能互相代替。服务端不推断或补写 issue.node 与图片 trace_index，客户端负责正确关联。
+
+issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_type/stack/blocking_errors/section_status/ocr_samples` 可以省略，不能传 null。图片必须完整解码，每边最多 4096、总计最多 4,194,304 像素。旧 multipart 路径由服务端从新像素缓冲区重新编码 JPEG 去除元数据，存入本地私有目录，启用 COS 时转存私有桶；不产生公开媒体 URL。下述直传路径只校验，不重新编码或上传，客户端须在直传前去除原始元数据，仍负责裁剪、遮挡与截图授权，不应发送完整日志、用户标识、账号名、绝对路径、token 或任意服务端响应正文。
 
 身份类 issue（`identity_unresolved`）可在 `ocr_samples` 携带姓名 OCR 原文：客户端仅发送匹配 `[㐀-鿿]{1,8}` 的 1～8 个 CJK 汉字，最多 4 条，不含数字、字母或标点，无需已存在于密探目录；其他 issue 维持已知游戏字段的样本规则。姓名和候选在摘要档也发送，不依赖图片开关。带图档位的主界面姓名裁图使用 `name_area`，命盘格仍使用 `disc_cells`，总图数仍最多 3 张。
 
 `issues[].code` 仅允许：`collector_exception`、`account_lookup_failed`、`annotations_failed`、`catalog_unavailable`、`navigation_failed`、`screenshot_or_ocr_failed`、`identity_unresolved`、`data_review`、`upload_network_failed`、`upload_http_failed`、`upload_rejected`、`upload_response_unverified`。
 
-`reason`、`ui_script`、`candidate_operator_ids` 是 v1 的兼容增量，`schema_version` 仍为 1。客户端只能使用下列原因；服务端接受格式合法的未来 reason，前端遇到未知值显示原码。旧客户端可省略新增字段；旧工单缺少 `issues` 时继续使用 `issueCodes` 展示和筛选，无需回填。**必须先发布后端，再发布携带新增字段的 MaaYuan 客户端**，否则旧后端会将新增字段视为未知字段并返回 400。
+`reason`、`ui_script`、`candidate_operator_ids`、`trace`、issue 的 `node`、图片的 `trace_index/node_roi` 均是 v1 的可选兼容增量，`schema_version` 仍为 1。客户端只能使用下列原因；服务端接受格式合法的未来 reason，前端遇到未知值显示原码。旧客户端可省略新增字段；旧工单缺少 `issues` 时继续使用 `issueCodes` 展示和筛选，无需回填。**必须先发布 YuanHub 后端，再发布携带新增字段的 MaaYuan 客户端**，否则旧后端会将新增字段视为未知字段并返回 400。
 
 页面等待超时时，若资源为 `zh_tw` 而界面为 `simplified`，或资源为 `base` 而界面为 `traditional`，客户端以 `resource_language_mismatch` 代替 `page_timeout`。`mixed`、`unknown` 不据此判定语言不一致。详情将资源显示为简中/繁中，将界面简繁显示为中文。
 
-诊断事件摘要包含 `resource`、`ui_script` 和逐项 `issues`（`code/stage/reason/error_type/count/operator_ids/candidate_operator_ids/ocr_samples`），复用旧摘要结构。旧摘要缺少资源或界面简繁时为 null，缺少 `issues`、候选或样本时为空数组。诊断中心从公共密探目录的只读快照解析对象和候选中文名；未命中时保留原 ID。
+诊断事件摘要包含 `resource`、`ui_script` 和逐项 `issues`（`code/stage/reason/error_type/count/operator_ids/candidate_operator_ids/ocr_samples`）；管理端额外返回可选 `issues[].node`。旧摘要缺少资源或界面简繁时为 null，缺少 `issues`、候选或样本时为空数组。诊断中心从公共密探目录的只读快照解析对象和候选中文名；未命中时保留原 ID。
 
 新诊断不再生成反馈工单，不向上报用户提供沟通或追加消息入口。反馈管理队列、队列计数、用户自己的列表、反馈未读及 `/open-api/feedback/queue` 均排除 `source=maayuan_diagnostic`；保留的旧诊断筛选参数不会让这些工单重新进入列表。旧工单不迁移，按 ID 查看和原附件授权路径继续保留，仍按原 90 天保留期清理。
 
@@ -240,9 +258,17 @@ COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 
 
 列表同时返回 `status_counts`、`reason_counts` 和 `pending_count/recent_event_count/regressed_count`。状态计数保留搜索与原因条件，忽略当前状态；原因计数保留搜索与状态条件，忽略当前原因。三项页头统计为全局授权范围内的待处理组数、近 7 天事件数、当前待处理且曾修复后复发的组数。
 
-签名键为 `原因|对象`：原因优先 `issue.reason`，缺省使用 `issue.code`；仅 `identity_unresolved` 或 `data_review` 且有密探 ID 时使用 `op:<id>`（多个 ID 分组），identity_unresolved 无 ID 但有 OCR 样本时使用 `ocr:<第一条样本>`，其余一律使用 `stage:<stage>`，避免页面/环境问题按密探拆组。身份类 `identity_unresolved` 的 operator/ocr_name 对象统一以 code 作为签名原因；同一事件中与非 collector_exception issue 有相同明确 reason 的外层 collector_exception 不参与分组，但完整事件摘要保留所有 issue；组的 `reason` 保存签名原因，新增 `reasons` 去重保存实际原因（缺省取 code，旧文档默认空数组），管理端与 AI 响应均返回该字段，原因计数仍按组的 `reason` 聚合。问题组 ID 为键的 SHA-1 十六进制前 24 位。同一事件内相同签名只计一次、合并阶段；operator 组的 `operator_ids` 只记录本组密探本人，不混入同一 issue 的其他密探；其余组记录进入该组的 issue 的密探 ID，按最近出现去重保留最多 10 个，旧文档缺省空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」（优先目录中文名，否则原 ID）；最近去重 OCR 样本最多 8 条，MaaFW 客户端/资源/目录版本各最多 10 个，资源和界面简繁按事件计数。FIXED 后再次出现回到 NEW 并记录 `regressed_at`；IGNORED 仍计数但不自动重开。用户数只按仍保留的事件去重计算，不永久保存用户集合。
+签名键为 `原因|对象`：原因优先 `issue.reason`，缺省使用 `issue.code`；仅 `identity_unresolved` 或 `data_review` 且有密探 ID 时使用 `op:<id>`（多个 ID 分组），identity_unresolved 无 ID 但有 OCR 样本时使用 `ocr:<第一条样本>`；其余 issue 有 node 时使用 `node:<node>`，无 node 时使用 `stage:<stage>`。身份类 `identity_unresolved` 的 operator/ocr_name 对象统一以 code 作为签名原因；同一事件中与非 collector_exception issue 有相同明确 reason 的外层 collector_exception 不参与分组，但完整事件摘要保留所有 issue；组的 `reason` 保存签名原因，新增 `reasons` 去重保存实际原因（缺省取 code，旧文档默认空数组），管理端与 AI 响应均返回该字段，原因计数仍按组的 `reason` 聚合。问题组 ID 为键的 SHA-1 十六进制前 24 位。同一事件内相同签名只计一次、合并阶段；operator 组的 `operator_ids` 只记录本组密探本人，不混入同一 issue 的其他密探；其余组记录进入该组的 issue 的密探 ID，按最近出现去重保留最多 10 个，旧文档缺省空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」（优先目录中文名，否则原 ID）；最近去重 OCR 样本最多 8 条，MaaFW 客户端/资源/目录版本各最多 10 个，资源和界面简繁按事件计数。FIXED 后再次出现回到 NEW 并记录 `regressed_at`；IGNORED 仍计数但不自动重开。用户数只按仍保留的事件去重计算，不永久保存用户集合。
 
-multipart 与 intents 两条入口均保存图片 `operator_id`，manifest 仍为 schema_version 1、字段不变。管理端证据区在 operator 组仅显示归属本组密探的截图；本组无图时提示实际归属，提供默认折叠的「仍然查看」。非 operator 组展示全部截图；每张截图标注密探中文名，目录无对应项时显示原 ID，缺少归属时显示「未识别密探」。
+节点分组的 `subject_kind=node`、`subject=<node>`；operator/ocr_name 分支不变，无 node 的旧签名不变，不迁移历史组。问题组额外持久化最近去重最多 10 个 `nodes`，管理端在非空时返回。管理端标题为「节点 <node> · <原因>」。
+
+上述 stage/node 分支中，issue.node 为 `(direct)` 时回退 `stage:<stage>`，避免跨阶段合组；nodes 聚合时过滤该值（含已有列表），服务端字段校验仍接受它。operator/ocr_name 分组规则不变。
+
+仅管理端 `GET /events/{eventId}` 额外返回 `trace`（缺省空数组）、摘要 `issues[].node`、图片 `trace_index/node_roi`。详情抽屉以时间线展示步骤，突出当前组相关 issue 在同阶段最后一次未命中的节点，并为 last_frame 引用的步骤标「对应画面」。证据缩略图和大图叠加节点 ROI（黄色虚线）及识别框（命中绿 / 未命中红）；使用 resolution 坐标，并结合图片 roi 与 object-fit:contain 的实际内容区换算，缩放和容器尺寸变化时重新定位。旧事件无轨迹时明确显示未包含轨迹，证据加载、过期与重试行为保留。
+
+`/open-api/maayuan-diagnostics/*` 的请求、结构化响应和 analysis 端点保持原契约：不增加 nodes、trace、issue.node 或图片 trace_index/node_roi，内联 manifest 同样保持既有字段投影；私有 manifest 附件仍是接收后保存的完整协议文件。没有新增或调整 AI 分析行为。
+
+multipart 与 intents 两条入口均保存图片 `operator_id`，manifest 仍为 schema_version 1，并支持上述可选轨迹与节点字段。管理端证据区在 operator 组仅显示归属本组密探的截图；本组无图时提示实际归属，提供默认折叠的「仍然查看」。非 operator 组展示全部截图；每张截图标注密探中文名，目录无对应项时显示原 ID，缺少归属时显示「未识别密探」。
 
 Integration Token 的 scope 单独从 `GET /user/integration-tokens/scopes`（JWT）读取，不能混入上方连接码 Scope 表。通过现有 `POST /user/integration-tokens` 创建时须明确设置 `feedback_areas:["MAAYUAN"]`（允许包含其他板块），并授予所需 scope；省略板块范围不视为诊断授权。Token 所有者仍须具备 MAAYUAN 的反馈查看权限。
 

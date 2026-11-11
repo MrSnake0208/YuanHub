@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.type.LogicalType
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.Base64
 import java.util.UUID
@@ -28,6 +29,7 @@ data class MaayuanDiagnosticManifest(
     val outcome: String,
     val issues: List<DiagnosticIssue>,
     val images: List<DiagnosticImage> = emptyList(),
+    val trace: List<DiagnosticTraceStep> = emptyList(),
 )
 
 data class DiagnosticClient(
@@ -52,11 +54,33 @@ data class DiagnosticIssue(
     val ocrSamples: List<String> = emptyList(),
     val reason: String? = null,
     val candidateOperatorIds: List<String> = emptyList(),
+    val node: String? = null,
 )
 
 data class DiagnosticBlockingError(val code: String, val field: String)
 
-data class DiagnosticImage(val index: Int, val role: String, val roi: List<Int>, val operatorId: String? = null)
+data class DiagnosticTraceStep(
+    val kind: String,
+    val node: String,
+    val stage: String,
+    @param:JsonProperty(required = true) val hit: Boolean,
+    val n: Int,
+    @param:JsonProperty(required = true) val t: Int,
+    val dt: Int? = null,
+    val algo: String? = null,
+    val score: BigDecimal? = null,
+    val box: List<Int>? = null,
+    val text: String? = null,
+)
+
+data class DiagnosticImage(
+    val index: Int,
+    val role: String,
+    val roi: List<Int>,
+    val operatorId: String? = null,
+    val traceIndex: Int? = null,
+    val nodeRoi: List<Int>? = null,
+)
 
 data class DiagnosticReceipt(val status: String, @get:JsonProperty("event_id") val eventId: String)
 
@@ -147,6 +171,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         value.issues.forEach { issue ->
             valid(issue.code in ISSUE_CODES)
             valid(issue.stage.length in 1..64 && STAGE.matches(issue.stage))
+            issue.node?.let(::validateNode)
             issue.reason?.let { valid(it.length in 1..64 && REASON.matches(it)) }
             valid(issue.count in 1..10000 && issue.operatorIds.size <= 100)
             issue.operatorIds.forEach { valid(OPERATOR.matches(it)) }
@@ -168,15 +193,46 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(it.length in 1..80 && OCR.matches(it) && !SENSITIVE.containsMatchIn(it))
             }
         }
+        valid(value.trace.size <= 64)
+        var previousTime = -1
+        value.trace.forEach { step ->
+            valid(step.kind in setOf("reco", "action"))
+            validateNode(step.node)
+            valid(step.stage.length in 1..64 && STAGE.matches(step.stage))
+            valid(step.n in 1..10000 && step.t in 0..86400000 && step.t >= previousTime)
+            previousTime = step.t
+            step.dt?.let { valid(it in 0..86400000) }
+            step.algo?.let { valid(step.kind == "reco" && it.length in 1..32 && ALGORITHM.matches(it)) }
+            step.score?.let {
+                valid(step.kind == "reco" && it >= BigDecimal(-1) && it <= BigDecimal(100000) && it.stripTrailingZeros().scale() <= 3)
+            }
+            step.box?.let { validateBox(it, width, height) }
+            step.text?.let {
+                valid(step.kind == "reco" && step.algo.equals("OCR", ignoreCase = true))
+                valid(it.length in 1..32 && OCR.matches(it) && !SENSITIVE.containsMatchIn(it))
+            }
+        }
         valid(value.images.size <= 3 && value.images.map { it.index } == value.images.indices.toList())
         value.images.forEach { image ->
             valid(image.role in setOf("disc_cells", "main_panel", "last_frame", "name_area"))
             image.operatorId?.let { valid(OPERATOR.matches(it)) }
-            valid(image.roi.size == 4)
-            val (x, y, w, h) = image.roi
-            valid(x >= 0 && y >= 0 && w > 0 && h > 0)
-            valid(x.toLong() + w <= width && y.toLong() + h <= height)
+            validateBox(image.roi, width, height)
+            valid(image.role == "last_frame" || (image.traceIndex == null && image.nodeRoi == null))
+            image.traceIndex?.let { valid(it in 0..63 && it < value.trace.size) }
+            image.nodeRoi?.let { validateBox(it, width, height) }
         }
+    }
+
+    private fun validateNode(node: String) {
+        // The protocol reserves this literal for calls without a resource node name.
+        valid(node.length in 1..64 && (node == "(direct)" || NODE.matches(node)))
+    }
+
+    private fun validateBox(box: List<Int>, width: Int, height: Int) {
+        valid(box.size == 4)
+        val (x, y, w, h) = box
+        valid(x >= 0 && y >= 0 && w > 0 && h > 0)
+        valid(x.toLong() + w <= width && y.toLong() + h <= height)
     }
 
     private fun uuid(value: String): Boolean = value.length == 36 && runCatching {
@@ -196,6 +252,8 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         private val VERSION = Regex("[A-Za-z0-9._+() -]+")
         private val SYMBOL = Regex("[A-Za-z0-9_.\\[\\]-]+")
         private val STAGE = Regex("[\\p{L}\\p{N} _.-]+")
+        private val NODE = Regex("[\\p{L}\\p{N}_\\-·@ ]+")
+        private val ALGORITHM = Regex("[A-Za-z0-9_]+")
         private val REASON = Regex("[a-z][a-z0-9_]{0,63}")
         private val OPERATOR = Regex("char_[A-Za-z0-9_]{1,80}")
         private val STACK = Regex("[A-Za-z0-9_][A-Za-z0-9_/.-]*:[A-Za-z0-9_.<>]+:[1-9][0-9]{0,6}")

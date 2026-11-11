@@ -1,5 +1,6 @@
 package com.lhs.share.hub.repository.entity
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import java.io.Serializable
 
 data class FeedbackDiagnosticSummary(
@@ -22,4 +23,5 @@ data class FeedbackDiagnosticIssueSummary(
     val operatorIds: List<String>,
     val candidateOperatorIds: List<String> = emptyList(),
     val ocrSamples: List<String> = emptyList(),
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val node: String? = null,
 ) : Serializable

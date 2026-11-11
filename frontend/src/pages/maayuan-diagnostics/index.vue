@@ -21,7 +21,7 @@
               <button v-for="key in statuses" :key="key" type="button" :aria-pressed="status === key" @click="status = key">{{ diagnosticStatusLabels[key] }} <span>{{ statusCount(key) }}</span></button>
             </div>
             <label><span>原因</span><select v-model="reason"><option value="">全部原因</option><option v-for="([key, count]) in reasonOptions" :key="key" :value="key">{{ diagnosticReason(key).label }}（{{ count }}）</option></select></label>
-            <label class="diagnostic-search"><span>搜索</span><input v-model="q" type="search" maxlength="100" placeholder="密探名 / OCR 文本" /></label>
+            <label class="diagnostic-search"><span>搜索</span><input v-model="q" type="search" maxlength="100" placeholder="密探名 / 节点 / OCR 文本" /></label>
             <label><span>排序</span><select v-model="sort"><option value="lastSeen">最近出现</option><option value="count">出现次数</option><option value="firstSeen">首次出现</option></select></label>
           </div>
           <div v-if="loading" class="diagnostic-state" role="status">正在加载诊断问题…</div>
