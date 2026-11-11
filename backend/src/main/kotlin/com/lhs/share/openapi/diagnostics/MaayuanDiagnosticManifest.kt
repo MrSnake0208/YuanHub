@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
 import java.time.OffsetDateTime
+import java.util.Base64
 import java.util.UUID
 
 data class MaayuanDiagnosticManifest(
@@ -29,7 +30,13 @@ data class MaayuanDiagnosticManifest(
     val images: List<DiagnosticImage> = emptyList(),
 )
 
-data class DiagnosticClient(val resourceVersion: String, val maafwVersion: String, val resource: String, val resolution: String)
+data class DiagnosticClient(
+    val resourceVersion: String,
+    val maafwVersion: String,
+    val resource: String,
+    val resolution: String,
+    val uiScript: String? = null,
+)
 
 data class DiagnosticCatalog(val version: String, val source: String)
 
@@ -43,6 +50,8 @@ data class DiagnosticIssue(
     val blockingErrors: List<DiagnosticBlockingError> = emptyList(),
     val sectionStatus: Map<String, String> = emptyMap(),
     val ocrSamples: List<String> = emptyList(),
+    val reason: String? = null,
+    val candidateOperatorIds: List<String> = emptyList(),
 )
 
 data class DiagnosticBlockingError(val code: String, val field: String)
@@ -76,9 +85,6 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         val manifest = try {
             val tree = json.readTree(bytes)
 
-            fun noNulls(node: com.fasterxml.jackson.databind.JsonNode): Boolean =
-                !node.isNull && (!node.isContainerNode || node.all(::noNulls))
-
             if (!noNulls(tree)) diagnosticError(HttpStatus.BAD_REQUEST, "Null diagnostic field")
             json.readValue(bytes, MaayuanDiagnosticManifest::class.java)
         } catch (_: Exception) {
@@ -90,11 +96,43 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
 
     fun bytes(manifest: MaayuanDiagnosticManifest): ByteArray = json.writeValueAsBytes(manifest)
 
+    fun parseIntent(bytes: ByteArray): DiagnosticIntentRequest {
+        if (bytes.size > 64 * 1024) diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Intent exceeds 64 KiB")
+        val request = try {
+            if (!noNulls(json.readTree(bytes))) diagnosticError(HttpStatus.BAD_REQUEST, "Null diagnostic field")
+            json.readValue(bytes, DiagnosticIntentRequest::class.java)
+        } catch (_: Exception) {
+            diagnosticError(HttpStatus.BAD_REQUEST, "Invalid upload intent or unknown field")
+        }
+        val manifest = parse(this.bytes(request.manifest))
+        if (request.uploads.size != manifest.images.size) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Image index/count mismatch")
+        request.uploads.forEach { upload ->
+            valid(upload.size in 1..524288 && Regex("[A-Za-z0-9+/]{22}==").matches(upload.contentMd5))
+            val digest = Base64.getDecoder().decode(upload.contentMd5)
+            valid(digest.size == 16 && Base64.getEncoder().encodeToString(digest) == upload.contentMd5)
+        }
+        return request.copy(manifest = manifest)
+    }
+
+    fun requireEmptyObject(bytes: ByteArray) {
+        val empty = try {
+            val tree = json.readTree(bytes)
+            tree != null && tree.isObject && tree.isEmpty
+        } catch (_: Exception) {
+            false
+        }
+        if (!empty) diagnosticError(HttpStatus.BAD_REQUEST, "Expected empty JSON object")
+    }
+
+    private fun noNulls(node: com.fasterxml.jackson.databind.JsonNode): Boolean =
+        !node.isNull && (!node.isContainerNode || node.all(::noNulls))
+
     private fun validate(value: MaayuanDiagnosticManifest) {
         valid(value.schemaVersion == 1 && value.feature == "operator_info_collection")
         valid(uuid(value.eventId) && uuid(value.runId))
         valid(value.outcome in setOf("failed", "upload_failed", "data_review"))
         valid(value.client.resource in setOf("base", "zh_tw"))
+        value.client.uiScript?.let { valid(it in setOf("simplified", "traditional", "mixed", "unknown")) }
         valid(value.catalog.source in setOf("remote", "cache", "builtin"))
         listOf(value.client.resourceVersion, value.client.maafwVersion, value.catalog.version).forEach {
             valid(it.length in 1..100 && VERSION.matches(it))
@@ -109,8 +147,11 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         value.issues.forEach { issue ->
             valid(issue.code in ISSUE_CODES)
             valid(issue.stage.length in 1..64 && STAGE.matches(issue.stage))
+            issue.reason?.let { valid(it.length in 1..64 && REASON.matches(it)) }
             valid(issue.count in 1..10000 && issue.operatorIds.size <= 100)
             issue.operatorIds.forEach { valid(OPERATOR.matches(it)) }
+            valid(issue.candidateOperatorIds.size <= 5 && issue.candidateOperatorIds.distinct().size == issue.candidateOperatorIds.size)
+            issue.candidateOperatorIds.forEach { valid(OPERATOR.matches(it)) }
             issue.errorType?.let { valid(it.length in 1..100 && SYMBOL.matches(it)) }
             valid(issue.stack.size <= 32)
             issue.stack.forEach { valid(it.length <= 200 && STACK.matches(it) && ".." !in it) }
@@ -129,7 +170,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         }
         valid(value.images.size <= 3 && value.images.map { it.index } == value.images.indices.toList())
         value.images.forEach { image ->
-            valid(image.role in setOf("disc_cells", "main_panel", "last_frame"))
+            valid(image.role in setOf("disc_cells", "main_panel", "last_frame", "name_area"))
             image.operatorId?.let { valid(OPERATOR.matches(it)) }
             valid(image.roi.size == 4)
             val (x, y, w, h) = image.roi
@@ -155,6 +196,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         private val VERSION = Regex("[A-Za-z0-9._+() -]+")
         private val SYMBOL = Regex("[A-Za-z0-9_.\\[\\]-]+")
         private val STAGE = Regex("[\\p{L}\\p{N} _.-]+")
+        private val REASON = Regex("[a-z][a-z0-9_]{0,63}")
         private val OPERATOR = Regex("char_[A-Za-z0-9_]{1,80}")
         private val STACK = Regex("[A-Za-z0-9_][A-Za-z0-9_/.-]*:[A-Za-z0-9_.<>]+:[1-9][0-9]{0,6}")
         private val OCR = Regex("[\\p{L}\\p{N}\\p{Zs}·・，。！？、（）()【】《》+%％:：._-]+")

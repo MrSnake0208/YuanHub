@@ -9,6 +9,8 @@ import com.lhs.share.hub.repository.FeedbackTicketQueryRepository
 import com.lhs.share.hub.repository.FeedbackTicketRepository
 import com.lhs.share.hub.repository.MediaAssetRepository
 import com.lhs.share.hub.repository.entity.FeedbackTicket
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.hub.repository.entity.MediaKind
 import com.lhs.share.hub.service.media.MediaStorageService
@@ -87,19 +89,19 @@ class MaayuanDiagnosticServiceMongoTest {
     }
 
     @Test
-    fun `a report is private reencoded and idempotent across users and payload retention`() {
+    fun `an event is private reencoded and idempotent across users and payload retention`() {
         val service = service()
         val packet = packet(diagnosticManifest(event), listOf(jpegWithComment()))
         assertEquals("accepted", service.receive(principal, packet, type).status)
         assertEquals("duplicate", service.receive(principal, packet, type).status)
         val other = principal.copy(userId = "other-user")
         assertEquals("duplicate", service.receive(other, packet, type).status)
-        val ticket = ticket()
-        assertEquals(principal.userId, ticket.reporterUserId)
-        assertEquals(principal.accountId, ticket.diagnosticAccountId)
-        assertEquals(listOf("collector_exception"), ticket.diagnosticReport!!.issueCodes)
-        assertFalse(ticket.publicConsent)
-        assertEquals("PRIVATE", ticket.visibility)
+        val record = event()
+        assertEquals(principal.userId, record.userId)
+        assertEquals(principal.accountId, record.accountId)
+        assertEquals(listOf("collector_exception"), record.summary.issueCodes)
+        assertTrue(mongo.findAll(FeedbackTicket::class.java).isEmpty())
+        assertEquals(1L, mongo.findAll(MaayuanDiagnosticIssue::class.java).single().eventCount)
         val stored = mongo.findAll(MediaAsset::class.java)
         assertEquals(2, stored.size)
         stored.forEach {
@@ -113,14 +115,15 @@ class MaayuanDiagnosticServiceMongoTest {
         assertEquals(4, ImageIO.read(bytes.inputStream()).width)
         verify(exactly = 0) { notifications.create(any(), any(), any(), any(), any(), any(), any()) }
         service.cleanupAt(Instant.now().plus(Duration.ofDays(91)))
-        assertEquals(0, mongo.findAll(FeedbackTicket::class.java).size)
+        assertEquals(0, mongo.findAll(MaayuanDiagnosticEvent::class.java).size)
+        assertEquals(1L, mongo.findAll(MaayuanDiagnosticIssue::class.java).single().eventCount)
         assertEquals("duplicate", service.receive(principal, packet, type).status)
     }
 
     @Test
     fun `other users cannot read attachments and public feedback cannot expose diagnostic tickets`() {
         service().receive(principal, packet(diagnosticManifest(event), listOf(jpegWithComment())), type)
-        val ticket = ticket()
+        val ticket = legacyTicket()
         val mediaId = ticket.messages.first().images.first().id
         val denied = assertThrows(ApiResultException::class.java) { reports.getAttachment("unrelated-user", ticket.id!!, mediaId) }
         assertEquals(403, denied.statusCode)
@@ -140,12 +143,14 @@ class MaayuanDiagnosticServiceMongoTest {
         service.cleanupAt(Instant.now().plus(Duration.ofDays(15)))
         assertFalse(Files.exists(directory.resolve("private").resolve(image.storagePath)))
         assertTrue(Files.exists(directory.resolve("private").resolve(manifest.storagePath)))
-        assertTrue(ticket().messages.all { it.images.isEmpty() })
+        assertEquals(listOf(image.id), event().images.map { it.assetId })
+        assertFalse(mongo.exists(Query(Criteria.where("_id").`is`(image.id)), MediaAsset::class.java))
         assertEquals(0L, (mongo.findById("images", DiagnosticStorageBudget::class.java)?.bytes ?: 0L))
         service.cleanupAt(Instant.now().plus(Duration.ofDays(91)))
         assertFalse(Files.exists(directory.resolve("private").resolve(manifest.storagePath)))
         assertTrue(mongo.findAll(MediaAsset::class.java).isEmpty())
-        assertTrue(mongo.findAll(FeedbackTicket::class.java).isEmpty())
+        assertTrue(mongo.findAll(MaayuanDiagnosticEvent::class.java).isEmpty())
+        assertEquals(1L, mongo.findAll(MaayuanDiagnosticIssue::class.java).single().eventCount)
     }
 
     @Test
@@ -153,15 +158,16 @@ class MaayuanDiagnosticServiceMongoTest {
         mongo.insert(DiagnosticStorageBudget(bytes = DIAGNOSTIC_IMAGE_LIMIT))
         val response = service().receive(principal, packet(diagnosticManifest(event), listOf(jpegWithComment())), type)
         assertEquals("accepted_without_images", response.status)
-        assertTrue(ticket().messages.first().images.isEmpty())
+        assertTrue(event().images.isEmpty())
         assertEquals(1, mongo.findAll(MediaAsset::class.java).size)
     }
 
     @Test
-    fun `failed ticket transactions delete uploaded media and restore the global budget`() {
-        every { tickets.insert(any<FeedbackTicket>()) } throws IllegalStateException("Synthetic failure")
+    fun `failed event transactions delete uploaded media and restore the global budget`() {
+        val recorder = mockk<MaayuanDiagnosticIssueRecorder>()
+        every { recorder.record(any(), any(), any(), any()) } throws IllegalStateException("Synthetic failure")
         assertThrows(IllegalStateException::class.java) {
-            service().receive(principal, packet(diagnosticManifest(event), listOf(jpegWithComment())), type)
+            service(recorder).receive(principal, packet(diagnosticManifest(event), listOf(jpegWithComment())), type)
         }
         assertTrue(mongo.findAll(MediaAsset::class.java).isEmpty())
         assertTrue(mongo.findAll(DiagnosticEventReceipt::class.java).isEmpty())
@@ -228,9 +234,11 @@ class MaayuanDiagnosticServiceMongoTest {
     }
 
     @Test
-    fun `diagnostic aggregation uses the same reporter and area filters as the list`() {
+    fun `feedback lists and diagnostic counts exclude legacy diagnostics within reporter and area filters`() {
         service().receive(principal, packet(diagnosticManifest(event, false), emptyList()), type)
-        mongo.insert(ticket().copy(id = "other-owner", reporterUserId = "other", area = "ACCOUNT", workArea = "ACCOUNT"))
+        val legacy = legacyTicket()
+        mongo.insert(legacy.copy(id = "other-owner", reporterUserId = "other", area = "ACCOUNT", workArea = "ACCOUNT"))
+        mongo.insert(legacy.copy(id = "manual", source = null, diagnosticReport = null, diagnosticAccountId = null))
         val filter = FeedbackDiagnosticFilter(source = DIAGNOSTIC_SOURCE, issueCode = "collector_exception", includeCounts = true)
         val page = queries.search(
             principal.userId,
@@ -242,17 +250,19 @@ class MaayuanDiagnosticServiceMongoTest {
             PageRequest.of(0, 20),
             diagnosticFilter = filter,
         ) as FeedbackDiagnosticPage
-        assertEquals(1L, page.totalElements)
-        assertEquals(mapOf("collector_exception" to 1L), page.diagnosticCounts["issue_code"])
-        assertEquals(mapOf("char_test" to 1L), page.diagnosticCounts["operator_id"])
+        assertEquals(0L, page.totalElements)
+        assertTrue(page.diagnosticCounts.values.all { it.isEmpty() })
+        val manual = queries.search(principal.userId, null, null, null, null, null, PageRequest.of(0, 20))
+        assertEquals(listOf("manual"), manual.content.map { it.id })
         val denied = queries.search(
-            null, null, null, null, null, null, PageRequest.of(0, 20), workAreas = setOf("STAR"), diagnosticFilter = filter,
+            null, null, null, null, null, null, PageRequest.of(0, 20), workAreas = setOf("STAR"),
+            diagnosticFilter = FeedbackDiagnosticFilter(includeCounts = true),
         ) as FeedbackDiagnosticPage
         assertEquals(0L, denied.totalElements)
         assertTrue(denied.diagnosticCounts["source"].orEmpty().isEmpty())
     }
 
-    private fun service(): MaayuanDiagnosticService {
+    private fun service(recorder: MaayuanDiagnosticIssueRecorder = MaayuanDiagnosticIssueRecorder(mongo)): MaayuanDiagnosticService {
         val properties = ShareProperties().apply {
             media = ShareProperties.Media(
                 directory.resolve("public").toString(),
@@ -264,13 +274,21 @@ class MaayuanDiagnosticServiceMongoTest {
             MaayuanDiagnosticParser(jacksonObjectMapper()),
             quotas,
             MediaStorageService(assets, properties),
-            reports,
+            recorder,
             mongo,
             MongoTransactionManager(mongo.mongoDatabaseFactory),
         )
     }
 
-    private fun ticket(): FeedbackTicket = mongo.findById("rpt_diag_$event", FeedbackTicket::class.java)!!
+    private fun event(): MaayuanDiagnosticEvent = mongo.findById(event, MaayuanDiagnosticEvent::class.java)!!
+
+    private fun legacyTicket(): FeedbackTicket = reports.createDiagnostic(
+        principal.userId,
+        principal.accountId,
+        "rpt_diag_$event",
+        event().summary,
+        mongo.findAll(MediaAsset::class.java),
+    )
 
     private fun assertStatus(status: Int, action: () -> Unit) {
         assertEquals(status, assertThrows(ResponseStatusException::class.java, action).statusCode.value())

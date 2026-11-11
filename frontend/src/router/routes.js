@@ -520,6 +520,20 @@ export const routes = [
         }
     },
     {
+        path: '/maayuan-diagnostics',
+        text: 'MaaYuan 诊断',
+        name: 'maayuan-diagnostics',
+        display: false,
+        module: 'user',
+        icon: 'inbox',
+        component: () => import('/src/pages/maayuan-diagnostics/index.vue'),
+        meta: {
+            title: 'MaaYuan 诊断 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiresFeedbackManage: true
+        }
+    },
+    {
         path: '/feedback/admin',
         text: '反馈权限管理',
         name: 'feedback-access-admin',

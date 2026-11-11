@@ -3,6 +3,7 @@ package com.lhs.share.openapi.diagnostics
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.springframework.web.server.ResponseStatusException
@@ -11,6 +12,65 @@ import java.util.UUID
 class MaayuanDiagnosticParserTest {
     private val mapper = jacksonObjectMapper()
     private val parser = MaayuanDiagnosticParser(mapper)
+
+    @Test
+    fun `optional UI script accepts known enums and rejects invalid or null values`() {
+        assertNull(parser.parse(diagnosticManifest()).client.uiScript)
+        val value = mapper.readTree(diagnosticManifest())
+        val client = value.at("/client") as ObjectNode
+        listOf("simplified", "traditional", "mixed", "unknown").forEach { script ->
+            client.put("ui_script", script)
+            assertEquals(script, parser.parse(mapper.writeValueAsBytes(value)).client.uiScript)
+        }
+        client.put("ui_script", "invalid")
+        assertStatus(422) { parser.parse(mapper.writeValueAsBytes(value)) }
+        client.putNull("ui_script")
+        assertStatus(400) { parser.parse(mapper.writeValueAsBytes(value)) }
+    }
+
+    @Test
+    fun `candidate IDs are optional bounded unique and validated with name area images accepted`() {
+        assertEquals(emptyList<String>(), parser.parse(diagnosticManifest()).issues.single().candidateOperatorIds)
+        val value = mapper.readTree(diagnosticManifest())
+        val issue = value.at("/issues/0") as ObjectNode
+        (value.at("/images/0") as ObjectNode).put("role", "name_area")
+        listOf(emptyList(), (1..5).map { "char_candidate_$it" }).forEach { ids ->
+            val candidates = issue.putArray("candidate_operator_ids")
+            ids.forEach { candidates.add(it) }
+            val parsed = parser.parse(mapper.writeValueAsBytes(value))
+            assertEquals(ids, parsed.issues.single().candidateOperatorIds)
+            assertEquals("name_area", parsed.images.single().role)
+        }
+        listOf((1..6).map { "char_candidate_$it" }, listOf("invalid"), listOf("char_a", "char_a")).forEach { ids ->
+            val candidates = issue.putArray("candidate_operator_ids")
+            ids.forEach { candidates.add(it) }
+            assertStatus(422) { parser.parse(mapper.writeValueAsBytes(value)) }
+        }
+        issue.putNull("candidate_operator_ids")
+        assertStatus(400) { parser.parse(mapper.writeValueAsBytes(value)) }
+    }
+
+    @Test
+    fun `optional reasons accept valid and future codes while old clients remain supported`() {
+        assertNull(parser.parse(diagnosticManifest()).issues.single().reason)
+        listOf("page_timeout", "future_reason_2", "a".repeat(64)).forEach { reason ->
+            val value = mapper.readTree(diagnosticManifest())
+            (value.at("/issues/0") as ObjectNode).put("reason", reason)
+            assertEquals(reason, parser.parse(mapper.writeValueAsBytes(value)).issues.single().reason)
+        }
+    }
+
+    @Test
+    fun `invalid reason formats return 422 and explicit null returns 400`() {
+        val value = mapper.readTree(diagnosticManifest())
+        val issue = value.at("/issues/0") as ObjectNode
+        listOf("", "Page_timeout", "page-timeout", "1reason", "page timeout", "原因", "a".repeat(65)).forEach { reason ->
+            issue.put("reason", reason)
+            assertStatus(422) { parser.parse(mapper.writeValueAsBytes(value)) }
+        }
+        issue.putNull("reason")
+        assertStatus(400) { parser.parse(mapper.writeValueAsBytes(value)) }
+    }
 
     @Test
     fun `unknown fields at every nesting level and duplicate JSON keys are rejected`() {

@@ -41,6 +41,9 @@ class OperatorCatalogService(
 
     /** Preview commands must not trigger lazy catalog writes. */
     fun getOperatorReadOnly(id: String): OperatorCatalogEntity? = repository.findByOperatorId(id)
+
+    /** Diagnostic reads must not seed or backfill the catalog. */
+    fun catalogReadOnly(): List<OperatorCatalogEntity> = repository.findAllByOrderByOperatorIdAsc()
     fun currentCatalogVersion(): String {
         ensureSeeded()
         return catalogVersion.ifEmpty { LocalDate.now().toString() }

@@ -92,6 +92,7 @@ class FeedbackReportController(
         @RequestParam(required = false) operatorId: String? = null,
         @RequestParam(required = false) resourceVersion: String? = null,
         @RequestParam(defaultValue = "false") diagnosticCounts: Boolean = false,
+        @RequestParam(required = false) reason: String? = null,
     ): ApiResult<FeedbackReportListResponse> {
         val userId = helper.requireUserId()
         return success(
@@ -117,6 +118,7 @@ class FeedbackReportController(
                     operatorId,
                     resourceVersion,
                     diagnosticCounts,
+                    reason = reason,
                 ).takeUnless { it == FeedbackDiagnosticFilter() },
             ),
         )

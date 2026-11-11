@@ -6,6 +6,8 @@ enum class IntegrationScope(
 ) {
     FEEDBACK_READ("feedback:read", "读取授权范围内的反馈工单"),
     FEEDBACK_ANALYSIS_WRITE("feedback:analysis:write", "写入反馈 Agent 分析"),
+    DIAGNOSTICS_READ("diagnostics:read", "读取 MaaYuan 诊断问题与事件"),
+    DIAGNOSTICS_ANALYSIS_WRITE("diagnostics:analysis:write", "写入 MaaYuan 诊断 AI 分析"),
     ;
 
     companion object {

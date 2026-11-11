@@ -6,32 +6,34 @@
     <button class="feedback-button" type="submit">应用筛选</button>
     <button class="feedback-button" type="button" @click="reset">清除诊断筛选</button>
     <details class="diagnostic-advanced">
-      <summary>按错误码、密探或版本筛选</summary>
+      <summary>按错误码、原因、密探或版本筛选</summary>
       <div class="diagnostic-fields">
         <label><span>错误码</span><input v-model="draft.issueCode" list="diagnostic-issue-codes" maxlength="100" placeholder="全部错误码" /></label>
         <label><span>密探 ID</span><input v-model="draft.operatorId" list="diagnostic-operators" maxlength="100" placeholder="char_xxx" /></label>
         <label><span>资源版本</span><input v-model="draft.resourceVersion" list="diagnostic-versions" maxlength="100" placeholder="全部版本" /></label>
+        <label><span>原因</span><input v-model="draft.reason" list="diagnostic-reasons" maxlength="64" placeholder="全部原因" /></label>
       </div>
     </details>
-    <datalist id="diagnostic-issue-codes"><option v-for="(count, value) in counts.issue_code" :key="value" :value="value">{{ count }} 条</option></datalist>
+    <datalist id="diagnostic-issue-codes"><option v-for="(count, value) in counts.issue_code" :key="value" :value="value">{{ diagnosticCodeLabel(value) }} · {{ count }} 条</option></datalist>
+    <datalist id="diagnostic-reasons"><option v-for="(count, value) in counts.reason" :key="value" :value="value">{{ diagnosticReason(value).label }} · {{ count }} 条</option></datalist>
     <datalist id="diagnostic-operators"><option v-for="(count, value) in counts.operator_id" :key="value" :value="value">{{ count }} 条</option></datalist>
     <datalist id="diagnostic-versions"><option v-for="(count, value) in counts.resource_version" :key="value" :value="value">{{ count }} 条</option></datalist>
     <p v-if="counts.source" class="feedback-result-meta" role="status">
       当前筛选：人工 {{ counts.source.manual ?? 0 }} 条 · MaaYuan 诊断 {{ counts.source.maayuan_diagnostic ?? 0 }} 条
-      <span v-for="(count, outcome) in counts.outcome" :key="outcome"> · {{ outcomeLabels[outcome] || outcome }} {{ count }} 条</span>
+      <span v-for="(count, outcome) in counts.outcome" :key="outcome"> · {{ diagnosticLabel(diagnosticOutcomeLabels, outcome) }} {{ count }} 条</span>
     </p>
   </form>
 </template>
 
 <script setup>
 import { reactive, watch } from 'vue'
+import { diagnosticCodeLabel, diagnosticLabel, diagnosticOutcomeLabels, diagnosticReason } from '@/data/maayuanDiagnostics.js'
 
 const props = defineProps({ modelValue: { type: Object, required: true }, counts: { type: Object, default: () => ({}) } })
 const emit = defineEmits(['apply'])
 const draft = reactive({ ...props.modelValue })
-const outcomeLabels = { failed: '采集失败', upload_failed: '上传失败', data_review: '待核对' }
 watch(() => props.modelValue, value => Object.assign(draft, value))
-function reset() { emit('apply', { source: '', issueCode: '', operatorId: '', resourceVersion: '' }) }
+function reset() { emit('apply', { source: '', issueCode: '', operatorId: '', resourceVersion: '', reason: '' }) }
 </script>
 
 <style scoped>

@@ -5,6 +5,7 @@ import com.lhs.share.hub.repository.MediaAssetRepository
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.hub.repository.entity.MediaKind
 import com.lhs.share.hub.repository.entity.effectiveKind
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpStatus
@@ -23,13 +24,14 @@ import java.util.Locale
 /**
  * Hub 库媒体文件存储服务
  *
- * 处理文件上传校验、磁盘存储及元数据持久化。
- * 普通图片映射到 /media/;反馈图片和普通文件写入私有目录,须经过工单授权读取。
+ * 处理文件上传校验、磁盘/COS 存储及元数据持久化。
+ * 公开图片映射到 /media/;诊断图片可写 COS,私有媒体须经过调用方授权读取。
  */
 @Service
 class MediaStorageService(
     private val mediaAssetRepository: MediaAssetRepository,
     private val properties: ShareProperties,
+    val cosStorage: CosMediaStorage = CosMediaStorage(properties),
 ) {
     private val random = SecureRandom()
     private val hexChars = "0123456789abcdef"
@@ -41,7 +43,7 @@ class MediaStorageService(
     )
 
     /**
-     * 上传文件:校验 → 临时文件 → 正式文件 → 元数据持久化。
+     * 上传文件:校验 → 临时文件 → 本地正式文件或 COS 对象 → 元数据持久化。
      *
      * @param ownerUserId 上传用户 id
      * @param file 上传的 multipart 文件
@@ -77,7 +79,12 @@ class MediaStorageService(
         val medId = generateMedId()
         val filePrefix = if (diagnosticEventId == null) medId else "diagnostic-$medId"
         val storedFileName = "$filePrefix.${uploadType.extension}"
-        val storagePath = if (uploadType.kind == MediaKind.IMAGE && !privateStorage) "/media/$storedFileName" else storedFileName
+        val useCos = privateStorage && uploadType.kind == MediaKind.IMAGE && diagnosticEventId != null && cosStorage.enabled
+        val storagePath = when {
+            useCos -> "diagnostics/images/$medId.jpg"
+            uploadType.kind == MediaKind.IMAGE && !privateStorage -> "/media/$storedFileName"
+            else -> storedFileName
+        }
 
         // 确保存储目录存在
         val mediaDir = storageRoot(if (privateStorage) MediaKind.FILE else uploadType.kind)
@@ -93,6 +100,7 @@ class MediaStorageService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "无法创建临时文件", e)
         }
         val targetPath = mediaDir.resolve(storedFileName)
+        var cosUploaded = false
         try {
             file.inputStream.use { input ->
                 Files.copy(input, tempPath, StandardCopyOption.REPLACE_EXISTING)
@@ -111,7 +119,12 @@ class MediaStorageService(
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "文件内容与声明类型不匹配")
             }
 
-            moveToTarget(tempPath, targetPath)
+            if (useCos) {
+                cosStorage.put(storagePath, tempPath, uploadType.mime, storedSize)
+                cosUploaded = true
+            } else {
+                moveToTarget(tempPath, targetPath)
+            }
 
             // 持久化元数据;任一步失败都清理本次产生的文件
             val asset = MediaAsset(
@@ -125,24 +138,58 @@ class MediaStorageService(
                 privateStorage = privateStorage,
                 diagnosticEventId = diagnosticEventId,
                 diagnosticExpiresAt = diagnosticExpiresAt,
+                storageBackend = if (useCos) "cos" else null,
             )
             return mediaAssetRepository.save(asset)
-        } catch (e: ResponseStatusException) {
-            cleanup(tempPath, targetPath)
-            throw e
-        } catch (e: IOException) {
-            cleanup(tempPath, targetPath)
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "文件写入失败", e)
         } catch (e: Exception) {
-            cleanup(tempPath, targetPath)
+            if (useCos) {
+                if (cosUploaded) {
+                    try {
+                        cosStorage.delete(storagePath)
+                    } catch (_: Exception) {
+                        logger.warn("COS 上传回滚删除失败,对象 key={}", storagePath)
+                    }
+                }
+            } else {
+                cleanup(tempPath, targetPath)
+            }
+            if (e is IOException) throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "文件写入失败", e)
             throw e
+        } finally {
+            if (useCos) deleteQuietly(tempPath)
         }
+    }
+
+    fun createPendingDiagnosticImage(ownerUserId: String, eventId: String, size: Long, expiresAt: Instant): MediaAsset {
+        check(cosStorage.enabled) { "COS direct upload is unavailable" }
+        require(size in 1..524288)
+        val id = generateMedId()
+        return mediaAssetRepository.save(
+            MediaAsset(
+                id = id,
+                ownerUserId = ownerUserId,
+                originalName = "$id.jpg",
+                mime = "image/jpeg",
+                size = size,
+                storagePath = "diagnostics/images/$id.jpg",
+                kind = MediaKind.IMAGE,
+                privateStorage = true,
+                diagnosticEventId = eventId,
+                diagnosticExpiresAt = expiresAt,
+                storageBackend = "cos",
+                status = "pending",
+            ),
+        )
     }
 
     /** Diagnostic retention deletes the private file before removing its database reference. */
     fun deletePrivateFile(asset: MediaAsset) {
         if (!asset.privateStorage || asset.diagnosticEventId == null) {
             throw IllegalArgumentException("Only private diagnostic files can be deleted")
+        }
+        if (asset.storageBackend == "cos") {
+            cosStorage.delete(asset.storagePath)
+            return
         }
         val key = Path.of(asset.storagePath)
         val singleName = !key.isAbsolute && key.nameCount == 1 && key.fileName.toString() == asset.storagePath
@@ -195,6 +242,12 @@ class MediaStorageService(
      */
     fun loadAuthorizedAsset(asset: MediaAsset): Resource {
         val kind = asset.effectiveKind()
+        if (asset.storageBackend == "cos") {
+            if (!asset.privateStorage || kind != MediaKind.IMAGE || asset.status != "ready") {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "附件不存在")
+            }
+            return cosStorage.load(asset.storagePath)
+        }
         val storageKey = when (kind) {
             MediaKind.IMAGE ->
                 if (asset.privateStorage) {
@@ -315,6 +368,7 @@ class MediaStorageService(
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(MediaStorageService::class.java)
         private const val CONTENT_PREFIX_SIZE = 8192
         private val TEXT_FILE_MIMES = setOf("", "text/plain", "text/x-log", "application/octet-stream")
         private val JPEG_SIGNATURE = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())

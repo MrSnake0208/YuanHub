@@ -1,0 +1,10 @@
+@media (min-width: 768px) {
+  .diagnostic-content { padding-top: 24px; }
+  .diagnostic-cards { display: none; }
+  /* 子组件和 Teleport 浮层继续使用诊断命名空间内的共享样式。 */
+  :global(.diagnostic-drawer) { width: min(800px, 88vw); height: 100dvh; }
+  :global(.diagnostic-drawer-header) { padding: 18px 24px; }
+  :global(.diagnostic-drawer-body) { padding: 0 24px 24px; }
+  :global(.diagnostic-environment) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :global(.diagnostic-evidence-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

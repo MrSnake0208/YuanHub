@@ -34,6 +34,16 @@ share:
     private-dir: ${SHARE_PRIVATE_MEDIA_DIR:./data/private-media}
     # 单个业务媒体文件大小上限(字节),10 MiB
     max-size: 10485760
+    # 仅 MaaYuan 诊断图片直传国内 COS,反馈截图仍存本地;管理端短期直链看图,无需 CORS
+    cos:
+      enabled: ${SHARE_COS_ENABLED:false}
+      region: ${SHARE_COS_REGION:}
+      bucket: ${SHARE_COS_BUCKET:}
+      endpoint: ${SHARE_COS_ENDPOINT:}
+      secret-id: ${SHARE_COS_SECRET_ID:}
+      secret-key: ${SHARE_COS_SECRET_KEY:}
+      put-url-ttl-seconds: ${SHARE_COS_PUT_URL_TTL_SECONDS:600}
+      get-url-ttl-seconds: ${SHARE_COS_GET_URL_TTL_SECONDS:300}
   ledger:
     # 广陵账房:每用户方案数上限
     max-plans-per-user: 50

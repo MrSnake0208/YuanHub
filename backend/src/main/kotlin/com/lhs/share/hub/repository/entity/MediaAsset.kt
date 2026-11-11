@@ -10,7 +10,7 @@ import java.time.Instant
 /**
  * Hub 库媒体资产实体(HubBackend.hub_media)
  *
- * 存储用户上传的媒体文件元数据。图片位于公开目录,普通文件位于私有目录。
+ * 存储媒体元数据。公开图片位于本地公开目录,私有图片可存 COS,其他附件位于本地私有目录。
  * 软删除:删除时设置 deletedAt,不物理移除文件。
  */
 @Document("hub_media")
@@ -40,7 +40,7 @@ data class MediaAsset(
     val size: Long,
 
     /**
-     * 存储路径(相对媒体目录,如 /media/med_xxx.webp)
+     * 本地存储路径或 COS 对象 key,由 storageBackend 区分。
      */
     val storagePath: String,
 
@@ -64,6 +64,10 @@ data class MediaAsset(
     val diagnosticEventId: String? = null,
     @Indexed
     val diagnosticExpiresAt: Instant? = null,
+    /** null 兼容历史本地文件;"cos" 表示私有 COS 对象。 */
+    val storageBackend: String? = null,
+    /** 诊断图片状态;旧数据默认已就绪。 */
+    val status: String = "ready",
 ) : Serializable
 
 enum class MediaKind {

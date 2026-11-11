@@ -42,10 +42,7 @@ class FeedbackTicketQueryRepository(
     ): Page<FeedbackTicket> {
         val filters = mutableListOf<Criteria>()
         filters += diagnosticFilter?.criteria().orEmpty()
-        filters += Criteria().orOperator(
-            Criteria.where("source").ne("maayuan_diagnostic"),
-            Criteria.where("createdAt").gt(Instant.now().minusSeconds(90L * 86400)),
-        )
+        filters += Criteria.where("source").ne("maayuan_diagnostic")
         spaceIds?.let { filters += FeedbackSpaces.criteria(it) }
         reporterUserId?.let { filters += Criteria.where("reporterUserId").`is`(it) }
         manageableCategories?.let { filters += workAreaSetCriteria(it, knownAreas) }
@@ -150,6 +147,7 @@ class FeedbackTicketQueryRepository(
             "feature" to "diagnosticReport.feature",
             "outcome" to "diagnosticReport.outcome",
             "issue_code" to "diagnosticReport.issueCodes",
+            "reason" to "diagnosticReport.issues.reason",
             "operator_id" to "diagnosticReport.operatorIds",
             "resource_version" to "diagnosticReport.resourceVersion",
         )
@@ -157,7 +155,15 @@ class FeedbackTicketQueryRepository(
         fields.forEach { (name, path) ->
             val stages = mutableListOf<Document>()
             if (name == "issue_code" || name == "operator_id") stages += Document("\$unwind", "\$$path")
-            val groupId = if (name == "source") Document("\$ifNull", listOf("\$source", "manual")) else "\$$path"
+            if (name == "reason") {
+                stages += Document("\$unwind", "\$diagnosticReport.issues")
+                stages += Document("\$group", Document("_id", Document("ticket", "\$_id").append("reason", "\$$path")))
+            }
+            val groupId = when (name) {
+                "source" -> Document("\$ifNull", listOf("\$source", "manual"))
+                "reason" -> "\$_id.reason"
+                else -> "\$$path"
+            }
             stages += Document("\$group", Document("_id", groupId).append("count", Document("\$sum", 1)))
             stages += Document("\$match", Document("_id", Document("\$ne", null)))
             stages += Document("\$sort", Document("count", -1).append("_id", 1))

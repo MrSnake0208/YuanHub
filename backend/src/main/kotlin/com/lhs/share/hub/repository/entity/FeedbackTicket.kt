@@ -44,6 +44,7 @@ import java.time.Instant
 @CompoundIndex(name = "idx_public_visibility_completed_version", def = "{'visibility': 1, 'completedVersionId': 1}")
 @CompoundIndex(name = "idx_diagnostic_created", def = "{'source': 1, 'createdAt': 1}")
 @CompoundIndex(name = "idx_diagnostic_issue", def = "{'source': 1, 'diagnosticReport.issueCodes': 1, 'createdAt': -1}")
+@CompoundIndex(name = "idx_diagnostic_reason", def = "{'source': 1, 'diagnosticReport.issues.reason': 1, 'createdAt': -1}")
 @CompoundIndex(name = "idx_diagnostic_operator", def = "{'source': 1, 'diagnosticReport.operatorIds': 1, 'createdAt': -1}")
 @CompoundIndex(name = "idx_diagnostic_version", def = "{'source': 1, 'diagnosticReport.resourceVersion': 1, 'createdAt': -1}")
 data class FeedbackTicket(

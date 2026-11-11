@@ -1,20 +1,38 @@
 # 反馈工单流转接口
 
-## MaaYuan 百宝箱诊断（2026-11-10）
+## MaaYuan 独立诊断中心（2026-11-11）
 
-接收端为 `POST /open-api/maayuan/diagnostics`，协议、字段白名单、错误和配额详见 [开发者 API](../../frontend/docs/developers/api.md) 的同名章节。现有连接码即可，无新增 Scope/匿名入口。一个 `event_id` 一个私有工单，`reporterUserId` / `diagnosticAccountId` 来自连接码，板块为主站 `MAAYUAN`；创建时不逐条通知。图片预算、媒体元数据、工单和随机事件幂等标记在同一 Hub Mongo 事务内提交。诊断工单禁止公开、合并和附件转绑，不影响人工反馈路径。
+接收端仍为 `POST /open-api/maayuan/diagnostics`，v1/v2 协议、连接码鉴权、配额、图片解码、返回体及事件回执不变，详见 [开发者 API](../../frontend/docs/developers/api.md) 的同名章节。接收不再调用 `FeedbackReportService.createDiagnostic`：图片预算、媒体元数据、新事件、问题组和随机事件回执在原 Hub Mongo 事务内提交，不生成工单、不发逐条通知、不提供上报用户沟通入口。`createDiagnostic` 保留供旧工单兼容，普通反馈路径不变。
 
-`GET /v1/reports`、`GET /v1/admin/feedback/queue` 增加可选查询参数 `source`、`feature`、`outcome`、`issueCode`、`operatorId`、`resourceVersion`、`diagnosticCounts`。`source=manual` 匹配历史/人工工单，`source=maayuan_diagnostic` 匹配诊断；其余为精确匹配。省略时保留原列表行为。
+`FeedbackTicketQueryRepository.search` 在分页和计数前统一排除 `source=maayuan_diagnostic`，覆盖管理队列、个人列表、队列计数、前端未读扫描及 `/open-api/feedback/queue`。原诊断筛选参数可以保留，但不能绕过排除条件。公开列表继续沿用原有诊断来源排除。旧工单不迁移、不主动批量删除，按 ID 查看及原附件鉴权路径保留，并继续原有 90 天清理。
 
-`GET /open-api/feedback/queue` 对应参数为 `source`、`feature`、`outcome`、`issue_code`、`operator_id`、`resource_version`、`diagnostic_counts`，继续使用现有 Integration Token、`feedback:read` 和主站/板块交集授权。接收诊断的连接码不因此获得后台读取权。
+用户通知分页与未读计数通过 `NotificationRepository` 排除 `refType=FEEDBACK` 且 `refId` 以保留前缀 `rpt_diag_` 开头的旧诊断通知，避免历史回复继续产生个人反馈未读角标；原通知数据保留，不批量改为已读或删除。
 
-列表及私有详情增加可选 `source`、`diagnostic_report={feature,outcome,issue_codes,operator_ids,resource_version}`；自动化响应仍不包含提交者/账号身份。`diagnostic_counts=true` 返回 `diagnostic_counts`，按当前队列、所有筛选和实际授权范围聚合，包含 `source/feature/outcome/issue_code/operator_id/resource_version` 六组「值 → 工单数」，每组按数量取前 50 项；密探/错误码每个工单各计一次。省略时不计算聚合，返回空对象。禁止用当前页数量代替总数或扩大板块权限统计。
+新集合与索引：
 
-附件仅使用私有目录，通过既有工单附件端点鉴权读取；图片经过尺寸检查、完整解码及像素重编码，不保留客户端文件名/元数据。图片 14 天、manifest 和工单 90 天；读取立即拒绝过期数据，定时任务每小时删除真实磁盘文件、元数据和工单引用。随机事件 UUID 标记不包含用户或原始内容，独立保留，避免过期重试重新建单。旧人工工单和附件不参与诊断清理。
+- `maayuan_diagnostic_events`：`_id=eventId`，保存认证推导的 userId/accountId、createdAt、复用的 FeedbackDiagnosticSummary、manifestAssetId、图片 assetId/role/可选 issueIndex、问题组 signatures。索引为 createdAt、signatures；事件响应不返回上报用户和账号 ID。
+- `maayuan_diagnostic_issues`：永久问题组，索引为 `{status:1,lastSeenAt:-1}`、reason。键为 `原因|对象`（reason 缺省取 code；仅 identity_unresolved/data_review 有 operatorIds 时使用每个 `op:<operatorId>`，identity_unresolved 无 ID 但有 OCR 样本时使用首条 `ocr:<样本>`，其余所有 code 一律为 `stage:<stage>`，避免页面/环境问题按密探拆组），ID 为键的 SHA-1 十六进制前 24 位，落点为 `MaayuanDiagnosticIssueRecorder.Signature`。
+- 身份类 identity_unresolved 的 operator/ocr_name 对象以 code 代替 reason 作为签名原因；同事件与其他非 collector_exception issue 具有相同明确 reason 的外层 collector_exception 不参与分组，事件摘要仍保留所有 issue；组 `reason` 为签名原因，新增去重 `reasons` 记录实际 issue.reason（缺省取 code，旧文档默认空数组），管理端与 AI 响应随问题组返回该字段。
+- 同一事件内按签名分组，只增加一次 eventCount，并合并 stages；新增 operatorIds 收集进入该组的 issue 的 operatorIds，沿用 recent() 去重保留最近 10 个，旧文档默认空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」，中文名由只读目录解析，未命中保留原 ID；最近非空候选列表取当前事件，OCR 样本去重保留最近 8 条，MaaFW/资源/目录版本各保留最近去重 10 个，resourceCounts/uiScriptCounts 每个事件各计一次。FIXED 再次出现时回到 NEW 并记 regressedAt；IGNORED 只累计不重开。用户集合不永久存储，详情基于保留期内事件按 userId 去重计数。
 
-全局诊断图片使用 Mongo 原子字节预算，最多 10 GiB；预算不足仍保存摘要及 manifest，返回 `accepted_without_images`。工单事务失败会清理本次未被已提交工单引用的媒体；独立的诊断文件名前缀允许清理事务回滚或进程中断遗留超过一小时的无元数据文件。磁盘删除成功后，媒体元数据、预算释放和消息引用清理在同一事务内完成；清理失败保留重试依据。预算随接收事务回滚；磁盘暂存及进程异常遗留文件在清理任务中回收，不修改人工反馈文件。
+管理端基路径 `/v1/admin/maayuan-diagnostics` 使用 JWT，复用 `FeedbackAccessService.operatorAreas(userId)` 包含 MAAYUAN 的判断，与原 UNASSIGNED 诊断工单的工作台可见规则一致（含超级管理员），不使用宽泛的旧 manageAreas 代替岗位授权；未授权返回 HTTP 403，不新增权限码。Integration Token 基路径 `/open-api/maayuan-diagnostics` 还要求 Token 明确包含 MAAYUAN、所有者仍满足同一查看判断，不能以省略 feedbackAreas 表示诊断授权。
 
-后端定向测试：普通 `test` 下的 `MaayuanDiagnosticParserTest`、`MaayuanDiagnosticFilterTest`、`MaayuanDiagnosticControllerTest`；`integrationTest` 下的 `MaayuanDiagnosticServiceMongoTest` 仅使用 TestMongo 随机库、TestRedis DB15 进程键空间和隔离媒体目录。前端管理页只扩展筛选、计数和原详情摘要，不新增页面；真实布局及附件操作需人工验收。
+| 相对端点 | 功能 |
+|---|---|
+| `GET /issues` | status（NEW 默认 / FIXED / IGNORED / ALL）、reason（精确匹配组的 reason 或 reasons）、q（subject/OCR/目录名称与别名）、sort（lastSeen 默认 / count / firstSeen），分页（page 从 1 开始、每页默认 20、最多 100；管理端 pageSize、AI page_size）。返回分页问题组、statusCounts、reasonCounts 与三项全局统计（pendingCount、recentEventCount、regressedCount）。状态计数忽略当前状态，原因计数忽略当前原因，其余搜索条件保留；reasonCounts 仍按组的 reason 聚合 |
+| `GET /issues/{id}` | 问题组、近 90 天去重用户数、最近 20 个事件摘要、subjectInCatalog 及对象/候选中文名。使用 `OperatorCatalogService.catalogReadOnly()`，不触发 seed/backfill；OCR 名字与目录名称或分隔的 alias 精确匹配，其他对象为 null |
+| `GET /events/{eventId}` | 完整摘要、内联 manifest JSON、图片列表（带 role 与 expired）；无明确协议关联时 issueIndex 为 null |
+| `GET /events/{eventId}/media/{assetId}` | 校验事件引用、diagnosticEventId、privateStorage 和保留期后，复用 MediaStorageService.loadAuthorizedAsset 返回私有文件流，Cache-Control no-store/private；跨事件或过期均为 404 |
+| `PATCH /issues/{id}`（仅管理端） | `{status,note?}`，NEW/FIXED/IGNORED；备注最多 4000 字，记录 statusUpdatedBy/statusUpdatedAt |
+| `PUT /issues/{id}/analysis`（仅 AI） | summary ≤4000、suggested_action ≤40、source ≤40（均必填非空）、model 可选 ≤120；写 agentAnalysis，返回所写分析，不修改状态或返回事件数据 |
+
+两个新增 IntegrationScope 为 `diagnostics:read`（上述四个 GET）与 `diagnostics:analysis:write`（PUT 分析，不隐含读取权限）。原有 Token 管理端点不变，普通连接码不会因此取得后台诊断权限。AI 无状态修改端点；管理端及 AI 共用诊断读取语义，错误通过 IntegrationExceptionHandler 返回真实 HTTP 状态。
+
+图片保留 14 天；event 和 manifest 保留 90 天；问题组及累计计数永久保留。读取立即拒绝过期事件和文件，图片元数据删除后在事件响应中标记 expired；每小时清理真实文件和元数据，再删除过期事件，问题组不参与清理。原有旧诊断工单清理保留，普通工单和附件不参与诊断清理。随机回执独立保留，过期后重试不重新累计。
+
+全局图片预算仍为 10 GiB；不足时保存无图事件及 manifest。接收事务失败只清理未被已提交事件引用的本次媒体，并保持原有预算回滚及孤儿文件回收。问题组并发写冲突会回滚整个事件，由客户端使用相同 eventId 重试，避免丢失或重复累计。
+
+前端 `/maayuan-diagnostics` 与反馈管理路由同级鉴权，以桌面表格/手机卡片承载问题组，右侧抽屉（手机全屏）提供结论、处理、环境、最近事件、完整证据及原始数据；反馈页只保留次级入口，旧详情图片也改为 contain。现有 MaayuanDiagnosticServiceMongoTest 与 feedbackPages.spec.js 中直接冲突的断言已静态更新，未运行检查；新中心的权限、事务、聚合及运行时 UI 均待另行授权验证。
 
 交给后端验证会话运行（本次实现会话未运行 Gradle）：
 

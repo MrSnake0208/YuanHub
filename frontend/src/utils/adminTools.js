@@ -34,6 +34,15 @@ const ADMIN_TOOLS = Object.freeze([
     isVisible: canManageAnyFeedback
   },
   {
+    key: 'maayuan-diagnostics',
+    to: '/maayuan-diagnostics',
+    label: 'MaaYuan 诊断',
+    description: '查看诊断问题、事件和图片证据',
+    group: 'feedback',
+    icon: Logs,
+    isVisible: canManageAnyFeedback
+  },
+  {
     key: 'feedback-access',
     to: '/feedback/admin',
     label: '反馈授权',

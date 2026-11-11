@@ -1,6 +1,8 @@
 package com.lhs.share.handler
 
 import com.lhs.share.controller.response.ApiResultException
+import com.lhs.share.openapi.diagnostics.AdminMaayuanDiagnosticController
+import com.lhs.share.openapi.diagnostics.OpenApiMaayuanDiagnosticController
 import com.lhs.share.openapi.feedback.OpenApiFeedbackController
 import com.lhs.share.openapi.integration.IntegrationApiException
 import com.lhs.share.openapi.integration.IntegrationError
@@ -20,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException
     assignableTypes = [
         IntegrationTokenController::class,
         OpenApiFeedbackController::class,
+        AdminMaayuanDiagnosticController::class,
+        OpenApiMaayuanDiagnosticController::class,
     ],
 )
 class IntegrationExceptionHandler {

@@ -57,6 +57,7 @@ class OpenApiFeedbackController(
         @RequestParam(name = "operator_id", required = false) operatorId: String? = null,
         @RequestParam(name = "resource_version", required = false) resourceVersion: String? = null,
         @RequestParam(name = "diagnostic_counts", defaultValue = "false") diagnosticCounts: Boolean = false,
+        @RequestParam(required = false) reason: String? = null,
     ): ApiResult<FeedbackAutomationListResponse> {
         val principal = integrationTokens.validateAuthorization(authorization, IntegrationScope.FEEDBACK_READ)
         val result = reports.listForAutomation(
@@ -81,6 +82,7 @@ class OpenApiFeedbackController(
                 operatorId,
                 resourceVersion,
                 diagnosticCounts,
+                reason = reason,
             ).takeUnless { it == FeedbackDiagnosticFilter() },
         )
         return success(FeedbackAutomationListResponse.from(result))

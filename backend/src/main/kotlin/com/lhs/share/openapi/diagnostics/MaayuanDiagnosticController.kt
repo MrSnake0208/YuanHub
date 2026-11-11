@@ -6,6 +6,7 @@ import com.lhs.share.hub.service.beta.BetaApiException
 import com.lhs.share.hub.service.inventory.InventoryApiException
 import com.lhs.share.openapi.OpenApiPrincipal
 import com.lhs.share.openapi.OpenApiTokenService
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletRequestWrapper
@@ -18,6 +19,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -52,22 +54,36 @@ class MaayuanDiagnosticFilter(
     private val quotas: MaayuanDiagnosticQuota,
     private val mapper: ObjectMapper,
 ) : OncePerRequestFilter() {
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.requestURI != request.contextPath + DIAGNOSTIC_PATH || request.method != "POST"
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI.removePrefix(request.contextPath)
+        val diagnostic = path == DIAGNOSTIC_PATH || path == "$DIAGNOSTIC_PATH/intents" ||
+            Regex("$DIAGNOSTIC_PATH/[^/]+/complete").matches(path)
+        return request.method != "POST" || !diagnostic
+    }
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         try {
             val principal = tokens.authenticateAuthorization(request.getHeader("Authorization"))
             quotas.request(principal)
-            if (request.contentLengthLong > MAX_REQUEST_BYTES) {
-                diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Request exceeds 2 MiB")
+            val multipart = request.requestURI == request.contextPath + DIAGNOSTIC_PATH
+            val maxBytes = if (multipart) MAX_REQUEST_BYTES else 64 * 1024
+            if (request.contentLengthLong > maxBytes) {
+                diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Diagnostic request too large")
             }
             val contentType = request.contentType.orEmpty()
-            if (!contentType.startsWith("multipart/form-data;", ignoreCase = true)) {
-                diagnosticError(HttpStatus.BAD_REQUEST, "Expected multipart/form-data")
+            if (multipart) {
+                if (!contentType.startsWith(
+                        "multipart/form-data;",
+                        ignoreCase = true,
+                    )
+                ) {
+                    diagnosticError(HttpStatus.BAD_REQUEST, "Expected multipart/form-data")
+                }
+            } else if (!contentType.substringBefore(';').trim().equals("application/json", ignoreCase = true)) {
+                diagnosticError(HttpStatus.BAD_REQUEST, "Expected application/json")
             }
-            val bytes = request.inputStream.readNBytes(MAX_REQUEST_BYTES + 1)
-            if (bytes.size > MAX_REQUEST_BYTES) diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Request exceeds 2 MiB")
+            val bytes = request.inputStream.readNBytes(maxBytes + 1)
+            if (bytes.size > maxBytes) diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Diagnostic request too large")
             request.setAttribute(DIAGNOSTIC_PRINCIPAL, principal)
             request.setAttribute(DIAGNOSTIC_BODY, bytes)
             request.setAttribute(DIAGNOSTIC_TYPE, contentType)
@@ -104,6 +120,31 @@ class MaayuanDiagnosticFilter(
 
 @RestController
 class MaayuanDiagnosticController(private val service: MaayuanDiagnosticService) {
+    @PostMapping("$DIAGNOSTIC_PATH/intents", produces = ["application/json"])
+    fun intents(request: HttpServletRequest): ResponseEntity<*> = try {
+        ResponseEntity.ok().header("Cache-Control", "no-store").body(
+            service.intents(
+                request.getAttribute(DIAGNOSTIC_PRINCIPAL) as OpenApiPrincipal,
+                request.getAttribute(DIAGNOSTIC_BODY) as ByteArray,
+            ),
+        )
+    } catch (error: ResponseStatusException) {
+        if (error.statusCode.value() != 409 || error.reason != "direct_upload_unavailable") throw error
+        ResponseEntity.status(409).header("Cache-Control", "no-store").body(mapOf("status" to "direct_upload_unavailable"))
+    }
+
+    @PostMapping("$DIAGNOSTIC_PATH/{eventId}/complete", produces = ["application/json"])
+    fun complete(@PathVariable eventId: String, request: HttpServletRequest): ResponseEntity<DiagnosticCompleteReceipt> =
+        ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .body(
+                service.complete(
+                    request.getAttribute(DIAGNOSTIC_PRINCIPAL) as OpenApiPrincipal,
+                    eventId,
+                    request.getAttribute(DIAGNOSTIC_BODY) as ByteArray,
+                ),
+            )
+
     @PostMapping(DIAGNOSTIC_PATH, produces = ["application/json"])
     fun receive(request: HttpServletRequest): ResponseEntity<DiagnosticReceipt> = ResponseEntity.ok()
         .header("Cache-Control", "no-store")
@@ -119,12 +160,17 @@ class MaayuanDiagnosticController(private val service: MaayuanDiagnosticService)
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = [MaayuanDiagnosticController::class])
 class MaayuanDiagnosticExceptionHandler {
+    private val log = KotlinLogging.logger { }
+
     @ExceptionHandler(ResponseStatusException::class)
     fun rejected(error: ResponseStatusException): ResponseEntity<Map<String, String>> = ResponseEntity
         .status(error.statusCode).headers(error.headers)
         .body(mapOf("error" to (error.reason ?: "diagnostic_request_rejected")))
 
     @ExceptionHandler(Exception::class)
-    fun unexpected(): ResponseEntity<Map<String, String>> = ResponseEntity.status(503)
-        .body(mapOf("error" to "diagnostic_temporarily_unavailable"))
+    fun unexpected(error: Exception): ResponseEntity<Map<String, String>> {
+        log.error(error) { "Unexpected diagnostic request failure" }
+        return ResponseEntity.status(503)
+            .body(mapOf("error" to "diagnostic_temporarily_unavailable"))
+    }
 }

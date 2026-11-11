@@ -43,6 +43,24 @@ for name in $(compgen -e); do
 done
 worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py "$DATA_MODE")"
 eval "$worktree_exports"
+if [[ -n "${YUANHUB_LOCAL_COS_ENV:-}" && "${YUANHUB_AGENT_TEST:-}" != true ]]; then
+    if [[ ! -f "$YUANHUB_LOCAL_COS_ENV" || ! -r "$YUANHUB_LOCAL_COS_ENV" ]]; then
+        printf '错误: YUANHUB_LOCAL_COS_ENV 指向的文件不存在或不可读\n' >&2
+        exit 1
+    fi
+    cos_env_count=0
+    while IFS= read -r cos_env_line || [[ -n "$cos_env_line" ]]; do
+        cos_env_line="${cos_env_line%$'\r'}"
+        if [[ "$cos_env_line" =~ ^(SHARE_COS_[A-Z_]+)=(.*)$ ]]; then
+            cos_env_value="${BASH_REMATCH[2]}"
+            cos_env_value="${cos_env_value#"${cos_env_value%%[!$' \t']*}"}"
+            cos_env_value="${cos_env_value%"${cos_env_value##*[!$' \t']}"}"
+            export "${BASH_REMATCH[1]}=$cos_env_value"
+            cos_env_count=$((cos_env_count + 1))
+        fi
+    done < "$YUANHUB_LOCAL_COS_ENV"
+    printf '已从 YUANHUB_LOCAL_COS_ENV 载入 %s 个 COS 配置项\n' "$cos_env_count"
+fi
 if [[ -n "$agent_test_json" ]]; then
     YUANHUB_AGENT_CONFIG="$agent_test_json" python3 - "$ROOT_DIR" <<'CHECK_AGENT'
 import json, os, runpy, sys

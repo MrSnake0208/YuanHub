@@ -25,6 +25,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/admin/ledger',
     '/admin/beta',
     '/feedback/manage',
+    '/maayuan-diagnostics',
     '/feedback/admin',
     '/operator/admin',
     '/calendar/admin',
@@ -42,7 +43,7 @@ test('maps every management tool to its existing permission boundary', function 
 test('filters management tools for a single feedback-area manager', function () {
   const access = normalizeAdminAccess({ operator_areas: ['INVENTORY'] })
   const tools = getVisibleAdminTools(access)
-  assert.deepEqual(tools.map(function (tool) { return tool.key }), ['feedback-manage'])
+  assert.deepEqual(tools.map(function (tool) { return tool.key }), ['feedback-manage', 'maayuan-diagnostics'])
   assert.deepEqual(getVisibleAdminToolGroups(access).map(function (group) { return group.key }), ['feedback'])
   assert.equal(hasManagementCapability(access), true)
 })
@@ -121,7 +122,8 @@ test('keeps notification private and provides a guest feedback entry in more', f
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
   const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || (route.meta?.requiredPermission && ![ADMIN_PERMISSIONS.ARCHIVE_ACCESS].includes(route.meta.requiredPermission)) || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 15)
+  assert.equal(managementPaths.length, 16)
+  assert.ok(managementPaths.includes('/maayuan-diagnostics'))
   assert.ok(managementPaths.includes('/achievement/admin/suggestions'))
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)

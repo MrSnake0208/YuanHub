@@ -1,13 +1,12 @@
 package com.lhs.share.openapi.diagnostics
 
 import com.lhs.share.hub.repository.entity.FeedbackAgentReview
-import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.FeedbackTicket
 import com.lhs.share.hub.repository.entity.FeedbackWorkflowEvent
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.hub.repository.entity.MediaKind
 import com.lhs.share.hub.service.media.MediaStorageService
-import com.lhs.share.hub.service.report.FeedbackReportService
 import com.lhs.share.openapi.OpenApiPrincipal
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Qualifier
@@ -42,7 +41,7 @@ internal const val DIAGNOSTIC_IMAGE_LIMIT = 10L * 1024 * 1024 * 1024
 @Document("maayuan_diagnostic_storage")
 data class DiagnosticStorageBudget(@Id val id: String = "images", val bytes: Long = 0)
 
-/** Keep only the random event key after payload retention, so old retries cannot recreate a ticket. */
+/** Keep only the random event key after payload retention, so old retries cannot recreate an event. */
 @Document("maayuan_diagnostic_receipts")
 data class DiagnosticEventReceipt(@Id val id: String)
 
@@ -51,7 +50,7 @@ class MaayuanDiagnosticService(
     private val parser: MaayuanDiagnosticParser,
     private val quotas: MaayuanDiagnosticQuota,
     private val media: MediaStorageService,
-    private val reports: FeedbackReportService,
+    private val recorder: MaayuanDiagnosticIssueRecorder,
     @param:Qualifier("hubMongoTemplate") private val mongo: MongoTemplate,
     @param:Qualifier("hubTransactionManager") transactionManager: PlatformTransactionManager,
 ) {
@@ -62,13 +61,62 @@ class MaayuanDiagnosticService(
         val (manifestBytes, files) = multipart(body, contentType)
         val manifest = parser.parse(manifestBytes)
         if (manifest.images.size != files.size) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Image index/count mismatch")
-        val ticketId = ticketId(manifest.eventId)
         if (recorded(manifest.eventId)) {
             return DiagnosticReceipt("duplicate", manifest.eventId)
         }
         val images = files.mapIndexed { index, bytes -> decodeImage(bytes, manifest.images[index]) }
         quotas.packet(principal, files.sumOf { it.size.toLong() })
-        val imageBytes = images.sumOf { it.size.toLong() }
+        return persist(principal, manifest, images.size, images.sumOf { it.size.toLong() }) { index, now ->
+            media.upload(
+                principal.userId,
+                DiagnosticUpload("diagnostic-$index.jpg", "image/jpeg", images[index]),
+                privateStorage = true,
+                diagnosticEventId = manifest.eventId,
+                diagnosticExpiresAt = now.plus(Duration.ofDays(14)),
+            )
+        }
+    }
+
+    fun intents(principal: OpenApiPrincipal, body: ByteArray): DiagnosticIntentReceipt {
+        if (!media.cosStorage.enabled) diagnosticError(HttpStatus.CONFLICT, "direct_upload_unavailable")
+        val request = parser.parseIntent(body)
+        val manifest = request.manifest
+        if (recorded(manifest.eventId)) return DiagnosticIntentReceipt("duplicate", manifest.eventId)
+        val bytes = request.uploads.sumOf { it.size }
+        quotas.packet(principal, bytes)
+        val uploads = mutableListOf<DiagnosticUploadIntent>()
+        val result = persist(principal, manifest, request.uploads.size, bytes) { index, now ->
+            val asset = media.createPendingDiagnosticImage(
+                principal.userId,
+                manifest.eventId,
+                request.uploads[index].size,
+                now.plus(Duration.ofDays(14)),
+            )
+            val headers = mapOf(
+                "Content-Type" to "image/jpeg",
+                "Content-MD5" to request.uploads[index].contentMd5,
+                "Content-Length" to asset.size.toString(),
+            )
+            uploads +=
+                DiagnosticUploadIntent(
+                    index,
+                    "PUT",
+                    media.cosStorage.presignPut(asset.storagePath, headers),
+                    headers,
+                    media.cosStorage.putUrlTtlSeconds,
+                )
+            asset
+        }
+        return DiagnosticIntentReceipt(result.status, manifest.eventId, if (result.status == "accepted") uploads else emptyList())
+    }
+
+    private fun persist(
+        principal: OpenApiPrincipal,
+        manifest: MaayuanDiagnosticManifest,
+        imageCount: Int,
+        imageBytes: Long,
+        createImage: (Int, Instant) -> MediaAsset,
+    ): DiagnosticReceipt {
         val assets = mutableListOf<MediaAsset>()
         val now = Instant.now()
         var status = "accepted"
@@ -84,42 +132,112 @@ class MaayuanDiagnosticService(
                     diagnosticExpiresAt = now.plus(Duration.ofDays(90)),
                 )
                 if (reserved) {
-                    images.forEachIndexed { index, bytes ->
-                        assets += media.upload(
-                            principal.userId,
-                            DiagnosticUpload("diagnostic-$index.jpg", "image/jpeg", bytes),
-                            privateStorage = true,
-                            diagnosticEventId = manifest.eventId,
-                            diagnosticExpiresAt = now.plus(Duration.ofDays(14)),
-                        )
+                    repeat(imageCount) { index ->
+                        assets += createImage(index, now)
                     }
                 }
-                reports.createDiagnostic(
-                    principal.userId,
-                    principal.accountId,
-                    ticketId,
-                    FeedbackDiagnosticSummary(
-                        manifest.feature,
-                        manifest.outcome,
-                        manifest.issues.map { it.code }.distinct(),
-                        (manifest.issues.flatMap { it.operatorIds } + manifest.images.mapNotNull { it.operatorId }).distinct(),
-                        manifest.client.resourceVersion,
-                    ),
-                    assets,
-                )
+                recorder.record(principal, manifest, assets, now)
                 mongo.insert(DiagnosticEventReceipt(manifest.eventId))
             }
             return DiagnosticReceipt(status, manifest.eventId)
         } catch (error: Exception) {
             // An insert may have committed before a network error; never remove its referenced evidence.
-            val existing = mongo.findById(ticketId, FeedbackTicket::class.java)
-            val referenced = existing?.messages.orEmpty().flatMap { it.images.map { image -> image.id } + it.files.map { file -> file.id } }
+            val existing = mongo.findById(manifest.eventId, MaayuanDiagnosticEvent::class.java)
+            val referenced = existing?.let { listOf(it.manifestAssetId) + it.images.map { image -> image.assetId } }.orEmpty()
             assets.filterNot { it.id in referenced }.forEach(::deleteAsset)
             val ownsCommittedAssets = assets.isNotEmpty() && assets.all { it.id in referenced }
             if (existing != null && ownsCommittedAssets) return DiagnosticReceipt(status, manifest.eventId)
             if (recorded(manifest.eventId)) return DiagnosticReceipt("duplicate", manifest.eventId)
             throw error
         }
+    }
+
+    fun complete(principal: OpenApiPrincipal, eventId: String, body: ByteArray): DiagnosticCompleteReceipt {
+        parser.requireEmptyObject(body)
+        val id = eventId.lowercase()
+        val event = mongo.findById(id, MaayuanDiagnosticEvent::class.java)
+            ?: diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic event not found")
+        if (event.userId != principal.userId || event.accountId != principal.accountId ||
+            !event.createdAt.isAfter(Instant.now().minus(Duration.ofDays(90)))
+        ) {
+            diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic event not found")
+        }
+        if (event.images.none { it.status == "pending" }) {
+            return DiagnosticCompleteReceipt(
+                images = event.images.mapIndexed { index, image ->
+                    DiagnosticCompleteImage(index, image.status)
+                },
+            )
+        }
+        val manifestAsset = mongo.findById(event.manifestAssetId, MediaAsset::class.java)
+            ?: diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic manifest expired")
+        if (manifestAsset.diagnosticEventId != id || manifestAsset.ownerUserId != principal.userId || !manifestAsset.privateStorage ||
+            manifestAsset.deletedAt != null || manifestAsset.diagnosticExpiresAt?.isAfter(Instant.now()) != true
+        ) {
+            diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic manifest not found")
+        }
+        val manifest = media.loadAuthorizedAsset(manifestAsset).inputStream.use { parser.parse(it.readNBytes(64 * 1024 + 1)) }
+        event.images.forEachIndexed { index, image ->
+            if (image.status != "pending") return@forEachIndexed
+            val asset = mongo.findById(image.assetId, MediaAsset::class.java)
+            if (asset != null && (
+                    asset.diagnosticEventId != id || asset.ownerUserId != principal.userId ||
+                        !asset.privateStorage || asset.storageBackend != "cos" || asset.kind != MediaKind.IMAGE
+                    )
+            ) {
+                diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic image not found")
+            }
+            val status = when {
+                asset == null -> "missing"
+                asset.status != "pending" -> asset.status
+                else -> completeImage(asset, manifest.images[index])
+            }
+            transactions.executeWithoutResult {
+                var finalStatus = status
+                if (asset != null && asset.status == "pending") {
+                    // A conditional transition and the budget decrement commit together, including concurrent complete calls.
+                    val pending = Query(Criteria.where("_id").`is`(asset.id).and("status").`is`("pending"))
+                    val changed = mongo.findAndModify(pending, Update().set("status", status), MediaAsset::class.java)
+                    if (changed == null) {
+                        finalStatus = mongo.findById(image.assetId, MediaAsset::class.java)?.status ?: "missing"
+                    } else if (status in setOf("missing", "invalid")) {
+                        releaseImages(changed.size)
+                    }
+                }
+                val reference = Query(Criteria.where("_id").`is`(id).and("images.assetId").`is`(image.assetId))
+                mongo.updateFirst(reference, Update().set("images.$.status", finalStatus), MaayuanDiagnosticEvent::class.java)
+            }
+        }
+        val completed = mongo.findById(id, MaayuanDiagnosticEvent::class.java)
+            ?: diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic event not found")
+        return DiagnosticCompleteReceipt(
+            images = completed.images.mapIndexed { index, image ->
+                DiagnosticCompleteImage(index, image.status)
+            },
+        )
+    }
+
+    private fun completeImage(asset: MediaAsset, metadata: DiagnosticImage): String {
+        if (asset.deletedAt != null || asset.diagnosticExpiresAt?.isAfter(Instant.now()) != true) return "missing"
+        val size = media.cosStorage.headSize(asset.storagePath) ?: return "missing"
+        var status = "invalid"
+        if (size == asset.size && size in 1..524288) {
+            try {
+                val bytes = media.cosStorage.load(asset.storagePath).inputStream.use { it.readNBytes(size.toInt() + 1) }
+                if (bytes.size.toLong() == size) {
+                    decodeImage(bytes, metadata, reencode = false)
+                    status = "ready"
+                }
+            } catch (error: org.springframework.web.server.ResponseStatusException) {
+                when (error.statusCode.value()) {
+                    404 -> return "missing"
+                    422 -> Unit
+                    else -> throw error
+                }
+            }
+        }
+        if (status == "invalid") media.cosStorage.delete(asset.storagePath)
+        return status
     }
 
     private fun multipart(body: ByteArray, contentType: String): Pair<ByteArray, List<ByteArray>> {
@@ -165,7 +283,7 @@ class MaayuanDiagnosticService(
         }
     }
 
-    private fun decodeImage(bytes: ByteArray, metadata: DiagnosticImage): ByteArray {
+    private fun decodeImage(bytes: ByteArray, metadata: DiagnosticImage, reencode: Boolean = true): ByteArray {
         try {
             ByteArrayInputStream(bytes).use { input ->
                 MemoryCacheImageInputStream(input).use { stream ->
@@ -187,6 +305,7 @@ class MaayuanDiagnosticService(
                         }
                         val decoded = reader.read(0) ?: diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid JPEG pixels")
                         if (warning) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Damaged JPEG pixels")
+                        if (!reencode) return bytes
                         val pixels = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
                         pixels.createGraphics().let { graphics ->
                             try {
@@ -237,7 +356,7 @@ class MaayuanDiagnosticService(
         if (!mongo.exists(query, MediaAsset::class.java)) return
         transactions.executeWithoutResult {
             val removed = mongo.findAndRemove(query, MediaAsset::class.java) ?: return@executeWithoutResult
-            if (removed.kind == MediaKind.IMAGE) releaseImages(removed.size)
+            if (removed.kind == MediaKind.IMAGE && removed.status !in setOf("missing", "invalid")) releaseImages(removed.size)
             val reference = org.bson.Document("id", asset.id)
             mongo.updateMulti(
                 Query(Criteria.where("source").`is`(DIAGNOSTIC_SOURCE)),
@@ -253,6 +372,15 @@ class MaayuanDiagnosticService(
     fun cleanupAt(now: Instant) {
         val expired = Criteria.where("diagnosticEventId").ne(null).and("diagnosticExpiresAt").lte(now)
         mongo.stream(Query(expired), MediaAsset::class.java).use { assets -> assets.forEach { cleanupAsset(it) } }
+        val oldEvents = Query(Criteria.where("createdAt").lte(now.minus(Duration.ofDays(90))))
+        mongo.stream(oldEvents, MaayuanDiagnosticEvent::class.java).use { events ->
+            events.forEach { event ->
+                val attachments = mongo.find(Query(Criteria.where("diagnosticEventId").`is`(event.id)), MediaAsset::class.java)
+                if (attachments.map(::cleanupAsset).all { it }) {
+                    mongo.remove(Query(Criteria.where("_id").`is`(event.id)), MaayuanDiagnosticEvent::class.java)
+                }
+            }
+        }
         val oldTickets = Query(Criteria.where("source").`is`(DIAGNOSTIC_SOURCE).and("createdAt").lte(now.minus(Duration.ofDays(90))))
         mongo.stream(oldTickets, FeedbackTicket::class.java).use { tickets ->
             tickets.forEach { ticket ->
@@ -279,8 +407,6 @@ class MaayuanDiagnosticService(
         log.error { "Diagnostic media cleanup will retry: ${asset.id}, ${error.javaClass.simpleName}" }
         false
     }
-
-    private fun ticketId(eventId: String): String = "rpt_diag_$eventId"
 
     private fun recorded(eventId: String): Boolean =
         mongo.exists(Query(Criteria.where("_id").`is`(eventId)), DiagnosticEventReceipt::class.java)

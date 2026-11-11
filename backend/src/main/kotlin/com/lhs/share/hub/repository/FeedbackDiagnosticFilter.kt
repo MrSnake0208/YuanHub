@@ -14,6 +14,7 @@ data class FeedbackDiagnosticFilter(
     val operatorId: String? = null,
     val resourceVersion: String? = null,
     val includeCounts: Boolean = false,
+    val reason: String? = null,
 ) {
     fun criteria(): List<Criteria> {
         if (source != null && source !in setOf("manual", "maayuan_diagnostic")) throw ApiResultException(400, "Invalid source")
@@ -21,6 +22,7 @@ data class FeedbackDiagnosticFilter(
             "feature" to feature,
             "outcome" to outcome,
             "issueCodes" to issueCode,
+            "issues.reason" to reason,
             "operatorIds" to operatorId,
             "resourceVersion" to resourceVersion,
         )

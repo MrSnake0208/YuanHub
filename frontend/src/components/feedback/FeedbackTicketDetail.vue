@@ -16,9 +16,25 @@
 
     <section v-if="item.diagnosticReport" class="detail-section" aria-label="MaaYuan 诊断摘要">
       <h3>MaaYuan 百宝箱诊断</h3>
-      <p class="detail-content">{{ item.diagnosticReport.outcome }} · {{ item.diagnosticReport.resourceVersion }}<br />
-        错误码：{{ item.diagnosticReport.issueCodes.join('、') }}<br />
-        密探：{{ item.diagnosticReport.operatorIds.join('、') || '未识别' }}
+      <p class="detail-content detail-diagnostic">{{ diagnosticLabel(diagnosticOutcomeLabels, item.diagnosticReport.outcome) }} · {{ item.diagnosticReport.resourceVersion }}<br />
+        资源：{{ diagnosticLabel(diagnosticResourceLabels, item.diagnosticReport.resource) || '未提供' }} · 界面文字：{{ diagnosticLabel(diagnosticUiScriptLabels, item.diagnosticReport.uiScript) || '未提供' }}<br />
+        密探：{{ (item.diagnosticReport.operatorIds || []).join('、') || '未识别' }}
+      </p>
+      <template v-if="item.diagnosticReport.issues?.length">
+        <p v-for="(issue, index) in item.diagnosticReport.issues" :key="index" class="detail-content detail-diagnostic">
+          {{ diagnosticCodeLabel(issue.code) }} · 阶段：{{ diagnosticLabel(diagnosticStageLabels, issue.stage) }}<br />
+          原因：{{ issue.reason ? diagnosticReason(issue.reason).label : '未知（客户端未提供）' }}<br />
+          <template v-if="diagnosticReason(issue.reason).hint">排查提示：{{ diagnosticReason(issue.reason).hint }}<br /></template>
+          异常类型：{{ issue.errorType || '未提供' }} · 次数：{{ issue.count }}<br />
+          密探：{{ (issue.operatorIds || []).join('、') || '未识别' }}
+          <template v-if="issue.code === 'identity_unresolved'"><br />
+            OCR 读到：{{ (issue.ocrSamples || []).join('、') || '未提供' }}<br />
+            候选：{{ (issue.candidateOperatorIds || []).map(candidateOperatorLabel).join('、') || '未提供' }}
+          </template>
+        </p>
+      </template>
+      <p v-else class="detail-content detail-diagnostic">
+        错误码：{{ (item.diagnosticReport.issueCodes || []).map(diagnosticCodeLabel).join('、') }}
       </p>
     </section>
 
@@ -113,6 +129,8 @@ import { computed, ref, watch } from 'vue'
 import { CheckCircle2, CircleX, Download, File, FileArchive, FileJson, FileText, LoaderCircle, ShieldCheck } from '@lucide/vue'
 import { downloadFeedbackAttachment } from '@/api/feedback.js'
 import { formatBuildInfo } from '@/config/buildInfo.js'
+import { diagnosticCodeLabel, diagnosticLabel, diagnosticOutcomeLabels, diagnosticReason, diagnosticResourceLabels, diagnosticStageLabels, diagnosticUiScriptLabels } from '@/data/maayuanDiagnostics.js'
+import { AGENT_CATALOG } from '@/data/inventory/catalog.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -129,6 +147,11 @@ const props = defineProps({
   },
   formatDate: { type: Function, required: true }
 })
+
+function candidateOperatorLabel(id) {
+  const operator = AGENT_CATALOG.find(entry => entry.id === id)
+  return operator ? `${operator.name}（${id}）` : id
+}
 
 function isOwnMessage(message) {
   const authorId = String(message?.author?.id || '').trim()
@@ -254,6 +277,7 @@ watch(() => props.item?.id, () => {
 .detail-section h3 { color: var(--feedback-text); }
 .detail-section h3 span { color: var(--feedback-text-dim); }
 .detail-content,.detail-message p { color: var(--feedback-text); }
+.detail-diagnostic { overflow-wrap: anywhere; }
 .detail-message { background: transparent; }
 .detail-message header strong { color: var(--feedback-text); }
 .detail-admin-label { color: var(--theme-strong-text, var(--tea)); }

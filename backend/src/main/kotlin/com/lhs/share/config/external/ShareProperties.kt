@@ -152,5 +152,19 @@ data class ShareProperties(
          * 私有附件存储目录,生产用环境变量 SHARE_PRIVATE_MEDIA_DIR / Docker volume 覆盖
          */
         var privateDir: String = "./data/private-media",
+        @NestedConfigurationProperty
+        var cos: Cos = Cos(),
+    )
+
+    // 不生成包含密钥的 data class toString。
+    class Cos(
+        var enabled: Boolean = false,
+        var region: String = "",
+        var bucket: String = "",
+        var endpoint: String = "",
+        var secretId: String = "",
+        var secretKey: String = "",
+        var putUrlTtlSeconds: Long = 600,
+        var getUrlTtlSeconds: Long = 300,
     )
 }

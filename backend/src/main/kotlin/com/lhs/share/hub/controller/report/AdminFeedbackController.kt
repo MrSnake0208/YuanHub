@@ -72,6 +72,7 @@ class AdminFeedbackController(
         @RequestParam(required = false) operatorId: String? = null,
         @RequestParam(required = false) resourceVersion: String? = null,
         @RequestParam(defaultValue = "false") diagnosticCounts: Boolean = false,
+        @RequestParam(required = false) reason: String? = null,
     ): ApiResult<FeedbackReportListResponse> = success(
         feedbackReportService.list(
             helper.requireUserId(), page, pageSize, null, type, workArea, null, false, null, q, sortBy, sortOrder, queue, spaceId,
@@ -83,6 +84,7 @@ class AdminFeedbackController(
                 operatorId,
                 resourceVersion,
                 diagnosticCounts,
+                reason = reason,
             ).takeUnless { it == FeedbackDiagnosticFilter() },
         ),
     )

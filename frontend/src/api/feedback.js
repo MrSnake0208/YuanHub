@@ -129,7 +129,15 @@ export function normalizeFeedback(report) {
       ...diagnosticReport,
       issueCodes: diagnosticReport.issueCodes ?? diagnosticReport.issue_codes ?? [],
       operatorIds: diagnosticReport.operatorIds ?? diagnosticReport.operator_ids ?? [],
-      resourceVersion: diagnosticReport.resourceVersion ?? diagnosticReport.resource_version
+      resourceVersion: diagnosticReport.resourceVersion ?? diagnosticReport.resource_version,
+      uiScript: diagnosticReport.uiScript ?? diagnosticReport.ui_script,
+      issues: (diagnosticReport.issues ?? []).map(issue => ({
+        ...issue,
+        errorType: issue.errorType ?? issue.error_type,
+        operatorIds: issue.operatorIds ?? issue.operator_ids ?? [],
+        candidateOperatorIds: issue.candidateOperatorIds ?? issue.candidate_operator_ids ?? [],
+        ocrSamples: issue.ocrSamples ?? issue.ocr_samples ?? []
+      }))
     } : null,
     status: String(report.status || '').toUpperCase(),
     hasAdminReply: report.hasAdminReply ?? report.has_admin_reply ?? false,
@@ -209,7 +217,7 @@ export async function listFeedback(params = {}) {
   if (params.sortOrder) qs.set('sortOrder', params.sortOrder)
   if (params.workflowQueue) qs.set('queue', params.workflowQueue)
   if (params.workArea) qs.set('workArea', params.workArea)
-  for (const key of ['source', 'feature', 'outcome', 'issueCode', 'operatorId', 'resourceVersion']) {
+  for (const key of ['source', 'feature', 'outcome', 'issueCode', 'operatorId', 'resourceVersion', 'reason']) {
     if (params[key]) qs.set(key, params[key])
   }
   if (params.diagnosticCounts) qs.set('diagnosticCounts', 'true')

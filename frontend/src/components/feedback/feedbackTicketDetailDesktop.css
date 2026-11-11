@@ -22,7 +22,7 @@
 .detail-message.is-self > p { margin-left: auto; }
 .detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .detail-media-grid a { position: relative; display: block; overflow: hidden; aspect-ratio: 4 / 3; }
-.detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; font-size: 11px; text-align: center; }
 .detail-file-list { display: grid; gap: 7px; margin-top: 10px; }
 .detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 44px; align-items: center; gap: 9px; padding: 8px 9px; }

@@ -8,4 +8,18 @@ data class FeedbackDiagnosticSummary(
     val issueCodes: List<String>,
     val operatorIds: List<String>,
     val resourceVersion: String,
+    val issues: List<FeedbackDiagnosticIssueSummary> = emptyList(),
+    val resource: String? = null,
+    val uiScript: String? = null,
+) : Serializable
+
+data class FeedbackDiagnosticIssueSummary(
+    val code: String,
+    val stage: String,
+    val reason: String? = null,
+    val errorType: String? = null,
+    val count: Int,
+    val operatorIds: List<String>,
+    val candidateOperatorIds: List<String> = emptyList(),
+    val ocrSamples: List<String> = emptyList(),
 ) : Serializable

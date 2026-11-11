@@ -17,15 +17,15 @@ it('管理工作台作为独立页面聚合授权工具，不再将个人中心�
   expect(wrapper.get('h1').text()).toBe('管理工作台')
   expect(wrapper.find('header .page-header-back').exists()).toBe(false)
   expect(wrapper.findAll('.workbench-group h2').map(heading => heading.text())).toEqual(['反馈工作区', '内容维护', '平台设置'])
-  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/recruitment/admin', '/admin/audit'])
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/maayuan-diagnostics', '/recruitment/admin', '/admin/audit'])
   wrapper.unmount()
 })
 
 it('管理员从反馈工作区进入反馈处理和权限配置', () => {
   Object.assign(auth, { adminAccessLoaded: true, adminAccess: { permissions: ['admin:feedback_access:manage'], operatorAreas: ['OPERATOR'] } })
   const wrapper = render()
-  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/feedback/admin'])
-  expect(wrapper.findAll('.workbench-tool strong').map(label => label.text())).toEqual(['待处理反馈', '反馈授权'])
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/maayuan-diagnostics', '/feedback/admin'])
+  expect(wrapper.findAll('.workbench-tool strong').map(label => label.text())).toEqual(['待处理反馈', 'MaaYuan 诊断', '反馈授权'])
   wrapper.unmount()
 })
 
@@ -55,6 +55,6 @@ it('固定按钮独立于工具链接，可固定和取消且反馈状态即时�
   expect(JSON.parse(localStorage.getItem('yh_admin_nav_pins:workbench-user'))).toEqual(['feedback-manage'])
   await button.trigger('click')
   expect(button.attributes('aria-pressed')).toBe('false')
-  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage'])
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/feedback/manage', '/maayuan-diagnostics'])
   wrapper.unmount()
 })

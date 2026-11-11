@@ -59,6 +59,7 @@ dependencies {
     testImplementation("com.tngtech.archunit:archunit:1.4.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("com.networknt:json-schema-validator:1.5.8")
+    implementation("com.qcloud:cos_api:5.6.227")
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
