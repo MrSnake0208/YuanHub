@@ -150,8 +150,12 @@ class FeedbackPublicService(
 
     // ========== 内部方法 ==========
 
-    private fun isPublicTicket(ticket: FeedbackTicket): Boolean =
-        FeedbackVisibility.isPublic(ticket.visibility) && !FeedbackType.isReport(ticket.type, ticket.category)
+    private fun isPublicTicket(ticket: FeedbackTicket): Boolean {
+        val isDiagnostic = ticket.source == "maayuan_diagnostic"
+        val isPublic = FeedbackVisibility.isPublic(ticket.visibility)
+        val isReport = FeedbackType.isReport(ticket.type, ticket.category)
+        return !isDiagnostic && isPublic && !isReport
+    }
 
     private fun requirePublicTicket(ticketId: String): FeedbackTicket {
         val ticket = ticketRepository.findById(ticketId).orElse(null)

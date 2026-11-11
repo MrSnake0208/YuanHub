@@ -13,6 +13,7 @@ import com.lhs.share.hub.controller.report.request.FeedbackStatusUpdateRequest
 import com.lhs.share.hub.controller.report.response.FeedbackReportListResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportResponse
 import com.lhs.share.hub.controller.report.response.PublicFeedbackDetail
+import com.lhs.share.hub.repository.FeedbackDiagnosticFilter
 import com.lhs.share.hub.service.media.MediaStorageService
 import com.lhs.share.hub.service.report.FeedbackPublicService
 import com.lhs.share.hub.service.report.FeedbackReportService
@@ -84,6 +85,13 @@ class FeedbackReportController(
         @RequestParam(defaultValue = "createdAt") sortBy: String,
         @RequestParam(defaultValue = "desc") sortOrder: String,
         @RequestParam(required = false) spaceId: String? = null,
+        @RequestParam(required = false) source: String? = null,
+        @RequestParam(required = false) feature: String? = null,
+        @RequestParam(required = false) outcome: String? = null,
+        @RequestParam(required = false) issueCode: String? = null,
+        @RequestParam(required = false) operatorId: String? = null,
+        @RequestParam(required = false) resourceVersion: String? = null,
+        @RequestParam(defaultValue = "false") diagnosticCounts: Boolean = false,
     ): ApiResult<FeedbackReportListResponse> {
         val userId = helper.requireUserId()
         return success(
@@ -101,6 +109,15 @@ class FeedbackReportController(
                 sortBy = sortBy,
                 sortOrder = sortOrder,
                 spaceId = spaceId,
+                diagnosticFilter = FeedbackDiagnosticFilter(
+                    source,
+                    feature,
+                    outcome,
+                    issueCode,
+                    operatorId,
+                    resourceVersion,
+                    diagnosticCounts,
+                ).takeUnless { it == FeedbackDiagnosticFilter() },
             ),
         )
     }

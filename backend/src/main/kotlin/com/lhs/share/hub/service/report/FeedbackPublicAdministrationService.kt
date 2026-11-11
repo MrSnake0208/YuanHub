@@ -45,6 +45,7 @@ class FeedbackPublicAdministrationService(
         if (FeedbackType.isReport(ticket.type, ticket.category)) {
             throw ApiResultException(403, "举报工单不能发布到反馈广场")
         }
+        if (ticket.source == "maayuan_diagnostic") throw ApiResultException(403, "诊断工单必须保持私有")
         if (!ticket.publicConsent) {
             throw ApiResultException(403, "用户未授权发布到反馈广场")
         }
@@ -125,6 +126,8 @@ class FeedbackPublicAdministrationService(
         val target = requireTicket(targetId)
         if (FeedbackSpaces.id(source) != FeedbackSpaces.id(target)) throw ApiResultException(400, "不能跨专区合并反馈")
         requireManage(adminUserId, target)
+        val diagnosticMerge = source.source == "maayuan_diagnostic" || target.source == "maayuan_diagnostic"
+        if (diagnosticMerge) throw ApiResultException(403, "诊断工单按事件独立保存，不能合并")
         if (!FeedbackWorkflow.isActive(target) || FeedbackWorkflow.area(source) != FeedbackWorkflow.area(target)) {
             throw ApiResultException(HttpStatus.CONFLICT.value(), "目标必须是同负责板块的未合并活动工单")
         }

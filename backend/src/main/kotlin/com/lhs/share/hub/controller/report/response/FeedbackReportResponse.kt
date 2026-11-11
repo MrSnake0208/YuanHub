@@ -1,5 +1,6 @@
 package com.lhs.share.hub.controller.report.response
 
+import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import java.time.Instant
 
 /**
@@ -104,6 +105,8 @@ data class FeedbackReportResponse(
     val createdAt: Instant,
     val updatedAt: Instant,
     val diagnostics: DiagnosticsResponse? = null,
+    val source: String? = null,
+    val diagnosticReport: FeedbackDiagnosticSummary? = null,
 ) {
     data class QuotaInfo(
         val pendingCount: Int,
@@ -178,6 +181,8 @@ data class FeedbackReportListItem(
     val reporterName: String?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val source: String? = null,
+    val diagnosticReport: FeedbackDiagnosticSummary? = null,
 )
 
 /**
@@ -191,4 +196,5 @@ data class FeedbackReportListResponse(
     val mine: Boolean,
     val sortBy: String,
     val sortOrder: String,
+    val diagnosticCounts: Map<String, Map<String, Long>> = emptyMap(),
 )

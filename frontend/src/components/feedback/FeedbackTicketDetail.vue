@@ -14,6 +14,14 @@
       {{ diagnosticsLine }}
     </p>
 
+    <section v-if="item.diagnosticReport" class="detail-section" aria-label="MaaYuan 诊断摘要">
+      <h3>MaaYuan 百宝箱诊断</h3>
+      <p class="detail-content">{{ item.diagnosticReport.outcome }} · {{ item.diagnosticReport.resourceVersion }}<br />
+        错误码：{{ item.diagnosticReport.issueCodes.join('、') }}<br />
+        密探：{{ item.diagnosticReport.operatorIds.join('、') || '未识别' }}
+      </p>
+    </section>
+
     <section v-if="!item.messages || !item.messages.length" class="detail-section">
       <h3>反馈内容</h3>
       <p class="detail-content">{{ item.content }}</p>

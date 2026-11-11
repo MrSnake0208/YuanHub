@@ -13,6 +13,28 @@ function mountDetail(item, extra = {}) {
 }
 
 describe('反馈工单应用诊断信息', () => {
+  it('同时接收后端 snake_case 与已有 camelCase 摘要', async () => {
+    const { normalizeFeedback } = await vi.importActual('../src/api/feedback.js')
+    for (const diagnosticReport of [
+      { issue_codes: ['upload_rejected'], operator_ids: ['char_test'], resource_version: '2026.11.10' },
+      { issueCodes: ['upload_rejected'], operatorIds: ['char_test'], resourceVersion: '2026.11.10' }
+    ]) {
+      const result = normalizeFeedback({ ...baseItem, source: 'maayuan_diagnostic', diagnostic_report: diagnosticReport })
+      expect(result.diagnosticReport).toMatchObject({ issueCodes: ['upload_rejected'], operatorIds: ['char_test'], resourceVersion: '2026.11.10' })
+    }
+  })
+
+  it('MaaYuan 结构化诊断沿用原工单详情和附件入口', () => {
+    const wrapper = mountDetail({ ...baseItem, source: 'maayuan_diagnostic', diagnosticReport: {
+      outcome: 'upload_failed', resourceVersion: '2026.11.10', issueCodes: ['upload_rejected'], operatorIds: ['char_test']
+    } })
+    const summary = wrapper.get('[aria-label="MaaYuan 诊断摘要"]')
+    expect(summary.text()).toContain('upload_rejected')
+    expect(summary.text()).toContain('char_test')
+    expect(summary.text()).toContain('2026.11.10')
+    wrapper.unmount()
+  })
+
   it('管理员视图以低权重单行展示产品版本与 Build', () => {
     const wrapper = mountDetail(
       { ...baseItem, diagnostics: { productVersion: '0.9.0-beta.1', frontendCommit: 'abc1234', buildTime: '2026-01-02T03:04:05Z' } },

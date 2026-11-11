@@ -4,6 +4,7 @@ import com.lhs.share.hub.controller.report.response.FeedbackMessageResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportListItem
 import com.lhs.share.hub.controller.report.response.FeedbackReportListResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportResponse
+import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.FeedbackWorkflowEvent
 import com.lhs.share.hub.service.report.FeedbackAgentReviewView
 import java.time.Instant
@@ -15,10 +16,12 @@ data class FeedbackAutomationListResponse(
     val pageSize: Int,
     val sortBy: String,
     val sortOrder: String,
+    val diagnosticCounts: Map<String, Map<String, Long>> = emptyMap(),
 ) {
     companion object {
         fun from(source: FeedbackReportListResponse) = FeedbackAutomationListResponse(
             reports = source.reports.map(FeedbackAutomationListItem::from),
+            diagnosticCounts = source.diagnosticCounts,
             total = source.total,
             page = source.page,
             pageSize = source.pageSize,
@@ -43,10 +46,14 @@ data class FeedbackAutomationListItem(
     val needsReply: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val source: String? = null,
+    val diagnosticReport: FeedbackDiagnosticSummary? = null,
 ) {
     companion object {
         fun from(source: FeedbackReportListItem) = FeedbackAutomationListItem(
             id = source.id,
+            source = source.source,
+            diagnosticReport = source.diagnosticReport,
             content = source.content,
             type = source.type,
             area = source.area,
@@ -82,10 +89,14 @@ data class FeedbackAutomationDetailResponse(
     val diagnostics: FeedbackAutomationDiagnostics?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val source: String? = null,
+    val diagnosticReport: FeedbackDiagnosticSummary? = null,
 ) {
     companion object {
         fun from(source: FeedbackReportResponse) = FeedbackAutomationDetailResponse(
             id = source.id,
+            source = source.source,
+            diagnosticReport = source.diagnosticReport,
             title = source.title,
             content = source.content,
             type = source.type,

@@ -38,8 +38,14 @@ class FeedbackTicketQueryRepository(
         developerAreas: Set<String> = emptySet(),
         knownAreas: Set<String> = FeedbackArea.all,
         spaceIds: Set<String>? = null,
+        diagnosticFilter: FeedbackDiagnosticFilter? = null,
     ): Page<FeedbackTicket> {
         val filters = mutableListOf<Criteria>()
+        filters += diagnosticFilter?.criteria().orEmpty()
+        filters += Criteria().orOperator(
+            Criteria.where("source").ne("maayuan_diagnostic"),
+            Criteria.where("createdAt").gt(Instant.now().minusSeconds(90L * 86400)),
+        )
         spaceIds?.let { filters += FeedbackSpaces.criteria(it) }
         reporterUserId?.let { filters += Criteria.where("reporterUserId").`is`(it) }
         manageableCategories?.let { filters += workAreaSetCriteria(it, knownAreas) }
@@ -132,7 +138,38 @@ class FeedbackTicketQueryRepository(
         val countQuery = Query(criteria)
         val total = template.count(countQuery, FeedbackTicket::class.java)
         val items = template.find(Query(criteria).with(pageable), FeedbackTicket::class.java)
+        if (diagnosticFilter?.includeCounts == true) {
+            return FeedbackDiagnosticPage(items, pageable, total, diagnosticCounts(criteria))
+        }
         return PageImpl(items, pageable, total)
+    }
+
+    private fun diagnosticCounts(criteria: Criteria): Map<String, Map<String, Long>> {
+        val fields = mapOf(
+            "source" to "source",
+            "feature" to "diagnosticReport.feature",
+            "outcome" to "diagnosticReport.outcome",
+            "issue_code" to "diagnosticReport.issueCodes",
+            "operator_id" to "diagnosticReport.operatorIds",
+            "resource_version" to "diagnosticReport.resourceVersion",
+        )
+        val facets = Document()
+        fields.forEach { (name, path) ->
+            val stages = mutableListOf<Document>()
+            if (name == "issue_code" || name == "operator_id") stages += Document("\$unwind", "\$$path")
+            val groupId = if (name == "source") Document("\$ifNull", listOf("\$source", "manual")) else "\$$path"
+            stages += Document("\$group", Document("_id", groupId).append("count", Document("\$sum", 1)))
+            stages += Document("\$match", Document("_id", Document("\$ne", null)))
+            stages += Document("\$sort", Document("count", -1).append("_id", 1))
+            stages += Document("\$limit", 50)
+            facets[name] = stages
+        }
+        val result = template.getCollection("feedback_tickets").aggregate(
+            listOf(Document("\$match", Query(criteria).queryObject), Document("\$facet", facets)),
+        ).first() ?: return emptyMap()
+        return fields.keys.associateWith { name ->
+            result.getList(name, Document::class.java).orEmpty().associate { it.getString("_id") to (it["count"] as Number).toLong() }
+        }
     }
 
     /**
@@ -345,6 +382,7 @@ class FeedbackTicketQueryRepository(
 
     /** 查询层排除举报，避免列表总数、相似召回和版本反查泄露历史误公开数据。 */
     private fun nonReportCriteria(): Criteria = Criteria().norOperator(
+        Criteria.where("source").`is`("maayuan_diagnostic"),
         Criteria.where("type").regex("^\\s*REPORT\\s*$", "i"),
         Criteria().andOperator(
             Criteria.where("type").regex("^\\s*FEEDBACK\\s*$", "i"),

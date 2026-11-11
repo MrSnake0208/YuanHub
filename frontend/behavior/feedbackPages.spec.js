@@ -419,6 +419,42 @@ beforeEach(() => {
   dialog.prompt.mockReset().mockResolvedValue('不属于本板块的反馈')
 })
 
+it('诊断筛选与队列计数共享条件，清除后保留原队列', async () => {
+  api.listWorkflowFeedback.mockResolvedValue({ items: [], total: 3, diagnosticCounts: {
+    source: { maayuan_diagnostic: 3 }, outcome: { failed: 2, data_review: 1 },
+    issue_code: { collector_exception: 3 }, operator_id: { char_test: 3 }, resource_version: { '2026.11.10': 3 }
+  } })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  const form = wrapper.get('[aria-label="诊断筛选"]')
+  await form.get('select').setValue('maayuan_diagnostic')
+  const inputs = form.findAll('input')
+  await inputs[0].setValue('collector_exception')
+  await inputs[1].setValue('char_test')
+  await inputs[2].setValue('2026.11.10')
+  await form.trigger('submit'); await flushPromises()
+  const filters = { source: 'maayuan_diagnostic', issueCode: 'collector_exception', operatorId: 'char_test', resourceVersion: '2026.11.10' }
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ ...filters, queue: 'UNASSIGNED', diagnosticCounts: true }))
+  expect(api.getFeedbackQueueCounts).toHaveBeenLastCalledWith(expect.any(Array), expect.objectContaining(filters))
+  expect(form.text()).toContain('MaaYuan 诊断 3 条')
+  expect(form.text()).toContain('采集失败 2 条')
+  await form.findAll('button').find(button => button.text() === '清除诊断筛选').trigger('click'); await flushPromises()
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ source: '', issueCode: '', queue: 'UNASSIGNED' }))
+  wrapper.unmount()
+})
+
+it('诊断筛选不会丢失未确认放弃的回复草稿', async () => {
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a'); await compose(wrapper, '保留回复')
+  api.listWorkflowFeedback.mockClear()
+  dialog.confirm.mockResolvedValueOnce(false)
+  const form = wrapper.get('[aria-label="诊断筛选"]')
+  await form.get('select').setValue('maayuan_diagnostic')
+  await form.trigger('submit'); await flushPromises()
+  expect(api.listWorkflowFeedback).not.toHaveBeenCalled()
+  expect(wrapper.get('.feedback-reply-form textarea').element.value).toBe('保留回复')
+  wrapper.unmount()
+})
+
 it.each([390, 1440].flatMap(width => [[width, '我的工单', MyFeedback], [width, '管理工单', ManagedFeedback]]))('真实工单回复跨双端布局保持草稿、焦点及详情实例：%ipx %s', async (width, _label, component) => {
   const viewport = installViewport(width)
   const wrapper = render(component, { attachTo: document.body, global: { stubs: { teleport: false } } }); await flushPromises()

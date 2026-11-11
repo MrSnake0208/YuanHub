@@ -17,6 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.security.SecureRandom
+import java.time.Instant
 import java.util.Locale
 
 /**
@@ -47,7 +48,14 @@ class MediaStorageService(
      * @return 持久化后的 [MediaAsset]
      * @throws ResponseStatusException 校验失败时抛出
      */
-    fun upload(ownerUserId: String, file: MultipartFile, privateStorage: Boolean = false): MediaAsset {
+    fun upload(
+        ownerUserId: String,
+        file: MultipartFile,
+        privateStorage: Boolean = false,
+        diagnosticEventId: String? = null,
+        diagnosticExpiresAt: Instant? = null,
+    ): MediaAsset {
+        require(diagnosticEventId == null || privateStorage) { "Diagnostic media must be private" }
         // 校验文件非空
         if (file.isEmpty) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "上传文件为空")
@@ -67,7 +75,8 @@ class MediaStorageService(
 
         // 生成唯一 id
         val medId = generateMedId()
-        val storedFileName = "$medId.${uploadType.extension}"
+        val filePrefix = if (diagnosticEventId == null) medId else "diagnostic-$medId"
+        val storedFileName = "$filePrefix.${uploadType.extension}"
         val storagePath = if (uploadType.kind == MediaKind.IMAGE && !privateStorage) "/media/$storedFileName" else storedFileName
 
         // 确保存储目录存在
@@ -79,7 +88,7 @@ class MediaStorageService(
         }
 
         val tempPath = try {
-            Files.createTempFile(mediaDir, "$medId-", ".upload")
+            Files.createTempFile(mediaDir, "$filePrefix-", ".upload")
         } catch (e: IOException) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "无法创建临时文件", e)
         }
@@ -114,6 +123,8 @@ class MediaStorageService(
                 storagePath = storagePath,
                 kind = uploadType.kind,
                 privateStorage = privateStorage,
+                diagnosticEventId = diagnosticEventId,
+                diagnosticExpiresAt = diagnosticExpiresAt,
             )
             return mediaAssetRepository.save(asset)
         } catch (e: ResponseStatusException) {
@@ -125,6 +136,32 @@ class MediaStorageService(
         } catch (e: Exception) {
             cleanup(tempPath, targetPath)
             throw e
+        }
+    }
+
+    /** Diagnostic retention deletes the private file before removing its database reference. */
+    fun deletePrivateFile(asset: MediaAsset) {
+        if (!asset.privateStorage || asset.diagnosticEventId == null) {
+            throw IllegalArgumentException("Only private diagnostic files can be deleted")
+        }
+        val key = Path.of(asset.storagePath)
+        val singleName = !key.isAbsolute && key.nameCount == 1 && key.fileName.toString() == asset.storagePath
+        require(singleName && asset.storagePath !in setOf(".", ".."))
+        Files.deleteIfExists(storageRoot(MediaKind.FILE).resolve(key))
+    }
+
+    /** Only diagnostic-prefixed files can be reclaimed after a rolled-back or terminated ingestion. */
+    fun deleteDiagnosticOrphans(before: Instant) {
+        val root = storageRoot(MediaKind.FILE)
+        if (!Files.isDirectory(root)) return
+        val pattern = Regex("diagnostic-(med_[0-9a-f]{16})(?:\\.(?:jpg|json)|-.*\\.upload)")
+        Files.list(root).use { paths ->
+            paths.forEach { path ->
+                val match = pattern.matchEntire(path.fileName.toString())
+                if (match != null && Files.getLastModifiedTime(path).toInstant() < before) {
+                    if (!mediaAssetRepository.existsById(match.groupValues[1])) Files.deleteIfExists(path)
+                }
+            }
         }
     }
 

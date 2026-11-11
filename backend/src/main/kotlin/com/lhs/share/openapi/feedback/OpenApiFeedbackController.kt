@@ -2,6 +2,7 @@ package com.lhs.share.openapi.feedback
 
 import com.lhs.share.controller.response.ApiResult
 import com.lhs.share.controller.response.ApiResult.Companion.success
+import com.lhs.share.hub.repository.FeedbackDiagnosticFilter
 import com.lhs.share.hub.service.media.MediaStorageService
 import com.lhs.share.hub.service.report.FeedbackAgentAnalysisService
 import com.lhs.share.hub.service.report.FeedbackAgentImplementationInput
@@ -49,6 +50,13 @@ class OpenApiFeedbackController(
         @RequestParam(required = false) q: String?,
         @RequestParam(name = "sort_by", defaultValue = "updatedAt") sortBy: String,
         @RequestParam(name = "sort_order", defaultValue = "desc") sortOrder: String,
+        @RequestParam(required = false) source: String? = null,
+        @RequestParam(required = false) feature: String? = null,
+        @RequestParam(required = false) outcome: String? = null,
+        @RequestParam(name = "issue_code", required = false) issueCode: String? = null,
+        @RequestParam(name = "operator_id", required = false) operatorId: String? = null,
+        @RequestParam(name = "resource_version", required = false) resourceVersion: String? = null,
+        @RequestParam(name = "diagnostic_counts", defaultValue = "false") diagnosticCounts: Boolean = false,
     ): ApiResult<FeedbackAutomationListResponse> {
         val principal = integrationTokens.validateAuthorization(authorization, IntegrationScope.FEEDBACK_READ)
         val result = reports.listForAutomation(
@@ -65,6 +73,15 @@ class OpenApiFeedbackController(
             sortOrder = sortOrder,
             queue = queue,
             allowedAreas = principal.feedbackAreas,
+            diagnosticFilter = FeedbackDiagnosticFilter(
+                source,
+                feature,
+                outcome,
+                issueCode,
+                operatorId,
+                resourceVersion,
+                diagnosticCounts,
+            ).takeUnless { it == FeedbackDiagnosticFilter() },
         )
         return success(FeedbackAutomationListResponse.from(result))
     }

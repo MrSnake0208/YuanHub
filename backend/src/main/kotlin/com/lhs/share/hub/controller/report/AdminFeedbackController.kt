@@ -12,6 +12,7 @@ import com.lhs.share.hub.controller.report.request.FeedbackVersionRequest
 import com.lhs.share.hub.controller.report.response.FeedbackReportListResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportResponse
 import com.lhs.share.hub.controller.report.response.FeedbackVersionOptionResponse
+import com.lhs.share.hub.repository.FeedbackDiagnosticFilter
 import com.lhs.share.hub.repository.entity.FeedbackWorkflowEvent
 import com.lhs.share.hub.service.report.FeedbackPublicAdministrationService
 import com.lhs.share.hub.service.report.FeedbackReportService
@@ -64,9 +65,25 @@ class AdminFeedbackController(
         @RequestParam(defaultValue = "updatedAt") sortBy: String = "updatedAt",
         @RequestParam(defaultValue = "desc") sortOrder: String = "desc",
         @RequestParam(required = false) spaceId: String? = null,
+        @RequestParam(required = false) source: String? = null,
+        @RequestParam(required = false) feature: String? = null,
+        @RequestParam(required = false) outcome: String? = null,
+        @RequestParam(required = false) issueCode: String? = null,
+        @RequestParam(required = false) operatorId: String? = null,
+        @RequestParam(required = false) resourceVersion: String? = null,
+        @RequestParam(defaultValue = "false") diagnosticCounts: Boolean = false,
     ): ApiResult<FeedbackReportListResponse> = success(
         feedbackReportService.list(
             helper.requireUserId(), page, pageSize, null, type, workArea, null, false, null, q, sortBy, sortOrder, queue, spaceId,
+            FeedbackDiagnosticFilter(
+                source,
+                feature,
+                outcome,
+                issueCode,
+                operatorId,
+                resourceVersion,
+                diagnosticCounts,
+            ).takeUnless { it == FeedbackDiagnosticFilter() },
         ),
     )
 

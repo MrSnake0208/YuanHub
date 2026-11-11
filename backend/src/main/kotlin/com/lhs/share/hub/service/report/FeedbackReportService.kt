@@ -10,11 +10,14 @@ import com.lhs.share.hub.controller.report.response.FeedbackMessageResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportListItem
 import com.lhs.share.hub.controller.report.response.FeedbackReportListResponse
 import com.lhs.share.hub.controller.report.response.FeedbackReportResponse
+import com.lhs.share.hub.repository.FeedbackDiagnosticFilter
+import com.lhs.share.hub.repository.FeedbackDiagnosticPage
 import com.lhs.share.hub.repository.FeedbackTicketQueryRepository
 import com.lhs.share.hub.repository.FeedbackTicketRepository
 import com.lhs.share.hub.repository.FeedbackWorkflowEventRepository
 import com.lhs.share.hub.repository.MediaAssetRepository
 import com.lhs.share.hub.repository.entity.FeedbackClientInfo
+import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.FeedbackDiagnostics
 import com.lhs.share.hub.repository.entity.FeedbackMessage
 import com.lhs.share.hub.repository.entity.FeedbackMessageFile
@@ -240,6 +243,41 @@ class FeedbackReportService(
         return toResponse(saved, userId)
     }
 
+    /** Machine reports use the existing private ticket model without per-report notifications. */
+    fun createDiagnostic(
+        userId: String,
+        accountId: String,
+        ticketId: String,
+        summary: FeedbackDiagnosticSummary,
+        assets: List<MediaAsset>,
+    ): FeedbackTicket {
+        require(ticketId.startsWith("rpt_diag_"))
+        require(assets.all { it.ownerUserId == userId && it.privateStorage && it.deletedAt == null })
+        val content = "MaaYuan 百宝箱诊断：${summary.outcome}；版本 ${summary.resourceVersion}；" + summary.issueCodes.joinToString(", ")
+        val now = Instant.now()
+        return feedbackTicketRepository.insert(
+            FeedbackTicket(
+                id = ticketId, type = "BUG", category = FeedbackArea.MAAYUAN, area = FeedbackArea.MAAYUAN,
+                workArea = FeedbackArea.MAAYUAN, workflowStage = FeedbackWorkflow.UNASSIGNED, teamReadReporterIndex = -1,
+                reporterUserId = userId, content = content, visibility = FeedbackVisibility.PRIVATE,
+                source = "maayuan_diagnostic", diagnosticReport = summary, diagnosticAccountId = accountId,
+                spaceId = FeedbackSpaces.DEFAULT,
+                messages = listOf(
+                    FeedbackMessage(
+                        id = generateId("rpm_"),
+                        senderKind = "REPORTER",
+                        authorUserId = userId,
+                        content = content,
+                        images = assets.toMessageImages(),
+                        files = assets.toMessageFiles(),
+                        createdAt = now,
+                    ),
+                ),
+                createdAt = now, updatedAt = now,
+            ),
+        )
+    }
+
     /**
      * 查询反馈工单列表
      */
@@ -258,6 +296,7 @@ class FeedbackReportService(
         sortOrder: String,
         queue: String? = null,
         spaceId: String? = null,
+        diagnosticFilter: FeedbackDiagnosticFilter? = null,
     ): FeedbackReportListResponse = listInternal(
         currentUserId = currentUserId,
         page = page,
@@ -274,6 +313,7 @@ class FeedbackReportService(
         queue = queue,
         allowedAreas = null,
         spaceId = spaceId,
+        diagnosticFilter = diagnosticFilter,
     )
 
     fun listForAutomation(
@@ -291,6 +331,7 @@ class FeedbackReportService(
         queue: String? = null,
         allowedAreas: Set<String>? = null,
         spaceId: String = FeedbackSpaces.DEFAULT,
+        diagnosticFilter: FeedbackDiagnosticFilter? = null,
     ): FeedbackReportListResponse = listInternal(
         currentUserId = currentUserId,
         page = page,
@@ -307,6 +348,7 @@ class FeedbackReportService(
         queue = queue,
         allowedAreas = allowedAreas,
         spaceId = spaceId,
+        diagnosticFilter = diagnosticFilter,
     )
 
     private fun listInternal(
@@ -325,6 +367,7 @@ class FeedbackReportService(
         queue: String? = null,
         allowedAreas: Set<String>? = null,
         spaceId: String? = null,
+        diagnosticFilter: FeedbackDiagnosticFilter? = null,
     ): FeedbackReportListResponse {
         if (page < 1) {
             throw ApiResultException(HttpStatus.BAD_REQUEST.value(), "page 必须大于等于 1")
@@ -400,6 +443,7 @@ class FeedbackReportService(
             developerAreas = developerAreas,
             knownAreas = categories.keys(),
             spaceIds = spaceIds,
+            diagnosticFilter = diagnosticFilter,
         )
         val userDict = hubUserInfoService.getDict(
             resultPage.content.flatMap {
@@ -411,6 +455,8 @@ class FeedbackReportService(
             val reporterBoundary = lastReporterMessageBoundary(ticket)
             FeedbackReportListItem(
                 id = checkNotNull(ticket.id),
+                source = ticket.source,
+                diagnosticReport = ticket.diagnosticReport,
                 spaceId = FeedbackSpaces.id(ticket),
                 type = fields.type,
                 category = fields.category,
@@ -439,6 +485,7 @@ class FeedbackReportService(
         }
         return FeedbackReportListResponse(
             reports = items,
+            diagnosticCounts = (resultPage as? FeedbackDiagnosticPage)?.diagnosticCounts.orEmpty(),
             total = resultPage.totalElements,
             page = page,
             pageSize = pageSize,
@@ -502,7 +549,7 @@ class FeedbackReportService(
         val asset = mediaAssetRepository.findById(mediaId).orElseThrow {
             ApiResultException(HttpStatus.NOT_FOUND.value(), "附件不存在")
         }
-        if (asset.deletedAt != null) {
+        if (asset.deletedAt != null || asset.diagnosticExpiresAt?.isAfter(Instant.now()) == false) {
             throw ApiResultException(HttpStatus.NOT_FOUND.value(), "附件不存在")
         }
         return asset
@@ -527,7 +574,8 @@ class FeedbackReportService(
         val kindMatchesReference =
             (referencedAsImage && asset.effectiveKind() == MediaKind.IMAGE) ||
                 (referencedAsFile && asset.effectiveKind() == MediaKind.FILE)
-        if (asset.deletedAt != null || !kindMatchesReference) {
+        val expired = asset.diagnosticExpiresAt?.isAfter(Instant.now()) == false
+        if (asset.deletedAt != null || expired || !kindMatchesReference) {
             throw ApiResultException(HttpStatus.NOT_FOUND.value(), "附件不存在")
         }
         return asset
@@ -867,6 +915,7 @@ class FeedbackReportService(
         val ticket = feedbackTicketRepository.findById(ticketId).orElseThrow {
             ApiResultException(HttpStatus.NOT_FOUND.value(), "工单不存在: $ticketId")
         }
+        requireRetainedDiagnostic(ticket)
         val isReporter = ticket.reporterUserId == currentUserId
         val fields = normalizedTicketFields(ticket)
         if (!isReporter && !feedbackAccessService.canViewTicket(currentUserId, ticket)) {
@@ -879,6 +928,7 @@ class FeedbackReportService(
         val ticket = feedbackTicketRepository.findById(ticketId).orElseThrow {
             ApiResultException(HttpStatus.NOT_FOUND.value(), "工单不存在: $ticketId")
         }
+        requireRetainedDiagnostic(ticket)
         if (FeedbackSpaces.id(ticket) != FeedbackSpaces.DEFAULT || !feedbackAccessService.canViewTicket(currentUserId, ticket)) {
             throw ApiResultException(HttpStatus.FORBIDDEN.value(), "没有该反馈模块的后台查看权限")
         }
@@ -887,6 +937,11 @@ class FeedbackReportService(
             throw ApiResultException(HttpStatus.FORBIDDEN.value(), "Integration token 不允许访问该反馈板块")
         }
         return ticket
+    }
+
+    private fun requireRetainedDiagnostic(ticket: FeedbackTicket) {
+        val expired = ticket.createdAt <= Instant.now().minusSeconds(90L * 86400)
+        if (ticket.source == "maayuan_diagnostic" && expired) throw ApiResultException(404, "诊断工单已过保留期")
     }
 
     private fun List<MediaAsset>.toMessageImages(): List<FeedbackMessageImage> = filter { it.effectiveKind() == MediaKind.IMAGE }
@@ -918,6 +973,7 @@ class FeedbackReportService(
         }
         val assets = mediaAssetRepository.findAllById(mediaIds)
         for (asset in assets) {
+            if (asset.diagnosticEventId != null) throw ApiResultException(400, "诊断附件不能绑定到其他工单")
             if (asset.ownerUserId != userId) {
                 throw ApiResultException(HttpStatus.FORBIDDEN.value(), "媒体 ${asset.id} 不属于当前用户")
             }
@@ -1052,6 +1108,8 @@ class FeedbackReportService(
 
         return FeedbackReportResponse(
             id = ticket.id!!,
+            source = ticket.source,
+            diagnosticReport = ticket.diagnosticReport,
             spaceId = FeedbackSpaces.id(ticket),
             type = fields.type,
             category = fields.category,

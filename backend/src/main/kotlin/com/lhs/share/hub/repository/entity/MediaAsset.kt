@@ -60,6 +60,10 @@ data class MediaAsset(
      */
     val kind: MediaKind? = null,
     val privateStorage: Boolean = false,
+    @Indexed
+    val diagnosticEventId: String? = null,
+    @Indexed
+    val diagnosticExpiresAt: Instant? = null,
 ) : Serializable
 
 enum class MediaKind {

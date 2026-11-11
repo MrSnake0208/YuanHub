@@ -1,5 +1,30 @@
 # 反馈工单流转接口
 
+## MaaYuan 百宝箱诊断（2026-11-10）
+
+接收端为 `POST /open-api/maayuan/diagnostics`，协议、字段白名单、错误和配额详见 [开发者 API](../../frontend/docs/developers/api.md) 的同名章节。现有连接码即可，无新增 Scope/匿名入口。一个 `event_id` 一个私有工单，`reporterUserId` / `diagnosticAccountId` 来自连接码，板块为主站 `MAAYUAN`；创建时不逐条通知。图片预算、媒体元数据、工单和随机事件幂等标记在同一 Hub Mongo 事务内提交。诊断工单禁止公开、合并和附件转绑，不影响人工反馈路径。
+
+`GET /v1/reports`、`GET /v1/admin/feedback/queue` 增加可选查询参数 `source`、`feature`、`outcome`、`issueCode`、`operatorId`、`resourceVersion`、`diagnosticCounts`。`source=manual` 匹配历史/人工工单，`source=maayuan_diagnostic` 匹配诊断；其余为精确匹配。省略时保留原列表行为。
+
+`GET /open-api/feedback/queue` 对应参数为 `source`、`feature`、`outcome`、`issue_code`、`operator_id`、`resource_version`、`diagnostic_counts`，继续使用现有 Integration Token、`feedback:read` 和主站/板块交集授权。接收诊断的连接码不因此获得后台读取权。
+
+列表及私有详情增加可选 `source`、`diagnostic_report={feature,outcome,issue_codes,operator_ids,resource_version}`；自动化响应仍不包含提交者/账号身份。`diagnostic_counts=true` 返回 `diagnostic_counts`，按当前队列、所有筛选和实际授权范围聚合，包含 `source/feature/outcome/issue_code/operator_id/resource_version` 六组「值 → 工单数」，每组按数量取前 50 项；密探/错误码每个工单各计一次。省略时不计算聚合，返回空对象。禁止用当前页数量代替总数或扩大板块权限统计。
+
+附件仅使用私有目录，通过既有工单附件端点鉴权读取；图片经过尺寸检查、完整解码及像素重编码，不保留客户端文件名/元数据。图片 14 天、manifest 和工单 90 天；读取立即拒绝过期数据，定时任务每小时删除真实磁盘文件、元数据和工单引用。随机事件 UUID 标记不包含用户或原始内容，独立保留，避免过期重试重新建单。旧人工工单和附件不参与诊断清理。
+
+全局诊断图片使用 Mongo 原子字节预算，最多 10 GiB；预算不足仍保存摘要及 manifest，返回 `accepted_without_images`。工单事务失败会清理本次未被已提交工单引用的媒体；独立的诊断文件名前缀允许清理事务回滚或进程中断遗留超过一小时的无元数据文件。磁盘删除成功后，媒体元数据、预算释放和消息引用清理在同一事务内完成；清理失败保留重试依据。预算随接收事务回滚；磁盘暂存及进程异常遗留文件在清理任务中回收，不修改人工反馈文件。
+
+后端定向测试：普通 `test` 下的 `MaayuanDiagnosticParserTest`、`MaayuanDiagnosticFilterTest`、`MaayuanDiagnosticControllerTest`；`integrationTest` 下的 `MaayuanDiagnosticServiceMongoTest` 仅使用 TestMongo 随机库、TestRedis DB15 进程键空间和隔离媒体目录。前端管理页只扩展筛选、计数和原详情摘要，不新增页面；真实布局及附件操作需人工验收。
+
+交给后端验证会话运行（本次实现会话未运行 Gradle）：
+
+```bash
+cd backend
+./gradlew ktlintCheck
+./gradlew test --tests 'com.lhs.share.openapi.diagnostics.*' --tests 'com.lhs.share.openapi.*Feedback*ContractTest'
+./gradlew integrationTest --tests 'com.lhs.share.openapi.diagnostics.MaayuanDiagnosticServiceMongoTest'
+```
+
 ## 多平台反馈专区（2026-10-26）
 
 专区代表产品归属，`category` / `area` 仍是板块，`workArea` 仍是内部处理板块；提交来源和处理阶段不作为专区。现有版本化 `feedback_category_catalog` 增加 `spaces[{id,label,active}]`，每个板块增加 `spaceId`，板块 key 继续全局唯一。仅默认提供 `yuanhub`；旧目录缺失字段时按主站读取，旧 `MAAYUAN` 板块仍属于主站，不推断或迁移合作方归属。

@@ -27,6 +27,7 @@ JSON 文件表示可交换的数据事实，HTTP API 表示某种凭据允许执
 | Work V1 原生创作 | JWT owner 接口 | 无作业 Scope | JWT 正式；Token 尚未实现 |
 | Work 公开读取/兼容性预览 | 公共访问 | 不需要 Token | 正式；Adapter 部分支持 |
 | 星石完整识别背包与经验同步 | JSON 补传预览/确认；原备份导入导出保留 | `maayuan-star-inventory` v1，`star:sync:write` | 已实现；见[星石 API](./api-star.md) |
+| MaaYuan 密探采集非成功诊断 | 现有私有反馈管理页读取 | multipart schema_version=1，现有有效连接码即可，无新增 Scope | 已实现；见[API 参考](./api.md)，上线状态另行确认 |
 
 ## 旧版兼容和迁移
 

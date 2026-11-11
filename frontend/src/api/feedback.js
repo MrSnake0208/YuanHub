@@ -114,6 +114,7 @@ export function normalizeFeedback(report) {
   const lastReporterMessageIndex = report.lastReporterMessageIndex
     ?? report.last_reporter_message_index
     ?? null
+  const diagnosticReport = report.diagnosticReport ?? report.diagnostic_report
   return {
     ...report,
     spaceId: report.spaceId ?? report.space_id ?? 'yuanhub',
@@ -123,6 +124,13 @@ export function normalizeFeedback(report) {
     area: category,
     // 旧工单没有 diagnostics 时保持 null，页面需要兼容。
     diagnostics: normalizeDiagnostics(report.diagnostics ?? report.diagnostics_data),
+    source: report.source ?? null,
+    diagnosticReport: diagnosticReport ? {
+      ...diagnosticReport,
+      issueCodes: diagnosticReport.issueCodes ?? diagnosticReport.issue_codes ?? [],
+      operatorIds: diagnosticReport.operatorIds ?? diagnosticReport.operator_ids ?? [],
+      resourceVersion: diagnosticReport.resourceVersion ?? diagnosticReport.resource_version
+    } : null,
     status: String(report.status || '').toUpperCase(),
     hasAdminReply: report.hasAdminReply ?? report.has_admin_reply ?? false,
     lastMessageSender: lastMessageSender == null ? '' : String(lastMessageSender).toUpperCase(),
@@ -201,6 +209,10 @@ export async function listFeedback(params = {}) {
   if (params.sortOrder) qs.set('sortOrder', params.sortOrder)
   if (params.workflowQueue) qs.set('queue', params.workflowQueue)
   if (params.workArea) qs.set('workArea', params.workArea)
+  for (const key of ['source', 'feature', 'outcome', 'issueCode', 'operatorId', 'resourceVersion']) {
+    if (params[key]) qs.set(key, params[key])
+  }
+  if (params.diagnosticCounts) qs.set('diagnosticCounts', 'true')
   const query = qs.toString()
   const base = params.workflowQueue ? '/v1/admin/feedback/queue' : '/v1/reports'
   const data = await request(`${base}${query ? '?' + query : ''}`, { auth: true })
@@ -213,6 +225,7 @@ export async function listFeedback(params = {}) {
         : []
   return {
     items: items.map(normalizeFeedback),
+    diagnosticCounts: data?.diagnosticCounts ?? data?.diagnostic_counts ?? {},
     nextCursor: data && (data.nextCursor ?? data.next_cursor) || null,
     total: data && data.total != null ? data.total : items.length,
     page: data && data.page != null ? data.page : Number(params.page || 1),

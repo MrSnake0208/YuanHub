@@ -42,6 +42,10 @@ import java.time.Instant
 @CompoundIndex(name = "idx_public_visibility_type_published", def = "{'visibility': 1, 'type': 1, 'publishedAt': -1}")
 @CompoundIndex(name = "idx_merged_into", def = "{'mergedIntoId': 1}")
 @CompoundIndex(name = "idx_public_visibility_completed_version", def = "{'visibility': 1, 'completedVersionId': 1}")
+@CompoundIndex(name = "idx_diagnostic_created", def = "{'source': 1, 'createdAt': 1}")
+@CompoundIndex(name = "idx_diagnostic_issue", def = "{'source': 1, 'diagnosticReport.issueCodes': 1, 'createdAt': -1}")
+@CompoundIndex(name = "idx_diagnostic_operator", def = "{'source': 1, 'diagnosticReport.operatorIds': 1, 'createdAt': -1}")
+@CompoundIndex(name = "idx_diagnostic_version", def = "{'source': 1, 'diagnosticReport.resourceVersion': 1, 'createdAt': -1}")
 data class FeedbackTicket(
     @Id
     val id: String? = null,
@@ -162,4 +166,7 @@ data class FeedbackTicket(
     val updatedAt: Instant = Instant.now(),
     /** 缺省历史记录归属 YuanHub，不根据板块名称推断合作方。 */
     val spaceId: String? = null,
+    val source: String? = null,
+    val diagnosticReport: FeedbackDiagnosticSummary? = null,
+    val diagnosticAccountId: String? = null,
 ) : Serializable

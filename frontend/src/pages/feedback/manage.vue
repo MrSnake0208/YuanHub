@@ -61,6 +61,7 @@
                 </select>
               </label>
             </div>
+            <FeedbackDiagnosticFilters :model-value="diagnosticFilters" :counts="diagnosticCounts" @apply="applyDiagnosticFilters" />
             <div class="feedback-list-settings">
               <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
               <details class="feedback-management-settings">
@@ -254,6 +255,7 @@ import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublis
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
+import FeedbackDiagnosticFilters from '@/components/feedback/FeedbackDiagnosticFilters.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import FeedbackSpaceSelector from '@/components/feedback/FeedbackSpaceSelector.vue'
 import { categorySpaceId, feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
@@ -321,6 +323,8 @@ const queueCountError = ref('')
 const pageMessage = ref('')
 const filterStatus = ref('UNASSIGNED')
 const filterCategory = ref('')
+const diagnosticFilters = ref({ source: '', issueCode: '', operatorId: '', resourceVersion: '' })
+const diagnosticCounts = ref({})
 const selectedId = ref('')
 const selectedDetail = ref(null)
 const detailLoading = ref(false)
@@ -426,6 +430,7 @@ function canManageSettings(item) {
 }
 
 function canMergeFeedback(item) {
+  if (item.source === 'maayuan_diagnostic') return false
   return canManageSettings(item) && item.status === 'OPEN' && !item.mergedCount
 }
 
@@ -446,6 +451,7 @@ async function loadQueueCounts() {
   try {
     const counts = await getFeedbackQueueCounts(statusTabs.value.map(tab => tab.key), {
       spaceId: spaceId.value,
+      ...diagnosticFilters.value,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined
     })
@@ -492,6 +498,7 @@ async function loadFeedback({ background = false } = {}) {
     loading.value = true
     error.value = ''
     queueCounts.value = {}
+    diagnosticCounts.value = {}
   }
   void loadQueueCounts()
   try {
@@ -499,7 +506,9 @@ async function loadFeedback({ background = false } = {}) {
       page: page.value,
       pageSize: pageSize.value,
       queue: filterStatus.value,
+      diagnosticCounts: true,
       spaceId: spaceId.value,
+      ...diagnosticFilters.value,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined,
       sortBy: sort.value === 'updated' ? 'updatedAt' : 'createdAt',
@@ -513,6 +522,7 @@ async function loadFeedback({ background = false } = {}) {
       return
     }
     feedbacks.value = data.items || []
+    diagnosticCounts.value = data.diagnosticCounts || {}
   } catch (e) {
     if (requestId === loadRequestId && !await handleForbidden(e) && !background) error.value = e.message || '反馈加载失败'
   } finally {
@@ -522,6 +532,13 @@ async function loadFeedback({ background = false } = {}) {
 
 async function reloadFromFirstPage() {
   if (!await closeDetail()) return
+  page.value = 1
+  await loadFeedback()
+}
+
+async function applyDiagnosticFilters(value) {
+  if (!await closeDetail()) return
+  diagnosticFilters.value = Object.fromEntries(Object.entries(value).map(([key, text]) => [key, text.trim()]))
   page.value = 1
   await loadFeedback()
 }
