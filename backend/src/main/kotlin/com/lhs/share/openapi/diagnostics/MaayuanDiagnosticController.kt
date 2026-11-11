@@ -40,10 +40,11 @@ class MaayuanDiagnosticFilterConfiguration {
         tokens: OpenApiTokenService,
         quotas: MaayuanDiagnosticQuota,
         mapper: ObjectMapper,
-    ): FilterRegistrationBean<MaayuanDiagnosticFilter> =
-        FilterRegistrationBean(MaayuanDiagnosticFilter(tokens, quotas, mapper)).apply {
-            order = Ordered.HIGHEST_PRECEDENCE + 20
-        }
+    ): FilterRegistrationBean<MaayuanDiagnosticFilter> = FilterRegistrationBean(
+        MaayuanDiagnosticFilter(tokens, quotas, mapper),
+    ).apply {
+        order = Ordered.HIGHEST_PRECEDENCE + 20
+    }
 }
 
 class MaayuanDiagnosticFilter(
