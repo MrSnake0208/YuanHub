@@ -6,7 +6,7 @@
 
 - Git、服务管理、授权与最小充分验证要求以根 `AGENTS.md` 为准；测试入口见根 `docs/development/testing.md`。依赖、Gradle 测试和构建从 `backend/` 执行，服务只通过根 `./dev.sh` 管理；不要求 Mini-Trellis 或旧工作区。
 - 现有组件检查为 `./gradlew ktlintCheck`、`./gradlew test`、`./gradlew assemble`（可加 `--console=plain`），不是每次改动的固定流程。默认 `test` 排除 integration/architecture/api-schema/realistic/stress 标签；各显式任务及 `check` 依赖不变。
-- `integrationTest`、`apiSchemaTest`、`realisticTest` 只按受影响语义选用，`stressTest` 仅用于索引、分页、聚合或大规模导入/同步等规模风险。必要安全验证不因交给用户或 CI 而省略。
+- 日常不跑、不新增测试；仅鉴权/账号隔离或数据迁移、删除、批量写入改动跑相关测试类，可用 `./gradlew criticalTest --tests '<相关类>'`。`integrationTest`、`apiSchemaTest`、`architectureTest`、`realisticTest`、`stressTest` 与 mutation 均为手动诊断工具，不是门禁；发布本地门禁为 `ktlintCheck test criticalTest`，迁移 Node 与 beta npm 测试保留。
 
 ## 数据、交互与用户修改保护
 

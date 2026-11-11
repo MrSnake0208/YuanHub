@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['frontend/**', 'backend/**', '.github/workflows/ci.yml']
+  pull_request:
+    paths: ['frontend/**', 'backend/**', '.github/workflows/ci.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Select affected components
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.scope.outputs.frontend }}
+      backend: ${{ steps.scope.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select components
+        id: scope
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          import os
+          import subprocess
+
+          frontend = backend = os.environ['EVENT_NAME'] == 'workflow_dispatch'
+          if not frontend:
+              base, head = os.environ['BASE_SHA'], os.environ['HEAD_SHA']
+              if not base or set(base) == {'0'}:
+                  args = ['git', 'ls-tree', '-r', '--name-only', '-z', head]
+              else:
+                  revision = f'{base}...{head}' if os.environ['EVENT_NAME'] == 'pull_request' else f'{base}..{head}'
+                  args = ['git', 'diff', '--name-only', '--no-renames', '-z', revision, '--']
+              for path in subprocess.check_output(args).split(b'\0'):
+                  frontend |= path.startswith(b'frontend/') or path == b'.github/workflows/ci.yml'
+                  backend |= path.startswith(b'backend/') or path == b'.github/workflows/ci.yml'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'frontend={str(frontend).lower()}\nbackend={str(backend).lower()}\n')
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Lint and unit tests
+        run: ./gradlew ktlintCheck test --console=plain
+      - name: Upload failed test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/build/reports/tests/test
+          retention-days: 7
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node and npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Static source check
+        run: npm run test:static
+      - name: Build
+        run: npm run build

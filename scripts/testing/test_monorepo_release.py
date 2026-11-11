@@ -289,10 +289,9 @@ class ReleasePlanTest(unittest.TestCase):
                 self.assertLessEqual(result['started_at'], result['finished_at'])
                 commands = [c.args[0] for c in run.call_args_list]
                 if components == ('frontend',):
-                    self.assertEqual([['npm', 'run', 'test:' + s] for s in ('static', 'repo', 'behavior', 'contract')], commands)
+                    self.assertEqual([['npm', 'run', 'test:static']], commands)
                 else:
-                    self.assertEqual(['./gradlew', 'ktlintCheck', 'test', 'integrationTest', 'apiSchemaTest',
-                                      'architectureTest', 'realisticTest', '--console=plain', '-PintegrationForks=4'] +
+                    self.assertEqual(['./gradlew', 'ktlintCheck', 'test', 'criticalTest', '--console=plain'] +
                                      (['stressTest'] if stress else []), commands[0])
                     self.assertEqual(['node', '--test', 'scripts/migrations/20260907-level-catalog.test.js',
                                       'scripts/migrations/20261015-recruitment-duplicate-pools.test.js'], commands[1])

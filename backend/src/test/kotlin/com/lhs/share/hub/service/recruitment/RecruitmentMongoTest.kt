@@ -26,13 +26,15 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
-import org.junit.jupiter.api.AfterEach
+import org.bson.Document
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -58,8 +60,42 @@ import java.util.concurrent.TimeUnit
 /** Owns a disposable replica-set DB; never uses application configuration or an existing service. */
 @Tag("integration")
 class RecruitmentMongoTest {
-    private val database = TestMongo.database("recruitment")
-    private val client = TestMongo.client()
+    companion object {
+        private val database = TestMongo.database("recruitment")
+        private val client = TestMongo.client()
+
+        @BeforeAll
+        @JvmStatic
+        fun createCollections() {
+            val template = MongoTemplate(SimpleMongoClientDatabaseFactory(client, database))
+            listOf(
+                SubAccount::class.java,
+                RecruitmentCatalogPool::class.java,
+                RecruitmentArchive::class.java,
+                RecruitmentEvent::class.java,
+                RecruitmentBatch::class.java,
+                RecruitmentRequestRecord::class.java,
+            ).forEach { type ->
+                template.createCollection(type)
+                MongoPersistentEntityIndexResolver(template.converter.mappingContext).resolveIndexFor(type).forEach {
+                    template.indexOps(type).ensureIndex(it)
+                }
+            }
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun cleanup() {
+            try {
+                TestMongo.dropDatabase(client, database)
+            } finally {
+                client.close()
+            }
+        }
+    }
+
+    private val database = Companion.database
+    private val client = Companion.client
     private val template = MongoTemplate(SimpleMongoClientDatabaseFactory(client, database))
     private val accounts = MongoRepositoryFactory(
         template,
@@ -78,22 +114,13 @@ class RecruitmentMongoTest {
     private val service = RecruitmentService(store, accountService, accounts, mutation, publisher, mapper, tx)
 
     @BeforeEach fun setup() {
+        val mongo = client.getDatabase(database)
+        mongo.listCollectionNames().forEach { collection ->
+            mongo.getCollection(collection).deleteMany(Document())
+        }
         every { operators.findByOperatorId(any()) } returns null
         every { operators.count() } returns 0L
         every { operators.findAllByOrderByOperatorIdAsc() } returns emptyList()
-        listOf(
-            SubAccount::class.java,
-            RecruitmentCatalogPool::class.java,
-            RecruitmentArchive::class.java,
-            RecruitmentEvent::class.java,
-            RecruitmentBatch::class.java,
-            RecruitmentRequestRecord::class.java,
-        ).forEach { type ->
-            template.createCollection(type)
-            MongoPersistentEntityIndexResolver(template.converter.mappingContext).resolveIndexFor(type).forEach {
-                template.indexOps(type).ensureIndex(it)
-            }
-        }
         template.insert(
             RecruitmentCatalogPool(
                 "catalog_p",
@@ -106,11 +133,6 @@ class RecruitmentMongoTest {
         template.insert(RecruitmentCatalogPool("catalog_d", "代号鸢", "合成代号鸢卡池", revision = 1))
         accounts.insert(SubAccount(userId = "u", accountId = "a", name = "A", game = "如鸢"))
         accounts.insert(SubAccount(userId = "u", accountId = "b", name = "B", game = "如鸢"))
-    }
-
-    @AfterEach fun cleanup() {
-        TestMongo.dropDatabase(client, database)
-        client.close()
     }
 
     private fun request(revision: Long, operation: String, json: String, id: String = UUID.randomUUID().toString()) =

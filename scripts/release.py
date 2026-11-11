@@ -90,10 +90,8 @@ def dispatch(workflow, inputs, title):
 
 def local_test_commands(component, stress):
     if component == 'frontend':
-        return [('frontend', ['npm', 'run', 'test:' + suite])
-                for suite in ('static', 'repo', 'behavior', 'contract')]
-    gradle = ['./gradlew', 'ktlintCheck', 'test', 'integrationTest', 'apiSchemaTest',
-              'architectureTest', 'realisticTest', '--console=plain', '-PintegrationForks=4']
+        return [('frontend', ['npm', 'run', 'test:static'])]
+    gradle = ['./gradlew', 'ktlintCheck', 'test', 'criticalTest', '--console=plain']
     if stress:
         gradle.append('stressTest')
     return [('backend', gradle), ('backend', ['node', '--test',

@@ -1,6 +1,6 @@
 name: Backend CI
 
-# 手动或集中发布检查复用；普通 Push/PR 不运行。
+# 本工作流供手动或集中发布检查复用；Push/PR 轻量检查由 ci.yml 自动运行。
 
 on:
   workflow_call:

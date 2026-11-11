@@ -36,7 +36,7 @@
 
 所有者完成根 `AGENTS.md` 要求的最小自检后，可以直接 commit/push main，不强制 PR。Agent 仍须分别获得 commit、push 的明确授权。其他贡献者通过分支/PR，由所有者人工审核；不设置日常 required checks。Worktree 是可选的开发隔离方式，不是强制 PR 流程。
 
-普通 Push、PR、合并、Tag Push 均不自动运行根工作流。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者同时是 reusable workflow，frontend-regression 仅供手动诊断，不在集中检查内。没有每日回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
+Push 到 main 和 PR 由 `.github/workflows/ci.yml` 按组件路径自动运行轻量 CI：后端 `./gradlew ktlintCheck test --console=plain`，前端 `npm ci`、`npm run test:static`、`npm run build`；修改 CI 文件或手动触发时两端都跑，不部署。frontend-ci、backend-ci、frontend-regression 和 pr-ci 保留手动入口；前两者同时是 reusable workflow，frontend-regression 仅供手动诊断，不在集中检查内。没有每日全量回归，也没有自动生产发布。缓存继续复用 npm lockfile 和 Gradle 现有缓存。根 workflows 才是活动入口；子目录和 scripts/legacy-release 是历史资产，不能用于当前 Monorepo。
 
 可疑 PR 可手动诊断完整差异，例如 `gh workflow run pr-ci.yml --repo MrSnake0208/YuanHub --ref main -f commit=HEAD_SHA -f base=BASE_SHA`，或分别运行 frontend-ci/backend-ci 并传 `commit`。这里只产生诊断结果，不能替代集中发布准入。
 
@@ -63,7 +63,7 @@ prepare 读取当前生产前端 deploy-meta.json、后端 /version 的实际版
 
 显式选择一个组件不会顺带部署另一个，也不运行另一个组件的本地测试。`--frontend` / `--backend` 不带版本（或 `auto`）在 prepare 中从该组件线上版本递增。正式发版前需要人工判断接口兼容性；有相互依赖时选两端，先发布兼容后端。显式前端单发不能自动证明它与线上旧后端兼容。Git 历史缺失、生产元数据不可读、分支/远端不一致会停止，不猜测上次部署。离线旧式预览 `./release.sh --dry-run --frontend auto` 仍读取 VERSION 默认值；`--dry-run --frontend VERSION --backend VERSION` 只读本地 HEAD，不访问网络。`--prepare --dry-run` 会读取远端和生产元数据，但不跑测试、不触发 Actions。
 
-prepare 并发推进本地测试、release-check 和前端预构建，并等待全部结束。本地只测试所选组件，前后端各组并行、组内命令顺序执行：前端 static/repo/behavior/contract 各一次（Node + Vitest/jsdom，非浏览器 E2E）；后端 ktlintCheck/test/integrationTest/apiSchemaTest/architectureTest/realisticTest（`-PintegrationForks=4`）、迁移 Node 测试与 beta npm test，beta 缺少 node_modules 时先 npm ci。JUnit 使用本机 MongoDB 副本集和 Redis 的 TestMongo 自有随机库、TestRedis 进程键空间；beta 脚本沿用自有随机测试库，不访问开发或生产数据。规模敏感变更使用 `--stress` 加入 stressTest，其它测试任务仍只使用一个 fork。GitHub release-check 绑定准确 main SHA，校验候选并保留 Release infrastructure regressions；选中后端时只 assemble、校验和保存 JAR，不运行组件业务测试。前端 prepare 取得此 run ID 后立即开始，不等 JAR 完成，仅检查 run 身份及未失败状态；发布阶段完整门禁不变。
+prepare 并发推进本地测试、release-check 和前端预构建，并等待全部结束。本地只测试所选组件，前后端各组并行、组内命令顺序执行：前端仅 `npm run test:static`；后端 `./gradlew ktlintCheck test criticalTest --console=plain`、迁移 Node 测试与 beta npm test，beta 缺少 node_modules 时先 npm ci。criticalTest 由 `backend/build.gradle.kts` 中的 `criticalTestClasses` 清单决定，新增关键类时只需加入该清单；现有 8 类保留 integration 标签，在分配 fork 前按类文件过滤，覆盖账号隔离与数据安全，使用本机 MongoDB 副本集的 TestMongo 自有随机库。两个一次性修复脚本测试已移出，仅在再次执行对应迁移脚本时手动运行 `integrationTest --tests` 相应类，仍需要 mongosh，具体类名见 [测试说明](development/testing.md)。beta 脚本沿用自有随机测试库，不访问开发或生产数据。显式 `--stress` 仍加入 stressTest；criticalTest 默认 4 个 fork，可用 `-PcriticalForks=N` 调整（正整数），其它测试任务配置不变。GitHub release-check 绑定准确 main SHA，校验候选并保留 Release infrastructure regressions；选中后端时只 assemble、校验和保存 JAR，不运行组件业务测试。前端 prepare 取得此 run ID 后立即开始，不等 JAR 完成，仅检查 run 身份及未失败状态；发布阶段完整门禁不变。
 
 本地各命令结果、SHA、组件及起止时间写入 state，日志位于 `.dev/release/logs/<sha>/`；全部结束后复核 HEAD 未变且工作区干净，失败不记录为通过。candidate 必须成功；选中后端时 backend 必须成功，否则必须 skipped。最终 candidate artifact 标记 `checks=artifact-only`，绑定 SHA、run ID、attempt、两个版本、stress 和 API 配置，最多有效 7 天；测试通过由本地记录证明。重跑必须有同 attempt 的最终凭据及 JAR，不能继承旧批次结果。后端 artifact 自带完整 SHA 和构建版本；缺失/过期时停止。前端保留低带宽服务器构建，从精确 SHA 注入同一版本并检查真实 build-info、资源和 SW，release 复用已准备产物。
 

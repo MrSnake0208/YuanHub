@@ -25,11 +25,11 @@
 
 ## 最小充分验证
 
-- 默认检查相关源码与 diff；根据具体失败风险选择最小验证，说明检查要发现什么、失败会改变什么。文案、样式和局部交互不默认要求补测、跑测或 build。
-- 涉及鉴权/权限、账号隔离、API 契约、路由/共享状态、共享核心、数据正确性、持久化/迁移、事务/并发、缓存或幂等时，必须取得受影响关键约束的可复核定向证据，不能推给后续 DSH 或 CI。
-- 依赖、构建、CI、测试基础设施及部署发布改动执行对应专项检查；只有受影响范围确实需要时才运行全量或规模测试。测试入口与数据隔离要求见 [测试文档](docs/development/testing.md)；`./scripts/test.sh quick/smart/all/stress` 按需选用，不是固定流水线。
-- 优先复用有效测试，有具体覆盖缺口才补；不因行为变化或 Bug 修复一律新增/运行测试。不删除有效测试、弱化关键断言、无理由 skip/disable 或恢复废弃行为迎合旧测试。本节优先于子文档中的泛化补测要求，具体安全约束继续适用。
-- Codex 负责实现、diff 自检和必要最小验证；常规回归/全量由用户、独立 DSH 或 CI 负责。只报告实际执行的检查，不把源码检查当成浏览器或生产验收。
+- 日常改动（UI、文案、样式、普通功能、普通 Bug）默认只看源码与 diff，不跑测试、不新增测试。
+- 仅鉴权/账号隔离，以及数据迁移、删除、批量写入两类改动跑定向测试；复用相关测试类，例如在 `backend/` 执行 `./gradlew criticalTest --tests '<相关类>'`，不跑全量。criticalTest 由 `backend/build.gradle.kts` 中的 `criticalTestClasses` 清单决定，新增关键类时只需加入该清单。
+- Push/PR 由 `.github/workflows/ci.yml` 按组件自动运行后端 `ktlintCheck test` 与前端 `test:static` + build；CI 失败再修，不部署。
+- 已有测试中的纯文本断言因正常改动失败时，直接删除该断言，不修补以迎合；不得弱化有效的安全断言或无理由 skip 测试。
+- `integrationTest`、contract、behavior、realistic、stress、architecture、apiSchema、mutation、`./scripts/test.sh` 均为手动诊断工具，不是门禁。测试数据隔离与浏览器自动化默认关闭的规则不变，入口见 [测试文档](docs/development/testing.md)。只报告实际执行的检查，不把源码检查当成浏览器或生产验收。
 
 ## UI/UX 与浏览器边界
 
@@ -41,14 +41,14 @@
 
 ## DSH 与交付
 
-- DSH 由用户在独立会话启动，以原始需求、真实使用预期和最终 diff 独立找反例；不照搬开发者测试设计，不自动派发，不作为低风险改动完成门槛。
+- DSH 仅在鉴权/账号隔离或数据结构/迁移的大改动时，由用户按需在独立会话启动，平时不用、不自动派发；以原始需求、真实使用预期和最终 diff 独立找反例，不照搬开发者测试设计。
 - DSH 按改动检查真实路径、边界、重复操作、失败/恢复及相关账号隔离；UI 扩展同时检查入口可发现与旧主任务，遵守相同浏览器授权和数据隔离边界。
 - 核实问题后修复，不削弱断言迎合验收。最终只报变更范围、风险、实际检查、未验证事项与必要下一步；需要 DSH 交接时提供原始目标、改动范围和已知边界，不将自测结论当唯一标准。
 
 ## 发布
 
-- 普通 Push、PR、merge、tag 不自动运行 CI 或部署；集中发布检查在明确准备发布时进行，手动诊断入口保留。
-- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本，并发执行所选组件的本地测试、GitHub JAR 构建和服务器 A 前端预构建；组件测试结果由本地 state 与日志证明，GitHub 保留发布基础设施回归，构建只打 JAR。全部等待完成后 `--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
+- Push 到 main 和 PR 自动按组件运行轻量 CI，不部署；集中发布检查在明确准备发布时进行，手动诊断入口保留。
+- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本，并发执行所选组件的本地轻量门禁、GitHub JAR 构建和服务器 A 前端预构建。本地前端只跑 `npm run test:static`；后端跑 `./gradlew ktlintCheck test criticalTest --console=plain`、迁移 Node 测试与 beta npm test（缺依赖先 npm ci），`--stress` 仍追加 stressTest。组件结果由本地 state 与日志证明，GitHub 保留发布基础设施回归，构建只打 JAR。全部等待完成后 `--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
 - 两端生产 Environment 不设人工 reviewer；Agent 在 `--prepare` 检查通过后须向用户汇报候选并询问是否部署，取得明确确认后才能运行 `--publish --yes`。
 - GitHub 远端配置、正式 tag、部署、回滚分别确认，保持部署开关现状。见 [发布设置](docs/release-settings/README.md) 与 [操作手册](docs/monorepo-operations.md)。
 

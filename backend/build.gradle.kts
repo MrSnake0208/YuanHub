@@ -156,9 +156,27 @@ fun isolatedSuite(taskName: String, tag: String) = tasks.register<Test>(taskName
     shouldRunAfter(tasks.test)
 }
 val integrationTest = isolatedSuite("integrationTest", "integration")
+val criticalTestClasses = listOf(
+    "AccountIndexMongoTest",
+    "CalendarPrivateItemMongoTest",
+    "OperatorShareMongoTest",
+    "StarInventorySyncMongoTest",
+    "RecruitmentMongoTest",
+    "ActivityCalendarSubscriptionMongoTest",
+    "InventoryRestoreMongoTest",
+    "OperatorResetMongoTest",
+)
+val criticalTest = isolatedSuite("criticalTest", "integration")
 integrationTest.configure {
     maxParallelForks = providers.gradleProperty("integrationForks").orElse("1").get().toInt().also {
         require(it > 0) { "integrationForks must be positive" }
+    }
+}
+criticalTest.configure {
+    description = "Critical integration tests selected by criticalTestClasses; missing infrastructure is a failure, not a skip."
+    include(criticalTestClasses.map { "**/$it.class" })
+    maxParallelForks = providers.gradleProperty("criticalForks").orElse("4").get().toInt().also {
+        require(it > 0) { "criticalForks must be positive" }
     }
 }
 val realisticTest = isolatedSuite("realisticTest", "realistic")

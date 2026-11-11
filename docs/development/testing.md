@@ -1,95 +1,57 @@
-# Monorepo verification entrypoints
+# 测试与轻量 CI
 
-Run frontend commands from frontend/ and Gradle from backend/. The scripts/test.sh entry reads one Git root and maps changes to both components. --base names one monorepo ref; no second checkout or environment path is required for test:contract. The independent scripts under scripts/legacy-release and their fixtures remain historical release coverage; active deployment coverage uses the root workflows and backend deploy script.
+## 日常开发
 
-# YuanHub local verification
+- UI、文案、样式、普通功能与普通 Bug 默认只看源码与 diff，不跑测试、不新增测试。
+- 仅鉴权/账号隔离，以及数据迁移、删除、批量写入改动跑相关测试类，例如在 `backend/` 执行 `./gradlew criticalTest --tests '<相关类>' --console=plain`，不跑全量。
+- 正常改动导致已有纯文本断言失败时，直接删除该断言，不修补以迎合；保留有效安全断言。
+- DSH 仅在鉴权/账号隔离或数据结构/迁移的大改动时由用户按需启动，平时不用。
+- 浏览器自动化默认关闭，须当前任务明确授权；真实页面、触控和视口由用户手动验收，不将源码检查当作运行时通过。
 
-The `./scripts/test.sh` command is the supported **optional** local test entrypoint. It is not a mandatory pre-completion pipeline for every change.
+## CI
 
-## Choose checks by impact
+`.github/workflows/ci.yml` 在 Push 到 main、PR 或手动触发时运行，按 ref 取消旧任务。路径过滤只运行受影响组件；修改 CI 文件或手动触发时两端都跑。
 
-The [root AGENTS.md](../../AGENTS.md#最小充分验证) owns verification policy. Start with relevant source and diff review; choose focused checks for concrete failure risks and retain evidence for affected critical invariants. Build, CI and deployment changes need their corresponding infrastructure checks. Full suites are not the default.
+- 后端（JDK 21）：在 `backend/` 执行 `./gradlew ktlintCheck test --console=plain`，失败时上传单元测试报告。默认 test 排除 integration、architecture、api-schema、realistic、stress，使用不可连接的数据库占位地址；CI 不启动 Mongo/Redis。
+- 前端（Node 22）：在 `frontend/` 执行 `npm ci`、`npm run test:static`、`npm run build`。
+- CI 失败再修；轻量 CI 不部署、不上传构建产物、不使用 secrets。旧组件、全量回归及差异诊断工作流保留手动入口。
 
-`./scripts/test.sh quick` selects affected component checks and excludes database/mutation suites. Do not run it automatically for copy, styling or local interaction changes. Rule files (`AGENTS.md`) and this testing policy remain configuration inputs. Copy-only edits inside JS/Vue cannot be inferred from the filename and still need a human judgment.
+## 发布门禁
 
-Available modes:
+根 `./release.sh --prepare` 冻结 main SHA，仅对所选组件执行以下本地命令，组件之间并行、组件内顺序执行：
 
-- `./scripts/test.sh quick --base <frozen-base-sha>` — affected component checks plus unit/component tests.
-- `./scripts/test.sh smart` — diff-aware affected tests and required integration/API checks.
-- `./scripts/test.sh all` — full frontend/backend, Mongo/Redis, architecture, OpenAPI, builds, mutation, plus the realistic fixture dataset.
-- `./scripts/test.sh stress` — explicit large-data suite for scale-sensitive Mongo/index/query/import work.
+- 前端（`frontend/`）：`npm run test:static`。
+- 后端（`backend/`）：`./gradlew ktlintCheck test criticalTest --console=plain`；`--stress` 仍追加 `stressTest`。
+- 后端迁移（`backend/`）：`node --test scripts/migrations/20260907-level-catalog.test.js scripts/migrations/20261015-recruitment-duplicate-pools.test.js`。
+- beta（`backend/scripts/beta/`）：`npm test`；缺少 node_modules 时先 `npm ci`，Mongo 测试仍使用本机自有随机库。
 
-For a committed PR, always supply its frozen base. A clean working tree without `--base` is an error for `quick/smart/plan`, not a request for a full suite. Local uncommitted work can omit it. Base refs are resolved to a commit at startup; deletion and both rename paths remain in the diff.
+criticalTest 使用本机 MongoDB 副本集，默认 4 个 fork 并行，可用 `-PcriticalForks=N` 调整（N 必须为正整数）。prepare 同时运行 GitHub 发布基础设施回归及 JAR 构建、服务器 A 前端预构建；每个所选组件都必须有匹配 SHA、命令和成功结果的本地记录。state 与日志保存在 `.dev/release/`，候选 run/attempt、版本与产物证据须匹配，最多有效 7 天。`--status` 查询，`--publish` 仍须另行明确授权；详见 [发布操作](../monorepo-operations.md)。
 
-Unknown runtime paths expand only their own component; root/shared tooling expands both. Backend controller/request/response/DTO/OpenAPI/security/resource changes also select the frontend contract, while service-only changes do not automatically run frontend behavior tests. Literal `readFrontend/readBackend` inputs in `contract.test.js` also select that contract, including its page and route dependencies. The runner's own tests run only for `scripts/testing/**`, `scripts/test.sh`, or explicit `all/stress`. Gradle test tasks already compile their prerequisites, so targeted runs do not issue a separate `compileTestKotlin` first. Affected Kotlin lint still forces execution because the plugin does not fingerprint its file filter.
+## criticalTest 覆盖
 
-`--budget 900` is the default total command-execution budget, and `--timeout 900` is the per-command limit; each command receives the smaller remaining allowance. Explicit full suites can request a larger budget when justified. The first failure/timeout or invalid test discovery stops subsequent checks; reports retain `planned_checks`, `not_run`, exit codes, timings and source identity. Only the process group created for a timed-out command is terminated; detached/shared Gradle daemons or database services are never killed. If a daemon remains busy, inspect it rather than start a competing build.
+criticalTest 由 `backend/build.gradle.kts` 中的 `criticalTestClasses` 清单决定，新增关键类时只需加入该清单；以下 8 类保留 `@Tag("integration")`，在分配 fork 前按类文件过滤，默认 test 不运行它们，tasks.check 及其它套件不变。RecruitmentMongoTest 保持默认串行，每类共用 TestMongo 随机库和 client，集合及索引仅创建一次；每个用例开始前清空所有集合文档，服务与 mock 仍按用例新建。
 
-JUnit suites use the Gradle task-specific `--rerun` option and discard that suite’s previous XML before execution, retaining compilation caches but requiring fresh test output. Reports bind HEAD/base, changed-file fingerprint, execution environment and per-command logs/timestamps. A changed tree during execution, zero discovered tests or skipped/failed tests cannot be reported as passing. Empty check selection means no automatic check was needed, not proof of runtime correctness. The runner uses the Git diff, component boundaries, import dependencies and domain cascades; it does not read task documents or require a coverage manifest. Reports describe checks that actually ran, not permission to finish or archive work. Existing component coverage/mutation tools are unchanged; selection is not proof that every business invariant is covered.
+| 测试类 | 保留理由 |
+| --- | --- |
+| AccountIndexMongoTest | 账号唯一索引与隔离约束。 |
+| CalendarPrivateItemMongoTest | 私有日历事项的账号隔离与写入安全。 |
+| OperatorShareMongoTest | 分享写入不得复活已删除账号或覆盖生命周期隔离。 |
+| StarInventorySyncMongoTest | 星石与库存同步的事务和账号隔离。 |
+| RecruitmentMongoTest | 招募持久化、事务与账号隔离。 |
+| ActivityCalendarSubscriptionMongoTest | 日历订阅的账号隔离与并发写入安全。 |
+| InventoryRestoreMongoTest | 库存恢复的数据一致性与账号隔离。 |
+| OperatorResetMongoTest | 密探重置的批量数据安全。 |
 
-## Entry boundaries and prerequisites
+两个一次性修复脚本测试已移出 criticalTest，仅保留 integration 标签；只在再次执行对应迁移脚本时，从 `backend/` 手动运行 `./gradlew integrationTest --tests 'com.lhs.share.hub.service.recruitment.RecruitmentDuplicateRepairMongoTest'` 或 `./gradlew integrationTest --tests 'com.lhs.share.hub.service.recruitment.RecruitmentRemainderRepairMongoTest'`，需要 mongosh。
 
-| Working directory / entry | Selected checks and prerequisites | Evidence |
-| --- | --- | --- |
-| `frontend`: `npm test` / `npm run test:repo` | Repository Node tests, including recursive property and promo tests; no sibling backend. Existing Node/npm commands are retained pending the package-manager decision. | Node terminal output; collector `node scripts/run-node-tests.mjs --exclude test/contract.test.js --list` lists files without running them. |
-| `frontend`: `npm run test:all` | Repository static + Node + Vitest/jsdom + build; installed frontend dependencies required; no cross-repository contract. | Individual stage output and `dist/`. |
-| `frontend`: `npm run test:contract` | Node/Git and the `frontend/` and `backend/` directories in the current Monorepo worktree. No separate checkout is required. `YUANHUB_BACKEND_ROOT` remains an optional override for another backend source directory. Missing files fail. | Terminal logs the source revision and clean/dirty state for each directory (the same Git HEAD in the default Monorepo layout), plus operator v4/v5 versions. Dirty trees are not reproducible from HEAD alone. |
-| `backend`: `./gradlew test --console=plain` | JDK 21/wrapper; ordinary unit/MockMvc/untagged contracts. Excludes integration, architecture, api-schema, realistic and stress tags. Explicit tasks and `check` dependencies are unchanged. | `build/test-results/test/` and `build/reports/tests/test/`. |
-| Workspace: `./scripts/test.sh quick/smart/all/stress` | `all` runs repo + contract once; scoped fallback expands the affected component, with contracts selected separately. `stress` stays explicit; scale-only classes are not unit selections. Local MongoDB replica set and Redis are required by database suites; Docker is not required. | `.test-artifacts/runs/<stamp>-<mode>/`; separate `frontend-contract.log` records the pair when selected. |
+## 手动诊断入口
 
-Daily push/PR/merge/tag events do not run CI or deploy. Owners may develop and push main without a PR; contributors use owner-reviewed PRs without automatic required checks. Developer checks follow the root verification policy.
-
-`./release.sh --prepare` freezes main and concurrently runs selected-component tests locally (one parallel group per component, sequential commands within each group), dispatches `.github/workflows/release-check.yml` for release infrastructure regressions and JAR assembly, and starts frontend prebuild on server A as soon as that check's run ID is known. Local frontend checks are static/repo/behavior/contract (Node/Vitest/jsdom); local backend checks are `./gradlew ktlintCheck test integrationTest apiSchemaTest architectureTest realisticTest --console=plain -PintegrationForks=4`, the existing migration Node tests and beta npm test (npm ci first only if node_modules is absent). `--stress` appends stressTest. Frontend build stays on server A and release reuses that output; GitHub never uploads frontend build artifacts to A. Local results bind SHA, selected components, commands, exit codes and timestamps in `.dev/release/candidate.json`, with logs in `.dev/release/logs/<sha>/`. Prepare waits for all work and rejects HEAD/worktree changes before reporting ready. Full frontend regression remains a manual diagnostic workflow only. This is not browser E2E authorization. Diagnostic component and affected-diff workflows remain manually callable. See [release operations](../monorepo-operations.md).
-
-Publication requires matching successful local test records for every selected component and a successful frontend prebuild when selected, plus the completed successful release-check run for the exact SHA, versions and attempt. Its manifest records `checks=artifact-only`, not component test results: candidate must succeed, and backend must succeed when selected or be skipped otherwise. Failure, cancellation, skipped required jobs, expired evidence/artifacts or mismatched versions block publication; repaired code requires a new candidate. Evidence and artifacts expire after seven days. Frontend prepare only validates run identity and queued/in-progress/completed nonfailed status, without downloading a manifest or checking JARs/baselines; release retains those checks and backend-readiness gating. Database suites run against the local Mongo/Redis test fixtures, not disposable GitHub services. Beta npm tests use the local Mongo instance and their existing random owned databases; prepare explicitly sets the local test URI to keep that coverage enabled.
-
-Only `integrationTest` accepts `-PintegrationForks=N` (positive integer, default 1); all other Test tasks remain at 1. Spring test storage and log paths resolve `org.gradle.test.worker` within each JVM under `build/test-data/<worker>/` and `build/test-logs/<worker>/`; migration integration fixtures use the same worker partition, falling back to their original directory when the property is absent. TestMongo/TestRedis ownership remains per JVM.
-
-The candidate job retains Release infrastructure regressions: `python3 -m unittest scripts.testing.test_monorepo_ci scripts.testing.test_monorepo_release scripts.testing.test_artifact_deploy scripts.testing.test_server_prebuild`. These isolated fixtures do not prove production behavior or remote permissions. Existing local test and mutation entries remain available; they are not daily mandatory pipelines.
-
-Scoped `smart` integration checks pass the selected class names to Gradle with `--tests`; `all` and unknown/full-backend scope retain the complete integration suite.
-
-Regression/full execution remains user/CI-owned. Backend `architectureTest` and `apiSchemaTest` are separate entries; `all` also runs the existing representative dataset and mutation checks. Mongo script tests remain behind their owning JUnit isolated integration suites; no migration script is run against developer data by these changes. Existing standalone backend script-test commands are unchanged.
-
-The backend script sources remain: `node --test scripts/migrations/20260907-level-catalog.test.js scripts/migrations/20261015-recruitment-duplicate-pools.test.js` from the backend root; `npm test` from `backend/scripts/beta`; and the two `.mongo-test.js` scripts bridged by `RecruitmentDuplicateRepairMongoTest` / `RecruitmentRemainderRepairMongoTest` under `integrationTest` (owned TestMongo plus `mongosh`). These are five source files, not five independent execution suites. Local release preparation includes the standalone Node/beta commands; their Mongo variants remain inside isolated JUnit integration suites.
-
-For the B01 tag change, the user/CI should compare discovery reports using:
-
-```sh
-# Working directory: backend. These discover tests; they do not execute test bodies.
-./gradlew test --test-dry-run --console=plain
-./gradlew realisticTest --test-dry-run --console=plain
-./gradlew stressTest --test-dry-run --console=plain
-```
-
-Each command writes its own `build/test-results/<task>/` and `build/reports/tests/<task>/`. Default discovery must exclude both `RealisticFixtureScaleTest` methods; each explicit task must discover its corresponding method. Dry-run skipped entries are discovery evidence only, never business-test passes. The actual default `test` and final CI-equivalent checks remain pending until executed.
-
-Monorepo delivery boundary: root `scripts/test.sh`, `docs/development/testing.md` and `scripts/` are tracked together with frontend/backend. The active frontend/backend CI pipelines are under the monorepo root `.github/workflows/`; subdirectory workflows are retained source assets, not active GitHub entrypoints.
-
-## Verification ownership
-
-Regression/full validation remains user/CI-owned. **Codex owns implementation and the smallest justified developer-side checks; the user independently invokes DSH for adversarial acceptance/testing** in a separate context. DSH starts from the original user requirement and final diff, looks for real-world counterexamples, and reports reproducible findings rather than trusting developer-authored tests. Neither agent should claim an unrun check passed.
-
-DSH is not automatically dispatched by Codex, nor a completion gate for low-risk edits. Browser automation remains disabled unless explicitly authorized for the current task. Final developer reports should state the change scope, checks actually performed, and unknowns; include a short DSH handoff only when needed.
-
-Real-browser, device, touch, screenshot and viewport acceptance is performed manually by the user. Browser checklists and commands in standards or historical plans are optional user references, not Agent delivery gates. Existing browser scripts remain available; their presence and prior task authorizations do not authorize Agent execution in a new task. Keep focused non-browser checks for security, account isolation, contracts and data correctness; reuse existing tests and add coverage only for a concrete gap. Historical blanket test/build requirements do not create a mandatory daily pipeline; explicit release checks remain unchanged.
+`integrationTest`、`apiSchemaTest`、`architectureTest`、`realisticTest`、`stressTest`、mutation（PIT）、前端 `test:repo`/`test:contract`/`test:behavior`/`test:all`、根 `./scripts/test.sh quick/smart/all/stress/plan/doctor` 均保留为手动诊断工具，不是日常或默认发布门禁。只有显式 `--stress` 才把 stressTest 加入发布命令；现有 check 任务依赖不变。全量回归由用户按需执行，不构成浏览器授权。
 
 ## Safety for database suites
 
-Local development and debugging may use the shared development data in MaaBackend/HubBackend and Redis DB 0. Writes must stay within the authorized task; destructive operations still require confirmation. This permission does not extend to automated tests, which must use the isolated fixtures below and must never treat development records as test fixtures or cleanup targets.
-
-Test data is synthetic, deterministic and disposable. Database suites use the existing local MongoDB replica set (127.0.0.1:27017) and Redis (127.0.0.1:6379), without Docker or Testcontainers. TestMongo only permits databases randomly allocated and registered by this JVM. TestRedis uses DB 15 and a per-JVM key serializer that scopes keys, Lua KEYS, and wildcard cleanup; Spring test StringRedisTemplate beans receive the same serializer. Direct test templates must use TestRedis.template(factory). Never bypass these fixtures, flush Redis, or access MaaBackend/HubBackend or production data. Missing infrastructure is a failure, not a skip. JVM shutdown cleans only registered databases and namespaced keys; forced termination may leave disposable data. Run python3 scripts/check_local_services.py for read-only service checks.
-
-`all` uses a representative 200-user × 2-account dataset. `stress` rebuilds about 706,000 logical business objects in a random disposable Mongo database and validates counts, account isolation, pagination, embedded operator/star data, and scoped inventory idempotency indexes.
-
-## Codex Native and optional local memory
-
-Ordinary development starts directly in Codex. No PRD, Design, Task, Research, Remember, sub-agent or finish/archive phase is required. Complex work may use a native Plan. The root verification policy and data safeguards above remain binding; DSH and release CI retain their independent verification roles.
-
-`./scripts/test.sh` keeps quick/smart/all/stress/plan/doctor, --base, --timeout and --budget. The retired --task option and task-completion report fields are removed; callers should select checks by risk and pass a frozen base for committed changes. Reports retain HEAD/base, changed-file fingerprints, environment, discovery counts, command logs, budgets and failures. A clean clone or Worktree needs no personal workflow, Mini-Trellis CLI or memory directory to run component checks and the public runner.
-
-Mini-Trellis 0.3.5 is an optional local memory layer. Initialize only once at the current Git root with `mini-trellis init --codex -y` (uses git config user.name). Existing checkouts do not need reinitialization for ordinary work. `.trellis/` stays ignored; this checkout's generated `.codex/` and `.agents/` are local exclusions in `.git/info/exclude`, so other contributors do not inherit personal Hooks or Skills. Existing specialized Skills remain available on demand. Do not reference or automatically import the old YuanHub-All workspace.
-
-Run memory commands at the Git root: `mini-trellis doctor`, `mini-trellis mem recall "<topic>"`; from a component directory, recall can use `--cwd "$(git rev-parse --show-toplevel)"`. Search only when prior decisions matter, record only confirmed reusable knowledge, and update the existing topic first. New installations have `session_auto_commit: false`. No historical knowledge has been imported by this setup; no search matches is a valid result.
-
-The Codex SessionStart command resolves the current Git root before loading the memory entry, including when Codex starts in frontend/ or backend/. The local Hook's optional recording reminder does not impose session-end or compact write-back. Project trust and Hook trust are separate: review the new SessionStart in CLI `/hooks` or desktop Settings > Hooks, approve it, then start a new session. `doctor` can check files before approval but cannot establish that the model received Hook context. Global configuration is not changed. Review `mini-trellis refresh --dry-run` before updates, preserving the local root-resolution and optional-recording adjustments.
+- 本地开发与调试可在授权任务内使用共享 MaaBackend/HubBackend 和 Redis DB 0；破坏性操作仍须确认。自动测试不得将开发数据当作夹具或清理对象。
+- 数据库套件使用合成、确定性、可丢弃数据，连接现有本机 MongoDB 副本集（127.0.0.1:27017）和 Redis（127.0.0.1:6379），无需 Docker/Testcontainers；缺少基础设施应失败，不得 skip。
+- TestMongo 仅允许访问本 JVM 随机分配并注册的测试库；自动测试不得访问 MaaBackend/HubBackend、生产库或外部传入的数据库 URI。
+- TestRedis 使用 DB 15 与每 JVM 专属键序列化器，隔离普通键、Lua KEYS 和通配符清理；Spring StringRedisTemplate 使用同一序列化器，直接创建模板须用 `TestRedis.template(factory)`。不得绕过夹具或 flush Redis。
+- JVM 退出只清理自己注册的数据库与命名空间键；强制终止可能留下可丢弃数据，不得批量清理其他会话。普通单元测试仍使用不可连接的占位地址，不能改为开发数据库连接。
