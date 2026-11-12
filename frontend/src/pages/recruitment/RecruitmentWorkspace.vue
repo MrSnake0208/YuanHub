@@ -11,12 +11,11 @@
         <template v-if="enabled" #actions>
           <div v-if="TUTORIALS_ENABLED" class="guide-entry-wrap"><button ref="guideEntry" type="button" class="recruitment-tutorial-entry" :aria-expanded="guidePicker" @click="openGuide"><CircleHelp :size="15" aria-hidden="true" />{{ guideActive ? '退出教程' : '使用教程' }}</button>
           <RecruitmentGuideChoice v-if="guidePicker" @record="startGuide" @practice="openPractice" @close="dismissPageGuide" /></div>
-          <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}</button>
+          <button v-if="state.archive" type="button" class="act-btn archive-toggle" aria-haspopup="dialog" @click="showArchive = true"><Archive :size="15" aria-hidden="true" />导入/导出</button>
         </template>
       </CompactToolHeader>
       <div v-if="!enabled" class="wrap"><p class="card">招募档案暂未开放。</p></div>
       <div v-else class="wrap recruitment-content">
-        <RecruitmentExchange v-if="state.archive" id="recruitment-exchange" ref="exchangePanel" v-model:open="showArchive" :account-id="accountId" :account-name="state.accounts.find(account => account.id === accountId)?.name" :identity="identity" :revision="state.archive.archive_revision" :game="state.archive.game_snapshot" :read-only="state.archive.game_mismatch" :busy="state.busy" :context-version="state.contextVersion" :request-version="state.requestVersion" @busy="state.busy = $event" @committed="refresh" />
         <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget !== 'pools'" :target="pageGuideTarget" :message="pageGuideMessage"><button type="button" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
         <p data-guide-target="login" v-if="!identity" class="card">请先登录再使用招募档案。</p>
         <p data-guide-target="account-setup" v-else-if="!state.accountsLoading && !state.accounts.length && !state.error" class="card">还没有游戏账号。<router-link to="/user/profile#game-accounts">先创建游戏账号</router-link></p>
@@ -56,6 +55,7 @@
         </template>
       </div>
       <SiteFooter />
+      <RecruitmentExchange v-if="enabled && state.archive" ref="exchangePanel" v-model:open="showArchive" :account-id="accountId" :account-name="state.accounts.find(account => account.id === accountId)?.name" :identity="identity" :revision="state.archive.archive_revision" :game="state.archive.game_snapshot" :read-only="state.archive.game_mismatch" :busy="state.busy" :context-version="state.contextVersion" :request-version="state.requestVersion" @busy="state.busy = $event" @committed="refresh" />
     </main>
     <RecruitmentPractice v-if="TUTORIALS_ENABLED && practiceOpen" @close="practiceOpen = false" />
     <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guided="TUTORIALS_ENABLED && guideActive" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @load-all="loadAllPoolRecords" @retry="retryPoolReadback" @guide-dismiss="guideActive = false" @guide-start="guideActive = true" @practice="openPractice" />

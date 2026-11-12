@@ -30,45 +30,50 @@
         :shared-name="owner(editing) !== editing ? operatorMap[owner(editing)]?.name || owner(editing) : ''"
         :conflict="trustState(editing).conflict" :conflict-sources="trustSourcesText(editing)" :resolve-trust="resolveTrust"
         @trust="draft.trust = $event" @rumors="draft.rumors = $event" @resolve="resolveTrust = $event" @save="saveDraft" @close="cancel" @reload="refresh" />
-      <Teleport to="body">
-        <div v-if="backupOpen" class="relationship-backup-mask" :style="backupViewportStyle">
-          <section ref="backupPanel" class="relationships relationship-backup-panel" :class="{ 'is-short': backupShortViewport }" role="dialog" aria-modal="true" aria-labelledby="relationship-backup-title" tabindex="-1" @focusin="revealBackupControl">
-            <header><h2 id="relationship-backup-title">信赖与传闻备份</h2><button ref="backupClose" type="button" :disabled="saving" aria-label="关闭信赖备份" @click="cancel"><X :size="18" aria-hidden="true" /></button></header>
-            <div ref="backupBody" class="relationships-exchange">
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-        <p v-if="error" role="alert">{{ error }}</p>
-        <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
-        <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
-        <button type="button" :disabled="!ready" @click="download">导出信赖与传闻备份</button>
-        <label>读取备份（最大 1 MiB）<input type="file" accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" /></label>
-        <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="preview = null; fileSequence++" /></label>
-        <label><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="preview = null" />使用备份覆盖冲突值（默认保留当前记录）</label>
-        <button type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览恢复</button>
-        <p v-if="!editing && localError" role="alert">{{ localError }}</p>
-        <div v-if="preview" class="relationships-preview">
-          <p>恢复到 {{ accountName }} · {{ game }}；将修改 {{ preview.changes }} 个进度值，发现 {{ preview.conflicts }} 个冲突。</p>
-          <p>{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</p>
-          <details v-if="preview.changes"><summary>查看将修改的进度</summary><ul>
-            <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ value(id, kind) ?? '未记录' }} → {{ next }}</li></template>
-          </ul></details>
-          <button type="button" :disabled="!ready || !preview.changes" @click="restore">确认恢复到当前账号</button>
-          <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
-        </div>
+      <DataExchangeDialog v-model:open="backupOpen" v-model:tab="backupTab" title="信赖与传闻备份" :account-name="accountName" :game="game" :busy="saving" :before-close="cancel">
+        <template #import>
+          <div class="relationships relationships-exchange">
+            <ImportGuide :sources="[{ title: '本站信赖与传闻备份', from: '在「更多 → 信赖与传闻备份」的导出页签下载的完整备份。' }]" :step="saving || notice === '信赖与传闻备份已恢复' && !importText.trim() ? 3 : importText.trim() || preview ? 2 : 1" :target="accountName" />
+            <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
+            <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
+            <label>读取备份（最大 1 MiB）<input type="file" accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" /></label>
+            <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="preview = null; fileSequence++" /></label>
+            <label><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="preview = null" />使用备份覆盖冲突值（默认保留当前记录）</label>
+            <button type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览恢复</button>
+            <div v-if="preview" class="relationships-preview">
+              <p>恢复到 {{ accountName }} · {{ game }}；将修改 {{ preview.changes }} 个进度值，发现 {{ preview.conflicts }} 个冲突。</p>
+              <p>{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</p>
+              <details v-if="preview.changes"><summary>查看将修改的进度</summary><ul>
+                <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ value(id, kind) ?? '未记录' }} → {{ next }}</li></template>
+              </ul></details>
+              <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
             </div>
-          </section>
-        </div>
-      </Teleport>
+            <p v-if="(!editing && localError) || error" role="alert">{{ localError || error }}</p>
+            <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
+            <details><summary>技术详情</summary><p>格式：yuanhub-relationships，schema_version=1；最多 1 MiB / 1000 位密探。</p></details>
+          </div>
+        </template>
+        <template #import-footer><button class="btn primary" type="button" :disabled="!ready || !preview?.changes" @click="restore">{{ saving ? '恢复中…' : '确认导入' }}</button></template>
+        <template #export>
+          <div class="relationships relationships-exchange">
+            <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
+            <p v-if="error || localError" role="alert">{{ localError || error }}</p>
+            <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
+          </div>
+        </template>
+        <template #export-footer><button class="btn primary" type="button" :disabled="!ready" @click="download">下载备份</button></template>
+      </DataExchangeDialog>
     </template>
   </section>
 </template>
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Pencil, Star, X } from '@lucide/vue'
+import { Pencil, Star } from '@lucide/vue'
 import { avatarUrl } from '../../api/request.js'
 import OperatorRelationshipDialog from '../../components/operator/OperatorRelationshipDialog.vue'
+import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
+import ImportGuide from '../../components/ImportGuide.vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
-import { useModalFocus } from '../../composables/useModalFocus.js'
-import { useModalViewport } from '../../composables/useModalViewport.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
 const props = defineProps({ accountId: String, accountName: String, game: String, userId: String, loggedIn: Boolean, entryHref: { type: [String, Object], default: '/operator/quick' }, profIcon: { type: Function, default: () => '' }, favoriteIds: { type: Set, default: () => new Set() }, favoriteBusyIds: { type: Set, default: () => new Set() }, favoriteLoading: Boolean, favoriteError: String, ownedCount: { type: Number, default: null }, operators: { type: Array, default: () => [] }, allOperators: { type: Array, default: () => [] } })
@@ -81,15 +86,8 @@ const labels = { trust: '信赖值', rumors: '传闻数量' }
 const editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref({ trust: '', rumors: '' })
 const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
 const resolveTrust = ref(false)
-const backupOpen = ref(false), backupPanel = ref(null), backupClose = ref(null), backupBody = ref(null)
-useModalFocus(backupOpen, backupPanel, { preventScroll: true, initialFocus: () => backupClose.value, onEscape: cancel, preventRestoreScroll: true })
-const { viewportStyle: backupViewportStyle, shortViewport: backupShortViewport, revealFocusedControl: revealBackupControl } = useModalViewport(backupOpen, backupBody, backupPanel)
-watch(backupOpen, (open, _, onCleanup) => {
-  if (!open) return
-  const overflow = document.body.style.overflow
-  document.body.style.overflow = 'hidden'
-  onCleanup(() => { document.body.style.overflow = overflow })
-})
+const backupOpen = ref(false), backupTab = ref('import')
+watch(backupOpen, open => { if (open) backupTab.value = 'import' })
 async function openBackup() { if (ready.value && await beforeLeave()) backupOpen.value = true }
 const dirty = computed(() => !!editing.value && (resolveTrust.value || RELATIONSHIP_KINDS.some(kind => draft.value[kind] !== baseline.value[kind])))
 const hasUnsaved = computed(() => dirty.value || !!importText.value.trim() || saving.value)
@@ -117,7 +115,7 @@ async function edit(id) {
   draft.value = Object.fromEntries(RELATIONSHIP_KINDS.map(kind => [kind, value(id, kind) == null ? '' : String(value(id, kind))]))
   baseline.value = { ...draft.value }
 }
-async function cancel() { if (await beforeLeave()) localError.value = '' }
+async function cancel() { if (!await beforeLeave()) return false; localError.value = ''; return true }
 async function saveDraft() {
   localError.value = ''; notice.value = ''
   const key = scope.value.key, id = editing.value, patch = {}

@@ -1,0 +1,6 @@
+@media (min-width: 768px) {
+  .data-exchange-dialog { width: min(720px, 100%); max-height: calc(var(--modal-viewport-height, 100dvh) - 32px); border-radius: 16px; }
+  .data-exchange-header, .data-exchange-footer { padding: 16px 20px; }
+  .data-exchange-body { padding: 0 20px 20px; }
+  .data-exchange-dialog.is-short .data-exchange-header, .data-exchange-dialog.is-short .data-exchange-footer { padding-block: 6px; }
+}

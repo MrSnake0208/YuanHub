@@ -11,14 +11,14 @@
         </template>
         <template #actions>
           <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
-            :aria-expanded="showArchive" aria-controls="star-exchange" @click="showArchive = !showArchive">
-            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+            aria-haspopup="dialog" @click="openStarExchange">
+            <Archive :size="15" aria-hidden="true" />导入/导出
           </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <router-link class="act-btn ghost" to="/star/share">查看他人星石背包</router-link>
-              <button v-if="!completionDemo" type="button" class="act-btn ghost" :aria-expanded="showShare" aria-controls="star-account-share" @click="showShare = !showShare">{{ showShare ? '收起分享与数据交换' : '分享与数据交换' }}</button>
+              <button v-if="!completionDemo" type="button" class="act-btn ghost" :aria-expanded="showShare" aria-controls="star-account-share" @click="showShare = !showShare">{{ showShare ? '收起分享管理' : '分享管理' }}</button>
             </div>
           </details>
         </template>
@@ -50,28 +50,13 @@
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRecoveryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage"><Check v-if="cloudSyncMessage === '星石云端状态已保存'" :size="16" aria-hidden="true" />{{ cloudSyncMessage === '星石云端状态已保存' ? '已同步' : cloudSyncMessage }}</span>
           </div>
-          <ArchiveExchangePanel
-            v-if="showArchive"
-            id="star-exchange"
-            description="可导入 YuanHub 备份或 MaaYuan 本地完整识别结果（JSON），确认前可预览。导出可备份星石背包、养成计划和经验星曜。"
-            :import-open="showStarImport"
-            :import-disabled="!productReady || starExchangeBusy"
-            :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
-            scope="current"
-            scope-name="star-export-scope"
-            :scope-options="starExportScopeOptions"
-            @toggle-import="toggleStarImport"
-            @export="exportStarArchive"
-          >
+          <DataExchangeDialog v-model:open="showArchive" v-model:tab="starExchangeTab" :account-name="selectedHostAccount()?.displayName" :game="accountGame" :busy="starExchangeBusy">
             <template #import>
-              <section v-if="showStarImport" class="star-exchange-import">
+              <section class="star-exchange-content star-exchange-import">
                 <ImportGuide :sources="[{ title: '本站星石备份', from: '在星石页「导入/导出」里导出的备份。' }, { title: 'MaaYuan 识别结果', from: 'MaaYuan 本地完整识别后保存的结果文件（JSON）。' }]" :step="starExchangeBusy && starImportPreview ? 3 : starImportPreview || starExchangeBusy ? 2 : 1" :target="selectedHostAccount()?.displayName" />
                 <p class="tip">游戏截图请使用页面上的「导入截图」，不在这里导入。文件最多20 MB；核对目标账号及预览后确认。</p>
-                <label class="btn ghost file-label">
-                  选择 JSON 文件
-                  <input ref="starImportFile" type="file" accept=".json,application/json" :disabled="starExchangeBusy" @change="onStarImportFile" />
-                </label>
-                <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+                <button type="button" class="btn ghost file-label" :disabled="!productReady || starExchangeBusy" @click="starImportFile.click()">选择 JSON 文件</button>
+                <input ref="starImportFile" type="file" hidden accept=".json,application/json" :disabled="!productReady || starExchangeBusy" @change="onStarImportFile" />
                 <div v-if="starImportPreview" class="star-exchange-preview">
                   <dl>
                     <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
@@ -87,11 +72,27 @@
                   <p v-if="starImportPreview.preview.maayuan" class="tip">将使用本次识别结果更新当前星石背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
                   <p v-if="starImportPreview.preview.alreadySynced" class="tip">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
                   <p v-if="!starImportPreview.preview.maayuan" class="tip">确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
-                  <button type="button" class="btn primary" :disabled="starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换当前账号数据' }}</button>
                 </div>
+                <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+                <details><summary>技术详情</summary><p>档案格式：JSON · v2。MaaYuan 识别结果按文件内容识别，不按文件名判断。</p></details>
               </section>
             </template>
-          </ArchiveExchangePanel>
+            <template #import-footer><button type="button" class="btn primary" :disabled="!productReady || !starImportPreview || starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换' }}</button></template>
+            <template #export>
+              <section class="star-exchange-content">
+                <fieldset class="star-export-options" :disabled="!productReady || !selectedHostAccount() || starExchangeBusy">
+                  <legend>导出范围</legend>
+                  <label v-for="option in starExportScopeOptions" :key="option.value" class="star-export-option">
+                    <input v-model="starExportScope" type="radio" name="star-export-scope" :value="option.value" :disabled="option.disabled">
+                    <span><strong>{{ option.label }}</strong><small>{{ option.detail }}</small></span>
+                  </label>
+                </fieldset>
+                <p class="tip">备份包含当前账号的星石背包、养成计划和经验星曜，可用于恢复。</p>
+                <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+              </section>
+            </template>
+            <template #export-footer><button type="button" class="btn primary" :disabled="!productReady || !selectedHostAccount() || starExchangeBusy" @click="exportStarArchive">下载备份</button></template>
+          </DataExchangeDialog>
           <AccountShareManager v-if="showShare && !completionDemo && auth.isLoggedIn && accountId" id="star-account-share" :account-id="accountId" class="star-share-manager" />
           <p v-else-if="showShare && !completionDemo" id="star-account-share" class="star-share-placeholder">登录并选择游戏账号后，可管理密探与星石分享。</p>
           <p
@@ -184,7 +185,7 @@ import RecognitionExampleModal from "./RecognitionExampleModal.vue";
 import { recognitionTutorialExamples, tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial, tutorialOcrRunning } from "./recognitionTutorial.js";
 import { bagReviewInfo, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
-import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
+import DataExchangeDialog from "../../components/DataExchangeDialog.vue";
 import ImportGuide from "../../components/ImportGuide.vue";
 import AccountShareManager from "../../components/AccountShareManager.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -339,8 +340,9 @@ async function checkRecognitionTutorial() {
   if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value) replayRecognitionTutorial();
 }
 const showArchive = ref(false);
+const starExchangeTab = ref("import");
+const starExportScope = ref("current");
 const showShare = ref(false);
-const showStarImport = ref(false);
 const starImportPreview = ref(null);
 const starImportFile = ref(null);
 const starExchangeError = ref("");
@@ -438,12 +440,12 @@ function resetStarImportState() {
   starExchangeBusy.value = false;
   starImportPreview.value = null;
   starExchangeError.value = "";
-  showStarImport.value = false;
+  showArchive.value = false;
   if (starImportFile.value) starImportFile.value.value = "";
 }
 function rejectStaleStarImportPreview() {
   starImportPreview.value = null;
-  showStarImport.value = false;
+  showArchive.value = false;
   if (starImportFile.value) starImportFile.value.value = "";
   starExchangeError.value = "账号已切换，请重新选择 JSON 档案后再试。";
 }
@@ -539,13 +541,14 @@ async function loadEmbedModule() {
   }
   return committed();
 }
-function toggleStarImport() {
+function openStarExchange() {
   clearCloudSyncFeedback();
   if (!handle || !productReady.value) {
     cloudSyncError.value = "星石工作区尚未加载完成。";
     return;
   }
-  showStarImport.value = !showStarImport.value;
+  starExchangeTab.value = "import";
+  showArchive.value = true;
   starExchangeError.value = "";
 }
 function downloadStarArchive(data) {
@@ -642,7 +645,7 @@ async function confirmStarImport() {
     } else await source.confirmDataExchangeImport(preview);
     if (!current()) return;
     starImportPreview.value = null;
-    showStarImport.value = false;
+    showArchive.value = false;
   } catch (error) {
     if (!current()) return;
     if (lease && (submitted || ![400, 401, 403, 404, 409, 422].includes(Number(error?.status)))) {
@@ -764,7 +767,6 @@ watch([accountId, accountGame], () => {
   productReady.value = false;
   starCloud.leave();
   resetStarImportState();
-  showArchive.value = false;
   if (handle && !unmounted) void syncHostAccount().catch(() => {});
 }, { flush: "sync" });
 if (TUTORIALS_ENABLED) {
@@ -842,11 +844,22 @@ onBeforeUnmount(function () {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.star-exchange-import { border-top: 1px dashed var(--line); }
+.star-exchange-content { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.star-exchange-import.star-exchange-content { margin-top: 0; padding-top: 0; }
+.star-exchange-content p, .star-exchange-content details { margin-block: 12px; }
+.star-exchange-content summary { cursor: pointer; }
+.star-exchange-content :is(button, input, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.star-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
+.star-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.star-export-option input { flex: none; accent-color: var(--accent); }
+.star-export-option span { min-width: 0; }
+.star-export-option strong, .star-export-option small { display: block; }
+.star-export-option small { color: var(--ink-60); }
 .star-exchange-import .tip { color: var(--ink-60); }
-.star-exchange-import .file-label { cursor: pointer; }
+.star-exchange-import .file-label { min-height: 44px; cursor: pointer; }
 .star-exchange-error { color: var(--theme-danger-text, var(--rouge)); }
 .star-exchange-preview { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.star-exchange-import .star-exchange-preview { display: block; }
 .star-exchange-preview dt { color: var(--ink-60); }
 .star-exchange-preview dd { color: var(--ink); }
 .star-sync-state {

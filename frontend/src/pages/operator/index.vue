@@ -18,8 +18,8 @@
           </div>
         </template>
         <template #actions>
-          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" aria-controls="operator-account-workspace" @click="toggleArchive">
-            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || importing" aria-haspopup="dialog" @click="toggleImportPanel">
+            <Archive :size="15" aria-hidden="true" />导入/导出
           </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
@@ -150,43 +150,16 @@
             @share-change="operatorShare = $event"
           />
 
-          <!-- JSON 数据交换保留原有入口，与分享弹窗独立。 -->
-          <AccountWorkspace
-            v-show="showArchive && !accountWorkspaceCompact"
-            id="operator-account-workspace"
-            tour-target="operator-workspace"
-            class="operator-account-workspace"
-            :class="{ 'is-compact': accountWorkspaceCompact, 'has-archive': showArchive }"
-            v-model:compact="accountWorkspaceCompact"
-            summary-label="导入/导出"
-            split
-            :show-account-bar="false"
-            :error="accountError"
-          >
-            <template #summary-actions>
-              <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="hideBackupImport">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
+          <DataExchangeDialog v-model:open="showArchive" v-model:tab="operatorExchangeTab" :account-name="currentAccountName" :game="gameFilter" :busy="importing" :before-close="beforeCloseOperatorExchange" @close="discardOperatorImport">
+            <template #import><div ref="backupImportTarget"></div></template>
+            <template #import-footer>
+              <button v-if="organizationImportPreview" class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认恢复分类' }}</button>
+              <button v-else-if="importV2Preview" class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入' }}</button>
+              <button v-else class="btn primary" type="button" :disabled="importing || !canCommitV3Import" @click="commitV3Import">{{ importing ? '保存中…' : '确认导入' }}</button>
             </template>
-            <div v-if="showArchive" class="archive-workspace">
-              <div class="archive-heading">
-                <div>
-                  <span class="section-kicker">数据交换</span>
-                  <h2>导入/导出</h2>
-                  <details>
-                    <summary>备份范围与录入方式</summary>
-                    <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。手动补录请点「录入密探」，采集复核请从待复核列表进入。</p>
-                  </details>
-                </div>
-              </div>
-              <div class="archive-actions">
-                <button
-                  v-if="selectedScanReview || !showImport"
-                  class="act-btn archive-import"
-                  :disabled="!auth.isLoggedIn"
-                  :aria-expanded="showImport"
-                  @click="toggleImportPanel"
-                >
-                  <Upload :size="16" aria-hidden="true" />导入备份文件
-                </button>
+            <template #export>
+              <div class="operator-exchange-export">
+                <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。</p>
                 <div class="export-group">
                   <div class="export-label">档案导出范围</div>
                   <div
@@ -233,276 +206,262 @@
                       >
                     </label>
                   </div>
-                  <button
-                    class="act-btn export-submit"
-                    :disabled="!auth.isLoggedIn || !accountId"
-                    @click="doExport"
-                  >
-                    <Download :size="16" aria-hidden="true" />导出密探档案
-                  </button>
-                  <button class="act-btn organization-export" :disabled="!auth.isLoggedIn || !accountId || !organizationReady" @click="exportOrganizationBackup">
+                  <button class="act-btn organization-export" :disabled="!auth.isLoggedIn || !accountId || !organizationReady || importing" @click="exportOrganizationBackup">
                     <Download :size="16" aria-hidden="true" />导出当前账号分类
                   </button>
                   <small class="tip organization-export-tip">分类仅包含当前账号已保存的置顶、分组顺序和标签，不含编辑草稿。</small>
                 </div>
               </div>
-            </div>
-          </AccountWorkspace>
+            </template>
+            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing" @click="doExport">下载备份</button></template>
+          </DataExchangeDialog>
 
-          <!-- 导入档案 -->
-          <div v-if="showImport" class="import-box" v-reveal>
-            <OperatorScanReviewForm v-if="selectedScanReview" :key="selectedScanReview.account_id + ':' + selectedScanReview.record_id + ':' + selectedScanReview.operator_id"
-              ref="scanReviewForm" class="scan-review-context" :review="selectedScanReview" :catalog="catalogMap[selectedScanReview.operator_id] || {}"
-              :account-name="currentAccountName" :current="scanReviewCurrent" :current-loading="scanReviewCurrentLoading" :current-error="scanReviewCurrentError" :busy="importing"
-              @change="onScanReviewChange" @preview="previewV3Import" @close="closeScanReview" @dismiss="closeSelectedScanReview" @readback="readScanReviewCurrent" />
-            <div v-if="!selectedScanReview" class="backup-import">
-            <h2>导入备份文件</h2>
-            <ImportGuide :sources="[{ title: '本站密探备份', from: '在密探页「导入/导出」里导出的完整备份，旧版备份也能导入。' }, { title: '分类设置备份', from: '在密探页「导入/导出」里导出的分类设置，只包含置顶、分组顺序和标签。' }]" :step="importResult || organizationImportMessage || importing && (importPreview || importV2Preview || organizationImportPreview) ? 3 : importText.trim() ? 2 : 1" :target="currentAccountName" />
-            <p class="tip">使用 Maa 自动同步时不需要在这里导入，同步结果会直接出现在对应账号，也可能需要在待复核列表中确认。</p>
-            <p id="operator-import-tip" class="tip">
-              支持密探档案和分类设置 JSON，自动识别文件类型。导入均先校验并预览，确认后才写入当前账号；分类恢复只替换置顶、分组顺序和标签。
-            </p>
-            <div class="import-target">
-              <span>导入目标</span><strong>{{ currentAccountName }}</strong
-              ><small v-if="isOrganizationImport">已识别分类设置备份</small
-              >
-            </div>
-            <details class="import-help">
-              <summary>导入帮助：同步与失败处理</summary>
-              <p>一次导入一个来源账号，多来源账号的文档请先拆开。分类备份仅恢复置顶、分组顺序与标签，不包含密探养成。完整快照可能覆盖未列出的内容，请核对预览中的范围。更换文件、修改内容或切换账号后，需要重新预览。</p>
-              <p><strong>使用 Maa 自动同步</strong>：在 Maa 侧完成采集与连接配置，回到对应 Hub 账号查看同步结果或待复核项。连接配置见<router-link class="link" to="/user/profile">“账号与连接码”</router-link>。这里的文件导入用于已有备份，不需要把连接码粘贴到 JSON 文本框。</p>
-              <p><strong>如何看回执</strong>：完整写入、部分写入、待复核、未写入、无变化。请核对逐项结果，部分写入不代表整批成功；预览只说明预计影响，不代表已经保存。</p>
-              <p><strong>失败后怎么处理</strong>：解析失败时检查 JSON 语法；账号映射失败时核对来源账号与导入目标；状态冲突时重新读取当前档案后再预览；网络结果尚未确认时保留原输入，按原内容重试或读取当前档案核对，不要当作已回滚。如有“技术详情”，可展开查看原始错误信息。</p>
-            </details>
-            <textarea
-              id="operator-import-json"
-              v-model="importText"
-              :disabled="importing"
-              aria-label="密探档案或分类设置 JSON"
-              :aria-invalid="!!importError"
-              :aria-describedby="
-                importError
-                  ? 'operator-import-tip operator-import-error'
-                  : 'operator-import-tip'
-              "
-              autocomplete="off"
-              placeholder="也可以把备份文件内容粘贴到这里"
-              @input="onImportTextInput"
-            ></textarea>
-            <p
-              v-if="importError"
-              id="operator-import-error"
-              class="import-error"
-              role="alert"
-            >
-              {{ importError }}
-            </p>
-            <div class="import-actions">
-              <label class="btn ghost file-label">
-                选择 JSON 文件
-                <input
-                  type="file"
-                  :disabled="importing"
-                  accept=".json,application/json"
-                  @change="onFilePick"
-                />
-              </label>
-              <button class="btn ghost" type="button" :disabled="importing" aria-describedby="operator-import-example-tip" @click="fillExample">
-                填入示例
-              </button>
-              <button
-                v-if="isOrganizationImport"
-                class="btn primary" type="button" :disabled="importing || !organizationReady || !accountId" @click="previewOrganizationImport"
-              >校验并预览分类</button>
-              <button
-                v-else-if="[3, 4, 5].includes(importDocumentVersion)"
-                class="btn primary"
-                type="button"
-                :disabled="importing || !importText.trim() || !accountId"
-                @click="previewV3Import"
-              >
-                {{
-                  importing
-                    ? "校验中…"
-                    : importPreview
-                      ? "重新预览"
-                      : "校验并预览"
-                }}
-              </button>
-              <button
-                v-else
-                class="btn primary"
-                type="button"
-                :disabled="importing || !importText.trim()"
-                @click="previewV2Import"
-              >
-                {{ importing ? "校验中…" : "校验并预览" }}
-              </button>
-            </div>
-            <p id="operator-import-example-tip" class="tip">“填入示例”仅用于理解格式，不是你的实际档案。确认保存会改动当前账号的真实养成，请勿将示例保存到真实账号；推荐用自己的导出文件了解字段。</p>
-            </div>
-            <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
-            <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
-            <details v-if="importRequestIssue" class="import-technical"><summary>本次请求的技术详情</summary><pre>{{ JSON.stringify(importRequestIssue, null, 2) }}</pre></details>
-            <section v-if="organizationImportPreview" class="import-preview organization-import-preview" aria-live="polite" aria-label="分类恢复预览">
-              <div class="import-preview-head">
-                <div><strong>分类恢复预览 · {{ currentAccountName }}</strong>
-                  <span>{{ organizationImportPreview.content.pinned_ids.length }} 位置顶 · {{ organizationImportPreview.content.tags.length }} 个标签</span>
-                </div>
-                <button class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认恢复分类' }}</button>
+          <!-- 保持预览与回执单源：扫描复核留在页面，备份内容移入弹窗。 -->
+          <Teleport v-if="showImport || backupImportTarget" :to="backupImportTarget || 'body'" :disabled="showImport">
+            <div class="import-box" :class="{ 'operator-exchange-body': !showImport }" v-reveal>
+              <OperatorScanReviewForm v-if="selectedScanReview" :key="selectedScanReview.account_id + ':' + selectedScanReview.record_id + ':' + selectedScanReview.operator_id"
+                ref="scanReviewForm" class="scan-review-context" :review="selectedScanReview" :catalog="catalogMap[selectedScanReview.operator_id] || {}"
+                :account-name="currentAccountName" :current="scanReviewCurrent" :current-loading="scanReviewCurrentLoading" :current-error="scanReviewCurrentError" :busy="importing"
+                @change="onScanReviewChange" @preview="previewV3Import" @close="closeScanReview" @dismiss="closeSelectedScanReview" @readback="readScanReviewCurrent" />
+              <div v-if="!showImport" class="backup-import">
+              <ImportGuide :sources="[{ title: '本站密探备份', from: '在密探页「导入/导出」里导出的完整备份，旧版备份也能导入。' }, { title: '分类设置备份', from: '在密探页「导入/导出」里导出的分类设置，只包含置顶、分组顺序和标签。' }]" :step="importResult || organizationImportMessage || importing && (importPreview || importV2Preview || organizationImportPreview) ? 3 : importText.trim() ? 2 : 1" :target="currentAccountName" />
+              <div class="import-actions">
+                <button type="button" class="btn ghost file-label" :disabled="importing" @click="backupFileInput.click()">选择 JSON 文件</button>
+                <input ref="backupFileInput" type="file" hidden :disabled="importing" accept=".json,application/json" @change="onFilePick" />
+                <button class="btn ghost" type="button" :disabled="importing" aria-describedby="operator-import-example-tip" @click="fillExample">填入示例</button>
               </div>
-              <p class="import-preview-warning">将替换当前账号已保存的置顶、分组顺序和全部标签。密探练度、养成状态和特别关注保持不变。</p>
-              <p v-if="organizationData.revision !== organizationImportPreview.revision" class="import-preview-warning" role="alert">当前分类已有更新，请重新校验并预览后再恢复。</p>
-              <p class="tip">分组顺序：{{ organizationImportPreview.content.status_order.filter(state => discardedEnabled || state !== 'discarded').map(operatorAnnotationStatusLabel).join(' → ') }}</p>
-              <p v-if="organizationImportPreview.content.tags.length" class="tip">标签：{{ organizationImportPreview.content.tags.map(tag => tag.name).join('、') }}</p>
-            </section>
-            <p v-if="organizationImportMessage" class="tip" role="status">{{ organizationImportMessage }}</p>
-            <p v-if="isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="btn ghost" :disabled="organizationLoading || organizationSaving" @click="reloadOrganization">重新读取分类</button></p>
-            <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="旧版备份导入预览">
-              <div class="import-preview-head">
-                <div>
-                  <strong>旧版备份导入预览 · {{ currentAccountName }}</strong>
-                  <span>{{ importV2Preview.recordCount }} 条记录 · 涉及 {{ importV2Preview.entries.length }} 位密探 · 当前已有 {{ importV2Preview.overlapCount }} 位</span>
-                </div>
-                <button class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入' }}</button>
-              </div>
-              <p v-if="importV2Preview.fullCount" class="import-preview-warning" role="alert">
-                包含 {{ importV2Preview.fullCount }} 条全量快照；当前账号中有 {{ importV2Preview.possibleRemovedCount }} 位密探未列在档案中，可能被覆盖移除。请先导出备份。
+              <p class="tip">使用 Maa 自动同步时不需要在这里导入，同步结果会直接出现在对应账号，也可能需要在待复核列表中确认。</p>
+              <p id="operator-import-tip" class="tip">
+                支持密探档案和分类设置 JSON，自动识别文件类型。导入均先校验并预览，确认后才写入当前账号；分类恢复只替换置顶、分组顺序和标签。
               </p>
-              <p class="tip">此处为本地影响范围预览；最终校验与实际写入结果以服务器为准。</p>
-              <details><summary>查看涉及密探</summary><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></details>
-            </section>
-            <section
-              v-if="v3Receipt"
-              class="import-preview"
-              aria-live="polite"
-              :aria-label="importPreview ? '导入预览' : '逐项保存回执'"
-            >
-              <div class="import-preview-head">
-                <div>
-                  <strong>{{ importPreview ? '预览影响 · 尚未保存' : '服务器保存回执' }}</strong>
-                  <span
-                    >{{ importPreview ? '可完整写入' : '完整写入' }} {{ v3Receipt.accepted }} ·
-                    {{ importPreview ? '可部分写入' : '部分写入' }} {{ v3Receipt.partial }} ·
-                    待复核 {{ v3Receipt.review }} · 拒绝
-                    {{ v3Receipt.rejected }} · 无变化
-                    {{ v3Receipt.unchanged }}</span
-                  >
-                </div>
-                <button
-                  class="btn primary"
-                  v-if="importPreview"
-                  type="button"
-                  :disabled="importing || !canCommitV3Import"
-                  @click="commitV3Import"
+              <div class="import-target">
+                <span>导入目标</span><strong>{{ currentAccountName }}</strong
+                ><small v-if="isOrganizationImport">已识别分类设置备份</small
                 >
-                  {{ importing ? "保存中…" : "确认保存" }}
+              </div>
+              <details class="import-help">
+                <summary>导入帮助：同步与失败处理</summary>
+                <p>一次导入一个来源账号，多来源账号的文档请先拆开。分类备份仅恢复置顶、分组顺序与标签，不包含密探养成。完整快照可能覆盖未列出的内容，请核对预览中的范围。更换文件、修改内容或切换账号后，需要重新预览。</p>
+                <p><strong>使用 Maa 自动同步</strong>：在 Maa 侧完成采集与连接配置，回到对应 Hub 账号查看同步结果或待复核项。连接配置见<router-link class="link" to="/user/profile">“账号与连接码”</router-link>。这里的文件导入用于已有备份，不需要把连接码粘贴到 JSON 文本框。</p>
+                <p><strong>如何看回执</strong>：完整写入、部分写入、待复核、未写入、无变化。请核对逐项结果，部分写入不代表整批成功；预览只说明预计影响，不代表已经保存。</p>
+                <p><strong>失败后怎么处理</strong>：解析失败时检查 JSON 语法；账号映射失败时核对来源账号与导入目标；状态冲突时重新读取当前档案后再预览；网络结果尚未确认时保留原输入，按原内容重试或读取当前档案核对，不要当作已回滚。如有“技术详情”，可展开查看原始错误信息。</p>
+              </details>
+              <textarea
+                id="operator-import-json"
+                v-model="importText"
+                :disabled="importing"
+                aria-label="密探档案或分类设置 JSON"
+                :aria-invalid="!!importError"
+                :aria-describedby="
+                  importError
+                    ? 'operator-import-tip operator-import-error'
+                    : 'operator-import-tip'
+                "
+                autocomplete="off"
+                placeholder="也可以把备份文件内容粘贴到这里"
+                @input="onImportTextInput"
+              ></textarea>
+              <p
+                v-if="importError"
+                id="operator-import-error"
+                class="import-error"
+                role="alert"
+              >
+                {{ importError }}
+              </p>
+              <div class="import-actions">
+                <button
+                  v-if="isOrganizationImport"
+                  class="btn primary" type="button" :disabled="importing || !organizationReady || !accountId" @click="previewOrganizationImport"
+                >校验并预览分类</button>
+                <button
+                  v-else-if="[3, 4, 5].includes(importDocumentVersion)"
+                  class="btn primary"
+                  type="button"
+                  :disabled="importing || !importText.trim() || !accountId"
+                  @click="previewV3Import"
+                >
+                  {{
+                    importing
+                      ? "校验中…"
+                      : importPreview
+                        ? "重新预览"
+                        : "校验并预览"
+                  }}
+                </button>
+                <button
+                  v-else
+                  class="btn primary"
+                  type="button"
+                  :disabled="importing || !importText.trim()"
+                  @click="previewV2Import"
+                >
+                  {{ importing ? "校验中…" : "校验并预览" }}
                 </button>
               </div>
-              <p v-if="selectedScanReview && importPreview?.unchanged && canCommitV3Import" class="tip">与现值一致也可确认复核，无需修改成其他数值。</p>
-              <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm">
-                <input
-                  v-model="importConfirmReview"
-                  type="checkbox"
-                  :disabled="importing"
-                  @change="onImportReviewChange"
-                />
-                <span>确认写入需要人工复核的分区；勾选后请重新预览</span>
-              </label>
-              <p v-if="v3Receipt.rejected" class="import-preview-warning">
-                被拒绝的密探不会写入，其余可接受条目仍可继续导入。
-              </p>
-              <div class="import-preview-list">
-                <details
-                  v-for="(item, index) in v3Receipt.items"
-                  :key="item.recordId + ':' + item.operatorId + ':' + index"
-                  class="import-preview-item"
-                  :open="['rejected', 'review', 'partial'].includes(item.status) || !importPreview"
-                >
-                  <summary>
-                    <span class="import-status" :class="'is-' + item.status">{{
-                      importStatusLabel(item.status)
-                    }}</span>
-                    <strong>{{ importOperatorName(item.operatorId) }}</strong>
-                    <small
-                      >{{ Object.keys(item.changes).length }} 项变化<template
-                        v-if="item.stale"
-                      >
-                        · 观测将过期</template
-                      ></small
-                    >
-                  </summary>
-                  <dl
-                    v-if="Object.keys(item.changes).length"
-                    class="import-change-list"
-                  >
-                    <div v-for="(change, field) in item.changes" :key="field">
-                      <dt>{{ importFieldLabel(field) }}</dt>
-                      <dd>
-                        {{ importValueLabel(change.before, field, item.operatorId) }} →
-                        {{ importValueLabel(change.after, field, item.operatorId) }}
-                      </dd>
-                    </div>
-                  </dl>
-                  <ul
-                    v-if="item.blockingErrors.length || item.warnings.length"
-                    class="import-issue-list"
-                  >
-                    <li
-                      v-for="(issue, issueIndex) in item.blockingErrors"
-                      :key="'error:' + issueIndex"
-                      class="error"
-                    >
-                      {{ operatorReviewIssueText(issue) }}
-                      <a v-if="selectedScanReview && scanReviewForm?.hasField(operatorReviewField(issue))" :href="'#scan-review-field-' + operatorReviewField(issue)" @click.prevent="scanReviewForm?.focusField(operatorReviewField(issue))">定位{{ operatorReviewFieldLabel(issue.field || issue.field_path || issue.fieldPath) }}</a>
-                    </li>
-                    <li
-                      v-for="(issue, issueIndex) in item.warnings"
-                      :key="'warning:' + issueIndex"
-                    >
-                      {{ operatorReviewIssueText(issue) }}
-                    </li>
-                  </ul>
-                  <details class="import-technical"><summary>技术详情</summary><pre>{{ JSON.stringify(item, null, 2) }}</pre></details>
-                </details>
+              <p id="operator-import-example-tip" class="tip">“填入示例”仅用于理解格式，不是你的实际档案。确认保存会改动当前账号的真实养成，请勿将示例保存到真实账号；推荐用自己的导出文件了解字段。</p>
               </div>
-              <p v-if="!v3Receipt.items.length" class="import-preview-warning">暂时无法确认每项是否保存。请重新读取当前档案核对，复核提醒会继续保留。</p>
-            </section>
-            <div
-              v-if="importResult && importResult.kind === 'v2'"
-              class="import-result"
-            >
-              导入完成：接受 {{ importResult.accepted }} 条 · 重复
-              {{ importResult.duplicates }} 条
-              <span v-if="importResult.superseded">
-                · 已归档 {{ importResult.superseded }} 条</span
+              <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
+              <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
+              <details v-if="importRequestIssue" class="import-technical"><summary>本次请求的技术详情</summary><pre>{{ JSON.stringify(importRequestIssue, null, 2) }}</pre></details>
+              <section v-if="organizationImportPreview" class="import-preview organization-import-preview" aria-live="polite" aria-label="分类恢复预览">
+                <div class="import-preview-head">
+                  <div><strong>分类恢复预览 · {{ currentAccountName }}</strong>
+                    <span>{{ organizationImportPreview.content.pinned_ids.length }} 位置顶 · {{ organizationImportPreview.content.tags.length }} 个标签</span>
+                  </div>
+                </div>
+                <p class="import-preview-warning">将替换当前账号已保存的置顶、分组顺序和全部标签。密探练度、养成状态和特别关注保持不变。</p>
+                <p v-if="organizationData.revision !== organizationImportPreview.revision" class="import-preview-warning" role="alert">当前分类已有更新，请重新校验并预览后再恢复。</p>
+                <p class="tip">分组顺序：{{ organizationImportPreview.content.status_order.filter(state => discardedEnabled || state !== 'discarded').map(operatorAnnotationStatusLabel).join(' → ') }}</p>
+                <p v-if="organizationImportPreview.content.tags.length" class="tip">标签：{{ organizationImportPreview.content.tags.map(tag => tag.name).join('、') }}</p>
+              </section>
+              <p v-if="organizationImportMessage" class="tip" role="status">{{ organizationImportMessage }}</p>
+              <p v-if="isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="btn ghost" :disabled="organizationLoading || organizationSaving" @click="reloadOrganization">重新读取分类</button></p>
+              <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="旧版备份导入预览">
+                <div class="import-preview-head">
+                  <div>
+                    <strong>旧版备份导入预览 · {{ currentAccountName }}</strong>
+                    <span>{{ importV2Preview.recordCount }} 条记录 · 涉及 {{ importV2Preview.entries.length }} 位密探 · 当前已有 {{ importV2Preview.overlapCount }} 位</span>
+                  </div>
+                </div>
+                <p v-if="importV2Preview.fullCount" class="import-preview-warning" role="alert">
+                  包含 {{ importV2Preview.fullCount }} 条全量快照；当前账号中有 {{ importV2Preview.possibleRemovedCount }} 位密探未列在档案中，可能被覆盖移除。请先导出备份。
+                </p>
+                <p class="tip">此处为本地影响范围预览；最终校验与实际写入结果以服务器为准。</p>
+                <details><summary>查看涉及密探</summary><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></details>
+              </section>
+              <section
+                v-if="v3Receipt"
+                class="import-preview"
+                aria-live="polite"
+                :aria-label="importPreview ? '导入预览' : '逐项保存回执'"
               >
-              <span
-                v-if="importResult.warnings && importResult.warnings.length"
+                <div class="import-preview-head">
+                  <div>
+                    <strong>{{ importPreview ? '预览影响 · 尚未保存' : '服务器保存回执' }}</strong>
+                    <span
+                      >{{ importPreview ? '可完整写入' : '完整写入' }} {{ v3Receipt.accepted }} ·
+                      {{ importPreview ? '可部分写入' : '部分写入' }} {{ v3Receipt.partial }} ·
+                      待复核 {{ v3Receipt.review }} · 拒绝
+                      {{ v3Receipt.rejected }} · 无变化
+                      {{ v3Receipt.unchanged }}</span
+                    >
+                  </div>
+                  <button
+                    class="btn primary"
+                    v-if="importPreview && showImport"
+                    type="button"
+                    :disabled="importing || !canCommitV3Import"
+                    @click="commitV3Import"
+                  >
+                    {{ importing ? "保存中…" : "确认保存" }}
+                  </button>
+                </div>
+                <p v-if="selectedScanReview && importPreview?.unchanged && canCommitV3Import" class="tip">与现值一致也可确认复核，无需修改成其他数值。</p>
+                <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm">
+                  <input
+                    v-model="importConfirmReview"
+                    type="checkbox"
+                    :disabled="importing"
+                    @change="onImportReviewChange"
+                  />
+                  <span>确认写入需要人工复核的分区；勾选后请重新预览</span>
+                </label>
+                <p v-if="v3Receipt.rejected" class="import-preview-warning">
+                  被拒绝的密探不会写入，其余可接受条目仍可继续导入。
+                </p>
+                <div class="import-preview-list">
+                  <details
+                    v-for="(item, index) in v3Receipt.items"
+                    :key="item.recordId + ':' + item.operatorId + ':' + index"
+                    class="import-preview-item"
+                    :open="['rejected', 'review', 'partial'].includes(item.status) || !importPreview"
+                  >
+                    <summary>
+                      <span class="import-status" :class="'is-' + item.status">{{
+                        importStatusLabel(item.status)
+                      }}</span>
+                      <strong>{{ importOperatorName(item.operatorId) }}</strong>
+                      <small
+                        >{{ Object.keys(item.changes).length }} 项变化<template
+                          v-if="item.stale"
+                        >
+                          · 观测将过期</template
+                        ></small
+                      >
+                    </summary>
+                    <dl
+                      v-if="Object.keys(item.changes).length"
+                      class="import-change-list"
+                    >
+                      <div v-for="(change, field) in item.changes" :key="field">
+                        <dt>{{ importFieldLabel(field) }}</dt>
+                        <dd>
+                          {{ importValueLabel(change.before, field, item.operatorId) }} →
+                          {{ importValueLabel(change.after, field, item.operatorId) }}
+                        </dd>
+                      </div>
+                    </dl>
+                    <ul
+                      v-if="item.blockingErrors.length || item.warnings.length"
+                      class="import-issue-list"
+                    >
+                      <li
+                        v-for="(issue, issueIndex) in item.blockingErrors"
+                        :key="'error:' + issueIndex"
+                        class="error"
+                      >
+                        {{ operatorReviewIssueText(issue) }}
+                        <a v-if="selectedScanReview && scanReviewForm?.hasField(operatorReviewField(issue))" :href="'#scan-review-field-' + operatorReviewField(issue)" @click.prevent="scanReviewForm?.focusField(operatorReviewField(issue))">定位{{ operatorReviewFieldLabel(issue.field || issue.field_path || issue.fieldPath) }}</a>
+                      </li>
+                      <li
+                        v-for="(issue, issueIndex) in item.warnings"
+                        :key="'warning:' + issueIndex"
+                      >
+                        {{ operatorReviewIssueText(issue) }}
+                      </li>
+                    </ul>
+                    <details class="import-technical"><summary>技术详情</summary><pre>{{ JSON.stringify(item, null, 2) }}</pre></details>
+                  </details>
+                </div>
+                <p v-if="!v3Receipt.items.length" class="import-preview-warning">暂时无法确认每项是否保存。请重新读取当前档案核对，复核提醒会继续保留。</p>
+              </section>
+              <div
+                v-if="importResult && importResult.kind === 'v2'"
+                class="import-result"
               >
-                · 警告 {{ importResult.warnings.length }} 条</span
+                导入完成：接受 {{ importResult.accepted }} 条 · 重复
+                {{ importResult.duplicates }} 条
+                <span v-if="importResult.superseded">
+                  · 已归档 {{ importResult.superseded }} 条</span
+                >
+                <span
+                  v-if="importResult.warnings && importResult.warnings.length"
+                >
+                  · 警告 {{ importResult.warnings.length }} 条</span
+                >
+                <button class="ok" @click="afterImport">刷新养成</button>
+              </div>
+              <div
+                v-else-if="importResult && importResult.kind === 'v3'"
+                class="import-result"
+                role="status"
               >
-              <button class="ok" @click="afterImport">刷新养成</button>
+                {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : importResult.unchanged ? '已收到无变化回执，档案未改写；请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
+                <button class="ok" @click="afterImport">{{ importing ? '处理中…' : '查看养成总览' }}</button>
+              </div>
+              <details v-if="!showImport" class="import-technical">
+                <summary>技术详情</summary>
+                <p>JSON · 档案 / 分类。完整备份推荐 v5，旧 v2/v3/v4 仍可导入；“填入示例”提供 v3 示例。</p>
+                <p v-if="importDocumentVersion">已识别 v{{ importDocumentVersion }}。</p>
+                <p>回执状态：完整写入（accepted）、部分写入（partial）、待复核（review）、未写入（rejected）、无变化（unchanged）。</p>
+                <p>原文本框示例：</p><pre tabindex="0">{"format":"myshare-operator-exchange","version":3,"accounts":[{"id":"scan_local","name":"采集账号"}],"records":[]}</pre>
+                <h3>v5 格式示例（只读）</h3>
+                <p>示例来自仓库的合成测试档案，仅用于理解格式，不是你的实际档案。请勿将示例确认保存到真实账号；推荐用自己的导出文件了解对应字段。</p>
+                <pre tabindex="0" aria-label="v5 格式示例，只读">{{ operatorV5Example }}</pre>
+              </details>
             </div>
-            <div
-              v-else-if="importResult && importResult.kind === 'v3'"
-              class="import-result"
-              role="status"
-            >
-              {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : importResult.unchanged ? '已收到无变化回执，档案未改写；请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
-              <button class="ok" @click="afterImport">{{ importing ? '处理中…' : '查看养成总览' }}</button>
-            </div>
-            <details v-if="!selectedScanReview" class="import-technical">
-              <summary>技术详情</summary>
-              <p>JSON · 档案 / 分类。完整备份推荐 v5，旧 v2/v3/v4 仍可导入；“填入示例”提供 v3 示例。</p>
-              <p v-if="importDocumentVersion">已识别 v{{ importDocumentVersion }}。</p>
-              <p>回执状态：完整写入（accepted）、部分写入（partial）、待复核（review）、未写入（rejected）、无变化（unchanged）。</p>
-              <p>原文本框示例：</p><pre tabindex="0">{"format":"myshare-operator-exchange","version":3,"accounts":[{"id":"scan_local","name":"采集账号"}],"records":[]}</pre>
-              <h3>v5 格式示例（只读）</h3>
-              <p>示例来自仓库的合成测试档案，仅用于理解格式，不是你的实际档案。请勿将示例确认保存到真实账号；推荐用自己的导出文件了解对应字段。</p>
-              <pre tabindex="0" aria-label="v5 格式示例，只读">{{ operatorV5Example }}</pre>
-            </details>
-          </div>
+          </Teleport>
 
           <!-- 图鉴（全量目录：默认全部显示，登录后叠加云端养成） -->
           <div
@@ -3172,7 +3131,6 @@ import {
   Star,
   Swords,
   Target,
-  Upload,
   Users,
   X,
   Plus,
@@ -3180,7 +3138,7 @@ import {
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
-import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import DataExchangeDialog from "../../components/DataExchangeDialog.vue";
 import ImportGuide from "../../components/ImportGuide.vue";
 import OperatorScanReviewForm from "../../components/operator/OperatorScanReviewForm.vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
@@ -3432,6 +3390,10 @@ const currentEntries = ref([]);
 const removingOrphanId = ref("");
 const orphanNotice = ref("");
 const showArchive = ref(false);
+const operatorExchangeTab = ref("import");
+const backupImportTarget = ref(null);
+const backupFileInput = ref(null);
+// 仅控制页面扫描复核区，备份弹窗由 showArchive 控制。
 const showImport = ref(false);
 const importText = ref("");
 const importError = ref("");
@@ -3768,7 +3730,6 @@ watch(
   },
   { immediate: true },
 );
-const accountWorkspaceCompact = ref(true);
 const boxViewerOpen = ref(false);
 const shareModalOpen = ref(false);
 const shareSelectedOnly = ref(false);
@@ -3801,6 +3762,7 @@ watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn], () => {
   importError.value = '';
   importing.value = false;
   showImport.value = false;
+  showArchive.value = false;
   resetImportPreview();
   void loadScanReviews();
 }, { flush: 'sync' });
@@ -3889,21 +3851,34 @@ const canCommitV3Import = computed(function () {
   }
 });
 
-async function toggleArchive() {
-  if (selectedScanReview.value && !(await closeScanReview())) return;
-  showArchive.value = !showArchive.value;
-  if (showArchive.value) accountWorkspaceCompact.value = false;
-  showImport.value = showArchive.value;
+async function toggleImportPanel() {
+  if (!auth.isLoggedIn || importing.value) return;
+  const contextSeq = currentContextSeq, navigationSeq = operatorNavigationSeq, trigger = document.activeElement;
+  if ((selectedScanReview.value || showImport.value) && !(await closeScanReview())) return;
+  if (importing.value || contextSeq !== currentContextSeq || navigationSeq !== operatorNavigationSeq || operatorPageDisposed) return;
+  if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+  showImport.value = false;
+  operatorExchangeTab.value = "import";
+  showArchive.value = true;
 }
 
-async function toggleImportPanel() {
-  if (selectedScanReview.value) {
-    if (await closeScanReview()) showImport.value = true;
-  } else showImport.value = !showImport.value;
+async function beforeCloseOperatorExchange() {
+  if (importing.value || showImport.value || selectedScanReview.value) return false;
+  const contextSeq = currentContextSeq, operation = importOperationSeq, navigationSeq = operatorNavigationSeq;
+  if (((importText.value.trim() && !importResult.value) || importPreview.value || importV2Preview.value || organizationImportPreview.value) && !(await dialog.confirm({
+    title: '放弃未导入的内容？', message: '关闭后需要重新选择文件或粘贴内容，已保存的数据不受影响。', confirmText: '放弃并关闭', cancelText: '继续核对',
+  }))) return false;
+  if (importing.value || showImport.value || selectedScanReview.value || contextSeq !== currentContextSeq || operation !== importOperationSeq || navigationSeq !== operatorNavigationSeq || operatorPageDisposed || !showArchive.value) return false;
+  return true;
+}
+
+function discardOperatorImport() {
+  importText.value = '';
+  onImportTextInput();
 }
 
 function hideBackupImport() {
-  if (!selectedScanReview.value) showImport.value = false;
+  if (!selectedScanReview.value) { showImport.value = false; showArchive.value = false; }
 }
 
 async function loadScanReviews() {
@@ -3941,8 +3916,7 @@ async function openScanReview(review) {
     scanReviewComplete.value = false;
     scanReviewSavedMessage.value = '';
     scanReviewCurrent.value = null;
-    showArchive.value = true;
-    accountWorkspaceCompact.value = false;
+    showArchive.value = false;
     showImport.value = true;
     importText.value = '';
     onImportTextInput();
@@ -9520,6 +9494,7 @@ async function afterImport() {
   importText.value = "";
   importError.value = "";
   showImport.value = false;
+  showArchive.value = false;
   subjectiveRefreshKey.value += 1;
   Promise.all([
     reloadCurrent(),
@@ -9733,7 +9708,11 @@ onBeforeUnmount(function () {
 .scan-review-panel button { border: 1px solid var(--rouge); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .import-technical summary { cursor: pointer; }
-.archive-actions > .export-group:first-child { grid-column: 1 / -1; }
+.import-box.operator-exchange-body { margin: 0; padding: 0; border: 0; background: transparent; }
+.operator-exchange-body :is(button, input[type="file"], summary) { min-height: 44px; }
+.operator-exchange-export { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.operator-exchange-export .export-group { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.operator-exchange-export .export-options { flex-wrap: wrap; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .operator-share-placeholder p { color: var(--ink-60); }
 
@@ -12782,7 +12761,6 @@ onBeforeUnmount(function () {
 }
 
 @media (min-width: 1081px) {
-  .operator-account-workspace :deep(.workspace-panels) { border-top: 0; }
   .operator-tabs .workspace-tabs-toggle:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 }
 .ledger-status-help { color: var(--ink-60); }

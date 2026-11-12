@@ -6,7 +6,7 @@
         <template #description>作者：线线&amp;<a href="https://yoyo-yuan.github.io/yuan-bonds/" target="_blank" rel="noopener noreferrer">悠扬</a> · 独立创作</template>
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :error="state.accountsError" :switch-disabled="state.busy" switch-disabled-reason="正在保存或处理文件，请等待完成。" /></template>
         <template #actions>
-          <button type="button" class="bond-header-action" :disabled="state.busy" :aria-expanded="exchangeOpen" aria-controls="bond-exchange" @click="exchangeOpen = !exchangeOpen"><Archive :size="15" aria-hidden="true" />{{ exchangeOpen ? '收起导入/导出' : '导入/导出' }}</button>
+          <button type="button" class="bond-header-action" :disabled="state.busy" aria-haspopup="dialog" @click="exchangeOpen = true"><Archive :size="15" aria-hidden="true" />导入/导出</button>
           <button type="button" class="bond-header-action" :disabled="state.busy" :aria-expanded="settingsOpen" aria-controls="bond-settings" @click="settingsOpen = !settingsOpen"><Settings :size="15" aria-hidden="true" />设置</button>
         </template>
       </CompactToolHeader>
@@ -23,9 +23,6 @@
         </section>
         <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
           <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
-        </section>
-        <section v-show="exchangeOpen" id="bond-exchange" class="bond-secondary-panel" aria-label="羁绊导入/导出">
-          <BondExchange :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
         </section>
         <p v-if="state.notice" class="bond-feedback" role="status">{{ state.notice }}</p>
         <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
@@ -143,7 +140,9 @@
             <nav v-if="resultGroupCount > 20" class="bond-pagination" aria-label="图鉴分页"><button type="button" :disabled="state.busy || page === 0" @click="page--">上一页</button><span>第 {{ page + 1 }} / {{ Math.ceil(resultGroupCount / 20) }} 页</span><button type="button" :disabled="state.busy || (page + 1) * 20 >= resultGroupCount" @click="page++">下一页</button></nav>
           </template>
         </section>
-      </div><SiteFooter />
+      </div>
+      <BondExchange v-model:open="exchangeOpen" :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
+      <SiteFooter />
     </main>
     <main v-else id="main-content" class="bonds-main"><p role="status">请先登录并确认内测资格后使用羁绊图鉴。</p></main>
   </div>

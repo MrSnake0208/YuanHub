@@ -8,8 +8,8 @@
   .achievement-page .compact-tool-account .context-selector { min-height: 40px; padding-inline: 12px; }
   .achievement-page .compact-tool-actions { gap: 8px; }
   .achievement-workspace { padding-block: 6px 32px; }
-  .achievement-main button, .achievement-dialog button { min-height: 32px; padding: 5px 10px; font: inherit; font-size: 13px; }
-  .achievement-main input:not([type="checkbox"]), .achievement-main select, .achievement-main textarea, .achievement-dialog input:not([type="checkbox"]), .achievement-dialog select, .achievement-dialog textarea { min-width: 0; max-width: 100%; padding: 7px 9px; }
+  .achievement-main button { min-height: 32px; padding: 5px 10px; font: inherit; font-size: 13px; }
+  .achievement-main input:not([type="checkbox"]), .achievement-main select, .achievement-main textarea { min-width: 0; max-width: 100%; padding: 7px 9px; }
   .achievement-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 14px; padding-block: 14px; font-size: 12px; }
   .achievement-stat { padding-inline: 12px; }
   .achievement-stat b { display: block; font-size: 27px; line-height: 1.2; margin-top: 3px; }
@@ -52,18 +52,9 @@
   .achievement-status button { width: 100%; min-height: 36px; padding: 6px 9px; }
   .achievement-pagination { justify-content: center; margin-block: 18px; font-size: 13px; }
   .achievement-empty { padding: 30px 16px; line-height: 1.8; }
-  .achievement-mask { display: flex; align-items: stretch; justify-content: flex-end; padding: 16px; }
-  .achievement-dialog { display: flex; flex-direction: column; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow: hidden; }
-  .achievement-dialog header, .achievement-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; flex-shrink: 0; }
-  .achievement-dialog h2 { flex: 1; min-width: 0; margin: 0; font-size: 21px; overflow-wrap: anywhere; }
-  .achievement-dialog header { border-bottom: 1px solid var(--line); }
-  .achievement-dialog footer { border-top: 1px solid var(--line); }
-  .achievement-dialog-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 18px 16px; }
   .achievement-file-label { display: grid; gap: 7px; margin-block: 6px; }
   .achievement-hint { font-size: 12px; line-height: 1.6; }
   .achievement-import-items { max-height: 300px; overflow: auto; padding-left: 24px; font-size: 12px; }
-  .achievement-dialog.is-short { overflow: auto; }
-  .achievement-dialog.is-short .achievement-dialog-body { overflow: visible; flex-shrink: 0; }
   .achievement-group { margin-top: 12px; }
   .achievement-row { padding: 12px 16px; }
   .achievement-row-main, .achievement-column-headings { display: grid; grid-template-columns: 36px minmax(0, 1.35fr) minmax(0, 1fr) 164px; gap: 16px; align-items: center; }

@@ -16,8 +16,8 @@
         </template>
         <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
-          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" aria-controls="inventory-exchange" @click="toggleInventoryArchive">
-            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock || drawResourceLocked || importing" aria-haspopup="dialog" @click="openInventoryExchange">
+            <Archive :size="15" aria-hidden="true" />导入/导出
           </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
@@ -65,90 +65,81 @@
             </template>
           </RewardEntryWorkspace>
 
-          <ArchiveExchangePanel
-            v-if="showArchive && !editingStock"
-            id="inventory-exchange"
-            :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
-            :import-open="showImport"
-            :import-disabled="!auth.isLoggedIn || editingStock || drawResourceLocked"
-            :export-disabled="!auth.isLoggedIn || !accountId"
-            :scope="exportAll ? 'all' : 'current'"
-            scope-name="inventory-export-scope"
-            :scope-options="inventoryExportScopeOptions"
-            @toggle-import="toggleInventoryImport"
-            @update:scope="exportAll = $event === 'all'"
-            @export="doExport"
-          />
+          <DataExchangeDialog v-model:open="showArchive" v-model:tab="inventoryExchangeTab" :account-name="currentAccountName" :game="agentGameFilter" :busy="importing" :before-close="beforeCloseInventoryExchange" @close="discardInventoryImport">
+            <template #import>
+              <div class="inventory-exchange-content">
+                <ImportGuide :sources="[{ title: '本站库存备份', from: '在库存页「导入/导出」里导出的文件，包含物品库存、密探心纸数量或奖励流水。可点「示例导入」了解格式。' }]" :step="importing || importResult ? 3 : importText.trim() ? 2 : 1" :steps="['选择文件', '核对文件内容', '确认导入']" />
+                <p id="inventory-import-tip" class="tip">
+                  选择库存备份，也可以粘贴文件内容。文件可包含你拥有的多个账号，请核对文件中记录的目标账号与数量；点击「确认导入」会直接写入，不另生成预览。完整库存快照可能覆盖已有数量，请先备份。
+                </p>
+                <textarea
+                  id="inventory-import-json"
+                  v-model="importText"
+                  :disabled="importing || loadingExample || drawResourceLocked"
+                  aria-label="库存交换档案 JSON"
+                  :aria-invalid="!!importError"
+                  :aria-describedby="
+                    importError
+                      ? 'inventory-import-tip inventory-import-error'
+                      : 'inventory-import-tip'
+                  "
+                  autocomplete="off"
+                  placeholder="也可以把备份文件内容粘贴到这里"
+                  @input="importError = ''; importResult = null"
+                ></textarea>
+                <p
+                  v-if="importError"
+                  id="inventory-import-error"
+                  class="import-error"
+                  role="alert"
+                >
+                  {{ importError }}
+                </p>
+                <div class="import-actions">
+                  <button type="button" class="btn ghost file-label" :disabled="importing || loadingExample || drawResourceLocked" @click="inventoryImportFile.value = ''; inventoryImportFile.click()">选择 JSON 文件</button>
+                  <input ref="inventoryImportFile" type="file" hidden accept=".json,application/json" :disabled="importing || loadingExample || drawResourceLocked" @change="onFilePick" />
+                  <button
+                    class="btn ghost"
+                    type="button" :disabled="loadingExample || importing || drawResourceLocked"
+                    @click="fillExample"
+                  >
+                    {{ loadingExample ? "加载中…" : "示例导入" }}
+                  </button>
+                </div>
+                <div v-if="importResult" class="import-result">
+                  导入完成：接受 {{ importResult.accepted }} 条 · 重复
+                  {{ importResult.duplicates }} 条
+                  <span v-if="importResult.history_only">
+                    · 仅历史 {{ importResult.history_only }} 条</span
+                  >
+                  <span v-if="importResult.superseded">
+                    · 已归档 {{ importResult.superseded }} 条</span
+                  >
+                  <button class="ok" type="button" :disabled="importing || loadingExample" @click="afterImport">刷新库存</button>
+                </div>
+                <details class="inventory-import-technical"><summary>技术详情</summary><p>粘贴或上传符合《库存数据交换协议 v2》的 JSON 文档。</p><pre tabindex="0">{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}</pre></details>
+              </div>
+            </template>
+            <template #import-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || editingStock || drawResourceLocked || importing || loadingExample || !importText.trim()" @click="doImport">{{ importing ? '导入中…' : '确认导入' }}</button></template>
+            <template #export>
+              <div class="inventory-exchange-content">
+                <fieldset class="inventory-export-options" :disabled="!auth.isLoggedIn || !accountId || importing || loadingExample || drawResourceLocked">
+                  <legend>导出范围</legend>
+                  <label v-for="option in inventoryExportScopeOptions" :key="option.value" class="inventory-export-option">
+                    <input v-model="exportAll" type="radio" name="inventory-export-scope" :value="option.value === 'all'" :disabled="option.disabled">
+                    <span><strong>{{ option.label }}</strong><small>{{ option.detail }}</small></span>
+                  </label>
+                </fieldset>
+                <p class="tip">用于在不同平台之间迁移库存；备份包含当前库存及所选统计时段的奖励流水，下载前请确认账号范围。</p>
+                <p class="tip">奖励流水时段：{{ rangeFrom }} 至 {{ rangeTo }}（含结束日）。</p>
+              </div>
+            </template>
+            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing || loadingExample || drawResourceLocked" @click="doExport">下载备份</button></template>
+          </DataExchangeDialog>
 
           <InventoryWorkspaceTabs
             :active-tab="activeTab" @select="setTab"
           />
-
-          <!-- 导入档案 -->
-          <div v-if="showArchive && !editingStock && showImport" class="import-box">
-            <ImportGuide :sources="[{ title: '本站库存备份', from: '在库存页「导入/导出」里导出的文件，包含物品库存、密探心纸数量或奖励流水。可点「示例导入」了解格式。' }]" :step="importing || importResult ? 3 : importText.trim() ? 2 : 1" :steps="['选择文件', '核对文件内容', '确认导入']" />
-            <p id="inventory-import-tip" class="tip">
-              选择库存备份，也可以粘贴文件内容。文件可包含你拥有的多个账号，请核对文件中记录的目标账号与数量；点击「导入」会直接写入，不另生成预览。完整库存快照可能覆盖已有数量，请先备份。
-            </p>
-            <textarea
-              id="inventory-import-json"
-              v-model="importText"
-              aria-label="库存交换档案 JSON"
-              :aria-invalid="!!importError"
-              :aria-describedby="
-                importError
-                  ? 'inventory-import-tip inventory-import-error'
-                  : 'inventory-import-tip'
-              "
-              autocomplete="off"
-              placeholder="也可以把备份文件内容粘贴到这里"
-              @input="importError = ''"
-            ></textarea>
-            <p
-              v-if="importError"
-              id="inventory-import-error"
-              class="import-error"
-              role="alert"
-            >
-              {{ importError }}
-            </p>
-            <div class="import-actions">
-              <label class="btn ghost file-label">
-                选择 JSON 文件
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  @change="onFilePick"
-                />
-              </label>
-              <button
-                class="btn ghost"
-                :disabled="loadingExample"
-                @click="fillExample"
-              >
-                {{ loadingExample ? "加载中…" : "示例导入" }}
-              </button>
-              <button
-                class="btn primary"
-                :disabled="importing || !importText.trim()"
-                @click="doImport"
-              >
-                导入
-              </button>
-            </div>
-            <div v-if="importResult" class="import-result">
-              导入完成：接受 {{ importResult.accepted }} 条 · 重复
-              {{ importResult.duplicates }} 条
-              <span v-if="importResult.history_only">
-                · 仅历史 {{ importResult.history_only }} 条</span
-              >
-              <span v-if="importResult.superseded">
-                · 已归档 {{ importResult.superseded }} 条</span
-              >
-              <button class="ok" @click="afterImport">刷新库存</button>
-            </div>
-            <details class="inventory-import-technical"><summary>技术详情</summary><p>粘贴或上传符合《库存数据交换协议 v2》的 JSON 文档。</p><pre tabindex="0">{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}</pre></details>
-          </div>
 
           <!-- 追踪目录（YuanHub 当前支持的追踪范围，登录后叠加云端库存） -->
           <div
@@ -1650,7 +1641,7 @@ import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import { inventoryCurrentRead } from '../../utils/inventoryEvents.js';
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
-import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
+import DataExchangeDialog from "../../components/DataExchangeDialog.vue";
 import ImportGuide from "../../components/ImportGuide.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
@@ -1859,8 +1850,9 @@ const rangePresets = [
   { id: "this-month", label: "本月" },
   { id: "last-month", label: "上月" },
 ];
-const showImport = ref(false);
 const showArchive = ref(false);
+const inventoryExchangeTab = ref("import");
+const inventoryImportFile = ref(null);
 const importText = ref("");
 const importError = ref("");
 const importing = ref(false);
@@ -1888,20 +1880,27 @@ let stockEditSeq = 0;
 let currentLoadSeq = 0;
 let accountsLoadSeq = 0;
 let inventoryContextSeq = 0;
+let inventoryExchangeSeq = 0;
 let inventoryPageReady = false;
 let inventoryDisposed = false;
 
-function toggleInventoryArchive() {
-  showArchive.value = !showArchive.value;
-  if (!showArchive.value) showImport.value = false;
+watch(showArchive, () => { inventoryExchangeSeq++; loadingExample.value = false; }, { flush: 'sync' });
+watch([editingStock, drawResourceLocked], ([editing, locked]) => { if (editing || locked) showArchive.value = false; }, { flush: 'sync' });
+function openInventoryExchange() {
+  if (!auth.isLoggedIn || editingStock.value || drawResourceLocked.value || importing.value) return;
+  inventoryExchangeTab.value = "import";
+  showArchive.value = true;
 }
-function toggleInventoryImport() {
-  if (drawResourceLocked.value) return;
-  if (!showArchive.value || editingStock.value) {
-    showImport.value = false;
-    return;
-  }
-  showImport.value = !showImport.value;
+async function beforeCloseInventoryExchange() {
+  if (importing.value) return false;
+  const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq, text = importText.value, result = importResult.value;
+  if (text.trim() && !result && !(await dialog.confirm({ title: '放弃未导入的内容？', message: '关闭后需要重新选择文件或粘贴内容，已保存的数据不受影响。', confirmText: '放弃并关闭', cancelText: '继续核对' }))) return false;
+  return !inventoryDisposed && !importing.value && contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq && text === importText.value && result === importResult.value && showArchive.value;
+}
+function discardInventoryImport() {
+  importText.value = "";
+  importError.value = "";
+  importResult.value = null;
 }
 const stockEditScopeIds = ref(null);
 const stockEditScopeName = ref("");
@@ -3188,7 +3187,7 @@ function startStockEdit(scopeEntries, scopeName) {
     : "";
   stockEditError.value = "";
   stockSaveNotice.value = "";
-  showImport.value = false;
+  showArchive.value = false;
   if (entityType.value === "agent") {
     agentControlsCollapsedBeforeEdit.value = agentControlsCollapsed.value;
     agentControlsCollapsed.value = true;
@@ -3864,12 +3863,13 @@ async function doImport() {
 function onFilePick(ev) {
   const file = ev && ev.target && ev.target.files && ev.target.files[0];
   if (!file) return;
-  const contextSeq = inventoryContextSeq;
+  const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
   const reader = new FileReader();
   reader.onload = function () {
-    if (contextSeq !== inventoryContextSeq) return;
+    if (inventoryDisposed || contextSeq !== inventoryContextSeq || exchangeSeq !== inventoryExchangeSeq || !showArchive.value) return;
     importText.value = String(reader.result || "");
     importError.value = "";
+    importResult.value = null;
   };
   reader.readAsText(file, "utf-8");
 }
@@ -3877,12 +3877,15 @@ function onFilePick(ev) {
 async function fillExample() {
   if (loadingExample.value) return;
   loadingExample.value = true;
+  const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
   try {
     const res = await fetch(
       import.meta.env.BASE_URL + "inventory-import-example.json",
     );
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
+    if (inventoryDisposed || contextSeq !== inventoryContextSeq || exchangeSeq !== inventoryExchangeSeq || !showArchive.value) return;
+    importResult.value = null;
     // 示例文档里的 account_id 为占位符 acc_demo_main：若已选择子账号，则替换为当前账号，
     // 使示例可以直接导入（后端要求 records 引用的 account_id 必须归属当前用户）。
     if (accountId.value) {
@@ -3909,9 +3912,9 @@ async function fillExample() {
       importError.value = "";
     }
   } catch (err) {
-    alert(humanErr(err, "加载示例失败"));
+    if (!inventoryDisposed && contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq) alert(humanErr(err, "加载示例失败"));
   } finally {
-    loadingExample.value = false;
+    if (contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq) loadingExample.value = false;
   }
 }
 
@@ -3919,7 +3922,7 @@ function afterImport() {
   importResult.value = null;
   importText.value = "";
   importError.value = "";
-  showImport.value = false;
+  showArchive.value = false;
   reloadCurrent();
   invalidateAcquiredData();
   if (activeTab.value === "acquired") loadAcquired();
@@ -4116,15 +4119,17 @@ onBeforeUnmount(function () {
   cursor: not-allowed;
 }
 
-.import-box {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-}
-.import-box .tip {
+.inventory-exchange-content { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.inventory-exchange-content .tip {
   color: var(--ink-60);
 }
-.import-box textarea {
+.inventory-exchange-content textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
   border: 1.5px solid var(--line);
   border-radius: 12px;
   color: var(--ink);
@@ -4132,12 +4137,21 @@ onBeforeUnmount(function () {
   outline: none;
   transition: border-color 0.3s;
 }
-.import-box textarea:focus {
+.inventory-exchange-content textarea:focus {
   border-color: var(--theme-focus, var(--accent));
 }
-.import-box textarea[aria-invalid="true"] {
+.inventory-exchange-content textarea[aria-invalid="true"] {
   border-color: var(--rouge);
 }
+.inventory-exchange-content .import-actions { flex-wrap: wrap; }
+.inventory-exchange-content :is(button, summary) { min-height: 44px; }
+.inventory-exchange-content :is(button, input, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.inventory-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
+.inventory-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.inventory-export-option input { flex: none; accent-color: var(--accent); }
+.inventory-export-option span { min-width: 0; }
+.inventory-export-option strong, .inventory-export-option small { display: block; }
+.inventory-export-option small { color: var(--ink-60); }
 .import-error {
   color: var(--theme-danger-text, var(--rouge));
 }
@@ -5473,9 +5487,6 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .import-box {
-    border-radius: 14px;
-  }
   .manifest-scope {
     border-left: 0;
     border-right: 0;

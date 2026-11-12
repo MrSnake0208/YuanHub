@@ -22,13 +22,13 @@
 .achievement-page .compact-tool-header .compact-tool-help { color: var(--ink-60); border-color: transparent; background: transparent; }
 .achievement-page .compact-tool-account .context-selector { border: 1px solid var(--achievement-line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 2px 7px rgba(var(--theme-shadow-rgb, 73, 59, 44), .04); }
 .achievement-page .compact-tool-account .context-selector::before { display: none; }
-.achievement-main button, .achievement-dialog button { color: var(--ink); border: 1px solid var(--achievement-line, var(--line)); border-radius: 8px; background: var(--surface); cursor: pointer; }
-.achievement-main button:hover:not(:disabled), .achievement-dialog button:hover:not(:disabled) { border-color: var(--theme-accent-text, var(--tea)); }
-.achievement-main button:disabled, .achievement-dialog button:disabled { opacity: .5; cursor: not-allowed; }
-.achievement-main :is(button, input, textarea, select, summary, a):focus-visible, .achievement-dialog :is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
-.achievement-main :is(input:not([type="checkbox"]), select, textarea), .achievement-dialog :is(input:not([type="checkbox"]), select, textarea) { box-sizing: border-box; color: var(--ink); background: var(--surface); border: 1px solid var(--achievement-line, var(--line)); border-radius: 8px; font: inherit; }
-.achievement-main a, .achievement-dialog a { color: var(--theme-strong-text, var(--tea)); }
-.achievement-summary, .achievement-hint, .achievement-results, .achievement-dialog small { color: var(--ink-60); }
+.achievement-main button { color: var(--ink); border: 1px solid var(--achievement-line, var(--line)); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.achievement-main button:hover:not(:disabled) { border-color: var(--theme-accent-text, var(--tea)); }
+.achievement-main button:disabled { opacity: .5; cursor: not-allowed; }
+.achievement-main :is(button, input, textarea, select, summary, a):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.achievement-main :is(input:not([type="checkbox"]), select, textarea) { box-sizing: border-box; color: var(--ink); background: var(--surface); border: 1px solid var(--achievement-line, var(--line)); border-radius: 8px; font: inherit; }
+.achievement-main a { color: var(--theme-strong-text, var(--tea)); }
+.achievement-summary, .achievement-hint, .achievement-results { color: var(--ink-60); }
 .achievement-summary { background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--achievement-line); border-radius: 9px; }
 .achievement-stat { min-width: 0; text-align: center; }
 .achievement-stat + .achievement-stat { border-left: 1px solid var(--achievement-line); }
@@ -63,10 +63,10 @@
 .achievement-check input { width: 16px; height: 16px; margin: 0; }
 .achievement-main input::placeholder, .achievement-main textarea::placeholder { color: var(--ink-60); opacity: 1; }
 .achievement-main .achievement-search input { border: 0; background: transparent; }
-.achievement-main .achievement-favorite, .achievement-dialog .achievement-favorite { color: color-mix(in srgb, var(--achievement-gold) 76%, var(--ink-60)); border-color: transparent; background: transparent; }
+.achievement-main .achievement-favorite { color: color-mix(in srgb, var(--achievement-gold) 76%, var(--ink-60)); border-color: transparent; background: transparent; }
 .achievement-main .achievement-favorite[aria-pressed="true"] { color: var(--achievement-gold); background: color-mix(in srgb, var(--yellow) 20%, transparent); }
 .achievement-favorite[aria-pressed="true"] svg { fill: currentColor; }
-.achievement-main .achievement-batch-toggle, .achievement-main .achievement-save, .achievement-dialog .achievement-save { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
+.achievement-main .achievement-batch-toggle, .achievement-main .achievement-save { background: var(--tea); border-color: var(--tea); color: var(--on-strong); }
 .achievement-main .achievement-batch-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 2px 5px rgba(var(--theme-shadow-rgb, 73, 59, 44), .08); }
 .achievement-batch { border-block: 1px solid var(--achievement-line); background: color-mix(in srgb, var(--surface) 65%, transparent); }
 .achievement-progress { color: var(--ink-60); font-variant-numeric: tabular-nums; }
@@ -74,11 +74,6 @@
 .achievement-progress progress::-webkit-progress-bar { background: var(--paper); border-radius: 8px; }
 .achievement-progress progress::-webkit-progress-value { background: var(--accent-strong); border-radius: 8px; }
 .achievement-progress progress::-moz-progress-bar { background: var(--accent-strong); border-radius: 8px; }
-.achievement-dialog summary { cursor: pointer; }
-.achievement-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); background: var(--theme-overlay, rgb(38 31 25 / .45)); }
-.achievement-dialog { box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 48px rgba(var(--theme-shadow-rgb, 38, 31, 25), 0.12); }
-.achievement-dialog header, .achievement-dialog footer { border-color: var(--line); }
-.achievement-dialog p, .achievement-dialog li, .achievement-dialog small { overflow-wrap: anywhere; white-space: pre-wrap; }
 /* 稳定行结构跨端复用；排列与间距分别由两端 CSS 持有。 */
 .achievement-row-main > *, .achievement-inline-editor, .achievement-supplement { min-width: 0; }
 .achievement-title { margin: 0; }

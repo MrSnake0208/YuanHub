@@ -1,0 +1,9 @@
+@media (max-width: 767px) {
+  .data-exchange-dialog { width: 100%; max-height: min(92dvh, calc(var(--modal-viewport-height, 100dvh) - max(12px, env(safe-area-inset-top)))); border-radius: 20px 20px 0 0; }
+  .data-exchange-header { padding: 12px 16px; }
+  .data-exchange-body { padding: 0 16px 16px; }
+  .data-exchange-footer { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+  .data-exchange-dialog.is-short .data-exchange-header { padding-block: 4px; }
+  .data-exchange-dialog.is-short .data-exchange-header h2 { font-size: 18px; }
+  .data-exchange-dialog.is-short .data-exchange-footer { padding-top: 4px; }
+}
