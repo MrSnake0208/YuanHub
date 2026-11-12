@@ -78,8 +78,12 @@
   :deep(.disc-editor-item) { padding: 12px; min-width: 0 }
   :deep(.disc-row) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; align-items: center; gap: 8px }
   :deep(.disc-row > label) { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; height: auto; margin: 0; padding: 0 }
-  :deep(.disc-number) { grid-column: 1; grid-row: 1; font-weight: 700; font-size: 13px }
-  :deep(.disc-color) { grid-column: 2; grid-row: 1 }
+  :deep(.disc-number) { grid-column: 1; grid-row: 1; max-width: 32px; font-weight: 700; font-size: 13px }
+  :deep(.disc-number .compact-label) { display: block }
+  :deep(.disc-color) { grid-column: 1 / 3; grid-row: 1; justify-self: end; display: flex; align-items: start; gap: 8px }
+  :deep(.disc-color-choice) { position: relative; display: block; flex: none; width: 44px; margin: 0; padding: 0; font: 14px/1 var(--font-b) }
+  :deep(.disc-color-input) { position: absolute; width: 1px; height: 1px; min-height: 0; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap }
+  :deep(.disc-color-swatch) { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px }
   :deep(.disc-row .sub-del) { grid-column: 3; grid-row: 1 }
   :deep(.disc-name) { grid-column: 1; grid-row: 2 }
   :deep(.disc-abbreviation) { grid-column: 2 / -1; grid-row: 2 }
@@ -112,6 +116,10 @@
     :deep(.fields-2col) { grid-template-columns: 1fr }
     :deep(.oddity-choice-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)) }
     :deep(.editor-buttons .btn) { flex: 1; padding-inline: 8px }
+  }
+  @media (max-width: 359px) {
+    :deep(.disc-color) { grid-column: 1 / -1; grid-row: 2; justify-self: start }
+    :deep(.disc-name), :deep(.disc-abbreviation) { grid-row: 3 }
   }
   @media (min-width: 600px) and (max-height: 540px) {
     :deep(.editor-head) { grid-template-columns: auto 44px minmax(0, 1fr) auto; padding-block: 4px }

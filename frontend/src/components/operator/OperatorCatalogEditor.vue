@@ -130,12 +130,12 @@
               <span class="disc-number"><span class="compact-label">命盘 </span>{{ i + 1 }}</span>
               <label class="disc-name"><span class="compact-label">名称 ot_name</span><input v-model.trim="d.ot_name" :aria-label="'命盘 ' + (i + 1) + ' 名称'" placeholder="ot_name（必填，唯一）" /></label>
               <label class="disc-abbreviation"><span class="compact-label">简称</span><input v-model.trim="d.abbreviation" :aria-label="'命盘 ' + (i + 1) + ' 简称'" placeholder="简称" /></label>
-              <select v-model="d.color" class="disc-color" :aria-label="'命盘 ' + (i + 1) + ' 颜色'">
-                <option value="">无色</option>
-                <option value="金">金</option>
-                <option value="紫">紫</option>
-                <option value="蓝">蓝</option>
-              </select>
+              <div class="disc-color" role="radiogroup" :aria-label="'命盘 ' + (i + 1) + ' 颜色'">
+                <label v-for="color in ['金', '紫', '蓝']" :key="color" class="disc-color-choice" :data-color="color">
+                  <input v-model="d.color" class="disc-color-input" type="radio" :name="'disc-color-' + d._key" :value="color" />
+                  <span class="disc-color-swatch">{{ color }}</span>
+                </label>
+              </div>
               <label class="disc-description"><span class="compact-label">描述</span><textarea v-model.trim="d.desp" rows="1" :aria-label="'命盘 ' + (i + 1) + ' 描述'" placeholder="描述" @input="resizeDescription($event.target)" /></label>
               <button class="editor-text-button aliases-toggle" :class="{ muted: !aliasCount(d) }" type="button" :aria-expanded="expandedAliases.has(d._key)" :aria-controls="'disc-aliases-' + d._key" @click="toggleAliases(d)">{{ aliasCount(d) ? '别名 ' + aliasCount(d) : '+ 别名' }}</button>
               <button class="sub-del danger" type="button" :aria-label="'删除第 ' + (i + 1) + ' 条命盘'" @click="removeDisc(d)"><Trash2 :size="18" aria-hidden="true" /></button>
@@ -224,6 +224,7 @@ const SPECIAL_ODDITY_PRESETS = ['增伤值', '免伤值', '治疗加成']
 const CUSTOM_ODDITY_OPTION = '__custom__'
 
 // —— 新增 / 编辑 ——
+let discKey = 0
 const editing = ref(false)
 const isNew = ref(false)
 const form = ref(blankForm())
@@ -243,7 +244,6 @@ const activeSection = ref('基础')
 const checkingLeave = ref(false)
 const busy = computed(function () { return saving.value || avatarUploading.value || avatarOptimizing.value })
 const dirty = computed(function () { return editing.value && snapshot() !== initialSnapshot.value })
-let discKey = 0
 let previousId = ''
 let permissionRedirect = false
 let disposed = false
@@ -421,7 +421,9 @@ function blankForm() {
     avatar: '',
     avatarPick: null,
     avatarPreview: '',
-    discs: [],
+    discs: Array.from({ length: 12 }, function () {
+      return { _key: ++discKey, _persisted: false, ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '', despAliasesText: '' }
+    }),
     starStones: [{ name: '主星石', type: 'main' }, { name: '辅星石', type: 'assist' }]
   }
 }

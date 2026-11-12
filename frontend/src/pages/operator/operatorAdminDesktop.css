@@ -74,12 +74,16 @@
   :deep(.oddity-schema-preview > div) { display: flex; gap: 6px }
   :deep(.oddity-schema-preview dd) { margin: 0 }
   :deep(.sub-editor) { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
-  :deep(.disc-columns), :deep(.disc-row) { display: grid; grid-template-columns: 24px minmax(100px, 1fr) 96px 60px minmax(180px, 2.4fr) 64px 40px; gap: 8px; align-items: start }
+  :deep(.disc-columns), :deep(.disc-row) { display: grid; grid-template-columns: 24px minmax(100px, 1fr) 96px 110px minmax(180px, 2.4fr) 64px 40px; gap: 8px; align-items: start }
   :deep(.disc-columns), :deep(.stone-columns) { font-size: 12px; font-weight: 700; padding-bottom: 4px }
   :deep(.disc-row > label) { display: block; min-width: 0; min-height: 0; height: auto; margin: 0; padding: 0; align-self: start; line-height: normal }
   :deep(.disc-number) { padding-top: 10px; font: 12px var(--font-d) }
   :deep(.aliases-toggle) { min-height: 28px; justify-self: start; padding: 4px }
-  :deep(.editor-body .disc-row input), :deep(.editor-body .disc-row select), :deep(.editor-body .stone-row input), :deep(.editor-body .stone-row select) { display: block; height: 40px; min-height: 40px; margin: 0; padding: 8px 6px; font-size: 13px }
+  :deep(.editor-body .disc-row input:not([type='radio'])), :deep(.editor-body .stone-row input), :deep(.editor-body .stone-row select) { display: block; height: 40px; min-height: 40px; margin: 0; padding: 8px 6px; font-size: 13px }
+  :deep(.disc-color) { display: flex; gap: 4px; align-items: start }
+  :deep(.disc-color-choice) { position: relative; display: block; flex: none; width: 34px; margin: 0; padding: 0; font: 13px/1 var(--font-b) }
+  :deep(.disc-color-input) { position: absolute; width: 1px; height: 1px; min-height: 0; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap }
+  :deep(.disc-color-swatch) { display: grid; place-items: center; box-sizing: border-box; width: 34px; height: 40px }
   :deep(.editor-body .disc-description textarea) { display: block; field-sizing: content; min-height: 40px; max-height: none; margin: 0; padding: 8px 6px; font-size: 13px; overflow-y: hidden; resize: none }
   :deep(.disc-editor-item) { min-width: 0; padding-bottom: 4px }
   :deep(.disc-alias-panel) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; margin-top: 8px }
@@ -102,5 +106,5 @@
   .state-retry { min-height: 40px; padding: 4px 8px; font: inherit }
   /* 窄桌面保留双栏，命盘区域允许局部横向滚动。 */
   :deep(.sub-editor) { overflow-x: auto }
-  :deep(.disc-columns), :deep(.disc-row) { min-width: 712px }
+  :deep(.disc-columns), :deep(.disc-row) { min-width: 762px }
 }

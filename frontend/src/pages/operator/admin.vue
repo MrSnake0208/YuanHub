@@ -388,6 +388,14 @@ load()
 :deep(.games-pick label.on) { background: var(--yellow); color: var(--ink); border-color: var(--yellow-deep) }
 :deep(.games-pick input) { accent-color: var(--accent) }
 :deep(.disc-editor-item) { border-bottom: 1px solid var(--line) }
+:deep(.disc-color-choice[data-color='金']) { --disc-option-color: var(--theme-accent-text, #8a5a1f) }
+:deep(.disc-color-choice[data-color='紫']) { --disc-option-color: var(--theme-purple-text, #6d56a0) }
+:deep(.disc-color-choice[data-color='蓝']) { --disc-option-color: var(--theme-info-text, #4f6387) }
+:deep(.disc-color-choice) { cursor: pointer }
+:deep(.disc-color-swatch) { border: 1px solid var(--disc-option-color); border-radius: 6px; background: color-mix(in srgb, var(--disc-option-color) 10%, var(--paper)); color: var(--disc-option-color) }
+:deep(.disc-color-input:checked + .disc-color-swatch) { background: var(--disc-option-color); color: var(--surface) }
+:deep(.disc-color-input:focus-visible + .disc-color-swatch) { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px }
+:deep(.disc-color-input:disabled + .disc-color-swatch) { opacity: .45; cursor: not-allowed }
 :deep(.disc-alias-panel) { background: var(--cream); border-radius: 8px }
 :deep(.disc-columns), :deep(.stone-columns), :deep(.disc-number) { color: var(--ink-60) }
 :deep(.sub-del) { border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
