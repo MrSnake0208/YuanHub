@@ -1,110 +1,106 @@
-/* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {.operator-main{margin-left:292px;min-height:100vh;min-height:100dvh;min-width:0}
-.wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
-.operator-main { padding-bottom: 0 }
-.catalog-content { padding-top: 12px }
-.catalog-summary { margin: 10px 0 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere }
-
-.banner { margin-top: 24px }
-
-.admin-bar { display: flex; align-items: center; gap: 14px; padding: 12px 0; flex-wrap: wrap }
-.admin-bar .sp { flex: 1 }
-.admin-bar .btn { flex: none }
-.adm-search-wrap { width: 280px; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px }
-.adm-search { min-width: 0; flex: 1; padding: 9px 0; font-size: 13px; font-family: var(--font-b) }
-.result-count { font-family: var(--font-d); font-size: 12px; font-weight: 700; white-space: nowrap }
-
-.catalog-table-wrap { margin-top: 12px; position: relative; padding: 8px 10px; overflow-x: auto; scrollbar-gutter: stable }
-.catalog-table { width: 100%; font-size: 13px; min-width: 980px }
-.catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; padding: 10px 8px; white-space: nowrap }
-.catalog-table td { padding: 10px 8px; vertical-align: middle }
-.catalog-mobile { display: none }
-
-.cell-op { min-width: 178px }
-.cell-op { display: flex; align-items: center; gap: 8px }
-.op-ph { flex: none; width: 34px; height: 34px; display: grid; place-items: center; font-family: var(--font-d); font-weight: 900; font-size: 14px }
-.op-avatar { flex: none; width: 34px; height: 34px; object-fit: cover }
-.avatar-editor { display: flex; flex-direction: column; gap: 8px }
-.avatar-editor-main { display: flex; align-items: center; gap: 16px }
-.avatar-preview { width: 72px; height: 72px; object-fit: cover }
-.avatar-placeholder { width: 72px; height: 72px; display: grid; place-items: center; font-size: 12px; text-align: center }
-.avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
-.avatar-file { display: none }
-.op-name { min-width: 0; max-width: 260px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 1px; line-height: 1.3 }
-.op-name small { font-family: var(--font-d); font-size: 10.5px }
-.op-name em { font-style: normal; font-size: 11px }
-
-.rarity { font-family: var(--font-d); font-weight: 800; white-space: nowrap }
-.cell-prof { min-width: 132px }
-.cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
-.tag-prof { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px 1px 10px; font-size: 11px; line-height: 1.2; font-weight: 800 }
-.tag-subprof { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px; font-size: 11px; line-height: 1.2; font-weight: 800 }
-.tag-station { display: inline-flex; align-items: center; justify-content: center; padding: 1px 7px; font-size: 11px; line-height: 1.2 }
-.tag-sp { display: inline-flex; align-items: center; justify-content: center; padding: 1px 8px; font-size: 11px; line-height: 1.2; font-weight: 800 }
-.cell-oddity { min-width: 124px }
-.cell-oddity span { display: block; font-weight: 800 }
-.cell-oddity small { font-family: var(--font-d); font-size: 10.5px }
-.muted { font-size: 12px }
-.cell-ver { width: 96px; max-width: 96px }
-.cell-ver code { display: block; font-family: var(--font-d); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.cell-ver small { font-size: 10.5px }
-.ops-col { position: sticky; right: 0; z-index: 2; min-width: 116px; text-align: right !important; white-space: nowrap }
-.catalog-table thead .ops-col { z-index: 3 }
-.ops-btn { min-height: 44px; padding: 5px 8px; font-size: 12px; font-weight: 800; font-family: var(--font-b); margin-left: 4px }
-.editor-mask { position: fixed; inset: 0; display: grid; place-items: center; z-index: var(--z-overlay-panel); padding: 24px }
-.editor-panel { width: min(720px, 100%); max-height: 86vh; max-height: 86dvh; overflow-y: auto; padding: 24px 26px }
-.editor-head { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 14px }
-.editor-head > div { min-width: 0; overflow-wrap: anywhere }
-.editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 22px; letter-spacing: .02em }
-.editor-sub { font-size: 12px; margin-top: 4px }
-.editor-close { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 auto; display: grid; place-items: center }
-.editor-body { padding: 16px 0 4px; display: flex; flex-direction: column; gap: 16px }
-.editor-row { display: flex; flex-direction: column; gap: 10px }
-.editor-label { font-size: 12.5px; font-weight: 800; font-family: var(--font-b) }
-.fields-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px }
-.fields-2col label, .spof-input { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700 }
-.fields-2col input, .fields-2col select, .spof-input { padding: 8px 10px; font-size: 13px; font-family: var(--font-b) }
-.oddity-editor-row { align-items: start }
-.oddity-choice-field { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 800 }
-.oddity-choice-field legend { margin-bottom: 8px }
-.oddity-choice-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
-.oddity-choice-grid label { display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; gap: 7px; padding: 7px 9px }
-.oddity-choice-grid input { flex: none; width: 16px; height: 16px }
-.oddity-custom-field { display: flex; flex-direction: column; gap: 5px }
-.oddity-custom-field input { min-height: 44px; padding: 8px 10px; font: 13px var(--font-b) }
-.field-error { font-size: 11.5px; font-weight: 700 }
-.oddity-schema-preview { display: grid; min-width: min(300px, 100%); flex: 1; gap: 6px }
-.oddity-schema-preview > span { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px }
-.oddity-schema-preview code { font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
-.oddity-schema-preview b { overflow: hidden; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap }
-.oddity-schema-preview em { font-size: 10.5px; font-style: normal; white-space: nowrap }
-.multi-field { min-width: 0; grid-column: 1 / -1 }
-.multi-field legend { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; font-size: 12px; font-weight: 800 }
-.multi-field legend small { flex: none; font-size: 11px; font-weight: 600 }
-.multi-pick { display: flex; flex-wrap: wrap; gap: 8px }
-.multi-pick label { min-width: 58px; min-height: 44px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 7px 11px; font-size: 13px; font-weight: 800 }
-.fields-2col .multi-pick input { flex: none; width: 16px; height: 16px; min-height: 16px; padding: 0 }
-.multi-pick .prof-option { min-width: 68px; justify-content: flex-start; padding-left: 13px }
-.games-pick { display: flex; gap: 10px }
-.games-pick label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 800 }
-.spof-input { width: 220px }
-
-.sub-editor { display: flex; flex-direction: column; gap: 8px }
-.sub-row { display: flex; gap: 8px; align-items: center }
-.sub-row input, .sub-row select { padding: 7px 10px; font-size: 12.5px; font-family: var(--font-b) }
-.sub-ot { flex: 2.2; min-width: 140px }
-.sub-sm { flex: 1; min-width: 80px }
-.sub-desp { flex: 3; min-width: 120px }
-.sub-color { flex: .8; min-width: 76px }
-.sub-del { flex: none; width: 44px; height: 44px; display: grid; place-items: center }
-.btn.mini { padding: 6px 12px; font-size: 12px; align-self: flex-start }
-.hint { font-size: 11.5px; font-weight: 600 }
-
-.editor-notice { padding: 10px 14px; font-size: 12.5px }
-.editor-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; margin-top: 8px }
-
-.btn { min-height: 44px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b) }
-
-.state { text-align: center; padding: 40px 20px; font-size: 13.5px; margin-top: 20px }
-.state-retry { min-width: 44px; min-height: 44px; margin-left: 6px; padding: 2px 6px; font: inherit; font-weight: 800 }
+/* 宽屏列表与编辑器各自滚动，操作栏留在面板内。 */
+@media not all and (max-width: 1080px) {
+  .operator-main { margin-left: 292px; min-height: 100dvh; min-width: 0 }
+  .wrap { max-width: 1640px; margin: 0 auto; padding: 0 24px; min-width: 0 }
+  .catalog-content { padding-top: 12px }
+  .admin-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 12px 0 }
+  .admin-bar .sp { flex: 1 }
+  .adm-search-wrap { width: 280px; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px }
+  .adm-search { min-width: 0; flex: 1; padding: 9px 0; font: 14px var(--font-b) }
+  .result-count, .catalog-summary { font-size: 12px }
+  .catalog-summary { margin: 10px 0; line-height: 1.7 }
+  .catalog-workspace { --catalog-panel-height: max(320px, calc(100dvh - 300px)); display: grid; grid-template-columns: clamp(280px, 26vw, 340px) minmax(0, 1fr); align-items: start; gap: 16px; margin-top: 12px }
+  .catalog-list, :deep(.editor-panel) { position: sticky; top: 16px; max-height: var(--catalog-panel-height); min-width: 0 }
+  .catalog-list { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable }
+  .catalog-row { width: 100%; padding: 14px; display: flex; flex-direction: column; gap: 8px; text-align: left }
+  .catalog-row-heading { display: flex; align-items: center; gap: 10px; min-width: 0 }
+  .catalog-row-heading .rarity { margin-left: auto; font-size: 12px }
+  .op-avatar, .op-ph { width: 40px; height: 40px; flex: none; object-fit: cover }
+  .op-ph, :deep(.editor-head-avatar.op-ph) { display: grid; place-items: center; font-weight: 800 }
+  .op-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere }
+  .op-name b { font-size: 15px }
+  .op-name small { font: 11px var(--font-d) }
+  .cell-tag-flow, .catalog-row-status { display: flex; flex-wrap: wrap; align-items: center; gap: 5px }
+  .catalog-row-status { font-size: 12px }
+  .tag-prof, .tag-subprof, .tag-station, .tag-sp { padding: 2px 7px; font-size: 11px }
+  :deep(.editor-panel) { display: flex; flex-direction: column; height: var(--catalog-panel-height); overflow: hidden }
+  :deep(.editor-head) { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 14px; flex: none }
+  :deep(.editor-head-avatar) { width: 56px; height: 56px; flex: none; object-fit: cover }
+  :deep(.editor-heading) { min-width: 0; overflow-wrap: anywhere }
+  :deep(.editor-heading h2) { font: 800 20px/1.2 var(--font-s); margin: 0 }
+  :deep(.editor-sub) { font-size: 12px; line-height: 1.35; margin: 1px 0 0 }
+  :deep(.editor-text-button) { display: inline-flex; width: auto; height: auto; min-height: 20px; flex: none; align-items: center; justify-content: center; gap: 4px; padding: 0 2px; white-space: nowrap; font: 12px/1.5 var(--font-b) }
+  :deep(.editor-head .catalog-delete) { width: auto; min-width: 0; max-width: none; flex: none; align-self: start; justify-self: end; padding: 3px 2px }
+  :deep(.editor-nav) { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; flex: none; overflow-x: auto }
+  :deep(.editor-nav button) { width: auto; min-width: max-content; height: 36px; min-height: 36px; flex: none; padding: 4px 10px; white-space: nowrap; font: 13px var(--font-b) }
+  :deep(.editor-body) { flex: 1; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; margin: 0; padding: 16px; border: 0; display: flex; flex-direction: column; gap: 24px }
+  :deep(.editor-row) { display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 16px }
+  :deep(.editor-label) { margin: 0; font-size: 16px; font-weight: 800 }
+  :deep(.avatar-actions) { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: center; margin-top: 1px }
+  :deep(.avatar-file) { display: none }
+  :deep(.fields-2col) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px }
+  :deep(.sp-picker-field) { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; font-weight: 700 }
+  :deep(.sp-picker-control) { display: flex; align-items: center; gap: 8px; min-width: 0 }
+  :deep(.sp-picker-trigger) { display: flex; flex: 1; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 6px 8px; font: 13px/1.5 var(--font-b); text-align: left; overflow-wrap: anywhere }
+  :deep(.sp-picker-clear) { min-height: 44px }
+  :deep(.sp-picker-chevron) { margin-left: auto; flex: none }
+  :deep(.sp-picker-avatar), :global(.operator-sp-picker-popup .sp-picker-avatar) { width: 30px; height: 30px; flex: none; object-fit: cover }
+  :deep(.sp-picker-placeholder), :global(.operator-sp-picker-popup .sp-picker-placeholder) { display: grid; place-items: center; font-size: 13px; font-weight: 700 }
+  :deep(.sp-picker-identity), :global(.operator-sp-picker-popup .sp-picker-identity) { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 1px; overflow-wrap: anywhere }
+  :deep(.sp-picker-identity b), :global(.operator-sp-picker-popup .sp-picker-identity b) { font-size: 13px; font-weight: 700 }
+  :deep(.sp-picker-identity small), :global(.operator-sp-picker-popup .sp-picker-identity small) { font: 11px/1.4 var(--font-d) }
+  :global(.operator-sp-picker-popup) { position: fixed; z-index: var(--z-popover); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 8px; overflow: hidden; font: 13px/1.5 var(--font-b) }
+  :global(.operator-sp-picker-search) { flex: none; box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; font: 16px/1.5 var(--font-b) }
+  :global(.operator-sp-picker-options) { min-height: 0; max-height: 280px; overflow-y: auto; overscroll-behavior: contain }
+  :global(.operator-sp-picker-option) { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px; box-sizing: border-box }
+  :global(.operator-sp-picker-rarity) { margin-left: auto; font-size: 12px; flex: none }
+  :global(.operator-sp-picker-check) { margin-left: auto; flex: none }
+  :global(.operator-sp-picker-empty) { margin: 0; padding: 12px 8px; font-size: 12px }
+  :deep(.fields-2col > label), :deep(.oddity-custom-field), :deep(.disc-aliases) { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0 }
+  :deep(.alias-hint) { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; overflow-wrap: anywhere }
+  :deep(.alias-hint .alias-regenerate) { align-self: flex-start; max-width: 100%; white-space: normal; text-align: left }
+  :deep(.editor-body input:not([type='checkbox']):not([type='radio'])), :deep(.editor-body select), :deep(.editor-body textarea) { box-sizing: border-box; width: 100%; min-width: 0; padding: 9px 10px; font: 14px/1.6 var(--font-b) }
+  :deep(.editor-body textarea) { resize: vertical }
+  :deep(.multi-field) { grid-column: 1 / -1 }
+  :deep(.multi-field), :deep(.version-field), :deep(.oddity-choice-field) { min-width: 0; margin: 0; padding: 0; border: 0 }
+  :deep(.multi-field legend), :deep(.version-field legend), :deep(.oddity-choice-field legend) { font-size: 13px; font-weight: 700; margin-bottom: 8px }
+  :deep(.multi-field legend small) { margin-left: 8px; font-weight: 400 }
+  :deep(.multi-pick), :deep(.games-pick) { display: flex; flex-wrap: wrap; gap: 8px }
+  :deep(.multi-pick label), :deep(.games-pick label), :deep(.oddity-choice-grid label) { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 7px 10px; font-size: 13px }
+  :deep(.multi-pick input), :deep(.games-pick input), :deep(.oddity-choice-grid input) { width: 16px; height: 16px; flex: none }
+  :deep(.oddity-choice-field) { display: flex; flex-direction: column; gap: 8px }
+  :deep(.oddity-choice-grid) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+  :deep(.oddity-schema-preview) { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; font-size: 13px }
+  :deep(.oddity-schema-preview > div) { display: flex; gap: 6px }
+  :deep(.oddity-schema-preview dd) { margin: 0 }
+  :deep(.sub-editor) { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+  :deep(.disc-columns), :deep(.disc-row) { display: grid; grid-template-columns: 24px minmax(100px, 1fr) 96px 60px minmax(180px, 2.4fr) 64px 40px; gap: 8px; align-items: start }
+  :deep(.disc-columns), :deep(.stone-columns) { font-size: 12px; font-weight: 700; padding-bottom: 4px }
+  :deep(.disc-row > label) { display: block; min-width: 0; min-height: 0; height: auto; margin: 0; padding: 0; align-self: start; line-height: normal }
+  :deep(.disc-number) { padding-top: 10px; font: 12px var(--font-d) }
+  :deep(.aliases-toggle) { min-height: 28px; justify-self: start; padding: 4px }
+  :deep(.editor-body .disc-row input), :deep(.editor-body .disc-row select), :deep(.editor-body .stone-row input), :deep(.editor-body .stone-row select) { display: block; height: 40px; min-height: 40px; margin: 0; padding: 8px 6px; font-size: 13px }
+  :deep(.editor-body .disc-description textarea) { display: block; field-sizing: content; min-height: 40px; max-height: none; margin: 0; padding: 8px 6px; font-size: 13px; overflow-y: hidden; resize: none }
+  :deep(.disc-editor-item) { min-width: 0; padding-bottom: 4px }
+  :deep(.disc-alias-panel) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; margin-top: 8px }
+  :deep(.disc-alias-panel .hint) { grid-column: 1 / -1 }
+  :deep(.editor-body .compact-label) { display: none }
+  :deep(.stone-columns), :deep(.stone-row) { display: grid; grid-template-columns: minmax(0, 1fr) 200px 40px; gap: 8px; align-items: start; width: 100%; max-width: 560px }
+  :deep(.stone-row) { flex: none; min-height: 0; height: auto; margin: 0; padding: 0 }
+  :deep(.stone-row label) { display: block; min-width: 0; min-height: 0; height: auto; margin: 0; padding: 0; align-self: start; line-height: normal }
+  :deep(.sub-del) { display: grid; place-items: center; width: 40px; min-height: 40px }
+  :deep(.editor-panel .hint), :deep(.editor-panel .field-error), :deep(.avatar-notice) { margin: 0; font-size: 12px; line-height: 1.65; overflow-wrap: anywhere }
+  :deep(.editor-actions) { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; flex: none; padding: 10px 14px }
+  :deep(.editor-status) { flex: 1; min-width: 160px; font-size: 12px; overflow-wrap: anywhere }
+  :deep(.editor-status p) { margin: 0; line-height: 1.6 }
+  :deep(.editor-notice) { margin-top: 4px !important }
+  :deep(.editor-buttons) { display: flex; flex: none; flex-wrap: nowrap; gap: 8px }
+  :deep(.editor-buttons .btn) { flex: none; width: auto; min-width: max-content; height: 40px }
+  .btn, :deep(.editor-panel .btn) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; white-space: nowrap; font: 700 13px var(--font-b) }
+  .btn.mini, :deep(.editor-panel .btn.mini) { padding: 6px 10px; align-self: flex-start; font-size: 12px }
+  .state { padding: 32px 16px; text-align: center; font-size: 14px }
+  .state-retry { min-height: 40px; padding: 4px 8px; font: inherit }
+  /* 窄桌面保留双栏，命盘区域允许局部横向滚动。 */
+  :deep(.sub-editor) { overflow-x: auto }
+  :deep(.disc-columns), :deep(.disc-row) { min-width: 712px }
 }
