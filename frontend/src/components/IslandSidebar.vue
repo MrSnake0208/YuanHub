@@ -284,7 +284,7 @@
             <img src="/brand/yuanhub-logo.png" alt="" width="30" height="30" />
             <span class="sidebar-account-copy">
               <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
-              <small>{{ isLoggedIn ? "账号与连接码" : "登录与外观设置" }}</small>
+              <small>{{ isLoggedIn ? "账号与设置" : "登录与外观设置" }}</small>
             </span>
             <ChevronDown :size="14" class="account-chevron" aria-hidden="true" />
           </summary>
