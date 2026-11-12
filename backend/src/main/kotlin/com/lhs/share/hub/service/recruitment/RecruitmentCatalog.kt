@@ -115,12 +115,17 @@ class RecruitmentCatalog(
             poolType = pool.poolType,
             upAgents = slots,
             allowCustomUp = pool.allowCustomUp,
+            allowCumulativeChoice = pool.allowCumulativeChoice,
         )
     }
 
     fun validateWishes(game: String, ids: List<String>) {
         if (ids.size != 2 || ids.distinct().size != 2) throw recruitmentInvalid("请选择两位不同的心愿密探")
         if (ids.any { operator(game, it).rarity != 5 }) throw recruitmentInvalid("心愿密探只能选择当前游戏的绝密密探")
+    }
+
+    fun validateCumulativeChoice(game: String, id: String) {
+        if (operator(game, id).rarity != 5) throw recruitmentInvalid("累抽自选只能选择当前游戏的绝密密探")
     }
 
     fun personalSnapshot(pool: RecruitmentPool, requireEnabled: Boolean = true): RecruitmentPoolSnapshot {
@@ -323,6 +328,9 @@ class RecruitmentCatalog(
         if (node.has("allow_custom_up") && !node.get("allow_custom_up").isBoolean) {
             throw recruitmentInvalid("第${position}个卡池allow_custom_up必须是布尔值")
         }
+        if (node.has("allow_cumulative_choice") && !node.get("allow_cumulative_choice").isBoolean) {
+            throw recruitmentInvalid("第${position}个卡池allow_cumulative_choice必须是布尔值")
+        }
         val poolId = requiredText(node, "pool_id", position)
         val game = requiredText(node, "game", position)
         requireGame(game)
@@ -367,6 +375,7 @@ class RecruitmentCatalog(
             sourceNote = sourceNote,
             hidden = optionalBoolean(node, "hidden", position, false),
             allowCustomUp = optionalBoolean(node, "allow_custom_up", position, false),
+            allowCumulativeChoice = optionalBoolean(node, "allow_cumulative_choice", position, false),
         )
     }
 
@@ -546,6 +555,7 @@ class RecruitmentCatalog(
             sourceNote = current?.sourceNote,
             hidden = input.hidden ?: current?.hidden ?: false,
             allowCustomUp = input.allowCustomUp ?: current?.allowCustomUp ?: false,
+            allowCumulativeChoice = input.allowCumulativeChoice ?: current?.allowCumulativeChoice ?: false,
         )
         try {
             if (!repository.save(next, current != null)) throw recruitmentConflict("卡池已变化，请刷新后重试")

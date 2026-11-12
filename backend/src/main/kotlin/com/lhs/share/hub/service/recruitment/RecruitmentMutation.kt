@@ -96,6 +96,16 @@ class RecruitmentMutation(
             }
             "pool_records_save" -> {
                 val input = read<RecruitmentPoolRecordsSave>(data)
+                input.cumulativeChoiceAgentId?.let { id ->
+                    val selected = pool(current, input.poolId)
+                    if (id.isNotEmpty()) {
+                        if (!catalog.personalSnapshot(selected).allowCumulativeChoice) {
+                            throw recruitmentInvalid("该卡池未开放累抽自选")
+                        }
+                        catalog.validateCumulativeChoice(current.gameSnapshot, id)
+                    }
+                    current = replacePool(current, selected.copy(cumulativeChoiceAgentId = id.takeIf { it.isNotEmpty() }))
+                }
                 input.wishAgentIds?.let { ids ->
                     val selected = pool(current, input.poolId)
                     if (!catalog.personalSnapshot(selected).allowCustomUp) throw recruitmentInvalid("该卡池未开放自选心愿UP")
@@ -148,7 +158,9 @@ class RecruitmentMutation(
                         byId.getValue(id).takeIf { it.sortOrder != slots[index] }?.copy(sortOrder = slots[index], updatedAt = now)
                     }
                 }
-                if (input.remainingPulls == null && modifiedEvents.isEmpty() && ordered == null && input.wishAgentIds == null) {
+                if (input.remainingPulls == null && modifiedEvents.isEmpty() && ordered == null &&
+                    input.wishAgentIds == null && input.cumulativeChoiceAgentId == null
+                ) {
                     throw recruitmentInvalid("请修改出货记录、顺序或填写保底进度后保存")
                 }
                 val touchedBatches = (changed + removed).mapNotNull { it.batchId }.toSet()

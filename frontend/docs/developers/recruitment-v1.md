@@ -28,6 +28,8 @@ Schema：[recruitment-exchange-v1.schema.json](./schemas/recruitment-exchange-v1
 
 所有引用必须自洽且同游戏；历史密探快照 rarity 显式为4或5。批次有效 span 总和不能超过 total，删除时间与版本需要成对满足约束。纯日期为 YYYY-MM-DD，时间戳 UTC；未知事实保留 null，不补零冒充已确认。
 
+池快照的 `allow_cumulative_choice` 缺省为 `false`；个人池的 `cumulative_choice_agent_id` 保存一位「300 累抽自选」绝密密探 ID，缺省、`null` 或空字符串表示未选择。该标记只记录选择，不生成事件，也不影响统计或 UP 状态。导入非空选择须为当前游戏 rarity 5；目录已关闭时仅允许保留该池已有的相同选择，清除始终允许。`keep_current` 保留已有池的选择，新池不恢复该标记；`use_backup` 或空档案恢复时采用备份选择，纳入状态变化确认。
+
 公共池即使停用、UP槽退役也能保留合法历史；不能借备份创建公共目录、伪造 catalog_pool_id 或新增旧临时池/密探。已有历史临时项允许导出、判重及冲突保留，不代表允许新建。
 
 ## 恢复与兼容

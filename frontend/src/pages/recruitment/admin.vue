@@ -137,6 +137,9 @@
                   <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
                     <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>
                   </label>
+                  <label class="wish-mode"><span><input v-model="form.allow_cumulative_choice" type="checkbox" :disabled="saving"> 允许 300 累抽自选</span>
+                    <small>用户可标记一位本游戏绝密密探，各账号独立保存，不计入抽卡统计。</small>
+                  </label>
                   <label>开始日期
                     <input v-model="form.start_date" type="date" :disabled="saving">
                   </label>
@@ -368,6 +371,7 @@ function comparableForm(value) {
     enabled: !!value.enabled,
     hidden: !!value.hidden,
     allow_custom_up: !!value.allow_custom_up,
+    allow_cumulative_choice: !!value.allow_cumulative_choice,
     up_agents: value.up_agents.map(slot => ({
       id: slot.id,
       name: slot.name,
@@ -496,6 +500,7 @@ function openNew() {
     enabled: true,
     hidden: false,
     allow_custom_up: false,
+    allow_cumulative_choice: false,
     revision: 0,
     up_agents: [],
   }
@@ -512,6 +517,7 @@ function openEdit(pool) {
     ...pool,
     hidden: !!pool.hidden,
     allow_custom_up: !!pool.allow_custom_up,
+    allow_cumulative_choice: !!pool.allow_cumulative_choice,
     pool_type: pool.pool_type || '',
     start_date: pool.start_date || '',
     end_date: pool.end_date || '',
@@ -638,6 +644,7 @@ async function save() {
       enabled: form.value.enabled,
       hidden: form.value.hidden,
       allow_custom_up: form.value.allow_custom_up,
+      allow_cumulative_choice: form.value.allow_cumulative_choice,
       expected_revision: form.value.revision,
       up_agents: form.value.up_agents.map(slot => ({
         id: slot.id,

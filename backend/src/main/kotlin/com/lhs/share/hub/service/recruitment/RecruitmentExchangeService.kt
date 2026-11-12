@@ -55,11 +55,14 @@ class RecruitmentExchangeService(
                         snapshot = pool.snapshot.copy(
                             upAgents = latest.snapshot.upAgents,
                             allowCustomUp = latest.snapshot.allowCustomUp,
+                            allowCumulativeChoice = latest.snapshot.allowCumulativeChoice,
                         ),
                         mappedSnapshot = pool.mappedSnapshot?.copy(
                             upAgents =
                             latest.mappedSnapshot?.upAgents ?: pool.mappedSnapshot.upAgents,
                             allowCustomUp = latest.mappedSnapshot?.allowCustomUp ?: pool.mappedSnapshot.allowCustomUp,
+                            allowCumulativeChoice = latest.mappedSnapshot?.allowCumulativeChoice
+                                ?: pool.mappedSnapshot.allowCumulativeChoice,
                         ),
                     )
                 },

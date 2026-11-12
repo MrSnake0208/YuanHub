@@ -58,6 +58,7 @@ internal class RecruitmentExchangeValidation(private val mapper: ObjectMapper) {
                 fail("心愿密探必须为两位不同的绝密密探")
             }
             it.wishAgentIds.forEach(::id)
+            it.cumulativeChoiceAgentId?.takeIf { choice -> choice.isNotEmpty() }?.let(::id)
             it.progress?.let { count -> recruitmentCount(count, "progress") }
             it.mappedSnapshot?.let { mapped ->
                 snapshot(mapped, document.game)
@@ -145,6 +146,12 @@ internal class RecruitmentExchangeValidation(private val mapper: ObjectMapper) {
                 catalog.validateWishes(document.game, pool.wishAgentIds)
                 if (definitions[reference.catalogPoolId]?.allowCustomUp != true && pool.wishAgentIds != old?.wishAgentIds) {
                     fail("该卡池未开放自选心愿UP，不能导入新的心愿选择")
+                }
+            }
+            pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() }?.let { id ->
+                catalog.validateCumulativeChoice(document.game, id)
+                if (definitions[reference.catalogPoolId]?.allowCumulativeChoice != true && id != old?.cumulativeChoiceAgentId) {
+                    fail("该卡池未开放累抽自选")
                 }
             }
             if (definitions[reference.catalogPoolId]?.hidden == true &&

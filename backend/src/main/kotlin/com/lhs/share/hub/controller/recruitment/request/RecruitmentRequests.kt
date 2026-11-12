@@ -55,6 +55,7 @@ data class RecruitmentPoolRecordsSave(
     @param:JsonProperty(required = true) val remainingPulls: Int?,
     val orderedEventIds: List<String>? = null,
     val wishAgentIds: List<String>? = null,
+    val cumulativeChoiceAgentId: String? = null,
 )
 
 data class RecruitmentEventUpdate(val eventId: String, val entry: RecruitmentEventInput)
@@ -84,7 +85,7 @@ class RecruitmentRequestDecoder(mapper: ObjectMapper) {
     fun <T> read(node: JsonNode, type: Class<T>): T {
         if (!node.isObject) throw recruitmentInvalid("请求必须是JSON对象")
         if (type == RecruitmentCatalogWriteRequest::class.java) {
-            for (field in listOf("hidden", "allow_custom_up")) {
+            for (field in listOf("hidden", "allow_custom_up", "allow_cumulative_choice")) {
                 if (node.has(field) && !node.get(field).isBoolean) {
                     throw recruitmentInvalid("${field}必须是布尔值；省略时保留已有状态")
                 }

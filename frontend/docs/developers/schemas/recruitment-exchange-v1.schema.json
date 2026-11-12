@@ -211,6 +211,10 @@
         "allow_custom_up": {
           "type": "boolean"
         },
+        "allow_cumulative_choice": {
+          "type": "boolean",
+          "default": false
+        },
         "up_agents": {
           "type": "array",
           "items": {
@@ -295,6 +299,13 @@
           "oneOf": [{ "maxItems": 0 }, { "minItems": 2 }],
           "minItems": 0,
           "maxItems": 2
+        },
+        "cumulative_choice_agent_id": {
+          "description": "300 累抽自选标记，不计入任何抽卡统计；空字符串或 null 表示未选择。",
+          "anyOf": [
+            { "type": "string", "pattern": "^([A-Za-z0-9][A-Za-z0-9._:-]{0,127})?$" },
+            { "type": "null" }
+          ]
         },
         "mapped_snapshot": {
           "anyOf": [

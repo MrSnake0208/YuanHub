@@ -33,4 +33,5 @@ data class RecruitmentCatalogPool(
     val sourceNote: String? = null,
     val hidden: Boolean = false,
     val allowCustomUp: Boolean = false,
+    val allowCumulativeChoice: Boolean = false,
 )

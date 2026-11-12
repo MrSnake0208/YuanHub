@@ -103,7 +103,7 @@
               </div>
               <div class="entry-workflow" :class="{ 'is-choosing': choosingAgent }">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'agents'" target="agents" :message="guideMessage" />
-                <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" :aria-label="poolDefinition.allow_custom_up ? '心愿密探与快速登记出货' : '快速登记出货'">
+                <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" aria-label="密探选择与快速登记出货">
                   <div v-for="(agent, index) in shortcutAgents" :key="poolDefinition.allow_custom_up ? index : agent.id" class="quick-up-slot" :class="{ 'is-wish-slot': poolDefinition.allow_custom_up }">
                   <button
                     type="button"
@@ -130,10 +130,10 @@
                     type="button"
                     class="add-record"
                     :aria-label="selectedOtherAgent ? '更换密探：' + selectedOtherAgent.name : shortcutAgents.length ? '其他密探' : '新增记录'"
-                    :aria-expanded="choosingAgent && wishPickerIndex === null"
+                    :aria-expanded="choosingAgent && wishPickerIndex === null && !cumulativeChoicePicker"
                     :aria-controls="editorId + '-agent-picker'"
                     :aria-pressed="!!selectedOtherAgent"
-                    :class="{ 'is-selected': choosingAgent && wishPickerIndex === null || selectedOtherAgent }"
+                    :class="{ 'is-selected': choosingAgent && wishPickerIndex === null && !cumulativeChoicePicker || selectedOtherAgent }"
                     :disabled="recordEntryDisabled"
                     @click="add('', $event)"
                   >
@@ -142,6 +142,22 @@
                     <span class="quick-up-name">{{ selectedOtherAgent?.name || (shortcutAgents.length ? '其他密探' : '新增记录') }}</span>
                     <Check v-if="selectedOtherAgent" class="quick-up-check" :size="14" aria-hidden="true" />
                   </button>
+                  <button
+                    v-if="poolDefinition.allow_cumulative_choice"
+                    type="button"
+                    class="quick-up-button cumulative-choice-button"
+                    :aria-label="cumulativeChoiceAgentId ? '修改 300 累抽自选密探：' + cumulativeChoiceName : '选择 300 累抽自选密探'"
+                    :aria-expanded="cumulativeChoicePicker"
+                    :aria-controls="editorId + '-agent-picker'"
+                    :class="{ 'is-selected': cumulativeChoicePicker }"
+                    :disabled="cumulativeChoiceEntryDisabled"
+                    @click="openCumulativeChoicePicker($event)"
+                  >
+                    <OperatorAvatar v-if="cumulativeChoiceAgent" class="quick-up-avatar" :avatar="agentAvatar(cumulativeChoiceAgent)" :name="cumulativeChoiceName" :rarity="5" aria-hidden="true" />
+                    <span v-else class="other-agent-placeholder"><Plus :size="22" aria-hidden="true" /></span>
+                    <span v-if="cumulativeChoiceAgentId" class="quick-up-mark">300 累抽</span>
+                    <span class="quick-up-name">{{ cumulativeChoiceAgentId ? cumulativeChoiceName : '300 累抽自选' }}</span>
+                  </button>
                 </div>
 
               <div
@@ -149,11 +165,11 @@
                 ref="entryComposer"
                 class="entry-composer"
                 role="group"
-                :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : activeRow && originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
+                :aria-label="cumulativeChoicePicker ? '选择 300 累抽自选密探' : wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : activeRow && originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
 
                 <RecruitmentGuideHint v-if="guideVisible && ['agent-search', 'agent-results'].includes(guideStep)" :target="guideStep" :message="guideMessage" />
-                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" :class="{ 'is-name-search': agentSearch.trim() && agentProfFilter === 'all' && agentSubProfFilter === 'all' }" role="group" :aria-label="wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : '选择其他密探'">
+                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" :class="{ 'is-name-search': agentSearch.trim() && agentProfFilter === 'all' && agentSubProfFilter === 'all' }" role="group" :aria-label="cumulativeChoicePicker ? '选择 300 累抽自选密探' : wishPickerIndex !== null ? '选择心愿密探 ' + (wishPickerIndex + 1) : '选择其他密探'">
                   <label data-guide-target="agent-search" class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
                     <input
@@ -169,6 +185,7 @@
                   <div class="agent-filter-head">
                     <span><b>{{ filteredPickerAgents.length }}</b> / {{ pickerAgents.length }} 位</span>
                     <div class="agent-filter-actions">
+                      <button v-if="cumulativeChoicePicker && cumulativeChoiceAgentId" type="button" class="agent-filter-reset" :disabled="cumulativeChoiceEntryDisabled" @click="clearCumulativeChoice">清除选择</button>
                       <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
                       <button type="button" class="agent-picker-cancel" :disabled="busy" @click="cancelAgentPicker">取消</button>
                     </div>
@@ -211,7 +228,7 @@
                       class="agent-choice"
                       :data-agent-id="agent.id"
                       :aria-label="'选择 ' + agent.name"
-                      :disabled="wishPickerIndex !== null ? wishEntryDisabled || wishAgentIds[1 - wishPickerIndex] === agent.id : busy || readOnly || recordsLoading"
+                      :disabled="cumulativeChoicePicker ? cumulativeChoiceEntryDisabled : wishPickerIndex !== null ? wishEntryDisabled || wishAgentIds[1 - wishPickerIndex] === agent.id : busy || readOnly || recordsLoading"
                       @click="chooseOtherAgent(agent.id)"
                     >
                       <OperatorAvatar class="agent-choice-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
@@ -414,6 +431,8 @@ const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), erro
 const originals = reactive(new Map())
 const wishAgentIds = ref(['', '']), initialWishes = ref([])
 const wishesChanged = computed(() => JSON.stringify(wishAgentIds.value.filter(Boolean)) !== JSON.stringify(initialWishes.value))
+const cumulativeChoiceAgentId = ref(''), initialCumulativeChoice = ref(''), cumulativeChoicePicker = ref(false)
+const cumulativeChoiceChanged = computed(() => cumulativeChoiceAgentId.value !== initialCumulativeChoice.value)
 const editingPool = computed(() => ({ ...props.pool, wish_agent_ids: wishAgentIds.value.filter(Boolean) }))
 const wishOptions = computed(() => props.agents.filter(agent => Number(agent.rarity) === 5))
 const wishPickerIndex = ref(null)
@@ -571,6 +590,7 @@ function entryMatches(event, entry) {
 const receiptVerified = computed(() => {
   const receipt = props.saveReceipt
   if (receipt?.wish_agent_ids && JSON.stringify(props.pool?.wish_agent_ids) !== JSON.stringify(receipt.wish_agent_ids)) return false
+  if (receipt?.cumulative_choice_agent_id !== undefined && (props.pool?.cumulative_choice_agent_id || '') !== receipt.cumulative_choice_agent_id) return false
   return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === (receipt.remaining_pulls == null ? preservedProgress.value : 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at)) && (!receipt.ordered_event_ids || !props.hasMore && JSON.stringify(props.records.filter(event => !event.deleted_at).map(event => event.event_id)) === JSON.stringify(receipt.ordered_event_ids))
 })
 const unverifiedSave = computed(() => props.saveReceipt && !receiptVerified.value)
@@ -580,6 +600,7 @@ watch(receiptVerified, verified => {
   if (!verified || props.saveReceipt === rebasedReceipt) return
   rebasedReceipt = props.saveReceipt
   if (props.saveReceipt.wish_agent_ids) initialWishes.value = [...props.saveReceipt.wish_agent_ids]
+  if (props.saveReceipt.cumulative_choice_agent_id !== undefined) initialCumulativeChoice.value = props.saveReceipt.cumulative_choice_agent_id
   for (const entry of props.saveReceipt.entries) {
     const event = props.records.find(event => entryMatches(event, entry))
     const row = { ...entry, up_status: event.up_status, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
@@ -623,7 +644,10 @@ const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlo
 const shortcutAgents = computed(() => poolDefinition.value.allow_custom_up ? [0, 1].map(index => quickUpAgents.value.find(agent => (agent.operator_id || agent.id) === wishAgentIds.value[index]) || null) : quickUpAgents.value)
 const recordEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || props.recordsLoading || !!props.recordsError || !!unverifiedSave.value || !initialized.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id))) || (!activeRow.value && newCount.value >= 120))
 const wishEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || !props.canRecord || !recordsReady.value || !!unverifiedSave.value || !poolDefinition.value.allow_custom_up)
-const pickerAgents = computed(() => wishPickerIndex.value !== null ? wishOptions.value : options.value)
+const cumulativeChoiceEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || !props.canRecord || !recordsReady.value || !!unverifiedSave.value || !poolDefinition.value.allow_cumulative_choice)
+const cumulativeChoiceAgent = computed(() => wishOptions.value.find(agent => agent.id === cumulativeChoiceAgentId.value))
+const cumulativeChoiceName = computed(() => cumulativeChoiceAgent.value?.name || cumulativeChoiceAgentId.value)
+const pickerAgents = computed(() => cumulativeChoicePicker.value || wishPickerIndex.value !== null ? wishOptions.value : options.value)
 const selectedOtherAgent = computed(() => activeRow.value?.agent_id && !quickUpAgents.value.some(agent => agent.id === activeRow.value.agent_id) ? selectedAgent(activeRow.value) : null)
 const goldOrder = computed(() => {
   const ranks = new Map()
@@ -763,7 +787,7 @@ function recordLabel(row) {
   return (screenshotMode.value ? '' : '编辑') + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
-const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0) + (wishesChanged.value ? 1 : 0))
+const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0) + (wishesChanged.value ? 1 : 0) + (cumulativeChoiceChanged.value ? 1 : 0))
 function hasDraft() {
   if (!props.open || props.practiceResult) return false
   if (pendingCount.value) return true
@@ -890,7 +914,7 @@ function restoreEntry(id = entryReturn?.id) {
 function add(agentId = '', event) {
   if (screenshotMode.value || props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
   if (!activeRow.value) rememberEntry(event?.currentTarget || panel.value?.querySelector('.add-record'))
-  wishPickerIndex.value = null; wishReturn = null
+  wishPickerIndex.value = null; cumulativeChoicePicker.value = false; wishReturn = null
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''
@@ -907,9 +931,9 @@ function add(agentId = '', event) {
   focusEntry(false)
 }
 function cancelAgentPicker() {
-  if (wishPickerIndex.value !== null) {
+  if (wishPickerIndex.value !== null || cumulativeChoicePicker.value) {
     const target = wishReturn, session = editorSession
-    wishPickerIndex.value = null; wishReturn = null; choosingAgent.value = false
+    wishPickerIndex.value = null; cumulativeChoicePicker.value = false; wishReturn = null; choosingAgent.value = false
     resetAgentFilters()
     nextTick(() => { if (session === editorSession) focusInBody(target) })
     return
@@ -920,6 +944,12 @@ function cancelAgentPicker() {
   focusEntry(true)
 }
 function chooseOtherAgent(agentId) {
+  if (cumulativeChoicePicker.value) {
+    if (cumulativeChoiceEntryDisabled.value || !wishOptions.value.some(agent => agent.id === agentId)) return
+    cumulativeChoiceAgentId.value = agentId
+    cancelAgentPicker()
+    return
+  }
   if (wishPickerIndex.value !== null) {
     if (wishEntryDisabled.value || !wishOptions.value.some(agent => agent.id === agentId) || wishAgentIds.value[1 - wishPickerIndex.value] === agentId) return
     wishAgentIds.value[wishPickerIndex.value] = agentId
@@ -935,11 +965,23 @@ function chooseOtherAgent(agentId) {
 function openWishPicker(index, event) {
   if (screenshotMode.value || wishEntryDisabled.value) return
   wishReturn = event.currentTarget
-  wishPickerIndex.value = index; choosingAgent.value = true
+  wishPickerIndex.value = index; cumulativeChoicePicker.value = false; choosingAgent.value = true
   resetAgentFilters()
   focusEntry(false)
 }
-function edit(row, event) { if (screenshotMode.value || isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; wishPickerIndex.value = null; wishReturn = null; focusEntry(true) }
+function openCumulativeChoicePicker(event) {
+  if (screenshotMode.value || cumulativeChoiceEntryDisabled.value) return
+  wishReturn = event.currentTarget
+  wishPickerIndex.value = null; cumulativeChoicePicker.value = true; choosingAgent.value = true
+  resetAgentFilters()
+  focusEntry(false)
+}
+function clearCumulativeChoice() {
+  if (cumulativeChoiceEntryDisabled.value) return
+  cumulativeChoiceAgentId.value = ''
+  cancelAgentPicker()
+}
+function edit(row, event) { if (screenshotMode.value || isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; wishPickerIndex.value = null; cumulativeChoicePicker.value = false; wishReturn = null; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -951,7 +993,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { entryError.value = ''; activeRow.value = null; choosingAgent.value = false; wishPickerIndex.value = null; wishReturn = null; resetAgentFilters(); restoreEntry() }
+function cancelEntry() { entryError.value = ''; activeRow.value = null; choosingAgent.value = false; wishPickerIndex.value = null; cumulativeChoicePicker.value = false; wishReturn = null; resetAgentFilters(); restoreEntry() }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''; entryError.value = ''
@@ -1004,6 +1046,9 @@ watch(() => props.open, open => {
   initialRemaining.value = remaining.value
   initialWishes.value = [...(props.pool?.wish_agent_ids || [])]
   wishAgentIds.value = initialWishes.value.length ? [...initialWishes.value] : ['', '']
+  initialCumulativeChoice.value = props.pool?.cumulative_choice_agent_id || ''
+  cumulativeChoiceAgentId.value = initialCumulativeChoice.value
+  cumulativeChoicePicker.value = false
   nextTick(scheduleEntryVisibility)
 }, { immediate: true })
 watch([() => props.records, () => props.recordsRevision, () => props.open, () => props.recordsLoading], () => {
@@ -1021,7 +1066,12 @@ watch(() => props.pool?.wish_agent_ids, ids => {
   initialWishes.value = [...(ids || [])]
   wishAgentIds.value = initialWishes.value.length ? [...initialWishes.value] : ['', '']
 }, { deep: true })
-watch([rows, orderIds, activeRow, deletedIds, remaining, wishAgentIds, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
+watch(() => props.pool?.cumulative_choice_agent_id, id => {
+  if (!props.open || cumulativeChoiceChanged.value) return
+  initialCumulativeChoice.value = id || ''
+  cumulativeChoiceAgentId.value = initialCumulativeChoice.value
+})
+watch([rows, orderIds, activeRow, deletedIds, remaining, wishAgentIds, cumulativeChoiceAgentId, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
 onMounted(() => {
   const viewport = window.visualViewport
   viewport?.addEventListener('resize', onViewportChange)
@@ -1054,6 +1104,8 @@ async function submit() {
   if (!pendingCount.value) return
   error.value = ''; progressError.value = ''
   try {
+    if (cumulativeChoiceChanged.value && cumulativeChoiceAgentId.value && (!poolDefinition.value.allow_cumulative_choice || !props.canRecord)) throw new Error('该卡池暂不能修改累抽自选密探')
+    if (cumulativeChoiceChanged.value && cumulativeChoiceAgentId.value && !wishOptions.value.some(agent => agent.id === cumulativeChoiceAgentId.value)) throw new Error('请选择一位绝密累抽自选密探')
     if (wishesChanged.value && (!poolDefinition.value.allow_custom_up || !props.canRecord)) throw new Error('该卡池暂不能修改心愿密探')
     if (wishesChanged.value && (wishAgentIds.value.length !== 2 || new Set(wishAgentIds.value).size !== 2 || wishAgentIds.value.some(id => !wishOptions.value.some(agent => agent.id === id)))) throw new Error('请选择两位不同的绝密心愿密探')
     if (missingRecordIds.value.length) throw new Error('旧记录已在其他设备删除，请先核对并移除失效草稿；其余修改仍保留')
@@ -1084,7 +1136,7 @@ async function submit() {
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     preservedProgress.value = props.pool.progress
     if (!requestId) requestId = createRecruitmentId()
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(wishesChanged.value ? { wish_agent_ids: wishAgentIds.value.slice() } : {}), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(wishesChanged.value ? { wish_agent_ids: wishAgentIds.value.slice() } : {}), ...(cumulativeChoiceChanged.value ? { cumulative_choice_agent_id: cumulativeChoiceAgentId.value } : {}), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
   } catch (err) { error.value = err.message; await nextTick(); focusInBody(errorSummary.value) }
 }
 </script>
@@ -1123,6 +1175,9 @@ async function submit() {
   border-color: transparent;
   background: transparent;
 }
+.pool-editor .cumulative-choice-button { border: 1px dashed var(--line); border-radius: 8px; background: var(--surface); }
+.cumulative-choice-button .quick-up-name { white-space: normal; line-height: 1.3; }
+.cumulative-choice-button .quick-up-mark { background: var(--cream); color: var(--ink-60); border: 1px solid var(--line); }
 .other-agent-placeholder { border: 1px dashed var(--line); border-radius: 8px; }
 .quick-up-mark { border-radius: 3px; background: var(--tea); color: var(--on-strong); }
 .quick-up-check { border-radius: 50%; background: var(--theme-success-control, var(--editor-green)); color: var(--on-surface); }

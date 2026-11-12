@@ -45,6 +45,7 @@
               <span class="pool-name">{{ details(pool).name }}</span>
               <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
               <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
+              <span v-if="pool.cumulative_choice_agent_id" class="pool-cumulative-choice">300 累抽 · {{ cumulativeChoiceName(pool) }}</span>
               <span v-if="isEmptyPool(pool)" class="pool-empty">还没有记录</span>
               <span v-else class="pool-metrics">
                 <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
@@ -100,6 +101,7 @@ const goldCount = pool => {
 const failedPortraits = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
 const startDate = pool => details(pool).start_date || ''
+const cumulativeChoiceName = pool => props.agents.find(agent => agent.id === pool.cumulative_choice_agent_id)?.name || pool.cumulative_choice_agent_id
 const permanent = pool => isPermanentRecruitmentPool(details(pool))
 const years = computed(() => [...new Set(props.pools.filter(pool => !permanent(pool)).map(pool => startDate(pool).slice(0, 4)).filter(Boolean))].sort().reverse())
 const hasUndated = computed(() => props.pools.some(pool => !permanent(pool) && !startDate(pool)))
@@ -167,6 +169,7 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 </script>
 
 <style scoped>
+.pool-cumulative-choice{font-size:12px;line-height:1.7;color:var(--ink-60);overflow-wrap:anywhere}
 .batch-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
 

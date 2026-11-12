@@ -38,6 +38,7 @@ data class RecruitmentPoolSnapshot(
     val poolType: String? = null,
     val upAgents: List<RecruitmentUpAgent> = emptyList(),
     val allowCustomUp: Boolean = false,
+    val allowCumulativeChoice: Boolean = false,
 )
 
 /** Stable pool-owned identity. Binding a placeholder never changes its id. */
@@ -54,6 +55,7 @@ data class RecruitmentPool(
     val progress: Long? = null,
     val mappedSnapshot: RecruitmentPoolSnapshot? = null,
     val wishAgentIds: List<String> = emptyList(),
+    val cumulativeChoiceAgentId: String? = null,
 )
 
 data class RecruitmentTemporaryAgent(

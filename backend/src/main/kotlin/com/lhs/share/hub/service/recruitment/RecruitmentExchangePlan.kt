@@ -48,7 +48,8 @@ internal fun recruitmentExchangePlan(
     if (recordsOnly && options.stateStrategy != "keep_current") throw recruitmentInvalid("记录导入只能追加，不能恢复备份状态")
     val restoring = !recordsOnly && currentEvents.isEmpty() && currentBatches.isEmpty() && current.baseline == 0L &&
         current.temporaryAgents.isEmpty() && current.pools.all {
-            it.snapshot.catalogPoolId != null && it.progress == 0L && it.wishAgentIds.isEmpty()
+            it.snapshot.catalogPoolId != null && it.progress == 0L && it.wishAgentIds.isEmpty() &&
+                it.cumulativeChoiceAgentId.isNullOrEmpty()
         }
     val useState = !recordsOnly && (restoring || options.stateStrategy == "use_backup")
     val items = mutableListOf<RecruitmentImportItem>()
@@ -67,11 +68,18 @@ internal fun recruitmentExchangePlan(
                 pools[pool.poolId] = pool.copy(
                     progress = if (useState) pool.progress else null,
                     wishAgentIds = if (useState) pool.wishAgentIds else emptyList(),
+                    cumulativeChoiceAgentId = if (useState) pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() } else null,
                 )
                 item("pool", pool.poolId, "add", "新增卡池快照；当前进度按状态策略处理")
             }
             poolBusiness(old) == poolBusiness(pool) -> {
-                if (useState) pools[pool.poolId] = old.copy(progress = pool.progress, wishAgentIds = pool.wishAgentIds)
+                if (useState) {
+                    pools[pool.poolId] = old.copy(
+                        progress = pool.progress,
+                        wishAgentIds = pool.wishAgentIds,
+                        cumulativeChoiceAgentId = pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() },
+                    )
+                }
                 item("pool", pool.poolId, "duplicate", "已有相同卡池快照")
             }
             else -> {
@@ -177,10 +185,10 @@ internal fun recruitmentExchangePlan(
         nextEventOrder = nextOrder,
     )
     val stateChanged = next.baseline != current.baseline || next.currentPoolId != current.currentPoolId ||
-        next.pools.associate { it.poolId to Pair(it.progress, it.wishAgentIds) } !=
-        current.pools.associate { it.poolId to Pair(it.progress, it.wishAgentIds) }
+        next.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoiceAgentId) } !=
+        current.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoiceAgentId) }
     val needsStateConfirmation = !restoring && options.stateStrategy == "use_backup" && stateChanged
-    if (needsStateConfirmation) risks += "使用备份状态会替换基准、匹配卡池进度与心愿密探（不会相加）；须明确确认候选总抽数"
+    if (needsStateConfirmation) risks += "使用备份状态会替换基准、匹配卡池进度、心愿密探与累抽自选（不会相加）；须明确确认候选总抽数"
     item(
         "state",
         "archive",
@@ -194,7 +202,7 @@ internal fun recruitmentExchangePlan(
         if (restoring) {
             "空档案恢复完整逻辑状态"
         } else if (useState) {
-            "使用备份状态替换基准、匹配卡池进度与心愿密探"
+            "使用备份状态替换基准、匹配卡池进度、心愿密探与累抽自选"
         } else {
             "保留当前基准、进度与偏好"
         },
@@ -260,6 +268,7 @@ private fun snapshotBusiness(value: RecruitmentPoolSnapshot) = if (value.catalog
 private fun poolBusiness(value: RecruitmentPool) = value.copy(
     progress = null,
     wishAgentIds = emptyList(),
+    cumulativeChoiceAgentId = null,
     snapshot = snapshotBusiness(value.snapshot),
     mappedSnapshot = value.mappedSnapshot?.let(::snapshotBusiness),
 )

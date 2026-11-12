@@ -29,6 +29,7 @@ class RecruitmentCatalogRepository(@param:Qualifier("hubMongoTemplate") private 
             Update().set("name", next.name).set("startDate", next.startDate).set("endDate", next.endDate)
                 .set("poolType", next.poolType).set("enabled", next.enabled).set("revision", next.revision)
                 .set("hidden", next.hidden).set("allowCustomUp", next.allowCustomUp)
+                .set("allowCumulativeChoice", next.allowCumulativeChoice)
                 .set("upAgents", next.upAgents).set("upStatus", next.upStatus)
                 .set("updatedBy", next.updatedBy).set("updatedAt", next.updatedAt),
             RecruitmentCatalogPool::class.java,

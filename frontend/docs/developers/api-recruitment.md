@@ -13,6 +13,10 @@ curl --fail-with-body --get --data-urlencode 'game=如鸢' \
 
 ## 备份与恢复
 
+公共目录及卡池快照的 `allow_cumulative_choice` 默认 `false`，由管理员按池配置；目录写入时省略保留原值，目录 JSON 导入省略为 `false`，显式值必须为布尔值。
+
+个人卡池的 `cumulative_choice_agent_id` 是「300 累抽自选」标记。`pool_records_save` 的 `data` 可携带该字段：省略（或 `null`）不修改，`""` 清除，非空字符串设置。设置要求目录已开放且密探为当前游戏绝密（rarity 5），关闭开关后仍允许清除。此标记不生成抽卡事件，不影响任何统计或 UP 状态。
+
 | 方法与路径 | 认证 / Scope | 参数 / 请求 | 成功 data |
 |---|---|---|---|
 | `GET /v1/recruitment/export` | JWT / 无 Token Scope | 必填 `account_id` | 完整 `yuanhub.recruitment.v1` 对象 |
