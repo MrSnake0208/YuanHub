@@ -10,15 +10,15 @@
             :switch-disabled="!productReady || starExchangeBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
         </template>
         <template #actions>
+          <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
+            :aria-expanded="showArchive" aria-controls="star-exchange" @click="showArchive = !showArchive">
+            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+          </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <router-link class="act-btn ghost" to="/star/share">查看他人星石背包</router-link>
               <button v-if="!completionDemo" type="button" class="act-btn ghost" :aria-expanded="showShare" aria-controls="star-account-share" @click="showShare = !showShare">{{ showShare ? '收起分享与数据交换' : '分享与数据交换' }}</button>
-              <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
-                :aria-expanded="showArchive" @click="showArchive = !showArchive">
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
-              </button>
             </div>
           </details>
         </template>
@@ -52,6 +52,7 @@
           </div>
           <ArchiveExchangePanel
             v-if="showArchive"
+            id="star-exchange"
             description="可导入 YuanHub 备份或 MaaYuan 本地完整识别结果（JSON），确认前可预览。导出可备份星石背包、养成计划和经验星曜。"
             :import-open="showStarImport"
             :import-disabled="!productReady || starExchangeBusy"
@@ -64,7 +65,8 @@
           >
             <template #import>
               <section v-if="showStarImport" class="star-exchange-import">
-                <p class="tip">核对目标账号及预览后确认。</p>
+                <ImportGuide :sources="[{ title: '本站星石备份', from: '在星石页「导入/导出」里导出的备份。' }, { title: 'MaaYuan 识别结果', from: 'MaaYuan 本地完整识别后保存的结果文件（JSON）。' }]" :step="starExchangeBusy && starImportPreview ? 3 : starImportPreview || starExchangeBusy ? 2 : 1" :target="selectedHostAccount()?.displayName" />
+                <p class="tip">游戏截图请使用页面上的「导入截图」，不在这里导入。文件最多20 MB；核对目标账号及预览后确认。</p>
                 <label class="btn ghost file-label">
                   选择 JSON 文件
                   <input ref="starImportFile" type="file" accept=".json,application/json" :disabled="starExchangeBusy" @change="onStarImportFile" />
@@ -183,6 +185,7 @@ import { recognitionTutorialExamples, tutorialStorageKey, tutorialSeen, markTuto
 import { bagReviewInfo, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
+import ImportGuide from "../../components/ImportGuide.vue";
 import AccountShareManager from "../../components/AccountShareManager.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";

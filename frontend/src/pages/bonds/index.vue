@@ -6,6 +6,7 @@
         <template #description>作者：线线&amp;<a href="https://yoyo-yuan.github.io/yuan-bonds/" target="_blank" rel="noopener noreferrer">悠扬</a> · 独立创作</template>
         <template #account><DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :error="state.accountsError" :switch-disabled="state.busy" switch-disabled-reason="正在保存或处理文件，请等待完成。" /></template>
         <template #actions>
+          <button type="button" class="bond-header-action" :disabled="state.busy" :aria-expanded="exchangeOpen" aria-controls="bond-exchange" @click="exchangeOpen = !exchangeOpen"><Archive :size="15" aria-hidden="true" />{{ exchangeOpen ? '收起导入/导出' : '导入/导出' }}</button>
           <button type="button" class="bond-header-action" :disabled="state.busy" :aria-expanded="settingsOpen" aria-controls="bond-settings" @click="settingsOpen = !settingsOpen"><Settings :size="15" aria-hidden="true" />设置</button>
         </template>
       </CompactToolHeader>
@@ -22,7 +23,8 @@
         </section>
         <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
           <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
-          <h3>备份迁移</h3>
+        </section>
+        <section v-show="exchangeOpen" id="bond-exchange" class="bond-secondary-panel" aria-label="羁绊导入/导出">
           <BondExchange :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
         </section>
         <p v-if="state.notice" class="bond-feedback" role="status">{{ state.notice }}</p>
@@ -149,7 +151,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Search, Settings, ChevronDown, RefreshCw, Check, Plus, LoaderCircle } from '@lucide/vue'
+import { Archive, Search, Settings, ChevronDown, RefreshCw, Check, Plus, LoaderCircle } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -167,7 +169,7 @@ import { ACTIONS, STATUS, WEATHERS, groupBonds } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && beta.canUseBetaFeatures)
 const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
-const view = ref('codex'), settingsOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
+const view = ref('codex'), settingsOpen = ref(false), exchangeOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIconBase = import.meta.env.BASE_URL + 'assets/bond-weather/'
 watch(view, () => { page.value = 0; selected.value = [] })
 const resultGroupCount = computed(() => view.value === 'find' ? groups.value.length : operatorGroups.value.length)

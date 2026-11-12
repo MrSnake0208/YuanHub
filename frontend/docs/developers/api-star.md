@@ -3,7 +3,7 @@
 星石完整识别结果直接复用结构化同步服务，不上传截图。
 
 - MaaYuan 自动同步：`POST /open-api/star/inventory-sync`，绑定账号连接码需要 `star:sync:write`（30003）。`GET /open-api/star/inventory-sync/{scan_id}` 查询持久回执。
-- 网页手动补传：星石背包 → 更多 → 导入/导出 JSON → 导入档案。自动区分原有 YuanHub 备份、MaaYuan `inventory.json`（schemaVersion 2 / local-shadow）和 `inventory-sync.json`（maayuan-star-inventory / version 1）。不按文件名判断。
+- 网页手动补传：星石背包 → 页头导入/导出 → 导入档案。自动区分原有 YuanHub 备份、MaaYuan `inventory.json`（schemaVersion 2 / local-shadow）和 `inventory-sync.json`（maayuan-star-inventory / version 1）。不按文件名判断。
 - 手动补传使用当前用户 JWT：`POST /v1/star/inventory-sync/preview?account_id=...` 只校验、预览；`POST /v1/star/inventory-sync?account_id=...` 确认保存。正文为 `{document, game, source_format}`，确认额外要求 `expected_generation`、`expected_revision`；`source_format` 为 `local-ocr` 或 `compact`。`document` 仍是现有严格精简协议，不含诊断或内部身份字段。
 - 服务端校验账号所有权、游戏版本、标准名称/类别/品质/等级、完整扫描、分区及经验/背包数量。当前两款游戏共用名称目录；本地原始文件没有游戏账号身份，目标由网页当前账号和确认操作决定，不声称已自动识别文件所属账号。
 - 精简批次保留原 `scan_id`。原始文件使用稳定业务内容标识，并按当前账号核对已保存的完整等价同步回执；相同结果已自动同步时也不再重建。无原批次编号的原始文件不能区分内容完全相同的不同扫描，保守视为已保存，不用于再次覆盖后续编辑。历史回执不会过期。

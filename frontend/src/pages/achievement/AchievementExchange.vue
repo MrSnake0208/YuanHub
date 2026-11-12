@@ -2,11 +2,12 @@
   <Teleport to="body">
     <div v-if="open" class="achievement-mask" :style="viewportStyle">
       <section ref="panel" class="achievement-dialog" :class="{ 'is-short': shortViewport }" role="dialog" aria-modal="true" aria-labelledby="achievement-exchange-title" tabindex="-1" :aria-busy="working" @focusin="revealFocusedControl">
-        <header><h2 id="achievement-exchange-title">导入与导出</h2><button type="button" :disabled="working" aria-label="关闭导入导出" @click="close"><X :size="18" aria-hidden="true" /></button></header>
+        <header><h2 id="achievement-exchange-title">导入/导出</h2><button type="button" :disabled="working" aria-label="关闭导入导出" @click="close"><X :size="18" aria-hidden="true" /></button></header>
         <div ref="scrollBody" class="achievement-dialog-body">
           <p>目标账号：<strong>{{ accountName }}</strong> · {{ game }}</p>
           <button type="button" :disabled="!canRecord || working" @click="exportFile">下载当前账号完整备份（JSON）</button>
-          <p class="achievement-hint">完整备份包含历史目录记录，不受页面筛选影响。最多5000条、16MiB；仅支持 YuanHub 成就 JSON v1。</p>
+          <p class="achievement-hint">完整备份包含历史目录记录，不受页面筛选影响。最多5000条、16MiB。</p>
+          <ImportGuide :sources="[{ title: '本站成就备份', from: '在成就页「导入/导出」里下载的完整备份（JSON），可在其它设备或账号恢复。' }]" :step="notice === '导入完成，已保存到此账号。' || working && preview ? 3 : documentData ? 2 : 1" :target="accountName" />
           <label class="achievement-file-label">选择成就备份<input ref="fileInput" type="file" accept=".json,application/json" :disabled="!canRecord || working" @change="selectFile"></label>
           <template v-if="documentData">
             <p>{{ filename }}<span v-if="documentData.source_account?.name"> · 文件来源账号：{{ documentData.source_account.name }}（仅提示）</span></p>
@@ -23,6 +24,7 @@
           </section>
           <p v-if="error" ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
           <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
+          <details><summary>技术详情</summary><p>仅支持 YuanHub 成就 JSON v1。</p></details>
         </div>
         <footer><button type="button" :disabled="working" @click="close">关闭</button><button type="button" :disabled="!canConfirm" @click="commit">{{ working ? '正在处理…' : '确认导入到此账号' }}</button></footer>
       </section>
@@ -33,6 +35,7 @@
 <script setup>
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
+import ImportGuide from '../../components/ImportGuide.vue'
 import * as api from '../../api/achievement.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'

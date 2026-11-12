@@ -16,12 +16,12 @@
         </template>
         <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" aria-controls="inventory-exchange" @click="toggleInventoryArchive">
+            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+          </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
-              <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="toggleInventoryArchive">
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
-              </button>
               <div class="tool-summary" aria-label="库存目录信息">
                 <span>道具 <b>{{ itemCatalogCount }}</b> 种</span><span>心纸 <b>{{ agentGameCatalogCount }}</b> 种</span>
                 <span>目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
@@ -67,6 +67,7 @@
 
           <ArchiveExchangePanel
             v-if="showArchive && !editingStock"
+            id="inventory-exchange"
             :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
             :import-open="showImport"
             :import-disabled="!auth.isLoggedIn || editingStock || drawResourceLocked"
@@ -85,8 +86,9 @@
 
           <!-- 导入档案 -->
           <div v-if="showArchive && !editingStock && showImport" class="import-box">
+            <ImportGuide :sources="[{ title: '本站库存备份', from: '在库存页「导入/导出」里导出的文件，包含物品库存、密探心纸数量或奖励流水。可点「示例导入」了解格式。' }]" :step="importing || importResult ? 3 : importText.trim() ? 2 : 1" :steps="['选择文件', '核对文件内容', '确认导入']" />
             <p id="inventory-import-tip" class="tip">
-              粘贴或上传符合《库存数据交换协议 v2》的 JSON 文档。
+              选择库存备份，也可以粘贴文件内容。文件可包含你拥有的多个账号，请核对文件中记录的目标账号与数量；点击「导入」会直接写入，不另生成预览。完整库存快照可能覆盖已有数量，请先备份。
             </p>
             <textarea
               id="inventory-import-json"
@@ -99,7 +101,7 @@
                   : 'inventory-import-tip'
               "
               autocomplete="off"
-              placeholder='{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}'
+              placeholder="也可以把备份文件内容粘贴到这里"
               @input="importError = ''"
             ></textarea>
             <p
@@ -145,6 +147,7 @@
               >
               <button class="ok" @click="afterImport">刷新库存</button>
             </div>
+            <details class="inventory-import-technical"><summary>技术详情</summary><p>粘贴或上传符合《库存数据交换协议 v2》的 JSON 文档。</p><pre tabindex="0">{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}</pre></details>
           </div>
 
           <!-- 追踪目录（YuanHub 当前支持的追踪范围，登录后叠加云端库存） -->
@@ -1648,6 +1651,7 @@ import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import { inventoryCurrentRead } from '../../utils/inventoryEvents.js';
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
+import ImportGuide from "../../components/ImportGuide.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
@@ -4069,6 +4073,7 @@ onBeforeUnmount(function () {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* ---- 数据交换 ---- */
+.inventory-import-technical pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .archive-toggle {
   background: transparent;
 }

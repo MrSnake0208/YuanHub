@@ -1,14 +1,15 @@
 <template>
   <section class="bond-exchange" aria-label="备份迁移">
-    <h2>备份迁移</h2>
-    <p>先选择来源，再选择现有目标账号。账号名称不会用于自动关联；文件缺项和旧助手的 false 不会清空当前记录。</p>
+    <h2>导入/导出</h2>
+    <ImportGuide :sources="[{ title: '本站羁绊备份', from: '在羁绊页「导入/导出」里导出的原生备份。' }, { title: '旧版羁绊助手备份', from: '从之前使用的羁绊助手导出的备份文件；导入时需选择来源账号，缺少游戏信息时还需选择来源游戏。' }]" :step="notice === '导入已保存到所选账号。' || busy && preview ? 3 : document ? 2 : 1" :target="accountName" />
+    <p>先选择来源，再选择现有目标账号。账号名称不会用于自动关联；文件缺项和旧助手的未收录状态不会清空当前记录。文件最多8MiB。</p>
     <div class="bond-toolbar">
       <button type="button" :disabled="!canUse || busy" @click="exportFile">导出当前账号原生备份</button>
       <label>选择备份文件<input type="file" accept=".json,application/json" :disabled="busy" @change="readFile"></label>
     </div>
     <p v-if="!identity">可先选择文件查看来源；登录并选择账号后才能预览导入。</p>
     <template v-if="document">
-      <p>{{ document.format ? 'YuanHub 原生羁绊备份 v1' : '旧助手备份' }} · {{ filename }}</p>
+      <p>{{ document.format ? '本站羁绊备份' : '旧助手备份' }} · {{ filename }}</p>
       <label v-if="!document.format">来源账号<select v-model="sourceKey" :disabled="busy"><option value="">请选择一个来源账号</option><option v-for="source in sources" :key="source.key" :value="source.key">{{ source.key }} · {{ source.game || '游戏未明确' }} · 已记录 {{ source.count }} 项{{ source.conflict ? '（游戏信息冲突）' : '' }}</option></select></label>
       <label v-if="!document.format">来源游戏<select v-model="sourceGame" :disabled="busy || !!source?.game"><option value="">缺少游戏信息时必须选择</option><option>代号鸢</option><option>如鸢</option></select></label>
       <label>现有目标账号<select :value="accountId" :disabled="busy || !identity" @change="$emit('target', $event.target.value)"><option value="">请选择目标账号</option><option v-for="item in accounts" :key="item.id" :value="item.id">{{ item.name }} · {{ item.game }}</option></select></label>
@@ -23,7 +24,7 @@
     <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
     <section v-if="preview" aria-label="导入预览结果">
       <h3>确认导入到 {{ accountName }} · {{ game }}</h3>
-      <p>预计修改 {{ preview.affected }} 条；档案版本 {{ preview.expected_revision }}。</p>
+      <p>预计修改 {{ preview.affected }} 条。</p>
       <p>{{ Object.entries(preview.stats).map(([key, count]) => labels[key] + ' ' + count).join(' · ') }}</p>
       <p v-if="!document.format">旧助手的未拥有名单和本地游戏可用性覆盖不会写入本站公共资料或密探成长资料。</p>
       <details><summary>逐项核对记录（{{ preview.items.length }} 项）</summary><ul class="bond-import-items"><li v-for="(item, index) in pageItems" :key="index"><strong>{{ labels[item.outcome] }}</strong> · {{ item.key }}<small v-if="item.message"> · {{ item.message }}</small></li></ul><div class="bond-toolbar"><button type="button" :disabled="itemPage === 0" @click="itemPage--">上一页</button><span>{{ itemPage + 1 }} / {{ Math.max(1, Math.ceil(preview.items.length / 50)) }}</span><button type="button" :disabled="(itemPage + 1) * 50 >= preview.items.length" @click="itemPage++">下一页</button></div></details>
@@ -32,11 +33,13 @@
       <button type="button" :disabled="busy || !canUse || !!preview.stats.invalid || !!preview.stats.mismatched || !!preview.stats.unknown && !skipUnknown" @click="confirmFile">确认导入 {{ preview.affected }} 条修改</button>
     </section>
     <p>原生备份保留历史记录，不包含登录凭据。来源和时间以本站服务器本次保存为准，不代表游戏内首次触发时间；成就人工完成状态需单独备份。</p>
+    <details><summary>技术详情</summary><p v-if="document?.format">文件格式：YuanHub 原生羁绊备份 v1。</p><p v-if="preview">档案版本 {{ preview.expected_revision }}。</p><p>旧助手的 false 和文件缺项不会清空当前记录。</p></details>
   </section>
 </template>
 
 <script setup>
 import { computed, onScopeDispose, ref, watch } from 'vue'
+import ImportGuide from '../../components/ImportGuide.vue'
 import { exportBonds, previewBonds, confirmBonds } from '../../api/bonds.js'
 import { downloadBondFile, legacySources, MAX_BYTES, readBondBackup } from './rules.js'
 const props = defineProps({ identity: String, accountId: String, accountName: String, game: String, revision: Number, catalogVersion: String, generation: Number, accounts: Array, canUse: Boolean })

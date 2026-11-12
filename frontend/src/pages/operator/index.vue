@@ -18,13 +18,13 @@
           </div>
         </template>
         <template #actions>
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" aria-controls="operator-account-workspace" @click="toggleArchive">
+            <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出' }}
+          </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <button type="button" class="act-btn roster-view-box" :aria-expanded="boxViewerOpen" aria-controls="operator-box-viewer" aria-haspopup="dialog" @click="boxViewerOpen = true"><Users :size="15" aria-hidden="true" />查看他人 BOX</button>
-              <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
-              </button>
               <button v-if="canUseRelationships && activeTab === 'relationships'" type="button" class="act-btn" aria-haspopup="dialog"
                 :disabled="!relationshipWorkspace?.ready" @click="relationshipWorkspace?.openBackup()">
                 <Archive :size="15" aria-hidden="true" />信赖与传闻备份
@@ -158,7 +158,7 @@
             class="operator-account-workspace"
             :class="{ 'is-compact': accountWorkspaceCompact, 'has-archive': showArchive }"
             v-model:compact="accountWorkspaceCompact"
-            summary-label="JSON 数据交换"
+            summary-label="导入/导出"
             split
             :show-account-bar="false"
             :error="accountError"
@@ -170,24 +170,22 @@
               <div class="archive-heading">
                 <div>
                   <span class="section-kicker">数据交换</span>
-                  <h2>JSON 备份导入/导出</h2>
+                  <h2>导入/导出</h2>
                   <details>
                     <summary>备份范围与录入方式</summary>
                     <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。手动补录请点「录入密探」，采集复核请从待复核列表进入。</p>
                   </details>
                 </div>
-                <span class="archive-format">JSON · 档案 / 分类</span>
               </div>
               <div class="archive-actions">
                 <button
+                  v-if="selectedScanReview || !showImport"
                   class="act-btn archive-import"
                   :disabled="!auth.isLoggedIn"
                   :aria-expanded="showImport"
                   @click="toggleImportPanel"
                 >
-                  <Upload :size="16" aria-hidden="true" />{{
-                    selectedScanReview ? "JSON 备份导入" : showImport ? "收起导入" : "JSON 备份导入"
-                  }}
+                  <Upload :size="16" aria-hidden="true" />导入备份文件
                 </button>
                 <div class="export-group">
                   <div class="export-label">档案导出范围</div>
@@ -258,34 +256,22 @@
               :account-name="currentAccountName" :current="scanReviewCurrent" :current-loading="scanReviewCurrentLoading" :current-error="scanReviewCurrentError" :busy="importing"
               @change="onScanReviewChange" @preview="previewV3Import" @close="closeScanReview" @dismiss="closeSelectedScanReview" @readback="readScanReviewCurrent" />
             <div v-if="!selectedScanReview" class="backup-import">
-            <h2>JSON 备份导入</h2>
+            <h2>导入备份文件</h2>
+            <ImportGuide :sources="[{ title: '本站密探备份', from: '在密探页「导入/导出」里导出的完整备份，旧版备份也能导入。' }, { title: '分类设置备份', from: '在密探页「导入/导出」里导出的分类设置，只包含置顶、分组顺序和标签。' }]" :step="importResult || organizationImportMessage || importing && (importPreview || importV2Preview || organizationImportPreview) ? 3 : importText.trim() ? 2 : 1" :target="currentAccountName" />
+            <p class="tip">使用 Maa 自动同步时不需要在这里导入，同步结果会直接出现在对应账号，也可能需要在待复核列表中确认。</p>
             <p id="operator-import-tip" class="tip">
               支持密探档案和分类设置 JSON，自动识别文件类型。导入均先校验并预览，确认后才写入当前账号；分类恢复只替换置顶、分组顺序和标签。
             </p>
             <div class="import-target">
               <span>导入目标</span><strong>{{ currentAccountName }}</strong
               ><small v-if="isOrganizationImport">已识别分类设置备份</small
-              ><small v-else-if="importDocumentVersion"
-                >已识别 v{{ importDocumentVersion }}</small
               >
             </div>
             <details class="import-help">
-              <summary>导入帮助：备份文件与 Maa 自动同步</summary>
-              <p><strong>有备份文件</strong></p>
-              <ol>
-                <li>先在页面上方选择要恢复到的 Hub 子账号，核对这里的“导入目标”。</li>
-                <li>点击“选择 JSON 文件”选择密探档案或分类设置备份，也可直接粘贴 JSON 内容。</li>
-                <li>点击“校验并预览”（旧版或分类备份显示对应预览按钮），核对目标账号、每位密探的变更或分类恢复范围。预览不会保存。</li>
-                <li>核对后点击预览区的确认按钮才会写入，保存结果以服务器回执为准。更换文件、修改内容或切换账号后，需要重新预览。</li>
-              </ol>
-              <p>完整备份推荐 v5，旧 v2/v3/v4 仍可导入。一次导入一个来源账号，多来源账号的文档请先拆开。分类备份仅恢复置顶、分组顺序与标签，不包含密探养成。完整快照可能覆盖未列出的内容，请核对预览中的范围。</p>
+              <summary>导入帮助：同步与失败处理</summary>
+              <p>一次导入一个来源账号，多来源账号的文档请先拆开。分类备份仅恢复置顶、分组顺序与标签，不包含密探养成。完整快照可能覆盖未列出的内容，请核对预览中的范围。更换文件、修改内容或切换账号后，需要重新预览。</p>
               <p><strong>使用 Maa 自动同步</strong>：在 Maa 侧完成采集与连接配置，回到对应 Hub 账号查看同步结果或待复核项。连接配置见<router-link class="link" to="/user/profile">“账号与连接码”</router-link>。这里的文件导入用于已有备份，不需要把连接码粘贴到 JSON 文本框。</p>
-              <details class="import-technical">
-                <summary>查看 v5 格式示例（只读）</summary>
-                <p>示例来自仓库的合成测试档案，仅用于理解格式，不是你的实际档案。请勿将示例确认保存到真实账号；推荐用自己的导出文件了解对应字段。</p>
-                <pre tabindex="0" aria-label="v5 格式示例，只读">{{ operatorV5Example }}</pre>
-              </details>
-              <p><strong>如何看回执</strong>：完整写入（accepted）、部分写入（partial）、待复核（review）、未写入（rejected）、无变化（unchanged）。请核对逐项结果，部分写入不代表整批成功；预览只说明预计影响，不代表已经保存。</p>
+              <p><strong>如何看回执</strong>：完整写入、部分写入、待复核、未写入、无变化。请核对逐项结果，部分写入不代表整批成功；预览只说明预计影响，不代表已经保存。</p>
               <p><strong>失败后怎么处理</strong>：解析失败时检查 JSON 语法；账号映射失败时核对来源账号与导入目标；状态冲突时重新读取当前档案后再预览；网络结果尚未确认时保留原输入，按原内容重试或读取当前档案核对，不要当作已回滚。如有“技术详情”，可展开查看原始错误信息。</p>
             </details>
             <textarea
@@ -300,7 +286,7 @@
                   : 'operator-import-tip'
               "
               autocomplete="off"
-              placeholder='{"format":"myshare-operator-exchange","version":3,"accounts":[{"id":"scan_local","name":"采集账号"}],"records":[]}'
+              placeholder="也可以把备份文件内容粘贴到这里"
               @input="onImportTextInput"
             ></textarea>
             <p
@@ -322,7 +308,7 @@
                 />
               </label>
               <button class="btn ghost" type="button" :disabled="importing" aria-describedby="operator-import-example-tip" @click="fillExample">
-                填入 v3 示例
+                填入示例
               </button>
               <button
                 v-if="isOrganizationImport"
@@ -350,10 +336,10 @@
                 :disabled="importing || !importText.trim()"
                 @click="previewV2Import"
               >
-                {{ importing ? "校验中…" : "校验并预览 v2" }}
+                {{ importing ? "校验中…" : "校验并预览" }}
               </button>
             </div>
-            <p id="operator-import-example-tip" class="tip">“填入 v3 示例”仅用于理解格式，不是你的实际档案。确认保存会改动当前账号的真实养成，请勿将示例保存到真实账号；推荐用自己的导出文件了解字段。</p>
+            <p id="operator-import-example-tip" class="tip">“填入示例”仅用于理解格式，不是你的实际档案。确认保存会改动当前账号的真实养成，请勿将示例保存到真实账号；推荐用自己的导出文件了解字段。</p>
             </div>
             <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
             <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
@@ -372,13 +358,13 @@
             </section>
             <p v-if="organizationImportMessage" class="tip" role="status">{{ organizationImportMessage }}</p>
             <p v-if="isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="btn ghost" :disabled="organizationLoading || organizationSaving" @click="reloadOrganization">重新读取分类</button></p>
-            <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="v2 导入预览">
+            <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="旧版备份导入预览">
               <div class="import-preview-head">
                 <div>
-                  <strong>v2 导入预览 · {{ currentAccountName }}</strong>
+                  <strong>旧版备份导入预览 · {{ currentAccountName }}</strong>
                   <span>{{ importV2Preview.recordCount }} 条记录 · 涉及 {{ importV2Preview.entries.length }} 位密探 · 当前已有 {{ importV2Preview.overlapCount }} 位</span>
                 </div>
-                <button class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入 v2' }}</button>
+                <button class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入' }}</button>
               </div>
               <p v-if="importV2Preview.fullCount" class="import-preview-warning" role="alert">
                 包含 {{ importV2Preview.fullCount }} 条全量快照；当前账号中有 {{ importV2Preview.possibleRemovedCount }} 位密探未列在档案中，可能被覆盖移除。请先导出备份。
@@ -390,7 +376,7 @@
               v-if="v3Receipt"
               class="import-preview"
               aria-live="polite"
-              :aria-label="importPreview ? 'v3 导入预览' : '逐项保存回执'"
+              :aria-label="importPreview ? '导入预览' : '逐项保存回执'"
             >
               <div class="import-preview-head">
                 <div>
@@ -506,6 +492,16 @@
               {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : importResult.unchanged ? '已收到无变化回执，档案未改写；请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
               <button class="ok" @click="afterImport">{{ importing ? '处理中…' : '查看养成总览' }}</button>
             </div>
+            <details v-if="!selectedScanReview" class="import-technical">
+              <summary>技术详情</summary>
+              <p>JSON · 档案 / 分类。完整备份推荐 v5，旧 v2/v3/v4 仍可导入；“填入示例”提供 v3 示例。</p>
+              <p v-if="importDocumentVersion">已识别 v{{ importDocumentVersion }}。</p>
+              <p>回执状态：完整写入（accepted）、部分写入（partial）、待复核（review）、未写入（rejected）、无变化（unchanged）。</p>
+              <p>原文本框示例：</p><pre tabindex="0">{"format":"myshare-operator-exchange","version":3,"accounts":[{"id":"scan_local","name":"采集账号"}],"records":[]}</pre>
+              <h3>v5 格式示例（只读）</h3>
+              <p>示例来自仓库的合成测试档案，仅用于理解格式，不是你的实际档案。请勿将示例确认保存到真实账号；推荐用自己的导出文件了解对应字段。</p>
+              <pre tabindex="0" aria-label="v5 格式示例，只读">{{ operatorV5Example }}</pre>
+            </details>
           </div>
 
           <!-- 图鉴（全量目录：默认全部显示，登录后叠加云端养成） -->
@@ -3185,6 +3181,7 @@ import {
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import ImportGuide from "../../components/ImportGuide.vue";
 import OperatorScanReviewForm from "../../components/operator/OperatorScanReviewForm.vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import TutorialEntry from "../../components/TutorialEntry.vue";
@@ -3896,7 +3893,7 @@ async function toggleArchive() {
   if (selectedScanReview.value && !(await closeScanReview())) return;
   showArchive.value = !showArchive.value;
   if (showArchive.value) accountWorkspaceCompact.value = false;
-  if (!showArchive.value) showImport.value = false;
+  showImport.value = showArchive.value;
 }
 
 async function toggleImportPanel() {
@@ -9736,6 +9733,7 @@ onBeforeUnmount(function () {
 .scan-review-panel button { border: 1px solid var(--rouge); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .import-technical summary { cursor: pointer; }
+.archive-actions > .export-group:first-child { grid-column: 1 / -1; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .operator-share-placeholder p { color: var(--ink-60); }
 

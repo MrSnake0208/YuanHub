@@ -6,7 +6,6 @@
         <h2>导入或导出档案</h2>
         <p>{{ description }}</p>
       </div>
-      <span class="archive-format">{{ format }}</span>
     </div>
     <div class="archive-actions">
       <button
@@ -48,6 +47,7 @@
       </div>
     </div>
     <slot name="import" />
+    <details><summary>技术详情</summary><p>档案格式：{{ format }}</p></details>
   </div>
 </template>
 
@@ -78,6 +78,8 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 .section-kicker { color: var(--theme-accent-text, var(--accent-strong)); }
 .archive-format { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); }
 .archive-actions { border-top: 1px dashed var(--line); }
+.archive-workspace > details { margin-top: 12px; color: var(--ink-60); overflow-wrap: anywhere; }
+.archive-workspace > details > summary { cursor: pointer; }
 .archive-import { border-radius: 12px; background: var(--surface); }
 .export-label { color: var(--ink-60); }
 .export-option { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer; transition: border-color 0.25s, background-color 0.25s, box-shadow 0.25s; }

@@ -1,6 +1,7 @@
 <template>
   <section v-show="open" class="exchange-card" aria-labelledby="recruitment-exchange-title">
-    <div class="exchange-heading"><span class="archive-mark" aria-hidden="true"><ArrowLeftRight :size="16" aria-hidden="true" /></span><div><h2 id="recruitment-exchange-title">导入与导出</h2><p class="hint">将招募记录整理到当前账号</p></div></div>
+    <div class="exchange-heading"><span class="archive-mark" aria-hidden="true"><ArrowLeftRight :size="16" aria-hidden="true" /></span><div><h2 id="recruitment-exchange-title">导入/导出</h2><p class="hint">将招募记录整理到当前账号</p></div></div>
+    <ImportGuide :sources="importSources" :step="importStep" :target="accountName" />
     <div class="actions">
       <button ref="importButton" class="primary" type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="fileInput.value = ''; fileInput.click()">导入 JSON</button>
       <button type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="openPaste">粘贴 JSON</button>
@@ -16,6 +17,7 @@
         <section ref="panel" class="exchange-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" tabindex="-1" :aria-busy="loading || committing">
           <header class="dialog-header"><div><p class="eyebrow">招募档案</p><h2 id="import-dialog-title">{{ success ? '导入完成' : pasteMode ? '粘贴 JSON' : '导入招募记录' }}</h2></div><button class="close-button" type="button" aria-label="关闭导入弹窗" :disabled="committing" @click="closeDialog"><X :size="16" aria-hidden="true" /></button></header>
           <div class="dialog-body">
+            <ImportGuide :sources="importSources" :step="importStep" :target="accountName" />
             <template v-if="success"><p class="success-mark" aria-hidden="true"><CircleCheck :size="32" aria-hidden="true" /></p><h3>已导入 {{ success.events }} 条招募记录</h3><p v-if="success.other">另有 {{ success.other }} 项批次或档案信息已导入。</p><p v-if="success.duplicates">{{ success.duplicates }} 项已有内容未重复添加。</p><p v-if="success.skipped">{{ success.skipped }} 项内容未导入，已保留现有档案。</p></template>
             <template v-else-if="pasteMode">
               <form id="recruitment-paste-form" @submit.prevent="previewPaste">
@@ -62,6 +64,7 @@
 
 <script setup>
 import { ArrowLeftRight, CircleCheck, X } from '@lucide/vue'
+import ImportGuide from '../../components/ImportGuide.vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { computed, nextTick, onScopeDispose, reactive, ref, watch } from 'vue'
 import { commitRecruitmentImport, exportRecruitment, previewRecruitmentImport, getRecruitmentCatalog } from '../../api/recruitment.js'
@@ -73,6 +76,11 @@ const emit = defineEmits(['committed', 'busy', 'update:open'])
 const documentData = ref(null), filename = ref(''), preview = ref(null), previewPage = ref(0), loading = ref(false), exporting = ref(false), committing = ref(false), error = ref(''), notice = ref(''), fileInput = ref(null), errorPanel = ref(null), expired = ref(false)
 const pasteMode = ref(false), pastedText = ref(''), pasteInput = ref(null)
 const dialogOpen = ref(false), panel = ref(null), exportMenu = ref(null), importButton = ref(null), success = ref(null), showAll = ref(false)
+const importSources = [
+  { title: '本站招募备份', from: '在招募页「导入/导出 → 导出」下载的完整备份（JSON）。' },
+  { title: 'AI 整理的抽卡记录', from: '先点「获取 AI 导入规范」，把规范文件和你的抽卡记录（截图、表格等）一起交给 AI，让它生成 JSON，再用「导入 JSON」或「粘贴 JSON」导入。' },
+]
+const importStep = computed(() => committing.value || submittedIntent.value || success.value ? 3 : documentData.value || pastedText.value.trim() || loading.value ? 2 : 1)
 watch(dialogOpen, (visible, _, onCleanup) => {
   if (!visible) return
   const bodyOverflow = document.body.style.overflow, rootOverflow = document.documentElement.style.overflow
