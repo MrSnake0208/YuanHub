@@ -4,7 +4,7 @@
       <div class="compact-tool-row">
         <div class="compact-tool-heading">
           <h1>{{ title }}</h1>
-          <p v-if="description" class="compact-tool-description">{{ description }}</p>
+          <p v-if="description || $slots.description" class="compact-tool-description"><slot name="description">{{ description }}</slot></p>
         </div>
         <div v-if="$slots.account" class="compact-tool-account"><slot name="account" /></div>
         <div v-if="$slots.help || $slots.actions || $slots['primary-actions']" class="compact-tool-actions">
@@ -38,6 +38,9 @@ const helpId = useId()
 .compact-tool-primary, .compact-tool-utilities, .compact-tool-summary { display: contents; }
 .compact-tool-heading h1 { color: var(--theme-strong-text, var(--tea)); }
 .compact-tool-description { color: var(--ink-60); }
+.compact-tool-description :slotted(a) { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.compact-tool-description :slotted(a:hover) { color: var(--theme-strong-text, var(--tea)); }
+.compact-tool-description :slotted(a:focus-visible) { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; border-radius: 2px; }
 .compact-tool-help { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
 .compact-tool-help:hover { color: var(--theme-strong-text, var(--tea)); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .compact-tool-help:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
