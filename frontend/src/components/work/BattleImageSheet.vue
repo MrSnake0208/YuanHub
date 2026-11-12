@@ -5,6 +5,10 @@
     <header class="sheet-heading"><img class="sheet-logo" :src="brandLogoUrl" alt="YuanHub" width="64" height="64" /><div class="sheet-category"><span>{{ model.game }}</span><i aria-hidden="true">·</i><span>{{ kind === 'team' ? '上阵密探' : '战斗操作' }}</span></div><h1>{{ model.title || (kind === 'team' ? '配队方案' : '战斗操作记录') }}</h1><p v-if="model.author">攻略作者 / {{ model.author }}</p><div v-if="kind === 'actions' && (usedActions.length || multiTarget)" class="sheet-action-key"><span v-for="item in usedActions" :key="item.type"><i class="action-symbol" :class="ARROW_CLASS[item.symbol]" aria-hidden="true"><template v-if="ARROW_CLASS[item.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ item.symbol }}</template></i>{{ item.label }}</span><template v-if="multiTarget"><i class="sheet-action-sep" v-if="usedActions.length" aria-hidden="true"></i><span v-for="index in usedTargets" :key="'t' + index"><em :class="{ 'is-plain': index === mainTarget }" :style="index === mainTarget ? null : { background: TARGET_COLORS[index], borderLeftColor: TARGET_ACCENTS[index] }"></em>{{ model.targets[index] }}</span></template></div></header>
     <div class="team-board" :class="{ 'action-board': kind === 'actions', 'is-simple': simple }" :style="boardStyle">
       <div v-if="kind === 'actions'" class="team-board-label action-corner">回合</div>
+      <template v-if="remarksOnRight">
+        <div class="team-card" :style="{ gridColumn: 7 }" aria-hidden="true"></div>
+        <div class="team-board-label action-corner" :style="{ gridColumn: 7 }">备注</div>
+      </template>
       <article v-for="(operator, index) in model.operators" :key="'card-' + index" class="team-card" :class="{ 'is-empty': !operator.name, 'is-idle': idleSlots[index] }" :style="{ gridColumn: index + 2 }" :data-prof="operator.prof" :data-slot="index">
         <ExportCardFrame class="team-card-frame" />
       </article>
@@ -42,6 +46,7 @@
           <div v-for="(entries, slot) in item.row.slots" :key="slot" class="team-card-cell action-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: slot + 2, gridRow: rowIndex + 2 }">
             <span v-for="entry in entries" :key="entry.order" class="action-chip" :class="{ 'is-plain': plainEntry(entry) }" :style="plainEntry(entry) ? null : { background: TARGET_COLORS[entry.target], borderLeftColor: TARGET_ACCENTS[entry.target] }"><b>{{ entry.order }}</b><i class="action-symbol" :class="ARROW_CLASS[entry.symbol]"><template v-if="ARROW_CLASS[entry.symbol]"><span class="arrow-shaft"></span><span class="arrow-head"></span></template><template v-else>{{ entry.symbol }}</template></i></span>
           </div>
+          <div v-if="remarksOnRight" class="team-card-cell action-cell action-remark-cell" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridColumn: 7, gridRow: rowIndex + 2 }">{{ String(item.row.remark || '').trim() }}</div>
         </template>
         <template v-else>
           <p class="action-remark" :class="{ 'is-alt': item.alt, 'is-last': item.last }" :style="{ gridRow: rowIndex + 2 }"><span>备注</span>{{ item.row.remark }}</p>
@@ -62,7 +67,7 @@ import ExportCardFrame from '../ExportCardFrame.vue'
 import ExportStar from '../ExportStar.vue'
 import portraits from '../../data/operatorPortraits.json'
 import { BATTLE_ACTIONS, BATTLE_INTERACTION, TARGET_ACCENTS, TARGET_COLORS, battleTargetUsage } from '../../utils/battleImages.js'
-const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' }, partial: { type: Boolean, default: false } })
+const props = defineProps({ model: { type: Object, required: true }, kind: { type: String, required: true }, rows: { type: Array, default: () => [] }, variant: { type: String, default: 'full' }, remarkPosition: { type: String, default: 'below', validator: value => ['below', 'right'].includes(value) }, partial: { type: Boolean, default: false } })
 // 操作图两种样式：完整款卡头与配队图一致（立绘 + 竖排名），简化款只放横排名字。配队图不受影响。
 // 属性图标只在配队图显示；操作图两种样式都不画。
 const simple = computed(() => props.kind === 'actions' && props.variant === 'simple')
@@ -76,11 +81,12 @@ const teamRows = computed(() => {
   if (operators.some(operator => operator.stars)) rows.push(['main', '主星', 'stone'], ['support', '辅星', 'stone'])
   return rows.map(([key, label, type]) => ({ key, label, type, stack: type !== 'stat' }))
 })
-// 操作图：每回合一行动作，隔行底色按回合交替；备注紧贴所属回合，作为该回合的下半部分，横跨五列。
+const remarksOnRight = computed(() => props.kind === 'actions' && props.remarkPosition === 'right' && props.rows.some(row => String(row.remark || '').trim()))
+// 操作图：每回合一行动作，隔行底色按回合交替；备注默认在回合下方横跨五列，选右侧时放在同一回合的独立列。
 // 角色卡从立绘一路延伸到表底，靠卡间纸色分列；隔行底色铺在回合号与卡内，按回合横向阅读不错行。
 const actionRows = computed(() => {
   const items = props.rows.flatMap((row, index) => {
-    const alt = index % 2 === 1, remark = String(row.remark || '').trim()
+    const alt = index % 2 === 1, remark = remarksOnRight.value ? '' : String(row.remark || '').trim()
     return [{ key: 'r' + row.round, type: 'round', row, alt, remark: Boolean(remark) }, ...(remark ? [{ key: 'n' + row.round, type: 'remark', row: { ...row, remark }, alt }] : [])]
   })
   if (items.length) items.at(-1).last = true
@@ -93,6 +99,7 @@ const boardStyle = computed(() => {
   if (props.kind === 'actions' && idleSlots.value.some(Boolean) && !idleSlots.value.every(Boolean)) {
     style.gridTemplateColumns = '76px ' + idleSlots.value.map(idle => `minmax(0, ${idle ? '.62fr' : '1fr'})`).join(' ')
   }
+  if (remarksOnRight.value) style.gridTemplateColumns = (style.gridTemplateColumns || '76px repeat(5, minmax(0, 1fr))') + ' minmax(0, 1.5fr)'
   return style
 })
 // 图例只列本张图实际出现的动作与目标；只打主位时不显示目标图例。
@@ -269,6 +276,7 @@ h1 { margin: 14px 0 0; font: 900 38px/1.4 var(--font-s, serif); overflow-wrap: a
 .action-remark-rail { position: relative; z-index: 2; border-top: 1px solid #b58a45; border-bottom: 1px solid #b58a45; }
 .action-remark-rail.is-last { border-bottom: 0; }
 .action-remark span { flex-shrink: 0; font-size: 16px; letter-spacing: 2px; color: #8a5a2b; }
+.team-card-cell.action-remark-cell { flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: 12px 16px; font: 500 19px/1.5 var(--font-s, serif); color: #3e3023; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 .legend, .range { font-size: 17px; color: #725c43; margin: 0; }
 .range { text-align: right; margin-top: 12px; }
 .sheet-note { border-top: 1px solid #d5c7b2; margin-top: 26px; padding-top: 20px; }

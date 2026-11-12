@@ -20,6 +20,9 @@
       <div v-if="kind === 'actions'" class="battle-export-variant" role="group" aria-label="操作图样式">
         <button v-for="option in VARIANTS" :key="option.value" type="button" :aria-pressed="variant === option.value" :title="option.hint" @click="variant = option.value">{{ option.label }}</button>
       </div>
+      <div v-if="kind === 'actions' && hasRemarks" class="battle-export-variant" role="group" aria-label="备注位置">
+        <button v-for="option in REMARK_POSITIONS" :key="option.value" type="button" :aria-pressed="remarkPosition === option.value" :title="option.hint" @click="remarkPosition = option.value">{{ option.label }}</button>
+      </div>
       <div class="battle-export-actions">
         <button v-if="busy" type="button" @click="reset">取消生成</button>
         <a v-if="images.length === 1 && !busy" class="battle-primary battle-export-save" :href="images[0].url" :download="images[0].filename"><Download :size="17" aria-hidden="true" />保存图片</a>
@@ -32,7 +35,7 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { Download, ImageOff, LoaderCircle } from '@lucide/vue'
 import BattleImageSheet from './BattleImageSheet.vue'
 import { battleFileName, battleImageError, buildBattleImageModel } from '../../utils/battleImages.js'
@@ -42,6 +45,9 @@ const emit = defineEmits(['busy'])
 // 完整款：卡头与配队图一致；简化款：卡头只写名字，图更矮。切换后已生成的图片按新样式重新生成。
 const VARIANTS = [{ value: 'full', label: '完整款', hint: '卡头与配队图一致：立绘与名字' }, { value: 'simple', label: '简化款', hint: '卡头只显示密探名字' }]
 const variant = ref('full')
+const REMARK_POSITIONS = [{ value: 'below', label: '备注在下', hint: '每回合下方整行显示备注' }, { value: 'right', label: '备注在右', hint: '表格右侧单独一列显示备注' }]
+const remarkPosition = ref('below')
+const hasRemarks = computed(() => props.draft.rounds.some(round => String(round.remark || '').trim()))
 const busy = ref(false), error = ref(''), images = shallowRef([]), sheetData = shallowRef(null), sheet = ref(null)
 watch(busy, value => emit('busy', value), { flush: 'sync' })
 let generation = 0
@@ -51,7 +57,7 @@ function reset() {
   images.value = []; sheetData.value = null; busy.value = false; error.value = ''
 }
 watch([() => props.draft, () => props.kind], reset, { deep: true, flush: 'sync' })
-watch(variant, () => { if (busy.value || images.value.length || error.value) { reset(); generate() } })
+watch([variant, remarkPosition], () => { if (busy.value || images.value.length || error.value) { reset(); generate() } })
 onBeforeUnmount(reset)
 
 async function generate() {
@@ -71,7 +77,7 @@ async function generate() {
   try {
     while (queue.length && seq === generation) {
       const rows = queue.shift()
-      sheetData.value = { model, kind, rows, variant: variant.value, partial: rows.length !== rounds.length }
+      sheetData.value = { model, kind, rows, variant: variant.value, remarkPosition: remarkPosition.value, partial: rows.length !== rounds.length }
       await nextTick()
       if (seq !== generation) return
       let blob
