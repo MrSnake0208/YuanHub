@@ -1,6 +1,5 @@
 <template>
-  <div>
-    <MaayuanDiagnosticTrace v-if="event" :trace="event.trace || []" :issues="event.summary?.issues || []" :issue="issue" :images="event.images" />
+  <div class="diagnostic-evidence">
     <section class="diagnostic-section" aria-label="事件证据">
       <h3>证据</h3>
       <p v-if="loading" role="status">正在加载事件和证据…</p>
@@ -11,8 +10,8 @@
           <p class="diagnostic-muted">本次截图属于 {{ imageOwners }}，本组密探没有截图</p>
           <button type="button" :aria-expanded="showOtherImages" @click="showOtherImages = !showOtherImages">{{ showOtherImages ? '收起其他截图' : '仍然查看' }}</button>
         </template>
-        <div v-if="visibleImages.length" class="diagnostic-evidence-grid">
-          <figure v-for="image in visibleImages" :key="image.assetId">
+        <div v-if="visibleImages.length" class="diagnostic-evidence-grid" :class="{ 'diagnostic-evidence-with-primary': primaryImage }">
+          <figure v-for="image in orderedImages" :key="image.assetId" :class="{ 'diagnostic-evidence-primary': image === primaryImage }" :style="image === primaryImage ? { gridRow: `span ${Math.max(1, orderedImages.length - 1)}` } : undefined">
             <figcaption>{{ imageLabel(image) }}</figcaption>
             <p v-if="image.expired" class="diagnostic-muted">图片已过期（保留 14 天）</p>
             <p v-else-if="image.status === 'pending'" class="diagnostic-muted">图片未上传完成</p>
@@ -20,7 +19,7 @@
             <p v-else-if="image.status === 'invalid'" class="diagnostic-error">图片校验失败</p>
             <p v-else-if="imageErrors[image.assetId]" class="diagnostic-error" role="status">{{ imageErrors[image.assetId] }}</p>
             <button v-else-if="urls[image.assetId]" type="button" class="diagnostic-image-button" :aria-label="`放大${imageLabel(image)}`" @click="zoom = { assetId: image.assetId, image, url: urls[image.assetId], label: imageLabel(image) }">
-              <MaayuanDiagnosticImage :src="urls[image.assetId]" :alt="imageLabel(image)" v-bind="annotations(image)" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
+              <MaayuanDiagnosticImage :src="urls[image.assetId]" :alt="imageLabel(image)" :size="image === primaryImage ? 'primary' : 'crop'" v-bind="annotations(image)" @error="imageFailed(image.assetId, $event.target.getAttribute('src'))" />
             </button>
             <p v-else role="status">正在加载图片…</p>
             <p v-if="annotationLabel(image)" class="diagnostic-muted">{{ annotationLabel(image) }}</p>
@@ -29,6 +28,8 @@
         <button v-if="Object.keys(imageErrors).length" type="button" @click="load">重新加载证据</button>
       </template>
     </section>
+    <MaayuanDiagnosticTrace v-if="event?.trace?.length" :trace="event.trace" :issues="event.summary?.issues || []" :issue="issue" :images="event.images" />
+    <p v-else-if="event" class="diagnostic-muted diagnostic-trace-empty">本次上报未包含识别轨迹</p>
     <details v-if="event" class="diagnostic-section diagnostic-raw">
       <summary>原始数据</summary>
       <button type="button" @click="copyManifest">复制 manifest JSON</button><span v-if="copyMessage" role="status">{{ copyMessage }}</span>
@@ -66,6 +67,8 @@ const operatorImages = computed(() => (event.value?.images || []).filter(image =
 const noOperatorImages = computed(() => props.issue.subjectKind === 'operator' && event.value?.images.length > 0 && !operatorImages.value.length)
 const visibleImages = computed(() => props.issue.subjectKind !== 'operator' || (noOperatorImages.value && showOtherImages.value)
   ? event.value?.images || [] : operatorImages.value)
+const primaryImage = computed(() => visibleImages.value.find(image => image.role === 'last_frame'))
+const orderedImages = computed(() => primaryImage.value ? [primaryImage.value, ...visibleImages.value.filter(image => image !== primaryImage.value)] : visibleImages.value)
 const imageOwners = computed(() => [...new Set((event.value?.images || []).map(image => image.operatorId
   ? `${props.operatorNames[image.operatorId] || image.operatorId}（其他密探）` : '未识别密探'))].join('、'))
 const zoom = ref(null), zoomPanel = ref(null), zoomClose = ref(null)

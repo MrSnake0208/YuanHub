@@ -1,5 +1,5 @@
 <template>
-  <span ref="frame" class="diagnostic-annotated-image" :class="{ 'diagnostic-annotated-image-expanded': expanded }">
+  <span ref="frame" class="diagnostic-annotated-image" :class="[`diagnostic-annotated-image-${size}`, { 'diagnostic-annotated-image-expanded': expanded }]">
     <img ref="picture" :src="src" :alt="alt" referrerpolicy="no-referrer" @load="measure" @error="failed" />
     <svg v-if="content && (nodeRoi || box)" class="diagnostic-image-overlay" :style="content" :viewBox="(imageRoi || [0, 0, ...resolution]).join(' ')" preserveAspectRatio="none" aria-hidden="true">
       <rect v-if="nodeRoi" :x="nodeRoi[0]" :y="nodeRoi[1]" :width="nodeRoi[2]" :height="nodeRoi[3]" class="diagnostic-node-roi" />
@@ -19,6 +19,7 @@ const props = defineProps({
   nodeRoi: { type: Array, default: null },
   box: { type: Array, default: null },
   hit: { type: Boolean, default: false },
+  size: { type: String, default: 'crop' },
   expanded: { type: Boolean, default: false }
 })
 const emit = defineEmits(['error'])
@@ -48,9 +49,14 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <style scoped>
-.diagnostic-annotated-image { position: relative; display: block; width: 100%; height: 240px; }
+.diagnostic-annotated-image { position: relative; display: block; width: 100%; }
+.diagnostic-annotated-image-primary { height: min(60vh, 560px); }
 .diagnostic-annotated-image-expanded { height: calc(100dvh - 160px); }
 .diagnostic-annotated-image img { display: block; width: 100%; height: 100%; max-height: none; object-fit: contain; object-position: center; }
+.diagnostic-annotated-image-crop:not(.diagnostic-annotated-image-expanded) img { height: auto; max-height: 280px; }
+@media (max-width: 767px) {
+  .diagnostic-annotated-image-primary:not(.diagnostic-annotated-image-expanded) { height: 60vh; }
+}
 .diagnostic-image-overlay { position: absolute; pointer-events: none; }
 .diagnostic-image-overlay rect { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .diagnostic-node-roi { stroke: #ffca28; stroke-dasharray: 6 4; filter: drop-shadow(0 0 1px #000); }

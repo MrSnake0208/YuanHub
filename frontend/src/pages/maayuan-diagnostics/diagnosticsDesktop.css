@@ -1,10 +1,9 @@
-@media (min-width: 768px) {
+@media (min-width: 1081px) {
+  .diagnostic-page .page-header > .wrap, .diagnostic-page .diagnostic-content { max-width: none; margin-inline: 0; padding-inline: 32px; }
   .diagnostic-content { padding-top: 24px; }
-  .diagnostic-cards { display: none; }
-  /* 子组件和 Teleport 浮层继续使用诊断命名空间内的共享样式。 */
-  :global(.diagnostic-drawer) { width: min(800px, 88vw); height: 100dvh; }
-  :global(.diagnostic-drawer-header) { padding: 18px 24px; }
-  :global(.diagnostic-drawer-body) { padding: 0 24px 24px; }
-  :global(.diagnostic-environment) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  :global(.diagnostic-evidence-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diagnostic-workspace { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); }
+  .diagnostic-detail-region { position: sticky; top: 16px; }
+  :global(.diagnostic-detail) { max-height: calc(100dvh - 32px); }
+  :global(.diagnostic-detail-body) { overflow-y: auto; overscroll-behavior: contain; }
+  :global(.diagnostic-detail-footer) { max-height: 50dvh; overflow-y: auto; overscroll-behavior: contain; }
 }
