@@ -59,20 +59,21 @@ class AdminAuthorizationService(
         if (AdminRole.SUPER_ADMIN in roles) return true
         return when (permission) {
             // Roadmap features stay administrator-only until their individual releases.
-            AdminPermission.ARCHIVE_ACCESS,
             AdminPermission.OPERATOR_PANEL_USE,
             AdminPermission.OPERATOR_RELATIONSHIP_USE,
             AdminPermission.OPERATOR_RESERVE_USE,
-            AdminPermission.LEDGER_CATALOG_WRITE,
             AdminPermission.BETA_MANAGE,
-            AdminPermission.OPERATOR_CATALOG_WRITE,
-            AdminPermission.RECRUITMENT_CATALOG_WRITE,
-            AdminPermission.ACHIEVEMENT_CATALOG_WRITE,
-            AdminPermission.BOND_CATALOG_WRITE,
             AdminPermission.RECRUITMENT_ACCESS_MANAGE,
-            AdminPermission.LEVEL_CATALOG_WRITE,
             AdminPermission.DEVELOPMENT_GOAL_MANAGE,
             -> AdminRole.PLATFORM_ADMIN in roles
+            AdminPermission.ARCHIVE_ACCESS ->
+                AdminRole.PLATFORM_ADMIN in roles || AdminRole.ACHIEVEMENT_CATALOG_EDITOR in roles || AdminRole.BOND_CATALOG_EDITOR in roles
+            AdminPermission.ACHIEVEMENT_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.ACHIEVEMENT_CATALOG_EDITOR in roles
+            AdminPermission.BOND_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.BOND_CATALOG_EDITOR in roles
+            AdminPermission.LEDGER_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.LEDGER_CATALOG_EDITOR in roles
+            AdminPermission.OPERATOR_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.OPERATOR_CATALOG_EDITOR in roles
+            AdminPermission.RECRUITMENT_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.RECRUITMENT_CATALOG_EDITOR in roles
+            AdminPermission.LEVEL_CATALOG_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.LEVEL_CATALOG_EDITOR in roles
             AdminPermission.ACTIVITY_CALENDAR_WRITE -> AdminRole.PLATFORM_ADMIN in roles || AdminRole.ACTIVITY_CALENDAR_EDITOR in roles
             AdminPermission.CHANGELOG_WRITE -> AdminRole.CHANGELOG_EDITOR in roles
             AdminPermission.CHANGELOG_REVIEW -> AdminRole.CHANGELOG_REVIEWER in roles

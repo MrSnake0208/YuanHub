@@ -57,8 +57,16 @@
 | --- | --- | --- |
 | 普通用户 | 所有已激活用户 | 管理自己的子账号、库存、密探养成和自己的反馈工单 |
 | 反馈模块管理员 | 被授予反馈权限的普通用户 | 按 `receiveAreas` 接收通知，按 `manageAreas` 查看和处理对应模块工单 |
-| 平台管理员 | 负责公共内容维护的管理员 | 管理公共密探图鉴及头像；不自动获得用户权限管理能力 |
+| 平台管理员 | 负责公共内容维护的管理员 | 维护全部内容目录，并管理内测、招募资格与开发目标；不自动获得用户权限管理能力 |
+| 成就目录编辑员（`ACHIEVEMENT_CATALOG_EDITOR`） | 负责成就目录的编辑员 | `archive:access` + `achievement_catalog:write`，含成就投稿审核 |
+| 羁绊目录编辑员（`BOND_CATALOG_EDITOR`） | 负责羁绊目录的编辑员 | `archive:access` + `bond_catalog:write` |
+| 广陵账房编辑员（`LEDGER_CATALOG_EDITOR`） | 负责广陵账房目录的编辑员 | `ledger_catalog:write` |
+| 密探图鉴编辑员（`OPERATOR_CATALOG_EDITOR`） | 负责公共密探图鉴的编辑员 | `operator_catalog:write` |
+| 招募卡池编辑员（`RECRUITMENT_CATALOG_EDITOR`） | 负责招募卡池目录的编辑员 | `recruitment_catalog:write`，不含 `recruitment_access:manage` |
+| 关卡目录编辑员（`LEVEL_CATALOG_EDITOR`） | 负责关卡目录的编辑员 | `level_catalog:write` |
 | 超级管理员 | 极少数受信任账号 | 管理平台角色和反馈授权，查看审计记录，拥有全部反馈模块及平台管理能力 |
+
+以上六种目录编辑员可单独授予，仅拥有表中权限，账号须已激活；不授予其它目录写权限、活动日历维护、内测管理、招募资格管理、开发目标管理、角色治理或密探面板/信赖/储备使用权限。`ARCHIVE_USER` 为历史角色，当前不授予任何权限。平台管理员与超级管理员原有权限不变。
 
 角色继承关系建议如下：
 
@@ -181,8 +189,8 @@ requireFeedbackManage(userId, area)
 
 | 现有接口 | 目标权限 |
 | --- | --- |
-| `/v1/admin/operator-catalog/**` | `operator_catalog:write`，超级管理员隐含拥有 |
-| `/v1/admin/recruitment-catalog/**` | `recruitment_catalog:write`，平台管理员及超级管理员 |
+| `/v1/admin/operator-catalog/**` | `operator_catalog:write`，密探图鉴编辑员、平台管理员及超级管理员 |
+| `/v1/admin/recruitment-catalog/**` | `recruitment_catalog:write`，招募卡池编辑员、平台管理员及超级管理员 |
 | `/v1/admin/feedback-access` | `admin:feedback_access:manage`，仅超级管理员 |
 | `/v1/reports/**` 的跨用户查询 | `feedback:<area>:read` 或超级管理员 |
 | `/v1/reports/**` 的回复和状态处理 | `feedback:<area>:manage` 或超级管理员 |

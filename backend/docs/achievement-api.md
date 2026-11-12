@@ -12,7 +12,7 @@
 
 ## 接口与保存约束
 
-沿用 `ApiResult` 包装、snake_case 字段和现有异常格式。下列个人接口要求网站 JWT、现有 Beta 资格和账号归属；成就目录要求网站登录，不再要求 `archive:access`。目录管理仍要求 `archive:access` 与 `achievement_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活；普通用户不能管理目录。所有响应 `Cache-Control: no-store`；不开放外部 token/share scope。
+沿用 `ApiResult` 包装、snake_case 字段和现有异常格式。下列个人接口要求网站 JWT、现有 Beta 资格和账号归属；成就目录要求网站登录，不再要求 `archive:access`。目录管理仍要求 `archive:access` 与 `achievement_catalog:write`，需 SUPER_ADMIN、PLATFORM_ADMIN 或 ACHIEVEMENT_CATALOG_EDITOR，且账号已激活；普通用户不能管理目录。所有响应 `Cache-Control: no-store`；不开放外部 token/share scope。
 
 | 方法与路径 | 输入 | 返回 |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ preview_token 绑定用户、目标账号、游戏、当前档案版本、目录
 
 ## 成就资料投稿与审核（K05）
 
-投稿不绑定游戏子账号，不接受 account_id/submitter_id；删除子账号不删除投稿。普通接口要求网站 JWT 与现有 Beta 资格，无需 archive:access；管理接口沿用 archive:access，并在 Controller 与 Service 检查 achievement_catalog:write，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活。仅活动管理权限不能审核。普通详情始终只允许本人，越权与不存在均404。所有响应 no-store，不加入公开白名单。
+投稿不绑定游戏子账号，不接受 account_id/submitter_id；删除子账号不删除投稿。普通接口要求网站 JWT 与现有 Beta 资格，无需 archive:access；管理接口沿用 archive:access，并在 Controller 与 Service 检查 achievement_catalog:write，需 SUPER_ADMIN、PLATFORM_ADMIN 或 ACHIEVEMENT_CATALOG_EDITOR，且账号已激活。仅活动管理权限不能审核。普通详情始终只允许本人，越权与不存在均404。所有响应 no-store，不加入公开白名单。
 
 | 方法与路径 | 输入与结果 |
 | --- | --- |

@@ -74,7 +74,7 @@ summary=`{known_total_pulls,recorded_pulls,batch_pulls,known_progress,event_coun
 
 ## 管理员目录
 
-以下接口须 JWT 与 `recruitment_catalog:write`，复用现有平台管理员/超级管理员权限；普通登录用户返回403。GET 不写入 Hub 数据库；经核对的静态目录是只读初值，管理员覆盖保存在 `recruitment_catalog`。
+以下接口须 JWT 与 `recruitment_catalog:write`，已激活的招募卡池编辑员（RECRUITMENT_CATALOG_EDITOR）、平台管理员或超级管理员可用；招募卡池编辑员不获得招募资格管理权限，普通登录用户返回403。GET 不写入 Hub 数据库；经核对的静态目录是只读初值，管理员覆盖保存在 `recruitment_catalog`。
 
 - `GET /v1/admin/recruitment-catalog` → `{pools}`，含两游戏、隐藏池、停用池及退役槽。
 - `POST /v1/admin/recruitment-catalog` → 新池，`expected_revision=0`。

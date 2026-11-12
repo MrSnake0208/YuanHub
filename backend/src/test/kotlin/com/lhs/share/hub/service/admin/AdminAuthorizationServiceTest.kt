@@ -30,14 +30,19 @@ class AdminAuthorizationServiceTest {
     }
 
     @Test
-    fun `roadmap features require platform or super admin even with historical usage roles`() {
+    fun `roadmap usage permissions respect catalog editors and exclude historical usage roles`() {
         for (role in AdminRole.entries) {
             val userId = role.name
             activeUser(userId)
             every { roleRepository.findById(userId) } returns Optional.of(binding(userId, role))
             every { feedbackRepository.findById(userId) } returns Optional.empty()
             assertEquals(
-                role in setOf(AdminRole.SUPER_ADMIN, AdminRole.PLATFORM_ADMIN),
+                role in setOf(
+                    AdminRole.SUPER_ADMIN,
+                    AdminRole.PLATFORM_ADMIN,
+                    AdminRole.ACHIEVEMENT_CATALOG_EDITOR,
+                    AdminRole.BOND_CATALOG_EDITOR,
+                ),
                 service.hasPermission(userId, AdminPermission.ARCHIVE_ACCESS),
             )
             assertEquals(
@@ -257,6 +262,36 @@ class AdminAuthorizationServiceTest {
         every { userService.get("calendar") } returns MaaUserInfo("calendar", "calendar", activated = false)
         assertFalse(service.hasPermission("calendar", AdminPermission.ACTIVITY_CALENDAR_WRITE))
         assertFalse(service.hasAnyAdminCapability("calendar"))
+    }
+
+    @Test
+    fun `六种目录编辑员只拥有各自目录权限且未激活时无权限`() {
+        val permissionsByRole = mapOf(
+            AdminRole.ACHIEVEMENT_CATALOG_EDITOR to setOf(AdminPermission.ARCHIVE_ACCESS, AdminPermission.ACHIEVEMENT_CATALOG_WRITE),
+            AdminRole.BOND_CATALOG_EDITOR to setOf(AdminPermission.ARCHIVE_ACCESS, AdminPermission.BOND_CATALOG_WRITE),
+            AdminRole.LEDGER_CATALOG_EDITOR to setOf(AdminPermission.LEDGER_CATALOG_WRITE),
+            AdminRole.OPERATOR_CATALOG_EDITOR to setOf(AdminPermission.OPERATOR_CATALOG_WRITE),
+            AdminRole.RECRUITMENT_CATALOG_EDITOR to setOf(AdminPermission.RECRUITMENT_CATALOG_WRITE),
+            AdminRole.LEVEL_CATALOG_EDITOR to setOf(AdminPermission.LEVEL_CATALOG_WRITE),
+        )
+        for ((role, permissions) in permissionsByRole) {
+            val userId = role.name
+            activeUser(userId)
+            every { roleRepository.findById(userId) } returns Optional.of(binding(userId, role))
+            every { feedbackRepository.findById(userId) } returns Optional.empty()
+
+            assertTrue(service.hasAnyAdminCapability(userId))
+            for (permission in AdminPermission.entries) {
+                assertEquals(permission in permissions, service.hasPermission(userId, permission), "${role.name}: ${permission.name}")
+            }
+            assertEquals(permissions.map { it.value }.toSet(), service.permissionsFor(userId))
+
+            every { userService.get(userId) } returns MaaUserInfo(userId, "disabled", activated = false)
+            for (permission in AdminPermission.entries) {
+                assertFalse(service.hasPermission(userId, permission), "${role.name}: ${permission.name}")
+            }
+            assertFalse(service.hasAnyAdminCapability(userId))
+        }
     }
 
     private fun activeUser(userId: String) {

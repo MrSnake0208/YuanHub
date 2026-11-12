@@ -375,7 +375,7 @@ export interface PagedData<T> {
 
 - 菜单、路由和所有编辑按钮改为检查 `operator_catalog:write`；
 - 不再检查用户 `status`；
-- `PLATFORM_ADMIN` 和 `SUPER_ADMIN` 都能使用；
+- `OPERATOR_CATALOG_EDITOR`、`PLATFORM_ADMIN` 和 `SUPER_ADMIN` 都能使用；
 - 角色回收后，下一次请求会返回真实 HTTP 403，此时刷新权限并离开页面。
 
 头像上传继续使用：

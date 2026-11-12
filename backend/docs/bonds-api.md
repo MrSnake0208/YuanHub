@@ -2,7 +2,7 @@
 
 本模块原生复用网站JWT、Beta资格、游戏账号与密探目录；没有外部账号体系、个人localStorage权威存储或库存奖励写入。所有接口沿用ApiResult、snake_case及InventoryError，响应 `Cache-Control: no-store`。
 
-所有玩家接口（含 catalog、收录与备份导入导出）要求网站登录和现有 Beta 准入，有内测资格的普通用户无需 `archive:access` 或管理员角色即可使用；无资格、维护或资格查询失败时拒绝访问，管理员沿用现有 Beta 豁免。目录管理仍要求 `archive:access` 和 `bond_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活；历史记录与角色绑定保留。兼容发布时先部署后端，再部署前端。
+所有玩家接口（含 catalog、收录与备份导入导出）要求网站登录和现有 Beta 准入，有内测资格的普通用户无需 `archive:access` 或管理员角色即可使用；无资格、维护或资格查询失败时拒绝访问，管理员沿用现有 Beta 豁免。目录管理仍要求 `archive:access` 和 `bond_catalog:write`，需 SUPER_ADMIN、PLATFORM_ADMIN 或 BOND_CATALOG_EDITOR，且账号已激活；历史记录与角色绑定保留。兼容发布时先部署后端，再部署前端。
 
 ## 数据与计数
 
@@ -42,7 +42,7 @@ summary.triggered_count 每次从记录与目录重算，包含 active/retired �
 
 ## 管理端
 
-`/v1/admin/bonds/catalog` 所有读写均需 `bond_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活，匿名401/普通玩家403。不受玩家Beta前端开关控制，不开放外部token。
+`/v1/admin/bonds/catalog` 所有读写均需 `bond_catalog:write`，需 SUPER_ADMIN、PLATFORM_ADMIN 或 BOND_CATALOG_EDITOR，且账号已激活，匿名401/普通玩家403。不受玩家Beta前端开关控制，不开放外部token。
 
 | 方法与后缀 | 输入与行为 |
 | --- | --- |

@@ -102,6 +102,12 @@ function roleLabel(role) {
   return {
     SUPER_ADMIN: '超级管理员',
     PLATFORM_ADMIN: '平台管理员',
+    ACHIEVEMENT_CATALOG_EDITOR: '成就目录编辑员',
+    BOND_CATALOG_EDITOR: '羁绊目录编辑员',
+    LEDGER_CATALOG_EDITOR: '广陵账房编辑员',
+    OPERATOR_CATALOG_EDITOR: '密探图鉴编辑员',
+    RECRUITMENT_CATALOG_EDITOR: '招募卡池编辑员',
+    LEVEL_CATALOG_EDITOR: '关卡目录编辑员',
     CHANGELOG_EDITOR: '更新日志编辑员',
     CHANGELOG_REVIEWER: '更新日志审核员'
   }[role] || role

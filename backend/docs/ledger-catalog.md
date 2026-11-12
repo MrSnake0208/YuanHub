@@ -4,7 +4,7 @@
 
 ## 接口
 
-统一 snake_case JSON。成功 `{status_code:200,data:...}`；本模块失败使用实际 HTTP 401/403/404/409/422/503，错误体含 `status_code`、`message`。所有写入与管理读取都先校验 JWT 和 `ledger_catalog:write`；默认 PLATFORM_ADMIN、SUPER_ADMIN 拥有此权限，其余角色没有。仅下述 GET 可匿名访问，POST 同路径不公开。
+统一 snake_case JSON。成功 `{status_code:200,data:...}`；本模块失败使用实际 HTTP 401/403/404/409/422/503，错误体含 `status_code`、`message`。所有写入与管理读取都先校验 JWT 和 `ledger_catalog:write`；已激活的 LEDGER_CATALOG_EDITOR、PLATFORM_ADMIN、SUPER_ADMIN 拥有此权限，其余角色没有。仅下述 GET 可匿名访问，POST 同路径不公开。
 
 | 方法 / 路径 | 作用 |
 | --- | --- |

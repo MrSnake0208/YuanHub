@@ -243,22 +243,34 @@ async function leaveAfterPermissionChange() {
 function roleLabel(role) {
   return {
     SUPER_ADMIN: '超级管理员',
-    ARCHIVE_USER: '成就与羁绊访问',
+    ARCHIVE_USER: '成就与羁绊访问（历史）',
     OPERATOR_PANEL_USER: '自动计算使用',
     PLATFORM_ADMIN: '平台管理员',
     CHANGELOG_EDITOR: '更新日志编辑员',
     ACTIVITY_CALENDAR_EDITOR: '活动日历编辑员',
+    ACHIEVEMENT_CATALOG_EDITOR: '成就目录编辑员',
+    BOND_CATALOG_EDITOR: '羁绊目录编辑员',
+    LEDGER_CATALOG_EDITOR: '广陵账房编辑员',
+    OPERATOR_CATALOG_EDITOR: '密探图鉴编辑员',
+    RECRUITMENT_CATALOG_EDITOR: '招募卡池编辑员',
+    LEVEL_CATALOG_EDITOR: '关卡目录编辑员',
     CHANGELOG_REVIEWER: '更新日志审核员'
   }[role] || role
 }
 function roleDescription(role) {
   return {
     SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
-    ARCHIVE_USER: '成就无需此角色；羁绊仍仅管理员可用，历史使用资格暂不生效',
+    ARCHIVE_USER: '历史角色，当前不授予任何权限；管理目录请使用对应编辑员角色',
     OPERATOR_PANEL_USER: '历史使用资格暂不生效，自动计算目前仅管理员可用',
-    PLATFORM_ADMIN: '维护公共密探图鉴、关卡目录与开发目标',
+    PLATFORM_ADMIN: '维护全部内容目录，并管理内测、招募资格与开发目标',
     CHANGELOG_EDITOR: '编写更新日志并提交审核',
     ACTIVITY_CALENDAR_EDITOR: '仅维护手工活动日历；招募卡池由目录派生',
+    ACHIEVEMENT_CATALOG_EDITOR: '仅维护成就目录并审核成就投稿',
+    BOND_CATALOG_EDITOR: '仅维护羁绊目录',
+    LEDGER_CATALOG_EDITOR: '仅维护广陵账房目录',
+    OPERATOR_CATALOG_EDITOR: '仅维护公共密探图鉴及头像',
+    RECRUITMENT_CATALOG_EDITOR: '仅维护招募卡池目录，不管理招募资格',
+    LEVEL_CATALOG_EDITOR: '仅维护关卡目录',
     CHANGELOG_REVIEWER: '审核、发布和撤回更新日志'
   }[role] || ''
 }
