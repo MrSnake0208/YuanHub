@@ -9,9 +9,18 @@ import com.lhs.share.hub.repository.entity.RecruitmentTemporaryAgent
 internal fun isPermanentRecruitmentPool(snapshot: RecruitmentPoolSnapshot): Boolean =
     snapshot.endDate == null && snapshot.poolType?.trim()?.lowercase() in setOf("permanent", "standard", "常驻", "常驻卡池", "常驻招募")
 
+internal fun isChoiceRecruitmentPool(snapshot: RecruitmentPoolSnapshot): Boolean =
+    snapshot.allowCustomUp ||
+        snapshot.poolType?.trim()?.lowercase() in setOf("choice", "select") ||
+        snapshot.poolType?.contains("自选") == true
+
+internal fun isUpStatisticsExcludedPool(snapshot: RecruitmentPoolSnapshot): Boolean =
+    isPermanentRecruitmentPool(snapshot) || isChoiceRecruitmentPool(snapshot)
+
 internal class RecruitmentAgentStatistics(pools: List<RecruitmentPool>, temporaryAgents: List<RecruitmentTemporaryAgent>) {
     private val slots = pools.associate { it.poolId to (it.mappedSnapshot ?: it.snapshot).upAgents.associateBy { slot -> slot.id } }
     private val permanentPoolIds = pools.filter { isPermanentRecruitmentPool(it.mappedSnapshot ?: it.snapshot) }.map { it.poolId }.toSet()
+    private val choicePoolIds = pools.filter { isChoiceRecruitmentPool(it.mappedSnapshot ?: it.snapshot) }.map { it.poolId }.toSet()
     private val temporary = temporaryAgents.associateBy { it.agentId }
     private val obtained = mutableMapOf<String, RecruitmentAgentCount>()
     private val nonUp = mutableMapOf<String, RecruitmentAgentCount>()
@@ -30,7 +39,9 @@ internal class RecruitmentAgentStatistics(pools: List<RecruitmentPool>, temporar
         val name = slot?.name ?: mapped?.mappedName ?: event.agentName ?: id
         increment(obtained, id, name)
         if (event.poolId in permanentPoolIds) increment(permanent, id, name)
-        if (event.upStatus == "non_up" && event.poolId in slots && event.poolId !in permanentPoolIds) increment(nonUp, id, name)
+        if (event.upStatus == "non_up" && event.poolId in slots && event.poolId !in permanentPoolIds && event.poolId !in choicePoolIds) {
+            increment(nonUp, id, name)
+        }
     }
 
     private fun increment(counts: MutableMap<String, RecruitmentAgentCount>, id: String, name: String) {

@@ -1,7 +1,7 @@
 export function recruitmentGoldMetrics(summary, account = false) {
   const s = summary || {}
   const notApplicable = s.pity_status === 'not_applicable'
-  const unavailable = notApplicable ? (account ? '当前账号没有适用的非永久 UP 池' : '无 UP 机制，不适用') : '统计尚未提供'
+  const unavailable = notApplicable ? (account ? '当前账号没有计入统计的 UP 池' : '无 UP 保底机制，不计入') : '统计尚未提供'
   const sampleNote = s.known_up_gold_count == null || s.up_gold_count == null || s.unknown_up_gold_count == null
     ? '样本统计尚未提供'
     : `UP ${s.up_gold_count} / 归属已知 ${s.known_up_gold_count} 条；未知 ${s.unknown_up_gold_count} 条（未计入比例）`

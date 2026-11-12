@@ -56,7 +56,7 @@ class RecruitmentService(
             }
             val archivedPools = current.pools.associateBy { it.poolId }
             val upStatistics = pools.filter { pool ->
-                !isPermanentRecruitmentPool(pool.mappedSnapshot ?: pool.snapshot) &&
+                !isUpStatisticsExcludedPool(pool.mappedSnapshot ?: pool.snapshot) &&
                     listOfNotNull(
                         pool.snapshot,
                         pool.mappedSnapshot,
