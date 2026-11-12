@@ -14,7 +14,7 @@ Hub Mongo 的 `achievement_catalogs` 按 `_id=game` 存储 `revision`、`publish
 
 ## 权限与 API
 
-仅网站登录身份同时具有 `archive:access` 和 `achievement_catalog:write` 的账号可调用；还必须是部署配置 share.archive-data-owner-id 指定的本人；SUPER_ADMIN/PLATFORM_ADMIN 均不能绕过此条件；历史 ARCHIVE_USER 不再授予访问权限，冻结账号无权限。所有管理读写均检查，匿名401、普通玩家403。不开放外部应用 token scope，不要求玩家 Beta 或玩家成就 feature flag。所有响应 no-store，沿用 ApiResult/snake_case 与 InventoryError。
+仅网站登录身份同时具有 `archive:access` 和 `achievement_catalog:write` 的账号可调用；且须为已激活的 SUPER_ADMIN 或 PLATFORM_ADMIN；历史 ARCHIVE_USER 不再授予访问权限，冻结账号无权限。所有管理读写均检查，匿名401、普通玩家403。不开放外部应用 token scope，不要求玩家 Beta 或玩家成就 feature flag。所有响应 no-store，沿用 ApiResult/snake_case 与 InventoryError。
 
 基础路径 `/v1/admin/achievement-catalogs`，每个请求查询参数 `game=代号鸢` 或 `game=如鸢`。
 

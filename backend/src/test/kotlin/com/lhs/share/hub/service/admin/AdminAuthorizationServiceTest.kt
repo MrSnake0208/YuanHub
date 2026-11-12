@@ -23,7 +23,7 @@ class AdminAuthorizationServiceTest {
     private val feedbackRepository = mockk<FeedbackAccessGrantRepository>()
     private val userService = mockk<UserService>()
     private val categories = mockk<FeedbackCategoryService>()
-    private val service = AdminAuthorizationService(roleRepository, feedbackRepository, userService, categories, "platform")
+    private val service = AdminAuthorizationService(roleRepository, feedbackRepository, userService, categories)
 
     init {
         every { categories.keys() } returns FeedbackArea.all
@@ -102,7 +102,7 @@ class AdminAuthorizationServiceTest {
         assertTrue(service.hasPermission("root", AdminPermission.LEDGER_CATALOG_WRITE))
         assertTrue(service.hasPermission("root", AdminPermission.OPERATOR_CATALOG_WRITE))
         assertTrue(service.hasPermission("root", AdminPermission.RECRUITMENT_CATALOG_WRITE))
-        assertFalse(service.hasPermission("root", AdminPermission.ACHIEVEMENT_CATALOG_WRITE))
+        assertTrue(service.hasPermission("root", AdminPermission.ACHIEVEMENT_CATALOG_WRITE))
         assertTrue(service.hasPermission("root", AdminPermission.RECRUITMENT_ACCESS_MANAGE))
         assertTrue(service.hasPermission("root", AdminPermission.ADMIN_ROLE_MANAGE))
         assertTrue(service.hasPermission("root", AdminPermission.CHANGELOG_WRITE))
@@ -273,18 +273,18 @@ class AdminAuthorizationServiceTest {
     )
 
     @Test
-    fun `archive catalog owner must be configured activated and an administrator`() {
-        activeUser("platform")
-        every { roleRepository.findById("platform") } returns Optional.of(binding("platform", AdminRole.PLATFORM_ADMIN))
-        val missingOwner = AdminAuthorizationService(roleRepository, feedbackRepository, userService, categories)
-        for (permission in listOf(AdminPermission.ACHIEVEMENT_CATALOG_WRITE, AdminPermission.BOND_CATALOG_WRITE)) {
-            assertFalse(missingOwner.hasPermission("platform", permission))
-            assertTrue(service.hasPermission("platform", permission))
-            activeUser("root")
-            every { roleRepository.findById("root") } returns Optional.of(binding("root", AdminRole.SUPER_ADMIN))
-            assertFalse(service.hasPermission("root", permission))
+    fun `archive catalog permissions require an activated platform or super admin`() {
+        for (role in listOf(AdminRole.PLATFORM_ADMIN, AdminRole.SUPER_ADMIN, AdminRole.ARCHIVE_USER, AdminRole.CHANGELOG_EDITOR)) {
+            val userId = role.name
+            activeUser(userId)
+            every { roleRepository.findById(userId) } returns Optional.of(binding(userId, role))
+            for (permission in listOf(AdminPermission.ACHIEVEMENT_CATALOG_WRITE, AdminPermission.BOND_CATALOG_WRITE)) {
+                assertEquals(role in setOf(AdminRole.PLATFORM_ADMIN, AdminRole.SUPER_ADMIN), service.hasPermission(userId, permission))
+            }
+            every { userService.get(userId) } returns MaaUserInfo(userId, "disabled", activated = false)
+            for (permission in listOf(AdminPermission.ACHIEVEMENT_CATALOG_WRITE, AdminPermission.BOND_CATALOG_WRITE)) {
+                assertFalse(service.hasPermission(userId, permission))
+            }
         }
-        every { userService.get("platform") } returns MaaUserInfo("platform", "disabled", activated = false)
-        assertFalse(service.hasPermission("platform", AdminPermission.ACHIEVEMENT_CATALOG_WRITE))
     }
 }

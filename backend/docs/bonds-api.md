@@ -2,7 +2,7 @@
 
 本模块原生复用网站JWT、Beta资格、游戏账号与密探目录；没有外部账号体系、个人localStorage权威存储或库存奖励写入。所有接口沿用ApiResult、snake_case及InventoryError，响应 `Cache-Control: no-store`。
 
-所有玩家接口（含 catalog、收录与备份导入导出）要求网站登录和现有 Beta 准入，有内测资格的普通用户无需 `archive:access` 或管理员角色即可使用；无资格、维护或资格查询失败时拒绝访问，管理员沿用现有 Beta 豁免。目录管理仍要求 `archive:access` 和 `bond_catalog:write`，仅配置的激活资料所有者且具有平台/超级管理员身份可用；历史记录与角色绑定保留。兼容发布时先部署后端，再部署前端。
+所有玩家接口（含 catalog、收录与备份导入导出）要求网站登录和现有 Beta 准入，有内测资格的普通用户无需 `archive:access` 或管理员角色即可使用；无资格、维护或资格查询失败时拒绝访问，管理员沿用现有 Beta 豁免。目录管理仍要求 `archive:access` 和 `bond_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活；历史记录与角色绑定保留。兼容发布时先部署后端，再部署前端。
 
 ## 数据与计数
 
@@ -42,7 +42,7 @@ summary.triggered_count 每次从记录与目录重算，包含 active/retired �
 
 ## 管理端
 
-`/v1/admin/bonds/catalog` 所有读写均需 `bond_catalog:write`，仅部署配置指定的激活资料所有者，且仍须具有PLATFORM_ADMIN/SUPER_ADMIN身份，匿名401/普通玩家403。不受玩家Beta前端开关控制，不开放外部token。
+`/v1/admin/bonds/catalog` 所有读写均需 `bond_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活，匿名401/普通玩家403。不受玩家Beta前端开关控制，不开放外部token。
 
 | 方法与后缀 | 输入与行为 |
 | --- | --- |
@@ -58,6 +58,6 @@ summary.triggered_count 每次从记录与目录重算，包含 active/retired �
 
 现有10字段成就契约已具备，已接通同账号只读 `linked_metrics`：`{metric:"yuan_bond_variants",value,source_revision,source_catalog_version}`。仅配置该linked_metric的有效正整数target使用，具体目标来自已发布目录；不依赖名称。指标读取失败使请求失败，不返回伪零。不写回人工progress、不取最大或相加；完成由用户确认，取消羁绊不撤销已确认成就，成就也不反向生成羁绊或库存奖励。原生成就备份不含该派生指标。
 
-定向测试：BondRulesTest、BondContractTest、BondMongoTest。Mongo测试只使用TestMongo自有可抛弃副本集，覆盖账号隔离、CAS/并发、批量回滚、账号删改竞争、历史身份、导入幂等、预览绑定、原生往返及1207条合成容量。真实资料与恢复备份保存在仓库外；生产只接受所有者手动操作，见 [私有资料维护](private-archive-data.md)。
+定向测试：BondRulesTest、BondContractTest、BondMongoTest。Mongo测试只使用TestMongo自有可抛弃副本集，覆盖账号隔离、CAS/并发、批量回滚、账号删改竞争、历史身份、导入幂等、预览绑定、原生往返及1207条合成容量。真实资料与恢复备份保存在仓库外；生产只接受管理员手动操作，见 [私有资料维护](private-archive-data.md)。
 
 目录响应 achievement_targets 是当前游戏已发布成就的有效羁绊目标排序去重结果，不进入羁绊身份，不自动修改个人记录。读取成就目标失败时返回错误，不用固定门槛或伪零替代。

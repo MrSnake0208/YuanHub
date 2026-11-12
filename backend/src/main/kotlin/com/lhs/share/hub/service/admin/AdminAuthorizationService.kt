@@ -6,7 +6,6 @@ import com.lhs.share.hub.repository.FeedbackAccessGrantRepository
 import com.lhs.share.hub.repository.entity.AdminRole
 import com.lhs.share.hub.service.report.FeedbackCategoryService
 import com.lhs.share.service.UserService
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
@@ -38,7 +37,6 @@ class AdminAuthorizationService(
     private val feedbackAccessRepository: FeedbackAccessGrantRepository,
     private val userService: UserService,
     private val categories: FeedbackCategoryService,
-    @param:Value("\${share.archive-data-owner-id:}") private val archiveDataOwnerId: String = "",
 ) {
     fun rolesFor(userId: String): Set<AdminRole> {
         if (userService.get(userId)?.activated != true) return emptySet()
@@ -58,10 +56,6 @@ class AdminAuthorizationService(
 
     fun hasPermission(userId: String, permission: AdminPermission): Boolean {
         val roles = rolesFor(userId)
-        if (permission in setOf(AdminPermission.ACHIEVEMENT_CATALOG_WRITE, AdminPermission.BOND_CATALOG_WRITE)) {
-            return archiveDataOwnerId.isNotBlank() && userId == archiveDataOwnerId &&
-                roles.any { it == AdminRole.SUPER_ADMIN || it == AdminRole.PLATFORM_ADMIN }
-        }
         if (AdminRole.SUPER_ADMIN in roles) return true
         return when (permission) {
             // Roadmap features stay administrator-only until their individual releases.

@@ -4,7 +4,7 @@
 
 运行时权威目录为 Hub MongoDB 的 `achievement_catalogs`，每游戏一个文档。公共接口逐次读取 `published`，不会读取草稿或进程缓存；响应 `Cache-Control: no-store`，前端不持久缓存目录、PWA 不缓存业务 API。管理员发布成功后玩家下次刷新可读取新版本，无需重启后端。
 
-缺失数据库目录时仅返回虚拟空目录，不读取种子文件、不写数据库。只有所有者显式管理写入才创建文档；数据库异常不降级为空数据。
+缺失数据库目录时仅返回虚拟空目录，不读取种子文件、不写数据库。只有管理员显式管理写入才创建文档；数据库异常不降级为空数据。
 
 日常资料通过网站「管理工作台 → 内容维护 → 成就目录管理」维护，详细接口及操作见 [成就目录管理](achievement-catalog-admin.md)。游戏和系统生成的稳定 ID 不可编辑；成就名称和有效分类必填，条件与奖励允许暂缺，不要求逐条核验后才发布。公共条目固定为 achievement_id、game、category_id、name、condition、sort、is_hidden、rewards、target、linked_metric；没有原游戏ID或替代映射。target=null 不提供数值进度；明确目标为1到1e12的正整数。公开 data_status 自动区分 empty/partial，coverage 可自动生成；complete 仅由管理员明确选择，不按条目数量推断完整程度。
 
@@ -12,7 +12,7 @@
 
 ## 接口与保存约束
 
-沿用 `ApiResult` 包装、snake_case 字段和现有异常格式。下列个人接口要求网站 JWT、现有 Beta 资格和账号归属；成就目录要求网站登录，不再要求 `archive:access`。目录管理仍要求 `archive:access` 与 `achievement_catalog:write`，且必须是配置的资料所有者；普通用户不能管理目录。所有响应 `Cache-Control: no-store`；不开放外部 token/share scope。
+沿用 `ApiResult` 包装、snake_case 字段和现有异常格式。下列个人接口要求网站 JWT、现有 Beta 资格和账号归属；成就目录要求网站登录，不再要求 `archive:access`。目录管理仍要求 `archive:access` 与 `achievement_catalog:write`，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活；普通用户不能管理目录。所有响应 `Cache-Control: no-store`；不开放外部 token/share scope。
 
 | 方法与路径 | 输入 | 返回 |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ preview_token 绑定用户、目标账号、游戏、当前档案版本、目录
 
 ## 奖励与旧目录
 
-`rewards=null` 为资料未补齐，`[]` 为确认无奖励，非空数组项为 `{item_key,name,quantity}`。字典由所有者手动导入目录的 reward_items，随草稿、发布和历史保存；没有资源文件回退。严格验证键、规范名、适用游戏、重复键及正安全整数数量和合计。配置格式和生产操作见 [私有资料维护](private-archive-data.md)。
+`rewards=null` 为资料未补齐，`[]` 为确认无奖励，非空数组项为 `{item_key,name,quantity}`。字典由管理员手动导入目录的 reward_items，随草稿、发布和历史保存；没有资源文件回退。严格验证键、规范名、适用游戏、重复键及正安全整数数量和合计。配置格式和生产操作见 [私有资料维护](private-archive-data.md)。
 
 公共目录额外提供只读 `legacy_rewards`（ID→原文本，通常为空），玩家只在 rewards=null 时回显并标为未结构化，不作为可计算奖励。旧扩展字段、未结构化奖励和不兼容目标会产生管理员 `compatibility_issues`，阻止所有目录变更；原始Mongo文档和个人档案不自动迁移。管理员可用 `scope=legacy` 导出原始目录文档用于核对；这不是十字段目录导入文件。实际开发/生产存量本阶段未连接核查，不能据空种子推断数据库为空。
 
@@ -64,7 +64,7 @@ preview_token 绑定用户、目标账号、游戏、当前档案版本、目录
 
 ## 成就资料投稿与审核（K05）
 
-投稿不绑定游戏子账号，不接受 account_id/submitter_id；删除子账号不删除投稿。普通接口要求网站 JWT 与现有 Beta 资格，无需 archive:access；管理接口沿用 archive:access，并在 Controller 与 Service 检查 achievement_catalog:write 及配置的资料所有者身份。仅活动管理权限不能审核。普通详情始终只允许本人，越权与不存在均404。所有响应 no-store，不加入公开白名单。
+投稿不绑定游戏子账号，不接受 account_id/submitter_id；删除子账号不删除投稿。普通接口要求网站 JWT 与现有 Beta 资格，无需 archive:access；管理接口沿用 archive:access，并在 Controller 与 Service 检查 achievement_catalog:write，需 SUPER_ADMIN 或 PLATFORM_ADMIN，且账号已激活。仅活动管理权限不能审核。普通详情始终只允许本人，越权与不存在均404。所有响应 no-store，不加入公开白名单。
 
 | 方法与路径 | 输入与结果 |
 | --- | --- |
