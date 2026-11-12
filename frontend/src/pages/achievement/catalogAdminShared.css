@@ -1,17 +1,20 @@
-.catalog-admin { padding-block: 24px 64px; color: var(--ink); }
+.catalog-admin { --catalog-bar-offset: 16px; padding-block: 24px 64px; color: var(--ink); }
 .catalog-admin .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .catalog-admin h2 { overflow-wrap: anywhere; font-size: 20px; margin: 0 0 16px; }
 .catalog-admin h3 { font-size: 17px; }
 .catalog-admin h2 small, .hint, .version { color: var(--ink-60); font-size: 13px; }
 .catalog-admin .version { overflow-wrap: anywhere; }
 .catalog-admin button, .catalog-admin input, .catalog-admin select, .catalog-admin textarea { font: inherit; }
-.catalog-admin button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
-.catalog-admin button:hover:not(:disabled), .catalog-admin button[aria-pressed="true"] { border-color: var(--tea); background: var(--paper); }
+.catalog-admin button, .catalog-admin .suggestions-link { padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.catalog-admin button:hover:not(:disabled), .catalog-admin button[aria-pressed="true"], .catalog-admin .suggestions-link:hover { border-color: var(--tea); background: var(--paper); }
+.catalog-admin .suggestions-link { text-decoration: none; }
 .catalog-admin button.primary { background: var(--tea); color: var(--on-strong); }
 .catalog-admin button:disabled { opacity: .55; cursor: default; }
-.catalog-admin :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
+.catalog-admin :is(button, input, select, textarea, .suggestions-link):focus-visible, .catalog-admin .fields :deep(input:focus-visible), .catalog-admin .fields :deep(select:focus-visible) { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 3px; }
 .catalog-admin label { display: grid; gap: 6px; min-width: 0; font-size: 14px; }
 .catalog-admin input:not([type="checkbox"]), .catalog-admin select, .catalog-admin textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); }
+.catalog-admin .fields :deep(label:not(.check)) { display: grid; gap: 6px; min-width: 0; font-size: 14px; }
+.catalog-admin .fields :deep(input:not([type="checkbox"])), .catalog-admin .fields :deep(select) { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; }
 .catalog-admin textarea { resize: vertical; }
 .catalog-admin fieldset { min-width: 0; margin: 20px 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); }
 .catalog-admin legend { padding: 0 8px 0 0; font-weight: 700; }
@@ -19,15 +22,46 @@
 .catalog-admin .check { display: flex; align-items: center; flex-wrap: wrap; }
 .catalog-admin .message { padding: 12px; border: 1px solid var(--line); background: var(--surface); }
 .catalog-admin .error { color: var(--theme-danger-text, var(--rouge)); overflow-wrap: anywhere; }
-.catalog-admin details > summary { cursor: pointer; padding-block: 8px; font-weight: 600; }
-.catalog-admin .entry-row { display: grid; gap: 6px; text-align: left; width: 100%; margin-top: 8px; }
-.catalog-admin .entry-row span, .catalog-admin .entry-row small { color: var(--ink-60); font-size: 13px; overflow-wrap: anywhere; }
-.catalog-admin .entry-row strong { overflow-wrap: anywhere; }
+.catalog-admin details > summary { display: list-item; list-style: disclosure-closed inside; cursor: pointer; padding-block: 8px; font-weight: 600; }
+.catalog-admin details[open] > summary { list-style-type: disclosure-open; }
+.catalog-admin .entry-row { display: grid; gap: 4px; text-align: left; width: 100%; min-width: 0; margin: 0; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.catalog-admin .entry-row:hover:not(:disabled) { background: var(--paper); }
+.catalog-admin .entry-row[aria-pressed="true"] { background: var(--paper); box-shadow: inset 3px 0 var(--tea); border-radius: 4px; }
+.catalog-admin button.entry-row:hover:not(:disabled), .catalog-admin button.entry-row[aria-pressed="true"] { border-color: var(--line); }
+.catalog-admin .entry-row[aria-pressed="true"] strong { color: var(--tea); }
+.catalog-admin .entry-row-title { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.catalog-admin .entry-row strong { flex: 1; min-width: 0; }
+.catalog-admin .entry-row strong, .catalog-admin .entry-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-admin .entry-row small, .catalog-admin .entry-state { color: var(--ink-60); font-size: 13px; }
+.catalog-admin .entry-state { flex: none; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); }
 .catalog-admin .file-input { display: none; }
 .catalog-admin .verification { margin-top: 16px; }
 .catalog-admin .publication p, .catalog-admin .import-preview p { overflow-wrap: anywhere; }
+.catalog-admin .publication, .catalog-admin .settings-import, .catalog-admin .coverage, .catalog-admin .maintenance { scroll-margin-top: var(--catalog-bar-offset); }
 
 .catalog-admin .catalog-controls { margin: 0; padding: 0; border: 0; }
+.catalog-admin .catalog-workbar { padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 14px; line-height: 1.5; }
+.catalog-admin .game-segment { display: inline-flex; width: fit-content; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.catalog-admin .game-segment button { border-color: transparent; background: transparent; white-space: nowrap; }
+.catalog-admin .game-segment button[aria-pressed="true"] { border-color: var(--line); background: var(--surface); font-weight: 700; }
+.catalog-admin .catalog-status { display: grid; gap: 2px; min-width: 0; }
+.catalog-admin .catalog-status small { color: var(--ink-60); font-size: 13px; }
+.catalog-admin .catalog-status .dirty { color: var(--tea); }
+.catalog-admin .workbar-actions, .catalog-admin .workbar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.catalog-admin .workbar-controls { min-width: 0; margin: 0; padding: 0; border: 0; }
+.catalog-admin .workbar-actions button, .catalog-admin .suggestions-link { white-space: nowrap; }
+.catalog-admin .reward-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.catalog-admin .reward-warning p { flex: 1 1 400px; margin: 0; }
+.catalog-admin .entry-list-header { display: grid; gap: 12px; padding-bottom: 16px; }
+.catalog-admin .entry-list-title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.catalog-admin .entry-list-title h2 { margin: 0; font-size: 18px; }
+.catalog-admin .entry-list-title button { font-size: 13px; }
+.catalog-admin .entry-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.catalog-admin .entry-list-header label { font-size: 13px; }
+.catalog-admin .entry-items { min-height: 0; }
+.catalog-admin .entry-editor { min-width: 0; scroll-margin-top: var(--catalog-bar-offset); }
+.catalog-admin .editor-placeholder { display: flex; min-height: 240px; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.catalog-admin .editor-placeholder p { margin: 6px 0; }
 .catalog-admin .reward-editor-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-block: 12px; }
 .catalog-admin .reward-editor-row .error { grid-column: 1 / -1; margin: 0; }
 .catalog-admin .catalog-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 16px; }

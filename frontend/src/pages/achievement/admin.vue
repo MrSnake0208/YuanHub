@@ -14,10 +14,26 @@
         <template v-else>
           <div v-if="error" ref="errorSummary" class="message error" role="alert" tabindex="-1">{{ error }}<a v-if="firstRewardError" :href="'#reward-item-' + firstRewardError.index" @click.prevent="openRewardError">检查「{{ firstRewardError.entry.name || '未命名成就' }}」奖励第 {{ firstRewardError.index + 1 }} 行</a></div>
           <p v-if="notice" class="message" role="status">{{ notice }}</p>
-          <div class="game-switch" role="group" aria-label="选择目录游戏">
-            <button v-for="name in games" :key="name" :aria-pressed="game === name" :disabled="busy" @click="switchGame(name)">{{ name }}</button>
-            <button :disabled="busy" @click="reload">重新读取</button>
-            <span v-if="busy" role="status">处理中…</span>
+          <div class="catalog-workbar">
+            <div class="game-segment" role="group" aria-label="选择目录游戏">
+              <button v-for="name in games" :key="name" :aria-pressed="game === name" :disabled="busy" @click="switchGame(name)">{{ name }}</button>
+            </div>
+            <div class="catalog-status">
+              <template v-if="data && draft">
+                <strong :class="{ dirty }">{{ dirty ? '有未保存修改' : '草稿已保存' }} · {{ savedDraftMatchesPublished ? '与已发布一致' : '有待发布变更' }}</strong>
+                <small>已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 修订 {{ data.revision }}</small>
+              </template>
+              <span v-if="busy" role="status">处理中…</span>
+            </div>
+            <div class="workbar-actions">
+              <button :disabled="busy" @click="reload">重新读取</button>
+              <fieldset v-if="data && draft" class="workbar-controls" :disabled="compatibilityIssues.length > 0">
+                <router-link class="suggestions-link" to="/achievement/admin/suggestions">审核玩家投稿</router-link>
+                <button :aria-expanded="showCategories" :disabled="busy || dirty" @click="showCategories = !showCategories">分类管理</button>
+                <button :class="{ primary: !dirty }" :disabled="busy || dirty" @click="previewPublication()">预览发布</button>
+                <button :class="{ primary: dirty }" :disabled="busy || !dirty" :title="dirty ? '新增、导入或发布前，请先保存草稿。' : undefined" @click="save">保存草稿</button>
+              </fieldset>
+            </div>
           </div>
           <template v-if="data && draft">
             <section v-if="compatibilityIssues.length" class="message error" role="alert">
@@ -26,22 +42,9 @@
               <button :disabled="busy" @click="download('legacy')">导出旧目录原始文档</button>
             </section>
             <fieldset class="catalog-controls" :disabled="compatibilityIssues.length > 0">
-            <AchievementSettingsImport :game="game" :draft="draft" :busy="busy" :revision="data.revision" @apply="applySettings" />
-            <router-link to="/achievement/admin/suggestions">审核玩家投稿</router-link>
-            <p class="catalog-summary">已发布 {{ publishedEntries.length }} · 草稿 {{ activeEntries.length }} · 编辑修订 {{ data.revision }}</p>
-            <p class="version">当前发布：{{ data.published.version }}<br>{{ data.published.published_at }} · {{ data.published.published_by }}</p>
-            <div class="toolbar">
-              <label>搜索成就<input v-model="search" type="search" placeholder="名称或 ID"></label>
-              <label>分类<select v-model="categoryFilter"><option value="">全部分类</option><option v-for="c in draft.categories" :key="c.category_id" :value="c.category_id">{{ c.name }}</option></select></label>
-              <label>编辑状态<select v-model="stateFilter"><option value="">全部</option><option value="add">新增</option><option value="update">已修改</option><option value="retired">已退役</option></select></label>
-              <button :disabled="busy || dirty || !draft.categories.some(c => c.enabled)" @click="addEntry">新增成就</button>
-              <button :disabled="busy || dirty" @click="showCategories = !showCategories">分类管理 / 新增分类</button>
-            </div>
-            <div class="save-bar">
-              <strong>{{ dirty ? '有未保存修改' : '草稿已保存' }}</strong>
-              <button class="primary" :disabled="busy || !dirty" @click="save">保存草稿</button>
-              <button :disabled="busy || dirty" @click="previewPublication()">预览发布</button>
-              <span v-if="dirty">新增、导入或发布前，请先保存草稿。</span>
+            <div v-if="missingRewardEntryCount > 0" class="message error reward-warning" role="alert">
+              <p>奖励字典缺少 {{ missingRewardEntryCount }} 条成就引用的物品，保存草稿会被拦截。请先上传当前游戏的奖励配置。</p>
+              <button type="button" :disabled="busy" @click="settingsImport?.open()">上传奖励配置</button>
             </div>
             <section v-if="showCategories" class="panel" aria-labelledby="categories-title">
               <h2 id="categories-title">游戏分类</h2>
@@ -58,13 +61,24 @@
             </section>
             <div class="catalog-workspace" :class="{ editing: !!selected }">
               <section ref="listPanel" class="entry-list panel" aria-labelledby="list-title" tabindex="-1">
-                <h2 id="list-title">成就列表 <small>{{ filtered.length }} 条</small></h2>
-                <p v-if="!filtered.length">暂无符合条件的成就。先新增分类，再新增成就。</p>
-                <button v-for="e in pageEntries" :key="e.achievement_id" class="entry-row" :aria-pressed="selected === e.achievement_id" :disabled="busy" @click="selectEntry(e.achievement_id)">
-                  <strong>{{ e.name || '未命名成就' }}</strong>
-                  <span>{{ categoryLabel(e.category_id) }}<template v-if="retired(e)"> · 已退役</template></span>
-                  <small>{{ e.condition || '尚未填写完成条件' }}</small>
-                </button>
+                <div class="entry-list-header">
+                  <div class="entry-list-title">
+                    <h2 id="list-title">成就列表 <small>{{ filtered.length }} 条</small></h2>
+                    <button :disabled="busy || dirty || !draft.categories.some(c => c.enabled)" @click="addEntry">新增成就</button>
+                  </div>
+                  <label>搜索成就<input v-model="search" type="search" placeholder="名称或 ID"></label>
+                  <div class="entry-filters">
+                    <label>分类<select v-model="categoryFilter"><option value="">全部分类</option><option v-for="c in draft.categories" :key="c.category_id" :value="c.category_id">{{ c.name }}</option></select></label>
+                    <label>编辑状态<select v-model="stateFilter"><option value="">全部</option><option value="add">新增</option><option value="update">已修改</option><option value="retired">已退役</option></select></label>
+                  </div>
+                </div>
+                <div class="entry-items">
+                  <p v-if="!filtered.length" class="hint">暂无符合条件的成就。先新增分类，再新增成就。</p>
+                  <button v-for="e in pageEntries" :key="e.achievement_id" class="entry-row" :aria-pressed="selected === e.achievement_id" :disabled="busy" @click="selectEntry(e.achievement_id)">
+                    <span class="entry-row-title"><strong :title="e.name || '未命名成就'">{{ e.name || '未命名成就' }}</strong><span v-if="pageEntryStates.get(e.achievement_id)" class="entry-state">{{ pageEntryStates.get(e.achievement_id) }}</span></span>
+                    <small :title="categoryLabel(e.category_id) + ' · ' + (e.condition || '尚未填写完成条件')">{{ categoryLabel(e.category_id) }} · {{ e.condition || '尚未填写完成条件' }}</small>
+                  </button>
+                </div>
                 <nav v-if="filtered.length" class="catalog-pagination" aria-label="成就列表分页">
                   <button :disabled="busy || page === 0" @click="page--">上一页</button>
                   <span role="status">第 {{ page + 1 }} / {{ pageCount }} 页 · 每页 {{ PAGE_SIZE }} 条</span>
@@ -86,14 +100,15 @@
                 <fieldset :disabled="busy">
                   <legend>完成信息与奖励</legend>
                   <label>完成条件（选填）<textarea v-model="entry.condition" rows="3" maxlength="4000"></textarea></label>
-                  <label>奖励资料<select :value="rewardState" @change="setRewardState($event.target.value)"><option value="unknown">资料未补齐</option><option value="none">确认无奖励</option><option value="known">已知奖励</option></select></label>
+                  <label class="reward-state">奖励资料<select :value="rewardState" @change="setRewardState($event.target.value)"><option value="unknown">资料未补齐</option><option value="none">确认无奖励</option><option value="known">已知奖励</option></select></label>
                   <div v-for="(reward, i) in entry.rewards || []" :key="i" class="reward-editor-row">
-                    <label>物品 {{ i + 1 }}<select :id="'reward-item-' + i" :value="reward.item_key" :aria-invalid="!!rewardError(i)" :aria-describedby="rewardError(i) ? 'reward-error-' + i : undefined" @change="setRewardItem(i, $event.target.value)"><option value="">请选择物品</option><option v-for="item in rewardItems" :key="item.item_key" :value="item.item_key">{{ item.name }}</option></select></label>
+                    <label>物品 {{ i + 1 }}<select :id="'reward-item-' + i" :value="reward.item_key" :aria-invalid="!!rewardError(i)" :aria-describedby="rewardError(i) ? 'reward-error-' + i : undefined" @change="setRewardItem(i, $event.target.value)"><option value="">请选择物品</option><option v-if="reward.item_key && !rewardItems.some(item => item.item_key === reward.item_key)" :value="reward.item_key">{{ reward.name || reward.item_key }}（不在当前奖励字典）</option><option v-for="item in rewardItems" :key="item.item_key" :value="item.item_key">{{ item.name }}</option></select></label>
                     <label>数量<input :value="reward.quantity" @input="reward.quantity = integerInput($event.target.value)" type="number" min="1" max="9007199254740991" step="1" inputmode="numeric" :aria-label="'奖励 ' + (i + 1) + ' 数量'" :aria-invalid="!!rewardError(i)" :aria-describedby="rewardError(i) ? 'reward-error-' + i : undefined"></label>
                     <button type="button" :aria-label="'删除奖励 ' + (i + 1)" @click="entry.rewards.splice(i, 1)">删除</button>
-                    <p v-if="rewardError(i)" :id="'reward-error-' + i" class="error">{{ rewardError(i) }}</p>
+                    <p v-if="rewardError(i)" :id="'reward-error-' + i" class="error">{{ reward.item_key && !rewardItemKeys.has(reward.item_key) ? '物品不在奖励字典中' : rewardError(i) }}</p>
                   </div>
                   <button v-if="entry.rewards !== null" type="button" :disabled="(entry.rewards?.length || 0) >= rewardItems.length" @click="addReward">添加奖励</button>
+                  <small v-if="entry.rewards !== null && !rewardItems.length" class="hint">奖励字典为空，请先上传当前游戏的奖励配置。</small>
                 </fieldset>
                 <fieldset :disabled="busy">
                   <legend>进度规则</legend>
@@ -101,10 +116,14 @@
                   <label>联动来源<select v-model="entry.linked_metric"><option :value="null">无联动</option><option value="yuan_bond_variants">鸢报羁绊种数（尚未接入）</option></select></label>
                   <p class="hint">已发布目标仅可增加；从无目标补充目标会保留人工状态。羁绊联动仅支持目标 1、3、10、20、50、100、200，本阶段不提供自动进度。</p>
                 </fieldset>
-                <button class="primary" :disabled="busy || !dirty" @click="save">保存草稿</button>
+                <button class="primary editor-save" :disabled="busy || !dirty" @click="save">保存草稿</button>
               </section>
-              <p v-else class="editor-placeholder panel">选择成就开始维护。玩家只会看到已发布目录。</p>
+              <div v-else class="editor-placeholder panel">
+                <p>从左侧选择成就开始维护</p>
+                <p class="hint">玩家只会看到已发布目录；修改需保存草稿后再预览发布。</p>
+              </div>
             </div>
+            <AchievementSettingsImport ref="settingsImport" :game="game" :draft="draft" :busy="busy" :revision="data.revision" @apply="applySettings" />
             <details class="panel coverage">
               <summary>资料覆盖范围（选填）</summary>
               <p class="hint">发布时自动区分空目录和部分收录，无需手动填写；只有确认完整收录时才选择完整目录。</p>
@@ -154,6 +173,7 @@
                   </div>
                 </template>
                 <h3>发布历史（保留最近 5 个旧版本）</h3>
+                <p class="version">当前发布时间：{{ publishedAt }}<br>版本：{{ data.published.version }} · 发布者：{{ data.published.published_by }}</p>
                 <label>历史版本<select v-model="restoreVersion" :disabled="busy"><option value="">选择历史版本</option><option v-for="h in data.history" :key="h.version" :value="h.version">{{ h.published_at }} · {{ h.version }} · {{ h.published_by }}</option></select></label>
                 <p class="hint">回滚前须先导出并放弃未发布草稿；回滚也会核对进度兼容性，不覆盖他人修改。</p>
                 <div class="actions"><button :disabled="busy || dirty || !restoreVersion" @click="previewPublication(restoreVersion)">对比并预览回滚</button><button :disabled="busy || dirty" @click="discard">放弃已保存草稿</button></div>
@@ -188,6 +208,7 @@ const busy = ref(false), error = ref(''), notice = ref(''), search = ref(''), ca
 const showCategories = ref(false), categoryName = ref(''), publication = ref(null), restoreVersion = ref('')
 const importDocument = ref(null), importPlan = ref(null), importStrategy = ref('keep'), importName = ref('')
 const fileInput = ref(null), errorSummary = ref(null), editor = ref(null), publicationPanel = ref(null), listPanel = ref(null)
+const settingsImport = ref(null)
 const identity = computed(() => String(auth.userInfo?.id || ''))
 const permitted = computed(() => !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ACHIEVEMENT_CATALOG_WRITE))
 function applySettings(settings) {
@@ -199,6 +220,14 @@ const dirty = computed(() => !!data.value && JSON.stringify(draft.value) !== JSO
 const entry = computed(() => draft.value?.entries.find(e => e.achievement_id === selected.value))
 const activeEntries = computed(() => draft.value?.entries.filter(e => !retired(e)) || [])
 const publishedEntries = computed(() => data.value?.published.content.entries.filter(e => !data.value.published.content.retired_ids.includes(e.achievement_id)) || [])
+const savedDraftMatchesPublished = computed(() => !!data.value && ['entries', 'retired_ids', 'categories', 'reward_items', 'point_tracks', 'reward_filter_keys'].every(key =>
+  JSON.stringify(data.value.published.content[key]) === JSON.stringify(data.value.draft[key])
+))
+const publishedAt = computed(() => {
+  const value = data.value?.published.published_at
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
+})
 const historyContent = computed(() => data.value?.history.find(h => h.version === publication.value?.restored_from)?.content)
 const previewContent = computed(() => publication.value?.restored_from ? historyContent.value : draft.value)
 const publicationRange = computed(() => {
@@ -221,6 +250,10 @@ const publicationIssues = computed(() => {
 })
 const compatibilityIssues = computed(() => data.value?.compatibility_issues || [])
 const rewardItems = computed(() => (draft.value?.reward_items || data.value?.reward_items || []).filter(item => item.games.includes(game.value)))
+const rewardItemKeys = computed(() => new Set(rewardItems.value.map(item => item.item_key)))
+const missingRewardEntryCount = computed(() => (draft.value?.entries || []).filter(entry =>
+  (entry.rewards || []).some(reward => reward.item_key && !rewardItemKeys.value.has(reward.item_key))
+).length)
 const rewardState = computed(() => entry.value?.rewards == null ? 'unknown' : entry.value.rewards.length ? 'known' : 'none')
 const firstRewardError = computed(() => {
   for (const entry of draft.value?.entries || []) {
@@ -244,6 +277,11 @@ const filtered = computed(() => (draft.value?.entries || []).filter(e => {
 }).sort((a, b) => (categoryOrder.value.get(a.category_id) ?? 100) - (categoryOrder.value.get(b.category_id) ?? 100) || a.sort - b.sort || a.achievement_id.localeCompare(b.achievement_id)))
 const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
 const pageEntries = computed(() => filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE))
+const pageEntryStates = computed(() => new Map(pageEntries.value.map(entry => {
+  const published = publishedById.value.get(entry.achievement_id)
+  const state = retired(entry) ? '已退役' : !published ? '新增' : JSON.stringify(published) !== JSON.stringify(entry) ? '已修改' : ''
+  return [entry.achievement_id, state]
+})))
 watch([search, categoryFilter, stateFilter], () => { page.value = 0 })
 watch(pageCount, count => { page.value = Math.min(page.value, count - 1) })
 const clone = value => JSON.parse(JSON.stringify(value))
