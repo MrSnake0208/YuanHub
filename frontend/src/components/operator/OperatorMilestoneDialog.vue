@@ -17,6 +17,10 @@
                   <input :id="'milestone-' + row.key" v-model="dates[row.key]" type="date" min="0001-01-01" :max="today" :disabled="busy || conflict" />
                   <button v-if="dates[row.key]" class="clear-button" type="button" :aria-label="'清空' + row.label + '日期'" :disabled="busy || conflict" @click="dates[row.key] = ''">清空</button>
                 </div>
+                <p v-if="row.key === 'star_1' && !dates.star_1 && data.first_recruitment" class="recruitment-hint hint">
+                  <span>招募记录：{{ data.first_recruitment.date }} · {{ data.first_recruitment.pool_name }}</span>
+                  <button type="button" :disabled="busy || conflict" @click="dates.star_1 = data.first_recruitment.date">采用</button>
+                </p>
                 <p v-if="row.previousDays != null || row.totalDays != null" class="elapsed">
                   <span v-if="row.previousDays != null">距上一阶段 <strong>{{ row.previousDays }} 天</strong></span>
                   <span v-if="row.previousDays != null && row.totalDays != null" aria-hidden="true"> · </span>
@@ -28,8 +32,9 @@
           <aside v-if="observations.length" class="observations" aria-labelledby="milestone-reference-title">
             <h3 id="milestone-reference-title">站内参考记录</h3>
             <p v-for="observation in observations" :key="observation.date">截至 {{ observation.date }}，已记录达到 {{ observation.labels.join('、') }}。</p>
-            <p class="hint">参考记录不代表实际达成日期，也不补齐跳过的星级。</p>
+            <p class="hint">参考记录为站内首次记录到该星级的时间，不代表实际达成日期。</p>
           </aside>
+          <p class="hint">通过快速升级越过星级时会自动记下当天日期；已填写的日期不会被覆盖，重置练度也不会清除。</p>
           <p class="hint export-hint">名册导入 / 导出暂不包含补录日期。</p>
           <div class="actions save-actions">
             <div><p class="hint">仅保存日期，不影响练度或库存</p><p v-if="dirty" class="unsaved" role="status">有未保存的修改</p></div>

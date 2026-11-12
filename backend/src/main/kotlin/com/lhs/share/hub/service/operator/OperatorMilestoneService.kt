@@ -1,12 +1,16 @@
 package com.lhs.share.hub.service.operator
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.lhs.share.hub.controller.operator.response.OperatorFirstRecruitment
 import com.lhs.share.hub.controller.operator.response.OperatorMilestoneItem
 import com.lhs.share.hub.controller.operator.response.OperatorMilestoneResponse
 import com.lhs.share.hub.repository.OperatorMilestoneRepository
+import com.lhs.share.hub.repository.RecruitmentRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.OperatorCatalogEntity
 import com.lhs.share.hub.repository.entity.OperatorMilestones
+import com.lhs.share.hub.repository.entity.RecruitmentEvent
+import com.lhs.share.hub.service.recruitment.RecruitmentCatalog
 import com.lhs.share.hub.service.recruitment.RecruitmentService
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.dao.DuplicateKeyException
@@ -23,6 +27,8 @@ class OperatorMilestoneService(
     private val catalog: OperatorCatalogService,
     private val repository: OperatorMilestoneRepository,
     @param:Qualifier("hubTransactionTemplate") private val transaction: TransactionTemplate,
+    private val recruitment: RecruitmentRepository,
+    private val recruitmentCatalog: RecruitmentCatalog,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun get(user: String, account: String, game: String, operator: String): OperatorMilestoneResponse {
@@ -72,10 +78,6 @@ class OperatorMilestoneService(
             ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "密探不存在")
     }
 
-    private fun keys(subject: OperatorCatalogEntity): List<String> =
-        (1..(1 + (OperatorHuajiRules.maximum(subject) - 1) / 6)).map { "star_$it" } +
-            if (OperatorHuajiRules.awakeningSupported(subject)) listOf("awakening") else emptyList()
-
     private fun response(
         user: String,
         account: String,
@@ -91,8 +93,29 @@ class OperatorMilestoneService(
         keys(subject).map { key ->
             OperatorMilestoneItem(key, saved?.dates?.get(key), repository.observedAt(user, account, game, operator, key))
         },
+        firstRecruitment(user, account, game, operator),
     )
+
+    private fun firstRecruitment(user: String, account: String, game: String, operator: String): OperatorFirstRecruitment? {
+        val archive = recruitment.archive(user, account)?.takeIf { it.gameSnapshot == game } ?: return null
+        val events = recruitment.datedEvents(user, account, game)
+        val temporary = archive.temporaryAgents.associateBy { it.agentId }
+        val first = recruitmentCatalog.projectEvents(events, archive.temporaryAgents).filter { event ->
+            val id = event.agentSnapshot.agentId
+            val resolved = event.poolSnapshot.upAgents.firstOrNull { it.id == id }?.operatorId ?: temporary[id]?.mappedAgentId ?: id
+            resolved == operator
+        }.minWithOrNull(compareBy<RecruitmentEvent> { it.acquiredDate }.thenBy { it.sortOrder }) ?: return null
+        // 投影会刷新卡池信息，提示仍保留记录的原始卡池名称。
+        val original = events.first { it.eventId == first.eventId }
+        return OperatorFirstRecruitment(checkNotNull(first.acquiredDate).toString(), original.poolSnapshot.name)
+    }
 
     private fun invalid(message: String): Nothing = throw OperatorApiException(HttpStatus.BAD_REQUEST, "invalid_milestone", message)
     private fun conflict(): Nothing = throw OperatorApiException(HttpStatus.CONFLICT, "milestone_revision_conflict", "记录已变化，请重新读取后保存")
+
+    companion object {
+        internal fun keys(subject: OperatorCatalogEntity): List<String> =
+            (1..(1 + (OperatorHuajiRules.maximum(subject) - 1) / 6)).map { "star_$it" } +
+                if (OperatorHuajiRules.awakeningSupported(subject)) listOf("awakening") else emptyList()
+    }
 }

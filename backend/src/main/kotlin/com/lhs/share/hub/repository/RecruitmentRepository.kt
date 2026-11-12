@@ -25,6 +25,13 @@ class RecruitmentRepository(@param:Qualifier("hubMongoTemplate") private val tem
     fun archive(userId: String, accountId: String): RecruitmentArchive? =
         template.findOne(owner(userId, accountId), RecruitmentArchive::class.java)
 
+    fun datedEvents(userId: String, accountId: String, game: String): List<RecruitmentEvent> = template.find(
+        owner(userId, accountId).addCriteria(
+            Criteria.where("deletedAt").`is`(null).and("acquiredDate").ne(null).and("poolSnapshot.game").`is`(game),
+        ),
+        RecruitmentEvent::class.java,
+    )
+
     fun saveArchive(next: RecruitmentArchive, existed: Boolean): Boolean {
         if (!existed) {
             template.insert(next)

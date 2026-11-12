@@ -446,6 +446,7 @@ class OperatorSharedGrowthMongoTest {
         val upgrade = OperatorUpgradeService(
             accounts, catalog, current, inventories, inventoryRecords, revisions, upgrades,
             mockk<AccountEventService>(relaxed = true), transactions, corrections,
+            com.lhs.share.hub.repository.OperatorMilestoneRepository(template),
         )
         val request = com.lhs.share.hub.controller.operator.request.OperatorUpgradeRequest("account", "如鸢", "base", "huaji", 25, 7)
         val preview = upgrade.preview("owner", request)
@@ -503,6 +504,7 @@ class OperatorSharedGrowthMongoTest {
         val failingService = OperatorUpgradeService(
             accounts, catalog, current, inventories, inventoryRecords, revisions, failingUpgrades,
             mockk<AccountEventService>(relaxed = true), transactions, corrections,
+            com.lhs.share.hub.repository.OperatorMilestoneRepository(template),
         )
         val failedPreview = failingService.preview("owner", awakeningRequest)
         val awakeningExecute = execute.copy(

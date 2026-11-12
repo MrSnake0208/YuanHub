@@ -49,12 +49,16 @@ class OperatorMilestoneRepository(@param:Qualifier("hubMongoTemplate") private v
         )
     }
 
+    fun save(user: String, account: String, game: String, operator: String, dates: Map<String, String>, revision: Long) {
+        template.save(OperatorMilestones(id(user, account, game, operator), user, account, game, operator, dates, revision))
+    }
+
     fun observedAt(user: String, account: String, game: String, operator: String, milestone: String): Instant? {
         val criteria = owner(user, account, game, operator).and("huaji.owned").`is`(true)
         if (milestone == "awakening") {
             criteria.and("huaji.awakened").`is`(true)
         } else {
-            criteria.and("huaji.stage").`is`(1 + (milestone.removePrefix("star_").toInt() - 1) * 6)
+            criteria.and("huaji.stage").gte(1 + (milestone.removePrefix("star_").toInt() - 1) * 6)
         }
         return template.findOne(
             Query(criteria).with(Sort.by(Sort.Direction.ASC, "createdAt")).limit(1),

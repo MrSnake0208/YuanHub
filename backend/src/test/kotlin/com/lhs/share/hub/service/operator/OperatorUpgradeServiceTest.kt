@@ -70,6 +70,7 @@ class OperatorUpgradeServiceTest {
         events,
         transactionTemplate,
         corrections,
+        mockk(relaxed = true) { every { find(any(), any(), any(), any()) } returns null },
     )
 
     @BeforeEach

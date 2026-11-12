@@ -413,6 +413,7 @@ class StarCompletionMongoTransactionTest {
             accounts, operatorCatalog, operators, inventories, records, revisions,
             factory.getRepository(OperatorUpgradeTransactionRepository::class.java), mockk<AccountEventService>(relaxed = true), tx,
             factory.getRepository(OperatorCorrectionRecordRepository::class.java),
+            com.lhs.share.hub.repository.OperatorMilestoneRepository(template),
         )
         val preview = upgrade.preview("u", OperatorUpgradeRequest("a", "如鸢", "operator1", "level", 2, 0))
         val result = raceWriter {

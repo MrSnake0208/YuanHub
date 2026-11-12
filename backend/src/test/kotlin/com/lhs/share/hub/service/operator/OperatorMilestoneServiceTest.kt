@@ -39,6 +39,8 @@ class OperatorMilestoneServiceTest {
             catalog,
             repository,
             transaction,
+            mockk(relaxed = true) { every { archive(any(), any()) } returns null },
+            mockk(),
             Clock.fixed(Instant.parse("2026-10-21T16:00:00Z"), ZoneOffset.UTC),
         )
     private var subject =

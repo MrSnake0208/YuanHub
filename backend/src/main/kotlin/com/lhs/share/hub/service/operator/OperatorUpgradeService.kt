@@ -12,6 +12,7 @@ import com.lhs.share.hub.repository.InventoryRecordRepository
 import com.lhs.share.hub.repository.InventoryRevisionRepository
 import com.lhs.share.hub.repository.OperatorCorrectionRecordRepository
 import com.lhs.share.hub.repository.OperatorCurrentRepository
+import com.lhs.share.hub.repository.OperatorMilestoneRepository
 import com.lhs.share.hub.repository.OperatorUpgradeTransactionRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.InventoryRecord
@@ -31,6 +32,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -47,6 +49,7 @@ class OperatorUpgradeService(
     private val accountEventService: AccountEventService,
     @param:Qualifier("hubTransactionTemplate") private val transactionTemplate: TransactionTemplate,
     private val correctionRepository: OperatorCorrectionRecordRepository,
+    private val milestoneRepository: OperatorMilestoneRepository,
 ) {
     private val previews = ConcurrentHashMap<String, PreviewBinding>()
 
@@ -129,6 +132,7 @@ class OperatorUpgradeService(
                         createdAt = now,
                     ),
                 )
+                recordMilestones(userId, request, calculation.from, now)
                 writeConsumptionRecords(userId, request.accountId, transactionId, consumed, now)
                 val nextInventoryRevision = request.expectedInventoryRevision + 1
                 inventoryRevisionRepository.save(
@@ -193,6 +197,31 @@ class OperatorUpgradeService(
             ),
         )
         return OperatorUpgradeExecuteResponse.of(result)
+    }
+
+    private fun recordMilestones(userId: String, request: OperatorUpgradeExecuteRequest, from: Int, now: Instant) {
+        if (request.dimension != HUAJI && request.dimension != AWAKENING) return
+        val subject = checkNotNull(catalogService.getOperator(request.operatorId))
+        val keys = OperatorMilestoneService.keys(subject)
+        val crossed = keys.filter { key ->
+            if (request.dimension == AWAKENING) {
+                key == "awakening"
+            } else {
+                key.startsWith("star_") && (1 + (key.removePrefix("star_").toInt() - 1) * 6) in (from + 1)..request.target
+            }
+        }
+        if (crossed.isEmpty()) return
+        val current = milestoneRepository.find(userId, request.accountId, request.game, request.operatorId)
+        val dates = current?.dates.orEmpty().toMutableMap()
+        val today = now.atZone(ZoneId.of("Asia/Shanghai")).toLocalDate().toString()
+        keys.forEachIndexed { index, key ->
+            if (key in crossed && key !in dates && keys.drop(index + 1).none { dates[it]?.let { date -> date < today } == true }) {
+                dates[key] = today
+            }
+        }
+        if (dates != current?.dates.orEmpty()) {
+            milestoneRepository.save(userId, request.accountId, request.game, request.operatorId, dates, (current?.revision ?: 0) + 1)
+        }
     }
 
     private fun calculate(userId: String, request: OperatorUpgradeRequest, enforceExpectedOperatorRevision: Boolean): Calculation {

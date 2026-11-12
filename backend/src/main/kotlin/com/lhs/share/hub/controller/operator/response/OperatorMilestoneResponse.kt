@@ -8,6 +8,9 @@ data class OperatorMilestoneResponse(
     val operatorId: String,
     val revision: Long,
     val milestones: List<OperatorMilestoneItem>,
+    val firstRecruitment: OperatorFirstRecruitment? = null,
 )
 
 data class OperatorMilestoneItem(val key: String, val date: String?, val observedAt: Instant?)
+
+data class OperatorFirstRecruitment(val date: String, val poolName: String)
