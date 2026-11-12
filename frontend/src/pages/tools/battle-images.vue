@@ -112,6 +112,7 @@
 </template>
 
 <script setup>
+import { downloadBlob } from '../../utils/downloadFile.js'
 import './battleImages.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -257,10 +258,7 @@ function exportDraft() {
   if (pendingName.value) { fileError.value = '请先确认密探名称，再导出草稿。'; return }
   if (discError.value) { fileError.value = `草稿未导出：${discError.value}`; return }
   try {
-    const url = URL.createObjectURL(new Blob([encodeBattleDraft(draft.value)], { type: 'application/json' }))
-    const link = document.createElement('a')
-    link.href = url; link.download = battleFileName(draft.value.title, '配队草稿', 'json'); document.body.append(link); link.click(); link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadBlob(new Blob([encodeBattleDraft(draft.value)], { type: 'application/json' }), battleFileName(draft.value.title, '配队草稿', 'json'))
   } catch (reason) { fileError.value = reason.message || '草稿导出失败，请重试。' }
 }
 async function importDraft(event) {

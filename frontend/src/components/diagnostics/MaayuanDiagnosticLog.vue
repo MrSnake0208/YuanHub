@@ -22,6 +22,7 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { getDiagnosticLog } from '@/api/maayuanDiagnostics.js'
+import { downloadBlob } from '@/utils/downloadFile.js'
 
 const props = defineProps({ eventId: { type: String, required: true }, log: { type: Object, required: true } })
 const text = ref(null), visible = ref(false), busy = ref(false), error = ref(''), message = ref('')
@@ -40,11 +41,7 @@ async function run(action) {
     }
     if (action === 'view') visible.value = true
     if (action === 'download') {
-      const url = URL.createObjectURL(new Blob([text.value], { type: 'text/plain;charset=utf-8' }))
-      const link = document.createElement('a')
-      link.href = url; link.download = `${id}.log`
-      document.body.appendChild(link); link.click(); link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      downloadBlob(new Blob([text.value], { type: 'text/plain;charset=utf-8' }), `${id}.log`)
     }
     if (action === 'copy') {
       try {

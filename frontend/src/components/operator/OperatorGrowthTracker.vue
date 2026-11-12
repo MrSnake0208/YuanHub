@@ -544,6 +544,7 @@
 </template>
 
 <script setup>
+import { downloadJson } from '../../utils/downloadFile.js'
 import { operatorHuaji, operatorHuajiMax, operatorHuajiDisplayLabel, operatorHuajiAction, operatorAwakeningSupported } from '../../utils/operatorHuaji.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { normalizeGrowthTarget, sharedPlanCalculations, growthHuajiProgress } from '../../data/operatorPlanGrowth.js'
@@ -1678,9 +1679,7 @@ function generateAndSaveSchedule() {
 function downloadPending(kind) {
   const value = kind === 'workspace' ? workspaceState.value.pending : scheduleState.value.pending
   if (!value) return
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }))
-  const link = document.createElement('a'); link.href = url; link.download = 'planner-' + kind + '-' + props.accountId + '.json'; link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadJson(value, 'planner-' + kind + '-' + props.accountId + '.json')
 }
 function beforeLeave(event) {
   if (workspacePending.value || schedulePending.value || migrationBusy.value) { event.preventDefault(); event.returnValue = '' }

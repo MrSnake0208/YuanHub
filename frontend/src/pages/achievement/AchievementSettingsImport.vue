@@ -20,6 +20,7 @@
 </template>
 
 <script setup>
+import { downloadJson } from '../../utils/downloadFile.js'
 import { nextTick, ref, watch } from 'vue'
 import { achievementSettings, settingsExport } from './settingsImport.js'
 const props = defineProps({ game: { type: String, required: true }, draft: { type: Object, required: true }, busy: Boolean, revision: Number })
@@ -52,8 +53,7 @@ async function readFile(event) {
 }
 function apply() { emit('apply', candidate.value); candidate.value = null }
 function download() {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(settingsExport(props.game, props.draft), null, 2)], { type: 'application/json' }))
-  const link = document.createElement('a'); link.href = url; link.download = `奖励配置-${props.game}.json`; link.click(); URL.revokeObjectURL(url)
+  downloadJson(settingsExport(props.game, props.draft), `奖励配置-${props.game}.json`)
 }
 </script>
 

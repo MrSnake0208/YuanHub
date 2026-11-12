@@ -188,6 +188,7 @@
 </template>
 
 <script setup>
+import { downloadJson } from '../../utils/downloadFile.js'
 import AchievementSettingsImport from './AchievementSettingsImport.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
@@ -412,8 +413,7 @@ async function download(scope) {
     : await run((g, u) => exportAchievementCatalog(g, u, scope))
   if (!value) return
   if (local) notice.value = '已导出本地未保存草稿，可保留文件后重新读取核对冲突。'
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }))
-  const link = document.createElement('a'); link.href = url; link.download = `成就目录-${targetGame}-${scope}.json`; link.click(); URL.revokeObjectURL(url)
+  downloadJson(value, `成就目录-${targetGame}-${scope}.json`)
 }
 watch(draft, () => { publication.value = null; importPlan.value = null }, { deep: true, flush: 'sync' })
 watch([identity, permitted], () => { reset(); if (permitted.value) load() }, { immediate: true })

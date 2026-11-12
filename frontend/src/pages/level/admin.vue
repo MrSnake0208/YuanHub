@@ -222,6 +222,7 @@
 </template>
 
 <script setup>
+import { downloadBlob } from '../../utils/downloadFile.js'
 import { computed, reactive, ref } from 'vue'
 import { Download, LoaderCircle, Pencil, Plus, RefreshCw, Search, Upload, X, ArrowLeft } from '@lucide/vue'
 import { useRouter } from 'vue-router'
@@ -508,13 +509,7 @@ async function downloadExport() {
     const exported = await exportAdminLevelCatalog()
     const document = toLevelImportDocument(exported)
     const blob = new Blob([JSON.stringify(document, null, 2) + '\n'], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = window.document.createElement('a')
-    link.href = url
-    link.download = 'level-catalog.json'
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, 'level-catalog.json')
     notice.value = '已导出当前关卡目录。'
   } catch (err) {
     if (await leaveIfForbidden(err)) return

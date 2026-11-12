@@ -128,6 +128,7 @@
 import { computed, ref, watch } from 'vue'
 import { CheckCircle2, CircleX, Download, File, FileArchive, FileJson, FileText, LoaderCircle, ShieldCheck } from '@lucide/vue'
 import { downloadFeedbackAttachment } from '@/api/feedback.js'
+import { downloadBlob } from '@/utils/downloadFile.js'
 import { formatBuildInfo } from '@/config/buildInfo.js'
 import { diagnosticCodeLabel, diagnosticLabel, diagnosticOutcomeLabels, diagnosticReason, diagnosticResourceLabels, diagnosticStageLabels, diagnosticUiScriptLabels } from '@/data/maayuanDiagnostics.js'
 import { AGENT_CATALOG } from '@/data/inventory/catalog.js'
@@ -239,14 +240,7 @@ async function downloadFile(file) {
   downloadErrors.value = { ...downloadErrors.value, [file.id]: '' }
   try {
     const result = await downloadFeedbackAttachment(props.item.id, file.id)
-    const objectUrl = URL.createObjectURL(result.blob)
-    const anchor = document.createElement('a')
-    anchor.href = objectUrl
-    anchor.download = file.name || 'attachment'
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    downloadBlob(result.blob, file.name || 'attachment')
   } catch (error) {
     downloadErrors.value = {
       ...downloadErrors.value,

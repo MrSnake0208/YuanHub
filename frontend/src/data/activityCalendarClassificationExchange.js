@@ -1,4 +1,5 @@
 import { readCalendarImportFile } from './activityCalendarImport.js'
+import { downloadBlob } from '../utils/downloadFile.js'
 
 export const CLASSIFICATION_MAX_BYTES = 20 * 1024 * 1024
 export const CLASSIFICATION_MAX_ITEMS = 10000
@@ -15,9 +16,5 @@ export function downloadClassification(value) {
   let text = JSON.stringify(value, null, 2)
   if (new TextEncoder().encode(text).length > CLASSIFICATION_MAX_BYTES) text = JSON.stringify(value)
   checkClassificationText(text)
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = url; link.download = 'activity-calendar-classification-' + new Date().toISOString().slice(0, 10) + '.json'
-  document.body.appendChild(link)
-  try { link.click() } finally { link.remove(); setTimeout(() => URL.revokeObjectURL(url), 0) }
+  downloadBlob(new Blob([text], { type: 'application/json;charset=utf-8' }), 'activity-calendar-classification-' + new Date().toISOString().slice(0, 10) + '.json')
 }
