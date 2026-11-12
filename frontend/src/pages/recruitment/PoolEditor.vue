@@ -566,7 +566,7 @@ function reviewProgress() {
 function isGuideRow(row) { return receiptVerified.value ? row.event_id === props.saveReceipt.entries[0]?.event_id : row.event_id === displayRows.value[0]?.event_id }
 if (TUTORIALS_ENABLED) watch(() => props.guided, active => { guideVisible.value = active }, { immediate: true })
 function entryMatches(event, entry) {
-  return event && !event.deleted_at && event.pool_id === props.pool?.pool_id && event.event_id === entry.event_id && event.agent_snapshot.agent_id === entry.agent_id && event.pull_span === entry.pull_span && event.up_status === entry.up_status && (event.acquired_date || null) === entry.acquired_date && (event.note || null) === entry.note
+  return event && !event.deleted_at && event.pool_id === props.pool?.pool_id && event.event_id === entry.event_id && event.agent_snapshot.agent_id === entry.agent_id && event.pull_span === entry.pull_span && (entry.up_status === 'unknown' || event.up_status === entry.up_status) && (event.acquired_date || null) === entry.acquired_date && (event.note || null) === entry.note
 }
 const receiptVerified = computed(() => {
   const receipt = props.saveReceipt
@@ -582,10 +582,10 @@ watch(receiptVerified, verified => {
   if (props.saveReceipt.wish_agent_ids) initialWishes.value = [...props.saveReceipt.wish_agent_ids]
   for (const entry of props.saveReceipt.entries) {
     const event = props.records.find(event => entryMatches(event, entry))
-    const row = { ...entry, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
+    const row = { ...entry, up_status: event.up_status, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
     originals.set(entry.event_id, JSON.stringify(entryInput(row)))
     const index = rows.value.findIndex(item => item.event_id === entry.event_id)
-    // 新记录的 UP 状态由提交推导；后续用户修改的其它字段仍须保留。
+    // UP 状态采用服务端读回值；后续用户修改的其它字段仍须保留。
     if (index >= 0 && JSON.stringify({ ...entryInput(rows.value[index]), up_status: entry.up_status }) === JSON.stringify(entry)) rows.value.splice(index, 1, row)
   }
   for (const id of props.saveReceipt.deleted_event_ids) originals.delete(id)

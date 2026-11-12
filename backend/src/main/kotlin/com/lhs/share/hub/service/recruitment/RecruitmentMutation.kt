@@ -17,16 +17,19 @@ import com.lhs.share.hub.controller.recruitment.request.RecruitmentProgressSet
 import com.lhs.share.hub.controller.recruitment.request.RecruitmentRequestDecoder
 import com.lhs.share.hub.controller.recruitment.response.RecruitmentCommandResponse
 import com.lhs.share.hub.repository.RecruitmentRepository
+import com.lhs.share.hub.repository.RecruitmentStatisticEvent
 import com.lhs.share.hub.repository.entity.RecruitmentAgentSnapshot
 import com.lhs.share.hub.repository.entity.RecruitmentArchive
 import com.lhs.share.hub.repository.entity.RecruitmentBatch
 import com.lhs.share.hub.repository.entity.RecruitmentEvent
 import com.lhs.share.hub.repository.entity.RecruitmentPool
 import com.lhs.share.hub.repository.entity.RecruitmentPoolSnapshot
+import com.lhs.share.hub.repository.entity.RecruitmentTemporaryAgent
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
+import java.util.stream.Stream
 
 /** All methods are invoked inside the account-fenced Hub transaction. */
 @Service
@@ -439,7 +442,12 @@ class RecruitmentMutation(
     }
 
     internal fun projectPools(pools: List<RecruitmentPool>, game: String? = null): List<RecruitmentPool> = catalog.projectPools(pools, game)
-    internal fun projectEvents(events: List<RecruitmentEvent>): List<RecruitmentEvent> = catalog.projectEvents(events)
+    internal fun projectEvents(events: List<RecruitmentEvent>, temporaryAgents: List<RecruitmentTemporaryAgent>): List<RecruitmentEvent> =
+        catalog.projectEvents(events, temporaryAgents)
+    internal fun projectStatisticEvents(
+        events: Stream<RecruitmentStatisticEvent>,
+        temporaryAgents: List<RecruitmentTemporaryAgent>,
+    ): Stream<RecruitmentStatisticEvent> = catalog.projectStatisticEvents(events, temporaryAgents)
     internal fun poolStates(pools: List<RecruitmentPool>): Map<String, String> = catalog.poolStates(pools)
 
     private fun pool(current: RecruitmentArchive, id: String) =

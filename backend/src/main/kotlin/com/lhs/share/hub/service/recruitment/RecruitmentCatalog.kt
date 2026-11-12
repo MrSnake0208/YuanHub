@@ -7,12 +7,14 @@ import com.lhs.share.hub.controller.recruitment.response.RecruitmentCatalogAdmin
 import com.lhs.share.hub.controller.recruitment.response.RecruitmentCatalogImportResponse
 import com.lhs.share.hub.repository.OperatorCatalogRepository
 import com.lhs.share.hub.repository.RecruitmentCatalogRepository
+import com.lhs.share.hub.repository.RecruitmentStatisticEvent
 import com.lhs.share.hub.repository.entity.RecruitmentAgentSnapshot
 import com.lhs.share.hub.repository.entity.RecruitmentCatalogPool
 import com.lhs.share.hub.repository.entity.RecruitmentCatalogSourcePage
 import com.lhs.share.hub.repository.entity.RecruitmentEvent
 import com.lhs.share.hub.repository.entity.RecruitmentPool
 import com.lhs.share.hub.repository.entity.RecruitmentPoolSnapshot
+import com.lhs.share.hub.repository.entity.RecruitmentTemporaryAgent
 import com.lhs.share.hub.repository.entity.RecruitmentUpAgent
 import com.lhs.share.hub.service.account.SubAccountService
 import org.springframework.core.io.ClassPathResource
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
+import java.util.stream.Stream
 
 @Service
 class RecruitmentCatalog(
@@ -201,13 +204,29 @@ class RecruitmentCatalog(
         }
     }
 
-    fun projectEvents(events: List<RecruitmentEvent>): List<RecruitmentEvent> {
+    fun projectEvents(events: List<RecruitmentEvent>, temporaryAgents: List<RecruitmentTemporaryAgent>): List<RecruitmentEvent> {
         if (events.isEmpty()) return events
-        val latest = all().associateBy { it.poolId }
         val names = operatorNames()
+        val latest = all().associate { it.poolId to snapshotOf(it, names) }
+        val temporary = temporaryAgents.associateBy { it.agentId }
         return events.map { event ->
-            val pool = latest[event.poolSnapshot.catalogPoolId]?.takeIf { it.game == event.poolSnapshot.game } ?: return@map event
-            val latestSnapshot = snapshotOf(pool, names)
+            val latestSnapshot = latest[event.poolSnapshot.catalogPoolId]?.takeIf { it.game == event.poolSnapshot.game }
+            val upStatus = effectiveRecruitmentUpStatus(
+                RecruitmentStatisticEvent(
+                    poolId = event.poolId,
+                    rarity = event.agentSnapshot.rarity,
+                    pullSpan = event.pullSpan,
+                    upStatus = event.upStatus,
+                    agentId = event.agentSnapshot.agentId,
+                    allowCustomUp = event.poolSnapshot.allowCustomUp,
+                    upAgentIds = event.poolSnapshot.upAgentIds,
+                    poolUpStatus = event.poolSnapshot.upStatus,
+                    upAgentSlotIds = event.poolSnapshot.upAgents.map { it.id },
+                ),
+                latestSnapshot,
+                temporary[event.agentSnapshot.agentId]?.mappedAgentId,
+            ) ?: event.upStatus
+            if (latestSnapshot == null) return@map event.copy(upStatus = upStatus)
             val snapshot = if (event.poolSnapshot.allowCustomUp) {
                 withWishes(
                     latestSnapshot.copy(allowCustomUp = true),
@@ -219,7 +238,19 @@ class RecruitmentCatalog(
             }
             val slot = snapshot.upAgents.firstOrNull { it.id == event.agentSnapshot.agentId }
             val name = slot?.name ?: names[event.agentSnapshot.agentId] ?: event.agentSnapshot.name
-            event.copy(poolSnapshot = snapshot, agentSnapshot = event.agentSnapshot.copy(name = name))
+            event.copy(poolSnapshot = snapshot, agentSnapshot = event.agentSnapshot.copy(name = name), upStatus = upStatus)
+        }
+    }
+
+    internal fun projectStatisticEvents(
+        events: Stream<RecruitmentStatisticEvent>,
+        temporaryAgents: List<RecruitmentTemporaryAgent>,
+    ): Stream<RecruitmentStatisticEvent> {
+        val latest = all().associate { it.poolId to snapshotOf(it) }
+        val temporary = temporaryAgents.associateBy { it.agentId }
+        return events.map { event ->
+            val snapshot = latest[event.catalogPoolId]?.takeIf { it.game == event.game }
+            event.copy(upStatus = effectiveRecruitmentUpStatus(event, snapshot, temporary[event.agentId]?.mappedAgentId))
         }
     }
 

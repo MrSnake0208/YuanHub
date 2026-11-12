@@ -187,7 +187,7 @@ class RecruitmentRepository(@param:Qualifier("hubMongoTemplate") private val tem
             }
         }
 
-    /** Ordered, projected cursor: no portraits, snapshots or full history list for summary calculations. */
+    /** Ordered, projected cursor: only statistics and UP attribution fields, no full history list. */
     fun statisticEvents(userId: String, accountId: String): Stream<RecruitmentStatisticEvent> {
         val query = owner(userId, accountId).addCriteria(Criteria.where("deletedAt").`is`(null))
             .addCriteria(Criteria.where("agentSnapshot.rarity").ne(4)).with(Sort.by("sortOrder", "eventId"))
@@ -198,8 +198,15 @@ class RecruitmentRepository(@param:Qualifier("hubMongoTemplate") private val tem
             "agentSnapshot.name",
             "pullSpan",
             "upStatus",
+            "poolSnapshot.catalogPoolId",
+            "poolSnapshot.game",
+            "poolSnapshot.allowCustomUp",
+            "poolSnapshot.upAgentIds",
+            "poolSnapshot.upStatus",
+            "poolSnapshot.upAgents.id",
         ).exclude("_id")
         return template.stream(query, Document::class.java, "recruitment_events").map { row ->
+            val pool = row.get("poolSnapshot", Document::class.java)
             RecruitmentStatisticEvent(
                 row.getString("poolId"),
                 (row.get("agentSnapshot", Document::class.java)?.get("rarity") as? Number)?.toInt(),
@@ -207,6 +214,12 @@ class RecruitmentRepository(@param:Qualifier("hubMongoTemplate") private val tem
                 row.getString("upStatus"),
                 row.get("agentSnapshot", Document::class.java)?.getString("agentId"),
                 row.get("agentSnapshot", Document::class.java)?.getString("name"),
+                catalogPoolId = pool?.getString("catalogPoolId"),
+                game = pool?.getString("game"),
+                allowCustomUp = pool?.getBoolean("allowCustomUp") == true,
+                upAgentIds = pool?.getList("upAgentIds", String::class.java).orEmpty(),
+                poolUpStatus = pool?.getString("upStatus"),
+                upAgentSlotIds = pool?.getList("upAgents", Document::class.java).orEmpty().map { it.getString("id") },
             )
         }
     }
@@ -297,4 +310,10 @@ data class RecruitmentStatisticEvent(
     val upStatus: String?,
     val agentId: String? = null,
     val agentName: String? = null,
+    val catalogPoolId: String? = null,
+    val game: String? = null,
+    val allowCustomUp: Boolean = false,
+    val upAgentIds: List<String> = emptyList(),
+    val poolUpStatus: String? = null,
+    val upAgentSlotIds: List<String> = emptyList(),
 )

@@ -48,7 +48,7 @@ class RecruitmentService(
             val accountGoldStatistics = RecruitmentGoldStatistics()
             val agentStatistics = RecruitmentAgentStatistics(pools, current.temporaryAgents)
             store.statisticEvents(userId, accountId).use { records ->
-                records.forEach { record ->
+                mutation.projectStatisticEvents(records, current.temporaryAgents).forEach { record ->
                     goldStatistics.getOrPut(record.poolId) { RecruitmentGoldStatistics() }.add(record)
                     accountGoldStatistics.add(record)
                     agentStatistics.add(record)
@@ -182,7 +182,7 @@ class RecruitmentService(
             } else {
                 null
             }
-            RecruitmentEventPage(mutation.projectEvents(items), next, revision)
+            RecruitmentEventPage(mutation.projectEvents(items, current?.temporaryAgents.orEmpty()), next, revision)
         },
     )
 
