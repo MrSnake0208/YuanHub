@@ -42,6 +42,9 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
     @GetMapping("/events/{eventId}/media/{assetId}", produces = [MediaType.ALL_VALUE])
     fun media(@PathVariable eventId: String, @PathVariable assetId: String) = authorized { center.mediaResponse(eventId, assetId) }
 
+    @GetMapping("/events/{eventId}/log", produces = ["text/plain; charset=utf-8"])
+    fun log(@PathVariable eventId: String) = authorized { center.logResponse(eventId) }
+
     @PatchMapping("/issues/{id}")
     fun update(@PathVariable id: String, @Valid @RequestBody request: DiagnosticIssueUpdateRequest) = authorized {
         success(center.update(id, helper.requireUserId(), request))

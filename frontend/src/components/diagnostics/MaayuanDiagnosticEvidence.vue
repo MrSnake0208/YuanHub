@@ -28,6 +28,7 @@
         <button v-if="Object.keys(imageErrors).length" type="button" @click="load">重新加载证据</button>
       </template>
     </section>
+    <MaayuanDiagnosticLog v-if="event?.log" :event-id="event.id" :log="event.log" />
     <MaayuanDiagnosticTrace v-if="event?.trace?.length" :trace="event.trace" :issues="event.summary?.issues || []" :issue="issue" :images="event.images" />
     <p v-else-if="event" class="diagnostic-muted diagnostic-trace-empty">本次上报未包含识别轨迹</p>
     <details v-if="event" class="diagnostic-section diagnostic-raw">
@@ -55,6 +56,7 @@ import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock.js'
 import MaayuanDiagnosticImage from './MaayuanDiagnosticImage.vue'
 import MaayuanDiagnosticTrace from './MaayuanDiagnosticTrace.vue'
+import MaayuanDiagnosticLog from './MaayuanDiagnosticLog.vue'
 
 const props = defineProps({
   eventId: { type: String, required: true },

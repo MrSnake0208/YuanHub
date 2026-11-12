@@ -36,6 +36,16 @@
 
 前端 `/maayuan-diagnostics` 与反馈管理路由同级鉴权，以桌面表格/手机卡片承载问题组，右侧抽屉（手机全屏）提供结论、处理、环境、最近事件、完整证据及原始数据；反馈页只保留次级入口，旧详情图片也改为 contain。现有 MaayuanDiagnosticServiceMongoTest 与 feedbackPages.spec.js 中直接冲突的断言已静态更新，未运行检查；新中心的权限、事务、聚合及运行时 UI 均待另行授权验证。
 
+### 可选运行日志（2026-11-12）
+
+直传 intents 新增可选 `log:{size,content_md5}`，每事件最多一份脱敏 UTF-8 gzip 日志，压缩大小 1～262144 字节，解压最多 1048576 字节。MD5 沿用图片规则；日志与图片合计消耗 packet 字节配额和 10 GiB 全局预算。仅 accepted 且请求有 log 时返回 `log_upload:{method,url,headers,expires_in}`，签名 headers 为 Content-Type: application/gzip、Content-MD5、Content-Length；预算不足仍返回 accepted_without_images 且不提供日志地址。无 log 的旧请求、multipart 通道和 Integration Token 结构化响应保持原样。
+
+日志 MediaAsset 为 privateStorage、FILE / application/gzip、storageBackend=cos，绑定 diagnosticEventId 与 ownerUserId，14 天过期，存于 `diagnostics/logs/{medId}.log.gz`。事件可选保存 `log:{assetId,status,size}`，size 为压缩字节数。complete 请求仍是 `{}`，没有图片也可完成日志；要求认证用户和绑定账号与事件一致，资产 owner/eventId/privateStorage 校验与图片一致。HEAD 大小一致后有界读取，gzip 流式解压最多读取 1 MiB + 1 字节，严格检查 UTF-8；ready/missing/invalid 通过事务条件更新，invalid 删除对象，missing/invalid 释放预算且不重复释放。complete 响应仅在事件有日志时返回 `log:{status}`。14 天清理沿用图片路径，删除对象和元数据、释放尚未释放的额度，事件引用保留用于过期提示。
+
+仅管理端事件详情新增可选 `log:{asset_id,status,size,expired}`；`GET /v1/admin/maayuan-diagnostics/events/{eventId}/log` 与 media 共用 authorized / requireAccess，返回解压文本 `text/plain; charset=utf-8`，no-store/private、nosniff；无日志、未完成、missing/invalid、过期或资产归属不符均为真实 HTTP 404，临时 COS 故障为 503。日志不增加 AI 接口或签发 GET URL。前端证据区有日志才显示「运行日志」，ready 时按需加载查看、下载 `<eventId>.log`、复制；图片与 Trace 保留原布局和行为。
+
+部署前须为同一私有桶的 `diagnostics/logs/*` 配置与图片相同的 PutObject/GetObject/DeleteObject/HeadObject 最小权限，以及该前缀上传后 15 天过期删除生命周期（孤儿对象兜底）；应用层仍为 14 天。先部署 YuanHub，再发布 MaaYuan；旧服务端收到带 log 的 intent 返回 400 时客户端去掉 log 重试一次，退回 multipart 不带日志。详细协议见 [开发者 API](../../frontend/docs/developers/api.md#可选运行日志)。本次不修改远端权限或生命周期。
+
 ### 识别轨迹、失败画面与节点分组（schema_version=1）
 
 新增字段均为可选兼容增量，严格模式继续拒绝未知键、重复键、null 和类型强转。**发布顺序必须是 YuanHub 后端先发布，再发布 MaaYuan 客户端**；旧后端会将新增字段视为未知字段返回 400。字段完整定义见 [开发者 API](../../frontend/docs/developers/api.md#maayuan-百宝箱诊断)。

@@ -8,6 +8,7 @@ import com.lhs.share.hub.repository.entity.MaayuanDiagnosticAnalysis
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
 import com.lhs.share.hub.repository.entity.MediaAsset
+import com.lhs.share.hub.repository.entity.MediaKind
 import com.lhs.share.hub.service.media.MediaStorageService
 import com.lhs.share.hub.service.operator.OperatorCatalogService
 import com.lhs.share.hub.service.report.FeedbackAccessService
@@ -166,6 +167,14 @@ class MaayuanDiagnosticCenterService(
                 nodeRoi = if (includeTrace) image.nodeRoi else null,
             )
         }
+        val log = if (includeTrace) {
+            event.log?.let {
+                val stored = mongo.findById(it.assetId, MediaAsset::class.java)
+                DiagnosticEventLog(it.assetId, stored?.status ?: it.status, it.size, stored == null || expired(stored))
+            }
+        } else {
+            null
+        }
         return DiagnosticEventDetail(
             event.id,
             event.createdAt,
@@ -173,6 +182,7 @@ class MaayuanDiagnosticCenterService(
             json,
             images,
             trace = if (includeTrace) event.trace else null,
+            log = log,
         )
     }
 
@@ -189,6 +199,31 @@ class MaayuanDiagnosticCenterService(
             .header("X-Content-Type-Options", "nosniff")
             .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(asset.originalName).build().toString())
             .body(resource)
+    }
+
+    fun logResponse(eventId: String): ResponseEntity<String> {
+        val event = retainedEvent(eventId)
+        val reference = event.log ?: throw ApiResultException(404, "诊断日志不存在")
+        val asset = mongo.findById(reference.assetId, MediaAsset::class.java) ?: throw ApiResultException(404, "诊断日志已过期")
+        if (!asset.privateStorage || asset.ownerUserId != event.userId || asset.diagnosticEventId != event.id || expired(asset) ||
+            asset.kind != MediaKind.FILE || asset.mime != "application/gzip" || asset.storageBackend != "cos" ||
+            asset.status != "ready" || reference.status != "ready" || asset.size != reference.size
+        ) {
+            throw ApiResultException(404, "诊断日志尚未就绪或不可用")
+        }
+        val text = try {
+            val bytes = media.loadAuthorizedAsset(asset).inputStream.use { it.readNBytes(DIAGNOSTIC_LOG_COMPRESSED_LIMIT + 1) }
+            if (bytes.size.toLong() != asset.size) throw ApiResultException(404, "诊断日志不可用")
+            decodeDiagnosticLog(bytes)
+        } catch (error: org.springframework.web.server.ResponseStatusException) {
+            if (error.statusCode.value() in setOf(404, 422)) throw ApiResultException(404, "诊断日志不存在或不可用")
+            throw error
+        }
+        return ResponseEntity.ok()
+            .contentType(MediaType("text", "plain", Charsets.UTF_8))
+            .cacheControl(CacheControl.noStore().cachePrivate())
+            .header("X-Content-Type-Options", "nosniff")
+            .body(text)
     }
 
     fun update(id: String, userId: String, request: DiagnosticIssueUpdateRequest): DiagnosticIssueDetail {

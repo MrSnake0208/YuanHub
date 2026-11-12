@@ -182,6 +182,28 @@ class MediaStorageService(
         )
     }
 
+    fun createPendingDiagnosticLog(ownerUserId: String, eventId: String, size: Long, expiresAt: Instant): MediaAsset {
+        check(cosStorage.enabled) { "COS direct upload is unavailable" }
+        require(size in 1..262144)
+        val id = generateMedId()
+        return mediaAssetRepository.save(
+            MediaAsset(
+                id = id,
+                ownerUserId = ownerUserId,
+                originalName = "$eventId.log.gz",
+                mime = "application/gzip",
+                size = size,
+                storagePath = "diagnostics/logs/$id.log.gz",
+                kind = MediaKind.FILE,
+                privateStorage = true,
+                diagnosticEventId = eventId,
+                diagnosticExpiresAt = expiresAt,
+                storageBackend = "cos",
+                status = "pending",
+            ),
+        )
+    }
+
     /** Diagnostic retention deletes the private file before removing its database reference. */
     fun deletePrivateFile(asset: MediaAsset) {
         if (!asset.privateStorage || asset.diagnosticEventId == null) {
@@ -243,7 +265,8 @@ class MediaStorageService(
     fun loadAuthorizedAsset(asset: MediaAsset): Resource {
         val kind = asset.effectiveKind()
         if (asset.storageBackend == "cos") {
-            if (!asset.privateStorage || kind != MediaKind.IMAGE || asset.status != "ready") {
+            val diagnosticLog = kind == MediaKind.FILE && asset.mime == "application/gzip" && asset.diagnosticEventId != null
+            if (!asset.privateStorage || (kind != MediaKind.IMAGE && !diagnosticLog) || asset.status != "ready") {
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "附件不存在")
             }
             return cosStorage.load(asset.storagePath)

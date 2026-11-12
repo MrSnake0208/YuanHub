@@ -232,7 +232,7 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 
 ### 诊断图片直传国内 COS
 
-manifest 字段与 `schema_version=1` 保持不变。反馈截图（私有或公开）全部继续存本地，此流程仅适用于 MaaYuan 诊断图片。两步接口复用上述连接码鉴权和用户请求配额，认证在正文读取前完成；complete 不再消耗子账号包/图片日额度。
+manifest 字段与 `schema_version=1` 保持不变。反馈截图（私有或公开）全部继续存本地，此流程适用于 MaaYuan 诊断图片和可选运行日志。两步接口复用上述连接码鉴权和用户请求配额，认证在正文读取前完成；complete 不再消耗子账号包/图片日额度。
 
 1. `POST /open-api/maayuan/diagnostics/intents`，`Content-Type: application/json`，正文最多 64 KiB：`{"manifest":{...},"uploads":[{"size":5934,"content_md5":"<16 字节 MD5 的 24 字符规范 Base64>"}]}`。uploads 必须与 manifest.images 按下标一一对应（0～3），size 为整数 1～524288；拒绝未知字段、重复键、null 与类型强转。子账号 packet/字节额度按声明 size 之和计；服务端在本步即预留图片额度、创建事件和问题组，图片为 pending，manifest 本地保存。
 2. 成功 200 返回 `{"status":"accepted","event_id":"...","uploads":[{"index":0,"method":"PUT","url":"https://<bucket>.cos.<region>.myqcloud.com/diagnostics/images/med_xxx.jpg?...","headers":{"Content-Type":"image/jpeg","Content-MD5":"...","Content-Length":"5934"},"expires_in":600}]}`。额度不足的 `accepted_without_images`、去重的 `duplicate` 返回空 uploads。COS 未启用返回 409 `{"status":"direct_upload_unavailable"}`；遇到 404/405/409 回退原 multipart 接口。
@@ -241,7 +241,17 @@ manifest 字段与 `schema_version=1` 保持不变。反馈截图（私有或公
 
 管理端事件详情为未过期 cos+ready 图片提供短期 GET `url`，默认 300 秒，带 `response-content-type=image/jpeg`、`response-content-disposition=inline`；每次重新签发，禁止缓存与记录签名。网页直接使用 `<img src=url>`，失败时重新拉一次事件详情；本地旧图继续经代理。pending 显示「图片未上传完成」，missing/invalid 显示丢失/校验失败。open-api（AI）只返回状态，继续代理取图，不返回直链。
 
-COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 ap-shanghai）；新增 `put-url-ttl-seconds=600`、`get-url-ttl-seconds=300`。桶私有读写，无需 CORS（客户端非浏览器，网页用 img）；CAM 仅授予目标桶诊断前缀的 PutObject/GetObject/DeleteObject/HeadObject。管理员必须配置 `diagnostics/images/` 上传后 15 天过期的生命周期。新直传路径中，东京后端到国内 COS 为跨境公网，仅用于 complete 校验（每张 ≤512KiB，通常约 6KB）和删除；旧 multipart 转存及 AI 代理仍经过后端。配置项、环境变量与部署边界见后端 `docs/cos-private-images.md`。
+COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 ap-shanghai）；新增 `put-url-ttl-seconds=600`、`get-url-ttl-seconds=300`。桶私有读写，无需 CORS（客户端非浏览器，网页用 img）；CAM 仅授予目标桶诊断前缀的 PutObject/GetObject/DeleteObject/HeadObject。管理员必须配置 `diagnostics/images/` 和 `diagnostics/logs/` 上传后 15 天过期的生命周期。新直传路径中，东京后端到国内 COS 为跨境公网，用于 complete 校验、管理端日志读取和删除；旧 multipart 转存及 AI 图片代理仍经过后端。配置项、环境变量与部署边界见后端 `docs/cos-private-images.md`。
+
+#### 可选运行日志
+
+`POST /open-api/maayuan/diagnostics/intents` 可在 manifest、uploads 同级增加 `"log":{"size":12345,"content_md5":"<规范 Base64 MD5>"}`。每事件最多一份；日志由客户端脱敏，必须为 UTF-8 纯文本经 gzip 压缩。声明 size 为整数 1～262144（256 KiB），MD5 与图片规则相同；非法声明沿用 422，未知字段、null 和错误类型沿用 400。不带 log 的旧请求保持原行为。
+
+图片与日志压缩字节合计消耗同一次 packet 字节配额，并共同预留 10 GiB 全局图片预算。仅 accepted 且带 log 时响应增加 `log_upload:{method:"PUT",url,headers:{"Content-Type":"application/gzip","Content-MD5":"...","Content-Length":"12345"},expires_in:600}`；预算不足仍为 accepted_without_images，uploads 为空且没有 log_upload；duplicate 也不返回日志上传地址。签名 URL 不入库、不写日志，DTO 的 toString 也不包含 URL。
+
+complete 请求仍为 `{}`，支持没有图片、只有日志的事件。服务端 HEAD 核对声明大小，有界读取 gzip，流式解压最多读取 1048577 字节，超过 1 MiB 或不是合法 UTF-8、gzip 损坏时为 invalid，并删除对象、释放预算；未上传为 missing，校验成功为 ready。事件有日志时响应增加 `log:{status:"ready"}`（或 missing/invalid），无日志时省略。状态变更和预算释放与图片共用事务条件更新；COS 临时故障保留 pending，允许重试。日志与图片保留 14 天，复用每小时过期清理。
+
+旧 multipart 通道不支持日志。发布顺序为先部署 YuanHub，再发布 MaaYuan；客户端带 log 的 intent 遇到旧服务端 400 时，去掉 log 重试一次，回退 multipart 时也不带日志。
 
 ### 诊断中心管理与 AI 集成
 
@@ -253,6 +263,7 @@ COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 
 | `GET /issues/{id}` | 问题组、近 90 天去重用户数、最近 20 条事件摘要、对象/候选及最近事件涉及密探的中文名与 `subject_in_catalog`；OCR 对象按目录名称或空白/逗号等分隔的别名精确匹配，其他对象返回 null |
 | `GET /events/{eventId}` | 完整事件摘要、内联 `manifest` JSON、`images[{asset_id,role,operator_id,issue_index,expired,status,url?}]`；`operator_id` 可空，来自 manifest 对应图片，旧事件仅在读取时从已保存的 manifest 回填、不写回数据库；status 为 pending/ready/missing/invalid，旧数据缺省 ready；url 仅管理端为未过期 cos+ready 图片签发，AI 不返回；不返回上报用户或账号 ID；协议没有明确 issue 关联时 `issue_index` 为 null |
 | `GET /events/{eventId}/media/{assetId}` | 校验资产属于事件、仍在保留期且为私有诊断文件后返回文件流；不可跨事件访问 |
+| `GET /events/{eventId}/log`（仅管理端） | 与 media 相同的 MAAYUAN 岗位权限，返回解压后的 `text/plain; charset=utf-8`，禁止缓存；无日志、pending/missing/invalid 或已过期均为 HTTP 404；校验资产 owner、事件引用和私有存储 |
 | `PATCH /issues/{id}`（仅管理端） | `{status,note?}`，status 必填，备注最多 4000 字；记录操作人与时间，省略 note 保留原备注 |
 | `PUT /issues/{id}/analysis`（仅 AI） | `{summary,suggested_action,source,model?}`；必填字段不为空，长度分别最多 4000、40、40，model 最多 120；仅替换 `agent_analysis`，不修改 status |
 
@@ -264,7 +275,7 @@ COS 配置沿用 `share.media.cos.*`，region 由运维选择国内地域（如 
 
 上述 stage/node 分支中，issue.node 为 `(direct)` 时回退 `stage:<stage>`，避免跨阶段合组；nodes 聚合时过滤该值（含已有列表），服务端字段校验仍接受它。operator/ocr_name 分组规则不变。
 
-仅管理端 `GET /events/{eventId}` 额外返回 `trace`（缺省空数组）、摘要 `issues[].node`、图片 `trace_index/node_roi`。详情抽屉以时间线展示步骤，突出当前组相关 issue 在同阶段最后一次未命中的节点，并为 last_frame 引用的步骤标「对应画面」。证据缩略图和大图叠加节点 ROI（黄色虚线）及识别框（命中绿 / 未命中红）；使用 resolution 坐标，并结合图片 roi 与 object-fit:contain 的实际内容区换算，缩放和容器尺寸变化时重新定位。旧事件无轨迹时明确显示未包含轨迹，证据加载、过期与重试行为保留。
+仅管理端 `GET /events/{eventId}` 额外返回 `trace`（缺省空数组）、摘要 `issues[].node`、图片 `trace_index/node_roi`，以及可选 `log:{asset_id,status,size,expired}`（size 为压缩字节数，无日志时省略）。日志资产过期清理后保留事件引用，以提示「日志已过期（保留 14 天）」。证据区仅在有日志时显示运行日志小节，ready 可按需查看、下载 `<eventId>.log` 和复制；pending/missing/invalid 显示对应提示。日志文本以纯文本插值展示，不解析 HTML。详情抽屉以时间线展示步骤，突出当前组相关 issue 在同阶段最后一次未命中的节点，并为 last_frame 引用的步骤标「对应画面」。证据缩略图和大图叠加节点 ROI（黄色虚线）及识别框（命中绿 / 未命中红）；使用 resolution 坐标，并结合图片 roi 与 object-fit:contain 的实际内容区换算，缩放和容器尺寸变化时重新定位。旧事件无轨迹时明确显示未包含轨迹，证据加载、过期与重试行为保留。
 
 `/open-api/maayuan-diagnostics/*` 的请求、结构化响应和 analysis 端点保持原契约：不增加 nodes、trace、issue.node 或图片 trace_index/node_roi，内联 manifest 同样保持既有字段投影；私有 manifest 附件仍是接收后保存的完整协议文件。没有新增或调整 AI 分析行为。
 

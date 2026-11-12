@@ -131,11 +131,16 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         val manifest = parse(this.bytes(request.manifest))
         if (request.uploads.size != manifest.images.size) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Image index/count mismatch")
         request.uploads.forEach { upload ->
-            valid(upload.size in 1..524288 && Regex("[A-Za-z0-9+/]{22}==").matches(upload.contentMd5))
-            val digest = Base64.getDecoder().decode(upload.contentMd5)
-            valid(digest.size == 16 && Base64.getEncoder().encodeToString(digest) == upload.contentMd5)
+            validateUpload(upload, 524288)
         }
+        request.log?.let { validateUpload(it, DIAGNOSTIC_LOG_COMPRESSED_LIMIT) }
         return request.copy(manifest = manifest)
+    }
+
+    private fun validateUpload(upload: DiagnosticUploadDeclaration, limit: Int) {
+        valid(upload.size in 1..limit && Regex("[A-Za-z0-9+/]{22}==").matches(upload.contentMd5))
+        val digest = Base64.getDecoder().decode(upload.contentMd5)
+        valid(digest.size == 16 && Base64.getEncoder().encodeToString(digest) == upload.contentMd5)
     }
 
     fun requireEmptyObject(bytes: ByteArray) {

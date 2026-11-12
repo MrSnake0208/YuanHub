@@ -3,6 +3,7 @@ package com.lhs.share.openapi.diagnostics
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
@@ -12,6 +13,43 @@ import java.util.UUID
 class MaayuanDiagnosticParserTest {
     private val mapper = jacksonObjectMapper()
     private val parser = MaayuanDiagnosticParser(mapper)
+
+    @Test
+    fun `log declarations are optional and enforce size MD5 and strict JSON fields`() {
+        val intent = mapper.createObjectNode().apply {
+            set<ObjectNode>("manifest", mapper.readTree(diagnosticManifest(withImage = false)))
+            putArray("uploads")
+        }
+        assertNull(parser.parseIntent(mapper.writeValueAsBytes(intent)).log)
+        val log = intent.putObject("log").put("size", 1).put("content_md5", "AAAAAAAAAAAAAAAAAAAAAA==")
+        for (size in listOf(1, 262144)) {
+            log.put("size", size)
+            assertEquals(size.toLong(), parser.parseIntent(mapper.writeValueAsBytes(intent)).log?.size)
+        }
+        for (size in listOf(0, -1, 262145, Long.MAX_VALUE)) {
+            log.put("size", size)
+            assertStatus(422) { parser.parseIntent(mapper.writeValueAsBytes(intent)) }
+        }
+        log.put("size", 1)
+        for (md5 in listOf("", "invalid", "AAAAAAAAAAAAAAAAAAAAAB==")) {
+            log.put("content_md5", md5)
+            assertStatus(422) { parser.parseIntent(mapper.writeValueAsBytes(intent)) }
+        }
+        log.put("content_md5", "AAAAAAAAAAAAAAAAAAAAAA==").put("extra", "field")
+        assertStatus(400) { parser.parseIntent(mapper.writeValueAsBytes(intent)) }
+        intent.putNull("log")
+        assertStatus(400) { parser.parseIntent(mapper.writeValueAsBytes(intent)) }
+    }
+
+    @Test
+    fun `optional log receipt fields are omitted and signatures never appear in toString`() {
+        assertFalse(mapper.readTree(mapper.writeValueAsBytes(DiagnosticIntentReceipt("accepted", "event"))).has("log_upload"))
+        assertFalse(mapper.readTree(mapper.writeValueAsBytes(DiagnosticCompleteReceipt(images = emptyList()))).has("log"))
+        val upload = DiagnosticLogUploadIntent("PUT", "https://secret-signature", emptyMap(), 600)
+        assertFalse(DiagnosticIntentReceipt("accepted", "event", logUpload = upload).toString().contains("secret-signature"))
+        val json = mapper.readTree(mapper.writeValueAsBytes(DiagnosticIntentReceipt("accepted", "event", logUpload = upload)))
+        assertEquals(600, json.at("/log_upload/expires_in").asInt())
+    }
 
     @Test
     fun `optional UI script accepts known enums and rejects invalid or null values`() {

@@ -17,7 +17,10 @@ data class MaayuanDiagnosticEvent(
     val images: List<MaayuanDiagnosticImage>,
     @Indexed val signatures: List<String>,
     val trace: List<MaayuanDiagnosticTraceStep> = emptyList(),
+    val log: MaayuanDiagnosticLog? = null,
 )
+
+data class MaayuanDiagnosticLog(val assetId: String, val status: String, val size: Long)
 
 data class MaayuanDiagnosticImage(
     val assetId: String,

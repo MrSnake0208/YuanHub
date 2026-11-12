@@ -55,7 +55,10 @@ data class DiagnosticEventDetail(
     val manifest: JsonNode,
     val images: List<DiagnosticEventImage>,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val trace: List<MaayuanDiagnosticTraceStep>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val log: DiagnosticEventLog? = null,
 )
+
+data class DiagnosticEventLog(val assetId: String, val status: String, val size: Long, val expired: Boolean)
 
 data class DiagnosticIssueUpdateRequest(
     @field:NotBlank @field:Pattern(regexp = "NEW|FIXED|IGNORED") val status: String,

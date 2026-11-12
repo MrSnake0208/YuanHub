@@ -82,10 +82,33 @@ class MaayuanDiagnosticService(
         val request = parser.parseIntent(body)
         val manifest = request.manifest
         if (recorded(manifest.eventId)) return DiagnosticIntentReceipt("duplicate", manifest.eventId)
-        val bytes = request.uploads.sumOf { it.size }
+        val bytes = request.uploads.sumOf { it.size } + (request.log?.size ?: 0L)
         quotas.packet(principal, bytes)
         val uploads = mutableListOf<DiagnosticUploadIntent>()
-        val result = persist(principal, manifest, request.uploads.size, bytes) { index, now ->
+        var logUpload: DiagnosticLogUploadIntent? = null
+        val createLog: ((Instant) -> MediaAsset)? = request.log?.let { declaration ->
+            { now ->
+                val asset = media.createPendingDiagnosticLog(
+                    principal.userId,
+                    manifest.eventId,
+                    declaration.size,
+                    now.plus(Duration.ofDays(14)),
+                )
+                val headers = mapOf(
+                    "Content-Type" to "application/gzip",
+                    "Content-MD5" to declaration.contentMd5,
+                    "Content-Length" to asset.size.toString(),
+                )
+                logUpload = DiagnosticLogUploadIntent(
+                    "PUT",
+                    media.cosStorage.presignPut(asset.storagePath, headers),
+                    headers,
+                    media.cosStorage.putUrlTtlSeconds,
+                )
+                asset
+            }
+        }
+        val result = persist(principal, manifest, request.uploads.size, bytes, createLog) { index, now ->
             val asset = media.createPendingDiagnosticImage(
                 principal.userId,
                 manifest.eventId,
@@ -107,7 +130,12 @@ class MaayuanDiagnosticService(
                 )
             asset
         }
-        return DiagnosticIntentReceipt(result.status, manifest.eventId, if (result.status == "accepted") uploads else emptyList())
+        return DiagnosticIntentReceipt(
+            result.status,
+            manifest.eventId,
+            if (result.status == "accepted") uploads else emptyList(),
+            if (result.status == "accepted") logUpload else null,
+        )
     }
 
     private fun persist(
@@ -115,6 +143,7 @@ class MaayuanDiagnosticService(
         manifest: MaayuanDiagnosticManifest,
         imageCount: Int,
         imageBytes: Long,
+        createLog: ((Instant) -> MediaAsset)? = null,
         createImage: (Int, Instant) -> MediaAsset,
     ): DiagnosticReceipt {
         val assets = mutableListOf<MediaAsset>()
@@ -135,6 +164,7 @@ class MaayuanDiagnosticService(
                     repeat(imageCount) { index ->
                         assets += createImage(index, now)
                     }
+                    createLog?.let { assets += it(now) }
                 }
                 recorder.record(principal, manifest, assets, now)
                 mongo.insert(DiagnosticEventReceipt(manifest.eventId))
@@ -143,7 +173,9 @@ class MaayuanDiagnosticService(
         } catch (error: Exception) {
             // An insert may have committed before a network error; never remove its referenced evidence.
             val existing = mongo.findById(manifest.eventId, MaayuanDiagnosticEvent::class.java)
-            val referenced = existing?.let { listOf(it.manifestAssetId) + it.images.map { image -> image.assetId } }.orEmpty()
+            val referenced = existing?.let {
+                listOfNotNull(it.manifestAssetId, it.log?.assetId) + it.images.map { image -> image.assetId }
+            }.orEmpty()
             assets.filterNot { it.id in referenced }.forEach(::deleteAsset)
             val ownsCommittedAssets = assets.isNotEmpty() && assets.all { it.id in referenced }
             if (existing != null && ownsCommittedAssets) return DiagnosticReceipt(status, manifest.eventId)
@@ -162,11 +194,12 @@ class MaayuanDiagnosticService(
         ) {
             diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic event not found")
         }
-        if (event.images.none { it.status == "pending" }) {
+        if (event.images.none { it.status == "pending" } && event.log?.status != "pending") {
             return DiagnosticCompleteReceipt(
                 images = event.images.mapIndexed { index, image ->
                     DiagnosticCompleteImage(index, image.status)
                 },
+                log = event.log?.let { DiagnosticCompleteLog(it.status) },
             )
         }
         val manifestAsset = mongo.findById(event.manifestAssetId, MediaAsset::class.java)
@@ -192,21 +225,23 @@ class MaayuanDiagnosticService(
                 asset.status != "pending" -> asset.status
                 else -> completeImage(asset, manifest.images[index])
             }
-            transactions.executeWithoutResult {
-                var finalStatus = status
-                if (asset != null && asset.status == "pending") {
-                    // A conditional transition and the budget decrement commit together, including concurrent complete calls.
-                    val pending = Query(Criteria.where("_id").`is`(asset.id).and("status").`is`("pending"))
-                    val changed = mongo.findAndModify(pending, Update().set("status", status), MediaAsset::class.java)
-                    if (changed == null) {
-                        finalStatus = mongo.findById(image.assetId, MediaAsset::class.java)?.status ?: "missing"
-                    } else if (status in setOf("missing", "invalid")) {
-                        releaseImages(changed.size)
-                    }
-                }
-                val reference = Query(Criteria.where("_id").`is`(id).and("images.assetId").`is`(image.assetId))
-                mongo.updateFirst(reference, Update().set("images.$.status", finalStatus), MaayuanDiagnosticEvent::class.java)
+            completeAssetStatus(id, image.assetId, asset, status, "images")
+        }
+        event.log?.takeIf { it.status == "pending" }?.let { log ->
+            val asset = mongo.findById(log.assetId, MediaAsset::class.java)
+            if (asset != null && (
+                    asset.diagnosticEventId != id || asset.ownerUserId != principal.userId || !asset.privateStorage ||
+                        asset.storageBackend != "cos" || asset.kind != MediaKind.FILE || asset.mime != "application/gzip"
+                    )
+            ) {
+                diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic log not found")
             }
+            val status = when {
+                asset == null -> "missing"
+                asset.status != "pending" -> asset.status
+                else -> completeLog(asset)
+            }
+            completeAssetStatus(id, log.assetId, asset, status, "log")
         }
         val completed = mongo.findById(id, MaayuanDiagnosticEvent::class.java)
             ?: diagnosticError(HttpStatus.NOT_FOUND, "Diagnostic event not found")
@@ -214,7 +249,50 @@ class MaayuanDiagnosticService(
             images = completed.images.mapIndexed { index, image ->
                 DiagnosticCompleteImage(index, image.status)
             },
+            log = completed.log?.let { DiagnosticCompleteLog(it.status) },
         )
+    }
+
+    private fun completeAssetStatus(eventId: String, assetId: String, asset: MediaAsset?, status: String, field: String) {
+        transactions.executeWithoutResult {
+            var finalStatus = status
+            if (asset != null && asset.status == "pending") {
+                // A conditional transition and the budget decrement commit together, including concurrent complete calls.
+                val pending = Query(Criteria.where("_id").`is`(asset.id).and("status").`is`("pending"))
+                val changed = mongo.findAndModify(pending, Update().set("status", status), MediaAsset::class.java)
+                if (changed == null) {
+                    finalStatus = mongo.findById(assetId, MediaAsset::class.java)?.status ?: "missing"
+                } else if (status in setOf("missing", "invalid")) {
+                    releaseImages(changed.size)
+                }
+            }
+            val reference = Query(Criteria.where("_id").`is`(eventId).and("$field.assetId").`is`(assetId))
+            val path = if (field == "images") "images.$.status" else "log.status"
+            mongo.updateFirst(reference, Update().set(path, finalStatus), MaayuanDiagnosticEvent::class.java)
+        }
+    }
+
+    private fun completeLog(asset: MediaAsset): String {
+        if (asset.deletedAt != null || asset.diagnosticExpiresAt?.isAfter(Instant.now()) != true) return "missing"
+        val size = media.cosStorage.headSize(asset.storagePath) ?: return "missing"
+        var status = "invalid"
+        if (size == asset.size && size in 1..DIAGNOSTIC_LOG_COMPRESSED_LIMIT) {
+            try {
+                val bytes = media.cosStorage.load(asset.storagePath).inputStream.use { it.readNBytes(size.toInt() + 1) }
+                if (bytes.size.toLong() == size) {
+                    decodeDiagnosticLog(bytes)
+                    status = "ready"
+                }
+            } catch (error: org.springframework.web.server.ResponseStatusException) {
+                when (error.statusCode.value()) {
+                    404 -> return "missing"
+                    422 -> Unit
+                    else -> throw error
+                }
+            }
+        }
+        if (status == "invalid") media.cosStorage.delete(asset.storagePath)
+        return status
     }
 
     private fun completeImage(asset: MediaAsset, metadata: DiagnosticImage): String {
@@ -356,7 +434,9 @@ class MaayuanDiagnosticService(
         if (!mongo.exists(query, MediaAsset::class.java)) return
         transactions.executeWithoutResult {
             val removed = mongo.findAndRemove(query, MediaAsset::class.java) ?: return@executeWithoutResult
-            if (removed.kind == MediaKind.IMAGE && removed.status !in setOf("missing", "invalid")) releaseImages(removed.size)
+            if ((removed.kind == MediaKind.IMAGE || removed.mime == "application/gzip") && removed.status !in setOf("missing", "invalid")) {
+                releaseImages(removed.size)
+            }
             val reference = org.bson.Document("id", asset.id)
             mongo.updateMulti(
                 Query(Criteria.where("source").`is`(DIAGNOSTIC_SOURCE)),

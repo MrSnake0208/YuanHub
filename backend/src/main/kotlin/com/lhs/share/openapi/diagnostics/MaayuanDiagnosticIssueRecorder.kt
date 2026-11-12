@@ -5,6 +5,7 @@ import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticImage
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticLog
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticTraceStep
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.openapi.OpenApiPrincipal
@@ -104,7 +105,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                     },
                 ),
                 manifestAssetId = checkNotNull(assets.first().id),
-                images = assets.drop(1).mapIndexed { index, asset ->
+                images = assets.drop(1).filterNot { it.mime == "application/gzip" }.mapIndexed { index, asset ->
                     MaayuanDiagnosticImage(
                         checkNotNull(asset.id),
                         manifest.images[index].role,
@@ -117,6 +118,9 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 signatures = groups.keys.map { it.id },
                 trace = manifest.trace.map {
                     MaayuanDiagnosticTraceStep(it.kind, it.node, it.stage, it.hit, it.n, it.t, it.dt, it.algo, it.score, it.box, it.text)
+                },
+                log = assets.singleOrNull { it.mime == "application/gzip" }?.let {
+                    MaayuanDiagnosticLog(checkNotNull(it.id), it.status, it.size)
                 },
             ),
         )

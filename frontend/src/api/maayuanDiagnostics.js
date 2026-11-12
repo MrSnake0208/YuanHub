@@ -30,6 +30,7 @@ export async function getDiagnosticEvent(id) {
   const value = await request(`${base}/events/${encodeURIComponent(id)}`, options())
   return {
     ...eventFrom(value),
+    log: value.log ? camelFields(value.log) : null,
     trace: (value.trace || []).map(camelFields),
     images: (value.images || []).map(image => ({ ...camelFields(image), status: image.status || 'ready' }))
   }
@@ -37,4 +38,8 @@ export async function getDiagnosticEvent(id) {
 
 export function getDiagnosticMedia(eventId, assetId) {
   return request(`${base}/events/${encodeURIComponent(eventId)}/media/${encodeURIComponent(assetId)}`, { ...options(), responseType: 'blob' })
+}
+
+export function getDiagnosticLog(eventId) {
+  return request(`${base}/events/${encodeURIComponent(eventId)}/log`, { ...options(), responseType: 'blob' })
 }
