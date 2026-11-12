@@ -9,7 +9,7 @@ import { operatorHuaji } from '../../utils/operatorHuaji.js'
 import { filterBonds, groupBonds, groupBondsByOperator } from './rules.js'
 
 export function useBonds() {
-  const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0 })
+  const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0 })
   const publicGame = ref(DEFAULT_ACCOUNT_GAME)
   const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
   const accountId = computed(() => activeAccount.id)
@@ -31,7 +31,7 @@ export function useBonds() {
   const matches = token => alive && token.generation === state.generation && token.identity === identity.value && token.accountId === accountId.value && token.game === game.value
   function reset() {
     state.generation++; read++
-    Object.assign(state, { catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, error: '', catalogError: '', operatorError: '', ownedError: '', notice: '' })
+    Object.assign(state, { catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '' })
     selected.value = []; page.value = 0; filters.onlyOwned = false; filters.recorded = ''
   }
   async function refresh() {
@@ -82,27 +82,47 @@ export function useBonds() {
     } catch (error) { if (alive && identity.value === owner && serial === accountRead) state.accountsError = error.message }
     finally { if (alive && identity.value === owner && serial === accountRead) state.accountsLoading = false }
   }
-  async function save(changes) {
-    if (!writable.value || !changes.length || changes.length > 50) return false
-    const token = capture(), revision = state.archive.revision, version = state.catalog.catalog_version
+  async function save(changes, batch = false) {
+    if (!writable.value || !changes.length) return false
+    const token = capture(), version = state.catalog.catalog_version
+    let saved = 0
     state.busy = true; state.notice = ''; state.error = ''; read++
     try {
-      const result = await api.writeBonds(token.accountId, token.identity, revision, version, changes)
-      if (!matches(token)) return false
-      if (result.account_id !== token.accountId || result.game !== token.game || result.catalog_version !== version) throw new Error('保存响应归属或目录不一致，请刷新核对。')
-      state.archive = result; selected.value = []
+      for (let offset = 0; offset < changes.length; offset += 50) {
+        if (!matches(token)) return false
+        if (batch) state.saveProgress = `正在保存 ${offset / 50 + 1} / ${Math.ceil(changes.length / 50)} 批…`
+        const chunk = changes.slice(offset, offset + 50)
+        const result = await api.writeBonds(token.accountId, token.identity, state.archive.revision, version, chunk)
+        if (!matches(token)) return false
+        if (result.account_id !== token.accountId || result.game !== token.game || result.catalog_version !== version) throw new Error('保存响应归属或目录不一致，请刷新核对。')
+        state.archive = result; saved += chunk.length
+        const savedIds = new Set(chunk.map(change => change.bond_id))
+        selected.value = selected.value.filter(id => !savedIds.has(id))
+      }
+      selected.value = []
+      if (batch) state.notice = `已保存 ${saved} 条`
       return true
     } catch (error) {
       if (matches(token)) {
-        if (error.status === 409) { state.busy = false; await refresh(); if (matches(token)) state.error = '档案或目录版本冲突，已尝试刷新。请核对后重试。' }
+        const progress = `已保存 ${saved} 条，剩余 ${changes.length - saved} 条未保存，可重试。`
+        if (error.status === 409) {
+          const remaining = [...selected.value]
+          state.busy = false; await refresh()
+          if (matches(token)) {
+            if (batch) selected.value = remaining
+            state.error = '档案或目录版本冲突，已尝试刷新。请核对后重试。' + (batch ? progress : '')
+          }
+        }
+        else if (batch) state.notice = (error.message || '保存失败。') + ' ' + progress
         else state.error = error.message || '保存失败，未显示为已保存；请刷新后重试。'
       }
       return false
-    } finally { if (matches(token)) state.busy = false }
+    } finally { if (matches(token)) { state.busy = false; state.saveProgress = '' } }
   }
   function select(id) {
+    if (!writable.value) return
     if (selected.value.includes(id)) selected.value = selected.value.filter(value => value !== id)
-    else if (selected.value.length < 50) selected.value.push(id)
+    else selected.value.push(id)
   }
   watch(filters, () => { selected.value = []; page.value = 0 }, { flush: 'sync' })
   watch(page, () => { selected.value = [] }, { flush: 'sync' })

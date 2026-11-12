@@ -113,10 +113,9 @@
 .bonds-codex .bond-condition[aria-pressed=true] { border-color: var(--theme-success-line, #abc39b); background: var(--theme-success-bg, #f1f6e9); color: var(--ink); }
 .bonds-codex .bond-condition[aria-pressed=true] .bond-condition-status { background: var(--theme-success-bg, #dfeccf); color: var(--theme-success-text, #365b30); }
 .bond-condition-history { grid-column: 1 / -1; font-size: 11px; color: var(--theme-danger-text, var(--rouge)); }
-.bond-weather-icon { color: var(--theme-info-text, #8c9db9); justify-self: center; }
-.weather-sunny { color: var(--theme-muted, #b48b43); fill: var(--theme-accent-text, #f4ddb0); }
-.weather-wind, .weather-hurricane { color: var(--theme-muted, #7b917c); }
-.weather-rain, .weather-thunder { fill: #dee6f5; }
+.bond-weather-icon { object-fit: contain; justify-self: center; filter: brightness(0.65); }
+:root[data-theme="dark"] .bond-weather-icon { filter: none; }
+.bond-choice-options button img { width: 20px; height: 20px; }
 .bond-batch-check { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 2px; font-size: 12px; }
 .bond-condition-wrap:has(.bond-batch-check) { display: flex; flex-direction: column; }
 .bond-batch-toolbar, .bond-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-block: 12px; font-size: 13px; }

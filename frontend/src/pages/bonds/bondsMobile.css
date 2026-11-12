@@ -47,6 +47,10 @@
   .bond-results-toolbar .bond-batch-toggle { grid-column: 2; grid-row: 1; font-size: 12px; }
   .bond-results-toolbar .bond-clear-filters { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
   .bond-results-toolbar > button:first-of-type { margin-left: 0; }
+  .bond-batch-toolbar > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .bond-batch-toolbar .bond-select-page { flex-basis: 100%; }
+  .bonds-codex .bond-batch-check { min-height: 48px; box-sizing: border-box; }
+  .bonds-codex .bond-batch-toolbar > button { min-height: 48px; flex: 1 1 140px; white-space: normal; }
   .bond-agent-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; padding: 9px 10px; }
   .bond-agent-heading .operator-avatar { grid-row: 1 / 3; grid-column: 1; width: 40px; height: 40px; }
   .bond-agent-heading > h2 { font-size: 18px; margin: 0; grid-column: 2; }
@@ -90,7 +94,7 @@
   .bond-find-choices .bond-choice-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .bond-choice-options .bond-all-choice { display: none; }
   .bonds-codex .bond-choice-options button { min-height: 36px; padding: 6px 4px; gap: 4px; white-space: nowrap; }
-  .bond-choice-options button svg { width: 16px; height: 16px; }
+  .bond-choice-options button img { width: 18px; height: 18px; }
   .bond-search-row { flex-wrap: wrap; }
   .bonds-codex .bond-search { flex: 1 1 180px; }
 }
