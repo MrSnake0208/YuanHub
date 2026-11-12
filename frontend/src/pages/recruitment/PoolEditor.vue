@@ -1008,7 +1008,7 @@ function confirmRecord() {
     } else rows.value.splice(index, 1, row)
     activeRow.value = null
     choosingAgent.value = false
-    restoreEntry(row.event_id)
+    restoreEntry(index < 0 ? null : row.event_id)
     return true
   } catch (err) { entryError.value = err.message; nextTick(() => { focusInBody(pullSpanInput.value || agentSearchInput.value); scheduleEntryVisibility() }); return false }
 }
