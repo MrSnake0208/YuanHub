@@ -23,7 +23,7 @@ function discStyle(index) {
   const angle = (rank(index) - rotation.value) * 2 * Math.PI / count()
   const depth = (1 + Math.cos(angle)) / 2
   return {
-    '--ring-x': Math.sin(angle),
+    '--ring-x': count() === 2 ? rank(index) - 0.5 : Math.sin(angle),
     '--ring-y': 1 - depth,
     '--ring-s': 0.7 + 0.3 * depth,
     opacity: 0.55 + 0.45 * depth,
