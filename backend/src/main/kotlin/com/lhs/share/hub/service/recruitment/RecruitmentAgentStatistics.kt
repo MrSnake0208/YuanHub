@@ -9,10 +9,9 @@ import com.lhs.share.hub.repository.entity.RecruitmentTemporaryAgent
 internal fun isPermanentRecruitmentPool(snapshot: RecruitmentPoolSnapshot): Boolean =
     snapshot.endDate == null && snapshot.poolType?.trim()?.lowercase() in setOf("permanent", "standard", "常驻", "常驻卡池", "常驻招募")
 
-internal fun isChoiceRecruitmentPool(snapshot: RecruitmentPoolSnapshot): Boolean =
-    snapshot.allowCustomUp ||
-        snapshot.poolType?.trim()?.lowercase() in setOf("choice", "select") ||
-        snapshot.poolType?.contains("自选") == true
+internal fun isChoiceRecruitmentPool(snapshot: RecruitmentPoolSnapshot): Boolean = snapshot.allowCustomUp ||
+    snapshot.poolType?.trim()?.lowercase() in setOf("choice", "select") ||
+    snapshot.poolType?.contains("自选") == true
 
 internal fun isUpStatisticsExcludedPool(snapshot: RecruitmentPoolSnapshot): Boolean =
     isPermanentRecruitmentPool(snapshot) || isChoiceRecruitmentPool(snapshot)
