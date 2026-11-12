@@ -1,5 +1,9 @@
 # 公开入口与访问恢复
 
+## 备份下载
+
+库存、密探（含分类及信赖与传闻）、星石、招募、成就和羁绊的备份下载统一使用 `src/utils/downloadFile.js`：下载链接加入页面后触发并移除，Blob URL 延迟 60 秒释放，避免浏览器尚未读取文件就释放。原有文件内容、JSON 缩进、CSV BOM 与文件名保持；密探完整备份文件名随实际协议版本改为 `operator-full-backup-v5.json`，库存仍为 `inventory-export.json`。人工验收可在 Safari 下载一份备份，确认文件非空且能作为 JSON 或 CSV 打开。
+
 ## 权限失败页 `/forbidden`
 
 招募档案资格与管理权限分别判定。守卫使用四种有限原因：`recruitment-required`、`recruitment-unavailable`、`admin-required`、`admin-unavailable`。前两者分别表示招募名单资格不足、资格读取失败；后两者分别表示管理权限不足、权限读取失败。未知原因或不可信来源使用通用提示。

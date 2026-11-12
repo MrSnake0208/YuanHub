@@ -1605,6 +1605,7 @@
 </template>
 
 <script setup>
+import { downloadJson } from '../../utils/downloadFile.js';
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
@@ -3952,14 +3953,7 @@ async function doExport() {
     }
     const data = await exportInventory(opts);
     if (contextSeq !== inventoryContextSeq) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "inventory-export.json";
-    link.click();
-    URL.revokeObjectURL(link.href);
+    downloadJson(data, "inventory-export.json");
   } catch (err) {
     if (contextSeq !== inventoryContextSeq) return;
     alert(humanErr(err, "导出失败"));

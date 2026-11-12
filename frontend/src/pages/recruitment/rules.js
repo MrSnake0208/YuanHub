@@ -1,3 +1,5 @@
+import { downloadBlob } from '../../utils/downloadFile.js'
+
 export const MAX_PULLS = 1_000_000_000
 export const MAX_EVENT_PULLS = 40
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024
@@ -92,8 +94,5 @@ export function recruitmentCsv({ accountId, accountName, game, baseline, pools, 
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n')
 }
 export function downloadFile(contents, filename, type) {
-  const url = URL.createObjectURL(new Blob([contents], { type }))
-  const link = document.createElement('a')
-  link.href = url; link.download = filename; link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
+  downloadBlob(new Blob([contents], { type }), filename)
 }

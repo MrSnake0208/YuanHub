@@ -73,6 +73,7 @@ import { avatarUrl } from '../../api/request.js'
 import OperatorRelationshipDialog from '../../components/operator/OperatorRelationshipDialog.vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
+import { downloadBlob } from '../../utils/downloadFile.js'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
@@ -132,9 +133,7 @@ async function saveDraft() {
 async function refresh() { if (await beforeLeave()) { localError.value = ''; notice.value = ''; await reload() } }
 function download() {
   const document = makeRelationshipBackup(props.game, records.value)
-  const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }))
-  const link = window.document.createElement('a'); link.href = url; link.download = 'YuanHub-信赖与传闻-' + props.game + '.json'
-  window.document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }), 'YuanHub-信赖与传闻-' + props.game + '.json')
 }
 let fileSequence = 0
 async function readFile(event) {

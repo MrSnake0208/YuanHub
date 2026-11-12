@@ -169,6 +169,7 @@
 </template>
 
 <script setup>
+import { downloadBlob } from '../../utils/downloadFile.js';
 import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
 import { normalizeMaaYuanInventory, starImportKind } from './maayuanInventoryImport.js'
 import { assertNoStarImportDraft } from './starImportDraftGuard.js'
@@ -552,11 +553,7 @@ function openStarExchange() {
   starExchangeError.value = "";
 }
 function downloadStarArchive(data) {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(data.blob);
-  link.download = data.filename;
-  link.click();
-  window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 0);
+  downloadBlob(data.blob, data.filename);
 }
 async function exportStarArchive() {
   clearCloudSyncFeedback();

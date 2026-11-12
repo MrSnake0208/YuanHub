@@ -159,61 +159,32 @@
             </template>
             <template #export>
               <div class="operator-exchange-export">
-                <p>档案备份包含练度、状态、备注、关注和养成目标；分类设置可单独导出与恢复。</p>
-                <div class="export-group">
-                  <div class="export-label">档案导出范围</div>
-                  <div
-                    class="export-options"
-                    role="radiogroup"
-                    aria-label="导出范围"
-                  >
-                    <label
-                      class="export-option"
-                      :class="{ active: !exportAll }"
-                    >
-                      <input
-                        v-model="exportAll"
-                        type="radio"
-                        :value="false"
-                        name="operator-export-scope"
-                      />
-                      <span
-                        ><b>当前账号</b
-                        ><small>{{ currentAccountName }}</small></span
-                      >
-                    </label>
-                    <label
-                      class="export-option"
-                      :class="{
-                        active: exportAll,
-                        disabled: accounts.length < 2,
-                      }"
-                    >
-                      <input
-                        v-model="exportAll"
-                        type="radio"
-                        :value="true"
-                        name="operator-export-scope"
-                        :disabled="accounts.length < 2"
-                      />
-                      <span
-                        ><b>全部账号</b
-                        ><small>{{
-                          accounts.length > 1
-                            ? accounts.length + " 个账号"
-                            : "至少需要 2 个账号"
-                        }}</small></span
-                      >
-                    </label>
-                  </div>
-                  <button class="act-btn organization-export" :disabled="!auth.isLoggedIn || !accountId || !organizationReady || importing" @click="exportOrganizationBackup">
-                    <Download :size="16" aria-hidden="true" />导出当前账号分类
-                  </button>
-                  <small class="tip organization-export-tip">分类仅包含当前账号已保存的置顶、分组顺序和标签，不含编辑草稿。</small>
-                </div>
+                <fieldset class="operator-export-options" :disabled="importing">
+                  <legend>导出内容</legend>
+                  <label class="operator-export-option" :class="{ active: operatorExportKind === 'archive' }">
+                    <input v-model="operatorExportKind" type="radio" name="operator-export-kind" value="archive">
+                    <span><strong>密探档案完整备份</strong><small>练度、状态、备注、关注和养成目标，可用于恢复</small></span>
+                  </label>
+                  <label class="operator-export-option" :class="{ active: operatorExportKind === 'organization' }">
+                    <input v-model="operatorExportKind" type="radio" name="operator-export-kind" value="organization">
+                    <span><strong>分类设置</strong><small>仅置顶、分组顺序和标签，不含密探养成</small></span>
+                  </label>
+                </fieldset>
+                <fieldset v-if="operatorExportKind === 'archive'" class="operator-export-options">
+                  <legend>导出范围</legend>
+                  <label class="operator-export-option" :class="{ active: !exportAll }">
+                    <input v-model="exportAll" type="radio" :value="false" name="operator-export-scope">
+                    <span><strong>当前账号</strong><small>{{ currentAccountName }}</small></span>
+                  </label>
+                  <label class="operator-export-option" :class="{ active: exportAll, disabled: accounts.length < 2 }">
+                    <input v-model="exportAll" type="radio" :value="true" name="operator-export-scope" :disabled="accounts.length < 2">
+                    <span><strong>全部账号</strong><small>{{ accounts.length > 1 ? accounts.length + ' 个账号' : '至少需要 2 个账号' }}</small></span>
+                  </label>
+                </fieldset>
+                <p v-else class="tip">仅导出当前账号「{{ currentAccountName }}」的已保存分类，不含编辑草稿</p>
               </div>
             </template>
-            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing" @click="doExport">下载备份</button></template>
+            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing || (operatorExportKind === 'organization' && !organizationReady)" @click="operatorExportKind === 'archive' ? doExport() : exportOrganizationBackup()">{{ operatorExportKind === 'archive' ? '下载完整备份' : '下载分类设置' }}</button></template>
           </DataExchangeDialog>
 
           <!-- 保持预览与回执单源：扫描复核留在页面，备份内容移入弹窗。 -->
@@ -3081,6 +3052,7 @@
 </template>
 
 <script setup>
+import { downloadJson } from '../../utils/downloadFile.js';
 import operatorV5Example from "../../../docs/examples/operator-growth-exchange-v5/boundary.valid.json?raw";
 import { operatorHuaji, operatorHuajiMax, operatorHuajiDisplayLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
@@ -3117,7 +3089,6 @@ import {
   Circle,
   CircleAlert,
   CircleCheck,
-  Download,
   Heart,
   Eye,
   ListChecks,
@@ -3391,6 +3362,7 @@ const removingOrphanId = ref("");
 const orphanNotice = ref("");
 const showArchive = ref(false);
 const operatorExchangeTab = ref("import");
+const operatorExportKind = ref("archive");
 const backupImportTarget = ref(null);
 const backupFileInput = ref(null);
 // 仅控制页面扫描复核区，备份弹窗由 showArchive 控制。
@@ -3859,6 +3831,7 @@ async function toggleImportPanel() {
   if (trigger?.isConnected) trigger.focus({ preventScroll: true });
   showImport.value = false;
   operatorExchangeTab.value = "import";
+  operatorExportKind.value = "archive";
   showArchive.value = true;
 }
 
@@ -9142,12 +9115,7 @@ async function commitOrganizationImport() {
 
 function exportOrganizationBackup() {
   if (!auth.isLoggedIn || !accountId.value || !organizationReady.value) return;
-  const blob = new Blob([JSON.stringify(operatorOrganizationBackup(organizationData.value, gameFilter.value), null, 2)], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "密探分类-" + accountId.value + ".json";
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadJson(operatorOrganizationBackup(organizationData.value, gameFilter.value), "密探分类-" + accountId.value + ".json");
 }
 
 async function previewV3Import() {
@@ -9522,14 +9490,7 @@ async function doExport() {
     }
     const data = await exportOperator(opts);
     if (contextSeq !== currentContextSeq) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "operator-full-backup-v4.json";
-    link.click();
-    URL.revokeObjectURL(link.href);
+    downloadJson(data, "operator-full-backup-v5.json");
   } catch (err) {
     if (contextSeq !== currentContextSeq) return;
     await dialog.alert({
@@ -9711,8 +9672,15 @@ onBeforeUnmount(function () {
 .import-box.operator-exchange-body { margin: 0; padding: 0; border: 0; background: transparent; }
 .operator-exchange-body :is(button, input[type="file"], summary) { min-height: 44px; }
 .operator-exchange-export { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.operator-exchange-export .export-group { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
-.operator-exchange-export .export-options { flex-wrap: wrap; }
+.operator-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
+.operator-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.operator-export-option.active { border-color: var(--accent); }
+.operator-export-option.disabled { opacity: .55; cursor: not-allowed; }
+.operator-export-option input { flex: none; accent-color: var(--accent); }
+.operator-export-option span { min-width: 0; }
+.operator-export-option strong, .operator-export-option small { display: block; }
+.operator-export-option small { color: var(--ink-60); }
+.operator-export-option:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .operator-share-placeholder p { color: var(--ink-60); }
 
@@ -10485,10 +10453,6 @@ onBeforeUnmount(function () {
   border-color: var(--tea);
   background: var(--tea);
   color: var(--on-strong);
-}
-.organization-export, .organization-export-tip {
-  grid-column: 1 / -1;
-  justify-self: start;
 }
 .export-submit:hover:not(:disabled) {
   border-color: var(--tea-deep);

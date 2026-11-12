@@ -1,3 +1,5 @@
+import { downloadJson } from '../../utils/downloadFile.js'
+
 export const STATUS_LABELS = Object.freeze({ incomplete: '未完成', completed: '已完成', abandoned: '已放弃' })
 export const completionStatus = record => record?.status === 'completed' ? 'completed' : 'incomplete'
 export const trackingStatus = record => record?.status === 'abandoned' ? 'abandoned' : completionStatus(record)
@@ -100,12 +102,7 @@ export function readAchievementBackup(text) {
 }
 
 export function downloadAchievementBackup(document) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(document)], { type: 'application/json' }))
-  const link = window.document.createElement('a')
-  link.href = url
-  link.download = 'YuanHub-成就档案-' + document.game + '-' + new Date().toISOString().slice(0, 10) + '.json'
-  link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadJson(document, 'YuanHub-成就档案-' + document.game + '-' + new Date().toISOString().slice(0, 10) + '.json', { pretty: false })
 }
 
 export function rewardText(entry, legacyReward) {
