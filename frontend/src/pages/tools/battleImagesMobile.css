@@ -125,6 +125,7 @@
   .battle-tool .battle-undo-note .battle-link-button { min-width: 44px; min-height: 44px; }
   .battle-tool .battle-round-note { grid-column: 1 / -1; order: 4; margin-top: 0; }
   .battle-tool .battle-round-note textarea { min-height: 100px; max-height: 35dvh; }
+  .battle-tool .battle-round-note textarea:focus-visible { outline-offset: -2px; }
   .battle-tool .battle-note-done { grid-column: 1 / -1; order: 4; min-width: 64px; min-height: 44px; margin-top: 8px; }
   .battle-tool .battle-round-note + .battle-note-done { justify-self: start; }
   .battle-tool .battle-composer-row > button, .battle-tool .battle-sequence-chips button, .battle-tool .battle-step-tools > button { min-height: 44px; }

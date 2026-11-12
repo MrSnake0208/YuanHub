@@ -36,7 +36,7 @@
             </tr>
             <tr :class="{ 'battle-row-current': expanded && current === rowIndex, 'is-alt': rowIndex % 2 === 1 }"><th scope="row"><button type="button" :aria-label="`编辑第${rowIndex + 1}回合`" :aria-expanded="expanded && current === rowIndex" @click="selectCell(rowIndex, slot, $event)">{{ rowIndex + 1 }}</button></th>
               <td v-for="(actions, index) in row.slots" :key="index" :class="{ 'is-target-cell': expanded && current === rowIndex && (mobile || editingAction) && activeSlot === index }"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length" :class="{ 'battle-cell-empty': operators[index].name }">{{ operators[index].name ? '+' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :data-order="action.order" :class="{ 'is-box': action.box, 'is-plain': !action.box && targetPlain(action.target) }" :style="action.box || targetPlain(action.target) ? null : { background: TARGET_COLORS[action.target], '--mark-color': TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><span v-if="!action.box && !targetPlain(action.target)" class="sr-only">打{{ targetName(action.target) }}</span></span></button></td>
-              <td v-if="!mobile && expanded && current === rowIndex" class="battle-remark-editor" :rowspan="matrixActions.length + 1"><textarea :ref="setRemark" v-model="round.remark" aria-label="本回合备注" :rows="matrixActions.length * 2 + 1" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></td>
+              <td v-if="!mobile && expanded && current === rowIndex" class="battle-remark-editor" :rowspan="matrixActions.length + 1"><textarea :ref="setRemark" v-model="round.remark" :aria-label="`第${current + 1}回合备注`" :rows="matrixActions.length * 2 + 1" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></td>
               <td v-else><button type="button" class="battle-cell-button battle-remark-cell" :aria-label="`编辑第${rowIndex + 1}回合备注`" @click="selectCell(rowIndex, slot, $event, true)"><span v-if="row.remark">{{ row.remark }}</span><span v-else class="battle-cell-empty">+</span></button></td>
             </tr>
             <template v-if="!mobile && expanded && current === rowIndex">
@@ -107,7 +107,7 @@
                 <p v-else-if="!editingAction && round.actions.length >= 50" class="battle-hint">本回合已达 50 个动作上限。</p>
               </div>
 
-              <label v-if="mobile" v-show="noteMode" class="battle-round-note">本回合备注<textarea v-model="round.remark" aria-label="本回合备注" rows="2" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></label>
+              <label v-if="mobile" v-show="noteMode" class="battle-round-note">第 {{ current + 1 }} 回合备注<textarea v-model="round.remark" :aria-label="`第${current + 1}回合备注`" rows="2" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></label>
               <button v-if="mobile && noteMode" type="button" class="battle-note-done" @click="finishNote">完成</button>
               <div v-if="!mobile" class="battle-round-nav">
                 <button type="button" :disabled="current === 0" data-nav="prev" @click="goRound(current - 1, 'prev')"><ChevronLeft :size="15" aria-hidden="true" />上一回合</button>
@@ -187,6 +187,11 @@ function setTargetPresent(index, present) {
 const LIMIT_HINT = 40
 // 编辑区在 v-for 行内渲染，用函数 ref 取唯一的标题与区块元素。
 let headingEl = null, sectionEl = null, noteButton = null, enemyButton = null, remarkEl = null
+let noteViewportCleanup = null
+function clearNoteViewportListener() {
+  noteViewportCleanup?.()
+  noteViewportCleanup = null
+}
 const setHeading = el => { headingEl = el }, setSection = el => { sectionEl = el }, setNoteButton = el => { noteButton = el }
 const setEnemyButton = el => { enemyButton = el }
 const setRemark = el => { remarkEl = el }
@@ -208,6 +213,7 @@ const activeTarget = computed(() => editingAction.value ? editingAction.value.ta
 const removedHere = computed(() => removed.value && removed.value.round === round.value)
 const atLast = computed(() => current.value >= props.rounds.length - 1)
 watch(round, () => { editing.value = null; noteMode.value = false; roundMenuOpen.value = false })
+watch(noteMode, value => { if (!value) clearNoteViewportListener() }, { flush: 'sync' })
 watch(expanded, value => { if (!value) roundMenuOpen.value = false; emit('recording', value) })
 watch(() => round.value?.actions.length, () => { if (editing.value !== null && !editingAction.value) editing.value = null })
 watch([() => round.value?.actions.length, editing, current, mobile, expanded], async () => {
@@ -253,7 +259,7 @@ onMounted(() => {
   viewObserver.observe(el)
 })
 // 草稿替换会按 revision 重建本组件，卸载时撤销录入状态，避免页面生成栏一直隐藏。
-onBeforeUnmount(() => { alive = false; document.removeEventListener('pointerdown', onMenuPointerdown); document.removeEventListener('keydown', onMenuKeydown); viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
+onBeforeUnmount(() => { alive = false; clearNoteViewportListener(); document.removeEventListener('pointerdown', onMenuPointerdown); document.removeEventListener('keydown', onMenuKeydown); viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
 
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
@@ -318,8 +324,25 @@ async function close() {
   focusEl?.focus({ preventScroll: true })
 }
 async function openNote() {
+  clearNoteViewportListener()
   noteMode.value = true
-  await nextTick(); sectionEl?.querySelector('textarea')?.focus({ preventScroll: true })
+  await nextTick()
+  if (!alive || !noteMode.value) return
+  const textarea = sectionEl?.querySelector('textarea')
+  if (!mobile.value) {
+    textarea?.focus({ preventScroll: true })
+    return
+  }
+  const viewport = window.visualViewport
+  if (viewport && textarea) {
+    const onResize = () => {
+      clearNoteViewportListener()
+      if (textarea.getBoundingClientRect().bottom > viewport.offsetTop + viewport.height) textarea.scrollIntoView({ block: 'nearest' })
+    }
+    noteViewportCleanup = () => viewport.removeEventListener('resize', onResize)
+    viewport.addEventListener('resize', onResize, { once: true })
+  }
+  textarea?.focus()
 }
 async function finishNote() {
   noteMode.value = false
