@@ -77,7 +77,8 @@ class XinzhiStorage(private val properties: ShareProperties) {
 
     private fun digest(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private fun invalid(message: String): Nothing = throw OperatorApiException(HttpStatus.UNPROCESSABLE_ENTITY, "schema_validation_failed", message)
+    private fun invalid(message: String): Nothing =
+        throw OperatorApiException(HttpStatus.UNPROCESSABLE_ENTITY, "schema_validation_failed", message)
 
     companion object {
         private val OPERATOR_ID_PATTERN = Regex("^char_[A-Za-z0-9_]+$")
