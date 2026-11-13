@@ -69,7 +69,7 @@ function formatCount(value) { return value.toLocaleString('zh-CN') }
 .overall-range button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
 .overall-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
 .overall-kicker { color: var(--theme-accent-text, var(--accent-strong)); font-size: 13px; }
-h3 { margin: 4px 0 0; font-family: var(--font-s, 'Noto Serif SC', serif); font-size: 23px; }
+h3 { margin: 4px 0 0; font-family: var(--font-s, 'Noto Serif SC','YuanHub Serif Ext', serif); font-size: 23px; }
 .overall-period, .overall-note { color: var(--ink-60); font-size: 13px; line-height: 1.6; }
 .overall-note { margin: 12px 0 0; }
 .overall-warning { color: var(--theme-danger-text, var(--rouge)); font-size: 14px; line-height: 1.6; }

@@ -3,6 +3,9 @@
 @import './sidebar-layout.css';
 @import './footer-layout.css';
 @import './tools-workspace.css';
+@font-face{font-family:'YuanHub Serif Ext';src:url('../assets/fonts/NotoSerifCJKsc-SemiBold-ext.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap;unicode-range:U+4D4B,U+7A3A,U+9D69}
+@font-face{font-family:'YuanHub Serif Ext';src:url('../assets/fonts/NotoSerifCJKsc-Bold-ext.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap;unicode-range:U+4D4B,U+7A3A,U+9D69}
+@font-face{font-family:'YuanHub Serif Ext';src:url('../assets/fonts/NotoSerifCJKsc-Black-ext.woff2') format('woff2');font-weight:900;font-style:normal;font-display:swap;unicode-range:U+4D4B,U+7A3A,U+9D69}
 /* ============================================================
    YuanHub · 设计规范 v1.0 — 全局样式
    依据《设计规范.md》：纸底/暖白卡/奶油/暖棕/茶棕 骨架色 +
@@ -20,7 +23,7 @@
   --ink-60:rgba(73,59,44,.78);--ink-35:rgba(73,59,44,.62);--line:rgba(156,122,77,.3);
   --ease:cubic-bezier(.19,1,.22,1);
   --font-d:'Archivo','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
-  --font-s:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  --font-s:'Noto Serif SC','YuanHub Serif Ext','Songti SC','STSong','SimSun',serif;
   --font-b:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
   --version-update-banner-height:53px;
   /* 普通内容 < 卡片浮起 < sticky < dropdown/popover < 遮罩 < dialog < toast。

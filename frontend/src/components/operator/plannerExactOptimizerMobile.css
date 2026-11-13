@@ -17,7 +17,7 @@
 .reserve-summary ul { padding-left: 18px; line-height: 1.8; }
 h4 { margin: 0; font-size: 15px; }
 .exact-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
-h3 { margin: 0; font: 900 18px 'Noto Serif SC', serif; letter-spacing: .04em; }
+h3 { margin: 0; font: 900 18px 'Noto Serif SC','YuanHub Serif Ext', serif; letter-spacing: .04em; }
 p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; }
 .exact-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
 label { display: grid; gap: 4px; font-size: 12px; }

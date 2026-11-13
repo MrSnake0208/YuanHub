@@ -2,7 +2,7 @@
 @media not all and (max-width: 640px) {
 .deadline-journey { --deadline-ease: cubic-bezier(.22, 1, .36, 1); margin-top: 20px; padding: 20px 18px 8px; min-width: 0; }
 .deadline-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-h4 { margin: 0; font: 900 16px 'Noto Serif SC', serif; letter-spacing: .04em; }
+h4 { margin: 0; font: 900 16px 'Noto Serif SC','YuanHub Serif Ext', serif; letter-spacing: .04em; }
 p { margin: 6px 0 0; font-size: 12px; line-height: 1.7; }
 .deadline-count { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; font-size: 12px; }
 .deadline-limit { margin-top: 12px; }
