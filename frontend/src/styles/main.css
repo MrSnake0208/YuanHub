@@ -40,6 +40,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 .lucide{display:inline-block;vertical-align:middle;flex-shrink:0}
+.xinzhi-icon[src*="/xinzhi/"],.xinzhi-icon[src^="blob:"]{background:url(/assets/quality-bg/q5.png) center / 100% 100% no-repeat}
 html{scroll-behavior:smooth}
 body{
   background-color:var(--paper);color:var(--ink);font-family:var(--font-b);-webkit-font-smoothing:antialiased;

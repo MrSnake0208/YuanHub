@@ -121,6 +121,22 @@ class AdminOperatorCatalogController(
         return success(catalogService.clearAvatar(operatorId))
     }
 
+    @Operation(summary = "管理员上传密探心纸（140×140 透明 PNG，≤200KB）")
+    @OperatorAdminResponses
+    @PutMapping("/{operatorId}/xinzhi", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadXinzhi(@PathVariable operatorId: String, @RequestPart file: MultipartFile): ApiResult<AdminOperatorCatalogResponse> {
+        requireAdmin()
+        return success(catalogService.setXinzhi(operatorId, file))
+    }
+
+    @Operation(summary = "管理员删除密探心纸")
+    @OperatorAdminResponses
+    @DeleteMapping("/{operatorId}/xinzhi")
+    fun deleteXinzhi(@PathVariable operatorId: String): ApiResult<AdminOperatorCatalogResponse> {
+        requireAdmin()
+        return success(catalogService.clearXinzhi(operatorId))
+    }
+
     private fun requireAdmin() {
         if (!authorizationService.hasPermission(helper.requireUserId(), AdminPermission.OPERATOR_CATALOG_WRITE)) {
             throw OperatorApiException(HttpStatus.FORBIDDEN, "forbidden", "Administrator privileges are required")

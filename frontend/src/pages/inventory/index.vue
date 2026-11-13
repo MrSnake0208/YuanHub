@@ -613,7 +613,7 @@
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
                     <img
-                      class="slot-img"
+                      class="slot-img xinzhi-icon"
                       v-batch-image="entityType === 'agent' ? iconSrc(e) : null"
                       :src="entityType === 'agent' ? undefined : iconSrc(e)"
                       :alt="e.name || e.id"
@@ -728,7 +728,7 @@
                           ><span class="ph-mono">{{ monogram(e) }}</span>
                         </div>
                         <img
-                          class="slot-img"
+                          class="slot-img xinzhi-icon"
                           :src="iconSrc(e)"
                           :alt="e.name || e.id"
                           width="96"
@@ -826,7 +826,7 @@
                                     }}</span>
                                   </div>
                                   <img
-                                    class="slot-img"
+                                    class="slot-img xinzhi-icon"
                                     :src="iconSrc(e)"
                                     :alt="e.name || e.id"
                                     width="96"
@@ -861,7 +861,7 @@
                                 ><span class="ph-mono">{{ monogram(e) }}</span>
                               </div>
                               <img
-                                class="slot-img"
+                                class="slot-img xinzhi-icon"
                                 :src="iconSrc(e)"
                                 :alt="e.name || e.id"
                                 width="96"
@@ -913,7 +913,7 @@
                             <span class="ph-mono">{{ monogram(e) }}</span>
                           </div>
                           <img
-                            class="slot-img"
+                            class="slot-img xinzhi-icon"
                             v-batch-image="iconSrc(e)"
                             :alt="e.name || e.id"
                             width="96"
@@ -1385,7 +1385,7 @@
                             ><span class="ph-mono">{{ monogram(e) }}</span>
                           </div>
                           <img
-                            class="slot-img"
+                            class="slot-img xinzhi-icon"
                             v-batch-image="e.entity_type === 'agent' ? iconSrc(e) : null"
                             :src="e.entity_type === 'agent' ? undefined : iconSrc(e)"
                             :alt="e.name || e.id"
@@ -1610,6 +1610,7 @@ import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
+import { xinzhiIconUrl, onXinzhiLoad, fallbackXinzhiIcon } from "../../api/request.js";
 import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
@@ -2304,11 +2305,11 @@ const ICON_EXT = "png";
 
 function iconSrc(e) {
   const type = e && e.entity_type ? e.entity_type : entityType.value;
-  const kind = type === "agent" ? "agents" : "items";
+  if (type === "agent") return xinzhiIconUrl(e.id);
   return (
     import.meta.env.BASE_URL +
     "inventory-icons/" +
-    kind +
+    "items" +
     "/" +
     encodeURIComponent(e.id) +
     "." +
@@ -2317,6 +2318,7 @@ function iconSrc(e) {
 }
 
 function onImgLoad(ev) {
+  onXinzhiLoad(ev);
   const img = ev && ev.currentTarget;
   if (!img) return;
   img.hidden = false;
@@ -2324,6 +2326,7 @@ function onImgLoad(ev) {
 }
 
 function onImgError(ev) {
+  if (fallbackXinzhiIcon(ev)) return;
   const img = ev && ev.currentTarget;
   if (!img) return;
   img.hidden = true;

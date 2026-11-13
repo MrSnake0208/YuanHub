@@ -100,7 +100,7 @@
             <li v-for="agent in podium" :key="agent.id" :class="'place-' + agent.place" :aria-label="agent.name + '，第' + agent.place + '名'">
               <span class="portrait">
                 <span class="portrait-fallback" aria-hidden="true">{{ monogram(agent.name) }}</span>
-                <img :src="agentIcon(agent.id)" :alt="agent.name" width="64" height="64" loading="lazy" @load="onImageLoad" @error="onImageError" />
+                <img class="xinzhi-icon" :src="agentIcon(agent.id)" :alt="agent.name" width="64" height="64" loading="lazy" @load="onImageLoad" @error="onImageError" />
                 <b class="portrait-count">+{{ formatNumber(agent.count) }}</b>
               </span>
               <strong>{{ agent.name }}</strong>
@@ -113,7 +113,7 @@
         <aside v-if="absence" class="absence-contrast" :class="{ 'is-undetermined': !absence.id }">
           <span v-if="absence.id" class="absence-portrait">
             <span class="portrait-fallback" aria-hidden="true">{{ monogram(absence.name) }}</span>
-            <img :src="agentIcon(absence.id)" :alt="absence.name" width="48" height="48" loading="lazy" @load="onImageLoad" @error="onImageError" />
+            <img class="xinzhi-icon" :src="agentIcon(absence.id)" :alt="absence.name" width="48" height="48" loading="lazy" @load="onImageLoad" @error="onImageError" />
           </span>
           <div class="absence-copy">
             <span>久未回响</span>
@@ -166,7 +166,7 @@
               <li v-for="agent in luckyCoframe.agents" :key="agent.id" :aria-label="agent.name + '，心纸' + formatNumber(agent.count) + '张'">
                 <span class="coframe-portrait" aria-hidden="true">
                   <span class="portrait-fallback">{{ monogram(agent.name) }}</span>
-                  <img :src="agentIcon(agent.id)" alt="" width="34" height="34" loading="lazy" @load="onImageLoad" @error="onImageError" />
+                  <img class="xinzhi-icon" :src="agentIcon(agent.id)" alt="" width="34" height="34" loading="lazy" @load="onImageLoad" @error="onImageError" />
                 </span>
                 <strong>{{ agent.name }}</strong>
                 <b>×{{ formatNumber(agent.count) }}</b>
@@ -180,6 +180,7 @@
 </template>
 
 <script setup>
+import { xinzhiIconUrl, onXinzhiLoad, fallbackXinzhiIcon } from '../../api/request.js'
 import { computed, ref } from 'vue'
 import { CircleDollarSign, Clock3, Flame, Heart, HeartHandshake, PartyPopper, Sparkles, Users, Medal } from '@lucide/vue'
 
@@ -324,10 +325,11 @@ function monogram(name) {
 }
 
 function agentIcon(id) {
-  return import.meta.env.BASE_URL + 'inventory-icons/agents/' + encodeURIComponent(id) + '.png'
+  return xinzhiIconUrl(id)
 }
 
 function onImageLoad(event) {
+  onXinzhiLoad(event)
   const image = event && event.currentTarget
   if (!image) return
   image.hidden = false
@@ -335,6 +337,7 @@ function onImageLoad(event) {
 }
 
 function onImageError(event) {
+  if (fallbackXinzhiIcon(event)) return
   const image = event && event.currentTarget
   if (!image) return
   image.hidden = true

@@ -15,7 +15,7 @@
     <TransitionGroup name="account-toast">
       <div v-for="toast in accountEvents.toasts" :key="toast.id" class="account-event-toast" :class="['is-' + toast.tone, 'is-' + toast.kind, toast.kind === 'operator' && toast.action ? 'is-capsule' : '', toast.kind === 'operator' && toast.rarity ? 'rarity-r' + toast.rarity : '']" :role="toast.tone === 'warning' ? 'alert' : 'status'">
         <span class="toast-badge" aria-hidden="true">
-          <img v-if="toast.kind === 'operator' && toast.action" class="toast-agent-icon" :src="agentIconSrc(toast.operatorId)" alt="" />
+          <img v-if="toast.kind === 'operator' && toast.action" class="toast-agent-icon xinzhi-icon" :src="xinzhiIconUrl(toast.operatorId)" alt="" @load="onXinzhiLoad" @error="fallbackXinzhiIcon" />
           <PackageOpen v-if="toast.kind === 'inventory'" :size="18" />
           <Star v-else-if="toast.kind !== 'operator' && toast.tone === 'success'" :size="18" />
           <CircleAlert v-else-if="toast.kind !== 'operator' || !toast.action" :size="18" />
@@ -51,15 +51,13 @@
 </template>
 
 <script setup>
+import { xinzhiIconUrl, onXinzhiLoad, fallbackXinzhiIcon } from '../api/request.js'
 import { CircleAlert, PackageOpen, Star, X } from '@lucide/vue'
 import FeedbackNotificationToasts from './FeedbackNotificationToasts.vue'
 import { accountEvents, dismissAccountEventToast, previewAccountEvent } from '../store/accountEvents.js'
 
 const previewEnabled = import.meta.env.DEV && new URLSearchParams(location.search).get('event_preview') === '1'
 
-function agentIconSrc(operatorId) {
-  return operatorId ? '/inventory-icons/agents/' + operatorId + '.png' : ''
-}
 </script>
 
 <style scoped>

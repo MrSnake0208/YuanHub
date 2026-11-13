@@ -42,6 +42,30 @@ export function avatarUrl(path) {
   return API_BASE + path;
 }
 
+export function xinzhiUrl(path) {
+  return avatarUrl(path);
+}
+
+export function xinzhiIconUrl(operatorId) {
+  return operatorId ? xinzhiUrl('/xinzhi/' + encodeURIComponent(operatorId) + '.png') : '';
+}
+
+export function onXinzhiLoad(event) {
+  const image = event.currentTarget;
+  image.classList.toggle('xinzhi-icon', /\/xinzhi\/char_[A-Za-z0-9_]+\.png(?:[?#]|$)/.test(image.getAttribute('src') || ''));
+  image.hidden = false;
+}
+
+// 仅后端心纸失败时尝试旧成品；成品失败仍交给调用方原有的占位处理。
+export function fallbackXinzhiIcon(event) {
+  const image = event.currentTarget;
+  const match = (image.getAttribute('src') || '').match(/\/xinzhi\/(char_[A-Za-z0-9_]+)\.png(?:[?#]|$)/);
+  if (!match) return false;
+  image.classList.remove('xinzhi-icon');
+  image.src = (import.meta.env.BASE_URL || '/') + 'inventory-icons/agents/' + match[1] + '.png';
+  return true;
+}
+
 export async function request(
   path,
   { method = "GET", body, auth = false, expectedUserId, raw = false, multipart = false, responseType = "json", headers: extraHeaders, timeoutMs } = {},

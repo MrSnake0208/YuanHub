@@ -378,3 +378,17 @@ export function deleteAdminOperatorAvatar(operatorId) {
     auth: true
   })
 }
+
+export function uploadXinzhi(operatorId, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/xinzhi', {
+    method: 'PUT', auth: true, multipart: true, body: form
+  })
+}
+
+export function deleteXinzhi(operatorId) {
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/xinzhi', {
+    method: 'DELETE', auth: true
+  })
+}

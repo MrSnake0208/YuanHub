@@ -40,6 +40,7 @@ data/private-media
 data/media
 /data/star-captures/
 /data/avatar/*.webp.tmp
+/data/xinzhi/*.png.tmp
 
 # Local-only beta preparation dependencies; keep UID exports outside the repository.
 /scripts/beta/node_modules/

@@ -29,6 +29,8 @@ data class ShareProperties(
     @NestedConfigurationProperty
     var avatar: Avatar = Avatar(),
     @NestedConfigurationProperty
+    var xinzhi: Xinzhi = Xinzhi(),
+    @NestedConfigurationProperty
     var media: Media = Media(),
 ) {
     /**
@@ -135,6 +137,8 @@ data class ShareProperties(
          */
         var dir: String = "./data/avatar",
     )
+
+    data class Xinzhi(var dir: String = "./data/xinzhi")
 
     /**
      * 媒体文件上传配置

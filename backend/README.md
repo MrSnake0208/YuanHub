@@ -443,6 +443,21 @@ rarity 派生：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星 `500/2600/15`�
 不覆盖已上传头像），重启后端即可批量生效。详见
 [docs/operator-catalog-avatar-design.md](docs/operator-catalog-avatar-design.md)。
 
+**密探心纸**：原始 PNG 存放在 `share.xinzhi.dir`（默认 `./data/xinzhi`，生产可用
+`SHARE_XINZHI_DIR` 覆盖并挂持久卷），文件名固定为 `{operatorId}.png`。管理员使用
+`PUT /v1/admin/operator-catalog/{operatorId}/xinzhi`（multipart 字段 `file`）上传，或用同路径
+`DELETE` 删除，权限复用 `OPERATOR_CATALOG_WRITE`。上传按魔数校验 PNG，要求 140×140、
+带 alpha 通道且 ≤200KB；不符返回 422 `schema_validation_failed`。原图不合成、不转码，
+先写 `.png.tmp` 再原子替换；`GET /xinzhi/**` 公开访问、缓存 300 秒。
+首次初始化目录时会将磁盘上已有 PNG 的路径与 SHA-256 回填到对应条目（只补空路径或
+摘要变化，不重插已删除条目）。普通编辑保留心纸字段，删除密探会清理文件；心纸上传、
+删除及回填不改变 `catalogVersion`。
+管理及 v1 公开目录附带 `xinzhi`、`xinzhiSha256`；MaaYuan 的公开
+`/open-api/operator/catalog` 仅对已上传心纸的条目输出 `xinzhi_url` 与 `xinzhi_sha256`，
+URL 为 `/xinzhi/{operatorId}.png?v={sha256前16位}`，ETag 仍由响应字节计算。
+前端管理编辑器在保存密探后可直接更换或删除心纸，上传立即生效；预览及各心纸展示用
+`assets/quality-bg/q5.png` 垫底，加载失败移除金底并回退保留的旧静态成品。
+
 **管理员角色与权限**：平台角色保存在 HubBackend 的 `admin_role_bindings`，不再使用
 `maa_user.status >= 2` 做长期授权。超级管理员可以通过以下端点查询和覆盖角色、配置反馈权限并查看审计：
 

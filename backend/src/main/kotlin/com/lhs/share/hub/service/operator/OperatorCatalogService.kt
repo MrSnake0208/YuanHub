@@ -25,6 +25,7 @@ class OperatorCatalogService(
     private val repository: OperatorCatalogRepository,
     private val objectMapper: ObjectMapper,
     private val avatarStorage: AvatarStorage,
+    private val xinzhiStorage: XinzhiStorage,
 ) {
     @Volatile private var seeded = false
 
@@ -70,6 +71,10 @@ class OperatorCatalogService(
                 .put("alias", entry.alias.orEmpty())
                 .put("alt_name", entry.name)
                 .put("rarity", entry.rarity)
+            if (entry.xinzhi != null && entry.xinzhiSha256 != null) {
+                node.put("xinzhi_url", "${entry.xinzhi}?v=${entry.xinzhiSha256.take(16)}")
+                node.put("xinzhi_sha256", entry.xinzhiSha256)
+            }
             node.putArray("prof").also { array -> entry.prof.forEach { array.add(it) } }
             node.putArray("subProf").also { array -> entry.subProf.forEach { array.add(it) } }
             node.putArray("games").also { array -> entry.games.forEach { array.add(it) } }
@@ -161,14 +166,14 @@ class OperatorCatalogService(
             ?.let(::requireSpecialOddityName)
             ?: existing.specialOddityName
         val version = nextCatalogVersion()
-        // avatar 不在写请求内，普通编辑整条覆盖时必须显式保留既有头像，否则会把已上传头像冲掉。
+        // 图片不在写请求内，普通编辑整条覆盖时保留已上传资源。
         return repository.save(
             normalized.toEntity(
                 id = existing.id,
                 createdAt = existing.createdAt,
                 catalogVersion = version,
                 specialOddityName = specialOddityName,
-            ).copy(avatar = existing.avatar),
+            ).copy(avatar = existing.avatar, xinzhi = existing.xinzhi, xinzhiSha256 = existing.xinzhiSha256),
         ).also {
             spIndexCache = null
         }.let(AdminOperatorCatalogResponse::of)
@@ -195,6 +200,22 @@ class OperatorCatalogService(
         return AdminOperatorCatalogResponse.of(repository.save(existing.copy(avatar = null)))
     }
 
+    fun setXinzhi(operatorId: String, file: MultipartFile): AdminOperatorCatalogResponse {
+        ensureSeeded()
+        val existing = repository.findByOperatorId(operatorId)
+            ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "Operator not found")
+        val (path, sha256) = xinzhiStorage.save(operatorId, file)
+        return AdminOperatorCatalogResponse.of(repository.save(existing.copy(xinzhi = path, xinzhiSha256 = sha256)))
+    }
+
+    fun clearXinzhi(operatorId: String): AdminOperatorCatalogResponse {
+        ensureSeeded()
+        val existing = repository.findByOperatorId(operatorId)
+            ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "Operator not found")
+        xinzhiStorage.delete(operatorId)
+        return AdminOperatorCatalogResponse.of(repository.save(existing.copy(xinzhi = null, xinzhiSha256 = null)))
+    }
+
     fun delete(operatorId: String) {
         ensureSeeded()
         val existing = repository.findByOperatorId(operatorId)
@@ -205,6 +226,11 @@ class OperatorCatalogService(
         repository.delete(existing)
         // 级联清理头像文件：失败仅遗留孤儿文件，不阻断目录删除。
         avatarStorage.delete(operatorId)
+        try {
+            xinzhiStorage.delete(operatorId)
+        } catch (_: java.io.IOException) {
+            // 目录已删除，清理失败仅遗留孤儿文件。
+        }
         spIndexCache = null
         bumpCatalogVersion()
     }
@@ -427,6 +453,7 @@ class OperatorCatalogService(
             // 存量头像关联：与 spOf 老库回填同理，只回填 avatar 为 null 的行，
             // 不覆盖管理员上传的头像、不重插被删除的行；进程内仅首次访问执行一次。
             backfillAvatars()
+            backfillXinzhi()
             seeded = true
         }
     }
@@ -442,6 +469,16 @@ class OperatorCatalogService(
             val existing = repository.findByOperatorId(id) ?: return@forEach
             if (existing.avatar == null) {
                 repository.save(existing.copy(avatar = avatarStorage.relativePath(id)))
+            }
+        }
+    }
+
+    private fun backfillXinzhi() {
+        xinzhiStorage.existingOperatorIds().forEach { id ->
+            val existing = repository.findByOperatorId(id) ?: return@forEach
+            val sha256 = xinzhiStorage.sha256(id)
+            if (existing.xinzhi == null || existing.xinzhiSha256 != sha256) {
+                repository.save(existing.copy(xinzhi = xinzhiStorage.relativePath(id), xinzhiSha256 = sha256))
             }
         }
     }

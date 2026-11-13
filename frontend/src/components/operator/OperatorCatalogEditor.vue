@@ -7,7 +7,7 @@
       <div class="editor-heading">
         <h2 id="catalog-editor-title" tabindex="-1">{{ isNew ? '新增密探' : (form.name || form.id) }}</h2>
         <p class="editor-sub" :title="selectedRow?.catalogVersion ? '目录版本：' + selectedRow.catalogVersion : undefined">{{ isNew ? '新增密探 · 尚未保存' : form.id + ' · ' + form.rarity + '星' + (selectedRow?.createdAt ? ' · 更新于 ' + fmtTime(selectedRow.createdAt) : '') }}</p>
-        <div class="avatar-actions" title="头像单独上传，上传后立即生效，无需点保存">
+        <div class="avatar-actions" title="头像与心纸单独上传，上传后立即生效，无需点保存">
           <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="avatar-file" :disabled="busy || checkingLeave" @change="onAvatarPick" />
           <button class="editor-text-button" type="button" :disabled="busy || checkingLeave" @click="pickAvatar">{{ avatarOptimizing ? '优化中…' : '更换头像' }}</button>
           <button v-if="form.avatar" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removeAvatar">删除头像</button>
@@ -16,6 +16,12 @@
             <button class="editor-text-button" type="button" :disabled="busy || checkingLeave" @click="discardAvatar">放弃</button>
           </template>
           <span v-if="avatarNotice" class="avatar-notice" :class="{ err: avatarNoticeError }" :role="avatarNoticeError ? 'alert' : 'status'">{{ avatarNotice }}</span>
+          <img v-if="headerXinzhiSrc && headerXinzhiSrc !== failedXinzhiSrc" :src="headerXinzhiSrc" class="editor-xinzhi-preview xinzhi-icon" alt="心纸预览" width="36" height="36" @error="failedXinzhiSrc = $event.target.getAttribute('src')" />
+          <input ref="xinzhiInput" type="file" accept="image/png" class="avatar-file" :disabled="busy || checkingLeave || isNew" @change="onXinzhiPick" />
+          <button class="editor-text-button" type="button" :disabled="busy || checkingLeave || isNew" @click="pickXinzhi">{{ xinzhiUploading ? '处理中…' : '更换心纸' }}</button>
+          <button v-if="form.xinzhi" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removeXinzhi">删除心纸</button>
+          <span v-if="isNew" class="avatar-notice">保存密探后可上传心纸</span>
+          <span v-if="xinzhiNotice" class="avatar-notice" :class="{ err: xinzhiNoticeError }" :role="xinzhiNoticeError ? 'alert' : 'status'">{{ xinzhiNotice }}</span>
         </div>
       </div>
       <button v-if="!isNew && selectedRow" class="editor-text-button catalog-delete danger" type="button" :disabled="busy || checkingLeave" @click="onDelete(selectedRow)"><Trash2 :size="14" aria-hidden="true" />删除密探</button>
@@ -202,7 +208,8 @@
 import { ref, computed, nextTick, onBeforeUnmount, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Plus, Trash2, ArrowLeft, Check, ChevronDown } from '@lucide/vue'
-import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar } from '../../api/operator.js'
+import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar, uploadXinzhi, deleteXinzhi } from '../../api/operator.js'
+import { xinzhiUrl } from '../../api/request.js'
 import { dialog } from '../../utils/dialog.js'
 import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from '../../utils/imageUpload.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
@@ -242,7 +249,7 @@ const initialSnapshot = ref('')
 const expandedAliases = ref(new Set())
 const activeSection = ref('基础')
 const checkingLeave = ref(false)
-const busy = computed(function () { return saving.value || avatarUploading.value || avatarOptimizing.value })
+const busy = computed(function () { return saving.value || avatarUploading.value || avatarOptimizing.value || xinzhiUploading.value })
 const dirty = computed(function () { return editing.value && snapshot() !== initialSnapshot.value })
 let previousId = ''
 let permissionRedirect = false
@@ -257,6 +264,12 @@ const avatarNotice = ref('')
 const avatarNoticeError = ref(false)
 const failedAvatarSrc = ref('')
 const headerAvatarSrc = computed(function () { return form.value.avatarPreview || (form.value.avatar ? props.avatarSrc(form.value.avatar) : '') })
+const xinzhiUploading = ref(false)
+const xinzhiInput = ref(null)
+const xinzhiNotice = ref('')
+const xinzhiNoticeError = ref(false)
+const failedXinzhiSrc = ref('')
+const headerXinzhiSrc = computed(() => form.value.xinzhi ? xinzhiUrl(form.value.xinzhi) + '?v=' + form.value.xinzhiSha256.slice(0, 16) : '')
 
 // SP 选择器状态不进入表单和 dirty 快照。
 const spPicker = ref(null)
@@ -421,6 +434,8 @@ function blankForm() {
     avatar: '',
     avatarPick: null,
     avatarPreview: '',
+    xinzhi: '',
+    xinzhiSha256: '',
     discs: Array.from({ length: 12 }, function () {
       return { _key: ++discKey, _persisted: false, ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '', despAliasesText: '' }
     }),
@@ -446,6 +461,8 @@ function fillForm(r) {
     avatar: r.avatar || '',
     avatarPick: null,
     avatarPreview: '',
+    xinzhi: r.xinzhi || '',
+    xinzhiSha256: r.xinzhiSha256 || '',
     discs: r.discs.map(function (d) {
       return {
         _key: ++discKey,
@@ -465,7 +482,7 @@ function fillForm(r) {
 }
 
 function snapshot() {
-  const { avatar, avatarPick, avatarPreview, ...content } = form.value
+  const { avatar, avatarPick, avatarPreview, xinzhi, xinzhiSha256, ...content } = form.value
   return JSON.stringify({ ...content, discs: content.discs.map(function ({ _key, _persisted, ...disc }) { return disc }) })
 }
 
@@ -503,6 +520,9 @@ async function resetEditor() {
   noticeError.value = false
   avatarNotice.value = ''
   avatarNoticeError.value = false
+  xinzhiNotice.value = ''
+  xinzhiNoticeError.value = false
+  failedXinzhiSrc.value = ''
   specialOddityError.value = ''
   expandedAliases.value = new Set()
   activeSection.value = '基础'
@@ -568,9 +588,9 @@ async function discardChanges() {
   } else {
     const restored = JSON.parse(initialSnapshot.value)
     restored.discs = restored.discs.map(function (disc) { return { ...disc, _key: ++discKey, _persisted: true } })
-    const avatar = form.value.avatar
+    const { avatar, xinzhi, xinzhiSha256 } = form.value
     revokeAvatarPreview()
-    form.value = { ...restored, avatar, avatarPick: null, avatarPreview: '' }
+    form.value = { ...restored, avatar, avatarPick: null, avatarPreview: '', xinzhi, xinzhiSha256 }
     await resetEditor()
   }
 }
@@ -747,6 +767,65 @@ async function removeAvatar() {
     avatarNoticeError.value = true
   } finally {
     avatarUploading.value = false
+  }
+}
+
+function pickXinzhi() {
+  if (busy.value || checkingLeave.value || isNew.value || !xinzhiInput.value) return
+  xinzhiInput.value.value = ''
+  xinzhiInput.value.click()
+}
+
+function applyXinzhi(saved) {
+  const fields = { xinzhi: saved.xinzhi || '', xinzhiSha256: saved.xinzhiSha256 || saved.xinzhi_sha256 || '' }
+  Object.assign(form.value, fields)
+  const row = rows.value.find(r => r.id === form.value.id)
+  if (row) Object.assign(row, fields)
+  failedXinzhiSrc.value = ''
+}
+
+async function onXinzhiPick(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file || busy.value || checkingLeave.value || isNew.value) return
+  xinzhiNotice.value = ''
+  xinzhiNoticeError.value = false
+  if ((file.type && file.type !== 'image/png') || !/\.png$/i.test(file.name) || file.size > 200 * 1024) {
+    xinzhiNotice.value = '请选择不超过 200KB 的 140×140 透明 PNG 心纸'
+    xinzhiNoticeError.value = true
+    return
+  }
+  xinzhiUploading.value = true
+  try {
+    applyXinzhi(await uploadXinzhi(form.value.id, file))
+    xinzhiNotice.value = '心纸已上传，即时生效'
+  } catch (err) {
+    if (await leaveIfForbidden(err)) return
+    xinzhiNotice.value = humanErr(err, '心纸上传失败')
+    xinzhiNoticeError.value = true
+  } finally {
+    xinzhiUploading.value = false
+  }
+}
+
+async function removeXinzhi() {
+  if (busy.value || checkingLeave.value) return
+  checkingLeave.value = true
+  try {
+    if (!await dialog.confirm({ type: 'danger', title: '删除「' + (form.value.name || form.value.id) + '」的心纸？', message: '删除后立即生效，展示将回退到旧静态成品（如有）。', confirmText: '删除心纸' })) return
+  } finally { checkingLeave.value = false }
+  xinzhiUploading.value = true
+  xinzhiNotice.value = ''
+  xinzhiNoticeError.value = false
+  try {
+    applyXinzhi(await deleteXinzhi(form.value.id))
+    xinzhiNotice.value = '心纸已删除'
+  } catch (err) {
+    if (await leaveIfForbidden(err)) return
+    xinzhiNotice.value = humanErr(err, '心纸删除失败')
+    xinzhiNoticeError.value = true
+  } finally {
+    xinzhiUploading.value = false
   }
 }
 
@@ -963,4 +1042,8 @@ onBeforeUnmount(function () {
 })
 defineExpose({ canLeave, openNew, openEdit, selectRow, clearEditor, leaveIfForbidden, editing, isNew, selectedId, busy, checkingLeave })
 </script>
+
+<style scoped>
+.editor-xinzhi-preview { width: 36px; height: 36px; flex: none; object-fit: contain; }
+</style>
 

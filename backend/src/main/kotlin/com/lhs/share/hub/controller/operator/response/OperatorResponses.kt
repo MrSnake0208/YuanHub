@@ -1,5 +1,6 @@
 package com.lhs.share.hub.controller.operator.response
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.lhs.share.hub.controller.inventory.request.ProducerDto
 import com.lhs.share.hub.repository.entity.OperatorCatalogEntity
 import com.lhs.share.hub.repository.entity.OperatorCombatStats
@@ -138,6 +139,8 @@ data class OperatorCatalogEntryResponse(
     // 密探头像相对路径（如 "/avatar/char_001_yangxiu.webp"），前端拼 baseURL；未上传为 null。
     val avatar: String? = null,
     val huajiCapabilities: OperatorHuajiCapabilities? = null,
+    val xinzhi: String? = null,
+    @get:JsonProperty("xinzhiSha256") val xinzhiSha256: String? = null,
 ) {
     companion object {
         fun of(e: OperatorCatalogEntity) = OperatorCatalogEntryResponse(
@@ -160,6 +163,8 @@ data class OperatorCatalogEntryResponse(
                 awakeningSupported = OperatorHuajiRules.awakeningSupported(e),
                 awakeningUpgradeSupported = e.spOf == null && e.rarity in 4..5,
             ),
+            xinzhi = e.xinzhi,
+            xinzhiSha256 = e.xinzhiSha256,
         )
     }
 }
@@ -196,6 +201,8 @@ data class AdminOperatorCatalogResponse(
     val avatar: String?,
     val catalogVersion: String,
     val createdAt: Instant,
+    val xinzhi: String? = null,
+    @get:JsonProperty("xinzhiSha256") val xinzhiSha256: String? = null,
 ) {
     companion object {
         fun of(e: OperatorCatalogEntity) = AdminOperatorCatalogResponse(
@@ -215,6 +222,8 @@ data class AdminOperatorCatalogResponse(
             avatar = e.avatar,
             catalogVersion = e.catalogVersion,
             createdAt = e.createdAt,
+            xinzhi = e.xinzhi,
+            xinzhiSha256 = e.xinzhiSha256,
         )
     }
 }

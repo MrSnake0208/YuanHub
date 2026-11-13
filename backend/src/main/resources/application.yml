@@ -101,6 +101,8 @@ share:
   avatar:
     # 密探头像文件目录(存放 {operatorId}.webp;application-local.yml 同步保留默认值即可)
     dir: ${SHARE_AVATAR_DIR:./data/avatar}
+  xinzhi:
+    dir: ${SHARE_XINZHI_DIR:./data/xinzhi}
   media:
     # 公开图片存储目录(存放 med_xxx.{jpg,png,webp};生产用环境变量 SHARE_MEDIA_DIR 覆盖)
     dir: ${SHARE_MEDIA_DIR:./data/media}

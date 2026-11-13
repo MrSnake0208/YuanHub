@@ -29,6 +29,9 @@ data class OperatorCatalogEntity(
     // 密探头像 webp 相对路径（如 "/avatar/char_001_yangxiu.webp"）；未上传为 null。
     // 只能经管理员上传/删除头像接口写入，非自由文本字段。
     val avatar: String? = null,
+    // 140×140 透明心纸 PNG，仅经管理员上传/删除接口维护。
+    val xinzhi: String? = null,
+    val xinzhiSha256: String? = null,
     val catalogVersion: String,
     val createdAt: Instant = Instant.now(),
 )

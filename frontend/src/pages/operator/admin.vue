@@ -132,6 +132,8 @@ function normalizeRow(r) {
     odditySchema: odditySchema,
     incompleteFields: Array.isArray(r.incomplete_fields) ? r.incomplete_fields : (Array.isArray(r.incompleteFields) ? r.incompleteFields : []),
     avatar: r.avatar || '',
+    xinzhi: r.xinzhi || '',
+    xinzhiSha256: r.xinzhiSha256 || r.xinzhi_sha256 || '',
     catalogVersion: r.catalog_version || r.catalogVersion || '',
     createdAt: r.created_at || r.createdAt || null
   }

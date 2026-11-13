@@ -29,7 +29,7 @@ import java.time.Instant
 class OperatorCatalogServiceTest {
     private val repository = mockk<OperatorCatalogRepository>()
     private val avatarStorage = mockk<AvatarStorage>(relaxed = true)
-    private val service = OperatorCatalogService(repository, ObjectMapper(), avatarStorage)
+    private val service = OperatorCatalogService(repository, ObjectMapper(), avatarStorage, mockk<XinzhiStorage>(relaxed = true))
 
     private fun seed(existing: List<OperatorCatalogEntity> = emptyList()) {
         every { repository.count() } returns 1L // 跳过资源文件整体播种，走"老库回填"路径
