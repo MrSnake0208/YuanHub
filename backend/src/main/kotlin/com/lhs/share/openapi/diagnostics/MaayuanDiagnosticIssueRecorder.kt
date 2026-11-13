@@ -137,6 +137,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
             "node" -> "node"
             else -> "stage"
         }
+
         // Preserve existing operator signatures while isolating bag diagnostics by feature and code.
         val key = if (namespace == null) "$reason|$prefix:$subject" else "$namespace|$reason|$prefix:$subject"
         val id = MessageDigest.getInstance("SHA-1").digest(key.toByteArray(Charsets.UTF_8))
