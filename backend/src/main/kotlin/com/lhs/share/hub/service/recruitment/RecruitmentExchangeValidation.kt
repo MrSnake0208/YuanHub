@@ -26,7 +26,18 @@ internal class RecruitmentExchangeValidation(private val mapper: ObjectMapper) {
         }
         val document = decoder.read(node, RecruitmentExchangeDocument::class.java)
         validate(document)
-        node.path("pools").forEach { if (!it.has("progress")) fail("卡池进度必须显式填写，未知时为null") }
+        node.path("pools").forEach {
+            if (!it.has("progress")) fail("卡池进度必须显式填写，未知时为null")
+            if (it.has("cumulative_choice_agent_ids")) {
+                val ids = it.path("cumulative_choice_agent_ids")
+                if (!ids.isArray) fail("累抽自选必须为数组")
+                if (it.has("cumulative_choice_agent_id") &&
+                    it.get("cumulative_choice_agent_id").takeUnless { choice -> choice.isNull }?.asText() != ids.firstOrNull()?.asText()
+                ) {
+                    fail("累抽自选兼容字段须与列表第一位一致")
+                }
+            }
+        }
         node.path("events").forEach {
             if (!it.path("agent_snapshot").has("rarity")) fail("密探快照必须记录稀有度")
         }
@@ -58,7 +69,14 @@ internal class RecruitmentExchangeValidation(private val mapper: ObjectMapper) {
                 fail("心愿密探必须为两位不同的绝密密探")
             }
             it.wishAgentIds.forEach(::id)
-            it.cumulativeChoiceAgentId?.takeIf { choice -> choice.isNotEmpty() }?.let(::id)
+            val choices = it.cumulativeChoices()
+            if (choices.size > 3) fail("累抽自选最多3位")
+            choices.forEach(::id)
+            if (it.cumulativeChoiceAgentIds.isNotEmpty() && it.cumulativeChoiceAgentId != null &&
+                it.cumulativeChoiceAgentId != choices.firstOrNull()
+            ) {
+                fail("累抽自选兼容字段须与列表第一位一致")
+            }
             it.progress?.let { count -> recruitmentCount(count, "progress") }
             it.mappedSnapshot?.let { mapped ->
                 snapshot(mapped, document.game)
@@ -148,9 +166,10 @@ internal class RecruitmentExchangeValidation(private val mapper: ObjectMapper) {
                     fail("该卡池未开放自选心愿UP，不能导入新的心愿选择")
                 }
             }
-            pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() }?.let { id ->
-                catalog.validateCumulativeChoice(document.game, id)
-                if (definitions[reference.catalogPoolId]?.allowCumulativeChoice != true && id != old?.cumulativeChoiceAgentId) {
+            val choices = pool.cumulativeChoices()
+            if (choices.isNotEmpty()) {
+                catalog.validateCumulativeChoice(document.game, choices)
+                if (definitions[reference.catalogPoolId]?.allowCumulativeChoice != true && choices != old?.cumulativeChoices()) {
                     fail("该卡池未开放累抽自选")
                 }
             }

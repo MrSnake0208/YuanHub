@@ -56,7 +56,17 @@ data class RecruitmentPool(
     val mappedSnapshot: RecruitmentPoolSnapshot? = null,
     val wishAgentIds: List<String> = emptyList(),
     val cumulativeChoiceAgentId: String? = null,
-)
+    val cumulativeChoiceAgentIds: List<String> = emptyList(),
+) {
+    fun cumulativeChoices(): List<String> = cumulativeChoiceAgentIds.ifEmpty {
+        listOfNotNull(cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() })
+    }
+
+    fun withCumulativeChoices(ids: List<String> = cumulativeChoices()): RecruitmentPool = copy(
+        cumulativeChoiceAgentIds = ids,
+        cumulativeChoiceAgentId = ids.firstOrNull(),
+    )
+}
 
 data class RecruitmentTemporaryAgent(
     val agentId: String,

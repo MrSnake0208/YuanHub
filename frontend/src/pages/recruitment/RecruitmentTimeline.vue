@@ -45,7 +45,7 @@
               <span class="pool-name">{{ details(pool).name }}</span>
               <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
               <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
-              <span v-if="pool.cumulative_choice_agent_id" class="pool-cumulative-choice">300 累抽 · {{ cumulativeChoiceName(pool) }}</span>
+              <span v-if="cumulativeChoiceNames(pool)" class="pool-cumulative-choice">累抽自选 · {{ cumulativeChoiceNames(pool) }}</span>
               <span v-if="isEmptyPool(pool)" class="pool-empty">还没有记录</span>
               <span v-else class="pool-metrics">
                 <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
@@ -101,7 +101,7 @@ const goldCount = pool => {
 const failedPortraits = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
 const startDate = pool => details(pool).start_date || ''
-const cumulativeChoiceName = pool => props.agents.find(agent => agent.id === pool.cumulative_choice_agent_id)?.name || pool.cumulative_choice_agent_id
+const cumulativeChoiceNames = pool => (pool.cumulative_choice_agent_ids?.length ? pool.cumulative_choice_agent_ids : pool.cumulative_choice_agent_id ? [pool.cumulative_choice_agent_id] : []).map(id => props.agents.find(agent => agent.id === id)?.name || id).join('、')
 const permanent = pool => isPermanentRecruitmentPool(details(pool))
 const years = computed(() => [...new Set(props.pools.filter(pool => !permanent(pool)).map(pool => startDate(pool).slice(0, 4)).filter(Boolean))].sort().reverse())
 const hasUndated = computed(() => props.pools.some(pool => !permanent(pool) && !startDate(pool)))

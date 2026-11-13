@@ -301,11 +301,17 @@
           "maxItems": 2
         },
         "cumulative_choice_agent_id": {
-          "description": "300 累抽自选标记，不计入任何抽卡统计；空字符串或 null 表示未选择。",
+          "description": "兼容字段，导出为累抽自选列表第一位，空列表为 null；只给此字段时空字符串或 null 表示未选择。同时提供数组时须省略或等于数组第一位，空数组对应 null。",
           "anyOf": [
             { "type": "string", "pattern": "^([A-Za-z0-9][A-Za-z0-9._:-]{0,127})?$" },
             { "type": "null" }
           ]
+        },
+        "cumulative_choice_agent_ids": {
+          "description": "按 300/600/900 档顺序记录的累抽自选，不计入抽卡统计；列表紧凑，允许重复密探，空数组清除全部选择。",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+          "maxItems": 3
         },
         "mapped_snapshot": {
           "anyOf": [

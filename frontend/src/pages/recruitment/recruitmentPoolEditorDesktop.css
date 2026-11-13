@@ -64,13 +64,18 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .remaining-input input { width: 66px; margin: 0; padding-inline: 6px; text-align: center; font-family: var(--font-d); }
 .remaining-field { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
 .progress-error { flex-basis: 100%; font-size: 12px; line-height: 1.6; }
+.cumulative-choice-strip { display: flex; align-items: flex-start; gap: 12px; min-width: 0; margin-bottom: 16px; }
+.cumulative-choice-label { display: flex; flex: none; align-items: center; min-height: 44px; font-size: 12px; font-weight: 700; }
+.cumulative-choice-tags { display: flex; flex: 1; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.cumulative-choice-tag { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 6px 10px; font-size: 12px; line-height: 1.4; text-align: left; }
+.cumulative-choice-tag > span { min-width: 0; overflow-wrap: anywhere; }
+.cumulative-choice-avatar { flex: none; width: 30px; height: 30px; }
 .entry-section { position: relative; padding: 16px 14px; margin-bottom: 22px; }
 .entry-heading { padding-right: 44px; margin-bottom: 14px; }
 .entry-workflow { display: grid; gap: 16px; }
 .entry-workflow.is-choosing { grid-template-columns: minmax(0, 1fr); }
 .entry-shortcuts { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; padding-block: 3px; }
 .quick-up-slot { position: relative; flex: none; }
-.pool-editor .cumulative-choice-button { width: 88px; min-height: 88px; height: auto; }
 .wish-edit { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 20px; height: 20px; min-width: 0; min-height: 0; padding: 0; }
 .is-wish-slot .quick-up-check { right: auto; left: 0; }
 .quick-up-button, .add-record {

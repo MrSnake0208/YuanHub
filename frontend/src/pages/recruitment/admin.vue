@@ -137,8 +137,8 @@
                   <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
                     <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>
                   </label>
-                  <label class="wish-mode"><span><input v-model="form.allow_cumulative_choice" type="checkbox" :disabled="saving"> 允许 300 累抽自选</span>
-                    <small>用户可标记一位本游戏绝密密探，各账号独立保存，不计入抽卡统计。</small>
+                  <label class="wish-mode"><span><input v-model="form.allow_cumulative_choice" type="checkbox" :disabled="saving"> 允许累抽自选（每 300 抽一次，最多 3 次）</span>
+                    <small>用户可按 300/600/900 档标记本游戏绝密密探，允许重复选择，各账号独立保存，不计入抽卡统计。</small>
                   </label>
                   <label>开始日期
                     <input v-model="form.start_date" type="date" :disabled="saving">

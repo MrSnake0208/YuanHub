@@ -124,8 +124,10 @@ class RecruitmentCatalog(
         if (ids.any { operator(game, it).rarity != 5 }) throw recruitmentInvalid("心愿密探只能选择当前游戏的绝密密探")
     }
 
-    fun validateCumulativeChoice(game: String, id: String) {
-        if (operator(game, id).rarity != 5) throw recruitmentInvalid("累抽自选只能选择当前游戏的绝密密探")
+    fun validateCumulativeChoice(game: String, ids: List<String>) {
+        if (ids.size > 3) throw recruitmentInvalid("累抽自选最多3位")
+        if (ids.any { it.isBlank() }) throw recruitmentInvalid("累抽自选密探ID不能为空")
+        if (ids.any { operator(game, it).rarity != 5 }) throw recruitmentInvalid("累抽自选只能选择当前游戏的绝密密探")
     }
 
     fun personalSnapshot(pool: RecruitmentPool, requireEnabled: Boolean = true): RecruitmentPoolSnapshot {
@@ -200,7 +202,8 @@ class RecruitmentCatalog(
                 visible.add(RecruitmentPool(id, snapshotOf(pool, names)))
             }
         }
-        return visible.map { pool ->
+        return visible.map { stored ->
+            val pool = stored.withCumulativeChoices()
             val reference = pool.mappedSnapshot ?: pool.snapshot
             val snapshot = latest[reference.catalogPoolId]?.takeIf { it.game == reference.game }?.let { snapshotOf(it, names) }
                 ?: return@map pool

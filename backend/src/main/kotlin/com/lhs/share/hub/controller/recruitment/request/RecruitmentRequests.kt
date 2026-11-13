@@ -56,6 +56,7 @@ data class RecruitmentPoolRecordsSave(
     val orderedEventIds: List<String>? = null,
     val wishAgentIds: List<String>? = null,
     val cumulativeChoiceAgentId: String? = null,
+    val cumulativeChoiceAgentIds: List<String>? = null,
 )
 
 data class RecruitmentEventUpdate(val eventId: String, val entry: RecruitmentEventInput)
@@ -91,7 +92,7 @@ class RecruitmentRequestDecoder(mapper: ObjectMapper) {
                 }
             }
         }
-        validateTemporalTokens(node)
+        validateTokens(node)
         return try {
             strictMapper.treeToValue(node, type) ?: throw recruitmentInvalid("请求不能为空")
         } catch (_: com.fasterxml.jackson.core.JsonProcessingException) {
@@ -99,14 +100,19 @@ class RecruitmentRequestDecoder(mapper: ObjectMapper) {
         }
     }
 
-    /** JavaTime accepts epoch numbers and date arrays; this API requires explicit ISO strings. */
-    private fun validateTemporalTokens(node: JsonNode) {
+    /** Reject null list elements and JavaTime's numeric/date-array coercion before decoding. */
+    private fun validateTokens(node: JsonNode) {
         if (node.isArray) {
-            node.forEach(::validateTemporalTokens)
+            node.forEach(::validateTokens)
             return
         }
         if (!node.isObject) return
         node.fields().forEachRemaining { (name, value) ->
+            if (name == "cumulative_choice_agent_ids" && !value.isNull) {
+                if (!value.isArray) throw recruitmentInvalid("累抽自选必须为数组")
+                if (value.size() > 3) throw recruitmentInvalid("累抽自选最多3位")
+                if (value.any { !it.isTextual || it.asText().isBlank() }) throw recruitmentInvalid("累抽自选密探ID须为非空字符串")
+            }
             if (!value.isNull && name in DATE_FIELDS) {
                 if (!value.isTextual || !DATE_FORMAT.matches(value.asText())) throw recruitmentInvalid("纯日期必须为YYYY-MM-DD字符串")
                 try {
@@ -122,7 +128,7 @@ class RecruitmentRequestDecoder(mapper: ObjectMapper) {
                     throw recruitmentInvalid("时间不正确")
                 }
             }
-            validateTemporalTokens(value)
+            validateTokens(value)
         }
     }
 

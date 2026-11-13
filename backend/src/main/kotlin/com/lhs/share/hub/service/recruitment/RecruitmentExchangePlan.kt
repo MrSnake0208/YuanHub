@@ -49,7 +49,7 @@ internal fun recruitmentExchangePlan(
     val restoring = !recordsOnly && currentEvents.isEmpty() && currentBatches.isEmpty() && current.baseline == 0L &&
         current.temporaryAgents.isEmpty() && current.pools.all {
             it.snapshot.catalogPoolId != null && it.progress == 0L && it.wishAgentIds.isEmpty() &&
-                it.cumulativeChoiceAgentId.isNullOrEmpty()
+                it.cumulativeChoices().isEmpty()
         }
     val useState = !recordsOnly && (restoring || options.stateStrategy == "use_backup")
     val items = mutableListOf<RecruitmentImportItem>()
@@ -68,8 +68,7 @@ internal fun recruitmentExchangePlan(
                 pools[pool.poolId] = pool.copy(
                     progress = if (useState) pool.progress else null,
                     wishAgentIds = if (useState) pool.wishAgentIds else emptyList(),
-                    cumulativeChoiceAgentId = if (useState) pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() } else null,
-                )
+                ).withCumulativeChoices(if (useState) pool.cumulativeChoices() else emptyList())
                 item("pool", pool.poolId, "add", "新增卡池快照；当前进度按状态策略处理")
             }
             poolBusiness(old) == poolBusiness(pool) -> {
@@ -77,8 +76,7 @@ internal fun recruitmentExchangePlan(
                     pools[pool.poolId] = old.copy(
                         progress = pool.progress,
                         wishAgentIds = pool.wishAgentIds,
-                        cumulativeChoiceAgentId = pool.cumulativeChoiceAgentId?.takeIf { it.isNotEmpty() },
-                    )
+                    ).withCumulativeChoices(pool.cumulativeChoices())
                 }
                 item("pool", pool.poolId, "duplicate", "已有相同卡池快照")
             }
@@ -180,13 +178,13 @@ internal fun recruitmentExchangePlan(
     val next = current.copy(
         baseline = if (useState) backup.baseline else current.baseline,
         currentPoolId = if (useState && backup.currentPoolId !in badPools) backup.currentPoolId else current.currentPoolId,
-        pools = pools.values.toList(),
+        pools = pools.values.map { it.withCumulativeChoices() },
         temporaryAgents = agents.values.toList(),
         nextEventOrder = nextOrder,
     )
     val stateChanged = next.baseline != current.baseline || next.currentPoolId != current.currentPoolId ||
-        next.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoiceAgentId) } !=
-        current.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoiceAgentId) }
+        next.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoices()) } !=
+        current.pools.associate { it.poolId to Triple(it.progress, it.wishAgentIds, it.cumulativeChoices()) }
     val needsStateConfirmation = !restoring && options.stateStrategy == "use_backup" && stateChanged
     if (needsStateConfirmation) risks += "使用备份状态会替换基准、匹配卡池进度、心愿密探与累抽自选（不会相加）；须明确确认候选总抽数"
     item(
@@ -237,7 +235,7 @@ internal fun exchangeTotal(document: RecruitmentExchangeDocument): Long = docume
 internal fun exchangeDocument(archive: RecruitmentArchive, events: List<RecruitmentEvent>, batches: List<RecruitmentBatch>, now: Instant) =
     RecruitmentExchangeDocument(
         RECRUITMENT_EXCHANGE_SCHEMA, now, RecruitmentExchangeAccount(archive.accountId), archive.gameSnapshot, archive.archiveRevision,
-        archive.baseline, archive.currentPoolId, archive.pools, archive.temporaryAgents,
+        archive.baseline, archive.currentPoolId, archive.pools.map { it.withCumulativeChoices() }, archive.temporaryAgents,
         events.map {
             it.exchange()
         },
@@ -269,6 +267,7 @@ private fun poolBusiness(value: RecruitmentPool) = value.copy(
     progress = null,
     wishAgentIds = emptyList(),
     cumulativeChoiceAgentId = null,
+    cumulativeChoiceAgentIds = emptyList(),
     snapshot = snapshotBusiness(value.snapshot),
     mappedSnapshot = value.mappedSnapshot?.let(::snapshotBusiness),
 )

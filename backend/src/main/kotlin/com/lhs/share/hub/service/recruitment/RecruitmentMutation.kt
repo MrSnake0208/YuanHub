@@ -96,15 +96,26 @@ class RecruitmentMutation(
             }
             "pool_records_save" -> {
                 val input = read<RecruitmentPoolRecordsSave>(data)
-                input.cumulativeChoiceAgentId?.let { id ->
+                if (input.cumulativeChoiceAgentIds != null || input.cumulativeChoiceAgentId != null) {
                     val selected = pool(current, input.poolId)
-                    if (id.isNotEmpty()) {
-                        if (!catalog.personalSnapshot(selected).allowCumulativeChoice) {
-                            throw recruitmentInvalid("该卡池未开放累抽自选")
-                        }
-                        catalog.validateCumulativeChoice(current.gameSnapshot, id)
+                    val previous = selected.cumulativeChoices()
+                    val ids = input.cumulativeChoiceAgentIds ?: input.cumulativeChoiceAgentId!!.let { id ->
+                        if (id.isEmpty()) previous.drop(1) else listOf(id) + previous.drop(1)
                     }
-                    current = replacePool(current, selected.copy(cumulativeChoiceAgentId = id.takeIf { it.isNotEmpty() }))
+                    if (input.cumulativeChoiceAgentIds != null && input.cumulativeChoiceAgentId != null &&
+                        input.cumulativeChoiceAgentId != ids.firstOrNull()
+                    ) {
+                        throw recruitmentInvalid("累抽自选兼容字段须与列表第一位一致")
+                    }
+                    catalog.validateCumulativeChoice(current.gameSnapshot, ids)
+                    if (ids.isNotEmpty() && !catalog.personalSnapshot(selected).allowCumulativeChoice) {
+                        var index = 0
+                        for (id in previous) {
+                            if (index < ids.size && ids[index] == id) index++
+                        }
+                        if (index != ids.size) throw recruitmentInvalid("该卡池未开放累抽自选")
+                    }
+                    current = replacePool(current, selected.withCumulativeChoices(ids))
                 }
                 input.wishAgentIds?.let { ids ->
                     val selected = pool(current, input.poolId)
@@ -159,7 +170,7 @@ class RecruitmentMutation(
                     }
                 }
                 if (input.remainingPulls == null && modifiedEvents.isEmpty() && ordered == null &&
-                    input.wishAgentIds == null && input.cumulativeChoiceAgentId == null
+                    input.wishAgentIds == null && input.cumulativeChoiceAgentId == null && input.cumulativeChoiceAgentIds == null
                 ) {
                     throw recruitmentInvalid("请修改出货记录、顺序或填写保底进度后保存")
                 }
