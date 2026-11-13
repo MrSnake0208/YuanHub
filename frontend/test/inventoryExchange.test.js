@@ -17,12 +17,6 @@ const inventoryPage = readSource(new URL('../src/pages/inventory/index.vue', imp
 const inventoryMobile = readFileSync(new URL('../src/pages/inventory/inventoryWorkspaceMobile.css', import.meta.url), 'utf8')
 const mobileHeader = readFileSync(new URL('../src/components/MobileHeader.vue', import.meta.url), 'utf8')
 
-test('inventory import panel follows the shared archive visibility state', function () {
-  assert.match(inventoryPage, /v-if="showArchive && !editingStock && showImport"/)
-  assert.match(inventoryPage, /function toggleInventoryArchive\(\)[\s\S]*if \(!showArchive\.value\) showImport\.value = false/)
-  assert.match(inventoryPage, /function toggleInventoryImport\(\)[\s\S]*if \(!showArchive\.value \|\| editingStock\.value\)[\s\S]*showImport\.value = false/)
-})
-
 test('库存类型切换复用单一入口，两端遵循模式到工具动线并随文档流布局', function () {
   assert.match(inventoryPage, /class="type-switch manifest-type-switch"[\s\S]*aria-label="库存类型"[\s\S]*@click="setEntityType\('item'\)"[\s\S]*@click="setEntityType\('agent'\)"/)
   assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)

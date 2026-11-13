@@ -59,7 +59,7 @@ function render(stubs = {}, directives = {}) {
   return mount(InventoryPage, { global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
-      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
+      AccountWorkspace: true, DataAccountContextBar: true,
       ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,
       ...stubs,
     },

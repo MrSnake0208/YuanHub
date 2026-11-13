@@ -1,12 +1,14 @@
+import { Blob as NodeBlob } from 'node:buffer'
+import { installViewport } from '../test-support/viewport.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import OperatorAdmin from '../src/pages/operator/admin.vue'
 import LevelAdmin from '../src/pages/level/admin.vue'
 import { listAdminOperatorCatalog } from '../src/api/operator.js'
-import { listAdminLevelCatalog, updateAdminLevel, previewAdminLevelImport, commitAdminLevelImport } from '../src/api/level.js'
+import { listAdminLevelCatalog, updateAdminLevel, previewAdminLevelImport, commitAdminLevelImport, exportAdminLevelCatalog } from '../src/api/level.js'
 
 const router = vi.hoisted(() => ({ replace: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => router }))
+vi.mock('vue-router', () => ({ useRouter: () => router, onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
 vi.mock('../src/api/operator.js', () => ({
   listAdminOperatorCatalog: vi.fn(), createAdminOperatorCatalog: vi.fn(), updateAdminOperatorCatalog: vi.fn(),
@@ -14,12 +16,33 @@ vi.mock('../src/api/operator.js', () => ({
 }))
 vi.mock('../src/api/level.js', async importOriginal => ({
   ...await importOriginal(), listAdminLevelCatalog: vi.fn(), updateAdminLevel: vi.fn(),
-  previewAdminLevelImport: vi.fn(), commitAdminLevelImport: vi.fn()
+  previewAdminLevelImport: vi.fn(), commitAdminLevelImport: vi.fn(), exportAdminLevelCatalog: vi.fn()
 }))
 const render = (Component, options = {}) => mount(Component, { ...options, global: {
   stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: true }, directives: { reveal: {} }
 } })
+
+it('关卡目录下载保持可导入文档、缩进、末尾换行及 UTF-8 MIME，并延迟释放', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  vi.stubGlobal('Blob', NodeBlob)
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:levels'); static revokeObjectURL = vi.fn() })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  exportAdminLevelCatalog.mockResolvedValue({ levels: [{ id: 'level-a', name: '测试关卡', game: '如鸢', catOne: '主线' }] })
+  const wrapper = render(LevelAdmin); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text().includes('导出')).trigger('click'); await flushPromises()
+  expect(exportAdminLevelCatalog).toHaveBeenCalledTimes(1)
+  expect(click.mock.instances[0].download).toBe('level-catalog.json')
+  const blob = URL.createObjectURL.mock.calls[0][0], text = await blob.text()
+  expect(blob.type).toBe('application/json;charset=utf-8')
+  expect(text.endsWith('\n')).toBe(true)
+  expect(text).toContain('\n  "levels": [')
+  expect(JSON.parse(text).levels).toEqual([expect.objectContaining({ id: 'level-a', name: '测试关卡', game: '如鸢' })])
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+  vi.advanceTimersByTime(60000)
+  expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:levels')
+})
 beforeEach(() => {
+  installViewport(1440)
   vi.clearAllMocks()
   listAdminOperatorCatalog.mockResolvedValue([{ id: 'char_001_demo', name: '测试密探', games: ['如鸢'], special_oddity_name: '增伤值', catalog_version: 'v3' }])
   listAdminLevelCatalog.mockResolvedValue({ catalogVersion: '目录-v3', levels: [

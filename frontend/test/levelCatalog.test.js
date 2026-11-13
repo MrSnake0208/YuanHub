@@ -130,5 +130,4 @@ test('keeps the level page contracts for conflict handling and mobile readabilit
   assert.match(page, /重新加载最新数据后再保存/)
   assert.match(page, /previewAdminLevelImport/)
   assert.match(page, /commitAdminLevelImport/)
-  assert.match(page, /link\.download = 'level-catalog\.json'/)
 })

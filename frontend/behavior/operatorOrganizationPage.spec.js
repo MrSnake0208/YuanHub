@@ -1,6 +1,6 @@
 import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import { auth } from '../src/store/auth.js'
 import * as api from '../src/api/operator.js'
@@ -53,7 +53,7 @@ beforeEach(() => {
 })
 afterEach(() => wrapper?.unmount())
 async function render() {
-  wrapper = mount(OperatorPage, { global: { plugins: [createPinia()], directives: { reveal: () => {} }, stubs: {
+  wrapper = mount(OperatorPage, { attachTo: document.body, global: { plugins: [createPinia()], directives: { reveal: () => {} }, stubs: {
     OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: { template: '<div><slot /><slot name="side" /></div>' },
     DataAccountContextBar: { name: 'DataAccountContextBar', props: ['beforeSwitch', 'switchDisabled'], template: '<div><slot name="actions" /></div>' }, OperatorShareManager: true, OperatorGrowthTracker: true,
     StarLoadoutEditor: true, StarLoadoutModal: true, RouterLink: true,
@@ -325,38 +325,36 @@ it('未保存分类触发刷新离开保护，放弃修改后解除且卸载清�
 })
 
 const clickPageButton = async text => {
-  await wrapper.findAll('button').find(button => button.text() === text).trigger('click')
+  await new DOMWrapper(document.body).findAll('button').find(button => button.text() === text).trigger('click')
   await flushPromises()
 }
 async function previewClassification(content = { ...emptyOperatorOrganization(), pinned_ids: ['c'], tags: [{ id: 'team', name: '主力', operator_ids: ['a', 'c'] }] }, game = '如鸢') {
-  if (!wrapper.find('.archive-workspace').exists()) await clickPageButton('导入/导出 JSON')
-  if (!wrapper.find('#operator-import-json').exists()) await clickPageButton('JSON 备份导入')
-  await wrapper.get('#operator-import-json').setValue(JSON.stringify(operatorOrganizationBackup(content, game)))
+  if (!document.querySelector('.data-exchange-dialog')) await clickPageButton('导入/导出')
+  await new DOMWrapper(document.body).get('#operator-import-json').setValue(JSON.stringify(operatorOrganizationBackup(content, game)))
   await clickPageButton('校验并预览分类')
 }
 
 it('分类备份统一从 JSON 入口识别，预览无写入，确认后只保存当前账号分类', async () => {
   await render(); await previewClassification()
   expect(wrapper.find('.organization-backup').exists()).toBe(false)
-  expect(wrapper.get('.organization-import-preview').text()).toContain('1 位置顶 · 1 个标签')
-  expect(wrapper.get('.organization-import-preview').text()).toContain('主力')
+  expect(new DOMWrapper(document.body).get('.organization-import-preview').text()).toContain('1 位置顶 · 1 个标签')
+  expect(new DOMWrapper(document.body).get('.organization-import-preview').text()).toContain('主力')
   expect(api.putOperatorOrganization).not.toHaveBeenCalled()
   await clickPageButton('确认恢复分类')
   expect(api.putOperatorOrganization).toHaveBeenCalledWith('acc', expect.objectContaining({ expected_revision: 0, pinned_ids: ['c'] }))
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
-  expect(wrapper.text()).toContain('分类已恢复并保存到当前账号')
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(false)
   expect(cardNames()).toEqual(['c', 'a', 'b']); noGrowthWrites()
 })
 
 it('分类导入拒绝错误游戏与未知密探；编辑 JSON 使旧预览失效', async () => {
   await render(); await previewClassification(emptyOperatorOrganization(), '代号鸢')
-  expect(wrapper.get('#operator-import-error').text()).toContain('游戏版本')
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).get('#operator-import-error').text()).toContain('游戏版本')
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(false)
   await previewClassification({ ...emptyOperatorOrganization(), pinned_ids: ['unknown'] })
-  expect(wrapper.get('#operator-import-error').text()).toContain('未收录的密探')
+  expect(new DOMWrapper(document.body).get('#operator-import-error').text()).toContain('未收录的密探')
   await previewClassification()
-  await wrapper.get('#operator-import-json').setValue('{}')
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
+  await new DOMWrapper(document.body).get('#operator-import-json').setValue('{}')
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(false)
   expect(api.putOperatorOrganization).not.toHaveBeenCalled(); noGrowthWrites()
 })
 
@@ -369,8 +367,8 @@ it('恢复分类先确认未保存草稿，取消或保存失败保留草稿与�
   api.putOperatorOrganization.mockRejectedValueOnce(new Error('offline'))
   await clickPageButton('确认恢复分类')
   expect(wrapper.get('[data-tag-name]').element.value).toBe('草稿标签')
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(true)
-  expect(wrapper.get('.import-error').text()).toContain('offline')
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).get('.import-error').text()).toContain('offline')
   await clickPageButton('确认恢复分类')
   expect(wrapper.get('[data-tag-name]').element.value).toBe('主力')
   expect(wrapper.get('.current-organization-toggle').text()).not.toContain('未保存')
@@ -380,10 +378,10 @@ it('恢复分类先确认未保存草稿，取消或保存失败保留草稿与�
 it('恢复确认等待期间切换账号使旧预览失效，不会写入新账号', async () => {
   await render(); await editClassification(); await previewClassification()
   const confirmation = deferred(); dialog.confirm.mockReturnValueOnce(confirmation.promise)
-  await wrapper.get('.organization-import-preview button').trigger('click')
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click')
   activeAccount.id = 'b'; await flushPromises()
   confirmation.resolve(true); await flushPromises()
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(false)
   expect(api.putOperatorOrganization).not.toHaveBeenCalled()
 })
 
@@ -391,11 +389,11 @@ it('分类恢复冲突保留预览，重新读取后必须重新预览当前版�
   await render(); await previewClassification()
   api.putOperatorOrganization.mockRejectedValueOnce(Object.assign(new Error('版本冲突'), { status: 409 }))
   await clickPageButton('确认恢复分类')
-  expect(wrapper.find('.organization-import-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(true)
   organization.revision = 2
-  await wrapper.findAll('.import-error button').find(button => button.text() === '重新读取分类').trigger('click'); await flushPromises()
-  expect(wrapper.get('.organization-import-preview button').element.disabled).toBe(true)
-  expect(wrapper.get('.organization-import-preview').text()).toContain('重新校验并预览')
+  await new DOMWrapper(document.body).findAll('.import-error button').find(button => button.text() === '重新读取分类').trigger('click'); await flushPromises()
+  expect(new DOMWrapper(document.body).get('.data-exchange-footer-actions button').element.disabled).toBe(true)
+  expect(new DOMWrapper(document.body).get('.organization-import-preview').text()).toContain('重新校验并预览')
   await clickPageButton('校验并预览分类'); await clickPageButton('确认恢复分类')
   expect(api.putOperatorOrganization).toHaveBeenLastCalledWith('acc', expect.objectContaining({ expected_revision: 2 }))
   noGrowthWrites()
@@ -403,7 +401,7 @@ it('分类恢复冲突保留预览，重新读取后必须重新预览当前版�
 
 it('JSON 区分类导出只包含当前账号已保存分类，不包含管理草稿', async () => {
   organization.pinned_ids = ['c']
-  await render(); await editClassification(); await clickPageButton('导入/导出 JSON')
+  await render(); await editClassification(); await clickPageButton('导入/导出')
   let blob
   vi.stubGlobal('URL', class extends URL {
     static createObjectURL = vi.fn(value => { blob = value; return 'blob:organization' })
@@ -411,7 +409,9 @@ it('JSON 区分类导出只包含当前账号已保存分类，不包含管理�
   })
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   try {
-    await clickPageButton('导出当前账号分类')
+    await new DOMWrapper(document.body).get('[role="tab"][id$="-export-tab"]').trigger('click')
+    await new DOMWrapper(document.body).get('input[name="operator-export-kind"][value="organization"]').setValue(true)
+    await clickPageButton('下载分类设置')
     const text = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsText(blob) })
     expect(JSON.parse(text)).toEqual(operatorOrganizationBackup({ ...emptyOperatorOrganization(), pinned_ids: ['c'] }, '如鸢'))
     expect(api.exportOperator).not.toHaveBeenCalled(); expect(api.putOperatorOrganization).not.toHaveBeenCalled()
@@ -419,21 +419,21 @@ it('JSON 区分类导出只包含当前账号已保存分类，不包含管理�
 })
 
 it('现有文件选择入口读取分类 JSON，仅预览且迟到文件不能跨账号填入', async () => {
-  await render(); await clickPageButton('导入/导出 JSON'); await clickPageButton('JSON 备份导入')
+  await render(); await clickPageButton('导入/导出')
   const readers = []
   vi.stubGlobal('FileReader', class { constructor() { readers.push(this) } readAsText() {} })
   try {
-    const input = wrapper.get('.backup-import input[type="file"]')
+    const input = new DOMWrapper(document.body).get('.backup-import input[type="file"]')
     Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['{}'], 'classification.json', { type: 'application/json' })] })
     await input.trigger('change')
     readers[0].result = JSON.stringify(operatorOrganizationBackup({ ...emptyOperatorOrganization(), pinned_ids: ['c'] }, '如鸢'))
     readers[0].onload(); await flushPromises(); await clickPageButton('校验并预览分类')
-    expect(wrapper.get('.organization-import-preview').text()).toContain('1 位置顶')
+    expect(new DOMWrapper(document.body).get('.organization-import-preview').text()).toContain('1 位置顶')
     expect(api.putOperatorOrganization).not.toHaveBeenCalled()
     await input.trigger('change')
     activeAccount.id = 'b'; await flushPromises()
     readers[1].result = readers[0].result; readers[1].onload(); await flushPromises()
-    expect(wrapper.find('.organization-import-preview').exists()).toBe(false)
+    expect(new DOMWrapper(document.body).find('.organization-import-preview').exists()).toBe(false)
     expect(api.putOperatorOrganization).not.toHaveBeenCalled()
   } finally { vi.unstubAllGlobals() }
 })

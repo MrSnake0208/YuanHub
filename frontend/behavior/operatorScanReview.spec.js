@@ -1,6 +1,6 @@
 import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { operatorScanReviewFixture } from '../test-support/operatorScanReviewFixtures.js'
 
@@ -386,8 +386,8 @@ it('安全：切账号后的旧文件读取不能替换新的字段复核稿', a
   vi.stubGlobal('FileReader', class { constructor() { readers.push(this) } readAsText() {} })
   const page = await render()
   await button(page, '取消复核').trigger('click'); await flushPromises()
-  await page.get('.archive-import').trigger('click'); await flushPromises()
-  const file = page.get('input[type="file"]')
+  await page.get('.archive-toggle').trigger('click'); await flushPromises()
+  const file = new DOMWrapper(document.body).get('.backup-import input[type="file"]')
   Object.defineProperty(file.element, 'files', { value: [new File(['{}'], 'synthetic.json')] })
   await file.trigger('change')
   activeAccount.id = 'acc-review-b'; await nextTick(); activeAccount.id = 'acc-review-a'; await nextTick(); await flushPromises()

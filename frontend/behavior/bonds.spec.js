@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { routeLocationKey } from 'vue-router'
 import { useBonds } from '../src/pages/bonds/useBonds.js'
@@ -134,7 +134,9 @@ it('查找配对不预设天气，备份保留设置，列表批量入口同条�
   expect(w.find('.bond-batch-check').exists()).toBe(false)
   await button(w, '设置').trigger('click')
   expect(w.get('#bond-settings').isVisible()).toBe(true)
-  expect(w.getComponent(BondExchange).isVisible()).toBe(true)
+  await button(w, '导入/导出').trigger('click'); await flushPromises()
+  expect(new DOMWrapper(document.body).get('.data-exchange-dialog').isVisible()).toBe(true)
+  expect(new DOMWrapper(document.body).get('.data-exchange-footer-actions button').element.disabled).toBe(true)
 })
 it('天气卡失败不高亮，账号切换清除状态，拥有统计读取真实账号数据', async () => {
   getOperatorCurrent.mockResolvedValue([{ account_id: 'a', game: '代号鸢', entries: { char_a: { starLevel: 1 }, char_b: { starLevel: 0 } } }])
@@ -167,16 +169,16 @@ it('历史天气只能取消已有收录，退出后隐藏整个羁绊内容', a
   expect(api.writeBonds).not.toHaveBeenCalled()
 })
 it('旧文件显式选择来源和缺失游戏，切目标后预览失效且迟到确认不串号', async () => {
-  const w = mount(BondExchange, { props: { identity: 'owner', accountId: 'a', accountName: '甲', game: '代号鸢', revision: 0, catalogVersion: 'fixture-v1', generation: 1, accounts: [{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }], canUse: true } }); wrappers.push(w)
+  const w = mount(BondExchange, { global: { stubs: { Teleport: true } }, props: { open: true, identity: 'owner', accountId: 'a', accountName: '甲', game: '代号鸢', revision: 0, catalogVersion: 'fixture-v1', generation: 1, accounts: [{ id: 'a', name: '甲', game: '代号鸢' }, { id: 'b', name: '乙', game: '代号鸢' }], canUse: true } }); wrappers.push(w)
   const file = w.find('input[type=file]')
   Object.defineProperty(file.element, 'files', { configurable: true, value: [{ name: 'synthetic.json', size: 50, text: async () => JSON.stringify({ '旧账号': { '丙_甲_乙_纵火_晴天': true } }) }] })
   await file.trigger('change'); await flushPromises(); expect(button(w, '生成导入预览').element.disabled).toBe(true)
   const selects = w.findAll('select'); await selects[0].setValue('旧账号'); await selects[1].setValue('代号鸢')
   api.previewBonds.mockResolvedValue({ account_id: 'a', game: '代号鸢', expected_revision: 0, catalog_version: 'fixture-v1', strategy: 'merge', preview_token: 'synthetic', stats: { add: 1, same: 0, conflict: 0, unknown: 0, mismatched: 0, invalid: 0 }, items: [], affected: 1 })
   await button(w, '生成导入预览').trigger('click'); await flushPromises(); expect(api.previewBonds).toHaveBeenCalledWith('owner', expect.objectContaining({ source_account: '旧账号', source_game: '代号鸢', account_id: 'a' }))
-  const pending = deferred(); api.confirmBonds.mockReturnValue(pending.promise); await button(w, '确认导入 1 条修改').trigger('click')
+  const pending = deferred(); api.confirmBonds.mockReturnValue(pending.promise); await w.get('.data-exchange-footer-actions button').trigger('click')
   await w.setProps({ accountId: 'b', generation: 2 }); pending.resolve(archive('a', 1)); await flushPromises()
-  expect(w.emitted('committed')).toBeUndefined(); expect(w.text()).not.toContain('确认导入到')
+  expect(w.emitted('committed')).toBeUndefined(); expect(w.find('[aria-label="导入预览结果"]').exists()).toBe(false)
 })
 
 it('按天气和行动直接找到唯一配对，切换视图保留条件，收录提交对应天气', async () => {

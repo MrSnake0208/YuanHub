@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { reactive } from 'vue'
 const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
 vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled } }))
@@ -48,7 +48,7 @@ function render({ exchange = false, ...options } = {}) {
   return mount(StarPage, { ...options, global: {
     stubs: {
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
-      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: !exchange,
+      AccountWorkspace: true, DataAccountContextBar: true,
     },
     directives: { reveal: () => {} },
   } })
@@ -948,10 +948,12 @@ it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿'
   const create = vi.fn(() => 'blob:synthetic-export')
   vi.stubGlobal('URL', class extends URL { static createObjectURL = create; static revokeObjectURL = vi.fn() })
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   const hostCalls = handle.setHostAccount.mock.calls.length
   publishAccountList([{ id: 'acc-1', name: '原地改名', game: '如鸢' }]); await flushPromises()
   await wrapper.get('.archive-toggle').trigger('click')
-  wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
+  await new DOMWrapper(document.body).get('[role="tab"][id$="-export-tab"]').trigger('click')
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(handle.setHostAccount).toHaveBeenCalledTimes(hostCalls)
   expect(click).toHaveBeenCalledTimes(1)
   expect(click.mock.instances[0].download).toBe('YuanStar_原地改名_2026-10-06.json')
@@ -959,8 +961,9 @@ it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿'
   const blob = create.mock.calls[0][0]
   const text = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob) })
   expect(JSON.parse(text)).toEqual({ ...payload, accountDisplayName: '原地改名' })
-  // Let URL cleanup finish before the per-test globals are restored.
-  await new Promise(resolve => window.setTimeout(resolve, 0))
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+  vi.advanceTimersByTime(60000)
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-export')
 })
 
 it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期间 %s 不下载旧账号档案', async change => {
@@ -971,7 +974,8 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期�
   handle.exportDataExchange = vi.fn(() => ({ blob: { text: () => gate.promise }, filename: 'YuanStar_测试账号_2026-10-06.json' }))
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   await wrapper.get('.archive-toggle').trigger('click')
-  wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
+  await new DOMWrapper(document.body).get('[role="tab"][id$="-export-tab"]').trigger('click')
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   if (change === 'unmount') wrapper.unmount()
   else if (change === 'identity') { auth.userInfo = { id: 'other-owner' }; auth.userInfo = { id: 'export-owner' } }
   else { activeAccount.set('acc-2'); if (change === 'roundtrip') activeAccount.set('acc-1') }
@@ -1111,26 +1115,26 @@ async function jsonImportHost() {
   handle.previewDataExchangeImport = vi.fn().mockResolvedValue({ format: 'json', fileName: 'backup.json', inventoryCount: 0, plannedCount: 0, bag: {}, experience: {} })
   handle.confirmDataExchangeImport = vi.fn().mockResolvedValue()
   await wrapper.get('.archive-toggle').trigger('click')
-  await wrapper.get('.archive-import').trigger('click')
   return { wrapper, handle }
 }
 async function selectJson(wrapper, file = compactImportFile()) {
-  Object.defineProperty(wrapper.get('input[type=file]').element, 'files', { configurable: true, value: [file] })
-  await wrapper.get('input[type=file]').trigger('change'); await flushPromises()
+  Object.defineProperty(new DOMWrapper(document.body).get('.data-exchange-dialog input[type=file]').element, 'files', { configurable: true, value: [file] })
+  await new DOMWrapper(document.body).get('.data-exchange-dialog input[type=file]').trigger('change'); await flushPromises()
 }
 it('JSON compact preview uses one existing import entry, never writes before confirmation and adopts current cloud data once', async () => {
   const { wrapper, handle } = await jsonImportHost()
   await selectJson(wrapper)
-  expect(wrapper.findAll('.archive-import')).toHaveLength(1)
-  expect(wrapper.get('.star-exchange-preview').text()).toContain('目标 A')
-  expect(wrapper.get('.star-exchange-preview').text()).toContain('主星 2 颗')
-  expect(wrapper.get('.star-exchange-preview').text()).toContain('270')
-  expect(wrapper.get('.star-exchange-preview').text()).toContain('原有佩戴与养成计划按现有保护和继承规则处理')
+  expect(new DOMWrapper(document.body).findAll('.data-exchange-dialog')).toHaveLength(1)
+  expect(new DOMWrapper(document.body).get('[role="tab"][aria-selected="true"]').attributes('id')).toMatch(/-import-tab$/)
+  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('目标 A')
+  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('主星 2 颗')
+  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('270')
+  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('原有佩戴与养成计划按现有保护和继承规则处理')
   expect(confirmStarInventoryImport).not.toHaveBeenCalled()
   const callback = embedMount.mock.calls.at(-1)[1], pendingScopes = []
   handle.setReviewView.mockImplementation(() => { pendingScopes.push(callback.getOcrRebuildScope()) })
   getCurrentStarState.mockResolvedValue({ ...emptyRemote, generation: 1, revision: 1, inventory: [{ instance_id: 'new', kind: 'main', name: '天府', quality: 'orange', level: 60 }] })
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
   expect(confirmStarInventoryImport.mock.calls[0][0]).toBe('acc-1')
   expect(confirmStarInventoryImport.mock.calls[0][1]).toMatchObject({ expected_generation: 0, expected_revision: 0, game: '如鸢', source_format: 'compact' })
@@ -1150,37 +1154,37 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a JSON file read that f
   gate.resolve(await compactImportFile().text()); await selecting; await flushPromises()
   expect(previewStarInventoryImport).not.toHaveBeenCalled()
   expect(confirmStarInventoryImport).not.toHaveBeenCalled()
-  if (change !== 'unmount') { expect(wrapper.find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
+  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
 })
 it('invalid reselection clears the previous JSON preview and a switched account cannot confirm it', async () => {
   const { wrapper } = await jsonImportHost(); await selectJson(wrapper)
-  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
   await selectJson(wrapper, { name: 'bad.json', size: 4, text: async () => 'oops' })
-  expect(wrapper.find('.star-exchange-preview').exists()).toBe(false)
-  expect(wrapper.get('.star-exchange-error').text()).toContain('JSON 无法解析')
+  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('JSON 无法解析')
   await selectJson(wrapper); activeAccount.set('acc-2'); await flushPromises()
-  expect(wrapper.find('.star-exchange-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false)
   expect(confirmStarInventoryImport).not.toHaveBeenCalled(); wrapper.unmount()
 })
 it('drafts and real backend rejections retain old business data and actionable error details', async () => {
   const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
   assertNoStarImportDraft.mockRejectedValueOnce(new Error('请先处理本机截图草稿'))
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(confirmStarInventoryImport).not.toHaveBeenCalled()
   confirmStarInventoryImport.mockRejectedValueOnce(Object.assign(new Error('旧养成计划仍待继承，请先处理'), { status: 409, code: 'star_plan_inheritance_pending' }))
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
-  expect(wrapper.get('.star-exchange-error').text()).toContain('旧养成计划仍待继承')
-  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
+  expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('旧养成计划仍待继承')
+  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(handle.confirmDataExchangeImport).not.toHaveBeenCalled(); wrapper.unmount()
 })
 it('uncertain JSON upload does not refresh or overwrite local data and blocks further cloud writes until recovery', async () => {
   const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
   confirmStarInventoryImport.mockRejectedValueOnce(new TypeError('network unavailable'))
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
-  expect(wrapper.text()).toContain('补传结果尚待核对')
-  expect(wrapper.find('.star-exchange-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('补传结果尚待核对')
+  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
   expect(patchCurrentStarState).not.toHaveBeenCalled(); wrapper.unmount()
 })
 it('YuanHub backup files keep the existing embedded preview and full replacement confirmation', async () => {
@@ -1188,7 +1192,7 @@ it('YuanHub backup files keep the existing embedded preview and full replacement
   await selectJson(wrapper, { name: 'backup.json', size: 20, text: async () => '{"schemaVersion":1}' })
   expect(handle.previewDataExchangeImport).toHaveBeenCalledTimes(1)
   expect(previewStarInventoryImport).not.toHaveBeenCalled()
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(handle.confirmDataExchangeImport).toHaveBeenCalledTimes(1)
   expect(confirmStarInventoryImport).not.toHaveBeenCalled(); wrapper.unmount()
 })
@@ -1197,9 +1201,9 @@ it('a real complete local OCR file previews and submits business fields without 
   const { wrapper } = await jsonImportHost()
   const text = readFileSync('test/fixtures/maayuan-full-inventory.json', 'utf8')
   await selectJson(wrapper, { name: 'inventory.json', size: text.length, text: async () => text })
-  await vi.waitFor(() => expect(wrapper.find('.star-exchange-preview').exists()).toBe(true))
-  expect(wrapper.get('.star-exchange-preview').text()).toContain('主星 69 颗 · 辅星 105 颗')
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await vi.waitFor(() => expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true))
+  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('主星 69 颗 · 辅星 105 颗')
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
   const body = confirmStarInventoryImport.mock.calls[0][1]
   expect(body.source_format).toBe('local-ocr')
@@ -1212,7 +1216,7 @@ it('a real complete local OCR file previews and submits business fields without 
 it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a confirmed POST finishing after %s cannot refresh or unlock another account', async change => {
   const { wrapper, handle } = await jsonImportHost(); await selectJson(wrapper)
   const gate = deferred(); confirmStarInventoryImport.mockReturnValueOnce(gate.promise)
-  await wrapper.get('.star-exchange-preview button').trigger('click'); await flushPromises()
+  await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
   if (change === 'unmount') wrapper.unmount()
   else if (change === 'identity') auth.userInfo = { id: 'changed-owner' }
@@ -1220,5 +1224,5 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a confirmed POST finish
   gate.resolve({ status: 'synced', account_id: 'acc-1' }); await flushPromises()
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
-  if (change !== 'unmount') { expect(wrapper.find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
+  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
 })

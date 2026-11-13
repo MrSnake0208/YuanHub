@@ -1,8 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { Blob as NodeBlob } from 'node:buffer'
 import FeedbackTicketDetail from '../src/components/feedback/FeedbackTicketDetail.vue'
+import MaayuanDiagnosticLog from '../src/components/diagnostics/MaayuanDiagnosticLog.vue'
+import { getDiagnosticLog } from '../src/api/maayuanDiagnostics.js'
 
 vi.mock('../src/api/feedback.js', () => ({ downloadFeedbackAttachment: vi.fn() }))
+vi.mock('../src/api/maayuanDiagnostics.js', () => ({ getDiagnosticLog: vi.fn() }))
+
+it('诊断日志下载保留原文、文件名和 MIME，60 秒后释放 URL', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  vi.stubGlobal('Blob', NodeBlob)
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:log'); static revokeObjectURL = vi.fn() })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  const text = 'diagnostic line\n'
+  getDiagnosticLog.mockResolvedValue({ blob: new NodeBlob([text]) })
+  const wrapper = mount(MaayuanDiagnosticLog, { props: { eventId: 'event-1', log: { status: 'ready' } } })
+  await wrapper.findAll('button').find(button => button.text() === '下载').trigger('click'); await flushPromises()
+  expect(getDiagnosticLog).toHaveBeenCalledExactlyOnceWith('event-1')
+  expect(click.mock.instances[0].download).toBe('event-1.log')
+  const blob = URL.createObjectURL.mock.calls[0][0]
+  expect(await blob.text()).toBe(text)
+  expect(blob.type).toBe('text/plain;charset=utf-8')
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+  vi.advanceTimersByTime(60000)
+  expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:log')
+})
 
 const baseItem = { id: 'rpt_1', status: 'OPEN', content: '反馈内容', messages: [] }
 

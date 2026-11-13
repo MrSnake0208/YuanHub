@@ -1,6 +1,6 @@
 import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import InventoryPage from '../src/pages/inventory/index.vue'
 import * as inventoryApi from '../src/api/inventory.js'
@@ -51,7 +51,7 @@ function render(options = {}, realRewards = false) {
     stubs: {
       OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
-      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
+      AccountWorkspace: true, DataAccountContextBar: true,
       AcquiredPeriodReport: true, RewardEntryWorkspace: realRewards ? false : rewardStub,
       ...stubs,
     },
@@ -88,6 +88,30 @@ beforeEach(() => {
   inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0 })
   subscribeAccountEvents.mockImplementation(() => () => {})
   dialog.confirm.mockResolvedValue(true)
+})
+
+it('库存备份在弹窗内切换页签，关闭先确认未导入文本，切账号清空旧内容', async () => {
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  await wrapper.get('.archive-toggle').trigger('click'); await flushPromises()
+  const exchange = new DOMWrapper(document.body).get('.data-exchange-dialog')
+  expect(wrapper.find('.import-box').exists()).toBe(false)
+  expect(exchange.get('.data-exchange-footer-actions button').element.disabled).toBe(true)
+  await exchange.get('textarea').setValue('pending backup')
+  expect(exchange.get('.data-exchange-footer-actions button').element.disabled).toBe(false)
+  await exchange.get('[role="tab"][id$="-export-tab"]').trigger('click')
+  expect(exchange.findAll('input[name="inventory-export-scope"]')).toHaveLength(2)
+  await exchange.get('[role="tab"][id$="-import-tab"]').trigger('click')
+  expect(exchange.get('textarea').element.value).toBe('pending backup')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await exchange.get('[aria-label="关闭导入/导出"]').trigger('click'); await flushPromises()
+  expect(exchange.get('textarea').element.value).toBe('pending backup')
+  await exchange.get('[aria-label="关闭导入/导出"]').trigger('click'); await flushPromises()
+  expect(document.querySelector('.data-exchange-dialog')).toBeNull()
+  await wrapper.get('.archive-toggle').trigger('click'); await flushPromises()
+  expect(new DOMWrapper(document.body).get('textarea').element.value).toBe('')
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(document.querySelector('.data-exchange-dialog')).toBeNull()
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
 
 it('白金币库存按钮步进10并保留个位，限制上下界，普通道具步进1', async () => {

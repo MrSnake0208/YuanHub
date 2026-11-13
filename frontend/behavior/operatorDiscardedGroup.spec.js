@@ -1,6 +1,6 @@
 import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as api from '../src/api/operator.js'
 import * as inventory from '../src/api/inventory.js'
@@ -271,8 +271,8 @@ it('本地弃置缓存按云端标注迁移，不重置为active', async () => {
 it('主观备份预览明确展示养成中到已弃置，预览不写标注', async () => {
   const wrapper = await render()
   await wrapper.get('.archive-toggle').trigger('click')
-  await wrapper.get('.archive-import').trigger('click')
-  await wrapper.get('#operator-import-json').setValue(JSON.stringify({
+  await flushPromises()
+  await new DOMWrapper(document.body).get('#operator-import-json').setValue(JSON.stringify({
     format: 'myshare-operator-exchange', version: 3,
     accounts: [{ id: 'accA', name: '测试账号' }],
     records: [{ account_id: 'accA', record_type: 'operator_annotation_snapshot', entries: [{ operator_id: 'a', growth_state: 'discarded' }] }],
@@ -281,9 +281,9 @@ it('主观备份预览明确展示养成中到已弃置，预览不写标注', a
     operator_id: 'a', record_id: 'annotation:test', status: 'accepted',
     changes: { growth_state: { before: 'active', after: 'discarded' } }, warnings: [], blocking_errors: [],
   }] })
-  await wrapper.findAll('.import-actions button').find(button => button.text() === '校验并预览').trigger('click')
+  await new DOMWrapper(document.body).findAll('.import-actions button').find(button => button.text() === '校验并预览').trigger('click')
   await flushPromises()
-  expect(wrapper.get('.import-change-list').text()).toContain('养成状态养成中 → 已弃置')
+  expect(new DOMWrapper(document.body).get('.import-change-list').text()).toContain('养成状态养成中 → 已弃置')
   expect(api.putOperatorAnnotation).not.toHaveBeenCalled()
 })
 
