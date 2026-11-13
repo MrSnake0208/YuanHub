@@ -3,6 +3,7 @@ package com.lhs.share.openapi.diagnostics
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.JsonNode
 import com.lhs.share.hub.repository.entity.FeedbackDiagnosticSummary
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticBagCell
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticTraceStep
 import jakarta.validation.constraints.NotBlank
@@ -56,6 +57,7 @@ data class DiagnosticEventDetail(
     val images: List<DiagnosticEventImage>,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val trace: List<MaayuanDiagnosticTraceStep>? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val log: DiagnosticEventLog? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val bagCells: List<MaayuanDiagnosticBagCell>? = null,
 )
 
 data class DiagnosticEventLog(val assetId: String, val status: String, val size: Long, val expired: Boolean)

@@ -118,11 +118,11 @@
 }
 ```
 
-协议采用严格白名单，所有层级拒绝未知字段、重复 JSON 键、null、尾随 JSON、字符串数字和浮点整数。字段约束：
+协议采用严格白名单，所有层级拒绝未知字段、重复 JSON 键、null（背包 bag_cells 的 chosen 和 reading.count 除外）、尾随 JSON、字符串数字和浮点整数。下表列出通用字段及 `operator_info_collection` 的规则；`inventory_bag_scan` 的差异约束见下文「背包漏扫与数量可疑诊断」。
 
 | 字段 | 允许值及限制 |
 |---|---|
-| `schema_version` / `feature` | 固定为整数 `1` / `operator_info_collection` |
+| `schema_version` / `feature` | 固定为整数 `1`；feature 为 `operator_info_collection` 或 `inventory_bag_scan`，按场景分别校验 |
 | `event_id` / `run_id` | 标准 36 字符 UUID，服务端归一化大小写；重试必须复用 `event_id` |
 | `client` | `resource=base|zh_tw`；`resolution=宽x高`，每边 1～8192；两个版本各 1～100 字符，仅字母、数字、空格及 `._+()-` |
 | `client.ui_script` | 可选，枚举 `simplified`（简体）、`traditional`（繁体）、`mixed`（简繁混合）、`unknown`（无法判定）；仅发送判定枚举，不发送整屏 OCR 文字；不能传 null |
@@ -137,7 +137,7 @@
 | `stack` | 最多 32 行、每行最多 200 字符；仅项目相对文件、函数、正整数行号，不允许 `..`、绝对路径或变量值 |
 | `section_status` | 最多 32 个键，键 1～64 字符，同上符号规则；状态为 1～32 字符的机器状态名，同上符号规则（例如 `partial`） |
 | `ocr_samples` | 服务端校验不变：最多 20 个样本，每个 1～80 字符；只允许短文本、数字及有限标点；拒绝 URL、邮箱、凭据关键词、账号标识及长数字/十六进制串。身份类姓名样本的客户端限制见下文 |
-| `images` | 缺省空数组；`index` 按文件出现顺序从 0 连续编号；`role=disc_cells|main_panel|last_frame|name_area`（姓名区域）；`roi=[x,y,w,h]` 位于声明分辨率内，图片宽高必须与 ROI 的宽高一致 |
+| `images` | 缺省空数组，最多 3 张；`index` 按文件出现顺序从 0 连续编号；`role=disc_cells|main_panel|last_frame|name_area`（姓名区域）；`roi=[x,y,w,h]` 位于声明分辨率内，图片宽高必须与 ROI 的宽高一致 |
 | `images[].trace_index` | 可选整数 0～63，必须小于 trace 长度；仅 `last_frame` 可带，指向该画面的轨迹步骤 |
 | `images[].node_roi` | 可选四整数 `[x,y,w,h]`，x/y ≥0，w/h >0，完整位于 client.resolution 内；仅 `last_frame` 可带，与 trace.box 使用同一坐标系 |
 | `trace` | 可选，缺省空数组，最多 64 步，按 t 非递减排列；连续相同 `(kind,node,stage,hit)` 由客户端折叠；摘要档和图片档均可发送 |
@@ -160,9 +160,9 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 
 身份类 issue（`identity_unresolved`）可在 `ocr_samples` 携带姓名 OCR 原文：客户端仅发送匹配 `[㐀-鿿]{1,8}` 的 1～8 个 CJK 汉字，最多 4 条，不含数字、字母或标点，无需已存在于密探目录；其他 issue 维持已知游戏字段的样本规则。姓名和候选在摘要档也发送，不依赖图片开关。带图档位的主界面姓名裁图使用 `name_area`，命盘格仍使用 `disc_cells`，总图数仍最多 3 张。
 
-`issues[].code` 仅允许：`collector_exception`、`account_lookup_failed`、`annotations_failed`、`catalog_unavailable`、`navigation_failed`、`screenshot_or_ocr_failed`、`identity_unresolved`、`data_review`、`upload_network_failed`、`upload_http_failed`、`upload_rejected`、`upload_response_unverified`。
+`operator_info_collection` 的 `issues[].code` 仅允许：`collector_exception`、`account_lookup_failed`、`annotations_failed`、`catalog_unavailable`、`navigation_failed`、`screenshot_or_ocr_failed`、`identity_unresolved`、`data_review`、`upload_network_failed`、`upload_http_failed`、`upload_rejected`、`upload_response_unverified`。
 
-`reason`、`ui_script`、`candidate_operator_ids`、`trace`、issue 的 `node`、图片的 `trace_index/node_roi` 均是 v1 的可选兼容增量，`schema_version` 仍为 1。客户端只能使用下列原因；服务端接受格式合法的未来 reason，前端遇到未知值显示原码。旧客户端可省略新增字段；旧工单缺少 `issues` 时继续使用 `issueCodes` 展示和筛选，无需回填。**必须先发布 YuanHub 后端，再发布携带新增字段的 MaaYuan 客户端**，否则旧后端会将新增字段视为未知字段并返回 400。
+`reason`、`ui_script`、`candidate_operator_ids`、`trace`、issue 的 `node`、图片的 `trace_index/node_roi` 均是 v1 的可选兼容增量，`schema_version` 仍为 1。密探场景客户端只能使用下列原因；该场景服务端接受格式合法的未来 reason，前端遇到未知值显示原码。旧客户端可省略新增字段；旧工单缺少 `issues` 时继续使用 `issueCodes` 展示和筛选，无需回填。**必须先发布 YuanHub 后端，再发布携带新增字段的 MaaYuan 客户端**，否则旧后端会将新增字段视为未知字段并返回 400。
 
 页面等待超时时，若资源为 `zh_tw` 而界面为 `simplified`，或资源为 `base` 而界面为 `traditional`，客户端以 `resource_language_mismatch` 代替 `page_timeout`。`mixed`、`unknown` 不据此判定语言不一致。详情将资源显示为简中/繁中，将界面简繁显示为中文。
 
@@ -210,6 +210,29 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 | `unexpected_exception` | 未分类异常（看 error_type/stack） | 开发排查 |
 | `task_failed_no_detail` | 任务失败但未记录具体原因 | 开发排查 |
 
+### 背包漏扫与数量可疑诊断（schema_version=1）
+
+背包扫描后，若物品页（`snapshot_list=tab1`）的天机符传 `tianjifuchuan` / 符传 `fuchuan` 任一未识别，或发现数量可疑格，使用 `feature=inventory_bag_scan`，通过下述 **intent → 逐张上传 → complete** 流程上传按扫描顺序裁剪的物品格区域原始 JPEG 和可疑数量读数。沿用严格字段、UUID、client、版本、时间、图片尺寸和隐私规则。
+
+| 字段 | 背包场景专用约束 |
+|---|---|
+| `catalog` / `outcome` | `source` 必须为 `builtin`；version 使用背包物品索引 metadata 版本或文件摘要前缀，符合上述版本格式；outcome 仅 `data_review` |
+| `issues` | 1～2 项，每种 code 最多一次：`bag_item_missing` 保持 `stage=bag_tab1`、`count=1`（可缺省），reason 为 `tianjifuchuan_missing` / `fuchuan_missing` / `both_missing`；`bag_count_suspect` 的 stage 为 `bag_tab1` / `bag_tab3_1` / `bag_tab3_2`，reason 为 `page_conflict` / `threshold_disagree` / `edge_zone` / `mixed`，count 为 1～64 且等于 bag_cells 长度。两条同时出现时 stage 必须相同（bag_tab1） |
+| `bag_cells` | 有 `bag_count_suspect` 时必填，1～64 格；否则必须省略。格和读数的字段见下文 |
+| issue 其余字段 | 集合/映射仅允许空值或缺省；`error_type`、`node` 必须省略；仍不允许 null，不携带密探 ID、候选、OCR 样本或异常明细 |
+| `images` | 1～12 张，`index` 按扫描页序从 0 连续，role 全为 `bag_page`；每张 JPEG ≤512 KiB；roi 为整张截图内的物品格裁剪框，位于 resolution 内且宽高与图片一致；必须省略 `operator_id`、`trace_index`、`node_roi` |
+| `trace` / 日志 | trace 可省略，提供时沿用原规则；可选脱敏日志沿用直传 log 规则，无需附带 |
+
+`bag_item_missing`、`bag_count_suspect`、`bag_cells` 和 `bag_page` 仅供背包场景使用；背包场景拒绝密探 code/role。`operator_info_collection` 的原 code 集合、四种 role、最多 3 张图及其余校验不变；旧 multipart 的三图和 2 MiB 限制不扩展。
+
+每个 `bag_cells` 对象必须且只能含：`entity_type`（`item|agent`）、`entity_id`（`^[a-z0-9_]{1,64}$`）、`chosen`（整数 0～99999999 或显式 null，null 表示不可信、不上报库存）、`reasons`（`page_conflict|threshold_disagree|edge_zone` 的非空不重复子集）、`readings`（1～8 项）。每项 reading 必须且只能含：`image_index`（images 中存在的整数 index）、`count_box=[x,y,w,h]`（整帧坐标，x/y ≥0、w/h >0 且完整位于 client.resolution 内）、`count`（整数 0～99999999 或显式 null）、`raw`（`^[0-9]{0,8}$`）、`score`（数字 0～1，客户端保留 3 位小数）、`source`（`primary|fallback`）。只有 chosen 和 reading.count 允许 null；不携带账号名、连接码或 OCR 文本。manifest 编码后仍 ≤64 KiB，超限时客户端从末尾截去多余 bag_cells 并同步修正 issue.count，不能保留空列表的数量可疑 issue。
+
+问题组按 `inventory_bag_scan|bag_item_missing|<reason>|stage:bag_tab1` 生成签名，无需非空 operator_ids。诊断中心显示「背包识别 · 背包漏扫 · 原因」，原因筛选提供上述三项中文标签，图片按「背包页面 · 第 N 页」逐张放大查看。权限、每账号每日 30 包/20 MiB、用户每分钟 6 次/每日 100 次、10 GiB 全局预算及保留期均沿用。
+
+数量可疑签名为 `inventory_bag_scan|bag_count_suspect|<reason>|stage:<stage>`，subject 取 stage，累计次数和复发规则沿用。bag_cells 保存在原事件文档中，仅管理端事件详情额外返回；非管理端内联 manifest 不增加该字段。证据表按物品/密探显示目录中文名（未知时 ID），列出图片索引、count/raw/score/source、chosen（null 为「未采用」）与「翻页读数不一致 / 阈值读数不一致 / 底部边缘」；读数点击后在原放大图标出 count_box，图片不可用时保留坐标。列表原因文案为「翻页读数不一致 / 阈值读数不一致 / 底部边缘读数 / 多种原因」，code 显示「背包数量可疑」。旧事件不显示数量表，窄屏仅在表格内部横滚。
+
+发布顺序：先部署 YuanHub，再发布 MaaYuan。旧 Hub 收到新 feature 返回 422；MaaYuan 必须吞掉诊断上传失败，不影响库存任务，不用旧 multipart 承载整组背包图片。
+
 此接口返回真实 HTTP 状态，成功正文不使用 `status_code/data` 包装：
 
 ```json
@@ -234,8 +257,8 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 
 manifest 字段与 `schema_version=1` 保持不变。反馈截图（私有或公开）全部继续存本地，此流程适用于 MaaYuan 诊断图片和可选运行日志。两步接口复用上述连接码鉴权和用户请求配额，认证在正文读取前完成；complete 不再消耗子账号包/图片日额度。
 
-1. `POST /open-api/maayuan/diagnostics/intents`，`Content-Type: application/json`，正文最多 64 KiB：`{"manifest":{...},"uploads":[{"size":5934,"content_md5":"<16 字节 MD5 的 24 字符规范 Base64>"}]}`。uploads 必须与 manifest.images 按下标一一对应（0～3），size 为整数 1～524288；拒绝未知字段、重复键、null 与类型强转。子账号 packet/字节额度按声明 size 之和计；服务端在本步即预留图片额度、创建事件和问题组，图片为 pending，manifest 本地保存。
-2. 成功 200 返回 `{"status":"accepted","event_id":"...","uploads":[{"index":0,"method":"PUT","url":"https://<bucket>.cos.<region>.myqcloud.com/diagnostics/images/med_xxx.jpg?...","headers":{"Content-Type":"image/jpeg","Content-MD5":"...","Content-Length":"5934"},"expires_in":600}]}`。额度不足的 `accepted_without_images`、去重的 `duplicate` 返回空 uploads。COS 未启用返回 409 `{"status":"direct_upload_unavailable"}`；遇到 404/405/409 回退原 multipart 接口。
+1. `POST /open-api/maayuan/diagnostics/intents`，`Content-Type: application/json`，正文最多 68 KiB（内层 manifest 仍最多 64 KiB）：`{"manifest":{...},"uploads":[{"size":5934,"content_md5":"<16 字节 MD5 的 24 字符规范 Base64>"}]}`。uploads 必须与 manifest.images 按下标一一对应（密探 0～3 张、背包 1～12 张），size 为整数 1～524288；拒绝未知字段、重复键、null（bag_cells 的 chosen 和 reading.count 除外）与类型强转。子账号 packet/字节额度按声明 size 之和计；服务端在本步即预留图片额度、创建事件和问题组，图片为 pending，manifest 本地保存。
+2. 成功 200 返回 `{"status":"accepted","event_id":"...","uploads":[{"index":0,"method":"PUT","url":"https://<bucket>.cos.<region>.myqcloud.com/diagnostics/images/med_xxx.jpg?...","headers":{"Content-Type":"image/jpeg","Content-MD5":"...","Content-Length":"5934"},"expires_in":600}]}`。额度不足的 `accepted_without_images`、去重的 `duplicate` 返回空 uploads。COS 未启用返回 409 `{"status":"direct_upload_unavailable"}`；密探场景遇到 404/405/409 回退原 multipart 接口，背包场景按上节要求跳过失败。
 3. 客户端向每个 URL 直接 PUT 对应字节，按响应 headers 发头；签名覆盖对象 key、Host、Content-Type、Content-MD5、Content-Length。URL 必须是 HTTPS、默认端口或 443、主机以 `.myqcloud.com` 结尾、无 userinfo；不跟随重定向，单张超时 15 秒，失败不重试该张，继续下一张。URL/签名不得记录到日志、诊断或本地包。
 4. 全部尝试后，`POST /open-api/maayuan/diagnostics/{event_id}/complete`，同一连接码认证，JSON 正文 `{}`。只允许事件所属用户及绑定账号调用，重复调用幂等。服务端对 pending 图片 Head 核对存在/大小，再有界 Get 并使用与 multipart 相同的 JPEG 解码、ROI、像素与损坏校验；不重编码、不重新上传。通过为 ready，不存在为 missing；失败先删除对象再为 invalid，missing/invalid 释放预留额度且不重复释放。返回 `{"status":"completed","images":[{"index":0,"status":"ready"}]}`，图片状态可为 ready/missing/invalid。未调用 complete 的图片保持 pending。
 

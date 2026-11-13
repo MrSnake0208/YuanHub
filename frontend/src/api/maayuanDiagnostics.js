@@ -30,6 +30,7 @@ export async function getDiagnosticEvent(id) {
   const value = await request(`${base}/events/${encodeURIComponent(id)}`, options())
   return {
     ...eventFrom(value),
+    bagCells: value.bag_cells || [],
     log: value.log ? camelFields(value.log) : null,
     trace: (value.trace || []).map(camelFields),
     images: (value.images || []).map(image => ({ ...camelFields(image), status: image.status || 'ready' }))

@@ -36,6 +36,20 @@
 
 前端 `/maayuan-diagnostics` 与反馈管理路由同级鉴权，以桌面表格/手机卡片承载问题组，右侧抽屉（手机全屏）提供结论、处理、环境、最近事件、完整证据及原始数据；反馈页只保留次级入口，旧详情图片也改为 contain。现有 MaayuanDiagnosticServiceMongoTest 与 feedbackPages.spec.js 中直接冲突的断言已静态更新，未运行检查；新中心的权限、事务、聚合及运行时 UI 均待另行授权验证。
 
+### 背包漏扫与数量可疑诊断（2026-11-13）
+
+`schema_version=1` 新增 `feature=inventory_bag_scan`，使用原 intents → 逐张 PUT → complete 流程。解析器按 feature 隔离：背包仅接受 builtin catalog、outcome=data_review；issues 为 1～2 项、每种 code 最多一次，可含 bag_item_missing（stage=bag_tab1、count=1，reason 仅 tianjifuchuan_missing / fuchuan_missing / both_missing）和 bag_count_suspect；两条同时出现时 stage 必须一致。其余 issue 字段为空或省略（仍拒绝 null）；images 为 1～12 张连续 index 的 bag_page，禁止 operator_id/trace_index/node_roi。每张为物品格区域的原始 JPEG，≤512 KiB，ROI/尺寸检查、可选 trace 和脱敏日志沿用。密探场景拒绝新 code/role 和 bag_cells，原有校验、三图上限及响应不变；旧 multipart 不扩容。
+
+`bag_count_suspect` 的 stage 仅 bag_tab1 / bag_tab3_1 / bag_tab3_2，reason 仅 page_conflict / threshold_disagree / edge_zone / mixed，count 为 1～64 且等于顶层 bag_cells 长度。有该 code 时必须提供 bag_cells，否则必须省略。每格仅含 entity_type（item / agent）、entity_id（`^[a-z0-9_]{1,64}$`）、chosen、reasons、readings；chosen 为 0～99999999 的整数或显式 null（未采用），reasons 是 page_conflict / threshold_disagree / edge_zone 的非空不重复子集。readings 为 1～8 项，仅含 image_index（必须引用本事件图片）、count_box（resolution 内的整帧四整数正宽高矩形）、count（同 chosen 范围或显式 null）、raw（`^[0-9]{0,8}$`）、score（数值 0～1，客户端保留 3 位小数）、source（primary / fallback）。chosen 和 count 必须出现；仅这两个位置允许 null，不接受未知字段、重复键或类型强转，不含账号名、连接码或 OCR 文本。manifest 仍限 64 KiB；intent 正文上限为 68 KiB，为 uploads/log 封装预留空间。客户端超限时从末尾截掉 bag_cells 并同步修正 count，不得截成空列表后继续携带该 code。
+
+背包问题组键为 `inventory_bag_scan|bag_item_missing|<reason>|stage:bag_tab1`，仍以 SHA-1 十六进制前 24 位为 ID；subjectKind=stage、subject=bag_tab1，不依赖 operatorIds。密探签名保持原样，不迁移历史数据。现有持久化与中心查询直接支持多图和空密探 ID；权限、私有存储、保留期、配额（每账号每日 30 包/20 MiB，用户每分钟 6 次/每日 100 次）及 10 GiB 全局预算不变。
+
+数量可疑沿用相同签名格式：`inventory_bag_scan|bag_count_suspect|<reason>|stage:<stage>`，按 code + reason + stage 聚合，事件计数与 FIXED 后复发规则沿用。bag_cells 随原 maayuan_diagnostic_events 文档保存，不新建集合；仅管理端事件详情增加 bag_cells，非管理端内联 manifest 不增加此字段。证据区按格显示目录中文名（未知时 ID）、各图片读数、chosen（null 显示「未采用」）和中文原因；读数可点击复用原放大图标出 count_box，图片不可用时仍显示坐标，窄屏表格局部横滚。旧事件缺少 bag_cells 时不显示明细。
+
+诊断中心沿用列表、原因筛选和事件证据入口，新增「背包识别」「背包漏扫」「天机符传未识别 / 符传未识别 / 两种符传均未识别」中文标签。bag_page 显示「背包页面 · 第 N 页」，按扫描页序逐张放大，不显示「未识别密探」。可选 trace 的 bag_tab1 显示「背包物品页」，图片状态、过期提示与重试沿用。
+
+必须先部署 YuanHub，再发布 MaaYuan；旧 Hub 拒绝新 feature（422），客户端须吞掉诊断失败，不影响库存任务。本次只实现并静态审查 diff，验证预算为 0，未运行测试、构建或浏览器验收。
+
 ### 可选运行日志（2026-11-12）
 
 直传 intents 新增可选 `log:{size,content_md5}`，每事件最多一份脱敏 UTF-8 gzip 日志，压缩大小 1～262144 字节，解压最多 1048576 字节。MD5 沿用图片规则；日志与图片合计消耗 packet 字节配额和 10 GiB 全局预算。仅 accepted 且请求有 log 时返回 `log_upload:{method,url,headers,expires_in}`，签名 headers 为 Content-Type: application/gzip、Content-MD5、Content-Length；预算不足仍返回 accepted_without_images 且不提供日志地址。无 log 的旧请求、multipart 通道和 Integration Token 结构化响应保持原样。

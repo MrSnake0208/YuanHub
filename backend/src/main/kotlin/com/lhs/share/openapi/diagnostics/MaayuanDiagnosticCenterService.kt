@@ -142,9 +142,9 @@ class MaayuanDiagnosticCenterService(
         val event = retainedEvent(id)
         val manifest = asset(event, event.manifestAssetId)
         val json = media.loadAuthorizedAsset(manifest).inputStream.use { mapper.readTree(it) }
-        // Keep the existing integration-token response schema; trace is an admin-only extension.
+        // Keep the existing integration-token response schema; evidence extensions are admin-only.
         if (!includeTrace) {
-            (json as ObjectNode).remove("trace")
+            (json as ObjectNode).remove(listOf("trace", "bag_cells"))
             json.path("issues").forEach { (it as ObjectNode).remove("node") }
             json.path("images").forEach { (it as ObjectNode).remove(listOf("trace_index", "node_roi")) }
         }
@@ -183,6 +183,7 @@ class MaayuanDiagnosticCenterService(
             images,
             trace = if (includeTrace) event.trace else null,
             log = log,
+            bagCells = if (includeTrace) event.bagCells.takeIf { it.isNotEmpty() } else null,
         )
     }
 

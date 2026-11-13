@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.databind.cfg.CoercionAction
 import com.fasterxml.jackson.databind.cfg.CoercionInputShape
 import com.fasterxml.jackson.databind.type.LogicalType
+import com.lhs.share.hub.repository.entity.MaayuanDiagnosticBagCell
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
@@ -17,6 +19,8 @@ import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.Base64
 import java.util.UUID
+
+internal const val DIAGNOSTIC_INTENT_LIMIT = 68 * 1024
 
 data class MaayuanDiagnosticManifest(
     val schemaVersion: Int,
@@ -30,6 +34,7 @@ data class MaayuanDiagnosticManifest(
     val issues: List<DiagnosticIssue>,
     val images: List<DiagnosticImage> = emptyList(),
     val trace: List<DiagnosticTraceStep> = emptyList(),
+    val bagCells: List<MaayuanDiagnosticBagCell>? = null,
 )
 
 data class DiagnosticClient(
@@ -121,7 +126,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
     fun bytes(manifest: MaayuanDiagnosticManifest): ByteArray = json.writeValueAsBytes(manifest)
 
     fun parseIntent(bytes: ByteArray): DiagnosticIntentRequest {
-        if (bytes.size > 64 * 1024) diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Intent exceeds 64 KiB")
+        if (bytes.size > DIAGNOSTIC_INTENT_LIMIT) diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Intent exceeds 68 KiB")
         val request = try {
             if (!noNulls(json.readTree(bytes))) diagnosticError(HttpStatus.BAD_REQUEST, "Null diagnostic field")
             json.readValue(bytes, DiagnosticIntentRequest::class.java)
@@ -153,11 +158,16 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         if (!empty) diagnosticError(HttpStatus.BAD_REQUEST, "Expected empty JSON object")
     }
 
-    private fun noNulls(node: com.fasterxml.jackson.databind.JsonNode): Boolean =
-        !node.isNull && (!node.isContainerNode || node.all(::noNulls))
+    private fun noNulls(node: JsonNode, path: String = ""): Boolean = when {
+        node.isNull -> NULLABLE_BAG_COUNT.matches(path)
+        node.isObject -> node.fields().asSequence().all { (name, child) -> noNulls(child, "$path/$name") }
+        node.isArray -> node.withIndex().all { (index, child) -> noNulls(child, "$path/$index") }
+        else -> true
+    }
 
     private fun validate(value: MaayuanDiagnosticManifest) {
-        valid(value.schemaVersion == 1 && value.feature == "operator_info_collection")
+        valid(value.schemaVersion == 1 && value.feature in setOf("operator_info_collection", "inventory_bag_scan"))
+        val bagScan = value.feature == "inventory_bag_scan"
         valid(uuid(value.eventId) && uuid(value.runId))
         valid(value.outcome in setOf("failed", "upload_failed", "data_review"))
         valid(value.client.resource in setOf("base", "zh_tw"))
@@ -173,8 +183,34 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         valid(width <= 8192 && height <= 8192)
         valid(value.occurredAt.length <= 40 && runCatching { OffsetDateTime.parse(value.occurredAt) }.isSuccess)
         valid(value.issues.size in 1..32)
+        if (bagScan) {
+            valid(value.outcome == "data_review" && value.catalog.source == "builtin")
+            valid(value.issues.size in 1..2 && value.issues.map { it.code }.distinct().size == value.issues.size)
+            valid(value.issues.map { it.stage }.distinct().size == 1)
+        }
+        val countSuspect = value.issues.singleOrNull { it.code == "bag_count_suspect" }
+        valid(if (bagScan && countSuspect != null) value.bagCells != null && value.bagCells.size in 1..64 else value.bagCells == null)
         value.issues.forEach { issue ->
             valid(issue.code in ISSUE_CODES)
+            if (bagScan) {
+                when (issue.code) {
+                    "bag_item_missing" -> {
+                        valid(issue.stage == "bag_tab1" && issue.count == 1)
+                        valid(issue.reason in setOf("tianjifuchuan_missing", "fuchuan_missing", "both_missing"))
+                    }
+                    "bag_count_suspect" -> {
+                        valid(issue.stage in setOf("bag_tab1", "bag_tab3_1", "bag_tab3_2"))
+                        valid(issue.reason in BAG_COUNT_REASONS || issue.reason == "mixed")
+                        valid(issue.count in 1..64 && issue.count == value.bagCells?.size)
+                    }
+                    else -> valid(false)
+                }
+                valid(issue.operatorIds.isEmpty() && issue.candidateOperatorIds.isEmpty())
+                valid(issue.errorType == null && issue.node == null && issue.stack.isEmpty())
+                valid(issue.blockingErrors.isEmpty() && issue.sectionStatus.isEmpty() && issue.ocrSamples.isEmpty())
+            } else {
+                valid(issue.code !in setOf("bag_item_missing", "bag_count_suspect"))
+            }
             valid(issue.stage.length in 1..64 && STAGE.matches(issue.stage))
             issue.node?.let(::validateNode)
             issue.reason?.let { valid(it.length in 1..64 && REASON.matches(it)) }
@@ -217,14 +253,34 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(it.length in 1..32 && OCR.matches(it) && !SENSITIVE.containsMatchIn(it))
             }
         }
-        valid(value.images.size <= 3 && value.images.map { it.index } == value.images.indices.toList())
+        valid(if (bagScan) value.images.size in 1..12 else value.images.size <= 3)
+        valid(value.images.map { it.index } == value.images.indices.toList())
         value.images.forEach { image ->
-            valid(image.role in setOf("disc_cells", "main_panel", "last_frame", "name_area"))
+            if (bagScan) {
+                valid(image.role == "bag_page" && image.operatorId == null && image.traceIndex == null && image.nodeRoi == null)
+            } else {
+                valid(image.role in setOf("disc_cells", "main_panel", "last_frame", "name_area"))
+            }
             image.operatorId?.let { valid(OPERATOR.matches(it)) }
             validateBox(image.roi, width, height)
             valid(image.role == "last_frame" || (image.traceIndex == null && image.nodeRoi == null))
             image.traceIndex?.let { valid(it in 0..63 && it < value.trace.size) }
             image.nodeRoi?.let { validateBox(it, width, height) }
+        }
+        value.bagCells?.forEach { cell ->
+            valid(cell.entityType in setOf("item", "agent") && BAG_ENTITY.matches(cell.entityId))
+            cell.chosen?.let { valid(it in 0..99999999) }
+            valid(cell.reasons.isNotEmpty() && cell.reasons.distinct().size == cell.reasons.size)
+            valid(cell.reasons.all { it in BAG_COUNT_REASONS })
+            valid(cell.readings.size in 1..8)
+            cell.readings.forEach { reading ->
+                valid(value.images.any { it.index == reading.imageIndex })
+                validateBox(reading.countBox, width, height)
+                reading.count?.let { valid(it in 0..99999999) }
+                valid(BAG_RAW.matches(reading.raw))
+                valid(reading.score >= BigDecimal.ZERO && reading.score <= BigDecimal.ONE)
+                valid(reading.source in setOf("primary", "fallback"))
+            }
         }
     }
 
@@ -252,8 +308,12 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         val ISSUE_CODES = setOf(
             "collector_exception", "account_lookup_failed", "annotations_failed", "catalog_unavailable", "navigation_failed",
             "screenshot_or_ocr_failed", "identity_unresolved", "data_review", "upload_network_failed", "upload_http_failed",
-            "upload_rejected", "upload_response_unverified",
+            "upload_rejected", "upload_response_unverified", "bag_item_missing", "bag_count_suspect",
         )
+        private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone")
+        private val BAG_ENTITY = Regex("[a-z0-9_]{1,64}")
+        private val BAG_RAW = Regex("[0-9]{0,8}")
+        private val NULLABLE_BAG_COUNT = Regex("(/manifest)?/bag_cells/[0-9]+/(chosen|readings/[0-9]+/count)")
         private val VERSION = Regex("[A-Za-z0-9._+() -]+")
         private val SYMBOL = Regex("[A-Za-z0-9_.\\[\\]-]+")
         private val STAGE = Regex("[\\p{L}\\p{N} _.-]+")

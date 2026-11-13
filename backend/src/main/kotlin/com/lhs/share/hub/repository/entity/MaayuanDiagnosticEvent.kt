@@ -1,5 +1,7 @@
 package com.lhs.share.hub.repository.entity
 
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
@@ -18,6 +20,24 @@ data class MaayuanDiagnosticEvent(
     @Indexed val signatures: List<String>,
     val trace: List<MaayuanDiagnosticTraceStep> = emptyList(),
     val log: MaayuanDiagnosticLog? = null,
+    val bagCells: List<MaayuanDiagnosticBagCell> = emptyList(),
+)
+
+data class MaayuanDiagnosticBagCell(
+    val entityType: String,
+    val entityId: String,
+    @param:JsonProperty(required = true) @get:JsonInclude(JsonInclude.Include.ALWAYS) val chosen: Int?,
+    val reasons: List<String>,
+    val readings: List<MaayuanDiagnosticBagReading>,
+)
+
+data class MaayuanDiagnosticBagReading(
+    @param:JsonProperty(required = true) val imageIndex: Int,
+    val countBox: List<Int>,
+    @param:JsonProperty(required = true) @get:JsonInclude(JsonInclude.Include.ALWAYS) val count: Int?,
+    val raw: String,
+    val score: BigDecimal,
+    val source: String,
 )
 
 data class MaayuanDiagnosticLog(val assetId: String, val status: String, val size: Long)

@@ -39,7 +39,8 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 } else {
                     issue.reason ?: issue.code
                 }
-                Signature(reason, kind, subject) to issue
+                val namespace = if (manifest.feature == "inventory_bag_scan") "${manifest.feature}|${issue.code}" else null
+                Signature(reason, kind, subject, namespace) to issue
             }
         }.groupBy({ it.first }, { it.second })
         groups.forEach { (signature, issues) ->
@@ -122,20 +123,22 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 log = assets.singleOrNull { it.mime == "application/gzip" }?.let {
                     MaayuanDiagnosticLog(checkNotNull(it.id), it.status, it.size)
                 },
+                bagCells = manifest.bagCells.orEmpty(),
             ),
         )
     }
 
     private fun recent(values: List<String>, limit: Int): List<String> = values.asReversed().distinct().take(limit).asReversed()
 
-    private data class Signature(val reason: String, val kind: String, val subject: String) {
+    private data class Signature(val reason: String, val kind: String, val subject: String, val namespace: String?) {
         private val prefix = when (kind) {
             "operator" -> "op"
             "ocr_name" -> "ocr"
             "node" -> "node"
             else -> "stage"
         }
-        val key = "$reason|$prefix:$subject"
+        // Preserve existing operator signatures while isolating bag diagnostics by feature and code.
+        val key = if (namespace == null) "$reason|$prefix:$subject" else "$namespace|$reason|$prefix:$subject"
         val id = MessageDigest.getInstance("SHA-1").digest(key.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }.take(24)
     }

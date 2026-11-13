@@ -66,7 +66,7 @@ class MaayuanDiagnosticFilter(
             val principal = tokens.authenticateAuthorization(request.getHeader("Authorization"))
             quotas.request(principal)
             val multipart = request.requestURI == request.contextPath + DIAGNOSTIC_PATH
-            val maxBytes = if (multipart) MAX_REQUEST_BYTES else 64 * 1024
+            val maxBytes = if (multipart) MAX_REQUEST_BYTES else DIAGNOSTIC_INTENT_LIMIT
             if (request.contentLengthLong > maxBytes) {
                 diagnosticError(HttpStatus.PAYLOAD_TOO_LARGE, "Diagnostic request too large")
             }
