@@ -17,6 +17,7 @@ import com.lhs.share.hub.repository.entity.OperatorCombatStats
 import com.lhs.share.hub.repository.entity.OperatorCorrectionRecord
 import com.lhs.share.hub.repository.entity.OperatorCurrent
 import com.lhs.share.hub.repository.entity.OperatorEntry
+import com.lhs.share.hub.repository.entity.OperatorHuaji
 import com.lhs.share.hub.repository.entity.OperatorScanReview
 import com.lhs.share.hub.repository.entity.OperatorV3ImportRecord
 import com.lhs.share.hub.repository.entity.SubAccount
@@ -38,6 +39,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
@@ -779,6 +781,135 @@ class OperatorV3ImportServiceTest {
         stubCommittedEntry()
         assertEquals(1, service.commitBrowser("u1", wrapper).accepted)
         verify { operatorService.patchCurrent("u1", "acc1", "如鸢", "op1", match { it.path("disc_loadouts") == loadouts }) }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "char_084_chendengsp, 30, false",
+        "char_084_chendengsp, 31, true",
+        "char_085_shizimiaosp, 30, false",
+        "char_085_shizimiaosp, 31, true",
+        "op1, 31, true",
+    )
+    fun `scan awakening scalars persist huaji and replay the original record`(operatorId: String, starLevel: Int, awakened: Boolean) {
+        val sp = operatorId != "op1"
+        every { catalogService.getOperator(operatorId) } returns
+            catalog().copy(operatorId = operatorId, spOf = if (sp) "op1" else null)
+        every { catalogService.spFormsOf(any()) } returns emptyList()
+        val currentRepository = mockk<OperatorCurrentRepository>()
+        val correctionRepository = mockk<OperatorCorrectionRecordRepository>()
+        var current = OperatorCurrent(
+            id = "current-1",
+            userId = "u1",
+            accountId = "acc1",
+            game = "如鸢",
+            entries = mapOf(operatorId to OperatorEntry(elite = 0, starLevel = 0, level = 90, revision = 1)),
+        )
+        every { currentRepository.findByUserIdAndAccountIdAndGame("u1", "acc1", "如鸢") } answers { current }
+        every { currentRepository.findByUserIdAndAccountIdAndGame("u1", "acc1", "universal") } returns null
+        every { currentRepository.findByUserIdAndAccountIdAndGame("u1", "acc1", "*") } returns null
+        every { currentRepository.findByUserIdAndAccountIdOrderByUpdatedAtDesc("u1", "acc1") } answers { listOf(current) }
+        every { currentRepository.compareAndSetEntries(any(), any(), any(), any(), any(), any(), any()) } answers {
+            current = current.copy(entries = current.entries + arg<Map<String, OperatorEntry>>(5), updatedAt = arg(6))
+            current
+        }
+        every { correctionRepository.save(any()) } answers { firstArg<OperatorCorrectionRecord>() }
+        val transactionTemplate = TransactionTemplate(
+            object : PlatformTransactionManager {
+                override fun getTransaction(definition: TransactionDefinition?): TransactionStatus = SimpleTransactionStatus()
+
+                override fun commit(status: TransactionStatus) = Unit
+
+                override fun rollback(status: TransactionStatus) = Unit
+            },
+        )
+        val realOperatorService = OperatorService(
+            accountRepository,
+            currentRepository,
+            mockk<OperatorRecordRepository>(),
+            mockk<OperatorCatalogRepository>(),
+            catalogService,
+            transactionTemplate,
+            correctionRepository,
+            mockk<com.lhs.share.hub.service.star.StarStateService>(relaxed = true),
+        )
+        val realImportService = OperatorV3ImportService(
+            mapper,
+            OperatorV3SchemaValidator(mapper),
+            accountRepository,
+            catalogService,
+            realOperatorService,
+            importRecordRepository,
+            accountEventService,
+            scanReviewRepository,
+        )
+        val request = huajiDocument(operatorId, starLevel)
+        val originalRecord = request.path("records").get(0).deepCopy<com.fasterxml.jackson.databind.JsonNode>()
+        val audit = slot<OperatorV3ImportRecord>()
+        every { importRecordRepository.save(capture(audit)) } answers { firstArg() }
+
+        val preview = realImportService.previewScan("u1", "acc1", request)
+        val committed = realImportService.commitScan("u1", "acc1", request)
+
+        val expected = OperatorHuaji(owned = true, stage = 25, awakened = awakened)
+        assertEquals(1, preview.accepted)
+        assertEquals(OperatorHuaji(false, 0, null), preview.items.single().changes.getValue("huaji").before)
+        assertEquals(expected, preview.items.single().changes.getValue("huaji").after)
+        assertEquals(1, committed.accepted)
+        assertEquals(expected, current.entries.getValue(operatorId).huaji)
+        assertEquals(if (sp) 5 else 31, current.entries.getValue(operatorId).starLevel)
+        assertEquals(originalRecord, request.path("records").get(0))
+        assertEquals(originalRecord, mapper.readTree(audit.captured.payload))
+        every { importRecordRepository.findByUserIdAndAccountIdAndRecordId("u1", "acc1", "scan:1") } returns audit.captured
+
+        val replay = realImportService.commitScan("u1", "acc1", request)
+
+        assertEquals(1, replay.unchanged)
+        assertEquals(0, replay.items.single().blockingErrors.size)
+        assertEquals("duplicate_record", replay.items.single().warnings.single().code)
+        verify(exactly = 1) { currentRepository.compareAndSetEntries(any(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = 1) { importRecordRepository.save(any()) }
+    }
+
+    @ParameterizedTest
+    @CsvSource("char_084_chendengsp, 6", "char_084_chendengsp, 29", "op1, 31")
+    fun `SP invalid and unsupported awakening scalars remain rejected`(operatorId: String, starLevel: Int) {
+        every { catalogService.getOperator(operatorId) } returns catalog().copy(operatorId = operatorId, spOf = "base")
+
+        val result = service.commitScan("u1", "acc1", huajiDocument(operatorId, starLevel))
+
+        assertEquals(1, result.rejected)
+        assertEquals("invalid_star_level", result.items.single().blockingErrors.single().code)
+        verify(exactly = 0) { operatorService.patchCurrent(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { importRecordRepository.save(any()) }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [30, 31])
+    fun `SP awakening scalar awaiting review does not write huaji`(starLevel: Int) {
+        val operatorId = "char_084_chendengsp"
+        every { catalogService.getOperator(operatorId) } returns catalog().copy(operatorId = operatorId, spOf = "op1")
+        val request = huajiDocument(operatorId, starLevel)
+        val status = request.path("records").get(0).path("entries").get(0).path("section_status")
+            as com.fasterxml.jackson.databind.node.ObjectNode
+        status.put("huaji", "review")
+
+        val result = service.commitScan("u1", "acc1", request)
+
+        assertEquals(1, result.review)
+        verify(exactly = 0) { operatorService.previewCurrentPatch(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { operatorService.patchCurrent(any(), any(), any(), any(), any()) }
+    }
+
+    private fun huajiDocument(operatorId: String, starLevel: Int) = document().also { root ->
+        val entry = root.path("records").get(0).path("entries").get(0) as com.fasterxml.jackson.databind.node.ObjectNode
+        entry.put("operator_id", operatorId).put("star_level", starLevel)
+        entry.remove("level")
+        entry.remove("combat_stats")
+        entry.set<com.fasterxml.jackson.databind.node.ObjectNode>(
+            "section_status",
+            mapper.createObjectNode().put("huaji", "ready"),
+        )
     }
 
     private fun wrappedDocument() = mapper.createObjectNode().apply {

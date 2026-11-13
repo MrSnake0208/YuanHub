@@ -506,6 +506,16 @@ class OperatorV3ImportService(
             if (targetGame !in catalog.games) {
                 invalid("invalid_game", "Operator is not available in the target game", recordId, operatorId, "game")
             }
+            val starLevel = entry.path("star_level").asInt(-1)
+            if (catalog.spOf != null &&
+                (starLevel == 30 || starLevel == 31 && OperatorHuajiRules.awakeningSupported(catalog))
+            ) {
+                entry.remove("star_level")
+                entry.set<ObjectNode>(
+                    "huaji",
+                    objectMapper.createObjectNode().put("owned", true).put("stage", 25).put("awakened", starLevel == 31),
+                )
+            }
             validateEntrySemantics(entry, record, catalog, command.scanAccountId != null)
             val warnings = entry.path("warnings").takeIf(JsonNode::isArray)?.map {
                 issue("producer_warning", it.asText())
