@@ -134,6 +134,8 @@ function normalizeRow(r) {
     avatar: r.avatar || '',
     xinzhi: r.xinzhi || '',
     xinzhiSha256: r.xinzhiSha256 || r.xinzhi_sha256 || '',
+    portrait: r.portrait || '',
+    portraitSha256: r.portraitSha256 || r.portrait_sha256 || '',
     catalogVersion: r.catalog_version || r.catalogVersion || '',
     createdAt: r.created_at || r.createdAt || null
   }

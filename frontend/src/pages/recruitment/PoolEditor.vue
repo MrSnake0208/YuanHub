@@ -420,7 +420,7 @@ import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useRecordDrag } from './useRecordDrag.js'
 import { createRecruitmentId } from './createRecruitmentId.js'
-import operatorPortraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
@@ -673,17 +673,10 @@ const goldOrder = computed(() => {
   }
   return ranks
 })
-function localPortraitUrl(operatorId) {
-  const path = operatorPortraits[operatorId]
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  if (typeof window !== 'undefined' && window.location?.origin) return new URL(path, window.location.origin).href
-  return path
-}
 function agentAvatar(agent) {
   if (!agent) return ''
   const operatorId = agent.operator_id || agent.id
-  return agent.avatar || agent.avatar_url || localPortraitUrl(operatorId)
+  return agent.avatar || agent.avatar_url || resolveOperatorPortrait(operatorId, agent)
 }
 const agentProfOptions = computed(() => {
   const present = new Set(pickerAgents.value.flatMap(agent => tokens(agent.prof)))

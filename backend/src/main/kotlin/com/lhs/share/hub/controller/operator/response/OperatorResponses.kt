@@ -141,6 +141,8 @@ data class OperatorCatalogEntryResponse(
     val huajiCapabilities: OperatorHuajiCapabilities? = null,
     val xinzhi: String? = null,
     @get:JsonProperty("xinzhiSha256") val xinzhiSha256: String? = null,
+    val portrait: String? = null,
+    @get:JsonProperty("portraitSha256") val portraitSha256: String? = null,
 ) {
     companion object {
         fun of(e: OperatorCatalogEntity) = OperatorCatalogEntryResponse(
@@ -165,6 +167,8 @@ data class OperatorCatalogEntryResponse(
             ),
             xinzhi = e.xinzhi,
             xinzhiSha256 = e.xinzhiSha256,
+            portrait = e.portrait?.let { path -> e.portraitSha256?.let { "$path?v=${it.take(16)}" } ?: path },
+            portraitSha256 = e.portraitSha256,
         )
     }
 }
@@ -203,6 +207,8 @@ data class AdminOperatorCatalogResponse(
     val createdAt: Instant,
     val xinzhi: String? = null,
     @get:JsonProperty("xinzhiSha256") val xinzhiSha256: String? = null,
+    val portrait: String? = null,
+    @get:JsonProperty("portraitSha256") val portraitSha256: String? = null,
 ) {
     companion object {
         fun of(e: OperatorCatalogEntity) = AdminOperatorCatalogResponse(
@@ -224,6 +230,8 @@ data class AdminOperatorCatalogResponse(
             createdAt = e.createdAt,
             xinzhi = e.xinzhi,
             xinzhiSha256 = e.xinzhiSha256,
+            portrait = e.portrait?.let { path -> e.portraitSha256?.let { "$path?v=${it.take(16)}" } ?: path },
+            portraitSha256 = e.portraitSha256,
         )
     }
 }

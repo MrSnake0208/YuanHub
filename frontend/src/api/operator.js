@@ -392,3 +392,17 @@ export function deleteXinzhi(operatorId) {
     method: 'DELETE', auth: true
   })
 }
+
+export function uploadOperatorPortrait(operatorId, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/portrait', {
+    method: 'PUT', auth: true, multipart: true, body: form
+  })
+}
+
+export function deleteOperatorPortrait(operatorId) {
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/portrait', {
+    method: 'DELETE', auth: true
+  })
+}

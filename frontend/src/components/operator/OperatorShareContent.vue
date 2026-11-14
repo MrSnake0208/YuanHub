@@ -132,11 +132,11 @@
             role="listitem"
           >
             <picture
-              v-if="ledgerCardIsV3 && operatorPortraits[entry.id] && !failedPortraitIds.has(entry.id)"
+              v-if="ledgerCardIsV3 && entry.portrait && !failedPortraitIds.has(entry.id)"
               class="ledger-portrait"
               aria-hidden="true"
             >
-              <img v-batch-image.eager="operatorPortraits[entry.id]" alt="" width="480" height="350" decoding="async" @error="failedPortraitIds.add(entry.id)" />
+              <img v-batch-image.eager="entry.portrait" alt="" width="480" height="350" decoding="async" @error="failedPortraitIds.add(entry.id)" />
             </picture>
             <header
               class="ledger-card-head"
@@ -298,7 +298,7 @@ import { avatarUrl } from '../../api/request.js'
 import { batchImageDirective as vBatchImage } from '../../utils/batchImage.js'
 import { parseShareLink, sharePath } from '../../utils/shareLink.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
-import operatorPortraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { operatorEditableStatusOptions, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { normalizeDiscNames, discTargetSummary } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
@@ -427,7 +427,10 @@ async function loadShare() {
     ])
     if (seq !== loadSeq) return
     share.value = shareData || { entries: {} }
-    entries.value = mergeOperatorShareEntries(share.value, catalog)
+    const catalogById = new Map((catalog?.operators || []).map(operator => [operator.id, operator]))
+    entries.value = mergeOperatorShareEntries(share.value, catalog).map(entry => ({
+      ...entry, portrait: resolveOperatorPortrait(entry.id, catalogById.get(entry.id))
+    }))
     if (tagFilter.value && !entries.value.some(entry => entry.tags.some(tag => tag.id === tagFilter.value))) tagFilter.value = ''
     status.value = entries.value.length ? 'ready' : 'empty'
   } catch (err) {

@@ -280,7 +280,7 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
-import operatorPortraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { isPermanentRecruitmentPool, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
@@ -351,7 +351,7 @@ const dirty = computed(() => {
 
 const confirmEditorDiscard = useUnsavedChanges(dirty, '卡池修改')
 const operatorById = id => operators.value.find(operator => operator.id === id)
-const operatorAvatar = operator => operator?.avatar || operator?.avatar_url || operatorPortraits[operator?.id] || ''
+const operatorAvatar = operator => operator?.avatar || operator?.avatar_url || resolveOperatorPortrait(operator?.id, operator)
 const activePoolSlots = pool => pool.up_agents.filter(slot => slot.active)
 let generation = 0
 let alive = true

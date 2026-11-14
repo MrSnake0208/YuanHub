@@ -7,7 +7,7 @@
       <div class="editor-heading">
         <h2 id="catalog-editor-title" tabindex="-1">{{ isNew ? '新增密探' : (form.name || form.id) }}</h2>
         <p class="editor-sub" :title="selectedRow?.catalogVersion ? '目录版本：' + selectedRow.catalogVersion : undefined">{{ isNew ? '新增密探 · 尚未保存' : form.id + ' · ' + form.rarity + '星' + (selectedRow?.createdAt ? ' · 更新于 ' + fmtTime(selectedRow.createdAt) : '') }}</p>
-        <div class="avatar-actions" title="头像与心纸单独上传，上传后立即生效，无需点保存">
+        <div class="avatar-actions" title="头像、心纸与立绘单独上传，上传后立即生效，无需点保存">
           <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="avatar-file" :disabled="busy || checkingLeave" @change="onAvatarPick" />
           <button class="editor-text-button" type="button" :disabled="busy || checkingLeave" @click="pickAvatar">{{ avatarOptimizing ? '优化中…' : '更换头像' }}</button>
           <button v-if="form.avatar" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removeAvatar">删除头像</button>
@@ -20,7 +20,10 @@
           <input ref="xinzhiInput" type="file" accept="image/png" class="avatar-file" :disabled="busy || checkingLeave || isNew" @change="onXinzhiPick" />
           <button class="editor-text-button" type="button" :disabled="busy || checkingLeave || isNew" @click="pickXinzhi">{{ xinzhiUploading ? '处理中…' : '更换心纸' }}</button>
           <button v-if="form.xinzhi" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removeXinzhi">删除心纸</button>
-          <span v-if="isNew" class="avatar-notice">保存密探后可上传心纸</span>
+          <input ref="portraitInput" type="file" accept="image/png" class="avatar-file" :disabled="busy || checkingLeave || isNew" aria-label="选择密探立绘" @change="onPortraitPick" />
+          <button class="editor-text-button" type="button" :disabled="busy || checkingLeave || isNew" @click="pickPortrait">{{ portraitUploading ? '处理中…' : '更换立绘' }}</button>
+          <button v-if="form.portrait" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removePortrait">删除立绘</button>
+          <span v-if="isNew" class="avatar-notice">保存密探后可上传心纸与立绘</span>
           <span v-if="xinzhiNotice" class="avatar-notice" :class="{ err: xinzhiNoticeError }" :role="xinzhiNoticeError ? 'alert' : 'status'">{{ xinzhiNotice }}</span>
         </div>
       </div>
@@ -30,6 +33,27 @@
       <button v-for="section in ['基础', '奇闻', '命盘', '星石']" :key="section" type="button" :class="{ active: activeSection === section }" @click="scrollToSection(section)">{{ section }}{{ section === '命盘' ? ' ' + form.discs.length : section === '星石' ? ' ' + form.starStones.length : '' }}</button>
     </nav>
     <fieldset ref="editorBody" class="editor-body" aria-label="密探资料" :disabled="busy || checkingLeave" @focusin="onEditorFocus">
+      <section ref="portraitPanel" class="editor-portrait-panel" aria-label="立绘预览">
+        <div class="editor-portrait-previews">
+          <figure>
+            <figcaption>当前生效立绘 · 来源：{{ portraitSource }}</figcaption>
+            <div class="editor-portrait-cover">
+              <img v-if="currentPortrait && currentPortrait !== failedPortraitSrc" :src="currentPortrait" alt="当前立绘封面预览" @error="failedPortraitSrc = $event.target.getAttribute('src')" />
+              <span v-else>{{ currentPortrait ? '立绘加载失败' : '暂无立绘' }}</span>
+            </div>
+          </figure>
+          <figure v-if="portraitPreview">
+            <figcaption>待上传 · {{ portraitDimensions }} · 尚未生效</figcaption>
+            <div class="editor-portrait-cover"><img :src="portraitPreview" alt="待上传立绘封面预览" /></div>
+            <div class="avatar-actions">
+              <button class="btn primary mini" type="button" @click="uploadPortrait">确认上传</button>
+              <button class="editor-text-button" type="button" @click="discardPortrait">取消选图</button>
+            </div>
+          </figure>
+        </div>
+        <p class="hint">透明 PNG，≤2MB；宽和高均为 300–2048px。按时间线封面比例预览，居中偏上；原图不裁剪、不缩放、不转码。上传后立即生效。</p>
+        <p v-if="portraitNotice" class="avatar-notice" :class="{ err: portraitNoticeError }" :role="portraitNoticeError ? 'alert' : 'status'">{{ portraitNotice }}</p>
+      </section>
       <section id="catalog-基础" class="editor-row">
         <h3 class="editor-label">基础</h3>
         <div class="fields-2col">
@@ -208,8 +232,9 @@
 import { ref, computed, nextTick, onBeforeUnmount, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Plus, Trash2, ArrowLeft, Check, ChevronDown } from '@lucide/vue'
-import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar, uploadXinzhi, deleteXinzhi } from '../../api/operator.js'
+import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar, uploadXinzhi, deleteXinzhi, uploadOperatorPortrait, deleteOperatorPortrait } from '../../api/operator.js'
 import { xinzhiUrl } from '../../api/request.js'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { dialog } from '../../utils/dialog.js'
 import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from '../../utils/imageUpload.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
@@ -249,8 +274,8 @@ const initialSnapshot = ref('')
 const expandedAliases = ref(new Set())
 const activeSection = ref('基础')
 const checkingLeave = ref(false)
-const busy = computed(function () { return saving.value || avatarUploading.value || avatarOptimizing.value || xinzhiUploading.value })
-const dirty = computed(function () { return editing.value && snapshot() !== initialSnapshot.value })
+const busy = computed(function () { return saving.value || avatarUploading.value || avatarOptimizing.value || xinzhiUploading.value || portraitUploading.value })
+const dirty = computed(function () { return editing.value && (Boolean(portraitFile.value) || snapshot() !== initialSnapshot.value) })
 let previousId = ''
 let permissionRedirect = false
 let disposed = false
@@ -270,6 +295,18 @@ const xinzhiNotice = ref('')
 const xinzhiNoticeError = ref(false)
 const failedXinzhiSrc = ref('')
 const headerXinzhiSrc = computed(() => form.value.xinzhi ? xinzhiUrl(form.value.xinzhi) + '?v=' + form.value.xinzhiSha256.slice(0, 16) : '')
+
+const portraitUploading = ref(false)
+const portraitInput = ref(null)
+const portraitPanel = ref(null)
+const portraitFile = ref(null)
+const portraitPreview = ref('')
+const portraitDimensions = ref('')
+const portraitNotice = ref('')
+const portraitNoticeError = ref(false)
+const failedPortraitSrc = ref('')
+const currentPortrait = computed(() => resolveOperatorPortrait(form.value.id, form.value))
+const portraitSource = computed(() => form.value.portrait ? '后端' : currentPortrait.value ? '静态' : '无')
 
 // SP 选择器状态不进入表单和 dirty 快照。
 const spPicker = ref(null)
@@ -436,6 +473,8 @@ function blankForm() {
     avatarPreview: '',
     xinzhi: '',
     xinzhiSha256: '',
+    portrait: '',
+    portraitSha256: '',
     discs: Array.from({ length: 12 }, function () {
       return { _key: ++discKey, _persisted: false, ot_name: '', abbreviation: '', color: '金', desp: '', aliasesText: '', despAliasesText: '' }
     }),
@@ -463,6 +502,8 @@ function fillForm(r) {
     avatarPreview: '',
     xinzhi: r.xinzhi || '',
     xinzhiSha256: r.xinzhiSha256 || '',
+    portrait: r.portrait || '',
+    portraitSha256: r.portraitSha256 || r.portrait_sha256 || '',
     discs: r.discs.map(function (d) {
       return {
         _key: ++discKey,
@@ -482,7 +523,7 @@ function fillForm(r) {
 }
 
 function snapshot() {
-  const { avatar, avatarPick, avatarPreview, xinzhi, xinzhiSha256, ...content } = form.value
+  const { avatar, avatarPick, avatarPreview, xinzhi, xinzhiSha256, portrait, portraitSha256, ...content } = form.value
   return JSON.stringify({ ...content, discs: content.discs.map(function ({ _key, _persisted, ...disc }) { return disc }) })
 }
 
@@ -523,6 +564,10 @@ async function resetEditor() {
   xinzhiNotice.value = ''
   xinzhiNoticeError.value = false
   failedXinzhiSrc.value = ''
+  discardPortrait()
+  portraitNotice.value = ''
+  portraitNoticeError.value = false
+  failedPortraitSrc.value = ''
   specialOddityError.value = ''
   expandedAliases.value = new Set()
   activeSection.value = '基础'
@@ -562,6 +607,7 @@ async function selectRow(r) {
 function clearEditor() {
   closeSpPicker()
   revokeAvatarPreview()
+  discardPortrait()
   editing.value = false
   selectedId.value = ''
   isNew.value = false
@@ -588,9 +634,9 @@ async function discardChanges() {
   } else {
     const restored = JSON.parse(initialSnapshot.value)
     restored.discs = restored.discs.map(function (disc) { return { ...disc, _key: ++discKey, _persisted: true } })
-    const { avatar, xinzhi, xinzhiSha256 } = form.value
+    const { avatar, xinzhi, xinzhiSha256, portrait, portraitSha256 } = form.value
     revokeAvatarPreview()
-    form.value = { ...restored, avatar, avatarPick: null, avatarPreview: '', xinzhi, xinzhiSha256 }
+    form.value = { ...restored, avatar, avatarPick: null, avatarPreview: '', xinzhi, xinzhiSha256, portrait, portraitSha256 }
     await resetEditor()
   }
 }
@@ -829,6 +875,112 @@ async function removeXinzhi() {
   }
 }
 
+function pickPortrait() {
+  if (busy.value || checkingLeave.value || isNew.value || !portraitInput.value) return
+  portraitInput.value.value = ''
+  portraitInput.value.click()
+}
+
+function discardPortrait() {
+  if (portraitPreview.value) URL.revokeObjectURL(portraitPreview.value)
+  portraitPreview.value = ''
+  portraitFile.value = null
+  portraitDimensions.value = ''
+}
+
+function applyPortrait(saved) {
+  const fields = { portrait: saved.portrait || '', portraitSha256: saved.portraitSha256 || saved.portrait_sha256 || '' }
+  Object.assign(form.value, fields)
+  const row = rows.value.find(r => r.id === form.value.id)
+  if (row) Object.assign(row, fields)
+  failedPortraitSrc.value = ''
+}
+
+async function onPortraitPick(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file || busy.value || checkingLeave.value || isNew.value) return
+  portraitNotice.value = ''
+  portraitNoticeError.value = false
+  portraitUploading.value = true
+  let preview = ''
+  try {
+    if ((file.type && file.type !== 'image/png') || !/\.png$/i.test(file.name) || file.size > 2 * 1024 * 1024) {
+      throw new Error('请选择不超过 2MB 的透明 PNG，宽和高均为 300–2048px')
+    }
+    const header = new Uint8Array(await file.slice(0, 24).arrayBuffer())
+    if (header.length < 24 || ![137, 80, 78, 71, 13, 10, 26, 10].every((byte, i) => header[i] === byte)) {
+      throw new Error('文件不是有效的 PNG 图片')
+    }
+    const view = new DataView(header.buffer)
+    const width = view.getUint32(16), height = view.getUint32(20)
+    if (width < 300 || height < 300 || width > 2048 || height > 2048) {
+      throw new Error('立绘宽和高均须为 300–2048px')
+    }
+    preview = URL.createObjectURL(file)
+    await new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = resolve
+      image.onerror = () => reject(new Error('图片无法读取，请选择有效的透明 PNG'))
+      image.src = preview
+    })
+    if (disposed) return
+    discardPortrait()
+    portraitFile.value = file
+    portraitPreview.value = preview
+    preview = ''
+    portraitDimensions.value = width + '×' + height + 'px'
+    await nextTick()
+    portraitPanel.value?.scrollIntoView({ block: 'nearest' })
+  } catch (err) {
+    portraitNotice.value = humanErr(err, '立绘读取失败')
+    portraitNoticeError.value = true
+  } finally {
+    if (preview) URL.revokeObjectURL(preview)
+    portraitUploading.value = false
+  }
+}
+
+async function uploadPortrait() {
+  if (!portraitFile.value || busy.value || checkingLeave.value || isNew.value) return
+  portraitUploading.value = true
+  portraitNotice.value = ''
+  portraitNoticeError.value = false
+  try {
+    applyPortrait(await uploadOperatorPortrait(form.value.id, portraitFile.value))
+    discardPortrait()
+    portraitNotice.value = '立绘已上传，即时生效'
+  } catch (err) {
+    if (await leaveIfForbidden(err)) return
+    portraitNotice.value = humanErr(err, '立绘上传失败')
+    portraitNoticeError.value = true
+  } finally {
+    portraitUploading.value = false
+  }
+}
+
+async function removePortrait() {
+  if (busy.value || checkingLeave.value || isNew.value) return
+  checkingLeave.value = true
+  try {
+    if (!await dialog.confirm({ type: 'danger', title: '删除「' + (form.value.name || form.value.id) + '」的立绘？', message: '删除后端立绘后立即生效，将回退到静态立绘（若有）。后端原图无法恢复，需重新上传。', confirmText: '删除立绘' })) return
+  } finally { checkingLeave.value = false }
+  portraitUploading.value = true
+  portraitNotice.value = ''
+  portraitNoticeError.value = false
+  try {
+    applyPortrait(await deleteOperatorPortrait(form.value.id))
+    discardPortrait()
+    portraitNotice.value = currentPortrait.value ? '后端立绘已删除，已回退到静态立绘' : '后端立绘已删除，当前无静态立绘可回退'
+  } catch (err) {
+    if (await leaveIfForbidden(err)) return
+    portraitNotice.value = humanErr(err, '立绘删除失败')
+    portraitNoticeError.value = true
+  } finally {
+    portraitUploading.value = false
+  }
+}
+
 function buildBody() {
   const body = {
     id: form.value.id.trim(),
@@ -909,6 +1061,11 @@ function oddityPreviewMax(key) {
 
 async function save() {
   if (busy.value || checkingLeave.value || (!isNew.value && !dirty.value)) return
+  if (portraitFile.value) {
+    notice.value = '请先确认上传或取消待上传立绘，再保存目录资料'
+    noticeError.value = true
+    return
+  }
   const body = buildBody()
   if (!validateBody(body)) return
   saving.value = true
@@ -1038,6 +1195,7 @@ onBeforeUnmount(function () {
   window.visualViewport?.removeEventListener('scroll', updateSpPosition)
   document.removeEventListener('pointerdown', onSpPointerDown, true)
   cancelAnimationFrame(resizeFrame)
+  discardPortrait()
   revokeAvatarPreview()
 })
 defineExpose({ canLeave, openNew, openEdit, selectRow, clearEditor, leaveIfForbidden, editing, isNew, selectedId, busy, checkingLeave })
@@ -1045,5 +1203,13 @@ defineExpose({ canLeave, openNew, openEdit, selectRow, clearEditor, leaveIfForbi
 
 <style scoped>
 .editor-xinzhi-preview { width: 36px; height: 36px; flex: none; object-fit: contain; }
+.editor-portrait-panel { min-width: 0; padding-bottom: 16px; }
+.editor-portrait-previews { display: flex; flex-wrap: wrap; gap: 16px; }
+.editor-portrait-previews figure { flex: 0 1 240px; min-width: 0; max-width: 100%; margin: 0; }
+.editor-portrait-previews figcaption { margin-bottom: 6px; font-size: 12px; color: var(--ink); }
+.editor-portrait-cover { display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink-60); font-size: 12px; }
+.editor-portrait-cover img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: cover; object-position: center 28%; }
+.editor-portrait-panel .hint { margin: 8px 0; line-height: 1.6; }
+.editor-portrait-panel .err { color: var(--theme-danger-text, var(--rouge)); }
 </style>
 

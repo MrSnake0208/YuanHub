@@ -29,7 +29,7 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
-import operatorPortraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { resolveRecruitmentAgent } from './rules.js'
 import { recordBarClass, recordSpanWidth } from './recruitmentRecordPresentation.js'
 
@@ -55,7 +55,7 @@ const rows = computed(() => {
     const goldRank = fourStar ? null : ++rank
     const pulls = fourStar ? '4星计次' : event.pull_span == null ? '未知' : `${event.pull_span}抽`
     const label = `${agent.name}，${fourStar ? '4星计次，不影响保底' : event.pull_span == null ? '抽数未知' : pulls}，${event.up_status === 'non_up' ? '非UP' : event.up_status === 'up' ? 'UP' : 'UP状态未知'}${event.batch_id ? '，批次记录' : ''}${goldRank ? `，本池已记录第${goldRank}个金` : ''}`
-    return { event, agent, fourStar, rank: goldRank, pulls, label, avatar: agent.avatar || agent.avatar_url || operatorPortraits[agent.operator_id || agent.id] || '' }
+    return { event, agent, fourStar, rank: goldRank, pulls, label, avatar: agent.avatar || agent.avatar_url || resolveOperatorPortrait(agent.operator_id || agent.id, agent) }
   }).reverse()
 })
 </script>

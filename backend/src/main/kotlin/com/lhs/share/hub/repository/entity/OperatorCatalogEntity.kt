@@ -32,6 +32,9 @@ data class OperatorCatalogEntity(
     // 140×140 透明心纸 PNG，仅经管理员上传/删除接口维护。
     val xinzhi: String? = null,
     val xinzhiSha256: String? = null,
+    // 原始透明 PNG 立绘，仅经管理员上传/删除接口维护。
+    val portrait: String? = null,
+    val portraitSha256: String? = null,
     val catalogVersion: String,
     val createdAt: Instant = Instant.now(),
 )

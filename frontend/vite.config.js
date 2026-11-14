@@ -95,6 +95,7 @@ export function buildDevServerConfig(mode, env = {}) {
     '/open-api': proxyTarget,
     '/avatar': proxyTarget,
     '/xinzhi': proxyTarget,
+    '/portraits': proxyTarget,
     '/ready': proxyTarget,
     '/version': proxyTarget
   }

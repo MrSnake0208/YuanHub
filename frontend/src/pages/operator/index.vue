@@ -1043,12 +1043,12 @@
                   role="listitem"
                 >
                   <picture
-                    v-if="ledgerCardIsV3 && operatorPortraits[e.id] && !failedPortraitIds.has(e.id)"
+                    v-if="ledgerCardIsV3 && resolveOperatorPortrait(e.id, catalogMap[e.id]) && !failedPortraitIds.has(e.id)"
                     class="ledger-portrait"
                     aria-hidden="true"
                   >
                     <img
-                      v-batch-image.eager="operatorPortraits[e.id]"
+                      v-batch-image.eager="resolveOperatorPortrait(e.id, catalogMap[e.id])"
                       alt=""
                       width="480"
                       height="350"
@@ -3134,7 +3134,7 @@ import OperatorDiscPresets from "../../components/operator/OperatorDiscPresets.v
 import OperatorDiscTargetModal from "../../components/operator/OperatorDiscTargetModal.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
-import operatorPortraits from "../../data/operatorPortraits.json";
+import { resolveOperatorPortrait } from "../../utils/operatorPortrait.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from "../../config/features.js";
@@ -4022,6 +4022,8 @@ function normalizeOperator(op) {
     oddityCompletionSchema: op.odditySchema || op.oddity_schema,
     incompleteFields: op.incompleteFields || op.incomplete_fields || [],
     avatar: op.avatar || "",
+    portrait: op.portrait || "",
+    portraitSha256: op.portraitSha256 || op.portrait_sha256 || "",
   };
 }
 

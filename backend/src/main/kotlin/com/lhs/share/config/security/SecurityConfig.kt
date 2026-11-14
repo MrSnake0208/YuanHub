@@ -149,6 +149,7 @@ class SecurityConfig(
                 "/v1/star/share/view/**",
                 "/avatar/**",
                 "/xinzhi/**",
+                "/portraits/**",
                 "/media/**",
                 "/user/open-api/permissions",
                 "/open-api/**",

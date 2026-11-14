@@ -87,7 +87,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Pencil, Repeat2, UserRound, X } from '@lucide/vue'
-import portraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { findBattleCatalogOperator } from '../../utils/battleAccountSnapshot.js'
@@ -134,7 +134,10 @@ const starAgent = computed(() => {
 const savedMember = computed(() => props.accountEntries.find(entry => entry.id === operator.value.id))
 // 手机表格列宽有限，命盘用图鉴简称逐行显示；完整名称仍在桌面表格与编辑弹窗中。
 const discShort = member => battleDiscTerms(member.discs, sortedAgents.value.find(agent => agent.id === member.id || agent.name === member.name)?.discs || []).map(term => term.label).join('\n')
-const portrait = member => portraits[member.id || battleOperatorId(member.name)]
+const portrait = member => {
+  const id = member.id || battleOperatorId(member.name)
+  return resolveOperatorPortrait(id, props.catalog.find(agent => agent.id === id))
+}
 const slotLabel = index => { const member = props.operators[index % 5]; return `${index % 5 + 1}号位${member.name ? ` · ${member.name}` : ''}` }
 // 组合名多为“命盘1”这类序号，与“组合 1”重复；只有作者自定义的名称才替换标题。
 const loadoutTitle = (loadout, index) => (loadout.name && !/^命盘\s*\d+$/.test(loadout.name) ? loadout.name : `组合 ${index + 1}`)

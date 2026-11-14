@@ -21,7 +21,7 @@
           <p v-if="saveNotice" class="lobby-save-notice" role="status">{{ saveNotice }}</p>
         </div>
         <div class="lobby-portrait">
-          <img v-if="!imageFailed" :key="companion.id" :src="portraits[companion.id]" :alt="companion.name + '的值守立绘'" width="480" height="350" decoding="async" fetchpriority="high" @error="imageFailed = true" />
+          <img v-if="!imageFailed" :key="companion.id" :src="resolveOperatorPortrait(companion.id, companion)" :alt="companion.name + '的值守立绘'" width="480" height="350" decoding="async" fetchpriority="high" @error="imageFailed = true" />
           <p v-else class="lobby-art-error">立绘暂未加载<br />可以更换值守</p>
         </div>
       </div>
@@ -61,16 +61,16 @@ import { Check, Search, X } from '@lucide/vue'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { getOperatorCatalog } from '../../api/operator.js'
-import portraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { calendarDateLabel, serverToday } from '../../data/activityCalendar.js'
 
 const props = defineProps({ title: { type: String, default: '今日一览' }, ownerId: { type: String, default: '' }, status: { type: String, required: true }, game: { type: String, default: '' } })
-const localRoster = AGENT_CATALOG.filter(entry => portraits[entry.id])
+const localRoster = AGENT_CATALOG.filter(entry => resolveOperatorPortrait(entry.id, entry))
 const catalog = ref(null), catalogLoading = ref(false), catalogError = ref('')
 const roster = computed(() => (catalog.value || (props.game ? [] : localRoster))
-  .filter(entry => portraits[entry.id] && agentMatchesGame(entry, props.game)))
+  .filter(entry => resolveOperatorPortrait(entry.id, entry) && agentMatchesGame(entry, props.game)))
 const defaultId = 'char_014_achan'
 const storageKey = computed(() => 'yh_today_companion:' + (props.ownerId ? 'user:' + props.ownerId : 'guest'))
 const companionId = ref(defaultId), pickerOpen = ref(false), query = ref(''), saveNotice = ref(''), imageFailed = ref(false)
@@ -90,7 +90,7 @@ watch(storageKey, () => {
   imageFailed.value = false
   let saved
   try { saved = localStorage.getItem(storageKey.value) } catch { /* The default remains usable without storage. */ }
-  companionId.value = Object.prototype.hasOwnProperty.call(portraits, saved) ? saved : defaultId
+  companionId.value = Boolean(resolveOperatorPortrait(saved, catalog.value?.find(entry => entry.id === saved))) ? saved : defaultId
 }, { immediate: true, flush: 'sync' })
 watch(() => props.game, game => { if (game && !catalog.value) loadCatalog() }, { immediate: true })
 watch(companion, () => { imageFailed.value = false })

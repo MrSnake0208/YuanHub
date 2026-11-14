@@ -46,6 +46,10 @@ export function xinzhiUrl(path) {
   return avatarUrl(path);
 }
 
+export function portraitUrl(path) {
+  return avatarUrl(path);
+}
+
 export function xinzhiIconUrl(operatorId) {
   return operatorId ? xinzhiUrl('/xinzhi/' + encodeURIComponent(operatorId) + '.png') : '';
 }

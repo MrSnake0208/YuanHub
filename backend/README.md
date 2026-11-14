@@ -458,6 +458,25 @@ URL 为 `/xinzhi/{operatorId}.png?v={sha256前16位}`，ETag 仍由响应字节�
 前端管理编辑器在保存密探后可直接更换或删除心纸，上传立即生效；预览及各心纸展示用
 `assets/quality-bg/q5.png` 垫底，加载失败移除金底并回退保留的旧静态成品。
 
+**密探立绘**：原始透明 PNG 存放在 `share.portrait.dir`（默认 `./data/portraits`，生产可用
+`SHARE_PORTRAIT_DIR` 覆盖并挂持久卷），文件名固定为 `{operatorId}.png`。服务账号须可读写该
+目录；代理需将 `/portraits/**` 转发到后端。管理员使用
+`PUT /v1/admin/operator-catalog/{operatorId}/portrait`（multipart 字段 `file`）上传，或用同路径
+`DELETE` 删除，两者先校验 `OPERATOR_CATALOG_WRITE`，返回 `AdminOperatorCatalogResponse`。
+上传按魔数与解码结果校验 PNG，要求带 alpha 通道、≤2MB（2×1024×1024 字节），宽和高均在
+300–2048px（含边界）；不符返回 422 `schema_validation_failed`。只校验并原样保存，不裁剪、
+不缩放、不转码；先写 `.png.tmp` 再原子替换。`GET /portraits/**` 公开访问、缓存 300 秒。
+首次初始化目录时将存量 PNG 的路径和 SHA-256 关联到现有密探，不重插已删除条目；普通编辑
+保留立绘字段，删除密探级联清理文件，上传、删除和回填不改变 `catalogVersion`。
+管理及 v1 公开目录返回 `portrait`、`portraitSha256`，URL 为
+`/portraits/{operatorId}.png?v={sha256前16位}`；不向 MaaYuan 的 `/open-api/operator/catalog`
+增加立绘字段。建议先发布后端，再发布前端。
+前端管理编辑器展示当前生效立绘与后端/静态/无的来源，选图后先按封面效果预览，确认上传才
+生效；删除需确认并提示回退。已接入目录的展示通过 `resolveOperatorPortrait` 优先使用后端
+立绘，无后端路径时回退 `operatorPortraits.json` 与 `public/assets/operator-portraits/`；未持有
+目录数据的图片导出/记录组件保持静态读取，不增加目录请求。资源加载失败沿用组件已有的错误
+处理，不以加载失败判定后端立绘不存在。
+
 **管理员角色与权限**：平台角色保存在 HubBackend 的 `admin_role_bindings`，不再使用
 `maa_user.status >= 2` 做长期授权。超级管理员可以通过以下端点查询和覆盖角色、配置反馈权限并查看审计：
 

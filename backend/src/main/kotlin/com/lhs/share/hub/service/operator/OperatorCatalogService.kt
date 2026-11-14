@@ -26,6 +26,7 @@ class OperatorCatalogService(
     private val objectMapper: ObjectMapper,
     private val avatarStorage: AvatarStorage,
     private val xinzhiStorage: XinzhiStorage,
+    private val portraitStorage: PortraitStorage,
 ) {
     @Volatile private var seeded = false
 
@@ -173,7 +174,13 @@ class OperatorCatalogService(
                 createdAt = existing.createdAt,
                 catalogVersion = version,
                 specialOddityName = specialOddityName,
-            ).copy(avatar = existing.avatar, xinzhi = existing.xinzhi, xinzhiSha256 = existing.xinzhiSha256),
+            ).copy(
+                avatar = existing.avatar,
+                xinzhi = existing.xinzhi,
+                xinzhiSha256 = existing.xinzhiSha256,
+                portrait = existing.portrait,
+                portraitSha256 = existing.portraitSha256,
+            ),
         ).also {
             spIndexCache = null
         }.let(AdminOperatorCatalogResponse::of)
@@ -216,6 +223,22 @@ class OperatorCatalogService(
         return AdminOperatorCatalogResponse.of(repository.save(existing.copy(xinzhi = null, xinzhiSha256 = null)))
     }
 
+    fun setPortrait(operatorId: String, file: MultipartFile): AdminOperatorCatalogResponse {
+        ensureSeeded()
+        val existing = repository.findByOperatorId(operatorId)
+            ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "Operator not found")
+        val (path, sha256) = portraitStorage.save(operatorId, file)
+        return AdminOperatorCatalogResponse.of(repository.save(existing.copy(portrait = path, portraitSha256 = sha256)))
+    }
+
+    fun clearPortrait(operatorId: String): AdminOperatorCatalogResponse {
+        ensureSeeded()
+        val existing = repository.findByOperatorId(operatorId)
+            ?: throw OperatorApiException(HttpStatus.NOT_FOUND, "operator_not_found", "Operator not found")
+        portraitStorage.delete(operatorId)
+        return AdminOperatorCatalogResponse.of(repository.save(existing.copy(portrait = null, portraitSha256 = null)))
+    }
+
     fun delete(operatorId: String) {
         ensureSeeded()
         val existing = repository.findByOperatorId(operatorId)
@@ -228,6 +251,11 @@ class OperatorCatalogService(
         avatarStorage.delete(operatorId)
         try {
             xinzhiStorage.delete(operatorId)
+        } catch (_: java.io.IOException) {
+            // 目录已删除，清理失败仅遗留孤儿文件。
+        }
+        try {
+            portraitStorage.delete(operatorId)
         } catch (_: java.io.IOException) {
             // 目录已删除，清理失败仅遗留孤儿文件。
         }
@@ -454,6 +482,7 @@ class OperatorCatalogService(
             // 不覆盖管理员上传的头像、不重插被删除的行；进程内仅首次访问执行一次。
             backfillAvatars()
             backfillXinzhi()
+            backfillPortraits()
             seeded = true
         }
     }
@@ -479,6 +508,16 @@ class OperatorCatalogService(
             val sha256 = xinzhiStorage.sha256(id)
             if (existing.xinzhi == null || existing.xinzhiSha256 != sha256) {
                 repository.save(existing.copy(xinzhi = xinzhiStorage.relativePath(id), xinzhiSha256 = sha256))
+            }
+        }
+    }
+
+    private fun backfillPortraits() {
+        portraitStorage.existingOperatorIds().forEach { id ->
+            val existing = repository.findByOperatorId(id) ?: return@forEach
+            val sha256 = portraitStorage.sha256(id)
+            if (existing.portrait == null || existing.portraitSha256 != sha256) {
+                repository.save(existing.copy(portrait = portraitStorage.relativePath(id), portraitSha256 = sha256))
             }
         }
     }

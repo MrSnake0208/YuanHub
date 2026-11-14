@@ -31,7 +31,7 @@
     <p v-if="ownedOnly && !accountEntries.length" class="battle-hint">尚无账号候选：登录并选择账号后会自动读取我的密探，读取失败时可在页面上方重试；也可选择全部密探手动填写。</p>
     <div v-if="filtered.length" class="battle-picker-grid" aria-label="密探候选">
       <button v-for="agent in filtered" :key="agent.id" type="button" :class="{ current: placement(agent) === slot }" :disabled="busy" :aria-current="placement(agent) === slot ? 'true' : undefined" :aria-label="`选择${agent.name}，${status(agent)}`" @click="emit('choose', agent.name)">
-        <img v-if="portraits[agent.id]" :src="portraits[agent.id]" alt="" loading="lazy"><UserRound v-else :size="32" aria-hidden="true" />
+        <img v-if="resolveOperatorPortrait(agent.id, agent)" :src="resolveOperatorPortrait(agent.id, agent)" alt="" loading="lazy"><UserRound v-else :size="32" aria-hidden="true" />
         <strong>{{ agent.name }}</strong><small class="battle-picker-status-full" :class="{ muted: !ownedIds.has(agent.id) }">{{ status(agent) }}</small>
         <small v-if="shortStatus(agent)" class="battle-picker-status-short" :class="{ muted: placement(agent) < 0 }">{{ shortStatus(agent) }}</small>
       </button>
@@ -49,7 +49,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, useId } from 'vue'
 import { ChevronRight, Search, SlidersHorizontal, UserRound, X } from '@lucide/vue'
-import portraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { sameBattleOperator } from '../../utils/battleImages.js'
 import { OPERATOR_RARITY_OPTIONS, subProfOptions, matchesProfSubFilter, matchesOperatorSearch, tokens } from '../../utils/operatorFilters.js'
