@@ -196,7 +196,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 when (issue.code) {
                     "bag_item_missing" -> {
                         valid(issue.stage == "bag_tab1" && issue.count == 1)
-                        valid(issue.reason in setOf("tianjifuchuan_missing", "fuchuan_missing", "both_missing"))
+                        valid(issue.reason in BAG_ITEM_MISSING_REASONS)
                     }
                     "bag_count_suspect" -> {
                         valid(issue.stage in setOf("bag_tab1", "bag_tab3_1", "bag_tab3_2"))
@@ -277,6 +277,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(value.images.any { it.index == reading.imageIndex })
                 validateBox(reading.countBox, width, height)
                 reading.count?.let { valid(it in 0..99999999) }
+                reading.threshold?.let { valid(it in 0..255) }
                 valid(BAG_RAW.matches(reading.raw))
                 valid(reading.score >= BigDecimal.ZERO && reading.score <= BigDecimal.ONE)
                 valid(reading.source in setOf("primary", "fallback"))
@@ -310,7 +311,12 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
             "screenshot_or_ocr_failed", "identity_unresolved", "data_review", "upload_network_failed", "upload_http_failed",
             "upload_rejected", "upload_response_unverified", "bag_item_missing", "bag_count_suspect",
         )
-        private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone")
+        private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone", "count_unresolved")
+        private val BAG_ITEM_MISSING_REASONS = setOf(
+            "tianjifuchuan_missing", "fuchuan_missing", "both_missing",
+            "tianjifuchuan_absent", "fuchuan_absent", "both_absent",
+            "fuchuan_absent_tianjifuchuan_missing", "fuchuan_missing_tianjifuchuan_absent",
+        )
         private val BAG_ENTITY = Regex("[a-z0-9_]{1,64}")
         private val BAG_RAW = Regex("[0-9]{0,8}")
         private val NULLABLE_BAG_COUNT = Regex("(/manifest)?/bag_cells/[0-9]+/(chosen|readings/[0-9]+/count)")

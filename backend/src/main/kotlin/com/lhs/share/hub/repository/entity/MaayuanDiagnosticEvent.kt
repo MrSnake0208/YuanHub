@@ -38,6 +38,7 @@ data class MaayuanDiagnosticBagReading(
     val raw: String,
     val score: BigDecimal,
     val source: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val threshold: Int? = null,
 )
 
 data class MaayuanDiagnosticLog(val assetId: String, val status: String, val size: Long)
