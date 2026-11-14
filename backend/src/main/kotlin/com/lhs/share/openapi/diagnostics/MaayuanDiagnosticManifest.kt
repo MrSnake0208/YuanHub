@@ -313,9 +313,14 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         )
         private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone", "count_unresolved")
         private val BAG_ITEM_MISSING_REASONS = setOf(
-            "tianjifuchuan_missing", "fuchuan_missing", "both_missing",
-            "tianjifuchuan_absent", "fuchuan_absent", "both_absent",
-            "fuchuan_absent_tianjifuchuan_missing", "fuchuan_missing_tianjifuchuan_absent",
+            "tianjifuchuan_missing",
+            "fuchuan_missing",
+            "both_missing",
+            "tianjifuchuan_absent",
+            "fuchuan_absent",
+            "both_absent",
+            "fuchuan_absent_tianjifuchuan_missing",
+            "fuchuan_missing_tianjifuchuan_absent",
         )
         private val BAG_ENTITY = Regex("[a-z0-9_]{1,64}")
         private val BAG_RAW = Regex("[0-9]{0,8}")
