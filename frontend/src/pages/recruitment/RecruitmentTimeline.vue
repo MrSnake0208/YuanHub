@@ -80,7 +80,6 @@ import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { isPermanentRecruitmentPool, recruitmentCoverStyle, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
-import { avatarUrl } from '../../api/request.js'
 
 const timelineId = 'recruitment-timeline-' + useId()
 const props = defineProps({ pools: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, agents: { type: Array, default: () => [] }, poolSummaries: { type: Object, default: () => ({}) }, previews: { type: Object, default: () => ({}) }, busy: Boolean, contextVersion: Number, guideActive: Boolean })
@@ -108,7 +107,7 @@ const hasUndated = computed(() => props.pools.some(pool => !permanent(pool) && !
 watch([years, hasUndated], ([availableYears, undated]) => {
   if (year.value && (year.value === 'unknown' ? !undated : !availableYears.includes(year.value))) year.value = ''
 })
-const poolPriority = pool => permanent(pool) ? 1 : status(pool) === '进行中' ? 0 : 2
+const poolPriority = pool => permanent(pool) ? 0 : status(pool) === '进行中' ? 1 : 2
 const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) || !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))).slice().sort((a, b) => {
   const pinned = poolPriority(a) - poolPriority(b)
   if (pinned) return pinned
@@ -145,7 +144,7 @@ const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_
     const agent = props.agents.find(item => item.id === slot.operator_id)
     const count = props.poolSummaries[pool.pool_id]?.up_agent_counts?.[slot.id]
     return { id: slot.id, name: agent?.name || slot.name || '未知密探', rarity: Number(agent?.rarity) || 5,
-      portrait: operatorPortraits[slot.operator_id] || (agent?.avatar ? avatarUrl(agent.avatar) : ''),
+      portrait: operatorPortraits[slot.operator_id] || '',
       avatar: agent?.avatar || agent?.avatar_url || operatorPortraits[slot.operator_id] || '',
       count: Number.isSafeInteger(count) && count >= 0 ? count : null }
   })
