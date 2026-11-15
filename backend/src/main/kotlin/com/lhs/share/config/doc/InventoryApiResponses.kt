@@ -57,10 +57,26 @@ annotation class InventoryWriteResponses
 @ApiResponses(
     value = [
         ApiResponse(responseCode = "200", description = "OK", useReturnTypeSchema = true),
-        ApiResponse(responseCode = "400", description = "invalid_json", content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))]),
-        ApiResponse(responseCode = "401", description = "unauthorized", content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))]),
-        ApiResponse(responseCode = "403", description = "forbidden", content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))]),
-        ApiResponse(responseCode = "404", description = "account_not_found", content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))]),
+        ApiResponse(
+            responseCode = "400",
+            description = "invalid_json",
+            content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "unauthorized",
+            content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "403",
+            description = "forbidden",
+            content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "account_not_found",
+            content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
+        ),
         ApiResponse(
             responseCode = "409",
             description = "star_loadout_preset_revision_conflict",
@@ -71,7 +87,11 @@ annotation class InventoryWriteResponses
             description = "schema_validation_failed or star_loadout_preset_invalid_snapshot",
             content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
         ),
-        ApiResponse(responseCode = "500", description = "Unexpected server error", content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))]),
+        ApiResponse(
+            responseCode = "500",
+            description = "Unexpected server error",
+            content = [Content(mediaType = JSON, schema = Schema(implementation = InventoryErrorResponse::class))],
+        ),
     ],
 )
 annotation class StarLoadoutPresetWriteResponses

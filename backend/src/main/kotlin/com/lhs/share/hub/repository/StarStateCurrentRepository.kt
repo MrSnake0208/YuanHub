@@ -54,15 +54,14 @@ class StarStateCurrentRepositoryImpl(
         StarStateCurrent::class.java,
     )
 
-    override fun fenceLoadoutWrite(userId: String, accountId: String, generation: Long, revision: Long): Boolean =
-        template.findAndModify(
-            ownerQuery(userId, accountId)
-                .addCriteria(Criteria.where("generation").`is`(generation))
-                .addCriteria(Criteria.where("revision").`is`(revision)),
-            Update().inc("loadoutFence", 1),
-            FindAndModifyOptions.options().returnNew(true),
-            StarStateCurrent::class.java,
-        ) != null
+    override fun fenceLoadoutWrite(userId: String, accountId: String, generation: Long, revision: Long): Boolean = template.findAndModify(
+        ownerQuery(userId, accountId)
+            .addCriteria(Criteria.where("generation").`is`(generation))
+            .addCriteria(Criteria.where("revision").`is`(revision)),
+        Update().inc("loadoutFence", 1),
+        FindAndModifyOptions.options().returnNew(true),
+        StarStateCurrent::class.java,
+    ) != null
 
     private fun ownerQuery(userId: String, accountId: String) = Query.query(
         Criteria.where("_id").`is`("$userId:$accountId")

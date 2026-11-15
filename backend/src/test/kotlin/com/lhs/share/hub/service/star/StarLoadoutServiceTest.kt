@@ -40,25 +40,38 @@ class StarLoadoutServiceTest {
     @BeforeEach fun setUp() {
         generation = 4
         current = null
-        every { accountService.requireAccount("u1", "acc_a") } returns SubAccount(userId = "u1", accountId = "acc_a", name = "主号", game = "如鸢")
+        every { accountService.requireAccount("u1", "acc_a") } returns
+            SubAccount(userId = "u1", accountId = "acc_a", name = "主号", game = "如鸢")
         every { stateService.operatorIds("u1", "acc_a", "如鸢") } returns setOf("operator.a")
         every { states.findByUserIdAndAccountId("u1", "acc_a") } answers {
-            StarStateCurrent(id = "u1:acc_a", userId = "u1", accountId = "acc_a", generation = generation,
-                revision = 2, inventory = listOf(
+            StarStateCurrent(
+                id = "u1:acc_a", userId = "u1", accountId = "acc_a", generation = generation,
+                revision = 2,
+                inventory = listOf(
                     StarStateEntry("main.1", "main", "天府", "orange", 20),
                     StarStateEntry("support.1", "support", "文曲", "white", 1),
-                ), planTargets = emptyList(), experience = com.lhs.share.hub.repository.entity.StarStateExperience(),
-                bag = com.lhs.share.hub.repository.entity.StarStateBag(), updatedAt = Instant.now())
+                ),
+                planTargets = emptyList(), experience = com.lhs.share.hub.repository.entity.StarStateExperience(),
+                bag = com.lhs.share.hub.repository.entity.StarStateBag(), updatedAt = Instant.now(),
+            )
         }
         every { states.fenceLoadoutWrite("u1", "acc_a", any(), any()) } returns true
         every { repository.findByUserIdAndAccountId("u1", "acc_a") } answers { current }
         every { repository.replaceForGeneration("u1", "acc_a", any(), any(), any(), any()) } answers {
             val expected = args[2] as Long
-            if ((current?.revision ?: 0) != expected) null
-            else StarLoadoutCurrent(id = "u1:acc_a", userId = "u1", accountId = "acc_a",
-                revision = expected + 1, generation = args[3] as Long,
-                loadouts = args[4] as List<com.lhs.share.hub.repository.entity.StarOperatorLoadout>,
-                updatedAt = args[5] as Instant).also { current = it }
+            if ((current?.revision ?: 0) != expected) {
+                null
+            } else {
+                StarLoadoutCurrent(
+                    id = "u1:acc_a",
+                    userId = "u1",
+                    accountId = "acc_a",
+                    revision = expected + 1,
+                    generation = args[3] as Long,
+                    loadouts = args[4] as List<com.lhs.share.hub.repository.entity.StarOperatorLoadout>,
+                    updatedAt = args[5] as Instant,
+                ).also { current = it }
+            }
         }
     }
 
@@ -96,9 +109,12 @@ class StarLoadoutServiceTest {
             "star_loadout_instance_occupied" to request(4, 0, slots(main1 = "main.1", main2 = "main.1")),
         )
         cases.forEach { (code, request) ->
-            assertEquals(code, assertThrows(InventoryApiException::class.java) {
-                service.putCurrent("u1", "acc_a", request)
-            }.code)
+            assertEquals(
+                code,
+                assertThrows(InventoryApiException::class.java) {
+                    service.putCurrent("u1", "acc_a", request)
+                }.code,
+            )
         }
     }
 
@@ -106,7 +122,11 @@ class StarLoadoutServiceTest {
         StarLoadoutCurrentRequest(rev, mapOf("operator.a" to slots), gen)
 
     private fun slots(main1: String? = null, main2: String? = null, support1: String? = null) = mapOf(
-        "main1" to main1, "main2" to main2, "main3" to null,
-        "support1" to support1, "support2" to null, "support3" to null,
+        "main1" to main1,
+        "main2" to main2,
+        "main3" to null,
+        "support1" to support1,
+        "support2" to null,
+        "support3" to null,
     )
 }

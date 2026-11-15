@@ -16,16 +16,25 @@ data class StarStateCurrentResponse(
 ) {
     companion object {
         fun empty(accountId: String) = StarStateCurrentResponse(
-            accountId, 0, 0, emptyList(), emptyMap(),
-            StarWorkspaceExperienceResponse(null, null, null), StarWorkspaceBagResponse(null, null), null,
+            accountId,
+            0,
+            0,
+            emptyList(),
+            emptyMap(),
+            StarWorkspaceExperienceResponse(null, null, null),
+            StarWorkspaceBagResponse(null, null),
+            null,
         )
 
         fun of(state: StarStateCurrent) = StarStateCurrentResponse(
-            state.accountId, state.generation, state.revision,
+            state.accountId,
+            state.generation,
+            state.revision,
             state.inventory.map { StarStateEntryResponse(it.instanceId, it.kind, it.name, it.quality, it.level, it.breakthroughStage) },
             state.planTargets.associate { it.instanceId to it.targetLevel },
             StarWorkspaceExperienceResponse(state.experience.orange, state.experience.purple, state.experience.white),
-            StarWorkspaceBagResponse(state.bag.currentCount, state.bag.capacity), state.updatedAt,
+            StarWorkspaceBagResponse(state.bag.currentCount, state.bag.capacity),
+            state.updatedAt,
         )
     }
 }

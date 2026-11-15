@@ -9,8 +9,8 @@ import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import java.time.LocalDateTime
 
 enum class CompatibilityStatus(@get:JsonValue val value: String) {
@@ -206,6 +206,7 @@ data class WorkPageResponse(
 )
 
 data class WorkConversion(val status: CompatibilityStatus, val issues: List<CompatibilityIssue>)
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class WorkSource(val type: String = "maayuan_legacy", val id: String, val rawContent: String? = null)
 

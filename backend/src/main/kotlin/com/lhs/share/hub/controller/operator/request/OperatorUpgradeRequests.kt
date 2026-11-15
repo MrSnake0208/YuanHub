@@ -21,5 +21,6 @@ data class OperatorUpgradeExecuteRequest(
     val previewToken: String,
     val skipBreakthroughMaterials: Boolean = false,
 ) {
-    fun previewRequest() = OperatorUpgradeRequest(accountId, game, operatorId, dimension, target, expectedOperatorRevision, skipBreakthroughMaterials)
+    fun previewRequest() =
+        OperatorUpgradeRequest(accountId, game, operatorId, dimension, target, expectedOperatorRevision, skipBreakthroughMaterials)
 }

@@ -19,13 +19,7 @@ class RecruitmentCatalogRepository(@param:Qualifier("hubMongoTemplate") private 
         RecruitmentCatalogPool::class.java,
     )
 
-    fun updateBanner(
-        poolId: String,
-        expectedCurrentRevision: Long,
-        banner: String?,
-        updatedBy: String,
-        updatedAt: Instant,
-    ): Boolean {
+    fun updateBanner(poolId: String, expectedCurrentRevision: Long, banner: String?, updatedBy: String, updatedAt: Instant): Boolean {
         val version = if (expectedCurrentRevision == 0L) {
             Criteria().orOperator(Criteria.where("revision").`is`(0), Criteria.where("revision").exists(false))
         } else {

@@ -39,14 +39,18 @@ class StarCloudControllerContractTest {
     private val command = StarStateCommandResponse(state, loadout, null)
     private val mvc = MockMvcBuilders.standaloneSetup(StarStateController(states, helper), StarLoadoutController(loadouts, helper))
         .setControllerAdvice(InventoryExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(
-            jacksonObjectMapper().registerModule(JavaTimeModule())
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE),
-        ))
+        .setMessageConverters(
+            MappingJackson2HttpMessageConverter(
+                jacksonObjectMapper().registerModule(JavaTimeModule())
+                    .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE),
+            ),
+        )
         .setValidator(LocalValidatorFactoryBean().apply { afterPropertiesSet() })
         .build()
 
-    @BeforeEach fun setUp() { every { helper.requireUserId() } returns "jwt-user" }
+    @BeforeEach fun setUp() {
+        every { helper.requireUserId() } returns "jwt-user"
+    }
 
     @Test
     fun `state GET PATCH rebuild and restore use one account scoped generation contract`() {
@@ -57,16 +61,22 @@ class StarCloudControllerContractTest {
         every { states.recoveryPoints("jwt-user", "acc_a") } returns emptyList()
         mvc.perform(get("/v1/star-state/current").param("account_id", "acc_a"))
             .andExpect(status().isOk).andExpect(jsonPath("$.data.generation").value(0))
-        mvc.perform(patch("/v1/star-state/current").param("account_id", "acc_a")
-            .contentType(MediaType.APPLICATION_JSON).content(snapshotBody()))
+        mvc.perform(
+            patch("/v1/star-state/current").param("account_id", "acc_a")
+                .contentType(MediaType.APPLICATION_JSON).content(snapshotBody()),
+        )
             .andExpect(status().isOk).andExpect(jsonPath("$.data.state.account_id").value("acc_a"))
-        mvc.perform(post("/v1/star-state/rebuild").param("account_id", "acc_a")
-            .contentType(MediaType.APPLICATION_JSON).content(snapshotBody("pre_ocr_rebuild")))
+        mvc.perform(
+            post("/v1/star-state/rebuild").param("account_id", "acc_a")
+                .contentType(MediaType.APPLICATION_JSON).content(snapshotBody("pre_ocr_rebuild")),
+        )
             .andExpect(status().isOk)
         mvc.perform(get("/v1/star-state/recovery-points").param("account_id", "acc_a"))
             .andExpect(status().isOk).andExpect(jsonPath("$.data").isEmpty)
-        mvc.perform(post("/v1/star-state/recovery-points/point_1/restore").param("account_id", "acc_a")
-            .contentType(MediaType.APPLICATION_JSON).content("""{"expected_generation":0,"expected_revision":0}"""))
+        mvc.perform(
+            post("/v1/star-state/recovery-points/point_1/restore").param("account_id", "acc_a")
+                .contentType(MediaType.APPLICATION_JSON).content("""{"expected_generation":0,"expected_revision":0}"""),
+        )
             .andExpect(status().isOk)
         verify { states.rebuild("jwt-user", "acc_a", match { it.expectedGeneration == 0L && it.reason == "pre_ocr_rebuild" }) }
     }
@@ -74,9 +84,11 @@ class StarCloudControllerContractTest {
     @Test
     fun `loadout PUT carries the generation fence`() {
         every { loadouts.putCurrent("jwt-user", "acc_a", any()) } returns loadout
-        mvc.perform(put("/v1/star-loadout/current").param("account_id", "acc_a")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""{"expected_generation":3,"expected_revision":0,"loadouts":{}}"""))
+        mvc.perform(
+            put("/v1/star-loadout/current").param("account_id", "acc_a")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"expected_generation":3,"expected_revision":0,"loadouts":{}}"""),
+        )
             .andExpect(status().isOk)
         verify { loadouts.putCurrent("jwt-user", "acc_a", match { it.expectedGeneration == 3L }) }
     }
@@ -84,12 +96,19 @@ class StarCloudControllerContractTest {
     @Test
     fun `generation conflicts keep their stable code`() {
         every { states.rebuild("jwt-user", "acc_a", any()) } throws InventoryApiException(
-            HttpStatus.CONFLICT, "star_generation_changed", "reload",
+            HttpStatus.CONFLICT,
+            "star_generation_changed",
+            "reload",
         )
-        mvc.perform(post("/v1/star-state/rebuild").param("account_id", "acc_a")
-            .contentType(MediaType.APPLICATION_JSON).content(snapshotBody("pre_ocr_rebuild")))
+        mvc.perform(
+            post("/v1/star-state/rebuild").param("account_id", "acc_a")
+                .contentType(MediaType.APPLICATION_JSON).content(snapshotBody("pre_ocr_rebuild")),
+        )
             .andExpect(status().isConflict).andExpect(jsonPath("$.error.code").value("star_generation_changed"))
     }
 
-    private fun snapshotBody(reason: String? = null) = """{"expected_generation":0,"expected_revision":0,"inventory":[],"plan_targets":{},"experience":{"orange":null,"purple":null,"white":null},"bag":{"current_count":null,"capacity":null}${reason?.let { ",\"reason\":\"$it\"" } ?: ""}}"""
+    private fun snapshotBody(reason: String? = null) =
+        """{"expected_generation":0,"expected_revision":0,"inventory":[],"plan_targets":{},"experience":{"orange":null,"purple":null,"white":null},"bag":{"current_count":null,"capacity":null}${reason?.let {
+            ",\"reason\":\"$it\""
+        } ?: ""}}"""
 }

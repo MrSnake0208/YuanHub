@@ -134,8 +134,10 @@ class OperatorV3ImportService(
                             val relatedWritten = written.any { prior ->
                                 OperatorSharedGrowth.baseId(prior.operatorId, catalogService) ==
                                     OperatorSharedGrowth.baseId(item.operatorId, catalogService) &&
-                                    (prior.status in setOf(ACCEPTED, PARTIAL) ||
-                                        prior.status == REVIEW && prior.changes.isNotEmpty())
+                                    (
+                                        prior.status in setOf(ACCEPTED, PARTIAL) ||
+                                            prior.status == REVIEW && prior.changes.isNotEmpty()
+                                        )
                             }
                             if (relatedWritten) {
                                 item.patch.put(
@@ -655,11 +657,7 @@ class OperatorV3ImportService(
         }
     }
 
-    private fun alignScanDiscLoadouts(
-        patch: ObjectNode,
-        existing: List<OperatorDiscLoadout>,
-        catalog: OperatorCatalogEntity,
-    ): String? {
+    private fun alignScanDiscLoadouts(patch: ObjectNode, existing: List<OperatorDiscLoadout>, catalog: OperatorCatalogEntity): String? {
         val incoming = patch.withArray("disc_loadouts").map { it as ObjectNode }
         if (existing.none { it.status != "unmarked" || it.targetDiscs.isNotEmpty() } ||
             incoming.isNotEmpty() && incoming.all { it.has("status") && it.has("target_discs") }

@@ -39,6 +39,8 @@ interface UserRepository : MongoRepository<MaaUser, String> {
     fun searchUsers(userName: String, pageable: Pageable): Page<MaaUserInfo>
 
     /** 反馈权限配置专用搜索: 不复用公开用户信息接口, 只查 status >= 1 的已激活用户。 */
-    @Query("{ '\$or': [ { 'userName': { '\$regex': ?0, '\$options': 'i' } }, { 'email': { '\$regex': ?0, '\$options': 'i' } } ], 'status': { '\$gte': 1 } }")
+    @Query(
+        "{ '\$or': [ { 'userName': { '\$regex': ?0, '\$options': 'i' } }, { 'email': { '\$regex': ?0, '\$options': 'i' } } ], 'status': { '\$gte': 1 } }",
+    )
     fun searchFeedbackAccessUsers(query: String, pageable: Pageable): Page<MaaUser>
 }

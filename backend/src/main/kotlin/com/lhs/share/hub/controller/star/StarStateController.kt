@@ -1,8 +1,8 @@
 package com.lhs.share.hub.controller.star
 
 import com.lhs.share.config.doc.InventoryReadResponses
-import com.lhs.share.config.doc.StarStateWriteResponses
 import com.lhs.share.config.doc.RequireJwt
+import com.lhs.share.config.doc.StarStateWriteResponses
 import com.lhs.share.config.security.AuthenticationHelper
 import com.lhs.share.controller.response.ApiResult
 import com.lhs.share.controller.response.ApiResult.Companion.success
@@ -41,15 +41,19 @@ class StarStateController(private val service: StarStateService, private val hel
     @StarStateWriteResponses
     @RequireJwt
     @PatchMapping("/current", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun patch(@RequestParam(name = "account_id") accountId: String, @Valid @RequestBody request: StarStatePatchRequest): ApiResult<StarStateCommandResponse> =
-        success(service.patch(helper.requireUserId(), accountId, request))
+    fun patch(
+        @RequestParam(name = "account_id") accountId: String,
+        @Valid @RequestBody request: StarStatePatchRequest,
+    ): ApiResult<StarStateCommandResponse> = success(service.patch(helper.requireUserId(), accountId, request))
 
     @Operation(summary = "完整 OCR 或 JSON 替换，创建新 generation 与恢复点")
     @StarStateWriteResponses
     @RequireJwt
     @PostMapping("/rebuild", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun rebuild(@RequestParam(name = "account_id") accountId: String, @Valid @RequestBody request: StarStateRebuildRequest): ApiResult<StarStateCommandResponse> =
-        success(service.rebuild(helper.requireUserId(), accountId, request))
+    fun rebuild(
+        @RequestParam(name = "account_id") accountId: String,
+        @Valid @RequestBody request: StarStateRebuildRequest,
+    ): ApiResult<StarStateCommandResponse> = success(service.rebuild(helper.requireUserId(), accountId, request))
 
     @Operation(summary = "读取最近三个星石恢复点")
     @InventoryReadResponses

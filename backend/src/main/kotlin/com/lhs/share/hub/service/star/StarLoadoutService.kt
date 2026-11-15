@@ -4,9 +4,9 @@ import com.lhs.share.hub.controller.star.request.StarLoadoutCurrentRequest
 import com.lhs.share.hub.controller.star.response.StarLoadoutCurrentResponse
 import com.lhs.share.hub.repository.StarLoadoutCurrentRepository
 import com.lhs.share.hub.repository.StarStateCurrentRepository
-import com.lhs.share.hub.repository.entity.StarStateEntry
 import com.lhs.share.hub.repository.entity.StarLoadoutSlots
 import com.lhs.share.hub.repository.entity.StarOperatorLoadout
+import com.lhs.share.hub.repository.entity.StarStateEntry
 import com.lhs.share.hub.service.account.SubAccountService
 import com.lhs.share.hub.service.inventory.InventoryApiException
 import org.springframework.beans.factory.annotation.Qualifier
@@ -37,18 +37,33 @@ class StarLoadoutService(
         return starCasConflictBoundary({
             if (states.findByUserIdAndAccountId(userId, accountId)?.generation != expectedGeneration) throw generationChanged()
             throw conflict()
-        }) { requireNotNull(transactions.execute {
-            val state = states.findByUserIdAndAccountId(userId, accountId)
-                ?: throw InventoryApiException(HttpStatus.UNPROCESSABLE_ENTITY, "star_loadout_inventory_required", "A current star state is required before saving loadout")
-            if (state.generation != expectedGeneration) throw generationChanged()
-            validateReferences(state.inventory, normalized.loadouts, stateService.operatorIds(userId, accountId, account.game))
-            if (!states.fenceLoadoutWrite(userId, accountId, state.generation, state.revision)) throw generationChanged()
-            val saved = starCasConflictBoundary({ throw conflict() }) {
-                repository.replaceForGeneration(userId, accountId, normalized.expectedRevision, expectedGeneration, normalized.loadouts, Instant.now())
-                    ?: throw conflict()
-            }
-            StarLoadoutCurrentResponse.of(saved)
-        }) }
+        }) {
+            requireNotNull(
+                transactions.execute {
+                    val state = states.findByUserIdAndAccountId(userId, accountId)
+                        ?: throw InventoryApiException(
+                            HttpStatus.UNPROCESSABLE_ENTITY,
+                            "star_loadout_inventory_required",
+                            "A current star state is required before saving loadout",
+                        )
+                    if (state.generation != expectedGeneration) throw generationChanged()
+                    validateReferences(state.inventory, normalized.loadouts, stateService.operatorIds(userId, accountId, account.game))
+                    if (!states.fenceLoadoutWrite(userId, accountId, state.generation, state.revision)) throw generationChanged()
+                    val saved = starCasConflictBoundary({ throw conflict() }) {
+                        repository.replaceForGeneration(
+                            userId,
+                            accountId,
+                            normalized.expectedRevision,
+                            expectedGeneration,
+                            normalized.loadouts,
+                            Instant.now(),
+                        )
+                            ?: throw conflict()
+                    }
+                    StarLoadoutCurrentResponse.of(saved)
+                },
+            )
+        }
     }
 
     private fun normalize(request: StarLoadoutCurrentRequest): NormalizedLoadouts {
@@ -79,28 +94,36 @@ class StarLoadoutService(
     }
 
     private fun validateReferences(inventoryEntries: List<StarStateEntry>, loadouts: List<StarOperatorLoadout>, operatorIds: Set<String>) {
-        if (loadouts.any { it.operatorId !in operatorIds }) throw InventoryApiException(
-            HttpStatus.UNPROCESSABLE_ENTITY, "star_loadout_invalid_operator", "operator_id does not exist in the current account",
-        )
+        if (loadouts.any { it.operatorId !in operatorIds }) {
+            throw InventoryApiException(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "star_loadout_invalid_operator",
+                "operator_id does not exist in the current account",
+            )
+        }
         val assignments = loadouts.flatMap { loadout ->
             loadout.slots.values().mapNotNull { (slot, instanceId) ->
                 instanceId?.let { Assignment(loadout.operatorId, slot, it) }
             }
         }
         if (assignments.isEmpty()) return
-        if (inventoryEntries.isEmpty()) throw InventoryApiException(
+        if (inventoryEntries.isEmpty()) {
+            throw InventoryApiException(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "star_loadout_inventory_required",
                 "A current star inventory is required before assigning stars",
             )
+        }
         val byId = inventoryEntries.associateBy(StarStateEntry::instanceId)
         val occupied = HashSet<String>()
         assignments.forEach { assignment ->
-            if (assignment.operatorId !in operatorIds) throw InventoryApiException(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                "star_loadout_invalid_operator",
-                "Assigned operator_id does not exist in the current account",
-            )
+            if (assignment.operatorId !in operatorIds) {
+                throw InventoryApiException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "star_loadout_invalid_operator",
+                    "Assigned operator_id does not exist in the current account",
+                )
+            }
             val entry = byId[assignment.instanceId] ?: throw InventoryApiException(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "star_loadout_invalid_reference",

@@ -1,8 +1,8 @@
 package com.lhs.share.hub.controller.star
 
 import com.lhs.share.config.doc.InventoryReadResponses
-import com.lhs.share.config.doc.StarLoadoutWriteResponses
 import com.lhs.share.config.doc.RequireJwt
+import com.lhs.share.config.doc.StarLoadoutWriteResponses
 import com.lhs.share.config.security.AuthenticationHelper
 import com.lhs.share.controller.response.ApiResult
 import com.lhs.share.controller.response.ApiResult.Companion.success
