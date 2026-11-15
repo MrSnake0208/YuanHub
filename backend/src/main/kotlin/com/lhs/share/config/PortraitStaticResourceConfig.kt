@@ -13,5 +13,9 @@ class PortraitStaticResourceConfig(private val properties: ShareProperties) : We
         registry.addResourceHandler("/portraits/**")
             .addResourceLocations(if (base.endsWith('/')) base else "$base/")
             .setCachePeriod(300)
+        val banners = Path.of(properties.recruitmentBanner.dir).toAbsolutePath().toUri().toString()
+        registry.addResourceHandler("/recruitment-banners/**")
+            .addResourceLocations(if (banners.endsWith('/')) banners else "$banners/")
+            .setCachePeriod(30 * 24 * 60 * 60)
     }
 }

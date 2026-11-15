@@ -44,7 +44,14 @@
                   <option value="hidden">已隐藏</option>
                 </select>
               </label>
-              <label>搜索卡池
+              <label>Banner
+                <select v-model="filterBanner">
+                  <option value="">全部</option>
+                  <option value="set">已配置</option>
+                  <option value="unset">未配置</option>
+                </select>
+              </label>
+              <label class="pool-search">搜索卡池
                 <input v-model.trim="search" type="search" placeholder="名称或 ID">
               </label>
               <button type="button" :disabled="loading || importing" @click="load">刷新目录</button>
@@ -65,7 +72,11 @@
             <p v-if="!loading && !filteredPools.length" class="card empty-state">没有符合条件的卡池。</p>
 
             <div v-else class="pool-list">
-              <article v-for="pool in filteredPools" :key="pool.pool_id" class="card pool-row">
+              <article v-for="pool in filteredPools" :key="pool.pool_id" :ref="element => rememberPoolRow(pool.pool_id, element)" class="card pool-row">
+                <div class="pool-row-banner">
+                  <img v-if="pool.banner && !failedListBanners.has(recruitmentBannerUrl(pool.banner))" :key="pool.banner" :src="recruitmentBannerUrl(pool.banner)" loading="lazy" decoding="async" alt="" width="992" height="274" @error="failedListBanners.add($event.target.getAttribute('src'))" />
+                  <span v-else class="banner-placeholder">{{ pool.banner ? 'Banner 加载失败' : '未配置 Banner' }}</span>
+                </div>
                 <div class="pool-copy">
                   <div class="pool-title-row">
                     <h3>{{ pool.name }}</h3>
@@ -87,7 +98,7 @@
 
           <section v-else ref="editor" class="editor-workspace" aria-labelledby="catalog-editor-title" tabindex="-1">
             <div class="editor-topbar">
-              <button class="quiet" type="button" :disabled="saving" @click="requestCloseEditor"><ArrowLeft :size="16" aria-hidden="true" /> 返回卡池目录</button>
+              <button class="quiet" type="button" :disabled="editorBusy" @click="requestCloseEditor"><ArrowLeft :size="16" aria-hidden="true" /> 返回卡池目录</button>
               <div class="editor-state">
                 <span class="status-badge" :class="{ muted: form.hidden || !form.enabled }">{{ isNew ? '新建卡池' : statusLabel(form) }}</span>
                 <span v-if="dirty" class="dirty-badge">有未保存修改</span>
@@ -102,8 +113,8 @@
             </header>
 
             <section v-if="conflict" class="card conflict-panel" aria-label="版本冲突核对">
-              <p role="status">草稿仍在编辑器中。先读取最新目录核对；不会自动改写草稿或版本。</p>
-              <button type="button" :disabled="saving || loading" @click="readLatest">读取最新版本供核对</button>
+              <p role="status">草稿仍在编辑器中。先读取最新目录核对；不会覆盖其他管理员的修改。</p>
+              <button type="button" :disabled="editorBusy || loading" @click="readLatest">读取最新版本供核对</button>
               <div v-if="latestPool">
                 <p>服务器版本 {{ latestPool.revision }} · {{ statusLabel(latestPool) }}</p>
                 <p>{{ latestPool.name }} · {{ latestPool.pool_type || '类型未填' }} · {{ recruitmentPoolDateLabel(latestPool) }}</p>
@@ -149,13 +160,34 @@
                 </div>
               </section>
 
+              <section class="card section-card" aria-labelledby="pool-banner-title" :aria-busy="bannerBusy">
+                <div class="section-head">
+                  <div>
+                    <h3 id="pool-banner-title">Banner</h3>
+                    <p class="hint">上传后即时生效。PNG / JPEG，≤2MB；建议 992×274px，宽 600–2048px、高 150–1024px、宽高比 3.0–4.5。</p>
+                  </div>
+                </div>
+                <div class="banner-preview">
+                  <img v-if="form.banner && recruitmentBannerUrl(form.banner) !== failedBanner" :key="form.banner" :src="recruitmentBannerUrl(form.banner)" width="992" height="274" alt="当前卡池 Banner 预览" decoding="async" @error="failedBanner = $event.target.getAttribute('src')" />
+                  <p v-else class="hint">{{ form.banner ? 'Banner 加载失败，玩家端使用立绘封面' : '未设置 Banner，玩家端使用立绘封面' }}</p>
+                </div>
+                <input ref="bannerInput" class="file-input" type="file" accept="image/png,image/jpeg" :disabled="isNew || editorBusy || loading || conflict" aria-label="选择卡池 Banner" @change="uploadBanner">
+                <div class="banner-actions">
+                  <button type="button" :disabled="isNew || editorBusy || loading || conflict" @click="bannerInput?.click()">{{ bannerBusy ? '处理中…' : form.banner ? '更换 Banner' : '上传 Banner' }}</button>
+                  <button v-if="form.banner" class="danger" type="button" :disabled="isNew || editorBusy || loading || conflict" @click="changeBanner()">删除 Banner</button>
+                </div>
+                <p v-if="isNew" class="hint">保存卡池后可上传 Banner</p>
+                <p v-else class="hint">上传、删除即时生效，其它字段仍需点击保存。</p>
+                <p v-if="bannerError" class="error" role="alert">{{ bannerError }}</p>
+              </section>
+
               <section class="card section-card" aria-labelledby="pool-up-title">
                 <div class="section-head">
                   <div>
                     <h3 id="pool-up-title">当前 UP</h3>
                     <p class="hint">已关联密探的名称随图鉴更新。</p>
                   </div>
-                  <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
+                  <button type="button" :disabled="editorBusy || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
                 </div>
 
                 <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。</p>
@@ -171,7 +203,7 @@
                           <small>{{ slot.operator_id ? '已对应图鉴，沿用固定历史身份' : '占位密探，可先开放记录后再补图鉴映射' }}</small>
                         </div>
                       </div>
-                      <button class="danger ghost" type="button" :disabled="saving" @click="removeOrRetireSlot(slot)">{{ isUnsavedSlot(slot) ? '移除' : '退役' }}</button>
+                      <button class="danger ghost" type="button" :disabled="editorBusy" @click="removeOrRetireSlot(slot)">{{ isUnsavedSlot(slot) ? '移除' : '退役' }}</button>
                     </div>
 
                     <div class="slot-fields">
@@ -214,8 +246,8 @@
                         </div>
                       </div>
                       <div class="history-actions">
-                        <button v-if="canUndoRetire(slot)" type="button" :disabled="saving" @click="undoRetire(slot)">撤销本次退役</button>
-                        <button v-else type="button" :disabled="saving" @click="toggleHistoricalEdit(slot)">{{ editingHistoricalSlotId === slot.id ? '完成修正' : '修正历史映射' }}</button>
+                        <button v-if="canUndoRetire(slot)" type="button" :disabled="editorBusy" @click="undoRetire(slot)">撤销本次退役</button>
+                        <button v-else type="button" :disabled="editorBusy" @click="toggleHistoricalEdit(slot)">{{ editingHistoricalSlotId === slot.id ? '完成修正' : '修正历史映射' }}</button>
                       </div>
                     </div>
 
@@ -257,8 +289,8 @@
               <div class="editor-actions" aria-label="卡池编辑操作">
                 <span class="save-state">{{ dirty ? '当前修改尚未保存' : '没有待保存修改' }}</span>
                 <div>
-                  <button type="button" :disabled="saving" @click="requestCloseEditor">取消</button>
-                  <button class="primary" type="submit" :disabled="saving || loading || !dirty">{{ saving ? '保存中…' : (isNew ? '创建卡池' : '保存修改') }}</button>
+                  <button type="button" :disabled="editorBusy" @click="requestCloseEditor">取消</button>
+                  <button class="primary" type="submit" :disabled="editorBusy || loading || conflict || !dirty">{{ saving ? '保存中…' : (isNew ? '创建卡池' : '保存修改') }}</button>
                 </div>
               </div>
             </form>
@@ -287,7 +319,8 @@ import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js
 import { dialog } from '../../utils/dialog.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { getOperatorCatalog } from '../../api/operator.js'
-import { createAdminRecruitmentPool, importAdminRecruitmentCatalog, listAdminRecruitmentCatalog, updateAdminRecruitmentPool } from '../../api/recruitment.js'
+import { recruitmentBannerUrl } from '../../api/request.js'
+import { createAdminRecruitmentPool, deleteAdminRecruitmentBanner, importAdminRecruitmentCatalog, listAdminRecruitmentCatalog, updateAdminRecruitmentPool, uploadAdminRecruitmentBanner } from '../../api/recruitment.js'
 import { operatorCatalogEntries } from './rules.js'
 
 const router = useRouter()
@@ -295,12 +328,19 @@ const pools = ref([])
 const operators = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const bannerBusy = ref(false)
+const bannerInput = ref(null)
+const bannerError = ref('')
+const failedBanner = ref('')
+const failedListBanners = ref(new Set())
+const editorBusy = computed(() => saving.value || bannerBusy.value)
 const importing = ref(false)
 const error = ref('')
 const operatorError = ref('')
 const notice = ref('')
 const filterGame = ref('')
 const filterStatus = ref('')
+const filterBanner = ref('')
 const search = ref('')
 const form = ref(null)
 const isNew = ref(false)
@@ -337,6 +377,8 @@ const permitted = computed(() => !!identity.value && hasPermission(auth.adminAcc
 const filteredPools = computed(() => pools.value.filter(pool => {
   if (filterGame.value && pool.game !== filterGame.value) return false
   if (filterStatus.value && stateOf(pool) !== filterStatus.value) return false
+  if (filterBanner.value === 'set' && !pool.banner) return false
+  if (filterBanner.value === 'unset' && pool.banner) return false
   const query = search.value.toLowerCase()
   return !query || [pool.name, pool.pool_id].some(value => String(value || '').toLowerCase().includes(query))
 }).sort((a, b) => Number(isPermanentRecruitmentPool(b)) - Number(isPermanentRecruitmentPool(a))))
@@ -355,6 +397,13 @@ const operatorAvatar = operator => operator?.avatar || operator?.avatar_url || r
 const activePoolSlots = pool => pool.up_agents.filter(slot => slot.active)
 let generation = 0
 let alive = true
+let returnPoolId = ''
+const poolRows = new Map()
+
+function rememberPoolRow(id, element) {
+  if (element) poolRows.set(id, element)
+  else poolRows.delete(id)
+}
 
 const current = token => alive && permitted.value && token.generation === generation && token.identity === identity.value
 const capture = () => ({ generation, identity: identity.value })
@@ -382,6 +431,8 @@ function comparableForm(value) {
 }
 
 function resetEditorTracking(pool) {
+  bannerError.value = ''
+  failedBanner.value = ''
   const slots = pool?.up_agents || []
   formBaseline.value = JSON.stringify(comparableForm(pool))
   originalSlotIds.value = new Set(slots.map(slot => slot.id))
@@ -395,7 +446,12 @@ function resetEditorTracking(pool) {
   attemptedSave.value = false
 }
 
-function closeEditor() {
+async function closeEditor() {
+  const poolId = returnPoolId
+  const token = capture()
+  returnPoolId = ''
+  bannerError.value = ''
+  failedBanner.value = ''
   form.value = null
   isNew.value = false
   formBaseline.value = ''
@@ -409,11 +465,17 @@ function closeEditor() {
   editingHistoricalSlotId.value = ''
   attemptedSave.value = false
   error.value = ''
+  await nextTick()
+  if (!poolId || !current(token) || form.value || error.value) return
+  const row = poolRows.get(poolId)
+  if (!row) return
+  row.scrollIntoView({ block: 'center', behavior: 'instant' })
+  row.querySelector('button')?.focus({ preventScroll: true })
 }
 
 async function requestCloseEditor() {
-  if (saving.value) return
-  if (await confirmEditorDiscard()) closeEditor()
+  if (editorBusy.value) return
+  if (await confirmEditorDiscard()) await closeEditor()
 }
 
 function openImport() {
@@ -466,6 +528,7 @@ async function load() {
     if (!current(token)) return
     if (!Array.isArray(catalog?.pools)) throw new Error('公共卡池目录响应无效')
     pools.value = catalog.pools
+    failedListBanners.value.clear()
     operators.value = Array.isArray(operatorResult) ? operatorResult : []
     operatorError.value = operatorResult.error || ''
   } catch (err) {
@@ -487,8 +550,58 @@ async function focusEditor() {
   editor.value?.focus()
 }
 
+async function uploadBanner(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file || !permitted.value || isNew.value || editorBusy.value || loading.value || conflict.value) return
+  bannerError.value = ''
+  if (file.size > 2 * 1024 * 1024) {
+    bannerError.value = 'Banner 不能超过 2MB'
+    return
+  }
+  await changeBanner(file)
+}
+
+async function changeBanner(file) {
+  if (!permitted.value || !form.value || isNew.value || editorBusy.value || loading.value || conflict.value) return
+  const token = capture()
+  const draft = form.value
+  bannerBusy.value = true
+  bannerError.value = ''
+  try {
+    if (!file && !await dialog.confirm({
+      title: `删除「${draft.name || draft.pool_id}」的 Banner？`,
+      message: '删除后立即生效，玩家端将恢复立绘封面；需要再次使用时须重新上传。其它卡池引用的相同图片不受影响。',
+      type: 'danger', confirmText: '删除 Banner', cancelText: '保留 Banner',
+    })) return
+    if (!current(token) || form.value !== draft) return
+    const result = file
+      ? await uploadAdminRecruitmentBanner(draft.pool_id, file)
+      : await deleteAdminRecruitmentBanner(draft.pool_id)
+    if (!current(token) || form.value !== draft) return
+    const index = pools.value.findIndex(pool => pool.pool_id === result.pool_id)
+    if (index >= 0) pools.value.splice(index, 1, result)
+    if (result.revision !== draft.revision + 1) {
+      conflict.value = true
+      latestPool.value = result
+      bannerError.value = 'Banner 已更新，但卡池同时有其他修改。请核对最新版本并重新打开卡池，草稿仍保留。'
+    }
+    draft.banner = result.banner
+    draft.revision = result.revision
+    failedBanner.value = ''
+    failedListBanners.value.delete(recruitmentBannerUrl(result.banner))
+  } catch (err) {
+    if (!current(token) || form.value !== draft) return
+    bannerError.value = err.message || 'Banner 更新失败，请重试'
+    if (err.status === 409) conflict.value = true
+  } finally {
+    if (current(token)) bannerBusy.value = false
+  }
+}
+
 function openNew() {
   if (!permitted.value) return
+  returnPoolId = ''
   isNew.value = true
   form.value = {
     pool_id: 'pool_' + crypto.randomUUID(),
@@ -512,6 +625,7 @@ function openNew() {
 
 function openEdit(pool) {
   if (!permitted.value) return
+  returnPoolId = pool.pool_id
   isNew.value = false
   form.value = {
     ...pool,
@@ -530,7 +644,7 @@ function openEdit(pool) {
 }
 
 function addSlot() {
-  if (!form.value || saving.value) return
+  if (!form.value || editorBusy.value) return
   if (activeSlots.value.length >= 120) {
     showError('单个卡池最多保留 120 个启用中的 UP 名额')
     return
@@ -553,7 +667,7 @@ function canUndoRetire(slot) {
 }
 
 async function removeOrRetireSlot(slot) {
-  if (!form.value || saving.value) return
+  if (!form.value || editorBusy.value) return
   if (isUnsavedSlot(slot)) {
     form.value.up_agents = form.value.up_agents.filter(item => item.id !== slot.id)
     return
@@ -571,7 +685,7 @@ async function removeOrRetireSlot(slot) {
 }
 
 function undoRetire(slot) {
-  if (saving.value || !canUndoRetire(slot)) return
+  if (editorBusy.value || !canUndoRetire(slot)) return
   slot.active = true
   editingHistoricalSlotId.value = ''
 }
@@ -607,7 +721,7 @@ function validateForm() {
 }
 
 async function save() {
-  if (!permitted.value || saving.value || !form.value) return
+  if (!permitted.value || editorBusy.value || conflict.value || !form.value) return
   attemptedSave.value = true
   const validationError = validateForm()
   if (validationError) {
@@ -664,8 +778,9 @@ async function save() {
     const index = pools.value.findIndex(pool => pool.pool_id === result.pool_id)
     if (index >= 0) pools.value.splice(index, 1, result)
     else pools.value.unshift(result)
-    closeEditor()
+    returnPoolId = result.pool_id
     notice.value = '卡池已保存；已有记录继续沿用原来的固定身份。'
+    await closeEditor()
   } catch (err) {
     if (!current(token)) return
     conflict.value = err.status === 409
@@ -676,6 +791,7 @@ async function save() {
 }
 
 async function readLatest() {
+  if (editorBusy.value || loading.value) return
   const token = capture()
   const poolId = form.value?.pool_id
   loading.value = true
@@ -692,11 +808,16 @@ async function readLatest() {
 
 watch([identity, permitted], () => {
   generation++
+  returnPoolId = ''
   pools.value = []
   operators.value = []
   form.value = null
   loading.value = false
   saving.value = false
+  bannerBusy.value = false
+  bannerError.value = ''
+  failedBanner.value = ''
+  failedListBanners.value.clear()
   importing.value = false
   error.value = ''
   notice.value = ''
@@ -716,6 +837,8 @@ onScopeDispose(() => {
 </script>
 
 <style scoped>
+.pool-row-banner img{border:0;background:none}
+.banner-placeholder{border:1px dashed var(--line);border-radius:8px;background:none;color:var(--ink-60)}
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .fields .wish-mode > span { display: flex; align-items: center; gap: 8px; }
 .fields .wish-mode input { width: auto; flex: none; }

@@ -23,13 +23,14 @@
       <li v-for="(pool, index) in visiblePools" :key="pool.pool_id" class="timeline-row">
         <div class="date-rail" aria-hidden="true"><span v-if="permanent(pool) || !startDate(pool) || !visiblePools[index - 1] || permanent(visiblePools[index - 1]) || startDate(visiblePools[index - 1]).slice(0, 7) !== startDate(pool).slice(0, 7)">{{ permanent(pool) ? '常驻' : startDate(pool) ? startDate(pool).slice(0, 4) + '年' + Number(startDate(pool).slice(5, 7)) + '月' : '日期' }}</span><strong>{{ permanent(pool) ? '∞' : startDate(pool) ? Number(startDate(pool).slice(8, 10)) + '日' : '未知' }}</strong></div>
         <div class="pool-group">
-          <div class="pool-card" role="group" :aria-label="cardLabel(pool)" @click="onSummaryClick($event, pool)">
-            <span class="pool-cover" :class="['cover-tone-' + recruitmentPoolType(details(pool).pool_type).coverTone, { 'has-portraits': coverPortraits(pool).length > 0 }]" :style="recruitmentCoverStyle(details(pool).pool_type)">
-              <span class="cover-heading">
+          <div class="pool-card" :class="{ 'has-banner': !!bannerSrc(pool) }" role="group" :aria-label="cardLabel(pool)" @click="onSummaryClick($event, pool)">
+            <span class="pool-cover" :class="['cover-tone-' + recruitmentPoolType(details(pool).pool_type).coverTone, { 'has-banner': !!bannerSrc(pool), 'has-portraits': !bannerSrc(pool) && coverPortraits(pool).length > 0 }]" :style="bannerSrc(pool) ? null : recruitmentCoverStyle(details(pool).pool_type)">
+              <img v-if="bannerSrc(pool)" :key="bannerSrc(pool)" class="cover-banner" :src="bannerSrc(pool)" width="992" height="274" loading="lazy" decoding="async" alt="" @error="markBannerFailed($event.target.getAttribute('src'))" />
+              <span v-else class="cover-heading">
                 <span class="cover-caption">{{ recruitmentPoolType(details(pool).pool_type).label }}</span>
                 <span class="cover-name">{{ details(pool).name }}</span>
               </span>
-              <span class="cover-art">
+              <span v-if="!bannerSrc(pool)" class="cover-art">
                 <span v-if="coverPortraits(pool).length" class="cover-portraits" :class="'portrait-count-' + coverPortraits(pool).length">
                   <img v-for="portrait in coverPortraits(pool)" :key="portrait.id" class="cover-portrait" :src="portrait.src" alt="" loading="lazy" decoding="async" @error="markPortraitFailed(portrait.src)" />
                 </span>
@@ -41,13 +42,26 @@
                 </span>
               </span>
             </span>
-            <span class="pool-content">
-              <span class="pool-name">{{ details(pool).name }}</span>
-              <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
-              <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
+            <span v-if="bannerSrc(pool)" class="banner-content">
+              <span class="banner-head">
+                <span class="banner-meta">
+                  <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
+                  <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
+                </span>
+                <span v-if="coverAgents(pool).length" class="pool-up-row" aria-hidden="true">
+                  <span v-for="agent in coverAgents(pool)" :key="agent.id" class="pool-up-item" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">
+                    <OperatorAvatar class="pool-up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
+                    <span class="pool-up-count">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
+                  </span>
+                </span>
+                <span class="banner-actions">
+                  <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)">{{ isExpanded(pool) ? '收起明细' : '展开明细' }}<ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
+                  <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
+                </span>
+              </span>
               <span v-if="cumulativeChoiceNames(pool)" class="pool-cumulative-choice">累抽自选 · {{ cumulativeChoiceNames(pool) }}</span>
               <span v-if="isEmptyPool(pool)" class="pool-empty">还没有记录</span>
-              <span v-else class="pool-metrics">
+              <span v-else class="pool-metrics banner-metrics">
                 <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
                   <span class="metric-label">{{ metric.label }}</span>
                   <span class="metric-value"><b :class="{ 'is-unknown': metric.value === '未知' || metric.value === '—' }">{{ metric.value }}</b><small v-if="metric.unit && metric.value !== '未知' && metric.value !== '—'">{{ metric.unit }}</small></span>
@@ -55,12 +69,28 @@
               </span>
               <span v-if="poolSummaries[pool.pool_id]?.four_star_count" class="metric-note">另有 {{ poolSummaries[pool.pool_id].four_star_count }} 条4星计次</span>
             </span>
-            <span class="pool-entry">
-              <span class="pool-actions">
-                <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)">{{ isExpanded(pool) ? '收起明细' : '展开明细' }}<ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
-                <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
+            <template v-else>
+              <span class="pool-content">
+                <span class="pool-name">{{ details(pool).name }}</span>
+                <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
+                <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
+                <span v-if="cumulativeChoiceNames(pool)" class="pool-cumulative-choice">累抽自选 · {{ cumulativeChoiceNames(pool) }}</span>
+                <span v-if="isEmptyPool(pool)" class="pool-empty">还没有记录</span>
+                <span v-else class="pool-metrics">
+                  <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
+                    <span class="metric-label">{{ metric.label }}</span>
+                    <span class="metric-value"><b :class="{ 'is-unknown': metric.value === '未知' || metric.value === '—' }">{{ metric.value }}</b><small v-if="metric.unit && metric.value !== '未知' && metric.value !== '—'">{{ metric.unit }}</small></span>
+                  </span>
+                </span>
+                <span v-if="poolSummaries[pool.pool_id]?.four_star_count" class="metric-note">另有 {{ poolSummaries[pool.pool_id].four_star_count }} 条4星计次</span>
               </span>
-            </span>
+              <span class="pool-entry">
+                <span class="pool-actions">
+                  <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)">{{ isExpanded(pool) ? '收起明细' : '展开明细' }}<ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
+                  <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
+                </span>
+              </span>
+            </template>
           </div>
           <RecruitmentRecordsPreview v-if="hasRecords(pool) && isExpanded(pool)" :id="previewId(pool)" :pool="pool" :catalog="catalog" :agents="agents" :entry="previews[pool.pool_id]" :view="recordView" :busy="busy" @load="more => $emit('load-preview', pool.pool_id, more)" />
         </div>
@@ -80,6 +110,7 @@ import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { isPermanentRecruitmentPool, recruitmentCoverStyle, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
+import { recruitmentBannerUrl } from '../../api/request.js'
 
 const timelineId = 'recruitment-timeline-' + useId()
 const props = defineProps({ pools: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, agents: { type: Array, default: () => [] }, poolSummaries: { type: Object, default: () => ({}) }, previews: { type: Object, default: () => ({}) }, busy: Boolean, contextVersion: Number, guideActive: Boolean })
@@ -98,7 +129,13 @@ const goldCount = pool => {
   return Number.isInteger(summary?.event_count) ? summary.event_count - (summary.four_star_count || 0) : null
 }
 const failedPortraits = ref(new Set())
+const failedBanners = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
+const bannerSrc = pool => {
+  const src = recruitmentBannerUrl(details(pool).banner)
+  return src && !failedBanners.value.has(src) ? src : ''
+}
+function markBannerFailed(src) { if (src) failedBanners.value.add(src) }
 const startDate = pool => details(pool).start_date || ''
 const cumulativeChoiceNames = pool => (pool.cumulative_choice_agent_ids?.length ? pool.cumulative_choice_agent_ids : pool.cumulative_choice_agent_id ? [pool.cumulative_choice_agent_id] : []).map(id => props.agents.find(agent => agent.id === id)?.name || id).join('、')
 const permanent = pool => isPermanentRecruitmentPool(details(pool))
@@ -168,6 +205,12 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 </script>
 
 <style scoped>
+.pool-cover.has-banner{border:0;border-radius:0;background:none}.pool-cover.has-banner::before{display:none}
+.pool-up-row .pool-up-avatar{border:1.5px solid var(--accent);border-radius:50%}.pool-up-row :deep(.pool-up-avatar img){border-radius:50%}
+.pool-up-row :deep(.pool-up-avatar > span){display:grid;place-items:center;width:100%;height:100%;font-size:13px;line-height:1;font-weight:700;border-radius:50%;overflow:hidden}
+.pool-up-item.is-muted{color:var(--ink-60)}.pool-up-item.is-muted .pool-up-avatar{border:1px solid var(--line);filter:saturate(.6)}
+.banner-content .banner-metrics,.banner-content .pool-empty{border:0;border-radius:12px;background:var(--cream)}
+.banner-content .pool-status:not(.status-open){color:var(--ink-60)}.banner-actions .entry-label{border-radius:10px}
 .pool-cumulative-choice{font-size:12px;line-height:1.7;color:var(--ink-60);overflow-wrap:anywhere}
 .batch-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}

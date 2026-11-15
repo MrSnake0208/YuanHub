@@ -150,6 +150,7 @@ class SecurityConfig(
                 "/avatar/**",
                 "/xinzhi/**",
                 "/portraits/**",
+                "/recruitment-banners/**",
                 "/media/**",
                 "/user/open-api/permissions",
                 "/open-api/**",

@@ -7,11 +7,37 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Repository
+import java.time.Instant
 
 @Repository
 class RecruitmentCatalogRepository(@param:Qualifier("hubMongoTemplate") private val template: MongoTemplate) {
     fun all(): List<RecruitmentCatalogPool> = template.findAll(RecruitmentCatalogPool::class.java)
     fun find(poolId: String): RecruitmentCatalogPool? = template.findById(poolId, RecruitmentCatalogPool::class.java)
+
+    fun isBannerReferenced(banner: String): Boolean = template.exists(
+        Query.query(Criteria.where("banner").`is`(banner)),
+        RecruitmentCatalogPool::class.java,
+    )
+
+    fun updateBanner(
+        poolId: String,
+        expectedCurrentRevision: Long,
+        banner: String?,
+        updatedBy: String,
+        updatedAt: Instant,
+    ): Boolean {
+        val version = if (expectedCurrentRevision == 0L) {
+            Criteria().orOperator(Criteria.where("revision").`is`(0), Criteria.where("revision").exists(false))
+        } else {
+            Criteria.where("revision").`is`(expectedCurrentRevision)
+        }
+        return template.updateFirst(
+            Query.query(Criteria.where("_id").`is`(poolId)).addCriteria(version),
+            Update().set("banner", banner).set("revision", expectedCurrentRevision + 1)
+                .set("updatedBy", updatedBy).set("updatedAt", updatedAt),
+            RecruitmentCatalogPool::class.java,
+        ).matchedCount == 1L
+    }
 
     /** Creation uses unique _id; updates CAS even when an old document has no revision. */
     fun save(next: RecruitmentCatalogPool, existing: Boolean = next.revision != 1L): Boolean {

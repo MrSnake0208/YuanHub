@@ -2,6 +2,7 @@ package com.lhs.share.hub.service.operator
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.lhs.share.hub.controller.operator.response.OperatorCurrentEntryDto
 import com.lhs.share.hub.controller.operator.response.OperatorScanImportEvent
@@ -17,6 +18,8 @@ import com.lhs.share.hub.repository.OperatorScanReviewRepository
 import com.lhs.share.hub.repository.OperatorV3ImportRecordRepository
 import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.OperatorCatalogEntity
+import com.lhs.share.hub.repository.entity.OperatorDisc
+import com.lhs.share.hub.repository.entity.OperatorDiscLoadout
 import com.lhs.share.hub.repository.entity.OperatorScanReview
 import com.lhs.share.hub.repository.entity.OperatorV3ImportRecord
 import com.lhs.share.hub.repository.entity.SubAccount
@@ -131,7 +134,8 @@ class OperatorV3ImportService(
                             val relatedWritten = written.any { prior ->
                                 OperatorSharedGrowth.baseId(prior.operatorId, catalogService) ==
                                     OperatorSharedGrowth.baseId(item.operatorId, catalogService) &&
-                                    prior.status in setOf(ACCEPTED, PARTIAL)
+                                    (prior.status in setOf(ACCEPTED, PARTIAL) ||
+                                        prior.status == REVIEW && prior.changes.isNotEmpty())
                             }
                             if (relatedWritten) {
                                 item.patch.put(
@@ -210,10 +214,16 @@ class OperatorV3ImportService(
                     written.forEach { item ->
                         if (item.status == REVIEW || item.status == REJECTED) {
                             val selected = entries(record).firstOrNull { text(it, "operator_id") == item.operatorId } ?: return@forEach
+                            val reviewEntry = selected.deepCopy()
+                            if (item.warnings.any { it.code == "disc_alignment_requires_review" }) {
+                                val sections = reviewEntry.get("section_status") as? ObjectNode ?: objectMapper.createObjectNode()
+                                sections.put("disc_loadouts", REVIEW)
+                                reviewEntry.set<ObjectNode>("section_status", sections)
+                            }
                             val singleRecord = record.deepCopy()
                             singleRecord.set<com.fasterxml.jackson.databind.node.ArrayNode>(
                                 "entries",
-                                objectMapper.createArrayNode().add(selected),
+                                objectMapper.createArrayNode().add(reviewEntry),
                             )
                             val singleDocument = command.document.deepCopy()
                             singleDocument.set<com.fasterxml.jackson.databind.node.ArrayNode>(
@@ -548,8 +558,19 @@ class OperatorV3ImportService(
             val partial = hasPartial(entry)
             val matchReview = entry.path("match").path("status").asText("ready") != "ready"
             if ((review || matchReview) && !command.confirmReview) removeReviewSections(patch, entry, matchReview)
+            val scanning = command.scanAccountId != null || text(record, "source_kind") == "scan"
+            val latest = operatorService.current(userId, target.accountId, targetGame).singleOrNull()?.entries?.get(operatorId)
+            val discReview = if (scanning && patch.has("disc_loadouts")) {
+                alignScanDiscLoadouts(patch, latest?.discLoadouts.orEmpty(), catalog)
+            } else {
+                null
+            }
+            if (discReview != null) {
+                patch.remove("disc_loadouts")
+                warnings += issue("disc_alignment_requires_review", discReview, "disc_loadouts")
+            }
             if (patch.size() <= 1) {
-                val status = if (review || matchReview) REVIEW else UNCHANGED
+                val status = if (review || matchReview || discReview != null) REVIEW else UNCHANGED
                 return PreparedItem(
                     target.accountId,
                     targetGame,
@@ -565,7 +586,6 @@ class OperatorV3ImportService(
                     ),
                 )
             }
-            val latest = operatorService.current(userId, target.accountId, targetGame).singleOrNull()?.entries?.get(operatorId)
             if (text(record, "source_kind") == "scan" &&
                 latest?.updatedAt?.isAfter(OffsetDateTime.parse(text(record, "effective_at")).toInstant()) == true
             ) {
@@ -584,12 +604,17 @@ class OperatorV3ImportService(
                     ),
                 )
             }
-            val expectedRevision = currentRevision(userId, target.accountId, targetGame, operatorId)
+            val expectedRevision = if (scanning) {
+                latest?.revision ?: 0L
+            } else {
+                currentRevision(userId, target.accountId, targetGame, operatorId)
+            }
             patch.put("expected_revision", expectedRevision)
             val preview = operatorService.previewCurrentPatch(userId, target.accountId, targetGame, operatorId, patch)
             val changes = changes(patch, preview.before, preview.after)
             val unchanged = changes.isEmpty()
             val status = when {
+                discReview != null -> REVIEW
                 unchanged -> UNCHANGED
                 (review || matchReview) && !command.confirmReview -> REVIEW
                 partial -> PARTIAL
@@ -628,6 +653,92 @@ class OperatorV3ImportService(
                 ),
             )
         }
+    }
+
+    private fun alignScanDiscLoadouts(
+        patch: ObjectNode,
+        existing: List<OperatorDiscLoadout>,
+        catalog: OperatorCatalogEntity,
+    ): String? {
+        val incoming = patch.withArray("disc_loadouts").map { it as ObjectNode }
+        if (existing.none { it.status != "unmarked" || it.targetDiscs.isNotEmpty() } ||
+            incoming.isNotEmpty() && incoming.all { it.has("status") && it.has("target_discs") }
+        ) {
+            return null
+        }
+        val ids = mutableSetOf<String>()
+        incoming.forEachIndexed { index, item ->
+            val id = text(item, "id").trim()
+            if (id.length !in 1..64 || !ids.add(id)) {
+                throw OperatorApiException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "invalid_disc_loadout",
+                    "loadout id must be unique with length 1..64",
+                    operatorId = catalog.operatorId,
+                    fieldPath = "disc_loadouts[$index].id",
+                )
+            }
+        }
+        fun canonical(names: List<String>) = names.map { catalog.discByName(it)?.otName ?: it }.sorted()
+        val oldKeys = existing.map { canonical(it.discs.map(OperatorDisc::otName)) }
+        val newKeys = incoming.map { canonical(it.withArray("discs").map { disc -> text(disc, "ot_name") }) }
+        val duplicate = oldKeys.distinct().size != oldKeys.size || newKeys.distinct().size != newKeys.size
+        val annotations = existing.map { it.status to canonical(it.targetDiscs.map(OperatorDisc::otName)) }
+        if (incoming.isNotEmpty() && duplicate && annotations.distinct().size > 1) {
+            return "命盘词条重复且旧标记或目标不同，无法确定归属；本次未覆盖命盘，请对照游戏复核。"
+        }
+
+        val unmatched = incoming.indices.toMutableSet()
+        val matches = mutableMapOf<Int, Int>()
+        oldKeys.forEachIndexed { oldIndex, key ->
+            unmatched.firstOrNull { newKeys[it] == key }?.let { newIndex ->
+                matches[oldIndex] = newIndex
+                unmatched.remove(newIndex)
+            }
+        }
+        val remaining = existing.indices.filter { it !in matches }
+        if (unmatched.isNotEmpty()) {
+            if (incoming.size < existing.size) {
+                return "只采集到部分命盘且词条无法匹配旧标记或目标；本次未覆盖命盘，请对照游戏复核。"
+            }
+            if (remaining.size == 1 && unmatched.size == 1) {
+                if (existing[remaining.single()].status == "perfect") {
+                    return "原完美盘的实际词条已变化，无法继续沿用完美标记；本次未覆盖命盘，请对照游戏复核。"
+                }
+            } else if (remaining.any { existing[it].status != "unmarked" || existing[it].targetDiscs.isNotEmpty() }) {
+                return "多套命盘词条发生变化，无法唯一对应旧标记或目标；本次未覆盖命盘，请对照游戏复核。"
+            }
+            remaining.zip(unmatched.toList()).forEach { (oldIndex, newIndex) ->
+                matches[oldIndex] = newIndex
+                unmatched.remove(newIndex)
+            }
+        }
+
+        fun discsNode(discs: List<OperatorDisc>): ArrayNode = objectMapper.createArrayNode().also { array ->
+            discs.forEach { array.add(objectMapper.createObjectNode().put("ot_name", it.otName)) }
+        }
+        val aligned = objectMapper.createArrayNode()
+        existing.forEachIndexed { index, old ->
+            val item = matches[index]?.let { incoming[it].deepCopy() } ?: objectMapper.createObjectNode()
+                .put("name", old.name).set<ObjectNode>("discs", discsNode(old.discs))
+            item.put("id", old.id)
+            if (!item.has("status")) item.put("status", old.status)
+            if (!item.has("target_discs")) item.set<ArrayNode>("target_discs", discsNode(old.targetDiscs))
+            aligned.add(item)
+        }
+        val usedIds = existing.map { it.id }.toMutableSet()
+        unmatched.forEach { index ->
+            val item = incoming[index].deepCopy()
+            if (text(item, "id").trim() in usedIds) {
+                item.put("id", (1..2).map { "disc_$it" }.first { it !in usedIds })
+            }
+            usedIds += text(item, "id").trim()
+            if (!item.has("status")) item.put("status", "unmarked")
+            if (!item.has("target_discs")) item.set<ArrayNode>("target_discs", objectMapper.createArrayNode())
+            aligned.add(item)
+        }
+        patch.set<ArrayNode>("disc_loadouts", aligned)
+        return null
     }
 
     private fun parseCommand(body: JsonNode, scanAccountId: String?): ImportCommand {

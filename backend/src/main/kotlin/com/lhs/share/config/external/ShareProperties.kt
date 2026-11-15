@@ -33,6 +33,8 @@ data class ShareProperties(
     @NestedConfigurationProperty
     var portrait: Portrait = Portrait(),
     @NestedConfigurationProperty
+    var recruitmentBanner: RecruitmentBanner = RecruitmentBanner(),
+    @NestedConfigurationProperty
     var media: Media = Media(),
 ) {
     /**
@@ -143,6 +145,8 @@ data class ShareProperties(
     data class Xinzhi(var dir: String = "./data/xinzhi")
 
     data class Portrait(var dir: String = "./data/portraits")
+
+    data class RecruitmentBanner(var dir: String = "./data/recruitment-banners")
 
     /**
      * 媒体文件上传配置

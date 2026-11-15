@@ -42,6 +42,7 @@ data/media
 /data/avatar/*.webp.tmp
 /data/xinzhi/*.png.tmp
 /data/portraits/
+/data/recruitment-banners/
 
 # Local-only beta preparation dependencies; keep UID exports outside the repository.
 /scripts/beta/node_modules/

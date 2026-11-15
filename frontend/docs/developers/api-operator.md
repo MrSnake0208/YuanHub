@@ -57,6 +57,8 @@ curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
 
 先检查 preview 的逐项结果，再提交原始文件；preview 不提供绕过后续校验的授权。`review/unavailable` 分区不等于可靠采集；一次请求成功不代表所有分区均写入。缺少突破或未知化极不能从等级或旧31猜测。
 
+采集导入（含浏览器导入 `source_kind=scan` 文件）在缺少命盘标记或目标时，按图鉴归一后的实际词条匹配旧命盘，保留旧顺序及未覆盖的旧盘。无法可靠匹配时，仅跳过命盘分区并返回 `review`，`warnings` 包含 `disc_alignment_requires_review`（`field=disc_loadouts`）和具体原因；其他可靠分区仍可保存。此保护不受 `confirm_review=true` 绕过。非采集备份恢复和手动 PATCH 保持原有数组顺序语义。详细规则见后端 [命盘目标与采集对齐说明](../../../backend/docs/operator-disc-targets.md)。
+
 ## JWT 完整备份与恢复
 
 要求普通 JWT、账号归属和当前 Beta 资格。完整备份使用 V5，服务端 export 默认仍为 V2。
