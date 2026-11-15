@@ -22,11 +22,11 @@ class MaayuanDiagnosticParserTest {
         }
         assertNull(parser.parseIntent(mapper.writeValueAsBytes(intent)).log)
         val log = intent.putObject("log").put("size", 1).put("content_md5", "AAAAAAAAAAAAAAAAAAAAAA==")
-        for (size in listOf(1, 262144)) {
+        for (size in listOf(1, 262144, 4194304)) {
             log.put("size", size)
             assertEquals(size.toLong(), parser.parseIntent(mapper.writeValueAsBytes(intent)).log?.size)
         }
-        for (size in listOf(0, -1, 262145, Long.MAX_VALUE)) {
+        for (size in listOf(0, -1, 4194305, Long.MAX_VALUE)) {
             log.put("size", size)
             assertStatus(422) { parser.parseIntent(mapper.writeValueAsBytes(intent)) }
         }
