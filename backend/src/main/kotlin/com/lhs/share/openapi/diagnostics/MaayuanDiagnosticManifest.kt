@@ -212,7 +212,9 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                         valid(issue.stage == "star_capacity" && issue.reason in setOf("count_mismatch", "capacity_unread"))
                     }
                     "star_sync_failed" -> {
-                        valid(issue.stage == "star_sync" && issue.reason in setOf("http_401", "http_403", "http_409", "http_422", "network"))
+                        valid(
+                            issue.stage == "star_sync" && issue.reason in setOf("http_401", "http_403", "http_409", "http_422", "network"),
+                        )
                     }
                     else -> valid(false)
                 }

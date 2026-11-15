@@ -51,11 +51,10 @@ data class DiagnosticStarSettle(
     @param:JsonProperty(required = true) val comparisons: Int,
 )
 
-internal fun DiagnosticStarSummary.validFields(): Boolean =
-    listOf(main, sub).all { it.count in 0..999 && it.pages in 0..999 } &&
-        listOf(experience.orange, experience.purple, experience.white).all { it == null || it in 0..99999999 } &&
-        listOf(capacity.current, capacity.capacity).all { it == null || it in 0..999 } &&
-        warnings.size <= 16 && warnings.all { STAR_DIAGNOSTIC_SYMBOL.matches(it) } &&
-        (error == null || (STAR_DIAGNOSTIC_SYMBOL.matches(error.stage) && STAR_DIAGNOSTIC_SYMBOL.matches(error.code))) &&
-        (timing == null || (timing.navigationMs in 0..600000 && timing.totalMs in 0..600000)) &&
-        (settle == null || (settle.maxMs in 0..600000 && settle.lastSettleMs in 0..600000 && settle.comparisons in 0..600000))
+internal fun DiagnosticStarSummary.validFields(): Boolean = listOf(main, sub).all { it.count in 0..999 && it.pages in 0..999 } &&
+    listOf(experience.orange, experience.purple, experience.white).all { it == null || it in 0..99999999 } &&
+    listOf(capacity.current, capacity.capacity).all { it == null || it in 0..999 } &&
+    warnings.size <= 16 && warnings.all { STAR_DIAGNOSTIC_SYMBOL.matches(it) } &&
+    (error == null || (STAR_DIAGNOSTIC_SYMBOL.matches(error.stage) && STAR_DIAGNOSTIC_SYMBOL.matches(error.code))) &&
+    (timing == null || (timing.navigationMs in 0..600000 && timing.totalMs in 0..600000)) &&
+    (settle == null || (settle.maxMs in 0..600000 && settle.lastSettleMs in 0..600000 && settle.comparisons in 0..600000))
