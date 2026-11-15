@@ -181,9 +181,10 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
             valid(it.length in 1..100 && VERSION.matches(it))
         }
         val resolution = Regex("([1-9][0-9]{0,3})x([1-9][0-9]{0,3})").matchEntire(value.client.resolution)
-        valid(resolution != null)
-        val width = resolution!!.groupValues[1].toInt()
-        val height = resolution.groupValues[2].toInt()
+        val logOnly = bagScan && value.images.isEmpty() && value.issues.all { it.code == "bag_scan_log" }
+        valid(resolution != null || (logOnly && value.client.resolution == "unknown"))
+        val width = resolution?.groupValues?.get(1)?.toInt() ?: 0
+        val height = resolution?.groupValues?.get(2)?.toInt() ?: 0
         valid(width <= 8192 && height <= 8192)
         valid(value.occurredAt.length <= 40 && runCatching { OffsetDateTime.parse(value.occurredAt) }.isSuccess)
         valid(value.issues.size in 1..32)
@@ -227,6 +228,10 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                         valid(issue.stage == "bag_tab1" && issue.count == 1)
                         valid(issue.reason in BAG_ITEM_MISSING_REASONS)
                     }
+                    "bag_scan_log" -> {
+                        valid(issue.stage in setOf("bag_tab1", "bag_tab3_1", "bag_tab3_2"))
+                        valid(issue.count == 1 && issue.reason in setOf("completed", "failed"))
+                    }
                     "bag_count_suspect" -> {
                         valid(issue.stage in setOf("bag_tab1", "bag_tab3_1", "bag_tab3_2"))
                         valid(issue.reason in BAG_COUNT_REASONS || issue.reason == "mixed")
@@ -238,7 +243,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(issue.errorType == null && issue.node == null && issue.stack.isEmpty())
                 valid(issue.blockingErrors.isEmpty() && issue.sectionStatus.isEmpty() && issue.ocrSamples.isEmpty())
             } else {
-                valid(issue.code !in setOf("bag_item_missing", "bag_count_suspect") && issue.code !in STAR_ISSUE_CODES)
+                valid(issue.code !in setOf("bag_item_missing", "bag_count_suspect", "bag_scan_log") && issue.code !in STAR_ISSUE_CODES)
             }
             valid(issue.stage.length in 1..64 && STAGE.matches(issue.stage))
             issue.node?.let(::validateNode)
@@ -285,7 +290,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         valid(
             when {
                 starScan -> value.images.size <= 4
-                bagScan -> value.images.size in 1..12
+                bagScan -> value.images.size in 0..12
                 else -> value.images.size <= 3
             },
         )
@@ -347,7 +352,7 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         val ISSUE_CODES = setOf(
             "collector_exception", "account_lookup_failed", "annotations_failed", "catalog_unavailable", "navigation_failed",
             "screenshot_or_ocr_failed", "identity_unresolved", "data_review", "upload_network_failed", "upload_http_failed",
-            "upload_rejected", "upload_response_unverified", "bag_item_missing", "bag_count_suspect",
+            "upload_rejected", "upload_response_unverified", "bag_item_missing", "bag_count_suspect", "bag_scan_log",
         ) + STAR_ISSUE_CODES
         private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone", "count_unresolved")
         private val BAG_ITEM_MISSING_REASONS = setOf(

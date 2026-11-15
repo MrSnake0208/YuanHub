@@ -6,14 +6,14 @@ import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.zip.GZIPInputStream
 
-internal const val DIAGNOSTIC_LOG_COMPRESSED_LIMIT = 262144
-internal const val DIAGNOSTIC_LOG_TEXT_LIMIT = 1048576
+internal const val DIAGNOSTIC_LOG_COMPRESSED_LIMIT = 4 * 1024 * 1024
+internal const val DIAGNOSTIC_LOG_TEXT_LIMIT = 16 * 1024 * 1024
 
 internal fun decodeDiagnosticLog(bytes: ByteArray): String {
     if (bytes.size !in 1..DIAGNOSTIC_LOG_COMPRESSED_LIMIT) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid log size")
     try {
         val text = GZIPInputStream(bytes.inputStream()).use { it.readNBytes(DIAGNOSTIC_LOG_TEXT_LIMIT + 1) }
-        if (text.size > DIAGNOSTIC_LOG_TEXT_LIMIT) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Log exceeds 1 MiB")
+        if (text.size > DIAGNOSTIC_LOG_TEXT_LIMIT) diagnosticError(HttpStatus.UNPROCESSABLE_ENTITY, "Log exceeds 16 MiB")
         return Charsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT)

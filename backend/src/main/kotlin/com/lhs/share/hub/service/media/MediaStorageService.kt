@@ -184,7 +184,7 @@ class MediaStorageService(
 
     fun createPendingDiagnosticLog(ownerUserId: String, eventId: String, size: Long, expiresAt: Instant): MediaAsset {
         check(cosStorage.enabled) { "COS direct upload is unavailable" }
-        require(size in 1..262144)
+        require(size in 1..(4L * 1024 * 1024))
         val id = generateMedId()
         return mediaAssetRepository.save(
             MediaAsset(
