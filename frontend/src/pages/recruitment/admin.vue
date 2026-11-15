@@ -167,10 +167,13 @@
                     <p class="hint">上传后即时生效。PNG / JPEG，≤2MB；建议 992×274px，宽 600–2048px、高 150–1024px、宽高比 3.0–4.5。</p>
                   </div>
                 </div>
-                <div class="banner-preview">
+                <div class="banner-preview" :class="{ 'banner-dragging': bannerDragging }"
+                  @dragover.prevent="bannerDragging = !isNew && !editorBusy && !loading && !conflict"
+                  @dragleave.self="bannerDragging = false" @drop.prevent="uploadBanner">
                   <img v-if="form.banner && recruitmentBannerUrl(form.banner) !== failedBanner" :key="form.banner" :src="recruitmentBannerUrl(form.banner)" width="992" height="274" alt="当前卡池 Banner 预览" decoding="async" @error="failedBanner = $event.target.getAttribute('src')" />
                   <p v-else class="hint">{{ form.banner ? 'Banner 加载失败，玩家端使用立绘封面' : '未设置 Banner，玩家端使用立绘封面' }}</p>
                 </div>
+                <p class="hint">可将一张 PNG / JPEG 图片拖到上方预览区，或点击按钮选择文件。</p>
                 <input ref="bannerInput" class="file-input" type="file" accept="image/png,image/jpeg" :disabled="isNew || editorBusy || loading || conflict" aria-label="选择卡池 Banner" @change="uploadBanner">
                 <div class="banner-actions">
                   <button type="button" :disabled="isNew || editorBusy || loading || conflict" @click="bannerInput?.click()">{{ bannerBusy ? '处理中…' : form.banner ? '更换 Banner' : '上传 Banner' }}</button>
@@ -330,6 +333,7 @@ const loading = ref(false)
 const saving = ref(false)
 const bannerBusy = ref(false)
 const bannerInput = ref(null)
+const bannerDragging = ref(false)
 const bannerError = ref('')
 const failedBanner = ref('')
 const failedListBanners = ref(new Set())
@@ -551,10 +555,20 @@ async function focusEditor() {
 }
 
 async function uploadBanner(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file || !permitted.value || isNew.value || editorBusy.value || loading.value || conflict.value) return
+  bannerDragging.value = false
+  const files = event.dataTransfer?.files || event.target.files
+  if (!event.dataTransfer) event.target.value = ''
+  if (!files?.length || !permitted.value || isNew.value || editorBusy.value || loading.value || conflict.value) return
   bannerError.value = ''
+  if (files.length !== 1) {
+    bannerError.value = '每次只能上传一张 Banner'
+    return
+  }
+  const file = files[0]
+  if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    bannerError.value = 'Banner 必须是 PNG 或 JPEG 图片'
+    return
+  }
   if (file.size > 2 * 1024 * 1024) {
     bannerError.value = 'Banner 不能超过 2MB'
     return
@@ -838,6 +852,8 @@ onScopeDispose(() => {
 
 <style scoped>
 .pool-row-banner img{border:0;background:none}
+.banner-preview.banner-dragging{outline:2px dashed var(--accent);outline-offset:2px}
+.banner-preview > *{pointer-events:none}
 .banner-placeholder{border:1px dashed var(--line);border-radius:8px;background:none;color:var(--ink-60)}
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .fields .wish-mode > span { display: flex; align-items: center; gap: 8px; }

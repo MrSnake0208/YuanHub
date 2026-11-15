@@ -12,7 +12,7 @@ vi.mock('vue-router', () => ({ useRouter: () => router, onBeforeRouteLeave: vi.f
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: dialogConfirm } }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'admin-a' }, adminAccess: { permissions: ['recruitment_catalog:write'] } }) }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
-vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn(), createAdminRecruitmentPool: vi.fn(), importAdminRecruitmentCatalog: vi.fn(), updateAdminRecruitmentPool: vi.fn() }))
+vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn(), createAdminRecruitmentPool: vi.fn(), importAdminRecruitmentCatalog: vi.fn(), updateAdminRecruitmentPool: vi.fn(), uploadAdminRecruitmentBanner: vi.fn(), deleteAdminRecruitmentBanner: vi.fn() }))
 
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text().includes(text))
 const input = (wrapper, label) => wrapper.findAll('label').find(item => item.text().startsWith(label)).get('input')
@@ -320,4 +320,23 @@ it('隐藏确认期间切换管理员不会将旧草稿提交给新身份', asyn
   auth.userInfo = { id: 'admin-b' }; await flushPromises()
   confirmation.resolve(true); await flushPromises()
   expect(api.updateAdminRecruitmentPool).not.toHaveBeenCalled()
+})
+
+
+it('Banner 拖入单张图片复用上传，拒绝多文件与非图片', async () => {
+  api.uploadAdminRecruitmentBanner.mockResolvedValue({ ...pool(), revision: 3, banner: '/recruitment-banners/test.png' })
+  const wrapper = render()
+  await flushPromises()
+  await button(wrapper, '管理卡池').trigger('click')
+  const file = new File(['image'], 'banner.png', { type: 'image/png' })
+  const dropzone = wrapper.get('.banner-preview')
+  await dropzone.trigger('drop', { dataTransfer: { files: [file, file] } })
+  expect(api.uploadAdminRecruitmentBanner).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('每次只能上传一张 Banner')
+  await dropzone.trigger('drop', { dataTransfer: { files: [new File(['text'], 'note.txt', { type: 'text/plain' })] } })
+  expect(api.uploadAdminRecruitmentBanner).not.toHaveBeenCalled()
+  await dropzone.trigger('drop', { dataTransfer: { files: [file] } })
+  await flushPromises()
+  expect(api.uploadAdminRecruitmentBanner).toHaveBeenCalledWith('pool-public', file)
+  wrapper.unmount()
 })
