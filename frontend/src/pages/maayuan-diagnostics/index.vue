@@ -20,7 +20,8 @@
             <div class="diagnostic-segments" role="group" aria-label="问题状态">
               <button v-for="key in statuses" :key="key" type="button" :aria-pressed="status === key" @click="setFilter('status', key)">{{ diagnosticStatusLabels[key] }} <span>{{ statusCount(key) }}</span></button>
             </div>
-            <label><span>原因</span><select :value="reason" @change="setFilter('reason', $event.target.value, $event)"><option value="">全部原因</option><option v-for="([key, count]) in reasonOptions" :key="key" :value="key">{{ diagnosticReason(key).label }}（{{ count }}）</option></select></label>
+            <label><span>功能</span><select :value="feature" @change="setFilter('feature', $event.target.value, $event)"><option value="">全部功能</option><option value="operator_info_collection">密探信息采集</option><option value="inventory_bag_scan">背包识别</option><option value="star_backpack_scan">星石背包识别</option></select></label>
+            <label><span>原因</span><select :value="reason" @change="setFilter('reason', $event.target.value, $event)"><option value="">全部原因</option><option v-for="([key, count]) in reasonOptions" :key="key" :value="key">{{ diagnosticReason(key, feature === 'star_backpack_scan').label }}（{{ count }}）</option></select></label>
             <label class="diagnostic-search"><span>搜索</span><input v-model="searchText" type="search" maxlength="100" placeholder="密探名 / 节点 / OCR 文本" /></label>
             <label><span>排序</span><select :value="sort" @change="setFilter('sort', $event.target.value, $event)"><option value="lastSeen">最近出现</option><option value="count">出现次数</option><option value="firstSeen">首次出现</option></select></label>
           </div>
@@ -59,13 +60,15 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import MaayuanDiagnosticDetail from '@/components/diagnostics/MaayuanDiagnosticDetail.vue'
 import { listDiagnosticIssues } from '@/api/maayuanDiagnostics.js'
-import { diagnosticIssueTitle, diagnosticReason, diagnosticStatusLabels } from '@/data/maayuanDiagnostics.js'
+import { diagnosticStatusLabels } from '@/data/maayuanDiagnostics.js'
+import { diagnosticIssueTitle, diagnosticReason } from '@/components/diagnostics/starDiagnostics.js'
 import { auth } from '@/store/auth.js'
 import '@/styles/page-header.css'
 
 const statuses = ['NEW', 'FIXED', 'IGNORED', 'ALL']
 const status = ref('NEW'), reason = ref(''), q = ref(''), sort = ref('lastSeen'), page = ref(1)
-const filters = { status, reason, q, sort }
+const feature = ref('')
+const filters = { status, reason, q, sort, feature }
 const searchText = ref('')
 const data = ref(null), loading = ref(false), error = ref(''), forbidden = ref(false), selectedId = ref('')
 const detailPanel = ref(null), listPanel = ref(null), detailRegion = ref(null)
@@ -106,7 +109,7 @@ async function load() {
   const token = ++generation
   loading.value = true; error.value = ''; forbidden.value = false
   try {
-    const result = await listDiagnosticIssues({ status: status.value, reason: reason.value, q: q.value.trim(), sort: sort.value, page: page.value, pageSize: 20 })
+    const result = await listDiagnosticIssues({ status: status.value, feature: feature.value, reason: reason.value, q: q.value.trim(), sort: sort.value, page: page.value, pageSize: 20 })
     if (token !== generation) return
     data.value = result
     if (page.value > totalPages.value) { page.value = totalPages.value; return load() }
@@ -126,6 +129,7 @@ async function setFilter(key, value, event) {
     return
   }
   filters[key].value = value; page.value = 1
+  if (key === 'feature') { reason.value = ''; selectedId.value = '' }
   void load()
 }
 async function changePage(value) {

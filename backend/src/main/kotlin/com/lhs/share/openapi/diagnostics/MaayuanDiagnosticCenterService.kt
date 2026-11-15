@@ -53,11 +53,20 @@ class MaayuanDiagnosticCenterService(
         page: Int,
         pageSize: Int,
         includeTrace: Boolean = false,
+        feature: String? = null,
     ): DiagnosticIssuePage {
         if (status !in setOf("NEW", "FIXED", "IGNORED", "ALL") || page < 1 || pageSize !in 1..100) {
             throw ApiResultException(400, "无效的诊断状态或分页参数")
         }
-        if (reason != null && (reason.length !in 1..64 || !Regex("[a-z][a-z0-9_]{0,63}").matches(reason))) {
+        if (feature != null && feature !in setOf("operator_info_collection", "inventory_bag_scan", "star_backpack_scan")) {
+            throw ApiResultException(400, "无效的诊断功能")
+        }
+        val reasonPattern = if (includeTrace && (feature == null || feature == "star_backpack_scan")) {
+            STAR_DIAGNOSTIC_SYMBOL
+        } else {
+            Regex("[a-z][a-z0-9_]{0,63}")
+        }
+        if (reason != null && !reasonPattern.matches(reason)) {
             throw ApiResultException(400, "无效的诊断原因")
         }
         if ((q?.length ?: 0) > 100) throw ApiResultException(400, "搜索内容最多 100 个字符")
@@ -68,7 +77,13 @@ class MaayuanDiagnosticCenterService(
             else -> throw ApiResultException(400, "无效的诊断排序")
         }
         val operators = catalog.catalogReadOnly()
-        val base = mutableListOf<Criteria>()
+        // Two separators distinguish feature/code namespaces from an operator reason equal to the feature name.
+        val featureFilter = when (feature) {
+            null -> emptyList()
+            "operator_info_collection" -> listOf(Criteria.where("key").not().regex("^(inventory_bag_scan|star_backpack_scan)\\|[^|]+\\|"))
+            else -> listOf(Criteria.where("key").regex("^${Pattern.quote(feature)}\\|[^|]+\\|"))
+        }
+        val base = featureFilter.toMutableList()
         q?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
             val pattern = Pattern.compile(Pattern.quote(text), Pattern.CASE_INSENSITIVE)
             val ids = operators.filter {
@@ -90,6 +105,8 @@ class MaayuanDiagnosticCenterService(
         )
         val names = operators.associate { it.operatorId to it.name }
         val now = Instant.now()
+        val recentEvents = Criteria.where("createdAt").gte(now.minus(Duration.ofDays(7)))
+        feature?.let { recentEvents.and("summary.feature").`is`(it) }
         return DiagnosticIssuePage(
             items.map {
                 DiagnosticIssueListItem(
@@ -102,9 +119,12 @@ class MaayuanDiagnosticCenterService(
             pageSize,
             counts(combine(base + listOfNotNull(reasonFilter)), "status"),
             counts(combine(base + listOfNotNull(statusFilter)), "reason"),
-            mongo.count(Query(Criteria.where("status").`is`("NEW")), MaayuanDiagnosticIssue::class.java),
-            mongo.count(Query(Criteria.where("createdAt").gte(now.minus(Duration.ofDays(7)))), MaayuanDiagnosticEvent::class.java),
-            mongo.count(Query(Criteria.where("status").`is`("NEW").and("regressedAt").ne(null)), MaayuanDiagnosticIssue::class.java),
+            mongo.count(Query(combine(featureFilter + Criteria.where("status").`is`("NEW"))), MaayuanDiagnosticIssue::class.java),
+            mongo.count(Query(recentEvents), MaayuanDiagnosticEvent::class.java),
+            mongo.count(
+                Query(combine(featureFilter + Criteria.where("status").`is`("NEW").and("regressedAt").ne(null))),
+                MaayuanDiagnosticIssue::class.java,
+            ),
         )
     }
 

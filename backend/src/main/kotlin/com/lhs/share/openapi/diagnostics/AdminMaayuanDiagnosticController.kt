@@ -27,7 +27,8 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
         @RequestParam(defaultValue = "lastSeen") sort: String,
         @RequestParam(defaultValue = "1") page: Int,
         @RequestParam(defaultValue = "20") pageSize: Int,
-    ) = authorized { success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true)) }
+        @RequestParam(required = false) feature: String?,
+    ) = authorized { success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true, feature = feature)) }
 
     @GetMapping("/issues/{id}")
     fun issue(@PathVariable id: String) = authorized { success(center.detail(id, includeTrace = true)) }

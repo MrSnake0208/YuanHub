@@ -1,5 +1,6 @@
 <template>
   <div class="diagnostic-evidence">
+    <MaayuanDiagnosticStarSummary v-if="event?.manifest?.feature === 'star_backpack_scan' && event.manifest.star_summary" :summary="event.manifest.star_summary" />
     <section class="diagnostic-section" aria-label="事件证据">
       <h3>证据</h3>
       <p v-if="loading" role="status">正在加载事件和证据…</p>
@@ -80,6 +81,7 @@ import { useBodyScrollLock } from '@/composables/useBodyScrollLock.js'
 import MaayuanDiagnosticImage from './MaayuanDiagnosticImage.vue'
 import MaayuanDiagnosticTrace from './MaayuanDiagnosticTrace.vue'
 import MaayuanDiagnosticLog from './MaayuanDiagnosticLog.vue'
+import MaayuanDiagnosticStarSummary from './MaayuanDiagnosticStarSummary.vue'
 
 const props = defineProps({
   eventId: { type: String, required: true },
@@ -107,6 +109,7 @@ useBodyScrollLock(zoomOpen)
 useModalFocus(zoomOpen, zoomPanel, { initialFocus: () => zoomClose.value, onEscape: () => { zoom.value = null } })
 function revokeUrls() { Object.values(urls.value).filter(url => url.startsWith('blob:')).forEach(url => URL.revokeObjectURL(url)); urls.value = {} }
 function imageLabel(image) {
+  if (image.role === 'star_page') return `星石页面 · 第 ${event.value.images.indexOf(image) + 1} 张`
   if (image.role === 'bag_page') return `${diagnosticImageLabels.bag_page} · 第 ${event.value.images.indexOf(image) + 1} 页`
   return `${diagnosticImageLabels[image.role] || '证据图片'} · ${props.operatorNames[image.operatorId] || image.operatorId || '未识别密探'}`
 }

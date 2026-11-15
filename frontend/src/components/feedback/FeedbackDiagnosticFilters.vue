@@ -3,6 +3,9 @@
     <label><span>来源</span><select v-model="draft.source">
       <option value="">全部来源</option><option value="manual">人工反馈</option><option value="maayuan_diagnostic">MaaYuan 诊断</option>
     </select></label>
+    <label><span>功能</span><select v-model="draft.feature">
+      <option value="">全部功能</option><option value="operator_info_collection">密探信息采集</option><option value="inventory_bag_scan">背包识别</option><option value="star_backpack_scan">星石背包识别</option>
+    </select></label>
     <button class="feedback-button" type="submit">应用筛选</button>
     <button class="feedback-button" type="button" @click="reset">清除诊断筛选</button>
     <details class="diagnostic-advanced">
@@ -31,9 +34,9 @@ import { diagnosticCodeLabel, diagnosticLabel, diagnosticOutcomeLabels, diagnost
 
 const props = defineProps({ modelValue: { type: Object, required: true }, counts: { type: Object, default: () => ({}) } })
 const emit = defineEmits(['apply'])
-const draft = reactive({ ...props.modelValue })
+const draft = reactive({ feature: '', ...props.modelValue })
 watch(() => props.modelValue, value => Object.assign(draft, value))
-function reset() { emit('apply', { source: '', issueCode: '', operatorId: '', resourceVersion: '', reason: '' }) }
+function reset() { emit('apply', { source: '', feature: '', issueCode: '', operatorId: '', resourceVersion: '', reason: '' }) }
 </script>
 
 <style scoped>

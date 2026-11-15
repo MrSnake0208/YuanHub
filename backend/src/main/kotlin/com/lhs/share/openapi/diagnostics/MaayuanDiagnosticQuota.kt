@@ -25,10 +25,10 @@ class MaayuanDiagnosticQuota(private val redis: StringRedisTemplate) {
         )
     }
 
-    fun packet(principal: OpenApiPrincipal, imageBytes: Long, now: Instant = Instant.now()) {
+    fun packet(principal: OpenApiPrincipal, imageBytes: Long, now: Instant = Instant.now(), starScan: Boolean = false) {
         val day = now.atOffset(ZoneOffset.UTC).toLocalDate()
         val seconds = day.plusDays(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC) - now.epochSecond
-        val key = "diag:account:${principal.userId}:${principal.accountId}:$day"
+        val key = "diag:account:${principal.userId}:${principal.accountId}:$day" + if (starScan) ":star_backpack_scan" else ""
         consume(listOf("$key:packets", "$key:images"), listOf(30L, 20L * 1024 * 1024), listOf(1L, imageBytes), listOf(seconds, seconds))
     }
 

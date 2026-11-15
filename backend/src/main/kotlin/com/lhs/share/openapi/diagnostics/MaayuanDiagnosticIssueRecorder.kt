@@ -39,7 +39,11 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
                 } else {
                     issue.reason ?: issue.code
                 }
-                val namespace = if (manifest.feature == "inventory_bag_scan") "${manifest.feature}|${issue.code}" else null
+                val namespace = if (manifest.feature in setOf("inventory_bag_scan", "star_backpack_scan")) {
+                    "${manifest.feature}|${issue.code}"
+                } else {
+                    null
+                }
                 Signature(reason, kind, subject, namespace) to issue
             }
         }.groupBy({ it.first }, { it.second })
@@ -138,7 +142,7 @@ class MaayuanDiagnosticIssueRecorder(@param:Qualifier("hubMongoTemplate") privat
             else -> "stage"
         }
 
-        // Preserve existing operator signatures while isolating bag diagnostics by feature and code.
+        // Preserve existing operator signatures while isolating bag and star diagnostics by feature and code.
         val key = if (namespace == null) "$reason|$prefix:$subject" else "$namespace|$reason|$prefix:$subject"
         val id = MessageDigest.getInstance("SHA-1").digest(key.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }.take(24)

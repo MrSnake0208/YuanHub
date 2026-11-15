@@ -62,7 +62,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { getDiagnosticIssue, updateDiagnosticIssue } from '@/api/maayuanDiagnostics.js'
-import { diagnosticCodeLabels, diagnosticIssueTitle, diagnosticLabel, diagnosticReason, diagnosticResourceLabels, diagnosticStatusLabels, diagnosticUiScriptLabels } from '@/data/maayuanDiagnostics.js'
+import { diagnosticCodeLabels, diagnosticLabel, diagnosticResourceLabels, diagnosticStatusLabels, diagnosticUiScriptLabels } from '@/data/maayuanDiagnostics.js'
+import { diagnosticIssueTitle, diagnosticReason, starCodeLabels } from './starDiagnostics.js'
 import { dialog } from '@/utils/dialog.js'
 import MaayuanDiagnosticEvidence from './MaayuanDiagnosticEvidence.vue'
 
@@ -85,8 +86,8 @@ const conclusion = computed(() => {
     const catalogText = detail.value.subjectInCatalog === false ? '密探目录中没有此名' : '暂无法核对密探目录'
     return `OCR 读到「${issue.subject}」，${catalogText}${candidates.value ? `；最接近：${candidates.value}` : ''} → 请核对是否为新密探或别名缺失。`
   }
-  const reason = diagnosticReason(issue.reason)
-  return reason.hint ? `可能原因：${reason.hint}` : diagnosticCodeLabels[issue.code] || '请结合发生记录和证据判断原因。'
+  const reason = diagnosticReason(issue.reason, Object.hasOwn(starCodeLabels, issue.code))
+  return reason.hint ? `可能原因：${reason.hint}` : starCodeLabels[issue.code] || diagnosticCodeLabels[issue.code] || '请结合发生记录和证据判断原因。'
 })
 const environment = computed(() => {
   if (!detail.value) return []

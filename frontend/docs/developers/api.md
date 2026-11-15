@@ -118,11 +118,11 @@
 }
 ```
 
-协议采用严格白名单，所有层级拒绝未知字段、重复 JSON 键、null（背包 bag_cells 的 chosen 和 reading.count 除外）、尾随 JSON、字符串数字和浮点整数。下表列出通用字段及 `operator_info_collection` 的规则；`inventory_bag_scan` 的差异约束见下文「背包漏扫与数量可疑诊断」。
+协议采用严格白名单，所有层级拒绝未知字段、重复 JSON 键、null（背包 bag_cells 的 chosen 和 reading.count，以及下述 star_summary 明确允许的位置除外）、尾随 JSON、字符串数字和浮点整数。下表列出通用字段及 `operator_info_collection` 的规则；背包与星石的差异约束见下文对应章节。
 
 | 字段 | 允许值及限制 |
 |---|---|
-| `schema_version` / `feature` | 固定为整数 `1`；feature 为 `operator_info_collection` 或 `inventory_bag_scan`，按场景分别校验 |
+| `schema_version` / `feature` | 固定为整数 `1`；feature 为 `operator_info_collection`、`inventory_bag_scan` 或 `star_backpack_scan`，按场景分别校验 |
 | `event_id` / `run_id` | 标准 36 字符 UUID，服务端归一化大小写；重试必须复用 `event_id` |
 | `client` | `resource=base|zh_tw`；`resolution=宽x高`，每边 1～8192；两个版本各 1～100 字符，仅字母、数字、空格及 `._+()-` |
 | `client.ui_script` | 可选，枚举 `simplified`（简体）、`traditional`（繁体）、`mixed`（简繁混合）、`unknown`（无法判定）；仅发送判定枚举，不发送整屏 OCR 文字；不能传 null |
@@ -233,6 +233,38 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 
 发布顺序：先部署 YuanHub，再发布 MaaYuan。旧 Hub 收到新 feature 返回 422；MaaYuan 必须吞掉诊断上传失败，不影响库存任务，不用旧 multipart 承载整组背包图片。
 
+### 星石背包诊断（schema_version=1）
+
+星石识别未完成、容量校验失败或同步失败时使用 `feature=star_backpack_scan`，沿用诊断 intent → COS 上传 → complete 通道。`catalog.source` 固定 `builtin`；version 使用包内 `agent/runtime/star_ocr/star_catalog.json` 的版本字段，无版本时取文件内容 SHA-256 前 16 位。完全成功、用户手动停止或未填写连接码时客户端不上报；每次运行最多一个事件。
+
+`issues` 为 1～3 项，code 不重复，count 必须为 1。只有同步失败时 outcome 为 `upload_failed`，含识别未完成或容量校验失败时为 `failed`。所有 issue 的 operator_ids、candidate_operator_ids、error_type、node、stack、blocking_errors、section_status、ocr_samples 必须为空或省略（沿用现有 null 限制）。
+
+| code | stage | reason |
+|---|---|---|
+| `star_scan_incomplete` | `star_navigation` / `star_main` / `star_sub` / `star_experience` | 必填，匹配 `[a-z0-9_]{1,64}`，如 `forward_settle_timeout` / `experience_not_captured` / `unknown` |
+| `star_capacity_mismatch` | `star_capacity` | `count_mismatch` / `capacity_unread` |
+| `star_sync_failed` | `star_sync` | `http_401` / `http_403` / `http_409` / `http_422` / `network` |
+
+trace 可省略或为空，非空时沿用原校验。images 为 0～4 张，role 只能为 `star_page`，operator_id、trace_index、node_roi 必须省略；roi 为不含顶部玩家信息栏的星石列表区域，优先取出问题的一页及前一页。直传单图限额和尺寸校验不变；旧 multipart 仍最多三张、总请求 2 MiB，四图必须走直传。
+
+仅该 feature 可带可选顶层对象 `star_summary`；该字段本身不能为 null，其他 feature 即使传 null 也拒绝。对象字段固定如下，所有层级拒绝未知字段、类型强转和自由文本，不接收星石名称、OCR 原文、连接码或账号 ID：
+
+| 字段 | 约束 |
+|---|---|
+| `main` / `sub` | 各为 `{count,complete,pages}`；count、pages 为 0～999 整数，complete 为布尔值 |
+| `experience` | `{orange,purple,white,captured}`；三种数量各为 null 或 0～99999999 整数，captured 为布尔值 |
+| `capacity` | `{current,capacity}`；各为 null 或 0～999 整数 |
+| `warnings` | 最多 16 项，各匹配 `[a-z0-9_]{1,64}` |
+| `error` | null 或 `{stage,code}`，两项各匹配 `[a-z0-9_]{1,64}` |
+| `timing` | null 或 `{navigation_ms,total_ms}`，各为 0～600000 整数 |
+| `settle` | null 或 `{max_ms,last_settle_ms,comparisons}`，各为 0～600000 整数 |
+
+上述对象内字段均须提供；null 仅允许在表中标明的位置。摘要随现有私有 manifest 保存和返回，管理端从 manifest 读取并按主星、辅星、经验星曜、容量、警告/中止、耗时和页面稳定检测显示表格；未知数量显示「未知」，不当作零。截图显示「星石页面 · 第 N 张」，沿用放大、过期和加载失败重试。
+
+星石每账号每日 30 包 / 20 MiB，使用独立 `:star_backpack_scan` Redis 计数，不占用密探/背包原有包数及字节计数。用户级每分钟 6 次 / 每日 100 次请求限制、10 GiB 全局存储预算及 14/90 天保留期继续共用。问题签名为 `star_backpack_scan|<code>|<reason>|stage:<stage>`，与背包隔离；无需修改 MongoDB 事件/问题组结构或迁移。
+
+管理端 `GET /v1/admin/maayuan-diagnostics/issues` 新增可选 feature 参数，允许上述三个 feature，省略则查看全部。按已有签名 key 筛选问题组，事件统计按 summary.feature 筛选；列表、状态/原因计数和页头统计均遵守 feature，原有搜索、状态和原因计数规则不变。页面新增功能下拉框，切换功能清除原因及旧选中详情；反馈诊断筛选组件也提供星石选项，但不改变反馈队列排除诊断事件的既有规则。先部署 YuanHub，再发布 MaaYuan；旧服务端的 4xx 由客户端静默处理，不影响星石任务结果。
+
 此接口返回真实 HTTP 状态，成功正文不使用 `status_code/data` 包装：
 
 ```json
@@ -257,7 +289,7 @@ issue 的可选字段 `reason/node/operator_ids/candidate_operator_ids/error_typ
 
 manifest 字段与 `schema_version=1` 保持不变。反馈截图（私有或公开）全部继续存本地，此流程适用于 MaaYuan 诊断图片和可选运行日志。两步接口复用上述连接码鉴权和用户请求配额，认证在正文读取前完成；complete 不再消耗子账号包/图片日额度。
 
-1. `POST /open-api/maayuan/diagnostics/intents`，`Content-Type: application/json`，正文最多 68 KiB（内层 manifest 仍最多 64 KiB）：`{"manifest":{...},"uploads":[{"size":5934,"content_md5":"<16 字节 MD5 的 24 字符规范 Base64>"}]}`。uploads 必须与 manifest.images 按下标一一对应（密探 0～3 张、背包 1～12 张），size 为整数 1～524288；拒绝未知字段、重复键、null（bag_cells 的 chosen 和 reading.count 除外）与类型强转。子账号 packet/字节额度按声明 size 之和计；服务端在本步即预留图片额度、创建事件和问题组，图片为 pending，manifest 本地保存。
+1. `POST /open-api/maayuan/diagnostics/intents`，`Content-Type: application/json`，正文最多 68 KiB（内层 manifest 仍最多 64 KiB）：`{"manifest":{...},"uploads":[{"size":5934,"content_md5":"<16 字节 MD5 的 24 字符规范 Base64>"}]}`。uploads 必须与 manifest.images 按下标一一对应（密探 0～3 张、背包 1～12 张、星石 0～4 张），size 为整数 1～524288；拒绝未知字段、重复键、null（bag_cells 的 chosen / reading.count 和 star_summary 上述位置除外）与类型强转。子账号 packet/字节额度按声明 size 之和计；服务端在本步即预留图片额度、创建事件和问题组，图片为 pending，manifest 本地保存。
 2. 成功 200 返回 `{"status":"accepted","event_id":"...","uploads":[{"index":0,"method":"PUT","url":"https://<bucket>.cos.<region>.myqcloud.com/diagnostics/images/med_xxx.jpg?...","headers":{"Content-Type":"image/jpeg","Content-MD5":"...","Content-Length":"5934"},"expires_in":600}]}`。额度不足的 `accepted_without_images`、去重的 `duplicate` 返回空 uploads。COS 未启用返回 409 `{"status":"direct_upload_unavailable"}`；密探场景遇到 404/405/409 回退原 multipart 接口，背包场景按上节要求跳过失败。
 3. 客户端向每个 URL 直接 PUT 对应字节，按响应 headers 发头；签名覆盖对象 key、Host、Content-Type、Content-MD5、Content-Length。URL 必须是 HTTPS、默认端口或 443、主机以 `.myqcloud.com` 结尾、无 userinfo；不跟随重定向，单张超时 15 秒，失败不重试该张，继续下一张。URL/签名不得记录到日志、诊断或本地包。
 4. 全部尝试后，`POST /open-api/maayuan/diagnostics/{event_id}/complete`，同一连接码认证，JSON 正文 `{}`。只允许事件所属用户及绑定账号调用，重复调用幂等。服务端对 pending 图片 Head 核对存在/大小，再有界 Get 并使用与 multipart 相同的 JPEG 解码、ROI、像素与损坏校验；不重编码、不重新上传。通过为 ready，不存在为 missing；失败先删除对象再为 invalid，missing/invalid 释放预留额度且不重复释放。返回 `{"status":"completed","images":[{"index":0,"status":"ready"}]}`，图片状态可为 ready/missing/invalid。未调用 complete 的图片保持 pending。

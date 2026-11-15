@@ -35,6 +35,7 @@ data class MaayuanDiagnosticManifest(
     val images: List<DiagnosticImage> = emptyList(),
     val trace: List<DiagnosticTraceStep> = emptyList(),
     val bagCells: List<MaayuanDiagnosticBagCell>? = null,
+    val starSummary: DiagnosticStarSummary? = null,
 )
 
 data class DiagnosticClient(
@@ -159,15 +160,18 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
     }
 
     private fun noNulls(node: JsonNode, path: String = ""): Boolean = when {
-        node.isNull -> NULLABLE_BAG_COUNT.matches(path)
+        node.isNull -> NULLABLE_BAG_COUNT.matches(path) || NULLABLE_STAR_SUMMARY.matches(path)
         node.isObject -> node.fields().asSequence().all { (name, child) -> noNulls(child, "$path/$name") }
         node.isArray -> node.withIndex().all { (index, child) -> noNulls(child, "$path/$index") }
         else -> true
     }
 
     private fun validate(value: MaayuanDiagnosticManifest) {
-        valid(value.schemaVersion == 1 && value.feature in setOf("operator_info_collection", "inventory_bag_scan"))
+        valid(value.schemaVersion == 1 && value.feature in setOf("operator_info_collection", "inventory_bag_scan", "star_backpack_scan"))
         val bagScan = value.feature == "inventory_bag_scan"
+        val starScan = value.feature == "star_backpack_scan"
+        valid(starScan || value.starSummary == null)
+        value.starSummary?.let { valid(it.validFields()) }
         valid(uuid(value.eventId) && uuid(value.runId))
         valid(value.outcome in setOf("failed", "upload_failed", "data_review"))
         valid(value.client.resource in setOf("base", "zh_tw"))
@@ -188,11 +192,34 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
             valid(value.issues.size in 1..2 && value.issues.map { it.code }.distinct().size == value.issues.size)
             valid(value.issues.map { it.stage }.distinct().size == 1)
         }
+        if (starScan) {
+            valid(value.outcome in setOf("failed", "upload_failed") && value.catalog.source == "builtin")
+            valid(value.issues.size in 1..3 && value.issues.map { it.code }.distinct().size == value.issues.size)
+            val onlySyncFailed = value.issues.all { it.code == "star_sync_failed" }
+            valid(value.outcome == if (onlySyncFailed) "upload_failed" else "failed")
+        }
         val countSuspect = value.issues.singleOrNull { it.code == "bag_count_suspect" }
         valid(if (bagScan && countSuspect != null) value.bagCells != null && value.bagCells.size in 1..64 else value.bagCells == null)
         value.issues.forEach { issue ->
             valid(issue.code in ISSUE_CODES)
-            if (bagScan) {
+            if (starScan) {
+                when (issue.code) {
+                    "star_scan_incomplete" -> {
+                        valid(issue.stage in setOf("star_navigation", "star_main", "star_sub", "star_experience"))
+                        valid(issue.reason != null && STAR_DIAGNOSTIC_SYMBOL.matches(issue.reason))
+                    }
+                    "star_capacity_mismatch" -> {
+                        valid(issue.stage == "star_capacity" && issue.reason in setOf("count_mismatch", "capacity_unread"))
+                    }
+                    "star_sync_failed" -> {
+                        valid(issue.stage == "star_sync" && issue.reason in setOf("http_401", "http_403", "http_409", "http_422", "network"))
+                    }
+                    else -> valid(false)
+                }
+                valid(issue.count == 1 && issue.operatorIds.isEmpty() && issue.candidateOperatorIds.isEmpty())
+                valid(issue.errorType == null && issue.node == null && issue.stack.isEmpty())
+                valid(issue.blockingErrors.isEmpty() && issue.sectionStatus.isEmpty() && issue.ocrSamples.isEmpty())
+            } else if (bagScan) {
                 when (issue.code) {
                     "bag_item_missing" -> {
                         valid(issue.stage == "bag_tab1" && issue.count == 1)
@@ -209,11 +236,11 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(issue.errorType == null && issue.node == null && issue.stack.isEmpty())
                 valid(issue.blockingErrors.isEmpty() && issue.sectionStatus.isEmpty() && issue.ocrSamples.isEmpty())
             } else {
-                valid(issue.code !in setOf("bag_item_missing", "bag_count_suspect"))
+                valid(issue.code !in setOf("bag_item_missing", "bag_count_suspect") && issue.code !in STAR_ISSUE_CODES)
             }
             valid(issue.stage.length in 1..64 && STAGE.matches(issue.stage))
             issue.node?.let(::validateNode)
-            issue.reason?.let { valid(it.length in 1..64 && REASON.matches(it)) }
+            issue.reason?.let { valid(if (starScan) STAR_DIAGNOSTIC_SYMBOL.matches(it) else it.length in 1..64 && REASON.matches(it)) }
             valid(issue.count in 1..10000 && issue.operatorIds.size <= 100)
             issue.operatorIds.forEach { valid(OPERATOR.matches(it)) }
             valid(issue.candidateOperatorIds.size <= 5 && issue.candidateOperatorIds.distinct().size == issue.candidateOperatorIds.size)
@@ -253,10 +280,18 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
                 valid(it.length in 1..32 && OCR.matches(it) && !SENSITIVE.containsMatchIn(it))
             }
         }
-        valid(if (bagScan) value.images.size in 1..12 else value.images.size <= 3)
+        valid(
+            when {
+                starScan -> value.images.size <= 4
+                bagScan -> value.images.size in 1..12
+                else -> value.images.size <= 3
+            },
+        )
         valid(value.images.map { it.index } == value.images.indices.toList())
         value.images.forEach { image ->
-            if (bagScan) {
+            if (starScan) {
+                valid(image.role == "star_page" && image.operatorId == null && image.traceIndex == null && image.nodeRoi == null)
+            } else if (bagScan) {
                 valid(image.role == "bag_page" && image.operatorId == null && image.traceIndex == null && image.nodeRoi == null)
             } else {
                 valid(image.role in setOf("disc_cells", "main_panel", "last_frame", "name_area"))
@@ -306,11 +341,12 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
     }
 
     companion object {
+        private val STAR_ISSUE_CODES = setOf("star_scan_incomplete", "star_capacity_mismatch", "star_sync_failed")
         val ISSUE_CODES = setOf(
             "collector_exception", "account_lookup_failed", "annotations_failed", "catalog_unavailable", "navigation_failed",
             "screenshot_or_ocr_failed", "identity_unresolved", "data_review", "upload_network_failed", "upload_http_failed",
             "upload_rejected", "upload_response_unverified", "bag_item_missing", "bag_count_suspect",
-        )
+        ) + STAR_ISSUE_CODES
         private val BAG_COUNT_REASONS = setOf("page_conflict", "threshold_disagree", "edge_zone", "count_unresolved")
         private val BAG_ITEM_MISSING_REASONS = setOf(
             "tianjifuchuan_missing",
@@ -325,6 +361,9 @@ class MaayuanDiagnosticParser(mapper: ObjectMapper) {
         private val BAG_ENTITY = Regex("[a-z0-9_]{1,64}")
         private val BAG_RAW = Regex("[0-9]{0,8}")
         private val NULLABLE_BAG_COUNT = Regex("(/manifest)?/bag_cells/[0-9]+/(chosen|readings/[0-9]+/count)")
+        private val NULLABLE_STAR_SUMMARY = Regex(
+            "(/manifest)?/star_summary/(experience/(orange|purple|white)|capacity/(current|capacity)|error|timing|settle)",
+        )
         private val VERSION = Regex("[A-Za-z0-9._+() -]+")
         private val SYMBOL = Regex("[A-Za-z0-9_.\\[\\]-]+")
         private val STAGE = Regex("[\\p{L}\\p{N} _.-]+")

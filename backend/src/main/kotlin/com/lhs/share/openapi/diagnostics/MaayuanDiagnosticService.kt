@@ -65,7 +65,7 @@ class MaayuanDiagnosticService(
             return DiagnosticReceipt("duplicate", manifest.eventId)
         }
         val images = files.mapIndexed { index, bytes -> decodeImage(bytes, manifest.images[index]) }
-        quotas.packet(principal, files.sumOf { it.size.toLong() })
+        quotas.packet(principal, files.sumOf { it.size.toLong() }, starScan = manifest.feature == "star_backpack_scan")
         return persist(principal, manifest, images.size, images.sumOf { it.size.toLong() }) { index, now ->
             media.upload(
                 principal.userId,
@@ -83,7 +83,7 @@ class MaayuanDiagnosticService(
         val manifest = request.manifest
         if (recorded(manifest.eventId)) return DiagnosticIntentReceipt("duplicate", manifest.eventId)
         val bytes = request.uploads.sumOf { it.size } + (request.log?.size ?: 0L)
-        quotas.packet(principal, bytes)
+        quotas.packet(principal, bytes, starScan = manifest.feature == "star_backpack_scan")
         val uploads = mutableListOf<DiagnosticUploadIntent>()
         var logUpload: DiagnosticLogUploadIntent? = null
         val createLog: ((Instant) -> MediaAsset)? = request.log?.let { declaration ->
