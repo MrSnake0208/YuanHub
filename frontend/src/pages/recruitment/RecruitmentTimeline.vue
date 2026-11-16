@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { TUTORIALS_ENABLED } from "../../config/features.js";
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, ref, useId, watch } from 'vue'
 import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow, ChevronRight, ChevronDown, Sprout } from '@lucide/vue'
 import RecruitmentRecordsPreview from './RecruitmentRecordsPreview.vue'
@@ -132,6 +132,7 @@ const failedPortraits = ref(new Set())
 const failedBanners = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
 const bannerSrc = pool => {
+  if (!isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_BANNERS)) return ''
   const src = recruitmentBannerUrl(details(pool).banner)
   return src && !failedBanners.value.has(src) ? src : ''
 }

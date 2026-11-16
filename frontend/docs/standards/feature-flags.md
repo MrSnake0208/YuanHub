@@ -26,6 +26,12 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
+`recruitmentBanners` is explicitly `false` in development and production. The
+player recruitment timeline uses its existing portrait cover and card layout
+without requesting Banner images. Banner uploads, administrator previews and
+stored catalog data remain available. Set only this flag to `true` and rebuild
+and deploy the frontend to restore Banner rendering.
+
 `battleImages` is enabled in development and production. Both navigation entries
 lead to `/tools/battle-images`, which uses the shared Beta route gate; guests may
 enter when the campaign is open. Losing eligibility closes the workspace without

@@ -7,6 +7,7 @@ export const FEATURE_KEYS = Object.freeze({
   OPERATOR_DISCARDED: 'operatorDiscarded',
   WORK_SYSTEM: 'workSystem',
   RECRUITMENT_ARCHIVE: 'recruitmentArchive',
+  RECRUITMENT_BANNERS: 'recruitmentBanners',
   ACTIVITY_CALENDAR: 'activityCalendar',
   ACHIEVEMENT_ARCHIVE: 'achievementArchive',
   BOND_ARCHIVE: 'bondArchive',
@@ -27,6 +28,7 @@ export const FEATURE_FLAGS = Object.freeze({
   [FEATURE_KEYS.OPERATOR_DISCARDED]: false,
   [FEATURE_KEYS.WORK_SYSTEM]: false,
   [FEATURE_KEYS.RECRUITMENT_ARCHIVE]: true,
+  [FEATURE_KEYS.RECRUITMENT_BANNERS]: false,
   [FEATURE_KEYS.ACTIVITY_CALENDAR]: true,
   // 成就与羁绊开放给具备站点使用资格的登录用户；羁绊沿用内测准入。
   [FEATURE_KEYS.ACHIEVEMENT_ARCHIVE]: true,
