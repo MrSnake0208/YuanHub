@@ -9,6 +9,7 @@
 .diagnostic-toolbar label { display: grid; gap: 5px; min-width: 0; font-size: 12px; }
 .diagnostic-toolbar input, .diagnostic-toolbar select, .diagnostic-note textarea { width: 100%; min-width: 0; padding: 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 .diagnostic-search { flex: 1 1 180px; }
+.diagnostic-version-note { overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; }
 .diagnostic-toolbar button, .diagnostic-pagination button, .diagnostic-detail button, .diagnostic-zoom button, .diagnostic-state button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
 .diagnostic-segments { display: flex; flex-wrap: wrap; gap: 4px; }
 .diagnostic-segments button[aria-pressed="true"], .diagnostic-event-list button[aria-pressed="true"] { border-color: var(--tea); background: var(--yellow); color: var(--ink); }
@@ -69,7 +70,8 @@
 .diagnostic-environment dd { margin: 4px 0 0; line-height: 1.6; }
 .diagnostic-event-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .diagnostic-event-list-scroll { flex-wrap: nowrap; overflow-x: auto; padding: 3px 3px 8px; }
-.diagnostic-event-list button { display: flex; flex-shrink: 0; align-items: center; gap: 6px; text-align: left; font-size: 12px; }
+.diagnostic-event-list button { display: flex; flex-shrink: 0; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; text-align: left; font-size: 12px; }
+.diagnostic-event-list button span { min-width: 0; overflow-wrap: anywhere; }
 .diagnostic-evidence { container: diagnostic-evidence / inline-size; }
 .diagnostic-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .diagnostic-evidence-with-primary { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }

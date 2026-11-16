@@ -18,12 +18,14 @@ export async function listDiagnosticIssues(params) {
   return { ...data, items: (data.items || []).map(row => ({ ...issueFrom(row.issue), subjectName: row.subjectName ?? row.subject_name })) }
 }
 
-export async function getDiagnosticIssue(id) {
-  return detailFrom(await request(`${base}/issues/${encodeURIComponent(id)}`, options()))
+export async function getDiagnosticIssue(id, resourceVersion = '') {
+  const query = new URLSearchParams(resourceVersion ? { resourceVersion } : {})
+  return detailFrom(await request(`${base}/issues/${encodeURIComponent(id)}?${query}`, options()))
 }
 
-export async function updateDiagnosticIssue(id, body) {
-  return detailFrom(await request(`${base}/issues/${encodeURIComponent(id)}`, { ...options(), method: 'PATCH', body }))
+export async function updateDiagnosticIssue(id, body, resourceVersion = '') {
+  const query = new URLSearchParams(resourceVersion ? { resourceVersion } : {})
+  return detailFrom(await request(`${base}/issues/${encodeURIComponent(id)}?${query}`, { ...options(), method: 'PATCH', body }))
 }
 
 export async function getDiagnosticEvent(id) {

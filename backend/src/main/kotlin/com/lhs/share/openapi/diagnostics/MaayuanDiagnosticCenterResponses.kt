@@ -23,6 +23,7 @@ data class DiagnosticIssuePage(
     val pendingCount: Long,
     val recentEventCount: Long,
     val regressedCount: Long,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val resourceVersionCounts: Map<String, Long>? = null,
 )
 
 data class DiagnosticEventSummary(val id: String, val createdAt: Instant, val summary: FeedbackDiagnosticSummary)

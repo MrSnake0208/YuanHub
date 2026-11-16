@@ -17,6 +17,7 @@
         <div v-if="forbidden" class="diagnostic-state" role="alert">你没有 MaaYuan 区诊断的查看权限。<router-link to="/feedback/manage">返回反馈工作台</router-link></div>
         <template v-else>
           <div class="diagnostic-toolbar">
+            <label><span>资源版本</span><select :value="resourceVersion" @change="setFilter('resourceVersion', $event.target.value, $event)"><option value="">全部版本</option><option v-for="([version, count]) in versionOptions" :key="version" :value="version">{{ version }}（{{ count }} 组）</option></select></label>
             <div class="diagnostic-segments" role="group" aria-label="问题状态">
               <button v-for="key in statuses" :key="key" type="button" :aria-pressed="status === key" @click="setFilter('status', key)">{{ diagnosticStatusLabels[key] }} <span>{{ statusCount(key) }}</span></button>
             </div>
@@ -25,6 +26,7 @@
             <label class="diagnostic-search"><span>搜索</span><input v-model="searchText" type="search" maxlength="100" placeholder="密探名 / 节点 / OCR 文本" /></label>
             <label><span>排序</span><select :value="sort" @change="setFilter('sort', $event.target.value, $event)"><option value="lastSeen">最近出现</option><option value="count">出现次数</option><option value="firstSeen">首次出现</option></select></label>
           </div>
+          <p v-if="resourceVersion" class="diagnostic-muted diagnostic-version-note">当前查看资源版本 {{ resourceVersion }} 涉及的问题；状态、累计次数与出现时间按跨版本问题组记录，近 7 天事件数和详情发生记录按所选版本统计。</p>
           <div class="diagnostic-workspace">
             <div v-show="!compact || !selectedId" ref="listPanel" class="diagnostic-list-panel">
               <div v-if="loading" class="diagnostic-state" role="status">正在加载诊断问题…</div>
@@ -34,7 +36,7 @@
                 <div class="diagnostic-list" aria-label="诊断问题列表">
                   <button v-for="item in data.items" :key="item.id" type="button" class="diagnostic-row" :aria-current="selectedId === item.id ? 'true' : undefined" @click="selectIssue(item.id)">
                     <span class="diagnostic-row-heading"><span class="diagnostic-row-title">{{ diagnosticIssueTitle(item) }}</span><small v-if="item.status === 'NEW' && item.regressedAt" class="diagnostic-regressed">修复后复发</small></span>
-                    <span class="diagnostic-row-meta"><span>{{ item.eventCount }} 次</span> · <time :datetime="item.lastSeenAt" :title="formatTime(item.lastSeenAt)">{{ relativeTime(item.lastSeenAt) }}</time> · <span :title="item.resourceVersions?.join('、')">{{ versionSummary(item) }}</span></span>
+                    <span class="diagnostic-row-meta"><span>累计 {{ item.eventCount }} 次</span> · <time :datetime="item.lastSeenAt" :title="formatTime(item.lastSeenAt)">{{ relativeTime(item.lastSeenAt) }}</time> · <span :title="item.resourceVersions?.join('、')">{{ resourceVersion || versionSummary(item) }}</span></span>
                   </button>
                 </div>
                 <nav class="diagnostic-pagination" aria-label="诊断问题分页">
@@ -45,7 +47,7 @@
               </template>
             </div>
             <div v-if="selectedId || !compact" ref="detailRegion" class="diagnostic-detail-region">
-              <MaayuanDiagnosticDetail v-if="selectedId" ref="detailPanel" :id="selectedId" :issue-ids="issueIds" :compact="compact" @back="backToList" @navigate="selectIssue" @updated="load" />
+              <MaayuanDiagnosticDetail v-if="selectedId" ref="detailPanel" :id="selectedId" :issue-ids="issueIds" :compact="compact" :resource-version="resourceVersion" @back="backToList" @navigate="selectIssue" @updated="load" />
               <p v-else class="diagnostic-detail diagnostic-state" role="status">{{ loading ? '正在加载诊断问题…' : error ? '问题列表加载失败，请重试' : '当前筛选下没有诊断问题' }}</p>
             </div>
           </div>
@@ -67,8 +69,8 @@ import '@/styles/page-header.css'
 
 const statuses = ['NEW', 'FIXED', 'IGNORED', 'ALL']
 const status = ref('NEW'), reason = ref(''), q = ref(''), sort = ref('lastSeen'), page = ref(1)
-const feature = ref('')
-const filters = { status, reason, q, sort, feature }
+const feature = ref(''), resourceVersion = ref('')
+const filters = { status, reason, q, sort, feature, resourceVersion }
 const searchText = ref('')
 const data = ref(null), loading = ref(false), error = ref(''), forbidden = ref(false), selectedId = ref('')
 const detailPanel = ref(null), listPanel = ref(null), detailRegion = ref(null)
@@ -77,6 +79,11 @@ const compact = ref(media.matches)
 const issueIds = computed(() => (data.value?.items || []).map(item => item.id))
 let generation = 0, searchTimer, listScrollY = 0, checkingLeave = false
 const totalPages = computed(() => Math.max(1, Math.ceil((data.value?.total || 0) / 20)))
+const versionOptions = computed(() => {
+  const counts = { ...(data.value?.resourceVersionCounts || {}) }
+  if (resourceVersion.value && !(resourceVersion.value in counts)) counts[resourceVersion.value] = 0
+  return Object.entries(counts).sort(([a], [b]) => b.localeCompare(a, 'en', { numeric: true }))
+})
 const reasonOptions = computed(() => {
   const counts = { ...(data.value?.reasonCounts || {}) }
   if (reason.value && !(reason.value in counts)) counts[reason.value] = 0
@@ -109,7 +116,7 @@ async function load() {
   const token = ++generation
   loading.value = true; error.value = ''; forbidden.value = false
   try {
-    const result = await listDiagnosticIssues({ status: status.value, feature: feature.value, reason: reason.value, q: q.value.trim(), sort: sort.value, page: page.value, pageSize: 20 })
+    const result = await listDiagnosticIssues({ status: status.value, feature: feature.value, resourceVersion: resourceVersion.value, reason: reason.value, q: q.value.trim(), sort: sort.value, page: page.value, pageSize: 20 })
     if (token !== generation) return
     data.value = result
     if (page.value > totalPages.value) { page.value = totalPages.value; return load() }
@@ -129,7 +136,8 @@ async function setFilter(key, value, event) {
     return
   }
   filters[key].value = value; page.value = 1
-  if (key === 'feature') { reason.value = ''; selectedId.value = '' }
+  if (key === 'feature') reason.value = ''
+  if (key === 'feature' || key === 'resourceVersion') selectedId.value = ''
   void load()
 }
 async function changePage(value) {

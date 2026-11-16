@@ -54,7 +54,9 @@ class MaayuanDiagnosticCenterService(
         pageSize: Int,
         includeTrace: Boolean = false,
         feature: String? = null,
+        resourceVersion: String? = null,
     ): DiagnosticIssuePage {
+        validateResourceVersion(resourceVersion)
         if (status !in setOf("NEW", "FIXED", "IGNORED", "ALL") || page < 1 || pageSize !in 1..100) {
             throw ApiResultException(400, "无效的诊断状态或分页参数")
         }
@@ -83,7 +85,8 @@ class MaayuanDiagnosticCenterService(
             "operator_info_collection" -> listOf(Criteria.where("key").not().regex("^(inventory_bag_scan|star_backpack_scan)\\|[^|]+\\|"))
             else -> listOf(Criteria.where("key").regex("^${Pattern.quote(feature)}\\|[^|]+\\|"))
         }
-        val base = featureFilter.toMutableList()
+        val scope = featureFilter + listOfNotNull(resourceVersion?.let { Criteria.where("resourceVersions").`is`(it) })
+        val base = scope.toMutableList()
         q?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
             val pattern = Pattern.compile(Pattern.quote(text), Pattern.CASE_INSENSITIVE)
             val ids = operators.filter {
@@ -107,6 +110,7 @@ class MaayuanDiagnosticCenterService(
         val now = Instant.now()
         val recentEvents = Criteria.where("createdAt").gte(now.minus(Duration.ofDays(7)))
         feature?.let { recentEvents.and("summary.feature").`is`(it) }
+        resourceVersion?.let { recentEvents.and("summary.resourceVersion").`is`(it) }
         return DiagnosticIssuePage(
             items.map {
                 DiagnosticIssueListItem(
@@ -119,18 +123,21 @@ class MaayuanDiagnosticCenterService(
             pageSize,
             counts(combine(base + listOfNotNull(reasonFilter)), "status"),
             counts(combine(base + listOfNotNull(statusFilter)), "reason"),
-            mongo.count(Query(combine(featureFilter + Criteria.where("status").`is`("NEW"))), MaayuanDiagnosticIssue::class.java),
+            mongo.count(Query(combine(scope + Criteria.where("status").`is`("NEW"))), MaayuanDiagnosticIssue::class.java),
             mongo.count(Query(recentEvents), MaayuanDiagnosticEvent::class.java),
             mongo.count(
-                Query(combine(featureFilter + Criteria.where("status").`is`("NEW").and("regressedAt").ne(null))),
+                Query(combine(scope + Criteria.where("status").`is`("NEW").and("regressedAt").ne(null))),
                 MaayuanDiagnosticIssue::class.java,
             ),
+            if (includeTrace) resourceVersionCounts(combine(featureFilter)) else null,
         )
     }
 
-    fun detail(id: String, includeTrace: Boolean = false): DiagnosticIssueDetail {
+    fun detail(id: String, includeTrace: Boolean = false, resourceVersion: String? = null): DiagnosticIssueDetail {
+        validateResourceVersion(resourceVersion)
         val issue = issue(id)
         val events = Query(Criteria.where("signatures").`is`(id).and("createdAt").gt(retainedAfter()))
+        resourceVersion?.let { events.addCriteria(Criteria.where("summary.resourceVersion").`is`(it)) }
         val users = mongo.findDistinct(events, "userId", MaayuanDiagnosticEvent::class.java, String::class.java)
         val recent = mongo.find(
             Query.of(events).with(Sort.by(Sort.Direction.DESC, "createdAt", "_id")).limit(20),
@@ -247,12 +254,13 @@ class MaayuanDiagnosticCenterService(
             .body(text)
     }
 
-    fun update(id: String, userId: String, request: DiagnosticIssueUpdateRequest): DiagnosticIssueDetail {
+    fun update(id: String, userId: String, request: DiagnosticIssueUpdateRequest, resourceVersion: String? = null): DiagnosticIssueDetail {
+        validateResourceVersion(resourceVersion)
         issue(id)
         val update = Update().set("status", request.status).set("statusUpdatedBy", userId).set("statusUpdatedAt", Instant.now())
         request.note?.let { update.set("note", it) }
         mongo.updateFirst(Query(Criteria.where("_id").`is`(id)), update, MaayuanDiagnosticIssue::class.java)
-        return detail(id, includeTrace = true)
+        return detail(id, includeTrace = true, resourceVersion = resourceVersion)
     }
 
     fun analysis(id: String, request: DiagnosticAnalysisRequest): MaayuanDiagnosticAnalysis {
@@ -289,6 +297,21 @@ class MaayuanDiagnosticCenterService(
 
     private fun combine(criteria: List<Criteria>): Criteria =
         if (criteria.isEmpty()) Criteria() else Criteria().andOperator(*criteria.toTypedArray())
+
+    private fun validateResourceVersion(version: String?) {
+        if (version != null && (version.isBlank() || version.length > 100)) throw ApiResultException(400, "无效的诊断资源版本")
+    }
+
+    // shortcut: 分类沿用每组最近 10 个资源版本，需要完整历史时改用独立版本统计。
+    private fun resourceVersionCounts(criteria: Criteria): Map<String, Long> = mongo.getCollection("maayuan_diagnostic_issues")
+        .aggregate(
+            listOf(
+                Document("\$match", Query(criteria).queryObject),
+                Document("\$unwind", "\$resourceVersions"),
+                Document("\$group", Document("_id", "\$resourceVersions").append("count", Document("\$sum", 1))),
+            ),
+        )
+        .associate { it.getString("_id") to (it["count"] as Number).toLong() }
 
     private fun counts(criteria: Criteria, field: String): Map<String, Long> = mongo.getCollection("maayuan_diagnostic_issues")
         .aggregate(

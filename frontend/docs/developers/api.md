@@ -324,6 +324,10 @@ complete 请求仍为 `{}`，支持没有图片、只有日志的事件。服务
 
 列表同时返回 `status_counts`、`reason_counts` 和 `pending_count/recent_event_count/regressed_count`。状态计数保留搜索与原因条件，忽略当前状态；原因计数保留搜索与状态条件，忽略当前原因。三项页头统计为全局授权范围内的待处理组数、近 7 天事件数、当前待处理且曾修复后复发的组数。
 
+管理端列表新增可选 `resourceVersion`（非空且最多 100 字符），精确匹配问题组的 `resourceVersions`，可与功能、状态、原因和搜索组合；列表、分页、状态/原因计数和页头问题组统计遵守所选版本，近 7 天事件数按事件 `summary.resourceVersion` 精确统计。仅管理端列表返回 `resource_version_counts`：按当前功能汇总各版本涉及的问题组数，不受状态、原因、搜索及所选版本影响，同一问题组可计入多个版本。页面默认全部版本，版本选项按数字感知的文本倒序排列，切换版本回到第一页并清除旧详情，保留未保存备注的离开确认。
+
+管理端 `GET /issues/{id}` 和 `PATCH /issues/{id}` 同样接受可选 `resourceVersion`，详情中的近 90 天用户数及最近 20 条事件先按版本筛选，再去重或截取；保存后返回的详情保留版本条件。问题组的状态、备注、累计次数、首次/最近出现时间及排序仍为跨版本口径，页面明确提示；标记已修复或忽略作用于所有版本，不生成独立的版本处理状态。分类沿用每组最近最多 10 个资源版本，不能视为完整版本历史或单版本故障率；发生记录仍受 90 天保留期限制。无新增数据写入或历史迁移，AI 接口参数及响应保持原契约。发布顺序为后端先、前端后。
+
 签名键为 `原因|对象`：原因优先 `issue.reason`，缺省使用 `issue.code`；仅 `identity_unresolved` 或 `data_review` 且有密探 ID 时使用 `op:<id>`（多个 ID 分组），identity_unresolved 无 ID 但有 OCR 样本时使用 `ocr:<第一条样本>`；其余 issue 有 node 时使用 `node:<node>`，无 node 时使用 `stage:<stage>`。身份类 `identity_unresolved` 的 operator/ocr_name 对象统一以 code 作为签名原因；同一事件中与非 collector_exception issue 有相同明确 reason 的外层 collector_exception 不参与分组，但完整事件摘要保留所有 issue；组的 `reason` 保存签名原因，新增 `reasons` 去重保存实际原因（缺省取 code，旧文档默认空数组），管理端与 AI 响应均返回该字段，原因计数仍按组的 `reason` 聚合。问题组 ID 为键的 SHA-1 十六进制前 24 位。同一事件内相同签名只计一次、合并阶段；operator 组的 `operator_ids` 只记录本组密探本人，不混入同一 issue 的其他密探；其余组记录进入该组的 issue 的密探 ID，按最近出现去重保留最多 10 个，旧文档缺省空数组，管理端与 AI 响应透传，详情环境区非空时显示「涉及密探」（优先目录中文名，否则原 ID）；最近去重 OCR 样本最多 8 条，MaaFW 客户端/资源/目录版本各最多 10 个，资源和界面简繁按事件计数。FIXED 后再次出现回到 NEW 并记录 `regressed_at`；IGNORED 仍计数但不自动重开。用户数只按仍保留的事件去重计算，不永久保存用户集合。
 
 节点分组的 `subject_kind=node`、`subject=<node>`；operator/ocr_name 分支不变，无 node 的旧签名不变，不迁移历史组。问题组额外持久化最近去重最多 10 个 `nodes`，管理端在非空时返回。管理端标题为「节点 <node> · <原因>」。

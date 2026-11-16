@@ -29,11 +29,11 @@
           <details v-if="environment.length" class="diagnostic-environment-details"><summary>环境详情</summary><dl class="diagnostic-environment"><div v-for="entry in environment" :key="entry[0]"><dt>{{ entry[0] }}</dt><dd>{{ entry[1] }}</dd></div></dl></details>
         </section>
         <section class="diagnostic-section">
-          <h3>发生记录</h3>
+          <h3>发生记录<small v-if="resourceVersion"> · {{ resourceVersion }}</small></h3>
           <p v-if="!detail.events.length" class="diagnostic-muted">发生记录已过期（保留 90 天），问题组和处理记录继续保留。</p>
           <div v-else class="diagnostic-event-list" :class="{ 'diagnostic-event-list-scroll': detail.events.length > 8 }" role="group" aria-label="最近发生记录">
             <button v-for="event in detail.events" :key="event.id" type="button" :aria-pressed="selectedEvent === event.id" @click="selectedEvent = event.id">
-              <time :datetime="event.createdAt" :title="formatTime(event.createdAt)">{{ shortTime(event.createdAt) }}</time><span>{{ diagnosticLabel(diagnosticResourceLabels, event.summary.resource) || '资源未提供' }}</span>
+              <time :datetime="event.createdAt" :title="formatTime(event.createdAt)">{{ shortTime(event.createdAt) }}</time><span>{{ diagnosticLabel(diagnosticResourceLabels, event.summary.resource) || '资源未提供' }}</span><span>{{ event.summary.resourceVersion || '版本未提供' }}</span>
             </button>
           </div>
         </section>
@@ -42,6 +42,7 @@
       </template>
     </div>
     <footer v-if="detail && !loading && !error" class="diagnostic-detail-footer" :aria-busy="saving">
+      <p v-if="resourceVersion" class="diagnostic-muted">状态和备注对整个问题组生效（所有版本）。</p>
       <label class="diagnostic-note"><span>处理备注</span><textarea v-model="note" maxlength="4000" rows="2" :disabled="saving" @focus="$event.target.scrollIntoView({ block: 'center', behavior: 'smooth' })" /></label>
       <div class="diagnostic-actions">
         <router-link v-if="identityIssue" class="diagnostic-action-link" to="/operator/admin">去密探目录处理</router-link>
@@ -67,7 +68,7 @@ import { diagnosticIssueTitle, diagnosticReason, starCodeLabels } from './starDi
 import { dialog } from '@/utils/dialog.js'
 import MaayuanDiagnosticEvidence from './MaayuanDiagnosticEvidence.vue'
 
-const props = defineProps({ id: { type: String, required: true }, issueIds: { type: Array, required: true }, compact: { type: Boolean, default: false } })
+const props = defineProps({ id: { type: String, required: true }, issueIds: { type: Array, required: true }, compact: { type: Boolean, default: false }, resourceVersion: { type: String, default: '' } })
 const emit = defineEmits(['back', 'navigate', 'updated'])
 const scrollPanel = ref(null)
 const detail = ref(null), loading = ref(false), error = ref(''), note = ref(''), saving = ref(false)
@@ -98,7 +99,7 @@ const environment = computed(() => {
     ['涉及密探', (issue.operatorIds || []).map(id => detail.value.operatorNames?.[id] || id).join('、')],
     ['涉及节点', (issue.nodes || []).join('、')],
     ['客户端版本', issue.clientVersions?.join('、')], ['资源版本', issue.resourceVersions?.join('、')], ['目录版本', issue.catalogVersions?.join('、')],
-    ['用户数（近 90 天）', String(detail.value.userCount)], ['首次出现', formatTime(issue.firstSeenAt)], ['最近出现', formatTime(issue.lastSeenAt)]
+    [props.resourceVersion ? '用户数（所选版本近 90 天）' : '用户数（近 90 天）', String(detail.value.userCount)], ['首次出现', formatTime(issue.firstSeenAt)], ['最近出现', formatTime(issue.lastSeenAt)]
   ].filter(([, value]) => value !== '' && value != null)
 })
 const keyInfo = computed(() => detail.value ? [
@@ -124,7 +125,7 @@ async function load() {
   const token = ++generation
   loading.value = true; error.value = ''; detail.value = null; selectedEvent.value = ''; actionMessage.value = ''
   try {
-    const result = await getDiagnosticIssue(props.id)
+    const result = await getDiagnosticIssue(props.id, props.resourceVersion)
     if (token !== generation) return
     detail.value = result; note.value = result.issue.note || ''; selectedEvent.value = result.events[0]?.id || ''
     if (scrollPanel.value) scrollPanel.value.scrollTop = 0
@@ -138,7 +139,7 @@ async function save(status) {
   const advance = status !== detail.value.issue.status && (status === 'FIXED' || status === 'IGNORED')
   saving.value = true; actionMessage.value = ''; actionError.value = false
   try {
-    const result = await updateDiagnosticIssue(id, { status, note: note.value })
+    const result = await updateDiagnosticIssue(id, { status, note: note.value }, props.resourceVersion)
     if (token !== generation) return
     detail.value = result; note.value = result.issue.note || ''; actionMessage.value = '处理记录已保存'
     saving.value = false
@@ -147,7 +148,7 @@ async function save(status) {
   } catch (failure) { if (token === generation) { actionError.value = true; actionMessage.value = failure.message || '保存失败，请重试' } }
   finally { if (token === generation) saving.value = false }
 }
-watch(() => props.id, load, { immediate: true })
+watch(() => [props.id, props.resourceVersion], load, { immediate: true })
 onBeforeRouteLeave(canLeave)
 onBeforeUnmount(() => { generation++ })
 defineExpose({ canLeave })

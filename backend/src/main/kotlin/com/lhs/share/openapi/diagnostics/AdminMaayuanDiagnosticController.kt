@@ -28,10 +28,15 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
         @RequestParam(defaultValue = "1") page: Int,
         @RequestParam(defaultValue = "20") pageSize: Int,
         @RequestParam(required = false) feature: String?,
-    ) = authorized { success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true, feature = feature)) }
+        @RequestParam(required = false) resourceVersion: String?,
+    ) = authorized {
+        success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true, feature = feature, resourceVersion = resourceVersion))
+    }
 
     @GetMapping("/issues/{id}")
-    fun issue(@PathVariable id: String) = authorized { success(center.detail(id, includeTrace = true)) }
+    fun issue(@PathVariable id: String, @RequestParam(required = false) resourceVersion: String?) = authorized {
+        success(center.detail(id, includeTrace = true, resourceVersion = resourceVersion))
+    }
 
     @GetMapping("/events/{eventId}")
     fun event(@PathVariable eventId: String) = authorized {
@@ -47,8 +52,12 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
     fun log(@PathVariable eventId: String) = authorized { center.logResponse(eventId) }
 
     @PatchMapping("/issues/{id}")
-    fun update(@PathVariable id: String, @Valid @RequestBody request: DiagnosticIssueUpdateRequest) = authorized {
-        success(center.update(id, helper.requireUserId(), request))
+    fun update(
+        @PathVariable id: String,
+        @Valid @RequestBody request: DiagnosticIssueUpdateRequest,
+        @RequestParam(required = false) resourceVersion: String?,
+    ) = authorized {
+        success(center.update(id, helper.requireUserId(), request, resourceVersion))
     }
 
     private fun <T> authorized(action: () -> T): T {
