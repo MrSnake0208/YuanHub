@@ -29,10 +29,11 @@ criticalTest 使用本机 MongoDB 副本集，默认 4 个 fork 并行，可用 
 
 ## criticalTest 覆盖
 
-criticalTest 由 `backend/build.gradle.kts` 中的 `criticalTestClasses` 清单决定，新增关键类时只需加入该清单；以下 8 类保留 `@Tag("integration")`，在分配 fork 前按类文件过滤，默认 test 不运行它们，tasks.check 及其它套件不变。RecruitmentMongoTest 保持默认串行，每类共用 TestMongo 随机库和 client，集合及索引仅创建一次；每个用例开始前清空所有集合文档，服务与 mock 仍按用例新建。
+criticalTest 由 `backend/build.gradle.kts` 中的 `criticalTestClasses` 清单决定，新增关键类时只需加入该清单；以下 9 类保留 `@Tag("integration")`，在分配 fork 前按类文件过滤，默认 test 不运行它们，tasks.check 及其它套件不变。RecruitmentMongoTest 保持默认串行，每类共用 TestMongo 随机库和 client，集合及索引仅创建一次；每个用例开始前清空所有集合文档，服务与 mock 仍按用例新建。
 
 | 测试类 | 保留理由 |
 | --- | --- |
+| CatalogGameLinkMongoTest | 密探版本联动、草稿去重与跨目录事务回滚。 |
 | AccountIndexMongoTest | 账号唯一索引与隔离约束。 |
 | CalendarPrivateItemMongoTest | 私有日历事项的账号隔离与写入安全。 |
 | OperatorShareMongoTest | 分享写入不得复活已删除账号或覆盖生命周期隔离。 |

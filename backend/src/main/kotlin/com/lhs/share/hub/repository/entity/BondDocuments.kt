@@ -33,6 +33,7 @@ data class BondCatalog(
     val draft: List<BondEntry> = emptyList(),
     val identities: List<BondEntry> = emptyList(),
     val history: List<BondPublication> = emptyList(),
+    val syncedSources: Map<String, String> = emptyMap(),
     val writeFence: Long = 0,
 )
 

@@ -35,6 +35,7 @@ class OperatorCatalogServiceTest {
         avatarStorage,
         mockk<XinzhiStorage>(relaxed = true),
         mockk<PortraitStorage>(relaxed = true),
+        gameLinks = com.lhs.share.testinfra.catalogGameLinksStub(),
     )
 
     private fun seed(existing: List<OperatorCatalogEntity> = emptyList()) {

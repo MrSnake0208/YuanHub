@@ -30,7 +30,9 @@ class AdminMaayuanDiagnosticController(private val center: MaayuanDiagnosticCent
         @RequestParam(required = false) feature: String?,
         @RequestParam(required = false) resourceVersion: String?,
     ) = authorized {
-        success(center.list(status, reason, q, sort, page, pageSize, includeTrace = true, feature = feature, resourceVersion = resourceVersion))
+        success(
+            center.list(status, reason, q, sort, page, pageSize, includeTrace = true, feature = feature, resourceVersion = resourceVersion),
+        )
     }
 
     @GetMapping("/issues/{id}")

@@ -96,7 +96,7 @@ class AchievementCatalogAdminContractTest {
         )
         every { repository.published("代号鸢") } returns state.published
         every { repository.find("代号鸢") } returns state
-        val real = AchievementCatalogService(noSeedMapper, repository)
+        val real = AchievementCatalogService(noSeedMapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         assertEquals("db-v1", real.catalog("代号鸢").catalogVersion)
         verify { noSeedMapper wasNot io.mockk.Called }
         every { repository.published("代号鸢") } throws IllegalStateException("DB unavailable")
@@ -109,10 +109,10 @@ class AchievementCatalogAdminContractTest {
         val repository = mockk<AchievementCatalogRepository>()
         every { repository.find("代号鸢") } returns null
         every { repository.published("代号鸢") } returns null
-        val real = AchievementCatalogService(mapper, repository)
+        val real = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         assertEquals(0, real.catalog("代号鸢").entries.size)
         verify(exactly = 0) { repository.insert(any()) }
-        val admin = AchievementCatalogAdminService(real, repository, mapper)
+        val admin = AchievementCatalogAdminService(real, repository, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         every { repository.replace(any(), 0L) } returns false
         every { repository.insert(any()) } throws DuplicateKeyException("concurrent")
         assertThrows(InventoryApiException::class.java) { admin.addCategory("代号鸢", 0, "测试分类") }

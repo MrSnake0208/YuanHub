@@ -157,6 +157,7 @@ fun isolatedSuite(taskName: String, tag: String) = tasks.register<Test>(taskName
 }
 val integrationTest = isolatedSuite("integrationTest", "integration")
 val criticalTestClasses = listOf(
+    "CatalogGameLinkMongoTest",
     "AccountIndexMongoTest",
     "CalendarPrivateItemMongoTest",
     "OperatorShareMongoTest",

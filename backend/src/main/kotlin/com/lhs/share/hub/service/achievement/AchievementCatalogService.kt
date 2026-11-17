@@ -12,11 +12,19 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 
 @Service
-class AchievementCatalogService(private val mapper: ObjectMapper, private val repository: AchievementCatalogRepository) {
+class AchievementCatalogService(
+    private val mapper: ObjectMapper,
+    private val repository: AchievementCatalogRepository,
+    private val gameLinks: com.lhs.share.hub.service.operator.CatalogGameLinkService,
+) {
     fun catalog(game: String): AchievementCatalogResponse {
         requireGame(game)
         val published = repository.published(game) ?: load(game).published
-        return published.content.publicCatalog(published.version)
+        val content = published.content
+        val supported = gameLinks.supportedIds(game)
+        val visible = content.entries.filter { supported.containsAll(it.operatorIds) }
+        return content.copy(entries = visible, retiredIds = content.retiredIds.intersect(visible.map { it.achievementId }.toSet()))
+            .also { it.legacyRewards = content.legacyRewards }.publicCatalog(published.version)
     }
 
     private fun requireGame(game: String) {

@@ -2,12 +2,16 @@
 @media (max-width: 767px) {
 .pool-entry .pool-actions{width:100%}
 .pool-entry .pool-actions .preview-toggle{margin-right:auto;justify-content:flex-start;text-align:left;padding-left:0}
-.pool-card.has-banner{grid-template-columns:minmax(0,1fr);gap:12px;padding:10px}
+.pool-card.has-banner{grid-template-columns:minmax(0,1fr);gap:10px;padding:10px}
 .pool-card.has-banner .pool-cover{grid-column:1;grid-row:auto}
 .cover-banner{display:block;flex:none;aspect-ratio:992/274;object-fit:contain;width:100%;height:auto}
-.banner-content{display:flex;flex-direction:column;gap:12px;min-width:0;padding:0 4px 4px}
-.banner-head{display:contents}
-.banner-meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+.banner-content{display:flex;flex-direction:column;gap:8px;min-width:0;padding:0 4px 4px}
+.banner-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 10px}
+.banner-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.banner-head:not(.has-up) .banner-meta{display:contents}
+.banner-head:not(.has-up) .pool-status{grid-column:1;grid-row:1;justify-self:start}
+.banner-head:not(.has-up) .pool-dates{grid-column:1/-1;grid-row:2}
+.banner-head:not(.has-up) .banner-actions{grid-row:1}
 .banner-meta .pool-status{align-self:center;font-size:12px;line-height:1;padding:6px 10px}
 .banner-meta .pool-dates{font-size:13px;line-height:1.4;font-variant-numeric:tabular-nums}
 .pool-up-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-width:0}
@@ -15,13 +19,15 @@
 .pool-up-row .pool-up-avatar{width:26px;height:26px}
 .cover-agents :deep(.up-avatar > span){font-size:15px;line-height:1;font-weight:700;overflow:hidden}
 .pool-up-count{font:600 13px/1.4 var(--font-d);font-variant-numeric:tabular-nums;white-space:nowrap}
-.banner-actions{order:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
-.banner-actions .entry-label,.banner-actions .preview-toggle{min-height:44px;padding:0 10px;font:600 14px var(--font-d);white-space:nowrap}
-.banner-actions .entry-label{flex:1;padding-inline:18px}
-.banner-content .banner-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;padding:12px}
+.banner-actions{grid-column:2;display:flex;align-items:center;justify-content:flex-end;margin-left:auto}
+.banner-actions .entry-label{min-width:0;min-height:36px;padding:0 12px;gap:6px;font:600 13px var(--font-d);white-space:nowrap}
+.banner-actions .preview-toggle{display:none}
+.banner-metrics .mobile-metrics-toggle{position:absolute;inset:0;width:100%;height:100%;min-height:0;justify-content:flex-end;padding:0 5px;border-radius:inherit;color:var(--ink-60)}
+.banner-content .banner-metrics{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.6fr);gap:4px;padding:8px}
+.banner-content .banner-metrics:has(.mobile-metrics-toggle){padding-right:24px}
 .banner-content .banner-metrics>span{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
 .banner-metrics .metric-label{font-size:12px;color:var(--ink-60)}
-.banner-metrics .metric-value{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px;min-width:0}
+.banner-metrics .metric-value{display:flex;flex-wrap:nowrap;white-space:nowrap;align-items:baseline;gap:3px;min-width:0}
 .banner-content .banner-metrics b{min-width:0;font:700 19px/1.4 var(--font-d);font-variant-numeric:tabular-nums}
 .banner-content .banner-metrics b.is-unknown{font-size:14px;font-weight:400;color:var(--ink-60)}
 .banner-content .banner-metrics small{font-size:12px;font-weight:500;color:var(--ink-60)}

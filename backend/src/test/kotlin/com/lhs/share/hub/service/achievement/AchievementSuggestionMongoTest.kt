@@ -48,8 +48,9 @@ class AchievementSuggestionMongoTest {
     private val repo = AchievementSuggestionRepository(mongo)
     private val catalogs = AchievementCatalogRepository(mongo)
     private val mapper = achievementMapper()
-    private val catalogService = AchievementCatalogService(mapper, catalogs)
-    private val admin = AchievementCatalogAdminService(catalogService, catalogs, mapper)
+    private val catalogService = AchievementCatalogService(mapper, catalogs, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
+    private val admin =
+        AchievementCatalogAdminService(catalogService, catalogs, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
     private val auth = mockk<AdminAuthorizationService>()
     private val transaction = TransactionTemplate(MongoTransactionManager(factory))
     private val service = AchievementSuggestionService(repo, catalogs, admin, auth, transaction)
@@ -183,7 +184,13 @@ class AchievementSuggestionMongoTest {
         assertEquals(original, rawSuggestions())
         val casFail = spyk(catalogs)
         every { casFail.replace(any(), any()) } returns false
-        val casAdmin = AchievementCatalogAdminService(AchievementCatalogService(mapper, casFail), casFail, mapper)
+        val casAdmin =
+            AchievementCatalogAdminService(
+                AchievementCatalogService(mapper, casFail, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub()),
+                casFail,
+                mapper,
+                gameLinks = com.lhs.share.testinfra.catalogGameLinksStub(),
+            )
         assertEquals(
             409,
             assertThrows(InventoryApiException::class.java) {

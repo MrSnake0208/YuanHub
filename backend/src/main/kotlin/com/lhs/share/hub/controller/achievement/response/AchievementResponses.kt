@@ -25,6 +25,7 @@ data class AchievementEntry(
     val rewards: List<AchievementReward>? = null,
     val target: Long? = null,
     val linkedMetric: String? = null,
+    val operatorIds: List<String> = emptyList(),
 )
 data class AchievementCatalogResponse(
     val catalogVersion: String,

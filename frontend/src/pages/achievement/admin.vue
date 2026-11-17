@@ -93,6 +93,23 @@
                   <legend>基本资料</legend>
                   <div class="fields">
                     <AchievementBasicFields :candidate="entry" :categories="draft.categories.filter(c => c.enabled || c.category_id === entry.category_id)" />
+                    <div class="full operator-picker" role="group" aria-labelledby="linked-operators-title">
+                      <span id="linked-operators-title">关联密探（选填，可多选）</span>
+                      <p class="hint">点击复选框即可多选，再次点击取消。</p>
+                      <p role="status">已选 {{ selectedOperators.length }} 名{{ selectedOperators.length ? '' : '，暂未关联密探' }}</p>
+                      <div v-if="selectedOperators.length" class="operator-picked" aria-label="已选密探">
+                        <button v-for="operator in selectedOperators" :key="operator.id" type="button" :aria-label="'移除关联密探 ' + operator.name" @click="entry.operator_ids = entry.operator_ids.filter(id => id !== operator.id)">{{ operator.name }} · 移除</button>
+                      </div>
+                      <label>搜索密探<input v-model="operatorQuery" type="search" placeholder="输入姓名或别名"></label>
+                      <div class="operator-options">
+                        <label v-for="operator in filteredOperators" :key="operator.id" class="check operator-option">
+                          <input v-model="entry.operator_ids" type="checkbox" :value="operator.id">
+                          <span>{{ operator.name }}<small>{{ operator.games.join(' / ') }}</small></span>
+                        </label>
+                        <p v-if="!filteredOperators.length" class="hint">没有匹配的密探，请换个关键词。</p>
+                      </div>
+                    </div>
+                    <p class="full">仅在全部关联密探支持的游戏中显示。代号鸢已发布条目符合条件后自动加入如鸢草稿，发布后可见。</p>
                     <label>原始显示顺序<input v-model.number="entry.sort" type="number" step="1"></label>
                     <label class="check full"><input type="checkbox" :checked="retired(entry)" @change="setRetired(entry.achievement_id, $event.target.checked)">退役（从玩家当前目录移出，保留全部个人记录）</label>
                   </div>
@@ -188,6 +205,7 @@
 </template>
 
 <script setup>
+import { getOperatorCatalog } from '../../api/operator.js'
 import { downloadJson } from '../../utils/downloadFile.js'
 import AchievementSettingsImport from './AchievementSettingsImport.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
@@ -201,6 +219,7 @@ import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js
 import { achievementCatalogCommand, exportAchievementCatalog, getAchievementCatalogAdmin } from '../../api/achievementCatalogAdmin.js'
 
 const route = useRoute()
+const operators = ref([]), operatorQuery = ref('')
 const page = ref(0)
 const games = ['代号鸢', '如鸢']
 const changeLabels = { add: '新增', update: '修改', retire: '退役 / 移除' }
@@ -219,6 +238,14 @@ function applySettings(settings) {
 }
 const dirty = computed(() => !!data.value && JSON.stringify(draft.value) !== JSON.stringify(data.value.draft))
 const entry = computed(() => draft.value?.entries.find(e => e.achievement_id === selected.value))
+const selectedOperators = computed(() => (entry.value?.operator_ids || []).map(id => ({
+  id, name: operators.value.find(operator => operator.id === id)?.name || id,
+})))
+const filteredOperators = computed(() => {
+  const query = operatorQuery.value.trim().toLocaleLowerCase()
+  return operators.value.filter(operator => `${operator.name} ${operator.alias || ''}`.toLocaleLowerCase().includes(query))
+})
+watch(selected, () => { operatorQuery.value = '' })
 const activeEntries = computed(() => draft.value?.entries.filter(e => !retired(e)) || [])
 const publishedEntries = computed(() => data.value?.published.content.entries.filter(e => !data.value.published.content.retired_ids.includes(e.achievement_id)) || [])
 const savedDraftMatchesPublished = computed(() => !!data.value && ['entries', 'retired_ids', 'categories', 'reward_items', 'point_tracks', 'reward_filter_keys'].every(key =>
@@ -311,10 +338,14 @@ async function run(action, message = '') {
   } finally { if (turn === generation) busy.value = false }
 }
 async function load() {
-  const result = await run(getAchievementCatalogAdmin)
+  const result = await run(async (game, user) => {
+    const [catalog, operatorCatalog] = await Promise.all([getAchievementCatalogAdmin(game, user), getOperatorCatalog()])
+    return { catalog, operators: operatorCatalog.operators }
+  })
   if (result) {
-    accept(result)
-    if (typeof route.query.entry === 'string' && result.draft.entries.some(e => e.achievement_id === route.query.entry)) await selectEntry(route.query.entry)
+    operators.value = result.operators
+    accept(result.catalog)
+    if (typeof route.query.entry === 'string' && result.catalog.draft.entries.some(e => e.achievement_id === route.query.entry)) await selectEntry(route.query.entry)
   }
 }
 async function reload() {

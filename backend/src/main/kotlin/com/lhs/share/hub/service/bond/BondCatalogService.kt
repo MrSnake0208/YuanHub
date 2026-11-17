@@ -19,22 +19,31 @@ import java.util.UUID
 data class BondPublishPreview(val expectedRevision: Long, val changes: List<BondEntry>, val errors: List<String>)
 
 @Service
+@org.springframework.transaction.annotation.Transactional(transactionManager = "hubTransactionManager")
 class BondCatalogService(
     private val repository: BondCatalogRepository,
     private val operators: OperatorCatalogService,
     private val mapper: ObjectMapper,
     private val achievements: AchievementCatalogRepository,
+    private val gameLinks: com.lhs.share.hub.service.operator.CatalogGameLinkService,
 ) {
     fun read(game: String): BondCatalog {
         BondRules.game(game)
         return repository.find(game) ?: BondCatalog(game, published = BondPublication("bonds-empty-$game", game))
     }
     fun catalog(game: String): BondPublication {
+        val supported = gameLinks.supportedIds(game)
         val published = achievements.published(game)?.content
         val targets = published?.entries.orEmpty().filter {
-            it.achievementId !in published!!.retiredIds && it.linkedMetric == "yuan_bond_variants"
+            supported.containsAll(it.operatorIds) && it.achievementId !in published!!.retiredIds && it.linkedMetric == "yuan_bond_variants"
         }.mapNotNull { it.target?.takeIf { target -> target > 0 } }.distinct().sorted()
-        return read(game).published.copy(publishedBy = null, achievementTargets = targets)
+        return read(game).published.let { publication ->
+            publication.copy(
+                entries = publication.entries.filter { supported.containsAll(it.members) },
+                publishedBy = null,
+                achievementTargets = targets,
+            )
+        }
     }
 
     fun fence(game: String, version: String) {
@@ -133,6 +142,7 @@ class BondCatalogService(
         } else if (!repository.replace(value, old.revision)) {
             conflict("目录版本冲突，未覆盖修改")
         }
+        if (value.game == "代号鸢") gameLinks.sync()
         return value
     }
 }

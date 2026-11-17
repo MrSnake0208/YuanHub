@@ -39,8 +39,9 @@ class AchievementCatalogMongoTest {
     private val mongo = MongoTemplate(factory)
     private val mapper = achievementMapper()
     private val repository = AchievementCatalogRepository(mongo)
-    private val publicCatalog = AchievementCatalogService(mapper, repository)
-    private val admin = AchievementCatalogAdminService(publicCatalog, repository, mapper)
+    private val publicCatalog = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
+    private val admin =
+        AchievementCatalogAdminService(publicCatalog, repository, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
     private val game = "代号鸢"
 
     @AfterEach
@@ -73,7 +74,7 @@ class AchievementCatalogMongoTest {
         val published = admin.publish(game, draft.revision, "admin-a")
         assertEquals(draft.draft.entries, publicCatalog.catalog(game).entries)
         assertEquals("admin-a", published.published.publishedBy)
-        val restarted = AchievementCatalogService(mapper, repository)
+        val restarted = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         assertEquals(publicCatalog.catalog(game), restarted.catalog(game))
         assertEquals(other, restarted.catalog("如鸢"))
         assertEquals(published.revision, restarted.load(game).revision)

@@ -68,6 +68,7 @@ data class AchievementCatalog(
     val identities: Map<String, AchievementEntry> = emptyMap(),
     val issuedIds: Set<String> = emptySet(),
     val categoryIds: Set<String> = emptySet(),
+    val syncedSources: Map<String, String> = emptyMap(),
 ) {
     @get:JsonIgnore
     @field:Transient

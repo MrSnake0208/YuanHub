@@ -54,7 +54,13 @@ class BondMongoTest {
     private val accountWrites = SubAccountRepositoryImpl(mongo)
     private val mapper = bondMapper()
     private val catalog =
-        BondCatalogService(catalogRepository, operators, mapper, com.lhs.share.hub.repository.AchievementCatalogRepository(mongo))
+        BondCatalogService(
+            catalogRepository,
+            operators,
+            mapper,
+            com.lhs.share.hub.repository.AchievementCatalogRepository(mongo),
+            gameLinks = com.lhs.share.testinfra.catalogGameLinksStub(),
+        )
     private val previews = BondImportPreviews()
     private val service = BondService(repository, accounts, catalog, operators, previews, mapper, tx)
     private val entries = listOf(bondEntry(), bondEntry(2, "rain"), bondEntry(3, action = "poison"))
@@ -379,8 +385,17 @@ class BondMongoTest {
     @Test
     fun `achievement targets use only active published entries from the current game`() {
         val achievementRepository = com.lhs.share.hub.repository.AchievementCatalogRepository(mongo)
-        val achievements = com.lhs.share.hub.service.achievement.AchievementCatalogService(mapper, achievementRepository)
-        val admin = com.lhs.share.hub.service.achievement.AchievementCatalogAdminService(achievements, achievementRepository, mapper)
+        val achievements = com.lhs.share.hub.service.achievement.AchievementCatalogService(
+            mapper,
+            achievementRepository,
+            gameLinks = com.lhs.share.testinfra.catalogGameLinksStub(),
+        )
+        val admin = com.lhs.share.hub.service.achievement.AchievementCatalogAdminService(
+            achievements,
+            achievementRepository,
+            mapper,
+            gameLinks = com.lhs.share.testinfra.catalogGameLinksStub(),
+        )
         var view = admin.addCategory("代号鸢", 0, "合成分类")
         repeat(4) { view = admin.addEntry("代号鸢", view.revision, view.draft.categories.single().categoryId) }
         val entries = view.draft.entries.mapIndexed { index, entry ->

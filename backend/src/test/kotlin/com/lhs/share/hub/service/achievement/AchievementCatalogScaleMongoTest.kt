@@ -35,8 +35,9 @@ class AchievementCatalogScaleMongoTest {
     private val mongo = MongoTemplate(factory)
     private val mapper = achievementMapper()
     private val repository = AchievementCatalogRepository(mongo)
-    private val catalogs = AchievementCatalogService(mapper, repository)
-    private val admin = AchievementCatalogAdminService(catalogs, repository, mapper)
+    private val catalogs = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
+    private val admin =
+        AchievementCatalogAdminService(catalogs, repository, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
 
     @AfterEach
     fun cleanup() {

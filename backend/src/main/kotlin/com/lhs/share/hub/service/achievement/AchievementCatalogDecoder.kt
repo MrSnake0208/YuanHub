@@ -53,8 +53,11 @@ object AchievementCatalogDecoder {
             setOf("achievement_id", "game", "category_id", "name", "condition", "linked_metric"),
             setOf("sort", "target"),
             setOf("is_hidden"),
-            setOf("rewards"),
+            setOf("rewards", "operator_ids"),
         )
+        node["operator_ids"]?.let { ids ->
+            if (!ids.isArray || ids.any { !it.isTextual }) invalid("operator_ids 必须是密探 ID 数组")
+        }
         integer(node, "sort")
         node["target"]?.takeUnless { it.isNull }?.let {
             if (!it.isIntegralNumber || !it.canConvertToLong()) invalid("target 必须是正整数或 null")

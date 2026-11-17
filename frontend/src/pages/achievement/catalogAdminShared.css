@@ -66,3 +66,14 @@
 .catalog-admin .reward-editor-row .error { grid-column: 1 / -1; margin: 0; }
 .catalog-admin .catalog-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .catalog-admin .message a { display: block; color: inherit; }
+
+.catalog-admin .operator-picker { display: grid; gap: 8px; min-width: 0; }
+.catalog-admin .operator-picker p { margin: 0; overflow-wrap: anywhere; }
+.catalog-admin .operator-picked { display: flex; flex-wrap: wrap; gap: 6px; }
+.catalog-admin .operator-picked button { overflow-wrap: anywhere; text-align: left; }
+.catalog-admin .operator-options { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; border: 1px solid var(--line); border-radius: 4px; }
+.catalog-admin .operator-option { flex-wrap: nowrap; gap: 10px; padding: 8px; cursor: pointer; }
+.catalog-admin .operator-option:has(input:checked) { background: var(--paper); }
+.catalog-admin .operator-option input { flex: 0 0 auto; }
+.catalog-admin .operator-option span { min-width: 0; overflow-wrap: anywhere; }
+.catalog-admin .operator-option small { margin-left: 8px; color: var(--ink-60); }

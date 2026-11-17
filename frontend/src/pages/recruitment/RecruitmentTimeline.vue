@@ -43,7 +43,7 @@
               </span>
             </span>
             <span v-if="bannerSrc(pool)" class="banner-content">
-              <span class="banner-head">
+              <span class="banner-head" :class="{ 'has-up': coverAgents(pool).length > 0 }">
                 <span class="banner-meta">
                   <span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span>
                   <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
@@ -66,6 +66,7 @@
                   <span class="metric-label">{{ metric.label }}</span>
                   <span class="metric-value"><b :class="{ 'is-unknown': metric.value === '未知' || metric.value === '—' }">{{ metric.value }}</b><small v-if="metric.unit && metric.value !== '未知' && metric.value !== '—'">{{ metric.unit }}</small></span>
                 </span>
+                <button v-if="hasRecords(pool)" type="button" class="preview-toggle mobile-metrics-toggle" :aria-label="`${details(pool).name}：${isExpanded(pool) ? '收起明细' : '展开明细'}`" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)"><ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
               </span>
               <span v-if="poolSummaries[pool.pool_id]?.four_star_count" class="metric-note">另有 {{ poolSummaries[pool.pool_id].four_star_count }} 条4星计次</span>
             </span>
@@ -153,12 +154,10 @@ const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) |
   if (!first || !second) return Number(!first) - Number(!second)
   return descending.value ? second.localeCompare(first) : first.localeCompare(second)
 }))
-const remainingPulls = pool => Number.isInteger(pool.progress) && pool.progress >= 0 && pool.progress < 40 ? 40 - pool.progress : '未知'
 function poolMetrics(pool) {
   return [
     { label: '已知抽数', value: props.poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知', unit: '抽' },
     { label: '绝密次数', value: goldCount(pool) ?? '未知', unit: '次' },
-    { label: '距保底', value: remainingPulls(pool), unit: '抽' },
     { label: '平均出金', value: props.poolSummaries[pool.pool_id]?.average_gold_pulls ?? '—', unit: '抽', class: 'average-metric' },
     { label: '小保底不歪率', value: permanent(pool) || props.poolSummaries[pool.pool_id]?.small_pity_win_rate == null ? '—' : props.poolSummaries[pool.pool_id].small_pity_win_rate + '%', class: 'small-pity-metric' },
   ]

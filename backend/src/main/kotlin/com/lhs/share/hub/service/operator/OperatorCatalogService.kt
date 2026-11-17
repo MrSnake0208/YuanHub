@@ -27,6 +27,7 @@ class OperatorCatalogService(
     private val avatarStorage: AvatarStorage,
     private val xinzhiStorage: XinzhiStorage,
     private val portraitStorage: PortraitStorage,
+    private val gameLinks: com.lhs.share.hub.service.operator.CatalogGameLinkService,
 ) {
     @Volatile private var seeded = false
 
@@ -148,6 +149,7 @@ class OperatorCatalogService(
         val version = nextCatalogVersion()
         return repository.save(normalized.toEntity(catalogVersion = version, specialOddityName = specialOddityName))
             .also {
+                gameLinks.sync(it.operatorId)
                 spIndexCache = null
             }
             .let(AdminOperatorCatalogResponse::of)
@@ -182,6 +184,7 @@ class OperatorCatalogService(
                 portraitSha256 = existing.portraitSha256,
             ),
         ).also {
+            gameLinks.sync(it.operatorId)
             spIndexCache = null
         }.let(AdminOperatorCatalogResponse::of)
     }

@@ -46,10 +46,12 @@ data class CatalogImportPreview(
 )
 
 @Service
+@org.springframework.transaction.annotation.Transactional(transactionManager = "hubTransactionManager")
 class AchievementCatalogAdminService(
     private val catalog: AchievementCatalogService,
     private val repository: AchievementCatalogRepository,
     private val mapper: ObjectMapper,
+    private val gameLinks: com.lhs.share.hub.service.operator.CatalogGameLinkService,
 ) {
     private data class PendingImport(
         val actor: String,
@@ -162,7 +164,7 @@ class AchievementCatalogAdminService(
             revision,
             changes,
             categoryChanges,
-            AchievementCatalogRules.errors(content, true) + compatibility,
+            AchievementCatalogRules.errors(content, true) + compatibility + gameLinks.errors(content, true),
             progress,
             restore,
             content.rewardItems != current.published.content.rewardItems ||
@@ -366,7 +368,7 @@ class AchievementCatalogAdminService(
     }
 
     private fun validate(content: CatalogContent, publishing: Boolean) {
-        val errors = AchievementCatalogRules.errors(content, publishing)
+        val errors = AchievementCatalogRules.errors(content, publishing) + gameLinks.errors(content, publishing)
         if (errors.isNotEmpty()) invalid(errors.joinToString("；"))
     }
     private fun current(game: String, revision: Long) = catalog.load(game).also {
@@ -392,6 +394,7 @@ class AchievementCatalogAdminService(
                 conflict("目录版本冲突，未覆盖其他管理员的修改")
             }
         }
+        if (value.game == "代号鸢") gameLinks.sync()
         return view(value)
     }
     private fun view(value: AchievementCatalog) =

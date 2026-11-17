@@ -128,7 +128,7 @@ class AchievementContractTest {
         every { repository.published(any()) } returns null
         every { repository.find(any()) } returns null
         every { repository.insert(any()) } answers { firstArg() }
-        val real = AchievementCatalogService(mapper, repository)
+        val real = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         for (game in listOf("代号鸢", "如鸢")) {
             val response = real.catalog(game)
             assertEquals("empty", response.dataStatus)

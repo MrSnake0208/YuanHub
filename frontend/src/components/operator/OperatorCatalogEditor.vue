@@ -94,6 +94,7 @@
           </fieldset>
           <fieldset class="version-field">
             <legend>版本</legend>
+            <p>关联羁绊和成就仅在全部密探支持的游戏中显示。增加如鸢后，符合条件的已发布条目自动加入如鸢草稿，需另行发布。</p>
             <div class="games-pick">
               <label v-for="game in ['如鸢', '代号鸢']" :key="game" :class="{ on: form.games.includes(game) }"><input v-model="form.games" type="checkbox" :value="game" />{{ game }}</label>
             </div>
@@ -1086,7 +1087,7 @@ async function save() {
     const row = rows.value.find(function (r) { return r.id === body.id })
     if (refreshed && row) {
       await selectRow(row)
-      notice.value = '已保存到公共图鉴'
+      notice.value = body.games.includes('如鸢') ? '已保存到公共图鉴；符合条件的关联条目已同步至如鸢草稿，请到羁绊、成就目录核对并发布。' : '已保存到公共图鉴；如鸢目录已隐藏不符合版本的关联条目。'
     } else {
       notice.value = '已保存到公共图鉴，但未能获取最新资料，请重试刷新列表。'
       noticeError.value = true

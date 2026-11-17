@@ -31,8 +31,8 @@ class AchievementPrivateDataTest {
         val repository = mockk<AchievementCatalogRepository>()
         every { repository.find(any()) } returns null
         every { repository.published(any()) } returns null
-        val service = AchievementCatalogService(mapper, repository)
-        val admin = AchievementCatalogAdminService(service, repository, mapper)
+        val service = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
+        val admin = AchievementCatalogAdminService(service, repository, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         repeat(2) {
             assertTrue(service.catalog("代号鸢").entries.isEmpty())
             assertEquals(0, admin.read("代号鸢").revision)
@@ -77,8 +77,8 @@ class AchievementPrivateDataTest {
             stored = firstArg()
             stored!!
         }
-        val service = AchievementCatalogService(mapper, repository)
-        val admin = AchievementCatalogAdminService(service, repository, mapper)
+        val service = AchievementCatalogService(mapper, repository, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
+        val admin = AchievementCatalogAdminService(service, repository, mapper, gameLinks = com.lhs.share.testinfra.catalogGameLinksStub())
         val node = mapper.valueToTree<com.fasterxml.jackson.databind.node.ObjectNode>(
             config.copy(
                 categories = listOf(CatalogCategory("import_group", "测试分类")),
