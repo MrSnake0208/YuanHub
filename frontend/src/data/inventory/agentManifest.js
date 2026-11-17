@@ -1,5 +1,6 @@
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { AGENT_CATALOG } from './catalog.js'
+import { HEART_PAPER_ORDER } from './heartPaperOrder.js'
 import { canonicalSubProf } from '../../utils/operatorFilters.js'
 
 const PROF_ORDER = ['阳', '阴', '火', '风', '水', '地', '混沌']
@@ -67,8 +68,13 @@ export function sortAgentEntries(entries, mode, favoriteIds, options) {
   const direction = settings.direction === 'asc' ? 1 : (settings.direction === 'desc' ? -1 : (mode === 'name' ? 1 : -1))
   return (Array.isArray(entries) ? entries : []).slice().sort(function (left, right) {
     if (mode === 'backpack') {
-      const rarityDiff = (Number(left.rarity) || 0) - (Number(right.rarity) || 0)
-      if (rarityDiff) return rarityDiff * direction
+      const rarityDiff = (Number(right.rarity) || 0) - (Number(left.rarity) || 0)
+      if (rarityDiff) return rarityDiff
+      const leftOrder = HEART_PAPER_ORDER.get(left.id)
+      const rightOrder = HEART_PAPER_ORDER.get(right.id)
+      if (leftOrder === undefined) return rightOrder === undefined ? compareAgentRelease(left, right) : 1
+      if (rightOrder === undefined) return -1
+      return (leftOrder - rightOrder) * direction
     }
     if (settings.favoriteFirst || mode === 'favorite') {
       const favoriteDiff = Number(favorites.has(right.id)) - Number(favorites.has(left.id))

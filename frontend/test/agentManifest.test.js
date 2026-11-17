@@ -62,7 +62,7 @@ test('最新排序按编号降序且非法 id 排末尾', function () {
   ])
 })
 
-test('背包顺序先按阶级降序，同阶级按编号从新到旧，新增密探无需名单', function () {
+test('背包顺序固定按稀有度分段，升降序只改变段内已收录密探顺序', function () {
   const entries = [
     { id: 'char_017_ganti', name: '甘缇', rarity: 3 },
     { id: 'char_043_xiaoqiao', name: '小乔', rarity: 4 },
@@ -71,19 +71,30 @@ test('背包顺序先按阶级降序，同阶级按编号从新到旧，新增�
     { id: 'char_054_wangyi', name: '王异', rarity: 4 },
     { id: 'char_112_pangde', name: '庞德', rarity: 5 },
     { id: 'char_049_luji', name: '陆绩', rarity: 4 },
-    { id: 'char_133_new', name: '新增密探', rarity: 5 },
+    { id: 'char_096_xiahouyuan', name: '夏侯渊', rarity: 5 },
+    { id: 'char_103_caopi', name: '曹丕', rarity: 5 },
+    { id: 'char_005_lusu', name: '鲁肃', rarity: 5 },
+    { id: 'char_135_gaoshun', name: '高顺', rarity: 5 },
+    { id: 'char_137_new', name: '新增密探', rarity: 5 },
     { id: 'custom_agent', name: '未编号', rarity: 3 }
   ]
-  const expected = ['新增密探', '庞德', '程普', '王异', '陆绩', '小乔', '蜂使', '甘缇', '未编号']
+  const expected = ['夏侯渊', '曹丕', '程普', '庞德', '高顺', '鲁肃', '新增密探', '王异', '陆绩', '小乔', '蜂使', '甘缇', '未编号']
   assert.deepEqual(sortAgentEntries(entries, 'backpack').map(entry => entry.name), expected)
   assert.deepEqual(sortAgentEntries(entries, 'backpack', null, { direction: 'desc' }).map(entry => entry.name), expected)
-  assert.deepEqual(sortAgentEntries(entries, 'backpack', null, { direction: 'asc' }).map(entry => entry.name), expected.slice().reverse())
+  assert.deepEqual(sortAgentEntries(entries, 'backpack', null, { direction: 'asc' }).map(entry => entry.name), [
+    '鲁肃', '高顺', '庞德', '程普', '曹丕', '夏侯渊', '新增密探', '小乔', '陆绩', '王异', '甘缇', '蜂使', '未编号'
+  ])
 })
 
-test('背包顺序的关注优先只在同阶级内生效，蓝卡不会穿插到金卡前', function () {
-  assert.deepEqual(sortAgentEntries(agents, 'backpack', new Set(['char_038_mid', 'custom_agent']), {
+test('背包顺序按稀有度分段且不被关注置顶打乱', function () {
+  const entries = [
+    { id: 'char_005_lusu', name: '鲁肃', rarity: 5 },
+    { id: 'char_049_luji', name: '陆绩', rarity: 4 },
+    { id: 'char_015_yanyan', name: '严颜', rarity: 3 }
+  ]
+  assert.deepEqual(sortAgentEntries(entries, 'backpack', new Set(['char_015_yanyan', 'char_005_lusu']), {
     favoriteFirst: true
-  }).map(entry => entry.id), ['char_038_mid', 'char_102_new', 'char_009_old', 'custom_agent'])
+  }).map(entry => entry.name), ['鲁肃', '陆绩', '严颜'])
 })
 
 test('关注、状态与目录属性筛选可以组合', function () {

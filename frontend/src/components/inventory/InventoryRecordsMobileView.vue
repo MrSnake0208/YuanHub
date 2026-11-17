@@ -9,7 +9,7 @@
           <div class="record-entries">
             <template v-if="r.entries?.length">
               <span v-for="(entry, index) in r.entries" :key="index" class="record-entry">
-                <img class="xinzhi-icon" v-if="entry.id && ['item', 'agent'].includes(r.entity_type)" :src="iconSrc({ ...entry, entity_type: r.entity_type })" alt="" width="26" height="26" loading="lazy" @load="onXinzhiLoad" @error="fallbackXinzhiIcon($event) || ($event.currentTarget.hidden = true)" />
+                <img class="xinzhi-icon" :data-rarity="xinzhiRarity(entry.id, agentRarityById.get(entry.id))" v-if="entry.id && ['item', 'agent'].includes(r.entity_type)" :src="iconSrc({ ...entry, entity_type: r.entity_type })" alt="" width="26" height="26" loading="lazy" @load="onXinzhiLoad" @error="fallbackXinzhiIcon($event) || ($event.currentTarget.hidden = true)" />
                 <span>{{ entrySummary([entry], r.record_type) }}</span>
               </span>
             </template>
@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+import { xinzhiRarity } from '../../utils/xinzhiRarity.js'
 import { onXinzhiLoad, fallbackXinzhiIcon } from '../../api/request.js'
 import { Clock3, Eye, Gift, Leaf, Minus, RefreshCw, Trash2 } from '@lucide/vue'
 import { recordsViewProps, recordTypeLabel, entityTypeLabel } from './inventoryRecordsView.js'

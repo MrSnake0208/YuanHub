@@ -16,7 +16,7 @@
             <button class="editor-text-button" type="button" :disabled="busy || checkingLeave" @click="discardAvatar">放弃</button>
           </template>
           <span v-if="avatarNotice" class="avatar-notice" :class="{ err: avatarNoticeError }" :role="avatarNoticeError ? 'alert' : 'status'">{{ avatarNotice }}</span>
-          <img v-if="headerXinzhiSrc && headerXinzhiSrc !== failedXinzhiSrc" :src="headerXinzhiSrc" class="editor-xinzhi-preview xinzhi-icon" alt="心纸预览" width="36" height="36" @error="failedXinzhiSrc = $event.target.getAttribute('src')" />
+          <img v-if="headerXinzhiSrc && headerXinzhiSrc !== failedXinzhiSrc" :src="headerXinzhiSrc" class="editor-xinzhi-preview xinzhi-icon" :data-rarity="form.rarity" alt="心纸预览" width="36" height="36" @error="failedXinzhiSrc = $event.target.getAttribute('src')" />
           <input ref="xinzhiInput" type="file" accept="image/png" class="avatar-file" :disabled="busy || checkingLeave || isNew" @change="onXinzhiPick" />
           <button class="editor-text-button" type="button" :disabled="busy || checkingLeave || isNew" @click="pickXinzhi">{{ xinzhiUploading ? '处理中…' : '更换心纸' }}</button>
           <button v-if="form.xinzhi" class="editor-text-button danger" type="button" :disabled="busy || checkingLeave" @click="removeXinzhi">删除心纸</button>

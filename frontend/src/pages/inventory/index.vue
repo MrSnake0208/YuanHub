@@ -456,9 +456,11 @@
                   :class="{ on: agentFavoriteMode === mode.id }"
                   :aria-pressed="agentFavoriteMode === mode.id"
                   :disabled="
-                    mode.id === 'only' &&
-                    (!auth.isLoggedIn || !accountId || favoriteLoading)
+                    (mode.id === 'priority' && agentSort === 'backpack') ||
+                    (mode.id === 'only' &&
+                      (!auth.isLoggedIn || !accountId || favoriteLoading))
                   "
+                  :title="mode.id === 'priority' && agentSort === 'backpack' ? '背包顺序保持固定排列，不置顶关注密探' : undefined"
                   @click="agentFavoriteMode = mode.id"
                 >
                   {{ mode.label }}
@@ -614,6 +616,7 @@
                     </div>
                     <img
                       class="slot-img xinzhi-icon"
+                      :data-rarity="xinzhiRarity(e.id, agentRarityById.get(e.id) ?? e.rarity)"
                       v-batch-image="entityType === 'agent' ? iconSrc(e) : null"
                       :src="entityType === 'agent' ? undefined : iconSrc(e)"
                       :alt="e.name || e.id"
@@ -914,6 +917,7 @@
                           </div>
                           <img
                             class="slot-img xinzhi-icon"
+                            :data-rarity="xinzhiRarity(e.id, agentRarityById.get(e.id) ?? e.rarity)"
                             v-batch-image="iconSrc(e)"
                             :alt="e.name || e.id"
                             width="96"
@@ -1143,6 +1147,7 @@
                 :insights="periodInsights"
                 :dispatch-duration="periodDispatchDuration"
                 :gold-agent-ids="goldAgentIdsForStats"
+                :agent-rarity-by-id="agentRarityById"
                 :item-totals-available="!acquiredTotalsErrors.item"
                 :agent-totals-available="!acquiredTotalsErrors.agent"
                 :records-available="!acquiredRecordsError"
@@ -1386,6 +1391,7 @@
                           </div>
                           <img
                             class="slot-img xinzhi-icon"
+                            :data-rarity="xinzhiRarity(e.id, agentRarityById.get(e.id) ?? e.rarity)"
                             v-batch-image="e.entity_type === 'agent' ? iconSrc(e) : null"
                             :src="e.entity_type === 'agent' ? undefined : iconSrc(e)"
                             :alt="e.name || e.id"
@@ -1582,7 +1588,7 @@
               <InventoryRecordsView
                 :records-list="recordsList" :account-id="accountId"
                 :disabled="Boolean(recordsBusyId) || recordsLoading || drawResourceLocked"
-                :fmt-time="fmtTime" :entry-summary="entrySummary" :icon-src="iconSrc"
+                :fmt-time="fmtTime" :entry-summary="entrySummary" :icon-src="iconSrc" :agent-rarity-by-id="agentRarityById"
                 :stock-effect-label="stockEffectLabel" :stamina-cost-of="staminaCostOf"
                 :delete-record="onDeleteRecord"
               />
@@ -1605,6 +1611,7 @@
 </template>
 
 <script setup>
+import { xinzhiRarity } from "../../utils/xinzhiRarity.js";
 import { downloadJson } from '../../utils/downloadFile.js';
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
@@ -2592,7 +2599,10 @@ function toggleAgentSortDirection() {
 function chooseAgentMenuValue(event, type, value) {
   if (type === "sort") {
     agentSort.value = value;
-    if (value === "backpack") agentSortDirection.value = "desc";
+    if (value === "backpack") {
+      agentSortDirection.value = "desc";
+      if (agentFavoriteMode.value === "priority") agentFavoriteMode.value = "all";
+    }
   }
   if (type === "group") agentGroupBy.value = value;
   const menu = event.currentTarget.closest("details");
@@ -2626,7 +2636,7 @@ function positionAgentFilterMenu(event) {
 function resetAgentFilters() {
   manifestSearch.value = "";
   manifestFilter.value = "all";
-  agentFavoriteMode.value = "priority";
+  agentFavoriteMode.value = agentSort.value === "backpack" ? "all" : "priority";
   clearAgentFacetFilters();
 }
 

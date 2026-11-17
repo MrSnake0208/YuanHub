@@ -5,6 +5,7 @@ export const recordsViewProps = {
   fmtTime: { type: Function, required: true },
   entrySummary: { type: Function, required: true },
   iconSrc: { type: Function, required: true },
+  agentRarityById: { type: Map, default: () => new Map() },
   stockEffectLabel: { type: Function, required: true },
   staminaCostOf: { type: Function, required: true },
 }
