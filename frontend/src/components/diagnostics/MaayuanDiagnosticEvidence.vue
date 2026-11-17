@@ -61,8 +61,9 @@
     </details>
     <Teleport to="body">
       <div v-if="zoom" class="diagnostic-mask diagnostic-zoom-mask">
-        <section ref="zoomPanel" class="diagnostic-zoom" role="dialog" aria-modal="true" :aria-label="zoom.label" tabindex="-1">
+        <section ref="zoomPanel" class="diagnostic-zoom" role="dialog" aria-modal="true" :aria-label="zoom.label" tabindex="-1" @keydown="onZoomArrow">
           <header><h3>{{ zoom.label }}</h3><button ref="zoomClose" type="button" @click="zoom = null">关闭大图</button></header>
+          <p v-if="zoomImages.length > 1 && zoomIndex >= 0" class="diagnostic-muted" role="status">{{ zoomIndex + 1 }} / {{ zoomImages.length }} · ← / → 切换图片</p>
           <MaayuanDiagnosticImage :src="zoom.url" :alt="zoom.label" v-bind="annotations(zoom.image, zoom.countBox)" expanded @error="imageFailed(zoom.assetId, $event.target.getAttribute('src'))" />
           <p v-if="annotationLabel(zoom.image, zoom.countBox)" class="diagnostic-muted">{{ annotationLabel(zoom.image, zoom.countBox) }}</p>
         </section>
@@ -100,6 +101,8 @@ const imageOwners = computed(() => [...new Set((event.value?.images || []).map(i
   ? `${props.operatorNames[image.operatorId] || image.operatorId}（其他密探）` : '未识别密探'))].join('、'))
 const zoom = ref(null), zoomPanel = ref(null), zoomClose = ref(null)
 const zoomOpen = computed(() => Boolean(zoom.value))
+const zoomImages = computed(() => orderedImages.value.filter(image => !image.expired && image.status === 'ready' && urls.value[image.assetId] && !imageErrors.value[image.assetId]))
+const zoomIndex = computed(() => zoomImages.value.findIndex(image => image.assetId === zoom.value?.assetId))
 const manifestText = computed(() => JSON.stringify(event.value?.manifest, null, 2))
 const resolution = computed(() => event.value?.manifest?.client?.resolution?.split('x').map(Number) || [])
 const bagCells = computed(() => event.value?.bagCells || event.value?.manifest?.bag_cells || [])
@@ -128,6 +131,15 @@ function zoomReading(reading) {
   if (!readingImageReady(reading)) return
   const image = event.value.images[reading.image_index]
   zoom.value = { assetId: image.assetId, image, url: urls.value[image.assetId], label: imageLabel(image), countBox: reading.count_box }
+}
+function onZoomArrow(keyboardEvent) {
+  if (keyboardEvent.key !== 'ArrowLeft' && keyboardEvent.key !== 'ArrowRight') return
+  if (keyboardEvent.altKey || keyboardEvent.ctrlKey || keyboardEvent.metaKey || keyboardEvent.shiftKey) return
+  keyboardEvent.preventDefault()
+  keyboardEvent.stopPropagation()
+  if (keyboardEvent.repeat || zoomIndex.value < 0) return
+  const image = zoomImages.value[zoomIndex.value + (keyboardEvent.key === 'ArrowLeft' ? -1 : 1)]
+  if (image) zoom.value = { assetId: image.assetId, image, url: urls.value[image.assetId], label: imageLabel(image) }
 }
 function annotations(image, countBox) {
   if (image.role !== 'last_frame' && !countBox) return {}

@@ -340,6 +340,8 @@ complete 请求仍为 `{}`，支持没有图片、只有日志的事件。服务
 
 multipart 与 intents 两条入口均保存图片 `operator_id`，manifest 仍为 schema_version 1，并支持上述可选轨迹与节点字段。管理端证据区在 operator 组仅显示归属本组密探的截图；本组无图时提示实际归属，提供默认折叠的「仍然查看」。非 operator 组展示全部截图；每张截图标注密探中文名，目录无对应项时显示原 ID，缺少归属时显示「未识别密探」。
 
+证据图片放大后，可用键盘 `←` / `→` 按当前证据展示顺序切换已就绪且已取得图片地址的截图，跳过过期、未就绪和加载失败的图片；到首尾停止，不跨发生记录或问题组。多图时显示当前位置和快捷键提示，Esc 仍关闭大图并恢复入口焦点。从数量读数打开的红色数量框只对应原图，切换图片后不沿用。
+
 Integration Token 的 scope 单独从 `GET /user/integration-tokens/scopes`（JWT）读取，不能混入上方连接码 Scope 表。通过现有 `POST /user/integration-tokens` 创建时须明确设置 `feedback_areas:["MAAYUAN"]`（允许包含其他板块），并授予所需 scope；省略板块范围不视为诊断授权。Token 所有者仍须具备 MAAYUAN 的反馈查看权限。
 
 | Integration Scope | 用途 |
