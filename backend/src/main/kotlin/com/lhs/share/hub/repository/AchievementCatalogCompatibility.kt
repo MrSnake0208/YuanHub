@@ -7,7 +7,8 @@ import java.math.BigDecimal
 object AchievementCatalogCompatibility {
     private val fields =
         setOf(
-            "achievementId", "game", "categoryId", "name", "condition", "sort", "isHidden", "rewards", "target", "linkedMetric", "operatorIds", "_class",
+            "achievementId", "game", "categoryId", "name", "condition", "sort", "isHidden", "rewards",
+            "target", "linkedMetric", "operatorIds", "_class",
         )
 
     fun normalizeEntry(entry: Document, path: String, issues: MutableList<String>) {
