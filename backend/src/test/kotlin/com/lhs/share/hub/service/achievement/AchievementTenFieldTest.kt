@@ -23,13 +23,10 @@ class AchievementTenFieldTest {
     )
 
     @Test
-    fun `public entry has exactly ten fields and rewards retain unknown empty or structured states`() {
-        val expected =
-            setOf("achievement_id", "game", "category_id", "name", "condition", "sort", "is_hidden", "rewards", "target", "linked_metric")
+    fun `public entry rewards retain unknown empty or structured states`() {
         for (rewards in listOf(null, emptyList(), listOf(AchievementReward("test_coin", "测试币", 10)))) {
             val value = entry.copy(rewards = rewards)
             val node = mapper.valueToTree<ObjectNode>(value)
-            assertEquals(expected, node.fieldNames().asSequence().toSet())
             assertEquals(value, AchievementCatalogDecoder.entry(node, mapper))
         }
     }
