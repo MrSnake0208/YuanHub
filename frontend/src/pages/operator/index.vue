@@ -1801,11 +1801,16 @@
                         type="button"
                         :class="operatorAwakeningUpgradeSupported(e) ? growthActionClass(e, 'star', 1) : ''"
                         :aria-label="(operatorAwakeningUpgradeSupported(e) ? '快捷觉醒：' : '心纸库存/觉醒参考需求：') + cardAwakeningHeartLabel(e) + '，查看材料'"
-                        :title="operatorAwakeningUpgradeSupported(e) ? '查看觉醒材料并确认扣除库存' : '查看心纸库存与觉醒参考需求'"
+                        :title="(operatorAwakeningUpgradeSupported(e) ? '查看觉醒材料并确认扣除库存' : '查看心纸库存与觉醒参考需求') + '：' + cardAwakeningHeartLabel(e)"
                         :aria-expanded="cardPopoverKey === e.id + (operatorAwakeningUpgradeSupported(e) ? ':star' : ':star-edit')"
                         @click="operatorAwakeningUpgradeSupported(e) ? openGrowthAction(e, 'star', 1) : openCardPopover(e, 'star-edit')"
                       >
-                        <span class="ledger-action-ratio">{{ cardAwakeningHeartLabel(e) }}</span>
+                        <span
+                          v-if="ledgerCardIsV2"
+                          :class="cardAwakeningHeartGapLabel(e) === '觉醒' ? 'ledger-upgrade-label' : 'ledger-lack-label'"
+                          aria-hidden="true"
+                        >{{ cardAwakeningHeartGapLabel(e) }}</span>
+                        <span v-else class="ledger-action-ratio">{{ cardAwakeningHeartLabel(e) }}</span>
                       </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':star-edit'"
@@ -6677,6 +6682,13 @@ function cardAwakeningHeartLabel(entry) {
   const ready = accountId.value && !cardMaterialLoading.value &&
     cardMaterialLoadedAccount.value === accountId.value;
   return (ready ? Number(cardHeartStock.value[entry.id]) || 0 : "—") + "/100";
+}
+
+function cardAwakeningHeartGapLabel(entry) {
+  if (!accountId.value || cardMaterialLoading.value ||
+    cardMaterialLoadedAccount.value !== accountId.value) return "—";
+  const stock = Number(cardHeartStock.value[entry.id]) || 0;
+  return stock < 100 ? "缺" + (100 - stock) : "觉醒";
 }
 
 function plannerQuickUpgradeState(row, field, step, readyLabel) {
