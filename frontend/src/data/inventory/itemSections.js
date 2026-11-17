@@ -1,3 +1,4 @@
+// 保留区域与属性分组；各组只记录本站道具的展示顺序。
 export const GAME_BAG_ITEM_IDS = Object.freeze([
   'zhuangjinboli',
   'liutaobingshu',
@@ -21,53 +22,53 @@ export const GAME_BAG_ITEM_IDS = Object.freeze([
   'diguanghe',
   'yuanyu',
   'jianjia',
-  'xinghanjing',
-  'shuijing',
   'beihuifengshan',
   'xianmenshan',
-  'mulanzhuilu',
-  'bawanglei',
-  'baoshijing',
-  'liujinjing',
   'yushan',
   'jinsishan',
-  'lingshanquan',
-  'baimozhijiu',
-  'liubojing',
-  'tongjing',
   'cuishan',
   'juanshan',
+  'mulanzhuilu',
+  'bawanglei',
+  'lingshanquan',
+  'baimozhijiu',
   'qingjiu',
   'zhuojiu',
+  'xinghanjing',
+  'shuijing',
+  'baoshijing',
+  'liujinjing',
+  'liubojing',
+  'tongjing',
   'jieyangping',
+  'jiezheping',
+  'jiezhuping',
   'gongguoge',
+  'shanebu',
   'jinsuanchou',
   'gusuanchou',
-  'jiezheping',
-  'shanebu',
-  'jiezhuping',
   'huaiyinjinsuo',
   'yangmingjinsuo',
   'tianfengjinsuo',
   'huoyuanjinsuo',
   'shuixinjinsuo',
   'zaidijinsuo',
-  'jizhi',
   'mazi',
+  'jizhi',
   'sherou',
   'zhuyu',
-  'fuchuan',
   'tianjifuchuan',
+  'fuchuan',
   'baijinbi'
 ])
 
 export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze([])
 
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
-const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'fuchuan', 'tianjifuchuan', 'baijinbi']
+const STOCK_EDIT_LEADING_IDS = ['mazi', 'jizhi', 'sherou', 'zhuyu', 'tianjifuchuan', 'fuchuan', 'baijinbi']
 const RESOURCE_SUBCATEGORIES = Object.freeze([
   { id: 'draw-resources', name: '抽卡资源', itemIds: ['fuchuan', 'tianjifuchuan', 'baijinbi'] },
-  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['jizhi', 'mazi', 'sherou', 'zhuyu'] },
+  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['mazi', 'jizhi', 'sherou', 'zhuyu'] },
   { id: 'divination-stone', name: '命盘&星石', itemIds: ['gongguoge', 'shanebu', 'gusuanchou', 'jinsuanchou', 'jieyangping', 'jiezheping', 'jiezhuping'] },
   { id: 'agent-experience', name: '密探经验', itemIds: ['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'] }
 ])
@@ -138,12 +139,13 @@ export function groupItemsByCategory(entries, categoryOrder, categoryAliases) {
 }
 
 export function buildItemCategorySections(entries) {
+  entries = sortItemsByGameOrder(entries)
   const entryById = new Map(entries.map(function (entry) { return [entry.id, entry] }))
   const resourceSubsections = RESOURCE_SUBCATEGORIES.map(function (subcategory) {
     return {
       id: subcategory.id,
       name: subcategory.name,
-      entries: subcategory.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+      entries: sortItemsByGameOrder(subcategory.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean))
     }
   })
   const cultivationEntries = entries.filter(function (entry) { return entry.category === '修为进阶材料' })
@@ -151,7 +153,7 @@ export function buildItemCategorySections(entries) {
     return {
       id: subgroup.id,
       name: subgroup.name,
-      entries: subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+      entries: sortItemsByGameOrder(subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean))
     }
   }).filter(function (subgroup) { return subgroup.entries.length > 0 })
   const levelBreakthroughEntries = entries.filter(function (entry) {
@@ -161,7 +163,7 @@ export function buildItemCategorySections(entries) {
     return {
       id: subgroup.id,
       name: subgroup.name,
-      entries: subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+      entries: sortItemsByGameOrder(subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean))
     }
   })
   const groupedLevelIds = new Set(LEVEL_BREAKTHROUGH_SUBGROUPS.flatMap(function (subgroup) { return subgroup.itemIds }))

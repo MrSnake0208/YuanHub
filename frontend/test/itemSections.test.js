@@ -15,10 +15,10 @@ test('抽卡保底分别按两种符传计算，茱萸换算白金币', function
 const GAME_BAG_ORDER = [
   '装金玻璃', '六韬兵书', '兵书全卷', '兵书残卷', '府君海棠', '蟠龙鼓', '银纹刀', '玉龟盾', '犀角弓',
   '梦魂兰', '震天鼓', '青铜刀', '彩纹盾', '铁胎弓', '醉骨草', '蜻蜓眼', '紫云英', '瑛琼瑶', '金错刀',
-  '低光荷', '鸢羽', '蒹葭', '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',
-  '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒', '解殃瓶', '功过格', '金算筹',
-  '骨算筹', '解谪瓶', '善恶簿', '解注瓶', '怀阴金锁', '阳明金锁', '天风金锁', '火源金锁', '水心金锁', '载地金锁',
-  '鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'
+  '低光荷', '鸢羽', '蒹葭', '悲回风扇', '仙门扇', '羽扇', '金丝扇', '翠扇', '绢扇',
+  '木兰坠露', '霸王泪', '灵山泉', '百末旨酒', '清酒', '浊酒', '星汉镜', '水镜', '宝石镜', '鎏金镜', '六博镜', '铜镜',
+  '解殃瓶', '解谪瓶', '解注瓶', '功过格', '善恶簿', '金算筹', '骨算筹', '怀阴金锁', '阳明金锁', '天风金锁', '火源金锁', '水心金锁', '载地金锁',
+  '麻籽', '鸡炙', '蛇肉', '茱萸', '天机符传', '符传', '白金币'
 ]
 
 test('背包游戏顺序覆盖指定道具', function () {
@@ -33,17 +33,17 @@ test('目录道具按固定顺序完整排列', function () {
   const sorted = sortItemsByGameOrder(ITEM_CATALOG)
 
   assert.equal(sorted.length, ITEM_CATALOG.length)
-  assert.deepEqual(sorted.slice(-7).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'])
+  assert.deepEqual(sorted.slice(-7).map(function (item) { return item.name }), ['麻籽', '鸡炙', '蛇肉', '茱萸', '天机符传', '符传', '白金币'])
 })
 
 test('调整库存时鸟食与抽卡资源置顶', function () {
   const sorted = sortStockEditItems(visibleInventoryItems(ITEM_CATALOG))
 
-  assert.deepEqual(sorted.slice(0, 7).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'])
+  assert.deepEqual(sorted.slice(0, 7).map(function (item) { return item.name }), ['麻籽', '鸡炙', '蛇肉', '茱萸', '天机符传', '符传', '白金币'])
 })
 
 test('资源道具顺序不受当前库存返回顺序影响', function () {
-  const resourceNames = ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币']
+  const resourceNames = ['麻籽', '鸡炙', '蛇肉', '茱萸', '天机符传', '符传', '白金币']
   const shuffled = ITEM_CATALOG.filter(function (item) { return resourceNames.includes(item.name) }).reverse()
   const sorted = sortItemsByGameOrder(shuffled)
 
@@ -67,16 +67,16 @@ test('类别模式只展示资源道具和密探养成资源且不遗漏道具',
   assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length)
 })
 
-test('资源道具包含独立的抽卡资源二级分类', function () {
-  const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
+test('资源道具在各自区域内排序且不依赖输入顺序', function () {
+  const sections = buildItemCategorySections(visibleInventoryItems(ITEM_CATALOG).slice().reverse())
   const resourceSection = sections[0]
 
   assert.equal(resourceSection.subsectionLayout, 'shelves')
   assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['抽卡资源', '鸟食礼包', '命盘&星石', '密探经验'])
-  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['符传', '天机符传', '白金币'])
-  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸'])
+  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['天机符传', '符传', '白金币'])
+  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), ['麻籽', '鸡炙', '蛇肉', '茱萸'])
   assert.deepEqual(resourceSection.subsections[2].entries.map(function (item) { return item.name }), [
-    '功过格', '善恶簿', '骨算筹', '金算筹', '解殃瓶', '解谪瓶', '解注瓶'
+    '解殃瓶', '解谪瓶', '解注瓶', '功过格', '善恶簿', '金算筹', '骨算筹'
   ])
   assert.deepEqual(resourceSection.subsections[3].entries.map(function (item) { return item.name }), ['六韬兵书', '兵书全卷', '兵书残卷'])
 })
@@ -88,8 +88,9 @@ test('密探养成资源四个子类别使用全宽行布局并保持游戏顺�
   assert.equal(development.subsectionLayout, 'shelves')
   assert.deepEqual(development.subsections.map(function (section) { return section.name }), ['修为进阶材料', '等级突破材料', '羁绊突破材料', '觉醒材料'])
   assert.deepEqual(development.subsections[0].entries.map(function (item) { return item.name }), [
-    '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',
-    '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒'
+    '悲回风扇', '仙门扇', '羽扇', '金丝扇', '翠扇', '绢扇',
+    '木兰坠露', '霸王泪', '灵山泉', '百末旨酒', '清酒', '浊酒',
+    '星汉镜', '水镜', '宝石镜', '鎏金镜', '六博镜', '铜镜'
   ])
   assert.deepEqual(development.subsections[0].subgroups.map(function (group) { return group.name }), [
     '火&风', '地&水', '阴&阳'
