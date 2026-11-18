@@ -5,6 +5,7 @@ import * as api from '../src/api/recruitment.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
 import { auth } from '../src/store/auth.js'
 import { deferred } from '../test-support/recruitment.js'
+import { installViewport } from '../test-support/viewport.js'
 
 const router = vi.hoisted(() => ({ replace: vi.fn() }))
 const dialogConfirm = vi.hoisted(() => vi.fn())
@@ -16,7 +17,13 @@ vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn
 
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text().includes(text))
 const input = (wrapper, label) => wrapper.findAll('label').find(item => item.text().startsWith(label)).get('input')
-function render() { return mount(RecruitmentAdmin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } }) }
+const poolRow = '[aria-label="卡池目录列表"] button'
+const selectPool = wrapper => wrapper.get(poolRow).trigger('click')
+const poolNames = wrapper => wrapper.findAll(poolRow).map(row => row.get('.pool-title-row strong').text())
+function render(width = 1440) {
+  installViewport(width)
+  return mount(RecruitmentAdmin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
+}
 function pool() { return { pool_id: 'pool-public', game: '代号鸢', name: '新卡池', pool_type: '限时', enabled: true, revision: 2, up_agents: [{ id: 'pool-public:up:stable', name: 'UP 占位1', operator_id: null, active: true }] } }
 
 beforeEach(() => {
@@ -39,9 +46,9 @@ it('管理列表常驻池优先并保留其他卡池顺序，搜索仍准确且�
   api.listAdminRecruitmentCatalog.mockResolvedValue({ pools })
   const wrapper = render()
   await flushPromises()
-  expect(wrapper.findAll('.pool-row h3').map(item => item.text())).toEqual(['绣衣天下', '绣衣天下', '新卡池', '旧池'])
+  expect(poolNames(wrapper)).toEqual(['绣衣天下', '绣衣天下', '新卡池', '旧池'])
   await input(wrapper, '搜索卡池').setValue('旧池')
-  expect(wrapper.findAll('.pool-row h3').map(item => item.text())).toEqual(['旧池'])
+  expect(poolNames(wrapper)).toEqual(['旧池'])
   expect(pools).toEqual(original)
   expect(api.updateAdminRecruitmentPool).not.toHaveBeenCalled()
   expect(api.createAdminRecruitmentPool).not.toHaveBeenCalled()
@@ -51,7 +58,7 @@ it('管理员可显式开启个人心愿，重新编辑保留开关且写入受�
   api.listAdminRecruitmentCatalog.mockResolvedValue({ pools: [{ ...pool(), allow_custom_up: true }] })
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   const toggle = wrapper.findAll('label').find(label => label.text().includes('允许自选心愿 UP')).get('input[type="checkbox"]')
   expect(toggle.element.checked).toBe(true)
   await toggle.setValue(false)
@@ -118,7 +125,7 @@ it('新建卡池直接添加UP名额，不再经过N数量应用步骤', async (
 it('占位对应图鉴密探时保留稳定槽身份与revision，并显示同游戏4星和5星', async () => {
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
 
   const select = wrapper.get('.up-slot-card select')
   expect(select.element.disabled).toBe(false)
@@ -141,7 +148,7 @@ it('图鉴失败时保留已有绑定并禁止误改映射', async () => {
   getOperatorCatalog.mockRejectedValueOnce(new Error('图鉴加载失败'))
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
 
   const select = wrapper.get('.up-slot-card select')
   expect(select.element.disabled).toBe(true)
@@ -154,7 +161,7 @@ it('图鉴失败时保留已有绑定并禁止误改映射', async () => {
 it('退役旧槽与新增UP是两个明确动作，旧身份保留且新槽生成新身份', async () => {
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   await button(wrapper, '退役').trigger('click')
   await flushPromises()
 
@@ -174,9 +181,9 @@ it('退役旧槽与新增UP是两个明确动作，旧身份保留且新槽生�
 })
 
 it('有未保存修改时返回目录会确认，取消确认则保留编辑器', async () => {
-  const wrapper = render()
+  const wrapper = render(390)
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   await input(wrapper, '卡池名称').setValue('草稿名字')
 
   dialogConfirm.mockResolvedValueOnce(false)
@@ -194,7 +201,7 @@ it('有未保存修改时返回目录会确认，取消确认则保留编辑器'
 it('409保留草稿聚焦错误；网络重试不会改变稳定槽ID', async () => {
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   await input(wrapper, '卡池名称').setValue('草稿名字')
   api.updateAdminRecruitmentPool.mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 })).mockRejectedValueOnce(new Error('network'))
 
@@ -215,7 +222,7 @@ it('权限或登录身份变化清草稿，旧管理员读写迟到不能混入�
   const late = deferred()
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   api.updateAdminRecruitmentPool.mockReturnValue(late.promise)
   await input(wrapper, '卡池名称').setValue('待提交修改')
   await wrapper.get('form').trigger('submit')
@@ -244,7 +251,7 @@ it('权限或登录身份变化清草稿，旧管理员读写迟到不能混入�
 it('重复正式UP阻止写入；停用卡池需要明确确认后才提交', async () => {
   const wrapper = render()
   await flushPromises()
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   await wrapper.get('.up-slot-card select').setValue('formal-a')
   await button(wrapper, '添加 UP 名额').trigger('click')
   await wrapper.findAll('.up-slot-card')[1].get('select').setValue('formal-a')
@@ -269,11 +276,11 @@ it('三状态筛选和ID搜索保留隐藏池，隐藏确认取消无写入，�
   const wrapper = render(); await flushPromises()
   const filter = wrapper.findAll('.toolbar select')[1]
   await filter.setValue('hidden')
-  expect(wrapper.findAll('.pool-row')).toHaveLength(1)
+  expect(wrapper.findAll(poolRow)).toHaveLength(1)
   expect(wrapper.text()).toContain('隐藏池')
   await wrapper.get('input[type="search"]').setValue('hidden')
-  expect(wrapper.findAll('.pool-row')).toHaveLength(1)
-  await button(wrapper, '管理卡池').trigger('click')
+  expect(wrapper.findAll(poolRow)).toHaveLength(1)
+  await selectPool(wrapper)
   expect(wrapper.get('.status-option input[value="hidden"]').element.checked).toBe(true)
   expect(wrapper.get('.fields select').element.disabled).toBe(true)
   expect(wrapper.text()).toContain('先隐藏错误卡池，再新建正确卡池')
@@ -282,7 +289,7 @@ it('三状态筛选和ID搜索保留隐藏池，隐藏确认取消无写入，�
   expect(api.updateAdminRecruitmentPool.mock.calls[0][1]).toMatchObject({ hidden: false, enabled: false })
   await wrapper.findAll('.toolbar select')[1].setValue('enabled')
   await wrapper.get('input[type="search"]').setValue('')
-  await button(wrapper, '管理卡池').trigger('click')
+  await selectPool(wrapper)
   await wrapper.get('.status-option input[value="hidden"]').setValue()
   dialogConfirm.mockResolvedValueOnce(false)
   await wrapper.get('form').trigger('submit'); await flushPromises()
@@ -294,7 +301,7 @@ it('三状态筛选和ID搜索保留隐藏池，隐藏确认取消无写入，�
 
 it('隐藏后修改名称日期保留隐藏，422保留草稿，409核对最新版本不自动覆盖', async () => {
   api.listAdminRecruitmentCatalog.mockResolvedValue({ pools: [{ ...pool(), hidden: true }] })
-  const wrapper = render(); await flushPromises(); await button(wrapper, '管理卡池').trigger('click')
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   await input(wrapper, '卡池名称').setValue('隐藏池修正')
   await input(wrapper, '开始日期').setValue('2026-10-01')
   api.updateAdminRecruitmentPool.mockRejectedValueOnce(Object.assign(new Error('开始日期不能晚于结束日期'), { status: 422 }))
@@ -313,7 +320,7 @@ it('隐藏后修改名称日期保留隐藏，422保留草稿，409核对最新�
 })
 
 it('隐藏确认期间切换管理员不会将旧草稿提交给新身份', async () => {
-  const wrapper = render(); await flushPromises(); await button(wrapper, '管理卡池').trigger('click')
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   await wrapper.get('.status-option input[value="hidden"]').setValue()
   const confirmation = deferred(); dialogConfirm.mockReturnValueOnce(confirmation.promise)
   await wrapper.get('form').trigger('submit')

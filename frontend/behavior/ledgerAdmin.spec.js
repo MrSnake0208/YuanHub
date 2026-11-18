@@ -6,6 +6,7 @@ import { auth } from '../src/store/auth.js'
 import * as api from '../src/api/ledgerCatalog.js'
 import { dialog } from '../src/utils/dialog.js'
 import { ledgerFixture } from '../test-support/ledgerCatalog.js'
+import { installViewport } from '../test-support/viewport.js'
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ userInfo: { id: 'editor' }, accessToken: 'synthetic', adminAccess: { permissions: ['ledger_catalog:write'] } }) }
@@ -19,8 +20,10 @@ async function render() {
   await flushPromises(); return w
 }
 const button = (w, text) => w.findAll('button').find(b => b.text() === text)
+const firstPackageRow = w => w.get('[aria-label="礼包目录列表"] button[type="button"]')
 beforeEach(() => {
   vi.resetAllMocks(); auth.userInfo = { id: 'editor' }; auth.accessToken = 'synthetic'; auth.adminAccess = { permissions: ['ledger_catalog:write'] }
+  installViewport(1440)
   api.getAdminLedgerCatalog.mockResolvedValue(ledgerFixture()); dialog.confirm.mockResolvedValue(true)
 })
 
@@ -45,7 +48,7 @@ it('creates each game with its own currency and decimal draws then edits or disa
     expect(api.saveLedgerPackage).toHaveBeenLastCalledWith(undefined, expect.objectContaining({ game, draws: 0.6, points: 60, [game === 'daihao' ? 'price_usd' : 'price_cny']: 3.5 }))
     expect(w.text()).toContain('已保存公共数据')
   }
-  await button(w, '编辑礼包').trigger('click')
+  await firstPackageRow(w).trigger('click')
   await w.get('#ledger-price').setValue('4')
   await w.get('.ledger-check input').setValue(false)
   await w.get('form').trigger('submit'); await flushPromises()
@@ -53,6 +56,8 @@ it('creates each game with its own currency and decimal draws then edits or disa
 })
 
 it('invalid fields focus error summary and edits survive version conflict', async () => {
+  installViewport(390)
+  vi.stubGlobal('scrollTo', vi.fn())
   const w = await render()
   await button(w, '新增礼包').trigger('click')
   await w.get('form').trigger('submit'); await flushPromises()
@@ -60,7 +65,7 @@ it('invalid fields focus error summary and edits survive version conflict', asyn
   expect(document.activeElement).toBe(w.get('[role="alert"]').element)
   expect(api.saveLedgerPackage).not.toHaveBeenCalled()
   await button(w, '返回列表').trigger('click'); await flushPromises()
-  await button(w, '编辑礼包').trigger('click')
+  await firstPackageRow(w).trigger('click')
   await w.get('#ledger-name').setValue('保留编辑')
   api.saveLedgerPackage.mockRejectedValueOnce(Object.assign(new Error('数据已被其他管理员修改，请刷新'), { status: 409 }))
   await w.get('form').trigger('submit'); await flushPromises()
@@ -113,30 +118,23 @@ it('updates default setting with CAS and drops late previous account responses',
 
 
 it.each([390, 1440])('目录编辑在%s起步跨断点保留字段、焦点与写入版本上下文', async width => {
-  const originalWidth = window.innerWidth
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const viewport = installViewport(width)
   const w = await render()
-  try {
-    await button(w, '编辑礼包').trigger('click'); await flushPromises()
-    const name = w.get('#ledger-name').element
-    await w.get('#ledger-name').setValue('跨断点未保存礼包')
-    await w.get('#ledger-price').setValue('7.25')
-    name.focus()
-    const reads = api.getAdminLedgerCatalog.mock.calls.length
-    for (const nextWidth of [767, 768, 1080, 1081, width]) {
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
-      window.dispatchEvent(new Event('resize')); await flushPromises()
-      expect(w.get('#ledger-name').element).toBe(name)
-      expect(name.value).toBe('跨断点未保存礼包')
-      expect(w.get('#ledger-price').element.value).toBe('7.25')
-      expect(document.activeElement).toBe(name)
-      expect(w.findAll('form')).toHaveLength(1)
-    }
-    expect(api.getAdminLedgerCatalog).toHaveBeenCalledTimes(reads)
-    expect(api.saveLedgerPackage).not.toHaveBeenCalled()
-    expect(api.saveLedgerCampaign).not.toHaveBeenCalled()
-  } finally {
-    w.unmount()
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  await firstPackageRow(w).trigger('click'); await flushPromises()
+  const name = w.get('#ledger-name').element
+  await w.get('#ledger-name').setValue('跨断点未保存礼包')
+  await w.get('#ledger-price').setValue('7.25')
+  name.focus()
+  const reads = api.getAdminLedgerCatalog.mock.calls.length
+  for (const nextWidth of [767, 768, 1080, 1081, width]) {
+    viewport.resize(nextWidth); await flushPromises()
+    expect(w.get('#ledger-name').element).toBe(name)
+    expect(name.value).toBe('跨断点未保存礼包')
+    expect(w.get('#ledger-price').element.value).toBe('7.25')
+    expect(document.activeElement).toBe(name)
+    expect(w.findAll('form')).toHaveLength(1)
   }
+  expect(api.getAdminLedgerCatalog).toHaveBeenCalledTimes(reads)
+  expect(api.saveLedgerPackage).not.toHaveBeenCalled()
+  expect(api.saveLedgerCampaign).not.toHaveBeenCalled()
 })

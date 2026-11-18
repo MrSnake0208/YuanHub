@@ -27,6 +27,7 @@ async function read(document) {
 }
 beforeEach(() => {
   vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'owner' }; auth.adminAccess = { permissions: ['bond_catalog:write'] }
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
   getBondAdminCatalog.mockResolvedValue(catalog())
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_a', name: '甲', games: ['代号鸢'] }, { id: 'char_b', name: '乙', games: ['代号鸢'] }] })
   dialog.confirm.mockResolvedValue(true)
@@ -57,10 +58,12 @@ it('身份冲突整份本地文件不合并，保存版本冲突保留编辑', a
   await read({ format: 'yuanhub-bond-catalog', schema_version: 1, game: '代号鸢', entries: [{ ...row, bond_id: 'other' }] })
   await button('将预览合并').trigger('click'); expect(wrapper.text()).toContain('文件稳定ID与身份冲突')
   expect(button('保存草稿').element.disabled).toBe(true)
-  await wrapper.find('fieldset select').setValue('negative')
+  await wrapper.get('[aria-label="条目维护列表"] button.bond-admin-row').trigger('click')
+  const editor = wrapper.get('[aria-label="条目编辑区"]')
+  await editor.get('select').setValue('negative')
   bondAdminAction.mockRejectedValueOnce(Object.assign(new Error('stale'), { status: 409 }))
   await button('保存草稿').trigger('click'); await flushPromises()
-  expect(wrapper.text()).toContain('编辑已保留'); expect(wrapper.find('fieldset select').element.value).toBe('negative')
+  expect(wrapper.text()).toContain('编辑已保留'); expect(editor.get('select').element.value).toBe('negative')
   expect(button('预览发布').element.disabled).toBe(true)
 })
 it('发布确认期间身份改变不能以新身份提交旧目录', async () => {
