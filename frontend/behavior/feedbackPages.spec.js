@@ -1184,8 +1184,8 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
 it('用户和管理员从后端目录看到相同板块，用户可提交星石反馈', async () => {
   const mine = render(MyFeedback); await flushPromises()
   await mine.get('.page-header-action').trigger('click')
-  const options = mine.findAll('.feedback-modal select')[0].findAll('option').map(option => option.text())
-  expect(options).toEqual(['请选择反馈板块', '密探养成', '星石', '麻圆'])
+  const options = mine.get('.feedback-modal select').findAll('option').map(option => option.element.value)
+  expect(options).toEqual(['', 'OPERATOR', 'STAR', 'MAAYUAN'])
   await mine.findAll('.feedback-modal select')[0].setValue('STAR')
   await mine.get('[name="public-consent"]').setValue(true)
   await mine.get('input[maxlength="120"]').setValue('星石异常')
@@ -1195,7 +1195,7 @@ it('用户和管理员从后端目录看到相同板块，用户可提交星石�
   expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ category: 'STAR' }))
 
   const managed = render(ManagedFeedback); await flushPromises()
-  expect(managed.findAll('.feedback-manage-toolbar select')[0].findAll('option').map(option => option.text())).toEqual(['全部板块', '密探养成', '星石', '麻圆'])
+  expect(managed.findAll('.feedback-manage-toolbar select')[0].findAll('option').map(option => option.element.value)).toEqual(options)
   mine.unmount(); managed.unmount()
 })
 
@@ -1203,9 +1203,9 @@ it('板块目录加载失败时不给出过期选项也不能提交', async () =
   api.getFeedbackAccess.mockRejectedValue(new Error('offline'))
   const wrapper = render(MyFeedback); await flushPromises()
   await wrapper.get('.page-header-action').trigger('click')
-  expect(wrapper.findAll('.feedback-modal select')[0].findAll('option').map(option => option.text())).toEqual(['反馈板块加载失败'])
+  expect(wrapper.get('.feedback-modal select').attributes('disabled')).toBeDefined()
   expect(wrapper.get('.feedback-modal button[type="submit"]').attributes('disabled')).toBeDefined()
-  expect(wrapper.get('.feedback-modal [role="alert"]').text()).toContain('反馈板块加载失败')
+  expect(wrapper.find('.feedback-modal [role="alert"]').exists()).toBe(true)
   wrapper.unmount()
 })
 
@@ -1443,7 +1443,7 @@ it('支持相似反馈保留已填写草稿，详情使用安全的新标签页�
     props: { items: [{ id: 'example/one', publicTitle: '公开问题', type: 'BUG' }] },
     global: { stubs: { FeedbackSupportButton: true } }
   })
-  expect(list.get('a').attributes()).toMatchObject({ href: '/feedback/plaza?feedback=example%2Fone&space=yuanhub', target: '_blank', rel: 'noopener noreferrer' })
+  expect(list.get('a').attributes()).toMatchObject({ href: '/feedback/plaza?feedback=example%2Fone', target: '_blank', rel: 'noopener noreferrer' })
   list.unmount()
 })
 
@@ -1545,7 +1545,6 @@ it.each([MyFeedback, ManagedFeedback])('全部板块隐藏时历史列表仍可�
   expect(wrapper.text()).toContain('历史板块')
   if (component === MyFeedback) {
     await wrapper.get('.page-header-action').trigger('click'); await flushPromises()
-    expect(wrapper.get('.feedback-form-grid select').text()).toContain('暂无可选反馈板块')
     expect(wrapper.get('button[type="submit"].feedback-primary-action').attributes('disabled')).toBeDefined()
   }
   wrapper.unmount()

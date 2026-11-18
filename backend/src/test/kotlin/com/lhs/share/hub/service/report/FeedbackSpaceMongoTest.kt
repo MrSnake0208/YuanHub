@@ -96,6 +96,10 @@ class FeedbackSpaceMongoTest {
                 it.id
             }.toSet(),
         )
+        val publicIds = setOf("legacy", "default-explicit", "a-public", "b-public")
+        val unified = queries.publicSearch(null, null, null, null, "latest", PageRequest.of(0, 1), FeedbackSpaces.ALL)
+        assertEquals(publicIds.size.toLong(), unified.totalElements)
+        assertEquals(publicIds, queries.searchPublicSimilar(listOf("相同"), 40, FeedbackSpaces.ALL).map { it.id }.toSet())
         assertEquals(6L, mongo.count(org.springframework.data.mongodb.core.query.Query(), FeedbackTicket::class.java))
     }
 }

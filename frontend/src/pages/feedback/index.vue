@@ -4,18 +4,15 @@
 
     <main id="main-content">
       <header class="page-header page-header--mobile-context"><div class="wrap"><div class="page-header-row">
-        <div class="page-header-identity"><h1 class="page-header-title">反馈中心</h1><p class="page-header-description">你的声音，让 {{ currentSpace?.label || 'YuanHub' }} 变得更好。</p></div>
-        <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" :disabled="submitting || replying || updatingStatus" @change="changeSpace" />
+        <div class="page-header-identity"><h1 class="page-header-title">反馈中心</h1><p class="page-header-description">查看处理进度，补充反馈。</p></div>
         <div v-if="loading || error || feedbacks.length || hasFilters" class="page-header-actions">
-          <button class="page-header-action" type="button" :disabled="currentSpace?.active === false" @click="showNewForm = true"><Plus :size="18" aria-hidden="true" />新建反馈</button>
+          <button class="page-header-action" type="button" @click="openNewFeedback"><Plus :size="18" aria-hidden="true" />新建反馈</button>
         </div>
       </div></div></header>
 
       <section class="feedback-content">
         <div class="wrap">
           <FeedbackWorkspaceNav active="mine" />
-          <p class="feedback-history-link"><RouterLink :to="{ path: '/feedback', query: { ...route.query, history: allHistory ? undefined : 'all', id: undefined } }">{{ allHistory ? '返回当前专区的反馈' : '查看我在所有专区的反馈' }}</RouterLink><span v-if="allHistory"> · 正在显示所有专区的个人记录</span></p>
-          <p v-if="currentSpace?.active === false" class="feedback-result-meta" role="status">该专区已停用，历史反馈仍可查看和补充。</p>
 
           <div v-if="publicNotice" class="feedback-public-notice" role="status">
             <span>{{ publicNotice }}</span>
@@ -43,10 +40,10 @@
 
           <div v-if="!isInitialEmpty" class="feedback-filter-row">
             <label class="feedback-filter">
-              <span>反馈板块</span>
-              <select v-model="filterCategory" :disabled="!categoryOptions.length" @change="reloadFromFirstPage">
-                <option value="">全部板块</option>
-                <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+              <span>相关功能</span>
+              <select v-model="filterCategory" :disabled="!access.availableAreas.length" @change="reloadFromFirstPage">
+                <option value="">全部功能</option>
+                <option v-for="option in access.availableAreas" :key="option.key" :value="option.key">{{ feedbackCategoryLabel(option, spaces) }}</option>
               </select>
             </label>
             <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
@@ -55,8 +52,6 @@
 
           <FeedbackTicketWorkspace
             :items="feedbacks"
-            :space-label="spaceLabel"
-            :show-space="allHistory"
             :selected-id="selectedId"
             :selected-item="selectedDetail"
             :loading="loading"
@@ -81,8 +76,8 @@
               <template v-else>
                 <p>遇到问题或有新想法？提交后可在这里查看回复。</p>
                 <div class="feedback-empty-actions">
-                  <button class="feedback-primary-action" type="button" :disabled="currentSpace?.active === false" @click="showNewForm = true"><Plus :size="16" aria-hidden="true" />提交第一条反馈</button>
-                  <RouterLink class="feedback-empty-secondary" :to="feedbackLocation('/feedback/plaza', spaceId)">先看看反馈广场 →</RouterLink>
+                  <button class="feedback-primary-action" type="button" @click="openNewFeedback"><Plus :size="16" aria-hidden="true" />提交第一条反馈</button>
+                  <RouterLink class="feedback-empty-secondary" to="/feedback/plaza">先看看反馈广场 →</RouterLink>
                 </div>
               </template>
             </template>
@@ -143,7 +138,7 @@
         <div ref="newFormPanel" class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" tabindex="-1" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
             <div>
-              <h2 id="feedback-modal-title">提交至 {{ currentSpace?.label || '当前专区' }}</h2>
+              <h2 id="feedback-modal-title">提交反馈</h2>
             </div>
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
@@ -152,10 +147,10 @@
               <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
               <div class="feedback-form-grid">
                 <label>
-                  <span>反馈板块 <em>*</em></span>
+                  <span>相关功能 <em>*</em></span>
                   <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
-                    <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : categoryCatalog.length ? '暂无可选反馈板块' : '正在加载反馈板块' }}</option>
-                    <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+                    <option value="">{{ accessError ? '相关功能加载失败' : categoryOptions.length ? '请选择相关功能' : categoryCatalog.length ? '暂无可选相关功能' : '正在加载相关功能' }}</option>
+                    <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ feedbackCategoryLabel(option, spaces) }}</option>
                   </select>
                 </label>
                 <label>
@@ -201,22 +196,20 @@
 <script setup>
 import { subscribeFeedbackNotificationRefresh } from '../../store/notificationRealtime.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router'
+import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
-import FeedbackSpaceSelector from '@/components/feedback/FeedbackSpaceSelector.vue'
-import { categorySpaceId, feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
+import { categorySpaceId, feedbackCategoryLabel } from '@/utils/feedbackSpaces.js'
 import SimilarFeedbackList from '@/components/co-creation/SimilarFeedbackList.vue'
 import {
   appendMyFeedbackMessage,
   createFeedback,
   getFeedback,
   getFeedbackAccess,
-  getFeedbackSpace,
   listMyFeedback,
   updateMyFeedbackStatus
 } from '@/api/feedback.js'
@@ -240,13 +233,7 @@ import '@/styles/page-header.css'
 const PAGE_SIZE = 20
 const statusTabs = ['全部', '处理中', '已完成', '已驳回']
 const route = useRoute()
-const router = useRouter()
-const spaceId = computed(() => feedbackSpaceId(route.query))
 const spaces = ref([])
-const currentSpace = ref(null)
-const allHistory = computed(() => route.query.history === 'all')
-const spaceOptions = computed(() => spaces.value.filter(space => space.active || space.id === spaceId.value))
-const spaceReady = computed(() => currentSpace.value?.id === spaceId.value && currentSpace.value.active && !accessError.value)
 const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
 const accessError = ref('')
@@ -329,7 +316,13 @@ let stopNotificationUnread = null
 let stopFeedbackUnread = null
 let isMounted = false
 
-const categoryOptions = computed(() => access.value.availableAreas.filter(option => categorySpaceId(option) === spaceId.value))
+const categoryOptions = computed(() => {
+  const available = access.value.availableAreas.filter(option =>
+    spaces.value.some(space => space.id === categorySpaceId(option) && space.active !== false)
+  )
+  if (!available.some(option => option.key === 'MAAYUAN')) return available
+  return available.filter(option => categorySpaceId(option) !== 'maayuan' || option.label !== '其他问题')
+})
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 const hasFilters = computed(() => Boolean(q.value.trim() || filterCategory.value || filterStatus.value !== '全部'))
 const isInitialEmpty = computed(() => listLoaded.value && !loading.value && !error.value && !hasFilters.value && totalCount.value === 0 && !feedbacks.value.length)
@@ -345,12 +338,9 @@ function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
 }
 
-function spaceLabel(id) {
-  return spaces.value.find(space => space.id === id)?.label || (id === 'yuanhub' ? 'YuanHub（主站）' : id)
-}
-
 function categoryLabel(category) {
-  return categoryCatalog.value.find(option => option.key === category)?.label || category || '其他模块'
+  const option = categoryCatalog.value.find(item => item.key === category)
+  return option ? feedbackCategoryLabel(option, spaces.value) : category || '其他模块'
 }
 
 function statusLabel(status, _hasAdminReply, item) {
@@ -366,40 +356,36 @@ function formatDate(value) {
 
 async function loadAccess() {
   accessError.value = ''
-  const requestedSpace = spaceId.value
   try {
-    const [data, meta] = await Promise.all([getFeedbackAccess(), getFeedbackSpace(requestedSpace)])
-    if (!isMounted || requestedSpace !== spaceId.value) return
-    currentSpace.value = meta
-    spaces.value = data.spaces || [{ id: 'yuanhub', label: 'YuanHub（主站）', active: true }]
-    if (!spaces.value.some(space => space.id === meta.id)) spaces.value.push(meta)
+    const data = await getFeedbackAccess()
+    if (!isMounted) return
+    spaces.value = data.spaces || [{ id: 'yuanhub', active: true }]
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
     const catalog = data.categoryCatalog || data.category_catalog || rawAreas
-    if (!catalog.length) throw new Error('反馈板块目录为空')
+    if (!catalog.length) throw new Error('相关功能目录为空')
     categoryCatalog.value = catalog
     access.value.availableAreas = rawAreas.map(option => ({ ...option, builtinKey: option.builtinKey ?? option.builtin_key }))
   } catch (e) {
-    if (!isMounted || requestedSpace !== spaceId.value) return
+    if (!isMounted) return
     access.value.availableAreas = []
-    accessError.value = `反馈板块加载失败：${e.message || '请重试'}`
+    accessError.value = `相关功能加载失败：${e.message || '请重试'}`
   }
 }
 
 async function loadFeedback() {
   const requestId = ++loadRequestId
-  const requestedSpace = spaceId.value
   loading.value = true
   error.value = ''
   try {
     const data = await listMyFeedback({
-      spaceId: allHistory.value ? 'all' : spaceId.value,
+      spaceId: 'all',
       page: page.value,
       pageSize: PAGE_SIZE,
       status: statusParam(),
       category: filterCategory.value || undefined,
       q: q.value.trim() || undefined
     })
-    if (requestId !== loadRequestId || requestedSpace !== spaceId.value) return
+    if (requestId !== loadRequestId) return
     feedbacks.value = data.items || []
     totalCount.value = Number(data.total ?? feedbacks.value.length)
     listLoaded.value = true
@@ -480,7 +466,6 @@ async function loadFeedbackDetail(id, { background = false } = {}) {
     const detail = await getFeedback(id)
     if (!isCurrentDetail(requestId, id, userId)) return
     if (!detail.viewerIsReporter) throw new Error('该工单不属于我的反馈')
-    if (!allHistory.value && detail.spaceId !== spaceId.value) throw new Error('该反馈属于其他专区，请从所有专区的个人记录打开。')
     if (background) Object.assign(selectedDetail.value, detail)
     else replaceTicket(detail)
     await nextTick()
@@ -602,7 +587,7 @@ function scheduleSimilarSearch() {
 
 async function runSimilarSearch(requestId, title) {
   try {
-    const items = await findSimilarFeedback(title, undefined, spaceId.value)
+    const items = await findSimilarFeedback(title, undefined, 'all')
     if (!isMounted || requestId !== similarRequestId || !showNewForm.value) return
     similarItems.value = items
   } catch (_) {
@@ -623,27 +608,27 @@ async function submitFeedback() {
   if (newFeedback.value.publicConsent && !title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
-  if (!spaceReady.value) { formError.value = '当前专区不可提交，请刷新专区信息后重试。'; return }
-  if (!categoryOptions.value.some(option => option.key === newFeedback.value.category)) {
-    formError.value = '请选择有效的反馈板块'
+  const selected = categoryOptions.value.find(option => option.key === newFeedback.value.category)
+  if (!selected) {
+    formError.value = '请选择有效的相关功能'
     return
   }
-  const payload = { ...newFeedback.value, spaceId: spaceId.value, type: 'OTHER', title, content }
+  const payload = { ...newFeedback.value, spaceId: categorySpaceId(selected), type: 'OTHER', title, content }
   const userId = currentUserId()
   submitting.value = true
   formError.value = ''
   try {
     const mediaIds = await newMedia.uploadAll()
-    if (!isMounted || currentUserId() !== userId || spaceId.value !== payload.spaceId) return
+    if (!isMounted || currentUserId() !== userId) return
     const created = await createFeedback({ ...payload, mediaIds })
-    if (!isMounted || currentUserId() !== userId || spaceId.value !== payload.spaceId) return
+    if (!isMounted || currentUserId() !== userId) return
     newMedia.clear()
     resetSimilar()
     newFeedback.value = { type: 'OTHER', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
     showNewForm.value = false
     publicNotice.value = '反馈已提交。管理员回复后会收到站内通知，你也可以在这里继续补充。'
     filterStatus.value = '全部'
-      filterCategory.value = ''
+    filterCategory.value = ''
     q.value = ''
     page.value = 1
     await loadFeedback()
@@ -673,12 +658,6 @@ onMounted(async () => {
   stopNotificationUnread = subscribeNotificationUnread({ details: true })
   stopFeedbackUnread = subscribeFeedbackUnread()
   window.addEventListener('keydown', handleWindowKeydown)
-  if (route.query.id && !route.query.space && !allHistory.value) {
-    try {
-      const detail = await getFeedback(String(route.query.id))
-      if (detail.viewerIsReporter && isMounted) await router.replace(feedbackLocation('/feedback', detail.spaceId, { ...route.query, space: undefined }))
-    } catch (_) { /* 详情加载保留原有错误提示。 */ }
-  }
   await Promise.all([loadAccess(), loadFeedback(), refreshNotificationUnreadDetails()])
   if (!isMounted) return
   ready = true
@@ -686,43 +665,33 @@ onMounted(async () => {
   if (reportId) await selectTicket(reportId)
 })
 
-watch(() => [route.query.new, route.query.type, route.query.category, route.query.area], ([value]) => {
-  if (value !== '1') return
-  Object.assign(newFeedback.value, feedbackPrefill(route.query, categoryOptions.value))
-  showNewForm.value = true
-}, { immediate: true })
-
-watch(categoryOptions, options => {
-  if (route.query.new === '1' && !newFeedback.value.category) {
-    newFeedback.value.category = feedbackPrefill(route.query, options).category
-  }
-})
-
-async function changeSpace(id) {
-  await router.push(feedbackLocation('/feedback', id))
+function prefilledCategory() {
+  const options = categoryOptions.value
+  const explicit = feedbackPrefill(route.query, options).category
+  if (explicit || route.query.category || route.query.area) return explicit
+  const partner = route.query.space
+  if (!partner || partner === 'yuanhub') return ''
+  if (partner === 'maayuan' && options.some(option => option.key === 'MAAYUAN')) return 'MAAYUAN'
+  const related = options.filter(option => categorySpaceId(option) === partner)
+  return related.length === 1 ? related[0].key : ''
 }
 
-watch(() => [spaceId.value, allHistory.value, route.query.id], async ([space, history, id], [previousSpace, previousHistory]) => {
+function openNewFeedback() {
+  newFeedback.value.category = prefilledCategory()
+  showNewForm.value = true
+}
+
+watch(() => [route.query.new, route.query.type, route.query.category, route.query.area, route.query.space], ([value]) => {
+  if (value === '1') openNewFeedback()
+}, { immediate: true })
+
+watch(categoryOptions, () => {
+  if (showNewForm.value && !newFeedback.value.category) newFeedback.value.category = prefilledCategory()
+})
+
+watch(() => route.query.id, async id => {
   if (!isMounted || !ready) return
   closeDetail()
-  if (space !== previousSpace || history !== previousHistory) {
-    loadRequestId += 1
-    feedbacks.value = []
-    totalCount.value = 0
-    listLoaded.value = false
-    page.value = 1
-    filterCategory.value = ''
-    if (space !== previousSpace) {
-      currentSpace.value = null
-      showNewForm.value = false
-      newMedia.clear()
-      resetSimilar()
-      newFeedback.value = { type: 'OTHER', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
-      await loadAccess()
-    }
-    await loadFeedback()
-  }
-  if (space !== spaceId.value || history !== allHistory.value) return
   if (id) await selectTicket(String(id))
 }, { flush: 'sync' })
 
@@ -745,8 +714,6 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .page-header-action { cursor: pointer; }
-.feedback-history-link { margin: 12px 0; color: var(--feedback-text-muted); font-size: 13px; }
-.feedback-history-link a { color: inherit; text-underline-offset: 3px; }
 .feedback-empty-secondary { color: var(--feedback-text-muted); text-decoration: underline; text-underline-offset: 3px; }
 
 .feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: var(--theme-wash, rgba(95, 127, 97, .1)); color: var(--feedback-text); }

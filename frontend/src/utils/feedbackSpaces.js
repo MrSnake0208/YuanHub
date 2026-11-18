@@ -11,3 +11,11 @@ export function feedbackLocation(path, spaceId, query = {}) {
 export function categorySpaceId(category) {
   return category.spaceId ?? category.space_id ?? DEFAULT_FEEDBACK_SPACE
 }
+
+export function feedbackCategoryLabel(category, spaces) {
+  const id = categorySpaceId(category)
+  if (category.key === 'MAAYUAN' && category.label === '麻圆') return 'MaaYuan（麻圆）'
+  if (id === DEFAULT_FEEDBACK_SPACE) return category.label
+  const product = spaces.find(space => space.id === id)?.label || id
+  return category.label === '其他问题' ? product : product + ' / ' + category.label
+}

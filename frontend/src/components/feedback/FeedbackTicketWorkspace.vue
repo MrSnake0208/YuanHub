@@ -88,7 +88,7 @@
         <section ref="detailPanel" @focusin="revealFocusedControl" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
           <header class="ticket-detail-head">
             <div>
-              <span class="ticket-detail-kicker">{{ selectedItem.spaceId ? spaceLabel(selectedItem.spaceId) : 'FEEDBACK / TICKET' }}</span>
+              <span v-if="showSpace" class="ticket-detail-kicker">{{ selectedItem.spaceId ? spaceLabel(selectedItem.spaceId) : 'FEEDBACK / TICKET' }}</span>
               <h2 id="ticket-detail-title">反馈工单详情</h2>
             </div>
             <button ref="detailCloseButton" type="button" aria-label="关闭工单详情" title="关闭" @click="$emit('close')">

@@ -58,15 +58,14 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(false)
 })
 
-it('单专区管理员从原入口直接进入授权专区，列表和统计均不请求主站', async () => {
+it('单专区管理员默认查询本人授权范围的列表和统计', async () => {
   api.getFeedbackAccess.mockResolvedValue({ ...access(), manageable_spaces: [spaces[0]], operator_areas: ['CUSTOM_0'] })
   const { wrapper, router } = await render('/feedback/manage')
-  expect(router.currentRoute.value.query.space).toBe('partner-a')
+  expect(router.currentRoute.value.query.space).toBeUndefined()
   expect(wrapper.find('.feedback-space-context select').exists()).toBe(false)
-  expect(wrapper.get('.feedback-space-context').text()).toContain('平台 A')
-  expect(api.listWorkflowFeedback).toHaveBeenCalledWith(expect.objectContaining({ spaceId: 'partner-a' }))
-  expect(api.listWorkflowFeedback.mock.calls.every(([params]) => params.spaceId === 'partner-a')).toBe(true)
-  expect(api.getFeedbackQueueCounts).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ spaceId: 'partner-a' }))
+  expect(api.listWorkflowFeedback).toHaveBeenCalledWith(expect.objectContaining({ spaceId: 'all' }))
+  expect(api.getFeedbackQueueCounts).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ spaceId: 'all' }))
+  expect(wrapper.findAll('.feedback-manage-toolbar option').some(option => option.element.value === 'CUSTOM_1')).toBe(false)
   wrapper.unmount()
 })
 
@@ -121,11 +120,15 @@ it('合作方提交不要求另选平台；失败保留内容，重试固定提�
   wrapper.unmount()
 })
 
-it('个人所有专区历史只改变列表范围，提交上下文仍为原专区', async () => {
-  const { wrapper, router } = await render('/feedback?space=partner-a')
-  await wrapper.get('.feedback-history-link a').trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query).toEqual({ space: 'partner-a', history: 'all' })
+it('合作入口直接显示本人全部记录，表单可改选其他功能', async () => {
+  const { wrapper } = await render('/feedback?space=partner-a&new=1')
   expect(api.listMyFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ spaceId: 'all' }))
-  expect(wrapper.get('.feedback-space-context select').element.value).toBe('partner-a')
+  const category = wrapper.get('.feedback-modal select')
+  expect(category.element.value).toBe('CUSTOM_0')
+  await category.setValue('CUSTOM_1')
+  await wrapper.get('.feedback-modal textarea').setValue('平台 B 的问题')
+  api.createFeedback.mockResolvedValueOnce(ticket('partner-b'))
+  await wrapper.get('.feedback-modal form').trigger('submit'); await flushPromises()
+  expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ category: 'CUSTOM_1', spaceId: 'partner-b' }))
   wrapper.unmount()
 })

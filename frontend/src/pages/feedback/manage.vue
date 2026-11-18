@@ -5,8 +5,7 @@
     <main id="main-content">
       <header class="page-header page-header--mobile-context page-header--keep-description">
         <div class="wrap">
-          <div class="page-header-row"><h1 class="page-header-title">反馈工作台</h1>
-            <FeedbackSpaceSelector :model-value="spaceId" :spaces="spaceOptions" :disabled="loadingAccess || actionBusy || publicBusy || mergeBusy || markingAllRead" @change="changeSpace" /></div>
+          <div class="page-header-row"><h1 class="page-header-title">反馈工作台</h1></div>
           <p class="page-header-description">处理、分派、回复和公开当前授权范围内的反馈。</p>
           <router-link class="page-header-back page-header-mobile-actions" to="/maayuan-diagnostics">MaaYuan 诊断</router-link>
         </div>
@@ -15,13 +14,13 @@
       <section class="feedback-content">
         <div class="wrap">
           <FeedbackWorkspaceNav active="manage" />
-          <p v-if="spaceId === 'all'" class="feedback-result-meta" role="status">所有专区：列表、统计及批量已读涵盖全部授权专区。</p>
+          <p v-if="spaceId !== 'all'" class="feedback-result-meta" role="status">正在查看{{ spaceLabel(spaceId) }}的工单。<button class="feedback-button" type="button" @click="changeSpace('all')">查看全部授权反馈</button></p>
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
             <ShieldAlert :size="24" aria-hidden="true" />
             <strong>{{ error || '暂无板块管理权限' }}</strong>
-            <router-link class="feedback-primary-action" :to="feedbackLocation('/feedback', spaceId === 'all' ? 'yuanhub' : spaceId)">前往我的反馈</router-link>
+            <router-link class="feedback-primary-action" to="/feedback">前往我的反馈</router-link>
           </div>
 
           <template v-else>
@@ -50,7 +49,7 @@
                 <span>负责板块</span>
                 <select :value="filterCategory" @change="changeListOption('category', $event)">
                   <option value="">全部板块</option>
-                  <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ spaceId === 'all' ? spaceLabel(categorySpaceId(option)) + ' / ' : '' }}{{ option.label }}</option>
+                  <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ feedbackCategoryLabel(option, spaces) }}</option>
                 </select>
               </label>
               <label class="feedback-filter">
@@ -67,6 +66,7 @@
               <details class="feedback-management-settings">
                 <summary>管理操作与列表设置</summary>
                 <div class="feedback-management-settings-body">
+                  <FeedbackSpaceSelector v-if="spaces.length > 1 || spaceId !== 'all'" :model-value="spaceId" :spaces="spaceOptions" :disabled="loadingAccess || actionBusy || publicBusy || mergeBusy || markingAllRead" @change="changeSpace" />
                   <label class="feedback-filter">
                     <span>每页显示</span>
                     <select :value="pageSize" aria-label="每页显示数量" @change="changeListOption('pageSize', $event)">
@@ -257,7 +257,7 @@ import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import FeedbackSpaceSelector from '@/components/feedback/FeedbackSpaceSelector.vue'
-import { categorySpaceId, feedbackSpaceId, feedbackLocation } from '@/utils/feedbackSpaces.js'
+import { categorySpaceId, feedbackSpaceId, feedbackCategoryLabel } from '@/utils/feedbackSpaces.js'
 import {
   appendManagedFeedbackMessage,
   claimFeedback,
@@ -296,10 +296,10 @@ const allStatusTabs = [
 const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
-const spaceId = computed(() => feedbackSpaceId(route.query))
+const spaceId = computed(() => route.query.space ? feedbackSpaceId(route.query) : 'all')
 const spaces = ref([])
 const rawAccess = ref({ superAdmin: false, operatorAreas: [], developerAreas: [], availableWorkAreas: [] })
-const spaceOptions = computed(() => rawAccess.value.superAdmin ? [{ id: 'all', label: '所有专区' }, ...spaces.value] : spaces.value)
+const spaceOptions = computed(() => [{ id: 'all', label: '全部授权反馈' }, ...spaces.value])
 const access = computed(() => {
   const keys = new Set(categoryCatalog.value.filter(option => spaceId.value === 'all' || categorySpaceId(option) === spaceId.value).map(option => option.key))
   return { ...rawAccess.value,
@@ -475,9 +475,6 @@ async function loadAccess() {
       availableWorkAreas: rawAreas
     }
     spaces.value = data.manageableSpaces || data.manageable_spaces || [{ id: 'yuanhub', label: 'YuanHub（主站）', active: true }]
-    if (!route.query.space && !route.query.id && !spaces.value.some(space => space.id === 'yuanhub') && spaces.value.length) {
-      await router.replace(feedbackLocation('/feedback/manage', spaces.value[0].id))
-    }
     if (!access.value.operatorAreas.length && access.value.developerAreas.length) filterStatus.value = 'DEV'
   } catch (e) {
     if (isMounted && !await handleForbidden(e)) error.value = e.message || '反馈权限加载失败'
@@ -1025,13 +1022,6 @@ onMounted(async () => {
   stopFeedbackUnread = subscribeFeedbackUnread()
   await loadAccess()
   if (!isMounted) return
-  if (route.query.id && !route.query.space) {
-    try {
-      const detail = await getManagedFeedback(String(route.query.id))
-      if (!isMounted) return
-      await router.replace(feedbackLocation('/feedback/manage', detail.spaceId, { id: route.query.id }))
-    } catch (e) { error.value = e.message || '工单加载失败' }
-  }
   if (!hasManagePermission.value) return
   await loadFeedback()
   if (!isMounted) return
@@ -1045,7 +1035,7 @@ onMounted(async () => {
 
 async function changeSpace(id) {
   if (actionBusy.value || publicBusy.value || mergeBusy.value || markingAllRead.value) return
-  await router.push(feedbackLocation('/feedback/manage', id))
+  await router.push({ path: '/feedback/manage', query: id === 'all' ? {} : { space: id } })
 }
 
 watch(() => [spaceId.value, route.query.id], async ([space, id], [previousSpace]) => {

@@ -61,9 +61,8 @@ it('仅有反馈处理能力也不重复展示管理入口', async () => {
   wrapper.unmount()
 })
 
-it.each(['partner-a', 'all'])('用户导航保留具体专区并将总管理范围返回默认专区：%s', async space => {
+it.each(['partner-a', 'all'])('旧专区导航进入统一反馈中心：%s', async space => {
   const wrapper = await render('manage', { space })
-  const suffix = space === 'all' ? '' : '?space=partner-a'
-  expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(publicDestinations.map(path => path + suffix))
+  expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(publicDestinations)
   wrapper.unmount()
 })

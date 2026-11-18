@@ -57,12 +57,11 @@ it.each([
   const wrapper = mount(PlazaPage, {
     global: {
       plugins: [router],
-      stubs: { IslandSidebar: true, FeedbackWorkspaceNav: true, RouterLink: RouterLinkStub, FeedbackPlaza: { name: 'FeedbackPlaza', props: ['focusId', 'spaceId'], template: '<div />' } }
+      stubs: { IslandSidebar: true, FeedbackWorkspaceNav: true, RouterLink: RouterLinkStub, FeedbackPlaza: { name: 'FeedbackPlaza', props: ['focusId'], template: '<div />' } }
     }
   })
   await flushPromises()
   expect(wrapper.findComponent({ name: 'FeedbackPlaza' }).props('focusId')).toBe(query.feedback || '')
-  expect(wrapper.findComponent({ name: 'FeedbackPlaza' }).props('spaceId')).toBe(query.space || 'yuanhub')
   expect(wrapper.text()).not.toContain('大饼中心')
   expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).not.toContain('/co-creation')
   expect(auth.refreshAdminAccess).not.toHaveBeenCalled()

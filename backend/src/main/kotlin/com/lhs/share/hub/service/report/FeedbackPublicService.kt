@@ -52,7 +52,7 @@ class FeedbackPublicService(
         sort: String,
         spaceId: String = FeedbackSpaces.DEFAULT,
     ): PublicFeedbackPage {
-        categories.requireSpace(spaceId)
+        if (spaceId != FeedbackSpaces.ALL) categories.requireSpace(spaceId)
         if (page < 1) {
             throw ApiResultException(HttpStatus.BAD_REQUEST.value(), "page 必须大于等于 1")
         }
@@ -100,7 +100,7 @@ class FeedbackPublicService(
         limit: Int?,
         spaceId: String = FeedbackSpaces.DEFAULT,
     ): List<PublicFeedbackListItem> {
-        categories.requireSpace(spaceId)
+        if (spaceId != FeedbackSpaces.ALL) categories.requireSpace(spaceId)
         val effectiveLength = title.count { it.isLetterOrDigit() || it.code in 0x4E00..0x9FFF }
         if (effectiveLength < MIN_SIMILAR_TITLE_LENGTH) return emptyList()
         val tokens = tokenize(title)

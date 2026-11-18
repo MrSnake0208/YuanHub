@@ -190,12 +190,7 @@ class FeedbackTicketQueryRepository(
         pageable: Pageable,
         spaceId: String = FeedbackSpaces.DEFAULT,
     ): Page<FeedbackTicket> {
-        val filters = mutableListOf<Criteria>(
-            FeedbackSpaces.criteria(setOf(spaceId)),
-            Criteria.where("visibility").`is`(FeedbackVisibility.PUBLIC),
-            nonReportCriteria(),
-            Criteria.where("mergedIntoId").`is`(null),
-        )
+        val filters = publicListCriteria(spaceId)
         type?.let { filters += typeCriteria(it) }
         publicStatus?.let { filters += Criteria.where("publicStatus").`is`(it) }
         completedVersionId?.let { filters += Criteria.where("completedVersionId").`is`(it) }
@@ -229,14 +224,20 @@ class FeedbackTicketQueryRepository(
                 Criteria.where("publicSummary").regex(pattern),
             )
         }
-        val criteria = Criteria().andOperator(
-            FeedbackSpaces.criteria(setOf(spaceId)),
+        val filters = publicListCriteria(spaceId)
+        filters += Criteria().orOperator(*tokenCriteria.toTypedArray())
+        val criteria = Criteria().andOperator(*filters.toTypedArray())
+        return template.find(Query(criteria).limit(candidateLimit), FeedbackTicket::class.java)
+    }
+
+    private fun publicListCriteria(spaceId: String): MutableList<Criteria> {
+        val filters = mutableListOf<Criteria>(
             Criteria.where("visibility").`is`(FeedbackVisibility.PUBLIC),
             nonReportCriteria(),
             Criteria.where("mergedIntoId").`is`(null),
-            Criteria().orOperator(*tokenCriteria.toTypedArray()),
         )
-        return template.find(Query(criteria).limit(candidateLimit), FeedbackTicket::class.java)
+        if (spaceId != FeedbackSpaces.ALL) filters += FeedbackSpaces.criteria(setOf(spaceId))
+        return filters
     }
 
     /** 原子 +1 支持数;visibility 已在查询中限制为 PUBLIC。 */

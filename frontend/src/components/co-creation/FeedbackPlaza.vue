@@ -84,17 +84,15 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from '@lucide/vue'
 import PublicFeedbackCard from '@/components/co-creation/PublicFeedbackCard.vue'
 import PublicFeedbackDetailModal from '@/components/co-creation/PublicFeedbackDetailModal.vue'
 import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
-import { feedbackLocation } from '@/utils/feedbackSpaces.js'
 import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
-  focusId: { type: String, default: '' },
-  spaceId: { type: String, default: 'yuanhub' }
+  focusId: { type: String, default: '' }
 })
 
 const PAGE_SIZE = 12
@@ -117,6 +115,7 @@ const detailError = ref('')
 const detailModal = ref(null)
 
 const router = useRouter()
+const route = useRoute()
 let loadRequestId = 0
 let detailRequestId = 0
 let searchTimer = null
@@ -136,7 +135,7 @@ async function load() {
   error.value = ''
   try {
     const data = await listPublicFeedback({
-      spaceId: props.spaceId,
+      spaceId: 'all',
       page: page.value,
       pageSize: PAGE_SIZE,
       status: status.value || undefined,
@@ -192,7 +191,7 @@ function scheduleSearch() {
 }
 
 function goSubmit() {
-  router.push(feedbackLocation('/feedback', props.spaceId, { new: '1' }))
+  router.push({ path: '/feedback', query: { new: '1', space: route.query.space } })
 }
 
 function openDetail(item) {
@@ -206,7 +205,7 @@ async function openDetailById(id) {
   detailError.value = ''
   detail.value = null
   try {
-    const data = await getPublicFeedback(id, props.spaceId)
+    const data = await getPublicFeedback(id)
     if (!isMounted || requestId !== detailRequestId) return
     detail.value = data
   } catch (_) {
