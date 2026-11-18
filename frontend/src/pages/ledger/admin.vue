@@ -2,7 +2,7 @@
   <div class="ledger-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap">
+      <header ref="pageHeader" class="page-header page-header--mobile-context page-header--keep-description"><div class="wrap">
         <router-link class="page-header-back" to="/manage"><ArrowLeft :size="16" aria-hidden="true" /> 返回管理工作台</router-link>
         <h1 class="page-header-title">广陵账房管理</h1>
         <p class="page-header-description">维护公共数据。保存后，用户刷新账房即可读取；私人方案仍使用原快照。</p>
@@ -10,23 +10,20 @@
       <div class="wrap ledger-content">
         <p v-if="!permitted" role="alert" class="ledger-panel">需要广陵账房公共数据维护权限。</p>
         <template v-else>
-          <nav class="ledger-actions ledger-nav" aria-label="账房管理工作区">
-            <button v-for="item in workspaces" :key="item.key" type="button" :aria-pressed="workspace === item.key" :disabled="saving" @click="switchWorkspace(item.key)">{{ item.label }}</button>
-            <router-link to="/cart" target="_blank" rel="noopener">打开公开账房预览 <ArrowUpRight :size="16" aria-hidden="true" /></router-link>
-          </nav>
-          <div v-if="error" ref="errorSummary" class="ledger-panel ledger-error" role="alert" tabindex="-1">
-            <p>{{ error }}</p>
-            <ul v-if="Object.keys(fieldErrors).length"><li v-for="(message, key) in fieldErrors" :key="key"><a :href="'#ledger-' + key" @click.prevent="focusField(key)">{{ message }}</a></li></ul>
-          </div>
-          <p v-if="notice" class="ledger-panel" role="status">{{ notice }}</p>
-          <p v-if="loading" role="status">正在读取公共数据…</p>
-          <template v-if="!form">
-            <div class="ledger-workspace-head">
-              <h2>{{ workspaces.find(w => w.key === workspace).label }}</h2>
-              <div class="ledger-actions"><button type="button" :disabled="loading" @click="load">刷新</button><button v-if="workspace !== 'settings'" class="ledger-primary" type="button" :disabled="loading || !data" @click="open()">{{ workspace === 'packages' ? '新增礼包' : '新增活动' }}</button></div>
-            </div>
-            <template v-if="workspace !== 'settings'">
-              <div class="ledger-panel ledger-filters">
+          <div ref="workspaceTools" class="ledger-workspace-tools">
+            <nav class="ledger-actions ledger-nav" aria-label="账房管理工作区">
+              <button v-for="item in workspaces" :key="item.key" type="button" :aria-pressed="workspace === item.key" :disabled="saving" @click="switchWorkspace(item.key)">{{ item.label }}</button>
+              <router-link to="/cart" target="_blank" rel="noopener">打开公开账房预览 <ArrowUpRight :size="16" aria-hidden="true" /></router-link>
+            </nav>
+            <div v-show="!form || (!compact && isCatalog)">
+              <div class="ledger-workspace-head">
+                <h2>{{ workspaces.find(w => w.key === workspace).label }}</h2>
+                <div class="ledger-actions">
+                  <button type="button" :disabled="loading || saving" @click="load">刷新</button>
+                  <button v-if="isCatalog" ref="newButton" class="ledger-primary" type="button" :disabled="loading || saving || !data" @click="open()">{{ workspace === 'packages' ? '新增礼包' : '新增活动' }}</button>
+                </div>
+              </div>
+              <div v-if="isCatalog" class="ledger-panel ledger-filters">
                 <label>搜索<input v-model.trim="filters.search" type="search" placeholder="名称 / ID" aria-label="搜索名称或ID"></label>
                 <details><summary>筛选条件</summary><div class="ledger-fields">
                   <label>游戏<select v-model="filters.game"><option value="">全部游戏</option><option value="daihao">代号鸢 · USD</option><option value="ru">如鸢 · CNY</option></select></label>
@@ -34,68 +31,94 @@
                   <label v-if="workspace === 'packages'">分类<select v-model="filters.category"><option value="">全部分类</option><option v-for="category in categories" :key="category">{{ category }}</option></select></label>
                 </div></details>
               </div>
-              <p v-if="!loading && !entries.length && data" class="ledger-panel">没有符合条件的数据。</p>
-              <div class="ledger-list">
-                <article v-for="entry in entries" :key="entry.id" class="ledger-panel ledger-row">
-                  <div><span class="ledger-badge">{{ gameLabel(entry.game) }}</span><h3>{{ entry.name }}</h3><p class="ledger-hint">ID {{ entry.content_id ?? entry.id }} · {{ workspace === 'packages' ? (entry.enabled ? '已启用' : '已停用') : statusLabels[entry.status] }}</p></div>
-                  <div v-if="workspace === 'packages'"><p>{{ entry.game === 'daihao' ? '$' + entry.price_usd : '¥' + entry.price_cny }} · {{ entry.draws }} 抽 · {{ entry.points }} 分</p><p class="ledger-hint">{{ entry.category }} · 限购 {{ entry.limit }} · 排序 {{ entry.sort_id }}</p></div>
-                  <div v-else><p>{{ entry.tiers.length }} 个档位 · {{ progress(entry).label }}</p><p class="ledger-hint">{{ formatLedgerTime(entry.starts_at, entry.time_zone) }} — {{ formatLedgerTime(entry.ends_at, entry.time_zone) }} · {{ entry.time_zone }}</p></div>
-                  <button type="button" :disabled="loading" @click="open(entry)">{{ workspace === 'packages' ? '编辑礼包' : '编辑活动' }}</button>
-                </article>
-              </div>
-            </template>
-            <section v-else-if="data" class="ledger-panel"><p>公共 USD→CNY 默认参考汇率：<b>{{ data.settings.exchange_rate }}</b></p><p class="ledger-hint">仅用于用户尚未修改汇率的新预算。如鸢直接按人民币计价；已保存方案的汇率保持原值。</p><button type="button" @click="open(data.settings)">修改默认汇率</button></section>
-          </template>
-          <section v-else ref="editor" tabindex="-1" aria-labelledby="ledger-editor-title">
-            <div class="ledger-workspace-head"><button type="button" :disabled="saving" @click="close">返回列表</button><span>{{ dirty ? '有未保存修改' : '尚未修改' }}</span></div>
-            <h2 id="ledger-editor-title">{{ form.id ? '编辑' : '新增' }}{{ workspaces.find(w => w.key === workspace).label }}</h2>
-            <form class="ledger-panel" novalidate @submit.prevent="save">
-              <fieldset :disabled="saving">
-                <legend>编辑信息</legend>
-                <div v-if="workspace !== 'settings'" class="ledger-fields">
-                  <label>游戏 / 币种<select id="ledger-game" v-model="form.game" :disabled="!!form.id"><option value="daihao">代号鸢 · USD</option><option value="ru">如鸢 · CNY</option></select></label>
-                  <label>名称<input id="ledger-name" v-model="form.name" maxlength="120" :aria-invalid="!!fieldErrors.name" :aria-describedby="fieldErrors.name ? 'ledger-error-name' : undefined"><small v-if="fieldErrors.name" id="ledger-error-name">{{ fieldErrors.name }}</small></label>
-                </div>
-                <div v-if="workspace === 'packages'" class="ledger-fields">
-                  <label v-for="field in packageFields" :key="field.key">{{ field.label === 'price' ? '价格（' + (form.game === 'daihao' ? 'USD' : 'CNY') + '）' : field.label }}<input :id="'ledger-' + field.key" v-model="form[field.key]" :type="field.type" :step="field.step" :min="field.min" :max="field.max" :maxlength="field.maxlength" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'ledger-error-' + field.key : undefined"><small v-if="fieldErrors[field.key]" :id="'ledger-error-' + field.key">{{ fieldErrors[field.key] }}</small></label>
-                  <label class="ledger-check"><input v-model="form.enabled" type="checkbox">启用（保存后立即作为公共商品显示）</label>
-                </div>
-                <template v-if="workspace === 'campaigns'">
-                  <p class="ledger-hint">时间必须含时区偏移，例如 2026-10-11T12:00:00+08:00。按下面的 IANA 时区展示。新活动必须填写开始和结束；不延长历史活动。</p>
-                  <p v-if="form.source_note" class="ledger-hint">{{ form.source_note }}</p>
-                  <div class="ledger-fields">
-                    <label v-for="field in campaignFields" :key="field.key">{{ field.label }}<input :id="'ledger-' + field.key" v-model="form[field.key]" :placeholder="field.placeholder" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'ledger-error-' + field.key : undefined"><small v-if="fieldErrors[field.key]" :id="'ledger-error-' + field.key">{{ fieldErrors[field.key] }}</small></label>
-                    <label>状态<select id="ledger-status" v-model="form.status"><option value="draft">草稿</option><option value="published">发布</option><option value="disabled">停用</option></select></label>
-                  </div>
-                  <h3>奖励档位</h3>
-                  <small v-if="fieldErrors.tiers" id="ledger-tiers" role="alert" tabindex="-1">{{ fieldErrors.tiers }}</small>
-                  <article v-for="(tier, index) in form.tiers" :key="index" class="ledger-tier">
-                    <div class="ledger-fields">
-                      <label>第 {{ index + 1 }} 档 · 积分门槛<input v-model.number="tier.points" type="number" min="1" max="10000000" step="1" :aria-label="'第' + (index + 1) + '档积分门槛'"></label>
-                      <label>顺序<input v-model.number="tier.sort_id" type="number" min="0" max="1000000" step="1" :aria-label="'第' + (index + 1) + '档顺序'"></label>
-                      <label class="ledger-check"><input v-model="tier.enabled" type="checkbox" :aria-label="'启用第' + (index + 1) + '档'">启用档位（取消以停用）</label>
-                    </div>
-                    <div v-for="(reward, ri) in tier.rewards" :key="ri" class="ledger-fields ledger-reward">
-                      <label>奖励名称<input v-model="reward.name" maxlength="120" :aria-label="'第' + (index + 1) + '档奖励' + (ri + 1) + '名称'"></label>
-                      <label>数量<input v-model.number="reward.count" type="number" min="1" max="10000000" step="1" :aria-label="'第' + (index + 1) + '档奖励' + (ri + 1) + '数量'"></label>
-                      <button type="button" :aria-label="'移除第' + (index + 1) + '档奖励' + (ri + 1)" @click="tier.rewards.splice(ri, 1)">移除奖励</button>
-                    </div>
-                    <button type="button" @click="tier.rewards.push({ name: '', count: 1 })">添加奖励</button>
-                    <button v-if="!form.id" type="button" @click="form.tiers.splice(index, 1)">移除未保存档位</button>
-                  </article>
-                  <button type="button" @click="form.tiers.push(newTier(form.tiers.length))">添加档位</button>
+            </div>
+            <p v-if="loadError" class="ledger-panel ledger-error" role="alert">{{ loadError }}</p>
+            <p v-if="notice" class="ledger-panel" role="status">{{ notice }}</p>
+            <p v-if="loading" role="status">正在读取公共数据…</p>
+          </div>
+          <div :class="{ 'ledger-catalog-workspace': isCatalog }" :style="isCatalog ? { '--ledger-top-height': workspaceOffset + 'px' } : undefined">
+            <section v-if="isCatalog" v-show="!compact || !form" ref="listRegion" class="ledger-list" :aria-label="workspace === 'packages' ? '礼包目录列表' : '累充活动列表'" tabindex="-1">
+              <p v-if="!loading && !entries.length && data" class="ledger-list-empty">没有符合条件的数据。</p>
+              <button v-for="entry in entries" :key="entry.id" type="button" class="ledger-row"
+                :aria-current="form?.id === entry.id ? 'true' : undefined" :disabled="loading || saving" @click="open(entry)">
+                <span class="ledger-row-heading"><span class="ledger-badge">{{ gameLabel(entry.game) }}</span><strong>{{ entry.name }}</strong></span>
+                <span class="ledger-hint">ID {{ entry.content_id ?? entry.id }} · {{ workspace === 'packages' ? (entry.enabled ? '已启用' : '已停用') : statusLabels[entry.status] }}</span>
+                <template v-if="workspace === 'packages'">
+                  <span>{{ entry.game === 'daihao' ? '$' + entry.price_usd : '¥' + entry.price_cny }} · {{ entry.draws }} 抽 · {{ entry.points }} 分</span>
+                  <span class="ledger-hint">{{ entry.category }} · 限购 {{ entry.limit }} · 排序 {{ entry.sort_id }}</span>
                 </template>
-                <label v-if="workspace === 'settings'">USD→CNY 默认参考汇率<input id="ledger-exchange_rate" v-model="form.exchange_rate" type="number" min="0.0001" max="10000" step="any" :aria-invalid="!!fieldErrors.exchange_rate" :aria-describedby="fieldErrors.exchange_rate ? 'ledger-error-exchange_rate' : undefined"><small v-if="fieldErrors.exchange_rate" id="ledger-error-exchange_rate">{{ fieldErrors.exchange_rate }}</small></label>
-              </fieldset>
-              <section class="ledger-preview" aria-label="发布数据预览">
-                <h3>公开数据预览</h3>
-                <template v-if="workspace === 'packages'"><p>{{ gameLabel(form.game) }} · {{ form.name || '未命名礼包' }} · {{ form.game === 'daihao' ? 'USD' : 'CNY' }} {{ form.price }} · {{ form.draws }} 抽 · {{ form.points }} 分</p><p>{{ form.enabled ? '保存后立即公开' : '已停用，不再作为新商品展示' }} · {{ form.extra }}</p></template>
-                <template v-else-if="workspace === 'campaigns'"><p>{{ gameLabel(form.game) }} · {{ form.name }} · {{ progress(form).label }}</p><p>{{ formatLedgerTime(form.starts_at, form.time_zone) }} — {{ formatLedgerTime(form.ends_at, form.time_zone) }} · {{ form.time_zone }}</p><p v-for="(tier, i) in form.tiers" :key="i">{{ tier.enabled ? '' : '已停用 · ' }}{{ tier.points }} 分：{{ tier.rewards.map(r => r.name + ' ×' + r.count).join('、') }}</p><p class="ledger-hint">未开始、结束、停用活动仅供预算或历史参考，不表示当前可领取。</p></template>
-                <p v-else>新预算默认：1 USD = {{ form.exchange_rate }} CNY；用户自选和历史汇率优先。</p>
-              </section>
-              <div class="ledger-actions"><button class="ledger-primary" type="submit" :disabled="saving || conflict">{{ saving ? '保存中…' : '确认预览并保存' }}</button><button type="button" :disabled="saving" @click="close">取消编辑</button><button v-if="conflict" type="button" @click="refreshConflict">放弃修改并刷新</button></div>
-            </form>
-          </section>
+                <template v-else>
+                  <span>{{ entry.tiers.length }} 个档位 · {{ progress(entry).label }}</span>
+                  <span class="ledger-hint">{{ formatLedgerTime(entry.starts_at, entry.time_zone) }} — {{ formatLedgerTime(entry.ends_at, entry.time_zone) }} · {{ entry.time_zone }}</span>
+                </template>
+              </button>
+            </section>
+            <section v-else-if="!form && data" class="ledger-panel"><p>公共 USD→CNY 默认参考汇率：<b>{{ data.settings.exchange_rate }}</b></p><p class="ledger-hint">仅用于用户尚未修改汇率的新预算。如鸢直接按人民币计价；已保存方案的汇率保持原值。</p><button type="button" :disabled="loading" @click="open(data.settings)">修改默认汇率</button></section>
+            <section v-if="form" ref="editor" class="ledger-editor" :class="{ 'ledger-panel': isCatalog && !compact }" tabindex="-1" aria-labelledby="ledger-editor-title">
+              <div class="ledger-editor-head">
+                <button v-if="compact || !isCatalog" type="button" :disabled="saving" @click="close()">返回列表</button>
+                <h2 id="ledger-editor-title">{{ form.id ? '编辑' : '新增' }}{{ workspaces.find(w => w.key === workspace).label }}</h2>
+                <span class="ledger-hint">{{ dirty ? '有未保存修改' : '尚未修改' }}</span>
+              </div>
+              <form class="ledger-panel ledger-editor-form" novalidate @submit.prevent="save">
+                <div ref="editorBody" class="ledger-editor-body">
+                  <div v-if="error" ref="errorSummary" class="ledger-panel ledger-error" role="alert" tabindex="-1">
+                    <p>{{ error }}</p>
+                    <ul v-if="Object.keys(fieldErrors).length"><li v-for="(message, key) in fieldErrors" :key="key"><a :href="'#ledger-' + key" @click.prevent="focusField(key)">{{ message }}</a></li></ul>
+                  </div>
+                  <fieldset :disabled="saving">
+                    <legend>编辑信息</legend>
+                    <div v-if="workspace !== 'settings'" class="ledger-fields">
+                      <label>游戏 / 币种<select id="ledger-game" v-model="form.game" :disabled="!!form.id"><option value="daihao">代号鸢 · USD</option><option value="ru">如鸢 · CNY</option></select></label>
+                      <label>名称<input id="ledger-name" v-model="form.name" maxlength="120" :aria-invalid="!!fieldErrors.name" :aria-describedby="fieldErrors.name ? 'ledger-error-name' : undefined"><small v-if="fieldErrors.name" id="ledger-error-name">{{ fieldErrors.name }}</small></label>
+                    </div>
+                    <div v-if="workspace === 'packages'" class="ledger-fields">
+                      <label v-for="field in packageFields" :key="field.key">{{ field.label === 'price' ? '价格（' + (form.game === 'daihao' ? 'USD' : 'CNY') + '）' : field.label }}<input :id="'ledger-' + field.key" v-model="form[field.key]" :type="field.type" :step="field.step" :min="field.min" :max="field.max" :maxlength="field.maxlength" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'ledger-error-' + field.key : undefined"><small v-if="fieldErrors[field.key]" :id="'ledger-error-' + field.key">{{ fieldErrors[field.key] }}</small></label>
+                      <label class="ledger-check"><input v-model="form.enabled" type="checkbox">启用（保存后立即作为公共商品显示）</label>
+                    </div>
+                    <template v-if="workspace === 'campaigns'">
+                      <p class="ledger-hint">时间必须含时区偏移，例如 2026-10-11T12:00:00+08:00。按下面的 IANA 时区展示。新活动必须填写开始和结束；不延长历史活动。</p>
+                      <p v-if="form.source_note" class="ledger-hint">{{ form.source_note }}</p>
+                      <div class="ledger-fields">
+                        <label v-for="field in campaignFields" :key="field.key">{{ field.label }}<input :id="'ledger-' + field.key" v-model="form[field.key]" :placeholder="field.placeholder" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'ledger-error-' + field.key : undefined"><small v-if="fieldErrors[field.key]" :id="'ledger-error-' + field.key">{{ fieldErrors[field.key] }}</small></label>
+                        <label>状态<select id="ledger-status" v-model="form.status"><option value="draft">草稿</option><option value="published">发布</option><option value="disabled">停用</option></select></label>
+                      </div>
+                      <h3>奖励档位</h3>
+                      <small v-if="fieldErrors.tiers" id="ledger-tiers" role="alert" tabindex="-1">{{ fieldErrors.tiers }}</small>
+                      <article v-for="(tier, index) in form.tiers" :key="index" class="ledger-tier">
+                        <div class="ledger-fields">
+                          <label>第 {{ index + 1 }} 档 · 积分门槛<input v-model.number="tier.points" type="number" min="1" max="10000000" step="1" :aria-label="'第' + (index + 1) + '档积分门槛'"></label>
+                          <label>顺序<input v-model.number="tier.sort_id" type="number" min="0" max="1000000" step="1" :aria-label="'第' + (index + 1) + '档顺序'"></label>
+                          <label class="ledger-check"><input v-model="tier.enabled" type="checkbox" :aria-label="'启用第' + (index + 1) + '档'">启用档位（取消以停用）</label>
+                        </div>
+                        <div v-for="(reward, ri) in tier.rewards" :key="ri" class="ledger-fields ledger-reward">
+                          <label>奖励名称<input v-model="reward.name" maxlength="120" :aria-label="'第' + (index + 1) + '档奖励' + (ri + 1) + '名称'"></label>
+                          <label>数量<input v-model.number="reward.count" type="number" min="1" max="10000000" step="1" :aria-label="'第' + (index + 1) + '档奖励' + (ri + 1) + '数量'"></label>
+                          <button type="button" :aria-label="'移除第' + (index + 1) + '档奖励' + (ri + 1)" @click="tier.rewards.splice(ri, 1)">移除奖励</button>
+                        </div>
+                        <button type="button" @click="tier.rewards.push({ name: '', count: 1 })">添加奖励</button>
+                        <button v-if="!form.id" type="button" @click="form.tiers.splice(index, 1)">移除未保存档位</button>
+                      </article>
+                      <button type="button" @click="form.tiers.push(newTier(form.tiers.length))">添加档位</button>
+                    </template>
+                    <label v-if="workspace === 'settings'">USD→CNY 默认参考汇率<input id="ledger-exchange_rate" v-model="form.exchange_rate" type="number" min="0.0001" max="10000" step="any" :aria-invalid="!!fieldErrors.exchange_rate" :aria-describedby="fieldErrors.exchange_rate ? 'ledger-error-exchange_rate' : undefined"><small v-if="fieldErrors.exchange_rate" id="ledger-error-exchange_rate">{{ fieldErrors.exchange_rate }}</small></label>
+                  </fieldset>
+                  <section class="ledger-preview" aria-label="发布数据预览">
+                    <h3>公开数据预览</h3>
+                    <template v-if="workspace === 'packages'"><p>{{ gameLabel(form.game) }} · {{ form.name || '未命名礼包' }} · {{ form.game === 'daihao' ? 'USD' : 'CNY' }} {{ form.price }} · {{ form.draws }} 抽 · {{ form.points }} 分</p><p>{{ form.enabled ? '保存后立即公开' : '已停用，不再作为新商品展示' }} · {{ form.extra }}</p></template>
+                    <template v-else-if="workspace === 'campaigns'"><p>{{ gameLabel(form.game) }} · {{ form.name }} · {{ progress(form).label }}</p><p>{{ formatLedgerTime(form.starts_at, form.time_zone) }} — {{ formatLedgerTime(form.ends_at, form.time_zone) }} · {{ form.time_zone }}</p><p v-for="(tier, i) in form.tiers" :key="i">{{ tier.enabled ? '' : '已停用 · ' }}{{ tier.points }} 分：{{ tier.rewards.map(r => r.name + ' ×' + r.count).join('、') }}</p><p class="ledger-hint">未开始、结束、停用活动仅供预算或历史参考，不表示当前可领取。</p></template>
+                    <p v-else>新预算默认：1 USD = {{ form.exchange_rate }} CNY；用户自选和历史汇率优先。</p>
+                  </section>
+                </div>
+                <div class="ledger-actions ledger-editor-footer">
+                  <button class="ledger-primary" type="submit" :disabled="saving || loading || conflict">{{ saving ? '保存中…' : '确认预览并保存' }}</button>
+                  <button type="button" :disabled="saving" @click="close()">取消编辑</button>
+                  <button v-if="conflict" type="button" :disabled="saving || loading" @click="close(true)">放弃修改并刷新</button>
+                </div>
+              </form>
+            </section>
+            <p v-else-if="isCatalog && !compact" class="ledger-panel ledger-editor-empty">{{ loading ? '正在读取公共数据…' : workspace === 'packages' ? '选择左侧礼包进行编辑，或新增礼包。' : '选择左侧活动进行编辑，或新增活动。' }}</p>
+          </div>
         </template>
       </div>
       <SiteFooter />
@@ -106,6 +129,7 @@
 <script setup>
 import { ArrowLeft, ArrowUpRight } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import { auth } from '@/store/auth.js'
@@ -123,7 +147,14 @@ const identity = computed(() => String(auth.userInfo?.id || ''))
 const permitted = computed(() => !!auth.accessToken && !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.LEDGER_CATALOG_WRITE))
 const workspace = ref('packages'), data = ref(null), form = ref(null), baseline = ref('')
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
-const errorSummary = ref(null), editor = ref(null)
+const loadError = ref('')
+const isCatalog = computed(() => workspace.value !== 'settings')
+const media = window.matchMedia?.('(max-width: 1080px)')
+const compact = ref(media?.matches ?? window.innerWidth <= 1080)
+const pageHeader = ref(null), workspaceTools = ref(null), workspaceOffset = ref(360)
+const errorSummary = ref(null), editor = ref(null), editorBody = ref(null)
+const listRegion = ref(null), newButton = ref(null)
+let listScrollY = 0
 const filters = reactive({ game: '', category: '', status: '', search: '' })
 const categories = computed(() => [...new Set((data.value?.packages || []).map(p => p.category))])
 const entries = computed(() => (data.value?.[workspace.value] || []).filter(entry =>
@@ -131,7 +162,9 @@ const entries = computed(() => (data.value?.[workspace.value] || []).filter(entr
   (!filters.status || (workspace.value === 'packages' ? (entry.enabled ? 'enabled' : 'disabled') : entry.status) === filters.status) &&
   (workspace.value !== 'packages' || !filters.category || entry.category === filters.category)))
 const dirty = computed(() => !!form.value && JSON.stringify(form.value) !== baseline.value)
-const discard = useUnsavedChanges(dirty, '账房公共数据')
+onBeforeRouteLeave(() => !saving.value)
+onBeforeRouteUpdate(() => !saving.value)
+const discard = useUnsavedChanges(computed(() => dirty.value || saving.value), '账房公共数据')
 let generation = 0, alive = true
 const current = token => alive && permitted.value && token === generation
 const packageFields = [
@@ -147,37 +180,84 @@ const campaignFields = [{ key: 'starts_at', label: '开始时间（含偏移）'
 const newTier = index => ({ points: 100, sort_id: index, enabled: true, rewards: [{ name: '', count: 1 }] })
 function progress(entry) { return ledgerCampaignProgress([{ ...entry, tiers: entry.tiers || [] }], entry.game, 0, Date.now())[0] }
 function focusField(key) { document.getElementById('ledger-' + key)?.focus() }
-async function fail(message) { error.value = message; await nextTick(); errorSummary.value?.focus() }
+async function fail(message, token = generation) {
+  error.value = message
+  await nextTick()
+  if (current(token)) errorSummary.value?.focus()
+}
 async function load() {
   if (!permitted.value || loading.value) return
   const token = generation
-  loading.value = true; error.value = ''
-  try { const result = await getAdminLedgerCatalog(); if (current(token)) data.value = result }
-  catch (err) { if (current(token)) await fail(err.message || '读取失败，请重试') }
-  finally { if (current(token)) loading.value = false }
+  loading.value = true; loadError.value = ''
+  try {
+    const result = await getAdminLedgerCatalog()
+    if (!current(token)) return
+    data.value = result
+    return result
+  } catch (err) {
+    if (current(token)) loadError.value = err.message || '读取失败，请重试'
+  } finally { if (current(token)) loading.value = false }
 }
-async function open(entry) {
-  if (!permitted.value || loading.value || saving.value) return
-  error.value = ''; notice.value = ''; fieldErrors.value = {}; conflict.value = false
+function resetEditor() {
+  form.value = null
+  baseline.value = ''
+  error.value = ''
+  fieldErrors.value = {}
+  conflict.value = false
+}
+function setForm(entry) {
   if (workspace.value === 'packages') form.value = entry ? { ...entry, price: entry.game === 'daihao' ? entry.price_usd : entry.price_cny } : { game: 'daihao', name: '', price: 0, points: 0, draws: 0, limit: 1, category: '', sort_id: 0, extra: '', enabled: true }
   else if (workspace.value === 'campaigns') form.value = entry ? JSON.parse(JSON.stringify(entry)) : { game: 'daihao', name: '', starts_at: '', ends_at: '', time_zone: 'Asia/Shanghai', status: 'draft', tiers: [newTier(0)] }
   else form.value = { ...entry }
   baseline.value = JSON.stringify(form.value)
-  await nextTick(); editor.value?.focus()
 }
-async function close() {
-  if (saving.value) return false
-  const token = generation
-  if (!await discard() || !current(token)) return false
-  form.value = null; baseline.value = ''; error.value = ''; fieldErrors.value = {}; conflict.value = false
-  return true
+async function open(entry) {
+  if (!permitted.value || loading.value || saving.value) return
+  if (entry?.id && entry.id === form.value?.id) {
+    editor.value?.focus({ preventScroll: true })
+    return
+  }
+  const token = generation, kind = workspace.value, draft = form.value
+  if (draft && !await discard()) return
+  if (!current(token) || workspace.value !== kind || form.value !== draft || saving.value || loading.value) return
+  if (!draft) listScrollY = window.scrollY
+  resetEditor()
+  notice.value = ''
+  setForm(entry)
+  await nextTick()
+  if (!current(token) || !form.value || workspace.value !== kind) return
+  if (editorBody.value) editorBody.value.scrollTop = 0
+  if (compact.value) editor.value?.scrollIntoView?.({ block: 'start', behavior: 'instant' })
+  editor.value?.focus({ preventScroll: true })
+}
+async function restoreList(id, token, kind) {
+  await nextTick()
+  if (!current(token) || !isCatalog.value || workspace.value !== kind || form.value) return
+  const index = entries.value.findIndex(entry => entry.id === id)
+  const row = listRegion.value?.querySelectorAll('.ledger-row')[index]
+  if (compact.value) window.scrollTo({ top: listScrollY, behavior: 'instant' })
+  const target = row || (id ? listRegion.value : newButton.value)
+  const focusTarget = target && !target.disabled ? target : listRegion.value
+  if (compact.value) row?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' })
+  focusTarget?.focus({ preventScroll: true })
+}
+async function close(refresh = false) {
+  if (saving.value || !form.value || (refresh && loading.value)) return
+  const token = generation, kind = workspace.value, draft = form.value
+  if (!await discard() || !current(token) || draft !== form.value || saving.value) return
+  if (refresh && loading.value) return
+  resetEditor()
+  if (refresh) await load()
+  await restoreList(draft.id, token, kind)
 }
 async function switchWorkspace(key) {
   if (saving.value || workspace.value === key) return
-  if (form.value && !await close()) return
+  const token = generation, kind = workspace.value, draft = form.value
+  if (draft && !await discard()) return
+  if (!current(token) || workspace.value !== kind || form.value !== draft || saving.value) return
+  resetEditor()
   workspace.value = key; filters.status = ''; filters.category = ''; notice.value = ''
 }
-async function refreshConflict() { if (await close()) await load() }
 function payload() {
   const f = form.value, errors = {}
   const number = (key, min, max, integer = false) => {
@@ -207,11 +287,12 @@ function payload() {
   return Object.keys(errors).length ? null : body
 }
 async function save() {
-  if (!permitted.value || saving.value || conflict.value) return
+  if (!permitted.value || !form.value || loading.value || saving.value || conflict.value) return
   const body = payload()
   if (!body) return fail('请修正以下字段后重试；编辑内容已保留。')
   const token = generation, id = form.value.id, kind = workspace.value
   const original = JSON.parse(baseline.value)
+  let savedId
   saving.value = true; error.value = ''
   try {
     if (kind === 'campaigns' && body.starts_at) await previewLedgerCampaign(body)
@@ -219,26 +300,61 @@ async function save() {
     const needsConfirm = (kind === 'campaigns' && body.status === 'published') || (kind === 'campaigns' && body.status === 'disabled' && original.status !== 'disabled') || (kind === 'packages' && (!id || original.enabled !== body.enabled))
     if (needsConfirm && !await dialog.confirm({ title: '确认公共数据变更', message: kind === 'campaigns' ? `确认${statusLabels[body.status]}「${body.name}」？请核对游戏、时间、时区和预览档位。` : `确认${body.enabled ? '公开' : '停用'}「${body.name}」？用户刷新账房后生效。`, confirmText: '确认保存', type: body.status === 'disabled' || body.enabled === false ? 'danger' : 'info' })) return
     if (!current(token)) return
-    if (kind === 'packages') await saveLedgerPackage(id, body)
-    else if (kind === 'campaigns') await saveLedgerCampaign(id, body)
+    let result
+    if (kind === 'packages') result = await saveLedgerPackage(id, body)
+    else if (kind === 'campaigns') result = await saveLedgerCampaign(id, body)
     else await saveLedgerSettings(body)
     if (!current(token)) return
-    form.value = null; baseline.value = ''; notice.value = '已保存公共数据；用户刷新账房后生效，私人快照保留原值。'
-    await load()
+    savedId = id ?? result?.id
+    baseline.value = JSON.stringify(form.value)
+    const refreshed = await load()
+    if (!current(token)) return
+    if (kind !== 'settings' && !compact.value && savedId != null) {
+      const refreshedEntry = refreshed?.[kind]?.find(entry => entry.id === savedId)
+      const savedEntry = refreshedEntry ?? (!refreshed && result?.id === savedId ? result : null)
+      if (savedEntry) setForm(savedEntry)
+      else resetEditor()
+    } else resetEditor()
+    notice.value = '已保存公共数据；用户刷新账房后生效，私人快照保留原值。'
   } catch (err) {
-    if (current(token)) { conflict.value = err.status === 409; await fail(err.message || '保存失败，编辑内容已保留') }
+    if (current(token)) { conflict.value = err.status === 409; await fail(err.message || '保存失败，编辑内容已保留', token) }
+    return
   } finally { if (current(token)) saving.value = false }
+  if (!form.value) await restoreList(savedId, token, kind)
 }
 watch([identity, permitted], () => {
-  generation++; data.value = null; form.value = null; baseline.value = ''; loading.value = false; saving.value = false; error.value = ''; notice.value = ''
+  generation++; data.value = null; loading.value = false; saving.value = false; loadError.value = ''; notice.value = ''; listScrollY = 0
+  resetEditor()
   if (permitted.value) load()
 }, { immediate: true, flush: 'sync' })
-onBeforeUnmount(() => { alive = false; generation++ })
+watch(workspaceTools, (tools, _, onCleanup) => {
+  if (!tools || !pageHeader.value || typeof ResizeObserver === 'undefined') return
+  const observer = new ResizeObserver(() => {
+    workspaceOffset.value = Math.ceil(tools.getBoundingClientRect().bottom + window.scrollY) + 16
+  })
+  observer.observe(pageHeader.value)
+  observer.observe(tools)
+  onCleanup(() => observer.disconnect())
+}, { flush: 'post' })
+function onMediaChange() {
+  compact.value = media?.matches ?? window.innerWidth <= 1080
+}
+if (media) media.addEventListener('change', onMediaChange)
+else window.addEventListener('resize', onMediaChange)
+onBeforeUnmount(() => {
+  if (media) media.removeEventListener('change', onMediaChange)
+  else window.removeEventListener('resize', onMediaChange)
+  alive = false
+  generation++
+})
 </script>
 
 <style scoped>
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .ledger-panel{background:var(--surface);border:1px solid var(--line);border-radius:16px}.ledger-admin h2,.ledger-admin h3{color:var(--ink)}.ledger-nav{background:var(--surface);border:1px solid var(--line);border-radius:12px}.ledger-nav [aria-pressed=true]{background:var(--yellow);box-shadow:inset 0 -2px var(--tea)}.ledger-admin button,.ledger-nav a,.ledger-admin summary{cursor:pointer;color:var(--ink);border:1px solid var(--line);border-radius:10px;background:var(--surface)}.ledger-admin button:disabled{opacity:.55;cursor:default}.ledger-admin .ledger-primary{background:var(--tea);color:var(--on-strong)}.ledger-admin :focus-visible{outline:2px solid var(--theme-focus, var(--tea));outline-offset:2px}.ledger-admin input,.ledger-admin select{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}.ledger-admin small,.ledger-error{color:var(--theme-danger-text, var(--rouge))}.ledger-admin [aria-invalid=true]{border-color:var(--rouge)}.ledger-hint{color:var(--ink-60)}.ledger-badge{border:1px solid var(--line);border-radius:20px}.ledger-admin fieldset{border:0}.ledger-tier,.ledger-preview{border:1px solid var(--line);border-radius:12px;background:var(--cream)}.ledger-admin a{color:var(--theme-strong-text, var(--tea))}
+.ledger-row:hover:not(:disabled), .ledger-row[aria-current="true"] { background: var(--cream); }
+.ledger-row[aria-current="true"] { box-shadow: inset 3px 0 var(--accent); }
+.ledger-admin .ledger-row:focus-visible { outline-offset: -3px; }
 </style>
 <style scoped src="./ledgerAdminDesktop.css"></style>
 <style scoped src="./ledgerAdminMobile.css"></style>
