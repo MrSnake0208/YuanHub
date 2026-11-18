@@ -16,8 +16,8 @@
         </template>
         <template #actions>
           <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
-          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock || drawResourceLocked || importing" aria-haspopup="dialog" @click="openInventoryExchange">
-            <Archive :size="15" aria-hidden="true" />导入/导出
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock || drawResourceLocked || importing" aria-label="导入/导出" title="导入/导出" aria-haspopup="dialog" @click="openInventoryExchange">
+            <Archive :size="15" aria-hidden="true" /><span class="archive-toggle-label">导入/导出</span>
           </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>

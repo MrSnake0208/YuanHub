@@ -3,6 +3,9 @@
 .wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
 @media(max-width:767px){.wrap{width:100%;max-width:none;padding-inline:16px}}
 @media(min-width:768px) and (max-width:1080px){.wrap{padding-inline:32px}}
+@media (min-width: 768px) and (max-width: 900px) {
+  .roster-header .archive-toggle { width: auto; }
+}
 .page-operator .operator-tabs.tool-workspace-tabs {
   position: static;
   inset: auto;
@@ -4121,6 +4124,9 @@
   .page-operator .roster-header.mobile-context-header > :deep(.wrap) { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'account primary utilities' 'heading heading heading' 'summary summary summary' 'help help help'; }
   .page-operator .roster-header.mobile-context-header :deep(.compact-tool-primary) { flex-wrap: nowrap; margin-top: 0; }
   .roster-share-suffix { display: none; }
+  .page-operator .roster-header.mobile-context-header :deep(.compact-tool-utilities) { flex-wrap: nowrap; }
+  .page-operator .roster-header.mobile-context-header .archive-toggle { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; min-height: 36px; padding: 0; }
+  .page-operator .roster-header.mobile-context-header .archive-toggle-label { display: none; }
   /* 养成总览：管理入口并入排序行，低频操作按需展开；总数只在筛选或搜索时显示。 */
   .operator-mobile-toolbar.growth-overview-filters { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .operator-mobile-toolbar.growth-overview-filters :deep(.current-filter-search) { grid-area: 1 / 1 / 2 / 9; }

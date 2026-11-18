@@ -11,8 +11,8 @@
         </template>
         <template #actions>
           <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
-            aria-haspopup="dialog" @click="openStarExchange">
-            <Archive :size="15" aria-hidden="true" />导入/导出
+            aria-label="导入/导出" title="导入/导出" aria-haspopup="dialog" @click="openStarExchange">
+            <Archive :size="15" aria-hidden="true" /><span class="archive-toggle-label">导入/导出</span>
           </button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
