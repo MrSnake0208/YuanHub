@@ -6,7 +6,7 @@ import { operatorHuaji } from './operatorHuaji.js'
 // 数据形态兼容（目录归一化前后与本地兜底均覆盖）：
 //   prof：字符串（"阳"）或 "、" 拼接的多值（"阳、阴"）
 //   subProf：字符串（"神纪"）或数组（["神纪","破军"]）或后端 snake_case 的 sub_prof
-// 语义：属性与从属多个条件同时存在时按 AND 组合，"all" 视为不过滤。
+// 语义：同一维度任选其一，属性与从属之间按 AND 组合。"all" 和空数组视为不过滤。
 //
 // 从属的「存储 code → 展示名」归一：后端目录以拼音 code 存储 sub_prof
 // （shenji/guidao/pojun/qihuang/longdun，见 /operator/admin 管理端），
@@ -123,15 +123,18 @@ export function hasActiveOperatorGrowthFilters(filters = {}) {
     [f[key + 'Min'], f[key + 'Max']].some(value => value !== '' && value != null))
 }
 
-// 属性 + 从属 AND 匹配；prof/subProf 传 'all' 或空值 = 该维度不过滤
+function hasSelection(selection) {
+  return Array.isArray(selection) ? selection.length > 0 : Boolean(selection && selection !== 'all')
+}
+
 export function matchesProfSubFilter(op, prof, subProf) {
-  if (prof && prof !== 'all') {
-    const profs = tokens(op && op.prof)
-    if (profs.indexOf(prof) === -1) return false
+  if (hasSelection(prof)) {
+    const profs = tokens(op?.prof)
+    if (![].concat(prof).some(value => profs.includes(value))) return false
   }
-  if (subProf && subProf !== 'all') {
+  if (hasSelection(subProf)) {
     const list = subProfList(op)
-    if (list.indexOf(subProf) === -1) return false
+    if (![].concat(subProf).some(value => list.includes(value))) return false
   }
   return true
 }
@@ -182,9 +185,9 @@ export function matchesManifestFilters(entry, filters) {
 export function hasActiveManifestFilters(filters) {
   const f = filters || {}
   return Boolean(
-    (f.rarityFilter != null && f.rarityFilter !== 'all') ||
-    (f.profFilter != null && f.profFilter !== 'all') ||
-    (f.subProfFilter != null && f.subProfFilter !== 'all') ||
+    hasSelection(f.rarityFilter) ||
+    hasSelection(f.profFilter) ||
+    hasSelection(f.subProfFilter) ||
     (f.manifestFilter != null && f.manifestFilter !== 'all') ||
     hasActiveOperatorGrowthFilters(f.growthFilters) ||
     String(f.search || '').trim()

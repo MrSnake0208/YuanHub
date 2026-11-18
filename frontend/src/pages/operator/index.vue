@@ -480,6 +480,16 @@
                     :prof-options="profOptions" :sub-prof-options="subProfOptions" :rarity-options="rarityOptions"
                     :count-results="countCatalogResults" />
                 </template>
+                <template #secondary-tool>
+                  <div class="current-sort-controls catalog-sort-controls">
+                    <div class="current-sort-field">
+                      <select v-model="catalogSort" aria-label="图鉴排序">
+                        <option value="rarity">按品质</option>
+                        <option value="level">按等级</option>
+                      </select>
+                    </div>
+                  </div>
+                </template>
               </OperatorFilterDossier>
             </div>
 
@@ -494,14 +504,14 @@
             <div v-else class="backpack catalog-portrait-grid" v-reveal>
               <div v-if="hasManifestFilters || !auth.isLoggedIn || error || favoriteError" class="bp-head" :class="{ 'catalog-filter-summary-only': auth.isLoggedIn && !error && !favoriteError }">
                 <span class="bp-tip">
-                  <template v-if="rarityFilter !== 'all'">
-                    · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
+                  <template v-if="rarityFilter.length">
+                    · 品质「{{ rarityFilterLabels }}」</template
                   >
-                  <template v-if="profFilter !== 'all'">
-                    · 属性「{{ profFilter }}」</template
+                  <template v-if="profFilter.length">
+                    · 属性「{{ profFilter.join("、") }}」</template
                   >
-                  <template v-if="subProfFilter !== 'all'">
-                    · 职业「{{ subProfFilter }}」</template
+                  <template v-if="subProfFilter.length">
+                    · 职业「{{ subProfFilter.join("、") }}」</template
                   >
                   <template v-if="hasManifestFilters">
                     · 筛选出
@@ -3202,7 +3212,6 @@ import {
 } from "../../utils/operatorTabs.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
-  OPERATOR_RARITY_LABELS,
   OPERATOR_RARITY_OPTIONS,
   hasActiveManifestFilters,
   isOperatorOwned,
@@ -3319,9 +3328,10 @@ const manifestStatusOptions = [
   { value: 'owned', label: '已招募' },
   { value: 'missing', label: '未招募' },
 ];
-const rarityFilter = ref("all");
-const profFilter = ref("all");
-const subProfFilter = ref("all");
+const rarityFilter = ref([]);
+const profFilter = ref([]);
+const subProfFilter = ref([]);
+const catalogSort = ref("rarity");
 const discardedEnabled = isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED);
 const editableStatusOptions = operatorEditableStatusOptions();
 const defaultStatusFilter = discardedEnabled ? "registered" : "all";
@@ -3344,7 +3354,10 @@ const currentSortOptions = [
   { value: 'star', label: '星级' },
 ];
 const rarityOptions = OPERATOR_RARITY_OPTIONS;
-const rarityLabelMap = OPERATOR_RARITY_LABELS;
+const rarityFilterLabels = computed(() => rarityOptions
+  .filter(option => rarityFilter.value.includes(option.value))
+  .map(option => option.label)
+  .join("、"));
 const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
@@ -5058,9 +5071,21 @@ const manifestCandidates = computed(() => catalogOperators.value.map(op => {
 function countCatalogResults(filters) {
   return manifestCandidates.value.filter(entry => matchesManifestFilters(entry, filters)).length;
 }
-const manifestEntries = computed(() => manifestCandidates.value
-  .filter(entry => matchesManifestFilters(entry, catalogFilterState.value))
-  .sort((a, b) => operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id) || String(a.name).localeCompare(String(b.name), "zh-CN")));
+const manifestEntries = computed(() => {
+  const sortByLevel = catalogSort.value === "level" &&
+    currentLoadedKey.value === accountId.value + ":" + gameFilter.value;
+  return manifestCandidates.value
+    .filter(entry => matchesManifestFilters(entry, catalogFilterState.value))
+    .sort((a, b) => (sortByLevel ? catalogLevel(b) - catalogLevel(a) : 0)
+      || (Number(b.rarity) || 0) - (Number(a.rarity) || 0)
+      || operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id)
+      || String(a.name).localeCompare(String(b.name), "zh-CN"));
+});
+
+function catalogLevel(entry) {
+  const level = Number(entry.level);
+  return entry.owned && Number.isFinite(level) && level > 0 ? level : 0;
+}
 
 function operatorReleaseOrder(id) {
   const match = String(id || "").match(/char_(\d+)/);
@@ -5072,12 +5097,9 @@ const filterSuffix = computed(function () {
   const parts = [];
   if (manifestSearch.value) parts.push("「" + manifestSearch.value + "」");
   parts.push("版本「" + gameFilter.value + "」");
-  if (rarityFilter.value !== "all")
-    parts.push("品质「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
-  if (profFilter.value !== "all")
-    parts.push("属性「" + profFilter.value + "」");
-  if (subProfFilter.value !== "all")
-    parts.push("职业「" + subProfFilter.value + "」");
+  if (rarityFilter.value.length) parts.push("品质「" + rarityFilterLabels.value + "」");
+  if (profFilter.value.length) parts.push("属性「" + profFilter.value.join("、") + "」");
+  if (subProfFilter.value.length) parts.push("职业「" + subProfFilter.value.join("、") + "」");
   if (manifestFilter.value === "owned") parts.push("「已招募」");
   if (manifestFilter.value === "missing") parts.push("「未招募」");
   parts.push(...growthFilterParts(manifestGrowthFilters.value));
@@ -5085,7 +5107,7 @@ const filterSuffix = computed(function () {
 });
 
 const manifestAdvancedFilterCount = computed(() => [
-  profFilter.value !== 'all', subProfFilter.value !== 'all', rarityFilter.value !== 'all',
+  profFilter.value.length > 0, subProfFilter.value.length > 0, rarityFilter.value.length > 0,
   manifestGrowthFilters.value.levelEnabled, manifestGrowthFilters.value.eliteEnabled, manifestGrowthFilters.value.starEnabled,
 ].filter(Boolean).length);
 
@@ -5144,7 +5166,9 @@ async function focusCatalogEntry() {
   await setTab('catalog');
   manifestSearch.value = "";
   manifestFilter.value = "all";
-  rarityFilter.value = profFilter.value = subProfFilter.value = "all";
+  rarityFilter.value = [];
+  profFilter.value = [];
+  subProfFilter.value = [];
   manifestGrowthFilters.value = emptyGrowthFilters();
   await nextTick();
   catalogFilters.value?.focusSearch();
@@ -5269,7 +5293,7 @@ const activeUpgradeReadyIds = computed(function () {
 });
 
 function emptyCurrentFilterState() {
-  return { search: '', statusFilter: defaultStatusFilter, profFilter: 'all', subProfFilter: 'all', rarityFilter: 'all',
+  return { search: '', statusFilter: defaultStatusFilter, profFilter: [], subProfFilter: [], rarityFilter: [],
     discStatusFilter: 'all', tagFilter: '', growthFilters: emptyGrowthFilters(), upgradeReadyFilter: '' };
 }
 const currentFilterState = computed({
@@ -5373,12 +5397,9 @@ function growthFilterParts(filters) {
 const currentFilterSuffix = computed(function () {
   const parts = [];
   parts.push("版本「" + gameFilter.value + "」");
-  if (rarityFilter.value !== "all")
-    parts.push("品质「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
-  if (profFilter.value !== "all")
-    parts.push("属性「" + profFilter.value + "」");
-  if (subProfFilter.value !== "all")
-    parts.push("职业「" + subProfFilter.value + "」");
+  if (rarityFilter.value.length) parts.push("品质「" + rarityFilterLabels.value + "」");
+  if (profFilter.value.length) parts.push("属性「" + profFilter.value.join("、") + "」");
+  if (subProfFilter.value.length) parts.push("职业「" + subProfFilter.value.join("、") + "」");
   const group = workbenchStatusOptions.value.find(option => option.value === workbenchStatusFilter.value);
   const organizationTag = organizationData.value.tags.find(tag => tag.id === organizationTagFilter.value);
   if (organizationTag) parts.push("标签「" + organizationTag.name + "」");
@@ -5404,9 +5425,9 @@ const hasRelationshipFilters = computed(function () {
   return (
     Boolean(currentSearch.value.trim()) ||
     Boolean(organizationTagFilter.value) ||
-    rarityFilter.value !== "all" ||
-    profFilter.value !== "all" ||
-    subProfFilter.value !== "all" ||
+    rarityFilter.value.length > 0 ||
+    profFilter.value.length > 0 ||
+    subProfFilter.value.length > 0 ||
     workbenchStatusFilter.value !== defaultStatusFilter ||
     hasGrowthDrafts.value ||
     Boolean(upgradeReadyFilter.value)
@@ -5417,9 +5438,9 @@ function resetCurrentFilters() {
   discStatusFilter.value = "all";
   currentSearch.value = "";
   organizationTagFilter.value = "";
-  rarityFilter.value = "all";
-  profFilter.value = "all";
-  subProfFilter.value = "all";
+  rarityFilter.value = [];
+  profFilter.value = [];
+  subProfFilter.value = [];
   workbenchStatusFilter.value = defaultStatusFilter;
   growthFilters.value = emptyGrowthFilters();
   upgradeReadyFilter.value = "";
@@ -8836,9 +8857,9 @@ async function focusAndFlashScanOperator(operatorId, effect, targetTab = "catalo
     ) {
       manifestSearch.value = "";
       manifestFilter.value = "all";
-      rarityFilter.value = "all";
-      profFilter.value = "all";
-      subProfFilter.value = "all";
+      rarityFilter.value = [];
+      profFilter.value = [];
+      subProfFilter.value = [];
     }
   } else if (
     !filteredCurrent.value.some(function (entry) {
@@ -12802,6 +12823,9 @@ onBeforeUnmount(function () {
 .ledger-lack-label { font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap; writing-mode: horizontal-tb; }
 .current-workbench-summary { border-bottom: 1px solid var(--line); }
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
+@media (min-width: 768px) {
+  .is-catalog-toolbar :deep(.current-filter-secondary) { flex-basis: auto; }
+}
 </style>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorWorkspaceDesktop.css"></style>

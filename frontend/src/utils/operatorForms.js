@@ -7,6 +7,7 @@ export function isMovieOperator(entry) {
 }
 
 export function matchesOperatorQuality(entry, quality) {
+  if (Array.isArray(quality)) return !quality.length || quality.some(value => matchesOperatorQuality(entry, value))
   if (quality == null || quality === 'all') return true
   return isMovieOperator(entry) ? quality === 'movie' : Number(entry?.rarity) === Number(quality)
 }

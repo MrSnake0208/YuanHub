@@ -4112,11 +4112,10 @@
   .operator-mobile-toolbar.is-catalog-toolbar .btn.primary { grid-area: 1 / 2; padding-inline: 12px; }
   .operator-mobile-toolbar.is-catalog-toolbar :deep(.pf-status-row) { grid-area: 2 / 1; }
   .operator-mobile-toolbar.is-catalog-toolbar :deep(.catalog-filter-trigger) { grid-area: 2 / 2; align-self: stretch; min-height: 36px; padding-inline: 12px; }
-  .operator-mobile-toolbar.is-catalog-toolbar :deep(.catalog-filter-chips) { grid-area: 3 / 1 / 4 / -1; }
-  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-filter-result),
-  .operator-mobile-toolbar.is-catalog-toolbar::after { grid-area: 4 / 1 / 5 / -1; }
-  .operator-mobile-toolbar.is-catalog-toolbar:not(:has(.catalog-filter-chips)) :deep(.current-filter-result),
-  .operator-mobile-toolbar.is-catalog-toolbar:not(:has(.catalog-filter-chips))::after { grid-row: 3; }
+  .operator-mobile-toolbar.is-catalog-toolbar .catalog-sort-controls { grid-area: 3 / 2; align-self: center; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.catalog-filter-chips) { grid-area: 4 / 1 / 5 / -1; }
+  .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-filter-result) { grid-area: 3 / 1; margin-top: 0; }
+  .operator-mobile-toolbar.is-catalog-toolbar::after { content: none; }
   .operator-mobile-toolbar.is-catalog-toolbar :deep(.current-status-filter button) { flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; }
   /* BOX 操作低频：分享并入账号行，整行让给内容。 */
   .page-operator .roster-header.mobile-context-header > :deep(.wrap) { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'account primary utilities' 'heading heading heading' 'summary summary summary' 'help help help'; }

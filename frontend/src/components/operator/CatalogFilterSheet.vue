@@ -59,13 +59,16 @@ const emit = defineEmits(['update:modelValue'])
 const open = ref(false), draft = ref(null), panel = ref(null), scrollBody = ref(null)
 const titleId = useId()
 const copy = value => ({ ...value, growthFilters: { ...value.growthFilters } })
+const choiceFilters = [['profFilter', '属性'], ['subProfFilter', '职业'], ['rarityFilter', '品质']]
 const ranges = [['level', '等级'], ['elite', '修为'], ['star', '星数']]
 const chips = computed(() => {
   const value = props.modelValue, result = []
-  for (const [key, label] of [['profFilter', '属性'], ['subProfFilter', '职业'], ['rarityFilter', '品质']]) {
-    if (value[key] === 'all') continue
-    const text = key === 'rarityFilter' ? props.rarityOptions.find(o => o.value === value[key])?.label || value[key] : value[key]
-    result.push({ key, label: `${label} ${text}` })
+  for (const [field, label] of choiceFilters) {
+    for (const choice of [].concat(value[field] ?? 'all')) {
+      if (choice === 'all') continue
+      const text = field === 'rarityFilter' ? props.rarityOptions.find(option => option.value === choice)?.label || choice : choice
+      result.push({ key: `${field}:${choice}`, field, choice, label: `${label} ${text}` })
+    }
   }
   for (const [key, label] of ranges) {
     const f = value.growthFilters, min = f[key + 'Min'], max = f[key + 'Max']
@@ -88,12 +91,21 @@ function begin() { draft.value = copy(props.modelValue); open.value = true }
 function apply() { if (invalidRange.value) return; emit('update:modelValue', copy(draft.value)); open.value = false }
 function resetDraft() {
   if (props.resetFilters) { draft.value = copy(props.resetFilters()); return }
-  draft.value = { search: '', manifestFilter: 'all', profFilter: 'all', subProfFilter: 'all', rarityFilter: 'all', growthFilters: {} }
+  draft.value = { search: '', manifestFilter: 'all', growthFilters: {} }
+  for (const [field] of choiceFilters) {
+    draft.value[field] = Array.isArray(props.modelValue[field]) ? [] : 'all'
+  }
 }
 function remove(chip) {
   const value = copy(props.modelValue)
-  if (chip.growth) value.growthFilters[chip.key === 'awakened' ? chip.key : chip.key + 'Enabled'] = chip.key === 'awakened' ? '' : false
-  else value[chip.key] = ['tagFilter', 'upgradeReadyFilter'].includes(chip.key) ? '' : 'all'
+  if (chip.growth) {
+    value.growthFilters[chip.key === 'awakened' ? chip.key : chip.key + 'Enabled'] = chip.key === 'awakened' ? '' : false
+  } else if (chip.field) {
+    const selected = value[chip.field]
+    value[chip.field] = Array.isArray(selected) ? selected.filter(choice => choice !== chip.choice) : 'all'
+  } else {
+    value[chip.key] = ['tagFilter', 'upgradeReadyFilter'].includes(chip.key) ? '' : 'all'
+  }
   emit('update:modelValue', value)
 }
 watch(() => props.contextKey, () => { open.value = false })

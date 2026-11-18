@@ -53,65 +53,23 @@
     <div class="current-filter-rows">
       <div v-show="!compact || forceExpanded || filtersOpen" :id="filtersId" class="dossier-extra">
         <slot name="extra-filters" />
-        <div class="pf-row pf-prof-row">
-          <span class="pf-label">属性</span>
-          <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
+        <div v-for="row in filterRows" :key="row.key" class="pf-row" :class="row.rowClass">
+          <span class="pf-label" :class="{ 'pf-multiple-label': Array.isArray(props[row.key]) }">
+            {{ row.label }}<small v-if="Array.isArray(props[row.key])">可多选</small>
+          </span>
+          <div class="mf-filter" :class="{ 'rarity-filter': row.key === 'rarityFilter' }" role="group"
+            :aria-label="`按${row.label}筛选${contextLabel}${Array.isArray(props[row.key]) ? '，可多选' : ''}`">
             <button
-              type="button"
-              :aria-pressed="profFilter === 'all'"
-              :class="{ on: profFilter === 'all' }"
-              @click="$emit('update:profFilter', 'all')"
-            >
-              全部
-            </button>
-            <button
-              v-for="prof in profOptions"
-              :key="prof"
-              type="button"
-              :aria-pressed="profFilter === prof"
-              :class="{ on: profFilter === prof }"
-              @click="$emit('update:profFilter', prof)"
-            >
-              <img v-if="profIcon(prof)" :src="profIcon(prof)" alt="" aria-hidden="true" />{{ prof }}
-            </button>
-          </div>
-        </div>
-
-        <div class="pf-row pf-subprof-row">
-          <span class="pf-label">职业</span>
-          <div class="mf-filter" role="group" :aria-label="`按职业筛选${contextLabel}`">
-            <button
-              type="button"
-              :aria-pressed="subProfFilter === 'all'"
-              :class="{ on: subProfFilter === 'all' }"
-              @click="$emit('update:subProfFilter', 'all')"
-            >
-              全部
-            </button>
-            <button
-              v-for="subProf in subProfOptions"
-              :key="subProf"
-              type="button"
-              :aria-pressed="subProfFilter === subProf"
-              :class="{ on: subProfFilter === subProf }"
-              @click="$emit('update:subProfFilter', subProf)"
-            >
-              {{ subProf }}
-            </button>
-          </div>
-        </div>
-
-        <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
-          <span class="pf-label">品质</span>
-          <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
-            <button
-              v-for="option in rarityOptions"
+              v-for="option in row.options"
               :key="option.value"
               type="button"
-              :aria-pressed="rarityFilter === option.value"
-              :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-              @click="$emit('update:rarityFilter', option.value)"
-            >{{ option.label }}</button>
+              :aria-pressed="isFilterSelected(props[row.key], option.value)"
+              :class="[row.key === 'rarityFilter' && option.value !== 'all' ? 'rarity-r' + option.value : '', { on: isFilterSelected(props[row.key], option.value) }]"
+              @click="selectFilter(row.key, option.value)"
+            >
+              <Check v-if="Array.isArray(props[row.key]) && option.value !== 'all'" :size="12" class="filter-check" aria-hidden="true" />
+              <img v-if="row.key === 'profFilter' && option.value !== 'all' && profIcon(option.value)" :src="profIcon(option.value)" alt="" aria-hidden="true" />{{ option.label }}
+            </button>
           </div>
         </div>
 
@@ -169,8 +127,8 @@
 </template>
 
 <script setup>
-import { ref, useId } from 'vue'
-import { RotateCcw, Search } from '@lucide/vue'
+import { computed, ref, useId } from 'vue'
+import { Check, RotateCcw, Search } from '@lucide/vue'
 import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
 import { DISC_FILTER_OPTIONS } from '../../utils/operatorDiscLoadouts.js'
 
@@ -194,9 +152,9 @@ const props = defineProps({
   statusCounts: { type: Object, default: function () { return {} } },
   tagOptions: { type: Array, default: () => [] },
   tagFilter: { type: String, default: '' },
-  rarityFilter: { type: [String, Number], default: 'all' },
-  profFilter: { type: String, default: 'all' },
-  subProfFilter: { type: String, default: 'all' },
+  rarityFilter: { type: [String, Number, Array], default: 'all' },
+  profFilter: { type: [String, Array], default: 'all' },
+  subProfFilter: { type: [String, Array], default: 'all' },
   statusFilter: { type: String, default: 'all' },
   profIcon: { type: Function, default: function () { return '' } },
   searchable: Boolean,
@@ -225,6 +183,35 @@ const emit = defineEmits([
   'update:awakenedOnly',
   'reset',
 ])
+
+function filterOptions(values) {
+  return [{ value: 'all', label: '全部' }, ...values.map(value => ({ value, label: value }))]
+}
+
+const filterRows = computed(() => [
+  { key: 'profFilter', label: '属性', rowClass: 'pf-prof-row', options: filterOptions(props.profOptions) },
+  { key: 'subProfFilter', label: '职业', rowClass: 'pf-subprof-row', options: filterOptions(props.subProfOptions) },
+  { key: 'rarityFilter', label: '品质', rowClass: 'pf-rarity-row', options: props.rarityOptions },
+].filter(row => row.options.length))
+
+function isFilterSelected(selection, value) {
+  if (!Array.isArray(selection)) return selection === value
+  return value === 'all' ? selection.length === 0 : selection.includes(value)
+}
+
+function selectFilter(key, value) {
+  const selected = props[key]
+  if (!Array.isArray(selected)) {
+    emit(`update:${key}`, value)
+    return
+  }
+  if (value === 'all') {
+    emit(`update:${key}`, [])
+    return
+  }
+  const next = selected.includes(value) ? selected.filter(item => item !== value) : [...selected, value]
+  emit(`update:${key}`, next)
+}
 
 function statusCount(value) {
   return value === 'all' ? props.totalCount : (Number(props.statusCounts[value]) || 0)
@@ -294,6 +281,8 @@ function statusCount(value) {
   background: transparent;
   color: var(--theme-strong-text, var(--tea));
 }
+.pf-label.pf-multiple-label { display: grid; align-content: center; justify-items: center; gap: 2px; }
+.pf-multiple-label small { color: var(--ink-60); font-size: 10px; font-weight: 600; }
 .mf-filter {
   border-radius: 10px;
   background: var(--theme-wash, rgba(73, 59, 44, 0.06));
@@ -315,6 +304,8 @@ function statusCount(value) {
 .rarity-filter button.rarity-r3.on { background: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 34%, var(--surface)); color: var(--theme-info-text, #47647d); }
 .rarity-filter button.rarity-r4.on { background: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 25%, var(--surface)); color: var(--theme-purple-text, #62508b); }
 .rarity-filter button.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--theme-accent-text, var(--accent-strong)); }
+.filter-check { flex: none; }
+.mf-filter button:not(.on) .filter-check { visibility: hidden; }
 .mf-filter button:focus-visible {
   outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 1px;
