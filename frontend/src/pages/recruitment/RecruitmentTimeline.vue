@@ -16,15 +16,15 @@
       <button type="button" class="sort-button" :aria-label="descending ? '按时间排序，当前最新优先，点击切换最早优先' : '按时间排序，当前最早优先，点击切换最新优先'" @click="descending = !descending">按时间<ArrowDownWideNarrow v-if="descending" :size="16" aria-hidden="true" /><ArrowUpWideNarrow v-else :size="16" aria-hidden="true" /></button>
       <button v-if="pools.some(hasRecords)" type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
     </div>
-    <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先找你抽过的池子，看池名、UP 密探和日期，再点「记一笔／查看记录」。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
+    <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先看池名、UP 密探和日期，再点卡片打开你抽过的池子。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
     <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无可用卡池。</p>
     <p v-else-if="!visiblePools.length" data-guide-target="pool-unavailable" class="timeline-empty">此年份暂无卡池。</p>
     <ol class="timeline-list" data-guide-target="pool-cards">
       <li v-for="(pool, index) in visiblePools" :key="pool.pool_id" class="timeline-row">
         <div class="date-rail" aria-hidden="true"><span v-if="permanent(pool) || !startDate(pool) || !visiblePools[index - 1] || permanent(visiblePools[index - 1]) || startDate(visiblePools[index - 1]).slice(0, 7) !== startDate(pool).slice(0, 7)">{{ permanent(pool) ? '常驻' : startDate(pool) ? startDate(pool).slice(0, 4) + '年' + Number(startDate(pool).slice(5, 7)) + '月' : '日期' }}</span><strong>{{ permanent(pool) ? '∞' : startDate(pool) ? Number(startDate(pool).slice(8, 10)) + '日' : '未知' }}</strong></div>
         <div class="pool-group">
-          <div class="pool-card has-banner" role="group" :aria-label="cardLabel(pool)" @click="onSummaryClick($event, pool)">
-            <span class="bn b" :class="[normalizeRecruitmentPoolType(details(pool).pool_type), { 'is-busy': busy }]" aria-hidden="true" @click.stop="!busy && $emit('select', pool.pool_id)">
+          <div class="pool-card has-banner" :class="normalizeRecruitmentPoolType(details(pool).pool_type)">
+            <span class="bn" aria-hidden="true">
               <span class="bn-sweep" />
               <span v-if="coverPortraits(pool).length" class="bn-art" :class="{ solo: coverPortraits(pool).length === 1 }">
                 <img v-for="portrait in coverPortraits(pool)" :key="portrait.id" :src="portrait.src" alt="" loading="lazy" decoding="async" @error="markPortraitFailed(portrait.src)" />
@@ -35,43 +35,39 @@
                   <span class="bn-name">{{ details(pool).name }}</span>
                   <span class="bn-seal">{{ normalizeRecruitmentPoolType(details(pool).pool_type) === 'unknown' ? '招募' : recruitmentPoolType(details(pool).pool_type).label }}</span>
                 </span>
-                <span v-if="coverAgents(pool).length" class="bn-sub">
-                  <span>UP · {{ coverAgents(pool).slice(0, 3).map(agent => agent.name).join(' · ') }}</span>
-                  <span v-if="coverAgents(pool).length > 3">等 {{ coverAgents(pool).length }} 位</span>
-                </span>
-                <span v-else-if="normalizeRecruitmentPoolType(details(pool).pool_type) !== 'unknown'" class="bn-sub">
-                  <span>{{ recruitmentPoolType(details(pool).pool_type).label }}招募</span>
-                </span>
+                <span v-if="poolDate(pool)" class="pool-dates"><span>{{ poolDate(pool) }}</span></span>
               </span>
               <span v-if="status(pool) !== '已结束'" class="bn-status" :class="{ 'is-open': status(pool) === '进行中' || status(pool) === '常驻开放' }">
                 <i />{{ status(pool) === '常驻开放' ? '常驻' : status(pool) }}
               </span>
             </span>
             <span class="banner-content">
-              <span class="banner-head">
-                <span v-if="!permanent(pool) || startDate(pool)" class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
+              <span v-if="coverAgents(pool).length" class="bn-sub" aria-hidden="true">
+                <span>UP · {{ coverAgents(pool).slice(0, 3).map(agent => agent.name).join(' · ') }}</span>
+                <span v-if="coverAgents(pool).length > 3">等 {{ coverAgents(pool).length }} 位</span>
+              </span>
+              <span v-else-if="normalizeRecruitmentPoolType(details(pool).pool_type) !== 'unknown'" class="bn-sub" aria-hidden="true">
+                <span>{{ recruitmentPoolType(details(pool).pool_type).label }}招募</span>
+              </span>
+              <span v-if="!isEmptyPool(pool) || coverAgents(pool).length" class="banner-summary">
+                <span v-if="!isEmptyPool(pool)" class="pool-metrics banner-metrics">
+                  <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
+                    <span class="metric-label">{{ metric.label }}</span>
+                    <span class="metric-value"><b :class="{ 'is-unknown': metric.value === '未知' || metric.value === '—' }">{{ metric.value }}</b><small v-if="metric.unit && metric.value !== '未知' && metric.value !== '—'">{{ metric.unit }}</small></span>
+                  </span>
+                </span>
                 <span v-if="coverAgents(pool).length" class="pool-up-row" aria-hidden="true">
                   <span v-for="agent in coverAgents(pool)" :key="agent.id" class="pool-up-item" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">
                     <OperatorAvatar class="pool-up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
                     <span class="pool-up-count">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
                   </span>
                 </span>
-                <span class="banner-actions">
-                  <button v-if="hasRecords(pool)" type="button" class="preview-toggle" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)">{{ isExpanded(pool) ? '收起明细' : '展开明细' }}<ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
-                  <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" @click.stop="$emit('select', pool.pool_id)">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></button>
-                </span>
               </span>
               <span v-if="cumulativeChoiceNames(pool)" class="pool-cumulative-choice">累抽自选 · {{ cumulativeChoiceNames(pool) }}</span>
               <span v-if="isEmptyPool(pool)" class="pool-empty">还没有记录</span>
-              <span v-else class="pool-metrics banner-metrics">
-                <span v-for="metric in poolMetrics(pool)" :key="metric.label" :class="metric.class">
-                  <span class="metric-label">{{ metric.label }}</span>
-                  <span class="metric-value"><b :class="{ 'is-unknown': metric.value === '未知' || metric.value === '—' }">{{ metric.value }}</b><small v-if="metric.unit && metric.value !== '未知' && metric.value !== '—'">{{ metric.unit }}</small></span>
-                </span>
-                <button v-if="hasRecords(pool)" type="button" class="preview-toggle mobile-metrics-toggle" :aria-label="`${details(pool).name}：${isExpanded(pool) ? '收起明细' : '展开明细'}`" :aria-expanded="isExpanded(pool)" :aria-controls="previewId(pool)" @click.stop="togglePool(pool)"><ChevronDown :size="14" :class="{ 'is-expanded': isExpanded(pool) }" aria-hidden="true" /></button>
-              </span>
               <span v-if="poolSummaries[pool.pool_id]?.four_star_count" class="metric-note">另有 {{ poolSummaries[pool.pool_id].four_star_count }} 条4星计次</span>
             </span>
+            <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="entry-label" :disabled="busy" :aria-label="cardLabel(pool)" :aria-description="poolDate(pool)" @click="$emit('select', pool.pool_id)" />
           </div>
           <RecruitmentRecordsPreview v-if="hasRecords(pool) && isExpanded(pool)" :id="previewId(pool)" :pool="pool" :catalog="catalog" :agents="agents" :entry="previews[pool.pool_id]" :view="recordView" :busy="busy" @load="more => $emit('load-preview', pool.pool_id, more)" />
         </div>
@@ -83,7 +79,7 @@
 <script setup>
 import { TUTORIALS_ENABLED } from '../../config/features.js'
 import { computed, ref, useId, watch } from 'vue'
-import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow, ChevronRight, ChevronDown } from '@lucide/vue'
+import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow } from '@lucide/vue'
 import RecruitmentRecordsPreview from './RecruitmentRecordsPreview.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
@@ -101,8 +97,6 @@ const hasRecords = pool => (props.poolSummaries[pool.pool_id]?.event_count || 0)
 const isExpanded = pool => expandedPools.value.has(pool.pool_id)
 const allExpanded = computed(() => visiblePools.value.some(hasRecords) && visiblePools.value.every(pool => !hasRecords(pool) || isExpanded(pool)))
 const previewId = pool => `${timelineId}-preview-${pool.pool_id}`
-function togglePool(pool) { if (hasRecords(pool)) { if (isExpanded(pool)) expandedPools.value.delete(pool.pool_id); else expandedPools.value.add(pool.pool_id) } }
-function onSummaryClick(event, pool) { if (!event.target.closest('button, a, input, select')) togglePool(pool) }
 function setAllExpanded(expanded) { for (const pool of visiblePools.value) if (hasRecords(pool)) { if (expanded) expandedPools.value.add(pool.pool_id); else expandedPools.value.delete(pool.pool_id) } }
 const goldCount = pool => {
   const summary = props.poolSummaries[pool.pool_id]
@@ -111,6 +105,10 @@ const goldCount = pool => {
 const failedPortraits = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
 const startDate = pool => details(pool).start_date || ''
+function poolDate(pool) {
+  const data = details(pool)
+  if (data.start_date || data.end_date) return recruitmentPoolDateLabel(data)
+}
 const cumulativeChoiceNames = pool => (pool.cumulative_choice_agent_ids?.length ? pool.cumulative_choice_agent_ids : pool.cumulative_choice_agent_id ? [pool.cumulative_choice_agent_id] : []).map(id => props.agents.find(agent => agent.id === id)?.name || id).join('、')
 const permanent = pool => isPermanentRecruitmentPool(details(pool))
 const years = computed(() => [...new Set(props.pools.filter(pool => !permanent(pool)).map(pool => startDate(pool).slice(0, 4)).filter(Boolean))].sort().reverse())
@@ -128,9 +126,9 @@ const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) |
 }))
 function poolMetrics(pool) {
   return [
-    { label: '已知抽数', value: props.poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知', unit: '抽' },
     { label: '绝密次数', value: goldCount(pool) ?? '未知', unit: '次' },
-    { label: '平均出金', value: props.poolSummaries[pool.pool_id]?.average_gold_pulls ?? '—', unit: '抽', class: 'average-metric' },
+    { label: '总抽数', value: props.poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知', unit: '抽', class: 'total-pulls-metric' },
+    { label: '平均抽数', value: props.poolSummaries[pool.pool_id]?.average_gold_pulls ?? '—', unit: '抽', class: 'average-metric' },
     { label: '小保底不歪率', value: permanent(pool) || props.poolSummaries[pool.pool_id]?.small_pity_win_rate == null ? '—' : props.poolSummaries[pool.pool_id].small_pity_win_rate + '%', class: 'small-pity-metric' },
   ]
 }
@@ -178,10 +176,38 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 </script>
 
 <style scoped>
-.bn {
-  --title: #3E2F21;
+.pool-card {
   --sub: #5A4633;
   --chip-bg: rgba(255,253,246,.7);
+  position: relative;
+  isolation: isolate;
+  border-radius: 16px;
+  background: var(--surface);
+  transition: background-color .18s;
+}
+@media (hover: hover) {
+  .pool-card:has(.entry-label:enabled:hover) {
+    background-color: color-mix(in srgb, var(--surface) 94%, var(--ink) 6%);
+  }
+}
+.pool-card:has(.entry-label:enabled:active) {
+  background-color: color-mix(in srgb, var(--surface) 91%, var(--ink) 9%);
+}
+.entry-label {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.entry-label:disabled { cursor: default; }
+.bn {
+  --title: #3E2F21;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -189,24 +215,15 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
   color-scheme: only light;
   color: #493B2C;
   border-radius: 14px;
-  cursor: pointer;
-  transition: filter .18s, box-shadow .18s;
   background:
     radial-gradient(60% 120% at 28% 70%, var(--glow), transparent 70%),
     linear-gradient(100deg, var(--a) 0%, var(--b) 100%);
 }
-.bn.is-busy { cursor: default; transition: none; }
-@media (hover: hover) {
-  .bn:not(.is-busy):hover {
-    filter: brightness(1.03);
-    box-shadow: 0 4px 14px rgba(73,59,44,.14);
-  }
-}
-.b.limited  { --a: #FFF8EC; --b: #F2DFAD; --glow: rgba(230,190,110,.55); --frame: rgba(152,114,42,.45); --seal: #B5432F; }
-.b.rerun    { --a: #F7FAFD; --b: #D9E8F5; --glow: rgba(150,190,225,.5); --frame: rgba(89,125,155,.45); --seal: #3F6A8F; }
-.b.zhaoying { --a: #FBF8FD; --b: #E7DCF4; --glow: rgba(190,160,225,.5); --frame: rgba(136,102,159,.45); --seal: #6E4E92; }
-.b.choice   { --a: #FFF7F5; --b: #F1D5D1; --glow: rgba(225,150,140,.45); --frame: rgba(166,81,74,.45); --seal: #9C3A35; }
-.b.permanent, .b.unknown { --a: #FFFDF6; --b: #F6EDD0; --glow: rgba(220,190,130,.4); --frame: rgba(128,107,85,.4); --seal: #806B55; }
+.pool-card.limited  { --a: #FFF8EC; --b: #F2DFAD; --glow: rgba(230,190,110,.55); --frame: rgba(152,114,42,.45); --seal: #B5432F; }
+.pool-card.rerun    { --a: #F7FAFD; --b: #D9E8F5; --glow: rgba(150,190,225,.5); --frame: rgba(89,125,155,.45); --seal: #3F6A8F; }
+.pool-card.zhaoying { --a: #FBF8FD; --b: #E7DCF4; --glow: rgba(190,160,225,.5); --frame: rgba(136,102,159,.45); --seal: #6E4E92; }
+.pool-card.choice   { --a: #FFF7F5; --b: #F1D5D1; --glow: rgba(225,150,140,.45); --frame: rgba(166,81,74,.45); --seal: #9C3A35; }
+.pool-card.permanent, .pool-card.unknown { --a: #FFFDF6; --b: #F6EDD0; --glow: rgba(220,190,130,.4); --frame: rgba(128,107,85,.4); --seal: #806B55; }
 .bn::before {
   content: ''; position: absolute; inset: 0 0 0 45%; z-index: -1; opacity: .06; mix-blend-mode: multiply;
   background: url('/maayuan/maayuan-pattern.webp') center / 240px repeat;
@@ -250,13 +267,19 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
   color: #FFF4E6; background: var(--seal); padding: .45em .32em; border-radius: 4px;
   box-shadow: inset 0 0 0 1.5px rgba(255,240,220,.55); transform: rotate(-4deg);
 }
-.bn-sub {
+.bn-sub, .pool-dates {
   display: flex; align-items: center; gap: 1.6cqw; max-width: 100%; font: 600 clamp(10px, 2.3cqw, 17px)/1.4 var(--font-s);
   color: var(--sub); letter-spacing: .12em; padding: .35em 1.1em; border-radius: 999px; background: var(--chip-bg);
   border: 1px solid var(--frame); white-space: nowrap;
 }
-.bn-sub > :first-child { overflow: hidden; text-overflow: ellipsis; }
+.bn-sub > :first-child, .pool-dates > span { overflow: hidden; text-overflow: ellipsis; }
 .bn-sub > :nth-child(2) { flex: none; }
+.pool-dates {
+  max-width: 60cqw;
+  font-size: clamp(9px, 2cqw, 13px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
 .bn-status {
   position: absolute; z-index: 3; left: 3.4%; top: 9%; display: inline-flex; align-items: center; gap: 6px;
   font: 600 clamp(10px, 1.9cqw, 13px)/1 var(--font-b); color: #5A4633; background: rgba(255,253,246,.8);
@@ -268,16 +291,17 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 .pool-up-row .pool-up-avatar{border:1.5px solid var(--accent);border-radius:50%}.pool-up-row :deep(.pool-up-avatar img){border-radius:50%}
 .pool-up-row :deep(.pool-up-avatar > span){display:grid;place-items:center;width:100%;height:100%;font-size:13px;line-height:1;font-weight:700;border-radius:50%;overflow:hidden}
 .pool-up-item.is-muted{color:var(--ink-60)}.pool-up-item.is-muted .pool-up-avatar{border:1px solid var(--line);filter:saturate(.6)}
+.banner-content{container-type:inline-size}
+.banner-content .bn-sub{justify-self:start}
 .banner-content .banner-metrics,.banner-content .pool-empty{border:0;border-radius:12px;background:var(--cream)}
-.banner-actions .entry-label{border-radius:10px}
 .pool-cumulative-choice{font-size:12px;line-height:1.7;color:var(--ink-60);overflow-wrap:anywhere}
 .batch-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
-.overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button,.preview-toggle{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.preview-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0}.preview-toggle svg.is-expanded{transform:rotate(180deg)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
+.overview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}.overview-tools button{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font:inherit;font-size:12px}.overview-views{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--cream)}.overview-views button{border-color:transparent}.overview-views button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.metric-note{font-size:11px;line-height:1.6;color:var(--ink-60)}
 
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
-.timeline-heading p{color:var(--ink-60)}button{color:var(--ink);cursor:pointer}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}button:disabled{opacity:.6;cursor:not-allowed}.sort-button{border:1px solid var(--line);background:var(--surface);border-radius:999px}.year-filters{border:1px solid var(--line);border-radius:20px;background:var(--cream)}.year-filters button{border:0;background:transparent;border-radius:999px}.year-filters button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.timeline-row::before{content:'';border-left:1px solid var(--line)}.date-rail::before{content:'';border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--paper)}.pool-group{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.pool-card{border:0;border-radius:16px;background:var(--surface);transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}.pool-card:hover{border-color:var(--accent);box-shadow:0 4px 18px color-mix(in srgb,var(--tea) 8%,transparent)}
-.pool-dates{color:var(--ink-60)}.pool-empty{font-size:13px;color:var(--ink-60)}.pool-metrics>span{color:var(--ink-60)}.pool-metrics b{color:var(--ink)}.entry-label{background:var(--tea);color:var(--on-strong);border-radius:9px}.timeline-empty{color:var(--ink-60)}
-@media(prefers-reduced-motion:reduce){.pool-card,.bn{transition:none}}
+.timeline-heading p{color:var(--ink-60)}button{color:var(--ink);cursor:pointer}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}button:disabled{opacity:.6;cursor:not-allowed}.sort-button{border:1px solid var(--line);background:var(--surface);border-radius:999px}.year-filters{border:1px solid var(--line);border-radius:20px;background:var(--cream)}.year-filters button{border:0;background:transparent;border-radius:999px}.year-filters button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.timeline-row::before{content:'';border-left:1px solid var(--line)}.date-rail::before{content:'';border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--paper)}.pool-group{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.pool-empty{font-size:13px;color:var(--ink-60)}.pool-metrics>span{color:var(--ink-60)}.pool-metrics b{color:var(--ink)}.timeline-empty{color:var(--ink-60)}
+@media(prefers-reduced-motion:reduce){.pool-card{transition:none}}
 </style>
 <style scoped src="./recruitmentTimelineDesktop.css"></style>
 <style scoped src="./recruitmentTimelineMobile.css"></style>

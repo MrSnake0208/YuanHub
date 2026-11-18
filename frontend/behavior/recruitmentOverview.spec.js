@@ -40,7 +40,6 @@ it('单池三项统计区分总UP与小保底、样本与推断，并可展开�
   expect(wrapper.get('.guaranteed-gold-metric').text()).toContain('统计尚未提供')
   await wrapper.setProps({ summary: { pity_status: 'not_applicable' } })
   expect(wrapper.findAll('dd strong').map(item => item.text())).toEqual(['—', '—', '—'])
-  expect(wrapper.get('.total-up-metric').text()).toContain('不适用')
   wrapper.unmount()
 })
 
@@ -185,13 +184,16 @@ it('首批只在进入视口后请求，退出卸载观察器；失败与未读�
 
 it('默认折叠有记录池，批量只影响筛选结果，独立编辑不折叠，切换视图不改顺序', async () => {
   const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a'), pool('b', '2025'), pool('empty')], poolSummaries: { a: { event_count: 2, four_star_count: 1, known_total_pulls: 45, average_gold_pulls: 38 }, b: { event_count: 1 }, empty: { event_count: 0 } }, previews: { a: entry([event('a1', 38), event('four', null, 4)]), b: entry([event('b1', 20, 5, 'b')]) } } })
+  const batchToggle = wrapper.get('.batch-toggle')
   expect(wrapper.findAll('.pool-preview')).toHaveLength(0)
-  expect(wrapper.findAll('.preview-toggle').every(toggle => toggle.attributes('aria-expanded') === 'false')).toBe(true)
+  expect(batchToggle.attributes('aria-label')).toBe('展开当前年份全部明细')
   expect(wrapper.emitted('load-preview')).toBeUndefined()
-  await wrapper.get('.preview-toggle').trigger('click')
+  await button(wrapper, '2026').trigger('click')
+  await batchToggle.trigger('click')
   expect(wrapper.findAll('.pool-preview')).toHaveLength(1)
-  expect(wrapper.get('.batch-toggle').text()).toBe('展开')
-  await button(wrapper, '展开').trigger('click')
+  await button(wrapper, '全部').trigger('click')
+  expect(batchToggle.text()).toBe('展开')
+  await batchToggle.trigger('click')
   expect(wrapper.findAll('.pool-preview')).toHaveLength(2)
   expect(wrapper.findAll('.preview-agents')).toHaveLength(2)
   expect(wrapper.get('.average-metric').text()).toContain('38')
@@ -203,12 +205,14 @@ it('默认折叠有记录池，批量只影响筛选结果，独立编辑不折�
   await button(wrapper, '全部').trigger('click'); expect(wrapper.findAll('.pool-preview')).toHaveLength(1)
   await button(wrapper, '展开').trigger('click'); expect(wrapper.findAll('.pool-preview')).toHaveLength(2)
   await button(wrapper, '进度条').trigger('click'); expect(wrapper.findAll('.preview-progress')).toHaveLength(2)
-  await wrapper.get('.pool-card').trigger('click'); expect(wrapper.get('.preview-toggle').attributes('aria-expanded')).toBe('false')
-  await wrapper.get('.preview-toggle').trigger('click'); expect(wrapper.get('.preview-toggle').attributes('aria-expanded')).toBe('true')
-  expect(wrapper.emitted('select')).toHaveLength(1)
+  await wrapper.get('.entry-label').trigger('click')
+  expect(wrapper.findAll('.preview-progress')).toHaveLength(2)
+  await batchToggle.trigger('click'); expect(wrapper.findAll('.pool-preview')).toHaveLength(0)
+  await batchToggle.trigger('click'); expect(wrapper.findAll('.preview-progress')).toHaveLength(2)
+  expect(wrapper.emitted('select')).toEqual([['a'], ['a']])
   await wrapper.setProps({ contextVersion: 2, previews: {}, poolSummaries: { a: { event_count: 1 } } })
   expect(wrapper.get('.average-metric').text()).toContain('—')
-  expect(wrapper.get('.preview-toggle').attributes('aria-expanded')).toBe('false')
+  expect(batchToggle.text()).toBe('展开')
   expect(wrapper.findAll('.pool-preview')).toHaveLength(0)
 })
 
@@ -217,7 +221,7 @@ it('空池不显示大空框，缺少摘要时不使用部分明细冒充完整�
   expect(wrapper.find('.pool-preview').exists()).toBe(false)
   expect(wrapper.get('.average-metric').text()).toContain('—')
   expect(wrapper.text()).not.toContain('暂无绝密出金样本')
-  expect(wrapper.get('.pool-metrics b').text()).toBe('7')
+  expect(wrapper.get('.total-pulls-metric b').text()).toBe('7')
   for (const preview of [{ ...entry([event('one', 20)]), cursor: 'next' }, { ...entry([event('one', 20)]), error: '失败' }, entry([event('one', null)])]) {
     await wrapper.setProps({ poolSummaries: { a: { event_count: 1 } }, previews: { a: preview } })
     expect(wrapper.get('.average-metric').text()).toContain('—')
@@ -264,12 +268,14 @@ it('首次渲染从摘要显示完整统计，不受明细未加载、分页、�
 })
 
 
-it('批量按钮随当前筛选和单池状态切换，当前筛选无记录时禁用，全部无记录时隐藏', async () => {
+it('批量按钮随当前筛选和展开状态切换，当前筛选无记录时禁用，全部无记录时隐藏', async () => {
   const wrapper = mount(RecruitmentTimeline, { props: { pools: [pool('a'), pool('b', '2025')], poolSummaries: { a: { event_count: 1 }, b: { event_count: 1 } } }, global: { stubs: { RecruitmentRecordsPreview: true } } })
   expect(wrapper.get('.batch-toggle').text()).toBe('展开')
   await wrapper.get('.batch-toggle').trigger('click')
   expect(wrapper.get('.batch-toggle').text()).toBe('折叠')
-  await wrapper.get('.preview-toggle').trigger('click')
+  await button(wrapper, '2026').trigger('click')
+  await wrapper.get('.batch-toggle').trigger('click')
+  await button(wrapper, '全部').trigger('click')
   expect(wrapper.get('.batch-toggle').text()).toBe('展开')
   await button(wrapper, '2025').trigger('click')
   expect(wrapper.get('.batch-toggle').text()).toBe('折叠')
