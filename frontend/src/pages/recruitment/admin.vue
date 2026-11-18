@@ -14,18 +14,16 @@
         <p v-if="!permitted" class="card" role="alert">需要招募卡池管理权限。</p>
 
         <template v-else>
-          <p v-if="error" ref="errorSummary" class="card error" role="alert" tabindex="-1">{{ error }}</p>
+          <p v-if="listError" ref="listErrorSummary" class="card error" role="alert" tabindex="-1">{{ listError }}</p>
           <p v-if="notice" class="notice" role="status">{{ notice }}</p>
           <p v-if="loading" class="notice" role="status">正在读取公共卡池和密探图鉴…</p>
 
-          <section v-if="!form" class="catalog-workspace" aria-labelledby="catalog-list-title">
+          <section v-show="showDirectory" class="catalog-controls" aria-labelledby="catalog-list-title">
             <header class="workspace-head">
               <div>
-                <p class="eyebrow">卡池目录</p>
                 <h2 id="catalog-list-title">公共卡池</h2>
-                <p class="hint">选择卡池开始编辑。</p>
               </div>
-              <button class="primary" type="button" :disabled="loading || importing" @click="openNew">新建卡池</button>
+              <button ref="newButton" class="primary" type="button" :disabled="loading || importing || saving" @click="openPool()">新建卡池</button>
             </header>
 
             <div class="toolbar" aria-label="卡池筛选">
@@ -47,7 +45,7 @@
               <label class="pool-search">搜索卡池
                 <input v-model.trim="search" type="search" placeholder="名称或 ID">
               </label>
-              <button type="button" :disabled="loading || importing" @click="load">刷新目录</button>
+              <button type="button" :disabled="loading || importing || saving" @click="load()">刷新目录</button>
             </div>
 
             <details class="maintenance-tools">
@@ -57,212 +55,220 @@
                   <strong>批量导入 JSON</strong>
                   <p id="catalog-import-hint" class="hint">只新增数据库中不存在的 pool_id，不覆盖已有卡池；兼容旧目录 JSON 与带 up_agents 的目录 JSON。</p>
                 </div>
-                <button type="button" :disabled="loading || importing" aria-describedby="catalog-import-hint" @click="openImport">{{ importing ? '导入中…' : '选择 JSON 文件' }}</button>
+                <button type="button" :disabled="loading || importing || saving" aria-describedby="catalog-import-hint" @click="openImport">{{ importing ? '导入中…' : '选择 JSON 文件' }}</button>
               </div>
             </details>
             <input ref="importInput" class="file-input" type="file" accept="application/json,.json" @change="importFile">
-
-            <p v-if="!loading && !filteredPools.length" class="card empty-state">没有符合条件的卡池。</p>
-
-            <div v-else class="pool-list">
-              <article v-for="pool in filteredPools" :key="pool.pool_id" :ref="element => rememberPoolRow(pool.pool_id, element)" class="card pool-row">
-                <div class="pool-copy">
-                  <div class="pool-title-row">
-                    <h3>{{ pool.name }}</h3>
-                    <span class="status-badge" :class="{ muted: pool.hidden || !pool.enabled }">{{ statusLabel(pool) }}</span>
-                  </div>
-                  <p class="pool-meta">{{ pool.game }} · {{ recruitmentPoolType(pool.pool_type).label }} · {{ recruitmentPoolDateLabel(pool) }}</p>
-                  <div v-if="activePoolSlots(pool).length" class="up-summary" aria-label="当前 UP">
-                    <span v-for="slot in activePoolSlots(pool)" :key="slot.id" class="up-summary-item">
-                      <OperatorAvatar class="up-summary-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
-                      <span>{{ operatorById(slot.operator_id)?.name || slot.name }}</span>
-                    </span>
-                  </div>
-                  <p v-else class="hint">当前没有启用中的 UP 名额。</p>
-                </div>
-                <button type="button" :disabled="loading" @click="openEdit(pool)">管理卡池</button>
-              </article>
-            </div>
           </section>
 
-          <section v-else ref="editor" class="editor-workspace" aria-labelledby="catalog-editor-title" tabindex="-1">
-            <div class="editor-topbar">
-              <button class="quiet" type="button" :disabled="saving" @click="requestCloseEditor"><ArrowLeft :size="16" aria-hidden="true" /> 返回卡池目录</button>
-              <div class="editor-state">
-                <span class="status-badge" :class="{ muted: form.hidden || !form.enabled }">{{ isNew ? '新建卡池' : statusLabel(form) }}</span>
-                <span v-if="dirty" class="dirty-badge">有未保存修改</span>
-                <span v-else class="saved-badge">已保存</span>
-              </div>
-            </div>
-
-            <header class="editor-header">
-              <p class="eyebrow">{{ isNew ? '创建公开卡池' : '维护公开卡池' }}</p>
-              <h2 id="catalog-editor-title">{{ form.name || '未命名卡池' }}</h2>
-              <p v-if="!isNew" class="hint">修改不会改变既有抽数事实；历史名额的稳定身份会继续保留。</p>
-            </header>
-
-            <section v-if="conflict" class="card conflict-panel" aria-label="版本冲突核对">
-              <p role="status">草稿仍在编辑器中。先读取最新目录核对；不会覆盖其他管理员的修改。</p>
-              <button type="button" :disabled="saving || loading" @click="readLatest">读取最新版本供核对</button>
-              <div v-if="latestPool">
-                <p>服务器版本 {{ latestPool.revision }} · {{ statusLabel(latestPool) }}</p>
-                <p>{{ latestPool.name }} · {{ latestPool.pool_type || '类型未填' }} · {{ recruitmentPoolDateLabel(latestPool) }}</p>
-                <p>UP：{{ latestPool.up_agents.map(slot => slot.name + (slot.active ? '' : '（已退役）')).join('、') || '无' }}</p>
-                <p class="hint">核对后可复制需保留的草稿，再返回目录刷新重开；不覆盖其他管理员的修改。</p>
-              </div>
+          <div class="catalog-workspace">
+            <section v-show="showDirectory" ref="listRegion" class="pool-list" aria-label="卡池目录列表" tabindex="-1">
+              <p v-if="!loading && !listError && !filteredPools.length" class="card empty-state">没有符合条件的卡池。</p>
+              <button v-for="pool in filteredPools" :key="pool.pool_id" :ref="element => rememberPoolRow(pool.pool_id, element)"
+                class="card pool-row" type="button" :aria-current="selectedPoolId === pool.pool_id ? 'true' : undefined"
+                :disabled="loading || importing || saving" @click="openPool(pool)">
+                <span class="pool-title-row">
+                  <strong>{{ pool.name }}</strong>
+                  <span class="status-badge" :class="{ muted: pool.hidden || !pool.enabled }">{{ statusLabel(pool) }}</span>
+                </span>
+                <span class="pool-meta">{{ pool.game }} · {{ recruitmentPoolType(pool.pool_type).label }} · {{ recruitmentPoolDateLabel(pool) }}</span>
+                <span v-if="activePoolSlots(pool).length" class="up-summary" role="group" aria-label="当前 UP">
+                  <span v-for="slot in activePoolSlots(pool)" :key="slot.id" class="up-summary-item">
+                    <img v-if="operatorAvatar(operatorById(slot.operator_id))" class="up-summary-avatar"
+                      :src="avatarUrl(operatorAvatar(operatorById(slot.operator_id)))" alt="" loading="lazy">
+                    <span v-else class="up-summary-avatar" aria-hidden="true">{{ Array.from(slotLabel(slot))[0] }}</span>
+                    <span class="up-summary-name">{{ slotLabel(slot) }}</span>
+                  </span>
+                </span>
+                <span v-else class="hint">当前没有启用中的 UP 名额。</span>
+              </button>
             </section>
-            <form @submit.prevent="save">
-              <section class="card section-card" aria-labelledby="pool-basic-title">
-                <div class="section-head">
-                  <div>
-                    <h3 id="pool-basic-title">基础信息</h3>
-                    <p class="hint">这些字段决定用户在招募档案里看到的卡池名称、类型与有效时间。</p>
+
+            <section v-if="form" ref="editor" class="editor-workspace" aria-labelledby="catalog-editor-title" tabindex="-1">
+              <div :key="form.pool_id" class="editor-body">
+                <div class="editor-topbar">
+                  <button v-if="compact" class="quiet" type="button" :disabled="saving" @click="requestCloseEditor"><ArrowLeft :size="16" aria-hidden="true" /> 返回卡池目录</button>
+                  <div class="editor-state">
+                    <span class="status-badge" :class="{ muted: form.hidden || !form.enabled }">{{ isNew ? '新建卡池' : statusLabel(form) }}</span>
+                    <span v-if="dirty" class="dirty-badge">有未保存修改</span>
+                    <span v-else class="saved-badge">已保存</span>
                   </div>
                 </div>
-                <p v-if="!isNew" class="hint identity-hint">卡池 ID：{{ form.pool_id }}。所属游戏和 ID 不可修改；录错时先隐藏错误卡池，再新建正确卡池。</p>
-                <div class="fields">
-                  <label>游戏
-                    <select v-model="form.game" :disabled="!isNew || saving || form.up_agents.length > 0">
-                      <option>代号鸢</option>
-                      <option>如鸢</option>
-                    </select>
-                    <small v-if="isNew && form.up_agents.length">已有 UP 名额时不能切换游戏；先移除这些名额再切换。</small>
-                  </label>
-                  <label>卡池名称
-                    <input v-model.trim="form.name" required maxlength="128" :disabled="saving">
-                  </label>
-                  <label>卡池类型
-                    <input v-model.trim="form.pool_type" maxlength="64" placeholder="如：限定 / 常驻" :disabled="saving">
-                  </label>
-                  <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
-                    <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>
-                  </label>
-                  <label class="wish-mode"><span><input v-model="form.allow_cumulative_choice" type="checkbox" :disabled="saving"> 允许累抽自选（每 300 抽一次，最多 3 次）</span>
-                    <small>用户可按 300/600/900 档标记本游戏绝密密探，允许重复选择，各账号独立保存，不计入抽卡统计。</small>
-                  </label>
-                  <label>开始日期
-                    <input v-model="form.start_date" type="date" :disabled="saving">
-                  </label>
-                  <label>结束日期
-                    <input v-model="form.end_date" type="date" :min="form.start_date" :disabled="saving">
-                  </label>
-                </div>
-              </section>
 
-              <section class="card section-card" aria-labelledby="pool-up-title">
-                <div class="section-head">
-                  <div>
-                    <h3 id="pool-up-title">当前 UP</h3>
-                    <p class="hint">已关联密探的名称随图鉴更新。</p>
+                <header class="editor-header">
+                  <p class="eyebrow">{{ isNew ? '创建公开卡池' : '维护公开卡池' }}</p>
+                  <h2 id="catalog-editor-title">{{ form.name || '未命名卡池' }}</h2>
+                  <p v-if="!isNew" class="hint">修改不会改变既有抽数事实；历史名额的稳定身份会继续保留。</p>
+                </header>
+
+                <p v-if="error" ref="errorSummary" class="card error" role="alert" tabindex="-1">{{ error }}</p>
+                <section v-if="conflict" class="card conflict-panel" aria-label="版本冲突核对">
+                  <p role="status">草稿仍在编辑器中。先读取最新目录核对；不会覆盖其他管理员的修改。</p>
+                  <button type="button" :disabled="saving || loading || importing" @click="readLatest">读取最新版本供核对</button>
+                  <div v-if="latestPool">
+                    <p>服务器版本 {{ latestPool.revision }} · {{ statusLabel(latestPool) }}</p>
+                    <p>{{ latestPool.name }} · {{ latestPool.pool_type || '类型未填' }} · {{ recruitmentPoolDateLabel(latestPool) }}</p>
+                    <p>UP：{{ latestPool.up_agents.map(slot => slot.name + (slot.active ? '' : '（已退役）')).join('、') || '无' }}</p>
+                    <p class="hint">核对后可复制需保留的草稿，再取消编辑、刷新目录并重新打开卡池。</p>
                   </div>
-                  <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
-                </div>
-
-                <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。</p>
-
-                <div class="slot-list">
-                  <article v-for="(slot, index) in activeSlots" :key="slot.id" class="up-slot-card">
-                    <div class="slot-head">
-                      <div class="slot-identity">
-                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
-                        <div>
-                          <span class="slot-index">UP 名额 {{ index + 1 }}</span>
-                          <strong>{{ slotLabel(slot) }}</strong>
-                          <small>{{ slot.operator_id ? '已对应图鉴，沿用固定历史身份' : '占位密探，可先开放记录后再补图鉴映射' }}</small>
-                        </div>
+                </section>
+                <form id="catalog-editor-form" @submit.prevent="save">
+                  <section class="card section-card" aria-labelledby="pool-basic-title">
+                    <div class="section-head">
+                      <div>
+                        <h3 id="pool-basic-title">基础信息</h3>
+                        <p class="hint">这些字段决定用户在招募档案里看到的卡池名称、类型与有效时间。</p>
                       </div>
-                      <button class="danger ghost" type="button" :disabled="saving" @click="removeOrRetireSlot(slot)">{{ isUnsavedSlot(slot) ? '移除' : '退役' }}</button>
                     </div>
-
-                    <div class="slot-fields">
-                      <label>对应图鉴密探（4星/5星/照影SP）
-                        <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
-                          <option value="">暂未进入图鉴，使用占位名称</option>
-                          <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
-                          <option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option>
+                    <p v-if="!isNew" class="hint identity-hint">卡池 ID：{{ form.pool_id }}。所属游戏和 ID 不可修改；录错时先隐藏错误卡池，再新建正确卡池。</p>
+                    <div class="fields">
+                      <label>游戏
+                        <select v-model="form.game" :disabled="!isNew || saving || form.up_agents.length > 0">
+                          <option>代号鸢</option>
+                          <option>如鸢</option>
                         </select>
+                        <small v-if="isNew && form.up_agents.length">已有 UP 名额时不能切换游戏；先移除这些名额再切换。</small>
                       </label>
+                      <label>卡池名称
+                        <input v-model.trim="form.name" required maxlength="128" :disabled="saving">
+                      </label>
+                      <label>卡池类型
+                        <input v-model.trim="form.pool_type" maxlength="64" placeholder="如：限定 / 常驻" :disabled="saving">
+                      </label>
+                      <label class="wish-mode"><span><input v-model="form.allow_custom_up" type="checkbox" :disabled="saving"> 允许自选心愿 UP</span>
+                        <small>用户可从本游戏全部绝密密探中选2位，各账号独立保存；开启后个人心愿替代下方固定 UP。</small>
+                      </label>
+                      <label class="wish-mode"><span><input v-model="form.allow_cumulative_choice" type="checkbox" :disabled="saving"> 允许累抽自选（每 300 抽一次，最多 3 次）</span>
+                        <small>用户可按 300/600/900 档标记本游戏绝密密探，允许重复选择，各账号独立保存，不计入抽卡统计。</small>
+                      </label>
+                      <label>开始日期
+                        <input v-model="form.start_date" type="date" :disabled="saving">
+                      </label>
+                      <label>结束日期
+                        <input v-model="form.end_date" type="date" :min="form.start_date" :disabled="saving">
+                      </label>
+                    </div>
+                  </section>
 
-                      <label v-if="!slot.operator_id">占位名称
-                        <input v-model.trim="slot.name" maxlength="128" :disabled="saving || !isUnsavedSlot(slot)" placeholder="例如：尚未实装密探">
-                        <small>已保存名称保留历史身份；首次绑定图鉴沿用原名额，错配请退役再新增。</small>
-                      </label>
-                      <div v-else class="bound-name">
-                        <span>展示名称</span>
-                        <strong>{{ operatorById(slot.operator_id)?.name || slot.name }}</strong>
-                        <small>{{ operatorById(slot.operator_id) ? '名称由图鉴映射提供。' : '当前图鉴不可用，暂时保留已有名称与绑定。' }}</small>
+                  <section class="card section-card" aria-labelledby="pool-up-title">
+                    <div class="section-head">
+                      <div>
+                        <h3 id="pool-up-title">当前 UP</h3>
+                        <p class="hint">已关联密探的名称随图鉴更新。</p>
                       </div>
+                      <button type="button" :disabled="saving || activeSlots.length >= 120" @click="addSlot"><Plus :size="16" aria-hidden="true" /> 添加 UP 名额</button>
                     </div>
 
-                    <p v-if="attemptedSave && slotIssue(slot)" class="slot-error" role="alert">{{ slotIssue(slot) }}</p>
-                  </article>
-                </div>
+                    <p v-if="!activeSlots.length" class="empty-inline">这个卡池目前没有 UP。</p>
 
-                <p v-if="operatorError" class="inline-warning" role="status">{{ operatorError }}。已有绑定会保留；新的名额可以先使用占位名称。</p>
-
-                <details v-if="retiredSlots.length" class="history-section">
-                  <summary>历史名额（{{ retiredSlots.length }}）</summary>
-                  <p class="hint">退役名额不会出现在用户的新录入选项中，但既有记录仍引用它们。已绑定图鉴的历史身份不可换绑；错配请保留旧名额，添加正确的新名额。</p>
-                  <article v-for="slot in retiredSlots" :key="slot.id" class="history-slot">
-                    <div class="slot-head">
-                      <div class="slot-identity compact">
-                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
-                        <div>
-                          <span class="slot-index">已退役</span>
-                          <strong>{{ slotLabel(slot) }}</strong>
-                          <small>{{ slot.operator_id ? '保留图鉴映射与历史身份' : '历史占位名额' }}</small>
+                    <div class="slot-list">
+                      <article v-for="(slot, index) in activeSlots" :key="slot.id" class="up-slot-card">
+                        <div class="slot-head">
+                          <div class="slot-identity">
+                            <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
+                            <div>
+                              <span class="slot-index">UP 名额 {{ index + 1 }}</span>
+                              <strong>{{ slotLabel(slot) }}</strong>
+                              <small>{{ slot.operator_id ? '已对应图鉴，沿用固定历史身份' : '占位密探，可先开放记录后再补图鉴映射' }}</small>
+                            </div>
+                          </div>
+                          <button class="danger ghost" type="button" :disabled="saving" @click="removeOrRetireSlot(slot)">{{ isUnsavedSlot(slot) ? '移除' : '退役' }}</button>
                         </div>
-                      </div>
-                      <div class="history-actions">
-                        <button v-if="canUndoRetire(slot)" type="button" :disabled="saving" @click="undoRetire(slot)">撤销本次退役</button>
-                        <button v-else type="button" :disabled="saving" @click="toggleHistoricalEdit(slot)">{{ editingHistoricalSlotId === slot.id ? '完成修正' : '修正历史映射' }}</button>
-                      </div>
+
+                        <div class="slot-fields">
+                          <label>对应图鉴密探（4星/5星/照影SP）
+                            <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
+                              <option value="">暂未进入图鉴，使用占位名称</option>
+                              <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
+                              <option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option>
+                            </select>
+                          </label>
+
+                          <label v-if="!slot.operator_id">占位名称
+                            <input v-model.trim="slot.name" maxlength="128" :disabled="saving || !isUnsavedSlot(slot)" placeholder="例如：尚未实装密探">
+                            <small>已保存名称保留历史身份；首次绑定图鉴沿用原名额，错配请退役再新增。</small>
+                          </label>
+                          <div v-else class="bound-name">
+                            <span>展示名称</span>
+                            <strong>{{ operatorById(slot.operator_id)?.name || slot.name }}</strong>
+                            <small>{{ operatorById(slot.operator_id) ? '名称由图鉴映射提供。' : '当前图鉴不可用，暂时保留已有名称与绑定。' }}</small>
+                          </div>
+                        </div>
+
+                        <p v-if="attemptedSave && slotIssue(slot)" class="slot-error" role="alert">{{ slotIssue(slot) }}</p>
+                      </article>
                     </div>
 
-                    <div v-if="editingHistoricalSlotId === slot.id" class="slot-fields history-fields">
-                      <label>对应图鉴密探（4星/5星/照影SP）
-                        <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
-                          <option value="">保持为历史占位</option>
-                          <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
-                          <option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option>
-                        </select>
-                      </label>
-                      <label v-if="!slot.operator_id">历史显示名称
-                        <input v-model.trim="slot.name" maxlength="128" :disabled="saving || !isUnsavedSlot(slot)">
-                      </label>
+                    <p v-if="operatorError" class="inline-warning" role="status">{{ operatorError }}。已有绑定会保留；新的名额可以先使用占位名称。</p>
+
+                    <details v-if="retiredSlots.length" class="history-section">
+                      <summary>历史名额（{{ retiredSlots.length }}）</summary>
+                      <p class="hint">退役名额不会出现在用户的新录入选项中，但既有记录仍引用它们。已绑定图鉴的历史身份不可换绑；错配请保留旧名额，添加正确的新名额。</p>
+                      <article v-for="slot in retiredSlots" :key="slot.id" class="history-slot">
+                        <div class="slot-head">
+                          <div class="slot-identity compact">
+                            <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
+                            <div>
+                              <span class="slot-index">已退役</span>
+                              <strong>{{ slotLabel(slot) }}</strong>
+                              <small>{{ slot.operator_id ? '保留图鉴映射与历史身份' : '历史占位名额' }}</small>
+                            </div>
+                          </div>
+                          <div class="history-actions">
+                            <button v-if="canUndoRetire(slot)" type="button" :disabled="saving" @click="undoRetire(slot)">撤销本次退役</button>
+                            <button v-else type="button" :disabled="saving" @click="toggleHistoricalEdit(slot)">{{ editingHistoricalSlotId === slot.id ? '完成修正' : '修正历史映射' }}</button>
+                          </div>
+                        </div>
+
+                        <div v-if="editingHistoricalSlotId === slot.id" class="slot-fields history-fields">
+                          <label>对应图鉴密探（4星/5星/照影SP）
+                            <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
+                              <option value="">保持为历史占位</option>
+                              <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
+                              <option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option>
+                            </select>
+                          </label>
+                          <label v-if="!slot.operator_id">历史显示名称
+                            <input v-model.trim="slot.name" maxlength="128" :disabled="saving || !isUnsavedSlot(slot)">
+                          </label>
+                        </div>
+                        <p v-if="attemptedSave && slotIssue(slot)" class="slot-error" role="alert">{{ slotIssue(slot) }}</p>
+                      </article>
+                    </details>
+                  </section>
+
+                  <section class="card section-card status-section" aria-labelledby="pool-status-title">
+                    <div class="section-head">
+                      <div>
+                        <h3 id="pool-status-title">卡池状态</h3>
+                        <p class="hint">停用仍显示；隐藏移出公共列表。两者都不删除已有历史。</p>
+                      </div>
                     </div>
-                    <p v-if="attemptedSave && slotIssue(slot)" class="slot-error" role="alert">{{ slotIssue(slot) }}</p>
-                  </article>
-                </details>
-              </section>
-
-              <section class="card section-card status-section" aria-labelledby="pool-status-title">
-                <div class="section-head">
-                  <div>
-                    <h3 id="pool-status-title">卡池状态</h3>
-                    <p class="hint">停用仍显示；隐藏移出公共列表。两者都不删除已有历史。</p>
-                  </div>
-                </div>
-                <fieldset class="status-options">
-                  <legend class="visually-hidden">选择卡池状态</legend>
-                  <label v-for="option in statusOptions" :key="option.value" class="status-option" :class="{ selected: poolState === option.value }">
-                    <input v-model="poolState" type="radio" :value="option.value" :disabled="saving">
-                    <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
-                  </label>
-                </fieldset>
-                <p v-if="form.hidden" class="inline-warning">保存后从普通用户公共列表移除；已有个人池、记录和进度保留，可维护和导出，但不能新增出货。</p>
-                <p v-else-if="!form.enabled" class="inline-warning">保存后卡池仍显示，但不能新增出货；已有历史可以继续维护。</p>
-              </section>
-
-              <div class="editor-actions" aria-label="卡池编辑操作">
-                <span class="save-state">{{ dirty ? '当前修改尚未保存' : '没有待保存修改' }}</span>
-                <div>
-                  <button type="button" :disabled="saving" @click="requestCloseEditor">取消</button>
-                  <button class="primary" type="submit" :disabled="saving || loading || conflict || !dirty">{{ saving ? '保存中…' : (isNew ? '创建卡池' : '保存修改') }}</button>
-                </div>
+                    <fieldset class="status-options">
+                      <legend class="visually-hidden">选择卡池状态</legend>
+                      <label v-for="option in statusOptions" :key="option.value" class="status-option" :class="{ selected: poolState === option.value }">
+                        <input v-model="poolState" type="radio" :value="option.value" :disabled="saving">
+                        <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+                      </label>
+                    </fieldset>
+                    <p v-if="form.hidden" class="inline-warning">保存后从普通用户公共列表移除；已有个人池、记录和进度保留，可维护和导出，但不能新增出货。</p>
+                    <p v-else-if="!form.enabled" class="inline-warning">保存后卡池仍显示，但不能新增出货；已有历史可以继续维护。</p>
+                  </section>
+                </form>
               </div>
-            </form>
-          </section>
+              <footer class="editor-actions" aria-label="卡池编辑操作">
+                <div class="save-state">
+                  <span>{{ dirty ? '当前修改尚未保存' : '没有待保存修改' }}</span>
+                  <p v-if="saveNotice" role="status">{{ saveNotice }}</p>
+                </div>
+                <div class="editor-buttons">
+                  <button type="button" :disabled="saving" @click="requestCloseEditor">取消</button>
+                  <button class="primary" type="submit" form="catalog-editor-form" :disabled="saving || loading || importing || conflict || !dirty">{{ saving ? '保存中…' : (isNew ? '创建卡池' : '保存修改') }}</button>
+                </div>
+              </footer>
+            </section>
+            <p v-else-if="!compact" class="card editor-empty">选择左侧卡池进行编辑，或新建卡池</p>
+          </div>
         </template>
       </div>
       <SiteFooter />
@@ -286,6 +292,7 @@ import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { dialog } from '../../utils/dialog.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
+import { avatarUrl } from '../../api/request.js'
 import { getOperatorCatalog } from '../../api/operator.js'
 import { createAdminRecruitmentPool, importAdminRecruitmentCatalog, listAdminRecruitmentCatalog, updateAdminRecruitmentPool } from '../../api/recruitment.js'
 import { operatorCatalogEntries } from './rules.js'
@@ -297,15 +304,24 @@ const loading = ref(false)
 const saving = ref(false)
 const importing = ref(false)
 const error = ref('')
+const listError = ref('')
 const operatorError = ref('')
 const notice = ref('')
+const saveNotice = ref('')
 const filterGame = ref('')
 const filterStatus = ref('')
 const search = ref('')
 const form = ref(null)
 const isNew = ref(false)
+const selectedPoolId = computed(() => isNew.value ? '' : form.value?.pool_id)
+const media = window.matchMedia?.('(max-width: 1080px)')
+const compact = ref(media?.matches ?? true)
+const showDirectory = computed(() => !compact.value || !form.value)
 const editor = ref(null)
 const errorSummary = ref(null)
+const listErrorSummary = ref(null)
+const listRegion = ref(null)
+const newButton = ref(null)
 const importInput = ref(null)
 const formBaseline = ref('')
 const originalSlotIds = ref(new Set())
@@ -356,6 +372,7 @@ const activePoolSlots = pool => pool.up_agents.filter(slot => slot.active)
 let generation = 0
 let alive = true
 let returnPoolId = ''
+let listScrollY = 0
 const poolRows = new Map()
 
 function rememberPoolRow(id, element) {
@@ -402,34 +419,36 @@ function resetEditorTracking(pool) {
   attemptedSave.value = false
 }
 
-async function closeEditor() {
-  const poolId = returnPoolId
-  const token = capture()
+function resetEditor() {
   returnPoolId = ''
   form.value = null
   isNew.value = false
-  formBaseline.value = ''
-  originalSlotIds.value = new Set()
-  originalBoundSlotIds.value = new Set()
-  originalActiveSlotIds.value = new Set()
-  originalEnabled.value = true
-  originalHidden.value = false
-  conflict.value = false
-  latestPool.value = null
-  editingHistoricalSlotId.value = ''
-  attemptedSave.value = false
+  resetEditorTracking(null)
   error.value = ''
+  saveNotice.value = ''
+}
+
+async function closeEditor() {
+  const poolId = returnPoolId
+  const token = capture()
+  resetEditor()
   await nextTick()
-  if (!poolId || !current(token) || form.value || error.value) return
+  if (!current(token) || form.value) return
   const row = poolRows.get(poolId)
-  if (!row) return
-  row.scrollIntoView({ block: 'center', behavior: 'instant' })
-  row.querySelector('button')?.focus({ preventScroll: true })
+  if (compact.value) {
+    if (row) row.scrollIntoView?.({ block: 'center', behavior: 'instant' })
+    else window.scrollTo({ top: listScrollY, behavior: 'instant' })
+  }
+  const target = poolId ? row : newButton.value
+  const focusTarget = target && !target.disabled ? target : listRegion.value
+  focusTarget?.focus({ preventScroll: true })
 }
 
 async function requestCloseEditor() {
   if (saving.value) return
-  if (await confirmEditorDiscard()) await closeEditor()
+  const token = capture()
+  const draft = form.value
+  if (await confirmEditorDiscard() && current(token) && !saving.value && form.value === draft) await closeEditor()
 }
 
 function openImport() {
@@ -439,13 +458,14 @@ function openImport() {
 async function importFile(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
-  if (!file || !permitted.value || importing.value) return
+  if (!file || !permitted.value || loading.value || saving.value || importing.value) return
   const token = capture()
   importing.value = true
-  error.value = ''
+  listError.value = ''
   notice.value = ''
   try {
     const document = JSON.parse(await file.text())
+    if (!current(token)) return
     const result = await importAdminRecruitmentCatalog(document)
     if (!current(token)) return
     importing.value = false
@@ -454,7 +474,7 @@ async function importFile(event) {
   } catch (err) {
     if (!current(token)) return
     importing.value = false
-    await showError(err instanceof SyntaxError ? 'JSON 文件格式不正确，请检查后重新选择文件。' : err.message || '卡池导入失败，请检查文件后重试')
+    await showListError(err instanceof SyntaxError ? 'JSON 文件格式不正确，请检查后重新选择文件。' : err.message || '卡池导入失败，请检查文件后重试', token)
   } finally {
     if (current(token)) importing.value = false
   }
@@ -466,13 +486,19 @@ async function showError(message) {
   errorSummary.value?.focus()
 }
 
+async function showListError(message, token) {
+  listError.value = message
+  await nextTick()
+  if (current(token) && showDirectory.value && !saving.value) listErrorSummary.value?.focus()
+}
+
 async function load() {
-  if (!permitted.value) return
+  if (!permitted.value || loading.value) return
   const token = capture()
   const read = ++generation
   token.generation = read
   loading.value = true
-  error.value = ''
+  listError.value = ''
   operatorError.value = ''
   try {
     const [catalog, operatorResult] = await Promise.all([
@@ -484,27 +510,41 @@ async function load() {
     pools.value = catalog.pools
     operators.value = Array.isArray(operatorResult) ? operatorResult : []
     operatorError.value = operatorResult.error || ''
+    return catalog.pools
   } catch (err) {
     if (!current(token)) return
     if (err.status === 403) {
-      closeEditor()
+      resetEditor()
       pools.value = []
       await router.replace({ path: '/forbidden', query: { from: '/recruitment/admin' } })
       return
     }
-    await showError(err.message || '目录读取失败，请重试')
+    await showListError(err.message || '目录读取失败，请重试', token)
   } finally {
     if (current(token)) loading.value = false
   }
 }
 
-async function focusEditor() {
+async function openPool(pool) {
+  if (!permitted.value || saving.value || loading.value || importing.value) return
+  const token = capture()
+  const draft = form.value
+  if (!pool || pool.pool_id !== selectedPoolId.value) {
+    if (!await confirmEditorDiscard() || !current(token) || form.value !== draft || saving.value || loading.value || importing.value) return
+    if (compact.value && !draft) listScrollY = window.scrollY
+    if (pool) setEditorPool(pool)
+    else setNewPool()
+    notice.value = ''
+    saveNotice.value = ''
+  }
+  const opened = form.value
   await nextTick()
-  editor.value?.focus()
+  if (!current(token) || form.value !== opened) return
+  if (compact.value) editor.value?.scrollIntoView?.({ block: 'start', behavior: 'instant' })
+  editor.value?.focus({ preventScroll: true })
 }
 
-function openNew() {
-  if (!permitted.value) return
+function setNewPool() {
   returnPoolId = ''
   isNew.value = true
   form.value = {
@@ -523,12 +563,9 @@ function openNew() {
   }
   resetEditorTracking(form.value)
   error.value = ''
-  notice.value = ''
-  focusEditor()
 }
 
-function openEdit(pool) {
-  if (!permitted.value) return
+function setEditorPool(pool) {
   returnPoolId = pool.pool_id
   isNew.value = false
   form.value = {
@@ -543,8 +580,6 @@ function openEdit(pool) {
   }
   resetEditorTracking(form.value)
   error.value = ''
-  notice.value = ''
-  focusEditor()
 }
 
 function addSlot() {
@@ -576,6 +611,7 @@ async function removeOrRetireSlot(slot) {
     form.value.up_agents = form.value.up_agents.filter(item => item.id !== slot.id)
     return
   }
+  const draft = form.value
   const confirmed = await dialog.confirm({
     title: '退役这个 UP 名额？',
     message: `「${slotLabel(slot)}」退役后将不再提供给新的招募记录选择，但既有记录仍会保留并继续引用这个名额。`,
@@ -583,7 +619,7 @@ async function removeOrRetireSlot(slot) {
     confirmText: '确认退役',
     cancelText: '继续保留',
   })
-  if (!confirmed) return
+  if (!confirmed || form.value !== draft || saving.value) return
   slot.active = false
   editingHistoricalSlotId.value = ''
 }
@@ -625,7 +661,7 @@ function validateForm() {
 }
 
 async function save() {
-  if (!permitted.value || saving.value || conflict.value || !form.value) return
+  if (!permitted.value || saving.value || loading.value || importing.value || conflict.value || !dirty.value) return
   attemptedSave.value = true
   const validationError = validateForm()
   if (validationError) {
@@ -633,7 +669,7 @@ async function save() {
     return
   }
 
-  const token = capture()
+  let token = capture()
   const draft = form.value
   saving.value = true
   try {
@@ -671,20 +707,35 @@ async function save() {
         active: slot.active,
       })),
     }
-    saving.value = true
     error.value = ''
     notice.value = ''
+    saveNotice.value = ''
     const result = isNew.value
       ? await createAdminRecruitmentPool(body)
       : await updateAdminRecruitmentPool(body.pool_id, body)
     if (!current(token)) return
 
-    const index = pools.value.findIndex(pool => pool.pool_id === result.pool_id)
+    const poolId = draft.pool_id
+    const index = pools.value.findIndex(pool => pool.pool_id === poolId)
     if (index >= 0) pools.value.splice(index, 1, result)
     else pools.value.unshift(result)
-    returnPoolId = result.pool_id
-    notice.value = '卡池已保存；已有记录继续沿用原来的固定身份。'
-    await closeEditor()
+    isNew.value = false
+    formBaseline.value = JSON.stringify(comparableForm(draft))
+    const refresh = load()
+    token = capture()
+    const refreshed = await refresh
+    if (!current(token) || form.value !== draft) return
+
+    const message = '卡池已保存；已有记录继续沿用原来的固定身份。'
+    if (compact.value) {
+      returnPoolId = poolId
+      saving.value = false
+      notice.value = message
+      await closeEditor()
+    } else {
+      setEditorPool(refreshed?.find(pool => pool.pool_id === poolId) || result)
+      saveNotice.value = message
+    }
   } catch (err) {
     if (!current(token)) return
     conflict.value = err.status === 409
@@ -695,7 +746,7 @@ async function save() {
 }
 
 async function readLatest() {
-  if (saving.value || loading.value) return
+  if (saving.value || loading.value || importing.value) return
   const token = capture()
   const poolId = form.value?.pool_id
   loading.value = true
@@ -712,25 +763,26 @@ async function readLatest() {
 
 watch([identity, permitted], () => {
   generation++
-  returnPoolId = ''
+  resetEditor()
+  listScrollY = 0
   pools.value = []
   operators.value = []
-  form.value = null
   loading.value = false
   saving.value = false
   importing.value = false
-  error.value = ''
+  listError.value = ''
+  operatorError.value = ''
   notice.value = ''
-  formBaseline.value = ''
-  originalSlotIds.value = new Set()
-  originalBoundSlotIds.value = new Set()
-  originalActiveSlotIds.value = new Set()
-  editingHistoricalSlotId.value = ''
-  attemptedSave.value = false
   if (permitted.value) load()
 }, { immediate: true, flush: 'sync' })
 
+function onMediaChange(event) {
+  if (event.matches) listScrollY = window.scrollY
+  compact.value = event.matches
+}
+media?.addEventListener('change', onMediaChange)
 onScopeDispose(() => {
+  media?.removeEventListener('change', onMediaChange)
   alive = false
   generation++
 })
@@ -740,7 +792,13 @@ onScopeDispose(() => {
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .fields .wish-mode > span { display: flex; align-items: center; gap: 8px; }
 .fields .wish-mode input { width: auto; flex: none; }
-.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.error{color:var(--theme-danger-text, var(--rouge))}.eyebrow{color:var(--ink-60)}.hint,label small,.pool-meta,.slot-identity small,.bound-name small{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}.primary{background:var(--tea);color:var(--on-strong)}.quiet{background:transparent}.danger{color:var(--theme-danger-text, var(--rouge));border-color:var(--theme-danger-line, rgba(166,81,74,.45))}.ghost{background:transparent}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}input:not([type=radio]),select{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--cream)}.visually-hidden{border:0!important}.toolbar{border:0;border-radius:0;background:transparent;box-shadow:none}.maintenance-tools{border:1px solid var(--line);border-radius:12px;background:var(--theme-surface, rgba(255,253,246,.72))}.maintenance-tools summary{cursor:pointer}.empty-state,.empty-inline{color:var(--ink-60)}.status-badge,.dirty-badge,.saved-badge{border-radius:999px}.status-badge{background:var(--theme-wash-strong, rgba(239,210,142,.42));color:var(--ink)}.status-badge.muted{background:var(--theme-wash, rgba(73,59,44,.08));color:var(--ink-60)}.dirty-badge{background:var(--theme-wash, rgba(215,137,53,.14));color:var(--theme-accent-text, var(--accent))}.saved-badge{background:var(--theme-wash, rgba(73,59,44,.08));color:var(--ink-60)}.up-summary-item{border:1px solid var(--line);border-radius:999px;background:var(--cream)}.up-summary :deep(.up-summary-avatar){border-radius:50%;background:var(--surface)}.up-slot-card,.history-slot{border:1px solid var(--line);border-radius:14px;background:var(--cream)}.slot-index{color:var(--theme-accent-text, var(--accent))}.slot-identity :deep(.slot-avatar){border-radius:10px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}.bound-name{border:1px dashed var(--line);border-radius:10px;background:var(--surface)}.slot-error{color:var(--theme-danger-text, var(--rouge))}.inline-warning{border-left:3px solid var(--accent);background:var(--theme-wash, rgba(215,137,53,.08))}.history-section{border-top:1px solid var(--line)}.history-section summary{cursor:pointer}.history-slot{background:var(--surface)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px}.error{color:var(--theme-danger-text, var(--rouge))}.eyebrow{color:var(--ink-60)}.hint,label small,.pool-meta,.slot-identity small,.bound-name small{color:var(--ink-60)}button{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}.primary{background:var(--tea);color:var(--on-strong)}.quiet{background:transparent}.danger{color:var(--theme-danger-text, var(--rouge));border-color:var(--theme-danger-line, rgba(166,81,74,.45))}.ghost{background:transparent}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}input:not([type=radio]),select{border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--cream)}.visually-hidden{border:0!important}.toolbar{border:0;border-radius:0;background:transparent;box-shadow:none}.maintenance-tools{border:1px solid var(--line);border-radius:12px;background:var(--theme-surface, rgba(255,253,246,.72))}.maintenance-tools summary{cursor:pointer}.empty-state,.empty-inline{color:var(--ink-60)}.status-badge,.dirty-badge,.saved-badge{border-radius:999px}.status-badge{background:var(--theme-wash-strong, rgba(239,210,142,.42));color:var(--ink)}.status-badge.muted{background:var(--theme-wash, rgba(73,59,44,.08));color:var(--ink-60)}.dirty-badge{background:var(--theme-wash, rgba(215,137,53,.14));color:var(--theme-accent-text, var(--accent))}.saved-badge{background:var(--theme-wash, rgba(73,59,44,.08));color:var(--ink-60)}.up-summary-item{border:1px solid var(--line);border-radius:999px;background:var(--cream)}.up-summary-avatar{border-radius:50%;background:var(--surface)}.up-slot-card,.history-slot{border:1px solid var(--line);border-radius:14px;background:var(--cream)}.slot-index{color:var(--theme-accent-text, var(--accent))}.slot-identity :deep(.slot-avatar){border-radius:10px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}.bound-name{border:1px dashed var(--line);border-radius:10px;background:var(--surface)}.slot-error{color:var(--theme-danger-text, var(--rouge))}.inline-warning{border-left:3px solid var(--accent);background:var(--theme-wash, rgba(215,137,53,.08))}.history-section{border-top:1px solid var(--line)}.history-section summary{cursor:pointer}.history-slot{background:var(--surface)}
+
+.pool-row[aria-current="true"] { background: var(--cream); box-shadow: inset 3px 0 var(--accent); }
+.pool-row:focus-visible, .pool-list:focus-visible, .editor-workspace:focus-visible { outline-offset: -3px; }
+.pool-title-row strong { font: 800 17px/1.4 var(--font-s); }
+.up-summary-avatar { display: grid; place-items: center; flex: none; object-fit: cover; font-weight: 800; }
+.save-state p { margin: 4px 0 0; }
 
 .status-options{border:0}.status-option{border:1px solid var(--line);border-radius:12px;background:var(--cream);cursor:pointer}.status-option.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.editor-actions{border:1px solid var(--line);border-radius:14px;background:var(--theme-surface, rgba(255,253,246,.96));box-shadow:0 10px 28px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.12);backdrop-filter:blur(8px)}.save-state{color:var(--ink-60)}
 </style>
