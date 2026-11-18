@@ -12825,6 +12825,23 @@ onBeforeUnmount(function () {
 .panel > .catalog-tools ~ .backpack > .tool-task-prompt { border: 0; background: transparent; }
 @media (min-width: 768px) {
   .is-catalog-toolbar :deep(.current-filter-secondary) { flex-basis: auto; }
+  .catalog-portrait-grid .edit-icon-btn {
+    inset: 0;
+    z-index: 3;
+    width: 100%;
+    height: 100%;
+    place-items: end;
+    padding: 0 7px 7px 0;
+  }
+  .catalog-portrait-grid .edit-icon-btn::before {
+    inset: auto 1px 1px auto;
+    width: 28px;
+    height: 28px;
+  }
+  .catalog-portrait-grid .edit-icon-btn:focus-visible {
+    outline-offset: -2px;
+    border-radius: 6px;
+  }
 }
 </style>
 <style scoped src="./operatorPortraitGrid.css"></style>
