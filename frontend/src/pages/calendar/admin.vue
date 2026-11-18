@@ -1,5 +1,5 @@
 <template>
-  <div class="calendar-page calendar-admin">
+  <div class="calendar-page calendar-admin" :class="{ 'calendar-directory-active': workspace === 'directory' }">
     <IslandSidebar />
     <main id="main-content">
       <header class="page-header page-header--mobile-context"><div class="wrap">
@@ -13,20 +13,12 @@
           <nav class="calendar-actions calendar-workspace-nav" aria-label="活动管理工作区"><button type="button" :aria-pressed="workspace === 'directory'" @click="switchWorkspace('directory')">活动目录</button><button type="button" :aria-pressed="workspace === 'suggestions'" @click="switchWorkspace('suggestions')">用户建议</button></nav>
           <CalendarSuggestionsReview v-if="workspace === 'suggestions'" ref="suggestionsReview" />
           <template v-else>
-          <div v-if="error" ref="errorSummary" class="calendar-panel calendar-error" role="alert" tabindex="-1">
-            <p>{{ error }}</p>
-            <ul v-if="form && Object.keys(fieldErrors).length">
-              <li v-for="(message, key) in fieldErrors" :key="key"><a v-if="key !== 'version'" :href="'#calendar-' + key" @click.prevent="focusField(key)">{{ fieldLabels[key] }}：{{ message }}</a><span v-else>{{ message }}</span></li>
-            </ul>
-          </div>
-          <p v-if="notice" class="calendar-panel" role="status">{{ notice }}</p>
-
-          <section v-if="!form" ref="listRegion" class="calendar-list" aria-labelledby="calendar-list-title" tabindex="-1">
+          <section v-show="showDirectory" class="calendar-directory-controls" aria-labelledby="calendar-list-title">
             <header class="calendar-workspace-head">
               <h2 id="calendar-list-title">活动目录</h2>
-              <div class="calendar-actions"><button type="button" :disabled="exporting" @click="exportAll">{{ exporting ? '导出中…' : '导出全部' }}</button><button type="button" :disabled="loading" @click="classificationImporting = true">导入更新分类</button><button type="button" :disabled="loading" @click="importing = true">批量导入</button><button type="button" class="calendar-primary" :disabled="loading" @click="openNew">新建活动</button></div>
+              <div class="calendar-actions"><button type="button" :disabled="exporting" @click="exportAll">{{ exporting ? '导出中…' : '导出全部' }}</button><button type="button" :disabled="loading || saving" @click="classificationImporting = true">导入更新分类</button><button type="button" :disabled="loading || saving" @click="importing = true">批量导入</button><button ref="newButton" type="button" class="calendar-primary" :disabled="loading || (saving && editing)" @click="open()">新建活动</button></div>
             </header>
-            <form class="calendar-panel calendar-form" @submit.prevent="load">
+            <form class="calendar-panel calendar-form" @submit.prevent="load()">
               <div class="calendar-fields">
                 <label>游戏<select v-model="filters.game"><option value="">全部游戏</option><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select></label>
                 <label>类型<select v-model="displayGroup"><option value="">全部类型</option><option v-for="(label, key) in CALENDAR_DISPLAY_GROUPS" :key="key" :value="key">{{ label }}</option></select></label>
@@ -36,63 +28,95 @@
                 <label>日期范围终点<input v-model="filters.to" type="date" :min="filters.from || undefined"></label>
                 <label>排序<select v-model="sortOrder"><option value="desc">开始日期：由新到旧</option><option value="asc">开始日期：由旧到新</option></select></label>
               </div>
-              <div class="calendar-actions"><button type="submit" :disabled="loading">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button><button type="button" :disabled="loading" @click="clearFilters">清空筛选</button></div>
+              <div class="calendar-actions"><button type="submit" :disabled="loading || saving">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button><button type="button" :disabled="loading || saving" @click="clearFilters">清空筛选</button></div>
             </form>
-            <p v-if="loading" role="status">正在读取活动目录…</p>
-            <p v-else-if="!sortedEntries.length && !error" class="calendar-panel">没有符合条件的活动。</p>
-            <article v-for="entry in sortedEntries" :key="entry.item.id" class="calendar-panel">
-              <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
-              <h3>{{ entry.item.title }}</h3>
-              <p v-if="(!calendarDisplay(entry.item).key || calendarDisplay(entry.item).preserved) && !entry.read_only" class="calendar-hint">原分类：{{ calendarDisplay(entry.item).original }}</p>
-              <p class="calendar-range">{{ calendarRangeLabel(entry.item) }}<span v-if="entry.item.start_time"> · {{ entry.item.time_zone }}</span></p>
-              <p class="calendar-hint">{{ entry.read_only ? '来自招募卡池 · 只读' : '手工整理' }} · 最近修改：{{ modifiedLabel(entry.updated_at) }}</p>
-              <p v-if="entry.source_note" class="calendar-hint">来源备注：{{ entry.source_note }}</p>
-              <div class="calendar-actions">
-                <template v-if="entry.read_only"><router-link v-if="canManageRecruitment" class="calendar-source-link" to="/recruitment/admin">去招募卡池管理 <ExternalLink :size="16" aria-hidden="true" /></router-link><p v-else class="calendar-hint">请由有招募卡池管理权限的成员维护。</p></template>
-                <button v-else type="button" :disabled="loading" @click="openEdit(entry)">编辑活动</button>
-              </div>
-            </article>
+            <p v-if="listError" ref="listErrorSummary" class="calendar-panel calendar-error" role="alert" tabindex="-1">{{ listError }}</p>
+            <p v-if="notice && !form" class="calendar-panel" role="status">{{ notice }}</p>
           </section>
 
-          <section v-else ref="editor" class="calendar-editor" aria-labelledby="calendar-editor-title" tabindex="-1">
-            <div class="calendar-workspace-head">
-              <button type="button" :disabled="saving" @click="requestClose">返回活动目录</button>
-              <span class="calendar-hint">{{ dirty ? '有未保存修改' : '尚未修改' }}</span>
-            </div>
-            <div class="calendar-editor-identity"><p v-if="form.id" class="page-header-context">编辑活动</p><h2 id="calendar-editor-title">{{ form.id ? (form.title || '未命名活动') : '新建活动' }}</h2></div>
-            <form class="calendar-panel calendar-form" novalidate @submit.prevent="save">
-              <fieldset :disabled="saving">
-                <legend>活动信息</legend>
-                <div class="calendar-fields">
-                  <label>游戏<select id="calendar-game" v-model="form.game" :aria-invalid="!!fieldErrors.game" :aria-describedby="fieldErrors.game ? 'error-game' : undefined"><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="fieldErrors.game" id="error-game">{{ fieldErrors.game }}</small></label>
-                  <CalendarClassificationFields :form="form" :errors="fieldErrors" />
-                  <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ field.label }}
-                    <input :id="'calendar-' + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'error-' + field.key : field.key === 'end_date' ? 'calendar-end-date-hint' : undefined" :required="field.key !== 'end_date'">
-                    <small v-if="field.key === 'end_date'" id="calendar-end-date-hint">留空表示持续进行，后续可补填。</small>
-                    <small v-if="fieldErrors[field.key]" :id="'error-' + field.key">{{ fieldErrors[field.key] }}</small>
-                  </label>
+          <div class="calendar-catalog-workspace">
+            <section v-show="showDirectory" ref="listRegion" class="calendar-list calendar-catalog-list" aria-label="活动目录列表" tabindex="-1">
+              <p v-if="loading && !sortedEntries.length" role="status">正在读取活动目录…</p>
+              <p v-else-if="!sortedEntries.length && !listError" class="calendar-panel">没有符合条件的活动。</p>
+              <button v-for="entry in sortedEntries" :key="entry.item.id" type="button" class="calendar-catalog-row"
+                :aria-current="selectedId === entry.item.id ? 'true' : undefined" :disabled="loading || (saving && editing)" @click="open(entry)">
+                <span class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></span>
+                <strong>{{ entry.item.title }}</strong>
+                <span class="calendar-range">{{ calendarRangeLabel(entry.item) }} · {{ entry.item.time_zone }}</span>
+                <span class="calendar-hint">{{ entry.read_only ? '来自招募卡池 · 只读' : '手工整理' }} · 最近修改：{{ modifiedLabel(entry.updated_at) }}</span>
+                <span v-if="(!calendarDisplay(entry.item).key || calendarDisplay(entry.item).preserved) && !entry.read_only" class="calendar-hint">原分类：{{ calendarDisplay(entry.item).original }}</span>
+                <span v-if="entry.source_note" class="calendar-hint calendar-catalog-note">来源备注：{{ entry.source_note }}</span>
+              </button>
+            </section>
+
+            <section v-if="editing" ref="editor" class="calendar-panel calendar-editor calendar-catalog-editor" aria-labelledby="calendar-editor-title" tabindex="-1">
+              <div class="calendar-editor-identity">
+                <button v-if="compact" type="button" :disabled="saving" @click="requestClose()">返回活动目录</button>
+                <template v-if="form">
+                  <p v-if="form.id" class="page-header-context">编辑活动</p>
+                  <h2 id="calendar-editor-title">{{ form.id ? (form.title || '未命名活动') : '新建活动' }}</h2>
+                  <p class="calendar-hint calendar-draft-status">{{ dirty ? '有未保存修改' : '尚未修改' }}</p>
+                </template>
+                <template v-else>
+                  <p class="page-header-context">来自招募卡池 · 只读</p>
+                  <h2 id="calendar-editor-title">{{ readOnlyEntry.item.title }}</h2>
+                </template>
+              </div>
+              <form v-if="form" class="calendar-form calendar-editor-form" novalidate @submit.prevent="save">
+                <div ref="editorBody" class="calendar-editor-body">
+                  <div v-if="error" ref="errorSummary" class="calendar-panel calendar-error" role="alert" tabindex="-1">
+                    <p>{{ error }}</p>
+                    <ul v-if="Object.keys(fieldErrors).length">
+                      <li v-for="(message, key) in fieldErrors" :key="key"><a v-if="key !== 'version'" :href="'#calendar-' + key" @click.prevent="focusField(key)">{{ fieldLabels[key] }}：{{ message }}</a><span v-else>{{ message }}</span></li>
+                    </ul>
+                  </div>
+                  <fieldset :disabled="saving">
+                    <legend>活动信息</legend>
+                    <div class="calendar-fields">
+                      <label>游戏<select id="calendar-game" v-model="form.game" :aria-invalid="!!fieldErrors.game" :aria-describedby="fieldErrors.game ? 'error-game' : undefined"><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="fieldErrors.game" id="error-game">{{ fieldErrors.game }}</small></label>
+                      <CalendarClassificationFields :form="form" :errors="fieldErrors" />
+                      <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ field.label }}
+                        <input :id="'calendar-' + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'error-' + field.key : field.key === 'end_date' ? 'calendar-end-date-hint' : undefined" :required="field.key !== 'end_date'">
+                        <small v-if="field.key === 'end_date'" id="calendar-end-date-hint">留空表示持续进行，后续可补填。</small>
+                        <small v-if="fieldErrors[field.key]" :id="'error-' + field.key">{{ fieldErrors[field.key] }}</small>
+                      </label>
+                    </div>
+                    <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间</label>
+                    <p class="calendar-hint">日期和时间按 {{ form.time_zone }} 记录；未填写时间时不补造具体时刻。</p>
+                    <div v-if="form.precise" class="calendar-fields">
+                      <label v-for="key in (form.end_date ? ['start_time', 'end_time'] : ['start_time'])" :key="key">{{ fieldLabels[key] }}<input :id="'calendar-' + key" v-model="form[key]" type="time" required :aria-invalid="!!fieldErrors[key]" :aria-describedby="fieldErrors[key] ? 'error-' + key : undefined"><small v-if="fieldErrors[key]" :id="'error-' + key">{{ fieldErrors[key] }}</small></label>
+                    </div>
+                    <div class="calendar-fields">
+                      <label class="calendar-wide">简短说明<textarea id="calendar-description" v-model="form.description" rows="3" maxlength="1000" :aria-invalid="!!fieldErrors.description" :aria-describedby="fieldErrors.description ? 'error-description' : undefined"></textarea><small v-if="fieldErrors.description" id="error-description">{{ fieldErrors.description }}</small></label>
+                      <label class="calendar-wide">来源链接<input id="calendar-source_url" v-model.trim="form.source_url" type="url" maxlength="2048" placeholder="https://…" :aria-invalid="!!fieldErrors.source_url" :aria-describedby="fieldErrors.source_url ? 'error-source_url' : undefined"><small v-if="fieldErrors.source_url" id="error-source_url">{{ fieldErrors.source_url }}</small></label>
+                      <label class="calendar-wide">来源备注（仅管理端）<textarea id="calendar-source_note" v-model="form.source_note" rows="2" maxlength="1000" :aria-invalid="!!fieldErrors.source_note" :aria-describedby="fieldErrors.source_note ? 'error-source_note' : undefined"></textarea><small v-if="fieldErrors.source_note" id="error-source_note">{{ fieldErrors.source_note }}</small></label>
+                    </div>
+                    <label class="calendar-checkbox"><input v-model="form.enabled" type="checkbox">启用活动（取消后不在公共日历展示）</label>
+                  </fieldset>
                 </div>
-                <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间</label>
-                <p class="calendar-hint">日期和时间按 {{ form.time_zone }} 记录；未填写时间时不补造具体时刻。</p>
-                <div v-if="form.precise" class="calendar-fields">
-                  <label v-for="key in (form.end_date ? ['start_time', 'end_time'] : ['start_time'])" :key="key">{{ fieldLabels[key] }}<input :id="'calendar-' + key" v-model="form[key]" type="time" required :aria-invalid="!!fieldErrors[key]" :aria-describedby="fieldErrors[key] ? 'error-' + key : undefined"><small v-if="fieldErrors[key]" :id="'error-' + key">{{ fieldErrors[key] }}</small></label>
-                </div>
-                <div class="calendar-fields">
-                  <label class="calendar-wide">简短说明<textarea id="calendar-description" v-model="form.description" rows="3" maxlength="1000" :aria-invalid="!!fieldErrors.description" :aria-describedby="fieldErrors.description ? 'error-description' : undefined"></textarea><small v-if="fieldErrors.description" id="error-description">{{ fieldErrors.description }}</small></label>
-                  <label class="calendar-wide">来源链接<input id="calendar-source_url" v-model.trim="form.source_url" type="url" maxlength="2048" placeholder="https://…" :aria-invalid="!!fieldErrors.source_url" :aria-describedby="fieldErrors.source_url ? 'error-source_url' : undefined"><small v-if="fieldErrors.source_url" id="error-source_url">{{ fieldErrors.source_url }}</small></label>
-                  <label class="calendar-wide">来源备注（仅管理端）<textarea id="calendar-source_note" v-model="form.source_note" rows="2" maxlength="1000" :aria-invalid="!!fieldErrors.source_note" :aria-describedby="fieldErrors.source_note ? 'error-source_note' : undefined"></textarea><small v-if="fieldErrors.source_note" id="error-source_note">{{ fieldErrors.source_note }}</small></label>
-                </div>
-                <label class="calendar-checkbox"><input v-model="form.enabled" type="checkbox">启用活动（取消后不在公共日历展示）</label>
-              </fieldset>
-              <div class="calendar-actions"><button type="submit" class="calendar-primary" :disabled="saving || conflict">{{ saving ? '保存中…' : '保存活动' }}</button><button v-if="conflict" type="button" @click="refreshAfterConflict">返回目录并刷新</button><button type="button" :disabled="saving" @click="requestClose">取消编辑</button></div>
-            </form>
-          </section>
+                <footer class="calendar-editor-footer">
+                  <p v-if="notice" role="status">{{ notice }}</p>
+                  <div class="calendar-actions"><button type="submit" class="calendar-primary" :disabled="saving || conflict">{{ saving ? '保存中…' : '保存活动' }}</button><button v-if="conflict" type="button" @click="requestClose(true)">返回目录并刷新</button><button type="button" :disabled="saving" @click="requestClose()">取消编辑</button></div>
+                </footer>
+              </form>
+              <div v-else ref="editorBody" class="calendar-editor-body">
+                <div class="calendar-badges"><span class="calendar-game">{{ readOnlyEntry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(readOnlyEntry.item).path }}</span><span class="calendar-state">{{ readOnlyEntry.enabled ? '已启用' : '已停用' }}</span></div>
+                <p class="calendar-range">{{ calendarRangeLabel(readOnlyEntry.item) }} · {{ readOnlyEntry.item.time_zone }}</p>
+                <p v-if="readOnlyEntry.item.description" class="calendar-description">{{ readOnlyEntry.item.description }}</p>
+                <p class="calendar-hint">最近修改：{{ modifiedLabel(readOnlyEntry.updated_at) }}</p>
+                <p v-if="readOnlyEntry.source_note" class="calendar-hint">来源备注：{{ readOnlyEntry.source_note }}</p>
+                <router-link v-if="canManageRecruitment" class="calendar-source-link" to="/recruitment/admin">去招募卡池管理 <ExternalLink :size="16" aria-hidden="true" /></router-link>
+                <p v-else class="calendar-hint">请由有招募卡池管理权限的成员维护。</p>
+              </div>
+            </section>
+            <p v-else-if="!compact" class="calendar-panel calendar-catalog-empty">选择左侧活动进行编辑，或新建活动</p>
+          </div>
           </template>
         </template>
       </div>
       <SiteFooter />
-      <CalendarClassificationImportDialog v-if="permitted && classificationImporting" :key="identity" @close="classificationImporting = false" @updated="load" />
-      <CalendarImportDialog v-if="permitted && importing" :key="identity" @close="importing = false" @imported="load" />
+      <CalendarClassificationImportDialog v-if="permitted && classificationImporting" :key="identity" @close="classificationImporting = false" @updated="load()" />
+      <CalendarImportDialog v-if="permitted && importing" :key="identity" @close="importing = false" @imported="load()" />
     </main>
   </div>
 </template>
@@ -125,13 +149,21 @@ const filters = reactive({ game: '', category: '', enabled: '', from: '', to: ''
 const workspace = ref('directory'), suggestionsReview = ref(null)
 const importing = ref(false), classificationImporting = ref(false), exporting = ref(false), displayGroup = ref('')
 const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled = ref(true)
+const readOnlyEntry = ref(null)
+const selectedId = computed(() => form.value?.id || readOnlyEntry.value?.item.id)
+const editing = computed(() => !!(form.value || readOnlyEntry.value))
+const media = window.matchMedia('(max-width: 1080px)')
+const compact = ref(media.matches)
+const showDirectory = computed(() => !compact.value || !editing.value)
+let listScrollY = 0
 const sortOrder = ref('desc')
 const sortedEntries = computed(() => entries.value.filter(entry => !displayGroup.value || calendarDisplay(entry.item).group === displayGroup.value).sort((a, b) => {
   const order = a.item.start_date.localeCompare(b.item.start_date) || (a.item.start_time || '').localeCompare(b.item.start_time || '')
   return order * (sortOrder.value === 'asc' ? 1 : -1) || a.item.id.localeCompare(b.item.id)
 }))
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
-const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
+const listError = ref(''), listErrorSummary = ref(null)
+const errorSummary = ref(null), editor = ref(null), editorBody = ref(null), listRegion = ref(null), newButton = ref(null)
 const dirty = computed(() => !!form.value && JSON.stringify(form.value) !== baseline.value)
 const confirmDiscard = useUnsavedChanges(dirty, '活动修改')
 const fieldLabels = { game: '游戏', category: '展示分组', subtype: '细分类别', subtype_detail: '关联细目', title: '标题', start_date: '开始日期', end_date: '结束日期', start_time: '开始时间', end_time: '结束时间', description: '简短说明', source_url: '来源链接', source_note: '来源备注' }
@@ -146,64 +178,108 @@ function modifiedLabel(value) {
 }
 async function showError(message) { error.value = message; await nextTick(); errorSummary.value?.focus() }
 function focusField(key) { document.getElementById('calendar-' + key)?.focus() }
-async function closeEditor() {
-  form.value = null; baseline.value = ''; fieldErrors.value = {}; error.value = ''; conflict.value = false
-  await nextTick(); listRegion.value?.focus()
+function resetEditor() {
+  form.value = null; readOnlyEntry.value = null; baseline.value = ''
+  fieldErrors.value = {}; error.value = ''; conflict.value = false; notice.value = ''
 }
-async function requestClose() {
-  if (saving.value) return false
+async function restoreListScroll(id, token) {
+  await nextTick()
+  if (!current(token) || workspace.value !== 'directory' || editing.value) return
+  if (compact.value) window.scrollTo({ top: listScrollY, behavior: 'instant' })
+  const index = sortedEntries.value.findIndex(entry => entry.item.id === id)
+  const row = listRegion.value?.querySelectorAll('.calendar-catalog-row')[index]
+  const target = id ? row : newButton.value
+  const focusTarget = target && !target.disabled ? target : listRegion.value
+  focusTarget?.focus({ preventScroll: true })
+}
+async function requestClose(refresh = false) {
+  if (saving.value) return
   const token = capture()
-  if (await confirmDiscard() && current(token)) { await closeEditor(); return true }
-  return false
+  if (!await confirmDiscard() || !current(token) || saving.value) return
+  const id = selectedId.value
+  resetEditor()
+  const refreshRequest = refresh ? load() : null
+  await restoreListScroll(id, token)
+  if (refreshRequest) {
+    await refreshRequest
+    await restoreListScroll(id, token)
+  }
 }
 async function switchWorkspace(value) {
   if (value === workspace.value || saving.value) return
   const token = capture()
-  if (workspace.value === 'directory' && form.value && !await requestClose()) return
+  if (workspace.value === 'directory' && !await confirmDiscard()) return
   if (workspace.value === 'suggestions' && !await suggestionsReview.value?.requestClose()) return
-  if (!current(token)) return
+  if (!current(token) || saving.value) return
+  resetEditor()
   workspace.value = value
   if (value === 'directory') await load()
 }
-async function refreshAfterConflict() { if (await requestClose()) await load() }
-async function open(entry = null) {
-  if (!permitted.value || saving.value || loading.value || entry?.read_only || entry?.item?.source_type === 'RECRUITMENT_POOL') return
+function setForm(entry) {
   form.value = calendarForm(entry)
   if (!entry && filters.game) form.value.game = filters.game
-  baseline.value = JSON.stringify(form.value); originalEnabled.value = entry?.enabled !== false
-  error.value = ''; notice.value = ''; fieldErrors.value = {}; conflict.value = false
-  await nextTick(); editor.value?.focus()
+  baseline.value = JSON.stringify(form.value)
+  originalEnabled.value = entry?.enabled !== false
 }
-const openNew = () => open()
-const openEdit = entry => open(entry)
+async function open(entry = null) {
+  if (!permitted.value || saving.value || loading.value) return
+  if (entry && selectedId.value === entry.item.id) {
+    editor.value?.focus({ preventScroll: true })
+    return
+  }
+  const token = capture()
+  if (!await confirmDiscard() || !current(token) || saving.value || loading.value || workspace.value !== 'directory') return
+  if (compact.value && !editing.value) listScrollY = window.scrollY
+  resetEditor()
+  if (entry?.read_only) readOnlyEntry.value = entry
+  else setForm(entry)
+  await nextTick()
+  if (!current(token) || workspace.value !== 'directory') return
+  if (editorBody.value) editorBody.value.scrollTop = 0
+  if (compact.value) editor.value?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  editor.value?.focus({ preventScroll: true })
+}
 async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); sortOrder.value = 'desc'; displayGroup.value = ''; await load() }
 async function exportAll() {
   if (!permitted.value || exporting.value) return
   const token = capture()
-  exporting.value = true; error.value = ''
+  exporting.value = true; listError.value = ''
   try {
     const result = await exportActivityCalendar()
     if (current(token)) downloadClassification(result)
-  } catch (err) { if (current(token)) await showError(err.message || '导出失败，请重试。') }
+  } catch (err) { if (current(token)) await showListError(err.message || '导出失败，请重试。', token) }
   finally { if (current(token)) exporting.value = false }
 }
-async function load() {
-  if (!permitted.value || form.value || workspace.value !== 'directory') return
+async function showListError(message, token, focus = true) {
+  listError.value = message
+  await nextTick()
+  if (focus && current(token) && workspace.value === 'directory' && showDirectory.value) listErrorSummary.value?.focus()
+}
+function normalizeEntry(entry) {
+  const item = normalizeCalendarItem(entry?.item)
+  return item ? { ...entry, item, read_only: entry.read_only === true || item.source_type === 'RECRUITMENT_POOL' } : null
+}
+async function load(afterSave = false) {
+  if (!permitted.value || (saving.value && !afterSave) || workspace.value !== 'directory') return
   const token = capture(), read = ++readGeneration
-  error.value = ''; entries.value = []
+  listError.value = ''
   if ((filters.from && !isCalendarDate(filters.from)) || (filters.to && !isCalendarDate(filters.to)) || (filters.from && filters.to && filters.to < filters.from)) {
-    loading.value = false; await showError('请填写有效日期范围，终点不能早于起点。'); return
+    loading.value = false
+    if (!afterSave) entries.value = []
+    await showListError('请填写有效日期范围，终点不能早于起点。', token, !afterSave)
+    return
   }
   loading.value = true
   try {
     const result = await listAdminActivityCalendar({ ...filters })
     if (!current(token) || read !== readGeneration) return
-    entries.value = (result?.items || []).flatMap(entry => {
-      const item = normalizeCalendarItem(entry.item)
-      return item ? [{ ...entry, item, read_only: entry.read_only === true || item.source_type === 'RECRUITMENT_POOL' }] : []
-    })
+    entries.value = (result?.items || []).map(normalizeEntry).filter(Boolean)
+    return entries.value
   } catch (err) {
-    if (current(token) && read === readGeneration) await showError(err.message || '活动目录读取失败，请筛选 / 刷新后重试。')
+    if (current(token) && read === readGeneration) {
+      if (!afterSave) entries.value = []
+      await showListError(err.message || '活动目录读取失败，请筛选 / 刷新后重试。', token, !afterSave)
+    }
   } finally { if (current(token) && read === readGeneration) loading.value = false }
 }
 async function save() {
@@ -218,13 +294,18 @@ async function save() {
       if (!confirmed || !current(token) || draft !== form.value) return
     }
     const body = calendarPayload(draft)
-    if (draft.id) await updateActivityCalendar(draft.id, body)
-    else await createActivityCalendar(body)
+    const result = draft.id ? await updateActivityCalendar(draft.id, body) : await createActivityCalendar(body)
     if (!current(token)) return
-    await closeEditor()
+    const id = draft.id || result?.item?.id || result?.id
+    baseline.value = JSON.stringify(draft)
+    const refreshed = await load(true)
     if (!current(token)) return
+    // 保存后活动可能被当前筛选排除，仍可用服务器返回的新版本继续编辑。
+    const savedEntry = id && (refreshed?.find(entry => entry.item.id === id) || normalizeEntry(result))
+    resetEditor()
+    if (!compact.value && savedEntry && !savedEntry.read_only) setForm(savedEntry)
     notice.value = '活动已保存。'
-    await load()
+    if (!form.value) await restoreListScroll(id, token)
   } catch (err) {
     if (!current(token)) return
     if (err.status === 409) { conflict.value = true; await showError('内容已被其他人修改，请刷新后重试。') }
@@ -234,10 +315,19 @@ async function save() {
 watch([identity, permitted], () => {
   importing.value = false; classificationImporting.value = false; exporting.value = false
   generation++; readGeneration++
-  entries.value = []; form.value = null; baseline.value = ''; loading.value = false; saving.value = false; error.value = ''; notice.value = ''; fieldErrors.value = {}; conflict.value = false
+  resetEditor()
+  entries.value = []; loading.value = false; saving.value = false; listError.value = ''; listScrollY = 0
   if (permitted.value) void load()
 }, { immediate: true })
-onBeforeUnmount(() => { alive = false; generation++; readGeneration++ })
+function onMediaChange(event) {
+  if (event.matches) listScrollY = window.scrollY
+  compact.value = event.matches
+}
+media.addEventListener('change', onMediaChange)
+onBeforeUnmount(() => {
+  media.removeEventListener('change', onMediaChange)
+  alive = false; generation++; readGeneration++
+})
 </script>
 
 <style src="./calendar.css"></style>
@@ -247,6 +337,29 @@ onBeforeUnmount(() => { alive = false; generation++; readGeneration++ })
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .calendar-editor-identity h2 { color: var(--theme-strong-text, var(--tea)); }
 .calendar-admin :is(button,a):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.calendar-admin .calendar-catalog-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}
+.calendar-catalog-row strong { font: 800 17px/1.4 var(--font-s); }
+.calendar-catalog-row :is(.calendar-range, .calendar-hint) { margin: 0; }
+.calendar-catalog-row .calendar-hint { font-size: 12px; }
+.calendar-catalog-row .calendar-catalog-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-admin .calendar-catalog-row[aria-current="true"] {
+  background: var(--cream);
+  border-color: var(--theme-focus, var(--accent));
+  box-shadow: inset 3px 0 var(--theme-focus, var(--accent));
+}
+.calendar-admin .calendar-catalog-row:focus-visible { outline-offset: -3px; }
+.calendar-editor-body > .calendar-error { margin-bottom: 12px; }
+.calendar-editor-identity .calendar-draft-status { margin: 0; }
 </style>
 <style scoped src="./calendarAdminDesktop.css"></style>
 <style scoped src="./calendarAdminMobile.css"></style>

@@ -2,14 +2,59 @@
 @media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .calendar-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.calendar-directory-active .wrap { max-width: 1640px; padding-inline: 24px; }
 .calendar-content { padding-top: 12px; gap: 16px; }
 .calendar-workspace-head { margin-top: 0; }
-@media (min-width: 360px) {
-  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.calendar-directory-controls { display: grid; gap: 12px; min-width: 0; }
+.calendar-directory-controls .calendar-form { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; }
+.calendar-directory-controls .calendar-fields { display: contents; }
+.calendar-directory-controls .calendar-form > .calendar-actions { align-self: end; }
+.calendar-catalog-workspace {
+  --calendar-catalog-height: max(320px, calc(100dvh - 400px));
+  display: grid;
+  grid-template-columns: clamp(300px, 28vw, 380px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
 }
-@media (min-width: 700px) {
-  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.calendar-catalog-workspace > :is(.calendar-catalog-list, .calendar-catalog-editor, .calendar-catalog-empty) {
+  position: sticky;
+  top: 16px;
+  height: var(--calendar-catalog-height);
 }
+.calendar-catalog-workspace .calendar-catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.calendar-catalog-list > * { flex: none; }
+.calendar-catalog-workspace .calendar-catalog-row { padding: 10px 12px; }
+.calendar-catalog-row :is(.calendar-game, .calendar-category, .calendar-state) { padding: 2px 7px; font-size: 12px; }
+.calendar-catalog-workspace .calendar-catalog-editor { display: flex; flex-direction: column; overflow: hidden; }
+.calendar-catalog-editor .calendar-editor-form { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 0; }
+.calendar-catalog-editor .calendar-editor-body {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 8px 12px 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.calendar-catalog-editor .calendar-editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  flex: none;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.calendar-editor-footer > .calendar-actions { margin-inline-start: auto; }
+.calendar-catalog-empty { display: grid; place-items: center; text-align: center; }
 .calendar-editor-identity h2 { margin: 4px 0 0; font: 900 26px/1.4 var(--font-s); overflow-wrap: anywhere; }
 .calendar-editor-identity .page-header-context { margin: 0; }
 .calendar-admin button { white-space: nowrap; }
