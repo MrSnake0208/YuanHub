@@ -1,0 +1,28 @@
+@media not all and (max-width: 1080px) {
+  .bonds-admin .wrap { max-width: 1640px; padding-inline: 24px; }
+
+  .bond-admin-workspace {
+    --bond-admin-panel-height: max(320px, calc(100dvh - 300px));
+    display: grid;
+    grid-template-columns: clamp(300px, 28vw, 380px) minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  .bond-admin-panel {
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    height: var(--bond-admin-panel-height);
+  }
+
+  .bond-admin-list-head, .bond-admin-editor-actions { flex: none; }
+  .bond-admin-rows, .bond-admin-detail-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}

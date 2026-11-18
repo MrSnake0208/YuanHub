@@ -1,0 +1,11 @@
+@media (max-width: 1080px) {
+  .bond-admin-workspace { display: block; }
+
+  .bond-admin-rows {
+    max-height: max(240px, 60dvh);
+    overflow-y: auto;
+  }
+
+  .bond-admin-back { padding-bottom: 0; }
+  .bond-admin-panel button, .bond-admin-list-controls input { min-height: 44px; }
+}
