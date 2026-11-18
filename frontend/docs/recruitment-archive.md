@@ -176,7 +176,7 @@ npx vitest run behavior/recruitmentPage.spec.js behavior/recruitmentPoolEditor.s
 
 ## 时间线 UP 出货摘要（2026-10-06）
 
-信息区为每个当前有效的 UP 显示 26px 圆形头像与并排的次数。次数为零或未知时降低头像和文字强调。头像组按完整的头像和次数单元换行。卡片与编辑入口的无障碍名称读出密探名和获得次数，缺失值读作「统计未知」。
+信息区为每个当前有效的 UP 显示圆形头像与并排的次数。次数为零或未知时，只有「×0」或「—」使用弱色。头像组按完整的头像和次数单元换行。卡片与编辑入口的无障碍名称读出密探名和获得次数，缺失值读作「统计未知」。
 
 数据直接取 `archive.pool_summaries[pool_id].up_agent_counts[upSlot.id]`，字段/键缺失或无效值显示 `—`。槽 id 在占位绑定图鉴后不变；图鉴失败回退槽名/头像占位，目录缺失回退池快照。只读首页在展开明细进入视口时请求本池首批 events，更多记录由用户加载；编辑窗口保留独立分页。账号切换沿用 useRecruitment 的同步清空与 generation 拦截；保存或SSE后权威 archive 刷新也更新 chip。
 
