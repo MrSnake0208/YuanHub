@@ -8,6 +8,7 @@
 |---|---|---|
 | 公共 | 不带 Authorization | 目录、公开 Work 与兼容性预览 |
 | OpenAPI Token | `Authorization: Bearer <OPENAPI_TOKEN>` | `/open-api/` 数据接口；绑定单一账号 |
+| 成就目录只读 Key | `Authorization: Bearer <CATALOG_READ_KEY>` | 读取全站已发布成就目录 |
 | 普通 JWT | `Authorization: Bearer <USER_JWT>` | 站内账号、Token 管理、完整备份恢复和原生作业创作 |
 | Integration Token | `Authorization: Bearer <INTEGRATION_TOKEN>` | 管理员授权的诊断读取与 AI 分析；须有独立 scope 及 MAAYUAN 板块范围 |
 
@@ -18,6 +19,7 @@
 | 模块 | 状态 | 参考 |
 |---|---|---|
 | 公共目录、库存、心纸与奖励 | 正式支持 | [库存及物品](./api-inventory.md) |
+| 已发布成就目录 | 配置固定只读 Key 后启用 | [已发布成就目录](#已发布成就目录) |
 | 密探当前状态、标注、扫描与备份 | 部分支持（Token 完整备份缺失） | [密探及养成](./api-operator.md) |
 | 招募档案备份恢复 | JWT 正式支持；Token 尚未实现 | [招募档案](./api-recruitment.md) |
 | 活动日历与每日历练 | 正式支持所列受限能力 | [日历与历练](./api-calendar.md) |
@@ -71,6 +73,14 @@
 | 429 | 资源限额；减少创建或按响应提示处理 |
 
 仅连接中断、超时或可重试服务错误适合原样重试。不要更换幂等 ID 绕过冲突。此处不承诺尚未确认的统一请求速率配额。
+
+## 已发布成就目录
+
+`GET /open-api/achievements/catalog` 使用部署方提供的 `Authorization: Bearer <CATALOG_READ_KEY>`，无需用户账号。必填查询参数 `game` 接受 `代号鸢` 或 `如鸢`。
+
+HTTP 200 的 `ApiResult.data` 与站内 `/v1/achievements/catalog` 一致，包含 `catalog_version`、`game`、`data_status`、`coverage`、`categories`、`entries`、`legacy_rewards`、`point_tracks` 和 `reward_filters`。
+
+Key 缺失或错误时返回 HTTP 401，部署方未配置 Key 时返回 HTTP 503，`game` 缺失或无效时返回 HTTP 422。限流器对未登录请求按 IP 计数，超过每分钟 60 次时返回 HTTP 429 和 `Retry-After`。
 
 ## MaaYuan 百宝箱诊断
 

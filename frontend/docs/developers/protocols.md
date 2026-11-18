@@ -15,7 +15,7 @@ JSON 文件表示可交换的数据事实，HTTP API 表示某种凭据允许执
 
 “正式支持”仅指下列代码实现的路径；目标环境可能尚未部署对应版本。
 
-| 能力 | 浏览器 / JWT | 第三方 / OpenAPI Token | 状态 |
+| 能力 | 浏览器 / JWT | 第三方 | 状态 |
 |---|---|---|---|
 | 库存 V2 导入/导出 | 支持，账号归属校验 | 支持，仅绑定账号 | 正式支持 |
 | 密探 V5 完整备份导出 | 显式 `version=5`；前端默认 V5 | export 固定 V2 | Token 部分支持 |
@@ -26,6 +26,7 @@ JSON 文件表示可交换的数据事实，HTTP API 表示某种凭据允许执
 | 招募 V1 导出/预览/提交 | 支持，需 JWT/Beta | 无接口或 Scope | JWT 正式；Token 尚未实现 |
 | Work V1 原生创作 | JWT owner 接口 | 无作业 Scope | JWT 正式；Token 尚未实现 |
 | Work 公开读取/兼容性预览 | 公共访问 | 不需要 Token | 正式；Adapter 部分支持 |
+| 读取已发布成就目录 | 站内 JWT | 部署方提供的固定只读 Key | 按部署配置启用；见[成就目录 API](./api.md#已发布成就目录) |
 | 星石完整识别背包与经验同步 | JSON 补传预览/确认；原备份导入导出保留 | `maayuan-star-inventory` v1，`star:sync:write` | 已实现；见[星石 API](./api-star.md) |
 | MaaYuan 密探采集非成功诊断 | 现有私有反馈管理页读取 | multipart schema_version=1，现有有效连接码即可，无新增 Scope | 已实现；见[API 参考](./api.md)，上线状态另行确认 |
 

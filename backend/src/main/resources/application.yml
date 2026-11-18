@@ -62,6 +62,9 @@ logging:
       max-history: 14
       clean-history-on-start: true
 
+openapi:
+  catalog-read-key: "${YUANHUB_CATALOG_READ_KEY:}"
+
 # 应用自定义配置
 share:
   cors:

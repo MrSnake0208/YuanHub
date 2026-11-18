@@ -10,6 +10,12 @@
 
 Git 统一在 Monorepo 根，仍可只发布本组件。从根执行 `./release.sh --dry-run --backend NEW_VERSION` 预览，正式发布须授权与独立 CI 门禁。详见 [部署说明](docs/deployment.md)。
 
+### 成就目录只读 Key
+
+部署时自行生成至少 32 字节随机值的十六进制 Key，例如运行 `openssl rand -hex 32`。将它作为 `YUANHUB_CATALOG_READ_KEY` 写入服务器的 `shared/backend.env`，由 Spring 配置 `openapi.catalog-read-key` 读取。真实 Key 仅保存在部署环境及获授权工具的配置中。轮换时更新环境变量并重启后端。
+
+`GET /open-api/achievements/catalog?game=如鸢` 接受 `Authorization: Bearer <KEY>`，只读取全站已发布成就目录。未配置 Key 时返回 HTTP 503。详见[开发者 API 参考](../frontend/docs/developers/api.md#已发布成就目录)。
+
 ## 技术栈
 
 - Kotlin 2.2 (JDK 21)

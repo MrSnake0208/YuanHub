@@ -11,6 +11,7 @@ import com.lhs.share.hub.controller.star.StarLoadoutController
 import com.lhs.share.hub.controller.star.StarLoadoutPresetController
 import com.lhs.share.hub.controller.star.StarStateController
 import com.lhs.share.hub.service.inventory.InventoryApiException
+import com.lhs.share.openapi.OpenApiAchievementController
 import com.lhs.share.openapi.OpenApiInventoryController
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
@@ -34,6 +35,7 @@ private val inventoryLog = KotlinLogging.logger { }
     assignableTypes = [
         AccountController::class,
         AchievementController::class,
+        OpenApiAchievementController::class,
         com.lhs.share.hub.controller.battle.BattleDraftController::class,
         com.lhs.share.hub.controller.achievement.AchievementSuggestionController::class,
         com.lhs.share.hub.controller.achievement.AdminAchievementSuggestionController::class,
