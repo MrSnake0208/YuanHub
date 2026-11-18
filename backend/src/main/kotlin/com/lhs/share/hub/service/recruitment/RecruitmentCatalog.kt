@@ -17,13 +17,10 @@ import com.lhs.share.hub.repository.entity.RecruitmentPoolSnapshot
 import com.lhs.share.hub.repository.entity.RecruitmentTemporaryAgent
 import com.lhs.share.hub.repository.entity.RecruitmentUpAgent
 import com.lhs.share.hub.service.account.SubAccountService
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.ClassPathResource
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.web.multipart.MultipartFile
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -35,9 +32,6 @@ class RecruitmentCatalog(
     private val repository: RecruitmentCatalogRepository,
     private val operators: OperatorCatalogRepository,
 ) {
-    @Autowired
-    private lateinit var bannerStorage: RecruitmentBannerStorage
-
     private val operatorSeed: Map<String, JsonNode> by lazy {
         ClassPathResource("operator/operators.json").inputStream.use(mapper::readTree).associateBy { it.path("id").asText() }
     }
@@ -293,50 +287,6 @@ class RecruitmentCatalog(
         if (current.game != input.game) throw recruitmentInvalid("已创建卡池不能修改所属游戏")
         if (current.revision != input.expectedRevision) throw recruitmentConflict("卡池已被其他管理员修改，请刷新后重试")
         return save(actorUserId, input, current)
-    }
-
-    // shortcut: Banner 写入与清理仅在本进程串行，多实例共享目录时需分布式互斥。
-    @Synchronized
-    fun uploadBanner(actorUserId: String, poolId: String, file: MultipartFile): RecruitmentCatalogPool {
-        val current = repository.find(poolId) ?: throw recruitmentNotFound("catalog_pool")
-        val snapshot = snapshotOf(current, operatorNames())
-        if (current.revision == Long.MAX_VALUE) throw recruitmentConflict("卡池版本已达上限，请联系维护人员")
-        val banner = bannerStorage.save(file)
-        val next = try {
-            updateBanner(actorUserId, current, banner)
-        } catch (exception: Exception) {
-            deleteUnusedBanner(banner)
-            throw exception
-        }
-        deleteUnusedBanner(current.banner)
-        return next.copy(upAgents = snapshot.upAgents, upStatus = snapshot.upStatus)
-    }
-
-    @Synchronized
-    fun deleteBanner(actorUserId: String, poolId: String): RecruitmentCatalogPool {
-        val current = repository.find(poolId) ?: throw recruitmentNotFound("catalog_pool")
-        val snapshot = snapshotOf(current, operatorNames())
-        val next = updateBanner(actorUserId, current, null)
-        deleteUnusedBanner(current.banner)
-        return next.copy(upAgents = snapshot.upAgents, upStatus = snapshot.upStatus)
-    }
-
-    private fun updateBanner(actorUserId: String, current: RecruitmentCatalogPool, banner: String?): RecruitmentCatalogPool {
-        if (current.revision == Long.MAX_VALUE) throw recruitmentConflict("卡池版本已达上限，请联系维护人员")
-        val updatedAt = Instant.now()
-        if (!repository.updateBanner(current.poolId, current.revision, banner, actorUserId, updatedAt)) {
-            throw recruitmentConflict("卡池已被其他管理员修改，请刷新后重试")
-        }
-        return current.copy(banner = banner, revision = current.revision + 1, updatedBy = actorUserId, updatedAt = updatedAt)
-    }
-
-    private fun deleteUnusedBanner(banner: String?) {
-        if (banner == null) return
-        try {
-            if (!repository.isBannerReferenced(banner)) bannerStorage.delete(banner)
-        } catch (exception: Exception) {
-            LoggerFactory.getLogger(RecruitmentCatalog::class.java).warn("未能清理招募 Banner：{}", banner, exception)
-        }
     }
 
     fun importCatalog(actorUserId: String, document: JsonNode): RecruitmentCatalogImportResponse {
@@ -609,7 +559,6 @@ class RecruitmentCatalog(
             hidden = input.hidden ?: current?.hidden ?: false,
             allowCustomUp = input.allowCustomUp ?: current?.allowCustomUp ?: false,
             allowCumulativeChoice = input.allowCumulativeChoice ?: current?.allowCumulativeChoice ?: false,
-            banner = current?.banner,
         )
         try {
             if (!repository.save(next, current != null)) throw recruitmentConflict("卡池已变化，请刷新后重试")

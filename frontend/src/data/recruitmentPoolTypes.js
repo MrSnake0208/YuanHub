@@ -1,12 +1,10 @@
-import { eventTypeColor } from './eventTypeColors.js'
-
 export const RECRUITMENT_POOL_TYPES = Object.freeze({
-  limited: { label: '限定', color: 'gold', coverTone: 'limited' },
-  rerun: { label: '复刻', color: 'blue', coverTone: 'rerun' },
-  zhaoying: { label: '照影', color: 'purple', coverTone: 'zhaoying' },
-  choice: { label: '自选', color: 'rouge', coverTone: 'choice' },
-  permanent: { label: '常驻', color: 'neutral', coverTone: 'neutral' },
-  unknown: { label: '类型未标注', color: 'neutral', coverTone: 'neutral' },
+  limited: { label: '限定', color: 'gold' },
+  rerun: { label: '复刻', color: 'blue' },
+  zhaoying: { label: '照影', color: 'purple' },
+  choice: { label: '自选', color: 'rouge' },
+  permanent: { label: '常驻', color: 'neutral' },
+  unknown: { label: '类型未标注', color: 'neutral' },
 })
 
 const aliases = Object.freeze({
@@ -28,7 +26,6 @@ export function normalizeRecruitmentPoolType(value) {
 }
 
 export function recruitmentPoolType(value) { return RECRUITMENT_POOL_TYPES[normalizeRecruitmentPoolType(value)] }
-export function recruitmentCoverStyle(value) { return { '--cover-tone': eventTypeColor(recruitmentPoolType(value).color, 'cover') } }
 
 export function isPermanentRecruitmentPool(pool) {
   return normalizeRecruitmentPoolType(pool?.pool_type) === 'permanent' && !pool?.end_date

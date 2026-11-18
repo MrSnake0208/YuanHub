@@ -60,7 +60,7 @@
 
 深色使用暖炭底、暖白文字与低饱和状态色。`src/styles/theme.css` 提供根主题和导出隔离作用域；原有 `--paper`、`--surface`、`--cream` 用于底板，`--on-strong`、`--on-surface`、`--on-paper` 用于原来深色块上的浅色文字，`--on-pastel` 保持游戏浅色属性印章上的深色文字。局部固定颜色使用 `var(--theme-语义, 原浅色值)`：浅色保留原值，深色才覆盖。不要按色值全文替换、整页反色，或把同一文字变量同时用作按钮底色；强调按钮底色使用 `--theme-control-bg` 等对应语义。基础色板正文对比度由 `test/themeColors.test.js` 检查，不能代替真实界面验收。
 
-主题覆盖主站已有路由及 Teleport 浮层，包含主站 `/promo`，不包含独立 `promo-site/`。游戏素材、属性与稀有度标记保持身份含义；日历和招募分类通过共享 `eventTypeColor` 保留分类色系与浅色回退。账单导出的独立 `.cart-export-view[data-theme="light"]` 重置基础与深色语义变量，图片固定浅色，屏幕账单正常跟随用户主题。
+主题覆盖主站已有路由及 Teleport 浮层，包含主站 `/promo`，不包含独立 `promo-site/`。游戏素材、属性与稀有度标记保持身份含义；日历通过 `eventTypeColor` 保留分类色系，招募时间线横幅在明暗主题均使用浅色纸本配色。账单导出的独立 `.cart-export-view[data-theme="light"]` 重置基础与深色语义变量，图片固定浅色，屏幕账单正常跟随用户主题。
 
 星石配装/预设的错误提示使用深色危险文字变量，预设保存按钮使用 `--on-strong`；招募 21–30 抽徽标在深色使用强调底色；养成规划条件/策略图标优先使用 `--theme-accent-text`，浅色均保留原配色。
 

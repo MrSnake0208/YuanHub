@@ -19,16 +19,13 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.multipart.MultipartFile
 
 @Tag(name = "Recruitment Catalog Admin", description = "管理招募卡池及稳定UP占位身份")
 @RestController
@@ -68,20 +65,6 @@ class AdminRecruitmentCatalogController(
     fun update(@PathVariable poolId: String, @RequestBody body: JsonNode): ApiResult<RecruitmentCatalogPool> {
         val actor = requireAdmin()
         return success(catalog.update(actor, poolId, decoder.read(body, RecruitmentCatalogWriteRequest::class.java)))
-    }
-
-    @Operation(summary = "上传招募卡池 Banner，即时生效")
-    @PutMapping("/{poolId}/banner", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadBanner(@PathVariable poolId: String, @RequestPart file: MultipartFile): ApiResult<RecruitmentCatalogPool> {
-        val actor = requireAdmin()
-        return success(catalog.uploadBanner(actor, poolId, file))
-    }
-
-    @Operation(summary = "删除招募卡池 Banner，恢复立绘封面")
-    @DeleteMapping("/{poolId}/banner")
-    fun deleteBanner(@PathVariable poolId: String): ApiResult<RecruitmentCatalogPool> {
-        val actor = requireAdmin()
-        return success(catalog.deleteBanner(actor, poolId))
     }
 
     private fun requireAdmin(): String {

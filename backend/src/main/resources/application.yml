@@ -106,8 +106,6 @@ share:
     dir: ${SHARE_AVATAR_DIR:./data/avatar}
   portrait:
     dir: ${SHARE_PORTRAIT_DIR:./data/portraits}
-  recruitment-banner:
-    dir: ${SHARE_RECRUITMENT_BANNER_DIR:./data/recruitment-banners}
   xinzhi:
     dir: ${SHARE_XINZHI_DIR:./data/xinzhi}
   media:

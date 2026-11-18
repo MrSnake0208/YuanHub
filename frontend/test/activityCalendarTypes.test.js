@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { calendarDisplay, validateCalendarClassification } from '../src/data/activityCalendarTypes.js'
 import { EVENT_TYPE_COLORS, eventTypeColor, eventTypeStyle } from '../src/data/eventTypeColors.js'
-import { normalizeRecruitmentPoolType, recruitmentCoverStyle } from '../src/data/recruitmentPoolTypes.js'
+import { normalizeRecruitmentPoolType } from '../src/data/recruitmentPoolTypes.js'
 import { calendarForm, calendarPayload, normalizeCalendarItem, summarizeCalendarDay, validateCalendarForm } from '../src/data/activityCalendar.js'
 import { suggestionPayload } from '../src/data/activityCalendarSuggestions.js'
 
@@ -73,8 +73,6 @@ test('权威pool_type规范化：已知组合优先级、别名、常驻和未�
     assert.equal(normalizeRecruitmentPoolType(value), code)
     const item = normalizeCalendarItem(event({ category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL', pool_type: value }))
     assert.equal(calendarDisplay(item).color, color)
-    assert.equal(recruitmentCoverStyle(value)['--cover-tone'], eventTypeColor(color, 'cover'))
-    assert.ok(recruitmentCoverStyle(value)['--cover-tone'].endsWith(`${EVENT_TYPE_COLORS[color].cover})`))
   }
   assert.equal(normalizeCalendarItem(event({ pool_type: '限定' })).pool_type, null)
 })

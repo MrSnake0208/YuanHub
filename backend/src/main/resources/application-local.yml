@@ -17,8 +17,6 @@ share:
     dir: ./data/avatar
   portrait:
     dir: ./data/portraits
-  recruitment-banner:
-    dir: ${SHARE_RECRUITMENT_BANNER_DIR:./data/recruitment-banners}
   xinzhi:
     dir: ./data/xinzhi
   media:

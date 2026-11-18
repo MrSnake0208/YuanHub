@@ -720,14 +720,14 @@ it('卡池封面按UP数量组合最多三张立绘，更多UP显示数量提示
   ]
   api.getRecruitmentCatalog.mockResolvedValue(catalog)
   const wrapper = render(); await flushPromises()
-  const cover = wrapper.get('.pool-cover')
-  expect(cover.findAll('.cover-portrait')).toHaveLength(3)
-  expect(cover.findAll('.cover-portrait').map(item => item.attributes('src'))).toEqual([
+  const cover = wrapper.get('.bn')
+  expect(cover.findAll('.bn-art img')).toHaveLength(3)
+  expect(cover.findAll('.bn-art img').map(item => new URL(item.attributes('src'), window.location.origin).pathname)).toEqual([
     '/assets/operator-portraits/char_001_yangxiu.webp',
     '/assets/operator-portraits/char_002_jiaxu.webp',
     '/assets/operator-portraits/char_003_sunshangxiang.webp'
   ])
-  expect(cover.find('.cover-more').exists()).toBe(false)
+  expect(cover.get('.bn-sub').text()).toContain('等 4 位')
 })
 it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽数回显；密探名仅保留在无障碍标签；取消不写入且恢复焦点', async () => {
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)
@@ -955,25 +955,25 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   archives['acc-b'].pools[0].progress = 9
   archives['acc-b'].current_pool_id = 'missing-pool'
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.up-count').text()).toBe('×2')
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '40', '24', '66.7%'])
+  expect(wrapper.get('.pool-up-count').text()).toBe('×2')
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['65', '2', '24', '66.7%'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   const late = deferred(), pendingB = deferred()
   api.getRecruitmentArchive.mockReturnValueOnce(late.promise).mockReturnValueOnce(pendingB.promise)
   wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
   activeAccount.set('acc-b'); await flushPromises()
-  expect(wrapper.find('.up-count').exists()).toBe(false)
+  expect(wrapper.find('.pool-up-count').exists()).toBe(false)
   expect(wrapper.find('.summary-most-permanent').exists()).toBe(false)
   pendingB.resolve(structuredClone(archives['acc-b'])); await flushPromises()
-  expect(wrapper.get('.up-count').text()).toBe('×0')
+  expect(wrapper.get('.pool-up-count').text()).toBe('×0')
   late.resolve(structuredClone(archives['acc-a'])); await flushPromises()
-  expect(wrapper.get('.up-count').text()).toBe('×0')
+  expect(wrapper.get('.pool-up-count').text()).toBe('×0')
   expect(wrapper.get('.summary-most-permanent .summary-empty').text()).toBe('暂无记录')
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '—', '—'])
   expect(wrapper.text()).not.toContain('当前卡池')
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
   wrapper.getComponent({ name: 'RecruitmentExchange' }).vm.$emit('committed'); await flushPromises()
-  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '31', '—', '—'])
+  expect(wrapper.get('.pool-card').findAll('.pool-metrics b').map(item => item.text())).toEqual(['9', '0', '—', '—'])
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
   api.recruitmentCommand.mockImplementation(async () => {
     archives['acc-b'].pool_summaries['pool-a'].up_agent_counts['slot-a'] = 1
@@ -982,7 +982,7 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   })
   await selectPool(wrapper); await addRecord(wrapper, 'slot-a', '17')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
-  expect(wrapper.get('.up-count').text()).toBe('×1')
+  expect(wrapper.get('.pool-up-count').text()).toBe('×1')
   expect(api.listRecruitmentEvents).toHaveBeenCalledTimes(2)
   expect(api.listRecruitmentEvents.mock.calls[0][0].accountId).toBe('acc-b')
   wrapper.unmount()
@@ -1003,9 +1003,8 @@ it.each(['pool-a', 'missing-pool'])('旧指针 %s 不影响已结束池B的读�
   const wrapper = render(); await flushPromises()
   expect(wrapper.text()).not.toContain('当前卡池')
   expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
-  const card = wrapper.findAll('.pool-card').find(item => item.get('.pool-name').text() === '已结束池B')
-  expect(card.get('.pool-status').text()).toBe('已结束')
-  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['33', '1', '28', '—', '—'])
+  const card = wrapper.findAll('.pool-card').find(item => item.get('.bn-name').text() === '已结束池B')
+  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['33', '1', '—', '—'])
   await card.get('.entry-label').trigger('click'); await flushPromises()
   expect(editor(wrapper).get('h2').text()).toBe('已结束池B')
   expect(feed(wrapper)).toHaveLength(1)
@@ -1021,7 +1020,7 @@ it.each(['pool-a', 'missing-pool'])('旧指针 %s 不影响已结束池B的读�
   expect(archives['acc-a'].pools[0]).toEqual(originalPoolA)
   expect(records['acc-a'].filter(event => event.pool_id === 'pool-a')).toEqual(originalRecordsA)
   expect(records['acc-a'].filter(event => event.pool_id === 'pool-b')).toHaveLength(2)
-  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['45', '2', '33', '—', '—'])
+  expect(card.findAll('.pool-metrics b').map(item => item.text())).toEqual(['45', '2', '—', '—'])
   await editor(wrapper).get('.close-button').trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(card.get('.entry-label').element)
   await card.get('.entry-label').trigger('click'); await flushPromises()
@@ -1157,7 +1156,7 @@ it('隐藏目录刷新后历史入口保留，切换无历史账号不留下旧�
   api.getRecruitmentCatalog.mockResolvedValue({ pools: [], catalog_revision: 'hidden' })
   archives['acc-b'].pools = []; archives['acc-b'].pool_states = {}
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.pool-status').text()).toContain('已隐藏')
+  expect(wrapper.get('.bn-status').text()).toContain('已隐藏')
   await selectPool(wrapper)
   expect(editor(wrapper).text()).toContain('此卡池已隐藏')
   expect(editor(wrapper).get('.add-record').element.disabled).toBe(true)

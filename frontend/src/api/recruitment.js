@@ -7,16 +7,6 @@ export function listAdminRecruitmentCatalog() { return request(ADMIN_PATH, { aut
 export function createAdminRecruitmentPool(pool) { return request(ADMIN_PATH, { auth: true, method: 'POST', body: pool }) }
 export function importAdminRecruitmentCatalog(document) { return request(ADMIN_PATH + '/import', { auth: true, method: 'POST', timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS, body: document }) }
 export function updateAdminRecruitmentPool(poolId, pool) { return request(ADMIN_PATH + '/' + encodeURIComponent(poolId), { auth: true, method: 'PUT', body: pool }) }
-export function uploadAdminRecruitmentBanner(poolId, file) {
-  const form = new FormData()
-  form.append('file', file)
-  return request(ADMIN_PATH + '/' + encodeURIComponent(poolId) + '/banner', {
-    auth: true, method: 'PUT', multipart: true, body: form, timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
-  })
-}
-export function deleteAdminRecruitmentBanner(poolId) {
-  return request(ADMIN_PATH + '/' + encodeURIComponent(poolId) + '/banner', { auth: true, method: 'DELETE' })
-}
 function query(values) {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(values)) if (value != null && value !== '') params.set(key, value)

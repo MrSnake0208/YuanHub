@@ -26,12 +26,6 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
-`recruitmentBanners` is explicitly `false` in development and production. The
-player recruitment timeline uses its existing portrait cover and card layout
-without requesting Banner images. Banner uploads, administrator previews and
-stored catalog data remain available. Set only this flag to `true` and rebuild
-and deploy the frontend to restore Banner rendering.
-
 `battleImages` is enabled in development and production. Both navigation entries
 lead to `/tools/battle-images`, which uses the shared Beta route gate; guests may
 enter when the campaign is open. Losing eligibility closes the workspace without
@@ -140,6 +134,6 @@ authentication, authorization, or data-protection boundary; backend APIs and
 backup compatibility must be changed separately if a feature later needs to be
 strictly unavailable.
 
-`recruitmentArchive` controls `/recruitment` and both navigation entries and is explicitly `true`. The route requires authentication and the shared `requiresBeta` gate. Its workspace no longer polls independent recruitment access. `/admin/recruitment-access` redirects to `/manage`; the retired access settings and historical grants do not control current access. Public catalog GET remains public; private recruitment requests and shared account endpoints are protected by backend Beta policy.
+`recruitmentArchive` controls `/recruitment` and both navigation entries and is explicitly `true`. The route requires authentication and the shared `requiresBeta` gate. Its workspace no longer polls independent recruitment access. `/admin/recruitment-access` redirects to `/manage`; the retired access settings and historical grants do not control current access. Public catalog GET remains public; private recruitment requests and shared account endpoints are protected by backend Beta policy. The timeline composes a paper-style Banner from each pool and its UP portraits whenever the workspace is visible. See [recruitment archive](../recruitment-archive.md#时间线横幅卡布局).
 
 `activityCalendar` is explicitly `true`. `/calendar` and both suggestion routes require authentication and shared Beta eligibility, without admin testing restrictions. Navigation exposes the feature entrance; routing and backend policy enforce access. Today summaries, subscriptions and private items work for ordinary eligible users. Management and suggestion review retain `activity_calendar:write`. Feature-disabled pages remain lazy and prevent API initialization. See [activity calendar](../activity-calendar.md).
