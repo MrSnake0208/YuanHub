@@ -1,5 +1,7 @@
 # YuanHub 开发规则
 
+Claude Code 和 Codex 共用本文件及所涉及目录的 `AGENTS.md`。个人模型偏好、提示词和终端调度方式放在各自的用户级配置中。
+
 ## 工作树与边界
 
 - 编辑前执行 `git rev-parse --show-toplevel`、`git branch --show-current`、`git status --short`；只编辑当前 Worktree，不切换写死的分支，不跳到旧工作区。保护已有修改，不 reset、stash、clean 或覆盖他人成果。
@@ -10,7 +12,7 @@
 ## Codex Native 与项目记忆
 
 - 普通开发直接进行，不强制 PRD、Design、Task、Research、Remember、固定阶段或归档门禁；复杂需求可用 Codex 原生 Plan。
-- 默认由主会话完成探索、实现与最小自检。专项 Skills 按任务调用；仅用户明确要求或适用 Skill 明确需要时启用子 Agent，不自动调用 DSH。
+- 由 Codex 主持任务时，默认由主会话完成探索、实现与最小自检。由 Claude Code 主持时，可按用户授权的流程委派给 Codex。额外子 Agent 仅在用户明确要求或适用 Skill 明确需要时启用，DSH 按下文约束由用户启动。
 - Mini-Trellis 只存放可复用知识与跨会话记忆。需要既有规则或历史决定时才检索，确认了长期有用的结论才记录；已有主题优先更新原文件，不重复存档。spec promotion 仍须用户确认。
 - `.trellis/` 是本地忽略目录；Codex 集成可选，未安装 CLI、未初始化记忆或未批准 Hook 不阻塞普通开发、组件测试和构建。不引用旧 YuanHub-All 作为开发依赖，不自动导入历史知识。
 - 先定位再读取，只加载相关规范与局部源码；搜索/日志输出通常控制在约 12 KB 或 160 行，必要安全证据不受此限制。改动接口、配置、脚本或用户行为时同步直接相关文档。
