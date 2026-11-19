@@ -158,7 +158,7 @@
   .calendar-public button.calendar-month-bar { font-size: 14px; padding-inline: 8px; }
   .calendar-public .calendar-timeline { --calendar-day-width: 48px; }
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .calendar-public .calendar-subscription-toolbar .account-switcher { margin-left: auto; }
   .calendar-public .calendar-filter-state { flex-wrap: wrap; }
   .calendar-public .calendar-filter-summary { display: none; }
@@ -166,9 +166,6 @@
   .calendar-public .calendar-active-filters button { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
   .calendar-public .calendar-active-filters button svg { flex: none; }
   .calendar-public .calendar-active-filters button:active { transform: none; }
-  .calendar-public .calendar-header { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
-  .calendar-public .calendar-view-tools { grid-column: auto; flex-wrap: nowrap; }
-  .calendar-public .calendar-timeline { --calendar-day-width: 48px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .calendar-public *, .calendar-public *::before, .calendar-public *::after { scroll-behavior: auto !important; }
@@ -201,7 +198,7 @@
   .calendar-public .calendar-timeline-scroll { margin-top: 8px; }
   .calendar-public .calendar-timeline-group { padding-top: 10px; }
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .calendar-public .calendar-subscription-toolbar { display: flex; flex-wrap: wrap; }
 }
 .calendar-subscription { margin-top: 14px; padding-top: 12px; min-width: 0; }

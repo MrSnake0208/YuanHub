@@ -8,7 +8,7 @@
       </div>
     </div>
     <p class="calendar-month-help">{{ compactPublic ? '点日期浏览当日活动 · 圆点表示类型，数字为活动数' : '点事项查看详情 · 点日期或 +N 查看当天清单 · 箭头表示延续' }}</p>
-    <div class="calendar-month-board">
+    <div ref="board" class="calendar-month-board">
       <div class="calendar-weekdays" aria-hidden="true"><span v-for="day in weekdays" :key="day">{{ day }}</span></div>
       <div class="calendar-month-grid">
         <template v-for="week in weeks" :key="week.from">
@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Repeat2, ChevronLeft, ChevronRight, ListChecks } from '@lucide/vue'
 import CalendarDetailDialog from './CalendarDetailDialog.vue'
 import CalendarPublicEventSummary from './CalendarPublicEventSummary.vue'
@@ -69,18 +69,28 @@ const props = defineProps({ items: { type: Array, required: true }, today: { typ
 const emit = defineEmits(['select-date', 'create-private', 'close-detail', 'retry'])
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
-const wide = ref(false), month = ref(null), selection = ref(null)
-let media, identityRevision = 0
-const updateWidth = () => { wide.value = media.matches }
+const boardWidth = ref(0), board = ref(null), month = ref(null), selection = ref(null)
+const maxRows = computed(() => boardWidth.value >= 760 ? 4 : 3)
+let observer, identityRevision = 0
 onMounted(() => {
-  if (typeof window.matchMedia !== 'function') return
-  media = window.matchMedia('(min-width: 1024px)')
-  updateWidth()
-  media.addEventListener('change', updateWidth)
+  const measure = () => { boardWidth.value = board.value?.clientWidth || 0 }
+  measure()
+  observer = new ResizeObserver(measure)
+  observer.observe(board.value)
 })
-onUnmounted(() => media?.removeEventListener('change', updateWidth))
+onUnmounted(() => observer?.disconnect())
+watch(maxRows, () => {
+  const active = document.activeElement
+  if (!board.value?.contains(active)) return
+  const week = active.closest('.calendar-month-week')
+  nextTick(() => {
+    if (active.isConnected || document.activeElement !== document.body) return
+    const target = week?.querySelector('.calendar-month-day[aria-pressed="true"]') || week?.querySelector('.calendar-month-day') || month.value
+    target?.focus({ preventScroll: true })
+  })
+}, { flush: 'sync' })
 const monthLabel = computed(() => calendarDateLabel(props.anchorDate, { year: 'numeric', month: 'long' }))
-const weeks = computed(() => monthCalendarWeeks(props.loading || props.error ? [] : props.items, props.anchorDate, wide.value ? 4 : 3).map(week => ({
+const weeks = computed(() => monthCalendarWeeks(props.loading || props.error ? [] : props.items, props.anchorDate, maxRows.value).map(week => ({
   ...week, segments: week.segments.map(entry => {
     const { item } = entry
     const pendingTodos = item.source_type === 'PRIVATE_ITEM' || calendarEnded(item, props.today, subscriptions?.now?.value) ? 0 : subscriptionPendingTodoCount(subscriptions?.byId?.value[item.id])

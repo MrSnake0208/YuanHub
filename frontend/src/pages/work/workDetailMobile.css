@@ -58,6 +58,13 @@
 .operator-hint { display: none; margin-top: 8px; font-size: 11px; text-align: right; }
 .work-details, .section-note { margin-top: 28px; padding: 22px; font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .round-table-wrap { margin-top: 28px; overflow-x: auto; }
+.round-reading-list { display: grid; gap: 12px; margin-top: 18px; }
+.round-reading-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.round-reading-card h3 { font: 800 16px var(--font-b); }
+.round-reading-card .action-list { margin-top: 10px; }
+.round-reading-card .action-list li + li { margin-top: 6px; }
+.round-reading-card .action-list li > div { min-width: 0; overflow-wrap: anywhere; }
+.round-reading-card .round-remark { white-space: pre-wrap; overflow-wrap: anywhere; }
 .round-scroll-hint { display: none; }
 .round-table { width: 100%; min-width: 980px; }
 .round-table th, .round-table td { padding: 14px 12px; text-align: left; vertical-align: top; }

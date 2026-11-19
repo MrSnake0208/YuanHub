@@ -24,16 +24,16 @@
           <small v-if="record.progress != null">历史人工进度 {{ record.progress }}（单独保留）</small>
         </template>
         <template v-else-if="hasQuantifiedProgress(entry)">
-          <button ref="progressTrigger" class="achievement-progress-edit" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
+          <button ref="progressTrigger" class="achievement-progress-edit touch-target" type="button" :disabled="!writable" :aria-expanded="editor.progressOpen" :aria-controls="'progress-' + entry.achievement_id" :aria-label="'编辑 ' + entry.name + ' 进度'" @click="$emit('edit', 'progress')"><span>{{ record.progress == null ? '进度未记录' : record.progress + ' / ' + entry.target }}</span><Pencil :size="13" aria-hidden="true" /></button>
           <progress v-if="record.progress != null" :value="record.progress" :max="entry.target" :aria-label="entry.name + ' 数值进度'" />
         </template>
         <span v-else class="achievement-hint">历史人工进度 {{ record.progress }}（待核对）</span>
       </div>
       <div class="achievement-row-actions">
-        <button class="achievement-favorite" type="button" :aria-pressed="record.favorite" :aria-label="(record.favorite ? '取消关注 ' : '关注 ') + entry.name" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, favorite: !record.favorite })"><Star :size="20" :fill="record.favorite ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+        <button class="achievement-favorite touch-target" type="button" :aria-pressed="record.favorite" :aria-label="(record.favorite ? '取消关注 ' : '关注 ') + entry.name" :disabled="!writable" @click="$emit('quick-save', { achievement_id: entry.achievement_id, favorite: !record.favorite })"><Star :size="20" :fill="record.favorite ? 'currentColor' : 'none'" aria-hidden="true" /></button>
         <button ref="noteTrigger" class="achievement-note-toggle" type="button" :class="{ 'has-note': record.note }" :disabled="!writable" :aria-expanded="editor.noteOpen" :aria-controls="'note-' + entry.achievement_id" :aria-label="(record.note ? '查看或编辑 ' : '添加 ') + entry.name + ' 备注'" @click="$emit('edit', 'note')"><NotebookPen :size="17" aria-hidden="true" /><span>备注</span></button>
       </div>
-      <button class="achievement-abandon" :class="{ 'is-unavailable': completed }" type="button" :title="record.status === 'abandoned' ? '恢复为未完成' : '放弃：置底且不计入未完成，可随时恢复'" :aria-label="(record.status === 'abandoned' ? '恢复 ' : '放弃 ') + entry.name" :disabled="completed || !writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: record.status === 'abandoned' ? 'incomplete' : 'abandoned' })">{{ record.status === 'abandoned' ? '恢复' : '放弃' }}</button>
+      <button class="achievement-abandon touch-target" :class="{ 'is-unavailable': completed }" type="button" :title="record.status === 'abandoned' ? '恢复为未完成' : '放弃：置底且不计入未完成，可随时恢复'" :aria-label="(record.status === 'abandoned' ? '恢复 ' : '放弃 ') + entry.name" :disabled="completed || !writable || !recordReady" @click="$emit('quick-save', { achievement_id: entry.achievement_id, status: record.status === 'abandoned' ? 'incomplete' : 'abandoned' })">{{ record.status === 'abandoned' ? '恢复' : '放弃' }}</button>
     </div>
     <p v-if="pendingRemoval && record.status !== 'abandoned'" class="achievement-row-feedback">即将从未完成列表移出</p>
     <p v-if="error" class="achievement-row-feedback achievement-error" role="alert">{{ error }}</p>

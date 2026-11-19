@@ -25,7 +25,7 @@
               <input v-model="q" type="search" name="feedback-search" aria-label="搜索反馈" placeholder="搜索反馈内容或工单编号..." />
               <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
             </form>
-            <div class="feedback-status-tabs" role="tablist" aria-label="工单状态">
+            <div class="feedback-status-tabs touch-targets" role="tablist" aria-label="工单状态">
               <button
                 v-for="status in statusTabs"
                 :key="status"

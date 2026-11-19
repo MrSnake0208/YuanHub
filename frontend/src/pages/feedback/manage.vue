@@ -25,13 +25,13 @@
 
           <template v-else>
             <p v-if="pageMessage" class="feedback-workflow-message feedback-page-message" role="status">{{ pageMessage }}</p>
-            <div class="feedback-work-queues" role="group" aria-label="工作队列">
+            <div class="feedback-work-queues touch-targets" role="group" aria-label="工作队列">
               <div class="feedback-primary-queues">
                 <button v-for="status in primaryQueues" :key="status.key" type="button" :aria-pressed="filterStatus === status.key" :class="{ on: filterStatus === status.key }" @click="setFilter(status)">
                   <span>{{ status.label }}</span><strong class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</strong>
                 </button>
               </div>
-              <div class="feedback-secondary-queues">
+              <div class="feedback-secondary-queues" role="group" aria-label="其他队列">
                 <button v-for="status in secondaryQueues" :key="status.key" type="button" :aria-pressed="filterStatus === status.key" :class="{ on: filterStatus === status.key }" @click="setFilter(status)">{{ status.label }} <span class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</span></button>
               </div>
             </div>

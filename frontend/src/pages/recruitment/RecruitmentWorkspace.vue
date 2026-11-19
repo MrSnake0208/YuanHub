@@ -22,7 +22,7 @@
         <div data-guide-target="archive-state" class="feedback" aria-live="polite"><p v-if="state.error" class="error" role="alert">{{ state.error }}</p><p v-if="state.catalogError">{{ state.catalogError }}</p><p v-if="state.notice" role="status">{{ state.notice }}</p><p v-if="state.loading">正在读取档案…</p><button v-if="state.error" type="button" :disabled="state.loading || state.accountsLoading" @click="available ? refresh() : loadAccounts()">重新读取</button></div>
         <template v-if="state.archive">
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
-          <section class="account-overview" aria-label="当前账号招募摘要">
+          <section class="account-overview touch-targets" aria-label="当前账号招募摘要">
             <header class="overview-heading"><h2>抽卡概览</h2></header>
             <div v-if="archiveEmpty" class="overview-empty">
               <strong>还没有招募记录</strong>

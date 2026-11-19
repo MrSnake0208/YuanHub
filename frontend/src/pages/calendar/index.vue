@@ -44,7 +44,7 @@
           <p v-if="mine && !mobileMine && subscriptions.account.value" class="calendar-hint calendar-account-scope">私人事项仅当前账号可见；订阅活动需手动标记本期完成。</p>
           <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
-        <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
+        <div v-if="activeFilterCount" class="calendar-filter-state touch-targets" aria-label="已启用的筛选">
           <p class="calendar-filter-summary">{{ filterSummary }}</p>
           <div class="calendar-active-filters">
             <button v-for="condition in activeFilters" :key="condition.key" type="button" :aria-label="`取消筛选：${condition.label}`" @click="removeFilter(condition)">
@@ -134,6 +134,7 @@ import CalendarAgendaView from '@/components/calendar/CalendarAgendaView.vue'
 import CalendarTimelineView from '@/components/calendar/CalendarTimelineView.vue'
 import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
 import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import { calendarGameFilter, readCalendarGamePreference, saveCalendarGamePreference } from '@/data/calendarGamePreference.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
@@ -144,7 +145,8 @@ const route = useRoute(), router = useRouter()
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const today = ref(serverToday())
 // Width chooses only the initial fallback. User navigation never listens to resize.
-const wide = typeof window !== 'undefined' && window.innerWidth >= 1024
+const { isPhone: phone, isDesktop } = useViewportTier()
+const wide = isDesktop.value
 let savedView = ''
 try { if (enabled) savedView = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) || '' } catch { /* Storage can be unavailable in private browsers. */ }
 const preferredGame = ref(enabled ? readCalendarGamePreference() : '')
@@ -152,22 +154,17 @@ const rememberedGame = ref(preferredGame.value)
 const preferredView = ref(calendarView({}, savedView, wide))
 const mine = computed(() => subscriptionScope(route.query))
 const taskStatus = computed(() => subscriptionTask(route.query))
-const phone = ref(typeof window !== 'undefined' && window.innerWidth < 768)
-const phoneMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 767px)') : null
 const mobileMine = computed(() => mine.value && phone.value)
 const mobilePublic = computed(() => !mine.value && phone.value)
 const mobileViewTools = ref(null)
 const mobileAccountContext = ref(null)
-function syncPhone(event) {
+watch(phone, () => {
   const focused = document.activeElement
-  phone.value = event.matches
   nextTick(() => {
     if (focused?.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true })
     else if (focused && !focused.isConnected) (filterOpen.value ? document.getElementById('calendar-filter-sheet-title') : filterTrigger.value)?.focus({ preventScroll: true })
   })
-}
-onMounted(() => phoneMedia?.addEventListener('change', syncPhone))
-onBeforeUnmount(() => phoneMedia?.removeEventListener('change', syncPhone))
+}, { flush: 'sync' })
 const filters = computed(() => ({ ...calendarFilters(route.query), game: mine.value ? subscriptions.account.value?.game || '' : calendarGameFilter(route.query, preferredGame.value) }))
 const filterOpen = ref(false), filterTrigger = ref(null), monthView = ref(null), timelineView = ref(null), agendaView = ref(null)
 const activeFilters = computed(() => [

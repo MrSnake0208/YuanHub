@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open" class="calendar-page calendar-public calendar-filter-mask" :class="{ 'calendar-personal-filter': personal }">
-      <section id="calendar-filter-sheet" ref="panel" class="calendar-filter-sheet" :style="position" role="dialog" aria-modal="true" aria-labelledby="calendar-filter-sheet-title" tabindex="-1">
+      <section id="calendar-filter-sheet" ref="panel" class="calendar-filter-sheet touch-targets" :style="position" role="dialog" aria-modal="true" aria-labelledby="calendar-filter-sheet-title" tabindex="-1">
         <header class="calendar-filter-sheet-header">
           <h2 id="calendar-filter-sheet-title" ref="heading" tabindex="-1">筛选</h2>
           <button type="button" @click="emit('reset')">{{ personal ? '重置类型/时间' : '重置筛选' }}</button>
@@ -35,6 +35,7 @@
 import { onBeforeUnmount, ref, toRef, watch } from 'vue'
 import CalendarFilterControls from './CalendarFilterControls.vue'
 import { useModalFocus } from '@/composables/useModalFocus.js'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -50,16 +51,16 @@ const props = defineProps({
 const emit = defineEmits(['close', 'change', 'task', 'reset'])
 const panel = ref(null), heading = ref(null)
 const position = ref({})
+const { isDesktop } = useViewportTier()
 useModalFocus(toRef(props, 'open'), panel, {
   initialFocus: () => heading.value,
   onEscape: () => emit('close'),
 })
 
 let restoreScroll = null
-let desktopMedia = null
 function place() {
   position.value = {}
-  if (!props.open || !desktopMedia?.matches) return
+  if (!props.open || !isDesktop.value) return
   const rect = props.anchor?.getBoundingClientRect()
   if (!rect) return
   const width = Math.min(440, window.innerWidth - 32)
@@ -72,22 +73,18 @@ function place() {
     '--filter-max-height': `${Math.min(640, Math.max(0, useBelow ? below : above))}px`,
   }
 }
-function onDesktopChange(event) { if (event.matches) emit('close') }
+watch(isDesktop, place, { flush: 'post' })
 function cleanup() {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', place)
     window.removeEventListener('scroll', place, true)
   }
-  desktopMedia?.removeEventListener('change', onDesktopChange)
-  desktopMedia = null
   restoreScroll?.()
   restoreScroll = null
 }
 watch(() => props.open, open => {
   cleanup()
   if (!open || typeof document === 'undefined') return
-  desktopMedia = window.matchMedia('(min-width: 1024px)')
-  desktopMedia.addEventListener('change', onDesktopChange)
   const body = document.body, root = document.documentElement
   const bodyOverflow = body.style.overflow, rootOverflow = root.style.overflow, paddingRight = body.style.paddingRight
   const scrollbarGap = Math.max(0, window.innerWidth - root.clientWidth)
@@ -117,7 +114,7 @@ onBeforeUnmount(cleanup)
   .calendar-filter-sheet-header button:hover { background: var(--cream); }
   .calendar-filter-sheet-footer button:hover { background: var(--tea-deep); }
 }
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   .calendar-filter-mask { background: var(--theme-overlay, color-mix(in srgb, var(--ink) 18%, transparent)); }
   .calendar-filter-sheet { border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 18%, transparent); }
 }

@@ -35,7 +35,7 @@
             <li v-for="item in validationIssues" :key="item.path"><button type="button" @click="focusIssue(item.path)">{{ issueLabel(item.path) }}</button>{{ item.message }}</li>
           </ul>
 
-          <form class="work-form" :aria-invalid="validationIssues.length > 0" :aria-describedby="validationIssues.length ? 'work-validation-summary' : undefined" @submit.prevent="save">
+          <form class="work-form touch-targets" :aria-invalid="validationIssues.length > 0" :aria-describedby="validationIssues.length ? 'work-validation-summary' : undefined" @submit.prevent="save">
             <section class="editor-section" aria-labelledby="basic-title">
               <div class="section-head"><span>01</span><div><h2 id="basic-title">基本信息</h2></div></div>
               <div class="field-grid">

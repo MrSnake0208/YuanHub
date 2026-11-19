@@ -1,10 +1,10 @@
 <template>
-  <Teleport to="body" :disabled="!compact">
-    <div v-show="!compact || open" :class="compact ? 'cart-receipt-mask' : 'cart-receipt-column'">
-      <div ref="panel" :class="compact ? 'cart-receipt-drawer' : 'cart-receipt-desktop'"
-        :role="compact ? 'dialog' : undefined" :aria-modal="compact ? 'true' : undefined"
-        :aria-label="compact ? '购物清单' : undefined" :tabindex="compact ? -1 : undefined">
-        <div v-if="compact" class="cart-receipt-heading">
+  <Teleport to="body" :disabled="!drawer">
+    <div v-show="!drawer || open" :class="drawer ? 'cart-receipt-mask' : 'cart-receipt-column'">
+      <div ref="panel" :class="drawer ? 'cart-receipt-drawer' : 'cart-receipt-desktop'"
+        :role="drawer ? 'dialog' : undefined" :aria-modal="drawer ? 'true' : undefined"
+        :aria-label="drawer ? '购物清单' : undefined" tabindex="-1">
+        <div v-if="drawer" class="cart-receipt-heading">
           <h2>购物清单</h2>
           <button ref="closeButton" type="button" class="btn ghost" aria-label="关闭购物清单" @click="close"><X :size="18" />关闭</button>
         </div>
@@ -15,25 +15,32 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 
-const props = defineProps({ open: { type: Boolean, default: false } })
-const emit = defineEmits(['close'])
-const compact = ref(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1180px)').matches)
+const props = defineProps({ open: Boolean, drawer: Boolean })
+const emit = defineEmits(['close', 'focus-trigger'])
 const panel = ref(null)
 const closeButton = ref(null)
-const modalOpen = computed(() => compact.value && props.open)
-let media
+const modalOpen = toRef(props, 'open')
 let releaseScroll
-const close = () => { if (compact.value && props.open) emit('close') }
+const close = () => emit('close')
 
-useModalFocus(modalOpen, panel, { initialFocus: () => closeButton.value, onEscape: close })
-function updateMedia() {
-  compact.value = media.matches
-  if (!compact.value && props.open) emit('close')
-}
+useModalFocus(modalOpen, panel, { initialFocus: () => closeButton.value, onEscape: close, preventRestoreScroll: true })
+watch(() => props.drawer, drawer => {
+  const active = document.activeElement
+  const wasInside = panel.value?.contains(active)
+  const wasTrigger = active?.matches('.cart-mbar .mbtn')
+  if (!wasInside && !wasTrigger) return
+  nextTick(() => {
+    if (drawer !== props.drawer) return
+    const current = document.activeElement
+    if (current !== active && current !== document.body && !current?.matches('main')) return
+    if (drawer && !props.open && wasInside) emit('focus-trigger')
+    if (!drawer) panel.value?.focus({ preventScroll: true })
+  })
+}, { flush: 'sync' })
 watch(modalOpen, open => {
   releaseScroll?.()
   releaseScroll = undefined
@@ -44,14 +51,7 @@ watch(modalOpen, open => {
     releaseScroll = () => { body.style.overflow = previous }
   }
 }, { flush: 'sync', immediate: true })
-onMounted(() => {
-  if (typeof window.matchMedia !== 'function') return
-  media = window.matchMedia('(max-width: 1180px)')
-  updateMedia()
-  media.addEventListener('change', updateMedia)
-})
 onBeforeUnmount(() => {
-  media?.removeEventListener('change', updateMedia)
   releaseScroll?.()
 })
 </script>

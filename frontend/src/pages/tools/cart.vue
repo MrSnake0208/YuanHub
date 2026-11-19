@@ -2,7 +2,7 @@
   <div class="page-cart">
     <IslandSidebar />
 
-    <main id="main-content" class="cart-main">
+    <main id="main-content" class="cart-main" :class="{ 'has-receipt-drawer': receiptDrawer }">
       <CompactToolHeader mobile-context mobile-description title="礼包计算器" description="作者：binary · 独立创作">
         <template #account>
           <DataAccountContextBar v-if="auth.isLoggedIn && (account || accountsLoading || accountError)" compact
@@ -81,7 +81,7 @@
           <p v-if="!account && (daihaoCount || ruCount)" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
-          <div class="cart-layout">
+          <div ref="cartLayout" class="cart-layout">
             <div class="cart-catalog">
               <div class="cart-filters" v-reveal>
                 <div class="cart-search-row">
@@ -143,7 +143,7 @@
             </div>
 
             <!-- 清单 -->
-            <ReceiptWorkspace :open="showReceipt" @close="showReceipt = false">
+            <ReceiptWorkspace :drawer="receiptDrawer" :open="showReceipt" @close="showReceipt = false" @focus-trigger="receiptTrigger?.focus({ preventScroll: true })">
               <ReceiptPanel
                 v-bind="receiptProps"
                 :export-busy="exportBusy"
@@ -169,13 +169,13 @@
     </main>
 
     <!-- 移动端底栏 -->
-    <div class="cart-mbar">
+    <div v-show="receiptDrawer" class="cart-mbar">
       <div class="sum" :class="{ 'is-cart-empty': cartItems.length === 0 }">
         <div class="k">合计金额</div>
         <div class="v">{{ formatMoney(totalAmount, currentPricing.currency) }}</div>
       </div>
       <div class="btns">
-        <button class="mbtn primary" :class="{ 'is-cart-empty': cartItems.length === 0 }" :aria-expanded="showReceipt" @click="showReceipt = true">
+        <button ref="receiptTrigger" class="mbtn primary touch-target" :class="{ 'is-cart-empty': cartItems.length === 0 }" aria-haspopup="dialog" :aria-expanded="showReceipt" @click="$event.currentTarget.focus({ preventScroll: true }); showReceipt = true">
           <Receipt :size="15" aria-hidden="true" />查看清单 · {{ version === 'daihao' ? daihaoCount : ruCount }}
         </button>
       </div>
@@ -247,6 +247,7 @@ import CustomPackageModal from "../../components/cart/CustomPackageModal.vue";
 import PlanSaveDialog from "../../components/cart/PlanSaveDialog.vue";
 import PlanListDialog from "../../components/cart/PlanListDialog.vue";
 import { useReceiptExport } from "../../composables/useReceiptExport.js";
+import { useViewportTier } from "../../composables/useViewportTier.js";
 import { mergePackageSnapshots, parseReferenceRate, displayPackages } from "../../utils/cartBudget.js";
 import { getLedgerCatalog } from "../../api/ledgerCatalog.js";
 import { bundledLedgerCatalog, normalizeLedgerCatalog, ledgerCampaignProgress, LEDGER_CACHE_KEY } from "../../utils/ledgerCatalog.js";
@@ -288,6 +289,17 @@ const query = ref("");
 const sortMode = ref("default");
 const selectedOnly = ref(false);
 const showReceipt = ref(false);
+const { isDesktop } = useViewportTier();
+const cartLayout = ref(null), receiptTrigger = ref(null), cartLayoutWidth = ref(0);
+const receiptDrawer = computed(() => showReceipt.value || !isDesktop.value || (cartLayoutWidth.value > 0 && cartLayoutWidth.value < 780));
+let cartLayoutObserver;
+onMounted(() => {
+  const measure = () => { cartLayoutWidth.value = cartLayout.value.clientWidth; };
+  measure();
+  cartLayoutObserver = new ResizeObserver(measure);
+  cartLayoutObserver.observe(cartLayout.value);
+});
+onBeforeUnmount(() => cartLayoutObserver?.disconnect());
 const planMenu = ref(null);
 const planTrigger = ref(null);
 const planMenuOpen = ref(false);
@@ -1236,6 +1248,13 @@ function openPlanSave() {
 .cart-more-filters[open] > summary { border-color: var(--accent-strong); }
 .cart-mbar .mbtn.primary { background: var(--accent-strong); color: var(--on-surface); }
 .cart-mbar .mbtn.primary.is-cart-empty { background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cart-mbar { display: flex; }
+.cart-main.has-receipt-drawer { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+.has-receipt-drawer .cart-layout { grid-template-columns: minmax(0, 1fr); }
+.has-receipt-drawer .cart-operation-message { bottom: calc(88px + env(safe-area-inset-bottom)); }
+@media (min-width: 1200px) {
+  .cart-mbar { left: 292px; }
+}
 .cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .cart-category select,.cart-source select { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .cart-advanced-content { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }

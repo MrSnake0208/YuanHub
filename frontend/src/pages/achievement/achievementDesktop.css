@@ -116,6 +116,10 @@
     .achievement-main .achievement-abandon { position: absolute; right: 0; bottom: 2px; grid-column: auto; grid-row: auto; }
     .achievement-status button { max-width: 160px; }
   }
+  @media (hover: none), (pointer: coarse) {
+    .achievement-main .achievement-row-actions { grid-template-columns: 44px minmax(0, 1fr); padding-right: 48px; }
+    .achievement-main .achievement-abandon { width: 44px; }
+  }
 }
 @media (min-width: 768px) and (max-width: 1199px) {
   .achievement-save-feedback.has-result { top: calc(64px + env(safe-area-inset-top)); }

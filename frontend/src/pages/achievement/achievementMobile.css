@@ -90,6 +90,11 @@
   .achievement-row-actions svg { width: 20px; height: 20px; }
   .achievement-status svg { width: 20px; height: 20px; }
   .achievement-main .achievement-favorite { display: grid; place-items: center; }
+  @media (hover: none), (pointer: coarse) {
+    .achievement-title { min-height: 44px; padding-right: 156px; }
+    .achievement-status { right: 44px; }
+    .achievement-main .achievement-abandon { flex-basis: 44px; }
+  }
   .achievement-inline-editor { display: grid; gap: 10px; margin-top: 12px; padding: 12px; font-size: 13px; }
   .achievement-inline-editor p { font-size: 12px; line-height: 1.6; }
   .achievement-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

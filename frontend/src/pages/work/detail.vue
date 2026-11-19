@@ -113,12 +113,28 @@
             <p class="work-details">{{ work && work.doc ? work.doc.details || '未提供打法说明' : '原作业暂时无法转换。' }}</p>
           </section>
 
-          <section aria-labelledby="rounds-title">
+          <section ref="roundSection" aria-labelledby="rounds-title" tabindex="-1">
             <div class="sec-head">
               <span class="idx">04</span><h2 id="rounds-title">回合动作</h2><span class="en">Round Actions</span>
             </div>
-            <p v-if="roundRows.length" class="round-scroll-hint"><ArrowLeft :size="16" aria-hidden="true" /> 左右滑动查看全部密探槽位与流程 <ArrowRight :size="16" aria-hidden="true" /></p>
-            <div v-if="roundRows.length" class="round-table-wrap" role="region" aria-label="回合动作表，可左右滚动" tabindex="0">
+            <div v-if="isTablet && roundRows.length" class="round-reading-list">
+              <article v-for="row in readingRounds" :key="row.round" class="round-reading-card">
+                <h3>第 {{ row.round }} 回合</h3>
+                <ol v-if="row.actions.length" class="action-list" role="list">
+                  <li v-for="entry in row.actions" :key="entry.index">
+                    <span aria-hidden="true">{{ entry.index }}</span>
+                    <div>
+                      <strong>{{ entry.slot ? entry.slot + '号位 · ' + (operators[entry.slot - 1] || '未指定') : '流程 / 检查' }}</strong>
+                      <p>{{ entry.text }}</p>
+                    </div>
+                  </li>
+                </ol>
+                <p v-if="row.remark" class="round-remark">备注：{{ row.remark }}</p>
+                <p v-if="!row.actions.length && !row.remark" class="cell-empty">—</p>
+              </article>
+            </div>
+            <p v-if="!isTablet && roundRows.length" class="round-scroll-hint"><ArrowLeft :size="16" aria-hidden="true" /> 左右滑动查看全部密探槽位与流程 <ArrowRight :size="16" aria-hidden="true" /></p>
+            <div v-if="!isTablet && roundRows.length" class="round-table-wrap" role="region" aria-label="回合动作表，可左右滚动" tabindex="0">
               <table class="round-table">
                 <thead><tr><th>回合</th><th v-for="slot in 5" :key="slot"><span>{{ slot }}号位</span><strong>{{ operators[slot - 1] || '未指定' }}</strong></th><th><span>其他</span><strong>流程 / 检查</strong></th></tr></thead>
                 <tbody>
@@ -141,7 +157,7 @@
                 </tbody>
               </table>
             </div>
-            <p v-else class="section-note">没有可展示的回合动作。</p>
+            <p v-if="!roundRows.length" class="section-note">没有可展示的回合动作。</p>
           </section>
 
           <section v-if="!isNative" aria-labelledby="legacy-title">
@@ -200,7 +216,8 @@
 
 <script setup>
 import { ArrowLeft, ArrowRight } from '@lucide/vue'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import '../../styles/page-header.css'
 import { useRoute } from 'vue-router'
 import { getWork, getWorkCompatibility } from '@/api/work.js'
@@ -233,6 +250,19 @@ const metadata = computed(function () { return detail.value && detail.value.meta
 const work = computed(function () { return detail.value && detail.value.work ? detail.value.work : null })
 const operators = computed(function () { return normalizeOperators(work.value && work.value.operators) })
 const roundRows = computed(function () { return buildRoundRows(work.value && work.value.rounds) })
+const { isTablet } = useViewportTier()
+const roundSection = ref(null)
+const readingRounds = computed(() => roundRows.value.map(row => ({
+  ...row,
+  actions: [...row.process, ...row.slots.flatMap((entries, index) => entries.map(entry => ({ ...entry, slot: index + 1 })))].sort((a, b) => a.index - b.index),
+})))
+watch(isTablet, () => {
+  const focused = document.activeElement
+  if (!roundSection.value?.contains(focused)) return
+  nextTick(() => {
+    if (!focused.isConnected) roundSection.value?.focus({ preventScroll: true })
+  })
+}, { flush: 'sync' })
 const gameName = computed(function () { return (work.value && work.value.game) || (detail.value && detail.value.level && detail.value.level.game) || '游戏未提供' })
 const stageName = computed(function () { return (detail.value && detail.value.level && detail.value.level.name) || (work.value && work.value.stage_name) || '关卡未提供' })
 const rawSource = computed(function () { return detail.value && detail.value.source && detail.value.source.raw_content != null ? String(detail.value.source.raw_content) : '未提供原始数据' })

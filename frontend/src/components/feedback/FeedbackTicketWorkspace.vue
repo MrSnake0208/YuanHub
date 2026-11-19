@@ -31,7 +31,7 @@
             :class="{ selected: item.id === selectedId }"
             tabindex="0"
             @click="$emit('select', item.id)"
-            @keydown.enter="$emit('select', item.id)"
+            @keydown.enter.self="$emit('select', item.id)"
           >
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ item.title || truncate(item.content, 72) }}</strong>
@@ -54,7 +54,7 @@
             <td v-if="workflow" data-label="负责人"><span class="ticket-operator" :title="item.operatorAssigneeName || '未分配'">{{ item.operatorAssigneeName || '未分配' }}</span></td>
             <td data-label="更新时间"><time :datetime="item.updatedAt || item.createdAt">{{ formatDate(item.updatedAt || item.createdAt) }}</time></td>
             <td class="ticket-operation" data-label="操作">
-              <button type="button" @click.stop="$emit('select', item.id)">
+              <button type="button" class="touch-target" @click.stop="$emit('select', item.id)">
                 <MessageSquareText :size="16" aria-hidden="true" />{{ workflow ? '查看工单' : '查看反馈' }}
               </button>
             </td>
@@ -64,7 +64,7 @@
     </div>
     <p v-if="copyMessage" class="ticket-copy-message" role="status">{{ copyMessage }}</p>
 
-    <footer v-if="items.length" class="ticket-pagination" aria-label="工单分页">
+    <footer v-if="items.length" class="ticket-pagination touch-targets" aria-label="工单分页">
       <span>{{ resultStart }}-{{ resultEnd }} / 共 {{ total }} 条</span>
       <div>
         <button type="button" :disabled="page <= 1 || loading" aria-label="首页" title="首页" @click="$emit('page', 1)">

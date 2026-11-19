@@ -8,7 +8,7 @@
       <button v-for="item in years" :key="item" type="button" :aria-pressed="year === item" @click="year = item">{{ item }}</button>
       <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" @click="year = 'unknown'">日期未知</button>
     </div>
-    <div class="overview-tools" aria-label="卡池明细显示">
+    <div class="overview-tools touch-targets" aria-label="卡池明细显示">
       <div v-if="pools.some(hasRecords)" class="overview-views" role="group" aria-label="主页面明细视图">
         <button type="button" aria-label="进度条视图" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条</button>
         <button type="button" aria-label="密探视图" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探</button>
