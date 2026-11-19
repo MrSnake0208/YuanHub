@@ -2477,7 +2477,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planner-step-actions > p { color: var(--ink-60); }
 .planner-comparison-step > .planning-condition-summary { background: var(--cream); }
 @media (hover: hover) { .roster-move-actions button:hover:not(:disabled), .planner-steps button:hover { background: var(--paper); } }
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .roster-toggle { border: 0; background: transparent; color: var(--theme-strong-text, var(--tea)); cursor: pointer; }
   .roster-toggle-label small { color: var(--ink-60); }
   .roster-preview :deep(.operator-avatar) { border-radius: 8px; }

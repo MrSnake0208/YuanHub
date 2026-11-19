@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 900px) {
+@media (min-width: 768px) {
 .ledger-scope-note { margin: 0 0 12px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 
 .growth-tracker { --planner-page: var(--theme-surface, #f5efe7); --planner-card: var(--theme-surface, #fffaf3); --planner-line: var(--theme-line, #eadfce); --planner-muted: var(--theme-muted, #988575); --planner-deep: var(--theme-text, #6c533e); --planner-gold: var(--theme-accent-text, #b79050); --planner-gain: var(--theme-success-text, #6d9474); --planner-spend: var(--theme-danger-text, #b75c53); min-width: 0; max-width: 100%; margin-top: 18px; padding: 22px; }
@@ -167,7 +167,7 @@ button { touch-action: manipulation; }
 .workspace-return { flex: none; min-height: 44px; }
 .planner-view, .planner-display, .planner-edit, .editor-main, .edit-grid, .ledger-grid { min-width: 0; max-width: 100%; }
 
-@media (min-width: 901px) { .edit-grid { grid-template-columns: 292px minmax(0, 1fr); } }
+.edit-grid { grid-template-columns: 292px minmax(0, 1fr); }
 .planner-sidebar { top: 16px; }
 .edit-roster-item { grid-template-columns: 16px 46px minmax(0, 1fr) 30px; gap: 7px; padding: 8px 7px; }
 .edit-roster-item :deep(.operator-avatar) { width: 46px; height: 46px; }
@@ -401,4 +401,24 @@ button { touch-action: manipulation; }
 .planner-tools-actions { display: none; }
 .planner-tools-actions.is-open { position: absolute; z-index: var(--z-popover); top: 100%; right: 0; display: grid; gap: 4px; width: 180px; max-width: calc(100vw - 48px); padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 18px rgba(var(--theme-shadow-rgb, 70, 50, 32), .12); }
 .planner-tools-actions > button { justify-content: flex-start; min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .planner-workspace { container: growth-planner / inline-size; }
+  .edit-grid.has-roster { grid-template-columns: minmax(0, 1fr); }
+  .planner-sidebar { position: static; }
+  .edit-roster { min-height: 0; max-height: min(420px, 55vh); grid-auto-rows: auto; }
+  .edit-roster-item { grid-template-rows: auto auto; }
+  @container growth-planner (min-width: 900px) {
+    .edit-grid.has-roster { grid-template-columns: 292px minmax(0, 1fr); }
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) and (hover: none),
+  (min-width: 768px) and (max-width: 1199px) and (pointer: coarse) {
+  .edit-roster-item { grid-template-columns: 16px 46px minmax(0, 1fr) 44px; grid-template-rows: auto auto auto; }
+  .roster-remove { width: 44px; height: 44px; grid-column: 4; grid-row: 1; }
+  .roster-move-actions { display: flex; grid-column: 1 / -1; grid-row: 2; }
+  .target-fields { grid-row: 3; }
+  .planner-sidebar .target-fields .progress-values input,
+  .planner-sidebar :deep(.target-star-select .planner-select-trigger) { min-height: 44px; }
 }

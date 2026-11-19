@@ -37,6 +37,14 @@
 .page-operator .operator-tabs.tool-workspace-tabs button[aria-haspopup="dialog"] {
   font-size: 13px;
 }
+@media (min-width: 768px) {
+  .page-operator .operator-tabs.tool-workspace-tabs { flex-wrap: wrap; overflow: visible; }
+  .page-operator .tool-workspace-tabs > .workspace-tab-list {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+}
 
 .roster-header { padding-block: 12px 8px; }
 .roster-header :deep(.compact-tool-row) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'heading account' 'actions actions'; gap: 4px 10px; }

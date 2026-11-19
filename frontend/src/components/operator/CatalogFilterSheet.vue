@@ -1,5 +1,5 @@
 <template>
-  <div class="catalog-mobile-filter">
+  <div ref="triggerGroup" class="catalog-mobile-filter touch-targets">
     <button class="catalog-filter-trigger" type="button" aria-haspopup="dialog" :aria-expanded="open" @click="begin">
       <SlidersHorizontal :size="14" aria-hidden="true" />筛选<span v-if="chips.length"> · {{ chips.length }}</span>
     </button>
@@ -34,12 +34,16 @@
 </template>
 
 <script setup>
-import { computed, ref, useId, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { SlidersHorizontal, X } from '@lucide/vue'
 import OperatorFilterDossier from './OperatorFilterDossier.vue'
 import { DISC_FILTER_OPTIONS } from '../../utils/operatorDiscLoadouts.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useModalViewport } from '@/composables/useModalViewport.js'
+import { useViewportTier } from '@/composables/useViewportTier.js'
+
+const { isPhone } = useViewportTier()
+const triggerGroup = ref(null)
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -112,16 +116,23 @@ watch(() => props.contextKey, () => { open.value = false })
 useModalFocus(open, panel, { preventScroll: true, initialFocus: () => panel.value, onEscape: () => { open.value = false }, blocking: true, preventRestoreScroll: true })
 const { viewportStyle, shortViewport, revealFocusedControl } = useModalViewport(open, scrollBody, panel)
 watch(open, (visible, _, onCleanup) => {
-  if (!visible) return
+  if (!visible) {
+    if (!isPhone.value) nextTick(() => {
+      if (open.value || isPhone.value) return
+      const focused = document.activeElement
+      if (focused === document.body || focused?.matches('main')) {
+        const toolbar = triggerGroup.value?.closest('.operator-mobile-toolbar')
+        const target = toolbar?.querySelector('.dossier-more') || toolbar?.querySelector('.current-filter-search input')
+        target?.focus({ preventScroll: true })
+      }
+    })
+    return
+  }
   const body = document.body, root = document.documentElement
   const bodyOverflow = body.style.overflow, rootOverflow = root.style.overflow
   body.style.overflow = root.style.overflow = 'hidden'
-  const media = window.matchMedia('(min-width: 768px)')
-  const closeOnDesktop = event => { if (event.matches) open.value = false }
-  media.addEventListener('change', closeOnDesktop)
   onCleanup(() => {
     body.style.overflow = bodyOverflow; root.style.overflow = rootOverflow
-    media.removeEventListener('change', closeOnDesktop)
   })
 }, { flush: 'sync' })
 </script>

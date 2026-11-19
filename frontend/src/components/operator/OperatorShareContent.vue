@@ -240,10 +240,12 @@
                       ]"
                       :title="disc.name"
                       :tabindex="disc.description ? 0 : undefined"
+                      :aria-describedby="discTooltip.visible && discTooltip.text === disc.description ? inputId + '-tooltip' : undefined"
                       @mouseenter.stop="showDiscTooltip($event, disc.description)"
                       @mouseleave="hideDiscTooltip"
                       @focus="showDiscTooltip($event, disc.description)"
                       @blur="hideDiscTooltip"
+                      @click.stop="showDiscTooltip($event, disc.description)"
                     >{{ disc.displayName }}</em>
                   </div>
                 </div>
@@ -321,10 +323,9 @@ const starTarget = ref(null)
 const ledgerCardVersionClass = operatorLedgerCardVersionClass()
 const ledgerCardIsV3 = ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V3
 const compactStats = ref(false)
-let compactStatsQuery = null
 
 function syncCompactStats() {
-  compactStats.value = compactStatsQuery.matches
+  compactStats.value = getComputedStyle(contentPanel.value).getPropertyValue('--operator-compact-stats').trim() === '1'
 }
 
 const failedPortraitIds = ref(new Set())
@@ -612,16 +613,15 @@ function monogram(entry) {
 }
 
 onMounted(function () {
-  compactStatsQuery = window.matchMedia('(max-width: 640px)')
   syncCompactStats()
-  compactStatsQuery.addEventListener('change', syncCompactStats)
+  window.addEventListener('resize', syncCompactStats)
   window.addEventListener('scroll', hideDiscTooltip, true)
   window.addEventListener('resize', hideDiscTooltip)
 })
 
 onBeforeUnmount(function () {
   loadSeq += 1
-  compactStatsQuery?.removeEventListener('change', syncCompactStats)
+  window.removeEventListener('resize', syncCompactStats)
   window.removeEventListener('scroll', hideDiscTooltip, true)
   window.removeEventListener('resize', hideDiscTooltip)
 })
@@ -849,6 +849,9 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 <style scoped>
 .operator-share-content { min-width: 0; }
 .operator-share-content:focus { outline: none; }
+@media (max-width: 640px) {
+  .operator-share-content { --operator-compact-stats: 1; }
+}
 .share-star-notice { margin-top: 16px; overflow-wrap: anywhere; }
 .share-star-notice a:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 /* 弹窗可用宽度小于页面，卡片按容器换列。 */
@@ -884,5 +887,10 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 }
 @container box-content (min-width: 480px) {
   .is-embedded .share-entry-row { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .operator-share-content .operator-grid.agent-ledger-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
 }
 </style>

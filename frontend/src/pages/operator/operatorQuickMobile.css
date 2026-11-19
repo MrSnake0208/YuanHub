@@ -328,7 +328,7 @@
   margin-top: 14px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .stepper {
     grid-template-columns: repeat(6, minmax(104px, 1fr));
     scroll-snap-type: x proximity;
@@ -336,6 +336,12 @@
   .step {
     scroll-snap-align: start;
   }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .stepper { grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr)); overflow: visible; }
+  .step .step-txt { white-space: normal; overflow-wrap: anywhere; }
+  .wiz-actions { flex-wrap: wrap; }
 }
 
 @media (max-width: 640px) {

@@ -110,7 +110,7 @@
             <div
               v-if="pageSave.show"
               :role="pageSave.ok ? 'status' : 'alert'"
-              class="page-save"
+              class="page-save touch-targets"
               :class="{ err: !pageSave.ok }"
             >
               <template v-if="pageSave.ok"><Check :size="16" aria-hidden="true" /> {{ pageSave.message }}</template>
@@ -350,7 +350,7 @@
                 没有匹配{{ filterSuffix }}的密探
               </div>
 
-              <div class="wiz-actions">
+              <div class="wiz-actions touch-targets">
                 <button
                   class="btn ghost"
                   type="button"

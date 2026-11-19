@@ -20,7 +20,7 @@
       </div>
     </div>
     <div v-if="!externalActions" class="plan-heading-actions">
-      <button v-if="activePlan" type="button" class="plan-member-add" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
+      <button v-if="activePlan" type="button" class="plan-member-add touch-target" :disabled="disabled" aria-haspopup="dialog" @click="openMemberPicker"><Users :size="16" aria-hidden="true" />添加密探</button>
       <slot name="actions" />
     </div>
   </div>
@@ -58,10 +58,10 @@
 
         <div class="plan-toolbar">
           <label class="plan-search" for="plan-search-input"><Search :size="16" aria-hidden="true" /><span class="sr-only">搜索密探名称、拼音或首字母</span><input id="plan-search-input" ref="searchInput" v-model="search" type="search" autocomplete="off" placeholder="搜索名称 / 拼音" /></label>
-          <button type="button" class="plan-filter-toggle" :class="{ on: filtersOpen }" :aria-expanded="filtersOpen" aria-controls="plan-advanced-filters" @click="filtersOpen = !filtersOpen"><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="advancedFilterCount">{{ advancedFilterCount }}</span></button>
+          <button type="button" class="plan-filter-toggle touch-target" :class="{ on: filtersOpen }" :aria-expanded="filtersOpen" aria-controls="plan-advanced-filters" @click="filtersOpen = !filtersOpen"><SlidersHorizontal :size="15" aria-hidden="true" />筛选<span v-if="advancedFilterCount">{{ advancedFilterCount }}</span></button>
         </div>
 
-        <div class="plan-selection-tabs" role="group" aria-label="按成员与养成状态筛选">
+        <div class="plan-selection-tabs touch-targets" role="group" aria-label="按成员与养成状态筛选">
           <button v-for="option in selectionOptions" :key="option.value" type="button" :class="{ on: selectionFilter === option.value }" :aria-pressed="selectionFilter === option.value" @click="selectionFilter = option.value">{{ option.label }}<span>{{ selectionCount(option.value) }}</span></button>
         </div>
 
@@ -103,7 +103,7 @@
 
       <footer v-if="!confirmingDelete" class="plan-dialog-actions">
         <p aria-live="polite"><strong>{{ addingMembers ? addedMemberCount : validSelectedCount }}</strong> {{ addingMembers ? '位新增' : '位已选' }}<span v-if="!addingMembers && !name.trim()" id="plan-name-hint" class="plan-name-hint">· 请先填写清单名称</span><span v-if="editingFavorites && !addingMembers">· 移出不会取消特别关注</span></p>
-        <div><button type="button" class="plan-cancel" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim() || (addingMembers && !addedMemberCount)">{{ addingMembers ? `添加 ${addedMemberCount} 位密探` : creating ? '创建清单' : '保存更改' }}</button></div>
+        <div class="touch-targets"><button type="button" class="plan-cancel" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim() || (addingMembers && !addedMemberCount)">{{ addingMembers ? `添加 ${addedMemberCount} 位密探` : creating ? '创建清单' : '保存更改' }}</button></div>
       </footer>
     </form>
   </dialog>
@@ -118,6 +118,9 @@ import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, isOperatorOwned, tokens } from '../../utils/operatorFilters.js'
 import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
+import { useViewportTier } from '../../composables/useViewportTier.js'
+
+const { isCompactNav } = useViewportTier()
 const props = defineProps({ externalActions: { type: Boolean, default: false }, plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, currentEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
 const dialog = ref(null)
@@ -246,7 +249,7 @@ async function openEditor(isNew, { selectNewMembers = false } = {}) {
   await nextTick()
   if (!dialog.value || props.accountId !== openingAccountId || props.disabled) return
   dialog.value.showModal()
-  if (selectNewMembers && window.matchMedia?.('(max-width: 700px)').matches) dialogTitle.value?.focus()
+  if (selectNewMembers && (isCompactNav.value || window.matchMedia?.('(hover: none), (pointer: coarse)')?.matches)) dialogTitle.value?.focus()
   else if (favoriteSourceOffered.value) sourceFirstInput.value?.focus()
   else if (selectNewMembers || editingFavorites.value) searchInput.value?.focus()
   else nameInput.value?.focus()

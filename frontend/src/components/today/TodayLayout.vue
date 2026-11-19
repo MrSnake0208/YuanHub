@@ -17,7 +17,7 @@
                 <div ref="mobileActivities" class="today-activities-target"></div>
               </div>
               <div class="today-column today-secondary">
-                <Teleport :to="mobileActivities || 'body'" :disabled="desktop || !mobileActivities">
+                <Teleport :to="mobileActivities || 'body'" :disabled="!isPhone || !mobileActivities">
                   <slot name="activities" />
                 </Teleport>
                 <slot name="notes" />
@@ -31,22 +31,19 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import IslandSidebar from '../IslandSidebar.vue'
+import { useViewportTier } from '../../composables/useViewportTier.js'
 defineProps({ showOverview: Boolean })
 const mobileActivities = ref(null)
-const media = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null
-const desktop = ref(media?.matches ?? false)
-function syncLayout() {
+const { isPhone } = useViewportTier()
+watch(isPhone, () => {
   const focused = document.activeElement
-  desktop.value = media?.matches ?? false
   // 移动同一活动实例，让手机的阅读与 Tab 顺序一致，同时保留筛选和焦点。
   nextTick(() => {
     if (focused?.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true })
   })
-}
-onMounted(() => { media?.addEventListener('change', syncLayout); syncLayout() })
-onBeforeUnmount(() => media?.removeEventListener('change', syncLayout))
+}, { flush: 'sync' })
 </script>
 
 <style scoped>

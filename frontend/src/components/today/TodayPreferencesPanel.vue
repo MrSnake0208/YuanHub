@@ -6,11 +6,11 @@
           <h2 id="today-preferences-title">自定义今日一览</h2>
           <button type="button" aria-label="关闭首页设置" :disabled="preferences.anySaving.value || confirming" @click="close"><X :size="20" aria-hidden="true" /></button>
         </header>
-        <p id="today-preferences-note">选择{{ selected === 'desktop' ? '电脑端' : '手机端' }}首页模块，两端分别保存。</p>
+        <p id="today-preferences-note">选择{{ TODAY_LAYOUT_LABELS[selected] }}的首页模块，两套设置分别保存。</p>
         <div class="preferences-modes" role="group" aria-label="编辑哪一端的首页设置">
           <button v-for="mode in modes" :key="mode.id" type="button" :aria-pressed="selected === mode.id" @click="selected = mode.id">{{ mode.label }}<span v-if="preferences.dirty(mode.id)" class="preferences-draft"> · 未保存</span></button>
         </div>
-        <p v-if="state.loading" role="status">正在读取{{ selected === 'desktop' ? '电脑端' : '手机端' }}设置…</p>
+        <p v-if="state.loading" role="status">正在读取{{ TODAY_LAYOUT_LABELS[selected] }}的设置…</p>
         <div v-if="state.error" class="preferences-error" role="alert">
           <p>{{ state.error }}</p>
           <button type="button" :disabled="state.loading || state.saving" @click="preferences.load(selected)">重试读取</button>
@@ -43,14 +43,14 @@
 import { computed, inject, ref, watch } from 'vue'
 import { matchedRouteKey, onBeforeRouteLeave } from 'vue-router'
 import { BellRing, CalendarDays, ListChecks, NotebookPen, UsersRound, X } from '@lucide/vue'
-import { TODAY_MODULES } from '../../composables/useTodayPreferences.js'
+import { TODAY_LAYOUT_LABELS, TODAY_MODULES } from '../../composables/useTodayPreferences.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { dialog } from '../../utils/dialog.js'
 
 const props = defineProps({ open: Boolean, preferences: { type: Object, required: true } })
 const emit = defineEmits(['update:open'])
 const modules = TODAY_MODULES
-const modes = [{ id: 'desktop', label: '电脑端' }, { id: 'mobile', label: '手机端' }]
+const modes = Object.entries(TODAY_LAYOUT_LABELS).map(([id, label]) => ({ id, label }))
 const icons = { highlights: BellRing, checklist: ListChecks, activities: CalendarDays, training: UsersRound, private_items: NotebookPen }
 const panel = ref(null), selected = ref('desktop'), confirming = ref(false)
 let panelGeneration = 0

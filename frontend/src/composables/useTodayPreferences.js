@@ -1,6 +1,9 @@
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, watch } from 'vue'
 import { auth } from '../store/auth.js'
 import { getTodayPreferences, saveTodayPreferences } from '../api/todayPreferences.js'
+import { useViewportTier } from './useViewportTier.js'
+
+export const TODAY_LAYOUT_LABELS = Object.freeze({ desktop: '电脑和平板', mobile: '手机端' })
 
 export const TODAY_MODULES = Object.freeze([
   { id: 'highlights', label: '今日重点', description: '临期活动、活动待办与私人提醒' },
@@ -24,8 +27,8 @@ function decode(value, mode) {
 export function useTodayPreferences() {
   const owner = computed(() => auth.isLoggedIn ? String(auth.userInfo?.id || '') : '')
   const states = reactive({ desktop: freshState(), mobile: freshState() })
-  const media = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null
-  const layoutMode = ref(media?.matches ? 'desktop' : 'mobile')
+  const { isPhone } = useViewportTier()
+  const layoutMode = computed(() => isPhone.value ? 'mobile' : 'desktop')
   const active = computed(() => states[layoutMode.value])
   const flights = new Map()
   let epoch = 0, alive = true
@@ -85,7 +88,7 @@ export function useTodayPreferences() {
       if (!current(user, ticket)) return false
       if (snapshot.version !== expected + 1 || !same(snapshot.hidden_modules, hidden)) throw new Error('保存结果未确认，请读取最新设置后重试')
       state.snapshot = snapshot; adoptDraft(state, snapshot); state.checkedAt = Date.now()
-      state.notice = '已保存，将同步到同账号的所有' + (mode === 'desktop' ? '电脑端' : '手机端') + '设备'
+      state.notice = `已保存，将同步到同账号的${TODAY_LAYOUT_LABELS[mode]}`
       return true
     } catch (error) {
       if (current(user, ticket)) {
@@ -110,7 +113,6 @@ export function useTodayPreferences() {
     state.notice = ''
   }
   function reset(mode) { states[mode].draft = []; states[mode].notice = '' }
-  function syncLayout() { layoutMode.value = media?.matches ? 'desktop' : 'mobile' }
   function resume() {
     if (document.visibilityState === 'hidden') return
     MODES.forEach(mode => { void load(mode, { ifStale: true }) })
@@ -121,14 +123,12 @@ export function useTodayPreferences() {
     if (owner.value) MODES.forEach(mode => { void load(mode) })
   }, { immediate: true, flush: 'sync' })
   onMounted(() => {
-    media?.addEventListener('change', syncLayout)
     document.addEventListener('visibilitychange', resume)
     window.addEventListener('pageshow', resume)
     window.addEventListener('focus', resume)
   })
   onBeforeUnmount(() => {
     alive = false; epoch++; flights.clear()
-    media?.removeEventListener('change', syncLayout)
     document.removeEventListener('visibilitychange', resume)
     window.removeEventListener('pageshow', resume)
     window.removeEventListener('focus', resume)

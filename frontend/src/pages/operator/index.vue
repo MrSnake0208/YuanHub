@@ -1,5 +1,5 @@
 <template>
-  <div class="page-operator">
+  <div ref="operatorPage" class="page-operator">
     <IslandSidebar />
 
     <main id="main-content" class="operator-main">
@@ -77,7 +77,7 @@
           </ToolTaskPrompt>
           <div
             v-show="!operatorEntryState || catalogEntryExpanded"
-            class="operator-tabs tool-workspace-tabs"
+            class="operator-tabs tool-workspace-tabs touch-targets"
             role="group"
             aria-label="密探工作区"
             data-tour="operator-workspace"
@@ -447,7 +447,7 @@
             <div class="catalog-tools">
               <OperatorFilterDossier
                 ref="catalogFilters"
-                class="operator-mobile-toolbar is-simple-toolbar is-catalog-toolbar"
+                class="operator-mobile-toolbar is-simple-toolbar is-catalog-toolbar touch-targets"
                 compact
                 searchable
                 context-label="密探图鉴"
@@ -819,7 +819,7 @@
 
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
-              class="growth-overview-filters operator-mobile-toolbar"
+              class="growth-overview-filters operator-mobile-toolbar touch-targets"
               compact
               searchable
               v-model:search-query="currentSearch"
@@ -862,7 +862,7 @@
                 <div class="current-sort-controls" role="group" aria-label="当前名册排序">
                   <label class="current-sort-field">
                     <span>排序</span>
-                    <select :value="currentSort.mode" @change="setCurrentSort($event.target.value)">
+                    <select class="touch-target" :value="currentSort.mode" @change="setCurrentSort($event.target.value)">
                       <option v-for="option in currentSortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
                   </label>
@@ -2069,35 +2069,33 @@
                           ><X :size="18" aria-hidden="true" /></button>
                         </div>
                         <div class="ledger-disc-options">
-                          <label
-                            v-for="disc in cardDiscOptions(e)"
-                            :key="discKey(disc)"
-                            class="ledger-disc-option"
-                            :class="discColorClass(disc)"
-                            @click.stop
-                          >
-                            <input
-                              type="checkbox"
-                              :aria-label="discKey(disc)"
-                              :checked="cardDiscSelected(e, index - 1, disc)"
-                              @change.stop="
-                                toggleCardDisc(e, index - 1, disc, $event)
-                              "
-                            />
-                            <span
-                              class="disc-term-label"
-                              tabindex="0"
-                              @mouseenter.stop="
-                                showDiscTooltip($event, discDescription(disc))
-                              "
-                              @mouseleave="hideDiscTooltip"
-                              @focus="
-                                showDiscTooltip($event, discDescription(disc))
-                              "
+                          <div v-for="disc in cardDiscOptions(e)" :key="discKey(disc)" class="disc-option-item">
+                            <label class="ledger-disc-option" :class="discColorClass(disc)" @click.stop>
+                              <input
+                                type="checkbox"
+                                :aria-label="discKey(disc)"
+                                :checked="cardDiscSelected(e, index - 1, disc)"
+                                @change.stop="toggleCardDisc(e, index - 1, disc, $event)"
+                              />
+                              <span
+                                class="disc-term-label"
+                                tabindex="0"
+                                @mouseenter.stop="showDiscTooltip($event, discDescription(disc))"
+                                @mouseleave="hideDiscTooltip"
+                                @focus="showDiscTooltip($event, discDescription(disc))"
+                                @blur="hideDiscTooltip"
+                              >{{ cardDiscAbbreviation(e, discKey(disc)) }}</span>
+                            </label>
+                            <button
+                              v-if="discDescription(disc)"
+                              type="button"
+                              class="disc-description-trigger touch-target"
+                              :aria-label="`${discKey(disc)}说明`"
+                              :aria-describedby="discTooltip.visible && discTooltip.text === discDescription(disc) ? 'disc-floating-tooltip' : undefined"
+                              @click="showDiscTooltip($event, discDescription(disc))"
                               @blur="hideDiscTooltip"
-                              >{{ cardDiscAbbreviation(e, discKey(disc)) }}</span
-                            >
-                          </label>
+                            ><CircleAlert :size="16" aria-hidden="true" /></button>
+                          </div>
                         </div>
                         <div class="ledger-popover-actions ledger-loadout-editor-actions">
                           <span class="ledger-loadout-editor-hint">修改后在卡片保存</span>
@@ -2249,7 +2247,7 @@
           <div v-if="canUseRelationships && !visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" hidden></div>
           <div v-if="canUseRelationships && visitedTabs.has('relationships')" id="operator-panel-relationships" role="tabpanel" aria-labelledby="operator-tab-relationships" tabindex="0"
             v-show="activeTab === 'relationships' && (!operatorEntryState || catalogEntryExpanded)" class="panel" :class="{ 'is-active': activeTab === 'relationships' }">
-            <OperatorFilterDossier compact searchable context-label="信赖与传闻" class="operator-mobile-toolbar is-simple-toolbar relationship-filters"
+            <OperatorFilterDossier compact searchable context-label="信赖与传闻" class="operator-mobile-toolbar is-simple-toolbar relationship-filters touch-targets"
               v-model:search-query="currentSearch" :result-count="filteredRelationships.length" :total-count="ownedCurrentEntries.length"
               :rarity-options="rarityOptions" :prof-options="profOptions" :sub-prof-options="subProfOptions"
               :status-options="workbenchStatusOptions" :status-counts="currentStatusCounts" :tag-options="organizationTagOptions"
@@ -2910,31 +2908,33 @@
                         <p v-if="!editingDiscs.length" class="hint">
                           该密探暂无命盘目录数据，可直接留空保存。
                         </p>
-                        <label
-                          v-for="d in editingDiscs"
-                          :key="discKey(d)"
-                          class="disc-option"
-                          :class="[discColorClass(d), { on: isDiscSelected(d) }]"
-                          @click="recentDiscKey = discKey(d)"
-                        >
-                          <input
-                            type="checkbox"
-                            :checked="isDiscSelected(d)"
-                            @change="toggleDiscSelection(d, $event)"
-                          />
-                          <Check v-if="isDiscSelected(d)" class="disc-selected-check" :size="16" aria-hidden="true" />
-                          <span
-                            class="disc-name disc-term-label"
-                            tabindex="0"
-                            @mouseenter="
-                              !compactStats && showDiscTooltip($event, discDescription(d))
-                            "
-                            @mouseleave="hideDiscTooltip"
-                            @focus="!compactStats && showDiscTooltip($event, discDescription(d))"
-                            @blur="hideDiscTooltip"
-                            >{{ discKey(d) }}</span
-                          >
-                        </label>
+                        <div v-for="d in editingDiscs" :key="discKey(d)" class="disc-option-item">
+                          <label class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]" @click="recentDiscKey = discKey(d)">
+                            <input
+                              type="checkbox"
+                              :checked="isDiscSelected(d)"
+                              @change="toggleDiscSelection(d, $event)"
+                            />
+                            <Check v-if="isDiscSelected(d)" class="disc-selected-check" :size="16" aria-hidden="true" />
+                            <span
+                              class="disc-name disc-term-label"
+                              tabindex="0"
+                              @mouseenter="!compactStats && showDiscTooltip($event, discDescription(d))"
+                              @mouseleave="hideDiscTooltip"
+                              @focus="!compactStats && showDiscTooltip($event, discDescription(d))"
+                              @blur="hideDiscTooltip"
+                            >{{ discKey(d) }}</span>
+                          </label>
+                          <button
+                            v-if="discDescription(d)"
+                            type="button"
+                            class="disc-description-trigger touch-target"
+                            :aria-label="`${discKey(d)}说明`"
+                            :aria-expanded="discExplanationKey === discKey(d)"
+                            @click="discExplanationKey = discExplanationKey === discKey(d) ? '' : discKey(d)"
+                          >说明</button>
+                          <p v-if="discExplanationKey === discKey(d)" class="disc-description-detail disc-option-detail" aria-live="polite">{{ discDescription(d) }}</p>
+                        </div>
                       </div>
                       <p v-if="discDescription(recentDisc)" v-show="compactStats" class="disc-option-detail" aria-live="polite">{{ discKey(recentDisc) }}：{{ discDescription(recentDisc) }}</p>
                     </div>
@@ -3079,6 +3079,7 @@ import { updateAccount } from '../../api/accounts.js'
 import { useModalViewport } from '../../composables/useModalViewport.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
+import { useViewportTier } from "../../composables/useViewportTier.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
   ref,
@@ -3292,11 +3293,12 @@ const ledgerCardIsV3 =
 const ledgerCardIsV2 =
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2 || ledgerCardIsV3;
 const failedPortraitIds = ref(new Set());
+const operatorPage = ref(null);
+const { isCompactNav } = useViewportTier();
 const compactStats = ref(false);
-let compactStatsQuery = null;
 
 function syncCompactStats() {
-  compactStats.value = compactStatsQuery.matches;
+  compactStats.value = getComputedStyle(operatorPage.value).getPropertyValue("--operator-compact-stats").trim() === "1";
 }
 
 const route = useRoute();
@@ -3496,7 +3498,11 @@ const discTooltip = ref({
 const editing = ref(false);
 const editingId = ref("");
 const recentDiscKey = ref("");
-watch(editingId, () => { recentDiscKey.value = ""; });
+const discExplanationKey = ref("");
+watch(editingId, () => {
+  recentDiscKey.value = "";
+  discExplanationKey.value = "";
+});
 const editingOp = ref(null);
 const editorOpeningId = ref("");
 const editorOpenError = ref("");
@@ -6030,9 +6036,15 @@ watch(cardPopoverKey, (key, _previous, onCleanup) => {
   let frame = 0;
   function position() {
     frame = 0;
-    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    if (!isCompactNav.value || compactStats.value) {
+      panel.style.removeProperty("top");
+      panel.style.removeProperty("max-height");
+    }
+    if (!isCompactNav.value) return;
+    const origin = compactStats.value ? loadouts : panel.offsetParent;
+    if (!origin) return;
     const viewport = window.visualViewport;
-    const bounds = loadouts.getBoundingClientRect();
+    const bounds = origin.getBoundingClientRect();
     const anchor = trigger.getBoundingClientRect();
     const header = document.querySelector(".mobile-shell")?.getBoundingClientRect();
     const tabs = document.querySelector(".operator-mobile-tabs")?.getBoundingClientRect();
@@ -6053,8 +6065,14 @@ watch(cardPopoverKey, (key, _previous, onCleanup) => {
     const top = upwards
       ? anchor.top - 7 - Math.min(desiredHeight, maxHeight)
       : anchor.bottom + 7;
-    panel.style.setProperty("--ledger-loadout-popover-top", `${top - bounds.top - loadouts.clientTop}px`);
-    panel.style.setProperty("--ledger-loadout-popover-height", `${maxHeight}px`);
+    const relativeTop = top - bounds.top - origin.clientTop + origin.scrollTop;
+    if (compactStats.value) {
+      panel.style.setProperty("--ledger-loadout-popover-top", `${relativeTop}px`);
+      panel.style.setProperty("--ledger-loadout-popover-height", `${maxHeight}px`);
+    } else {
+      panel.style.top = `${relativeTop}px`;
+      panel.style.maxHeight = `${maxHeight}px`;
+    }
   }
   function schedulePosition() {
     if (!frame) frame = window.requestAnimationFrame(position);
@@ -6070,6 +6088,7 @@ watch(cardPopoverKey, (key, _previous, onCleanup) => {
   window.visualViewport?.addEventListener("resize", schedulePosition);
   window.visualViewport?.addEventListener("scroll", schedulePosition);
   onCleanup(() => {
+    hideDiscTooltip();
     window.cancelAnimationFrame(frame);
     observer.disconnect();
     window.removeEventListener("scroll", schedulePosition, true);
@@ -9563,9 +9582,8 @@ function goLogin() {
 }
 
 onMounted(async function () {
-  compactStatsQuery = window.matchMedia("(max-width: 640px)");
   syncCompactStats();
-  compactStatsQuery.addEventListener("change", syncCompactStats);
+  window.addEventListener("resize", syncCompactStats);
   document.addEventListener("pointerdown", handleCardPopoverOutside);
   window.addEventListener("scroll", hideDiscTooltip, true);
   window.addEventListener("resize", hideDiscTooltip);
@@ -9598,7 +9616,7 @@ onBeforeUnmount(function () {
   starLoadoutSaveSeq += 1;
   cardSubmitTimers.forEach(clearTimeout);
   cardSubmitTimers.clear();
-  compactStatsQuery?.removeEventListener("change", syncCompactStats);
+  window.removeEventListener("resize", syncCompactStats);
   document.removeEventListener("pointerdown", handleCardPopoverOutside);
   window.removeEventListener("scroll", hideDiscTooltip, true);
   window.removeEventListener("resize", hideDiscTooltip);
@@ -12802,6 +12820,24 @@ onBeforeUnmount(function () {
 .disc-options-help { margin: 6px 0 12px; font-size: 12px; color: var(--ink-60); line-height: 1.5; }
 .disc-options-grid > .hint { grid-column: 1 / -1; }
 .disc-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 8px; }
+.disc-option-item { display: contents; }
+.disc-description-trigger, .disc-description-detail { display: none; }
+@media (hover: none), (pointer: coarse) {
+  .disc-option-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; gap: 4px; }
+  .editor-workspace .disc-options-grid .disc-option-item .disc-option { grid-column: 1; min-width: 0; min-height: 44px; }
+  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-disc-popover .ledger-disc-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); }
+  .ledger-disc-popover .disc-option-item .ledger-disc-option { min-height: 44px; }
+  .disc-description-trigger { display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--theme-strong-text, var(--tea)); font: 700 12px var(--font-b); }
+  .disc-description-trigger:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
+  .disc-description-detail { display: block; grid-column: 1 / -1; margin: 4px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .disc-options-grid:has(.disc-description-detail) + .disc-option-detail { display: none; }
+}
+@media (max-width: 640px) {
+  .page-operator { --operator-compact-stats: 1; }
+}
+@media (max-width: 1199px) {
+  .agent-ledger-card--v2 :is(.ledger-disc-popover, .ledger-stone-popover) { overflow-y: auto; }
+}
 .editor-workspace .disc-options-grid .disc-option { min-height: 40px; padding: 8px 10px 8px 30px; border-radius: 8px; }
 .editor-workspace .disc-options-grid .disc-option.on { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
 .editor-workspace .disc-options-grid .disc-option.c-gold.on { color: var(--theme-accent-text, #8a5a1f); background: var(--cream); }
