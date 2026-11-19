@@ -1,16 +1,31 @@
-const origin = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/'
-const models = {
-  'PP-OCRv6_det_small.onnx': 'onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx',
-  'PP-OCRv6_rec_small.onnx': 'onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx',
-  'ch_ppocr_mobile_v2.0_cls_mobile.onnx': 'onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx',
-}
-const redirects = new Map(Object.entries(models).map(([name, path]) => [
-  '/yuanstar-embed/models/' + name, origin + path,
-]))
+const modelBase = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/'
+export const ocrCdnAssets = [
+  {
+    path: 'models/PP-OCRv6_det_small.onnx',
+    url: modelBase + 'PP-OCRv6/det/PP-OCRv6_det_small.onnx',
+    sha256: '090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f',
+  },
+  {
+    path: 'models/PP-OCRv6_rec_small.onnx',
+    url: modelBase + 'PP-OCRv6/rec/PP-OCRv6_rec_small.onnx',
+    sha256: '6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884',
+  },
+  {
+    path: 'models/ch_ppocr_mobile_v2.0_cls_mobile.onnx',
+    url: modelBase + 'PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx',
+    sha256: 'e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c',
+  },
+  {
+    path: 'ort/ort-wasm-simd-threaded.wasm',
+    url: 'https://cdn.npmmirror.com/packages/onnxruntime-web/1.27.0/files/dist/ort-wasm-simd-threaded.wasm',
+    sha256: 'd1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6',
+  },
+]
+export const redirects = new Map(ocrCdnAssets.map(({ path, url }) => ['/yuanstar-embed/' + path, url]))
 // 短缓存减少重复请求，同时给生产撤回 CDN 配置保留明确的生效窗口。
 const cacheControl = 'public, max-age=300'
 
-function redirectModel(req, res, next) {
+function redirectOcrAsset(req, res, next) {
   const target = redirects.get(req.url?.split('?')[0])
   if (!target) return next()
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -25,8 +40,8 @@ function redirectModel(req, res, next) {
 export function ocrModelCdn() {
   return {
     name: 'ocr-model-cdn',
-    configureServer(server) { server.middlewares.use(redirectModel) },
-    configurePreviewServer(server) { server.middlewares.use(redirectModel) },
+    configureServer(server) { server.middlewares.use(redirectOcrAsset) },
+    configurePreviewServer(server) { server.middlewares.use(redirectOcrAsset) },
     generateBundle() {
       this.emitFile({
         type: 'asset',

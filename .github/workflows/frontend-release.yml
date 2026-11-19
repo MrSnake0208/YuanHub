@@ -162,6 +162,12 @@ jobs:
             exit 1
           fi
 
+      - name: Require live OCR redirects before switching to CDN-only assets
+        if: ${{ inputs.phase == 'release' && hashFiles('frontend/scripts/check-ocr-cdn.mjs') != '' }}
+        env:
+          SITE_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
+        run: node scripts/check-ocr-cdn.mjs
+
       - name: Validate deployment SSH key
         env:
           DEPLOY_KEY: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
+import { ocrCdnAssets } from '../scripts/ocr-model-cdn.mjs'
 import { precompress, validateCompression, fixedTargets, sha256, listFiles, worthCompressing } from '../scripts/ocr-compression.mjs'
 
 const worker = 'assets/browser-vision-worker-test.js'
@@ -27,8 +28,8 @@ async function fixture(t) {
 test('gzip generation preserves original bytes, decompresses identically and is byte-stable', async (t) => {
   const { root, expected, originals } = await fixture(t)
   const first = await precompress(root, expected)
-  assert.equal(first.assets.length, 8)
-  assert.equal(first.assets.filter((asset) => asset.gzip).length, 8)
+  assert.equal(first.assets.length, 4)
+  assert.equal(first.assets.filter((asset) => asset.gzip).length, 4)
   const firstOutputs = new Map()
   for (const asset of first.assets) {
     const compressed = await readFile(join(root, asset.gzip.path))
@@ -59,15 +60,20 @@ test('changed originals reject stale validation and overwrite stale gzip', async
   assert.equal(await validateCompression(root, next), true)
 })
 
-test('gzip-only migration removes all legacy .br files without touching original files', async (t) => {
+test('deployment removes CDN assets and legacy .br files while preserving locally served originals', async (t) => {
   const { root, expected, originals } = await fixture(t)
   await writeFile(join(root, 'foo'), 'keep unrelated original')
   await mkdir(join(root, 'legacy'), { recursive: true })
   for (const path of ['foo.br', worker + '.br', 'legacy/removed.br']) await writeFile(join(root, path), 'old compressed artifact')
   assert.equal((await listFiles(root)).filter((path) => path.endsWith('.br')).length, 3)
+  for (const { path } of ocrCdnAssets) {
+    await writeFile(join(root, path), 'copied from public')
+    await writeFile(join(root, path + '.gz'), 'old release')
+  }
   const manifest = await precompress(root, expected)
+  assert.equal((await listFiles(root)).some(path => /\.(wasm|onnx)(\.gz)?$/.test(path)), false)
   assert.equal((await listFiles(root)).some((path) => path.endsWith('.br')), false)
-  assert.equal((await listFiles(root)).filter((path) => path.endsWith('.gz')).length, 8)
+  assert.equal((await listFiles(root)).filter((path) => path.endsWith('.gz')).length, 4)
   for (const path of Object.keys(originals)) assert.deepEqual(await readFile(join(root, path)), originals[path])
   assert.equal(await readFile(join(root, 'foo'), 'utf8'), 'keep unrelated original')
   assert.equal(await validateCompression(root, manifest, expected), true)
@@ -119,8 +125,8 @@ test('corrupt, missing, orphan and provenance-mismatched files fail the deployme
   await writeFile(join(root, 'assets/browser-vision-worker-old.js.gz'), 'stale')
   await assert.rejects(validateCompression(root, manifest, expected), /stale compressed siblings/)
   await assert.rejects(precompress(root + '-missing'), /ENOENT/)
-  await unlink(join(root, 'models/PP-OCRv6_det_small.onnx'))
+  await unlink(join(root, 'models/ppocrv6_chars.txt'))
   await assert.rejects(precompress(root), /Missing OCR asset/)
   const files = await listFiles(root)
-  assert.equal(files.includes('models/PP-OCRv6_det_small.onnx.gz'), false)
+  assert.equal(files.includes('models/ppocrv6_chars.txt.gz'), false)
 })

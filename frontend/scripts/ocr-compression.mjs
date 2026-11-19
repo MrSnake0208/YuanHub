@@ -1,3 +1,4 @@
+import { ocrCdnAssets } from './ocr-model-cdn.mjs'
 import { createHash } from 'node:crypto'
 import { readdir, readFile, lstat, writeFile, unlink, utimes } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -10,10 +11,6 @@ export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex'
 export const fixedTargets = [
   'yuanstar-embed.js',
   'ort/ort-wasm-simd-threaded.mjs',
-  'ort/ort-wasm-simd-threaded.wasm',
-  'models/PP-OCRv6_det_small.onnx',
-  'models/PP-OCRv6_rec_small.onnx',
-  'models/ch_ppocr_mobile_v2.0_cls_mobile.onnx',
   'models/ppocrv6_chars.txt',
 ]
 export const isTarget = (path) => fixedTargets.includes(path) || /^assets\/browser-vision-worker-[\w-]+\.js$/.test(path)
@@ -21,6 +18,7 @@ export const compressionPolicy = Object.freeze({ minRawBytes: 16 * 1024, minSavi
 export const worthCompressing = (rawBytes, compressedBytes) => rawBytes >= compressionPolicy.minRawBytes &&
   rawBytes - compressedBytes >= compressionPolicy.minSavingBytes &&
   (rawBytes - compressedBytes) / rawBytes * 100 >= compressionPolicy.minSavingPercent
+const cdnOutputs = new Set(ocrCdnAssets.flatMap(({ path }) => [path, path + '.gz']))
 const siblingSource = (path) => path.slice(0, -3)
 const isOwnedGzip = (path) => path.endsWith('.gz') && isTarget(siblingSource(path))
 
@@ -48,13 +46,13 @@ function checkSourceHash(path, hash, expectedHashes) {
   if (expectedHashes && expectedHashes[path] !== hash) throw new Error(`Original asset differs from provenance: ${path}`)
 }
 
-// Only deployment derivatives are written. Never run this against public/.
+// CDN originals are removed from the build output. Never run this against public/.
 export async function precompress(root, expectedHashes) {
   if (!(await lstat(root)).isDirectory()) throw new Error('OCR asset root must be a real directory')
   const existingFiles = await listFiles(root)
   for (const path of existingFiles) {
-    // Migration cleanup only; unsupported legacy artifacts must not ship.
-    if (path.endsWith('.br') || (isOwnedGzip(path) && !existingFiles.includes(siblingSource(path)))) await unlink(join(root, path))
+    const orphanGzip = isOwnedGzip(path) && !existingFiles.includes(siblingSource(path))
+    if (cdnOutputs.has(path) || path.endsWith('.br') || orphanGzip) await unlink(join(root, path))
   }
   const paths = await targetFiles(root)
   const sources = []
@@ -119,6 +117,7 @@ export async function validateCompression(root, manifest, expectedHashes) {
     }
   }
   const files = await listFiles(root)
+  if (files.some((path) => cdnOutputs.has(path))) throw new Error('CDN-only OCR assets remain in dist')
   if (files.some((path) => path.endsWith('.br'))) throw new Error('Unsupported legacy compressed artifacts remain')
   const actualOutputs = files.filter(isOwnedGzip)
   if (JSON.stringify(expectedOutputs.sort()) !== JSON.stringify(actualOutputs)) throw new Error('Missing or stale compressed siblings')

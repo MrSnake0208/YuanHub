@@ -1,11 +1,15 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { ocrCdnAssets } from './ocr-model-cdn.mjs'
 import { precompress, validateCompression, transferTotals, listFiles } from './ocr-compression.mjs'
 
 if (process.argv.slice(2).some((arg) => arg !== '--verify')) throw new Error('Usage: node scripts/precompress-ocr.mjs [--verify]')
 const root = resolve('dist/yuanstar-embed')
 const output = resolve('dist/yuanstar-embed-compression.json')
 const expectedHashes = JSON.parse(await readFile(resolve('docs/yuanstar-embed-manifest.json'), 'utf8'))
+for (const { path, sha256 } of ocrCdnAssets) {
+  if (expectedHashes[path] !== sha256) throw new Error(`Update the pinned OCR CDN resource for ${path}`)
+}
 const verifyOnly = process.argv.includes('--verify')
 const manifest = verifyOnly ? JSON.parse(await readFile(output, 'utf8')) : await precompress(root, expectedHashes)
 await validateCompression(root, manifest, expectedHashes)

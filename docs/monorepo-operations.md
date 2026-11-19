@@ -84,6 +84,8 @@ publish 首先要求本地测试记录 SHA 匹配、覆盖所选组件且各命�
 
 后端仍从 release-check 所在 run 下载 JAR，校验内置版本/SHA、传输摘要，再调用原蓝绿部署脚本。服务器不编译；后端 prepare phase 仅安装不切流，release 仍需完整门禁及授权。切流并记录 active slot 后，排空任务通过 Linux 的 nohup/setsid 脱离 SSH，以 flock 协调取消与停止，等待 DRAIN_SECONDS，日志和 PID 写入 state/drain.log、state/drain.pid；停止前再次核对 active slot。下一次 release 在启动新 slot 前取消待排空任务并同步停止旧 slot，prepare 不触碰排空或运行服务；DRAIN_SECONDS=0 仍同步停止，回滚路径不变。前端仍在服务器独立源码副本提前构建，版本通过 YUANHUB_VERSION 注入，release 复用产物；current 原子切换、SW 摘要、历史 releases、旧 slot 失败恢复及 GitHub Release 都保留。前后端版本不绑定。VERSION 只是日常本地构建默认值，不要求版本 PR。
 
+首次发布不含 WASM 和三个 ONNX 模型的前端包时，在 prepare 完成后启用候选的四条 OCR 重定向。publish 会在切换前核对公网入口，操作及回退顺序见[前端部署说明](../frontend/docs/deployment.md#ocr-cdn-首次切换)。
+
 ## 远端切换边界
 
 本地 YAML 不代表线上保护已经修改。实际规则状态、待批准 JSON、应用顺序和官方依据见 [远端切换配置](release-settings/README.md)。先建立仅所有者 PR bypass 的 Ruleset，再去掉叠加的经典 required PR/CI；禁止强推/删除仍保留。两端生产 Environment 已移除 required reviewer，保留 main 分支策略；按实际 workflow ref 选择 branch/tag 策略：当前新版只接受 main-ref dispatch；合法 tag-ref 发布须显式允许对应 tag，不能无条件限制为 main。旧提交中的 tag-triggered 发布入口须单独核验集中门禁与人工确认，不能仅靠新版 YAML 判定安全。
