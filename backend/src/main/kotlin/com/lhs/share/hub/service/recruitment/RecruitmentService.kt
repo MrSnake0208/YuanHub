@@ -107,6 +107,7 @@ class RecruitmentService(
                         count?.fourStarCount ?: 0,
                         averageGoldPulls = goldStatistics[pool.poolId]?.averageGoldPulls,
                         smallPityWinRate = goldStatistics[pool.poolId]?.smallPityWinRate,
+                        topGoldAgents = agentStatistics.topPermanentAgents(pool.poolId),
                     ).withUpStatistics(listOfNotNull(upStatistics[pool.poolId]))
                 },
                 mutation.poolStates(pools),

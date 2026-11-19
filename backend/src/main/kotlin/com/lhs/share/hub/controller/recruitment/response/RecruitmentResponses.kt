@@ -1,5 +1,6 @@
 package com.lhs.share.hub.controller.recruitment.response
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.lhs.share.hub.repository.entity.RecruitmentBatch
 import com.lhs.share.hub.repository.entity.RecruitmentCatalogPool
 import com.lhs.share.hub.repository.entity.RecruitmentEvent
@@ -31,6 +32,7 @@ data class RecruitmentSummary(
     val guaranteedGoldCount: Long? = null,
     val pityHistoryAssumption: String? = null,
     val pityStatus: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val topGoldAgents: List<RecruitmentAgentCount>? = null,
 )
 
 data class RecruitmentAgentCount(val agentId: String, val name: String, val count: Long)

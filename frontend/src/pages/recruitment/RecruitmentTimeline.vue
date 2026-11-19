@@ -42,10 +42,10 @@
               </span>
             </span>
             <span class="banner-content">
-              <span class="banner-summary" :class="{ 'has-many-up': coverAgents(pool).length >= 3 }">
-                <span v-if="coverAgents(pool).length" class="pool-up-row" aria-hidden="true">
-                  <span class="pool-up-label">UP</span>
-                  <span v-for="agent in coverAgents(pool)" :key="agent.id" class="pool-up-item" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">
+              <span class="banner-summary" :class="{ 'has-many-up': summaryAgents(pool).length >= 3 }">
+                <span v-if="summaryAgents(pool).length" class="pool-up-row" aria-hidden="true">
+                  <span class="pool-up-label">{{ regularsByPool.has(pool.pool_id) ? '常客' : 'UP' }}</span>
+                  <span v-for="agent in summaryAgents(pool)" :key="agent.id" class="pool-up-item" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">
                     <OperatorAvatar class="pool-up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
                     <span class="pool-up-name">{{ agent.name }}</span>
                     <span class="pool-up-count">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
@@ -155,11 +155,29 @@ const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_
   })
 ])))
 const coverAgents = pool => avatarResults.value.get(pool.pool_id) || []
+const regularsByPool = computed(() => {
+  const regulars = new Map()
+  for (const pool of props.pools) {
+    const counts = props.poolSummaries[pool.pool_id]?.top_gold_agents
+    if (!counts?.length || !permanent(pool)) continue
+    regulars.set(pool.pool_id, counts.map(({ agent_id, name, count }) => {
+      const agent = props.agents.find(item => item.id === agent_id)
+      return { id: agent_id, name, count, rarity: 5,
+        avatar: agent ? agent.avatar || agent.avatar_url || resolveOperatorPortrait(agent_id, agent) : '' }
+    }))
+  }
+  return regulars
+})
+const summaryAgents = pool => regularsByPool.value.get(pool.pool_id) || coverAgents(pool)
 function cardLabel(pool) {
-  const agents = coverAgents(pool)
+  const agents = summaryAgents(pool)
   const { enabled, name, pool_type } = details(pool)
-  return (enabled ? '记一笔 ' : '查看记录 ') + (name || '未知卡池') + '，' + recruitmentPoolType(pool_type).label + '，' + status(pool) + (agents.length
-    ? '；本池 UP 获得次数：' + agents.map(agent => agent.name + (agent.count == null ? '，统计未知' : '，获得 ' + agent.count + ' 次')).join('；') : '')
+  const label = (enabled ? '记一笔 ' : '查看记录 ') + (name || '未知卡池') + '，' + recruitmentPoolType(pool_type).label + '，' + status(pool)
+  if (!agents.length) return label
+  if (regularsByPool.value.has(pool.pool_id)) {
+    return label + '；本池常客：' + agents.map(agent => `${agent.name} ${agent.count} 次`).join('，')
+  }
+  return label + '；本池 UP 获得次数：' + agents.map(agent => agent.name + (agent.count == null ? '，统计未知' : '，获得 ' + agent.count + ' 次')).join('；')
 }
 const activeUpSlots = pool => (details(pool).up_agents || []).filter(slot => slot.active !== false)
 const coverPortraits = pool => coverAgents(pool)
