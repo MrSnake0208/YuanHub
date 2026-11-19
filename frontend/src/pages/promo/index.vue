@@ -350,7 +350,7 @@ h1 em, h2 em { color: var(--theme-accent-text, var(--accent)); }
 .footer-inner strong span { color: var(--theme-accent-text, var(--yellow)); }
 .footer-note { color: rgba(255, 248, 236, .68); }
 
-@media (max-width: 850px) {
+@media (max-width: 767px) {
   .ecosystem-icon { border-radius: 8px; }
   .reuse-destinations { border-top: 1px dashed var(--promo-line); }
 }

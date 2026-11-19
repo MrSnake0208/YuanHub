@@ -3,6 +3,10 @@
   .developer-directory nav { max-height: 60dvh; overflow-y: auto; border-top: 1px solid var(--line); }
   .developer-reading { padding: 18px; }
   .document-table-scroll table { min-width: 480px; }
+  .developer-layout.has-inline-directory { grid-template-columns: 210px minmax(0, 1fr); gap: 24px; }
+  .has-inline-directory .developer-directory { position: sticky; top: var(--mobile-shell-follow-top, 72px); max-height: calc(100dvh - var(--mobile-shell-follow-top, 72px) - 20px); overflow-y: auto; }
+  .has-inline-directory .developer-directory > summary { display: none; }
+  .has-inline-directory .developer-directory nav { max-height: none; overflow-y: visible; border-top: 0; }
 }
 @media (max-width: 767px) {
   .developer-layout { padding-inline: 16px; gap: 12px; }

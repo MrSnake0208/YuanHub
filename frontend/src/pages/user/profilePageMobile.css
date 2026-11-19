@@ -700,13 +700,15 @@
   }
 }
 
-@media (max-width: 820px) {
+.connection-card { container: connection-card / inline-size; }
+@container connection-card (max-width: 710px) {
   .app-pass {
     grid-template-columns: 76px minmax(0, 1fr);
   }
   .app-seal {
     width: 72px;
     height: 72px;
+    border-radius: 22px 22px 22px 9px;
   }
   .app-seal img {
     width: 60px;
@@ -723,9 +725,8 @@
     grid-template-columns: 46px minmax(0, 1fr);
   }
   .connection-actions {
-  grid-column: 2;
-  min-width: 0;
     grid-column: 2;
+    min-width: 0;
     justify-content: flex-start;
   }
 }
@@ -857,6 +858,7 @@
   .app-capabilities svg { flex: none; }
   .app-capabilities .no-read { background: transparent; }
   .app-connect { width: 100%; }
+  .paste-steps { grid-template-columns: 1fr; }
   .connect-panel { padding: 16px 12px; border-radius: 14px; }
   .connections-section { margin-top: 20px; }
   .subsection-head { gap: 8px; }

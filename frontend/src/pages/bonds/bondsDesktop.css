@@ -24,10 +24,6 @@
   .bonds-codex .has-compact-state .bond-condition-status { display: none; }
   .bond-condition[aria-pressed=true] .bond-mobile-state { color: var(--theme-success-text, #34633c); }
 }
-@media (min-width: 768px) and (max-width: 1100px) {
-  .bonds-codex .compact-tool-header .compact-tool-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; }
-}
-
 @media (min-width: 768px) {
   .bond-find-choices legend { float: left; width: 46px; padding: 8px 0; margin: 0; }
   .bond-find-choices .bond-choice-options { margin-left: 56px; }

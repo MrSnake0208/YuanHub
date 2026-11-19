@@ -75,7 +75,7 @@
 
           <div v-if="loading" class="state" role="status">正在加载…</div>
           <div v-else-if="error" class="state error" role="alert">{{ error }}</div>
-          <div v-else class="access-table-wrap">
+          <div v-else class="access-table-wrap" role="region" aria-label="反馈授权列表" tabindex="0">
             <table class="access-table">
               <thead>
                 <tr><th>用户</th><th>反馈岗位</th><th>运营板块</th><th>程序板块</th><th>通知 / 兼容授权</th><th>最近更新</th><th class="ops">操作</th></tr>
@@ -88,7 +88,7 @@
                   <td><span v-for="area in grant.developerAreas" :key="'d-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.developerAreas.length" class="muted">未配置</span></td>
                   <td><small>接收：{{ grant.receiveAreas.map(areaLabel).join('、') || '无' }}</small><small>管理：{{ grant.manageAreas.map(areaLabel).join('、') || '无' }}</small></td>
                   <td><strong>{{ grant.updatedBy || '未知用户' }}</strong><small>{{ formatDate(grant.updatedAt) }}</small></td>
-                  <td class="ops">
+                  <td class="ops touch-targets">
                     <button class="icon-command" type="button" title="编辑授权" :aria-label="'编辑 ' + grant.userName" @click="openEdit(grant)"><Pencil :size="16" /></button>
                     <button class="icon-command danger" type="button" title="删除全部专区授权" :aria-label="'删除 ' + grant.userName + ' 的全部专区授权'" @click="removeGrant(grant)"><Trash2 :size="16" /></button>
                   </td>
@@ -648,6 +648,10 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .legacy-permissions summary { color: var(--ink); cursor: pointer }
 .access-table th,.access-table td { border-bottom: 1px solid var(--line) }
 .access-table th { background: var(--tea); color: var(--on-strong) }
+.access-table .ops { position: sticky; inset-inline-end: 0; z-index: 1; }
+.access-table td.ops { background: var(--feedback-panel); }
+.access-table .ops button + button { margin-inline-start: 4px; }
+.access-table-wrap:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .access-table tbody tr:hover { background: var(--feedback-panel-hover) }
 .access-table td small { color: var(--ink-60) }
 .access-table td code { color: var(--ink-35) }

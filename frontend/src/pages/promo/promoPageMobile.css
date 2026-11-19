@@ -134,14 +134,23 @@ h1 em, h2 em { font-style: normal; }
 .footer-inner strong { font: 900 28px/1.25 var(--font-s); letter-spacing: .03em; }
 .footer-note { font-size: 11px; letter-spacing: .12em; }
 
-@media (max-width: 1050px) {
+@media (min-width: 768px) {
   .promo-wrap { padding-right: 34px; padding-left: 34px; }
-  .flow-lane { grid-template-columns: minmax(150px, 1fr) 44px minmax(170px, 1fr) 44px minmax(250px, 1.45fr); gap: 8px; }
+  .promo-main .promo-wrap { container: promo-content / inline-size; }
+  .flow-lane { grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) 44px minmax(0, 1.45fr); gap: 8px; }
   .builders-layout { gap: 45px; }
-  .reuse-stage { grid-template-columns: minmax(120px, .7fr) 38px minmax(240px, 1.2fr) 38px minmax(260px, 1.45fr); gap: 9px; padding: 20px; }
+  .reuse-stage { grid-template-columns: minmax(0, .7fr) 38px minmax(0, 1.2fr) 38px minmax(0, 1.45fr); gap: 9px; padding: 20px; }
+  .flow-node, .reuse-stage > * { min-width: 0; overflow-wrap: anywhere; }
+  @container promo-content (max-width: 800px) {
+    .flow-lane, .reuse-stage { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+    .hub-node { align-self: center; width: min(100%, 218px); min-height: 218px; }
+    .flow-connector, .stage-connector { min-height: 64px; flex-direction: row; justify-content: center; }
+    .flow-connector i, .stage-connector i { width: 64px; transform: rotate(90deg); }
+    .reuse-destinations { border-top: 1px dashed var(--promo-line); }
+  }
 }
 
-@media (max-width: 850px) {
+@media (max-width: 767px) {
   .promo-header-inner { min-height: 67px; }
   .promo-header-note { gap: 6px; font-size: 9px; letter-spacing: .05em; }
   .header-code { display: none; }

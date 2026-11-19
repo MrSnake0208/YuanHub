@@ -1,4 +1,4 @@
-@media (max-width: 1023px) {
+@media (max-width: 1199px) {
   .catalog-admin .panel { padding: 16px; margin-top: 16px; }
   .catalog-admin .catalog-workbar { display: grid; gap: 12px; }
   .catalog-admin .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -11,7 +11,14 @@
   .catalog-admin .editor-save { display: inline-block; }
   .catalog-admin .maintenance-body { display: grid; gap: 12px; }
 }
-@media (min-width: 600px) and (max-width: 1023px) {
+@media (min-width: 600px) and (max-width: 1199px) {
   .catalog-admin .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .catalog-admin .fields .full { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .catalog-admin { container: achievement-catalog / inline-size; }
+  @container achievement-catalog (min-width: 1000px) {
+    .catalog-admin .catalog-workspace.editing { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+    .catalog-admin .catalog-workspace.editing .entry-list { display: block; }
+  }
 }

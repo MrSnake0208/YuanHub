@@ -5,16 +5,13 @@
 .notifications-main { padding-bottom: 0 }
 .notifications-workspace { padding-top: 0; }
 .page-header-description a { font-weight: 800; }
-.notification-toolbar { position: static; margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 0; }
+.notification-toolbar { position: static; margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 12px; padding: 0; }
 .notification-actions { display: grid; gap: 6px; justify-items: end; }
 .notification-actions button { white-space: nowrap; }
-.notification-toolbar .sort-lb, .notification-toolbar .action-error { grid-column: 1 / -1; }
+.notification-toolbar .action-error { grid-column: 1 / -1; }
 .notification-toolbar .tabs { display: flex; width: fit-content; }
 .notification-toolbar .tabs button { min-height: 44px; white-space: nowrap; }
-@media (min-width: 700px) {
-  .notification-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .notification-toolbar .sort-lb { grid-column: auto; }
-}
+.notification-toolbar .sort-lb { grid-column: auto; }
 .retention-note { margin-top: 12px; font-size: 12px; line-height: 1.6 }
 .ntf-open-link, .empty-action { min-height: 44px; display: inline-flex; align-items: center; font: 800 13px var(--font-b) }
 .empty-action { padding: 0 16px }

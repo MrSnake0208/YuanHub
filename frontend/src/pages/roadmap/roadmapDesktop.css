@@ -34,7 +34,10 @@
 @media (min-width: 1200px) {
   .roadmap-main { margin-left: 292px; }
 }
-@media (min-width: 768px) and (max-width: 1200px) {
-  .roadmap-feature-inline { flex-direction: column; gap: 4px; }
-  .roadmap-feature-inline h4 { text-align: center; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .roadmap-calculation { container: roadmap-calculation / inline-size; }
+  @container roadmap-calculation (max-width: 780px) {
+    .roadmap-feature-inline { flex-direction: column; gap: 4px; }
+    .roadmap-feature-inline h4 { text-align: center; }
+  }
 }

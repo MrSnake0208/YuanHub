@@ -13,7 +13,8 @@
 .notification-toolbar .sort-lb, .notification-toolbar .action-error { grid-column: 1 / -1; }
 .notification-toolbar .tabs { display: flex; width: fit-content; }
 .notification-toolbar .tabs button { min-height: 44px; white-space: nowrap; }
-@media (min-width: 700px) {
+.notifications-workspace > .wrap { container: notification-toolbar / inline-size; }
+@container notification-toolbar (min-width: 668px) {
   .notification-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
   .notification-toolbar .sort-lb { grid-column: auto; }
 }

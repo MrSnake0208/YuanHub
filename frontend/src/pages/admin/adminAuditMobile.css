@@ -17,6 +17,14 @@
 .audit-table th { font-size: 12px }
 .audit-table code,.audit-table time { display: block; max-width: 210px; font-family: var(--font-d); font-size: 11px; overflow-wrap: anywhere }
 .audit-table time { font-size: 12px }
+@media (min-width: 768px) {
+  .audit-table { min-width: 0; table-layout: fixed; }
+  .audit-table th, .audit-table td { padding: 10px 6px; overflow-wrap: anywhere; }
+  .audit-table th:first-child { width: 17%; }
+  .audit-table th:nth-child(2) { width: 14%; }
+  .audit-table th:nth-child(3), .audit-table th:nth-child(4) { width: 12%; }
+  .audit-table .action-tag { max-width: 100%; white-space: normal; }
+}
 .action-tag { display: inline-flex; padding: 3px 8px; font-size: 11px; font-weight: 800 }
 .snapshot-line { display: block; max-width: 250px; margin-bottom: 4px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere }
 .empty-row { text-align: center !important }

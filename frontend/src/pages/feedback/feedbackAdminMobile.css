@@ -50,6 +50,13 @@
 .area-grid label { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; white-space: nowrap }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px }
 .command { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; font-weight: 700 }
+@media (min-width: 768px) {
+  .access-table { min-width: 0; table-layout: fixed; }
+  .access-table th, .access-table td { padding: 10px 6px; overflow-wrap: anywhere; }
+  .access-table th:first-child { width: 18%; }
+  .access-table .ops { width: 112px; }
+  .access-table .area-tag { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}
 @media (max-width: 720px) {
   .access-toolbar { flex-wrap: wrap }
   .access-search { width: 100%; min-width: 0; flex: 1 1 100% }

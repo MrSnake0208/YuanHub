@@ -48,7 +48,7 @@
             @close="accountManagerView = ''"
           />
 
-          <div class="connection-card" :class="{ 'is-adding': addingConnection }" v-reveal>
+          <div class="connection-card touch-targets" :class="{ 'is-adding': addingConnection }" v-reveal>
             <button v-if="addingConnection" class="mobile-connection-back text-btn" type="button" :disabled="!!creatingMode" @click="showConnectionManager">
               <ArrowLeft :size="16" aria-hidden="true" />返回连接管理
             </button>
@@ -1748,12 +1748,6 @@ onBeforeUnmount(function () {
 }
 .permission-state.error {
   color: var(--theme-danger-text, var(--rouge));
-}
-
-@media (max-width: 820px) {
-  .app-seal {
-    border-radius: 22px 22px 22px 9px;
-  }
 }
 
 @media (max-width: 640px) {

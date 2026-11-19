@@ -621,18 +621,25 @@
   margin-top: -38px;
 }
 
-@media (max-width: 980px) {
+.beta-intro-section > .wrap { container: beta-entry / inline-size; }
+.beta-hero-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 42px;
+}
+.beta-intro { max-width: 760px; }
+.invite-card { width: min(100%, 620px); }
+@container beta-entry (min-width: 917px) {
   .beta-hero-grid {
-    grid-template-columns: 1fr;
-    gap: 42px;
+    grid-template-columns: minmax(0, 1.06fr) minmax(350px, .72fr);
+    gap: clamp(44px, 7vw, 88px);
   }
 
   .beta-intro {
-    max-width: 760px;
+    max-width: none;
   }
 
   .invite-card {
-    width: min(100%, 620px);
+    width: 100%;
   }
 }
 

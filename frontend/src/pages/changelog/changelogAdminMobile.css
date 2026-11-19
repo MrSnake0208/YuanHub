@@ -5,7 +5,7 @@
 @media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
 @media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }
 .page-changelog-admin { min-height: 100vh; min-height: 100dvh }
-.workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; padding-block: 12px 60px }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding-block: 12px 60px }
 .entry-list { min-width: 0; align-self: start; overflow: hidden }
 .list-head,.panel-head,.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px }
 .list-head strong { font-family: var(--font-s); font-size: 18px }
@@ -46,6 +46,17 @@
 .button.compact { min-height: 44px; padding-inline: 12px }
 .pager button,.list-state button { min-height: 44px }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; clip: rect(0,0,0,0); overflow: hidden; white-space: nowrap }
-@media (max-width: 900px) { .workspace { grid-template-columns: 1fr } .entry-list { max-height: 330px; overflow-y: auto } }
+.entry-list { max-height: 330px; overflow-y: auto }
+@media (min-width: 768px) {
+  .page-changelog-admin > main { container: changelog-workspace / inline-size }
+  @container changelog-workspace (min-width: 901px) {
+    .workspace { grid-template-columns: 280px minmax(0, 1fr) }
+    .entry-list { max-height: none; overflow: hidden }
+  }
+  .editor-panel { container: changelog-editor / inline-size }
+  @container changelog-editor (max-width: 440px) {
+    .fields { grid-template-columns: minmax(0, 1fr) }
+  }
+}
 @media (max-width: 640px) { .workspace { padding-block: 12px 36px; gap: 14px } .fields { grid-template-columns: 1fr } .actions .button { flex: 1 1 44% } }
 }

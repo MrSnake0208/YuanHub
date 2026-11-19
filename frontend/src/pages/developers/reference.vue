@@ -8,9 +8,9 @@
         <p class="page-header-description">{{ current?.summary || '请从目录选择已公开的文档。' }}</p>
         <p v-if="current" class="page-header-context">{{ current.version }} · {{ current.status }} · 核对 {{ current.updated }}</p>
       </div></header>
-      <div class="wrap developer-layout">
-        <details ref="directory" class="developer-directory" :open="wideLayout">
-          <summary>文档目录 · {{ current?.title || '选择文档' }}</summary>
+      <div ref="layout" class="wrap developer-layout" :class="{ 'has-inline-directory': wideLayout }">
+        <details ref="directory" class="developer-directory" :open="wideLayout || directoryOpen" @toggle="rememberDirectory">
+          <summary class="touch-target">文档目录 · {{ current?.title || '选择文档' }}</summary>
           <nav aria-label="开发者文档目录">
             <router-link class="developer-tutorial-link" to="/developers/use-cases/operator-read">第三方应用接入：用户密探养成</router-link>
             <label class="developer-search">查找文档
@@ -63,7 +63,8 @@
 
 <script setup>
 import '@/styles/page-header.css'
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import { useRoute } from 'vue-router'
 import { Download } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -76,10 +77,23 @@ const props = defineProps({ documentId: { type: String, default: 'home' } })
 const route = useRoute()
 const current = computed(() => developerDocuments.find(doc => doc.id === props.documentId && doc.path === route.path.replace(/\/$/, '')))
 const directory = ref(null)
-const directoryMedia = window.matchMedia('(min-width: 1200px)')
-const wideLayout = ref(directoryMedia.matches)
-const updateDirectoryLayout = event => { wideLayout.value = event.matches }
-directoryMedia.addEventListener('change', updateDirectoryLayout)
+const layout = ref(null), layoutWidth = ref(0), directoryOpen = ref(false)
+const { isPhone, isDesktop } = useViewportTier()
+const wideLayout = computed(() => !isPhone.value && (layoutWidth.value ? layoutWidth.value >= 780 : isDesktop.value))
+let layoutObserver
+onMounted(() => {
+  layoutObserver = new ResizeObserver(([entry]) => { layoutWidth.value = entry.contentRect.width })
+  layoutObserver.observe(layout.value)
+})
+function rememberDirectory(event) {
+  if (!wideLayout.value) directoryOpen.value = event.currentTarget.open
+}
+watch(wideLayout, wide => {
+  const focused = document.activeElement
+  if (!directory.value?.contains(focused)) return
+  if (!wide && !focused.matches('summary')) directoryOpen.value = true
+  if (wide && focused.matches('summary')) nextTick(() => directory.value?.querySelector('input')?.focus({ preventScroll: true }))
+}, { flush: 'sync' })
 const query = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -101,7 +115,11 @@ const groups = computed(() => {
 })
 const fileName = file => file.split('/').pop()
 const downloadLabel = file => (file.includes('.schema.') ? 'Schema · ' : file.includes('invalid') ? '反例 · ' : '示例 · ') + fileName(file)
-function closeDirectory() { if (directory.value && !wideLayout.value) directory.value.open = false }
+function closeDirectory() {
+  if (wideLayout.value) return
+  directoryOpen.value = false
+  if (directory.value) directory.value.open = false
+}
 
 async function scrollToChapter() {
   await nextTick()
@@ -149,7 +167,7 @@ async function loadDocument() {
 }
 watch(current, () => { closeDirectory(); query.value = ''; loadDocument() }, { immediate: true })
 watch(() => route.hash, scrollToChapter)
-onBeforeUnmount(() => { requestId += 1; controller?.abort(); directoryMedia.removeEventListener('change', updateDirectoryLayout) })
+onBeforeUnmount(() => { requestId += 1; controller?.abort(); layoutObserver?.disconnect() })
 </script>
 
 <style src="./developers.css"></style>

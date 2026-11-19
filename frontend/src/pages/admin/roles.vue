@@ -38,7 +38,7 @@
                 <td><span class="status-tag" :class="{ inactive: !user.activated }">{{ user.activated ? '已激活' : '未激活' }}</span></td>
                 <td><strong>{{ user.grantedBy || '无' }}</strong><time>{{ formatTime(user.grantedAt) }}</time></td>
                 <td><strong>{{ user.updatedBy || '无' }}</strong><time>{{ formatTime(user.updatedAt) }}</time></td>
-                <td class="ops"><button class="icon-command" type="button" title="编辑角色" @click="openEdit(user)"><Pencil :size="16" aria-hidden="true" /></button></td>
+                <td class="ops"><button class="icon-command touch-target" type="button" title="编辑角色" :aria-label="'编辑 ' + (user.userName || user.userId) + ' 的角色'" @click="openEdit(user)"><Pencil :size="16" aria-hidden="true" /></button></td>
               </tr>
               <tr v-if="filteredUsers.length === 0"><td colspan="6" class="empty-row">没有匹配的角色绑定</td></tr>
             </tbody>

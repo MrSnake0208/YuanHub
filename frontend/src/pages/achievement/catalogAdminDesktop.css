@@ -1,4 +1,4 @@
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   .catalog-admin { --catalog-bar-offset: 144px; }
   .catalog-admin .panel { padding: 20px; margin-top: 20px; }
   .catalog-admin .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }

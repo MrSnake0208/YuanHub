@@ -125,6 +125,7 @@ import { useUnsavedChanges } from '../utils/useUnsavedChanges.js'
 import { auth } from '../store/auth.js'
 import { dialog } from '../utils/dialog.js'
 import { useModalFocus } from '../composables/useModalFocus.js'
+import { useViewportTier } from '../composables/useViewportTier.js'
 
 const props = defineProps({
   presentation: { type: String, default: 'page' },
@@ -142,7 +143,9 @@ const mode = ref(props.presentation === 'dialog' ? props.initialView : ''), targ
 const busy = ref(false), localError = ref(''), localSuccess = ref(''), copyMessage = ref(''), copyFailed = ref(false)
 const panel = ref(null), nameInput = ref(null), copyButton = ref(null), createTrigger = ref(null)
 const panelId = 'account-manager-' + useId()
-const desktop = ref(false), viewportStyle = ref({}), menuPosition = ref({})
+const { isPhone } = useViewportTier()
+const desktop = computed(() => !isPhone.value)
+const viewportStyle = ref({}), menuPosition = ref({})
 const panelTitle = computed(() => ({ list: '游戏账号', create: '新建游戏账号', edit: '编辑游戏账号', id: '账号编号', more: '账号操作' }[mode.value]))
 const editChanged = computed(() => target.value && (newName.value !== target.value.name || newGame.value !== resolvedGame(target.value)))
 const dirty = computed(() => mode.value === 'create' ? !!newName.value.trim() || newGame.value !== DEFAULT_ACCOUNT_GAME : mode.value === 'edit' && !!editChanged.value)
@@ -287,7 +290,6 @@ function moveFocus(event) {
   options[event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length]?.focus()
 }
 function place() {
-  desktop.value = window.matchMedia('(min-width: 768px)').matches
   const viewport = window.visualViewport, height = viewport?.height || window.innerHeight, top = viewport?.offsetTop || 0
   viewportStyle.value = { top: top + 'px', height: height + 'px', bottom: 'auto' }
   if (props.presentation === 'dialog' || mode.value !== 'more' || !moreTrigger) return
