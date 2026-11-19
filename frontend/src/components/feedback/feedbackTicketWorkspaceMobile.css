@@ -39,8 +39,8 @@
 .ticket-pagination button { width: 44px; height: 44px; display: grid; place-items: center; }
 .ticket-pagination strong { min-width: 70px; font-weight: 700; text-align: center; }
 .ticket-detail-mask {
-  --feedback-panel-deep: var(--on-surface);
-  --feedback-panel: var(--on-strong);
+  --feedback-panel-deep: var(--surface);
+  --feedback-panel: var(--cream);
   --feedback-panel-hover: var(--theme-wash-strong, rgba(239, 210, 142, .16));
   --feedback-line: var(--line);
   --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));

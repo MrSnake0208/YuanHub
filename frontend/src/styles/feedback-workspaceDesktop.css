@@ -1,7 +1,7 @@
 @media not all and (max-width: 1080px) {.feedback-page {
   --feedback-bg: var(--paper);
-  --feedback-panel-deep: var(--on-strong);
-  --feedback-panel: var(--on-surface);
+  --feedback-panel-deep: var(--cream);
+  --feedback-panel: var(--surface);
   --feedback-panel-hover: var(--theme-wash-strong, rgba(239, 210, 142, .16));
   --feedback-line: var(--line);
   --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));
@@ -100,8 +100,8 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
 
 .feedback-modal,
 .access-modal {
-  --feedback-panel-deep: var(--on-strong);
-  --feedback-panel: var(--on-surface);
+  --feedback-panel-deep: var(--cream);
+  --feedback-panel: var(--surface);
   --feedback-line: var(--line);
   --feedback-line-strong: var(--theme-line, rgba(156, 122, 77, .46));
   --feedback-text: var(--ink);
