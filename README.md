@@ -10,6 +10,8 @@ scripts/         test.sh 测试入口、工作树环境与发布工具
 docs/            development/testing.md、跨端文档与迁移说明
 ```
 
+开发者可通过[反馈与 MaaYuan 诊断 MCP](tools/yuanhub-feedback-mcp/README.md) 配置 AI 客户端，按个人权限查询工单、诊断事件和截图。
+
 1. 可直接在 main 开发；需要隔离时，在 Orca 添加本仓库根目录，选择经确认的集成基线，创建一个功能 Worktree 并启动 Codex。它会自动通过 Git 定位当前工作树和分支，并读取根及两端 AGENTS.md。
 2. 安装前端依赖：`cd frontend && npm ci`（Node 22）；后端使用 `backend/gradlew` 和 JDK 21，不引入 JS Workspace 或额外构建框架。
 3. 在当前 Worktree 根运行 `./dev.sh --print-env` 查看私有地址；`./dev.sh frontend` 启动前端，`./dev.sh backend` 或 `./dev.sh` 复用本机 MongoDB/Redis，再启动服务；只有显式 `./dev.sh containers` 才准备私有容器。
