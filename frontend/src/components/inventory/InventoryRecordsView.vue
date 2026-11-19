@@ -1,15 +1,17 @@
 <template>
   <div ref="host" class="inventory-records-view" role="group" aria-label="库存操作历史列表" tabindex="-1" :aria-busy="disabled">
-    <component :is="isMobile ? InventoryRecordsMobileView : InventoryRecordsDesktopView"
+    <component :is="layout === 'cards' ? InventoryRecordsMobileView : InventoryRecordsDesktopView"
+      :class="{ 'is-compact-row': layout === 'compact' }"
       v-bind="viewProps" :expanded-ids="expandedIds" @toggle-details="toggleDetails" @delete-record="requestDelete" />
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InventoryRecordsDesktopView from './InventoryRecordsDesktopView.vue'
 import InventoryRecordsMobileView from './InventoryRecordsMobileView.vue'
 import { recordsViewProps } from './inventoryRecordsView.js'
+import { useViewportTier } from '../../composables/useViewportTier.js'
 
 const props = defineProps({
   ...recordsViewProps,
@@ -19,8 +21,15 @@ const props = defineProps({
 const host = ref(null)
 const expandedIds = ref([])
 const viewProps = computed(() => Object.fromEntries(Object.keys(recordsViewProps).map(key => [key, props[key]])))
-const media = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 640px)') : null
-const isMobile = ref(media?.matches ?? false)
+const { isPhone, isTablet } = useViewportTier()
+const availableWidth = ref(Infinity)
+const layout = computed(() => {
+  if (isPhone.value && availableWidth.value <= 608) return 'cards'
+  if (isPhone.value || (isTablet.value && availableWidth.value <= 836)) return 'compact'
+  return 'wide'
+})
+let resizeObserver
+let measured = false
 let layoutSeq = 0
 let disposed = false
 
@@ -42,11 +51,11 @@ function focusRecord(id, action) {
 
 function revealFocus(target) {
   const rect = target?.getBoundingClientRect()
-  if (rect && (rect.top < 0 || rect.bottom > window.innerHeight)) target.scrollIntoView({ block: 'center', behavior: 'instant' })
+  const top = Math.max(0, document.querySelector('.mobile-shell')?.getBoundingClientRect().bottom || 0)
+  if (rect && (rect.top < top || rect.bottom > window.innerHeight)) target.scrollIntoView({ block: 'center', behavior: 'instant' })
 }
 
 async function syncLayout() {
-  if (!media || isMobile.value === media.matches) return
   const seq = ++layoutSeq
   const active = document.activeElement
   const focused = host.value?.contains(active) ? active.closest('[data-record-id]') : null
@@ -56,7 +65,6 @@ async function syncLayout() {
     return rect.bottom > 0 && rect.top < window.innerHeight
   })
   const top = anchor?.getBoundingClientRect().top
-  isMobile.value = media.matches
   await nextTick()
   if (disposed || seq !== layoutSeq) return
   // 只恢复被替换列表中的焦点；不抢正在打开的共享确认框或编辑器焦点。
@@ -78,13 +86,20 @@ async function requestDelete(record) {
   if (active === document.body || active?.matches('main') || host.value?.contains(active)) revealFocus(focusRecord(record.record_id, 'delete'))
 }
 
+watch(layout, () => { if (measured) void syncLayout() }, { flush: 'sync' })
 onMounted(() => {
-  media?.addEventListener('change', syncLayout)
-  syncLayout()
+  const measure = width => {
+    if (width <= 0) return
+    availableWidth.value = width
+    measured = true
+  }
+  measure(host.value.clientWidth)
+  resizeObserver = new ResizeObserver(([entry]) => measure(entry.contentRect.width))
+  resizeObserver.observe(host.value)
 })
 onBeforeUnmount(() => {
   disposed = true
-  media?.removeEventListener('change', syncLayout)
+  resizeObserver?.disconnect()
 })
 </script>
 

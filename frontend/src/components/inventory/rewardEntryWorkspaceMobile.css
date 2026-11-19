@@ -258,11 +258,9 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .result { margin: 20px; flex-wrap: wrap; }
   .confirm-bar { scroll-margin-bottom: calc(20px + env(safe-area-inset-bottom)); }
 }
-@media (max-width: 900px), (pointer: coarse) {
-  .clear-search, .rarity-options button, .type-options button, .quantity-control button, .remove-reward, .record-info, .paste-toggle, .text-button { min-width: 44px; min-height: 44px; }
-  .prof-filter select { min-height: 44px; }
-  .quantity-control input { height: 44px; }
-}
+.clear-search, .rarity-options button, .type-options button, .quantity-control button, .remove-reward, .record-info, .paste-toggle, .text-button { min-width: 44px; min-height: 44px; }
+.prof-filter select { min-height: 44px; }
+.quantity-control input { height: 44px; }
 @media (max-width: 480px) {
   .workspace-actions { gap: 8px; }
   .entry-button { flex: 1 1 138px; padding: 10px 12px; font-size: 11px; }

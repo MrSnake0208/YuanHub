@@ -1,4 +1,4 @@
-/* 桌面报告布局与密度；760px 内容断点对应现有图表展示。 */
+/* 宽版报表外观和月历行密度。趋势刻度由绘图区宽度决定。 */
 @media not all and (max-width: 760px) {
 .resource-report { margin-top: 16px; border-radius: 8px; overflow: hidden }
 .report-heading { padding: 16px 20px 13px }
@@ -64,22 +64,20 @@ h3 { font-size: 15px }
 .point-tooltip dd { margin: 0 }
 .point-note { margin: 8px 0 0; font-size: 11px }
 .report-state, .point-detail { padding: 14px; margin: 12px 20px 0; font-size: 12px }
-@media (min-width: 761px) {
-  .calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.05) }
-  .calendar-content::after { content: ''; display: block; height: 16px; background: var(--cream) }
-  .weekdays { background: var(--cream) }
-  .weekdays span { padding: 11px 8px; font-family: var(--font-s); font-weight: 900 }
-  .weekdays span:first-child, .weekdays span:last-child { color: var(--theme-accent-text, var(--accent-strong)) }
-  .calendar { overflow: hidden; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: var(--surface) }
-  .day { position: relative; height: 108px; min-height: 108px; grid-template-rows: 18px repeat(3, 18px); gap: 3px; padding: 12px 14px }
-  .day:nth-child(7n) { border-right: 0 }
-  .day:nth-last-child(-n + 7) { border-bottom: 0 }
-  .day.blank { background: color-mix(in srgb, var(--cream) 50%, var(--surface)) }
-  .day[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); box-shadow: none }
-  .day:not(:disabled):hover { box-shadow: none }
-  .day:focus-visible { outline-offset: -3px }
-}
-@media (min-width: 761px) and (hover: hover) {
+.calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(var(--theme-shadow-rgb, 73, 59, 44), 0.05) }
+.calendar-content::after { content: ''; display: block; height: 16px; background: var(--cream) }
+.weekdays { background: var(--cream) }
+.weekdays span { padding: 11px 8px; font-family: var(--font-s); font-weight: 900 }
+.weekdays span:first-child, .weekdays span:last-child { color: var(--theme-accent-text, var(--accent-strong)) }
+.calendar { overflow: hidden; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: var(--surface) }
+.day { position: relative; height: 108px; min-height: 108px; grid-template-rows: 18px repeat(3, 18px); gap: 3px; padding: 12px 14px }
+.day:nth-child(7n) { border-right: 0 }
+.day:nth-last-child(-n + 7) { border-bottom: 0 }
+.day.blank { background: color-mix(in srgb, var(--cream) 50%, var(--surface)) }
+.day[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); box-shadow: none }
+.day:not(:disabled):hover { box-shadow: none }
+.day:focus-visible { outline-offset: -3px }
+@media (hover: hover) {
   .day:not(:disabled):hover { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)) }
   .day[aria-pressed=true]:hover { background: color-mix(in srgb, var(--yellow) 22%, var(--surface)) }
 }

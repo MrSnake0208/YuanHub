@@ -268,7 +268,7 @@
                   <summary aria-label="库存编辑说明"><CircleHelp :size="16" aria-hidden="true" /></summary>
                   <p>{{ entityType === 'agent' ? '心纸背包顺序按绝密、机密、隐密排列，同阶级按编号从新到旧。' : '道具默认按游戏背包内顺序。' }}顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
                 </details>
-                <div v-if="editingStock" class="manifest-edit-actions">
+                <div v-if="editingStock" class="manifest-edit-actions touch-targets">
                   <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
                     <input
                       v-model="stockBaselineConfirmed"
@@ -316,7 +316,7 @@
             >
               <button
                 type="button"
-                class="agent-controls-toggle"
+                class="agent-controls-toggle touch-target"
                 :aria-expanded="!agentControlsCollapsed"
                 :aria-label="agentControlsToggleLabel"
                 :data-tooltip="agentControlsToggleLabel"
@@ -352,10 +352,11 @@
                 />
               </label>
               <details
+                ref="agentFilterPanel"
                 class="agent-filter-panel"
                 @toggle="positionAgentFilterMenu"
               >
-                <summary>
+                <summary class="touch-target">
                   <ListFilter :size="15" aria-hidden="true" />筛选<span
                     v-if="agentFacetCount"
                     >{{ agentFacetCount }}</span
@@ -636,7 +637,7 @@
                     >{{ e.rarity }}星 · {{ e.prof }} · {{ e.subProf }}</span
                   >
                   <div
-                    class="stock-stepper"
+                    class="stock-stepper touch-targets"
                     :class="{ invalid: !isValidStockCount(stockDraft[e.id]) }"
                   >
                     <button
@@ -1742,14 +1743,18 @@ const activeTab = usePersistedTab(
   ["manifest", "acquired", "records"],
 );
 const manifestPanel = ref(null);
+let manifestResizeObserver;
 const entityType = ref("item");
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const agentFavoriteMode = ref("priority");
-const agentControlsCollapsed = ref(
-  typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 640px)").matches,
-);
+const agentFilterPanel = ref(null);
+const agentControlsDefaultCollapsed = ref(false);
+const agentControlsChoice = ref(null);
+const agentControlsCollapsed = computed({
+  get: () => agentControlsChoice.value ?? agentControlsDefaultCollapsed.value,
+  set: value => { agentControlsChoice.value = value; },
+});
 const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
@@ -1760,7 +1765,7 @@ const agentCatalogError = ref("");
 const agentGroupBy = ref("none");
 const agentSort = ref("latest");
 const agentSortDirection = ref("desc");
-const agentControlsCollapsedBeforeEdit = ref(null);
+const agentControlsCollapsedBeforeEdit = ref(undefined);
 const AGENT_SORT_OPTIONS = [
   { id: "latest", label: "实装顺序" },
   { id: "backpack", label: "背包顺序" },
@@ -2609,28 +2614,33 @@ function chooseAgentMenuValue(event, type, value) {
   if (menu) menu.open = false;
 }
 
-function positionAgentFilterMenu(event) {
-  const panel = event.currentTarget;
-  if (!panel.open) return;
-  nextTick(function () {
-    const menu = panel.querySelector(".agent-filter-menu");
-    if (!menu) return;
-    if (window.innerWidth > 640) {
-      menu.style.left = "";
-      menu.style.right = "";
-      menu.style.transform = "";
-      return;
-    }
-    const panelRect = panel.getBoundingClientRect();
-    const menuWidth = Math.min(320, window.innerWidth - 32);
-    const left = Math.max(
-      16,
-      Math.min(window.innerWidth - menuWidth - 16, panelRect.right - menuWidth),
-    );
-    menu.style.left = left - panelRect.left + "px";
-    menu.style.right = "auto";
-    menu.style.transform = "none";
-  });
+function positionAgentFilterMenu() {
+  const panel = agentFilterPanel.value;
+  if (!panel?.open || !panel.getClientRects().length) return;
+  const menu = panel.querySelector(".agent-filter-menu");
+  const viewport = window.visualViewport;
+  const viewportWidth = viewport?.width ?? document.documentElement.clientWidth;
+  const leftEdge = (viewport?.offsetLeft ?? 0) + 16;
+  const rightEdge = leftEdge + viewportWidth - 32;
+  menu.style.maxWidth = `${Math.max(0, viewportWidth - 32)}px`;
+  menu.style.transform = "";
+  const bounds = menu.getBoundingClientRect();
+  const anchor = agentControlsDefaultCollapsed.value ? panel.getBoundingClientRect().right - bounds.width : bounds.left;
+  const left = Math.min(Math.max(leftEdge, anchor), rightEdge - bounds.width);
+  const shift = left - bounds.left;
+  if (shift) menu.style.transform = `translateX(${shift}px)`;
+}
+
+function syncAgentControlsLayout() {
+  const width = manifestPanel.value?.clientWidth;
+  if (!width) return;
+  const collapsed = width <= 608;
+  const filter = agentFilterPanel.value;
+  if (collapsed && !agentControlsCollapsed.value && (filter?.open || filter?.closest(".agent-controls")?.contains(document.activeElement))) {
+    agentControlsChoice.value = false;
+  }
+  agentControlsDefaultCollapsed.value = collapsed;
+  nextTick(positionAgentFilterMenu);
 }
 
 function resetAgentFilters() {
@@ -3150,15 +3160,11 @@ function startSubsectionStockEdit(subcategory) {
 
 function scrollToStockEditor() {
   nextTick(function () {
-    if (!manifestPanel.value) return;
-    const offset = window.matchMedia("(max-width: 640px)").matches ? 64 : 16;
-    const top =
-      window.scrollY + manifestPanel.value.getBoundingClientRect().top - offset;
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)")
       .matches
       ? "auto"
       : "smooth";
-    window.scrollTo({ top: Math.max(0, top), behavior: behavior });
+    manifestPanel.value?.scrollIntoView({ block: "start", behavior });
   });
 }
 
@@ -3203,7 +3209,7 @@ function startStockEdit(scopeEntries, scopeName) {
   stockSaveNotice.value = "";
   showArchive.value = false;
   if (entityType.value === "agent") {
-    agentControlsCollapsedBeforeEdit.value = agentControlsCollapsed.value;
+    agentControlsCollapsedBeforeEdit.value = agentControlsChoice.value;
     agentControlsCollapsed.value = true;
   }
   editingStock.value = true;
@@ -3211,9 +3217,9 @@ function startStockEdit(scopeEntries, scopeName) {
 }
 
 function restoreAgentControlsAfterEdit() {
-  if (agentControlsCollapsedBeforeEdit.value == null) return;
-  agentControlsCollapsed.value = agentControlsCollapsedBeforeEdit.value;
-  agentControlsCollapsedBeforeEdit.value = null;
+  if (agentControlsCollapsedBeforeEdit.value === undefined) return;
+  agentControlsChoice.value = agentControlsCollapsedBeforeEdit.value;
+  agentControlsCollapsedBeforeEdit.value = undefined;
 }
 
 async function requestCancelStockEdit() {
@@ -4003,6 +4009,11 @@ async function loadCatalog() {
 }
 
 onMounted(async function () {
+  syncAgentControlsLayout();
+  manifestResizeObserver = new ResizeObserver(syncAgentControlsLayout);
+  manifestResizeObserver.observe(manifestPanel.value);
+  window.visualViewport?.addEventListener("resize", positionAgentFilterMenu);
+  window.visualViewport?.addEventListener("scroll", positionAgentFilterMenu);
   await Promise.all([
     loadCatalog(),
     loadAgentCatalog(),
@@ -4066,6 +4077,9 @@ watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilte
 }, { flush: "sync" });
 
 onBeforeUnmount(function () {
+  manifestResizeObserver?.disconnect();
+  window.visualViewport?.removeEventListener("resize", positionAgentFilterMenu);
+  window.visualViewport?.removeEventListener("scroll", positionAgentFilterMenu);
   inventoryDisposed = true;
   inventoryContextSeq += 1;
   recordsBusyId.value = "";
@@ -5616,3 +5630,25 @@ onBeforeUnmount(function () {
 </style>
 <style scoped src="./inventoryWorkspaceDesktop.css"></style>
 <style scoped src="./inventoryWorkspaceMobile.css"></style>
+<style scoped>
+#inventory-panel-manifest { scroll-margin-block-start: 16px; }
+@media (max-width: 1199px) {
+  #inventory-panel-manifest { scroll-margin-block-start: max(16px, var(--mobile-shell-follow-top, 16px)); }
+}
+@media (hover: none), (pointer: coarse) {
+  .stock-editor:not(.is-agent-editor) .stock-stepper,
+  .is-agent-editor .stock-edit-slot .stock-stepper {
+    height: auto;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    grid-template-rows: minmax(44px, auto);
+  }
+}
+@media (min-width: 1200px) and (hover: none), (min-width: 1200px) and (pointer: coarse) {
+  .is-agent-editor .stock-edit-slot {
+    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-areas: "media name" "media meta" "stepper stepper";
+    grid-template-rows: auto auto minmax(44px, auto);
+  }
+  .is-agent-editor .stock-edit-slot .stock-stepper { width: min(100%, 132px); }
+}
+</style>

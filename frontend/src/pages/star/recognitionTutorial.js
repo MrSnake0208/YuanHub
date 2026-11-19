@@ -88,7 +88,7 @@ export function tutorialElementRect(element, viewport) {
   return bottom > top && right > left ? { left, top, right, bottom, width: right - left, height: bottom - top } : null
 }
 
-export function tutorialCardPosition(target, size, viewport, relatedRects = []) {
+export function tutorialCardPosition(target, size, viewport, relatedRects = [], fitAroundTargets = false) {
   const margin = 12, gap = 16
   const left = viewport.left + margin, top = viewport.top + margin
   const right = viewport.left + viewport.width - margin, bottom = viewport.top + viewport.height - margin
@@ -111,6 +111,36 @@ export function tutorialCardPosition(target, size, viewport, relatedRects = []) 
       .filter(candidate => candidate >= top && candidate + height <= bottom && !overlapsRelated(candidate))
       .sort((a, b) => Math.abs(a - y) - Math.abs(b - y))
     y = candidates[0] ?? y
+  }
+  if (fitAroundTargets) {
+    const maxWidth = Math.max(0, right - left)
+    const targets = [target, ...relatedRects].filter(Boolean)
+    const columns = [x, left, right - width]
+    for (const rect of targets) columns.push(clamp(rect.left - gap - width, left, right - width), clamp(rect.right + gap, left, right - width))
+    let best = null
+    for (const column of new Set(columns)) {
+      const barriers = targets.filter(rect => column < rect.right && column + width > rect.left)
+        .sort((a, b) => a.top - b.top)
+      let start = top
+      for (const barrier of [...barriers, null]) {
+        const end = barrier ? Math.min(bottom, barrier.top - gap) : bottom
+        const usableHeight = Math.min(height, end - start)
+        if (usableHeight >= Math.min(height, 148)) {
+          const cardTop = clamp(y, start, end - usableHeight)
+          const distance = Math.abs(column - x) + Math.abs(cardTop - y)
+          if (!best || usableHeight > best.maxHeight || (usableHeight === best.maxHeight && distance < best.distance)) {
+            best = { left: column, top: cardTop, maxHeight: usableHeight, distance }
+          }
+        }
+        if (barrier) start = Math.max(start, barrier.bottom + gap)
+      }
+    }
+    if (best) {
+      const { left: cardLeft, top: cardTop, maxHeight } = best
+      const side = !target ? 'fallback' : cardLeft >= target.right ? 'right' : cardLeft + width <= target.left ? 'left' : cardTop >= target.bottom ? 'bottom' : 'top'
+      return { left: cardLeft, top: cardTop, placement: side, maxHeight, maxWidth }
+    }
+    return { left: x, top: y, placement, maxHeight: height, maxWidth }
   }
   return { left: x, top: y, placement }
 }

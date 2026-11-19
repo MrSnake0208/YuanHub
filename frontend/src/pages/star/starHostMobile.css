@@ -138,6 +138,9 @@
 .star-main > section { padding-top: 0; }
 .star-workbench { margin-top: 8px; }
 .star-workbench-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+@media (min-width: 768px) {
+  .star-workbench-header, .star-workbench-actions { flex-wrap: wrap; }
+}
 @media (max-width: 640px) {
   .star-workbench-header { gap: 6px; }
   .star-workbench-header .star-tabs.tool-workspace-tabs { flex-wrap: nowrap; }

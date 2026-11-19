@@ -1,5 +1,5 @@
 <template>
-  <div class="inventory-records-workspace">
+  <div class="inventory-records-workspace touch-targets">
     <section class="records-overview" aria-labelledby="records-overview-title">
       <div class="records-overview-copy">
         <span class="records-kicker">库存追踪 · 操作历史</span>
@@ -24,7 +24,7 @@
         >删除记录后会重新计算库存，可在本页撤销。</span
       >
       <span class="sp"></span>
-      <select class="records-filter-select" aria-label="筛选历史记录对象" :value="recordsEntityType" :disabled="recordsLoading"
+      <select class="records-filter-select touch-target" aria-label="筛选历史记录对象" :value="recordsEntityType" :disabled="recordsLoading"
         @change="$emit('filter', $event.target.value)">
         <option value="all">全部类型</option><option value="item">道具</option><option value="agent">心纸</option>
       </select>

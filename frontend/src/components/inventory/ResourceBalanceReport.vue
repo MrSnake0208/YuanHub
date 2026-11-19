@@ -1,5 +1,5 @@
 <template>
-  <section class="resource-report" aria-labelledby="resource-report-title">
+  <section ref="reportElement" class="resource-report" aria-labelledby="resource-report-title">
     <header class="report-heading">
       <div class="report-heading-row">
         <div class="report-heading-copy"><span>周期获得账簿</span><h2 id="resource-report-title">抽卡资源收支</h2></div>
@@ -57,7 +57,7 @@
       </div></div>
       <div v-if="selected" class="day-detail" aria-live="polite"><h3>{{ selected }} · 记录详情</h3><p v-for="r in resources" :key="r.id"><b>{{ r.name }}</b><span v-if="pointFor(r, selected)">库存 {{ number(pointFor(r, selected).stock) }} · {{ pointFor(r, selected).state }} · {{ changeFor(r, selected) }}<template v-if="pointFor(r, selected).previousDay">（较 {{ pointFor(r, selected).previousDay }}）</template><template v-if="pointFor(r, selected).components"> · {{ componentText(pointFor(r, selected).components) }}</template><template v-for="note in pointFor(r, selected).notes" :key="note"> · {{ note }}</template></span><span v-else-if="calendarValue(r, selected).stock !== null">最近已知库存 {{ number(calendarValue(r, selected).stock) }}（{{ calendarPointFor(r, selected).state }}，记录于 {{ calendarValue(r, selected).recordedDay }}，当日未更新）</span><span v-else>本期截至当日无库存基准，无法计算</span></p></div>
       <div class="calendar-state-legend" aria-label="库存记录状态说明"><span>基准：首次已知库存，变化暂不可比较</span><span>0：与上次记录相比零变化</span><span>未更新：沿用旧记录，不代表零变化</span><span>无基准 / —：无法计算</span></div>
-      <p class="explanation">月历展示记录日相对上次记录的库存变化，可能跨越多日；行内库存是该记录日的已知值。空白不代表零变化，点击日期查看基准、来源和精确数值。<template v-if="compactChart">白金币、符传、天机符传依次使用蓝、紫棕、金色标签；大额变化以万或亿取近似值。</template></p>
+      <p class="explanation">月历展示记录日相对上次记录的库存变化，可能跨越多日；行内库存是该记录日的已知值。空白不代表零变化，点击日期查看基准、来源和精确数值。<template v-if="compactCalendar">白金币、符传、天机符传依次使用蓝、紫棕、金色标签；大额变化以万或亿取近似值。</template></p>
     </template>
     <section v-else-if="!reportError && (!includeMailbox || !mailLoading)" class="trend" aria-labelledby="resource-trend-title">
       <h3 id="resource-trend-title">库存趋势</h3><p class="explanation">各资源以周期内的起始库存为基准，比较相对涨跌；纵向位置不代表相同数量。起始库存为零时以 1 为基准。选择数据点可查看实际库存。</p>
@@ -93,7 +93,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { buildResourceBalance, resourceRangeDates, resourceDayNumber, resourceCalendarValue } from '../../data/inventory/resourceBalance.js'
 const props = defineProps({ records: { type: Array, default: () => [] }, from: { type: String, required: true }, to: { type: String, required: true }, error: { type: String, default: '' }, truncated: Boolean, loadMailbox: Function, contextKey: { type: String, default: '' } })
 const bases = [{ id: 'actual', label: '实际白金币' }, { id: 'zhuyu', label: '含茱萸等价值' }, { id: 'mailbox', label: '含邮箱' }, { id: 'all', label: '含茱萸与邮箱' }]
@@ -133,12 +133,12 @@ function componentText(parts) {
 }
 const views = [{ id: 'calendar', label: '月历' }, { id: 'trend', label: '趋势' }]
 const view = ref('calendar')
-const compactChart = ref(false)
+const reportElement = ref(null)
+const reportWidth = ref(0)
+const compactCalendar = computed(() => reportWidth.value > 0 && reportWidth.value <= 728)
+const plotWidth = ref(0)
+const compactChart = computed(() => plotWidth.value > 0 && plotWidth.value <= 688)
 const chartWidth = computed(() => compactChart.value ? 450 : 900)
-let chartMedia
-function updateChartSize() { compactChart.value = chartMedia.matches }
-onMounted(() => { chartMedia = window.matchMedia('(max-width: 760px)'); updateChartSize(); chartMedia.addEventListener('change', updateChartSize) })
-onBeforeUnmount(() => chartMedia?.removeEventListener('change', updateChartSize))
 const selected = ref('')
 const hoverPoint = ref(null)
 const pinnedPoint = ref(null)
@@ -146,7 +146,7 @@ const activePoint = computed(() => hoverPoint.value || pinnedPoint.value)
 const plotElement = ref(null)
 const tooltipElement = ref(null)
 const tooltipPosition = ref({ visibility: 'hidden' })
-let tooltipObserver
+let layoutObserver
 function positionTooltip() {
   const plot = plotElement.value
   const tooltip = tooltipElement.value
@@ -175,15 +175,22 @@ function positionTooltip() {
   }
   tooltipPosition.value = { left: left + 'px', top: top + 'px' }
 }
-watch([plotElement, tooltipElement], () => {
-  tooltipObserver?.disconnect()
-  tooltipObserver = new ResizeObserver(positionTooltip)
-  if (plotElement.value) tooltipObserver.observe(plotElement.value)
-  if (tooltipElement.value) tooltipObserver.observe(tooltipElement.value)
-  positionTooltip()
+watch([reportElement, plotElement, tooltipElement], ([report, plot, tooltip]) => {
+  layoutObserver?.disconnect()
+  if (!report) return
+  const measure = () => {
+    if (report.offsetWidth) reportWidth.value = report.offsetWidth
+    if (plot?.clientWidth) plotWidth.value = plot.clientWidth
+    positionTooltip()
+  }
+  layoutObserver = new ResizeObserver(measure)
+  layoutObserver.observe(report)
+  if (plot) layoutObserver.observe(plot)
+  if (tooltip) layoutObserver.observe(tooltip)
+  measure()
 }, { flush: 'post' })
 watch([activePoint, chartWidth], positionTooltip, { flush: 'post' })
-onBeforeUnmount(() => tooltipObserver?.disconnect())
+onBeforeUnmount(() => layoutObserver?.disconnect())
 watch(() => [props.from, props.to, props.records, props.error, props.truncated], () => { selected.value = ''; hoverPoint.value = null; pinnedPoint.value = null })
 watch([view, basis], () => { hoverPoint.value = null; pinnedPoint.value = null })
 const dates = computed(() => resourceRangeDates(props.from, props.to))
@@ -223,7 +230,7 @@ function resourceSlot(id) { return resources.value.findIndex(resource => resourc
 function calendarText(r, day) {
   const { delta } = calendarValue(r, day)
   if (delta === null) return '基准'
-  if (!compactChart.value || Math.abs(delta) < 10000) return signed(delta)
+  if (!compactCalendar.value || Math.abs(delta) < 10000) return signed(delta)
   const unit = Math.abs(delta) >= 1e8 ? 1e8 : 10000
   return (delta > 0 ? '+' : '−') + Number((Math.abs(delta) / unit).toFixed(1)) + (unit === 1e8 ? '亿' : '万')
 }

@@ -158,7 +158,7 @@
 }
 .agent-controls {
   position: sticky;
-  top: 16px;
+  top: max(16px, var(--mobile-shell-follow-top, 16px));
   z-index: var(--z-sticky-low);
   display: flex;
   align-items: flex-end;
@@ -1787,7 +1787,6 @@
     width: 100%;
   }
   .agent-controls {
-    top: 72px;
     display: grid;
     grid-template-columns:
       minmax(0, 1fr) 44px minmax(0, 1fr) minmax(82px, auto)

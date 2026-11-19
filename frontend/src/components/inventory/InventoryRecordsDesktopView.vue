@@ -26,7 +26,7 @@
         </div>
         <div class="record-meta">
           <time class="record-time" :datetime="r.effective_at || undefined"><Clock3 :size="13" aria-hidden="true" />{{ fmtTime(r.effective_at) || '时间未提供' }}</time>
-          <div class="record-actions">
+          <div class="record-actions touch-targets">
             <button type="button" class="record-detail-toggle" data-record-action="details" :aria-expanded="expandedIds.includes(r.record_id)" :aria-controls="'inventory-record-details-' + encodeURIComponent(r.record_id)" @click="$emit('toggle-details', r.record_id, !expandedIds.includes(r.record_id))"><Eye :size="15" aria-hidden="true" />详情</button>
             <button v-if="r.record_type !== 'consumption_delta' && !r.transaction_id?.startsWith('reset_')" type="button" class="record-del" data-record-action="delete" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="15" aria-hidden="true" />删除</button>
           </div>
@@ -79,11 +79,9 @@ h2 svg { color: var(--theme-accent-text, var(--accent)); }
 .record-detail-toggle:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .record-details { grid-column: 2 / -1; min-width: 0; padding: 8px 10px; border-radius: 8px; background: var(--cream); }
 .record-id { font-size: 11px; }
-@media (max-width: 900px) {
-  .records-desktop-panel { padding: 14px; }
-  .record { grid-template-columns: 36px minmax(0, 1fr); gap: 8px 10px; padding-block: 14px; }
-  .record-marker { width: 36px; height: 36px; }
-  .record-meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-  .record-details { grid-column: 2; }
-}
+.is-compact-row { padding: 14px; }
+.is-compact-row .record { grid-template-columns: 36px minmax(0, 1fr); gap: 8px 10px; padding-block: 14px; }
+.is-compact-row .record-marker { width: 36px; height: 36px; }
+.is-compact-row .record-meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.is-compact-row .record-details { grid-column: 2; }
 </style>

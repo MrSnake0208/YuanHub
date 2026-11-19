@@ -25,7 +25,7 @@
             <template v-else>{{ entrySummary(r.entries, r.record_type) || '暂无项目明细' }}</template>
           </span>
           <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
-          <div class="record-actions">
+          <div class="record-actions touch-targets">
             <button type="button" class="record-detail-toggle" data-record-action="details" aria-label="显示详情" title="显示详情" :aria-expanded="expandedIds.includes(r.record_id)" :aria-controls="'inventory-record-details-' + encodeURIComponent(r.record_id)" @click="$emit('toggle-details', r.record_id, !expandedIds.includes(r.record_id))"><Eye :size="16" aria-hidden="true" /></button>
             <button v-if="r.record_type !== 'consumption_delta' && !r.transaction_id?.startsWith('reset_')" type="button" class="record-del" data-record-action="delete" aria-label="删除记录" title="删除记录" :disabled="disabled || !r.record_id" @click="$emit('delete-record', r)"><Trash2 :size="16" aria-hidden="true" /></button>
           </div>

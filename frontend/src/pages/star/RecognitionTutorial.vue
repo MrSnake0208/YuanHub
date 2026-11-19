@@ -9,7 +9,7 @@
         <rect width="100%" height="100%" fill="rgb(73 59 44 / 48%)" mask="url(#recognition-tour-mask)" />
       </svg>
       <div v-for="(rect, index) in rects" :key="index" class="recognition-tour-ring" :style="rectStyle(rect)" />
-      <section ref="card" class="recognition-tour-card" :style="cardStyle" role="region" :aria-label="tutorialLabel" tabindex="-1" :data-placement="placement">
+      <section ref="card" class="recognition-tour-card touch-targets" :style="cardStyle" role="region" :aria-label="tutorialLabel" tabindex="-1" :data-placement="placement">
         <div v-if="mobile" class="recognition-tour-handle-row">
           <button class="recognition-tour-handle" type="button" :aria-label="`拖动${tutorialLabel}，上下方向键也可移动`" @pointerdown="beginDrag" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag" @keydown.up.prevent="moveSheet(32)" @keydown.down.prevent="moveSheet(-32)"><span /></button>
         </div>
@@ -35,13 +35,15 @@ import { X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import { modalFocusState } from '../../composables/useModalFocus.js'
+import { useViewportTier } from '../../composables/useViewportTier.js'
 import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect, tutorialOcrRunning } from './recognitionTutorial.js'
 import { bagTutorialSteps, bagReviewInfo } from './bagTutorial.js'
 import { growthPlanStepsForView, readGrowthPlanView, createGrowthTutorialViewGuard } from './growthPlanTutorial.js'
 
 const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' }, planSwitchBlocked: Boolean })
 const emit = defineEmits(['close', 'step-change'])
-const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
+const { isPhone: mobile, isTablet } = useViewportTier()
+const stepIndex = ref(0), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
 const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
@@ -55,7 +57,23 @@ const step = computed(() => {
   return props.mode === 'plan' && current.editorView && current.editorView !== planActualView.value ? { ...current, target: '', relatedTargets: '' } : current
 })
 const exampleItems = computed(() => recognitionTutorialExamples[exampleKind.value] || [])
-const cardStyle = computed(() => ({ visibility: ready.value ? 'visible' : 'hidden', ...(mobile.value ? { bottom: `${(sheetBounds.value?.bottom ?? 12) + lift.value}px`, ...(sheetBounds.value ? { maxHeight: `min(62dvh, calc(100dvh - 96px), ${sheetBounds.value.maxHeight}px)` } : {}) } : { left: `${position.value.left}px`, top: `${position.value.top}px` }) }))
+const cardStyle = computed(() => {
+  const visibility = ready.value ? 'visible' : 'hidden'
+  if (mobile.value) {
+    const bounds = sheetBounds.value
+    return {
+      visibility,
+      bottom: `${(bounds?.bottom ?? 12) + lift.value}px`,
+      maxHeight: bounds ? `min(62dvh, calc(100dvh - 96px), ${bounds.maxHeight}px)` : undefined,
+    }
+  }
+  const { left, top, maxHeight, maxWidth } = position.value
+  return {
+    visibility, left: `${left}px`, top: `${top}px`,
+    maxHeight: isTablet.value && maxHeight != null ? `${maxHeight}px` : undefined,
+    maxWidth: isTablet.value && maxWidth != null ? `${maxWidth}px` : undefined,
+  }
+})
 const rectStyle = rect => ({ left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` })
 let opener = null
 let planViewGuard = null
@@ -65,6 +83,9 @@ let resizeObserver = null, mutationObserver = null, observed = [], highlighted =
 function viewport() {
   const view = window.visualViewport
   return { left: view?.offsetLeft || 0, top: view?.offsetTop || 0, width: view?.width || window.innerWidth, height: view?.height || window.innerHeight }
+}
+function visiblePageTop(view) {
+  return Math.max(view.top, document.querySelector('.mobile-shell')?.getBoundingClientRect().bottom || 0)
 }
 function sheetSafeArea() {
   const style = card.value && window.getComputedStyle(card.value)
@@ -80,7 +101,6 @@ function update() {
   blocked.value = Boolean(props.root?.querySelector('[role="dialog"], dialog[open]')) || tutorialOcrRunning(props.root)
   if (suspended.value) { clearHighlights(); rects.value = []; return }
   const view = viewport()
-  mobile.value = window.innerWidth < 768
   const safeArea = sheetSafeArea()
   if (mobile.value && !hintShown) { hintShown = true; showMobileHint.value = true }
   const { primary, related } = resolveTutorialTargets(props.root, step.value, view.height)
@@ -98,7 +118,14 @@ function update() {
   }
   rects.value = elements.map(element => tutorialElementRect(element, view)).filter(Boolean)
   const size = card.value?.getBoundingClientRect() || { width: 340, height: 270 }
-  const nextPosition = tutorialCardPosition(clipTutorialRect(primary?.getBoundingClientRect(), view), size, view, step.value.relatedTargets ? rects.value : [])
+  const top = isTablet.value ? visiblePageTop(view) : view.top
+  const cardViewport = { ...view, top, height: Math.max(0, view.height - (top - view.top)) }
+  const target = clipTutorialRect(primary?.getBoundingClientRect(), cardViewport)
+  const relatedRects = step.value.relatedTargets ? rects.value : []
+  const naturalSize = isTablet.value && card.value
+    ? { width: size.width, height: card.value.scrollHeight + size.height - card.value.clientHeight }
+    : size
+  const nextPosition = tutorialCardPosition(target, naturalSize, cardViewport, relatedRects, isTablet.value)
   position.value = nextPosition
   placement.value = nextPosition.placement
   lift.value = boundedSheetLift(lift.value)
@@ -144,7 +171,8 @@ async function revealStep(resetHint = true) {
   const { primary } = resolveTutorialTargets(props.root, step.value, view.height)
   const rect = primary?.getBoundingClientRect()
   if (!suspended.value && shouldRevealTutorialTarget(step.value, rect, view)) {
-    const top = Math.max(0, window.scrollY + rect.top - view.top - Math.max(64, view.height * (mobile.value ? 0.16 : 0.1)))
+    const inset = Math.max(visiblePageTop(view) - view.top + 12, view.height * (mobile.value ? 0.16 : 0.1))
+    const top = Math.max(0, window.scrollY + rect.top - view.top - inset)
     window.scrollTo({ top, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
     await waitForScroll(token)
   }
@@ -160,7 +188,7 @@ function onResize() {
     if (!props.open || exampleKind.value || suspended.value) return
     const view = viewport(), { primary } = resolveTutorialTargets(props.root, step.value, view.height)
     const rect = primary?.getBoundingClientRect(), sheetTop = mobile.value ? card.value?.getBoundingClientRect().top : view.top + view.height
-    if (rect && step.value.scroll !== 'preserve' && (rect.top < view.top + 64 || rect.top >= sheetTop - 16)) void revealStep(false)
+    if (rect && step.value.scroll !== 'preserve' && (rect.top < visiblePageTop(view) + 12 || rect.top >= sheetTop - 16)) void revealStep(false)
   }, 160)
 }
 async function navigate(delta) {
@@ -270,6 +298,13 @@ watch(() => props.root, root => {
 }, { immediate: true })
 onBeforeUnmount(() => { planViewGuard?.dispose(); restoreFocus(); stop() })
 watch(() => modalFocusState.active, () => { void nextTick(scheduleUpdate) })
+watch([mobile, isTablet], () => {
+  const focusedHandle = document.activeElement?.closest('.recognition-tour-handle')
+  nextTick(() => {
+    if (focusedHandle && !mobile.value && document.activeElement === document.body) card.value?.focus({ preventScroll: true })
+    scheduleUpdate()
+  })
+})
 </script>
 
 <style>
@@ -291,3 +326,9 @@ button:disabled { opacity: .45; cursor: default; }
 </style>
 <style scoped src="./recognitionTutorialDesktop.css"></style>
 <style scoped src="./recognitionTutorialMobile.css"></style>
+<style scoped>
+@media (hover: none), (pointer: coarse) {
+  .recognition-tour-card button { height: auto; max-height: none; }
+  .is-mobile .recognition-tour-handle-row { padding-inline: 48px; }
+}
+</style>
