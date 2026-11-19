@@ -29,13 +29,13 @@
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
             <div class="bond-find-choices">
-              <fieldset :disabled="state.busy"><legend>天气</legend><div class="bond-choice-heading"><span aria-hidden="true">天气</span><button type="button" aria-label="全部天气" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部</button></div><div class="bond-choice-options">
-                <button type="button" class="bond-all-choice" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
-                <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><img :src="weatherIconBase + value + '.webp'" class="bond-weather-icon" width="20" height="20" alt="" aria-hidden="true" />{{ label }}</button>
-              </div></fieldset>
               <fieldset :disabled="state.busy"><legend>行动</legend><div class="bond-choice-heading"><span aria-hidden="true">行动</span><button type="button" aria-label="全部行动" :aria-pressed="!filters.action" @click="filters.action = ''">全部</button></div><div class="bond-choice-options">
                 <button type="button" class="bond-all-choice" :aria-pressed="!filters.action" @click="filters.action = ''">全部行动</button>
                 <button v-for="(label, value) in ACTIONS" :key="value" type="button" :aria-pressed="filters.action === value" @click="filters.action = value">{{ label }}</button>
+              </div></fieldset>
+              <fieldset :disabled="state.busy"><legend>天气</legend><div class="bond-choice-heading"><span aria-hidden="true">天气</span><button type="button" aria-label="全部天气" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部</button></div><div class="bond-choice-options">
+                <button type="button" class="bond-all-choice" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
+                <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><img :src="weatherIconBase + value + '.webp'" class="bond-weather-icon" width="20" height="20" alt="" aria-hidden="true" />{{ label }}</button>
               </div></fieldset>
             </div>
             <div class="bond-search-row">
@@ -85,7 +85,7 @@
           <p v-else-if="!state.catalog?.entries.length" class="bond-empty">当前游戏尚无已发布羁绊资料；这不代表你的游戏进度为零。</p>
           <template v-else>
             <div class="bond-results-toolbar">
-              <p class="bond-find-count" role="status"><span class="bond-result-conditions">{{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }} · {{ filters.action ? ACTIONS[filters.action] : '全部行动' }}｜</span>找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
+              <p class="bond-find-count" role="status"><span class="bond-result-conditions">{{ filters.action ? ACTIONS[filters.action] : '全部行动' }} · {{ filters.weather ? WEATHERS[filters.weather] : '全部天气' }}｜</span>找到 {{ resultGroupCount }} {{ view === 'find' ? '组配对' : '位密探' }}<template v-if="filtered.length !== resultGroupCount"> · {{ filtered.length }} 个天气条目</template></p>
               <p class="bond-state-legend"><Plus :size="14" aria-hidden="true" />未收录 <Check :size="14" aria-hidden="true" />已收录 · 点击天气切换</p>
               <button v-if="hasFilters" type="button" class="bond-clear-filters" :disabled="state.busy" @click="clearFilters">清空筛选</button>
               <button type="button" class="bond-batch-toggle" :disabled="state.busy || !batchMode && !writable" :aria-pressed="batchMode" aria-controls="bond-batch-toolbar" @click="batchMode = !batchMode">{{ batchMode ? '退出批量' : '批量收录' }}</button>
