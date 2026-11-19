@@ -19,6 +19,7 @@ Claude Code 和 Codex 共用本文件及所涉及目录的 `AGENTS.md`。个人�
 
 ## 开发服务与数据安全
 
+- 查询线上反馈和 MaaYuan 诊断时，优先使用 `yuanhub-feedback` MCP。工具、个人令牌配置和读取顺序见[接入说明](tools/yuanhub-feedback-mcp/README.md)。
 - 统一使用当前树 `./dev.sh`，优先复用现有服务；只有确实需要且尚未运行时才按需执行 `./dev.sh frontend`、`./dev.sh backend` 或 `./dev.sh preview`。不得自行运行 bootRun、npm run dev、vite 等重复启动命令。
 - 不擅自重启、停止已有服务；确需操作先说明原因并获确认。端口占用时停止并报告，不终止他人进程。临时数据、日志、依赖与构建输出只放本树忽略目录。
 - 默认共用本机 MongoDB 的 MaaBackend/HubBackend 与 Redis DB 0 开发数据，仅隔离应用端口和本地配置；保存、删除会影响共享数据，不自动清库或迁移。`./dev.sh --print-env` 查看地址；`preview` 监听 `0.0.0.0`，局域网可访问；`containers` 才显式使用原私有容器。不操作 Tailscale Serve/Funnel。
