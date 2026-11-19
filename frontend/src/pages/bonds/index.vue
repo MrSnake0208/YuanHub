@@ -12,6 +12,15 @@
       </CompactToolHeader>
       <div class="wrap bond-workspace">
         <div v-if="!available" class="bond-toolbar bond-public"><label>浏览游戏<select v-model="publicGame" :disabled="state.busy"><option>代号鸢</option><option>如鸢</option></select></label><p>选择游戏账号后即可收录羁绊。</p><button v-if="state.accountsError" type="button" @click="loadAccounts">重读账号</button></div>
+        <nav class="bond-tabs touch-targets" role="tablist" aria-label="羁绊图鉴分类" @keydown="onWorkspaceTabKeydown" @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus">
+          <button v-for="(label, key) in bondTabs" :key="key" :id="'bond-tab-' + key" type="button" role="tab" :aria-controls="'bond-panel-' + key" :aria-selected="tab === key" :tabindex="tab === key ? 0 : -1" @click="tab = key">{{ label }}</button>
+        </nav>
+        <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
+          <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
+        </section>
+        <p v-if="state.notice" class="bond-feedback" role="status">{{ state.notice }}</p>
+        <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
+        <div v-show="tab === 'yuan'" id="bond-panel-yuan" role="tabpanel" aria-labelledby="bond-tab-yuan">
         <section class="bond-summary" aria-label="账号羁绊进度">
           <div class="bond-collection-stat">
             <span>图鉴收集进度</span>
@@ -21,11 +30,6 @@
           <div><span>下一档羁缘</span><strong data-testid="next-threshold">{{ !summary ? '—' : !thresholds.length ? '资料尚未配置' : nextThreshold == null ? '全部达标' : '还差 ' + (nextThreshold - summary.triggered_count) + ' 种' }}</strong><small>达标后需在成就页确认完成</small></div>
           <div class="bond-owned-stat"><span>我的密探</span><strong data-testid="owned-progress">{{ ownedCount == null ? '—' : ownedCount }} / {{ state.operatorError || state.loading ? '—' : gameOperators.length }}</strong><small><span class="bond-desktop-copy">基于当前账号的密探库统计</span><span class="bond-mobile-copy">按当前账号统计</span></small></div>
         </section>
-        <section v-show="settingsOpen" id="bond-settings" class="bond-secondary-panel" aria-label="羁绊设置">
-          <div class="bond-settings-heading"><h2>设置与更多操作</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RefreshCw :size="14" aria-hidden="true" />刷新资料</button></div>
-        </section>
-        <p v-if="state.notice" class="bond-feedback" role="status">{{ state.notice }}</p>
-        <p v-if="state.error" class="bond-error" role="alert">{{ state.error }} <button type="button" :disabled="state.busy || state.loading" @click="refresh">重新读取</button></p>
         <section class="bond-browser" aria-label="羁绊图鉴列表">
           <form class="bond-filters" @submit.prevent>
             <div class="bond-find-choices">
@@ -55,23 +59,9 @@
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
           </div>
             </div>
-            <div v-show="!isPhone || filtersOpen" id="bond-operator-filters" class="bond-common-filters" role="group" aria-label="排序和密探筛选">
-              <label>排序<select v-model="sortOrder" :disabled="state.busy">
-                <option value="roster">游戏名册</option>
-                <option value="catalog">收录顺序</option>
-              </select></label>
-              <label>品质<select v-model="operatorFilters.quality" :disabled="state.busy">
-                <option v-for="option in OPERATOR_RARITY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-              </select></label>
-              <label>属性<select v-model="operatorFilters.prof" :disabled="state.busy">
-                <option value="">全部</option>
-                <option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option>
-              </select></label>
-              <label>职业<select v-model="operatorFilters.subProf" :disabled="state.busy">
-                <option value="">全部</option>
-                <option v-for="prof in careerOptions" :key="prof" :value="prof">{{ prof }}</option>
-              </select></label>
-            </div>
+            <BondOperatorFilters v-show="!isPhone || filtersOpen" id="bond-operator-filters"
+              v-model:sort-order="sortOrder" v-model:quality="operatorFilters.quality" v-model:prof="operatorFilters.prof" v-model:sub-prof="operatorFilters.subProf"
+              :operators="state.operators" :disabled="state.busy" />
             <div v-show="filtersOpen" id="bond-advanced-filters" class="bond-advanced-filters">
               <label>效果<select v-model="filters.effect" :disabled="state.busy"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
               <label>资料范围<select v-model="filters.status" :disabled="state.busy"><option value="active">当前图鉴</option><option value="">含历史资料</option><option value="retired">历史下架</option><option value="invalid">误录</option></select></label>
@@ -157,6 +147,8 @@
             <nav v-if="resultGroupCount > 20" class="bond-pagination" aria-label="图鉴分页"><button type="button" :disabled="state.busy || page === 0" @click="page--">上一页</button><span>第 {{ page + 1 }} / {{ Math.ceil(resultGroupCount / 20) }} 页</span><button type="button" :disabled="state.busy || (page + 1) * 20 >= resultGroupCount" @click="page++">下一页</button></nav>
           </template>
         </section>
+        </div>
+        <BattleBondPanel v-show="tab === 'battle'" :state="state" :available="available" :writable="writable" :operator-for="operatorFor" @toggle="saveBattle" @refresh="refresh" />
       </div>
       <BondExchange v-model:open="exchangeOpen" :identity="identity" :account-id="accountId" :account-name="account?.name || ''" :game="game" :revision="state.archive?.revision" :catalog-version="state.catalog?.catalog_version" :generation="state.generation" :accounts="state.accounts" :can-use="!state.busy && available && !!state.archive && !!state.catalog && !state.loading && !state.error && !state.catalogError" @busy="state.busy = $event" @target="activeAccount.set($event)" @committed="acceptImport" />
       <SiteFooter />
@@ -174,20 +166,24 @@ import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useViewportTier } from '../../composables/useViewportTier.js'
-import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
-import { OPERATOR_RARITY_LABELS, OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions, tokens } from '../../utils/operatorFilters.js'
+import { OPERATOR_RARITY_LABELS, subProfList, tokens } from '../../utils/operatorFilters.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
+import { onWorkspaceTabFocus, onWorkspaceTabKeydown } from '../../utils/workspaceTabs.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
 import BondExchange from './BondExchange.vue'
-import { useBonds } from './useBonds.js'
+import BattleBondPanel from './BattleBondPanel.vue'
+import BondOperatorFilters from './BondOperatorFilters.vue'
+import { useBondPreference, useBonds } from './useBonds.js'
 import { ACTIONS, STATUS, WEATHERS, groupBonds } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && beta.canUseBetaFeatures)
-const { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
+const { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, saveBattle, select } = useBonds()
 const { isPhone } = useViewportTier()
+const bondTabs = { yuan: '鸢报羁绊', battle: '战斗羁绊' }
+const tab = useBondPreference('yuanhub:bonds:tab', 'yuan', 'battle')
 const view = ref('codex'), settingsOpen = ref(false), exchangeOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIconBase = import.meta.env.BASE_URL + 'assets/bond-weather/'
 watch(view, () => { page.value = 0; selected.value = [] })
@@ -205,7 +201,6 @@ const collectionPercent = computed(() => activeTotal.value ? Math.round(collecti
 const thresholds = computed(() => state.catalog?.achievement_targets || [])
 const nextThreshold = computed(() => summary.value ? thresholds.value.find(t => t > summary.value.triggered_count) : null)
 const gameOperators = computed(() => state.operators.filter(op => op.games?.includes(game.value)))
-const careerOptions = computed(() => subProfOptions(state.operators))
 const ownedCount = computed(() => available.value && state.owned && !state.loading && !state.operatorError ? gameOperators.value.filter(op => state.owned.get(op.id) === true).length : null)
 const operators = computed(() => new Map(state.operators.map(op => [op.id, op])))
 const operatorFor = id => operators.value.get(id) || { id }

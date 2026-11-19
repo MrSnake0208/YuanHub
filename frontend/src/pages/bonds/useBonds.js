@@ -9,24 +9,38 @@ import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesProfSubFilter } from '../../utils/operatorFilters.js'
 import { matchesOperatorQuality } from '../../utils/operatorForms.js'
 import { operatorHuaji } from '../../utils/operatorHuaji.js'
-import { filterBonds, groupBonds, groupBondsByOperator } from './rules.js'
+import { filterBonds, groupBonds, groupBondsByOperator, missingBattleMembers } from './rules.js'
 
 const SORT_STORAGE_KEY = 'yuanhub:bonds:sort'
 
-function readSortOrder() {
+export function useBondPreference(key, initial, alternative) {
+  const value = ref(initial)
   try {
-    if (localStorage.getItem(SORT_STORAGE_KEY) === 'catalog') return 'catalog'
-  } catch { /* 存储受限时使用默认排序 */ }
-  return 'roster'
+    if (localStorage.getItem(key) === alternative) value.value = alternative
+  } catch { /* 存储受限时使用默认值 */ }
+  watch(value, next => {
+    try { localStorage.setItem(key, next) } catch { /* 存储受限时仅保留本次选择 */ }
+  })
+  return value
 }
 
-function sortByRoster(groups, position) {
+export function sortByRoster(groups, position) {
   // 稳定排序让同位次及未收录项沿用原有顺序。
   return groups.sort((a, b) => (position(a) - position(b)) || 0)
 }
 
+export function useBondOperatorFilters(operators, sortKey = SORT_STORAGE_KEY) {
+  const operatorFilters = reactive({ quality: 'all', prof: '', subProf: '' })
+  const operatorFilterCount = computed(() => [operatorFilters.quality !== 'all', operatorFilters.prof, operatorFilters.subProf].filter(Boolean).length)
+  const operatorIds = computed(() => operatorFilterCount.value ? new Set(operators()
+    .filter(op => matchesOperatorQuality(op, operatorFilters.quality) && matchesProfSubFilter(op, operatorFilters.prof, operatorFilters.subProf))
+    .map(op => op.id)) : null)
+  const sortOrder = useBondPreference(sortKey, 'roster', 'catalog')
+  return { operatorFilters, operatorFilterCount, operatorIds, sortOrder }
+}
+
 export function useBonds() {
-  const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0 })
+  const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0, battleSavingId: '', battleError: null })
   const publicGame = ref(DEFAULT_ACCOUNT_GAME)
   const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
   const accountId = computed(() => activeAccount.id)
@@ -35,12 +49,7 @@ export function useBonds() {
   const game = computed(() => available.value ? account.value.game : publicGame.value)
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy && !state.catalogError && !state.error)
   const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', recorded: '', onlyOwned: false })
-  const operatorFilters = reactive({ quality: 'all', prof: '', subProf: '' })
-  const operatorFilterCount = computed(() => [operatorFilters.quality !== 'all', operatorFilters.prof, operatorFilters.subProf].filter(Boolean).length)
-  const operatorIds = computed(() => operatorFilterCount.value ? new Set(state.operators
-    .filter(op => matchesOperatorQuality(op, operatorFilters.quality) && matchesProfSubFilter(op, operatorFilters.prof, operatorFilters.subProf))
-    .map(op => op.id)) : null)
-  const sortOrder = ref(readSortOrder())
+  const { operatorFilters, operatorFilterCount, operatorIds, sortOrder } = useBondOperatorFilters(() => state.operators)
   const records = computed(() => available.value ? state.archive?.records || [] : [])
   const filtered = computed(() => filterBonds(state.catalog?.entries || [], records.value, state.operators, filters, state.owned, operatorIds.value))
   const groups = computed(() => {
@@ -60,13 +69,13 @@ export function useBonds() {
   const matches = token => alive && token.generation === state.generation && token.identity === identity.value && token.accountId === accountId.value && token.game === game.value
   function reset() {
     state.generation++; read++
-    Object.assign(state, { catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '' })
+    Object.assign(state, { catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', battleSavingId: '', battleError: null })
     selected.value = []; page.value = 0; filters.onlyOwned = false; filters.recorded = ''
   }
   async function refresh() {
     if (state.busy) return false
     const token = capture(), serial = ++read
-    state.loading = true; state.error = ''; state.catalogError = ''; state.operatorError = ''; state.ownedError = ''
+    state.loading = true; state.error = ''; state.catalogError = ''; state.operatorError = ''; state.ownedError = ''; state.battleError = null
     try {
       const result = await Promise.allSettled([
         api.getBondCatalog(token.game), available.value ? api.getBondArchive(token.accountId, token.identity) : Promise.resolve(null),
@@ -111,24 +120,29 @@ export function useBonds() {
     } catch (error) { if (alive && identity.value === owner && serial === accountRead) state.accountsError = error.message }
     finally { if (alive && identity.value === owner && serial === accountRead) state.accountsLoading = false }
   }
-  async function save(changes, batch = false) {
+  async function save(changes, batch = false, battle = false) {
     if (!writable.value || !changes.length) return false
     const token = capture(), version = state.catalog.catalog_version
     let saved = 0
     state.busy = true; state.notice = ''; state.error = ''; read++
+    if (battle) { state.battleSavingId = changes[0].bond_id; state.battleError = null }
     try {
       for (let offset = 0; offset < changes.length; offset += 50) {
         if (!matches(token)) return false
         if (batch) state.saveProgress = `正在保存 ${offset / 50 + 1} / ${Math.ceil(changes.length / 50)} 批…`
         const chunk = changes.slice(offset, offset + 50)
-        const result = await api.writeBonds(token.accountId, token.identity, state.archive.revision, version, chunk)
+        const result = battle
+          ? await api.writeBattleBond(token.accountId, token.identity, state.archive.revision, version, chunk[0].bond_id, chunk[0].triggered)
+          : await api.writeBonds(token.accountId, token.identity, state.archive.revision, version, chunk)
         if (!matches(token)) return false
         if (result.account_id !== token.accountId || result.game !== token.game || result.catalog_version !== version) throw new Error('保存响应归属或目录不一致，请刷新核对。')
         state.archive = result; saved += chunk.length
-        const savedIds = new Set(chunk.map(change => change.bond_id))
-        selected.value = selected.value.filter(id => !savedIds.has(id))
+        if (!battle) {
+          const savedIds = new Set(chunk.map(change => change.bond_id))
+          selected.value = selected.value.filter(id => !savedIds.has(id))
+        }
       }
-      selected.value = []
+      if (!battle) selected.value = []
       if (batch) state.notice = `已保存 ${saved} 条`
       return true
     } catch (error) {
@@ -136,17 +150,30 @@ export function useBonds() {
         const progress = `已保存 ${saved} 条，剩余 ${changes.length - saved} 条未保存，可重试。`
         if (error.status === 409) {
           const remaining = [...selected.value]
-          state.busy = false; await refresh()
+          state.busy = false
+          const refreshed = await refresh()
           if (matches(token)) {
             if (batch) selected.value = remaining
-            state.error = '档案或目录版本冲突，已尝试刷新。请核对后重试。' + (batch ? progress : '')
+            if (battle) {
+              state.battleError = {
+                id: changes[0].bond_id,
+                message: refreshed ? '档案或目录已更新，已刷新。请核对后重试。' : '档案或目录版本冲突，刷新失败。请重新读取后重试。'
+              }
+            } else state.error = '档案或目录版本冲突，已尝试刷新。请核对后重试。' + (batch ? progress : '')
           }
         }
+        else if (battle) state.battleError = { id: changes[0].bond_id, message: error.message || '保存失败，请重试。' }
         else if (batch) state.notice = (error.message || '保存失败。') + ' ' + progress
         else state.error = error.message || '保存失败，未显示为已保存；请刷新后重试。'
       }
       return false
-    } finally { if (matches(token)) { state.busy = false; state.saveProgress = '' } }
+    } finally { if (matches(token)) { state.busy = false; state.saveProgress = ''; state.battleSavingId = '' } }
+  }
+  function saveBattle(id) {
+    const entry = state.catalog?.battle?.find(row => row.bond_id === id)
+    const records = state.archive?.battle_records
+    if (!entry || !Array.isArray(records) || missingBattleMembers(entry, state.owned).length) return false
+    return save([{ bond_id: id, triggered: !records.some(row => row.bond_id === id && row.triggered) }], false, true)
   }
   function select(id) {
     if (!writable.value) return
@@ -154,13 +181,10 @@ export function useBonds() {
     else selected.value.push(id)
   }
   watch([filters, operatorFilters], () => { selected.value = []; page.value = 0 }, { flush: 'sync' })
-  watch(sortOrder, value => {
-    try { localStorage.setItem(SORT_STORAGE_KEY, value) } catch { /* 存储受限时仅保留本次选择 */ }
-  })
   watch(page, () => { selected.value = [] }, { flush: 'sync' })
   useAccountListUpdates(next => { state.accounts = next; activeAccount.syncAccounts(next) })
   watch(identity, () => { state.accounts = []; accountRead++; loadAccounts() }, { flush: 'sync', immediate: true })
   watch([identity, accountId, game, available], () => { reset(); refresh() }, { flush: 'sync', immediate: true })
   onScopeDispose(() => { alive = false; state.generation++; accountRead++; read++ })
-  return { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, records, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, select }
+  return { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, records, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, saveBattle, select }
 }

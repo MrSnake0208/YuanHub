@@ -10,7 +10,7 @@
         <p v-if="!identity">可先选择文件查看来源；登录并选择账号后才能预览导入。</p>
         <template v-if="document">
           <p>{{ document.format ? '本站羁绊备份' : '旧助手备份' }} · {{ filename }}</p>
-          <label v-if="!document.format">来源账号<select v-model="sourceKey" :disabled="busy"><option value="">请选择一个来源账号</option><option v-for="source in sources" :key="source.key" :value="source.key">{{ source.key }} · {{ source.game || '游戏未明确' }} · 已记录 {{ source.count }} 项{{ source.conflict ? '（游戏信息冲突）' : '' }}</option></select></label>
+          <label v-if="!document.format">来源账号<select v-model="sourceKey" :disabled="busy"><option value="">请选择一个来源账号</option><option v-for="source in sources" :key="source.key" :value="source.key">{{ source.key }} · {{ source.game || '游戏未明确' }} · 鸢报 {{ source.count }} 项／战斗 {{ source.battleCount }} 项{{ source.conflict ? '（游戏信息冲突）' : '' }}</option></select></label>
           <label v-if="!document.format">来源游戏<select v-model="sourceGame" :disabled="busy || !!source?.game"><option value="">缺少游戏信息时必须选择</option><option>代号鸢</option><option>如鸢</option></select></label>
           <label>现有目标账号<select :value="accountId" :disabled="busy || !identity" @change="$emit('target', $event.target.value)"><option value="">请选择目标账号</option><option v-for="item in accounts" :key="item.id" :value="item.id">{{ item.name }} · {{ item.game }}</option></select></label>
           <p>目标：{{ accountName || '尚未选择' }} · {{ game }}。此处不会创建账号。</p>
@@ -22,10 +22,16 @@
         <section v-if="preview" aria-label="导入预览结果">
           <h3>确认导入到 {{ accountName }} · {{ game }}</h3>
           <p>预计修改 {{ preview.affected }} 条。</p>
-          <p>{{ Object.entries(preview.stats).map(([key, count]) => labels[key] + ' ' + count).join(' · ') }}</p>
+          <dl class="bond-import-stats">
+            <div v-for="group in previewGroups" :key="group.name">
+              <dt>{{ group.name }}</dt>
+              <dd>{{ Object.entries(group.stats).map(([key, count]) => labels[key] + ' ' + count).join(' · ') }}</dd>
+            </div>
+          </dl>
+          <p v-if="preview.stats.conflict">冲突项会按所选恢复策略写入。</p>
           <p v-if="!document.format">旧助手的未拥有名单和本地游戏可用性覆盖不会写入本站公共资料或密探成长资料。</p>
-          <details><summary>逐项核对记录（{{ preview.items.length }} 项）</summary><ul class="bond-import-items"><li v-for="(item, index) in pageItems" :key="index"><strong>{{ labels[item.outcome] }}</strong> · {{ item.key }}<small v-if="item.message"> · {{ item.message }}</small></li></ul><div class="bond-toolbar"><button type="button" :disabled="itemPage === 0" @click="itemPage--">上一页</button><span>{{ itemPage + 1 }} / {{ Math.max(1, Math.ceil(preview.items.length / 50)) }}</span><button type="button" :disabled="(itemPage + 1) * 50 >= preview.items.length" @click="itemPage++">下一页</button></div></details>
-          <label v-if="preview.stats.unknown"><input v-model="skipUnknown" type="checkbox" :disabled="busy">我已核对，跳过 {{ preview.stats.unknown }} 条未知或未开放记录</label>
+          <details><summary class="touch-target">逐项核对记录（{{ preview.items.length }} 项）</summary><ul class="bond-import-items"><li v-for="(item, index) in pageItems" :key="index"><strong>{{ item.kind === 'battle' ? '战斗' : '鸢报' }} · {{ labels[item.outcome] }}</strong> · {{ item.key }}<small v-if="item.message"> · {{ item.message }}</small></li></ul><div class="bond-toolbar"><button type="button" :disabled="itemPage === 0" @click="itemPage--">上一页</button><span>{{ itemPage + 1 }} / {{ Math.max(1, Math.ceil(preview.items.length / 50)) }}</span><button type="button" :disabled="(itemPage + 1) * 50 >= preview.items.length" @click="itemPage++">下一页</button></div></details>
+          <label v-if="preview.stats.unknown" class="bond-skip-unknown"><input v-model="skipUnknown" type="checkbox" :disabled="busy">我已核对，跳过 {{ preview.stats.unknown }} 条未知或未开放的鸢报与战斗记录</label>
           <p v-if="preview.stats.invalid || preview.stats.mismatched" class="bond-error" role="alert">存在非法或不匹配记录，不能确认；请修正文件后重新预览。</p>
         </section>
         <p>原生备份保留历史记录，不包含登录凭据。来源和时间以本站服务器本次保存为准，不代表游戏内首次触发时间；成就人工完成状态需单独备份。</p>
@@ -40,7 +46,7 @@
     </template>
     <template #export>
       <section class="bond-exchange" aria-label="导出羁绊备份">
-        <p>下载当前账号的完整原生备份，包含历史记录，不包含登录凭据。成就人工完成状态需单独备份。</p>
+        <p>完整原生备份包含当前账号的鸢报、历史条目和战斗羁绊进度，不包含登录凭据。成就人工完成状态需单独备份。</p>
         <p v-if="busy" role="status">正在处理，请稍候…</p>
         <p v-if="error" class="bond-error" role="alert">{{ error }}</p>
         <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
@@ -61,9 +67,13 @@ const emit = defineEmits(['update:open', 'busy', 'committed', 'target'])
 const tab = ref('import')
 watch(() => props.open, open => { if (open) tab.value = 'import' })
 const document = ref(null), filename = ref(''), sourceKey = ref(''), sourceGame = ref(''), strategy = ref('merge'), preview = ref(null), busy = ref(false), error = ref(''), notice = ref(''), skipUnknown = ref(false), itemPage = ref(0)
-const labels = { add: '新增', same: '已有／保留', conflict: '状态冲突，按所选策略修改', unknown: '未知', mismatched: '不匹配', invalid: '非法' }
+const labels = { add: '新增', same: '相同／保留', conflict: '冲突', unknown: '未知', mismatched: '不匹配', invalid: '非法' }
 const sources = computed(() => legacySources(document.value))
 const source = computed(() => sources.value.find(s => s.key === sourceKey.value))
+const previewGroups = computed(() => [
+  { name: '鸢报羁绊', stats: preview.value?.yuan_stats ?? preview.value?.stats },
+  { name: '战斗羁绊', stats: preview.value?.battle_stats }
+].filter(group => group.stats))
 const pageItems = computed(() => preview.value?.items.slice(itemPage.value * 50, (itemPage.value + 1) * 50) || [])
 const canPreview = computed(() => props.canUse && !busy.value && !!document.value && (document.value.format ? document.value.game === props.game : !!source.value && !source.value.conflict && !!sourceGame.value && sourceGame.value === props.game))
 let serial = 0, alive = true
@@ -130,6 +140,11 @@ onScopeDispose(() => { alive = false; serial++ })
 <style scoped>
 .bond-exchange { min-width: 0; font-size: 14px; }
 .bond-exchange p { margin-block: 12px; }
+.bond-import-stats { display: grid; gap: 8px; margin-block: 12px; }
+.bond-import-stats dt { font-weight: 700; }
+.bond-import-stats dd { margin: 0; }
+.bond-skip-unknown { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.bond-skip-unknown input { flex: none; }
 .bond-exchange button, .bond-exchange :is(select, input:not([type="checkbox"])) { min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; box-sizing: border-box; max-width: 100%; min-width: 0; }
 .bond-exchange :is(select, input[type="file"]) { width: 100%; }
 .bond-exchange button, .bond-exchange summary { cursor: pointer; }

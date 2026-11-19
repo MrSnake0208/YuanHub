@@ -30,6 +30,9 @@
 .bonds-codex :where(.bonds-main) button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .bonds-codex :where(.bonds-main) button:not(:disabled) { transition: background-color .15s, border-color .15s; }
 .bonds-codex :is(input[type=checkbox], progress) { accent-color: var(--tea); }
+.bond-tabs { display: inline-flex; flex-wrap: wrap; gap: 8px; padding: 4px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.bonds-codex .bond-tabs button { min-height: 44px; padding-inline: 14px; border: 1px solid transparent; }
+.bonds-codex .bond-tabs button[aria-selected=true] { border-color: var(--line); background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); color: var(--theme-strong-text, var(--tea)); font-weight: 700; }
 .bonds-codex .bond-summary { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 0; padding: 12px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .bonds-codex .bond-summary :is(span, strong, small) { display: block; }
 .bonds-codex .bond-summary > div { padding: 4px 20px; border: 0; border-radius: 0; background: transparent; }

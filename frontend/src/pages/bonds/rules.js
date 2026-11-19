@@ -4,6 +4,7 @@ import { downloadBlob } from '../../utils/downloadFile.js'
 export const ACTIONS = Object.freeze({ arson: '纵火', rumor: '传谣', poison: '下毒', undercover: '卧底', gather: '搜集', extinguish: '灭火', purify: '净水', rescue: '营救' })
 export const WEATHERS = Object.freeze({ sunny: '晴天', rain: '雨天', fog: '大雾', wind: '狂风', light_snow: '小雪', heavy_snow: '大雪', hurricane: '飓风', thunder: '雷鸣' })
 export const STATUS = Object.freeze({ active: '当前', retired: '历史下架', invalid: '误录，不计数' })
+export const BATTLE_TYPES = Object.freeze({ combo: '合击', guard: '援护', transfer: '转移', emergency: '急诊' })
 export const MAX_BYTES = 8 * 1024 * 1024
 
 export function filterBonds(entries, records, operators, filters, owned, operatorIds = null) {
@@ -11,12 +12,17 @@ export function filterBonds(entries, records, operators, filters, owned, operato
   const byId = new Map(operators.map(op => [op.id, op]))
   const queries = filters.query.trim().toLocaleLowerCase().split(/[\s、，,+＋&]+/).filter(Boolean)
   return entries.filter(e => (!filters.status || e.status === filters.status) &&
+    (!filters.type || e.type === filters.type) &&
     (!filters.action || e.action === filters.action) && (!filters.weather || e.weather === filters.weather) &&
     (!filters.effect || e.effect === filters.effect) && (!filters.hideRecorded || !triggered.has(e.bond_id)) &&
     (!filters.recorded || (filters.recorded === 'collected') === triggered.has(e.bond_id)) &&
     (!filters.onlyOwned || !owned || e.members.every(id => owned.get(id) === true)) &&
     (!operatorIds || e.members.some(id => operatorIds.has(id))) &&
     queries.every(query => e.members.some(id => matchesOperatorSearch(byId.get(id) || { id }, query) || String(byId.get(id)?.alias || '').toLocaleLowerCase().includes(query))))
+}
+
+export function missingBattleMembers(entry, owned) {
+  return entry.members.filter(id => owned?.get(id) === false)
 }
 
 export function groupBondsByOperator(entries, catalog, records, operatorIds = null) {
@@ -65,6 +71,9 @@ export function readBondBackup(text) {
     if (document.format !== 'yuanhub-bonds' || document.schema_version !== 1) throw new Error('请选择 YuanHub 羁绊原生备份 v1 或旧助手备份。')
     if (new TextEncoder().encode(text).length > 2 * 1024 * 1024) throw new Error('原生备份最多2MiB。')
     if (!Array.isArray(document.records) || document.records.length > 5000) throw new Error('原生备份最多5000条记录。')
+    if ('battle_records' in document && (!Array.isArray(document.battle_records) || document.battle_records.length > 5000)) {
+      throw new Error('原生备份的战斗记录必须是最多5000条的数组。')
+    }
   }
   return document
 }
@@ -74,7 +83,9 @@ export function legacySources(document) {
   return Object.entries(document).filter(([key, value]) => !key.startsWith('__') && !['yuan_server_overrides', 'serverOverrides'].includes(key) && value && typeof value === 'object' && !Array.isArray(value))
     .map(([key, value]) => {
       const hints = [key.startsWith('ry::') || /^如鸢\s*-/.test(key) ? '如鸢' : key.startsWith('dyy::') || /^代号鸢\s*-/.test(key) ? '代号鸢' : '', value.__server__ === 'ry' ? '如鸢' : value.__server__ === 'dyy' ? '代号鸢' : ''].filter(Boolean)
-      return { key, game: hints.length && new Set(hints).size === 1 ? hints[0] : '', conflict: new Set(hints).size > 1, count: Object.entries(value).filter(([k, v]) => !k.startsWith('__') && v === true).length }
+      const count = Object.entries(value).filter(([k, v]) => !k.startsWith('__') && v === true).length
+      const battleCount = Object.values(value.__battle__ || {}).filter(v => v === true).length
+      return { key, game: hints.length && new Set(hints).size === 1 ? hints[0] : '', conflict: new Set(hints).size > 1, count, battleCount }
     })
 }
 
