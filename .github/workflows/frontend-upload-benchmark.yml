@@ -1,0 +1,90 @@
+name: Frontend upload benchmark
+run-name: Frontend upload benchmark · ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-upload-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    if: github.actor == github.repository_owner && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend
+        env:
+          VITE_API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Archive dist
+        run: |
+          tar -czf "$RUNNER_TEMP/frontend-dist.tar.gz" -C dist .
+          bytes=$(stat -c %s "$RUNNER_TEMP/frontend-dist.tar.gz")
+          echo "Archive: $bytes bytes at $GITHUB_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Measure SSH upload three times
+        env:
+          DEPLOY_HOST: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
+          DEPLOY_PORT: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
+          DEPLOY_USER: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
+          DEPLOY_KEY: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$work/key"
+          unset DEPLOY_KEY
+          port=${DEPLOY_PORT:-22}
+          ssh-keyscan -T 10 -p "$port" "$DEPLOY_HOST" > "$work/known_hosts" 2>/dev/null
+          test -s "$work/known_hosts"
+          opts=(-T -p "$port" -i "$work/key" -o BatchMode=yes -o IdentitiesOnly=yes
+                -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=3
+                -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$work/known_hosts")
+          archive="$RUNNER_TEMP/frontend-dist.tar.gz"
+          bytes=$(stat -c %s "$archive")
+          digest=$(sha256sum "$archive" | cut -d' ' -f1)
+          echo '| Attempt | Seconds | MiB/s | Result |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|---:|---:|---:|---|' >> "$GITHUB_STEP_SUMMARY"
+          failed=0
+          for attempt in 1 2 3; do
+            start=$(date +%s%3N)
+            status=0
+            reply=$(timeout -k 5s 300s ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" sha256sum < "$archive") || status=$?
+            ms=$(( $(date +%s%3N) - start ))
+            result=verified
+            if (( status != 0 )); then
+              result="SSH exit $status"
+            elif [[ "${reply%% *}" != "$digest" ]]; then
+              result="digest mismatch"
+            fi
+            if [[ "$result" != verified ]]; then failed=1; fi
+            awk -v i="$attempt" -v ms="$ms" -v bytes="$bytes" -v result="$result" 'BEGIN {
+              speed = result == "verified" && ms > 0 ? sprintf("%.2f", bytes / 1048576 / (ms / 1000)) : "—"
+              printf "| %d | %.3f | %s | %s |\n", i, ms / 1000, speed, result
+            }' | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          exit "$failed"
