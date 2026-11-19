@@ -30,6 +30,20 @@ class AdminAuthorizationServiceTest {
     }
 
     @Test
+    fun `diagnostic reader can read only while active and receives no management capability`() {
+        val id = "reader"
+        activeUser(id)
+        every { roleRepository.findById(id) } returns Optional.of(binding(id, AdminRole.MAAYUAN_DIAGNOSTICS_READER))
+        every { feedbackRepository.findById(id) } returns Optional.empty()
+        assertTrue(service.canReadMaayuanDiagnostics(id))
+        assertFalse(service.hasAnyAdminCapability(id))
+        assertTrue(service.permissionsFor(id).isEmpty())
+        assertTrue(service.operatorAreasFor(id).isEmpty())
+        every { userService.get(id) } returns MaaUserInfo(id, "disabled", activated = false)
+        assertFalse(service.canReadMaayuanDiagnostics(id))
+    }
+
+    @Test
     fun `roadmap usage permissions respect catalog editors and exclude historical usage roles`() {
         for (role in AdminRole.entries) {
             val userId = role.name

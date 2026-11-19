@@ -17,7 +17,7 @@
 
 上述 stage/node 分支中，issue.node 为 `(direct)` 时回退 `stage:<stage>`，避免跨阶段合组；nodes 聚合时过滤该值（含已有列表），服务端字段校验仍接受它。operator/ocr_name 分组规则不变。
 
-管理端基路径 `/v1/admin/maayuan-diagnostics` 使用 JWT，复用 `FeedbackAccessService.operatorAreas(userId)` 包含 MAAYUAN 的判断，与原 UNASSIGNED 诊断工单的工作台可见规则一致（含超级管理员），不使用宽泛的旧 manageAreas 代替岗位授权；未授权返回 HTTP 403，不新增权限码。Integration Token 基路径 `/open-api/maayuan-diagnostics` 还要求 Token 明确包含 MAAYUAN、所有者仍满足同一查看判断，不能以省略 feedbackAreas 表示诊断授权。
+管理端基路径 `/v1/admin/maayuan-diagnostics` 使用 JWT，复用 `FeedbackAccessService.operatorAreas(userId)` 包含 MAAYUAN 的判断，与原 UNASSIGNED 诊断工单的工作台可见规则一致（含超级管理员），不使用宽泛的旧 manageAreas 代替岗位授权。Integration Token 在 `/open-api/maayuan-diagnostics` 读取时逐请求校验当前账号的 `MAAYUAN_DIAGNOSTICS_READER` 角色或 MAAYUAN 运营资格，同时要求令牌具有 `diagnostics:read` 且板块显式包含 MAAYUAN。只有新角色时仅可签发该单一 scope、单一板块的个人令牌；完整清单和分析写入仍需运营资格，日志与状态更新仍走管理端。此角色不提供通用后台或 Beta 资格。按人授权前先更新所有后端实例，再发布前端，避免旧实例读取新角色枚举。开发者接入步骤见[开发者 API](../../frontend/docs/developers/api.md#让-ai-只读诊断)。
 
 | 相对端点 | 功能 |
 |---|---|

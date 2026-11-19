@@ -4,6 +4,7 @@ import com.lhs.share.controller.response.ApiResultException
 import com.lhs.share.hub.repository.AdminRoleBindingRepository
 import com.lhs.share.hub.repository.FeedbackAccessGrantRepository
 import com.lhs.share.hub.repository.entity.AdminRole
+import com.lhs.share.hub.service.report.FeedbackArea
 import com.lhs.share.hub.service.report.FeedbackCategoryService
 import com.lhs.share.service.UserService
 import org.springframework.http.HttpStatus
@@ -38,6 +39,8 @@ class AdminAuthorizationService(
     private val userService: UserService,
     private val categories: FeedbackCategoryService,
 ) {
+    private val nonManagementRoles = setOf(AdminRole.ARCHIVE_USER, AdminRole.OPERATOR_PANEL_USER, AdminRole.MAAYUAN_DIAGNOSTICS_READER)
+
     fun rolesFor(userId: String): Set<AdminRole> {
         if (userService.get(userId)?.activated != true) return emptySet()
         return roleRepository.findById(userId).orElse(null)?.roles.orEmpty()
@@ -49,10 +52,13 @@ class AdminAuthorizationService(
     fun hasAnyAdminCapability(userId: String): Boolean {
         if (userService.get(userId)?.activated != true) return false
         val roles = roleRepository.findById(userId).orElse(null)?.roles.orEmpty()
-        if (roles.any { it != AdminRole.ARCHIVE_USER && it != AdminRole.OPERATOR_PANEL_USER }) return true
+        if (roles.any { it !in nonManagementRoles }) return true
         val grant = feedbackAccessRepository.findById(userId).orElse(null)
         return grant?.manageAreas.orEmpty().isNotEmpty() || grant?.feedbackRoles.orEmpty().isNotEmpty()
     }
+
+    fun canReadMaayuanDiagnostics(userId: String): Boolean =
+        hasRole(userId, AdminRole.MAAYUAN_DIAGNOSTICS_READER) || FeedbackArea.MAAYUAN in operatorAreasFor(userId)
 
     fun hasPermission(userId: String, permission: AdminPermission): Boolean {
         val roles = rolesFor(userId)

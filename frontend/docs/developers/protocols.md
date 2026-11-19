@@ -28,7 +28,8 @@ JSON 文件表示可交换的数据事实，HTTP API 表示某种凭据允许执
 | Work 公开读取/兼容性预览 | 公共访问 | 不需要 Token | 正式；Adapter 部分支持 |
 | 读取已发布成就目录 | 站内 JWT | 部署方提供的固定只读 Key | 按部署配置启用；见[成就目录 API](./api.md#已发布成就目录) |
 | 星石完整识别背包与经验同步 | JSON 补传预览/确认；原备份导入导出保留 | `maayuan-star-inventory` v1，`star:sync:write` | 已实现；见[星石 API](./api-star.md) |
-| MaaYuan 密探采集非成功诊断 | 现有私有反馈管理页读取 | multipart schema_version=1，现有有效连接码即可，无新增 Scope | 已实现；见[API 参考](./api.md)，上线状态另行确认 |
+| MaaYuan 密探采集非成功诊断 | MaaYuan 诊断中心按运营权限读取 | multipart schema_version=1，现有有效连接码即可，无新增 Scope | 已实现；见[API 参考](./api.md)，上线状态另行确认 |
+| MaaYuan 诊断 AI 读取 | 角色管理授权，个人中心签发及撤销 | 个人 Integration Token，限定 `MAAYUAN` 与 `diagnostics:read` | 已实现，见[只读接入步骤](./api.md#让-ai-只读诊断) |
 
 ## 旧版兼容和迁移
 

@@ -16,6 +16,9 @@ import com.lhs.share.hub.service.media.MediaStorageService
 import com.lhs.share.hub.service.report.FeedbackAccessService
 import com.lhs.share.hub.service.report.FeedbackArea
 import com.lhs.share.openapi.OpenApiPrincipal
+import com.lhs.share.openapi.integration.IntegrationPrincipal
+import com.lhs.share.openapi.integration.IntegrationScope
+import com.lhs.share.openapi.integration.IntegrationTokenService
 import com.mongodb.client.result.UpdateResult
 import io.mockk.every
 import io.mockk.mockk
@@ -34,6 +37,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.server.ResponseStatusException
@@ -46,6 +50,54 @@ class MaayuanDiagnosticOwnershipTest {
     private val mapper = jacksonObjectMapper()
     private val parser = MaayuanDiagnosticParser(mapper)
     private val now = Instant.now()
+
+    @Test
+    fun `reader downloads only ready images of the requested event`() {
+        val image = asset("image").copy(mime = "image/jpeg", diagnosticEventId = "event")
+        val event = logEvent("event").copy(images = listOf(MaayuanDiagnosticImage("image", "name_area")))
+        val mongo = mockk<MongoTemplate>()
+        val access = mockk<FeedbackAccessService>()
+        val media = mockk<MediaStorageService>()
+        every { mongo.findById("event", MaayuanDiagnosticEvent::class.java) } returns event
+        every { access.operatorAreas("reader") } returns emptySet()
+        every { mongo.findById("image", MediaAsset::class.java) } returns image
+        every { media.loadAuthorizedAsset(image) } returns ByteArrayResource(byteArrayOf(1))
+        val center = MaayuanDiagnosticCenterService(mongo, access, mockk(), media, mapper)
+
+        val tokens = mockk<IntegrationTokenService>()
+        val reader = IntegrationPrincipal("id", "reader", "AI", setOf("diagnostics:read"), setOf(FeedbackArea.MAAYUAN))
+        every { tokens.validateAuthorization("Bearer read", IntegrationScope.DIAGNOSTICS_READ) } returns reader
+        val mvc = MockMvcBuilders.standaloneSetup(OpenApiMaayuanDiagnosticController(center, tokens))
+            .setControllerAdvice(IntegrationExceptionHandler()).build()
+        val path = "/open-api/maayuan-diagnostics/events/event"
+        fun download(id: String) = mvc.perform(get("$path/media/$id").header("Authorization", "Bearer read"))
+
+        download("image").andExpect(status().isOk)
+        download("manifest").andExpect(status().isForbidden)
+        download("log").andExpect(status().isNotFound)
+        download("another-image").andExpect(status().isNotFound)
+        for (unavailable in listOf(
+            image.copy(diagnosticEventId = "other"),
+            image.copy(ownerUserId = "other"),
+            image.copy(mime = "application/gzip"),
+            image.copy(status = "pending"),
+            image.copy(diagnosticExpiresAt = now),
+        )) {
+            every { mongo.findById("image", MediaAsset::class.java) } returns unavailable
+            download("image").andExpect(status().isNotFound)
+        }
+        val manifest = asset("manifest").copy(diagnosticEventId = event.id)
+        every { mongo.findById("manifest", MediaAsset::class.java) } returns manifest
+        every { media.loadAuthorizedAsset(manifest) } returns ByteArrayResource("""{"trace":[],"issues":[],"images":[]}""".toByteArray())
+        mvc.perform(get(path).header("Authorization", "Bearer read")).andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.id").value(event.id))
+            .andExpect(jsonPath("$.data.manifest.trace").doesNotExist())
+            .andExpect(jsonPath("$.data.log").doesNotExist())
+
+        every { tokens.validateAuthorization("Bearer read", IntegrationScope.DIAGNOSTICS_READ) } returns reader.copy(feedbackAreas = null)
+        download("image").andExpect(status().isForbidden)
+        verify(exactly = 1) { media.loadAuthorizedAsset(image) }
+    }
 
     @Test
     fun `operator groups replace mixed historical IDs with only their own subject`() {

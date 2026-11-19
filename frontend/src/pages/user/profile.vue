@@ -580,6 +580,11 @@
             </details>
             <p class="connection-safety"><ShieldCheck :size="15" aria-hidden="true" />连接码不是登录密码，请仅提供给你信任的工具。</p>
           </div>
+          <DiagnosticReaderConnection
+            v-if="auth.userInfo?.id && canReadDiagnostics"
+            :key="auth.userInfo.id"
+            :user-id="auth.userInfo.id"
+          />
         </div>
       </section>
 
@@ -597,6 +602,7 @@
 </template>
 
 <script setup>
+import DiagnosticReaderConnection from "../../components/diagnostics/DiagnosticReaderConnection.vue";
 import OperatorMatchConnection from "../../components/OperatorMatchConnection.vue";
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useOnboardingStore } from '../../stores/onboarding.js'
@@ -650,6 +656,10 @@ import {
 } from "../../utils/openApiToken.js";
 
 const onboarding = useOnboardingStore();
+const canReadDiagnostics = computed(() => {
+  const access = auth.adminAccess;
+  return access?.roles?.includes('MAAYUAN_DIAGNOSTICS_READER') || access?.superAdmin || access?.operatorAreas?.includes('MAAYUAN');
+});
 onboarding.initialize(String(auth.userInfo?.id || 'guest'));
 const maaGuideActive = computed(() => onboarding.active && onboarding.tutorialTask === 'maayuan-first-sync' && onboarding.ownerId === String(auth.userInfo?.id || 'guest'));
 const maaTutorialTarget = computed(() => {

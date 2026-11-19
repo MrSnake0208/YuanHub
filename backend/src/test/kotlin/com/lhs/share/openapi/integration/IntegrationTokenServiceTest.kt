@@ -148,6 +148,47 @@ class IntegrationTokenServiceTest {
         verify(exactly = 0) { repository.save(any()) }
     }
 
+    @Test
+    fun `reader can issue and use only the Maayuan read grant and loses access on revocation`() {
+        val read = listOf("diagnostics:read")
+        val areas = setOf("MAAYUAN")
+        every { authorization.hasAnyAdminCapability("reader") } returns false
+        every { authorization.canReadMaayuanDiagnostics("reader") } returns true
+        every { categories.keys() } returns areas
+        val saved = slot<IntegrationToken>()
+        every { repository.save(capture(saved)) } answers { saved.captured }
+
+        for ((scopes, requestedAreas) in listOf(
+            read to null,
+            read to (areas + "UI"),
+            (read + "diagnostics:analysis:write") to areas,
+            listOf("feedback:read") to areas,
+        )) {
+            assertEquals(
+                403,
+                assertThrows(IntegrationApiException::class.java) {
+                    service.create("reader", "AI", scopes, requestedAreas, null)
+                }.status.value(),
+            )
+        }
+        verify(exactly = 0) { repository.save(any()) }
+        val response = service.create("reader", "AI", read, areas, null)
+        every { repository.findByTokenHash(saved.captured.tokenHash) } returns saved.captured
+        val bearer = "Bearer " + response.token
+        assertEquals("reader", service.validateAuthorization(bearer, IntegrationScope.DIAGNOSTICS_READ).ownerUserId)
+        for (scope in listOf(IntegrationScope.DIAGNOSTICS_ANALYSIS_WRITE, IntegrationScope.FEEDBACK_READ)) {
+            val denied = assertThrows(IntegrationApiException::class.java) { service.validateAuthorization(bearer, scope) }
+            assertEquals(403, denied.status.value())
+        }
+
+        every { authorization.canReadMaayuanDiagnostics("reader") } returns false
+        assertEquals(
+            403,
+            assertThrows(IntegrationApiException::class.java) { service.validateAuthorization(bearer, IntegrationScope.DIAGNOSTICS_READ) }
+                .status.value(),
+        )
+    }
+
     private fun token(
         scopes: Set<String> = setOf("feedback:read", "feedback:analysis:write"),
         feedbackAreas: Set<String>? = null,

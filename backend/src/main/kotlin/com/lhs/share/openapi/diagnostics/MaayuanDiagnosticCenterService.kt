@@ -9,6 +9,7 @@ import com.lhs.share.hub.repository.entity.MaayuanDiagnosticEvent
 import com.lhs.share.hub.repository.entity.MaayuanDiagnosticIssue
 import com.lhs.share.hub.repository.entity.MediaAsset
 import com.lhs.share.hub.repository.entity.MediaKind
+import com.lhs.share.hub.repository.entity.effectiveKind
 import com.lhs.share.hub.service.media.MediaStorageService
 import com.lhs.share.hub.service.operator.OperatorCatalogService
 import com.lhs.share.hub.service.report.FeedbackAccessService
@@ -217,8 +218,11 @@ class MaayuanDiagnosticCenterService(
     private fun summary(value: FeedbackDiagnosticSummary, includeTrace: Boolean): FeedbackDiagnosticSummary =
         if (includeTrace) value else value.copy(issues = value.issues.map { it.copy(node = null) })
 
-    fun mediaResponse(eventId: String, assetId: String): ResponseEntity<Resource> {
-        val asset = asset(retainedEvent(eventId), assetId)
+    fun mediaResponse(eventId: String, assetId: String, integrationOwnerId: String? = null): ResponseEntity<Resource> {
+        val event = retainedEvent(eventId)
+        // Raw manifests contain evidence omitted from the integration event view.
+        if (integrationOwnerId != null && assetId == event.manifestAssetId) requireAccess(integrationOwnerId)
+        val asset = asset(event, assetId)
         val resource = media.loadAuthorizedAsset(asset)
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(asset.mime))
@@ -286,7 +290,10 @@ class MaayuanDiagnosticCenterService(
     private fun asset(event: MaayuanDiagnosticEvent, id: String): MediaAsset {
         if (id != event.manifestAssetId && event.images.none { it.assetId == id }) throw ApiResultException(404, "诊断附件不存在")
         val asset = mongo.findById(id, MediaAsset::class.java) ?: throw ApiResultException(404, "诊断附件已过期")
-        if (!asset.privateStorage || asset.diagnosticEventId != event.id || expired(asset)) throw ApiResultException(404, "诊断附件已过期")
+        if (!asset.privateStorage || asset.ownerUserId != event.userId || asset.diagnosticEventId != event.id || expired(asset)) {
+            throw ApiResultException(404, "诊断附件已过期")
+        }
+        if (id != event.manifestAssetId && asset.effectiveKind() != MediaKind.IMAGE) throw ApiResultException(404, "诊断图片不存在")
         if (asset.status != "ready") throw ApiResultException(404, "诊断图片尚未就绪或不可用")
         return asset
     }

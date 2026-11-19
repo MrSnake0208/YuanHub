@@ -352,7 +352,13 @@ multipart 与 intents 两条入口均保存图片 `operator_id`，manifest 仍�
 
 证据图片放大后，可用键盘 `←` / `→` 按当前证据展示顺序切换已就绪且已取得图片地址的截图，跳过过期、未就绪和加载失败的图片；到首尾停止，不跨发生记录或问题组。多图时显示当前位置和快捷键提示，Esc 仍关闭大图并恢复入口焦点。从数量读数打开的红色数量框只对应原图，切换图片后不沿用。
 
-Integration Token 的 scope 单独从 `GET /user/integration-tokens/scopes`（JWT）读取，不能混入上方连接码 Scope 表。通过现有 `POST /user/integration-tokens` 创建时须明确设置 `feedback_areas:["MAAYUAN"]`（允许包含其他板块），并授予所需 scope；省略板块范围不视为诊断授权。Token 所有者仍须具备 MAAYUAN 的反馈查看权限。
+### 让 AI 只读诊断
+
+1. 管理员在「角色管理」为已激活的开发者勾选「MaaYuan 诊断只读」。授权覆盖所有玩家上报的诊断问题、事件摘要及诊断截图。
+2. 开发者在「账号与连接码 → MaaYuan 诊断 AI 接入」创建个人令牌，将一次显示的密钥保存到 AI 客户端的密钥配置，复制接入说明给支持 HTTP 的 AI。
+3. 使用 `Authorization: Bearer <INTEGRATION_TOKEN>` 调用 AI 基路径下的 `GET /issues?status=NEW&sort=count&page_size=3`。用返回的问题 ID 读取详情，再从事件的 `images` 中选择就绪、未过期的截图。只读账号可获取裁剪后的内联 manifest，完整清单文件与原始日志仅向有相应管理权限的账号开放。
+
+JWT 端点 `POST /user/integration-tokens` 接受 `{"name":"MaaYuan 诊断 AI","scopes":["diagnostics:read"],"feedback_areas":["MAAYUAN"]}`。只有诊断只读角色的账号仅能签发此范围。令牌元数据与单枚撤销分别使用 `GET /user/integration-tokens`、`DELETE /user/integration-tokens/{tokenId}`，仅限令牌所有者。每次读取都会核验所有者当前的诊断只读角色或 MAAYUAN 运营权限。失去全部读取资格后返回 403，令牌已撤销或过期返回 401。分析写入另需 MAAYUAN 运营权限与对应的写入 scope。
 
 | Integration Scope | 用途 |
 |---|---|

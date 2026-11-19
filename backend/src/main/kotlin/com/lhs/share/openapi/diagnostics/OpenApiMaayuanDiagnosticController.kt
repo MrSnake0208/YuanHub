@@ -3,6 +3,7 @@ package com.lhs.share.openapi.diagnostics
 import com.lhs.share.controller.response.ApiResult.Companion.success
 import com.lhs.share.hub.service.report.FeedbackArea
 import com.lhs.share.openapi.integration.IntegrationApiException
+import com.lhs.share.openapi.integration.IntegrationPrincipal
 import com.lhs.share.openapi.integration.IntegrationScope
 import com.lhs.share.openapi.integration.IntegrationTokenService
 import jakarta.validation.Valid
@@ -44,21 +45,27 @@ class OpenApiMaayuanDiagnosticController(private val center: MaayuanDiagnosticCe
         @RequestHeader(value = "Authorization", required = false) authorization: String?,
         @PathVariable eventId: String,
         @PathVariable assetId: String,
-    ) = authorized(authorization) { center.mediaResponse(eventId, assetId) }
+    ) = authorized(authorization) { center.mediaResponse(eventId, assetId, integrationOwnerId = it.ownerUserId) }
 
     @PutMapping("/issues/{id}/analysis")
     fun analysis(
         @RequestHeader(value = "Authorization", required = false) authorization: String?,
         @PathVariable id: String,
         @Valid @RequestBody request: DiagnosticAnalysisRequest,
-    ) = authorized(authorization, IntegrationScope.DIAGNOSTICS_ANALYSIS_WRITE) { success(center.analysis(id, request)) }
+    ) = authorized(authorization, IntegrationScope.DIAGNOSTICS_ANALYSIS_WRITE) {
+        center.requireAccess(it.ownerUserId)
+        success(center.analysis(id, request))
+    }
 
-    private fun <T> authorized(authorization: String?, scope: IntegrationScope = IntegrationScope.DIAGNOSTICS_READ, action: () -> T): T {
+    private fun <T> authorized(
+        authorization: String?,
+        scope: IntegrationScope = IntegrationScope.DIAGNOSTICS_READ,
+        action: (IntegrationPrincipal) -> T,
+    ): T {
         val principal = tokens.validateAuthorization(authorization, scope)
         if (principal.feedbackAreas?.contains(FeedbackArea.MAAYUAN) != true) {
             throw IntegrationApiException(HttpStatus.FORBIDDEN, "diagnostics_area_missing", "Integration token must include MAAYUAN")
         }
-        center.requireAccess(principal.ownerUserId)
-        return action()
+        return action(principal)
     }
 }

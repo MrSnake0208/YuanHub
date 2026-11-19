@@ -243,6 +243,7 @@ async function leaveAfterPermissionChange() {
 function roleLabel(role) {
   return {
     SUPER_ADMIN: '超级管理员',
+    MAAYUAN_DIAGNOSTICS_READER: 'MaaYuan 诊断只读',
     ARCHIVE_USER: '成就与羁绊访问（历史）',
     OPERATOR_PANEL_USER: '自动计算使用',
     PLATFORM_ADMIN: '平台管理员',
@@ -260,6 +261,7 @@ function roleLabel(role) {
 function roleDescription(role) {
   return {
     SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
+    MAAYUAN_DIAGNOSTICS_READER: '允许通过 AI 读取所有玩家上报的 MaaYuan 诊断问题、事件摘要及截图。原始日志、反馈工单和问题处理需要另行授权。',
     ARCHIVE_USER: '历史角色，当前不授予任何权限；管理目录请使用对应编辑员角色',
     OPERATOR_PANEL_USER: '历史使用资格暂不生效，自动计算目前仅管理员可用',
     PLATFORM_ADMIN: '维护全部内容目录，并管理内测、招募资格与开发目标',

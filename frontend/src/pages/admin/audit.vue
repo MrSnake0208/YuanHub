@@ -101,6 +101,7 @@ function actionLabel(action) { return ACTION_LABELS[action] || action || '未知
 function roleLabel(role) {
   return {
     SUPER_ADMIN: '超级管理员',
+    MAAYUAN_DIAGNOSTICS_READER: 'MaaYuan 诊断只读',
     PLATFORM_ADMIN: '平台管理员',
     ACHIEVEMENT_CATALOG_EDITOR: '成就目录编辑员',
     BOND_CATALOG_EDITOR: '羁绊目录编辑员',

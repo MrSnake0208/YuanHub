@@ -3,6 +3,7 @@ package com.lhs.share.openapi.integration
 import com.lhs.share.hub.repository.IntegrationTokenRepository
 import com.lhs.share.hub.repository.entity.IntegrationToken
 import com.lhs.share.hub.service.admin.AdminAuthorizationService
+import com.lhs.share.hub.service.report.FeedbackArea
 import com.lhs.share.hub.service.report.FeedbackCategoryService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -27,7 +28,13 @@ class IntegrationTokenService(
         feedbackAreas: Set<String>?,
         expiresAt: Instant?,
     ): IntegrationTokenCreatedResponse {
-        requireAdminCapability(ownerUserId)
+        val diagnosticReaderRequest = scopes == listOf(IntegrationScope.DIAGNOSTICS_READ.key) &&
+            feedbackAreas?.map { it.trim().uppercase() }?.toSet() == setOf(FeedbackArea.MAAYUAN)
+        if (!authorization.hasAnyAdminCapability(ownerUserId) &&
+            !(diagnosticReaderRequest && authorization.canReadMaayuanDiagnostics(ownerUserId))
+        ) {
+            throw IntegrationApiException(HttpStatus.FORBIDDEN, "integration_admin_required", "当前账号没有签发此范围令牌的权限")
+        }
         val normalizedName = name.trim().takeIf { it.isNotEmpty() }
             ?: throw badRequest("invalid_name", "name 不能为空")
         if (normalizedName.length > MAX_NAME_LENGTH) {
@@ -92,11 +99,16 @@ class IntegrationTokenService(
                 "Integration token lacks ${requiredScope.key}",
             )
         }
-        if (!authorization.hasAnyAdminCapability(entity.ownerUserId)) {
+        val ownerAllowed = if (requiredScope == IntegrationScope.DIAGNOSTICS_READ) {
+            authorization.canReadMaayuanDiagnostics(entity.ownerUserId)
+        } else {
+            authorization.hasAnyAdminCapability(entity.ownerUserId)
+        }
+        if (!ownerAllowed) {
             throw IntegrationApiException(
                 HttpStatus.FORBIDDEN,
                 "integration_owner_forbidden",
-                "Integration token owner no longer has admin capability",
+                "Integration token owner lacks the required access",
             )
         }
         runCatching { repository.touchLastUsedAt(entity.id, now) }
@@ -107,16 +119,6 @@ class IntegrationTokenService(
             scopes = entity.scopes,
             feedbackAreas = entity.feedbackAreas,
         )
-    }
-
-    private fun requireAdminCapability(userId: String) {
-        if (!authorization.hasAnyAdminCapability(userId)) {
-            throw IntegrationApiException(
-                HttpStatus.FORBIDDEN,
-                "integration_admin_required",
-                "当前账号没有可用于集成的后台权限",
-            )
-        }
     }
 
     private fun parseScopes(scopes: List<String>): List<IntegrationScope> {
