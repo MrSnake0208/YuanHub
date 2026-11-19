@@ -1,7 +1,7 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .footer .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { .footer .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
-@media (min-width: 768px) and (max-width: 1080px) { .footer .wrap { padding-inline: 32px; } }
+@media (min-width: 768px) and (max-width: 1199px) { .footer .wrap { padding-inline: 32px; } }
 
 .footer{margin-top:96px;padding:60px 0 44px}
 .footer .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap}

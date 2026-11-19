@@ -233,7 +233,7 @@
 .ledger-stones strong { max-width: 100%; overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .ledger-stones small { font: 8px var(--font-d); }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .agent-ledger-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 

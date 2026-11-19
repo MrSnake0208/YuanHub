@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (min-width: 1200px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .recruitment-main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }.guide-entry-wrap{position:relative}.guide-entry-wrap>.guide-choice{position:absolute;right:0;top:100%;width:min(240px,calc(100vw - 32px));z-index:var(--z-popover)}
 .archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
@@ -10,7 +10,7 @@
 button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-wrap:wrap;gap:10px}.feedback p{line-height:1.7}
 }
 
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .account-overview { margin-top: 12px; padding: 16px 18px; }
   .recruitment-highlights { margin-top: 12px; padding-top: 12px; }
   .highlight-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -1,7 +1,7 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 :where(.page-header) > .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { :where(.page-header) > .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
-@media (min-width: 768px) and (max-width: 1080px) { :where(.page-header) > .wrap { padding-inline: 32px; } }
+@media (min-width: 768px) and (max-width: 1199px) { :where(.page-header) > .wrap { padding-inline: 32px; } }
 
 .page-header { padding: 20px 0 12px; }
 .page-header > .wrap { container-type: inline-size; }

@@ -1,4 +1,4 @@
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
   .bonds-admin .wrap { max-width: 1640px; padding-inline: 24px; }
 
   .bond-admin-workspace {

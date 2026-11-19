@@ -129,6 +129,7 @@
 <script setup>
 import { ArrowLeft, ArrowUpRight } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -149,8 +150,7 @@ const workspace = ref('packages'), data = ref(null), form = ref(null), baseline 
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
 const loadError = ref('')
 const isCatalog = computed(() => workspace.value !== 'settings')
-const media = window.matchMedia?.('(max-width: 1080px)')
-const compact = ref(media?.matches ?? window.innerWidth <= 1080)
+const { isCompactNav: compact } = useViewportTier()
 const pageHeader = ref(null), workspaceTools = ref(null), workspaceOffset = ref(360)
 const errorSummary = ref(null), editor = ref(null), editorBody = ref(null)
 const listRegion = ref(null), newButton = ref(null)
@@ -336,14 +336,7 @@ watch(workspaceTools, (tools, _, onCleanup) => {
   observer.observe(tools)
   onCleanup(() => observer.disconnect())
 }, { flush: 'post' })
-function onMediaChange() {
-  compact.value = media?.matches ?? window.innerWidth <= 1080
-}
-if (media) media.addEventListener('change', onMediaChange)
-else window.addEventListener('resize', onMediaChange)
 onBeforeUnmount(() => {
-  if (media) media.removeEventListener('change', onMediaChange)
-  else window.removeEventListener('resize', onMediaChange)
   alive = false
   generation++
 })

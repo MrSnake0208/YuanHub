@@ -1,4 +1,4 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .diagnostic-content { padding-top: 16px; }
   .diagnostic-workspace { grid-template-columns: minmax(0, 1fr); }
   .diagnostic-toolbar button, .diagnostic-pagination button { min-height: 44px; }

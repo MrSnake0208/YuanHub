@@ -1,0 +1,8 @@
+@media (hover: none), (pointer: coarse) {
+  .touch-target,
+  .touch-targets :is(a, button, summary) {
+    /* Opt-in minimums also override compact sizing in scoped component styles. */
+    min-inline-size: 44px !important;
+    min-block-size: 44px !important;
+  }
+}

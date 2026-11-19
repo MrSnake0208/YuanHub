@@ -12,7 +12,7 @@
   .today-workspace:not(:has(section)), .today-reminders-target:not(:has(> details)), .today-column:not(:has(section)) { display: none; }
   .today-workspace:not(:has(.today-primary section)), .today-workspace:not(:has(.today-secondary section)) { grid-template-columns: minmax(0, 1fr); }
 }
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .today-main { margin-left: 244px; }
   .today-wrap { max-width: 1600px; margin-inline: 0; padding-inline: 32px; }
 }

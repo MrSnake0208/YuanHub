@@ -1,4 +1,4 @@
-@media not all and (max-width: 1080px) {.calendar-page .calendar-header { padding-top: 36px; padding-bottom: 24px; }
+@media (min-width: 1200px) {.calendar-page .calendar-header { padding-top: 36px; padding-bottom: 24px; }
 .calendar-page .calendar-header h1 { font-family: var(--font-s); font-weight: 900; font-size: clamp(32px, 4vw, 52px); margin: 12px 0; }
 .calendar-page h2, .calendar-page h3, .calendar-page h4 { font-family: var(--font-s); overflow-wrap: anywhere; }
 .calendar-page .calendar-kicker { display: flex; align-items: center; gap: 8px; font-weight: 700; }

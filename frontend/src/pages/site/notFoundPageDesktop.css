@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
 .page-not-found > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 
 main { min-height:100dvh; display:grid; place-items:center; padding:24px; }

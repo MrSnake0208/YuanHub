@@ -1,5 +1,5 @@
 <template>
-  <section class="battle-recorder" aria-label="战斗操作记录">
+  <section ref="recorder" class="battle-recorder" aria-label="战斗操作记录">
     <div class="battle-action-legend">
       <span class="battle-legend-symbols"><span class="battle-legend-prefix">操作符号：</span><b>{{ mobile ? '数字=出手顺序' : '数字 本回合全队出手顺序' }}</b><b v-for="item in legendActions" :key="item.type">{{ item.symbol }} {{ item.label }}</b><b>{{ BATTLE_INTERACTION.symbol }} {{ BATTLE_INTERACTION.label }}</b></span>
       <!-- is-unused 供手机端只列出表中实际用到的非主位目标；只打主位时不列目标。 -->
@@ -18,40 +18,60 @@
       <button v-if="mobile" type="button" class="battle-note-done" @click="closeEnemySettings">完成</button>
     </div>
     </Teleport>
-    <div ref="scroller" class="battle-table-scroll" role="region" aria-label="回合操作表，左右滑动查看" tabindex="0">
+    <div v-show="outsideMatrix && expanded" class="battle-external-round">
+      <div class="battle-external-controls" role="group" :aria-label="`第${current + 1}回合操作`">
+        <div id="battle-external-target"><span class="battle-composer-label">目标</span></div>
+        <div id="battle-external-actions"></div>
+      </div>
+      <div id="battle-external-detail"></div>
+      <div id="battle-external-remark"></div>
+    </div>
+    <div ref="scroller" class="battle-table-scroll" role="region" :aria-label="overflowing ? '回合操作表，左右滑动查看' : '回合操作表'" tabindex="0">
       <table class="battle-matrix battle-action-matrix">
         <caption class="sr-only">回合行动表，数字为全队出手顺序，背景色与文字为目标</caption>
         <thead><tr><th scope="col">回合</th><th v-for="(member, index) in operators" :key="index" scope="col" :class="{ 'is-active-column': expanded && (mobile || editingAction) && activeSlot === index }"><span class="battle-slot-number">{{ index + 1 }}号位</span><button type="button" class="battle-record-identity" :aria-label="member.name ? `更换${index + 1}号位密探（当前：${member.name}）` : `选择${index + 1}号位密探`" aria-haspopup="dialog" @click="emit('pick-member', index, $event.currentTarget)"><img v-if="portraits[member.id || battleOperatorId(member.name)]" :src="portraits[member.id || battleOperatorId(member.name)]" alt=""><strong>{{ member.name || '选择密探' }}</strong></button></th><th scope="col">备注</th></tr></thead>
         <tbody>
           <template v-for="(row, rowIndex) in rows" :key="rowIndex">
             <!-- 桌面端将回合标题与出手顺序放在当前回合行上方。 -->
-            <tr v-if="!mobile && expanded && current === rowIndex" class="battle-editor-row battle-editor-row-top"><td :colspan="operators.length + 2"><div id="battle-editor-top" class="battle-inline-editor"></div></td></tr>
-            <tr v-if="!mobile && expanded && current === rowIndex" class="battle-record-tools-row">
+            <tr v-if="!mobile && expanded && current === rowIndex" v-show="!outsideMatrix" class="battle-editor-row battle-editor-row-top"><td :colspan="operators.length + 2"><div id="battle-editor-top" class="battle-inline-editor"></div></td></tr>
+            <tr v-if="!mobile && expanded && current === rowIndex" v-show="!outsideMatrix" class="battle-record-tools-row">
               <td><span class="battle-composer-label">目标</span></td>
-              <td :colspan="operators.length"><BattleTargetRing :names="targets.map((_, i) => targetName(i))" :present="presentTargets" :active="activeTarget ?? target" :plain-index="usage.main" :disabled="activeSlot === BOX" @select="pickTarget" /></td>
-              <td><div class="battle-sequence-actions">
-                <button type="button" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="recordInteraction"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}</button>
-                <button type="button" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
-              </div></td>
+              <td :colspan="operators.length">
+                <Teleport defer to="#battle-external-target" :disabled="!outsideMatrix">
+                  <BattleTargetRing :names="targets.map((_, i) => targetName(i))" :present="presentTargets" :active="activeTarget ?? target" :plain-index="usage.main" :disabled="activeSlot === BOX" @select="pickTarget" />
+                </Teleport>
+              </td>
+              <td>
+                <Teleport defer to="#battle-external-actions" :disabled="!outsideMatrix">
+                  <div class="battle-sequence-actions touch-targets">
+                    <button type="button" data-round-tool="interaction" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="recordInteraction"><b aria-hidden="true">{{ BATTLE_INTERACTION.symbol }}</b>{{ BATTLE_INTERACTION.label }}</button>
+                    <button type="button" data-round-tool="undo" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="14" aria-hidden="true" />撤回最后一步</button>
+                  </div>
+                </Teleport>
+              </td>
             </tr>
             <tr :class="{ 'battle-row-current': expanded && current === rowIndex, 'is-alt': rowIndex % 2 === 1 }"><th scope="row"><button type="button" :aria-label="`编辑第${rowIndex + 1}回合`" :aria-expanded="expanded && current === rowIndex" @click="selectCell(rowIndex, slot, $event)">{{ rowIndex + 1 }}</button></th>
               <td v-for="(actions, index) in row.slots" :key="index" :class="{ 'is-target-cell': expanded && current === rowIndex && (mobile || editingAction) && activeSlot === index }"><button type="button" class="battle-cell-button battle-action-cell" :disabled="!operators[index].name" :aria-label="`编辑第${rowIndex + 1}回合${index + 1}号位动作`" :aria-expanded="expanded && current === rowIndex" aria-controls="battle-action-detail" @click="selectCell(rowIndex, index, $event)"><span v-if="!actions.length" :class="{ 'battle-cell-empty': operators[index].name }">{{ operators[index].name ? '+' : '—' }}</span><span v-for="action in actions" :key="action.order" class="battle-action-mark" :data-order="action.order" :class="{ 'is-box': action.box, 'is-plain': !action.box && targetPlain(action.target) }" :style="action.box || targetPlain(action.target) ? null : { background: TARGET_COLORS[action.target], '--mark-color': TARGET_COLORS[action.target] }"><b>{{ action.order }}{{ action.symbol }}</b><span v-if="!action.box && !targetPlain(action.target)" class="sr-only">打{{ targetName(action.target) }}</span></span></button></td>
-              <td v-if="!mobile && expanded && current === rowIndex" class="battle-remark-editor" :rowspan="matrixActions.length + 1"><textarea :ref="setRemark" v-model="round.remark" :aria-label="`第${current + 1}回合备注`" :rows="matrixActions.length * 2 + 1" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></td>
+              <td v-if="!mobile && expanded && current === rowIndex" class="battle-remark-editor" :rowspan="matrixActions.length + 1">
+                <Teleport defer to="#battle-external-remark" :disabled="!outsideMatrix">
+                  <textarea :ref="setRemark" v-model="round.remark" data-round-tool="remark" :aria-label="`第${current + 1}回合备注`" :rows="outsideMatrix ? 2 : matrixActions.length * 2 + 1" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea>
+                </Teleport>
+              </td>
               <td v-else><button type="button" class="battle-cell-button battle-remark-cell" :aria-label="`编辑第${rowIndex + 1}回合备注`" @click="selectCell(rowIndex, slot, $event, true)"><span v-if="row.remark">{{ row.remark }}</span><span v-else class="battle-cell-empty">+</span></button></td>
             </tr>
             <template v-if="!mobile && expanded && current === rowIndex">
-              <tr v-for="(item, actionIndex) in matrixActions" :key="item.type" class="battle-action-input-row" :class="{ 'is-last': actionIndex === matrixActions.length - 1 }" :aria-label="`${editingAction ? `修改第${editing + 1}步` : '记录'}${item.label}`">
+              <tr v-for="(item, actionIndex) in matrixActions" :key="item.type" class="battle-action-input-row touch-targets" :class="{ 'is-last': actionIndex === matrixActions.length - 1 }" :aria-label="`${editingAction ? `修改第${editing + 1}步` : '记录'}${item.label}`">
                 <td></td>
                 <td v-for="(_, index) in operators" :key="index"><button v-if="item.type !== 'sp' || slotHasSpecial(index)" v-bind="actionButtonAttrs(index, item)" type="button" class="battle-record-action" @click="recordCell(index, item.type)"><b aria-hidden="true">{{ item.symbol }}</b><span>{{ item.label }}</span></button></td>
               </tr>
             </template>
             <!-- 手机端隐藏备注列，有备注的回合在行下显示一条贯穿整行的备注带（与操作图一致）；桌面端由 CSS 隐藏，仍用备注列。 -->
             <tr v-if="row.remark" class="battle-remark-row" :class="{ 'battle-row-current': expanded && current === rowIndex, 'is-alt': rowIndex % 2 === 1 }"><td :colspan="operators.length + (mobile ? 1 : 2)"><button type="button" class="battle-remark-band" :aria-label="`第${rowIndex + 1}回合备注：${row.remark}，点按编辑`" @click="selectCell(rowIndex, slot, $event)">{{ row.remark }}</button></td></tr>
-            <!-- 同一份编辑区：桌面留在回合行下，手机移到底部，不产生隐藏的表格列。 -->
+            <!-- 同一份编辑区随可用宽度移入矩阵外或手机底栏。 -->
             <EditorRow v-if="expanded && current === rowIndex">
-            <Teleport defer to="#battle-mobile-panel-body" :disabled="!mobile">
+            <Teleport defer :to="mobile ? '#battle-mobile-panel-body' : '#battle-external-detail'" :disabled="!mobile && !outsideMatrix">
             <section id="battle-action-detail" :ref="setSection" class="battle-inline-editor battle-inline-footer" aria-label="当前回合编辑">
-              <Teleport defer to="#battle-editor-top" :disabled="mobile">
+              <Teleport defer to="#battle-editor-top" :disabled="mobile || outsideMatrix">
               <header class="battle-inline-heading">
                 <h3 :ref="setHeading" tabindex="-1">第 {{ current + 1 }} 回合</h3>
               </header>
@@ -60,8 +80,8 @@
                 <div class="battle-sequence-head">
                   <span v-if="!mobile || !round.actions.length">出手顺序</span>
                   <div v-if="mobile" class="battle-round-tools" role="group" aria-label="回合操作">
-                    <button type="button" aria-label="撤回最后一步" title="撤回最后一步" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="18" aria-hidden="true" /></button>
-                    <button type="button" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="recordInteraction">{{ BATTLE_INTERACTION.symbol }}</button>
+                    <button type="button" data-round-tool="undo" aria-label="撤回最后一步" title="撤回最后一步" :disabled="!round.actions.length" @click="undoLast"><Undo2 :size="18" aria-hidden="true" /></button>
+                    <button type="button" data-round-tool="interaction" :aria-label="`${BATTLE_INTERACTION.label}（${BATTLE_INTERACTION.symbol}）`" :aria-pressed="editingAction ? isBattleInteraction(editingAction) : undefined" :disabled="!editingAction && round.actions.length >= 50" @click="recordInteraction">{{ BATTLE_INTERACTION.symbol }}</button>
                     <button :ref="setNoteButton" type="button" :aria-label="round.remark ? '编辑备注（已有备注）' : '编辑备注'" :title="round.remark ? '编辑备注（已有备注）' : '编辑备注'" @click="openNote"><NotebookPen :size="18" aria-hidden="true" /><i v-if="round.remark" aria-hidden="true"></i></button>
                   </div>
                 </div>
@@ -107,15 +127,15 @@
                 <p v-else-if="!editingAction && round.actions.length >= 50" class="battle-hint">本回合已达 50 个动作上限。</p>
               </div>
 
-              <label v-if="mobile" v-show="noteMode" class="battle-round-note">第 {{ current + 1 }} 回合备注<textarea v-model="round.remark" :aria-label="`第${current + 1}回合备注`" rows="2" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></label>
+              <label v-if="mobile" v-show="noteMode" class="battle-round-note">第 {{ current + 1 }} 回合备注<textarea v-model="round.remark" data-round-tool="remark" :aria-label="`第${current + 1}回合备注`" rows="2" maxlength="2000" placeholder="控血、重开条件，或需要特别注意的操作"></textarea></label>
               <button v-if="mobile && noteMode" type="button" class="battle-note-done" @click="finishNote">完成</button>
-              <div v-if="!mobile" class="battle-round-nav">
+              <div v-if="!mobile" class="battle-round-nav touch-targets">
                 <button type="button" :disabled="current === 0" data-nav="prev" @click="goRound(current - 1, 'prev')"><ChevronLeft :size="15" aria-hidden="true" />上一回合</button>
                 <button v-if="current < rounds.length - 1" type="button" data-nav="next" @click="goRound(current + 1, 'next')">下一回合<ChevronRight :size="15" aria-hidden="true" /></button>
                 <button v-else type="button" :disabled="rounds.length >= 50" :title="rounds.length >= 50 ? '已达 50 回合上限' : undefined" @click="addRound">新增下一回合<Plus :size="15" aria-hidden="true" /></button>
                 <button type="button" class="battle-collapse" @click="close">收起<ChevronUp :size="15" aria-hidden="true" /></button>
               </div>
-              <div class="battle-sequence-tools"><span v-if="round.actions.length >= LIMIT_HINT">{{ round.actions.length }} / 50 个动作</span><button type="button" :disabled="!round.actions.length || rounds.length >= 50" @click="copyRound"><Copy :size="14" aria-hidden="true" />复制到下一回合</button><button type="button" :disabled="rounds.length === 1" @click="removeRound"><Trash2 :size="14" aria-hidden="true" />删除本回合</button></div>
+              <div class="battle-sequence-tools touch-targets"><span v-if="round.actions.length >= LIMIT_HINT">{{ round.actions.length }} / 50 个动作</span><button type="button" :disabled="!round.actions.length || rounds.length >= 50" @click="copyRound"><Copy :size="14" aria-hidden="true" />复制到下一回合</button><button type="button" :disabled="rounds.length === 1" @click="removeRound"><Trash2 :size="14" aria-hidden="true" />删除本回合</button></div>
             </section>
             </Teleport>
             </EditorRow>
@@ -152,18 +172,19 @@ import { BATTLE_ACTIONS, BATTLE_INTERACTION, BATTLE_MAIN_TARGET, TARGET_COLORS, 
 import { moveBattleAction } from '../../utils/battleEditor.js'
 import { dialog } from '../../utils/dialog.js'
 import { useHorizontalOverflow } from '../../composables/useHorizontalOverflow.js'
+import { useViewportTier } from '../../composables/useViewportTier.js'
 const props = defineProps({ operators: { type: Array, required: true }, rounds: { type: Array, required: true }, targets: { type: Array, required: true }, absentTargets: { type: Array, required: true }, exportDisabled: Boolean })
 // recording：编辑区是否展开，页面据此在手机端用回合栏替换底部生成栏。
 const emit = defineEmits(['recording', 'pick-member', 'export'])
 // BOX 仅表示修改箱步骤时的 activeSlot，不是可选的出手位。
 const BOX = 5
 const current = ref(0), slot = ref(0), target = ref(2), expanded = ref(false), renaming = ref(false)
-const mobile = ref(false), panel = ref(null), noteMode = ref(false)
+const { isPhone: mobile, isTablet } = useViewportTier()
+const recorder = ref(null), panel = ref(null), noteMode = ref(false)
 const panelForm = computed(() => mobile.value && (noteMode.value || renaming.value))
 const enemyHeading = ref(null)
 const roundMenuOpen = ref(false), roundMenu = ref(null), roundMenuButton = ref(null)
-// 手机只输出 Teleport 锚点，桌面保留原来的 tr/td 结构及编辑区位置。
-const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row' }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
+const EditorRow = (_, { slots }) => mobile.value ? slots.default() : h('tr', { class: 'battle-editor-row', hidden: outsideMatrix.value }, [h('td', { colspan: props.operators.length + 2 }, slots.default())])
 const TARGET_POSITIONS = ['左二', '左一', '主位', '右一', '右二']
 const presentTargets = computed(() => props.targets.map((_, index) => index).filter(index => !props.absentTargets.includes(index)))
 const targetCounts = computed(() => {
@@ -198,6 +219,7 @@ const setRemark = el => { remarkEl = el }
 // editing：正在修改的步骤序号；null 表示密探/目标/动作按钮用于追加新动作。
 const editing = ref(null), removed = ref(null)
 const scroller = ref(null), overflowing = useHorizontalOverflow(scroller)
+const outsideMatrix = computed(() => !mobile.value && (isTablet.value || overflowing.value))
 const rows = computed(() => battleRoundRows(props.rounds, props.operators))
 // 与出图一致：主位动作无色，其余目标按位置上色。
 const usage = computed(() => battleTargetUsage(rows.value))
@@ -216,6 +238,22 @@ watch(round, () => { editing.value = null; noteMode.value = false; roundMenuOpen
 watch(noteMode, value => { if (!value) clearNoteViewportListener() }, { flush: 'sync' })
 watch(expanded, value => { if (!value) roundMenuOpen.value = false; emit('recording', value) })
 watch(() => round.value?.actions.length, () => { if (editing.value !== null && !editingAction.value) editing.value = null })
+watch([mobile, outsideMatrix], async ([phone], [wasPhone]) => {
+  const focused = document.activeElement
+  const tool = focused?.dataset?.roundTool
+  if (phone !== wasPhone) {
+    noteMode.value = phone && tool === 'remark'
+    renaming.value = false
+    roundMenuOpen.value = false
+    if (phone && expanded.value) recordingScrollY = window.scrollY
+  }
+  if (!expanded.value || !recorder.value?.contains(focused)) return
+  await nextTick()
+  if (document.activeElement !== document.body || !expanded.value) return
+  const replacement = tool && recorder.value?.querySelector(`[data-round-tool="${tool}"]:not(:disabled)`)
+  const target = focused.getClientRects().length ? focused : replacement || headingEl
+  target?.focus({ preventScroll: true })
+})
 watch([() => round.value?.actions.length, editing, current, mobile, expanded], async () => {
   if (!mobile.value || !expanded.value) return
   await nextTick()
@@ -235,7 +273,7 @@ watch(panel, el => {
   })
   panelObserver.observe(el)
 }, { flush: 'post' })
-let alive = true, opener, viewObserver, panelObserver, panelOwner, mediaQuery, recordingScrollY = 0
+let alive = true, opener, viewObserver, panelObserver, panelOwner, recordingScrollY = 0
 function onMenuPointerdown(event) {
   if (!roundMenu.value?.contains(event.target) && !roundMenuButton.value?.contains(event.target)) roundMenuOpen.value = false
 }
@@ -245,13 +283,9 @@ function onMenuKeydown(event) {
   roundMenuOpen.value = false
   roundMenuButton.value?.focus({ preventScroll: true })
 }
-const updateMobile = () => { mobile.value = Boolean(mediaQuery?.matches); noteMode.value = false; renaming.value = false }
 onMounted(() => {
   document.addEventListener('pointerdown', onMenuPointerdown)
   document.addEventListener('keydown', onMenuKeydown)
-  mediaQuery = window.matchMedia?.('(max-width: 767px)')
-  updateMobile()
-  mediaQuery?.addEventListener('change', updateMobile)
   // 桌面编辑区随可见宽度贴左，不跟表格一起滑出视口。
   const el = scroller.value
   if (!el || typeof ResizeObserver !== 'function') return
@@ -259,7 +293,7 @@ onMounted(() => {
   viewObserver.observe(el)
 })
 // 草稿替换会按 revision 重建本组件，卸载时撤销录入状态，避免页面生成栏一直隐藏。
-onBeforeUnmount(() => { alive = false; clearNoteViewportListener(); document.removeEventListener('pointerdown', onMenuPointerdown); document.removeEventListener('keydown', onMenuKeydown); viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); mediaQuery?.removeEventListener('change', updateMobile); if (expanded.value) emit('recording', false) })
+onBeforeUnmount(() => { alive = false; clearNoteViewportListener(); document.removeEventListener('pointerdown', onMenuPointerdown); document.removeEventListener('keydown', onMenuKeydown); viewObserver?.disconnect(); panelObserver?.disconnect(); panelOwner?.style.removeProperty('--battle-panel-height'); if (expanded.value) emit('recording', false) })
 
 const targetName = index => props.targets[index] || `目标${index + 1}`
 const actorName = index => props.operators[index]?.name || `${index + 1}号位`
@@ -318,9 +352,10 @@ async function close() {
   expanded.value = false; editing.value = null; noteMode.value = false; renaming.value = false
   await nextTick()
   if (mobile.value) window.scrollTo(0, recordingScrollY)
-  // 桌面备注按钮在展开时被文本框替换，收起后找回新渲染的按钮。
-  const focusEl = !mobile.value && opener?.classList.contains('battle-remark-cell')
-    ? scroller.value?.querySelector(`[aria-label="编辑第${current.value + 1}回合备注"]`) : opener
+  // 备注按钮会被替换，跨档时原入口也可能隐藏。
+  const remark = !mobile.value && opener?.classList.contains('battle-remark-cell')
+  const fallbackLabel = `编辑第${current.value + 1}回合${remark ? '备注' : ''}`
+  const focusEl = opener?.getClientRects().length ? opener : scroller.value?.querySelector(`[aria-label="${fallbackLabel}"]`)
   focusEl?.focus({ preventScroll: true })
 }
 async function openNote() {

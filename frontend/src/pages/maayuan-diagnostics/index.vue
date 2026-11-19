@@ -59,6 +59,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import MaayuanDiagnosticDetail from '@/components/diagnostics/MaayuanDiagnosticDetail.vue'
 import { listDiagnosticIssues } from '@/api/maayuanDiagnostics.js'
@@ -74,8 +75,7 @@ const filters = { status, reason, q, sort, feature, resourceVersion }
 const searchText = ref('')
 const data = ref(null), loading = ref(false), error = ref(''), forbidden = ref(false), selectedId = ref('')
 const detailPanel = ref(null), listPanel = ref(null), detailRegion = ref(null)
-const media = window.matchMedia('(max-width: 1080px)')
-const compact = ref(media.matches)
+const { isCompactNav: compact } = useViewportTier()
 const issueIds = computed(() => (data.value?.items || []).map(item => item.id))
 let generation = 0, searchTimer, listScrollY = 0, checkingLeave = false
 const totalPages = computed(() => Math.max(1, Math.ceil((data.value?.total || 0) / 20)))
@@ -159,13 +159,9 @@ async function backToList() {
   const previousRow = [...(listPanel.value?.querySelectorAll('.diagnostic-row') || [])].find((_, index) => issueIds.value[index] === previousId)
   previousRow?.focus({ preventScroll: true })
 }
-function onMediaChange(event) {
-  if (event.matches && selectedId.value) listScrollY = window.scrollY
-  compact.value = event.matches
-}
-media.addEventListener('change', onMediaChange)
 watch(compact, value => {
-  if (!value && !selectedId.value) selectedId.value = issueIds.value[0] || ''
+  if (value && selectedId.value) listScrollY = window.scrollY
+  else if (!value && !selectedId.value) selectedId.value = issueIds.value[0] || ''
 })
 watch([selectedId, issueIds], async ([id], [previousId]) => {
   if (!id) return
@@ -181,7 +177,7 @@ watch([selectedId, issueIds], async ([id], [previousId]) => {
 })
 watch(searchText, value => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { void setFilter('q', value) }, 300) })
 watch(() => auth.userInfo?.id, () => { selectedId.value = ''; data.value = null; page.value = 1; void load() }, { immediate: true })
-onBeforeUnmount(() => { generation++; clearTimeout(searchTimer); media.removeEventListener('change', onMediaChange) })
+onBeforeUnmount(() => { generation++; clearTimeout(searchTimer) })
 </script>
 
 <style src="./diagnostics.css"></style>

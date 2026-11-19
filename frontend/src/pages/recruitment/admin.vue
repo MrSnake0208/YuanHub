@@ -281,6 +281,7 @@ import { ArrowLeft, Plus } from '@lucide/vue'
 import { isRecruitmentOperator } from '../../utils/operatorForms.js'
 
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -314,8 +315,7 @@ const search = ref('')
 const form = ref(null)
 const isNew = ref(false)
 const selectedPoolId = computed(() => isNew.value ? '' : form.value?.pool_id)
-const media = window.matchMedia?.('(max-width: 1080px)')
-const compact = ref(media?.matches ?? true)
+const { isCompactNav: compact } = useViewportTier()
 const showDirectory = computed(() => !compact.value || !form.value)
 const editor = ref(null)
 const errorSummary = ref(null)
@@ -776,13 +776,8 @@ watch([identity, permitted], () => {
   if (permitted.value) load()
 }, { immediate: true, flush: 'sync' })
 
-function onMediaChange(event) {
-  if (event.matches) listScrollY = window.scrollY
-  compact.value = event.matches
-}
-media?.addEventListener('change', onMediaChange)
+watch(compact, value => { if (value) listScrollY = window.scrollY })
 onScopeDispose(() => {
-  media?.removeEventListener('change', onMediaChange)
   alive = false
   generation++
 })

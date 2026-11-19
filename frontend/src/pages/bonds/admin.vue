@@ -76,7 +76,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onScopeDispose, ref, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
@@ -91,11 +92,7 @@ const newMembers = ref([]), newWeathers = ref(['sunny']), newAction = ref('arson
 const adding = ref(false), editorOpen = ref(false)
 const listRegion = ref(null), editorRegion = ref(null), editorBody = ref(null), publicationRegion = ref(null)
 const newButton = ref(null), searchInput = ref(null)
-const media = window.matchMedia?.('(max-width: 1080px)')
-const compact = ref(media?.matches ?? false)
-function onMediaChange(event) { compact.value = event.matches }
-media?.addEventListener('change', onMediaChange)
-onBeforeUnmount(() => media?.removeEventListener('change', onMediaChange))
+const { isCompactNav: compact } = useViewportTier()
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
 const permitted = computed(() => !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.BOND_CATALOG_WRITE))
 const dirty = computed(() => JSON.stringify(draft.value) !== baseline.value)

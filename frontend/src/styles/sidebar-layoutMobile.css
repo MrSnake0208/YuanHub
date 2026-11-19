@@ -1,4 +1,4 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .island{
   position:fixed;left:28px;top:28px;bottom:28px;width:236px;z-index:var(--z-popover);
   display:flex;flex-direction:column;padding:30px 26px 24px;
@@ -34,7 +34,7 @@
 .island-foot{flex:none;padding-top:18px;font-size:12px;line-height:2}
 .island-foot a{font-weight:700}
 .island-foot .grp{margin-top:6px;font-size:11px}
-@media (max-width:1080px){
+@media (max-width: 1199px){
   .island{display:none}
 }
 .brand-txt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--font-d);font-weight:700}

@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (min-width: 1200px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .page-recruitment-admin > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1640px; margin: 0 auto; padding: 0 24px; min-width: 0; }
 main{min-width:0}.catalog-content{padding-top:12px;padding-bottom:40px}.card{padding:16px;min-width:0;overflow-wrap:anywhere}.notice{margin:0 0 14px}.error{margin:0 0 14px}h2,h3{font-family:var(--font-s);margin:0}h2{font-size:26px}h3{font-size:20px}.eyebrow{margin:0 0 5px;font-size:12px;font-weight:800;letter-spacing:.12em}.hint,label small,.pool-meta,.slot-identity small,.bound-name small{font-size:13px;font-weight:400;line-height:1.65}button,input,select{font:inherit}button{min-height:44px;padding:9px 14px}label{min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700}input:not([type=radio]),select{width:100%;min-width:0;min-height:44px;padding:9px}.file-input{display:none}.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}

@@ -1,9 +1,9 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (max-width: 1199px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .recruitment-main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
-@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }.guide-entry-wrap{position:relative}.guide-entry-wrap>.guide-choice{position:absolute;right:0;top:100%;width:min(240px,calc(100vw - 32px));z-index:var(--z-popover)}
+@media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }.guide-entry-wrap{position:relative}.guide-entry-wrap>.guide-choice{position:absolute;right:0;top:100%;width:min(240px,calc(100vw - 32px));z-index:var(--z-popover)}
 .archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
 .recruitment-tutorial-entry{display:inline-flex;align-items:center;gap:5px;padding:0 4px;font:12px/1.5 var(--font-b);white-space:nowrap}
 
@@ -20,7 +20,7 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
   .recruitment-content :deep(.timeline-heading h2) { font-size: 22px; }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .account-overview { margin-top: 10px; padding: 14px; }
   .recruitment-highlights { margin-top: 12px; padding-top: 12px; }
   .highlight-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -40,7 +40,7 @@ button{min-height:44px;padding:9px 14px;font:inherit}.actions{display:flex;flex-
   .summary-agent-list small { font-size: 11px; }
   .summary-empty { margin: 0; }
 }
-@media (min-width: 768px) and (max-width: 1080px) {
+@media (min-width: 768px) and (max-width: 1199px) {
   @container (max-width: 520px) {
     .summary .summary-icon { position: static; display: inline-flex; vertical-align: middle; margin-right: 5px; }
     .summary-number strong { font-size: 22px; }

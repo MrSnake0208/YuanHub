@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
 .back { position: absolute; top: 18px; left: 22px; font-size: 12.5px; }
 .back a { font-weight: 600; }
 .auth-form { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }

@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .logout-result { margin-top:20px; padding:12px 14px; font-weight:700; }
 .auth-form { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
 .field label {

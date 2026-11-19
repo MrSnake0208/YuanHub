@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {.operator-main{margin-left:292px;min-height:100vh;min-height:100dvh;min-width:0}
+@media (min-width: 1200px) {.operator-main{margin-left:292px;min-height:100vh;min-height:100dvh;min-width:0}
 .wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
 .page-operator .operator-tabs.tool-workspace-tabs {
   position: static;
@@ -2826,7 +2826,7 @@
   .current-workbench-index .current-status-index { grid-template-columns: repeat(var(--current-status-columns, 4), minmax(0, 1fr)); gap: 10px; }
 }
 
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .operator-account-workspace.is-compact { display: none; }
   .operator-account-workspace :deep(.workspace-summary) { display: none; }
 }
@@ -2852,6 +2852,6 @@
 .is-short-viewport .editor-body { overflow: visible; }
 }
 
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
   .ledger-milestone-label { width: auto; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; }
 }

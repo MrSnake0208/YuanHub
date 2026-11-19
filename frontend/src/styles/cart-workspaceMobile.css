@@ -1,4 +1,4 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 :where(.pill,.tag,.tg,.chip,.pkg-tag,.rtag,.src-tag,.tag-prof,.tag-subprof,.tag-station,.tag-sp,.star-pill,.node-chip,.stone-lv-chip){
   display:inline-flex;
   align-items:center;
@@ -73,13 +73,12 @@
 .milestone .none{font-size:10px;font-style:italic;padding:6px 10px}
 .campaign-ended-note{font-size:11px;margin:4px 0 10px}
 .cart-actions{display:flex;gap:12px;margin-top:16px}
-.cart-mbar{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;z-index:var(--z-sticky)}
+.cart-mbar{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;justify-content:space-between;align-items:center;z-index:var(--z-sticky)}
 .cart-mbar .sum .k{font-size:10px;font-weight:800;letter-spacing:.08em}
 .cart-mbar .sum .v{font-family:var(--font-d);font-weight:900;font-size:19px;margin-top:2px}
 .cart-mbar .btns{display:flex;align-items:center;gap:8px}
 .mbtn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;font-size:12.5px;font-weight:800;font-family:var(--font-b)}
 .mbtn.icon{min-width:44px;padding:10px}
-@media (max-width:1080px){.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}}
 @media (max-width:1180px){.cart-layout{grid-template-columns:1fr}.pkg-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.pkg-grid{grid-template-columns:1fr 1fr}.pkg-grid .pkg-card{min-height:0}}
 @media (max-width:420px){.pkg-grid{grid-template-columns:1fr}}
@@ -103,7 +102,7 @@
   .cart-mbar .mbtn{padding-inline:11px}
 }
 
-@media (min-width:768px) and (max-width:1080px){
+@media (min-width:768px) and (max-width: 1199px){
   .pkg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 }

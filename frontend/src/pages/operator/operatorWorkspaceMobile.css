@@ -1,8 +1,8 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {.operator-main{margin-left:0;min-height:100vh;min-height:100dvh;min-width:0}
+@media (max-width: 1199px) {.operator-main{margin-left:0;min-height:100vh;min-height:100dvh;min-width:0}
 .wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
 @media(max-width:767px){.wrap{width:100%;max-width:none;padding-inline:16px}}
-@media(min-width:768px) and (max-width:1080px){.wrap{padding-inline:32px}}
+@media(min-width:768px) and (max-width: 1199px){.wrap{padding-inline:32px}}
 @media (min-width: 768px) and (max-width: 900px) {
   .roster-header .archive-toggle { width: auto; }
 }
@@ -118,7 +118,7 @@
 .workspace-mobile-link { display: none; }
 .current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .current-ledger-heading .section-kicker { margin-bottom: 0; }
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .page-operator :deep(.workspace-summary) { flex-wrap: wrap; justify-content: flex-start; gap: 6px; padding: 10px; }
   .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { display: inline-flex; min-height: 44px; padding: 8px 10px; font-size: 12px; justify-content: center; flex: 1 1 auto; white-space: nowrap; }
 }
@@ -2826,7 +2826,7 @@
   line-height: 1.5;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .agent-ledger-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -3980,7 +3980,7 @@
 }
 
 .upgrade-filter-icon { display: none; }
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .page-operator :deep(.workspace-summary) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 6px 8px; gap: 6px; }
   .page-operator :deep(.workspace-status:not(:empty)) { grid-column: 1 / -1; }
   .page-operator :deep(.workspace-toggle) { min-width: 0; font-weight: 800; }
@@ -4051,7 +4051,7 @@
 .is-short-viewport .editor-body { overflow: visible; }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .ledger-milestone-label { width: auto; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; }
 }
 

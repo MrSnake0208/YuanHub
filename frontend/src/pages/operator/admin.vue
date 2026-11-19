@@ -88,6 +88,7 @@ import { avatarUrl } from '../../api/request.js'
 import { adminCatalogEntries, compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
 import { normalizeOperatorOdditySchema } from '../../utils/operatorCombatStats.js'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 
 const rows = ref([])
 const router = useRouter()
@@ -99,8 +100,7 @@ const editor = ref(null)
 const listPanel = ref(null)
 const failedAvatars = ref(new Set())
 const avatarVersions = ref(new Map())
-const media = window.matchMedia('(max-width: 1080px)')
-const compact = ref(media.matches)
+const { isCompactNav: compact } = useViewportTier()
 const editing = computed(function () { return editor.value?.editing || false })
 const isNew = computed(function () { return editor.value?.isNew || false })
 const selectedId = computed(function () { return editor.value?.selectedId || '' })
@@ -215,14 +215,6 @@ async function restoreListScroll(id) {
   listPanel.value?.querySelectorAll('.catalog-row')[index]?.focus({ preventScroll: true })
 }
 
-function onMediaChange(event) {
-  if (event.matches) {
-    listScrollY = window.scrollY
-    listScrollTop = listPanel.value?.scrollTop || 0
-  }
-  compact.value = event.matches
-}
-
 // —— 加载 ——
 async function load() {
   loading.value = true
@@ -275,13 +267,16 @@ function humanErr(err, fallback) {
   return msg
 }
 
-media.addEventListener('change', onMediaChange)
 watch(compact, async function (value) {
-  if (!value && !editing.value && filteredRows.value.length) await editor.value?.selectRow(filteredRows.value[0])
+  if (value) {
+    listScrollY = window.scrollY
+    listScrollTop = listPanel.value?.scrollTop || 0
+  } else if (!editing.value && filteredRows.value.length) {
+    await editor.value?.selectRow(filteredRows.value[0])
+  }
 })
 onBeforeUnmount(function () {
   disposed = true
-  media.removeEventListener('change', onMediaChange)
 })
 
 load()
@@ -432,7 +427,7 @@ load()
 .catalog-row:focus-visible,
 :deep(.editor-panel button:focus-visible) { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   :deep(.disc-editor-item) { background: var(--cream); border: 1px solid var(--line); border-radius: 10px }
   :deep(.disc-alias-panel) { border-top: 1px solid var(--line) }
 }

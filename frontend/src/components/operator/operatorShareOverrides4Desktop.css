@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
 .agent-ledger-card--share .ledger-loadouts {
   display: contents;
 }

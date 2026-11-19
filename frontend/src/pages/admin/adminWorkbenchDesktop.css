@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (min-width: 1200px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .admin-page-header { padding: 20px 0 8px; }
 .admin-page-header .page-header-context { margin-top: 2px; }
 .workbench-notices { display: grid; gap: 8px; }

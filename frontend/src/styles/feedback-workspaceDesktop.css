@@ -1,4 +1,4 @@
-@media not all and (max-width: 1080px) {.feedback-page {
+@media (min-width: 1200px) {.feedback-page {
   --feedback-bg: var(--paper);
   --feedback-panel-deep: var(--cream);
   --feedback-panel: var(--surface);

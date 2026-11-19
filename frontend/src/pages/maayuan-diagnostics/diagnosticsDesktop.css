@@ -1,4 +1,4 @@
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .diagnostic-page .page-header > .wrap, .diagnostic-page .diagnostic-content { max-width: none; margin-inline: 0; padding-inline: 32px; }
   .diagnostic-content { padding-top: 24px; }
   .diagnostic-workspace { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); }

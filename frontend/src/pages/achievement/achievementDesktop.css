@@ -117,10 +117,10 @@
     .achievement-status button { max-width: 160px; }
   }
 }
-@media (min-width: 768px) and (max-width: 1080px) {
+@media (min-width: 768px) and (max-width: 1199px) {
   .achievement-save-feedback.has-result { top: calc(64px + env(safe-area-inset-top)); }
 }
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .achievement-main { margin-left: 292px; }
   .achievement-page .wrap, .achievement-page main.achievement-main .compact-tool-header > .wrap { padding-inline: 48px; }
   .achievement-page .compact-tool-heading::before { content: ''; position: absolute; left: -25px; top: 17px; width: 10px; height: 10px; border: 1px solid var(--achievement-ornament); box-shadow: inset 0 0 0 2px var(--surface); transform: rotate(45deg); }

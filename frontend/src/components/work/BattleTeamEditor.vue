@@ -1,6 +1,6 @@
 <template>
   <section class="battle-team-editor" aria-label="配队编辑">
-    <div ref="scroller" class="battle-table-scroll" role="region" aria-label="五人配队表，左右滑动查看" tabindex="0">
+    <div ref="scroller" class="battle-table-scroll" role="region" :aria-label="overflowing ? '五人配队表，左右滑动查看' : '五人配队表'" tabindex="0">
       <table class="battle-matrix battle-team-matrix">
         <caption class="sr-only">出战阵容，已选 {{ operators.filter(item => item.name).length }} / 5 位。点击练度直接编辑，点击命盘或星石展开配置。</caption>
         <thead><tr><th scope="col">出战阵容</th><th v-for="(member, index) in operators" :key="index" scope="col" :class="{ selected: detail && slot === index }">

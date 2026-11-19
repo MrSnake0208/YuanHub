@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 main.promo-main { margin-left: 0px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 
 .promo-page {

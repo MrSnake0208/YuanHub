@@ -75,7 +75,7 @@
 .ticket-detail-meta code { display: inline-flex; align-items: baseline; gap: 6px; overflow-wrap: anywhere; font: 10.5px var(--font-d); }
 .ticket-detail-meta code span { font: 800 9.5px var(--font-b); letter-spacing: .04em; }
 .ticket-detail-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 12px; padding: 0 26px 26px; }
-@media (min-width: 1081px) and (max-width: 1250px), (max-width: 900px) {
+@media (min-width: 1200px) and (max-width: 1250px), (max-width: 900px) {
   .ticket-table th, .ticket-table td { padding-inline: 6px; }
   .ticket-table th.ticket-category-heading { width: 90px; }
   .ticket-table.is-workflow th.ticket-state-heading { width: 85px; }

@@ -1,4 +1,4 @@
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
 .footer .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 
 .footer{margin-top:96px;padding:60px 0 44px}

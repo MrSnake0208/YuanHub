@@ -123,6 +123,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 import { ExternalLink, ArrowLeft } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -152,8 +153,7 @@ const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled =
 const readOnlyEntry = ref(null)
 const selectedId = computed(() => form.value?.id || readOnlyEntry.value?.item.id)
 const editing = computed(() => !!(form.value || readOnlyEntry.value))
-const media = window.matchMedia('(max-width: 1080px)')
-const compact = ref(media.matches)
+const { isCompactNav: compact } = useViewportTier()
 const showDirectory = computed(() => !compact.value || !editing.value)
 let listScrollY = 0
 const sortOrder = ref('desc')
@@ -319,13 +319,8 @@ watch([identity, permitted], () => {
   entries.value = []; loading.value = false; saving.value = false; listError.value = ''; listScrollY = 0
   if (permitted.value) void load()
 }, { immediate: true })
-function onMediaChange(event) {
-  if (event.matches) listScrollY = window.scrollY
-  compact.value = event.matches
-}
-media.addEventListener('change', onMediaChange)
+watch(compact, value => { if (value) listScrollY = window.scrollY })
 onBeforeUnmount(() => {
-  media.removeEventListener('change', onMediaChange)
   alive = false; generation++; readGeneration++
 })
 </script>

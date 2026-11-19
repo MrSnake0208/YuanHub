@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (max-width: 1199px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .star-main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
@@ -8,10 +8,10 @@
   .page-star .compact-tool-header.mobile-context-header .archive-toggle { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; min-height: 36px; padding: 0; }
   .page-star .compact-tool-header.mobile-context-header .archive-toggle-label { display: none; }
 }
-@media (min-width: 768px) and (max-width: 1080px) {
+@media (min-width: 768px) and (max-width: 1199px) {
   .page-star .compact-tool-header .archive-toggle { width: auto; }
 }
-@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+@media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }
 .star-main :deep(.compact-tool-description) { font-size: 14px; font-weight: 600; }
 .page-star {
   --wm: "星石";
@@ -104,7 +104,7 @@
   padding: 8px 12px;
   font: inherit;
 }
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .page-star #product-root :deep(.product-toast) {
     top: calc(env(safe-area-inset-top) + 12px);
     bottom: auto;
@@ -192,7 +192,7 @@
   line-height: 1.2;
 }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; }
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .page-star { --star-bottom-bar-height: 0px; }
 }
 .page-star .star-share-manager { margin: 12px 0; }

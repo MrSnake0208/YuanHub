@@ -1,5 +1,5 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .version-update {
   position: relative;
   z-index: var(--z-banner, 70);

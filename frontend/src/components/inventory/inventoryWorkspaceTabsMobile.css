@@ -1,5 +1,5 @@
 /* 仅调整库存导航外观，手动激活与持久化行为保持原实现。 */
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .inventory-tabs { position: static; inset: auto; z-index: auto; display: flex; align-items: stretch; gap: 6px; width: fit-content; max-width: 100%; margin: 0; padding: 0; border-radius: 0; overflow: visible; }
 .inventory-tabs button { display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 42px; padding: 9px 22px; border: 1px solid var(--line); border-bottom: 2px solid transparent; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--surface) 65%, transparent); font-size: 14px; }
 .inventory-tabs button svg { display: inline-block; flex: none; }

@@ -1,9 +1,9 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (max-width: 1199px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .page-install > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
-@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+@media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }
 .hero{position:relative;isolation:isolate;padding:74px 0 0;overflow:hidden}
 .hero::before{position:absolute;inset:0;z-index:1}
 .hero::after{position:absolute;z-index:0;right:-10px;top:-90px;font-weight:900;font-size:380px;line-height:1}
@@ -30,7 +30,7 @@
   .hero h1{font-size:36px}
 }
 
-@media (min-width:768px) and (max-width:1080px){
+@media (min-width:768px) and (max-width: 1199px){
   .hero{padding-top:52px}
   .hero::after{right:-26px;top:-68px;font-size:300px}
   .hero h1{font-size:64px}

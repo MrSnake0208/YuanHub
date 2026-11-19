@@ -2,7 +2,7 @@
   <MobileHeader :pinned="menuOpen" @keydown.esc.prevent="closeMenu">
     <button
       ref="menuToggle"
-      class="mobile-menu-button"
+      class="mobile-menu-button touch-target"
       type="button"
       data-tour="replay-menu"
       aria-controls="mobile-main-nav"
@@ -178,7 +178,7 @@
     </div>
   </Transition>
 
-  <aside class="island" aria-label="主要导航">
+  <aside class="island touch-targets" aria-label="主要导航">
     <router-link class="brand" to="/" aria-label="返回首页">
       <img class="brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
       <div class="brand-txt">
@@ -349,11 +349,13 @@ import { useRoute } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
 import { modalFocusState, useModalFocus } from "@/composables/useModalFocus.js";
 import { useAdminNavPins } from "@/composables/useAdminNavPins.js";
+import { useViewportTier } from "@/composables/useViewportTier.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
 
 // 已登录状态（reactive，随 auth 变化）
 const { pinnedTools } = useAdminNavPins();
+const { isCompactNav } = useViewportTier();
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
 const showManagement = computed(() =>
@@ -418,6 +420,11 @@ watch(menuOpen, (open) => {
 });
 
 watch(identity, () => closeAccountMenu());
+watch(isCompactNav, (compact) => {
+  cancelSwipe();
+  if (compact) closeAccountMenu();
+  else menuOpen.value = false;
+});
 
 function updateNavFade() {
   const nav = navEl.value;
@@ -453,7 +460,7 @@ function cancelSwipe() {
 
 function onTouchStart(event) {
   cancelSwipe();
-  if (window.innerWidth > 1080 || menuOpen.value || modalFocusState.active || event.defaultPrevented || event.touches.length !== 1) return;
+  if (!isCompactNav.value || menuOpen.value || modalFocusState.active || event.defaultPrevented || event.touches.length !== 1) return;
   const touch = event.touches[0];
   // 留出系统返回手势边缘，表单和横向滚动区保留自己的触控行为。
   if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24 || window.getSelection()?.isCollapsed === false) return;
@@ -475,7 +482,7 @@ function onTouchEnd(event) {
   const start = swipeStart;
   cancelSwipe();
   const touch = event.changedTouches[0];
-  if (!start || !touch || event.touches.length || touch.identifier !== start.id || event.defaultPrevented || window.innerWidth > 1080 || menuOpen.value || modalFocusState.active) return;
+  if (!start || !touch || event.touches.length || touch.identifier !== start.id || event.defaultPrevented || !isCompactNav.value || menuOpen.value || modalFocusState.active) return;
   const dx = touch.clientX - start.x;
   const dy = Math.abs(touch.clientY - start.y);
   if (Date.now() - start.time <= 600 && dx >= 80 && dy <= 24) toggleMenu();
@@ -589,7 +596,7 @@ onBeforeUnmount(function () {
   border-radius: 999px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
   .mobile-menu-button,
   .mobile-header-action {
     border: 1px solid transparent;

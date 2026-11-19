@@ -72,9 +72,9 @@ watch(() => props.inventory, () => { failed.value = new Set() })
   .star-share-region { padding: 12px }
   .star-share-grid { grid-template-columns: repeat(auto-fill,minmax(max(76px,calc((100% - 64px) / 9)),1fr)); gap: 8px }
 }
-/* The host sidebar appears above 1080px. Within that shell, split only if ten
+/* The host sidebar appears at 1200px. Within that shell, split only if ten
    readable cells fit. Tablet's wider single region keeps its own local controls. */
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .star-share-list { --list-extra-height: 200px }
   @container star-inventory (min-width: 860px) {
     .star-share-desktop-controls { display: grid }

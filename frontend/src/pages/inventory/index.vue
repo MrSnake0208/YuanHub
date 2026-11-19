@@ -5485,7 +5485,7 @@ onBeforeUnmount(function () {
   accent-color: var(--tea);
 }
 
-@media (min-width: 1081px) {
+@media (min-width: 1200px) {
   .manifest-toolbar {
     background: var(--theme-surface, rgba(255, 253, 246, 0.96));
     backdrop-filter: blur(12px);

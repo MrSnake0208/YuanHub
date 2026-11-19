@@ -7,7 +7,7 @@
 @media (min-width: 768px) and (max-width: 900px) {
   .inventory-header .archive-toggle { width: auto; }
 }
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .archive-toggle {
   min-height: 44px;
   align-self: center;

@@ -1,9 +1,9 @@
 /* 本端持有实际布局、密度与空间；原内容断点保持。 */
-@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+@media (max-width: 1199px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
 .demo-main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 48px; min-width: 0; }
 @media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
-@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+@media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }
 :global(:root){
   --demo-line:var(--theme-line, rgba(156,122,77,.28));
   --demo-muted:var(--theme-muted, rgba(73,59,44,.64));
@@ -173,7 +173,7 @@
   .demo-target-edit{grid-column:1 / -1}
   .demo-icon-button{grid-column:3;grid-row:1;justify-self:end}
 }
-@media (max-width:1080px){
+@media (max-width: 1199px){
   .demo-main{margin-left:0}
 }
 @media (min-width:768px) and (max-width:1100px){

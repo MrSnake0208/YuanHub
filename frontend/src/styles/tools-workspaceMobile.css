@@ -1,4 +1,4 @@
-@media (max-width: 1080px) {
+@media (max-width: 1199px) {
 .page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs {
   position: static;
   inset: auto;

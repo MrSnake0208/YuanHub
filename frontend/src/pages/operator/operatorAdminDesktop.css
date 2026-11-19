@@ -1,5 +1,5 @@
 /* 宽屏列表与编辑器各自滚动，操作栏留在面板内。 */
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
   .operator-main { margin-left: 292px; min-height: 100dvh; min-width: 0 }
   .wrap { max-width: 1640px; margin: 0 auto; padding: 0 24px; min-width: 0 }
   .catalog-content { padding-top: 12px }

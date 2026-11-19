@@ -1,4 +1,4 @@
-@media not all and (max-width: 1080px) {
+@media (min-width: 1200px) {
 .calendar-public .calendar-task-filter { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .calendar-public .calendar-task-filter select { min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 12px; font: inherit; }
 .calendar-public .calendar-content { gap: 16px; }

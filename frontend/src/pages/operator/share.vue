@@ -44,8 +44,8 @@ const share = ref(null)
 .share-main { margin-left: 0; min-height: 100dvh; min-width: 0; padding-bottom: 0; }
 .wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding-inline: 16px; min-width: 0; }
 .share-content { padding-top: 12px; }
-@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
-@media (min-width: 1081px) {
+@media (min-width: 768px) and (max-width: 1199px) { .wrap { padding-inline: 32px; } }
+@media (min-width: 1200px) {
   .share-main { margin-left: 292px; }
   .wrap { padding-inline: 48px; }
 }

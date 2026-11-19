@@ -12,14 +12,15 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useViewportTier } from '@/composables/useViewportTier.js'
 
 const { pinned = false } = defineProps({ pinned: Boolean })
 const route = useRoute()
+const { isCompactNav } = useViewportTier()
 const header = ref(null)
 const hidden = ref(false)
 const directionThreshold = 24
 const followTopProperty = '--mobile-shell-follow-top'
-let mobileQuery = null
 let previousY = 0
 let directionStartY = 0
 let direction = 0
@@ -127,20 +128,17 @@ function syncViewport() {
   window.removeEventListener('scroll', onScroll)
   for (const [name, listener] of inputListeners) window.removeEventListener(name, listener)
   reset()
-  if (mobileQuery.matches && !pinned) {
+  if (isCompactNav.value && !pinned) {
     window.addEventListener('scroll', onScroll, { passive: true })
     for (const [name, listener] of inputListeners) window.addEventListener(name, listener, { passive: true })
   }
 }
 
 watch(() => route.fullPath, reset)
-watch(() => pinned, () => { if (mobileQuery) syncViewport() })
+watch([isCompactNav, () => pinned], syncViewport)
 watch(hidden, syncFollowTop, { flush: 'sync' })
 
 onMounted(() => {
-  // 与 main.css 的移动导航断点保持一致。
-  mobileQuery = window.matchMedia('(max-width: 1080px)')
-  mobileQuery.addEventListener('change', syncViewport)
   syncViewport()
   syncFollowTop()
 })
@@ -148,7 +146,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
   for (const [name, listener] of inputListeners) window.removeEventListener(name, listener)
-  mobileQuery?.removeEventListener('change', syncViewport)
   if (typeof document !== 'undefined')
     document.documentElement.style.removeProperty(followTopProperty)
 })
