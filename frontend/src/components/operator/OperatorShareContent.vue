@@ -344,7 +344,7 @@ const discStatusFilter = ref('all')
 const awakenedOnly = ref(false)
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 const profOptions = AGENT_PROFS
-const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
+const PROF_ICON_FILES = { 阳: 'yang.webp', 阴: 'yin.webp', 火: 'fire.webp', 风: 'wind.webp', 水: 'water.webp', 地: 'earth.webp', 混沌: 'chaos.webp' }
 const STONE_SLOT_TYPES = ['main1', 'main2', 'main3', 'assist1', 'assist2', 'assist3']
 const availableSubProfOptions = computed(function () {
   return deriveSubProfOptions(entries.value)

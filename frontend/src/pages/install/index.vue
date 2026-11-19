@@ -63,7 +63,7 @@
 
         <article v-else-if="TUTORIALS_ENABLED" class="guide-card">
           <div class="install-overview">
-            <img src="/pwa/icon-192.png" alt="YuanHub 应用图标" width="68" height="68" />
+            <img src="/pwa/icon-192.webp" alt="YuanHub 应用图标" width="68" height="68" />
             <div><h2>{{ pwaInstallState.dismissedForNow ? '教程已暂停，网页版仍可照常使用' : '把 YuanHub 放到桌面' }}</h2><p>按系统提示或浏览器菜单完成安装，也可以继续使用网页版。</p></div>
           </div>
           <div class="task-actions">

@@ -2308,7 +2308,7 @@ function fmtCount(n) {
 }
 
 // —— 背包格图标约定 ——
-const ICON_EXT = "png";
+const ICON_EXT = "webp";
 
 function iconSrc(e) {
   const type = e && e.entity_type ? e.entity_type : entityType.value;

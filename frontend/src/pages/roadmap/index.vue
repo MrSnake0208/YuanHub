@@ -101,7 +101,7 @@ import { auth } from '@/store/auth.js'
 .roadmap-home:hover, .roadmap-feedback:hover { text-decoration: underline; text-underline-offset: 4px; }
 .roadmap-page a:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 4px; border-radius: 3px; }
 .roadmap-dependency { color: var(--ink-60); }
-.roadmap-art { background-image: url('/roadmap/illustrations.png'); background-size: 300% 200%; background-repeat: no-repeat; }
+.roadmap-art { background-image: url('/roadmap/illustrations.webp'); background-size: 300% 200%; background-repeat: no-repeat; }
 .art-achievement { background-position: 0 0; }
 .art-bonds { background-position: 50% 0; }
 .art-stories { background-position: 100% 0; }

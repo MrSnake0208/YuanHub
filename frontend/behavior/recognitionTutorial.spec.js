@@ -106,7 +106,7 @@ it('screenshot viewer has all three originals, handles missing images and keeps 
   Array.from(modal().querySelectorAll('button')).find(b => b.textContent === '下一张').click()
   await flushPromises()
   expect(modal().textContent).toContain('辅星截图示例')
-  expect(modal().querySelector('img').src).toContain('recognition-support-example.jpg')
+  expect(modal().querySelector('img').src).toContain('recognition-support-example.webp')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   await flushPromises()
   expect(modal()).toBeNull()

@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { readLosslessWebp } from '../test-support/losslessWebp.js'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { parseShareLink, shareRoute } from '../src/utils/shareLink.js'
@@ -39,17 +40,14 @@ test('完全同值或未知名称平局保留响应原顺序，等级刷新保�
   assert.deepEqual(filterSharedStars(rows, { sort: 'level' }).map(row => row.key), rows.map(row => row.key))
   assert.deepEqual(sharedStarRows(rows.map(row => ({ ...row, level: 20 }))).map(row => row.key), rows.map(row => row.key))
 })
-test('映射恰好十张透明 PNG，资源来自宿主 public，未知枚举不给任意路径', () => {
+test('映射恰好十张透明无损 WebP，资源来自宿主 public，未知枚举不给任意路径', () => {
   const files = []
   for (const kind of ['main', 'support']) for (const quality of STAR_QUALITIES) {
     const path = starDiscPath(kind, quality)
     files.push(path.split('/').at(-1))
-    const bytes = readFileSync(new URL('../public' + path, import.meta.url))
-    assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a')
-    assert.equal(bytes[25], 6)
-    assert.equal(bytes.readUInt32BE(16), 512)
-    assert.equal(bytes.readUInt32BE(20), 512)
-    const original = readFileSync(new URL('../design-assets/star-discs/originals/' + path.split('/').at(-1), import.meta.url))
+    const image = readLosslessWebp(new URL('../public' + path, import.meta.url))
+    assert.deepEqual(image, { width: 512, height: 512, alpha: true })
+    const original = readFileSync(new URL(`../design-assets/star-discs/originals/${kind}-${quality}.png`, import.meta.url))
     assert.equal(original.readUInt32BE(16), 1254)
     assert.equal(original.readUInt32BE(20), 1254)
   }

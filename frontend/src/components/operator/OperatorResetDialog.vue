@@ -147,7 +147,7 @@ watch(() => [props.userId, props.accountId, props.game, props.entry.id], () => {
 onScopeDispose(() => { active = false; invalidateRequest() })
 const names = new Map(ITEM_CATALOG.map(item => [item.id, item.name]))
 const itemName = id => names.get(id) || id
-const itemIcon = id => `${import.meta.env.BASE_URL}inventory-icons/items/${encodeURIComponent(id)}.png`
+const itemIcon = id => `${import.meta.env.BASE_URL}inventory-icons/items/${encodeURIComponent(id)}.webp`
 const failedIcons = ref(new Set())
 const readable = message => [...names].reduce((text, [id, name]) => text.replaceAll(id, name), message)
 const operatorName = id => props.operators.find(op => op.id === id)?.name || (id === props.entry.id ? props.entry.name : id)

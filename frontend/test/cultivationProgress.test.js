@@ -70,7 +70,7 @@ test('零产出材料默认收起，展开后保留全部目标材料，切换�
 test('仅隐藏当日开始已满足的材料，当日补满仍展示，伴随掉落仍可查看', async () => {
   const rows = [
     { id: 'old', name: '起点已满', required: 10, startRemaining: 0, remaining: 0, used: 0, produced: 5, percent: 100 },
-    { id: 'today', name: '当日补满', required: 10, startRemaining: 10, remaining: 0, used: 10, produced: 10, percent: 100, icon: '/inventory-icons/items/shuijing.png' },
+    { id: 'today', name: '当日补满', required: 10, startRemaining: 10, remaining: 0, used: 10, produced: 10, percent: 100, icon: '/inventory-icons/items/shuijing.webp' },
     { id: 'almost', name: '尚缺一点', required: 10000, startRemaining: 1, remaining: 1, used: 0, produced: 0, percent: 99 },
     { id: 'side', name: '伴随掉落', required: 0, startRemaining: 0, remaining: 0, produced: 45, percent: null }
   ]
@@ -79,7 +79,7 @@ test('仅隐藏当日开始已满足的材料，当日补满仍展示，伴随�
   assert.match(html, /当日补满/)
   assert.doesNotMatch(html, /尚缺一点/)
   assert.match(html, /伴随掉落/)
-  assert.match(html, /inventory-icons\/items\/shuijing.png/)
+  assert.match(html, /inventory-icons\/items\/shuijing.webp/)
   assert.doesNotMatch(html, /还差 <b>1/)
   assert.match(html, /查看全部 3 项材料/)
   const wrapper = mount(Progress, { props: { rows } })

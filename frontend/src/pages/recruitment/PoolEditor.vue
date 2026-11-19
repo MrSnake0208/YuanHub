@@ -691,7 +691,7 @@ const filteredPickerAgents = computed(() => {
     .reverse()
 })
 const hasAgentFilters = computed(() => !!agentSearch.value.trim() || agentProfFilter.value !== 'all' || agentSubProfFilter.value !== 'all')
-const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
+const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.webp', 阴: 'yin.webp', 火: 'fire.webp', 风: 'wind.webp', 水: 'water.webp', 地: 'earth.webp', 混沌: 'chaos.webp' })
 function profIcon(prof) {
   const file = PROF_ICON_FILES[String(prof || '').split('、')[0]]
   return file ? (import.meta.env.BASE_URL || '/') + 'assets/prof-icons/' + file : ''

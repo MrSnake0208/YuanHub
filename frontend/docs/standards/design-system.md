@@ -73,9 +73,9 @@
 | 方                 | 身份色 | 吉祥物/icon                    |
 | ------------------ | ------ | ------------------------------ |
 | MaaYuan            | 蜜黄   | 大肥鸟（多造型，背景图同款）   |
-| 代号鸢 BWiki       | 茶棕   | 编辑部鸟（icons/bwiki.png）    |
-| 辟雍学府（小程序） | 金橙   | 广陵王配色（icons/piyong.png） |
-| YuanAssist（App）  | 绛红   | 小圆鸟（icons/yuanassist.png） |
+| 代号鸢 BWiki       | 茶棕   | 编辑部鸟（icons/bwiki.webp）    |
+| 辟雍学府（小程序） | 金橙   | 广陵王配色（icons/piyong.webp） |
+| YuanAssist（App）  | 绛红   | 小圆鸟（icons/yuanassist.webp） |
 
 ---
 

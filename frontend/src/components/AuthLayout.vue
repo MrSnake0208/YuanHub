@@ -7,7 +7,7 @@
         <!-- 极简页头：小品牌标 + 标题 + 一句副题（去掉 hero 渐变/胶囊/水印） -->
         <header class="auth-head">
           <div class="auth-brand">
-            <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+            <img class="brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
             <span class="brand-name">YuanHub</span>
           </div>
           <h1 class="auth-title">{{ title }}</h1>

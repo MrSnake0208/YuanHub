@@ -714,7 +714,7 @@ const rewardKey = entry => `${entry.entity_type || 'item'}:${entry.id}`
 const counts = computed(() => new Map(manual.value.entries.map(entry => [rewardKey(entry), entry.count])))
 const countOf = entity => counts.value.get(rewardKey(entity)) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
-const iconSrc = entity => entity.entity_type === 'agent' ? xinzhiIconUrl(entity.id) : `${import.meta.env.BASE_URL}inventory-icons/items/${encodeURIComponent(entity.id)}.png`
+const iconSrc = entity => entity.entity_type === 'agent' ? xinzhiIconUrl(entity.id) : `${import.meta.env.BASE_URL}inventory-icons/items/${encodeURIComponent(entity.id)}.webp`
 let bodyOverflowBefore = ''
 let rootOverflowBefore = ''
 let bodyPaddingRightBefore = ''

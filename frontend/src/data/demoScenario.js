@@ -24,7 +24,7 @@ export const DEMO_SCENARIO = {
     {
       id: 'char_001_yangxiu',
       name: '杨修',
-      avatar: '/inventory-icons/agents/char_001_yangxiu.png',
+      avatar: '/inventory-icons/agents/char_001_yangxiu.webp',
       prof: '阳',
       subProf: '神纪',
       level: 80,
@@ -48,7 +48,7 @@ export const DEMO_SCENARIO = {
     {
       id: 'char_002_jiaxu',
       name: '贾诩',
-      avatar: '/inventory-icons/agents/char_002_jiaxu.png',
+      avatar: '/inventory-icons/agents/char_002_jiaxu.webp',
       prof: '阴',
       subProf: '诡道',
       level: 75,
@@ -72,7 +72,7 @@ export const DEMO_SCENARIO = {
     {
       id: 'char_003_sunshangxiang',
       name: '孙尚香',
-      avatar: '/inventory-icons/agents/char_003_sunshangxiang.png',
+      avatar: '/inventory-icons/agents/char_003_sunshangxiang.webp',
       prof: '火',
       subProf: '破军',
       level: 70,

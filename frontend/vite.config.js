@@ -126,10 +126,10 @@ export default defineConfig(({ mode }) => {
         // 注册代码直接内联到 index.html，避免再引入一个固定文件名的 registerSW.js 缓存点。
         injectRegister: 'inline',
         includeAssets: [
-          'pwa/apple-touch-icon.png',
-          'pwa/icon-192.png',
-          'pwa/icon-512.png',
-          'pwa/icon-maskable-512.png'
+          'pwa/apple-touch-icon.webp',
+          'pwa/icon-192.webp',
+          'pwa/icon-512.webp',
+          'pwa/icon-maskable-512.webp'
         ],
         manifest: {
           id: '/',
@@ -144,21 +144,21 @@ export default defineConfig(({ mode }) => {
           theme_color: '#F6EDD0',
           icons: [
             {
-              src: '/pwa/icon-192.png',
+              src: '/pwa/icon-192.webp',
               sizes: '192x192',
-              type: 'image/png',
+              type: 'image/webp',
               purpose: 'any'
             },
             {
-              src: '/pwa/icon-512.png',
+              src: '/pwa/icon-512.webp',
               sizes: '512x512',
-              type: 'image/png',
+              type: 'image/webp',
               purpose: 'any'
             },
             {
-              src: '/pwa/icon-maskable-512.png',
+              src: '/pwa/icon-maskable-512.webp',
               sizes: '512x512',
-              type: 'image/png',
+              type: 'image/webp',
               purpose: 'maskable'
             }
           ]

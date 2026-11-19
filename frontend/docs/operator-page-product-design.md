@@ -301,7 +301,7 @@ star_stones（站内 current 现有字段；v3 交换名为 equipped_star_stones
 - 静态稀有度用头像框层级、边框细节或详情文本表达，不用长文字标签占据卡片主空间；
 - 属性使用官方图标作为主识别，颜色仅作辅助，不可只靠颜色区分；
 - 官方属性图标来源：`/home/syoius/MaaYuan-Share-frontend/public/assets/prof-icons`；
-- 需要复制到本仓库 `public/assets/prof-icons/`，映射 `yin/yang/fire/wind/water/earth/chaos.png`。
+- 需要复制到本仓库 `public/assets/prof-icons/`，发布时使用无损 WebP，映射 `yin/yang/fire/wind/water/earth/chaos.webp`。
 
 ### 6.2 当前养成与养成追踪
 

@@ -13,7 +13,7 @@
   background: repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--ink) 1%, transparent) 3px 4px), radial-gradient(ellipse at 88% 0, color-mix(in srgb, var(--yellow) 16%, transparent), transparent 520px), linear-gradient(180deg, color-mix(in srgb, var(--surface) 66%, var(--paper)), color-mix(in srgb, var(--surface) 50%, var(--paper)) 480px);
 }
 /* 原创局部山水只作顶部陪衬；mask 颜色随主题变化，不遮挡内容或浮层。 */
-.achievement-main::before { content: ''; position: absolute; z-index: -1; inset: 0 0 auto; height: 340px; pointer-events: none; background: var(--achievement-ornament); mask: url('/achievement/archive-landscape.svg') center top / 100% auto no-repeat; }
+.achievement-main::before { content: ''; position: absolute; z-index: -1; inset: 0 0 auto; height: 340px; pointer-events: none; background: var(--achievement-ornament); mask: url('/achievement/archive-landscape.webp') center top / 100% auto no-repeat; }
 .achievement-page .compact-tool-header .compact-tool-heading { position: relative; }
 .achievement-page .compact-tool-header .compact-tool-heading h1 { color: var(--ink); font-weight: 800; letter-spacing: .04em; }
 .achievement-page .compact-tool-description { font-family: var(--font-s); font-weight: 400; }

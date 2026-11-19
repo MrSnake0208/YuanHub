@@ -839,7 +839,7 @@ function currentStarLabel(row) { const huaji = operatorHuaji(row); return huaji.
 function targetStarLabel(row) { const huaji = targetFor(row).huaji; return huaji.stage === 25 && operatorAwakeningSupported(row) ? huaji.awakened === true ? '觉醒' : '5 星' : operatorHuajiDisplayLabel({ ...row, huaji }) }
 function targetEliteMax(row) { return Math.max(Number(row?.elite) || 0, getMaxEliteForLevel(targetFor(row).level)) }
 function firstSubProf(row) { return Array.isArray(row?.subProf) ? row.subProf[0] : String(row?.subProf || '').split('、')[0] }
-const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
+const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.webp', 阴: 'yin.webp', 火: 'fire.webp', 风: 'wind.webp', 水: 'water.webp', 地: 'earth.webp', 混沌: 'chaos.webp' })
 function profList(value) {
   const values = (Array.isArray(value) ? value : [value]).flatMap(item => String(item || '').split(/[、，,\/／+＋]/))
   const result = []
@@ -1205,7 +1205,7 @@ function simulationLabel(result) {
 }
 const aggregateMoneyLabel = computed(() => { const money = planRows.value.reduce((sum, row) => sum + Number(row.calculation.total.money || 0), 0); return `${hasUnknownRequirements.value ? '已知部分' : '目标'}五铢钱需求 ${formatNumber(money)}` })
 function plannerStateTotal(state) { return Object.values(aggregatePlannerState(state || {})).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) }
-function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.png' : '' }
+function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.webp' : '' }
 function operatorIcon(row) { return xinzhiIconUrl(row?.id) }
 function resourceName(id) { return PLANNER_RESOURCE_LABELS[id] || itemMap.value[id] || id }
 function addDays(dateText, amount) { return addCalendarDays(dateText, amount) }

@@ -16,7 +16,7 @@
 
   <aside class="island" aria-label="作业章节">
     <div class="brand">
-      <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+      <img class="brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
       <div class="brand-txt">YuanHub<b>通关作业</b></div>
     </div>
     <nav class="nav">

@@ -12,7 +12,7 @@ const row = {
 let viewport
 const props = () => ({ recordsList: [row], accountId: 'synthetic-a', deleteRecord: vi.fn(),
   fmtTime: value => value, entrySummary: () => '长摘要'.repeat(30),
-  iconSrc: entry => '/inventory-icons/' + (entry.entity_type === 'agent' ? 'agents' : 'items') + '/' + entry.id + '.png',
+  iconSrc: entry => '/inventory-icons/' + (entry.entity_type === 'agent' ? 'agents' : 'items') + '/' + entry.id + '.webp',
   stockEffectLabel: () => '已生效', staminaCostOf: record => record.stamina_cost,
 })
 const render = options => mount(InventoryRecordsView, { props: props(), attachTo: document.body, ...options })
@@ -180,7 +180,7 @@ it.each([[390, 'item'], [390, 'agent'], [768, 'item'], [768, 'agent'], [1440, 'i
     entrySummary: entries => entries.map(value => value.name + '=' + value.count).join('、') } })
   const image = wrapper.get('.record-entry img')
   expect(image.isVisible()).toBe(true)
-  expect(image.attributes('src')).toBe('/inventory-icons/' + (entityType === 'agent' ? 'agents' : 'items') + '/synthetic-icon.png')
+  expect(image.attributes('src')).toBe('/inventory-icons/' + (entityType === 'agent' ? 'agents' : 'items') + '/synthetic-icon.webp')
   expect(iconSrc).toHaveBeenCalledWith({ ...entry, entity_type: entityType })
   expect(entry).not.toHaveProperty('entity_type')
   await image.trigger('error')

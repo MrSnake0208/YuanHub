@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { readFileSync } from 'node:fs'
+import { readLosslessWebp } from '../test-support/losslessWebp.js'
 import { rewardImagePath } from '../src/pages/achievement/rewardImages.js'
 import AchievementRewardIcon from '../src/pages/achievement/AchievementRewardIcon.vue'
 import AchievementPointRewards from '../src/pages/achievement/AchievementPointRewards.vue'
@@ -18,8 +18,7 @@ it('奖励按物品键匹配，档位按完整名称匹配，图片文件均存�
     const path = rewardImagePath({ item_key, name: '显示名称调整' })
     expect(path).toBeTruthy()
     expect(rewardImagePath({ name })).toBe(path)
-    const png = readFileSync(`public/${path}`)
-    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+    expect(readLosslessWebp(`public/${path}`).width).toBeGreaterThan(0)
   }
   const packs = rewards.slice(11, 14).map(([item_key]) => rewardImagePath({ item_key }))
   expect(new Set(packs).size).toBe(1)
@@ -35,8 +34,7 @@ it('五个头像框使用实际预览，绣衣天下沿用绣衣主人素材', (
   const paths = ['绣衣主人', '金兰之义', '刀光剑影', '恋念缠绵', '日理万机'].map(name => {
     const path = rewardImagePath({ icon: 'frame', name })
     expect(rewardImagePath({ name: `头像框【${name}】` })).toBe(path)
-    const png = readFileSync(`public/${path}`)
-    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([640, 640])
+    expect(readLosslessWebp(`public/${path}`)).toMatchObject({ width: 640, height: 640 })
     return path
   })
   expect(new Set(paths).size).toBe(5)
@@ -46,16 +44,16 @@ it('五个头像框使用实际预览，绣衣天下沿用绣衣主人素材', (
 
 it('装饰图片失败回退，切换奖励可加载新图；名称和数量不受影响', async () => {
   const wrapper = mount(AchievementRewardIcon, { props: { reward: { item_key: 'baijinbi' } }, slots: { default: '<span>备用图标</span>' } })
-  expect(wrapper.get('img').attributes()).toMatchObject({ src: '/achievement/rewards/icon_hb_001.png', alt: '', 'aria-hidden': 'true', width: '32', height: '32' })
+  expect(wrapper.get('img').attributes()).toMatchObject({ src: '/achievement/rewards/icon_hb_001.webp', alt: '', 'aria-hidden': 'true', width: '32', height: '32' })
   await wrapper.get('img').trigger('error')
   expect(wrapper.find('img').exists()).toBe(false)
   expect(wrapper.text()).toBe('备用图标')
   await wrapper.setProps({ reward: { item_key: 'gangding' } })
-  expect(wrapper.get('img').attributes('src')).toContain('icon_mc_00038.png')
+  expect(wrapper.get('img').attributes('src')).toContain('icon_mc_00038.webp')
   wrapper.unmount()
 
   const points = mount(AchievementPointRewards, { props: { categoryName: '恋念缠绵', track: { itemName: '同心结', tiers: [{ at: 100, name: '恋念缠绵', quantity: 1, icon: 'frame' }] }, alwaysExpanded: true } })
-  expect(points.get('.achievement-points-reward img').attributes('src')).toContain('frame_cj05.png')
+  expect(points.get('.achievement-points-reward img').attributes('src')).toContain('frame_cj05.webp')
   await points.get('img').trigger('error')
   expect(points.find('.achievement-points-reward svg').exists()).toBe(true)
   expect(points.get('.achievement-points-reward').text()).toBe('恋念缠绵 ×1')

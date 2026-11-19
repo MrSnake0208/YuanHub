@@ -3,7 +3,7 @@
     <header class="promo-header">
       <div class="promo-wrap promo-header-inner">
         <div class="promo-brand">
-          <img class="promo-brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+          <img class="promo-brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
           <span class="promo-brand-name">YuanHub</span>
         </div>
         <div class="promo-header-note">
@@ -85,7 +85,7 @@
               <article class="flow-node hub-node">
                 <span class="hub-ring ring-one"></span>
                 <span class="hub-ring ring-two"></span>
-                <img class="hub-core" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+                <img class="hub-core" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
                 <div class="node-type">SHARED DATA LAYER</div>
                 <h2>YuanHub</h2>
                 <p>区分访问权限<br>保留贡献脉络</p>
@@ -173,7 +173,7 @@
             </div>
             <div class="stage-connector connector-left" aria-hidden="true"><i></i><span>提交</span></div>
             <div class="stage-hub">
-              <img class="stage-hub-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+              <img class="stage-hub-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
               <div>
                 <span class="node-type">ORGANIZE / PRESERVE</span>
                 <strong>YuanHub</strong>
@@ -218,10 +218,10 @@
 <script setup>
 import { ArrowUpRight, BookOpen, Clock, FilePen, Info, MessageCircle, Network, Package, Plus, Smartphone, Sparkles, Workflow } from '@lucide/vue'
 const partners = [
-  { name: 'MaaYuan', role: '联合生态入口', action: '访问官网', icon: '/icons/maa.png', href: 'https://maayuan.com/', tone: 'maa' },
-  { name: '代号鸢 BWiki', role: '联合生态入口', action: '访问资料站', icon: '/icons/bwiki.png', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5', tone: 'bwiki' },
-  { name: 'YuanAssist', role: '联合生态入口', action: '访问官网', icon: '/icons/yuanassist.png', href: 'https://www.yuanassist.space/', tone: 'yuanassist' },
-  { name: '辟雍学府', role: '联合生态入口', action: '小程序入口', miniProgramUri: '#小程序://辟雍学府/OQufna612dh0plf', icon: '/icons/piyong.png', tone: 'piyong' }
+  { name: 'MaaYuan', role: '联合生态入口', action: '访问官网', icon: '/icons/maa.webp', href: 'https://maayuan.com/', tone: 'maa' },
+  { name: '代号鸢 BWiki', role: '联合生态入口', action: '访问资料站', icon: '/icons/bwiki.webp', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5', tone: 'bwiki' },
+  { name: 'YuanAssist', role: '联合生态入口', action: '访问官网', icon: '/icons/yuanassist.webp', href: 'https://www.yuanassist.space/', tone: 'yuanassist' },
+  { name: '辟雍学府', role: '联合生态入口', action: '小程序入口', miniProgramUri: '#小程序://辟雍学府/OQufna612dh0plf', icon: '/icons/piyong.webp', tone: 'piyong' }
 ]
 
 const destinations = [

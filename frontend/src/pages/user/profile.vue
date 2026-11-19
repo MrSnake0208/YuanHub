@@ -68,7 +68,7 @@
               aria-labelledby="maayuan-app-title"
             >
               <div class="app-seal" aria-hidden="true">
-                <img src="/icons/maa.png" alt="" />
+                <img src="/icons/maa.webp" alt="" />
               </div>
               <div class="app-copy">
                 <div class="app-title-row">
@@ -397,7 +397,7 @@
                   >
                     <img
                       v-if="supportsMaaYuan(tokenItem)"
-                      src="/icons/maa.png"
+                      src="/icons/maa.webp"
                       alt=""
                     />
                     <KeyRound v-else :size="21" />

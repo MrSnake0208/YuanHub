@@ -9,11 +9,11 @@ export const recognitionTutorialSteps = [
 
 export const recognitionTutorialExamples = {
   screenshots: [
-    { title: '主星截图示例', src: '/tutorial/star/recognition-main-example.jpg' },
-    { title: '辅星截图示例', src: '/tutorial/star/recognition-support-example.jpg' },
-    { title: '经验星曜截图示例', src: '/tutorial/star/recognition-exp-example.jpg' },
+    { title: '主星截图示例', src: '/tutorial/star/recognition-main-example.webp' },
+    { title: '辅星截图示例', src: '/tutorial/star/recognition-support-example.webp' },
+    { title: '经验星曜截图示例', src: '/tutorial/star/recognition-exp-example.webp' },
   ],
-  overlap: [{ title: '重叠示例', src: '/tutorial/star/recognition-overlap-example.jpg', caption: '紫色框部分是两张截图中重复出现的同一整行。选择前一张和后一张后，添加关系即可。' }],
+  overlap: [{ title: '重叠示例', src: '/tutorial/star/recognition-overlap-example.webp', caption: '紫色框部分是两张截图中重复出现的同一整行。选择前一张和后一张后，添加关系即可。' }],
 }
 
 export function tutorialStepIndex(index, delta, length = recognitionTutorialSteps.length) {

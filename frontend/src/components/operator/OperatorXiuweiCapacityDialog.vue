@@ -88,7 +88,7 @@ const inventoryError = computed(() => props.error || calculation.value.error)
 const attributeIcons = { 风: Leaf, 火: Flame, 地: Mountain, 水: Droplet, 阴: Moon, 阳: Sun }
 const format = value => value.toLocaleString('zh-CN')
 const itemName = id => ITEM_CATALOG.find(item => item.id === id)?.name || id
-const itemIcon = id => (import.meta.env.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(id) + '.png'
+const itemIcon = id => (import.meta.env.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(id) + '.webp'
 const shortageSummary = group => group.materials.filter(item => item.nextGap > 0).map(item => itemName(item.id) + ' ' + format(item.nextGap)).join('、')
 function close() { emit('update:open', false) }
 function onEscape() {

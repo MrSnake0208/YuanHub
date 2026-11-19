@@ -462,7 +462,7 @@ rarity 派生：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星 `500/2600/15`�
 `/open-api/operator/catalog` 仅对已上传心纸的条目输出 `xinzhi_url` 与 `xinzhi_sha256`，
 URL 为 `/xinzhi/{operatorId}.png?v={sha256前16位}`，ETag 仍由响应字节计算。
 前端管理编辑器在保存密探后可直接更换或删除心纸，上传立即生效；预览及各心纸展示用
-`assets/quality-bg/q{rarity}.png` 按稀有度垫底：5 为金色、4 为紫色、3 为蓝色。
+`assets/quality-bg/q{rarity}.webp` 按稀有度垫底：5 为金色、4 为紫色、3 为蓝色。
 优先使用当前目录品质，只有 ID 的展示回退本地目录；未知品质不套金底。
 加载失败移除背景并回退保留的旧静态成品。
 

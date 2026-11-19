@@ -145,7 +145,7 @@ const filtersOpen = ref(false)
 const switcherOpen = ref(false)
 const selectionOptions = [{ value: 'all', label: '全部' }, { value: 'growing', label: '养成中' }, { value: 'selected', label: '已选' }, { value: 'unselected', label: '未选' }]
 const rarityOptions = OPERATOR_RARITY_OPTIONS
-const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
+const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.webp', 阴: 'yin.webp', 火: 'fire.webp', 风: 'wind.webp', 水: 'water.webp', 地: 'earth.webp', 混沌: 'chaos.webp' })
 const catalogIds = computed(() => new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean)))
 const validFavoriteIds = computed(() => [...props.favoriteIds].filter(id => catalogIds.value.has(id)))
 const growingIds = computed(() => new Set(props.currentEntries.filter(entry => catalogIds.value.has(entry.id) && isOperatorOwned(entry) && growthStatus(entry) === 'growing').map(entry => entry.id)))

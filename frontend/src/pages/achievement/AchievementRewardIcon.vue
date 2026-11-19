@@ -11,7 +11,7 @@ import { xinzhiIconUrl, onXinzhiLoad, fallbackXinzhiIcon } from '../../api/reque
 
 const props = defineProps({ reward: { type: Object, required: true } })
 const failedSrc = ref(null)
-const agentId = computed(() => rewardImagePath(props.reward)?.match(/^inventory-icons\/agents\/(char_[A-Za-z0-9_]+)\.png$/)?.[1])
+const agentId = computed(() => rewardImagePath(props.reward)?.match(/^inventory-icons\/agents\/(char_[A-Za-z0-9_]+)\.webp$/)?.[1])
 const src = computed(() => {
   const path = rewardImagePath(props.reward)
   if (agentId.value) return xinzhiIconUrl(agentId.value)

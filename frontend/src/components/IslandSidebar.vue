@@ -50,7 +50,7 @@
       >
         <header class="mobile-drawer-head">
           <router-link class="mobile-drawer-brand" to="/" aria-label="返回 YuanHub 首页">
-            <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+            <img class="brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
             <span><strong>YuanHub</strong><small>鸢鸢相抱 · Beta</small></span>
           </router-link>
           <button class="mobile-drawer-close" type="button" aria-label="关闭导航" @click="closeMenu">
@@ -180,7 +180,7 @@
 
   <aside class="island" aria-label="主要导航">
     <router-link class="brand" to="/" aria-label="返回首页">
-      <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
+      <img class="brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true" />
       <div class="brand-txt">
         <div class="brand-line">
           <span>YuanHub</span><span class="beta">Beta</span>
@@ -281,7 +281,7 @@
       <div class="sidebar-utilities">
         <details ref="accountMenu" class="sidebar-account-menu" @keydown.esc.stop.prevent="closeAccountMenu(true)" @focusout="onAccountFocusOut">
           <summary class="sidebar-account" aria-label="账号与外观设置" aria-controls="sidebar-account-panel">
-            <img src="/brand/yuanhub-logo.png" alt="" width="30" height="30" />
+            <img src="/brand/yuanhub-logo.webp" alt="" width="30" height="30" />
             <span class="sidebar-account-copy">
               <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
               <small>{{ isLoggedIn ? "账号与设置" : "登录与外观设置" }}</small>

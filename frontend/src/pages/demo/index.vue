@@ -180,8 +180,8 @@ function starLabel(value) { return operatorShareStarLabel(value, false) }
 function formatEta(days) { return days == null ? '暂无收集记录，无法估算' : days <= 30 ? `${days} 天` : `${Math.ceil(days / 30)} 个月` }
 function formatRate(rate) { return Number(rate).toFixed(1) }
 function materialName(id) { return materialPlans.value.find(item => item.id === id)?.name || (id === 'heart-paper' ? '心纸' : id) }
-function itemIcon(id) { return id === 'heart-paper' ? '' : `/inventory-icons/items/${id}.png` }
-function profIcon(prof) { const files = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }; return `/assets/prof-icons/${files[prof] || 'yang.png'}` }
+function itemIcon(id) { return id === 'heart-paper' ? '' : `/inventory-icons/items/${id}.webp` }
+function profIcon(prof) { const files = { 阳: 'yang.webp', 阴: 'yin.webp', 火: 'fire.webp', 风: 'wind.webp', 水: 'water.webp', 地: 'earth.webp', 混沌: 'chaos.webp' }; return `/assets/prof-icons/${files[prof] || 'yang.webp'}` }
 function hideBrokenImage(event) { event.target.style.display = 'none' }
 </script>
 

@@ -5,7 +5,7 @@
         <div class="beta-topbar-wrap">
           <nav class="beta-topbar wrap" aria-label="内测页导航">
             <router-link class="beta-brand-link" to="/promo" aria-label="了解 YuanHub">
-              <img class="beta-brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true">
+              <img class="beta-brand-mark" src="/brand/yuanhub-logo.webp" alt="" aria-hidden="true">
               <span class="beta-brand-name">YuanHub</span>
             </router-link>
             <span class="beta-topbar-divider" aria-hidden="true"></span>

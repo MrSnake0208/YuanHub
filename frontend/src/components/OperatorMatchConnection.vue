@@ -1,7 +1,7 @@
 <template>
   <section class="match-connection" :class="{ 'is-empty': loaded && !connections.length }" :data-mobile-view="mobileView" aria-labelledby="match-title" :aria-busy="busy">
     <div class="match-card">
-      <div class="match-seal" aria-hidden="true"><img src="/icons/maa.png" alt="" /></div>
+      <div class="match-seal" aria-hidden="true"><img src="/icons/maa.webp" alt="" /></div>
       <div class="match-copy">
         <div class="match-heading">
           <h3 id="match-title">MaaYuan <span class="match-subtitle">作业匹配</span></h3>

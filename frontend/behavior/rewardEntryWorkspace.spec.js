@@ -827,7 +827,7 @@ describe('历练按次数补录', () => {
     const ids = ['juanshan','zhuojiu','tongjing','liubojing']
     for (const selector of ['.basket-list']) {
       const images = Array.from(document.querySelectorAll(`${selector} .reward-item-icon img`))
-      expect(images.map(img => img.getAttribute('src'))).toEqual(ids.map(id => `/inventory-icons/items/${id}.png`))
+      expect(images.map(img => img.getAttribute('src'))).toEqual(ids.map(id => `/inventory-icons/items/${id}.webp`))
       expect(images.every(img => img.alt === '' && img.parentElement.getAttribute('aria-hidden') === 'true')).toBe(true)
     }
     await clickElement(bodyButton('预览本次流水'))
@@ -837,7 +837,7 @@ describe('历练按次数补录', () => {
     expect(document.querySelector('.basket-list li').textContent).toContain('绢扇')
     expect(document.querySelector('.basket-list li').textContent).toContain('+75')
     expect(document.querySelector('.record-rewards').textContent).toContain('绢扇')
-    expect(document.querySelectorAll('img[src="/inventory-icons/items/juanshan.png"]')).toHaveLength(0)
+    expect(document.querySelectorAll('img[src="/inventory-icons/items/juanshan.webp"]')).toHaveLength(0)
     await clickElement(bodyButton('确认补录 1 条'))
     expect(inventoryApi.importInventory.mock.calls[0][0].records[0].entries.map(entry => [entry.id, entry.count])).toEqual([['juanshan',75], ['zhuojiu',175], ['tongjing',25], ['liubojing',15]])
   })
@@ -2237,7 +2237,7 @@ describe('库存页紧凑录入', () => {
     expect(document.body.querySelector('.channel-section').open).toBe(false)
     expect(document.body.querySelector('.whitecoin-shortcuts')).toBeNull()
     await clickElement(document.querySelector('[aria-label^="添加白金币"]'))
-    expect(document.querySelector('.basket-list img').getAttribute('src')).toContain('/inventory-icons/items/baijinbi.png')
+    expect(document.querySelector('.basket-list img').getAttribute('src')).toContain('/inventory-icons/items/baijinbi.webp')
     const quantity = document.querySelector('[aria-label="白金币数量"]')
     quantity.value = '65'; quantity.dispatchEvent(new Event('input', { bubbles: true }))
     await clickElement(bodyButton('保存'))
@@ -2254,7 +2254,7 @@ describe('库存页紧凑录入', () => {
     expect(document.querySelector('.preview-button').matches(':disabled')).toBe(true)
     await clickElement(Array.from(document.querySelectorAll('.type-options button')).find(node => node.textContent === '密探心纸'))
     await clickElement(document.querySelector('[aria-label^="添加测试密探"]'))
-    expect(document.querySelector('.basket-list img').getAttribute('src')).toContain('/inventory-icons/agents/agent_test.png')
+    expect(document.querySelector('.basket-list img').getAttribute('src')).toContain('/inventory-icons/agents/agent_test.webp')
     const quantity = document.querySelector('[aria-label="测试密探数量"]')
     quantity.value = '7'; quantity.dispatchEvent(new Event('input', { bubbles: true }))
     await flushPromises()

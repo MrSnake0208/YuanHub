@@ -66,7 +66,7 @@ export function fallbackXinzhiIcon(event) {
   const match = (image.getAttribute('src') || '').match(/\/xinzhi\/(char_[A-Za-z0-9_]+)\.png(?:[?#]|$)/);
   if (!match) return false;
   image.classList.remove('xinzhi-icon');
-  image.src = (import.meta.env.BASE_URL || '/') + 'inventory-icons/agents/' + match[1] + '.png';
+  image.src = (import.meta.env.BASE_URL || '/') + 'inventory-icons/agents/' + match[1] + '.webp';
   return true;
 }
 

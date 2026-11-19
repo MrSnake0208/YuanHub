@@ -119,10 +119,10 @@ const mainTarget = computed(() => targetUsage.value.main)
 const plainEntry = entry => entry.box || entry.target == null || entry.target === mainTarget.value
 // 箭头不用字形：系统备用字体画出的箭头粗细和位置不可控，改用两个定位块绘制（不用伪元素，html2canvas 处理更稳）。
 const ARROW_CLASS = { '↑': 'is-up', '↓': 'is-down' }
-const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.svg'
-const brandLogoUrl = import.meta.env.BASE_URL + 'brand/yuanhub-logo.png'
+const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.webp'
+const brandLogoUrl = import.meta.env.BASE_URL + 'brand/yuanhub-logo.webp'
 const profFiles = { 阳: 'yang', 阴: 'yin', 火: 'fire', 风: 'wind', 水: 'water', 地: 'earth', 混沌: 'chaos' }
-const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.png' : ''
+const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.webp' : ''
 const discClass = { 金: 'rarity-gold', 紫: 'rarity-purple', 蓝: 'rarity-blue' }
 const nameClass = name => { const length = Array.from(name || '未指定').length; return { 'is-three-char-name': length === 3, 'is-long-name': length > 4 } }
 const sheet = ref(null)

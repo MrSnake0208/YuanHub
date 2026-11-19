@@ -31,7 +31,7 @@
             <div class="bond-find-choices">
               <fieldset :disabled="state.busy"><legend>天气</legend><div class="bond-choice-heading"><span aria-hidden="true">天气</span><button type="button" aria-label="全部天气" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部</button></div><div class="bond-choice-options">
                 <button type="button" class="bond-all-choice" :aria-pressed="!filters.weather" @click="filters.weather = ''">全部天气</button>
-                <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><img :src="weatherIconBase + value + '.png'" class="bond-weather-icon" width="20" height="20" alt="" aria-hidden="true" />{{ label }}</button>
+                <button v-for="(label, value) in WEATHERS" :key="value" type="button" :aria-pressed="filters.weather === value" @click="filters.weather = value"><img :src="weatherIconBase + value + '.webp'" class="bond-weather-icon" width="20" height="20" alt="" aria-hidden="true" />{{ label }}</button>
               </div></fieldset>
               <fieldset :disabled="state.busy"><legend>行动</legend><div class="bond-choice-heading"><span aria-hidden="true">行动</span><button type="button" aria-label="全部行动" :aria-pressed="!filters.action" @click="filters.action = ''">全部</button></div><div class="bond-choice-options">
                 <button type="button" class="bond-all-choice" :aria-pressed="!filters.action" @click="filters.action = ''">全部行动</button>
@@ -88,7 +88,7 @@
                 <div class="bond-find-conditions bond-condition-grid">
                 <div v-for="entry in pair.entries" :key="entry.bond_id" class="bond-find-entry bond-condition-wrap">
                   <button type="button" class="bond-condition bond-find-record" :aria-busy="savingId === entry.bond_id && state.busy" :class="{ 'is-saving': savingId === entry.bond_id && state.busy, 'has-compact-state': recorded(entry.bond_id) || (writable || state.busy) && entry.status === 'active' }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
-                    <img :src="weatherIconBase + entry.weather + '.png'" class="bond-weather-icon" alt="" aria-hidden="true" />
+                    <img :src="weatherIconBase + entry.weather + '.webp'" class="bond-weather-icon" alt="" aria-hidden="true" />
                     <component :is="savingId === entry.bond_id && state.busy ? LoaderCircle : recorded(entry.bond_id) ? Check : Plus" class="bond-mobile-state" :size="16" aria-hidden="true" />
                     <span class="bond-condition-copy bond-find-weather">{{ WEATHERS[entry.weather] }}</span>
                     <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>
@@ -123,7 +123,7 @@
                     <div class="bond-condition-grid">
                       <div v-for="entry in actionGroup.entries" :key="entry.bond_id" class="bond-condition-wrap">
                         <button type="button" class="bond-condition" :aria-busy="savingId === entry.bond_id && state.busy" :class="{ 'is-saving': savingId === entry.bond_id && state.busy, 'has-compact-state': recorded(entry.bond_id) || (writable || state.busy) && entry.status === 'active' }" :aria-pressed="recorded(entry.bond_id)" :disabled="!writable || entry.status !== 'active' && !recorded(entry.bond_id)" :aria-label="entryLabel(entry)" @click="toggleEntry(entry)">
-                          <img :src="weatherIconBase + entry.weather + '.png'" class="bond-weather-icon" alt="" aria-hidden="true" />
+                          <img :src="weatherIconBase + entry.weather + '.webp'" class="bond-weather-icon" alt="" aria-hidden="true" />
                           <component :is="savingId === entry.bond_id && state.busy ? LoaderCircle : recorded(entry.bond_id) ? Check : Plus" class="bond-mobile-state" :size="16" aria-hidden="true" />
                           <span class="bond-condition-copy"><span>{{ WEATHERS[entry.weather] }}</span></span>
                           <span v-if="entry.status !== 'active'" class="bond-condition-history">{{ STATUS[entry.status] }}</span>

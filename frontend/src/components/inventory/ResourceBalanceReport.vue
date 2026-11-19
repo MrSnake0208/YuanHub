@@ -240,7 +240,7 @@ function calendarDayLabel(day) {
   const recorded = resources.value.filter(r => showCalendarResource(r, day))
   return day + ' · ' + (recorded.length ? recorded.map(r => calendarResourceLabel(r, day)).join('；') : calendarDayHint(day))
 }
-function icon(id) { return import.meta.env.BASE_URL + 'inventory-icons/items/' + id + '.png' }
+function icon(id) { return import.meta.env.BASE_URL + 'inventory-icons/items/' + id + '.webp' }
 function number(value) { return value == null ? '—' : value.toLocaleString('zh-CN') }
 function signed(value) { return value == null ? '—' : (value > 0 ? '+' : '') + number(value) }
 function pointFor(r, day) { return r.points.find(p => p.day === day) }

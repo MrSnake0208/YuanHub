@@ -72,9 +72,9 @@ import portraits from '../../data/operatorPortraits.json'
 defineProps({ entries: { type: Array, required: true }, game: String, total: Number, start: Number, page: Number, pages: Number, generatedAt: String })
 const sheet = ref(null)
 const discClass = { 金: 'rarity-gold', gold: 'rarity-gold', 紫: 'rarity-purple', purple: 'rarity-purple', 蓝: 'rarity-blue', blue: 'rarity-blue' }
-const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.svg'
+const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.webp'
 const profFiles = { 阳: 'yang', 阴: 'yin', 火: 'fire', 风: 'wind', 水: 'water', 地: 'earth', 混沌: 'chaos' }
-const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.png' : ''
+const profIcon = prof => profFiles[prof] ? import.meta.env.BASE_URL + 'assets/prof-icons/' + profFiles[prof] + '.webp' : ''
 defineExpose({ sheet })
 </script>
 

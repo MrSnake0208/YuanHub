@@ -492,7 +492,7 @@ it('disabled tutorials preserve all read records, initialize no tutorial observe
   examples[0].element.closest('details').open = true
   examples[0].element.focus()
   await examples[0].trigger('click'); await flushPromises()
-  expect(document.querySelector('.recognition-example-panel img').getAttribute('src')).toBe('/tutorial/star/recognition-main-example.jpg')
+  expect(document.querySelector('.recognition-example-panel img').getAttribute('src')).toBe('/tutorial/star/recognition-main-example.webp')
   document.querySelector('[aria-label="关闭示例图片"]').click(); await flushPromises()
   expect(document.activeElement).toBe(examples[0].element)
   await examples[1].trigger('click'); await flushPromises()

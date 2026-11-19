@@ -22,3 +22,16 @@
 4. 回退本地分发时，先恢复带原文件的旧 release 或对应静态资源，再撤回相关跳转并 reload。已缓存的跳转最长可继续生效 300 秒。
 
 资源清单、压缩范围见 [OCR 静态资源分发与压缩](./ocr-transport-compression.md)。
+
+## 主站旧静态图片地址
+
+主站 `public/` 内的图片与 PWA 清单图标均使用 WebP。5 张 SVG 的矢量源稿保存在 `frontend/design-assets/vector-originals/`，发布目录使用按两倍设计尺寸栅格化的无损 WebP。发布前可在主站 Nginx 的 `server` 加入以下兼容规则，让缓存旧页面的客户端和旧分享链接继续取图。规则只处理此次迁移的主站图片目录；回滚到仍包含旧文件的版本时优先返回原文件。
+
+```nginx
+location ~ ^/(?:assets/(?:bond-weather|prof-icons|quality-bg|star-discs|operator-box)/[^/]+|inventory-icons/(?:agents|items)/[^/]+|achievement/(?:rewards/[^/]+|archive-landscape)|tutorial/star/[^/]+|(?:brand|icons|pwa|roadmap)/[^/]+|longtimenosee)\.(?:png|jpg|svg)$ {
+    try_files $uri @legacy_webp;
+}
+location @legacy_webp {
+    rewrite ^(.+)\.(?:png|jpg|svg)$ $1.webp redirect;
+}
+```

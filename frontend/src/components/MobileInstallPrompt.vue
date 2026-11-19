@@ -4,7 +4,7 @@
       <div class="pwa-install-card">
         <div class="pwa-install-exit"><button ref="exitButton" class="pwa-install-secondary pwa-install-close" type="button" @click="closePrompt">{{ pwaInstallState.guideActive ? '关闭教程' : '暂时关闭' }}</button></div>
         <div class="pwa-install-main">
-          <img src="/pwa/icon-192.png" alt="" width="52" height="52" />
+          <img src="/pwa/icon-192.webp" alt="" width="52" height="52" />
           <div>
             <p class="pwa-install-title">把 YuanHub 放到桌面</p>
             <p class="pwa-install-copy">可以添加到桌面，也可以继续使用网页版。</p>

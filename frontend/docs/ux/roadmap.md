@@ -16,7 +16,7 @@
 
 规划文案维护于 `src/pages/roadmap/index.vue`，不调用历史开发目标 API，也不新增管理端或写入数据库。「分享你的想法」沿用 `/feedback?new=1&type=FEATURE`，游客按现有登录守卫回跳。正式发布情况以更新日志为准。
 
-插画使用官方内置 imagegen 生成的透明 3×2 图集 `public/roadmap/illustrations.png`，顺序为奖章、双结、信封、属性纸张、双剑、小组件；作为装饰 CSS 背景，文字独立渲染。双端布局分别由 `roadmapDesktop.css` / `roadmapMobile.css` 持有，配色使用现有主题变量。素材缺失不影响六项文本和链接。
+插画使用官方内置 imagegen 生成的透明 3×2 图集 `public/roadmap/illustrations.webp`，顺序为奖章、双结、信封、属性纸张、双剑、小组件；作为装饰 CSS 背景，文字独立渲染。双端布局分别由 `roadmapDesktop.css` / `roadmapMobile.css` 持有，配色使用现有主题变量。素材缺失不影响六项文本和链接。
 
 ### 人工验收（待用户执行）
 

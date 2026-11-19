@@ -55,7 +55,7 @@
           <div class="mail-claim-list">
             <div v-for="(row, index) in stored.white_coin_mails" v-show="row.count > 0" :key="index" class="mail-claim-row">
               <div class="mail-claim-resource">
-                <img src="/inventory-icons/items/baijinbi.png" alt="" class="mail-claim-icon" />
+                <img src="/inventory-icons/items/baijinbi.webp" alt="" class="mail-claim-icon" />
                 <div><strong>白金币邮件</strong><p class="mail-claim-meta"><span>每封 {{ row.coins_per_mail }} 白金币</span><span>待领 {{ row.count }} 封</span></p></div>
               </div>
               <label class="mail-claim-input">本次领取（封）<input v-model.number="selection.white_coin_mail_counts[index]" :aria-label="`第${index + 1}组白金币邮件本次领取封数`" :aria-invalid="!!claimErrors.coins[index]" :aria-describedby="claimErrors.coins[index] ? `${claimId}-coin-${index}-error` : undefined" type="number" min="0" :max="row.count" step="1" inputmode="numeric" required /></label>
@@ -63,7 +63,7 @@
             </div>
             <div v-if="stored.fu_chuan_mail_count" class="mail-claim-row">
               <div class="mail-claim-resource">
-                <img src="/inventory-icons/items/fuchuan.png" alt="" class="mail-claim-icon" />
+                <img src="/inventory-icons/items/fuchuan.webp" alt="" class="mail-claim-icon" />
                 <div><strong>符传邮件</strong><p class="mail-claim-meta"><span>每封 3 张</span><span>待领 {{ stored.fu_chuan_mail_count }} 封</span></p></div>
               </div>
               <label class="mail-claim-input">本次领取（封）<input v-model.number="selection.fu_chuan_mail_count" aria-label="符传邮件本次领取封数" :aria-invalid="!!claimErrors.tickets" :aria-describedby="claimErrors.tickets ? `${claimId}-ticket-error` : undefined" type="number" min="0" :max="stored.fu_chuan_mail_count" step="1" inputmode="numeric" required /></label>

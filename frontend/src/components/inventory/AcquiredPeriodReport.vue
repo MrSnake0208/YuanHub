@@ -199,7 +199,7 @@ const props = defineProps({
 
 const rankingMode = ref('favorites')
 const goldOnly = ref(false)
-const absenceSeal = import.meta.env.BASE_URL + 'longtimenosee.png'
+const absenceSeal = import.meta.env.BASE_URL + 'longtimenosee.webp'
 const hasFavorites = computed(function () { return props.insights.agents.favoriteCount > 0 })
 const goldAgentIdSet = computed(function () { return new Set(props.goldAgentIds) })
 const hasFavoriteTotal = computed(function () {
