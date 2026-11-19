@@ -21,7 +21,10 @@
             <component :is="variant === 'day' ? 'h4' : 'h3'" class="calendar-operation-heading">个人待办</component>
             <button ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor(!editing && !!item && !record.checklist.length)">{{ editing ? '收起待办' : !item ? '查看待办' : record.checklist.length ? '编辑待办' : '添加待办' }}</button>
           </div>
-          <p v-if="!editing" class="calendar-todo-card-summary">{{ subscriptionProgress(record) }}</p>
+          <p v-if="!editing" class="calendar-todo-card-summary" role="status">{{ subscriptionProgress(record) }}<span v-if="quickChecklist && saving"> · 保存中…</span></p>
+          <ul v-if="quickChecklist" class="calendar-quick-checklist">
+            <li v-for="entry in record.checklist" :key="entry.id"><label :class="{ 'is-complete': entry.completed }"><input type="checkbox" :checked="entry.completed" :disabled="quickLocked" @change="toggleTodo(entry, $event)"><span>{{ entry.title }}</span></label></li>
+          </ul>
           <p v-if="!editing" class="calendar-hint">清单完成与本期完成状态独立。</p>
         </template>
         <div v-if="editing && record?.subscribed && !item" class="calendar-todo-readonly">
@@ -29,7 +32,7 @@
           <ul v-if="record.checklist.length"><li v-for="entry in record.checklist" :key="entry.id">{{ entry.completed ? '已完成' : '未完成' }} · {{ entry.title }}</li></ul>
           <p v-if="!record.checklist.length" class="calendar-hint">暂无待办</p>
         </div>
-        <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save">
+        <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save()">
           <fieldset :disabled="busy || blocked || !!context.error.value">
             <legend>活动待办 · 仅当前账号可见</legend>
             <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="draft.checklist.length && draft.checklist.every(entry => entry.completed)"> · 待办全部完成</span></p>
@@ -78,6 +81,8 @@ const record = computed(() => context?.byId.value[id.value] || props.unavailable
 const editor = ref(null), editorToggle = ref(null)
 const editing = ref(false), busy = ref(false), blocked = ref(false), error = ref(''), message = ref('')
 const saving = ref(false), saveFailed = ref(false)
+const quickChecklist = computed(() => props.variant === 'detail' && props.item && record.value?.subscribed && !editing.value && record.value.checklist.length > 0)
+const quickLocked = computed(() => busy.value || blocked.value || context.dirty.value || context.loading.value || !!context.error.value)
 const hasHistory = computed(() => (record.value?.memo_title && record.value.memo_title !== DEFAULT_MEMO_TITLE) || !!record.value?.memo_note || record.value?.legacy_completed === true)
 const snapshot = value => JSON.stringify(value.checklist.map(entry => [entry.id, entry.title, entry.completed]))
 const draft = ref(progressDraft(null)), baseline = ref(snapshot(draft.value)), version = ref(null)
@@ -126,10 +131,12 @@ async function removeEntry(entryId) {
   if (!await dialog.confirm({ title: '删除待办？', message: '仅删除当前账号、本期活动的这条待办，保存后生效。', confirmText: '删除', cancelText: '保留', type: 'danger' }) || !current(token)) return
   draft.value.checklist = draft.value.checklist.filter(entry => entry.id !== entryId)
 }
-function failed(err) {
+function failed(err, quick = false) {
   saveFailed.value = true
   blocked.value = err?.status === 409 || !err?.status || err.status >= 500
-  error.value = blocked.value ? '保存结果需要确认，草稿已保留。请读取最新状态后再编辑。' : err?.status === 422 && err?.message === '请求字段不正确' ? '服务端尚不支持待办保存协议，请先升级服务端。草稿已保留。' : err?.message || '保存失败，请重试。'
+  if (blocked.value) error.value = quick ? '勾选结果需要确认，请读取最新状态后再勾选。' : '保存结果需要确认，草稿已保留。请读取最新状态后再编辑。'
+  else if (err?.status === 422 && err?.message === '请求字段不正确') error.value = '服务端尚不支持待办保存协议，请先升级服务端。' + (quick ? '' : '草稿已保留。')
+  else error.value = err?.message || '保存失败，请重试。'
 }
 async function changeSubscription() {
   if (busy.value || dialog._state?.visible) return
@@ -159,10 +166,23 @@ async function changeCompletion() {
   } catch (err) { if (current(token)) failed(err) }
   finally { if (current(token)) busy.value = false }
 }
-async function save() {
-  if (busy.value || blocked.value || context.error.value || !dirty.value) return
-  const invalid = draft.value.checklist.findIndex(entry => !entry.title.trim() || entry.title.length > 80)
-  if (draft.value.checklist.length > 50 || invalid !== -1) {
+async function toggleTodo(entry, event) {
+  const input = event.target, completed = input.checked, focused = document.activeElement === input
+  input.checked = entry.completed
+  if (!quickChecklist.value || quickLocked.value) return
+  const token = stamp(), progress = progressDraft(record.value)
+  const target = progress.checklist.find(value => value.id === entry.id)
+  if (!target) return
+  target.completed = completed
+  await save(progress)
+  await nextTick()
+  if (current(token) && focused && !input.disabled && document.activeElement === document.body) input.focus({ preventScroll: true })
+}
+async function save(quickProgress = null) {
+  if (quickProgress ? !quickChecklist.value || quickLocked.value : busy.value || blocked.value || context.error.value || !dirty.value) return
+  const progress = quickProgress || draft.value
+  const invalid = progress.checklist.findIndex(entry => !entry.title.trim() || entry.title.length > 80)
+  if (progress.checklist.length > 50 || invalid !== -1) {
     error.value = '最多 50 条待办，每条名称须为 1–80 字，不能仅含空格。'
     editor.value?.querySelectorAll('input[type="text"]')[invalid]?.focus()
     return
@@ -170,10 +190,10 @@ async function save() {
   const token = stamp()
   busy.value = true; saving.value = true; error.value = ''; message.value = ''
   try {
-    const value = await context.progress(id.value, version.value, JSON.parse(JSON.stringify(draft.value)))
+    const value = await context.progress(id.value, quickProgress ? record.value.version : version.value, JSON.parse(JSON.stringify(progress)))
     if (!current(token) || !value) return
     adopt(value)
-  } catch (err) { if (current(token)) failed(err) }
+  } catch (err) { if (current(token)) failed(err, !!quickProgress) }
   finally { if (current(token)) { busy.value = false; saving.value = false } }
 }
 async function refresh() {

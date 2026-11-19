@@ -27,15 +27,19 @@
           <div v-show="!compactPublic || !collapsedGroups.includes(group.category)" :id="`calendar-timeline-group-${group.category}`">
             <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
               <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'is-narrow': entry.position.span === 1, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" aria-haspopup="dialog" @click="selectEvent(entry.item.id, $event)">
-                <span class="calendar-timeline-bar-content" :style="entry.item.start_date !== entry.item.end_date ? barContentStyle(entry.position) : undefined">
+                <span class="calendar-timeline-bar-content" :class="{ 'has-pending-todos': entry.pendingTodos }" :style="entry.item.start_date !== entry.item.end_date && !(entry.pendingTodos && entry.position.span === 1) ? barContentStyle(entry.position) : undefined">
                   <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
                   <span class="calendar-timeline-bar-title">{{ entry.item.title }} <Repeat2 v-if="entry.item.recurrence === 'MONTHLY'" :size="13" aria-label="每月固定" style="vertical-align: -2px" /></span>
-                  <span v-if="!compactPublic && (entry.upAgents || entry.item.start_date !== entry.item.end_date)" class="calendar-timeline-bar-meta">
+                  <span v-if="!compactPublic && (entry.upAgents || entry.item.start_date !== entry.item.end_date)" class="calendar-timeline-bar-meta" :class="{ 'has-pending-todos': entry.pendingTodos && entry.position.span > 1 }">
                     <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
                     <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.item.game }} · {{ entry.display.label }}</span>
                     <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
+                    <span v-if="entry.pendingTodos && entry.position.span > 1" class="calendar-timeline-pending-text"> · 待办 {{ entry.pendingTodos }} 项未完成</span>
                   </span>
-                  <span v-else-if="compactPublic && entry.ending && entry.deadline && entry.position.span > 1" class="calendar-timeline-bar-meta"><strong>{{ entry.deadline }}</strong></span>
+                  <span v-if="(entry.pendingTodos && (compactPublic || entry.position.span === 1)) || (compactPublic && entry.ending && entry.deadline && entry.position.span > 1)" class="calendar-timeline-bar-meta" :class="{ 'has-pending-todos': entry.pendingTodos }">
+                    <strong v-if="compactPublic && entry.ending && entry.deadline && entry.position.span > 1">{{ entry.deadline }}</strong>
+                    <span v-if="entry.pendingTodos" class="calendar-bar-pending" aria-hidden="true"><ListChecks :size="12" />{{ entry.pendingTodos }}</span>
+                  </span>
                 </span>
               </button>
             </div>
@@ -51,10 +55,10 @@
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Repeat2, ChevronDown, ChevronLeft, ChevronRight } from '@lucide/vue'
+import { Repeat2, ChevronDown, ChevronLeft, ChevronRight, ListChecks } from '@lucide/vue'
 import CalendarDetailDialog from './CalendarDetailDialog.vue'
-import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
-import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange, timelineWeekRange } from '@/data/activityCalendar.js'
+import { CALENDAR_SUBSCRIPTIONS, subscriptionPendingTodoCount } from '@/data/activityCalendarSubscriptions.js'
+import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarEnded, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange, timelineWeekRange } from '@/data/activityCalendar.js'
 import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean, detailError: { type: String, default: '' }, canCreate: Boolean, compactPublic: Boolean })
@@ -106,10 +110,11 @@ const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['UNC
     const upAgents = calendarUpAgentDisplay(item)
     const statuses = calendarStatuses(item, props.today, subscriptions?.now.value)
     const deadline = calendarDeadline(item, props.today, subscriptions?.now.value)
+    const pendingTodos = item.source_type === 'PRIVATE_ITEM' || calendarEnded(item, props.today, subscriptions?.now.value) ? 0 : subscriptionPendingTodoCount(subscriptions?.byId?.value[item.id])
     return {
-      item, position, deadline, display, upAgents,
+      item, position, deadline, display, upAgents, pendingTodos,
       ending: item.source_type !== 'PRIVATE_ITEM' && item.end_date != null && !statuses.includes('已结束') && !statuses.includes('即将开始') && item.end_date <= addCalendarDays(props.today, 2),
-      label: `${item.title}，${item.game}，${display.path}${upAgents ? '，' + upAgents.full : ''}，${calendarRangeLabel(item)}${item.start_time ? '，' + item.time_zone : ''}，${statuses.join(' · ')}${deadline ? '，' + deadline : ''}，查看详情`,
+      label: `${item.title}，${item.game}，${display.path}${upAgents ? '，' + upAgents.full : ''}，${calendarRangeLabel(item)}${item.start_time ? '，' + item.time_zone : ''}，${statuses.join(' · ')}${deadline ? '，' + deadline : ''}，查看详情${pendingTodos ? `，还有 ${pendingTodos} 项待办未完成` : ''}`,
     }
   }))
   return { category, label, lanes, items: lanes.flat() }

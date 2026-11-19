@@ -49,6 +49,12 @@
 .calendar-public button.calendar-month-bar { border: 1px solid var(--event-border); border-left: 3px solid var(--event-mark); border-radius: 6px; background: var(--event-bg); color: var(--event-text); }
 .calendar-public .calendar-month-bar.is-clipped-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .calendar-public .calendar-month-bar.is-clipped-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.calendar-public button.calendar-month-bar.is-narrow.has-pending-todos { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-content: center; row-gap: 0; padding-inline: 3px; }
+.calendar-public .calendar-month-bar.is-narrow.has-pending-todos .calendar-month-bar-content { grid-area: 1 / 2; }
+.calendar-public .calendar-month-bar.is-narrow.has-pending-todos .calendar-month-continuation { grid-area: 1 / 3; }
+.calendar-public .calendar-month-bar.is-narrow.has-pending-todos .calendar-month-continuation:first-child { grid-column: 1; }
+.calendar-public .calendar-month-bar.is-narrow.has-pending-todos .calendar-month-continuation svg { display: block; width: 10px; }
+.calendar-public .calendar-month-bar.is-narrow .calendar-bar-pending { grid-area: 2 / 1 / auto / -1; justify-self: center; }
 .calendar-public .calendar-month-overflow button { border: 0; background: transparent; text-decoration: underline; text-underline-offset: 3px; }
 .calendar-public :is(.calendar-month-day, .calendar-month-bar, .calendar-month-overflow button):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: -2px; }
 .calendar-public .calendar-day-detail { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
@@ -79,6 +85,13 @@
 /* Keep the name inside the visible part of a long bar, without scroll listeners. */
 .calendar-public .calendar-timeline-bar-meta { color: var(--event-text); }
 .calendar-public .calendar-timeline-bar-meta strong { color: var(--theme-accent-text, var(--accent-strong)); }
+.calendar-public .calendar-bar-pending { display: inline-flex; flex: none; align-items: center; gap: 2px; font: 400 11px/1.4 var(--font-b); white-space: nowrap; }
+.calendar-public .calendar-timeline-bar .calendar-timeline-bar-meta.has-pending-todos { display: flex; align-items: center; column-gap: 3px; }
+.calendar-public .calendar-timeline-bar-meta.has-pending-todos:has(.calendar-timeline-pending-text) { flex-wrap: wrap; }
+.calendar-public .calendar-timeline-bar .calendar-timeline-bar-meta.has-pending-todos > :is(strong, .calendar-timeline-bar-context) { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.calendar-public .calendar-timeline-bar-meta.has-pending-todos:has(.calendar-bar-pending) > strong { flex: 0 1 auto; }
+.calendar-public .is-single-day .calendar-timeline-bar-meta.has-pending-todos { justify-content: center; }
+.calendar-public .calendar-timeline-pending-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 0; white-space: normal; }
 .calendar-public .calendar-timeline-bar[aria-pressed=true] { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: -2px; }
 .calendar-public .calendar-timeline-bar[aria-pressed=true] .calendar-timeline-bar-title { text-decoration: underline; text-underline-offset: 3px; }
 .calendar-public button.calendar-timeline-bar.is-single-day { border-radius: 16px; }
@@ -102,9 +115,14 @@
 .calendar-public .calendar-subscription-toolbar > .calendar-chips button { border-radius: 10px; }
 .calendar-subscription { border-top: 1px solid var(--line); }
 .calendar-checklist fieldset { border: 0; }
-.calendar-check-row input[type="checkbox"] { accent-color: var(--tea); }
+:is(.calendar-check-row, .calendar-quick-checklist) input[type="checkbox"] { accent-color: var(--tea); }
 .calendar-check-target { cursor: pointer; }
 .calendar-check-row input[type="text"] { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+.calendar-quick-checklist { display: grid; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
+.calendar-quick-checklist label { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
+.calendar-quick-checklist input { flex: none; width: 18px; height: 18px; margin: 0; }
+.calendar-quick-checklist label:has(input:disabled) { cursor: default; }
+.calendar-quick-checklist .is-complete > span { text-decoration: line-through; }
 
 .calendar-todo-card-summary { color: var(--theme-strong-text, var(--tea)); }
 .calendar-subscription :is(input, button, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--tea)); outline-offset: 2px; }

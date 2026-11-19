@@ -6,6 +6,9 @@ export function subscriptionCompleted(record) {
 export function subscriptionHasPending(record) {
   return record?.subscribed === true && !subscriptionCompleted(record)
 }
+export function subscriptionPendingTodoCount(record) {
+  return subscriptionHasPending(record) ? (record.checklist || []).filter(entry => !entry.completed).length : 0
+}
 export function subscriptionProgress(record) {
   const entries = record?.checklist || []
   if (!entries.length) return '暂无待办'

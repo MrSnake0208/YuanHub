@@ -365,6 +365,7 @@
   .calendar-public-mobile .is-narrow .calendar-timeline-bar-title { font-size: 11px; }
   .calendar-public-mobile .calendar-timeline-point { display: none; }
   .calendar-public-mobile .is-ending:not(.is-narrow) .calendar-timeline-bar-title { -webkit-line-clamp: 1; }
+  .calendar-public-mobile .has-pending-todos > .calendar-timeline-bar-title { -webkit-line-clamp: 1; }
   .calendar-public-mobile .calendar-timeline-empty { position: static; width: auto; padding: 16px 12px; margin: 0; font-size: 13px; color: var(--ink-60); }
   .calendar-public-mobile .calendar-timeline-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   @media (max-width: 359px) {
