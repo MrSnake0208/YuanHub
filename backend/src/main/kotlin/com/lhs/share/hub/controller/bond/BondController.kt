@@ -1,5 +1,6 @@
 package com.lhs.share.hub.controller.bond
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -7,6 +8,9 @@ import com.lhs.share.config.doc.RequireJwt
 import com.lhs.share.config.security.AuthenticationHelper
 import com.lhs.share.controller.response.ApiResult.Companion.success
 import com.lhs.share.hub.controller.bond.request.BondRequests
+import com.lhs.share.hub.repository.entity.BondPublication
+import com.lhs.share.hub.service.bond.BattleBondCatalog
+import com.lhs.share.hub.service.bond.BattleBondEntry
 import com.lhs.share.hub.service.bond.BondCatalogService
 import com.lhs.share.hub.service.bond.BondRules
 import com.lhs.share.hub.service.bond.BondService
@@ -25,6 +29,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+private data class BondPlayerCatalog(
+    @get:JsonUnwrapped val publication: BondPublication,
+    val battle: List<BattleBondEntry>,
+)
+
 @Tag(name = "Bond Archive")
 @RestController
 @RequestMapping("/v1/bonds", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -36,7 +45,7 @@ class BondController(
 ) {
     @RequireJwt
     @GetMapping("/catalog")
-    fun catalog(@RequestParam game: String) = result(catalog.catalog(game))
+    fun catalog(@RequestParam game: String) = result(BondPlayerCatalog(catalog.catalog(game), BattleBondCatalog.entries))
 
     @RequireJwt
     @GetMapping("/archive")
@@ -50,8 +59,22 @@ class BondController(
     @PostMapping("/batch", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun batch(@RequestBody bytes: ByteArray) = write(bytes)
 
-    private fun write(bytes: ByteArray, id: String? = null) = BondRequests.write(body(bytes), id).let {
-        result(service.update(user(), it.accountId, it.expectedRevision, it.catalogVersion, it.records))
+    @RequireJwt
+    @PatchMapping("/battle/records/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun updateBattle(@PathVariable id: String, @RequestBody bytes: ByteArray) = write(bytes, id, battle = true)
+
+    @RequireJwt
+    @PostMapping("/battle/batch", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun battleBatch(@RequestBody bytes: ByteArray) = write(bytes, battle = true)
+
+    private fun write(bytes: ByteArray, id: String? = null, battle: Boolean = false) = BondRequests.write(body(bytes), id).let { request ->
+        val userId = user()
+        val archive = if (battle) {
+            service.updateBattle(userId, request.accountId, request.expectedRevision, request.catalogVersion, request.records)
+        } else {
+            service.update(userId, request.accountId, request.expectedRevision, request.catalogVersion, request.records)
+        }
+        result(archive)
     }
 
     @RequireJwt

@@ -13,7 +13,8 @@ class BondRepository(@param:Qualifier("hubMongoTemplate") private val mongo: Mon
 
     fun find(userId: String, accountId: String): BondArchive? = mongo.findOne(owner(userId, accountId), BondArchive::class.java)
     fun save(value: BondArchive): BondArchive = mongo.save(value)
-    fun hasSubstantiveData(userId: String, accountId: String) = find(userId, accountId)?.records?.isNotEmpty() == true
+    fun hasSubstantiveData(userId: String, accountId: String) =
+        find(userId, accountId)?.let { it.records.isNotEmpty() || it.battleRecords.isNotEmpty() } == true
     fun deleteAccount(userId: String, accountId: String) {
         mongo.remove(owner(userId, accountId), BondArchive::class.java)
     }

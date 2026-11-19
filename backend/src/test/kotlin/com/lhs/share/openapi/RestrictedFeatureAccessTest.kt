@@ -95,6 +95,12 @@ class RestrictedFeatureAccessTest {
                 }
                 mvc.perform(patch("$root/records/id").contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().`is`(expected))
+                if (root == "/v1/bonds") {
+                    mvc.perform(patch("$root/battle/records/id").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .andExpect(status().isUnauthorized)
+                    mvc.perform(post("$root/battle/batch").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .andExpect(status().isUnauthorized)
+                }
             }
             for (path in listOf("/v1/admin/achievement-catalogs", "/v1/admin/bonds/catalog")) {
                 mvc.perform(get(path).param("game", "如鸢")).andExpect(status().`is`(expected))
@@ -195,6 +201,8 @@ class RestrictedFeatureAccessTest {
                 get("/v1/bonds/export").param("account_id", "a"),
                 patch("/v1/bonds/records/id"),
                 post("/v1/bonds/batch"),
+                patch("/v1/bonds/battle/records/id"),
+                post("/v1/bonds/battle/batch"),
                 post("/v1/bonds/import/preview"),
                 post("/v1/bonds/import/confirm"),
             )

@@ -1,0 +1,32 @@
+{
+  "source": {
+    "repository": "https://github.com/yoyo-yuan/yuan-bonds",
+    "commit": "5949f867",
+    "wiki_url": "https://wiki.biligame.com/yuan/密探羁绊/太史慈甘宁#战斗羁绊",
+    "wiki_revision": 87926,
+    "checked_on": "2026-10-30"
+  },
+  "entries": [
+    { "bond_id": "battle:char_004_guojia+all:combo", "members": ["char_004_guojia"], "type": "combo", "display_name": "郭嘉 × 全体密探", "upstream_key": "郭嘉_全体密探_合击" },
+    { "bond_id": "battle:char_029_xiuqiu+char_030_feiyun:combo", "members": ["char_029_xiuqiu", "char_030_feiyun"], "type": "combo", "upstream_key": "绣球_飞云_合击" },
+    { "bond_id": "battle:char_006_eshi+char_025_queshi:combo", "members": ["char_006_eshi", "char_025_queshi"], "type": "combo", "upstream_key": "蛾使_雀使_合击" },
+    { "bond_id": "battle:char_007_lvmeng+char_038_luxun:combo", "members": ["char_007_lvmeng", "char_038_luxun"], "type": "combo", "upstream_key": "吕蒙_陆逊_合击" },
+    { "bond_id": "battle:char_044_zhangliao+char_058_machao:combo", "members": ["char_044_zhangliao", "char_058_machao"], "type": "combo", "upstream_key": "张辽_马超_合击" },
+    { "bond_id": "battle:char_014_achan+char_058_machao:combo", "members": ["char_014_achan", "char_058_machao"], "type": "combo", "upstream_key": "阿蝉_马超_合击" },
+    { "bond_id": "battle:char_024_ganji+char_056_zhangjiao:combo", "members": ["char_024_ganji", "char_056_zhangjiao"], "type": "combo", "upstream_key": "干吉_张角_合击" },
+    { "bond_id": "battle:char_003_sunshangxiang+char_077_anqi:combo", "members": ["char_003_sunshangxiang", "char_077_anqi"], "type": "combo", "upstream_key": "孙尚香_安期_合击" },
+    { "bond_id": "battle:char_069_zhangmiao+char_080_mateng:combo", "members": ["char_069_zhangmiao", "char_080_mateng"], "type": "combo", "upstream_key": "张邈_马腾_合击" },
+    { "bond_id": "battle:char_011_wenchou+char_012_yanliang:guard", "members": ["char_011_wenchou", "char_012_yanliang"], "type": "guard", "upstream_key": "文丑_颜良_援护" },
+    { "bond_id": "battle:char_007_lvmeng+char_038_luxun:guard", "members": ["char_007_lvmeng", "char_038_luxun"], "type": "guard", "upstream_key": "吕蒙_陆逊_援护" },
+    { "bond_id": "battle:char_014_achan+char_044_zhangliao:guard", "members": ["char_014_achan", "char_044_zhangliao"], "type": "guard", "upstream_key": "张辽_阿蝉_援护" },
+    { "bond_id": "battle:char_013_chendeng+char_070_dongfeng:guard", "members": ["char_013_chendeng", "char_070_dongfeng"], "type": "guard", "upstream_key": "董奉_陈登_援护" },
+    { "bond_id": "battle:char_050_xunyu+char_074_xunyou:guard", "members": ["char_050_xunyu", "char_074_xunyou"], "type": "guard", "upstream_key": "荀彧_荀攸_援护" },
+    { "bond_id": "battle:char_001_yangxiu+char_004_guojia:transfer", "members": ["char_001_yangxiu", "char_004_guojia"], "type": "transfer", "upstream_key": "杨修_郭嘉_转移" },
+    { "bond_id": "battle:char_041_zhangxiu+char_056_zhangjiao:transfer", "members": ["char_041_zhangxiu", "char_056_zhangjiao"], "type": "transfer", "upstream_key": "张修_张角_转移" },
+    { "bond_id": "battle:char_003_sunshangxiang+char_040_sunquan:transfer", "members": ["char_003_sunshangxiang", "char_040_sunquan"], "type": "transfer", "upstream_key": "孙尚香_孙权_转移" },
+    { "bond_id": "battle:char_069_zhangmiao+char_070_dongfeng:emergency", "members": ["char_069_zhangmiao", "char_070_dongfeng"], "type": "emergency", "upstream_key": "张邈_董奉_急诊" },
+    { "bond_id": "battle:char_044_zhangliao+char_101_lvbu:combo", "members": ["char_044_zhangliao", "char_101_lvbu"], "type": "combo", "upstream_key": "吕布_张辽_合击" },
+    { "bond_id": "battle:char_058_machao+char_101_lvbu:combo", "members": ["char_058_machao", "char_101_lvbu"], "type": "combo", "upstream_key": "吕布_马超_合击" },
+    { "bond_id": "battle:char_014_achan+char_101_lvbu:guard", "members": ["char_014_achan", "char_101_lvbu"], "type": "guard", "upstream_key": "吕布_阿蝉_援护" }
+  ]
+}

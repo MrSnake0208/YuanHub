@@ -29,6 +29,8 @@ data class BondArchiveResponse(
     val catalogVersion: String,
     val records: List<BondRecord>,
     val summary: BondSummary,
+    val battleRecords: List<BondRecord> = emptyList(),
+    val battleSummary: BattleBondSummary = BattleBondSummary(0, 0),
 )
 data class BondSourceAccount(val name: String)
 data class BondBackup(
@@ -39,8 +41,15 @@ data class BondBackup(
     val exportedAt: Instant,
     val sourceAccount: BondSourceAccount,
     val records: List<BondRecord>,
+    val battleRecords: List<BondRecord> = emptyList(),
 )
-data class BondImportItem(val key: String, val bondId: String?, val outcome: String, val message: String? = null)
+data class BondImportItem(
+    val key: String,
+    val bondId: String?,
+    val outcome: String,
+    val message: String? = null,
+    val kind: String = "yuan",
+)
 data class BondPreview(
     val accountId: String,
     val game: String,
@@ -50,6 +59,8 @@ data class BondPreview(
     val items: List<BondImportItem>,
     val stats: Map<String, Int>,
     val affected: Int,
+    val yuanStats: Map<String, Int>,
+    val battleStats: Map<String, Int>,
     val previewToken: String? = null,
 )
 
@@ -83,6 +94,8 @@ class BondService(
         data.catalogVersion,
         value.records,
         BondRules.summary(data.entries, value.records),
+        value.battleRecords,
+        BattleBondCatalog.summary(value.battleRecords),
     )
     fun archive(userId: String, accountId: String): BondArchiveResponse {
         val owner = account(userId, accountId)
@@ -94,27 +107,48 @@ class BondService(
         exportedAt = Instant.now(),
         sourceAccount = BondSourceAccount(owner.name),
         records = current.records,
+        battleRecords = current.battleRecords,
     )
     fun export(userId: String, accountId: String): BondBackup {
         val owner = account(userId, accountId)
         val current = load(owner)
         val data = catalog.catalog(owner.game)
         BondRules.summary(data.entries, current.records)
+        BattleBondCatalog.summary(current.battleRecords)
         return backup(owner, current, data)
     }
 
     fun update(userId: String, accountId: String, expectedRevision: Long, catalogVersion: String, changes: List<Pair<String, Boolean>>) =
+        update(userId, accountId, expectedRevision, catalogVersion, changes, battle = false)
+
+    fun updateBattle(userId: String, accountId: String, expectedRevision: Long, catalogVersion: String, changes: List<Pair<String, Boolean>>) =
+        update(userId, accountId, expectedRevision, catalogVersion, changes, battle = true)
+
+    private fun update(
+        userId: String,
+        accountId: String,
+        expectedRevision: Long,
+        catalogVersion: String,
+        changes: List<Pair<String, Boolean>>,
+        battle: Boolean,
+    ): BondArchiveResponse =
         write {
             if (changes.size !in 1..50 || changes.map { it.first }.distinct().size != changes.size) invalid("批量须为1–50条不同羁绊")
             val owner = account(userId, accountId)
             val current = load(owner)
             val data = checked(current, expectedRevision, catalogVersion)
-            val entries = data.entries.associateBy { it.bondId }
-            changes.forEach { (id, triggered) ->
-                val entry = entries[id] ?: invalid("当前游戏不存在该羁绊：$id")
-                if (triggered && entry.status != "active") invalid("历史条目仅可保留或取消，不能手动新增触发")
+            val next = if (battle) {
+                changes.forEach { (id, _) -> if (id !in BattleBondCatalog.ids) invalid("目录不存在该战斗羁绊：$id") }
+                current.copy(battleRecords = BondRules.apply(current.battleRecords, changes, "manual", now()))
+            } else {
+                val entries = data.entries.associateBy { it.bondId }
+                changes.forEach { (id, triggered) ->
+                    val entry = entries[id] ?: invalid("当前游戏不存在该羁绊：$id")
+                    if (triggered && entry.status != "active") invalid("历史条目仅可保留或取消，不能手动新增触发")
+                }
+                current.copy(records = BondRules.apply(current.records, changes, "manual", now()))
             }
-            persist(owner, current, data, BondRules.apply(current.records, changes, "manual", now()))
+            persist(owner, current, data, next)
         }
 
     fun preview(userId: String, request: BondImportRequest): BondPreview {
@@ -131,10 +165,11 @@ class BondService(
         val plan = plan(owner, current, data, request)
         if (plan.preview.items.any { it.outcome in setOf("invalid", "mismatched") }) invalid("存在非法或不匹配记录，未写入任何内容")
         if (plan.preview.items.any { it.outcome == "unknown" } && !request.skipUnknown) invalid("请明确确认跳过未知记录")
-        persist(owner, current, data, plan.records)
+        persist(owner, current, data, plan.archive)
     }
 
-    private data class ImportPlan(val preview: BondPreview, val records: List<BondRecord>)
+    private data class ImportRow(val key: String, val value: JsonNode, val battle: Boolean = false)
+    private data class ImportPlan(val preview: BondPreview, val archive: BondArchive)
     private fun plan(owner: SubAccount, current: BondArchive, data: BondPublication, request: BondImportRequest): ImportPlan {
         if (request.strategy !in setOf("merge", "use_file")) invalid("strategy 只允许 merge 或 use_file")
         val document = request.document
@@ -143,66 +178,90 @@ class BondService(
         if (!native && request.strategy != "merge") invalid("旧助手只支持合并已记录项")
         val entries = data.entries.associateBy { it.bondId }
         val foreignGame = if (owner.game == "如鸢") "代号鸢" else "如鸢"
-        val foreign = catalog.catalog(foreignGame).entries.map { it.bondId }.toSet()
-        val keys = if (native) emptyMap() else legacyKeys(data)
+        val hasYuanRows = input.any { !it.battle }
+        val foreign = if (hasYuanRows) catalog.catalog(foreignGame).entries.map { it.bondId }.toSet() else emptySet()
+        val keys = if (!native && hasYuanRows) legacyKeys(data) else emptyMap()
         val records = current.records.associateBy { it.bondId }
+        val battleRecords = current.battleRecords.associateBy { it.bondId }
         val seen = mutableSetOf<String>()
         val changes = mutableListOf<Pair<String, Boolean>>()
-        val items = input.map { (key, row) ->
-            try {
+        val battleChanges = mutableListOf<Pair<String, Boolean>>()
+        val items = input.map { (key, row, battle) ->
+            val item = try {
                 val triggered = if (native) {
                     BondRules.fields(row, setOf("bond_id", "triggered", "source", "updated_at"))
                     row["triggered"]?.takeIf { it.isBoolean }?.booleanValue() ?: invalid("triggered 必须是布尔值")
                 } else {
                     row.takeIf { it.isBoolean }?.booleanValue() ?: invalid("旧记录值必须是布尔值")
                 }
-                val matches = if (native) listOf(key) else keys[key].orEmpty()
-                if (matches.size > 1) invalid("旧键匹配有歧义，请核对目录")
-                val id = matches.singleOrNull()
+                val id = when {
+                    native -> key
+                    battle -> BattleBondCatalog.legacyIds[key]
+                    else -> {
+                        val matches = keys[key].orEmpty()
+                        if (matches.size > 1) invalid("旧键匹配有歧义，请核对目录")
+                        matches.singleOrNull()
+                    }
+                }
+                val entry = id?.let(entries::get)
+                val known = if (battle) id in BattleBondCatalog.ids else entry != null
                 when {
-                    id in foreign -> BondImportItem(key, id, "mismatched", "条目属于另一游戏")
-                    id == null || id !in entries -> BondImportItem(key, id, "unknown", "未知、未开放或尚未授权收录；确认后可跳过")
+                    !battle && id in foreign -> BondImportItem(key, id, "mismatched", "条目属于另一游戏")
+                    id == null || !known -> BondImportItem(key, id, "unknown", "未知、未开放或尚未授权收录；确认后可跳过")
                     !seen.add(id) -> BondImportItem(key, id, "invalid", "重复条目")
                     else -> {
-                        val old = records[id]
+                        val old = if (battle) battleRecords[id] else records[id]
                         val outcome = when {
                             old?.triggered == triggered -> "same"
                             request.strategy == "merge" && !triggered -> "same"
                             old != null -> "conflict"
                             else -> "add"
                         }
-                        if (outcome == "add" || outcome == "conflict") changes += id to triggered
-                        BondImportItem(
-                            key,
-                            id,
-                            outcome,
-                            if (entries.getValue(id).status !=
-                                "active"
-                            ) {
-                                "历史${entries.getValue(id).status}记录；invalid不计数"
-                            } else {
-                                null
-                            },
-                        )
+                        if (outcome == "add" || outcome == "conflict") {
+                            val target = if (battle) battleChanges else changes
+                            target += id to triggered
+                        }
+                        val message = entry?.status?.takeUnless { it == "active" }?.let { "历史${it}记录；invalid不计数" }
+                        BondImportItem(key, id, outcome, message)
                     }
                 }
             } catch (error: InventoryApiException) {
                 BondImportItem(key.take(200), null, "invalid", error.message)
             }
+            if (battle) item.copy(kind = "battle") else item
         }
-        val stats = listOf("add", "same", "conflict", "unknown", "mismatched", "invalid").associateWith { o ->
-            items.count { it.outcome == o }
-        }
-        val next = BondRules.apply(current.records, changes, "import", now())
-        val affected = if (items.any { it.outcome in setOf("invalid", "mismatched") }) 0 else changes.size
+        val (battleItems, yuanItems) = items.partition { it.kind == "battle" }
+        val affected = if (items.any { it.outcome in setOf("invalid", "mismatched") }) 0 else changes.size + battleChanges.size
+        val timestamp = now()
         return ImportPlan(
-            BondPreview(owner.accountId, owner.game, revision(current), data.catalogVersion, request.strategy, items, stats, affected),
-            next,
+            BondPreview(
+                accountId = owner.accountId,
+                game = owner.game,
+                expectedRevision = revision(current),
+                catalogVersion = data.catalogVersion,
+                strategy = request.strategy,
+                items = items,
+                stats = importStats(items),
+                affected = affected,
+                yuanStats = importStats(yuanItems),
+                battleStats = importStats(battleItems),
+            ),
+            current.copy(
+                records = BondRules.apply(current.records, changes, "import", timestamp),
+                battleRecords = BondRules.apply(current.battleRecords, battleChanges, "import", timestamp),
+            ),
         )
     }
 
-    private fun nativeRows(owner: SubAccount, document: JsonNode): List<Pair<String, JsonNode>> {
-        BondRules.fields(document, setOf("format", "schema_version", "game", "catalog_version", "exported_at", "source_account", "records"))
+    private fun importStats(items: List<BondImportItem>) =
+        listOf("add", "same", "conflict", "unknown", "mismatched", "invalid").associateWith { outcome ->
+            items.count { it.outcome == outcome }
+        }
+
+    private fun nativeRows(owner: SubAccount, document: JsonNode): List<ImportRow> {
+        BondRules.fields(
+            document, setOf("format", "schema_version", "game", "catalog_version", "exported_at", "source_account", "records", "battle_records"),
+        )
         if (document.path("format").asText() != "yuanhub-bonds" || !document.path("schema_version").isIntegralNumber ||
             !document.path("schema_version").canConvertToInt() || document.path("schema_version").asInt() != 1
         ) {
@@ -210,11 +269,16 @@ class BondService(
         }
         if (BondRules.text(document, "game") != owner.game) invalid("文件游戏与目标账号不匹配")
         if (mapper.writeValueAsBytes(document).size > BondRules.NATIVE_BYTES) invalid("原生备份最多2MiB")
-        val rows = document["records"]?.takeIf { it.isArray && it.size() <= BondRules.MAX_RECORDS } ?: invalid("records 最多5000条")
-        return rows.map { row -> BondRules.text(row, "bond_id") to row }
+        fun rows(field: String, battle: Boolean = false): List<ImportRow> {
+            val value = document[field]
+            if (battle && value == null) return emptyList()
+            val rows = value?.takeIf { it.isArray && it.size() <= BondRules.MAX_RECORDS } ?: invalid("$field 必须是最多5000条的数组")
+            return rows.map { row -> ImportRow(BondRules.text(row, "bond_id"), row, battle) }
+        }
+        return rows("records") + rows("battle_records", battle = true)
     }
 
-    private fun legacyRows(owner: SubAccount, request: BondImportRequest): List<Pair<String, JsonNode>> {
+    private fun legacyRows(owner: SubAccount, request: BondImportRequest): List<ImportRow> {
         val document = request.document
         if (!document.isObject || mapper.writeValueAsBytes(document).size > BondRules.LEGACY_BYTES) invalid("旧助手文件必须是最多8MiB的对象")
         val selected = request.sourceAccount ?: invalid("请选择一个来源账号")
@@ -237,10 +301,12 @@ class BondService(
         if (hints.isEmpty()) invalid("来源缺少游戏信息，请明确选择来源游戏")
         if (hints.distinct().size != 1 || hints.first() !in BondRules.games) invalid("来源游戏信息冲突或非法")
         if (hints.first() != owner.game) invalid("来源游戏与目标账号不匹配")
-        val ignored = setOf("__missing__", "__server__", "__server_overrides__", "yuan_server_overrides")
-        val rows = source.fields().asSequence().filter { it.key !in ignored }.map { it.key to it.value }.toList()
+        val ignored = setOf("__missing__", "__server__", "__server_overrides__", "yuan_server_overrides", "__battle__")
+        val rows = source.fields().asSequence().filter { it.key !in ignored }.map { ImportRow(it.key, it.value) }.toList()
         if (rows.size > BondRules.MAX_RECORDS) invalid("单个来源账号最多5000条记录")
-        return rows
+        val battle = source["__battle__"] ?: return rows
+        if (!battle.isObject || battle.size() > BondRules.MAX_RECORDS) invalid("__battle__ 必须是最多5000条记录的对象")
+        return rows + battle.fields().asSequence().map { ImportRow(it.key, it.value, battle = true) }.toList()
     }
 
     private fun legacyKeys(data: BondPublication): Map<String, List<String>> {
@@ -255,15 +321,13 @@ class BondService(
         if (expected < 0 || revision(current) != expected) conflict("档案已由其他设备修改，请重新读取或预览")
         return catalog.catalog(current.game).also { if (it.catalogVersion != version) conflict("目录已变化，请重新读取或预览") }
     }
-    private fun persist(owner: SubAccount, current: BondArchive, data: BondPublication, records: List<BondRecord>): BondArchiveResponse {
-        if (records.size > BondRules.MAX_RECORDS) invalid("档案最多5000条")
-        val next = current.copy(records = records)
+    private fun persist(owner: SubAccount, current: BondArchive, data: BondPublication, next: BondArchive): BondArchiveResponse {
+        if (next.records.size > BondRules.MAX_RECORDS) invalid("档案最多5000条鸢报记录")
         if (mapper.writeValueAsBytes(backup(owner, next, data)).size > BondRules.NATIVE_BYTES) invalid("原生备份将超过2MiB，未写入任何内容")
         if (!accounts.fenceRecruitmentWrite(owner.userId, owner.accountId, owner.game)) conflict("账号已修改或删除，请重新读取")
         if (data.entries.isNotEmpty()) catalog.fence(owner.game, data.catalogVersion)
-        if (records == current.records) return response(current, data)
-        BondRules.summary(data.entries, records)
-        return response(repository.save(next), data)
+        val archive = response(next, data)
+        return if (next == current) archive else archive.copy(revision = revision(repository.save(next)))
     }
     private fun now() = Instant.now().truncatedTo(ChronoUnit.MILLIS)
     private fun <T : Any> write(action: () -> T): T = try {

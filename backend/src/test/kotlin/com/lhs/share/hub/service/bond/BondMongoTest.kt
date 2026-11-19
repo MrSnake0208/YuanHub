@@ -64,6 +64,8 @@ class BondMongoTest {
     private val previews = BondImportPreviews()
     private val service = BondService(repository, accounts, catalog, operators, previews, mapper, tx)
     private val entries = listOf(bondEntry(), bondEntry(2, "rain"), bondEntry(3, action = "poison"))
+    private val guoJiaBattleId = "battle:char_004_guojia+all:combo"
+    private val feiYunBattleId = "battle:char_029_xiuqiu+char_030_feiyun:combo"
     private val lifecycle = SubAccountService(
         accountRepository = accounts, inventoryCurrentRepository = mockk(relaxed = true), inventoryRecordRepository = mockk(relaxed = true),
         inventoryDeletedRecordRepository = mockk(relaxed = true), favoriteRepository = mockk(relaxed = true),
@@ -129,6 +131,8 @@ class BondMongoTest {
     private fun version() = catalog.catalog("代号鸢").catalogVersion
     private fun update(rev: Long, vararg changes: Pair<String, Boolean>, account: String = "a") =
         service.update("u", account, rev, version(), changes.toList())
+    private fun updateBattle(rev: Long, vararg changes: Pair<String, Boolean>, account: String = "a") =
+        service.updateBattle("u", account, rev, version(), changes.toList())
     private fun request(document: String, account: String = "b", source: String? = null, game: String? = null, strategy: String = "merge") =
         BondImportRequest(account, mapper.readTree(document), strategy, source, game)
     private fun confirm(request: BondImportRequest): BondArchiveResponse {
@@ -165,6 +169,32 @@ class BondMongoTest {
         error(422) { update(1, entries[1].bondId to true, "unknown" to true) }
         assertEquals(first, service.archive("u", "a"))
         assertEquals(0, update(1, entries[0].bondId to false).summary.triggeredCount)
+    }
+
+    @Test
+    fun `battle records are private and share the revision with yuan records`() {
+        val yuan = update(0, entries[0].bondId to true)
+        error(409) { updateBattle(0, guoJiaBattleId to true) }
+        val saved = updateBattle(yuan.revision, guoJiaBattleId to true)
+        assertEquals(yuan.revision + 1, saved.revision)
+        assertEquals(yuan.records, saved.records)
+        assertEquals(guoJiaBattleId, saved.battleRecords.single().bondId)
+        assertTrue(saved.battleRecords.single().triggered)
+        error(409) { update(yuan.revision, entries[0].bondId to false) }
+        error(404) { service.archive("other", "a") }
+        error(404) { service.updateBattle("other", "a", saved.revision, version(), listOf(guoJiaBattleId to false)) }
+        assertEquals(saved, service.archive("u", "a"))
+        assertTrue(service.archive("u", "b").battleRecords.isEmpty())
+    }
+
+    @Test
+    fun `an archive with only battle records blocks changing the account game`() {
+        val saved = updateBattle(0, guoJiaBattleId to true)
+        assertTrue(saved.records.isEmpty())
+        val failure = assertThrows(InventoryApiException::class.java) { lifecycle.update("u", "a", null, "如鸢") }
+        assertEquals(409, failure.status.value())
+        assertEquals("bond_game_locked", failure.code)
+        assertEquals(saved, service.archive("u", "a"))
     }
 
     @Test
@@ -212,6 +242,82 @@ class BondMongoTest {
         error(422) { service.preview("u", request("""{"旧名":{}}""", source = "旧名")) }
         assertEquals(0, confirm(request("""{"旧名":{}}""", account = "a", source = "旧名", game = "代号鸢")).summary.triggeredCount - 2)
         error(422) { service.preview("u", legacy.copy(sourceGame = "如鸢")) }
+    }
+
+    @Test
+    fun `native battle backup roundtrip retains true and false records`() {
+        val expected = mapOf(guoJiaBattleId to true, feiYunBattleId to false)
+        updateBattle(0, guoJiaBattleId to true, feiYunBattleId to false)
+        val document = mapper.readTree(mapper.writeValueAsBytes(service.export("u", "a")))
+        assertEquals(1, document.path("schema_version").intValue())
+        val exported = document.path("battle_records").associate {
+            it.path("bond_id").asText() to it.path("triggered").booleanValue()
+        }
+        assertEquals(expected, exported)
+
+        val imported = confirm(BondImportRequest("b", document, strategy = "use_file"))
+        assertEquals(expected, imported.battleRecords.associate { it.bondId to it.triggered })
+        assertEquals(1, imported.battleSummary.triggeredCount)
+        assertTrue(imported.records.isEmpty())
+        assertEquals(imported, service.archive("u", "b"))
+    }
+
+    @Test
+    fun `old native backups without battle records preserve existing battle progress`() {
+        val saved = updateBattle(0, guoJiaBattleId to true, account = "b")
+        val old = request(
+            """
+            {
+              "format": "yuanhub-bonds", "schema_version": 1, "game": "代号鸢",
+              "records": [{"bond_id": "${entries[0].bondId}", "triggered": true}]
+            }
+            """.trimIndent(),
+            strategy = "use_file",
+        )
+        val imported = confirm(old)
+        assertEquals(1, imported.summary.triggeredCount)
+        assertEquals(saved.battleRecords, imported.battleRecords)
+    }
+
+    @Test
+    fun `legacy battle keys map separately and merge true only after unknown keys are acknowledged`() {
+        val saved = updateBattle(0, guoJiaBattleId to true, account = "b")
+        val legacy = request(
+            """
+            {
+              "dyy::同名": {
+                "丙_甲_乙_纵火_晴天": true,
+                "__battle__": {"郭嘉_全体密探_合击": false, "绣球_飞云_合击": true, "蛾使_雀使_合击": false, "未知战斗键": true}
+              }
+            }
+            """.trimIndent(),
+            source = "dyy::同名",
+        )
+        val preview = service.preview("u", legacy)
+        assertEquals(2, preview.affected)
+        assertEquals(1, preview.yuanStats.getValue("add"))
+        assertEquals(1, preview.battleStats.getValue("add"))
+        assertEquals(2, preview.battleStats.getValue("same"))
+        assertEquals(1, preview.battleStats.getValue("unknown"))
+        val mapped = preview.items.single { it.key == "绣球_飞云_合击" }
+        assertEquals("battle", mapped.kind)
+        assertEquals(feiYunBattleId, mapped.bondId)
+        val unknown = preview.items.single { it.key == "未知战斗键" }
+        assertEquals("battle", unknown.kind)
+        assertEquals("unknown", unknown.outcome)
+        val ready = legacy.copy(
+            expectedRevision = preview.expectedRevision,
+            catalogVersion = preview.catalogVersion,
+            previewToken = preview.previewToken,
+        )
+        error(422) { service.confirm("u", ready) }
+        assertEquals(saved, service.archive("u", "b"))
+        val imported = service.confirm("u", ready.copy(skipUnknown = true))
+        assertEquals(1, imported.summary.triggeredCount)
+        assertEquals(
+            mapOf(guoJiaBattleId to true, feiYunBattleId to true),
+            imported.battleRecords.associate { it.bondId to it.triggered },
+        )
     }
 
     @Test
@@ -302,14 +408,20 @@ class BondMongoTest {
         assertEquals(0, achievements.archive("u", "a").linkedMetrics.single().value)
         assertEquals(0, mongo.count(Query(), AchievementArchive::class.java))
         assertEquals(0, mongo.count(Query(), BondArchive::class.java))
-        update(0, entries[0].bondId to true)
+        val battle = updateBattle(0, guoJiaBattleId to true)
+        assertEquals(1, battle.battleSummary.triggeredCount)
+        assertEquals(BondSummary(0, entries.size, 0), battle.summary)
+        val battleMetric = achievements.archive("u", "a").linkedMetrics.single()
+        assertEquals("yuan_bond_variants", battleMetric.metric)
+        assertEquals(0, battleMetric.value)
+        val yuan = update(battle.revision, entries[0].bondId to true)
         val metric = achievements.archive("u", "a").linkedMetrics.single()
         assertEquals(1, metric.value)
-        assertEquals(1, metric.sourceRevision)
+        assertEquals(yuan.revision, metric.sourceRevision)
         assertEquals(version(), metric.sourceCatalogVersion)
         val patch = com.lhs.share.hub.service.achievement.fixturePatch("""{"achievement_id":"yh_fixture_dhy_1","status":"completed"}""")
         achievements.update("u", "a", 0, listOf(patch))
-        update(1, entries[0].bondId to false)
+        update(yuan.revision, entries[0].bondId to false)
         val after = achievements.archive("u", "a")
         assertEquals(0, after.linkedMetrics.single().value)
         assertEquals("completed", after.records.single().status)

@@ -46,6 +46,7 @@ data class BondArchive(
     val game: String,
     val records: List<BondRecord> = emptyList(),
     @Version val version: Long? = null,
+    val battleRecords: List<BondRecord> = emptyList(),
 )
 
 data class BondRecord(val bondId: String, val triggered: Boolean, val source: String, val updatedAt: Instant)
