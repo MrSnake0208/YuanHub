@@ -6,7 +6,7 @@ export const WEATHERS = Object.freeze({ sunny: '晴天', rain: '雨天', fog: '�
 export const STATUS = Object.freeze({ active: '当前', retired: '历史下架', invalid: '误录，不计数' })
 export const MAX_BYTES = 8 * 1024 * 1024
 
-export function filterBonds(entries, records, operators, filters, owned) {
+export function filterBonds(entries, records, operators, filters, owned, operatorIds = null) {
   const triggered = new Set(records.filter(r => r.triggered).map(r => r.bond_id))
   const byId = new Map(operators.map(op => [op.id, op]))
   const queries = filters.query.trim().toLocaleLowerCase().split(/[\s、，,+＋&]+/).filter(Boolean)
@@ -15,10 +15,11 @@ export function filterBonds(entries, records, operators, filters, owned) {
     (!filters.effect || e.effect === filters.effect) && (!filters.hideRecorded || !triggered.has(e.bond_id)) &&
     (!filters.recorded || (filters.recorded === 'collected') === triggered.has(e.bond_id)) &&
     (!filters.onlyOwned || !owned || e.members.every(id => owned.get(id) === true)) &&
+    (!operatorIds || e.members.some(id => operatorIds.has(id))) &&
     queries.every(query => e.members.some(id => matchesOperatorSearch(byId.get(id) || { id }, query) || String(byId.get(id)?.alias || '').toLocaleLowerCase().includes(query))))
 }
 
-export function groupBondsByOperator(entries, catalog, records) {
+export function groupBondsByOperator(entries, catalog, records, operatorIds = null) {
   const triggered = new Set(records.filter(r => r.triggered).map(r => r.bond_id))
   const totals = new Map(), groups = new Map()
   // 分组可重复展示同一条目；进度始终取完整当前目录的唯一 bond_id。
@@ -31,6 +32,7 @@ export function groupBondsByOperator(entries, catalog, records) {
   }
   for (const entry of entries) {
     for (const id of entry.members) {
+      if (operatorIds && !operatorIds.has(id)) continue
       if (!groups.has(id)) {
         const ids = [...(totals.get(id) || [])]
         groups.set(id, { id, total: ids.length, collected: ids.filter(key => triggered.has(key)).length, pairs: new Map() })

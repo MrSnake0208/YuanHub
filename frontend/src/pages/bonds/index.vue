@@ -40,7 +40,7 @@
             </div>
             <div class="bond-search-row">
               <label class="bond-search"><Search :size="18" aria-hidden="true" /><input v-model="filters.query" type="search" :disabled="state.busy" aria-label="搜索密探或配对" aria-describedby="bond-search-help" placeholder="搜索密探或配对"></label>
-              <button type="button" :aria-expanded="filtersOpen" aria-controls="bond-advanced-filters" @click="filtersOpen = !filtersOpen">{{ filtersOpen ? '收起筛选' : '更多筛选' }}<ChevronDown :size="15" :class="{ 'is-flipped': filtersOpen }" aria-hidden="true" /></button>
+              <button type="button" :aria-expanded="filtersOpen" :aria-controls="isPhone ? 'bond-operator-filters bond-advanced-filters' : 'bond-advanced-filters'" @click="filtersOpen = !filtersOpen">{{ filtersOpen ? '收起筛选' : '更多筛选' }}<template v-if="isPhone && !filtersOpen && advancedFilterCount">（{{ advancedFilterCount }}）</template><ChevronDown :size="15" :class="{ 'is-flipped': filtersOpen }" aria-hidden="true" /></button>
             </div>
             <p id="bond-search-help" class="bond-search-help">多个名称用空格或顿号分隔，可查找指定配对。</p>
 
@@ -54,6 +54,23 @@
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'codex'" @click="view = 'codex'">按密探</button>
             <button type="button" :disabled="state.busy" :aria-pressed="view === 'find'" @click="view = 'find'">按配对</button>
           </div>
+            </div>
+            <div v-show="!isPhone || filtersOpen" id="bond-operator-filters" class="bond-common-filters" role="group" aria-label="排序和密探筛选">
+              <label>排序<select v-model="sortOrder" :disabled="state.busy">
+                <option value="roster">游戏名册</option>
+                <option value="catalog">收录顺序</option>
+              </select></label>
+              <label>品质<select v-model="operatorFilters.quality" :disabled="state.busy">
+                <option v-for="option in OPERATOR_RARITY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select></label>
+              <label>属性<select v-model="operatorFilters.prof" :disabled="state.busy">
+                <option value="">全部</option>
+                <option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option>
+              </select></label>
+              <label>职业<select v-model="operatorFilters.subProf" :disabled="state.busy">
+                <option value="">全部</option>
+                <option v-for="prof in careerOptions" :key="prof" :value="prof">{{ prof }}</option>
+              </select></label>
             </div>
             <div v-show="filtersOpen" id="bond-advanced-filters" class="bond-advanced-filters">
               <label>效果<select v-model="filters.effect" :disabled="state.busy"><option value="">全部效果</option><option value="positive">一拍即合</option><option value="negative">貌合神离</option></select></label>
@@ -156,10 +173,12 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
+import { useViewportTier } from '../../composables/useViewportTier.js'
+import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
-import { OPERATOR_RARITY_LABELS, subProfList, tokens } from '../../utils/operatorFilters.js'
+import { OPERATOR_RARITY_LABELS, OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { isMovieOperator } from '../../utils/operatorForms.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
 import BondExchange from './BondExchange.vue'
@@ -167,13 +186,18 @@ import { useBonds } from './useBonds.js'
 import { ACTIONS, STATUS, WEATHERS, groupBonds } from './rules.js'
 
 const canAccessArchive = computed(() => !!auth.accessToken && !!auth.userInfo && beta.canUseBetaFeatures)
-const { state, identity, accountId, account, available, game, publicGame, writable, filters, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
+const { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, refresh, loadAccounts, save, select } = useBonds()
+const { isPhone } = useViewportTier()
 const view = ref('codex'), settingsOpen = ref(false), exchangeOpen = ref(false), filtersOpen = ref(false), batchMode = ref(false), savingId = ref('')
 const weatherIconBase = import.meta.env.BASE_URL + 'assets/bond-weather/'
 watch(view, () => { page.value = 0; selected.value = [] })
 const resultGroupCount = computed(() => view.value === 'find' ? groups.value.length : operatorGroups.value.length)
-const hasFilters = computed(() => filters.query.trim() || filters.weather || filters.action || filters.effect || filters.status !== 'active' || filters.recorded || filters.onlyOwned)
-function clearFilters() { Object.assign(filters, { query: '', weather: '', action: '', effect: '', status: 'active', recorded: '', onlyOwned: false }) }
+const advancedFilterCount = computed(() => operatorFilterCount.value + Number(Boolean(filters.effect)) + Number(filters.status !== 'active'))
+const hasFilters = computed(() => filters.query.trim() || filters.weather || filters.action || advancedFilterCount.value || filters.recorded || filters.onlyOwned)
+function clearFilters() {
+  Object.assign(filters, { query: '', weather: '', action: '', effect: '', status: 'active', recorded: '', onlyOwned: false })
+  Object.assign(operatorFilters, { quality: 'all', prof: '', subProf: '' })
+}
 watch(batchMode, () => { selected.value = [] })
 const activeTotal = computed(() => state.catalog?.entries.filter(e => e.status === 'active').length || 0)
 const collectionCount = computed(() => available.value && summary.value ? summary.value.active_triggered_count : null)
@@ -181,6 +205,7 @@ const collectionPercent = computed(() => activeTotal.value ? Math.round(collecti
 const thresholds = computed(() => state.catalog?.achievement_targets || [])
 const nextThreshold = computed(() => summary.value ? thresholds.value.find(t => t > summary.value.triggered_count) : null)
 const gameOperators = computed(() => state.operators.filter(op => op.games?.includes(game.value)))
+const careerOptions = computed(() => subProfOptions(state.operators))
 const ownedCount = computed(() => available.value && state.owned && !state.loading && !state.operatorError ? gameOperators.value.filter(op => state.owned.get(op.id) === true).length : null)
 const operators = computed(() => new Map(state.operators.map(op => [op.id, op])))
 const operatorFor = id => operators.value.get(id) || { id }

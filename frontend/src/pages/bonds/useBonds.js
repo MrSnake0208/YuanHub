@@ -2,11 +2,28 @@ import { computed, onScopeDispose, reactive, ref, watch } from 'vue'
 import * as api from '../../api/bonds.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCatalog, getOperatorCurrent } from '../../api/operator.js'
+import { operatorRosterPosition } from '../../data/operatorRosterOrder.js'
 import { activeAccount, DEFAULT_ACCOUNT_GAME } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { useAccountListUpdates } from '../../store/accountList.js'
+import { matchesProfSubFilter } from '../../utils/operatorFilters.js'
+import { matchesOperatorQuality } from '../../utils/operatorForms.js'
 import { operatorHuaji } from '../../utils/operatorHuaji.js'
 import { filterBonds, groupBonds, groupBondsByOperator } from './rules.js'
+
+const SORT_STORAGE_KEY = 'yuanhub:bonds:sort'
+
+function readSortOrder() {
+  try {
+    if (localStorage.getItem(SORT_STORAGE_KEY) === 'catalog') return 'catalog'
+  } catch { /* 存储受限时使用默认排序 */ }
+  return 'roster'
+}
+
+function sortByRoster(groups, position) {
+  // 稳定排序让同位次及未收录项沿用原有顺序。
+  return groups.sort((a, b) => (position(a) - position(b)) || 0)
+}
 
 export function useBonds() {
   const state = reactive({ accounts: [], accountsLoading: false, accountsError: '', catalog: null, archive: null, operators: [], owned: null, loading: false, busy: false, saveProgress: '', error: '', catalogError: '', operatorError: '', ownedError: '', notice: '', generation: 0 })
@@ -18,11 +35,23 @@ export function useBonds() {
   const game = computed(() => available.value ? account.value.game : publicGame.value)
   const writable = computed(() => available.value && !!state.archive && !!state.catalog && !state.loading && !state.busy && !state.catalogError && !state.error)
   const filters = reactive({ query: '', action: '', weather: '', effect: '', status: 'active', recorded: '', onlyOwned: false })
+  const operatorFilters = reactive({ quality: 'all', prof: '', subProf: '' })
+  const operatorFilterCount = computed(() => [operatorFilters.quality !== 'all', operatorFilters.prof, operatorFilters.subProf].filter(Boolean).length)
+  const operatorIds = computed(() => operatorFilterCount.value ? new Set(state.operators
+    .filter(op => matchesOperatorQuality(op, operatorFilters.quality) && matchesProfSubFilter(op, operatorFilters.prof, operatorFilters.subProf))
+    .map(op => op.id)) : null)
+  const sortOrder = ref(readSortOrder())
   const records = computed(() => available.value ? state.archive?.records || [] : [])
-  const filtered = computed(() => filterBonds(state.catalog?.entries || [], records.value, state.operators, filters, state.owned))
-  const groups = computed(() => groupBonds(filtered.value))
+  const filtered = computed(() => filterBonds(state.catalog?.entries || [], records.value, state.operators, filters, state.owned, operatorIds.value))
+  const groups = computed(() => {
+    const pairs = groupBonds(filtered.value)
+    return sortOrder.value === 'roster' ? sortByRoster(pairs, pair => Math.min(...pair.members.map(operatorRosterPosition))) : pairs
+  })
   const selected = ref([]), page = ref(0)
-  const operatorGroups = computed(() => groupBondsByOperator(filtered.value, state.catalog?.entries || [], records.value))
+  const operatorGroups = computed(() => {
+    const groups = groupBondsByOperator(filtered.value, state.catalog?.entries || [], records.value, operatorIds.value)
+    return sortOrder.value === 'roster' ? sortByRoster(groups, group => operatorRosterPosition(group.id)) : groups
+  })
   const pageGroups = computed(() => operatorGroups.value.slice(page.value * 20, (page.value + 1) * 20))
   const summary = computed(() => state.archive?.summary || null)
   const recorded = id => records.value.some(r => r.bond_id === id && r.triggered)
@@ -124,11 +153,14 @@ export function useBonds() {
     if (selected.value.includes(id)) selected.value = selected.value.filter(value => value !== id)
     else selected.value.push(id)
   }
-  watch(filters, () => { selected.value = []; page.value = 0 }, { flush: 'sync' })
+  watch([filters, operatorFilters], () => { selected.value = []; page.value = 0 }, { flush: 'sync' })
+  watch(sortOrder, value => {
+    try { localStorage.setItem(SORT_STORAGE_KEY, value) } catch { /* 存储受限时仅保留本次选择 */ }
+  })
   watch(page, () => { selected.value = [] }, { flush: 'sync' })
   useAccountListUpdates(next => { state.accounts = next; activeAccount.syncAccounts(next) })
   watch(identity, () => { state.accounts = []; accountRead++; loadAccounts() }, { flush: 'sync', immediate: true })
   watch([identity, accountId, game, available], () => { reset(); refresh() }, { flush: 'sync', immediate: true })
   onScopeDispose(() => { alive = false; state.generation++; accountRead++; read++ })
-  return { state, identity, accountId, account, available, game, publicGame, writable, filters, records, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, select }
+  return { state, identity, accountId, account, available, game, publicGame, writable, filters, operatorFilters, operatorFilterCount, sortOrder, records, filtered, groups, operatorGroups, pageGroups, selected, page, summary, recorded, capture, matches, refresh, loadAccounts, save, select }
 }
