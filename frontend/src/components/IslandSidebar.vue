@@ -279,7 +279,7 @@
     </nav>
     <div class="island-foot">
       <div class="sidebar-utilities">
-        <details ref="accountMenu" class="sidebar-account-menu" @keydown.esc.stop.prevent="closeAccountMenu(true)" @focusout="onAccountFocusOut">
+        <details ref="accountMenu" class="sidebar-account-menu" @keydown.esc.stop.prevent="closeAccountMenu(true)">
           <summary class="sidebar-account" aria-label="账号与外观设置" aria-controls="sidebar-account-panel">
             <img src="/brand/yuanhub-logo.webp" alt="" width="30" height="30" />
             <span class="sidebar-account-copy">
@@ -494,12 +494,8 @@ function closeAccountMenu(restoreFocus = false) {
   if (restoreFocus) accountMenu.value.querySelector("summary")?.focus();
 }
 
-function onAccountPointerDown(event) {
+function closeAccountMenuIfOutside(event) {
   if (!accountMenu.value?.contains(event.target)) closeAccountMenu();
-}
-
-function onAccountFocusOut(event) {
-  if (!accountMenu.value?.contains(event.relatedTarget)) closeAccountMenu();
 }
 
 function openBetaCommunity() {
@@ -509,7 +505,8 @@ function openBetaCommunity() {
 }
 
 onMounted(function () {
-  document.addEventListener("pointerdown", onAccountPointerDown);
+  document.addEventListener("pointerdown", closeAccountMenuIfOutside);
+  document.addEventListener("focusin", closeAccountMenuIfOutside);
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchmove", onTouchMove, { passive: true });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -518,7 +515,8 @@ onMounted(function () {
 
 onBeforeUnmount(function () {
   window.removeEventListener("resize", updateNavFade);
-  document.removeEventListener("pointerdown", onAccountPointerDown);
+  document.removeEventListener("pointerdown", closeAccountMenuIfOutside);
+  document.removeEventListener("focusin", closeAccountMenuIfOutside);
   document.removeEventListener("touchstart", onTouchStart);
   document.removeEventListener("touchmove", onTouchMove);
   document.removeEventListener("touchend", onTouchEnd);
