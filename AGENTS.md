@@ -50,7 +50,7 @@ Claude Code 和 Codex 共用本文件及所涉及目录的 `AGENTS.md`。个人�
 ## 发布
 
 - Push 到 main 和 PR 自动按组件运行轻量 CI，不部署；集中发布检查在明确准备发布时进行，手动诊断入口保留。
-- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本，并发执行所选组件的本地轻量门禁、GitHub JAR 构建和服务器 A 前端预构建。本地前端只跑 `npm run test:static`；后端跑 `./gradlew ktlintCheck test criticalTest --console=plain`、迁移 Node 测试与 beta npm test（缺依赖先 npm ci），`--stress` 仍追加 stressTest。组件结果由本地 state 与日志证明，GitHub 保留发布基础设施回归，构建只打 JAR。全部等待完成后 `--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
+- 根 `./release.sh --prepare` 冻结 main SHA、选择组件版本，并发执行所选组件的本地轻量门禁、GitHub JAR 构建，以及 GitHub 前端构建与向服务器 A 的压缩包上传。本地前端只跑 `npm run test:static`；后端跑 `./gradlew ktlintCheck test criticalTest --console=plain`、迁移 Node 测试与 beta npm test（缺依赖先 npm ci），`--stress` 仍追加 stressTest。组件结果由本地 state 与日志证明，GitHub 保留发布基础设施回归，构建只打 JAR。全部等待完成后 `--status` 查询，`--publish` 须另行明确授权。不得修改 VERSION 只为版本 PR，不复用其它 SHA/attempt 的结果。
 - 两端生产 Environment 不设人工 reviewer；Agent 在 `--prepare` 检查通过后须向用户汇报候选并询问是否部署，取得明确确认后才能运行 `--publish --yes`。
 - GitHub 远端配置、正式 tag、部署、回滚分别确认，保持部署开关现状。见 [发布设置](docs/release-settings/README.md) 与 [操作手册](docs/monorepo-operations.md)。
 

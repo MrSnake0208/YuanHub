@@ -208,12 +208,13 @@ class MonorepoWorkflowTest(unittest.TestCase):
         self.assertNotIn('./gradlew', deploy)
         self.assertIn('PREBUILT_JAR from successful CI is required', deploy)
 
-    def test_frontend_keeps_server_build_for_limited_bandwidth(self):
+    def test_frontend_builds_on_runner_for_missing_candidate(self):
         text=(ROOT/'.github/workflows/frontend-release.yml').read_text()
-        self.assertIn('REPO_URL: https://github.com/${{ github.repository }}.git', text)
-        self.assertIn('npm ci --no-audit --no-fund', text)
-        self.assertIn('npm run build', text)
-        self.assertNotIn('transfer-release.sh', text)
+        build = text.split('      - name: Build and archive frozen frontend\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn("steps.candidate.outputs.state == 'missing'", build)
+        self.assertIn('npm ci --no-audit --no-fund', build)
+        self.assertIn('npm run build', build)
+        self.assertIn('frontend-dist.tar.gz', build)
         gate = text.split('      - name: Require concentrated release evidence\n', 1)[1].split('      - name:', 1)[0]
         self.assertIn('--phase "$DEPLOY_PHASE"', gate)
         self.assertIn('echo "CI_RUN_ID=$CHECK_RUN" >> "$GITHUB_ENV"', gate)

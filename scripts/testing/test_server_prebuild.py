@@ -3,6 +3,7 @@
 Run: python3 scripts/testing/test_server_prebuild.py
 Compilers, service commands, curl and sleep are replaced; no real services are used.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ import signal
 import subprocess
 import sys
 import tempfile
-import textwrap
+import tarfile
 import time
 import unittest
 
@@ -173,21 +174,26 @@ class ServerPrebuildTest(unittest.TestCase):
                 ('slots/blue.env', 'state/active-slot', 'nginx/active.conf', 'releases/v0.1.12/app.jar')]
 
     def frontend(self, phase='prepare', **env):
-        content = (ROOT / '.github/workflows/frontend-release.yml').read_text()
-        script = content.split('      - name: Build and activate release on server\n', 1)[1]
-        script = script.split('          script: |\n', 1)[1].split('\n      - name:', 1)[0]
-        script = textwrap.dedent(script)
-        return subprocess.run(['bash', '-c', script],
-                              env=dict(self.env, RELEASE_VERSION='0.0.1-beta.20', RELEASE_TAG='frontend/v0.0.1-beta.20',
-                                       DEPLOY_PHASE=phase, **env), text=True, capture_output=True, timeout=10)
+        bundle = self.root / 'frontend.tar.gz'
+        args = [sys.executable, str(ROOT / 'scripts/deploy/frontend-receiver.py'), phase,
+                str(self.server), '0.0.1-beta.20', self.sha, env.get('API_BASE', self.env['API_BASE'])]
+        data = bundle.read_bytes() if phase == 'prepare' else b''
+        if phase == 'prepare':
+            args.append(hashlib.sha256(data).hexdigest())
+            if env.get('TRUNCATE_UPLOAD'):
+                data = data[:len(data) // 2]
+        return subprocess.run(args, input=data, capture_output=True, timeout=10)
 
     def bootstrap_frontend(self):
-        remote = self.root / 'repo.git'
-        subprocess.run(['git', 'init', '--bare', str(remote)], env=self.env,
-                       check=True, capture_output=True)
-        self.git('remote', 'add', 'origin', str(remote))
-        self.git('push', 'origin', 'main')
-        self.env['REPO_URL'] = str(remote)
+        dist = self.root / 'dist'
+        (dist / 'assets').mkdir(parents=True)
+        (dist / 'assets/app.js').write_text('fixture frontend')
+        (dist / 'index.html').write_text('fixture')
+        (dist / 'sw.js').write_text('fixture worker')
+        (dist / 'build-info.json').write_text(json.dumps(
+            dict(productVersion='0.0.1-beta.20', frontendCommit=self.sha)))
+        with tarfile.open(self.root / 'frontend.tar.gz', 'w:gz') as archive:
+            archive.add(dist, arcname='.')
         old = self.server / 'releases/old'
         old.mkdir(parents=True)
         (old / 'index.html').write_text('old frontend')
@@ -338,10 +344,37 @@ class ServerPrebuildTest(unittest.TestCase):
         self.assertEqual(self.env['API_BASE'], meta['apiBase'])
         self.assert_ok(self.frontend())
         self.assert_ok(self.frontend('release'))
-        self.assertEqual(2, len(self.events('npm')))  # one install, one build across three runs
+        self.assertEqual(b'ready', self.frontend('probe').stdout.strip())
         self.assertEqual('releases/0.0.1-beta.20-' + self.sha, os.readlink(self.server / 'current'))
         self.assertEqual('releases/old', os.readlink(next(self.server.glob('.switch.*')) / 'previous'))
         self.assertEqual('old frontend', (self.server / 'releases/old/index.html').read_text())
+
+    def test_frontend_transfer_streams_archive_through_remote_command(self):
+        self.bootstrap_frontend()
+        # Use a local shell as the SSH endpoint; exercise quoting, stdin and the real receiver.
+        for name, body in {
+            'ssh-keyscan': 'echo fixture-host-key',
+            'ssh': 'exec bash -c "${!#}"',
+            'timeout': 'shift 3; exec "$@"',
+        }.items():
+            script = self.bin / name
+            script.write_text('#!/bin/bash\n' + body + '\n')
+            script.chmod(0o755)
+        key = self.root / 'test-key'
+        subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)], check=True)
+        (self.root / 'frontend.tar.gz').rename(self.root / 'frontend-dist.tar.gz')
+        summary = self.root / 'summary'
+        env = dict(self.env, DEPLOY_HOST='fixture.invalid', DEPLOY_USER='fixture', DEPLOY_KEY=key.read_text(),
+                   RUNNER_TEMP=str(self.root), GITHUB_STEP_SUMMARY=str(summary), REQUESTED_COMMIT=self.sha,
+                   YUANHUB_VERSION='0.0.1-beta.20')
+        for mode in ['probe', 'prepare', 'probe', 'release']:
+            result = subprocess.run(['bash', str(ROOT / 'scripts/deploy/frontend-transfer.sh'), mode],
+                                    env=env, capture_output=True, text=True, timeout=10)
+            self.assert_ok(result)
+            if mode == 'prepare':
+                self.assertEqual('releases/old', os.readlink(self.server / 'current'))
+        self.assertIn('bytes in', summary.read_text())
+        self.assertEqual('fixture frontend', (self.server / 'current/assets/app.js').read_text())
 
     def test_frontend_changed_config_preserves_prepared_release(self):
         self.bootstrap_frontend()
@@ -364,13 +397,14 @@ class ServerPrebuildTest(unittest.TestCase):
 
     def test_frontend_legacy_deployed_metadata_can_be_released_again(self):
         self.bootstrap_frontend()
+        self.assert_ok(self.frontend())
         self.assert_ok(self.frontend('release'))
         path = self.server / 'current/deploy-meta.json'
         meta = json.loads(path.read_text())
         del meta['apiBase']
         path.write_text(json.dumps(meta, separators=(',', ':')))
         self.assert_ok(self.frontend('release'))
-        self.assertEqual(2, len(self.events('npm')))
+        self.assertEqual([], self.events('npm'))
 
     def test_frontend_reuses_matching_legacy_candidate_without_build(self):
         self.bootstrap_frontend()
@@ -401,19 +435,22 @@ class ServerPrebuildTest(unittest.TestCase):
                 self.assertEqual(before, path.read_bytes())
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
 
-    def test_frontend_prepare_build_failure_preserves_current(self):
+    def test_frontend_truncated_upload_preserves_current(self):
         self.bootstrap_frontend()
-        self.assertNotEqual(0, self.frontend(BUILD_FAIL='1').returncode)
+        self.assertEqual(b'missing', self.frontend('probe').stdout.strip())
+        self.assertNotEqual(0, self.frontend('release').returncode)
+        self.assertNotEqual(0, self.frontend(TRUNCATE_UPLOAD=True).returncode)
         self.assertEqual('releases/old', os.readlink(self.server / 'current'))
         self.assertFalse((self.server / ('releases/0.0.1-beta.20-' + self.sha)).exists())
 
     def test_frontend_refuses_overwriting_active_release_on_config_change(self):
         self.bootstrap_frontend()
+        self.assert_ok(self.frontend())
         self.assert_ok(self.frontend('release'))
         before = (self.server / 'current/deploy-meta.json').read_bytes()
         result = self.frontend(API_BASE='https://new.invalid/api')
         self.assertNotEqual(0, result.returncode)
-        self.assertIn('Refusing to replace', result.stderr)
+        self.assertIn(b'Refusing to replace', result.stderr)
         self.assertEqual(before, (self.server / 'current/deploy-meta.json').read_bytes())
 
 

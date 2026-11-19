@@ -25,7 +25,7 @@
 - 后端迁移（`backend/`）：`node --test scripts/migrations/20260907-level-catalog.test.js scripts/migrations/20261015-recruitment-duplicate-pools.test.js`。
 - beta（`backend/scripts/beta/`）：`npm test`；缺少 node_modules 时先 `npm ci`，Mongo 测试仍使用本机自有随机库。
 
-criticalTest 使用本机 MongoDB 副本集，默认 4 个 fork 并行，可用 `-PcriticalForks=N` 调整（N 必须为正整数）。prepare 同时运行 GitHub 发布基础设施回归及 JAR 构建、服务器 A 前端预构建；每个所选组件都必须有匹配 SHA、命令和成功结果的本地记录。state 与日志保存在 `.dev/release/`，候选 run/attempt、版本与产物证据须匹配，最多有效 7 天。`--status` 查询，`--publish` 仍须另行明确授权；详见 [发布操作](../monorepo-operations.md)。
+criticalTest 使用本机 MongoDB 副本集，默认 4 个 fork 并行，可用 `-PcriticalForks=N` 调整（N 必须为正整数）。prepare 同时运行 GitHub 发布基础设施回归及 JAR 构建、GitHub 前端构建并上传到服务器 A；每个所选组件都必须有匹配 SHA、命令和成功结果的本地记录。state 与日志保存在 `.dev/release/`，候选 run/attempt、版本与产物证据须匹配，最多有效 7 天。`--status` 查询，`--publish` 仍须另行明确授权；详见 [发布操作](../monorepo-operations.md)。
 
 ## criticalTest 覆盖
 

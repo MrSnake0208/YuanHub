@@ -5,8 +5,8 @@
 - CI：根 `.github/workflows/frontend-ci.yml`，构建工作目录 `frontend/`。
 - Release：根 `.github/workflows/frontend-release.yml`，仅 main-ref 手动 dispatch，集中检查通过后使用不可变标签 `frontend/vX.Y.Z`，独立环境 `frontend-production` 要求所有者审批。
 - 版本及精确 SHA 分别记录到组件产物元数据。发布预览从根运行 `./release.sh --dry-run --frontend auto`。
-- 保留原服务器目录、环境变量、数据库及旧版本回滚资产；新源码缓存是 `.monorepo-source`，构建进入 `frontend/`。独立回滚按根手册执行，须先获授权。
-- 前端服务器通过 HTTPS 只读拉取公开的 Monorepo，无需 GitHub SSH 部署密钥。
+- 保留原服务器目录、环境变量、数据库及旧版本回滚资产；构建在 GitHub runner 的 `frontend/` 中完成。独立回滚按根手册执行，须先获授权。
+- prepare 将 `dist.tar.gz` 经 SSH 传到腾讯云，服务器使用 Python 3 标准库验证摘要、解包并准备候选。重复 prepare 会复用匹配的候选，publish 只切换 `current`。传输的字节数和耗时记录在 Actions 摘要。
 
 原生产拓扑、变量表和历史多仓发布步骤完整保留在 [原部署资料](archive/deployment-polyrepo.md)，其中旧仓名、v* 触发与 .source 路径仅用于历史恢复，不是新版本入口。
 
