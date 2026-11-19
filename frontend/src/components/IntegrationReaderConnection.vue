@@ -1,7 +1,7 @@
 <template>
-  <details class="diagnostic-connection" @toggle="onToggle">
-    <summary>MaaYuan 诊断 AI 接入</summary>
-    <p>授权 AI 读取所有玩家上报的诊断问题、事件摘要及截图。请把令牌保存到 AI 客户端的密钥配置中。</p>
+  <details class="reader-connection" @toggle="onToggle">
+    <summary>{{ feedback ? '反馈 AI 只读接入' : 'MaaYuan 诊断 AI 接入' }}</summary>
+    <p>{{ description }} 使用 yuanhub-feedback MCP 时，把令牌填入 <code>{{ configKey }}</code>。</p>
     <div class="actions">
       <button type="button" :disabled="busy || !loaded || !!created" @click="createToken">创建只读令牌</button>
       <button type="button" @click="copyInstructions">复制接入说明</button>
@@ -22,19 +22,27 @@
         <button type="button" :disabled="busy" @click="revokeToken(token)">撤销</button>
       </li>
     </ul>
-    <p v-else-if="loaded">暂无有效的诊断只读令牌。</p>
+    <p v-else-if="loaded">暂无有效的{{ label }}只读令牌。</p>
   </details>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { API_BASE, request } from '../../api/request.js'
-import { dialog } from '../../utils/dialog.js'
+import { API_BASE, request } from '../api/request.js'
+import { dialog } from '../utils/dialog.js'
 
-const props = defineProps({ userId: { type: String, required: true } })
+const props = defineProps({
+  userId: { type: String, required: true },
+  scope: { type: String, required: true, validator: value => ['feedback:read', 'diagnostics:read'].includes(value) },
+})
 const path = '/user/integration-tokens'
 const tokenOptions = { auth: true, expectedUserId: props.userId }
-const scope = 'diagnostics:read'
+const feedback = props.scope === 'feedback:read'
+const label = feedback ? '反馈' : 'MaaYuan 诊断'
+const configKey = feedback ? 'integration_token' : 'diagnostics_token'
+const description = feedback
+  ? '授权 AI 读取你有权查看的玩家反馈、流转记录、附件及已有分析。'
+  : '授权 AI 读取所有玩家上报的诊断问题、事件摘要及截图。'
 const tokens = ref([])
 const created = ref(null)
 const secretInput = ref(null)
@@ -44,7 +52,10 @@ const error = ref('')
 const message = ref('')
 const showInstructions = ref(false)
 const base = new URL(API_BASE || '/', window.location.origin).href.replace(/\/$/, '')
-const instructions = `MaaYuan 诊断只读 API：${base}/open-api/maayuan-diagnostics
+const instructions = feedback ? `使用 yuanhub-feedback MCP 的 feedback_list（queue=ALL）查询可见工单，用 feedback_get 读取详情，按需读取流转记录或附件。
+使用 HTTP 时，基路径为 ${base}/open-api/feedback。从密钥配置 integration_token 读取令牌，向该 API 发送 Authorization: Bearer <令牌>。
+GET /queue?queue=ALL&page_size=3 读取队列，GET /{id} 读取工单。已有分析使用 GET /{id}/analysis。
+示例：查看最近更新的三条反馈，总结玩家遇到的问题并列出工单 ID。` : `MaaYuan 诊断只读 API：${base}/open-api/maayuan-diagnostics
 从客户端密钥配置读取令牌，仅向上述 API 发送 Authorization: Bearer <令牌>。JSON 结果在 data 字段中。
 1. GET /issues?status=NEW&sort=count&page_size=3 按出现次数读取待处理问题。问题 ID 在 items[].issue.id。
 2. GET /issues/{id} 读取详情与近期事件 events[]。
@@ -62,7 +73,8 @@ async function loadTokens() {
   try {
     const items = await request(path, tokenOptions)
     tokens.value = items.filter(item => item.enabled && (!item.expires_at || Date.parse(item.expires_at) > Date.now()) &&
-      item.scopes.length === 1 && item.scopes[0] === scope && item.feedback_areas?.length === 1 && item.feedback_areas[0] === 'MAAYUAN')
+      item.scopes.length === 1 && item.scopes[0] === props.scope &&
+      (feedback || (item.feedback_areas?.length === 1 && item.feedback_areas[0] === 'MAAYUAN')))
     loaded.value = true
   } catch (err) {
     error.value = err.message
@@ -76,9 +88,9 @@ async function createToken() {
   error.value = ''
   message.value = ''
   try {
-    const { token, ...item } = await request(path, {
-      ...tokenOptions, method: 'POST', body: { name: 'MaaYuan 诊断 AI', scopes: [scope], feedback_areas: ['MAAYUAN'] }
-    })
+    const body = { name: label + ' AI', scopes: [props.scope] }
+    if (!feedback) body.feedback_areas = ['MAAYUAN']
+    const { token, ...item } = await request(path, { ...tokenOptions, method: 'POST', body })
     created.value = { token_id: item.token_id, token }
     tokens.value.unshift(item)
   } catch (err) {
@@ -89,7 +101,7 @@ async function createToken() {
 }
 
 async function revokeToken(item) {
-  if (!await dialog.confirm({ title: '撤销诊断令牌', message: '尾号 ' + item.token_id.slice(-6) + ' 的令牌将在下次请求时失效。', type: 'danger', confirmText: '撤销令牌' })) return
+  if (!await dialog.confirm({ title: '撤销' + label + '令牌', message: '尾号 ' + item.token_id.slice(-6) + ' 的令牌将在下次请求时失效。', type: 'danger', confirmText: '撤销令牌' })) return
   busy.value = true
   error.value = ''
   try {
@@ -127,7 +139,7 @@ async function copyInstructions() {
 </script>
 
 <style scoped>
-.diagnostic-connection { margin-block: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.reader-connection { margin-block: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 summary, button { cursor: pointer; }
 summary { font-weight: 700; }
 p, ul, label { margin-block: .75rem; }

@@ -24,7 +24,7 @@
 
    | 能力 | 凭据与授权 |
    |---|---|
-   | 读取工单、流转记录、附件、已有分析 | 反馈集成令牌需要 `feedback:read`，工单范围由服务端按令牌和所有者权限校验。 |
+   | 读取工单、流转记录、附件、已有分析 | 在「账号与连接码 → 反馈 AI 只读接入」创建只读令牌，填入 `integration_token`。入口对有反馈管理范围的账号开放，令牌仅含 `feedback:read`，工单可见范围由服务端按当前账号权限校验。 |
    | 写入反馈分析 | 仅 `feedback_submit_analysis` 使用 `feedback:analysis:write`。只查看反馈时，使用仅有读取权限的令牌。 |
    | 读取 MaaYuan 问题、事件与截图 | 管理员授予「MaaYuan 诊断只读」后，开发者到「账号与连接码 → MaaYuan 诊断 AI 接入」创建个人令牌，范围为 `MAAYUAN` 和 `diagnostics:read`。 |
 

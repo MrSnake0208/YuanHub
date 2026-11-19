@@ -580,9 +580,16 @@
             </details>
             <p class="connection-safety"><ShieldCheck :size="15" aria-hidden="true" />连接码不是登录密码，请仅提供给你信任的工具。</p>
           </div>
-          <DiagnosticReaderConnection
+          <IntegrationReaderConnection
+            v-if="auth.userInfo?.id && canManageAnyFeedback(auth.adminAccess)"
+            :key="'feedback-' + auth.userInfo.id"
+            scope="feedback:read"
+            :user-id="auth.userInfo.id"
+          />
+          <IntegrationReaderConnection
             v-if="auth.userInfo?.id && canReadDiagnostics"
-            :key="auth.userInfo.id"
+            :key="'diagnostics-' + auth.userInfo.id"
+            scope="diagnostics:read"
             :user-id="auth.userInfo.id"
           />
         </div>
@@ -602,7 +609,8 @@
 </template>
 
 <script setup>
-import DiagnosticReaderConnection from "../../components/diagnostics/DiagnosticReaderConnection.vue";
+import IntegrationReaderConnection from "../../components/IntegrationReaderConnection.vue";
+import { canManageAnyFeedback } from "../../utils/authPermissions.js";
 import OperatorMatchConnection from "../../components/OperatorMatchConnection.vue";
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useOnboardingStore } from '../../stores/onboarding.js'
